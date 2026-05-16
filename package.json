@@ -1,0 +1,13 @@
+{
+  "name": "still-afloat-editorial-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-first editorial intelligence agent for Still Afloat cruising and travel news.",
+  "main": "src/run-agent.js",
+  "scripts": {
+    "scan": "node src/run-agent.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
