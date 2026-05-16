@@ -3,16 +3,18 @@ const { runEditorialAgent } = require('../src/run-agent');
 const { renderEditorialDigest } = require('../src/render-digest');
 const { sendEditorialDigest } = require('../src/email-delivery');
 const { PATHS, writeJson, readJson } = require('../src/persistence');
+const { normalizeStories } = require('../src/story-normalizer');
 
 module.exports = async function handler(req, res) {
   try {
-    const stories = await buildCandidateFeed();
+    const rawStories = await buildCandidateFeed();
+    const normalizedStories = normalizeStories(rawStories);
 
     const approvedExisting = readJson(PATHS.approved, { stories: [] });
     const candidatesExisting = readJson(PATHS.candidates, { rejectedStories: [] });
 
     const curated = await runEditorialAgent({
-      stories,
+      stories: normalizedStories,
       openai: process.env.OPENAI_API_KEY,
       editorialMemory: {
         approvedStories: approvedExisting.stories || [],
@@ -20,16 +22,18 @@ module.exports = async function handler(req, res) {
       }
     });
 
+    const curatedStories = normalizeStories(curated.stories || []);
+
     writeJson(PATHS.candidates, {
       generatedAt: new Date().toISOString(),
-      stories: curated.stories || [],
-      homepageTop5: curated.homepageTop5 || [],
+      stories: curatedStories,
+      homepageTop5: normalizeStories(curated.homepageTop5 || []).slice(0, 5),
       groupedDevelopments: curated.groupedDevelopments || [],
-      rejectedStories: curated.rejectedStories || []
+      rejectedStories: normalizeStories(curated.rejectedStories || [])
     });
 
     const html = renderEditorialDigest({
-      stories: curated.stories || []
+      stories: curatedStories
     });
 
     const emailResult = await sendEditorialDigest({
@@ -39,8 +43,8 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      scannedStories: stories.length,
-      curatedStories: (curated.stories || []).length,
+      scannedStories: normalizedStories.length,
+      curatedStories: curatedStories.length,
       emailResult
     });
   } catch (error) {
