@@ -28,8 +28,8 @@ module.exports = async function handler(req, res) {
     telemetry.normalizationCompleted = true;
     telemetry.normalizedStoryCount = normalizedStories.length;
 
-    const approvedExisting = readJson(PATHS.approved, { stories: [] });
-    const candidatesExisting = readJson(PATHS.candidates, { rejectedStories: [] });
+    const approvedExisting = await readJson(PATHS.approved, { stories: [] });
+    const candidatesExisting = await readJson(PATHS.candidates, { rejectedStories: [] });
 
     const curated = await runEditorialAgent({
       stories: normalizedStories,
@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
 
     const curatedStories = normalizeStories(curated.stories || []);
 
-    writeJson(PATHS.candidates, {
+    await writeJson(PATHS.candidates, {
       generatedAt: new Date().toISOString(),
       systemStatus: curated.systemStatus || null,
       stories: curatedStories,
