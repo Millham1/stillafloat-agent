@@ -1,38 +1,56 @@
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Supabase environment variables are missing');
 }
 
-function writeJson(filePath, payload) {
-  ensureDir(path.dirname(filePath));
-  fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
-}
-
-function readJson(filePath, fallback = {}) {
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch (error) {
-    return fallback;
-  }
-}
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const PATHS = {
-  candidates: path.join(DATA_DIR, 'candidate-stories.json'),
-  approved: path.join(DATA_DIR, 'approved-stories.json'),
-  archive: path.join(DATA_DIR, 'archive-stories.json'),
-  homepage: path.join(DATA_DIR, 'homepage-feed.json'),
-  newsIndex: path.join(DATA_DIR, 'news-index.json'),
-  storyDetails: path.join(DATA_DIR, 'story-details.json')
+  candidates: 'candidate-stories',
+  approved: 'approved-stories',
+  archive: 'archive-stories',
+  homepage: 'homepage-feed',
+  newsIndex: 'news-index',
+  storyDetails: 'story-details'
 };
+
+async function writeJson(key, payload) {
+  const { error } = await supabase
+    .from('platform_state')
+    .upsert({
+      id: key,
+      payload,
+      updated_at: new Date().toISOString()
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return true;
+}
+
+async function readJson(key, fallback = {}) {
+  const { data, error } = await supabase
+    .from('platform_state')
+    .select('payload')
+    .eq('id', key)
+    .single();
+
+  if (error || !data) {
+    return fallback;
+  }
+
+  return data.payload || fallback;
+}
 
 module.exports = {
   PATHS,
   writeJson,
-  readJson
+  readJson,
+  supabase
 };
