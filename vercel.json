@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/scan-news",
-      "schedule": "0 */48 * * *"
+      "schedule": "0 13 * * *"
     }
   ]
 }
