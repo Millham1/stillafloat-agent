@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Still Afloat Editorial Agent API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: editorial
+    description: Editorial queue and story management
+  - name: feeds
+    description: Publishing feeds for the website
+  - name: agent
+    description: Agent scan and system operations
 paths:
   /healthz:
     get:
@@ -24,6 +30,200 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /system-status:
+    get:
+      operationId: getSystemStatus
+      tags: [agent]
+      summary: Get system status
+      description: Returns overall system status and capability flags
+      responses:
+        "200":
+          description: System status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+
+  /editorial-queue:
+    get:
+      operationId: getEditorialQueue
+      tags: [editorial]
+      summary: Get editorial queue
+      description: Returns candidate stories pending editorial review
+      responses:
+        "200":
+          description: Editorial queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditorialQueueResponse"
+
+  /agent-action:
+    get:
+      operationId: performAgentAction
+      tags: [editorial]
+      summary: Perform editorial action on a story
+      description: Approve, reject, pin, or defer a candidate story
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [approve, reject, pin, defer]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Story not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /homepage-feed:
+    get:
+      operationId: getHomepageFeed
+      tags: [feeds]
+      summary: Get homepage feed
+      description: Returns approved stories for the homepage
+      responses:
+        "200":
+          description: Homepage feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoryFeedResponse"
+
+  /news-feed:
+    get:
+      operationId: getNewsFeed
+      tags: [feeds]
+      summary: Get news feed
+      description: Returns all approved stories as a news index
+      responses:
+        "200":
+          description: News feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoryFeedResponse"
+
+  /story-details:
+    get:
+      operationId: getStoryDetails
+      tags: [feeds]
+      summary: Get story details
+      description: Returns full story details, optionally filtered by ID
+      parameters:
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Story details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoryFeedResponse"
+        "404":
+          description: Story not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /alerts-feed:
+    get:
+      operationId: getAlertsFeed
+      tags: [feeds]
+      summary: Get operational alerts feed
+      description: Returns high-impact stories as operational alerts
+      responses:
+        "200":
+          description: Alerts feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertsFeedResponse"
+
+  /weather-alerts:
+    get:
+      operationId: getWeatherAlerts
+      tags: [feeds]
+      summary: Get weather alerts
+      description: Returns weather alerts for monitored cruise ports
+      responses:
+        "200":
+          description: Weather alerts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeatherAlertsResponse"
+
+  /scan-news:
+    post:
+      operationId: scanNews
+      tags: [agent]
+      summary: Trigger a news scan
+      description: Fetches live news, runs AI curation, stores candidates, sends digest email
+      responses:
+        "200":
+          description: Scan result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanResult"
+        "500":
+          description: Scan failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /platform-manifest:
+    get:
+      operationId: getPlatformManifest
+      tags: [agent]
+      summary: Get platform manifest
+      description: Returns all API endpoint URLs and capability flags
+      responses:
+        "200":
+          description: Platform manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformManifest"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +234,253 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+      required:
+        - success
+        - error
+
+    ActionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    Story:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        category:
+          type: ["string", "null"]
+        impactLevel:
+          type: ["string", "null"]
+        travelerImpact:
+          type: ["string", "null"]
+        summary:
+          type: ["string", "null"]
+        reasoning:
+          type: ["string", "null"]
+        link:
+          type: ["string", "null"]
+        image:
+          type: ["string", "null"]
+        featured:
+          type: ["boolean", "null"]
+        homepageCandidate:
+          type: ["boolean", "null"]
+        sources:
+          type: array
+          items:
+            type: string
+        sourceLinks:
+          type: array
+          items:
+            type: string
+        publishedAt:
+          type: ["string", "null"]
+        approvedAt:
+          type: ["string", "null"]
+        status:
+          type: ["string", "null"]
+      required:
+        - id
+        - title
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        category:
+          type: ["string", "null"]
+        impactLevel:
+          type: ["string", "null"]
+        travelerImpact:
+          type: ["string", "null"]
+        summary:
+          type: ["string", "null"]
+        link:
+          type: ["string", "null"]
+        approvedAt:
+          type: ["string", "null"]
+        featured:
+          type: ["boolean", "null"]
+      required:
+        - id
+        - title
+
+    EditorialQueueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        generatedAt:
+          type: ["string", "null"]
+        degradedMode:
+          type: boolean
+        count:
+          type: integer
+        stories:
+          type: array
+          items:
+            $ref: "#/components/schemas/Story"
+      required:
+        - success
+        - count
+        - stories
+
+    StoryFeedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        source:
+          type: ["string", "null"]
+        generatedAt:
+          type: ["string", "null"]
+        count:
+          type: integer
+        stories:
+          type: array
+          items:
+            $ref: "#/components/schemas/Story"
+      required:
+        - success
+        - count
+        - stories
+
+    AlertsFeedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        source:
+          type: ["string", "null"]
+        generatedAt:
+          type: ["string", "null"]
+        count:
+          type: integer
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Alert"
+      required:
+        - success
+        - count
+        - alerts
+
+    WeatherAlertsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        source:
+          type: ["string", "null"]
+        generatedAt:
+          type: ["string", "null"]
+        monitoringEnabled:
+          type: boolean
+        monitoredPorts:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+      required:
+        - success
+        - monitoredPorts
+
+    SystemStatus:
+      type: object
+      properties:
+        success:
+          type: boolean
+        service:
+          type: string
+        generatedAt:
+          type: string
+        environment:
+          type: string
+        systems:
+          type: object
+          properties:
+            openaiConfigured:
+              type: boolean
+            resendConfigured:
+              type: boolean
+            gnewsConfigured:
+              type: boolean
+            weatherConfigured:
+              type: boolean
+            approvalConfigured:
+              type: boolean
+        publishing:
+          type: object
+          properties:
+            candidateStories:
+              type: integer
+            approvedStories:
+              type: integer
+            homepageStories:
+              type: integer
+        pipeline:
+          type: object
+          properties:
+            degradedMode:
+              type: boolean
+            degradedReason:
+              type: ["string", "null"]
+      required:
+        - success
+        - service
+        - generatedAt
+
+    ScanResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        scannedStories:
+          type: integer
+        curatedStories:
+          type: integer
+        degradedMode:
+          type: boolean
+        telemetry:
+          type: object
+        emailResult:
+          type: object
+      required:
+        - success
+
+    PlatformManifest:
+      type: object
+      properties:
+        success:
+          type: boolean
+        service:
+          type: string
+        generatedAt:
+          type: string
+        endpoints:
+          type: object
+        capabilities:
+          type: object
+      required:
+        - success
+        - service
+        - generatedAt
