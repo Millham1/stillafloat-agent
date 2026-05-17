@@ -1,5 +1,8 @@
 const { createClient } = require('@supabase/supabase-js');
 
+// Supabase-backed persistence layer for Vercel serverless runtime.
+// Filesystem persistence has been fully removed.
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
