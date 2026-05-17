@@ -2,7 +2,7 @@ async function sendEditorialDigest({ html, subject }) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
     const to = process.env.APPROVAL_EMAIL;
-    const from = 'Still Afloat AI <onboarding@resend.dev>';
+    const from = process.env.RESEND_FROM_EMAIL || 'Still Afloat AI <onboarding@resend.dev>';
 
     const diagnostics = {
       configured: Boolean(apiKey && to),
@@ -77,4 +77,4 @@ async function sendEditorialDigest({ html, subject }) {
 module.exports = {
   sendEditorialDigest
 };
-// redeploy trigger
+// redeploy trigger 2
