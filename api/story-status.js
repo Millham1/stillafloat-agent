@@ -2,8 +2,18 @@ const { PATHS, writeJson, readJson } = require('../src/persistence');
 
 module.exports = async function handler(req, res) {
   try {
-    const index = Number(req.query.index || 0);
-    const mode = String(req.query.mode || 'hold');
+    const compactCode = String(req.query.c || 'h');
+    const index = Number(req.query.n || 0);
+
+    let mode = 'hold';
+
+    if (compactCode === 'a') {
+      mode = 'approve';
+    }
+
+    if (compactCode === 'f') {
+      mode = 'feature';
+    }
 
     const candidates = await readJson(PATHS.candidates, {
       stories: [],
