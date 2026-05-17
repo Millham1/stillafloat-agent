@@ -2,13 +2,24 @@ async function sendEditorialDigest({ html, subject }) {
   try {
     const apiKey = process.env.RESEND_API_KEY;
     const to = process.env.APPROVAL_EMAIL;
+    const from = 'Still Afloat AI <onboarding@resend.dev>';
+
+    const diagnostics = {
+      configured: Boolean(apiKey && to),
+      keyPrefix: apiKey ? apiKey.slice(0, 8) : null,
+      recipient: to,
+      sender: from
+    };
+
+    console.log('Email runtime diagnostics:', diagnostics);
 
     if (!apiKey || !to) {
       return {
         success: false,
         provider: 'resend',
         errorType: 'configuration',
-        message: 'Missing RESEND_API_KEY or APPROVAL_EMAIL'
+        message: 'Missing RESEND_API_KEY or APPROVAL_EMAIL',
+        diagnostics
       };
     }
 
@@ -19,7 +30,7 @@ async function sendEditorialDigest({ html, subject }) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Still Afloat AI <onboarding@resend.dev>',
+        from,
         to,
         subject,
         html
@@ -31,7 +42,8 @@ async function sendEditorialDigest({ html, subject }) {
     if (!response.ok) {
       console.error('Resend delivery failure:', {
         status: response.status,
-        payload
+        payload,
+        diagnostics
       });
 
       return {
@@ -39,14 +51,16 @@ async function sendEditorialDigest({ html, subject }) {
         provider: 'resend',
         errorType: 'delivery_failure',
         status: response.status,
-        payload
+        payload,
+        diagnostics
       };
     }
 
     return {
       success: true,
       provider: 'resend',
-      payload
+      payload,
+      diagnostics
     };
   } catch (error) {
     console.error('Editorial digest delivery exception:', error);
