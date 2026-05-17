@@ -31,6 +31,8 @@ The website owns:
 - brand/UI presentation
 
 ## Architectural Rule
+<!-- force deploy -->
+
 
 The website is not the brain.
 
