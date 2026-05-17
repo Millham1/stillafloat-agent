@@ -2,8 +2,8 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Supabase-backed persistence layer for Vercel serverless runtime.
 // Filesystem persistence has been fully removed.
-// The Supabase project URL is not secret, so keep a verified fallback here
-// to avoid deployment failures caused by Vercel env-var placeholder UI issues.
+// Prototype/editorial-stage configuration uses anon/public access
+// to eliminate unnecessary service-role secret management.
 
 const VERIFIED_SUPABASE_URL = 'https://gbjfrnrkkjnutmogdzln.supabase.co';
 const configuredSupabaseUrl = process.env.SUPABASE_URL;
@@ -12,10 +12,12 @@ const supabaseUrl =
     ? configuredSupabaseUrl
     : VERIFIED_SUPABASE_URL;
 
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseKey) {
-  throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is missing');
+  throw new Error('SUPABASE_ANON_KEY environment variable is missing');
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
