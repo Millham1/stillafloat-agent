@@ -34,3 +34,8 @@ externalPort = 3001
 [[ports]]
 localPort = 18336
 externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_ANON_KEY = "sb_publishable_F8i-HsaYfStwfcqfoWzkzw_ZcekDZyR"

@@ -36,7 +36,7 @@ Each approved story must include:
 - reasoning
 - sourceAttribution
 
-Return a JSON object with: stories (array), homepageTop5 (array), groupedDevelopments (array), rejectedStories (array), systemStatus (object with degraded bool and reason string).
+Return a json object with: stories (array), homepageTop5 (array), groupedDevelopments (array), rejectedStories (array), systemStatus (object with degraded bool and reason string).
 `;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
