@@ -321,6 +321,19 @@ router.post("/scan-news", async (req: Request, res: Response) => {
     telemetry.curatedStoryCount = curatedStories.length;
     telemetry.filteredCount = normalized.length - curatedStories.length;
 
+    // Never overwrite a good queue with an empty/degraded result
+    if (telemetry.degradedMode || curatedStories.length === 0) {
+      req.log.warn({ degraded: telemetry.degradedMode, count: curatedStories.length }, "Scan returned empty/degraded — preserving existing queue");
+      res.json({
+        success: false,
+        curatedStories: 0,
+        degradedMode: true,
+        preserved: true,
+        telemetry,
+      });
+      return;
+    }
+
     await writeJson(PATHS.candidates, {
       generatedAt: new Date().toISOString(),
       systemStatus: curated.systemStatus || null,
@@ -339,9 +352,7 @@ router.post("/scan-news", async (req: Request, res: Response) => {
       approvalToken: process.env["AGENT_APPROVAL_TOKEN"] || "",
     });
     const emailResult = await sendEditorialDigest({
-      subject: telemetry.degradedMode
-        ? "Still Afloat AI Digest (Degraded Mode)"
-        : "Still Afloat AI Editorial Digest",
+      subject: "Still Afloat AI Editorial Digest",
       html,
     });
     telemetry.emailCompleted = Boolean(emailResult?.success);
@@ -349,7 +360,7 @@ router.post("/scan-news", async (req: Request, res: Response) => {
     res.json({
       success: true,
       curatedStories: curatedStories.length,
-      degradedMode: telemetry.degradedMode,
+      degradedMode: false,
       telemetry,
       emailResult: emailResult ? { success: emailResult.success, provider: emailResult.provider } : null,
     });

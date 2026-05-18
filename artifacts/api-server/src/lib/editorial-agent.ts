@@ -460,7 +460,7 @@ export async function runEditorialAgent({
             : "auto",
           messages,
         }),
-        signal: AbortSignal.timeout(90000),
+        signal: AbortSignal.timeout(150000),
       });
 
       payload = await response.json() as Record<string, unknown>;
