@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--gold:#ffca4f;--blue:#4fc3ff;--seafoam:#5dff9a}
@@ -157,22 +158,59 @@ body::before{
   box-shadow:0 0 26px rgba(79,195,255,.14), 0 24px 52px rgba(0,0,0,.44);
 }
 .photo{
-  height:185px;
-  background-size:cover;
-  background-position:top;
-  position:relative;
+  width:100%;
+  display:block;
+  border-radius:14px 14px 0 0;
+  overflow:hidden;
   transition:transform .5s ease, filter .5s ease;
 }
+.photo img{
+  width:100%;
+  height:280px;
+  object-fit:cover;
+  object-position:center top;
+  display:block;
+}
+.photo-gi{
+  height:280px;
+  background:linear-gradient(160deg,#e8edf8 0%,#d4dcef 50%,#c8d5f0 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:6px;
+}
+.gi-icon-stack{text-align:center}
+.gi-bulb{
+  font-size:62px;
+  color:#ffca4f;
+  filter:drop-shadow(0 0 18px rgba(255,202,79,.65));
+  display:block;
+  margin-bottom:-8px;
+  position:relative;
+  z-index:2;
+}
+.gi-box{
+  font-size:50px;
+  color:#b07d3a;
+  display:block;
+}
+.gi-name{
+  font-family:'Baloo 2',sans-serif;
+  font-weight:900;
+  font-size:.95rem;
+  color:#1a2a52;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  text-align:center;
+  line-height:1.2;
+  margin-top:10px;
+}
 .card:hover .photo{filter:saturate(1.08) brightness(1.05)}
-.card:nth-child(1):hover .photo{transform:translate3d(-3px,-4px,0) scale(1.045)}
-.card:nth-child(2):hover .photo{transform:translate3d(0,-5px,0) scale(1.035)}
-.card:nth-child(3):hover .photo{transform:translate3d(4px,-4px,0) scale(1.045)}
-.card:nth-child(4):hover .photo{transform:translate3d(0,-3px,0) scale(1.04)}
-.photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.40))}
-.air{background-image:url('/assets/images/air-travel-card.png')}
-.cabin{background-image:url('/assets/images/cabin-essentials-card.png')}
-.fun{background-image:url('/assets/images/cruise-fun-card.png')}
-.ideas{background-image:url('/assets/images/great-ideas-card.png')}
+.card:nth-child(1):hover .photo{transform:translate3d(-3px,-4px,0) scale(1.03)}
+.card:nth-child(2):hover .photo{transform:translate3d(0,-5px,0) scale(1.025)}
+.card:nth-child(3):hover .photo{transform:translate3d(4px,-4px,0) scale(1.03)}
+.card:nth-child(4):hover .photo{transform:translate3d(0,-3px,0) scale(1.025)}
 .card-body{padding:22px;display:flex;flex-direction:column;gap:10px;flex:1;transition:transform .38s ease}
 .card:nth-child(1):hover .card-body{transform:translateX(3px)}
 .card:nth-child(2):hover .card-body{transform:translateY(-2px)}
@@ -233,33 +271,41 @@ footer{
 
   <div class="cards">
     <a class="card" href="under-construction.html">
-      <div class="photo air"></div>
+      <div class="photo">
+        <img src="/assets/images/air-travel-card.png" alt="Air Travel">
+      </div>
       <div class="card-body">
-        <div class="card-title">Air Travel</div>
         <div class="card-copy">Smart gear for smoother flights and easier embarkation days.</div>
         <div class="see">See Gear →</div>
       </div>
     </a>
     <a class="card" href="under-construction.html">
-      <div class="photo cabin"></div>
+      <div class="photo">
+        <img src="/assets/images/cabin-essentials-card.png" alt="Cruise Cabin Essentials">
+      </div>
       <div class="card-body">
-        <div class="card-title">Cruise Cabin Essentials</div>
         <div class="card-copy">Must-have items to keep your cabin organized, comfortable, and functional.</div>
         <div class="see">See Essentials →</div>
       </div>
     </a>
     <a class="card" href="under-construction.html">
-      <div class="photo fun"></div>
+      <div class="photo">
+        <img src="/assets/images/cruise-fun-card.png" alt="Cruise Fun">
+      </div>
       <div class="card-body">
-        <div class="card-title">Cruise Fun</div>
         <div class="card-copy">Pool deck favorites, tropical accessories, games, and fun things that make cruises memorable.</div>
         <div class="see">See Fun Picks →</div>
       </div>
     </a>
     <a class="card" href="under-construction.html">
-      <div class="photo ideas"></div>
+      <div class="photo photo-gi">
+        <div class="gi-icon-stack">
+          <i class="fa-solid fa-lightbulb gi-bulb"></i>
+          <i class="fa-solid fa-box-open gi-box"></i>
+        </div>
+        <div class="gi-name">Generally<br>Great Ideas</div>
+      </div>
       <div class="card-body">
-        <div class="card-title">Generally Great Ideas</div>
         <div class="card-copy">Useful gadgets and clever finds that make cruising easier.</div>
         <div class="see">See Ideas →</div>
       </div>
