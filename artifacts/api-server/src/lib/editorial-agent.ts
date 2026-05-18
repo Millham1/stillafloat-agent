@@ -77,7 +77,7 @@ const TOOLS = [
     function: {
       name: "submit_editorial_decisions",
       description:
-        "Submit your final curated list of stories for publication. Call this when you have reviewed enough sources and are confident in your 10–15 story selection. You MUST call this to complete the editorial run.",
+        "Submit your final curated list of stories for publication. Call this when you have reviewed enough sources and are confident in your 15–20 story selection. You MUST call this to complete the editorial run.",
       parameters: {
         type: "object",
         properties: {
@@ -250,23 +250,28 @@ WHAT DOESN'T BELONG HERE:
 MANDATORY RESEARCH PLAN — in this order, no skipping:
 ════════════════════════════════════
 
-ROUND 1 — fetch all 4:
+ROUND 1 — fetch all 6 (no skipping):
   fetch_rss_feed("Cruise Hive")
   fetch_rss_feed("Cruise Radio")
+  fetch_rss_feed("Cruise Industry News")
   fetch_rss_feed("Simple Flying")
   fetch_rss_feed("The Points Guy")
+  fetch_rss_feed("CNN Travel")
 
-ROUND 2 — fetch all 3 + run 2 GNews lifestyle searches:
+ROUND 2 — fetch all 4 + run 2 GNews searches (no skipping):
   fetch_rss_feed("Upgraded Points")
   fetch_rss_feed("Condé Nast Traveler")
+  fetch_rss_feed("Fox News Travel")
+  fetch_rss_feed("One Mile at a Time")
   search_gnews("cruising lifestyle liveaboard")
   search_gnews("cruise ship personal story OR funny OR surprising")
 
-ROUND 3 — only if you still need Tier 3 coverage after Rounds 1+2:
-  fetch_rss_feed("Skift") or fetch_rss_feed("One Mile at a Time")
-  search_gnews("cruise port disruption OR cruise itinerary change")
+ROUND 3 — always run this round to reach the 15–20 story target:
+  fetch_rss_feed("Skift")
+  search_gnews("cruise ship news itinerary change this week")
+  search_gnews("cruise port travel tips destination")
 
-After Rounds 1 and 2 are complete, call submit_editorial_decisions.
+After all 3 Rounds are complete, call submit_editorial_decisions.
 
 ════════════════════════════════════
 EDITORIAL TIERS:
@@ -322,10 +327,12 @@ SUBMISSION REQUIREMENTS — will be rejected if not met:
 ════════════════════════════════════
 
 Your submission MUST have ALL of the following:
+  - At least 10 stories total (target 12–18 — the website news page needs depth beyond the homepage's top 5)
   - Tiers 1, 2, and 4 all represented (Tier 3 is optional)
-  - No more than 5 Tier 1 stories total
+  - No more than 7 Tier 1 stories total
   - At least 2 Tier 4 lifestyle/story stories
-  - No more than 60% of stories from Tier 1
+  - At least 2 Tier 2 travel operations stories
+  - No more than 50% of stories from Tier 1
   - Every story has a non-empty "link" set to the exact "url" from the tool result
 
 ════════════════════════════════════
@@ -419,13 +426,13 @@ export async function runEditorialAgent({
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     logger.info({ iteration }, "Agent iteration");
 
-    // After 2 research rounds, inject a user nudge and force submission
-    const forceSubmit = researchIterations >= 2;
+    // After 3 research rounds, inject a user nudge and force submission
+    const forceSubmit = researchIterations >= 3;
     if (forceSubmit && messages[messages.length - 1]?.role !== "user") {
       const toolMessages = messages.filter((m) => m.role === "tool").length;
       messages.push({
         role: "user",
-        content: `You have completed your research (${toolMessages} tool responses gathered). Now call submit_editorial_decisions with your best 10–15 stories. Apply the 4-tier framework strictly — quality over quantity.`,
+        content: `You have completed all 3 research rounds (${toolMessages} tool responses gathered). Now call submit_editorial_decisions with your best 15–20 stories. The website news page needs depth — aim for at least 15. Apply the tier framework: Tiers 1, 2, and 4 required, max 50% Tier 1.`,
       });
     }
 
@@ -511,19 +518,22 @@ export async function runEditorialAgent({
 
         logger.info({ total, tierCounts, t1Pct: Math.round(t1Pct * 100) }, "Agent submitted editorial decisions");
 
-        // Reject if >60% Tier 1, missing Tier 1/2/4, or fewer than 2 Tier 4 stories — max 3 rejections
+        // Reject if count < 15, >50% Tier 1, missing Tier 1/2/4, or fewer than 2 Tier 4 stories — max 3 rejections
         const t4Count = tierCounts[4] || 0;
+        const t2Count = tierCounts[2] || 0;
         const hasTier1 = Boolean(tierCounts[1]);
-        const hasTier2 = Boolean(tierCounts[2]);
+        const hasTier2 = t2Count >= 2;
         const needsMoreT4 = t4Count < 2;
-        const failsDiversity = t1Pct > 0.6 || !hasTier1 || !hasTier2 || needsMoreT4;
+        const tooFewStories = total < 10;
+        const failsDiversity = tooFewStories || t1Pct > 0.5 || !hasTier1 || !hasTier2 || needsMoreT4;
         if (failsDiversity && researchIterations < 3) {
           const issues: string[] = [];
-          if (t1Pct > 0.6) issues.push(`${Math.round(t1Pct * 100)}% Tier 1 (max 60%)`);
+          if (tooFewStories) issues.push(`only ${total} stories submitted (need at least 10 — the news page needs depth beyond the homepage)`);
+          if (t1Pct > 0.5) issues.push(`${Math.round(t1Pct * 100)}% Tier 1 (max 50%)`);
           if (!hasTier1) issues.push("no Tier 1 stories");
-          if (!hasTier2) issues.push("no Tier 2 stories");
+          if (!hasTier2) issues.push(`only ${t2Count} Tier 2 story (need at least 2 travel operations stories)`);
           if (needsMoreT4) issues.push(`only ${t4Count} Tier 4 story (need at least 2 warm lifestyle/human-interest stories)`);
-          const feedback = `Submission rejected: ${issues.join("; ")}. Current distribution: ${JSON.stringify(tierCounts)}. You MUST have Tiers 1, 2, and at least 2 Tier 4 lifestyle stories. Tier 4 should be warm, human, aspirational — liveaboard life, personal cruise stories, destination inspiration. Search GNews for "cruising lifestyle" or "cruise life personal story" to find them.`;
+          const feedback = `Submission rejected: ${issues.join("; ")}. Current distribution: ${JSON.stringify(tierCounts)}. TARGET: 15–20 stories total — Tier 1 (5–7), Tier 2 (2–4), Tier 3 (0–2), Tier 4 (2–4). Fetch more sources: Cruise Industry News, CNN Travel, Fox News Travel, One Mile at a Time have not been checked yet. Search GNews for "cruising lifestyle" or "cruise news this week". Resubmit with at least 15 stories.`;
           logger.warn({ tierCounts, t1Pct, researchIterations }, "Tier diversity check failed — requesting more research");
           messages.push({
             role: "tool",

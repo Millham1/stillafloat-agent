@@ -54,14 +54,26 @@ function serverSideFilter(stories: Record<string, unknown>[]): Record<string, un
   // 4. Entity-based dedup — catch same event reported by two sources
   // Extract a fingerprint: (ship name or cruise line) + (event keyword)
   const SHIP_NAMES = /\b(carnival(?: mardi gras| dream| vista| horizon| venezia| jubilee| celebration| luminosa|[a-z]+ [a-z]+)?|royal caribbean|norwegian(?: encore| prima| bliss| escape| getaway| breakaway|[a-z]+ [a-z]+)?|celebrity(?: beyond| edge| apex| ascent|[a-z]+)?|princess|msc|holland america|viking|disney|cunard|silversea|regent)\b/i;
-  const EVENT_KEYWORDS = /\b(rescue|save|saved|rescue[d]?|fire|flood|storm|collision|outbreak|delay|cancel|divert|reroute|sinking|abandon|aground|lawsuit|court|ban|overhauled|overturned|strike)\b/i;
+  // Groups of synonymous event words mapped to a canonical key
+  const EVENT_GROUPS: [RegExp, string][] = [
+    [/\b(rescue[d]?|saving|saved|saves|adrift|stranded at sea)\b/i, "rescue"],
+    [/\b(fire|blaze|burning)\b/i, "fire"],
+    [/\b(outbreak|norovirus|sick|illness)\b/i, "outbreak"],
+    [/\b(delay|cancel|cancell?ed|postpone)\b/i, "delay"],
+    [/\b(divert|reroute|itinerary change)\b/i, "reroute"],
+    [/\b(collision|crash|accident)\b/i, "collision"],
+    [/\b(sinking|sunk|sink|abandon ship)\b/i, "sinking"],
+    [/\b(lawsuit|court|sued|ban|overturned)\b/i, "legal"],
+    [/\b(power|blackout|dark|engine)\b/i, "power"],
+  ];
 
   function eventFingerprint(s: Record<string, unknown>): string | null {
     const text = `${s.title || ""} ${s.summary || ""}`;
     const shipMatch = SHIP_NAMES.exec(text);
-    const eventMatch = EVENT_KEYWORDS.exec(text);
-    if (shipMatch && eventMatch) {
-      return `${shipMatch[0].toLowerCase().split(" ")[0]}:${eventMatch[0].toLowerCase()}`;
+    if (!shipMatch) return null;
+    const lineage = shipMatch[0].toLowerCase().split(" ")[0];
+    for (const [re, canonical] of EVENT_GROUPS) {
+      if (re.test(text)) return `${lineage}:${canonical}`;
     }
     return null;
   }

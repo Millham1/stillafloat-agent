@@ -21,13 +21,25 @@ router.get("/homepage-feed", async (req: Request, res: Response) => {
 
 router.get("/news-feed", async (req: Request, res: Response) => {
   try {
-    const newsIndex = await readJson<{ generatedAt?: string; stories?: unknown[] }>(PATHS.newsIndex, { generatedAt: undefined, stories: [] });
+    const [newsIndex, candidates] = await Promise.all([
+      readJson<{ generatedAt?: string; stories?: Record<string, unknown>[] }>(PATHS.newsIndex, { generatedAt: undefined, stories: [] }),
+      readJson<{ generatedAt?: string; stories?: Record<string, unknown>[] }>(PATHS.candidates, { generatedAt: undefined, stories: [] }),
+    ]);
+
+    // Approved stories come first, then fill with queue candidates not already approved
+    const approvedIds = new Set((newsIndex.stories || []).map((s) => String(s.id)));
+    const candidateFill = (candidates.stories || [])
+      .filter((s) => s.id && !approvedIds.has(String(s.id)) && s.tier && Number(s.tier) >= 1)
+      .map((s) => ({ ...s, _pending: true }));
+
+    const merged = [...(newsIndex.stories || []), ...candidateFill];
+
     res.json({
       success: true,
       source: "stillafloat-agent",
-      generatedAt: newsIndex.generatedAt || null,
-      count: (newsIndex.stories || []).length,
-      stories: newsIndex.stories || [],
+      generatedAt: newsIndex.generatedAt || candidates.generatedAt || null,
+      count: merged.length,
+      stories: merged,
     });
   } catch (error) {
     req.log.error({ err: error }, "News feed failure");
