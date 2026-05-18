@@ -95,8 +95,11 @@ const TOOLS = [
                   enum: ["Cruise News", "Aviation", "Travel Advisory", "Weather & Disruption", "Tourism", "Travel Tech", "Health & Safety", "Loyalty & Deals"],
                 },
                 impactLevel: { type: "string", enum: ["Critical", "High", "Medium", "Low"] },
-                travelerImpact: { type: "string", description: "1-2 sentences: what does this mean for a traveler?" },
-                summary: { type: "string", description: "2-3 sentence factual summary, mobile-friendly" },
+                travelerImpact: { type: "string", description: "1 crisp sentence: the single most important thing a traveler needs to act on or know right now." },
+                summary: {
+                  type: "string",
+                  description: "CliffsNotes-style synopsis (4-6 sentences). Do NOT copy-paste the article lead. Instead synthesize: (1) What happened and who is involved. (2) The underlying cause or context. (3) The scale or significance. (4) What it means specifically for cruisers or travelers. (5) Any action, date, or detail worth knowing. Write as if briefing a busy editor who hasn't read the article — factual, specific, no filler phrases like 'in a significant development'.",
+                },
                 homepageCandidate: { type: "boolean" },
                 reasoning: { type: "string", description: "One sentence: why this story was selected and which tier" },
                 link: { type: "string", description: "Original article URL" },
@@ -189,7 +192,7 @@ async function toolFetchRss(
     const feed = await rssParser.parseURL(url);
     return (feed.items || []).slice(0, 10).map((item) => ({
       title: truncate(item.title, 120),
-      desc: truncate(item.contentSnippet || item.summary || "", 160),
+      desc: truncate(item.contentSnippet || item.summary || "", 400),
       url: item.link || item.guid || "",
       src: name,
       date: item.isoDate || item.pubDate || "",
@@ -239,6 +242,29 @@ Round 3 (if needed): Fill any tier gaps identified after reviewing Round 1+2 res
 
 TARGET: 10–15 high-quality stories covering all 4 tiers. Quality over quantity — but diversity across tiers is non-negotiable.
 
+SUMMARY WRITING STANDARD — this is critical:
+Each story's "summary" field is the main body text displayed on the story page that readers see. It must be a CliffsNotes-style synthesis (4-6 sentences), NOT a copy of the article's opening paragraph. Cover:
+1. What happened and who is involved
+2. The underlying cause or context
+3. The scale or significance
+4. What it means specifically for cruisers or travelers
+5. Any actionable detail, date, or number worth knowing
+Bad summary (do NOT write like this): "Carnival's Mardi Gras rescued nine people from a disabled boat near Sebastian Inlet. This incident serves as a reminder to travelers to remain vigilant about safety. This could affect how cruisers plan their trips."
+Good summary (write like this): "Carnival's Mardi Gras diverted from its Nassau sailing on May 17 after spotting nine people stranded on a disabled recreational vessel near Sebastian Inlet, Florida. The cruise ship's crew performed the rescue and delivered the survivors to Nassau port officials. Carnival confirmed no passengers were injured and the ship resumed its itinerary with a minor delay. This is the third such maritime rescue by a Carnival vessel in 2026 — large ships routinely serve as first responders in coastal waters. Cruisers on this sailing experienced roughly a 90-minute delay and no itinerary changes beyond the port arrival time."
+
+BANNED sentence patterns — these are filler and must NEVER appear anywhere in a summary:
+- "This serves as a reminder…" ← FORBIDDEN
+- "This incident serves as a reminder…" ← FORBIDDEN
+- "This underscores the importance of…" ← FORBIDDEN
+- "This highlights the importance of…" ← FORBIDDEN
+- "This could affect how travelers plan…" ← FORBIDDEN
+- "This may influence decisions…" ← FORBIDDEN
+- "Travelers should remain vigilant…" ← FORBIDDEN
+- "This raises questions about…" ← FORBIDDEN
+- Any sentence starting with "This incident" that doesn't state a specific fact ← FORBIDDEN
+
+Instead of a vague moral, END on: a specific number, date, dollar figure, named location, a direct consequence for cruisers, or a concrete next step. If you don't have a strong closing fact, end at the previous sentence.
+
 Start your research now.`;
 }
 
@@ -253,6 +279,41 @@ function buildFallbackResponse(
     groupedDevelopments: [],
     systemStatus: { degraded: true, reason },
   };
+}
+
+// ─── Summary post-processor ───────────────────────────────────────────────────
+// Strips filler/moralizing sentences that GPT-4o-mini inserts despite instructions.
+
+const BANNED_SENTENCE_PATTERNS = [
+  /\bserves as a reminder\b/i,
+  /\bserve as a reminder\b/i,
+  /\bunderscores the importance\b/i,
+  /\bhighlights the importance\b/i,
+  /\bcould affect how (travelers|cruisers|passengers)\b/i,
+  /\bmay (affect|influence|impact) (how )?(travelers|cruisers|passengers|travel(ers)?)\b/i,
+  /\btravelers? should remain vigilant\b/i,
+  /\braises questions about\b/i,
+  /\bremind(s|ed)? (travelers|cruisers|passengers)\b/i,
+  /^This incident [a-z]+ (the|a) (need|importance|role|potential)\b/i,
+];
+
+function cleanSummary(text: string): string {
+  if (!text) return text;
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const cleaned = sentences.filter(
+    (s) => !BANNED_SENTENCE_PATTERNS.some((re) => re.test(s))
+  );
+  return (cleaned.length > 0 ? cleaned : sentences).join(" ");
+}
+
+function cleanStories(stories: Record<string, unknown>[]): Record<string, unknown>[] {
+  return stories.map((s) => ({
+    ...s,
+    summary: typeof s.summary === "string" ? cleanSummary(s.summary) : s.summary,
+  }));
 }
 
 // ─── Main agent runner ───────────────────────────────────────────────────────
@@ -390,7 +451,7 @@ export async function runEditorialAgent({
         }
 
         return {
-          stories: args.stories || [],
+          stories: cleanStories((args.stories as Record<string, unknown>[]) || []),
           homepageTop5: args.homepageTop5 || [],
           groupedDevelopments: args.groupedDevelopments || [],
           systemStatus: {
