@@ -60,6 +60,7 @@ const TOOLS = [
               "Cruise Hive",
               "Cruise Radio",
               "Cruise Industry News",
+              "Cruise Fever",
               "Simple Flying",
               "View From The Wing",
               "One Mile at a Time",
@@ -149,6 +150,7 @@ const RSS_REGISTRY: Record<string, string> = {
   "View From The Wing": "https://viewfromthewing.com/feed/",
   "One Mile at a Time": "https://onemileatatime.com/feed/",
   "Aviation Geek Club": "https://theaviationgeekclub.com/feed/",
+  "Cruise Fever": "https://www.cruisefever.net/feed/",
 };
 
 const rssParser = new Parser({ timeout: 8000 });
@@ -190,7 +192,7 @@ async function toolFetchRss(
   if (!url) return [];
   try {
     const feed = await rssParser.parseURL(url);
-    return (feed.items || []).slice(0, 10).map((item) => ({
+    return (feed.items || []).slice(0, 15).map((item) => ({
       title: truncate(item.title, 120),
       desc: truncate(item.contentSnippet || item.summary || "", 400),
       url: item.link || item.guid || "",
@@ -221,30 +223,31 @@ Tagline: "Cruise smarter. Laugh more. Stay Afloat."
 Audience: Cruisers aged 45–70, many retired or semi-retired, who have taken 5–30 cruises. They are experienced, enthusiastic, a little salty, and they love a good sea story.
 
 ════════════════════════════════════
-YOUR EDITORIAL NORTH STAR
+YOUR ROLE — BROAD FILTER, NOT TIGHT CURATOR
 ════════════════════════════════════
 
-You are NOT building a wire-service news digest. You are building the kind of curated read that makes someone think "I need to share this" or "that's exactly why I cruise."
+Your job is to gather a wide pool of 15–18 relevant stories for Mark to review. Mark does the final curation — he will approve, feature, or reject each story himself. Your job is to be an INCLUSIVE filter, not an exclusive one.
 
-A great Still Afloat story does at least ONE of these things:
-  ✓ Makes an experienced cruiser say "good to know" (practical intel)
-  ✓ Makes them smile, laugh, or feel that warm sea-breeze nostalgia
-  ✓ Makes them dream about a voyage they haven't taken yet
-  ✓ Gives them something to talk about at the pool deck bar
-  ✓ Helps them cruise smarter, spend smarter, or book smarter
+INCLUDE a story if it passes ANY of these:
+  ✓ Something an experienced cruiser would want to know (news, deals, incidents, changes)
+  ✓ Something that makes them smile, feel nostalgic, or dream about cruising
+  ✓ Practical tips or destination content worth bookmarking
+  ✓ Travel operations that affect getting to/from a cruise
+  ✓ Lifestyle or human-interest story from the cruising world
 
-WHAT GREAT LOOKS LIKE (model these):
+WHAT GREAT TIER 4 LOOKS LIKE (actively seek these):
   ★ "Retired teachers in their 30s live on cruise ships full-time for a little over $10K a year" — aspirational, warm, specific
   ★ "I didn't think cruising was for me until I tried an adults-only voyage" — first-person, inviting, human
   ★ "Starlink changes the cruising lifestyle for better or worse" — practical angle on cruise life
-  ★ "Bliss Cruise redefines lifestyle cruising with a Beach Party Cruise" — fun, social, experiential
   ★ "How one guest turned his Disney Cruise sea days into a world record" — quirky human interest, shareable
 
-WHAT DOESN'T BELONG HERE:
-  ✗ Generic finance news with a thin cruise angle
-  ✗ Credit card list articles with no personality ("7 best starter travel credit cards")
-  ✗ Dry industry B2B stories only relevant to cruise executives
-  ✗ Anything that sounds like a press release
+EXCLUDE ONLY these:
+  ✗ General weather / disease / disaster news with zero cruise connection
+  ✗ Pure finance or stock market news
+  ✗ Purely local/city news with no travel or cruise angle
+  ✗ Exact duplicate of another story already in your list (same event, same outcome)
+
+When in doubt, INCLUDE IT. Mark will decide. Aim for 15–18 stories total.
 
 ════════════════════════════════════
 MANDATORY RESEARCH PLAN — in this order, no skipping:
@@ -254,22 +257,23 @@ ROUND 1 — fetch all 6 (no skipping):
   fetch_rss_feed("Cruise Hive")
   fetch_rss_feed("Cruise Radio")
   fetch_rss_feed("Cruise Industry News")
+  fetch_rss_feed("Cruise Fever")
   fetch_rss_feed("Simple Flying")
   fetch_rss_feed("The Points Guy")
-  fetch_rss_feed("CNN Travel")
 
-ROUND 2 — fetch all 4 + run 2 GNews searches (no skipping):
+ROUND 2 — fetch all 5 + run 2 GNews searches (no skipping):
   fetch_rss_feed("Upgraded Points")
   fetch_rss_feed("Condé Nast Traveler")
   fetch_rss_feed("Fox News Travel")
   fetch_rss_feed("One Mile at a Time")
+  fetch_rss_feed("CNN Travel")
   search_gnews("cruising lifestyle liveaboard")
   search_gnews("cruise ship personal story OR funny OR surprising")
 
-ROUND 3 — always run this round to reach the 15–20 story target:
+ROUND 3 — always run this round to reach the 12–18 story target:
   fetch_rss_feed("Skift")
   search_gnews("cruise ship news itinerary change this week")
-  search_gnews("cruise port travel tips destination")
+  search_gnews("cruise port destination travel tips")
 
 After all 3 Rounds are complete, call submit_editorial_decisions.
 
@@ -320,20 +324,21 @@ DEDUPLICATION: Before submitting, scan your selected list. Remove duplicate topi
   - If 2+ stories cover the same disease/health topic, keep only the one aboard a named ship
   - If 2+ stories cover the same cruise line incident, keep the best-sourced one
   - If 2+ stories cover the same airline, keep only one
-  Maximum 2 stories from any single source publication.
+  Prefer variety of sources, but quality wins over source diversity.
 
 ════════════════════════════════════
 SUBMISSION REQUIREMENTS — will be rejected if not met:
 ════════════════════════════════════
 
 Your submission MUST have ALL of the following:
-  - At least 10 stories total (target 12–18 — the website news page needs depth beyond the homepage's top 5)
-  - Tiers 1, 2, and 4 all represented (Tier 3 is optional)
-  - No more than 7 Tier 1 stories total
-  - At least 2 Tier 4 lifestyle/story stories
-  - At least 2 Tier 2 travel operations stories
-  - No more than 50% of stories from Tier 1
+  - At least 15 stories total (aim for 16–18 — Mark needs a deep queue to choose from)
+  - Tier 1 and Tier 4 both represented
+  - No more than 9 Tier 1 stories total (keep some breathing room for other tiers)
+  - At least 3 Tier 4 lifestyle/human-interest stories
+  - Tier 2 is welcome if you find good ones, but NOT required
   - Every story has a non-empty "link" set to the exact "url" from the tool result
+
+If you have fewer than 15 stories after Round 2, you MUST do Round 3 to find more. Do not submit under 15.
 
 ════════════════════════════════════
 SUMMARY WRITING — 4–6 sentences per story:
@@ -412,9 +417,9 @@ export async function runEditorialAgent({
   }
 
   const gnewsKey = process.env["GNEWS_API_KEY"];
-  const MAX_ITERATIONS = 8;
+  const MAX_ITERATIONS = 18;
   let gnewsCallCount = 0;
-  const MAX_GNEWS_CALLS = 5;
+  const MAX_GNEWS_CALLS = 8;
   let researchIterations = 0;
 
   const messages: OpenAIMessage[] = [
@@ -432,7 +437,7 @@ export async function runEditorialAgent({
       const toolMessages = messages.filter((m) => m.role === "tool").length;
       messages.push({
         role: "user",
-        content: `You have completed all 3 research rounds (${toolMessages} tool responses gathered). Now call submit_editorial_decisions with your best 15–20 stories. The website news page needs depth — aim for at least 15. Apply the tier framework: Tiers 1, 2, and 4 required, max 50% Tier 1.`,
+        content: `You have completed all 3 research rounds (${toolMessages} tool responses gathered). Now call submit_editorial_decisions. MINIMUM 15 stories — the queue must have depth for Mark to curate from. Include every cruise-relevant story you found across ALL sources you fetched, not just Cruise Hive. Tier 4 lifestyle stories are especially valuable — include any you found. Do not self-filter aggressively; Mark will do the final curation.`,
       });
     }
 
@@ -525,11 +530,11 @@ export async function runEditorialAgent({
         const hasTier2 = t2Count >= 2;
         const needsMoreT4 = t4Count < 2;
         const tooFewStories = total < 10;
-        const failsDiversity = tooFewStories || t1Pct > 0.5 || !hasTier1 || !hasTier2 || needsMoreT4;
+        const failsDiversity = tooFewStories || t1Pct > 0.6 || !hasTier1 || !hasTier2 || needsMoreT4;
         if (failsDiversity && researchIterations < 3) {
           const issues: string[] = [];
           if (tooFewStories) issues.push(`only ${total} stories submitted (need at least 10 — the news page needs depth beyond the homepage)`);
-          if (t1Pct > 0.5) issues.push(`${Math.round(t1Pct * 100)}% Tier 1 (max 50%)`);
+          if (t1Pct > 0.6) issues.push(`${Math.round(t1Pct * 100)}% Tier 1 (max 60%)`);
           if (!hasTier1) issues.push("no Tier 1 stories");
           if (!hasTier2) issues.push(`only ${t2Count} Tier 2 story (need at least 2 travel operations stories)`);
           if (needsMoreT4) issues.push(`only ${t4Count} Tier 4 story (need at least 2 warm lifestyle/human-interest stories)`);

@@ -257,11 +257,14 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
     const approvedStories = [
       approvedStory,
       ...(approved.stories || []).filter((item) => item.id !== id),
-    ].slice(0, 20);
+    ];
+
+    // Homepage uses only explicitly featured/pinned stories (chosen by Mark via "Feature" action)
+    const featuredStories = approvedStories.filter((s) => s.featured || s.pinned);
 
     const publishing = buildPublishingBundle({
       approvedStories,
-      homepageTop5: approvedStories.slice(0, 5),
+      homepageTop5: featuredStories,
     });
 
     await Promise.all([
@@ -281,7 +284,7 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
 
     res.status(200).json({
       success: true,
-      message: `Story ${action === "pin" ? "pinned and approved" : "approved"} successfully`,
+      message: `Story ${action === "pin" ? "featured on homepage" : "approved to news feed"} successfully`,
     });
   } catch (error) {
     req.log.error({ err: error }, "Agent action failure");
