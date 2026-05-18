@@ -435,18 +435,17 @@ export async function runEditorialAgent({
 
         logger.info({ total, tierCounts, t1Pct: Math.round(t1Pct * 100) }, "Agent submitted editorial decisions");
 
-        // Reject if >80% Tier 1 OR fewer than 3 tiers represented
-        if ((t1Pct > 0.8 || tiersPresent < 3) && researchIterations < 5) {
+        // Reject if >85% Tier 1 OR only 1 tier represented, max 3 rejections
+        if ((t1Pct > 0.85 || tiersPresent < 2) && researchIterations < 3) {
           const missingTiers = [1, 2, 3, 4].filter((t) => !tierCounts[t]);
-          const feedback = `Submission rejected: tier distribution is too skewed (${JSON.stringify(tierCounts)}, ${Math.round(t1Pct * 100)}% Tier 1). Missing tiers: ${missingTiers.join(", ") || "none"}. You must fetch Tier 2 sources (Simple Flying, Fox News Travel, Skift) and Tier 4 sources (The Points Guy, Upgraded Points) before resubmitting. Target: 3–5 T1, 2–4 T2, 1–3 T3, 1–2 T4.`;
-          logger.warn({ tierCounts, t1Pct }, "Tier diversity check failed — requesting more research");
+          const feedback = `Submission rejected: tier distribution is too skewed (${JSON.stringify(tierCounts)}, ${Math.round(t1Pct * 100)}% Tier 1). Missing tiers: ${missingTiers.join(", ") || "none"}. Please fetch from Tier 2 sources (Simple Flying, Fox News Travel, Skift) and at least one Tier 3/4 source (The Points Guy, Upgraded Points, Condé Nast Traveler) before resubmitting. Target: 3–5 T1, 2–4 T2, 1–3 T3, 1–2 T4.`;
+          logger.warn({ tierCounts, t1Pct, researchIterations }, "Tier diversity check failed — requesting more research");
           messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
             content: JSON.stringify({ status: "rejected", feedback }),
           });
-          // Reset forced-submit so agent gets more research rounds
-          researchIterations = 1;
+          researchIterations++;
           continue;
         }
 
