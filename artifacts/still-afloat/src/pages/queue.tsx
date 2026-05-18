@@ -23,7 +23,7 @@ export default function EditorialQueue() {
   const { toast } = useToast();
   const [processing, setProcessing] = useState<Record<string, string>>({});
 
-  const handleAction = async (id: string, action: 'approve' | 'reject' | 'pin' | 'defer') => {
+  const handleAction = async (id: string, action: 'approve' | 'reject' | 'feature' | 'hold') => {
     setProcessing(prev => ({ ...prev, [id]: action }));
     const token = import.meta.env.VITE_AGENT_TOKEN || '';
     
@@ -137,21 +137,21 @@ export default function EditorialQueue() {
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start gap-2"
-                    onClick={() => handleAction(story.id, 'pin')}
+                    className="w-full justify-start gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                    onClick={() => handleAction(story.id, 'feature')}
                     disabled={!!processing[story.id]}
                   >
                     <Pin className="w-4 h-4" /> 
-                    {processing[story.id] === 'pin' ? '...' : 'Pin'}
+                    {processing[story.id] === 'feature' ? '...' : 'Feature'}
                   </Button>
                   <Button 
                     variant="ghost" 
                     className="w-full justify-start gap-2 text-muted-foreground"
-                    onClick={() => handleAction(story.id, 'defer')}
+                    onClick={() => handleAction(story.id, 'hold')}
                     disabled={!!processing[story.id]}
                   >
                     <Clock className="w-4 h-4" /> 
-                    {processing[story.id] === 'defer' ? '...' : 'Defer'}
+                    {processing[story.id] === 'hold' ? '...' : 'Hold'}
                   </Button>
                 </div>
               </div>

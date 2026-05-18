@@ -8,13 +8,32 @@ import { renderEditorialDigest, sendEditorialDigest } from "../lib/email-deliver
 
 const router: IRouter = Router();
 
-const VALID_ACTIONS = new Set(["approve", "reject", "pin", "defer"]);
+const VALID_ACTIONS = new Set(["approve", "reject", "pin", "defer", "hold", "feature"]);
 
 function authorize(req: Request): boolean {
   const expected = process.env["AGENT_APPROVAL_TOKEN"];
   if (!expected) return true;
   const supplied = String(req.query.token || req.headers["x-agent-token"] || "");
   return supplied === expected;
+}
+
+// Resolve action from either full name (?action=approve|reject|hold|feature|pin|defer)
+// or compact routing (?c=a → approve, ?c=h → hold, ?c=f → feature)
+function resolveAction(req: Request): string | null {
+  const compact = String(req.query.c || "").toLowerCase().trim();
+  if (compact) {
+    const COMPACT_MAP: Record<string, string> = { a: "approve", h: "hold", f: "feature" };
+    return COMPACT_MAP[compact] ?? null;
+  }
+  const full = String(req.query.action || "").toLowerCase().trim();
+  return full || null;
+}
+
+// Normalize user-facing action names to internal canonical names
+function canonicalAction(action: string): string {
+  if (action === "hold") return "defer";
+  if (action === "feature") return "pin";
+  return action;
 }
 
 router.get("/editorial-queue", async (req: Request, res: Response) => {
@@ -60,13 +79,15 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const action = String(req.query.action || "").toLowerCase().trim();
+    const rawAction = resolveAction(req);
     const id = String(req.query.id || "").trim();
 
-    if (!VALID_ACTIONS.has(action)) {
+    if (!rawAction || !VALID_ACTIONS.has(rawAction)) {
       res.status(400).json({ success: false, error: "Invalid editorial action" });
       return;
     }
+
+    const action = canonicalAction(rawAction);
 
     if (!id) {
       res.status(400).json({ success: false, error: "Missing story id" });
@@ -220,7 +241,13 @@ router.post("/scan-news", async (req: Request, res: Response) => {
     });
     telemetry.persistenceCompleted = true;
 
-    const html = renderEditorialDigest({ stories: curatedStories });
+    const dashboardUrl = process.env["DASHBOARD_URL"] ||
+      (process.env["REPLIT_DEV_DOMAIN"] ? `https://${process.env["REPLIT_DEV_DOMAIN"]}` : "");
+    const html = renderEditorialDigest({
+      stories: curatedStories,
+      dashboardUrl,
+      approvalToken: process.env["AGENT_APPROVAL_TOKEN"] || "",
+    });
     const emailResult = await sendEditorialDigest({
       subject: telemetry.degradedMode
         ? "Still Afloat AI Digest (Degraded Mode)"
