@@ -1,10 +1,13 @@
 const weatherContainer = document.getElementById('weather-container');
 
 const ports = [
-  {name:'Miami', slug:'miami', lat:25.7617, lon:-80.1918},
-  {name:'Nassau', slug:'nassau', lat:25.0443, lon:-77.3504},
-  {name:'Canaveral', slug:'port-canaveral', lat:28.4089, lon:-80.6043},
-  {name:'Tampa', slug:'tampa', lat:27.9506, lon:-82.4572}
+  {name:'Miami',         slug:'miami',          lat:25.7617, lon:-80.1918},
+  {name:'Ft. Lauderdale',slug:'fort-lauderdale', lat:26.1224, lon:-80.1373},
+  {name:'Port Canaveral',slug:'port-canaveral',  lat:28.4089, lon:-80.6043},
+  {name:'Tampa',         slug:'tampa',           lat:27.9506, lon:-82.4572},
+  {name:'Jacksonville',  slug:'jacksonville',    lat:30.3322, lon:-81.6557},
+  {name:'Palm Beach',    slug:'palm-beach',      lat:26.7694, lon:-80.0534},
+  {name:'Key West',      slug:'key-west',        lat:24.5551, lon:-81.7800}
 ];
 
 function emoji(code){
