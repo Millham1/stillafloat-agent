@@ -20,7 +20,7 @@
         <a href="affiliate.html" class="sa-nav-link">Gear</a>
       </div>
       <div class="sa-nav-row sa-secondary">
-        <a href="#" class="sa-nav-link">Book a Cruise</a>
+        <a href="under-construction.html" class="sa-nav-link">Book a Cruise</a>
       </div>
     </nav>
   `;

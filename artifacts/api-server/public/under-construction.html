@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Coming Soon | Still Afloat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&family=Bree+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Baloo 2',sans-serif;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(0,119,182,.30), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(93,255,154,.12), transparent 40%),
+    linear-gradient(160deg, #040c1a 0%, #071828 40%, #0c2a42 100%);
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:url('/assets/images/cruising-gear-bg.png') center/cover no-repeat;
+  opacity:.18;
+  z-index:0;
+}
+.shell{
+  position:relative;
+  z-index:1;
+  text-align:center;
+  max-width:680px;
+  padding:48px 32px;
+}
+.logo-wrap{margin-bottom:28px}
+.logo-wrap img{
+  height:110px;
+  width:auto;
+  filter:drop-shadow(0 8px 24px rgba(0,0,0,.55));
+}
+.eyebrow{
+  font-size:.76rem;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color:#5dff9a;
+  font-weight:800;
+  margin-bottom:16px;
+}
+.headline{
+  font-family:'Bree Serif',serif;
+  font-size:clamp(2.4rem,5vw,3.6rem);
+  line-height:1.12;
+  margin-bottom:18px;
+  color:#fff;
+}
+.subhead{
+  font-size:1.15rem;
+  line-height:1.75;
+  color:rgba(255,255,255,.80);
+  margin-bottom:36px;
+}
+.anchor-icon{
+  font-size:3rem;
+  color:#5dff9a;
+  margin-bottom:20px;
+  display:block;
+  animation:bob 3s ease-in-out infinite;
+}
+@keyframes bob{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-8px)}
+}
+.waves{
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  margin-bottom:38px;
+}
+.wave-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:#0077b6;
+  animation:wave 1.4s ease-in-out infinite;
+}
+.wave-dot:nth-child(2){animation-delay:.2s;background:#4fc3ff}
+.wave-dot:nth-child(3){animation-delay:.4s;background:#5dff9a}
+.wave-dot:nth-child(4){animation-delay:.6s;background:#4fc3ff}
+.wave-dot:nth-child(5){animation-delay:.8s;background:#0077b6}
+@keyframes wave{
+  0%,100%{transform:translateY(0);opacity:.6}
+  50%{transform:translateY(-10px);opacity:1}
+}
+.card{
+  background:rgba(9,28,54,.70);
+  border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(18px);
+  border-radius:28px;
+  padding:32px 36px;
+  margin-bottom:32px;
+  box-shadow:0 24px 56px rgba(0,0,0,.38);
+}
+.back-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:14px 28px;
+  border-radius:999px;
+  background:linear-gradient(180deg,#0e4672,#0a2748);
+  border:1px solid rgba(102,215,255,.24);
+  color:#fff;
+  text-decoration:none;
+  font-weight:800;
+  font-size:.98rem;
+  transition:all .24s ease;
+  box-shadow:0 8px 24px rgba(0,0,0,.28);
+}
+.back-btn:hover{
+  background:linear-gradient(180deg,#1a5e96,#0e3660);
+  border-color:rgba(93,255,154,.32);
+  transform:translateY(-2px);
+  box-shadow:0 14px 32px rgba(0,0,0,.36);
+}
+.tagline{
+  margin-top:28px;
+  font-size:.9rem;
+  color:rgba(255,255,255,.45);
+}
+.sa-gold{font-family:Pacifico,cursive;color:#ffca4f}
+.sa-blue{font-family:Pacifico,cursive;color:#4fc3ff}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="logo-wrap">
+    <img src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+  </div>
+
+  <div class="card">
+    <span class="anchor-icon"><i class="fa-solid fa-anchor"></i></span>
+    <div class="eyebrow">Coming Soon</div>
+    <h1 class="headline">We're Building<br>Something Great</h1>
+    <p class="subhead">This section is under construction. We're working on it so you don't have to wade through the mediocre stuff. Check back soon.</p>
+
+    <div class="waves">
+      <div class="wave-dot"></div>
+      <div class="wave-dot"></div>
+      <div class="wave-dot"></div>
+      <div class="wave-dot"></div>
+      <div class="wave-dot"></div>
+    </div>
+
+    <a class="back-btn" href="javascript:history.back()">
+      <i class="fa-solid fa-arrow-left"></i> Go Back
+    </a>
+  </div>
+
+  <p class="tagline">Cruise smarter. Laugh more. <span class="sa-gold">Stay</span> <span class="sa-blue">Afloat.</span></p>
+</div>
+</body>
+</html>
