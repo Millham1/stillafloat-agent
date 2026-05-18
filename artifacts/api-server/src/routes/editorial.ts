@@ -87,7 +87,29 @@ function serverSideFilter(stories: Record<string, unknown>[]): Record<string, un
     return true;
   });
 
-  return entityDeduped;
+  // 5. Title-similarity dedup — catch same event with different headlines from different sources
+  function titleWords(title: string): Set<string> {
+    return new Set(
+      title.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter((w) => w.length > 3)
+    );
+  }
+  function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+    const intersection = [...a].filter((w) => b.has(w)).length;
+    const union = new Set([...a, ...b]).size;
+    return union > 0 ? intersection / union : 0;
+  }
+  const titleDeduped: Record<string, unknown>[] = [];
+  const titleWordSets: Set<string>[] = [];
+  for (const story of entityDeduped) {
+    const words = titleWords(String(story.title || ""));
+    const isDup = titleWordSets.some((existing) => jaccardSimilarity(existing, words) > 0.5);
+    if (!isDup) {
+      titleDeduped.push(story);
+      titleWordSets.push(words);
+    }
+  }
+
+  return titleDeduped;
 }
 
 function authorize(req: Request): boolean {
@@ -145,6 +167,8 @@ router.get("/editorial-queue", async (req: Request, res: Response) => {
         sourceLinks,
         featured: Boolean(story.featured || story.pinned),
         homepageCandidate: Boolean(story.homepageCandidate),
+        status: (story.status as string) || null,
+        decidedAt: (story.decidedAt as string) || null,
       };
     });
 
@@ -213,19 +237,14 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    const decidedAt = new Date().toISOString();
+
     if (action === "reject") {
       await writeJson(PATHS.candidates, {
         ...candidates,
-        stories: (candidates.stories || []).filter((item) => item.id !== id),
-        rejectedStories: [
-          ...(candidates.rejectedStories || []),
-          {
-            ...normalizedStory,
-            status: "rejected",
-            rejectedAt: new Date().toISOString(),
-            rejectionReason: "Manual editorial rejection",
-          },
-        ],
+        stories: (candidates.stories || []).map((item) =>
+          item.id === id ? { ...item, status: "rejected", decidedAt } : item
+        ),
       });
       res.status(200).json({ success: true, message: "Story rejected successfully" });
       return;
@@ -235,23 +254,20 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
       await writeJson(PATHS.candidates, {
         ...candidates,
         stories: (candidates.stories || []).map((item) =>
-          item.id === id ? { ...item, status: "deferred", deferredAt: new Date().toISOString() } : item
+          item.id === id ? { ...item, status: "held", decidedAt } : item
         ),
-        deferredStories: [
-          ...(candidates.deferredStories || []),
-          { ...normalizedStory, status: "deferred", deferredAt: new Date().toISOString() },
-        ],
       });
-      res.status(200).json({ success: true, message: "Story deferred successfully" });
+      res.status(200).json({ success: true, message: "Story held successfully" });
       return;
     }
 
+    const isFeatured = action === "pin";
     const approvedStory = {
       ...normalizedStory,
-      status: "approved",
-      approvedAt: new Date().toISOString(),
-      featured: action === "pin" ? true : Boolean(normalizedStory.featured || normalizedStory.homepageCandidate),
-      pinned: action === "pin",
+      status: isFeatured ? "featured" : "approved",
+      approvedAt: decidedAt,
+      featured: isFeatured,
+      pinned: isFeatured,
     };
 
     const approvedStories = [
@@ -271,7 +287,9 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
       writeJson(PATHS.approved, { generatedAt: new Date().toISOString(), stories: approvedStories }),
       writeJson(PATHS.candidates, {
         ...candidates,
-        stories: (candidates.stories || []).filter((item) => item.id !== id),
+        stories: (candidates.stories || []).map((item) =>
+          item.id === id ? { ...item, status: approvedStory.status, decidedAt } : item
+        ),
       }),
       writeJson(PATHS.archive, {
         generatedAt: new Date().toISOString(),
@@ -284,7 +302,7 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
 
     res.status(200).json({
       success: true,
-      message: `Story ${action === "pin" ? "featured on homepage" : "approved to news feed"} successfully`,
+      message: `Story ${isFeatured ? "featured on homepage" : "approved to news feed"} successfully`,
     });
   } catch (error) {
     req.log.error({ err: error }, "Agent action failure");
