@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ExternalLink, Check, X, Clock, Pin } from "lucide-react";
+import { ExternalLink, Check, X, Clock, Pin, AlertTriangle } from "lucide-react";
 
 const getImpactColor = (impact?: string | null) => {
   switch (impact?.toLowerCase()) {
@@ -67,14 +67,58 @@ export default function EditorialQueue() {
 
   const stories = data?.stories || [];
 
+  const TIER_META = [
+    { tier: 1, label: 'T1 · Cruise', target: '35–40%', className: 'bg-blue-100 text-blue-800 border-blue-200', barColor: 'bg-blue-400' },
+    { tier: 2, label: 'T2 · Operations', target: '30%', className: 'bg-purple-100 text-purple-800 border-purple-200', barColor: 'bg-purple-400' },
+    { tier: 3, label: 'T3 · Mainstream', target: '20%', className: 'bg-amber-100 text-amber-800 border-amber-200', barColor: 'bg-amber-400' },
+    { tier: 4, label: 'T4 · Lifestyle', target: '10–15%', className: 'bg-green-100 text-green-800 border-green-200', barColor: 'bg-green-400' },
+  ];
+
+  const tierCounts = TIER_META.map(({ tier }) => ({
+    tier,
+    count: stories.filter(s => s.tier === tier).length,
+  }));
+  const missingTiers = tierCounts.filter(({ count }) => count === 0).map(({ tier }) => TIER_META[tier - 1].label);
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Editorial Queue</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {data?.count || 0} candidate stories pending review. Ranked by agent priority.
+          {stories.length} candidate stories pending review. Ranked by agent priority.
         </p>
       </div>
+
+      {stories.length > 0 && (
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tier Coverage This Run</p>
+          <div className="grid grid-cols-4 gap-3">
+            {TIER_META.map(({ tier, label, target, className, barColor }) => {
+              const count = tierCounts.find(t => t.tier === tier)?.count ?? 0;
+              const pct = stories.length > 0 ? Math.round((count / stories.length) * 100) : 0;
+              return (
+                <div key={tier} className={`rounded-md border px-3 py-2 text-xs ${className} ${count === 0 ? 'opacity-50' : ''}`}>
+                  <div className="font-bold mb-1">{label}</div>
+                  <div className="text-lg font-mono font-bold leading-none">{count}</div>
+                  <div className="mt-1.5 h-1 rounded-full bg-black/10">
+                    <div className={`h-1 rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="mt-1 opacity-70">target {target}</div>
+                </div>
+              );
+            })}
+          </div>
+          {missingTiers.length > 0 && (
+            <div className="flex items-start gap-2 text-xs rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 px-3 py-2 text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>
+                <strong>Low coverage:</strong> {missingTiers.join(', ')} {missingTiers.length === 1 ? 'has' : 'have'} no stories this run.
+                Trigger a new scan or check if those sources had relevant content today.
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-4">
         {stories.map(story => (

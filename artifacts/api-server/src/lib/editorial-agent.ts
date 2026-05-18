@@ -216,22 +216,28 @@ You have three tools available:
 3. submit_editorial_decisions — finalize your curated list
 
 EDITORIAL FRAMEWORK (4 tiers):
-- Tier 1 — Direct Cruise Impact (35–40%): itinerary changes, ship incidents, port closures, cruise pricing, loyalty, new ships, weather impacting sailings
-- Tier 2 — Travel Operations (30%): airline meltdowns, FAA/TSA, airport disruptions, strikes, destination entry changes, overtourism
-- Tier 3 — Mainstream Relevant (20%): only stories that MATERIALLY affect travelers — hurricanes, geopolitical travel impact, travel scams, safety events
-- Tier 4 — Lifestyle/Discovery (10–15%): cruise hacks, destination trends, loyalty tricks, viral travel
+- Tier 1 — Direct Cruise Impact (35–40%): itinerary changes, ship incidents, port closures, cruise pricing, loyalty, new ships, weather impacting sailings → sources: Cruise Hive, Cruise Radio, Cruise Industry News
+- Tier 2 — Travel Operations (30%): airline meltdowns, FAA/TSA, airport disruptions, strikes, destination entry changes, overtourism → sources: Simple Flying, Aviation Geek Club, Skift, Fox News Travel, CNN Travel
+- Tier 3 — Mainstream Relevant (20%): only stories that MATERIALLY affect travelers — hurricanes, geopolitical travel impact, travel scams, safety events → sources: BBC Travel, CNN Travel, GNews searches
+- Tier 4 — Lifestyle/Discovery (10–15%): cruise hacks, destination trends, loyalty tricks, viral travel → sources: The Points Guy, Upgraded Points, One Mile at a Time, View From The Wing, Condé Nast Traveler
 
 CORE RULE: "Would a cruiser or traveler care about this TODAY?" If no, skip it.
 
 POLITICAL CONTENT: Only Tier 3 if it materially affects travel, borders, or tourism. Reject all other political content.
 
-RESEARCH STRATEGY:
-1. Start with the most impactful sources for today — cruise-specific feeds for Tier 1, aviation/mainstream for Tier 2
-2. Run targeted GNews searches for any specific breaking news you suspect (major weather events, airline disruptions, cruise incidents)
-3. Supplement with lifestyle/loyalty sources for Tier 4 diversity
-4. When you have 20–40 stories reviewed, submit your best 10–15
+REQUIRED TIER TARGETS for your final submission:
+- Tier 1: 3–5 stories
+- Tier 2: 2–4 stories
+- Tier 3: 1–3 stories
+- Tier 4: 1–2 stories
+You MUST have stories from at least 3 different tiers. A submission with 80%+ Tier 1 stories will be rejected.
 
-TARGET: 10–15 high-quality stories. Do not pad with weak stories. Quality over quantity.
+RESEARCH STRATEGY — follow this order:
+Round 1: Fetch cruise-specific sources (Cruise Hive, Cruise Radio) AND aviation/mainstream sources (Simple Flying, CNN Travel, Fox News Travel) in the SAME round to build a balanced candidate pool across Tiers 1 and 2.
+Round 2: Supplement with GNews searches for breaking events, plus lifestyle sources (The Points Guy, Skift, or Upgraded Points) for Tier 4 content.
+Round 3 (if needed): Fill any tier gaps identified after reviewing Round 1+2 results.
+
+TARGET: 10–15 high-quality stories covering all 4 tiers. Quality over quantity — but diversity across tiers is non-negotiable.
 
 Start your research now.`;
 }
@@ -353,17 +359,45 @@ export async function runEditorialAgent({
         continue;
       }
 
-      // ── submit_editorial_decisions → we're done ──────────────────────────
+      // ── submit_editorial_decisions → validate diversity then accept ──────
       if (name === "submit_editorial_decisions") {
-        logger.info(
-          { storyCount: (args.stories as unknown[])?.length },
-          "Agent submitted editorial decisions"
-        );
+        const submitted = (args.stories as Record<string, unknown>[]) || [];
+        const tierCounts: Record<number, number> = {};
+        for (const s of submitted) {
+          const t = Number(s.tier);
+          if (t >= 1 && t <= 4) tierCounts[t] = (tierCounts[t] || 0) + 1;
+        }
+        const total = submitted.length;
+        const t1Count = tierCounts[1] || 0;
+        const tiersPresent = Object.keys(tierCounts).length;
+        const t1Pct = total > 0 ? t1Count / total : 0;
+
+        logger.info({ total, tierCounts, t1Pct: Math.round(t1Pct * 100) }, "Agent submitted editorial decisions");
+
+        // Reject if >80% Tier 1 OR fewer than 3 tiers represented
+        if ((t1Pct > 0.8 || tiersPresent < 3) && researchIterations < 5) {
+          const missingTiers = [1, 2, 3, 4].filter((t) => !tierCounts[t]);
+          const feedback = `Submission rejected: tier distribution is too skewed (${JSON.stringify(tierCounts)}, ${Math.round(t1Pct * 100)}% Tier 1). Missing tiers: ${missingTiers.join(", ") || "none"}. You must fetch Tier 2 sources (Simple Flying, Fox News Travel, Skift) and Tier 4 sources (The Points Guy, Upgraded Points) before resubmitting. Target: 3–5 T1, 2–4 T2, 1–3 T3, 1–2 T4.`;
+          logger.warn({ tierCounts, t1Pct }, "Tier diversity check failed — requesting more research");
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({ status: "rejected", feedback }),
+          });
+          // Reset forced-submit so agent gets more research rounds
+          researchIterations = 1;
+          continue;
+        }
+
         return {
           stories: args.stories || [],
           homepageTop5: args.homepageTop5 || [],
           groupedDevelopments: args.groupedDevelopments || [],
-          systemStatus: { degraded: false, reason: "" },
+          systemStatus: {
+            degraded: false,
+            reason: "",
+            tierCounts,
+          },
         };
       }
 
