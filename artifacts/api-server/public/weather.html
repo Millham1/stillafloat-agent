@@ -39,6 +39,8 @@ body{background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);m
 .d-item:hover,.d-item:focus{background:rgba(0,119,182,.3);color:#5dff9a;outline:none}
 .d-arrow{color:rgba(255,255,255,.25);font-size:12px;flex-shrink:0}
 .d-empty{padding:16px 20px;color:rgba(255,255,255,.4);font-size:14px}
+.d-searching{padding:14px 20px;color:rgba(255,255,255,.45);font-size:13px;font-style:italic}
+.d-hint{padding:10px 20px 6px;color:rgba(93,255,154,.7);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;border-bottom:1px solid rgba(255,255,255,.06)}
 footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.45)}
 @media(max-width:680px){.grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}.t-emoji{font-size:36px}.t-temp{font-size:20px}}
 </style>
@@ -90,37 +92,49 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.45)}
 <script>
 // ── 12 hardcoded US embarkation tiles ──────────────────────────
 const EMBARK_TILES = [
-  {name:'Miami',           slug:'miami',           lat:25.7617,  lon:-80.1918 },
-  {name:'Ft. Lauderdale',  slug:'fort-lauderdale', lat:26.1224,  lon:-80.1373 },
-  {name:'Port Canaveral',  slug:'port-canaveral',  lat:28.3922,  lon:-80.6077 },
-  {name:'Tampa',           slug:'tampa',           lat:27.9506,  lon:-82.4572 },
-  {name:'Galveston',       slug:'galveston',       lat:29.3013,  lon:-94.7977 },
-  {name:'New York',        slug:'new-york',        lat:40.7128,  lon:-74.0060 },
-  {name:'New Orleans',     slug:'new-orleans',     lat:29.9511,  lon:-90.0715 },
-  {name:'Seattle',         slug:'seattle',         lat:47.6062,  lon:-122.3321},
-  {name:'Los Angeles',     slug:'los-angeles',     lat:33.7405,  lon:-118.2775},
-  {name:'Honolulu',        slug:'honolulu',        lat:21.3069,  lon:-157.8583},
-  {name:'Baltimore',       slug:'baltimore',       lat:39.2904,  lon:-76.6122 },
-  {name:'San Francisco',   slug:'san-francisco',   lat:37.7749,  lon:-122.4194},
+  {name:'Miami',          slug:'miami',           lat:25.7617,  lon:-80.1918 },
+  {name:'Ft. Lauderdale', slug:'fort-lauderdale', lat:26.1224,  lon:-80.1373 },
+  {name:'Port Canaveral', slug:'port-canaveral',  lat:28.3922,  lon:-80.6077 },
+  {name:'Tampa',          slug:'tampa',           lat:27.9506,  lon:-82.4572 },
+  {name:'Galveston',      slug:'galveston',       lat:29.3013,  lon:-94.7977 },
+  {name:'New York',       slug:'new-york',        lat:40.7128,  lon:-74.0060 },
+  {name:'New Orleans',    slug:'new-orleans',     lat:29.9511,  lon:-90.0715 },
+  {name:'Seattle',        slug:'seattle',         lat:47.6062,  lon:-122.3321},
+  {name:'Los Angeles',    slug:'los-angeles',     lat:33.7405,  lon:-118.2775},
+  {name:'Honolulu',       slug:'honolulu',        lat:21.3069,  lon:-157.8583},
+  {name:'Baltimore',      slug:'baltimore',       lat:39.2904,  lon:-76.6122 },
+  {name:'San Francisco',  slug:'san-francisco',   lat:37.7749,  lon:-122.4194},
 ];
 
 // ── 12 hardcoded Caribbean / Bahamas destination tiles ──────────
 const DEST_TILES = [
-  {name:'Nassau',          slug:'nassau',          lat:25.0443,  lon:-77.3504 },
-  {name:'Cozumel',         slug:'cozumel',         lat:20.4229,  lon:-86.9223 },
-  {name:'St. Thomas',      slug:'st-thomas',       lat:18.3381,  lon:-64.8941 },
-  {name:'Grand Cayman',    slug:'grand-cayman',    lat:19.3133,  lon:-81.2546 },
-  {name:'Aruba',           slug:'aruba',           lat:12.5211,  lon:-69.9683 },
-  {name:'St. Maarten',     slug:'st-maarten',      lat:18.0425,  lon:-63.0548 },
-  {name:'Ocho Rios',       slug:'ocho-rios',       lat:18.4074,  lon:-77.1031 },
-  {name:'Bermuda',         slug:'bermuda',         lat:32.3078,  lon:-64.7505 },
-  {name:'San Juan',        slug:'san-juan',        lat:18.4655,  lon:-66.1057 },
-  {name:'CocoCay',         slug:'cococay',         lat:25.8170,  lon:-77.9390 },
-  {name:'Belize City',     slug:'belize-city',     lat:17.5046,  lon:-88.1962 },
-  {name:'Roatán',          slug:'roatan',          lat:16.3247,  lon:-86.5365 },
+  {name:'Nassau',         slug:'nassau',          lat:25.0443,  lon:-77.3504 },
+  {name:'Cozumel',        slug:'cozumel',         lat:20.4229,  lon:-86.9223 },
+  {name:'St. Thomas',     slug:'st-thomas',       lat:18.3381,  lon:-64.8941 },
+  {name:'Grand Cayman',   slug:'grand-cayman',    lat:19.3133,  lon:-81.2546 },
+  {name:'Aruba',          slug:'aruba',           lat:12.5211,  lon:-69.9683 },
+  {name:'St. Maarten',    slug:'st-maarten',      lat:18.0425,  lon:-63.0548 },
+  {name:'Ocho Rios',      slug:'ocho-rios',       lat:18.4074,  lon:-77.1031 },
+  {name:'Bermuda',        slug:'bermuda',         lat:32.3078,  lon:-64.7505 },
+  {name:'San Juan',       slug:'san-juan',        lat:18.4655,  lon:-66.1057 },
+  {name:'CocoCay',        slug:'cococay',         lat:25.8170,  lon:-77.9390 },
+  {name:'Belize City',    slug:'belize-city',     lat:17.5046,  lon:-88.1962 },
+  {name:'Roatán',         slug:'roatan',          lat:16.3247,  lon:-86.5365 },
 ];
 
-function emoji(code) {
+// ── popular suggestions shown on focus (before typing) ─────────
+const POPULAR_EMBARK = [
+  'Miami','Fort Lauderdale','Port Canaveral','Tampa','Galveston',
+  'New York','New Orleans','Seattle','Los Angeles','Honolulu',
+  'Baltimore','San Francisco','Barcelona','Southampton','Vancouver',
+];
+const POPULAR_DEST = [
+  'Nassau','Cozumel','St. Thomas','Grand Cayman','Aruba',
+  'St. Maarten','Ocho Rios','Bermuda','San Juan','CocoCay',
+  'Belize City','Roatán','Santorini','Dubrovnik','Juneau',
+];
+
+function wxEmoji(code) {
   if (code === 0) return '☀️';
   if ([1,2].includes(code)) return '🌤️';
   if (code === 3) return '☁️';
@@ -133,7 +147,8 @@ function emoji(code) {
 
 async function fetchTemp(lat, lon) {
   const r = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+    `&current=temperature_2m,weather_code&temperature_unit=fahrenheit`
   );
   const d = await r.json();
   return { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code };
@@ -141,7 +156,6 @@ async function fetchTemp(lat, lon) {
 
 async function renderTiles(gridId, tiles) {
   const grid = document.getElementById(gridId);
-  // skeleton
   grid.innerHTML = tiles.map(t => `
     <a class="tile" href="forecast.html?place=${t.slug}" id="tile-${t.slug}">
       <div class="t-emoji">⛅</div>
@@ -149,59 +163,94 @@ async function renderTiles(gridId, tiles) {
       <div class="t-temp t-loading">—</div>
     </a>`).join('');
 
-  // fetch all in parallel, update each tile as it arrives
   await Promise.all(tiles.map(async t => {
     try {
       const w = await fetchTemp(t.lat, t.lon);
       const el = document.getElementById(`tile-${t.slug}`);
       if (el) el.innerHTML = `
-        <div class="t-emoji">${emoji(w.code)}</div>
+        <div class="t-emoji">${wxEmoji(w.code)}</div>
         <div class="t-name">${t.name}</div>
         <div class="t-temp">${w.temp}°</div>`;
-    } catch { /* tile stays as skeleton */ }
+    } catch { /* stays as skeleton */ }
   }));
 }
 
-// ── search ─────────────────────────────────────────────────────
-let embarkList = [];
-let destList   = [];
-
-async function loadPortLists() {
-  try {
-    const r = await fetch('/api/weather?list=true');
-    const d = await r.json();
-    if (d.ok) {
-      embarkList = d.allEmbarkationPorts;  // already sorted A–Z server-side
-      destList   = d.allDestinations;
-    }
-  } catch { /* searches will just be empty */ }
+// ── geocoding search ────────────────────────────────────────────
+function forecastUrl(r) {
+  return `forecast.html?lat=${r.latitude}&lon=${r.longitude}&name=${encodeURIComponent(r.display)}`;
 }
 
-function renderDropdown(dropId, list, query) {
-  const drop = document.getElementById(dropId);
-  const q = query.trim().toLowerCase();
-  const matches = q
-    ? list.filter(p => p.name.toLowerCase().includes(q))
-    : list;
-
-  if (!matches.length) {
-    drop.innerHTML = `<div class="d-empty">No results for "${query}"</div>`;
-  } else {
-    drop.innerHTML = matches.map(p => `
-      <a class="d-item" href="forecast.html?place=${p.slug}" role="option">
-        <span>${p.name}</span>
-        <i class="fa-solid fa-chevron-right d-arrow"></i>
-      </a>`).join('');
-  }
-  drop.classList.add('open');
+async function geocode(query) {
+  const url = `https://geocoding-api.open-meteo.com/v1/search` +
+              `?name=${encodeURIComponent(query)}&count=8&language=en&format=json`;
+  const r = await fetch(url);
+  const d = await r.json();
+  return (d.results || []).map(loc => ({
+    display: [loc.name, loc.admin1, loc.country].filter(Boolean).join(', '),
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+  }));
 }
 
-function setupSearch(inputId, dropId, getList) {
+function popularItems(names) {
+  return names.map(n => `
+    <a class="d-item" href="forecast.html?name=${encodeURIComponent(n)}&search=1" role="option">
+      <span>${n}</span>
+      <i class="fa-solid fa-chevron-right d-arrow"></i>
+    </a>`).join('');
+}
+
+function geoItems(results) {
+  return results.map(r => `
+    <a class="d-item" href="${forecastUrl(r)}" role="option">
+      <span>${r.display}</span>
+      <i class="fa-solid fa-chevron-right d-arrow"></i>
+    </a>`).join('');
+}
+
+function setupSearch(inputId, dropId, suggestions) {
   const input = document.getElementById(inputId);
   const drop  = document.getElementById(dropId);
+  let timer   = null;
 
-  input.addEventListener('focus', () => renderDropdown(dropId, getList(), input.value));
-  input.addEventListener('input', () => renderDropdown(dropId, getList(), input.value));
+  function showPopular() {
+    drop.innerHTML =
+      `<div class="d-hint">Popular</div>` + popularItems(suggestions);
+    drop.classList.add('open');
+  }
+
+  function showSearching() {
+    drop.innerHTML = `<div class="d-searching">Searching…</div>`;
+    drop.classList.add('open');
+  }
+
+  function showGeoResults(results, query) {
+    if (!results.length) {
+      drop.innerHTML = `<div class="d-empty">No results for "${query}" — try a different spelling</div>`;
+    } else {
+      drop.innerHTML = `<div class="d-hint">Results</div>` + geoItems(results);
+    }
+    drop.classList.add('open');
+  }
+
+  input.addEventListener('focus', () => {
+    if (!input.value.trim()) showPopular();
+  });
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    clearTimeout(timer);
+    if (!q) { showPopular(); return; }
+    showSearching();
+    timer = setTimeout(async () => {
+      try {
+        const results = await geocode(q);
+        showGeoResults(results, q);
+      } catch {
+        drop.innerHTML = `<div class="d-empty">Search unavailable — check connection</div>`;
+      }
+    }, 320);
+  });
 
   document.addEventListener('pointerdown', e => {
     if (!drop.contains(e.target) && e.target !== input) {
@@ -214,11 +263,9 @@ async function init() {
   await Promise.all([
     renderTiles('embark-grid', EMBARK_TILES),
     renderTiles('dest-grid',   DEST_TILES),
-    loadPortLists(),
   ]);
-
-  setupSearch('embark-input', 'embark-dropdown', () => embarkList);
-  setupSearch('dest-input',   'dest-dropdown',   () => destList);
+  setupSearch('embark-input', 'embark-dropdown', POPULAR_EMBARK);
+  setupSearch('dest-input',   'dest-dropdown',   POPULAR_DEST);
 }
 
 init();
