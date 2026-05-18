@@ -37,9 +37,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", router);
 
 // Serve the static website — must come after /api routes
+// Both "/" (production with custom domain) and "/preview-site" (dev preview)
 app.use(express.static(PUBLIC_DIR));
+app.use("/preview-site", express.static(PUBLIC_DIR));
 
-// SPA-style fallback: unknown paths return index.html
+// Fallback: serve index.html for unmatched paths
 app.get("/{*path}", (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
