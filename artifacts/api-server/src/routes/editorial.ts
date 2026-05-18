@@ -9,6 +9,51 @@ const router: IRouter = Router();
 
 const VALID_ACTIONS = new Set(["approve", "reject", "pin", "defer", "hold", "feature"]);
 
+// ─── Server-side story filter ─────────────────────────────────────────────────
+// Safety net that removes bad stories even if the agent misbehaves.
+
+const CRUISE_KEYWORDS = /\b(cruise|ship|vessel|sailing|itinerary|port|embark|disembark|carnival|royal caribbean|norwegian|celebrity|princess|msc|holland america|viking|disney cruise|cunard|azamara|silversea|regent|oceania|seabourn)\b/i;
+
+const WEATHER_NOISE = /\b(heatwave|heat wave|temperatures|celsius|fahrenheit|monsoon|rainfall|drought|wildfire|earthquake|flood(?!ing.*cruise)|tornado)\b/i;
+
+function serverSideFilter(stories: Record<string, unknown>[]): Record<string, unknown>[] {
+  // 1. Drop stories with no tier assigned
+  const tiered = stories.filter((s) => {
+    const tier = Number(s.tier);
+    return tier >= 1 && tier <= 4;
+  });
+
+  // 2. Drop weather/natural disaster stories with no cruise connection
+  const relevant = tiered.filter((s) => {
+    const text = `${s.title || ""} ${s.summary || ""} ${s.travelerImpact || ""}`.toLowerCase();
+    const isWeatherNoise = WEATHER_NOISE.test(text);
+    const hasCruiseLink = CRUISE_KEYWORDS.test(text);
+    if (isWeatherNoise && !hasCruiseLink) return false;
+    return true;
+  });
+
+  // 3. Deduplicate by topic entity — keep highest-tier story when same key term appears 3+ times
+  const termCount: Record<string, number> = {};
+  const DEDUP_TERMS = [
+    /\bhantavirus\b/i, /\bnorovirus\b/i, /\bcovid\b/i, /\bmpox\b/i,
+  ];
+  const deduped: Record<string, unknown>[] = [];
+  for (const story of relevant) {
+    const text = `${story.title || ""} ${story.summary || ""}`;
+    let flagged = false;
+    for (const re of DEDUP_TERMS) {
+      if (re.test(text)) {
+        const key = re.toString();
+        termCount[key] = (termCount[key] || 0) + 1;
+        if (termCount[key] > 1) { flagged = true; break; }
+      }
+    }
+    if (!flagged) deduped.push(story);
+  }
+
+  return deduped;
+}
+
 function authorize(req: Request): boolean {
   const expected = process.env["AGENT_APPROVAL_TOKEN"];
   if (!expected) return true;
@@ -224,8 +269,10 @@ router.post("/scan-news", async (req: Request, res: Response) => {
     telemetry.aiCompleted = true;
     telemetry.degradedMode = Boolean(curated?.systemStatus?.degraded);
 
-    const curatedStories = normalizeStories(curated.stories || []);
+    const normalized = normalizeStories(curated.stories || []);
+    const curatedStories = serverSideFilter(normalized);
     telemetry.curatedStoryCount = curatedStories.length;
+    telemetry.filteredCount = normalized.length - curatedStories.length;
 
     await writeJson(PATHS.candidates, {
       generatedAt: new Date().toISOString(),
