@@ -1,1 +1,293 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Cruise Weather | Still Afloat</title><link rel="stylesheet" href="./css/styles.css?v=live-api-weather-9"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"><style>body{background:radial-gradient(circle at top right, rgba(0,119,182,0.22), transparent 28%),radial-gradient(circle at left center, rgba(93,255,154,0.10), transparent 32%),linear-gradient(to bottom, #06111f 0%, #0b2238 40%, #102f4d 100%);min-height:100vh}.weather-banner{position:relative;height:360px;overflow:hidden;background:url('./assets/images/weather header.png') center/cover no-repeat;border-bottom:6px solid var(--blue)}.weather-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(to bottom, rgba(6,17,31,0), #06111f 100%)}.weather-home-link{position:absolute;top:20px;left:20px;z-index:5;background:rgba(7,24,63,0.78);color:white;padding:12px 20px;border-radius:18px;text-decoration:none;font-weight:800}.weather-shell{max-width:1200px;margin:auto;padding:36px 22px 80px}.weather-section{margin-bottom:54px}.weather-section h2{color:white;font-size:34px;margin-bottom:10px}.weather-section p{color:rgba(255,255,255,0.76);margin-bottom:24px}.weather-hint{color:rgba(93,255,154,.92);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:-8px 0 22px;text-shadow:0 0 12px rgba(93,255,154,.28);font-weight:700}.weather-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:18px}.weather-tile{background:rgba(7,24,63,0.72);border:1px solid rgba(255,255,255,0.08);border-radius:26px;backdrop-filter:blur(10px);padding:24px 14px;text-align:center;text-decoration:none;transition:all .22s ease;box-shadow:0 12px 24px rgba(0,0,0,0.16)}.weather-tile:hover{transform:translateY(-6px) scale(1.03)}.weather-emoji{font-size:54px;margin-bottom:12px}.weather-location{color:white;font-weight:800;font-size:18px;margin-bottom:8px}.weather-temp{color:#5dff9a;font-size:28px;font-weight:900}.search-shell{margin-top:28px;position:relative;z-index:50}.search-label{color:#5dff9a;font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;font-weight:800}.search-box{position:relative}.search-box i{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.66);pointer-events:none}.search-input{width:100%;background:linear-gradient(180deg, rgba(11,96,145,.42), rgba(7,24,63,.82));border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:18px 18px 18px 52px;color:white;font-size:16px;outline:none;backdrop-filter:blur(12px);box-sizing:border-box}.search-results{position:absolute;top:100%;left:0;right:0;margin-top:10px;background:linear-gradient(180deg, rgba(11,34,56,.98), rgba(7,24,63,.99));border:1px solid rgba(255,255,255,.12);border-radius:24px;backdrop-filter:blur(14px);z-index:70;max-height:360px;overflow-y:auto;display:none}.search-results.active{display:block}.search-item{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;color:white;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.08);transition:.18s ease}.search-item:hover{background:rgba(0,119,182,.32);color:#5dff9a}</style></head><body><header class="weather-banner"><a class="weather-home-link" href="index.html"><i class="fa-solid fa-house"></i> Home</a></header><main class="weather-shell"><section class="weather-section"><h2>Top Embarkation Ports</h2><p>Live weather conditions for major cruise departure ports.</p><div class="weather-hint">🧭 Select a port to explore the live 10-day forecast</div><div class="weather-grid" id="embarkation-grid"></div><div class="search-shell"><div class="search-label">Worldwide Cruise Port Search</div><div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input autocomplete="off" class="search-input" id="embarkation-search" placeholder="Search global embarkation ports..."><div class="search-results" id="embarkation-results"></div></div></div></section><section class="weather-section"><h2>Cruise Destinations</h2><p>Live Caribbean and cruise destination conditions.</p><div class="weather-hint">🧭 Tap any destination tile for a detailed 10-day outlook</div><div class="weather-grid" id="destination-grid"></div><div class="search-shell"><div class="search-label">Worldwide Destination Search</div><div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input autocomplete="off" class="search-input" id="destination-search" placeholder="Search cruise destinations worldwide..."><div class="search-results" id="destination-results"></div></div></div></section></main><footer><p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. Stay Afloat.</p></footer><script>const embarkationPorts=[{name:'Miami',slug:'miami',lat:25.7617,lon:-80.1918},{name:'Port Canaveral',slug:'port-canaveral',lat:28.4089,lon:-80.6043},{name:'Fort Lauderdale',slug:'fort-lauderdale',lat:26.1224,lon:-80.1373},{name:'Galveston',slug:'galveston',lat:29.3013,lon:-94.7977},{name:'New York',slug:'new-york',lat:40.7128,lon:-74.0060},{name:'Seattle',slug:'seattle',lat:47.6062,lon:-122.3321},{name:'Barcelona',slug:'barcelona',lat:41.3851,lon:2.1734},{name:'Southampton',slug:'southampton',lat:50.9097,lon:-1.4044},{name:'Tampa',slug:'tampa',lat:27.9506,lon:-82.4572},{name:'New Orleans',slug:'new-orleans',lat:29.9511,lon:-90.0715},{name:'Los Angeles',slug:'los-angeles',lat:34.0522,lon:-118.2437},{name:'San Juan',slug:'san-juan',lat:18.4655,lon:-66.1057}];const destinations=[{name:'Nassau',slug:'nassau',lat:25.0443,lon:-77.3504},{name:'Cozumel',slug:'cozumel',lat:20.4229,lon:-86.9223},{name:'St Thomas',slug:'st-thomas',lat:18.3381,lon:-64.8941},{name:'Great Stirrup Cay',slug:'great-stirrup-cay',lat:25.8246,lon:-77.9139},{name:'Roatan',slug:'roatan',lat:16.3168,lon:-86.5230},{name:'Aruba',slug:'aruba',lat:12.5211,lon:-69.9683},{name:'Bermuda',slug:'bermuda',lat:32.3078,lon:-64.7505},{name:'San Juan',slug:'san-juan',lat:18.4655,lon:-66.1057},{name:'Cabo San Lucas',slug:'cabo',lat:22.8905,lon:-109.9167},{name:'Jamaica',slug:'jamaica',lat:18.1096,lon:-77.2975},{name:'Grand Cayman',slug:'grand-cayman',lat:19.3133,lon:-81.2546},{name:'Puerto Plata',slug:'puerto-plata',lat:19.7902,lon:-70.6884}];function emoji(code){if([0].includes(code))return'☀️';if([1,2].includes(code))return'🌤️';if([3].includes(code))return'☁️';if([45,48].includes(code))return'🌫️';if([51,53,55,61,63,65,80,81,82].includes(code))return'🌧️';if([95,96,99].includes(code))return'⛈️';return'⛅'}async function weatherTile(item){try{const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${item.lat}&longitude=${item.lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`);const data=await res.json();return `<a class="weather-tile" href="forecast.html?place=${item.slug}"><div class="weather-emoji">${emoji(data.current.weather_code)}</div><div class="weather-location">${item.name}</div><div class="weather-temp">${Math.round(data.current.temperature_2m)}°</div></a>`}catch{return `<a class="weather-tile" href="forecast.html?place=${item.slug}"><div class="weather-emoji">🌴</div><div class="weather-location">${item.name}</div><div class="weather-temp">--</div></a>`}}function setupSearch(inputId,resultsId,dataset){const input=document.getElementById(inputId);const results=document.getElementById(resultsId);function render(items){results.innerHTML=items.map(item=>`<a class="search-item" href="forecast.html?place=${item.slug}"><div>${item.name}</div><span>Forecast</span></a>`).join('');results.classList.add('active')}input.addEventListener('focus',()=>{render(dataset)});input.addEventListener('input',()=>{const value=input.value.toLowerCase().trim();const filtered=!value?dataset:dataset.filter(item=>item.name.toLowerCase().includes(value));render(filtered)});document.addEventListener('click',e=>{if(!results.contains(e.target)&&e.target!==input){results.classList.remove('active')}})}async function init(){document.getElementById('embarkation-grid').innerHTML=(await Promise.all(embarkationPorts.map(weatherTile))).join('');document.getElementById('destination-grid').innerHTML=(await Promise.all(destinations.map(weatherTile))).join('');setupSearch('embarkation-search','embarkation-results',embarkationPorts);setupSearch('destination-search','destination-results',destinations)}init();</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cruise Port & Destination Weather | Still Afloat</title>
+<link rel="stylesheet" href="./css/styles.css?v=live-api-weather-10">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+body{background:radial-gradient(circle at top right,rgba(0,119,182,.22),transparent 28%),radial-gradient(circle at left center,rgba(93,255,154,.10),transparent 32%),linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh}
+.weather-banner{position:relative;height:360px;overflow:hidden;background:url('./assets/images/weather header.png') center/cover no-repeat;border-bottom:6px solid var(--blue)}
+.weather-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(to bottom,rgba(6,17,31,0),#06111f 100%)}
+.weather-home-link{position:absolute;top:20px;left:20px;z-index:5;background:rgba(7,24,63,.78);color:white;padding:12px 20px;border-radius:18px;text-decoration:none;font-weight:800}
+.weather-shell{max-width:1300px;margin:auto;padding:36px 22px 80px}
+.weather-section{margin-bottom:60px}
+.weather-section h2{color:white;font-size:34px;margin:0 0 10px}
+.weather-section > p{color:rgba(255,255,255,.76);margin-bottom:24px}
+.weather-hint{color:rgba(93,255,154,.92);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:-4px 0 22px;font-weight:700}
+.weather-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px;margin-bottom:32px}
+.weather-tile{position:relative;overflow:hidden;border-radius:26px;border:1px solid rgba(255,255,255,.10);text-align:center;text-decoration:none;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;box-shadow:0 12px 28px rgba(0,0,0,.22);aspect-ratio:1/1.05;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(7,24,63,.82)}
+.tile-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.28;transition:opacity .3s ease}
+.weather-tile:hover .tile-bg{opacity:.48}
+.weather-tile:hover{transform:translateY(-6px) scale(1.03);border-color:rgba(93,255,154,.38);box-shadow:0 22px 44px rgba(0,0,0,.36)}
+.tile-inner{position:relative;z-index:1;padding:8px 4px}
+.weather-emoji{font-size:46px;line-height:1;margin-bottom:10px}
+.weather-location{color:white;font-weight:800;font-size:15px;margin-bottom:6px;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.weather-temp{color:#5dff9a;font-size:26px;font-weight:900;text-shadow:0 1px 8px rgba(0,0,0,.5)}
+.weather-loading{color:rgba(255,255,255,.45);font-size:13px;margin-top:4px}
+
+.search-section{position:relative;z-index:100;margin-top:10px}
+.search-label{color:#5dff9a;font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;font-weight:800}
+.search-wrap{position:relative}
+.search-icon{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.55);pointer-events:none;z-index:2}
+.search-input{width:100%;box-sizing:border-box;background:linear-gradient(180deg,rgba(11,96,145,.42),rgba(7,24,63,.88));border:1px solid rgba(255,255,255,.14);border-radius:22px;padding:18px 18px 18px 52px;color:white;font-size:16px;outline:none;position:relative;z-index:2;cursor:text}
+.search-input::placeholder{color:rgba(255,255,255,.4)}
+.search-input:focus{border-color:rgba(93,255,154,.38);box-shadow:0 0 0 3px rgba(93,255,154,.10)}
+.search-dropdown{display:none;position:absolute;top:calc(100% + 10px);left:0;right:0;background:linear-gradient(180deg,rgba(8,26,48,.98),rgba(7,24,63,.99));border:1px solid rgba(255,255,255,.12);border-radius:24px;backdrop-filter:blur(16px);z-index:200;max-height:400px;overflow-y:auto}
+.search-dropdown.open{display:block}
+.search-result{display:flex;align-items:center;gap:14px;padding:12px 18px;color:white;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.06);transition:.16s ease;cursor:pointer}
+.search-result:last-child{border-bottom:none}
+.search-result:hover{background:rgba(0,119,182,.28);color:#5dff9a}
+.result-thumb{width:52px;height:40px;border-radius:10px;object-fit:cover;background:rgba(255,255,255,.08);flex-shrink:0}
+.result-name{font-weight:700;font-size:15px}
+.result-arrow{margin-left:auto;color:rgba(255,255,255,.3);font-size:13px}
+footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.52)}
+@media(max-width:700px){.weather-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}.weather-emoji{font-size:36px}.weather-temp{font-size:22px}}
+</style>
+</head>
+<body>
+<header class="weather-banner">
+  <a class="weather-home-link" href="index.html"><i class="fa-solid fa-house"></i> Home</a>
+</header>
+<main class="weather-shell">
+
+  <section class="weather-section">
+    <h2>Top Embarkation Ports</h2>
+    <p>Live weather for the world's top cruise departure ports.</p>
+    <div class="weather-hint">🧭 Tap any port for a full 10-day forecast</div>
+    <div class="weather-grid" id="embark-grid"></div>
+    <div class="search-section" id="embark-search-section">
+      <div class="search-label">Search All Embarkation Ports Worldwide</div>
+      <div class="search-wrap">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" class="search-input" id="embark-input" placeholder="Search cruise departure ports..." autocomplete="off" spellcheck="false">
+        <div class="search-dropdown" id="embark-dropdown"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="weather-section">
+    <h2>Cruise Destinations</h2>
+    <p>Live conditions at top Caribbean, Mediterranean, and worldwide cruise stops.</p>
+    <div class="weather-hint">🌴 Tap any destination for a full 10-day forecast</div>
+    <div class="weather-grid" id="dest-grid"></div>
+    <div class="search-section" id="dest-search-section">
+      <div class="search-label">Search All Cruise Destinations Worldwide</div>
+      <div class="search-wrap">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" class="search-input" id="dest-input" placeholder="Search ports of call and destinations..." autocomplete="off" spellcheck="false">
+        <div class="search-dropdown" id="dest-dropdown"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+<footer><p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. Stay Afloat.</p></footer>
+<script>
+const PEXELS_KEY = 'P82hqxcbAMVh4XpB7Dr3zwUrzWY1kldO6Q8QvO9XkJ8FXGsl4iH6ebzA';
+
+const EMBARKATION_PORTS = [
+  {name:'Miami',           slug:'miami',           lat:25.7617, lon:-80.1918, img:null, query:'Miami port skyline'},
+  {name:'Ft. Lauderdale',  slug:'fort-lauderdale', lat:26.1224, lon:-80.1373, img:null, query:'Fort Lauderdale Port Everglades cruise'},
+  {name:'Port Canaveral',  slug:'port-canaveral',  lat:28.4089, lon:-80.6043, img:null, query:'Port Canaveral cruise ship Florida'},
+  {name:'Tampa',           slug:'tampa',           lat:27.9506, lon:-82.4572, img:null, query:'Tampa Bay cruise port skyline'},
+  {name:'Jacksonville',    slug:'jacksonville',    lat:30.3322, lon:-81.6557, img:null, query:'Jacksonville Florida waterfront'},
+  {name:'Palm Beach',      slug:'palm-beach',      lat:26.7694, lon:-80.0534, img:null, query:'Palm Beach Florida coast'},
+  {name:'Key West',        slug:'key-west',        lat:24.5551, lon:-81.7800, img:null, query:'Key West Florida tropical'},
+  {name:'New Orleans',     slug:'new-orleans',     lat:29.9511, lon:-90.0715, img:null, query:'New Orleans French Quarter city'},
+  {name:'Galveston',       slug:'galveston',       lat:29.3013, lon:-94.7977, img:null, query:'Galveston Texas cruise port beach'},
+  {name:'New York',        slug:'new-york',        lat:40.7128, lon:-74.0060, img:null, query:'New York Manhattan skyline harbor'},
+  {name:'Baltimore',       slug:'baltimore',       lat:39.2904, lon:-76.6122, img:null, query:'Baltimore Inner Harbor Maryland'},
+  {name:'Boston',          slug:'boston',          lat:42.3601, lon:-71.0589, img:null, query:'Boston harbor waterfront cityscape'},
+  {name:'Charleston',      slug:'charleston',      lat:32.7765, lon:-79.9311, img:null, query:'Charleston South Carolina historic port'},
+  {name:'Norfolk',         slug:'norfolk',         lat:36.8508, lon:-76.2859, img:null, query:'Norfolk Virginia cruise terminal'},
+  {name:'Seattle',         slug:'seattle',         lat:47.6062, lon:-122.3321, img:null, query:'Seattle port harbor cruise ship Pacific'},
+  {name:'Los Angeles',     slug:'los-angeles',     lat:34.0522, lon:-118.2437, img:null, query:'Los Angeles Long Beach cruise port harbor'},
+  {name:'San Francisco',   slug:'san-francisco',   lat:37.7749, lon:-122.4194, img:null, query:'San Francisco Golden Gate Bridge bay'},
+  {name:'Honolulu',        slug:'honolulu',        lat:21.3069, lon:-157.8583, img:null, query:'Honolulu Hawaii harbor ocean'},
+  {name:'Vancouver',       slug:'vancouver',       lat:49.2827, lon:-123.1207, img:null, query:'Vancouver Canada cruise ship port mountains'},
+  {name:'Barcelona',       slug:'barcelona',       lat:41.3851, lon:2.1734,   img:null, query:'Barcelona Spain cruise port Mediterranean'},
+  {name:'Southampton',     slug:'southampton',     lat:50.9097, lon:-1.4044,  img:null, query:'Southampton England cruise terminal'},
+  {name:'Rotterdam',       slug:'rotterdam',       lat:51.9244, lon:4.4777,   img:null, query:'Rotterdam Netherlands port harbor'},
+  {name:'Rome',            slug:'civitavecchia',   lat:41.8719, lon:12.4810,  img:null, query:'Civitavecchia Rome cruise port Italy'},
+  {name:'Athens',          slug:'athens',          lat:37.9755, lon:23.7348,  img:null, query:'Piraeus Athens Greece cruise ship harbor'},
+  {name:'Copenhagen',      slug:'copenhagen',      lat:55.6761, lon:12.5683,  img:null, query:'Copenhagen Denmark cruise port harbor'},
+  {name:'Lisbon',          slug:'lisbon',          lat:38.7223, lon:-9.1393,  img:null, query:'Lisbon Portugal river harbor city'},
+  {name:'Venice',          slug:'venice',          lat:45.4408, lon:12.3155,  img:null, query:'Venice Italy cruise ship canal'},
+  {name:'Dubai',           slug:'dubai',           lat:25.2048, lon:55.2708,  img:null, query:'Dubai cruise port harbor skyline'},
+  {name:'Singapore',       slug:'singapore',       lat:1.3521,  lon:103.8198, img:null, query:'Singapore cruise terminal harbor skyline'},
+  {name:'Sydney',          slug:'sydney',          lat:-33.8688, lon:151.2093, img:null, query:'Sydney Opera House harbor cruise ship'},
+];
+
+const DESTINATIONS = [
+  {name:'Nassau',          slug:'nassau',          lat:25.0443, lon:-77.3504,  img:null, query:'Nassau Bahamas beach cruise ship harbor'},
+  {name:'Cozumel',         slug:'cozumel',         lat:20.4229, lon:-86.9223,  img:null, query:'Cozumel Mexico cruise ship turquoise beach'},
+  {name:'St. Thomas',      slug:'st-thomas',       lat:18.3381, lon:-64.8941,  img:null, query:'St Thomas USVI cruise ship harbor tropical'},
+  {name:'Grand Cayman',    slug:'grand-cayman',    lat:19.3133, lon:-81.2546,  img:null, query:'Grand Cayman island beach crystal water'},
+  {name:'Roatan',          slug:'roatan',          lat:16.3168, lon:-86.5230,  img:null, query:'Roatan Honduras cruise beach tropical'},
+  {name:'Aruba',           slug:'aruba',           lat:12.5211, lon:-69.9683,  img:null, query:'Aruba island beach Caribbean'},
+  {name:'Jamaica',         slug:'jamaica',         lat:18.1096, lon:-77.2975,  img:null, query:'Jamaica cruise port Montego Bay tropical'},
+  {name:'Bermuda',         slug:'bermuda',         lat:32.3078, lon:-64.7505,  img:null, query:'Bermuda pink sand beach cruise'},
+  {name:'San Juan',        slug:'san-juan',        lat:18.4655, lon:-66.1057,  img:null, query:'San Juan Puerto Rico Old City colorful'},
+  {name:'Cabo San Lucas',  slug:'cabo',            lat:22.8905, lon:-109.9167, img:null, query:'Cabo San Lucas Mexico arch cruise ship'},
+  {name:'Puerto Vallarta', slug:'puerto-vallarta', lat:20.6534, lon:-105.2253, img:null, query:'Puerto Vallarta Mexico bay cruise ship'},
+  {name:'St. Maarten',     slug:'st-maarten',      lat:18.0425, lon:-63.0548,  img:null, query:'Sint Maarten cruise ship beach lagoon'},
+  {name:'Belize City',     slug:'belize',          lat:17.2510, lon:-88.7590,  img:null, query:'Belize cruise ship tropical turquoise'},
+  {name:'Costa Maya',      slug:'costa-maya',      lat:18.7275, lon:-87.7070,  img:null, query:'Costa Maya Mexico cruise port tropical'},
+  {name:'Grand Turk',      slug:'grand-turk',      lat:21.4660, lon:-71.1390,  img:null, query:'Grand Turk Turks Caicos beach cruise'},
+  {name:'CocoCay',         slug:'cococay',         lat:25.8330, lon:-77.6670,  img:null, query:'Bahamas private island beach turquoise cruise'},
+  {name:'Amber Cove',      slug:'amber-cove',      lat:19.8280, lon:-70.8110,  img:null, query:'Puerto Plata Dominican Republic cruise beach'},
+  {name:'St. Lucia',       slug:'st-lucia',        lat:13.9094, lon:-60.9789,  img:null, query:'St Lucia Pitons Caribbean island tropical'},
+  {name:'Barbados',        slug:'barbados',        lat:13.1939, lon:-59.5432,  img:null, query:'Barbados Caribbean beach cruise ship'},
+  {name:'Santorini',       slug:'santorini',       lat:36.3932, lon:25.4615,   img:null, query:'Santorini Greece white blue domes caldera'},
+  {name:'Dubrovnik',       slug:'dubrovnik',       lat:42.6507, lon:18.0944,   img:null, query:'Dubrovnik Croatia old city walls Adriatic cruise'},
+  {name:'Mykonos',         slug:'mykonos',         lat:37.4467, lon:25.3289,   img:null, query:'Mykonos Greece windmills whitewashed Mediterranean'},
+  {name:'Kotor',           slug:'kotor',           lat:42.4247, lon:18.7712,   img:null, query:'Kotor Montenegro Bay cruise ship fjord'},
+  {name:'Juneau',          slug:'juneau',          lat:58.3005, lon:-134.4197, img:null, query:'Juneau Alaska glacier cruise ship fjord'},
+  {name:'Ketchikan',       slug:'ketchikan',       lat:55.3422, lon:-131.6461, img:null, query:'Ketchikan Alaska cruise ship rainforest totem'},
+  {name:'Skagway',         slug:'skagway',         lat:59.4583, lon:-135.3139, img:null, query:'Skagway Alaska cruise ship mountains'},
+  {name:'Victoria BC',     slug:'victoria-bc',     lat:48.4284, lon:-123.3656, img:null, query:'Victoria British Columbia cruise ship harbor'},
+  {name:'Ensenada',        slug:'ensenada',        lat:31.8667, lon:-116.5961, img:null, query:'Ensenada Mexico Baja cruise port harbor'},
+  {name:'Labadee',         slug:'labadee',         lat:19.7720, lon:-72.2190,  img:null, query:'Labadee Haiti private cruise beach tropical'},
+  {name:'Curaçao',         slug:'curacao',         lat:12.1696, lon:-68.9900,  img:null, query:'Curacao colorful buildings Dutch Caribbean cruise'},
+];
+
+function weatherEmoji(code) {
+  if (code === 0) return '☀️';
+  if ([1, 2].includes(code)) return '🌤️';
+  if (code === 3) return '☁️';
+  if ([45, 48].includes(code)) return '🌫️';
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return '🌧️';
+  if ([95, 96, 99].includes(code)) return '⛈️';
+  return '⛅';
+}
+
+const _imgCache = new Map();
+let _pexelsQueue = Promise.resolve();
+function fetchPexelsImage(query) {
+  if (_imgCache.has(query)) return Promise.resolve(_imgCache.get(query));
+  _pexelsQueue = _pexelsQueue.then(() => new Promise(res => setTimeout(res, 120))).then(async () => {
+    try {
+      const r = await fetch(
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
+        { headers: { Authorization: PEXELS_KEY } }
+      );
+      const d = await r.json();
+      const url = d.photos?.[0]?.src?.medium || null;
+      _imgCache.set(query, url);
+      return url;
+    } catch { _imgCache.set(query, null); return null; }
+  });
+  return _pexelsQueue;
+}
+
+async function fetchWeather(lat, lon) {
+  const r = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`
+  );
+  const d = await r.json();
+  return { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code };
+}
+
+function buildTile(item, weather, imgUrl) {
+  const emoji = weather ? weatherEmoji(weather.code) : '🌴';
+  const temp  = weather ? `${weather.temp}°` : '--';
+  const bg    = imgUrl  ? `<div class="tile-bg" style="background-image:url('${imgUrl}')"></div>` : '';
+  return `
+    <a class="weather-tile" href="forecast.html?place=${item.slug}">
+      ${bg}
+      <div class="tile-inner">
+        <div class="weather-emoji">${emoji}</div>
+        <div class="weather-location">${item.name}</div>
+        <div class="weather-temp">${temp}</div>
+      </div>
+    </a>`;
+}
+
+async function renderGrid(gridId, dataset) {
+  const grid = document.getElementById(gridId);
+
+  grid.innerHTML = dataset.map(item => `
+    <a class="weather-tile" href="forecast.html?place=${item.slug}" id="tile-${item.slug}">
+      <div class="tile-inner">
+        <div class="weather-emoji">⛅</div>
+        <div class="weather-location">${item.name}</div>
+        <div class="weather-temp weather-loading">loading…</div>
+      </div>
+    </a>`).join('');
+
+  // Phase 1: fetch all weather in parallel (Open-Meteo has no rate limit)
+  await Promise.all(dataset.map(async item => {
+    const weather = await fetchWeather(item.lat, item.lon).catch(() => null);
+    item.weather = weather;
+    const tile = document.getElementById(`tile-${item.slug}`);
+    if (tile) tile.outerHTML = buildTile(item, weather, null);
+  }));
+
+  // Phase 2: stream port images in sequentially to avoid Pexels 429
+  for (const item of dataset) {
+    const imgUrl = await fetchPexelsImage(item.query).catch(() => null);
+    item.img = imgUrl;
+    if (!imgUrl) continue;
+    const tile = document.getElementById(`tile-${item.slug}`);
+    if (!tile) continue;
+    let bg = tile.querySelector('.tile-bg');
+    if (!bg) {
+      bg = document.createElement('div');
+      bg.className = 'tile-bg';
+      tile.insertBefore(bg, tile.firstChild);
+    }
+    bg.style.backgroundImage = `url('${imgUrl}')`;
+  }
+}
+
+function buildDropdown(dropdown, dataset, filter = '') {
+  const q = filter.toLowerCase().trim();
+  const results = q ? dataset.filter(i => i.name.toLowerCase().includes(q)) : dataset;
+
+  if (!results.length) {
+    dropdown.innerHTML = '<div class="search-result" style="color:rgba(255,255,255,.4);cursor:default">No ports found</div>';
+  } else {
+    dropdown.innerHTML = results.map(item => {
+      const thumb = item.img
+        ? `<img class="result-thumb" src="${item.img}" alt="${item.name}" loading="lazy">`
+        : `<div class="result-thumb"></div>`;
+      return `<a class="search-result" href="forecast.html?place=${item.slug}">
+        ${thumb}
+        <span class="result-name">${item.name}</span>
+        <span class="result-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+      </a>`;
+    }).join('');
+  }
+  dropdown.classList.add('open');
+}
+
+function setupSearch(inputId, dropdownId, dataset) {
+  const input    = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+
+  input.addEventListener('focus', () => buildDropdown(dropdown, dataset, input.value));
+  input.addEventListener('input', () => buildDropdown(dropdown, dataset, input.value));
+
+  document.addEventListener('click', e => {
+    if (e.target !== input && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+    }
+  });
+}
+
+async function init() {
+  await Promise.all([
+    renderGrid('embark-grid', EMBARKATION_PORTS),
+    renderGrid('dest-grid', DESTINATIONS)
+  ]);
+
+  setupSearch('embark-input', 'embark-dropdown', EMBARKATION_PORTS);
+  setupSearch('dest-input',   'dest-dropdown',   DESTINATIONS);
+}
+
+init();
+</script>
+</body>
+</html>
