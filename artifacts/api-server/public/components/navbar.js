@@ -1,49 +1,63 @@
-// Still Afloat — Global Nav Component
-// Visual style matches the original homepage hero-nav exactly:
-// glass-navy pill container, top-right; logo home link, top-left; both fixed.
+// Still Afloat — Global Site Nav
+// Injects logo (top-left) + glass-navy pill nav (top-right) as position:absolute
+// within whichever parent has position:relative (the hero or banner section).
 (function () {
 
+  const isHome = ['', '/', '/index.html', 'index.html'].some(s =>
+    window.location.pathname.endsWith(s) || window.location.pathname === s
+  );
+
   const navHTML = `
-    <a class="sa-logo-home" href="/index.html" title="Still Afloat Home">
+    ${isHome ? '' : `
+    <a class="sa-logo-home" href="index.html" title="Still Afloat Home">
       <img src="/assets/images/still_afloat_logo.png" alt="Still Afloat" class="sa-logo-img">
-    </a>
+    </a>`}
     <nav class="sa-site-nav" id="saSiteNav">
       <div class="sa-nav-row">
-        <a href="/index.html"     class="sa-nav-link">Home</a>
-        <a href="/news.html"      class="sa-nav-link">Cruise News</a>
-        <a href="/weather.html"   class="sa-nav-link">Weather</a>
-        <a href="/affiliate.html" class="sa-nav-link">Gear</a>
+        <a href="index.html"     class="sa-nav-link">Home</a>
+        <a href="news.html"      class="sa-nav-link">Cruise News</a>
+        <a href="weather.html"   class="sa-nav-link">Weather</a>
+        <a href="affiliate.html" class="sa-nav-link">Gear</a>
       </div>
       <div class="sa-nav-row sa-secondary">
-        <a href="#"               class="sa-nav-link">Book a Cruise</a>
+        <a href="#" class="sa-nav-link">Book a Cruise</a>
       </div>
     </nav>
   `;
 
   const navCSS = `
-    /* ── Logo — fixed top-left ── */
+    /* navbar-container fills its positioned parent (the hero/banner section) */
+    #navbar-container {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #navbar-container > * { pointer-events: auto; }
+
+    /* Logo — top-left of the banner */
     .sa-logo-home {
-      position: fixed;
-      top: 14px;
-      left: 18px;
-      z-index: 1100;
+      position: absolute;
+      top: 18px;
+      left: 22px;
+      z-index: 20;
       text-decoration: none;
       display: inline-flex;
     }
     .sa-logo-img {
-      height: 68px;
+      height: 90px;
       width: auto;
-      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.55));
+      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.60));
       transition: transform .22s ease;
     }
     .sa-logo-home:hover .sa-logo-img { transform: scale(1.05); }
 
-    /* ── Nav pill — fixed top-right, matches original homepage hero-nav ── */
+    /* Nav pill — top-right, matches original homepage hero-nav style */
     .sa-site-nav {
-      position: fixed;
-      top: 20px;
+      position: absolute;
+      top: 22px;
       right: 22px;
-      z-index: 1100;
+      z-index: 20;
       width: fit-content;
       display: flex;
       flex-direction: column;
@@ -59,8 +73,6 @@
         inset 0 1px 0 rgba(255,255,255,.18),
         inset 0 -1px 0 rgba(0,0,0,.24);
     }
-
-    /* glassy inner border shine */
     .sa-site-nav::before {
       content: '';
       position: absolute;
@@ -74,11 +86,7 @@
       pointer-events: none;
     }
 
-    .sa-nav-row {
-      display: flex;
-      gap: 6px;
-      justify-content: flex-end;
-    }
+    .sa-nav-row { display: flex; gap: 6px; justify-content: flex-end; }
     .sa-nav-row.sa-secondary {
       border-top: 1px solid rgba(255,255,255,.14);
       padding-top: 5px;
@@ -89,7 +97,7 @@
       display: inline-block;
       font-size: 13px;
       font-weight: 700;
-      padding: 8px 13px;
+      padding: 8px 14px;
       border-radius: 14px;
       color: #ffffff;
       text-decoration: none;
@@ -113,40 +121,7 @@
       color: #5dff9a;
     }
 
-    /* ── Mobile hamburger ── */
-    .sa-mobile-toggle {
-      display: none;
-      flex-direction: column;
-      gap: 4px;
-      background: rgba(9,72,117,.92);
-      border: 1px solid rgba(123,214,255,.28);
-      border-radius: 14px;
-      padding: 10px;
-      cursor: pointer;
-      position: fixed;
-      top: 20px;
-      right: 22px;
-      z-index: 1100;
-    }
-    .sa-mobile-toggle span {
-      width: 20px; height: 2px;
-      border-radius: 999px;
-      background: white;
-      display: block;
-    }
-
-    @media (max-width: 780px) {
-      .sa-site-nav { display: none; }
-      .sa-site-nav.mobile-open {
-        display: flex;
-        top: 60px;
-        right: 12px;
-      }
-      .sa-mobile-toggle { display: flex; }
-      .sa-logo-img { height: 52px; }
-    }
-
-    /* ── Shared reveal animation ── */
+    /* Shared reveal animation */
     .reveal {
       opacity: 0;
       transform: translateY(24px);
@@ -154,12 +129,11 @@
     }
     .reveal.visible { opacity: 1; transform: none; }
 
-    /* ── Brand text spans ── */
-    .sa-still  { font-family: Pacifico, cursive; color: #ffca4f; text-shadow: 0 2px 8px rgba(255,202,79,.28); }
-    .sa-afloat { font-family: Pacifico, cursive; color: #5dff9a; text-shadow: 0 2px 8px rgba(93,255,154,.22); }
+    /* Brand text spans */
+    .sa-still  { font-family: Pacifico, cursive; color: #ffca4f; }
+    .sa-afloat { font-family: Pacifico, cursive; color: #5dff9a; }
   `;
 
-  // Inject styles
   const style = document.createElement('style');
   style.textContent = navCSS;
   document.head.appendChild(style);
@@ -169,26 +143,18 @@
     if (!container) return;
     container.innerHTML = navHTML;
 
-    // Mark active page
+    // Active page highlight
     const current = window.location.pathname.split('/').pop() || 'index.html';
     container.querySelectorAll('.sa-nav-link').forEach(a => {
       const href = (a.getAttribute('href') || '').split('/').pop();
       if (href && href === current) a.classList.add('active');
     });
 
-    // Mobile toggle
-    const toggle = document.createElement('button');
-    toggle.className = 'sa-mobile-toggle';
-    toggle.setAttribute('aria-label', 'Menu');
-    toggle.innerHTML = '<span></span><span></span><span></span>';
-    toggle.addEventListener('click', () => {
-      document.getElementById('saSiteNav').classList.toggle('mobile-open');
-    });
-    container.appendChild(toggle);
-
-    // Reveal observer
+    // Scroll reveal observer
     const io = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+      });
     }, { threshold: 0.08 });
     document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   }
