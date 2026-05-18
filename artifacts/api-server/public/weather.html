@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cruise Port & Destination Weather | Still Afloat</title>
-<link rel="stylesheet" href="./css/styles.css?v=weather-11">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-body{background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh}
-.weather-banner{position:relative;height:360px;overflow:hidden;background:url('./assets/images/weather header.png') center/cover no-repeat;border-bottom:6px solid var(--blue)}
-.weather-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(to bottom,transparent,#06111f)}
-.home-btn{position:absolute;top:20px;left:20px;z-index:5;background:rgba(7,24,63,.82);color:white;padding:12px 20px;border-radius:18px;text-decoration:none;font-weight:800;border:1px solid rgba(255,255,255,.14)}
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif}
+.weather-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a}
+.weather-banner-img{width:100%;display:block;height:auto}
+.weather-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:80px;background:linear-gradient(to bottom,transparent,#06111f);pointer-events:none}
 .shell{max-width:1300px;margin:auto;padding:40px 22px 90px}
-.section{margin-bottom:60px}
+.section{margin-bottom:60px;transition:padding-bottom .25s ease}
 .section h2{color:white;font-size:32px;font-weight:900;margin:0 0 8px}
 .section>p{color:rgba(255,255,255,.7);margin:0 0 6px}
 .hint{color:rgba(93,255,154,.88);font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:22px}
@@ -46,8 +46,9 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.45)}
 </style>
 </head>
 <body>
+<div id="navbar-container"></div>
 <header class="weather-banner">
-  <a class="home-btn" href="index.html"><i class="fa-solid fa-house"></i> Home</a>
+  <img class="weather-banner-img" src="./assets/images/weather header.png" alt="Still Afloat Weather Center">
 </header>
 
 <main class="shell">
@@ -98,40 +99,44 @@ const EMBARK_TILES = [
   {name:'New York',       slug:'new-york',        lat:40.7128,  lon:-74.0060 },
   {name:'New Orleans',    slug:'new-orleans',     lat:29.9511,  lon:-90.0715 },
   {name:'Seattle',        slug:'seattle',         lat:47.6062,  lon:-122.3321},
-  {name:'Los Angeles',    slug:'los-angeles',     lat:33.7405,  lon:-118.2775},
+  {name:'Los Angeles',    slug:'los-angeles',     lat:33.7701,  lon:-118.2037},
   {name:'Honolulu',       slug:'honolulu',        lat:21.3069,  lon:-157.8583},
   {name:'Baltimore',      slug:'baltimore',       lat:39.2904,  lon:-76.6122 },
-  {name:'San Francisco',  slug:'san-francisco',   lat:37.7749,  lon:-122.4194},
+  {name:'San Francisco',  slug:'san-francisco',   lat:37.8044,  lon:-122.2712},
 ];
 
-// ── 12 hardcoded Caribbean / Bahamas destination tiles ──────────
+// ── 12 Caribbean / Bahamas destination tiles ───────────────────
 const DEST_TILES = [
-  {name:'Nassau',         slug:'nassau',          lat:25.0443,  lon:-77.3504 },
-  {name:'Cozumel',        slug:'cozumel',         lat:20.4229,  lon:-86.9223 },
+  {name:'Nassau',         slug:'nassau',          lat:25.0480,  lon:-77.3562 },
+  {name:'Cozumel',        slug:'cozumel',         lat:20.4230,  lon:-86.9223 },
   {name:'St. Thomas',     slug:'st-thomas',       lat:18.3381,  lon:-64.8941 },
-  {name:'Grand Cayman',   slug:'grand-cayman',    lat:19.3133,  lon:-81.2546 },
-  {name:'Aruba',          slug:'aruba',           lat:12.5211,  lon:-69.9683 },
+  {name:'Grand Cayman',   slug:'grand-cayman',    lat:19.2869,  lon:-81.3674 },
+  {name:'Falmouth',       slug:'falmouth-jamaica',lat:18.4984,  lon:-77.6573 },
   {name:'St. Maarten',    slug:'st-maarten',      lat:18.0425,  lon:-63.0548 },
-  {name:'Ocho Rios',      slug:'ocho-rios',       lat:18.4074,  lon:-77.1031 },
-  {name:'Bermuda',        slug:'bermuda',         lat:32.3078,  lon:-64.7505 },
   {name:'San Juan',       slug:'san-juan',        lat:18.4655,  lon:-66.1057 },
-  {name:'CocoCay',        slug:'cococay',         lat:25.8170,  lon:-77.9390 },
-  {name:'Belize City',    slug:'belize-city',     lat:17.5046,  lon:-88.1962 },
-  {name:'Roatán',         slug:'roatan',          lat:16.3247,  lon:-86.5365 },
+  {name:'Aruba',          slug:'aruba',           lat:12.5211,  lon:-70.0000 },
+  {name:'Barbados',       slug:'barbados',        lat:13.1939,  lon:-59.5432 },
+  {name:'Belize City',    slug:'belize-city',     lat:17.2514,  lon:-88.7590 },
+  {name:'Roatán',         slug:'roatan',          lat:16.3309,  lon:-86.5351 },
+  {name:'Half Moon Cay',  slug:'half-moon-cay',   lat:24.9340,  lon:-76.3070 },
 ];
 
-// ── popular suggestions shown on focus (before typing) ─────────
+// ── Popular search suggestions ─────────────────────────────────
 const POPULAR_EMBARK = [
-  'Miami','Fort Lauderdale','Port Canaveral','Tampa','Galveston',
-  'New York','New Orleans','Seattle','Los Angeles','Honolulu',
-  'Baltimore','San Francisco','Barcelona','Southampton','Vancouver',
+  'Miami, Florida','Fort Lauderdale, Florida','Port Canaveral, Florida',
+  'Tampa, Florida','Galveston, Texas','New York City','New Orleans, Louisiana',
+  'Seattle, Washington','Los Angeles, California','Baltimore, Maryland',
+  'San Francisco, California','Bayonne, New Jersey','Charleston, South Carolina',
+  'Jacksonville, Florida','Mobile, Alabama',
 ];
 const POPULAR_DEST = [
-  'Nassau','Cozumel','St. Thomas','Grand Cayman','Aruba',
-  'St. Maarten','Ocho Rios','Bermuda','San Juan','CocoCay',
-  'Belize City','Roatán','Santorini','Dubrovnik','Juneau',
+  'Nassau, Bahamas','Cozumel, Mexico','St. Thomas, US Virgin Islands',
+  'Grand Cayman','Falmouth, Jamaica','St. Maarten','San Juan, Puerto Rico',
+  'Aruba','Barbados','Belize City','Roatán, Honduras','Bermuda',
+  'St. Kitts','Antigua','Turks and Caicos',
 ];
 
+// ── Weather code → emoji ───────────────────────────────────────
 function wxEmoji(code) {
   if (code === 0) return '☀️';
   if ([1,2].includes(code)) return '🌤️';
@@ -143,69 +148,63 @@ function wxEmoji(code) {
   return '⛅';
 }
 
-async function fetchTemp(lat, lon) {
-  const r = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-    `&current=temperature_2m,weather_code&temperature_unit=fahrenheit`
-  );
-  const d = await r.json();
-  return { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code };
-}
-
+// ── Render tile grid ───────────────────────────────────────────
 async function renderTiles(gridId, tiles) {
   const grid = document.getElementById(gridId);
   grid.innerHTML = tiles.map(t => `
-    <a class="tile" href="forecast.html?place=${t.slug}" id="tile-${t.slug}">
-      <div class="t-emoji">⛅</div>
+    <a class="tile" href="forecast.html?lat=${t.lat}&lon=${t.lon}&name=${encodeURIComponent(t.name)}">
+      <div class="t-emoji" id="e-${t.slug}">⏳</div>
       <div class="t-name">${t.name}</div>
-      <div class="t-temp t-loading">—</div>
+      <div class="t-temp" id="tmp-${t.slug}"><span class="t-loading">…</span></div>
     </a>`).join('');
 
   await Promise.all(tiles.map(async t => {
     try {
-      const w = await fetchTemp(t.lat, t.lon);
-      const el = document.getElementById(`tile-${t.slug}`);
-      if (el) el.innerHTML = `
-        <div class="t-emoji">${wxEmoji(w.code)}</div>
-        <div class="t-name">${t.name}</div>
-        <div class="t-temp">${w.temp}°</div>`;
-    } catch { /* stays as skeleton */ }
+      const r = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${t.lat}&longitude=${t.lon}` +
+        `&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`
+      );
+      const d = await r.json();
+      const c = d.current;
+      document.getElementById(`e-${t.slug}`).textContent   = wxEmoji(c.weather_code);
+      document.getElementById(`tmp-${t.slug}`).textContent = `${Math.round(c.temperature_2m)}°`;
+    } catch {
+      document.getElementById(`e-${t.slug}`).textContent   = '❓';
+      document.getElementById(`tmp-${t.slug}`).textContent = '--';
+    }
   }));
 }
 
-// ── geocoding search ────────────────────────────────────────────
-function forecastUrl(r) {
-  return `forecast.html?lat=${r.latitude}&lon=${r.longitude}&name=${encodeURIComponent(r.display)}`;
-}
-
+// ── Geocode via Open-Meteo ─────────────────────────────────────
 async function geocode(query) {
-  const url = `https://geocoding-api.open-meteo.com/v1/search` +
-              `?name=${encodeURIComponent(query)}&count=8&language=en&format=json`;
-  const r = await fetch(url);
+  const r = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8`
+  );
   const d = await r.json();
-  return (d.results || []).map(loc => ({
-    display: [loc.name, loc.admin1, loc.country].filter(Boolean).join(', '),
-    latitude: loc.latitude,
-    longitude: loc.longitude,
-  }));
+  return (d.results || []).slice(0, 6);
 }
 
-function popularItems(names) {
-  return names.map(n => `
-    <a class="d-item" href="forecast.html?name=${encodeURIComponent(n)}&search=1" role="option">
-      <span>${n}</span>
+// ── Dropdown item builders ─────────────────────────────────────
+function popularItems(list) {
+  return list.map(name => `
+    <a class="d-item" href="forecast.html?name=${encodeURIComponent(name)}&search=1">
+      <span>${name}</span>
       <i class="fa-solid fa-chevron-right d-arrow"></i>
     </a>`).join('');
 }
 
 function geoItems(results) {
-  return results.map(r => `
-    <a class="d-item" href="${forecastUrl(r)}" role="option">
-      <span>${r.display}</span>
+  return results.map(r => {
+    const label = [r.name, r.admin1, r.country].filter(Boolean).join(', ');
+    return `
+    <a class="d-item" href="forecast.html?lat=${r.latitude}&lon=${r.longitude}&name=${encodeURIComponent(r.name)}">
+      <span>${label}</span>
       <i class="fa-solid fa-chevron-right d-arrow"></i>
-    </a>`).join('');
+    </a>`;
+  }).join('');
 }
 
+// ── Search setup (expands section on open) ─────────────────────
 function setupSearch(inputId, dropId, sectionId, suggestions) {
   const input   = document.getElementById(inputId);
   const drop    = document.getElementById(dropId);
@@ -214,7 +213,6 @@ function setupSearch(inputId, dropId, sectionId, suggestions) {
 
   function openDrop() {
     drop.classList.add('open');
-    // expand section so dropdown pushes content below, no overlap
     requestAnimationFrame(() => {
       section.style.paddingBottom = (drop.offsetHeight + 20) + 'px';
     });
@@ -230,44 +228,29 @@ function setupSearch(inputId, dropId, sectionId, suggestions) {
     openDrop();
   }
 
-  function showSearching() {
-    drop.innerHTML = `<div class="d-searching">Searching…</div>`;
-    openDrop();
-  }
-
   function showGeoResults(results, query) {
-    if (!results.length) {
-      drop.innerHTML = `<div class="d-empty">No results for "${query}" — try a different spelling</div>`;
-    } else {
-      drop.innerHTML = `<div class="d-hint">Results</div>` + geoItems(results);
-    }
+    drop.innerHTML = results.length
+      ? `<div class="d-hint">Results</div>` + geoItems(results)
+      : `<div class="d-empty">No results for "${query}" — try a different spelling</div>`;
     openDrop();
   }
 
-  input.addEventListener('focus', () => {
-    if (!input.value.trim()) showPopular();
-  });
+  input.addEventListener('focus', () => { if (!input.value.trim()) showPopular(); });
 
   input.addEventListener('input', () => {
     const q = input.value.trim();
     clearTimeout(timer);
     if (!q) { showPopular(); return; }
-    showSearching();
+    drop.innerHTML = `<div class="d-searching">Searching…</div>`;
+    openDrop();
     timer = setTimeout(async () => {
-      try {
-        const results = await geocode(q);
-        showGeoResults(results, q);
-      } catch {
-        drop.innerHTML = `<div class="d-empty">Search unavailable — check connection</div>`;
-        openDrop();
-      }
+      try { showGeoResults(await geocode(q), q); }
+      catch { drop.innerHTML = `<div class="d-empty">Search unavailable — check connection</div>`; }
     }, 320);
   });
 
   document.addEventListener('pointerdown', e => {
-    if (!drop.contains(e.target) && e.target !== input) {
-      closeDrop();
-    }
+    if (!drop.contains(e.target) && e.target !== input) closeDrop();
   });
 }
 
@@ -282,5 +265,6 @@ async function init() {
 
 init();
 </script>
+<script src="/components/navbar.js"></script>
 </body>
 </html>

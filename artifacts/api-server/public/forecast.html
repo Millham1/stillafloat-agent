@@ -4,35 +4,95 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Forecast | Still Afloat</title>
-<link rel="stylesheet" href="./css/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-body{margin:0;font-family:system-ui,sans-serif;background:#06111f;color:white;}
-.hero{position:relative;min-height:340px;padding:80px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(rgba(6,17,31,.45),rgba(6,17,31,.62)),linear-gradient(135deg,#0077b6,#00b4d8);background-size:cover;background-position:center;overflow:hidden;}
-.hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(to bottom,rgba(6,17,31,0),#06111f 100%);}
-.hero-content{position:relative;z-index:2;background:rgba(7,24,63,.45);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);border-radius:28px;padding:28px 34px;max-width:760px;}
-.hero h1{margin:0 0 12px;font-size:64px;line-height:1;}
-.hero p{margin:0;font-size:22px;color:rgba(255,255,255,.92);}
-.nav-links{position:absolute;top:20px;left:20px;z-index:5;display:flex;gap:12px;flex-wrap:wrap;}
-.nav-link{background:rgba(7,24,63,0.78);color:white;padding:12px 20px;border-radius:18px;text-decoration:none;font-weight:800;border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);transition:.2s ease;}
-.nav-link:hover{transform:translateY(-2px);background:rgba(0,119,182,.88);}
-.forecast-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;padding:30px;max-width:1200px;margin:auto;}
-.day-card{background:rgba(255,255,255,0.08);border-radius:22px;padding:18px;text-align:center;border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(10px);}
-.day-emoji{font-size:42px;margin-bottom:10px;}.day-temp{font-size:26px;font-weight:800;color:#5dff9a;}
-.error{max-width:900px;margin:40px auto;padding:24px;border-radius:22px;background:rgba(255,255,255,.08);text-align:center;}
-@media(max-width:768px){.hero{min-height:260px;padding:70px 16px;}.hero h1{font-size:42px;}.hero p{font-size:18px;}.hero-content{padding:22px;}.nav-links{left:12px;right:12px;gap:8px;}.nav-link{padding:10px 14px;font-size:14px;}}
+body{margin:0;font-family:'Baloo 2',system-ui,sans-serif;background:#06111f;color:white;}
+
+/* ── Hero ── */
+.hero{
+  position:relative;
+  min-height:320px;
+  padding:60px 20px 70px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  background:linear-gradient(rgba(6,17,31,.38),rgba(6,17,31,.55)),
+             linear-gradient(135deg,#0077b6,#00b4d8);
+  background-size:cover;
+  background-position:center;
+  overflow:hidden;
+}
+.hero::after{
+  content:'';
+  position:absolute;left:0;right:0;bottom:0;height:100px;
+  background:linear-gradient(to bottom,rgba(6,17,31,0),#06111f 100%);
+  pointer-events:none;
+}
+
+/* Title card — less opaque, more translucent so image shows through */
+.hero-content{
+  position:relative;
+  z-index:2;
+  background:rgba(4,14,36,.28);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:28px;
+  padding:28px 36px;
+  max-width:780px;
+}
+.hero h1{margin:0 0 10px;font-size:clamp(32px,5vw,58px);line-height:1.1;font-family:'Baloo 2',sans-serif;font-weight:800;}
+.hero p{margin:0;font-size:18px;color:rgba(255,255,255,.85);}
+
+/* ── Forecast grid ── */
+.forecast-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:16px;
+  padding:30px 24px 70px;
+  max-width:1200px;
+  margin:auto;
+}
+.day-card{
+  background:rgba(255,255,255,0.07);
+  border-radius:22px;
+  padding:20px 14px;
+  text-align:center;
+  border:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(10px);
+  transition:transform .22s ease, border-color .22s ease;
+}
+.day-card:hover{transform:translateY(-4px);border-color:rgba(93,255,154,.24);}
+.day-emoji{font-size:42px;margin-bottom:10px;}
+.day-temp{font-size:26px;font-weight:800;color:#5dff9a;}
+.day-low{color:rgba(255,255,255,.5);font-size:14px;margin-top:4px;}
+.day-label{color:rgba(255,255,255,.7);font-size:13px;margin-bottom:8px;font-weight:600;}
+
+.error{
+  max-width:700px;margin:40px auto;padding:28px;border-radius:22px;
+  background:rgba(255,255,255,.06);text-align:center;
+  border:1px solid rgba(255,255,255,.08);
+}
+
+@media(max-width:768px){
+  .hero{min-height:220px;padding:50px 16px;}
+  .hero-content{padding:20px 22px;}
+  .forecast-grid{padding:20px 16px 50px;gap:12px;}
+}
 </style>
 </head>
 <body>
+<div id="navbar-container"></div>
+
 <div class="hero" id="hero">
-  <div class="nav-links">
-    <a class="nav-link" href="index.html">🏠 Home</a>
-    <a class="nav-link" href="weather.html">🌦️ Weather</a>
-  </div>
   <div class="hero-content">
     <h1 id="title">Loading Forecast…</h1>
     <p>10-day cruise weather outlook</p>
   </div>
 </div>
+
 <div class="forecast-grid" id="forecast"></div>
 
 <script>
@@ -51,15 +111,14 @@ function wxEmoji(code) {
 
 async function loadHeroImage(searchName) {
   try {
-    const query = `${searchName} cruise port`;
     const r = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1`,
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchName + ' cruise port')}&per_page=1`,
       { headers: { Authorization: PEXELS_KEY } }
     );
     const d = await r.json();
     if (d.photos && d.photos.length) {
       document.getElementById('hero').style.backgroundImage =
-        `linear-gradient(rgba(6,17,31,.45),rgba(6,17,31,.62)), url(${d.photos[0].src.landscape})`;
+        `linear-gradient(rgba(6,17,31,.38),rgba(6,17,31,.55)), url(${d.photos[0].src.landscape})`;
     }
   } catch { /* keep gradient fallback */ }
 }
@@ -67,10 +126,10 @@ async function loadHeroImage(searchName) {
 function renderDays(days) {
   document.getElementById('forecast').innerHTML = days.map(item => `
     <div class="day-card">
-      <div>${new Date(item.day).toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})}</div>
+      <div class="day-label">${new Date(item.day + 'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
       <div class="day-emoji">${item.emoji}</div>
       <div class="day-temp">${item.high}°</div>
-      <div>${item.low}° low</div>
+      <div class="day-low">${item.low}° low</div>
     </div>`).join('');
 }
 
@@ -84,7 +143,7 @@ async function fetchByCoords(lat, lon, displayName) {
   if (!r.ok) throw new Error('Weather fetch failed');
   const d = await r.json();
   document.getElementById('title').textContent = displayName;
-  loadHeroImage(displayName); // fire and forget
+  loadHeroImage(displayName);
   renderDays(d.daily.time.map((day, i) => ({
     day,
     emoji: wxEmoji(d.daily.weather_code[i]),
@@ -114,15 +173,10 @@ async function loadForecast() {
 
   try {
     if (lat && lon && name) {
-      // came from geocoding search result — we already have coords
       await fetchByCoords(parseFloat(lat), parseFloat(lon), decodeURIComponent(name));
-
     } else if (name && search) {
-      // came from popular-suggestion click — geocode the name
       await geocodeAndFetch(decodeURIComponent(name));
-
     } else {
-      // slug-based lookup via our API (known ports on the tile grid)
       const slug = place || 'miami';
       const r = await fetch(`/api/weather?place=${encodeURIComponent(slug)}`);
       const d = await r.json();
@@ -141,5 +195,6 @@ async function loadForecast() {
 
 loadForecast();
 </script>
+<script src="/components/navbar.js"></script>
 </body>
 </html>

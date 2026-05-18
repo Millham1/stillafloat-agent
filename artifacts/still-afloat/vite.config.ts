@@ -76,6 +76,14 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/website/, ""),
       },
+      "/components": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/assets": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
     },
   },
   preview: {

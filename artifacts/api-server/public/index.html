@@ -5,111 +5,185 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Still Afloat Cruising | Cruise Smarter</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link rel="stylesheet" href="./css/styles.css?v=20260511-home-layout-refresh-6">
+<link rel="stylesheet" href="./css/styles.css?v=20260518-nav-refresh">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
+/* ── Hero ── */
 .hero{
   position:relative;
-  padding-top:140px;
+  padding:80px 20px 130px;
 }
-.hero-nav{
-  position:absolute;
-  top:22px;
-  right:22px;
-  width:fit-content;
-  display:inline-block;
-  z-index:20;
-  background:
-    linear-gradient(180deg, rgba(9,72,117,.96), rgba(4,33,66,.96));
+
+/* ── Report / weather card polish ── */
+.gear-link{text-decoration:none;color:inherit;display:block}
+.gear-link:hover .gear-card{transform:translateY(-6px) scale(1.02);transition:all .32s cubic-bezier(.22,1,.36,1)}
+
+#report .report-grid{align-items:stretch;}
+#report .report-box{
+  position:relative;overflow:hidden;
+  background:radial-gradient(circle at top right, rgba(93,255,154,.14), transparent 34%),
+             linear-gradient(145deg, rgba(0,119,182,.54), rgba(7,24,63,.76)) !important;
+  border:1px solid rgba(255,255,255,.16) !important;
+  border-radius:28px;
   backdrop-filter:blur(14px);
-  border:1px solid rgba(123,214,255,.32);
-  border-radius:24px;
-  padding:10px 14px;
-  box-shadow:
-    0 18px 40px rgba(0,0,0,.38),
-    inset 0 1px 0 rgba(255,255,255,.18),
-    inset 0 -1px 0 rgba(0,0,0,.24);
+  box-shadow:0 18px 42px rgba(0,0,0,.22);
 }
-.hero-nav::before{
-  content:'';
-  position:absolute;
-  inset:0;
-  border-radius:24px;
-  padding:1px;
-  background:linear-gradient(135deg, rgba(125,225,255,.38), rgba(255,255,255,.06));
-  -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite:xor;
-  mask-composite:exclude;
+#report .report-box::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0));
   pointer-events:none;
 }
-.hero-nav .nav-row{
-  display:flex;
-  justify-content:flex-end;
-  gap:8px;
-}
-.hero-nav .secondary{
-  margin-top:6px;
-}
-.hero-nav a{
-  display:inline-block;
-  font-size:13px;
-  padding:9px 14px;
-  border-radius:14px;
-  color:#ffffff;
+#report .report-box h3{position:relative;color:#ffffff;text-shadow:0 2px 10px rgba(0,0,0,.22);}
+
+/* ── Weather tiles ── */
+.weather-hint{color:rgba(93,255,154,.92);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:8px 0 18px;text-shadow:0 0 12px rgba(93,255,154,.28);font-weight:700;}
+#weather-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px;margin-top:18px;}
+.home-weather-tile{
+  background:radial-gradient(circle at top, rgba(255,255,255,.14), transparent 42%),
+             linear-gradient(180deg, rgba(11,96,145,.70), rgba(7,24,63,.78));
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:24px;
+  backdrop-filter:blur(12px);
+  padding:18px 10px;
+  text-align:center;
   text-decoration:none;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.08);
-  transition:all .2s ease;
-  text-shadow:0 1px 4px rgba(0,0,0,.3);
+  transition:all .28s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 10px 22px rgba(0,0,0,.20);
 }
-.hero-nav a:hover{
-  background:rgba(93,255,154,.16);
-  border-color:rgba(93,255,154,.32);
-  color:#5dff9a;
-  transform:translateY(-1px);
+.home-weather-tile:hover{
+  transform:translateY(-5px) scale(1.04);
+  border-color:rgba(93,255,154,.40);
+  box-shadow:0 20px 40px rgba(0,0,0,.32);
+  background:radial-gradient(circle at top, rgba(93,255,154,.20), transparent 45%),
+             linear-gradient(180deg, rgba(0,119,182,.80), rgba(7,24,63,.88));
 }
-.hero-nav .secondary a{
-  font-size:12px;
-  padding:8px 12px;
+.home-weather-emoji{font-size:40px;line-height:1;margin-bottom:8px;}
+.home-weather-location{color:white;font-weight:800;font-size:15px;margin-bottom:5px;}
+.home-weather-temp{color:#5dff9a;font-size:22px;font-weight:900;}
+
+/* ── News feed in report ── */
+#news-container > div{border-bottom:1px solid rgba(255,255,255,.14) !important;}
+#news-container a{color:#ffffff !important;text-shadow:0 1px 6px rgba(0,0,0,.16);}
+#news-container a:hover{color:#5dff9a !important;}
+
+/* ── Smooth section reveals ── */
+.section, .report-box, .flavor-card, .home-weather-tile {
+  transition:opacity .65s cubic-bezier(.22,1,.36,1), transform .65s cubic-bezier(.22,1,.36,1);
 }
-.gear-link{text-decoration:none;color:inherit;display:block}
-.gear-link:hover .gear-card{transform:translateY(-6px) scale(1.02);transition:all .25s ease}
-#report .report-grid{align-items:stretch;}
-#report .report-box{position:relative;overflow:hidden;background:radial-gradient(circle at top right, rgba(93,255,154,.16), transparent 34%),linear-gradient(145deg, rgba(0,119,182,.58), rgba(7,24,63,.78)) !important;border:1px solid rgba(255,255,255,.18) !important;border-radius:28px;backdrop-filter:blur(14px);box-shadow:0 18px 42px rgba(0,0,0,.24);}#report .report-box::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,0));pointer-events:none;}#report .report-box h3{position:relative;color:#ffffff;text-shadow:0 2px 10px rgba(0,0,0,.24);} .weather-hint{color:rgba(93,255,154,.92);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:8px 0 18px;text-shadow:0 0 12px rgba(93,255,154,.28);font-weight:700;}#weather-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px;margin-top:18px;}.home-weather-tile{background:radial-gradient(circle at top, rgba(255,255,255,.16), transparent 42%),linear-gradient(180deg, rgba(11,96,145,.72), rgba(7,24,63,.80));border:1px solid rgba(255,255,255,.16);border-radius:24px;backdrop-filter:blur(12px);padding:18px 10px;text-align:center;text-decoration:none;transition:all .22s ease;box-shadow:0 12px 24px rgba(0,0,0,.22);} .home-weather-tile:hover{transform:translateY(-5px) scale(1.03);border-color:rgba(93,255,154,.42);box-shadow:0 20px 40px rgba(0,0,0,.34);background:radial-gradient(circle at top, rgba(93,255,154,.22), transparent 45%),linear-gradient(180deg, rgba(0,119,182,.82), rgba(7,24,63,.88));}.home-weather-emoji{font-size:42px;line-height:1;margin-bottom:10px;}.home-weather-location{color:white;font-weight:800;font-size:16px;margin-bottom:6px;}.home-weather-temp{color:#5dff9a;font-size:24px;font-weight:900;}#news-container > div{border-bottom:1px solid rgba(255,255,255,.18) !important;}#news-container a{color:#ffffff !important;text-shadow:0 1px 6px rgba(0,0,0,.18);}#news-container a:hover{color:#5dff9a !important;}
+
+/* ── Brand text ── */
+.sa-still{font-family:Pacifico,cursive;color:#ffca4f;text-shadow:0 2px 8px rgba(255,202,79,.28);}
+.sa-afloat{font-family:Pacifico,cursive;color:#5dff9a;text-shadow:0 2px 8px rgba(93,255,154,.22);}
 </style>
 </head>
 <body>
+<div id="navbar-container"></div>
 <header class="banner-header" id="top"><img class="banner-image" src="./assets/images/Youtube banner cropped.png" alt="Still Afloat YouTube banner"></header>
 <main>
+
 <section class="hero">
-<nav class="hero-nav">
-<div class="nav-row">
-<a href="#vibe">The Vibe</a>
-<a href="#report">Cruise Report</a>
-<a href="#mark">Meet Mark</a>
-<a href="#watch">YouTube</a>
-</div>
-<div class="nav-row secondary">
-<a href="affiliate.html">Gear</a>
-<a href="#">Book Your Cruise</a>
-</div>
-</nav>
 <div class="hero-overlay"></div>
 <div class="hero-content">
-<div class="hero-text">
+<div class="hero-text reveal">
 <p class="eyebrow"><i class="fa-solid fa-anchor"></i> Cruise planning with personality</p>
 <h1><span>Cruise smarter. </span><span>Laugh more.</span></h1>
-<p><strong>Still Afloat</strong> is cruise planning with common sense and a conga line spirit: ship stories, port-day reality, casino-offer lessons, gear at sea, and practical advice from someone who has lived the water life.</p>
+<p><strong><span class="sa-still">Still</span> <span class="sa-afloat">Afloat</span></strong> is cruise planning with common sense and a conga line spirit: ship stories, port-day reality, casino-offer lessons, gear at sea, and practical advice from someone who has lived the water life.</p>
 </div>
 </div>
 </section>
-<section id="vibe" class="section vibe-section"><div class="wrap vibe-panel"><div><p class="section-kicker">The actual vibe</p><h2>Part cruise desk. Part conga line. Part real-world travel talk.</h2></div><div class="big-copy"><p>This site helps regular people make better cruise decisions before money, vacation time, and patience get wasted.</p><p>We’ll talk ships, cabins, ports, cameras, packing, food, casino offers, loyalty perks, hotels, flights, embarkation, and whatever else shows up between booking day and the gangway.</p></div></div></section>
-<section id="report" class="section report-section high-report"><div class="wrap"><p class="section-kicker">Cruise Report</p><h2>What’s happening out there right now</h2><div class="report-grid"><div class="report-box"><h3>Cruise News</h3><div id="news-container"></div><div style="margin-top:24px;"><a href="news.html" style="display:inline-block;background:#0077b6;color:#5dff9a;padding:14px 24px;border-radius:16px;font-weight:800;font-size:20px;box-shadow:0 10px 24px rgba(0,0,0,0.18);border:2px solid rgba(255,255,255,0.2);">More News →</a></div></div><div class="report-box"><h3>Port Weather</h3><div class="weather-hint">🧭 Select a port to explore the live 10-day forecast</div><div id="weather-container"></div><div style="margin-top:24px;"><a href="weather.html" style="display:inline-block;background:#0077b6;color:#5dff9a;padding:14px 24px;border-radius:16px;font-weight:800;font-size:20px;box-shadow:0 10px 24px rgba(0,0,0,0.18);border:2px solid rgba(255,255,255,0.2);">More Ports and Destination Weather →</a></div></div></div></div></section>
-<section class="section card-section"><div class="wrap cards"><article class="flavor-card ship-card"><div><i class="fa-solid fa-ship"></i><h3>Ship & Cabin Choices</h3><p>Which ship fits the trip, when the cheaper cabin is fine, and when paying more buys a better vacation.</p></div></article><a class="gear-link" href="affiliate.html"><article class="flavor-card gear-card"><div><i class="fa-solid fa-camera-retro"></i><h3>Gear at Sea</h3><p>Packing smarter, traveling lighter, and figuring out what is actually worth bringing before you leave the dock.</p></div></article></a><article class="flavor-card casino-card"><div><i class="fa-solid fa-dice"></i><h3>Casino Offers & Reality</h3><p>What cruise offers really include, what is extra, and how to think about the math before chasing the offer.</p></div></article></div></section>
-<section id="mark" class="section mark-section"><div class="wrap meet-mark"><img class="bio-img" src="./assets/images/Bio shot.JPG" alt="Mark Millham"><div class="meet-mark-text"><p class="section-kicker">Meet Mark</p><h2>Experience,<br><span class="saltwater-line">with a little saltwater behind it.</span></h2><p>I’m Mark Millham — retired IT senior manager, veteran, former liveaboard sailor, and longtime cruiser.</p><p><strong>Still Afloat</strong> is where I break things down the way I actually think about them: what matters, what does not, where people waste money or spend wisely, and how to enjoy the trip without drowning in options.</p><p class="tagline">Cruise smarter. Laugh more. Stay Afloat.</p></div><img class="parrots-accent" src="./assets/images/parrots.JPG" alt="Mark with parrots"></div></section>
-<section id="watch" class="section youtube-section"><div class="wrap two-col"><div><p class="section-kicker">YouTube coming soon</p><h2>The channel is being built around the trip, not a studio script.</h2></div><div class="video-placeholder"><i class="fa-brands fa-youtube"></i><h3>First videos coming soon</h3><p>Planning episodes, ship selection, cruise prep, onboard lessons, travel-day decisions, and honest post-cruise takeaways.</p></div></div></section>
+
+<section id="vibe" class="section vibe-section">
+<div class="wrap vibe-panel reveal">
+<div><p class="section-kicker">The actual vibe</p><h2>Part cruise desk. Part conga line. Part real-world travel talk.</h2></div>
+<div class="big-copy">
+<p>This site helps regular people make better cruise decisions before money, vacation time, and patience get wasted.</p>
+<p>We'll talk ships, cabins, ports, cameras, packing, food, casino offers, loyalty perks, hotels, flights, embarkation, and whatever else shows up between booking day and the gangway.</p>
+</div>
+</div>
+</section>
+
+<section id="report" class="section report-section high-report">
+<div class="wrap">
+<p class="section-kicker">Cruise Report</p>
+<h2>What's happening out there right now</h2>
+<div class="report-grid">
+<div class="report-box reveal">
+<h3>Cruise News</h3>
+<div id="news-container"></div>
+<div style="margin-top:24px;">
+<a href="news.html" style="display:inline-block;background:#0077b6;color:#5dff9a;padding:14px 24px;border-radius:16px;font-weight:800;font-size:18px;box-shadow:0 10px 24px rgba(0,0,0,0.18);border:2px solid rgba(255,255,255,0.18);transition:all .25s ease;">More News →</a>
+</div>
+</div>
+<div class="report-box reveal" style="transition-delay:.12s">
+<h3>Port Weather</h3>
+<div class="weather-hint">🧭 Select a port to explore the live 10-day forecast</div>
+<div id="weather-container"></div>
+<div style="margin-top:24px;">
+<a href="weather.html" style="display:inline-block;background:#0077b6;color:#5dff9a;padding:14px 24px;border-radius:16px;font-weight:800;font-size:18px;box-shadow:0 10px 24px rgba(0,0,0,0.18);border:2px solid rgba(255,255,255,0.18);transition:all .25s ease;">More Ports &amp; Destination Weather →</a>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="section card-section">
+<div class="wrap cards">
+<article class="flavor-card ship-card reveal">
+<div><i class="fa-solid fa-ship"></i><h3>Ship &amp; Cabin Choices</h3><p>Which ship fits the trip, when the cheaper cabin is fine, and when paying more buys a better vacation.</p></div>
+</article>
+<a class="gear-link reveal" href="affiliate.html" style="transition-delay:.10s">
+<article class="flavor-card gear-card">
+<div><i class="fa-solid fa-camera-retro"></i><h3>Gear at Sea</h3><p>Packing smarter, traveling lighter, and figuring out what is actually worth bringing before you leave the dock.</p></div>
+</article>
+</a>
+<article class="flavor-card casino-card reveal" style="transition-delay:.20s">
+<div><i class="fa-solid fa-dice"></i><h3>Casino Offers &amp; Reality</h3><p>What cruise offers really include, what is extra, and how to think about the math before chasing the offer.</p></div>
+</article>
+</div>
+</section>
+
+<section id="mark" class="section mark-section">
+<div class="wrap meet-mark">
+<img class="bio-img reveal" src="./assets/images/Bio shot.JPG" alt="Mark Millham">
+<div class="meet-mark-text reveal" style="transition-delay:.10s">
+<p class="section-kicker">Meet Mark</p>
+<h2>Experience,<br><span class="saltwater-line">with a little saltwater behind it.</span></h2>
+<p>I'm Mark Millham — retired IT senior manager, veteran, former liveaboard sailor, and longtime cruiser.</p>
+<p><strong><span class="sa-still">Still</span> <span class="sa-afloat">Afloat</span></strong> is where I break things down the way I actually think about them: what matters, what does not, where people waste money or spend wisely, and how to enjoy the trip without drowning in options.</p>
+<p class="tagline">Cruise smarter. Laugh more. <span class="sa-still">Stay</span> <span class="sa-afloat">Afloat.</span></p>
+</div>
+<img class="parrots-accent" src="./assets/images/parrots.JPG" alt="Mark with parrots">
+</div>
+</section>
+
+<section id="watch" class="section youtube-section">
+<div class="wrap two-col reveal">
+<div><p class="section-kicker">YouTube coming soon</p><h2>The channel is being built around the trip, not a studio script.</h2></div>
+<div class="video-placeholder"><i class="fa-brands fa-youtube"></i><h3>First videos coming soon</h3><p>Planning episodes, ship selection, cruise prep, onboard lessons, travel-day decisions, and honest post-cruise takeaways.</p></div>
+</div>
+</section>
+
 </main>
-<footer><p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. Stay Afloat.</p></footer>
+<footer><p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <span class="sa-still">Stay</span> <span class="sa-afloat">Afloat.</span></p></footer>
+
+<script src="/components/navbar.js"></script>
 <script src="./js/app.js?v=20260505-1"></script>
 <script src="./js/news.js"></script>
 <script src="./js/weather.js"></script>
-</body></html>
+
+<script>
+// Smooth reveal on scroll
+(function() {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+})();
+</script>
+</body>
+</html>
