@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -44,8 +44,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-14 flex-shrink-0 border-b bg-card flex items-center px-6">
-          <h1 className="text-sm font-semibold tracking-tight">Editorial Command Center</h1>
+        <header className="h-14 flex-shrink-0 border-b bg-card flex items-center px-6 gap-4">
+          <h1 className="text-sm font-semibold tracking-tight flex-1">Editorial Command Center</h1>
+          <a
+            href="/website/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            View Website
+          </a>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
           {children}
