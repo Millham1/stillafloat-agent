@@ -17,11 +17,9 @@ body{background:radial-gradient(circle at top right,rgba(0,119,182,.22),transpar
 .weather-section > p{color:rgba(255,255,255,.76);margin-bottom:24px}
 .weather-hint{color:rgba(93,255,154,.92);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:-4px 0 22px;font-weight:700}
 .weather-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px;margin-bottom:32px}
-.weather-tile{position:relative;overflow:hidden;border-radius:26px;border:1px solid rgba(255,255,255,.10);text-align:center;text-decoration:none;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;box-shadow:0 12px 28px rgba(0,0,0,.22);aspect-ratio:1/1.05;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(7,24,63,.82)}
-.tile-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.28;transition:opacity .3s ease}
-.weather-tile:hover .tile-bg{opacity:.48}
+.weather-tile{border-radius:26px;border:1px solid rgba(255,255,255,.10);text-align:center;text-decoration:none;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;box-shadow:0 12px 28px rgba(0,0,0,.22);aspect-ratio:1/1.05;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(7,24,63,.82)}
 .weather-tile:hover{transform:translateY(-6px) scale(1.03);border-color:rgba(93,255,154,.38);box-shadow:0 22px 44px rgba(0,0,0,.36)}
-.tile-inner{position:relative;z-index:1;padding:8px 4px}
+.tile-inner{padding:8px 4px}
 .weather-emoji{font-size:46px;line-height:1;margin-bottom:10px}
 .weather-location{color:white;font-weight:800;font-size:15px;margin-bottom:6px;text-shadow:0 1px 6px rgba(0,0,0,.6)}
 .weather-temp{color:#5dff9a;font-size:26px;font-weight:900;text-shadow:0 1px 8px rgba(0,0,0,.5)}
@@ -39,7 +37,6 @@ body{background:radial-gradient(circle at top right,rgba(0,119,182,.22),transpar
 .search-result{display:flex;align-items:center;gap:14px;padding:12px 18px;color:white;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.06);transition:.16s ease;cursor:pointer}
 .search-result:last-child{border-bottom:none}
 .search-result:hover{background:rgba(0,119,182,.28);color:#5dff9a}
-.result-thumb{width:52px;height:40px;border-radius:10px;object-fit:cover;background:rgba(255,255,255,.08);flex-shrink:0}
 .result-name{font-weight:700;font-size:15px}
 .result-arrow{margin-left:auto;color:rgba(255,255,255,.3);font-size:13px}
 footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.52)}
@@ -85,7 +82,6 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.52)}
 </main>
 <footer><p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. Stay Afloat.</p></footer>
 <script>
-const PEXELS_KEY = 'P82hqxcbAMVh4XpB7Dr3zwUrzWY1kldO6Q8QvO9XkJ8FXGsl4iH6ebzA';
 
 const EMBARKATION_PORTS = [
   {name:'Miami',           slug:'miami',           lat:25.7617, lon:-80.1918, img:null, query:'Miami port skyline'},
@@ -163,25 +159,6 @@ function weatherEmoji(code) {
   return '⛅';
 }
 
-const _imgCache = new Map();
-let _pexelsQueue = Promise.resolve();
-function fetchPexelsImage(query) {
-  if (_imgCache.has(query)) return Promise.resolve(_imgCache.get(query));
-  _pexelsQueue = _pexelsQueue.then(() => new Promise(res => setTimeout(res, 120))).then(async () => {
-    try {
-      const r = await fetch(
-        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
-        { headers: { Authorization: PEXELS_KEY } }
-      );
-      const d = await r.json();
-      const url = d.photos?.[0]?.src?.medium || null;
-      _imgCache.set(query, url);
-      return url;
-    } catch { _imgCache.set(query, null); return null; }
-  });
-  return _pexelsQueue;
-}
-
 async function fetchWeather(lat, lon) {
   const r = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`
@@ -190,13 +167,11 @@ async function fetchWeather(lat, lon) {
   return { temp: Math.round(d.current.temperature_2m), code: d.current.weather_code };
 }
 
-function buildTile(item, weather, imgUrl) {
+function buildTile(item, weather) {
   const emoji = weather ? weatherEmoji(weather.code) : '🌴';
   const temp  = weather ? `${weather.temp}°` : '--';
-  const bg    = imgUrl  ? `<div class="tile-bg" style="background-image:url('${imgUrl}')"></div>` : '';
   return `
     <a class="weather-tile" href="forecast.html?place=${item.slug}">
-      ${bg}
       <div class="tile-inner">
         <div class="weather-emoji">${emoji}</div>
         <div class="weather-location">${item.name}</div>
@@ -217,29 +192,11 @@ async function renderGrid(gridId, dataset) {
       </div>
     </a>`).join('');
 
-  // Phase 1: fetch all weather in parallel (Open-Meteo has no rate limit)
   await Promise.all(dataset.map(async item => {
     const weather = await fetchWeather(item.lat, item.lon).catch(() => null);
-    item.weather = weather;
     const tile = document.getElementById(`tile-${item.slug}`);
-    if (tile) tile.outerHTML = buildTile(item, weather, null);
+    if (tile) tile.outerHTML = buildTile(item, weather);
   }));
-
-  // Phase 2: stream port images in sequentially to avoid Pexels 429
-  for (const item of dataset) {
-    const imgUrl = await fetchPexelsImage(item.query).catch(() => null);
-    item.img = imgUrl;
-    if (!imgUrl) continue;
-    const tile = document.getElementById(`tile-${item.slug}`);
-    if (!tile) continue;
-    let bg = tile.querySelector('.tile-bg');
-    if (!bg) {
-      bg = document.createElement('div');
-      bg.className = 'tile-bg';
-      tile.insertBefore(bg, tile.firstChild);
-    }
-    bg.style.backgroundImage = `url('${imgUrl}')`;
-  }
 }
 
 function buildDropdown(dropdown, dataset, filter = '') {
@@ -249,16 +206,11 @@ function buildDropdown(dropdown, dataset, filter = '') {
   if (!results.length) {
     dropdown.innerHTML = '<div class="search-result" style="color:rgba(255,255,255,.4);cursor:default">No ports found</div>';
   } else {
-    dropdown.innerHTML = results.map(item => {
-      const thumb = item.img
-        ? `<img class="result-thumb" src="${item.img}" alt="${item.name}" loading="lazy">`
-        : `<div class="result-thumb"></div>`;
-      return `<a class="search-result" href="forecast.html?place=${item.slug}">
-        ${thumb}
+    dropdown.innerHTML = results.map(item => `
+      <a class="search-result" href="forecast.html?place=${item.slug}">
         <span class="result-name">${item.name}</span>
         <span class="result-arrow"><i class="fa-solid fa-chevron-right"></i></span>
-      </a>`;
-    }).join('');
+      </a>`).join('');
   }
   dropdown.classList.add('open');
 }
