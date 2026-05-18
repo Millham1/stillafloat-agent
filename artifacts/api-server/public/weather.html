@@ -52,9 +52,11 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.45)}
 
 <main class="shell">
 
-  <section class="section">
+  <section class="section" id="embark-section">
     <h2>Top US Embarkation Ports</h2>
     <p>Live conditions at the 12 busiest American cruise departure ports.</p>
+    <div class="hint">🧭 Tap any port for a full 10-day forecast</div>
+    <div class="grid" id="embark-grid"></div>
     <div class="search-wrap">
       <div class="search-label">Search any embarkation port worldwide</div>
       <div class="search-row">
@@ -64,13 +66,13 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.45)}
         <div class="dropdown" id="embark-dropdown" role="listbox"></div>
       </div>
     </div>
-    <div class="hint">🧭 Tap any port below for a full 10-day forecast</div>
-    <div class="grid" id="embark-grid"></div>
   </section>
 
-  <section class="section">
+  <section class="section" id="dest-section">
     <h2>Top Caribbean &amp; Bahamas Destinations</h2>
     <p>Live conditions at the most popular cruise ports of call.</p>
+    <div class="hint">🌴 Tap any destination for a full 10-day forecast</div>
+    <div class="grid" id="dest-grid"></div>
     <div class="search-wrap">
       <div class="search-label">Search any cruise destination worldwide</div>
       <div class="search-row">
@@ -80,8 +82,6 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.45)}
         <div class="dropdown" id="dest-dropdown" role="listbox"></div>
       </div>
     </div>
-    <div class="hint">🌴 Tap any destination below for a full 10-day forecast</div>
-    <div class="grid" id="dest-grid"></div>
   </section>
 
 </main>
@@ -206,20 +206,33 @@ function geoItems(results) {
     </a>`).join('');
 }
 
-function setupSearch(inputId, dropId, suggestions) {
-  const input = document.getElementById(inputId);
-  const drop  = document.getElementById(dropId);
-  let timer   = null;
+function setupSearch(inputId, dropId, sectionId, suggestions) {
+  const input   = document.getElementById(inputId);
+  const drop    = document.getElementById(dropId);
+  const section = document.getElementById(sectionId);
+  let timer     = null;
+
+  function openDrop() {
+    drop.classList.add('open');
+    // expand section so dropdown pushes content below, no overlap
+    requestAnimationFrame(() => {
+      section.style.paddingBottom = (drop.offsetHeight + 20) + 'px';
+    });
+  }
+
+  function closeDrop() {
+    drop.classList.remove('open');
+    section.style.paddingBottom = '';
+  }
 
   function showPopular() {
-    drop.innerHTML =
-      `<div class="d-hint">Popular</div>` + popularItems(suggestions);
-    drop.classList.add('open');
+    drop.innerHTML = `<div class="d-hint">Popular</div>` + popularItems(suggestions);
+    openDrop();
   }
 
   function showSearching() {
     drop.innerHTML = `<div class="d-searching">Searching…</div>`;
-    drop.classList.add('open');
+    openDrop();
   }
 
   function showGeoResults(results, query) {
@@ -228,7 +241,7 @@ function setupSearch(inputId, dropId, suggestions) {
     } else {
       drop.innerHTML = `<div class="d-hint">Results</div>` + geoItems(results);
     }
-    drop.classList.add('open');
+    openDrop();
   }
 
   input.addEventListener('focus', () => {
@@ -246,13 +259,14 @@ function setupSearch(inputId, dropId, suggestions) {
         showGeoResults(results, q);
       } catch {
         drop.innerHTML = `<div class="d-empty">Search unavailable — check connection</div>`;
+        openDrop();
       }
     }, 320);
   });
 
   document.addEventListener('pointerdown', e => {
     if (!drop.contains(e.target) && e.target !== input) {
-      drop.classList.remove('open');
+      closeDrop();
     }
   });
 }
@@ -262,8 +276,8 @@ async function init() {
     renderTiles('embark-grid', EMBARK_TILES),
     renderTiles('dest-grid',   DEST_TILES),
   ]);
-  setupSearch('embark-input', 'embark-dropdown', POPULAR_EMBARK);
-  setupSearch('dest-input',   'dest-dropdown',   POPULAR_DEST);
+  setupSearch('embark-input', 'embark-dropdown', 'embark-section', POPULAR_EMBARK);
+  setupSearch('dest-input',   'dest-dropdown',   'dest-section',   POPULAR_DEST);
 }
 
 init();
