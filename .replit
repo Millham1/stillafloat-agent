@@ -39,3 +39,4 @@ externalPort = 3000
 
 [userenv.shared]
 SUPABASE_ANON_KEY = "sb_publishable_F8i-HsaYfStwfcqfoWzkzw_ZcekDZyR"
+OPENAI_API_KEY = "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"
