@@ -73,6 +73,17 @@ The original GitHub repo (`Millham1/stillafloatcruising.com`) is the source of r
 3. Add the custom domain in Replit deployment settings
 4. Cancel Vercel
 
+### Weather system context (from SAF_WEATHER_REQUIREMENTS.md):
+- Weather is **operational travel intelligence**, not a widget or weather app
+- Guiding question: "How does weather affect travelers, cruisers, ports, flights, and itineraries?"
+- Visual direction: cinematic, glass/translucent, premium — NOT boxy or cartoonish
+- Priority 1: cruise port intelligence (embarkation + destination ports)
+- Priority 2: storm / hurricane intelligence (tropical systems, itinerary impacts)
+- Priority 3: travel disruption intelligence (airport delays, flooding, heat, severe weather)
+- Future: AI weather agent, itinerary impact scoring, embarkation alerts, AI traveler advisories
+- Mobile: quick operational awareness, low clutter, swipe-friendly
+- Full spec: `SAF_WEATHER_REQUIREMENTS.md` at project root
+
 ### Brand context (from SAF_CONTEXT.md):
 - Owner: Mark Millham — retired IT Senior Manager, veteran, former liveaboard sailor, North Carolina
 - Tone: Practical, experienced, tropical premium, funny without being cheesy
