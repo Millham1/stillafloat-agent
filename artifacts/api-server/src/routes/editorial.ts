@@ -32,7 +32,7 @@ function serverSideFilter(stories: Record<string, unknown>[]): Record<string, un
     return true;
   });
 
-  // 3. Deduplicate by topic entity — keep highest-tier story when same key term appears 3+ times
+  // 3. Deduplicate known disease clusters — max 1 per topic
   const termCount: Record<string, number> = {};
   const DEDUP_TERMS = [
     /\bhantavirus\b/i, /\bnorovirus\b/i, /\bcovid\b/i, /\bmpox\b/i,
@@ -51,7 +51,31 @@ function serverSideFilter(stories: Record<string, unknown>[]): Record<string, un
     if (!flagged) deduped.push(story);
   }
 
-  return deduped;
+  // 4. Entity-based dedup — catch same event reported by two sources
+  // Extract a fingerprint: (ship name or cruise line) + (event keyword)
+  const SHIP_NAMES = /\b(carnival(?: mardi gras| dream| vista| horizon| venezia| jubilee| celebration| luminosa|[a-z]+ [a-z]+)?|royal caribbean|norwegian(?: encore| prima| bliss| escape| getaway| breakaway|[a-z]+ [a-z]+)?|celebrity(?: beyond| edge| apex| ascent|[a-z]+)?|princess|msc|holland america|viking|disney|cunard|silversea|regent)\b/i;
+  const EVENT_KEYWORDS = /\b(rescue|save|saved|rescue[d]?|fire|flood|storm|collision|outbreak|delay|cancel|divert|reroute|sinking|abandon|aground|lawsuit|court|ban|overhauled|overturned|strike)\b/i;
+
+  function eventFingerprint(s: Record<string, unknown>): string | null {
+    const text = `${s.title || ""} ${s.summary || ""}`;
+    const shipMatch = SHIP_NAMES.exec(text);
+    const eventMatch = EVENT_KEYWORDS.exec(text);
+    if (shipMatch && eventMatch) {
+      return `${shipMatch[0].toLowerCase().split(" ")[0]}:${eventMatch[0].toLowerCase()}`;
+    }
+    return null;
+  }
+
+  const seenFingerprints = new Set<string>();
+  const entityDeduped = deduped.filter((s) => {
+    const fp = eventFingerprint(s);
+    if (!fp) return true;
+    if (seenFingerprints.has(fp)) return false;
+    seenFingerprints.add(fp);
+    return true;
+  });
+
+  return entityDeduped;
 }
 
 function authorize(req: Request): boolean {
@@ -88,21 +112,29 @@ router.get("/editorial-queue", async (req: Request, res: Response) => {
       stories?: Record<string, unknown>[];
     }>(PATHS.candidates, { generatedAt: undefined, stories: [] });
 
-    const queue = (candidates.stories || []).map((story) => ({
-      id: story.id,
-      title: story.title,
-      tier: story.tier ?? null,
-      category: story.category,
-      impactLevel: story.impactLevel,
-      travelerImpact: story.travelerImpact,
-      summary: (story.summary as string) || (story.synopsis as string),
-      reasoning: story.reasoning,
-      image: story.image,
-      link: story.link,
-      sourceLinks: story.sourceLinks || [],
-      featured: Boolean(story.featured || story.pinned),
-      homepageCandidate: Boolean(story.homepageCandidate),
-    }));
+    const queue = (candidates.stories || []).map((story) => {
+      const sourceLinks = (story.sourceLinks || []) as Array<Record<string, string>>;
+      const derivedSource =
+        (story.source as string) ||
+        sourceLinks[0]?.source ||
+        "";
+      return {
+        id: story.id,
+        title: story.title,
+        tier: story.tier ?? null,
+        category: story.category,
+        impactLevel: story.impactLevel,
+        travelerImpact: story.travelerImpact,
+        summary: (story.summary as string) || (story.synopsis as string),
+        reasoning: story.reasoning,
+        source: derivedSource,
+        image: story.image,
+        link: story.link,
+        sourceLinks,
+        featured: Boolean(story.featured || story.pinned),
+        homepageCandidate: Boolean(story.homepageCandidate),
+      };
+    });
 
     res.json({
       success: true,

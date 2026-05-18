@@ -50,6 +50,7 @@ export function normalizeStory(story: Record<string, any> = {}, index = 0) {
     reasoning: clean(story.reasoning || ""),
     homepageCandidate: Boolean(story.homepageCandidate || story.featured),
     featured: Boolean(story.featured || story.homepageCandidate),
+    source: clean(story.source || (Array.isArray(story.sources) ? story.sources[0] : "") || ""),
     sourceAttribution: Array.isArray(story.sourceAttribution)
       ? story.sourceAttribution
       : Array.isArray(story.sources)
