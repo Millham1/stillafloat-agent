@@ -2,7 +2,6 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { PATHS, readJson, writeJson } from "../lib/persistence";
 import { buildPublishingBundle } from "../lib/publishing-output";
 import { normalizeStory, normalizeStories, validatePublishingStory } from "../lib/story-normalizer";
-import { buildCandidateFeed } from "../lib/live-sources";
 import { runEditorialAgent } from "../lib/editorial-agent";
 import { renderEditorialDigest, sendEditorialDigest } from "../lib/email-delivery";
 
@@ -218,30 +217,22 @@ router.post("/scan-news", async (req: Request, res: Response) => {
   };
 
   try {
-    const rawStories = await buildCandidateFeed();
-    telemetry.ingestionCompleted = true;
-    telemetry.rawStoryCount = rawStories.length;
-
-    const normalizedStories = normalizeStories(rawStories);
-    telemetry.normalizationCompleted = true;
-    telemetry.normalizedStoryCount = normalizedStories.length;
-
     const curated = await runEditorialAgent({
-      stories: normalizedStories,
       openai: process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"],
     });
+    telemetry.ingestionCompleted = true;
     telemetry.aiCompleted = true;
     telemetry.degradedMode = Boolean(curated?.systemStatus?.degraded);
 
     const curatedStories = normalizeStories(curated.stories || []);
+    telemetry.curatedStoryCount = curatedStories.length;
 
     await writeJson(PATHS.candidates, {
       generatedAt: new Date().toISOString(),
       systemStatus: curated.systemStatus || null,
       stories: curatedStories,
-      homepageTop5: normalizeStories(curated.homepageTop5 || []).slice(0, 5),
+      homepageTop5: (curated.homepageTop5 || []).slice(0, 5),
       groupedDevelopments: curated.groupedDevelopments || [],
-      rejectedStories: normalizeStories(curated.rejectedStories || []),
       telemetry,
     });
     telemetry.persistenceCompleted = true;
@@ -263,7 +254,6 @@ router.post("/scan-news", async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      scannedStories: normalizedStories.length,
       curatedStories: curatedStories.length,
       degradedMode: telemetry.degradedMode,
       telemetry,
