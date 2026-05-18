@@ -172,18 +172,7 @@
 <script src="./js/weather.js"></script>
 
 <script>
-// Smooth reveal on scroll
-(function() {
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((e, i) => {
-      if (e.isIntersecting) {
-        e.target.classList.add('visible');
-        io.unobserve(e.target);
-      }
-    });
-  }, { threshold: 0.08 });
-  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
-})();
 </script>
+<script src="/components/navbar.js"></script>
 </body>
 </html>
