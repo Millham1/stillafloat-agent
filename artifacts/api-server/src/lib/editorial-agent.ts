@@ -235,6 +235,8 @@ REQUIRED TIER TARGETS for your final submission:
 - Tier 4: 1–2 stories
 You MUST have stories from at least 3 different tiers. A submission with 80%+ Tier 1 stories will be rejected.
 
+SOURCE LINKING RULE — critical: Every story you submit MUST have its "link" field set to the exact "url" value returned by the tool that provided the article. Never omit or leave "link" blank. If you didn't retrieve a story from a tool, do not include it.
+
 RESEARCH STRATEGY — follow this order:
 Round 1: Fetch cruise-specific sources (Cruise Hive, Cruise Radio) AND aviation/mainstream sources (Simple Flying, CNN Travel, Fox News Travel) in the SAME round to build a balanced candidate pool across Tiers 1 and 2.
 Round 2: Supplement with GNews searches for breaking events, plus lifestyle sources (The Points Guy, Skift, or Upgraded Points) for Tier 4 content.

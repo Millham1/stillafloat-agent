@@ -108,6 +108,5 @@ export function validatePublishingStory(story: Record<string, any> = {}) {
   if (!story.id) errors.push("missing id");
   if (!story.title) errors.push("missing title");
   if (!story.summary) errors.push("missing summary");
-  if (!story.link && !(story.sourceLinks || []).length) errors.push("missing source link");
   return errors;
 }
