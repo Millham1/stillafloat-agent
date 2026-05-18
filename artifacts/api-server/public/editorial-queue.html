@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editorial Queue | Still Afloat</title>
+<link rel="stylesheet" href="./css/styles.css">
+<style>
+body{margin:0;font-family:Poppins,sans-serif;background:linear-gradient(to bottom,#04111d,#0a1f34);color:white;padding:32px}h1{font-size:42px;margin-bottom:10px}.queue-grid{display:grid;gap:18px;margin-top:30px}.queue-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:24px;backdrop-filter:blur(12px)}.queue-card h2{margin-top:0;font-size:26px}.impact{display:inline-block;padding:6px 12px;border-radius:999px;background:rgba(93,255,154,.18);font-size:12px;font-weight:800;margin-bottom:16px}.summary{line-height:1.7;color:rgba(255,255,255,.82)}.reasoning{margin-top:18px;padding:18px;border-radius:18px;background:rgba(255,255,255,.04);color:#bde8ff}.actions{margin-top:20px;display:flex;gap:12px;flex-wrap:wrap}.actions a{text-decoration:none;color:white;padding:12px 18px;border-radius:999px;background:linear-gradient(180deg,#0e4672,#0a2748);font-weight:800}
+</style>
+</head>
+<body>
+<h1>Still Afloat Editorial Queue</h1>
+<p>AI-curated stories awaiting editorial approval and publication.</p>
+<div id="queue-grid" class="queue-grid"></div>
+<script>
+const AGENT_BASE_URL = '';
+
+async function loadQueue() {
+  const container = document.getElementById('queue-grid');
+
+  try {
+    const response = await fetch(`${AGENT_BASE_URL}/api/editorial-queue`);
+    const data = await response.json();
+
+    if (!data.success || !Array.isArray(data.stories)) {
+      throw new Error('Editorial queue unavailable');
+    }
+
+    container.innerHTML = data.stories.map(story => `
+      <article class="queue-card">
+        <div class="impact">${story.impactLevel || 'Standard Impact'}</div>
+        <h2>${story.title}</h2>
+        <div class="summary">${story.summary || ''}</div>
+
+        ${story.reasoning ? `
+          <div class="reasoning">
+            <strong>Editorial Intelligence:</strong><br><br>
+            ${story.reasoning}
+          </div>
+        ` : ''}
+
+        <div class="actions">
+          <a href="${story.link}" target="_blank">Original Source</a>
+          <a href="story.html?id=${story.id}">Preview Story</a>
+        </div>
+      </article>
+    `).join('');
+  } catch (error) {
+    console.error(error);
+
+    container.innerHTML = `
+      <div class="queue-card">
+        Editorial queue currently unavailable.
+      </div>
+    `;
+  }
+}
+
+loadQueue();
+</script>
+</body>
+</html>

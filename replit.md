@@ -48,29 +48,30 @@ An AI-powered editorial intelligence platform for Still Afloat cruise and travel
 
 ## Website (stillafloatcruising.com)
 
-The consumer-facing website is a **separate static HTML repo**: https://github.com/Millham1/stillafloatcruising.com
+The consumer-facing website is **served directly from the API server** — all static HTML/CSS/JS/image files live in `artifacts/api-server/public/`. No separate Vercel deployment needed for the website.
 
-It is auto-deployed to Vercel on every push to GitHub main. The editorial agent backend is its data source.
+The original GitHub repo (`Millham1/stillafloatcruising.com`) is the source of record for the static files, but the live version is now served by this Replit deployment.
 
-### What the website consumes from this API:
+### How it works:
+- Express serves static files from `artifacts/api-server/public/` for all non-`/api/*` paths
+- `AGENT_BASE_URL` is set to `''` (empty string) in all website JS — all API calls are same-origin relative URLs
+- The weather API (`GET /api/weather`) is ported from the old Vercel serverless function into `src/routes/weather.ts`
+
+### Key website endpoints (all same server):
 | Endpoint | Used by | Returns |
 |---|---|---|
-| `GET /api/homepage-feed` | `js/news.js` | `{ stories }` — 3-5 featured stories for homepage Cruise Report section |
+| `GET /api/homepage-feed` | `js/news.js` | `{ stories }` — featured stories for Cruise Report section |
 | `GET /api/news-feed` | `js/news.js` | `{ stories }` — full news list for `news.html` |
-| `GET /api/system-status` | `js/platform-status.js` | `{ pipeline: { degradedMode, degradedReason }, publishing: { approvedStories } }` |
-| `GET /api/editorial-queue` | `editorial-queue.html` | `{ stories }` — editorial queue viewer |
+| `GET /api/story-details?id=` | `story.html` | Full story with CliffsNotes summary + source link |
+| `GET /api/system-status` | `js/platform-status.js` | Pipeline health status |
+| `GET /api/weather?place=` | `js/weather.js` | Cruise port/destination forecast from Open-Meteo |
+| `GET /api/editorial-queue` | `editorial-queue.html` | Editorial queue viewer |
 
-### What does NOT go through this API:
-- **Weather** — `js/weather.js` calls Open-Meteo directly from the browser (free, no key)
-- **Port forecast** — `api/weather.js` is a Vercel serverless function with cruise port data, stays on Vercel
-
-### Cutover plan (when deploying to Replit production):
-Three files in the website repo need `AGENT_BASE_URL` changed from `https://stillafloat-agent.vercel.app` to the new Replit production URL:
-1. `js/news.js` — line 4
-2. `js/platform-status.js` — line 1
-3. `editorial-queue.html` — inside `<script>` block
-
-Format compatibility is confirmed — all endpoints return `{ stories: [...] }` which is exactly what the website expects.
+### To go fully live (cancel Vercel):
+1. Click **Publish** in Replit → get a `*.replit.app` URL
+2. In your domain registrar, point `stillafloatcruising.com` DNS to Replit
+3. Add the custom domain in Replit deployment settings
+4. Cancel Vercel
 
 ### Brand context (from SAF_CONTEXT.md):
 - Owner: Mark Millham — retired IT Senior Manager, veteran, former liveaboard sailor, North Carolina

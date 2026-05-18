@@ -1,0 +1,158 @@
+import { Router, type IRouter, type Request, type Response } from "express";
+
+const router: IRouter = Router();
+
+interface CruiseLocation {
+  slug: string;
+  name: string;
+  type: "embarkation" | "destination";
+  featured?: boolean;
+  lat: number;
+  lon: number;
+  query?: string;
+}
+
+const CRUISE_LOCATIONS: CruiseLocation[] = [
+  { slug:"miami", name:"Miami, Florida", type:"embarkation", featured:true, lat:25.7617, lon:-80.1918 },
+  { slug:"port-canaveral", name:"Port Canaveral, Florida", type:"embarkation", featured:true, lat:28.3922, lon:-80.6077 },
+  { slug:"fort-lauderdale", name:"Fort Lauderdale, Florida", type:"embarkation", featured:true, lat:26.1224, lon:-80.1373 },
+  { slug:"tampa", name:"Tampa, Florida", type:"embarkation", featured:true, lat:27.9506, lon:-82.4572 },
+  { slug:"galveston", name:"Galveston, Texas", type:"embarkation", featured:true, lat:29.3013, lon:-94.7977 },
+  { slug:"seattle", name:"Seattle, Washington", type:"embarkation", lat:47.6062, lon:-122.3321 },
+  { slug:"vancouver", name:"Vancouver, Canada", type:"embarkation", lat:49.2827, lon:-123.1207 },
+  { slug:"new-york", name:"New York City, New York", type:"embarkation", lat:40.7128, lon:-74.0060 },
+  { slug:"boston", name:"Boston, Massachusetts", type:"embarkation", lat:42.3601, lon:-71.0589 },
+  { slug:"new-orleans", name:"New Orleans, Louisiana", type:"embarkation", lat:29.9511, lon:-90.0715 },
+  { slug:"los-angeles", name:"Los Angeles / San Pedro, California", type:"embarkation", lat:33.7405, lon:-118.2775 },
+  { slug:"san-diego", name:"San Diego, California", type:"embarkation", lat:32.7157, lon:-117.1611 },
+  { slug:"san-francisco", name:"San Francisco, California", type:"embarkation", lat:37.7749, lon:-122.4194 },
+  { slug:"honolulu", name:"Honolulu, Hawaii", type:"embarkation", lat:21.3069, lon:-157.8583 },
+  { slug:"san-juan-embarkation", name:"San Juan, Puerto Rico", type:"embarkation", lat:18.4655, lon:-66.1057 },
+  { slug:"barcelona", name:"Barcelona, Spain", type:"embarkation", lat:41.3851, lon:2.1734 },
+  { slug:"rome-civitavecchia", name:"Rome / Civitavecchia, Italy", type:"embarkation", lat:42.0924, lon:11.7954 },
+  { slug:"athens-piraeus", name:"Athens / Piraeus, Greece", type:"embarkation", lat:37.9420, lon:23.6469 },
+  { slug:"venice", name:"Venice, Italy", type:"embarkation", lat:45.4408, lon:12.3155 },
+  { slug:"southampton", name:"Southampton, England", type:"embarkation", lat:50.9097, lon:-1.4044 },
+  { slug:"amsterdam", name:"Amsterdam, Netherlands", type:"embarkation", lat:52.3676, lon:4.9041 },
+  { slug:"copenhagen", name:"Copenhagen, Denmark", type:"embarkation", lat:55.6761, lon:12.5683 },
+  { slug:"sydney", name:"Sydney, Australia", type:"embarkation", lat:-33.8688, lon:151.2093 },
+  { slug:"dubai", name:"Dubai, United Arab Emirates", type:"embarkation", lat:25.2048, lon:55.2708 },
+  { slug:"nassau", name:"Nassau, Bahamas", type:"destination", featured:true, lat:25.0443, lon:-77.3504 },
+  { slug:"cozumel", name:"Cozumel, Mexico", type:"destination", featured:true, lat:20.4229, lon:-86.9223 },
+  { slug:"st-thomas", name:"St. Thomas, USVI", type:"destination", featured:true, lat:18.3381, lon:-64.8941 },
+  { slug:"grand-cayman", name:"Grand Cayman", type:"destination", featured:true, lat:19.3133, lon:-81.2546 },
+  { slug:"cococay", name:"CocoCay, Bahamas", type:"destination", featured:true, lat:25.8170, lon:-77.9390 },
+  { slug:"great-stirrup", name:"Great Stirrup Cay, Bahamas", type:"destination", featured:true, lat:25.8244, lon:-77.9120 },
+  { slug:"san-juan", name:"San Juan, Puerto Rico", type:"destination", featured:true, lat:18.4655, lon:-66.1057 },
+  { slug:"aruba", name:"Aruba", type:"destination", featured:true, lat:12.5211, lon:-69.9683 },
+  { slug:"costa-maya", name:"Costa Maya, Mexico", type:"destination", featured:true, lat:18.7140, lon:-87.7090 },
+  { slug:"roatan", name:"Roatán, Honduras", type:"destination", featured:true, lat:16.3247, lon:-86.5365 },
+  { slug:"st-maarten", name:"St. Maarten", type:"destination", lat:18.0425, lon:-63.0548 },
+  { slug:"barbados", name:"Barbados", type:"destination", lat:13.1939, lon:-59.5432 },
+  { slug:"st-lucia", name:"St. Lucia", type:"destination", lat:13.9094, lon:-60.9789 },
+  { slug:"antigua", name:"Antigua", type:"destination", lat:17.0608, lon:-61.7964 },
+  { slug:"curacao", name:"Curaçao", type:"destination", lat:12.1696, lon:-68.9900 },
+  { slug:"belize-city", name:"Belize City, Belize", type:"destination", lat:17.5046, lon:-88.1962 },
+  { slug:"key-west", name:"Key West, Florida", type:"destination", lat:24.5551, lon:-81.7800 },
+  { slug:"bermuda", name:"Bermuda", type:"destination", lat:32.3078, lon:-64.7505 },
+  { slug:"ocho-rios", name:"Ocho Rios, Jamaica", type:"destination", lat:18.4074, lon:-77.1031 },
+  { slug:"falmouth-jamaica", name:"Falmouth, Jamaica", type:"destination", lat:18.4936, lon:-77.6559 },
+  { slug:"mazatlan", name:"Mazatlán, Mexico", type:"destination", lat:23.2494, lon:-106.4111 },
+  { slug:"puerto-vallarta", name:"Puerto Vallarta, Mexico", type:"destination", lat:20.6534, lon:-105.2253 },
+  { slug:"cabo-san-lucas", name:"Cabo San Lucas, Mexico", type:"destination", lat:22.8905, lon:-109.9167 },
+  { slug:"juneau", name:"Juneau, Alaska", type:"destination", lat:58.3019, lon:-134.4197 },
+  { slug:"ketchikan", name:"Ketchikan, Alaska", type:"destination", lat:55.3422, lon:-131.6461 },
+  { slug:"skagway", name:"Skagway, Alaska", type:"destination", lat:59.4583, lon:-135.3139 },
+  { slug:"dubrovnik", name:"Dubrovnik, Croatia", type:"destination", lat:42.6507, lon:18.0944 },
+  { slug:"santorini", name:"Santorini, Greece", type:"destination", lat:36.3932, lon:25.4615 },
+  { slug:"mykonos", name:"Mykonos, Greece", type:"destination", lat:37.4467, lon:25.3289 },
+  { slug:"naples", name:"Naples, Italy", type:"destination", lat:40.8518, lon:14.2681 },
+  { slug:"lisbon", name:"Lisbon, Portugal", type:"destination", lat:38.7223, lon:-9.1393 },
+  { slug:"reykjavik", name:"Reykjavik, Iceland", type:"destination", lat:64.1466, lon:-21.9426 },
+  { slug:"bergen", name:"Bergen, Norway", type:"destination", lat:60.3913, lon:5.3221 },
+  { slug:"phuket", name:"Phuket, Thailand", type:"destination", lat:7.8804, lon:98.3923 },
+  { slug:"bali", name:"Bali, Indonesia", type:"destination", lat:-8.3405, lon:115.0920 },
+  { slug:"bora-bora", name:"Bora Bora, French Polynesia", type:"destination", lat:-16.5004, lon:-151.7415 },
+];
+
+function weatherEmoji(code: number): string {
+  if ([0].includes(code)) return "☀️";
+  if ([1, 2].includes(code)) return "🌤️";
+  if ([3].includes(code)) return "☁️";
+  if ([45, 48].includes(code)) return "🌫️";
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return "🌧️";
+  if ([95, 96, 99].includes(code)) return "⛈️";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "❄️";
+  return "🌤️";
+}
+
+function publicLocation(loc: CruiseLocation) {
+  return { slug: loc.slug, name: loc.name, type: loc.type, lat: loc.lat, lon: loc.lon };
+}
+
+function featuredByType(type: string, limit = 10) {
+  const typed = CRUISE_LOCATIONS.filter((l) => l.type === type);
+  const featured = typed.filter((l) => l.featured);
+  const rest = typed.filter((l) => !l.featured);
+  const combined = [...featured, ...rest];
+  const seen = new Set<string>();
+  return combined.filter((l) => { if (seen.has(l.slug)) return false; seen.add(l.slug); return true; }).slice(0, limit);
+}
+
+async function fetchForecast(loc: CruiseLocation) {
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.searchParams.set("latitude", String(loc.lat));
+  url.searchParams.set("longitude", String(loc.lon));
+  url.searchParams.set("current", "temperature_2m,weather_code");
+  url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min");
+  url.searchParams.set("temperature_unit", "fahrenheit");
+  url.searchParams.set("timezone", "auto");
+  url.searchParams.set("forecast_days", "10");
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Weather fetch failed for ${loc.slug}`);
+  const data = await res.json() as {
+    current: { temperature_2m: number; weather_code: number };
+    daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[] };
+  };
+  return {
+    ...publicLocation(loc),
+    temp: Math.round(data.current.temperature_2m),
+    emoji: weatherEmoji(data.current.weather_code),
+    forecastUrl: `/forecast.html?place=${loc.slug}`,
+    forecast: data.daily.time.map((day, i) => ({
+      day,
+      emoji: weatherEmoji(data.daily.weather_code[i]),
+      high: Math.round(data.daily.temperature_2m_max[i]),
+      low: Math.round(data.daily.temperature_2m_min[i]),
+    })),
+  };
+}
+
+router.get("/weather", async (req: Request, res: Response) => {
+  res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=1800");
+  try {
+    const place = String(req.query.place || "").trim();
+    if (place) {
+      const loc = CRUISE_LOCATIONS.find((l) => l.slug === place);
+      if (!loc) { res.status(404).json({ ok: false, error: "Destination not found" }); return; }
+      const forecast = await fetchForecast(loc);
+      res.json({ ok: true, forecast });
+      return;
+    }
+    const embarkation = featuredByType("embarkation", 10);
+    const destinations = featuredByType("destination", 10);
+    const cards = await Promise.all([...embarkation, ...destinations].map(fetchForecast));
+    res.json({
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      embarkation: cards.filter((c) => c.type === "embarkation"),
+      destinations: cards.filter((c) => c.type === "destination"),
+      allEmbarkationPorts: CRUISE_LOCATIONS.filter((l) => l.type === "embarkation").map(publicLocation).sort((a, b) => a.name.localeCompare(b.name)),
+      allDestinations: CRUISE_LOCATIONS.filter((l) => l.type === "destination").map(publicLocation).sort((a, b) => a.name.localeCompare(b.name)),
+    });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: (error as Error).message, embarkation: [], destinations: [] });
+  }
+});
+
+export default router;
