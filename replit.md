@@ -17,8 +17,7 @@ An AI-powered editorial intelligence platform for Still Afloat cruise and travel
 - Persistence: Supabase (`platform_state` table with JSON blobs)
 - AI: OpenAI GPT-4o-mini for editorial curation
 - Email: Resend for editorial digest delivery
-- News ingestion: GNews API
-- API codegen: Orval (from OpenAPI spec)
+- News ingestion: GNews API + 14 confirmed-live RSS feeds
 
 ## Where things live
 
@@ -26,6 +25,7 @@ An AI-powered editorial intelligence platform for Still Afloat cruise and travel
 - `artifacts/api-server/src/routes/feeds.ts` — homepage-feed, news-feed, story-details, alerts, system-status
 - `artifacts/api-server/src/lib/persistence.ts` — Supabase read/write helpers
 - `artifacts/api-server/src/lib/editorial-agent.ts` — OpenAI editorial curation
+- `artifacts/api-server/src/lib/live-sources.ts` — GNews + RSS ingestion (14 live feeds)
 - `artifacts/api-server/src/lib/story-normalizer.ts` — story deduplication and normalization
 - `artifacts/still-afloat/src/pages/` — dashboard, queue, approved, feeds, alerts pages
 - `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for all API contracts)
@@ -46,9 +46,44 @@ An AI-powered editorial intelligence platform for Still Afloat cruise and travel
 - **Live Feeds**: Raw JSON feeds the website consumes (homepage, news, story details, alerts, weather)
 - **Operational Alerts**: High/critical impact stories surfaced as alerts
 
+## Website (stillafloatcruising.com)
+
+The consumer-facing website is a **separate static HTML repo**: https://github.com/Millham1/stillafloatcruising.com
+
+It is auto-deployed to Vercel on every push to GitHub main. The editorial agent backend is its data source.
+
+### What the website consumes from this API:
+| Endpoint | Used by | Returns |
+|---|---|---|
+| `GET /api/homepage-feed` | `js/news.js` | `{ stories }` — 3-5 featured stories for homepage Cruise Report section |
+| `GET /api/news-feed` | `js/news.js` | `{ stories }` — full news list for `news.html` |
+| `GET /api/system-status` | `js/platform-status.js` | `{ pipeline: { degradedMode, degradedReason }, publishing: { approvedStories } }` |
+| `GET /api/editorial-queue` | `editorial-queue.html` | `{ stories }` — editorial queue viewer |
+
+### What does NOT go through this API:
+- **Weather** — `js/weather.js` calls Open-Meteo directly from the browser (free, no key)
+- **Port forecast** — `api/weather.js` is a Vercel serverless function with cruise port data, stays on Vercel
+
+### Cutover plan (when deploying to Replit production):
+Three files in the website repo need `AGENT_BASE_URL` changed from `https://stillafloat-agent.vercel.app` to the new Replit production URL:
+1. `js/news.js` — line 4
+2. `js/platform-status.js` — line 1
+3. `editorial-queue.html` — inside `<script>` block
+
+Format compatibility is confirmed — all endpoints return `{ stories: [...] }` which is exactly what the website expects.
+
+### Brand context (from SAF_CONTEXT.md):
+- Owner: Mark Millham — retired IT Senior Manager, veteran, former liveaboard sailor, North Carolina
+- Tone: Practical, experienced, tropical premium, funny without being cheesy
+- Tagline: "Cruise smarter. Laugh more. Stay Afloat."
+- Colors: Navy #07183f, Ocean Blue #0077b6, Seafoam #5dff9a, Sun Gold #ffca4f
+- Fonts: Baloo 2 (body), Bree Serif (headings), Pacifico (accent)
+- Visual direction: Jimmy Buffett × Kenny Chesney × tropical premium resort
+
 ## User preferences
 
-_Populate as you build._
+- Push code changes to GitHub (`Millham1/stillafloat-agent`) — needs GitHub PAT for write access
+- Website repo is public: `Millham1/stillafloatcruising.com` — readable without token
 
 ## Gotchas
 
@@ -57,6 +92,8 @@ _Populate as you build._
 - `AGENT_APPROVAL_TOKEN` is optional — if unset, all actions are authorized
 - The `pnpm dev` at workspace root has no dev script — run individual artifacts via `--filter`
 - Fonts and theming: CSS custom properties in `artifacts/still-afloat/src/index.css`
+- The old `api/cruise-news.js` Vercel function used NewsAPI — replaced by GNews+RSS in this repo
+- Git commit/push is blocked in the main agent shell — use Replit checkpoints or a project task
 
 ## Pointers
 
