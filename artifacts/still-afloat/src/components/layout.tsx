@@ -1,9 +1,35 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink } from "lucide-react";
+import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink, RefreshCw } from "lucide-react";
+import { useScanNews, getGetSystemStatusQueryKey, getGetEditorialQueueQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const scanMutation = useScanNews();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const handleScan = () => {
+    scanMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        toast({
+          title: "Scan Complete",
+          description: `Curated ${data.curatedStories} new candidates.`,
+        });
+        queryClient.invalidateQueries({ queryKey: getGetSystemStatusQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetEditorialQueueQueryKey() });
+      },
+      onError: (err: unknown) => {
+        toast({
+          variant: "destructive",
+          title: "Scan Failed",
+          description: (err as Error)?.message || "Failed to trigger news scan",
+        });
+      },
+    });
+  };
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -55,6 +81,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <ExternalLink className="w-3.5 h-3.5" />
             View Website
           </a>
+          <button
+            onClick={handleScan}
+            disabled={scanMutation.isPending}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors font-medium"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${scanMutation.isPending ? "animate-spin" : ""}`} />
+            {scanMutation.isPending ? "Scanning…" : "Trigger Fast Scan"}
+          </button>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
           {children}

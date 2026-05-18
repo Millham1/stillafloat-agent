@@ -1,36 +1,10 @@
 import React from "react";
-import { useGetSystemStatus, useScanNews, getGetSystemStatusQueryKey, getGetEditorialQueueQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useGetSystemStatus, getGetSystemStatusQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Activity, Radio, Archive, LayoutTemplate, Zap, RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Radio, Archive, LayoutTemplate, AlertTriangle } from "lucide-react";
 
 export default function Dashboard() {
   const { data: status, isLoading } = useGetSystemStatus({ query: { queryKey: getGetSystemStatusQueryKey() } });
-  const scanMutation = useScanNews();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const handleScan = () => {
-    scanMutation.mutate(undefined, {
-      onSuccess: (data) => {
-        toast({
-          title: "Scan Complete",
-          description: `Scanned ${data.scannedStories} stories. Curated ${data.curatedStories} new candidates.`,
-        });
-        queryClient.invalidateQueries({ queryKey: getGetSystemStatusQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetEditorialQueueQueryKey() });
-      },
-      onError: (err: any) => {
-        toast({
-          variant: "destructive",
-          title: "Scan Failed",
-          description: err?.message || "Failed to trigger news scan",
-        });
-      }
-    });
-  };
 
   if (isLoading) {
     return <div className="text-sm text-muted-foreground animate-pulse">Loading telemetry...</div>;
@@ -42,19 +16,9 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">System Status</h2>
-          <p className="text-sm text-muted-foreground mt-1">Real-time overview of curation pipeline and publishing state.</p>
-        </div>
-        <Button 
-          onClick={handleScan} 
-          disabled={scanMutation.isPending}
-          className="gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${scanMutation.isPending ? "animate-spin" : ""}`} />
-          {scanMutation.isPending ? "Scanning..." : "Trigger Fast Scan"}
-        </Button>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">System Status</h2>
+        <p className="text-sm text-muted-foreground mt-1">Real-time overview of curation pipeline and publishing state.</p>
       </div>
 
       {status.pipeline?.degradedMode && (
@@ -75,7 +39,7 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground mt-1">Awaiting editorial review</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Approved Stories</CardTitle>
@@ -116,13 +80,11 @@ export default function Dashboard() {
   );
 }
 
-function StatusIndicator({ label, active }: { label: string, active: boolean }) {
+function StatusIndicator({ label, active }: { label: string; active: boolean }) {
   return (
     <div className="flex items-center gap-2 p-3 border rounded-md bg-card">
-      <div className={`w-2 h-2 rounded-full ${active ? 'bg-green-500' : 'bg-red-500'}`} />
+      <div className={`w-2 h-2 rounded-full ${active ? "bg-green-500" : "bg-red-500"}`} />
       <span className="text-sm font-medium">{label}</span>
     </div>
   );
 }
-
-import { AlertTriangle } from "lucide-react";
