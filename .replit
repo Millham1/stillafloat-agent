@@ -38,3 +38,4 @@ externalPort = 3000
 [userenv]
 
 [userenv.shared]
+APPROVAL_EMAIL = "STILLAFLOATCRUISING@GMAIL.COM"

@@ -131,7 +131,7 @@ router.get("/system-status", async (req: Request, res: Response) => {
       generatedAt: new Date().toISOString(),
       environment: process.env["NODE_ENV"] || "unknown",
       systems: {
-        openaiConfigured: Boolean(process.env["OPENAI_API_KEY"]),
+        openaiConfigured: Boolean(process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"]),
         resendConfigured: Boolean(process.env["RESEND_API_KEY"]),
         gnewsConfigured: Boolean(process.env["GNEWS_API_KEY"]),
         weatherConfigured: Boolean(process.env["OPENWEATHER_API_KEY"]),

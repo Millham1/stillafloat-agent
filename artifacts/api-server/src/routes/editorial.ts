@@ -201,6 +201,10 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
 });
 
 router.post("/scan-news", async (req: Request, res: Response) => {
+  if (!authorize(req)) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
   const telemetry: Record<string, unknown> = {
     startedAt: new Date().toISOString(),
     ingestionCompleted: false,
@@ -223,7 +227,7 @@ router.post("/scan-news", async (req: Request, res: Response) => {
 
     const curated = await runEditorialAgent({
       stories: normalizedStories,
-      openai: process.env["OPENAI_API_KEY"],
+      openai: process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"],
     });
     telemetry.aiCompleted = true;
     telemetry.degradedMode = Boolean(curated?.systemStatus?.degraded);
@@ -262,7 +266,7 @@ router.post("/scan-news", async (req: Request, res: Response) => {
       curatedStories: curatedStories.length,
       degradedMode: telemetry.degradedMode,
       telemetry,
-      emailResult,
+      emailResult: emailResult ? { success: emailResult.success, provider: emailResult.provider } : null,
     });
   } catch (error) {
     req.log.error({ err: error }, "Scan pipeline failure");
