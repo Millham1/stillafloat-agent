@@ -102,7 +102,7 @@ const TOOLS = [
                   description: "CliffsNotes-style synopsis (4-6 sentences). Do NOT copy-paste the article lead. Instead synthesize: (1) What happened and who is involved. (2) The underlying cause or context. (3) The scale or significance. (4) What it means specifically for cruisers or travelers. (5) Any action, date, or detail worth knowing. Write as if briefing a busy editor who hasn't read the article — factual, specific, no filler phrases like 'in a significant development'.",
                 },
                 homepageCandidate: { type: "boolean" },
-                reasoning: { type: "string", description: "One sentence: why this story was selected and which tier" },
+                reasoning: { type: "string", description: "2-3 sentences in a personal, opinionated editorial voice — written as if Mark is telling a friend why they should read this. Be specific: mention the concrete detail (ship name, dollar figure, quote, ironic twist) that makes it worth clicking. This text appears on the website as 'Why This Matters'. NEVER write: 'This story is relevant for cruisers', 'provides important information', 'it is important to note', or any other generic opening." },
                 link: { type: "string", description: "Original article URL" },
                 source: { type: "string", description: "Source publication name" },
                 image: { type: "string", description: "Image URL if available, empty string if not" },
@@ -383,6 +383,12 @@ const BANNED_SENTENCE_PATTERNS = [
   /\braises questions about\b/i,
   /\bremind(s|ed)? (travelers|cruisers|passengers)\b/i,
   /^This incident [a-z]+ (the|a) (need|importance|role|potential)\b/i,
+  /\btravelers? should (be aware|stay informed|note that|keep in mind)\b/i,
+  /\bthis story (is relevant|provides|highlights|underscores|offers)\b/i,
+  /\bthis story is (relevant|important)\b/i,
+  /\bit is important to note\b/i,
+  /\bprovides important information\b/i,
+  /\bmaking it (a )?(relevant|important|key|timely)\b/i,
 ];
 
 function cleanSummary(text: string): string {
