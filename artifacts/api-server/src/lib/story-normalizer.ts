@@ -36,9 +36,13 @@ export function normalizeStory(story: Record<string, any> = {}, index = 0) {
       ? story.id
       : `${title}-${link}`;
 
+  const tierRaw = Number(story.tier);
+  const tier = tierRaw >= 1 && tierRaw <= 4 ? tierRaw : null;
+
   return {
     id: slugify(idSeed) || `story-${index + 1}`,
     title,
+    tier,
     category: clean(story.category || "Travel Intelligence"),
     impactLevel: clean(story.impactLevel || story.impact || "Medium"),
     travelerImpact: clean(story.travelerImpact || story.whyItMatters || ""),

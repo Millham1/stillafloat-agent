@@ -9,6 +9,11 @@
 export interface Story {
   id: string;
   title: string;
+  /**
+     * Editorial tier 1–4 (1=Cruise, 2=Operations, 3=Mainstream, 4=Lifestyle)
+     * @nullable
+     */
+  tier?: number | null;
   /** @nullable */
   category?: string | null;
   /** @nullable */

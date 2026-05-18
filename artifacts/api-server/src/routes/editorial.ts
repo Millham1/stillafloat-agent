@@ -47,6 +47,7 @@ router.get("/editorial-queue", async (req: Request, res: Response) => {
     const queue = (candidates.stories || []).map((story) => ({
       id: story.id,
       title: story.title,
+      tier: story.tier ?? null,
       category: story.category,
       impactLevel: story.impactLevel,
       travelerImpact: story.travelerImpact,
@@ -232,17 +233,7 @@ router.post("/scan-news", async (req: Request, res: Response) => {
     telemetry.aiCompleted = true;
     telemetry.degradedMode = Boolean(curated?.systemStatus?.degraded);
 
-    let curatedStories = normalizeStories(curated.stories || []);
-
-    // Supplement: if AI approved fewer than 20, fill from highest-quality raw stories
-    if (curatedStories.length < 20) {
-      const approvedIds = new Set(curatedStories.map((s) => s.id));
-      const supplements = normalizedStories
-        .filter((s) => !approvedIds.has(s.id) && s.title && s.summary && s.sourceLinks?.length)
-        .slice(0, 20 - curatedStories.length)
-        .map((s) => ({ ...s, category: s.category || "Travel Intelligence", impactLevel: "Medium", travelerImpact: "", reasoning: "Auto-supplemented from candidate feed." }));
-      curatedStories = [...curatedStories, ...supplements];
-    }
+    const curatedStories = normalizeStories(curated.stories || []);
 
     await writeJson(PATHS.candidates, {
       generatedAt: new Date().toISOString(),

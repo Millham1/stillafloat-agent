@@ -57,6 +57,7 @@ export const GetEditorialQueueResponse = zod.object({
   "stories": zod.array(zod.object({
   "id": zod.string(),
   "title": zod.string(),
+  "tier": zod.number().nullish().describe('Editorial tier 1–4 (1=Cruise, 2=Operations, 3=Mainstream, 4=Lifestyle)'),
   "category": zod.string().nullish(),
   "impactLevel": zod.string().nullish(),
   "travelerImpact": zod.string().nullish(),
@@ -103,6 +104,7 @@ export const GetHomepageFeedResponse = zod.object({
   "stories": zod.array(zod.object({
   "id": zod.string(),
   "title": zod.string(),
+  "tier": zod.number().nullish().describe('Editorial tier 1–4 (1=Cruise, 2=Operations, 3=Mainstream, 4=Lifestyle)'),
   "category": zod.string().nullish(),
   "impactLevel": zod.string().nullish(),
   "travelerImpact": zod.string().nullish(),
@@ -133,6 +135,7 @@ export const GetNewsFeedResponse = zod.object({
   "stories": zod.array(zod.object({
   "id": zod.string(),
   "title": zod.string(),
+  "tier": zod.number().nullish().describe('Editorial tier 1–4 (1=Cruise, 2=Operations, 3=Mainstream, 4=Lifestyle)'),
   "category": zod.string().nullish(),
   "impactLevel": zod.string().nullish(),
   "travelerImpact": zod.string().nullish(),
@@ -167,6 +170,7 @@ export const GetStoryDetailsResponse = zod.object({
   "stories": zod.array(zod.object({
   "id": zod.string(),
   "title": zod.string(),
+  "tier": zod.number().nullish().describe('Editorial tier 1–4 (1=Cruise, 2=Operations, 3=Mainstream, 4=Lifestyle)'),
   "category": zod.string().nullish(),
   "impactLevel": zod.string().nullish(),
   "travelerImpact": zod.string().nullish(),

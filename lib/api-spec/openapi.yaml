@@ -262,6 +262,9 @@ components:
           type: string
         title:
           type: string
+        tier:
+          type: ["integer", "null"]
+          description: "Editorial tier 1–4 (1=Cruise, 2=Operations, 3=Mainstream, 4=Lifestyle)"
         category:
           type: ["string", "null"]
         impactLevel:
