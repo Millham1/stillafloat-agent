@@ -83,7 +83,7 @@ export async function sendEditorialDigest({
   try {
     const apiKey = process.env["RESEND_API_KEY"];
     const to = process.env["APPROVAL_EMAIL"];
-    const from = process.env["RESEND_FROM_EMAIL"] || "Still Afloat AI <onboarding@resend.dev>";
+    const from = process.env["RESEND_FROM_EMAIL"] || "Still Afloat AI <noreply@stillafloatcruising.com>";
 
     const diagnostics = {
       configured: Boolean(apiKey && to),

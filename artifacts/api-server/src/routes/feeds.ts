@@ -135,7 +135,7 @@ router.get("/system-status", async (req: Request, res: Response) => {
         resendConfigured: Boolean(process.env["RESEND_API_KEY"]),
         gnewsConfigured: Boolean(process.env["GNEWS_API_KEY"]),
         weatherConfigured: Boolean(process.env["OPENWEATHER_API_KEY"]),
-        approvalConfigured: Boolean(process.env["AGENT_APPROVAL_TOKEN"]),
+        approvalConfigured: Boolean(process.env["APPROVAL_EMAIL"] && process.env["RESEND_API_KEY"]),
       },
       publishing: {
         candidateStories: (candidates.stories || []).length,
