@@ -164,10 +164,11 @@ function truncate(s: string | undefined, max: number): string {
 
 async function toolSearchGnews(
   query: string,
-  apiKey: string
+  apiKey: string,
+  lang: "en" | "es" = "en"
 ): Promise<Record<string, unknown>[]> {
   try {
-    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=8&apikey=${apiKey}`;
+    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=${lang}&max=8&apikey=${apiKey}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -587,7 +588,7 @@ export async function runEditorialAgent({
           result = [];
           logger.warn({ gnewsCallCount }, "GNews call limit reached");
         } else {
-          result = await toolSearchGnews(query, gnewsKey);
+          result = await toolSearchGnews(query, gnewsKey, lang);
           gnewsCallCount++;
         }
 

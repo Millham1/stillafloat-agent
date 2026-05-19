@@ -327,8 +327,10 @@ router.post("/scan-news", async (req: Request, res: Response) => {
   };
 
   try {
+    const lang = String(req.query["lang"] || "en") === "es" ? "es" as const : "en" as const;
     const curated = await runEditorialAgent({
       openai: process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"],
+      lang,
     }) as {
       stories?: Record<string, unknown>[];
       homepageTop5?: string[];

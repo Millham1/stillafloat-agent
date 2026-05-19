@@ -3,9 +3,41 @@ const fullNewsFeed = document.getElementById('full-news-feed');
 
 const AGENT_BASE_URL = '';
 
+// Locale detection — Spanish pages live under /es/
+const isSpanish = window.location.pathname.startsWith('/es/');
+
 let allStories = [];
 let renderedCount = 0;
 const STORIES_PER_BATCH = 10;
+
+// ── Locale strings ──────────────────────────────────────────────
+const L = isSpanish ? {
+  liveIntel:        'Inteligencia de Cruceros en Vivo',
+  headlineFeed:     'Noticias de Cruceros y Viajes',
+  storiesLoaded:    n => `${n} historias cargadas`,
+  loadMore:         'Cargar más historias',
+  openDetail:       'Ver detalle →',
+  noStoriesHome:    'No hay historias de cruceros disponibles en este momento.',
+  noStoriesFull:    'No hay historias de cruceros disponibles.',
+  loadError:        'Las noticias de cruceros en vivo no están disponibles temporalmente. Por favor recarga en breve.',
+  badgeImpact:      '✈️ Impacto en Viajes',
+  badgePulse:       '🚢 Pulso de Cruceros',
+  badgeDirect:      '📡 Directo de las Líneas',
+  badgeLife:        '🌴 Vida en el Crucero',
+} : {
+  liveIntel:        'Live Cruise Intelligence',
+  headlineFeed:     'Cruise News & Travel Pulse',
+  storiesLoaded:    n => `${n} stories loaded`,
+  loadMore:         'Load More Stories',
+  openDetail:       'Open Story Detail →',
+  noStoriesHome:    'No live cruise stories are currently available.',
+  noStoriesFull:    'No live cruise stories available.',
+  loadError:        'Live cruise news is temporarily unavailable. Please refresh shortly.',
+  badgeImpact:      '✈️ Travel Impact',
+  badgePulse:       '🚢 Cruise Pulse',
+  badgeDirect:      '📡 Direct from Cruise Lines',
+  badgeLife:        '🌴 Cruise Life',
+};
 
 function normalizeStory(story = {}) {
   return {
@@ -51,27 +83,27 @@ function storyUrl(story) {
 function badgeConfig(tier='lifestyle') {
   if (tier === 'impact') {
     return {
-      label: '✈️ Travel Impact',
+      label: L.badgeImpact,
       style: 'background:rgba(255,77,109,.18);color:#ffd5dd;border:1px solid rgba(255,77,109,.34);'
     };
   }
 
   if (tier === 'industry') {
     return {
-      label: '🚢 Cruise Pulse',
+      label: L.badgePulse,
       style: 'background:rgba(67,97,238,.18);color:#d8e2ff;border:1px solid rgba(67,97,238,.34);'
     };
   }
 
   if (tier === 'direct') {
     return {
-      label: '📡 Direct from Cruise Lines',
+      label: L.badgeDirect,
       style: 'background:rgba(93,255,154,.18);color:#d7ffe6;border:1px solid rgba(93,255,154,.34);'
     };
   }
 
   return {
-    label: '🌴 Cruise Life',
+    label: L.badgeLife,
     style: 'background:rgba(0,180,216,.18);color:#bff6ff;border:1px solid rgba(0,180,216,.34);'
   };
 }
@@ -80,7 +112,7 @@ function renderHomepage(stories = []) {
   if (!homepageContainer) return;
 
   if (!stories.length) {
-    homepageContainer.innerHTML = '<div style="padding:16px 0;color:white;font-weight:700;">No live cruise stories are currently available.</div>';
+    homepageContainer.innerHTML = `<div style="padding:16px 0;color:white;font-weight:700;">${L.noStoriesHome}</div>`;
     return;
   }
 
@@ -141,7 +173,7 @@ function storyCard(story) {
 
         ${story.publishedAt ? `
           <span style="font-size:11px;color:rgba(255,255,255,.52);font-weight:700;">
-            ${new Date(story.publishedAt).toLocaleDateString()}
+            ${new Date(story.publishedAt).toLocaleDateString(isSpanish ? 'es-419' : 'en-US')}
           </span>
         ` : ''}
       </div>
@@ -159,7 +191,7 @@ function storyCard(story) {
           href="${storyUrl(story)}"
           style="display:inline-block;color:#7de3ff;font-weight:800;text-decoration:none;font-size:14px;"
         >
-          Open Story Detail →
+          ${L.openDetail}
         </a>
       </div>
     </article>
@@ -194,19 +226,19 @@ function renderNewsPage(stories = []) {
   renderedCount = 0;
 
   if (!stories.length) {
-    fullNewsFeed.innerHTML = '<div class="report-box" style="padding:18px;border-radius:18px;background:rgba(255,255,255,0.10);backdrop-filter:blur(10px);color:white;">No live cruise stories available.</div>';
+    fullNewsFeed.innerHTML = `<div class="report-box" style="padding:18px;border-radius:18px;background:rgba(255,255,255,0.10);backdrop-filter:blur(10px);color:white;">${L.noStoriesFull}</div>`;
     return;
   }
 
   fullNewsFeed.innerHTML = `
     <div style="margin-bottom:22px;display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap;">
       <div>
-        <p style="color:#5dff9a;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;">Live Cruise Intelligence</p>
-        <h1 style="color:white;font-size:42px;line-height:1.1;margin:0;">Cruise News & Travel Pulse</h1>
+        <p style="color:#5dff9a;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;">${L.liveIntel}</p>
+        <h1 style="color:white;font-size:42px;line-height:1.1;margin:0;">${L.headlineFeed}</h1>
       </div>
 
       <div style="color:rgba(255,255,255,.62);font-weight:700;">
-        ${stories.length} stories loaded
+        ${L.storiesLoaded(stories.length)}
       </div>
     </div>
 
@@ -230,7 +262,7 @@ function renderNewsPage(stories = []) {
           box-shadow:0 12px 28px rgba(0,0,0,.28);
         "
       >
-        Load More Stories
+        ${L.loadMore}
       </button>
     </div>
   `;
@@ -270,7 +302,7 @@ async function initNews() {
     if (fullNewsFeed) {
       fullNewsFeed.innerHTML = `
         <div style="padding:22px;border-radius:22px;background:rgba(255,255,255,.08);color:white;">
-          Live cruise news is temporarily unavailable. Please refresh shortly.
+          ${L.loadError}
         </div>
       `;
     }
