@@ -133,9 +133,9 @@
     .sa-still  { font-family: Pacifico, cursive; color: #FFD300; text-shadow: 0 2px 8px rgba(255,211,0,.30); }
     .sa-afloat { font-family: Pacifico, cursive; color: #6DCFFF; text-shadow: 0 2px 8px rgba(109,207,255,.28); }
 
-    /* Brand logo images — inline sizing */
-    .brand-img    { height: 2.4em; vertical-align: middle; display: inline-block; }
-    .brand-img-sm { height: 1.4em; vertical-align: middle; display: inline-block; }
+    /* Brand logo images — fixed px so size is consistent regardless of context */
+    .brand-img    { height: 44px;  width: auto; vertical-align: middle; display: inline-block; }
+    .brand-img-sm { height: 30px;  width: auto; vertical-align: middle; display: inline-block; }
   `;
 
   const style = document.createElement('style');
