@@ -193,8 +193,13 @@ router.get("/system-status", async (req: Request, res: Response) => {
         homepageStories: (homepage.stories || []).length,
       },
       pipeline: {
-        degradedMode: Boolean(candidates.systemStatus?.degraded),
-        degradedReason: candidates.systemStatus?.reason || null,
+        // Only show degraded if the flag is set AND no stories exist.
+        // If stories are present a successful scan has run since the failure,
+        // so the stale error flag is no longer meaningful.
+        degradedMode: Boolean(candidates.systemStatus?.degraded) && (candidates.stories || []).length === 0,
+        degradedReason: candidates.systemStatus?.degraded && (candidates.stories || []).length === 0
+          ? (candidates.systemStatus?.reason || null)
+          : null,
       },
     });
   } catch (error) {
