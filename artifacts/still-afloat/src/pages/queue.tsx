@@ -206,44 +206,44 @@ export default function EditorialQueue() {
                 <p className="text-xs text-muted-foreground text-center mb-1 hidden md:block">Change decision:</p>
               )}
               <Button
-                variant={!isDecided ? "default" : "ghost"}
+                variant="outline"
                 size={isDecided ? "sm" : "default"}
-                className={`w-full justify-start gap-2 ${!isDecided ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30'}`}
+                className={`w-full justify-start gap-2 border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950/40 ${story.status === 'approved' ? 'ring-2 ring-green-400 bg-green-50 dark:bg-green-950/30' : ''}`}
                 onClick={() => handleAction(story.id, 'approve')}
                 disabled={!!processing[story.id]}
               >
                 <Check className="w-4 h-4" />
-                {processing[story.id] === 'approve' ? '...' : 'Approve'}
+                {processing[story.id] === 'approve' ? '…' : story.status === 'approved' ? 'Approved ✓' : 'Approve'}
               </Button>
               <Button
-                variant="ghost"
+                variant="outline"
                 size={isDecided ? "sm" : "default"}
-                className={`w-full justify-start gap-2 ${!isDecided ? 'text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border border-input' : 'text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30'}`}
+                className={`w-full justify-start gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30 ${story.status === 'rejected' ? 'ring-2 ring-red-400 bg-red-50 dark:bg-red-950/30' : ''}`}
                 onClick={() => handleAction(story.id, 'reject')}
                 disabled={!!processing[story.id]}
               >
                 <X className="w-4 h-4" />
-                {processing[story.id] === 'reject' ? '...' : 'Reject'}
+                {processing[story.id] === 'reject' ? '…' : story.status === 'rejected' ? 'Rejected ✓' : 'Reject'}
               </Button>
               <Button
-                variant="ghost"
+                variant="outline"
                 size={isDecided ? "sm" : "default"}
-                className={`w-full justify-start gap-2 ${!isDecided ? 'text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/30 border border-input' : 'text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/30'}`}
+                className={`w-full justify-start gap-2 border-purple-200 text-purple-600 hover:bg-purple-50 hover:border-purple-300 dark:border-purple-900 dark:text-purple-400 dark:hover:bg-purple-950/30 ${story.status === 'featured' ? 'ring-2 ring-purple-400 bg-purple-50 dark:bg-purple-950/30' : ''}`}
                 onClick={() => handleAction(story.id, 'feature')}
                 disabled={!!processing[story.id]}
               >
                 <Pin className="w-4 h-4" />
-                {processing[story.id] === 'feature' ? '...' : 'Feature'}
+                {processing[story.id] === 'feature' ? '…' : story.status === 'featured' ? 'Featured ✓' : 'Feature'}
               </Button>
               {!isDecided && (
                 <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-2 text-muted-foreground"
+                  variant="outline"
+                  className={`w-full justify-start gap-2 border-input text-muted-foreground hover:text-foreground ${story.status === 'held' || story.status === 'deferred' ? 'ring-2 ring-gray-400 bg-muted' : ''}`}
                   onClick={() => handleAction(story.id, 'hold')}
                   disabled={!!processing[story.id]}
                 >
                   <Clock className="w-4 h-4" />
-                  {processing[story.id] === 'hold' ? '...' : 'Hold'}
+                  {processing[story.id] === 'hold' ? '…' : 'Hold'}
                 </Button>
               )}
             </div>
@@ -313,28 +313,24 @@ export default function EditorialQueue() {
           <div className="pt-2">
             <button
               onClick={() => setShowReviewed(v => !v)}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 w-full"
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-lg border border-border bg-muted/40 hover:bg-muted/70 transition-colors text-sm font-medium mb-4"
             >
-              <span className="h-px flex-1 bg-border inline-block" />
-              <span className="shrink-0 flex items-center gap-2 font-medium">
-                {showReviewed ? '▾' : '▸'}
-                <span className="flex items-center gap-1.5">
-                  {(() => {
-                    const approved  = reviewed.filter(s => s.status === 'approved').length;
-                    const featured  = reviewed.filter(s => s.status === 'featured').length;
-                    const rejected  = reviewed.filter(s => s.status === 'rejected').length;
-                    const held      = reviewed.filter(s => s.status === 'held' || s.status === 'deferred').length;
-                    const parts: React.ReactNode[] = [];
-                    if (approved)  parts.push(<span key="a" className="text-green-600 dark:text-green-400">{approved} approved</span>);
-                    if (featured)  parts.push(<span key="f" className="text-purple-600 dark:text-purple-400">{featured} featured</span>);
-                    if (rejected)  parts.push(<span key="r" className="text-red-500 dark:text-red-400">{rejected} rejected</span>);
-                    if (held)      parts.push(<span key="h" className="text-gray-500">{held} held</span>);
-                    return parts.flatMap((p, i) => i < parts.length - 1 ? [p, <span key={`sep${i}`} className="opacity-40">·</span>] : [p]);
-                  })()}
-                </span>
-                <span className="opacity-50">({showReviewed ? 'hide' : 'show'})</span>
+              <span className="text-muted-foreground">{showReviewed ? '▾' : '▸'}</span>
+              <span className="flex items-center gap-1.5">
+                {(() => {
+                  const approved = reviewed.filter(s => s.status === 'approved').length;
+                  const featured = reviewed.filter(s => s.status === 'featured').length;
+                  const rejected = reviewed.filter(s => s.status === 'rejected').length;
+                  const held     = reviewed.filter(s => s.status === 'held' || s.status === 'deferred').length;
+                  const parts: React.ReactNode[] = [];
+                  if (approved) parts.push(<span key="a" className="text-green-600 dark:text-green-400 font-semibold">{approved} approved</span>);
+                  if (featured) parts.push(<span key="f" className="text-purple-600 dark:text-purple-400 font-semibold">{featured} featured</span>);
+                  if (rejected) parts.push(<span key="r" className="text-red-500 dark:text-red-400 font-semibold">{rejected} rejected</span>);
+                  if (held)     parts.push(<span key="h" className="text-gray-500 font-semibold">{held} held</span>);
+                  return parts.flatMap((p, i) => i < parts.length - 1 ? [p, <span key={`sep${i}`} className="text-muted-foreground/40">·</span>] : [p]);
+                })()}
               </span>
-              <span className="h-px flex-1 bg-border inline-block" />
+              <span className="text-muted-foreground text-xs">{showReviewed ? '— click to hide' : '— click to review'}</span>
             </button>
 
             {showReviewed && (
