@@ -206,66 +206,31 @@ a{text-decoration:none;color:inherit;}
 
 .report-section,.vibe-section{position:relative;}
 
-/* ── Vibe section: overlay baked into background; ::before = top fade, ::after = bottom fade ── */
+/* ── Vibe section ── */
+/* mask-image fades section edges to transparent — body dark background shows through cleanly */
 .vibe-section{
   background:
-    linear-gradient(to bottom, rgba(4,17,46,1) 0%, rgba(4,17,46,0) 18%, rgba(0,36,62,0.28) 50%, rgba(4,17,46,0) 82%, rgba(4,17,46,1) 100%),
+    linear-gradient(to bottom, rgba(0,36,62,0.42) 0%, rgba(0,36,62,0.28) 50%, rgba(0,36,62,0.42) 100%),
     url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e') center/cover no-repeat;
-  padding:75px 20px;
+  padding:100px 20px;
   color:white;
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0%, black 16%, black 84%, transparent 100%);
+  mask-image:linear-gradient(to bottom, transparent 0%, black 16%, black 84%, transparent 100%);
 }
 
-.vibe-section::before{
-  content:"";
-  position:absolute;
-  top:0;left:0;
-  width:100%;
-  height:340px;
-  background:linear-gradient(to bottom, rgba(4,17,46,1) 0%, rgba(4,17,46,0.6) 50%, rgba(4,17,46,0) 100%);
-  z-index:1;
-  pointer-events:none;
-}
+.vibe-section::before,.vibe-section::after{display:none;}
 
-.vibe-section::after{
-  content:"";
-  position:absolute;
-  bottom:0;left:0;
-  width:100%;
-  height:340px;
-  background:linear-gradient(to bottom, rgba(4,17,46,0) 0%, rgba(4,17,46,0.6) 50%, rgba(4,17,46,1) 100%);
-  z-index:1;
-  pointer-events:none;
-}
-
-/* ── Report section: overlay baked into background; ::before = top fade, ::after = bottom fade ── */
+/* ── Report section ── */
 .report-section{
   background:
-    linear-gradient(to bottom, rgba(4,17,46,1) 0%, rgba(0,0,0,0.35) 18%, rgba(0,0,0,0.35) 82%, rgba(4,17,46,1) 100%),
+    linear-gradient(to bottom, rgba(0,0,0,0.36) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0.36) 100%),
     url('../assets/images/Tropical beach with palm trees and ship.png') center/cover no-repeat;
-  padding:90px 20px;
+  padding:100px 20px;
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0%, black 16%, black 84%, transparent 100%);
+  mask-image:linear-gradient(to bottom, transparent 0%, black 16%, black 84%, transparent 100%);
 }
 
-.report-section::before{
-  content:"";
-  position:absolute;
-  top:0;left:0;
-  width:100%;
-  height:340px;
-  background:linear-gradient(to bottom, rgba(4,17,46,1) 0%, rgba(4,17,46,0.6) 50%, rgba(4,17,46,0) 100%);
-  z-index:1;
-  pointer-events:none;
-}
-
-.report-section::after{
-  content:"";
-  position:absolute;
-  bottom:0;left:0;
-  width:100%;
-  height:340px;
-  background:linear-gradient(to bottom, rgba(4,17,46,0) 0%, rgba(4,17,46,0.6) 50%, rgba(4,17,46,1) 100%);
-  z-index:1;
-  pointer-events:none;
-}
+.report-section::before,.report-section::after{display:none;}
 
 .report-section h2{color:#ffffff;text-shadow:0 4px 16px rgba(0,0,0,0.7);}
 

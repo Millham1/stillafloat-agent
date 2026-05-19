@@ -129,9 +129,9 @@
     }
     .reveal.visible { opacity: 1; transform: none; }
 
-    /* Brand text spans */
-    .sa-still  { font-family: Pacifico, cursive; color: #ffca4f; }
-    .sa-afloat { font-family: Pacifico, cursive; color: #5dff9a; }
+    /* Brand text spans — colours matched to logo: gold "Still", sky-blue "Afloat" */
+    .sa-still  { font-family: Pacifico, cursive; color: #FFD300; text-shadow: 0 2px 8px rgba(255,211,0,.30); }
+    .sa-afloat { font-family: Pacifico, cursive; color: #6DCFFF; text-shadow: 0 2px 8px rgba(109,207,255,.28); }
   `;
 
   const style = document.createElement('style');
