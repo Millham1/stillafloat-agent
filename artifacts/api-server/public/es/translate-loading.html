@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es-419">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traduciendo… | Still Afloat</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:36px;
+  background:linear-gradient(160deg,#040b16 0%,#071523 55%,#0c2035 100%);
+  color:white;font-family:'Baloo 2',Poppins,system-ui,sans-serif;
+  min-height:100vh;
+}
+
+.ring{position:relative;width:96px;height:96px}
+.ring::before,.ring::after{content:'';position:absolute;inset:0;border-radius:50%}
+.ring::before{border:3px solid rgba(93,255,154,.12)}
+.ring::after{
+  border:3px solid transparent;
+  border-top-color:#5dff9a;
+  border-right-color:rgba(93,255,154,.4);
+  animation:spin 1s linear infinite;
+  box-shadow:0 0 22px rgba(93,255,154,.3);
+}
+.anchor{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:30px;animation:pulse 2s ease-in-out infinite;
+}
+
+.text{text-align:center;line-height:1.5}
+.text strong{display:block;font-size:24px;font-weight:900;margin-bottom:10px}
+.text p{font-size:14px;color:rgba(255,255,255,.44);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+
+.brand{font-size:13px;color:rgba(255,255,255,.22);margin-top:8px}
+
+.error-box{
+  display:none;text-align:center;max-width:520px;padding:28px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;
+}
+.error-box p{color:rgba(255,255,255,.6);margin-bottom:20px;font-size:15px;line-height:1.6}
+.error-box a{
+  display:inline-block;padding:12px 24px;border-radius:14px;
+  background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;
+  font-weight:800;font-size:15px;text-decoration:none;
+}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.14)}}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="ring">
+  <div class="anchor">⚓</div>
+</div>
+
+<div class="text">
+  <strong>Traduciendo artículo…</strong>
+  <p>Por favor espera un momento</p>
+</div>
+<div class="brand">Still Afloat · Inteligencia de Cruceros</div>
+
+<div class="error-box" id="err">
+  <p id="err-msg">No se pudo traducir este artículo en este momento.</p>
+  <a id="orig-link" href="#">Leer artículo original en inglés →</a>
+</div>
+
+<script>
+const articleUrl = new URLSearchParams(location.search).get('url') || '';
+
+if (!articleUrl) {
+  document.querySelector('.text strong').textContent = 'URL no válida';
+} else {
+  document.getElementById('orig-link').href = articleUrl;
+
+  fetch('/api/translate-article?url=' + encodeURIComponent(articleUrl))
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(html => {
+      document.open();
+      document.write(html);
+      document.close();
+    })
+    .catch(err => {
+      document.querySelector('.ring').style.display = 'none';
+      document.querySelector('.text').style.display = 'none';
+      document.querySelector('.brand').style.display = 'none';
+      const box = document.getElementById('err');
+      document.getElementById('err-msg').textContent =
+        'No se pudo traducir este artículo. ' + (err.message || '');
+      box.style.display = 'block';
+    });
+}
+</script>
+</body>
+</html>

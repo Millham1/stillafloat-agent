@@ -174,7 +174,7 @@ async function loadStory() {
     const articleUrl = safeText(story.originalLink || story.link, '');
     if (articleUrl) {
       const translateLink = document.getElementById('translate-link');
-      translateLink.href = `${AGENT_BASE_URL}/api/translate-article?url=${encodeURIComponent(articleUrl)}`;
+      translateLink.href = `${AGENT_BASE_URL}/es/translate-loading.html?url=${encodeURIComponent(articleUrl)}`;
       translateLink.style.display = '';
     }
 
