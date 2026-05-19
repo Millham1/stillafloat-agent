@@ -222,17 +222,18 @@ footer{
 </section>
 
 <main class="shell">
-  <div class="feature-wrap">
+  <div class="feature-wrap" id="featured-wrap" style="display:none">
     <div class="feature">
       <small>Highlighted Item of the Week</small>
-      <h2>This Week's <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> Pick</h2>
-      <p>A featured cruise find, travel helper, or practical product worth calling out before you browse the categories.</p>
-      <a class="btn" href="#featured-item">See This Pick →</a>
+      <h2 id="featured-title">This Week's <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> Pick</h2>
+      <p id="featured-desc">A featured cruise find worth calling out before you browse the categories.</p>
+      <a class="btn" id="featured-link" href="#featured-strip">See This Pick →</a>
     </div>
   </div>
+  <div id="featured-strip" style="max-width:740px;margin:0 auto 40px;"></div>
 
   <div class="cards">
-    <a class="card" href="under-construction.html">
+    <a class="card" href="/affiliate/air-travel.html">
       <div class="photo">
         <img src="/assets/images/air-travel-card.png" alt="Air Travel">
       </div>
@@ -242,7 +243,7 @@ footer{
         <div class="see">See Gear →</div>
       </div>
     </a>
-    <a class="card" href="under-construction.html">
+    <a class="card" href="/affiliate/cabin-essentials.html">
       <div class="photo">
         <img src="/assets/images/cabin-essentials-card.png" alt="Cruise Cabin Essentials">
       </div>
@@ -252,7 +253,7 @@ footer{
         <div class="see">See Essentials →</div>
       </div>
     </a>
-    <a class="card" href="under-construction.html">
+    <a class="card" href="/affiliate/cruise-fun.html">
       <div class="photo">
         <img src="/assets/images/cruise-fun-card.png" alt="Cruise Fun">
       </div>
@@ -262,7 +263,7 @@ footer{
         <div class="see">See Fun Picks →</div>
       </div>
     </a>
-    <a class="card" href="under-construction.html">
+    <a class="card" href="/affiliate/great-ideas.html">
       <div class="photo">
         <img src="/assets/images/great-ideas-card.png" alt="Generally Great Ideas">
       </div>
@@ -280,5 +281,36 @@ footer{
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
 
 <script src="/components/navbar.js"></script>
+<script>
+function esc(s){const d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML}
+
+function renderStrip(wrap,html){
+  if(!html||!html.trim())return;
+  const tmp=document.createElement('div');tmp.innerHTML=html;
+  Array.from(tmp.childNodes).forEach(n=>{if(n.nodeName!=='SCRIPT')wrap.appendChild(n.cloneNode(true))});
+  tmp.querySelectorAll('script').forEach(old=>{
+    const s=document.createElement('script');
+    Array.from(old.attributes).forEach(a=>s.setAttribute(a.name,a.value));
+    if(!old.src)s.textContent=old.textContent;
+    wrap.appendChild(s);
+  });
+}
+
+async function loadFeatured(){
+  try{
+    const resp=await fetch('/api/affiliate-items?featured=true');
+    const data=await resp.json();
+    if(!data.items||data.items.length===0)return;
+    const item=data.items[0];
+    document.getElementById('featured-wrap').style.display='';
+    if(item.title)document.getElementById('featured-title').innerHTML=
+      esc(item.title)+' — <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> Pick';
+    if(item.description)document.getElementById('featured-desc').textContent=item.description;
+    if(item.smartStrip)renderStrip(document.getElementById('featured-strip'),item.smartStrip);
+  }catch(e){/* no featured item — stay hidden */}
+}
+
+loadFeatured();
+</script>
 </body>
 </html>

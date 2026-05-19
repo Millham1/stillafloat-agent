@@ -3,26 +3,41 @@ import { PATHS, readJson } from "../lib/persistence";
 
 const router: IRouter = Router();
 
+type StoryRecord = Record<string, unknown>;
+
+function applyEsOverlay(story: StoryRecord): StoryRecord {
+  return {
+    ...story,
+    title: (story["title_es"] as string) || story["title"],
+    summary: (story["summary_es"] as string) || story["summary"],
+    travelerImpact: (story["travelerImpact_es"] as string) || story["travelerImpact"],
+    editorialReasoning: (story["editorialReasoning_es"] as string) || story["editorialReasoning"],
+  };
+}
+
 router.get("/homepage-feed", async (req: Request, res: Response) => {
   try {
     const lang = String(req.query["lang"] || "en");
     const isEs = lang === "es";
-    const primaryPath = isEs ? PATHS.homepageEs : PATHS.homepage;
-    const fallbackPath = isEs ? PATHS.homepage : null;
 
-    const primary = await readJson<{ generatedAt?: string; stories?: unknown[] }>(primaryPath, { generatedAt: undefined, stories: [] });
-    // If Spanish feed is empty, fall back to English feed
-    const data = (isEs && !(primary.stories || []).length && fallbackPath)
-      ? await readJson<{ generatedAt?: string; stories?: unknown[] }>(fallbackPath, { generatedAt: undefined, stories: [] })
-      : primary;
+    // Spanish site always reads from the shared English editorial queue.
+    // Per-story title_es / summary_es etc. fields are applied when present.
+    const data = await readJson<{ generatedAt?: string; stories?: StoryRecord[] }>(
+      PATHS.homepage,
+      { generatedAt: undefined, stories: [] }
+    );
+
+    const stories = isEs
+      ? (data.stories || []).map(applyEsOverlay)
+      : (data.stories || []);
 
     res.json({
       success: true,
       source: "stillafloat-agent",
       lang: isEs ? "es" : "en",
       generatedAt: data.generatedAt || null,
-      count: (data.stories || []).length,
-      stories: data.stories || [],
+      count: stories.length,
+      stories,
     });
   } catch (error) {
     req.log.error({ err: error }, "Homepage feed failure");
@@ -34,21 +49,23 @@ router.get("/news-feed", async (req: Request, res: Response) => {
   try {
     const lang = String(req.query["lang"] || "en");
     const isEs = lang === "es";
-    const primaryPath = isEs ? PATHS.newsIndexEs : PATHS.newsIndex;
-    const fallbackPath = isEs ? PATHS.newsIndex : null;
 
-    const primary = await readJson<{ generatedAt?: string; stories?: unknown[] }>(primaryPath, { generatedAt: undefined, stories: [] });
-    const data = (isEs && !(primary.stories || []).length && fallbackPath)
-      ? await readJson<{ generatedAt?: string; stories?: unknown[] }>(fallbackPath, { generatedAt: undefined, stories: [] })
-      : primary;
+    const data = await readJson<{ generatedAt?: string; stories?: StoryRecord[] }>(
+      PATHS.newsIndex,
+      { generatedAt: undefined, stories: [] }
+    );
+
+    const stories = isEs
+      ? (data.stories || []).map(applyEsOverlay)
+      : (data.stories || []);
 
     res.json({
       success: true,
       source: "stillafloat-agent",
       lang: isEs ? "es" : "en",
       generatedAt: data.generatedAt || null,
-      count: (data.stories || []).length,
-      stories: data.stories || [],
+      count: stories.length,
+      stories,
     });
   } catch (error) {
     req.log.error({ err: error }, "News feed failure");
@@ -60,33 +77,35 @@ router.get("/story-details", async (req: Request, res: Response): Promise<void> 
   try {
     const lang = String(req.query["lang"] || "en");
     const isEs = lang === "es";
-    const primaryPath = isEs ? PATHS.storyDetailsEs : PATHS.storyDetails;
-    const fallbackPath = isEs ? PATHS.storyDetails : null;
 
-    const primaryDetails = await readJson<{ generatedAt?: string; stories?: Record<string, unknown>[] }>(primaryPath, { generatedAt: undefined, stories: [] });
-    const storyId = String(req.query.id || "").trim();
+    const details = await readJson<{ generatedAt?: string; stories?: StoryRecord[] }>(
+      PATHS.storyDetails,
+      { generatedAt: undefined, stories: [] }
+    );
+
+    const storyId = String(req.query["id"] || "").trim();
 
     if (storyId) {
-      let story = (primaryDetails.stories || []).find((item) => item.id === storyId);
-      // Fall back to English story details if not found in Spanish stream
-      if (!story && isEs && fallbackPath) {
-        const fallback = await readJson<{ stories?: Record<string, unknown>[] }>(fallbackPath, { stories: [] });
-        story = (fallback.stories || []).find((item) => item.id === storyId);
-      }
-      if (!story) {
+      const rawStory = (details.stories || []).find((item) => item["id"] === storyId);
+      if (!rawStory) {
         res.status(404).json({ success: false, error: "Story not found" });
         return;
       }
+      const story = isEs ? applyEsOverlay(rawStory) : rawStory;
       res.json({ success: true, story });
       return;
     }
 
+    const stories = isEs
+      ? (details.stories || []).map(applyEsOverlay)
+      : (details.stories || []);
+
     res.json({
       success: true,
       source: "stillafloat-agent",
-      generatedAt: primaryDetails.generatedAt || null,
-      count: (primaryDetails.stories || []).length,
-      stories: primaryDetails.stories || [],
+      generatedAt: details.generatedAt || null,
+      count: stories.length,
+      stories,
     });
   } catch (error) {
     req.log.error({ err: error }, "Story details failure");
@@ -96,24 +115,24 @@ router.get("/story-details", async (req: Request, res: Response): Promise<void> 
 
 router.get("/alerts-feed", async (req: Request, res: Response) => {
   try {
-    const newsIndex = await readJson<{ generatedAt?: string; stories?: Record<string, unknown>[] }>(PATHS.newsIndex, { generatedAt: undefined, stories: [] });
+    const newsIndex = await readJson<{ generatedAt?: string; stories?: StoryRecord[] }>(PATHS.newsIndex, { generatedAt: undefined, stories: [] });
 
     const alerts = (newsIndex.stories || [])
       .filter((story) => {
-        const impact = String(story.impactLevel || "").toLowerCase();
-        return story.featured || story.pinned || impact.includes("high") || impact.includes("critical");
+        const impact = String(story["impactLevel"] || "").toLowerCase();
+        return story["featured"] || story["pinned"] || impact.includes("high") || impact.includes("critical");
       })
       .slice(0, 10)
       .map((story) => ({
-        id: story.id,
-        title: story.title,
-        category: story.category,
-        impactLevel: story.impactLevel,
-        travelerImpact: story.travelerImpact,
-        summary: story.summary,
-        link: story.link,
-        approvedAt: story.approvedAt,
-        featured: Boolean(story.featured || story.pinned),
+        id: story["id"],
+        title: story["title"],
+        category: story["category"],
+        impactLevel: story["impactLevel"],
+        travelerImpact: story["travelerImpact"],
+        summary: story["summary"],
+        link: story["link"],
+        approvedAt: story["approvedAt"],
+        featured: Boolean(story["featured"] || story["pinned"]),
       }));
 
     res.json({
@@ -204,12 +223,14 @@ router.get("/platform-manifest", async (req: Request, res: Response) => {
         weatherAlerts: `${siteUrl}/api/weather-alerts`,
         scanNews: `${siteUrl}/api/scan-news`,
         editorialActions: `${siteUrl}/api/agent-action`,
+        affiliateItems: `${siteUrl}/api/affiliate-items`,
       },
       capabilities: {
         aiEditorial: true,
         operationalAlerts: true,
         publishingFeeds: true,
         approvalWorkflow: true,
+        affiliateManager: true,
         weatherMonitoring: Boolean(process.env["OPENWEATHER_API_KEY"]),
         emailDelivery: Boolean(process.env["RESEND_API_KEY"]),
       },

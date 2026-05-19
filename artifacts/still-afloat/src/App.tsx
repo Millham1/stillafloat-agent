@@ -10,6 +10,7 @@ import EditorialQueue from "@/pages/queue";
 import ApprovedStories from "@/pages/approved";
 import LiveFeeds from "@/pages/feeds";
 import OperationalAlerts from "@/pages/alerts";
+import AffiliateManager from "@/pages/affiliate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,7 @@ function Router() {
         <Route path="/approved" component={ApprovedStories} />
         <Route path="/feeds" component={LiveFeeds} />
         <Route path="/alerts" component={OperationalAlerts} />
+        <Route path="/affiliate" component={AffiliateManager} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

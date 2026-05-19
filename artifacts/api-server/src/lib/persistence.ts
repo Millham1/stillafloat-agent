@@ -35,6 +35,8 @@ export const PATHS = {
   homepageEs: "homepage-feed-es",
   newsIndexEs: "news-index-es",
   storyDetailsEs: "story-details-es",
+  // Affiliate product links (Amazon Smart Strip + metadata)
+  affiliateItems: "affiliate-items",
 };
 
 export async function writeJson(key: string, payload: unknown): Promise<boolean> {

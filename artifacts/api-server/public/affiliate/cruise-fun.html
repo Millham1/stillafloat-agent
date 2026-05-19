@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cruise Fun! | Still Afloat Cruising</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#ffca4f;--blue:#4fc3ff;--seafoam:#5dff9a}
+body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#fff;background:#060f1e}
+body::before{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(4,10,22,.45) 0%,rgba(4,10,22,.68) 100%),url('/assets/images/cruise-fun-card.png') center/cover fixed;z-index:-1}
+.page-hero{position:relative;min-height:360px;display:flex;align-items:flex-end;overflow:hidden;border-bottom:4px solid rgba(93,255,154,.22)}
+.page-hero-bg{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,10,22,.18) 0%,rgba(4,10,22,.72) 100%),url('/assets/images/cruise-fun-card.png') center/cover no-repeat}
+.page-hero-content{position:relative;z-index:2;max-width:900px;padding:48px 40px 52px}
+.eyebrow{font-size:.78rem;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);font-weight:800;margin-bottom:14px}
+.hero-title{font-family:Pacifico,cursive;font-size:clamp(2.4rem,5vw,4rem);line-height:1.22;color:#ffffff;text-shadow:0 2px 20px rgba(0,0,0,.75),0 4px 40px rgba(0,0,0,.5);margin-bottom:12px}
+.hero-sub{font-size:1.05rem;line-height:1.75;color:rgba(255,255,255,.90);max-width:600px;text-shadow:0 2px 10px rgba(0,0,0,.5)}
+.back-link{display:inline-flex;align-items:center;gap:6px;margin-top:20px;color:var(--seafoam);font-weight:700;font-size:.9rem;text-decoration:none;opacity:.85;transition:opacity .2s}
+.back-link:hover{opacity:1}
+.shell{max-width:1100px;margin:auto;padding:52px 28px 80px}
+.items-grid{display:flex;flex-direction:column;gap:36px}
+.item-card{border-radius:28px;overflow:hidden;background:rgba(7,20,43,.70);border:1px solid rgba(255,255,255,.13);backdrop-filter:blur(14px);box-shadow:0 18px 44px rgba(0,0,0,.36)}
+.item-img{width:100%;max-height:280px;object-fit:cover;display:block}
+.item-body{padding:28px 32px 20px}
+.item-title{font-family:'Baloo 2',sans-serif;font-size:1.45rem;font-weight:800;color:#fff;margin-bottom:10px}
+.item-desc{font-size:1rem;line-height:1.65;color:rgba(220,240,255,.85)}
+.strip-wrap{padding:20px 32px 28px;min-height:40px}
+.empty-state{text-align:center;padding:80px 20px;color:rgba(255,255,255,.50)}
+.empty-state i{font-size:48px;margin-bottom:18px;display:block;color:rgba(93,255,154,.30)}
+.empty-state h2{font-size:1.4rem;margin-bottom:10px;color:rgba(255,255,255,.70)}
+.empty-state p{font-size:.95rem}
+.loading{text-align:center;padding:60px 20px;color:rgba(255,255,255,.50);font-size:.95rem}
+.disc{text-align:center;padding:32px 0 8px;color:rgba(255,255,255,.55);font-size:.88rem}
+footer{text-align:center;padding:28px 20px 50px;color:rgba(255,255,255,.42);font-size:.88rem}
+.brand-img-sm{height:22px;vertical-align:middle;margin:0 3px}
+@media(max-width:680px){.page-hero{min-height:260px}.page-hero-content{padding:32px 20px 36px}.hero-title{font-size:2rem}.shell{padding:32px 16px 60px}.item-body,.strip-wrap{padding-left:20px;padding-right:20px}}
+</style>
+</head>
+<body>
+<section class="page-hero">
+  <div id="navbar-container"></div>
+  <div class="page-hero-bg"></div>
+  <div class="page-hero-content">
+    <div class="eyebrow">Cruise Smarter</div>
+    <div class="hero-title">Cruise Fun!</div>
+    <p class="hero-sub">Pool deck favorites, games, and tropical accessories. The stuff that makes cruises actually memorable and keeps the conga line going.</p>
+    <a href="/affiliate.html" class="back-link"><i class="fa-solid fa-chevron-left"></i> All Gear</a>
+  </div>
+</section>
+
+<main class="shell">
+  <div id="items-container" class="items-grid">
+    <div class="loading">Loading gear picks…</div>
+  </div>
+  <div class="disc">As an Amazon Associate, <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img-sm"> may earn from qualifying purchases.</div>
+</main>
+
+<footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
+
+<script src="/components/navbar.js"></script>
+<script>
+const CATEGORY='cruise-fun';
+function esc(s){const d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML}
+function renderStrip(wrap,html){if(!html||!html.trim())return;const tmp=document.createElement('div');tmp.innerHTML=html;Array.from(tmp.childNodes).forEach(n=>{if(n.nodeName!=='SCRIPT')wrap.appendChild(n.cloneNode(true))});tmp.querySelectorAll('script').forEach(old=>{const s=document.createElement('script');Array.from(old.attributes).forEach(a=>s.setAttribute(a.name,a.value));if(!old.src)s.textContent=old.textContent;wrap.appendChild(s)})}
+async function loadItems(){
+  const container=document.getElementById('items-container');
+  try{
+    const resp=await fetch('/api/affiliate-items?category='+CATEGORY);const data=await resp.json();
+    if(!data.items||data.items.length===0){container.innerHTML=`<div class="empty-state"><i class="fa-solid fa-umbrella-beach"></i><h2>Coming soon</h2><p>Fun picks for the pool deck are being curated — check back soon.</p></div>`;return}
+    container.innerHTML='';
+    data.items.forEach(item=>{
+      const card=document.createElement('div');card.className='item-card';
+      card.innerHTML=`${item.imageUrl?`<img class="item-img" src="${esc(item.imageUrl)}" alt="${esc(item.title)}">`:''}
+        <div class="item-body"><div class="item-title">${esc(item.title)}</div>${item.description?`<p class="item-desc">${esc(item.description)}</p>`:''}</div>
+        <div class="strip-wrap" id="strip-${esc(item.id)}"></div>`;
+      container.appendChild(card);
+      if(item.smartStrip)renderStrip(document.getElementById('strip-'+item.id),item.smartStrip);
+    });
+  }catch(err){container.innerHTML=`<div class="empty-state"><i class="fa-solid fa-circle-exclamation"></i><h2>Could not load</h2><p>Please try again in a moment.</p></div>`}
+}
+loadItems();
+</script>
+</body>
+</html>
