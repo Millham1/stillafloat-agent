@@ -97,6 +97,10 @@ The original GitHub repo (`Millham1/stillafloatcruising.com`) is the source of r
 - Push code changes to GitHub (`Millham1/stillafloat-agent`) — needs GitHub PAT for write access
 - Website repo is public: `Millham1/stillafloatcruising.com` — readable without token
 
+## Content policy
+
+- **No alcohol promotion** — the site does not promote or feature alcoholic beverages. Do not generate or use images containing cocktails, beer, wine, or liquor. The current `cruise-fun-card.png` has a tropical cocktail that must be replaced — regenerate with a non-alcoholic alternative (e.g. tropical juice, mocktail, smoothie, or a pool float scene).
+
 ## Gotchas
 
 - `SUPABASE_ANON_KEY` is required — the server will throw at startup if it's missing
@@ -106,6 +110,10 @@ The original GitHub repo (`Millham1/stillafloatcruising.com`) is the source of r
 - Fonts and theming: CSS custom properties in `artifacts/still-afloat/src/index.css`
 - The old `api/cruise-news.js` Vercel function used NewsAPI — replaced by GNews+RSS in this repo
 - Git commit/push is blocked in the main agent shell — use Replit checkpoints or a project task
+
+## Saved assets
+
+- `artifacts/api-server/public/assets/images/seagull-v3-wings-fries-lightbulb.png` — saved seagull render: wings spread wide, fries flying, Einstein feathers, glasses, lightbulb, cruise ship railing background. Use this as the reference for future seagull regenerations. When regenerating `great-ideas-card.png`, always save the outgoing version with a new versioned name first (e.g. `seagull-v4-...png`) before overwriting.
 
 ## Pointers
 
