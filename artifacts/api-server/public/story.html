@@ -25,6 +25,10 @@
 <div class="tip-label">⚓ What This Means For You</div>
 <p id="traveler-impact-text"></p>
 </div>
+<div id="editorial-panel" class="editorial-panel" style="display:none;">
+<div class="tip-label">📝 Mark's Take</div>
+<p id="editorial-reasoning"></p>
+</div>
 <div class="actions">
 <a id="story-link" href="#" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-up-right-from-square"></i> Read Full Article</a>
 <a href="news.html"><i class="fa-solid fa-newspaper"></i> Return to Feed</a>
@@ -104,9 +108,11 @@ async function loadStory() {
     }
 
     // "Why This Matters" — editorial note in Mark's voice
-    if (story.editorialReasoning) {
-      document.getElementById('editorial-panel').style.display = 'block';
-      document.getElementById('editorial-reasoning').textContent = story.editorialReasoning;
+    const editorialPanel = document.getElementById('editorial-panel');
+    const editorialReasoning = document.getElementById('editorial-reasoning');
+    if (story.editorialReasoning && editorialPanel && editorialReasoning) {
+      editorialPanel.style.display = 'block';
+      editorialReasoning.textContent = story.editorialReasoning;
     }
   } catch (error) {
     console.error('Story load failure', error);
