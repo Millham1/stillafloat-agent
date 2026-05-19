@@ -5,4 +5,16 @@ outputs = []
 id = "CGKzGbDAYtQPdHY2xus_A"
 uri = "file://artifacts/api-server/public/assets/images/great-ideas-card.png"
 type = "image"
-title = "genius seagull great ideas card"
+title = "goofy genius seagull great ideas"
+
+[[generated]]
+id = "LNOOrDLKTOZjTFqCqtv2T"
+uri = "file://artifacts/api-server/public/assets/images/cabin-essentials-card.png"
+type = "image"
+title = "cabin essentials card clean"
+
+[[generated]]
+id = "KB06vGMF_jCw5CV3-c-kp"
+uri = "file://artifacts/api-server/public/assets/images/cruise-fun-card.png"
+type = "image"
+title = "cruise fun card clean"
