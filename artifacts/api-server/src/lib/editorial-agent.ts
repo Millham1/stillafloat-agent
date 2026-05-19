@@ -65,6 +65,12 @@ const TOOLS = [
               "View From The Wing",
               "One Mile at a Time",
               "Aviation Geek Club",
+              // Spanish-language sources (used when lang=es)
+              "La Vanguardia Viajes",
+              "Nat Geo Viajes",
+              "Clarín Viajes",
+              "Milenio Turismo",
+              "El Universal Turismo",
             ],
             description: "The name of the RSS feed source to fetch",
           },
@@ -151,6 +157,12 @@ const RSS_REGISTRY: Record<string, string> = {
   "One Mile at a Time": "https://onemileatatime.com/feed/",
   "Aviation Geek Club": "https://theaviationgeekclub.com/feed/",
   "Cruise Fever": "https://www.cruisefever.net/feed/",
+  // Spanish-language sources
+  "La Vanguardia Viajes": "https://www.lavanguardia.com/rss/ocio/viajes.xml",
+  "Nat Geo Viajes": "https://viajes.nationalgeographic.com.es/rss",
+  "Clarín Viajes": "https://www.clarin.com/rss/viajes/",
+  "Milenio Turismo": "https://www.milenio.com/rss/turismo",
+  "El Universal Turismo": "https://www.eluniversal.com.mx/rss/turismo.xml",
 };
 
 const rssParser = new Parser({ timeout: 8000 });
@@ -255,7 +267,30 @@ EXCLUDE ONLY these:
 
 When in doubt, INCLUDE IT. Mark will decide. Aim for 15–18 stories total.
 
+${lang === "es" ? `════════════════════════════════════
+PLAN DE INVESTIGACIÓN OBLIGATORIO — en este orden, sin saltarse pasos:
 ════════════════════════════════════
+
+RONDA 1 — obtener las 5 fuentes en español (obligatorio):
+  fetch_rss_feed("La Vanguardia Viajes")
+  fetch_rss_feed("Nat Geo Viajes")
+  fetch_rss_feed("Clarín Viajes")
+  fetch_rss_feed("Milenio Turismo")
+  fetch_rss_feed("El Universal Turismo")
+
+RONDA 2 — búsquedas GNews en español (obligatorio):
+  search_gnews("crucero caribe itinerario pasajeros cambio")
+  search_gnews("aerolínea cancelación vuelo viajero Latinoamérica")
+  search_gnews("crucero Royal Caribbean Carnival MSC Norwegian")
+  search_gnews("turismo destino playa isla crucero")
+
+RONDA 3 — completar hasta alcanzar 12–18 historias:
+  search_gnews("puerto crucero Caribe México América Central")
+  search_gnews("viaje vacaciones consejo crucero estilo de vida")
+  fetch_rss_feed("Cruise Hive")
+  fetch_rss_feed("Cruise Radio")
+
+Después de las 3 Rondas, llama a submit_editorial_decisions.` : `════════════════════════════════════
 MANDATORY RESEARCH PLAN — in this order, no skipping:
 ════════════════════════════════════
 
@@ -281,7 +316,7 @@ ROUND 3 — always run this round to reach the 12–18 story target:
   search_gnews("cruise ship news itinerary change this week")
   search_gnews("cruise port destination travel tips")
 
-After all 3 Rounds are complete, call submit_editorial_decisions.
+After all 3 Rounds are complete, call submit_editorial_decisions.`}
 
 ════════════════════════════════════
 EDITORIAL TIERS:

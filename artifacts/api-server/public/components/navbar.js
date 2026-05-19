@@ -13,6 +13,8 @@
   const homeUrl  = isSpanish ? '/es/index.html' : '/index.html';
   // Compute equivalent page URL in the other language
   // Handles /es, /es/, /es/index.html, /es/news.html correctly
+  // Pages that have a Spanish (/es/) counterpart
+  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'affiliate.html', 'story.html']);
   let langUrl;
   if (isSpanish) {
     let eng = path.replace(/^\/es(\/.*)?$/, (_m, rest) => rest || '/index.html');
@@ -20,7 +22,9 @@
     langUrl = eng;
   } else {
     const file = (path.split('/').pop()) || 'index.html';
-    langUrl = '/es/' + (file || 'index.html');
+    // Fall back to /es/index.html for pages without a Spanish counterpart
+    const esFile = ES_PAGES.has(file) ? file : 'index.html';
+    langUrl = '/es/' + esFile;
   }
   // Preserve query string (e.g. ?id=... on story pages) when switching languages
   langUrl = langUrl + window.location.search;
