@@ -129,9 +129,13 @@
     }
     .reveal.visible { opacity: 1; transform: none; }
 
-    /* Brand text spans — colours matched to logo: gold "Still", sky-blue "Afloat" */
+    /* Brand text spans — kept as fallback */
     .sa-still  { font-family: Pacifico, cursive; color: #FFD300; text-shadow: 0 2px 8px rgba(255,211,0,.30); }
     .sa-afloat { font-family: Pacifico, cursive; color: #6DCFFF; text-shadow: 0 2px 8px rgba(109,207,255,.28); }
+
+    /* Brand logo images — inline sizing */
+    .brand-img    { height: 2.4em; vertical-align: middle; display: inline-block; }
+    .brand-img-sm { height: 1.4em; vertical-align: middle; display: inline-block; }
   `;
 
   const style = document.createElement('style');
