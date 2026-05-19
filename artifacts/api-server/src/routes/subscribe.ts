@@ -158,7 +158,7 @@ function renderNewsletter(
 }
 
 // ── POST /api/subscribe ──────────────────────────────────────────
-router.post("/api/subscribe", async (req, res) => {
+router.post("/subscribe", async (req, res) => {
   try {
     const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
       || req.socket?.remoteAddress || "unknown";
@@ -221,7 +221,7 @@ router.post("/api/subscribe", async (req, res) => {
 });
 
 // ── GET /api/verify-email?token= ────────────────────────────────
-router.get("/api/verify-email", async (req, res) => {
+router.get("/verify-email", async (req, res) => {
   const token = req.query["token"] as string;
   if (!token) return res.redirect("/subscribe.html?error=missing_token");
 
@@ -259,7 +259,7 @@ router.get("/api/verify-email", async (req, res) => {
 });
 
 // ── GET /api/subscribers ─────────────────────────────────────────
-router.get("/api/subscribers", async (req, res) => {
+router.get("/subscribers", async (req, res) => {
   try {
     const { status, search, page = "1", limit = "100" } = req.query as Record<string, string>;
     const supabase  = getSupabase();
@@ -287,7 +287,7 @@ router.get("/api/subscribers", async (req, res) => {
 });
 
 // ── GET /api/unsubscribe?email=&sig= ─────────────────────────────
-router.get("/api/unsubscribe", async (req, res) => {
+router.get("/unsubscribe", async (req, res) => {
   const { email, sig } = req.query as Record<string, string>;
 
   if (!email || !sig) return res.redirect("/unsubscribe-confirmed.html?result=invalid");
@@ -321,7 +321,7 @@ router.get("/api/unsubscribe", async (req, res) => {
 });
 
 // ── GET /api/approved-stories-list (for newsletter composer) ─────
-router.get("/api/approved-stories-list", async (_req, res) => {
+router.get("/approved-stories-list", async (_req, res) => {
   try {
     const data = await readJson<{ stories?: Record<string, unknown>[] }>(PATHS.approved, { stories: [] });
     return res.json({ stories: data.stories ?? [] });
@@ -332,7 +332,7 @@ router.get("/api/approved-stories-list", async (_req, res) => {
 });
 
 // ── POST /api/send-newsletter ─────────────────────────────────────
-router.post("/api/send-newsletter", async (req, res) => {
+router.post("/send-newsletter", async (req, res) => {
   try {
     const { storyIds, subject } = req.body as { storyIds: string[]; subject: string };
 
