@@ -1,28 +1,50 @@
 // Still Afloat — Global Site Nav
-// Injects logo (top-left) + glass-navy pill nav (top-right) as position:absolute
-// Mobile: hamburger button + slide-down full-screen menu
+// Auto-detects English vs Spanish pages (/es/*) and adjusts accordingly.
+// Hamburger menu on mobile. Language switcher pill below nav on desktop.
 (function () {
 
-  const isHome = ['', '/', '/index.html', 'index.html'].some(s =>
-    window.location.pathname.endsWith(s) || window.location.pathname === s
-  );
+  const path     = window.location.pathname;
+  const isSpanish = path.startsWith('/es/') || path === '/es';
+
+  const isHome = isSpanish
+    ? (path === '/es/' || path === '/es' || path.endsWith('/es/index.html'))
+    : (['', '/', '/index.html', 'index.html'].some(s => path.endsWith(s) || path === s));
+
+  const homeUrl  = isSpanish ? '/es/index.html' : '/index.html';
+  const langUrl  = isSpanish
+    ? path.replace(/^\/es\//, '/')          // /es/news.html → /news.html
+    : '/es/' + (path.split('/').pop() || 'index.html'); // /news.html → /es/news.html
+  const langLabel = isSpanish ? '🇺🇸 English' : '🌎 En Español';
+
+  // ── Nav links (absolute paths) ──
+  const mainLinks = isSpanish ? [
+    { href: '/es/index.html',     label: 'Inicio'    },
+    { href: '/es/news.html',      label: 'Noticias'  },
+    { href: '/es/weather.html',   label: 'Clima'     },
+    { href: '/es/affiliate.html', label: 'Equipo'    },
+  ] : [
+    { href: '/index.html',     label: 'Home'       },
+    { href: '/news.html',      label: 'Cruise News'},
+    { href: '/weather.html',   label: 'Weather'    },
+    { href: '/affiliate.html', label: 'Gear'       },
+  ];
+
+  const bookLabel = isSpanish ? 'Reservar Crucero' : 'Book a Cruise';
 
   const navHTML = `
     ${isHome ? '' : `
-    <a class="sa-logo-home" href="index.html" title="Still Afloat Home">
+    <a class="sa-logo-home" href="${homeUrl}" title="Still Afloat Home">
       <img src="/assets/images/still_afloat_logo.png" alt="Still Afloat" class="sa-logo-img">
     </a>`}
     <nav class="sa-site-nav" id="saSiteNav">
       <div class="sa-nav-row">
-        <a href="index.html"     class="sa-nav-link">Home</a>
-        <a href="news.html"      class="sa-nav-link">Cruise News</a>
-        <a href="weather.html"   class="sa-nav-link">Weather</a>
-        <a href="affiliate.html" class="sa-nav-link">Gear</a>
+        ${mainLinks.map(l => `<a href="${l.href}" class="sa-nav-link">${l.label}</a>`).join('')}
       </div>
       <div class="sa-nav-row sa-secondary">
-        <a href="under-construction.html" class="sa-nav-link">Book a Cruise</a>
+        <a href="/under-construction.html" class="sa-nav-link">${bookLabel}</a>
       </div>
     </nav>
+    <a href="${langUrl}" class="sa-lang-pill" title="${langLabel}">${langLabel}</a>
     <button class="sa-hamburger" aria-label="Open menu" aria-expanded="false">
       <i class="fa-solid fa-bars"></i>
     </button>
@@ -33,11 +55,10 @@
       <button class="sa-mobile-close" aria-label="Close menu">
         <i class="fa-solid fa-xmark"></i>
       </button>
-      <a href="index.html"              class="sa-mobile-link">Home</a>
-      <a href="news.html"               class="sa-mobile-link">Cruise News</a>
-      <a href="weather.html"            class="sa-mobile-link">Weather</a>
-      <a href="affiliate.html"          class="sa-mobile-link">Gear</a>
-      <a href="under-construction.html" class="sa-mobile-link">Book a Cruise</a>
+      ${mainLinks.map(l => `<a href="${l.href}" class="sa-mobile-link">${l.label}</a>`).join('')}
+      <a href="/under-construction.html" class="sa-mobile-link">${bookLabel}</a>
+      <div class="sa-mobile-lang-divider"></div>
+      <a href="${langUrl}" class="sa-mobile-link sa-mobile-lang">${langLabel}</a>
     </div>
     <div class="sa-mobile-overlay" id="saMobileOverlay"></div>
   `;
@@ -67,6 +88,7 @@
     }
     .sa-logo-home:hover .sa-logo-img { transform: scale(1.05); }
 
+    /* ── Desktop nav pill ── */
     .sa-site-nav {
       position: absolute;
       top: 22px;
@@ -135,6 +157,38 @@
       color: #5dff9a;
     }
 
+    /* ── Language switcher pill — separate, below the nav ── */
+    .sa-lang-pill {
+      position: absolute;
+      top: 118px;
+      right: 22px;
+      z-index: 19;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(7,24,63,.80);
+      border: 1px solid rgba(93,255,154,.45);
+      border-radius: 20px;
+      padding: 7px 16px;
+      color: #5dff9a;
+      font-family: 'Baloo 2', system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      letter-spacing: .3px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 6px 20px rgba(0,0,0,.32), 0 0 12px rgba(93,255,154,.12);
+      transition: all .22s ease;
+      white-space: nowrap;
+    }
+    .sa-lang-pill:hover {
+      background: rgba(93,255,154,.18);
+      border-color: rgba(93,255,154,.70);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(0,0,0,.36), 0 0 18px rgba(93,255,154,.20);
+    }
+
     /* ── Hamburger button ── */
     .sa-hamburger {
       display: none;
@@ -153,7 +207,6 @@
       -webkit-backdrop-filter: blur(14px);
       box-shadow: 0 8px 24px rgba(0,0,0,.40);
       align-items: center;
-      gap: 8px;
       line-height: 1;
     }
     .sa-hamburger:active { transform: scale(0.96); }
@@ -237,6 +290,23 @@
       color: #5dff9a;
     }
 
+    .sa-mobile-lang-divider {
+      height: 1px;
+      background: rgba(93,255,154,.22);
+      margin: 8px 4px 16px;
+    }
+
+    .sa-mobile-lang {
+      background: rgba(93,255,154,.10);
+      border-color: rgba(93,255,154,.30);
+      color: #5dff9a;
+      font-size: 17px;
+    }
+    .sa-mobile-lang:hover,
+    .sa-mobile-lang:active {
+      background: rgba(93,255,154,.22);
+    }
+
     /* Reveal animation */
     .reveal {
       opacity: 0;
@@ -254,6 +324,7 @@
     /* ── Mobile breakpoint ── */
     @media (max-width: 768px) {
       .sa-site-nav  { display: none; }
+      .sa-lang-pill { display: none; }
       .sa-hamburger { display: flex; }
       .sa-logo-img  { height: 60px; }
     }
@@ -263,7 +334,6 @@
   style.textContent = navCSS;
   document.head.appendChild(style);
 
-  // Inject mobile menu + overlay into body (so position:fixed works globally)
   const mobileWrap = document.createElement('div');
   mobileWrap.innerHTML = mobileMenuHTML;
   document.body.appendChild(mobileWrap);
@@ -274,17 +344,15 @@
     container.innerHTML = navHTML;
 
     // Active page highlight
-    const current = window.location.pathname.split('/').pop() || 'index.html';
     container.querySelectorAll('.sa-nav-link').forEach(a => {
-      const href = (a.getAttribute('href') || '').split('/').pop();
-      if (href && href === current) a.classList.add('active');
+      if (a.getAttribute('href') === path) a.classList.add('active');
     });
 
     // Hamburger toggle
-    const hamburger   = container.querySelector('.sa-hamburger');
-    const mobileMenu  = document.getElementById('saMobileMenu');
-    const overlay     = document.getElementById('saMobileOverlay');
-    const closeBtn    = mobileMenu && mobileMenu.querySelector('.sa-mobile-close');
+    const hamburger  = container.querySelector('.sa-hamburger');
+    const mobileMenu = document.getElementById('saMobileMenu');
+    const overlay    = document.getElementById('saMobileOverlay');
+    const closeBtn   = mobileMenu && mobileMenu.querySelector('.sa-mobile-close');
 
     function openMenu() {
       if (!mobileMenu || !overlay) return;
@@ -293,7 +361,6 @@
       hamburger && hamburger.setAttribute('aria-expanded', 'true');
       document.body.style.overflow = 'hidden';
     }
-
     function closeMenu() {
       if (!mobileMenu || !overlay) return;
       mobileMenu.classList.remove('open');
@@ -305,11 +372,11 @@
     if (hamburger) hamburger.addEventListener('click', openMenu);
     if (closeBtn)  closeBtn.addEventListener('click', closeMenu);
     if (overlay)   overlay.addEventListener('click', closeMenu);
-    document.querySelectorAll('.sa-mobile-link').forEach(link =>
-      link.addEventListener('click', closeMenu)
+    document.querySelectorAll('.sa-mobile-link').forEach(l =>
+      l.addEventListener('click', closeMenu)
     );
 
-    // Scroll reveal observer
+    // Scroll reveal
     const io = new IntersectionObserver(entries => {
       entries.forEach(e => {
         if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }

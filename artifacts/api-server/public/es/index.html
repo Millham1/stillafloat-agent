@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es-419">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Still Afloat Cruising | Navega más inteligente</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/css/styles.css?v=20260518-nav-refresh">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+.hero{
+  position:relative;
+  padding:80px 20px 130px;
+}
+
+.gear-link{text-decoration:none;color:inherit;display:block}
+.gear-link:hover .gear-card{transform:translateY(-6px) scale(1.02);transition:all .32s cubic-bezier(.22,1,.36,1)}
+
+#report .report-grid{align-items:stretch;}
+#report .report-box{
+  position:relative;overflow:hidden;
+  background:radial-gradient(circle at top right, rgba(93,255,154,.14), transparent 34%),
+             linear-gradient(145deg, rgba(0,119,182,.54), rgba(7,24,63,.76)) !important;
+  border:1px solid rgba(255,255,255,.16) !important;
+  border-radius:28px;
+  backdrop-filter:blur(14px);
+  box-shadow:0 18px 42px rgba(0,0,0,.22);
+}
+#report .report-box::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0));
+  pointer-events:none;
+}
+#report .report-box h3{position:relative;color:#ffffff;text-shadow:0 2px 10px rgba(0,0,0,.22);}
+
+.weather-hint{color:rgba(93,255,154,.92);font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:8px 0 18px;text-shadow:0 0 12px rgba(93,255,154,.28);font-weight:700;}
+#weather-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px;margin-top:18px;}
+.home-weather-tile{
+  background:radial-gradient(circle at top, rgba(255,255,255,.14), transparent 42%),
+             linear-gradient(180deg, rgba(11,96,145,.70), rgba(7,24,63,.78));
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:24px;
+  backdrop-filter:blur(12px);
+  padding:18px 10px;
+  text-align:center;
+  text-decoration:none;
+  transition:all .28s cubic-bezier(.22,1,.36,1);
+  box-shadow:0 10px 22px rgba(0,0,0,.20);
+}
+.home-weather-tile:hover{
+  transform:translateY(-5px) scale(1.04);
+  border-color:rgba(93,255,154,.40);
+  box-shadow:0 20px 40px rgba(0,0,0,.32);
+  background:radial-gradient(circle at top, rgba(93,255,154,.20), transparent 45%),
+             linear-gradient(180deg, rgba(0,119,182,.80), rgba(7,24,63,.88));
+}
+.home-weather-emoji{font-size:40px;line-height:1;margin-bottom:8px;}
+.home-weather-location{color:white;font-weight:800;font-size:15px;margin-bottom:5px;}
+.home-weather-temp{color:#5dff9a;font-size:22px;font-weight:900;}
+
+#news-container > div{border-bottom:1px solid rgba(255,255,255,.14) !important;}
+#news-container a{color:#ffffff !important;text-shadow:0 1px 6px rgba(0,0,0,.16);}
+#news-container a:hover{color:#5dff9a !important;}
+
+.section, .report-box, .flavor-card, .home-weather-tile {
+  transition:opacity .65s cubic-bezier(.22,1,.36,1), transform .65s cubic-bezier(.22,1,.36,1);
+}
+
+.sa-still{font-family:Pacifico,cursive;color:#FFD300;text-shadow:0 2px 8px rgba(255,211,0,.30);}
+.sa-afloat{font-family:Pacifico,cursive;color:#6DCFFF;text-shadow:0 2px 8px rgba(109,207,255,.28);}
+</style>
+</head>
+<body>
+<header class="banner-header" id="top"><img class="banner-image" src="/assets/images/Youtube banner cropped.png" alt="Still Afloat YouTube banner"></header>
+<main>
+
+<section class="hero">
+<div id="navbar-container"></div>
+<div class="hero-overlay"></div>
+<div class="hero-content">
+<div class="hero-text reveal">
+<p class="eyebrow"><i class="fa-solid fa-anchor"></i> Planificación de cruceros con personalidad</p>
+<h1><span>Navega más inteligente. </span><span>Ríe más.</span></h1>
+<p><img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> es la planificación de cruceros con sentido común y el espíritu de una conga: historias de barcos, la realidad de los días en puerto, lecciones sobre ofertas de casino, equipo en el mar y consejos prácticos de alguien que ha vivido en el agua.</p>
+</div>
+</div>
+</section>
+
+<section id="vibe" class="section vibe-section">
+<div class="wrap vibe-panel reveal">
+<div><p class="section-kicker">El ambiente real</p><h2>Parte agencia de cruceros. Parte conga tropical. Parte charla real de viajes.</h2></div>
+<div class="big-copy">
+<p>Este sitio ayuda a la gente a tomar mejores decisiones sobre cruceros antes de desperdiciar dinero, tiempo de vacaciones y paciencia.</p>
+<p>Hablaremos de barcos, cabinas, puertos, cámaras, maletas, comida, ofertas de casino, beneficios de lealtad, hoteles, vuelos, embarque y todo lo que surja entre el día de la reserva y la pasarela.</p>
+</div>
+</div>
+</section>
+
+<section id="report" class="section report-section high-report">
+<div class="wrap">
+<p class="section-kicker">Informe de Cruceros</p>
+<h2>Lo que está pasando ahora mismo</h2>
+<div class="report-grid">
+<div class="report-box reveal">
+<h3>Noticias de Cruceros</h3>
+<div id="news-container"></div>
+<div style="margin-top:24px;">
+<a href="/es/news.html" style="display:inline-block;background:#0077b6;color:#5dff9a;padding:14px 24px;border-radius:16px;font-weight:800;font-size:18px;box-shadow:0 10px 24px rgba(0,0,0,0.18);border:2px solid rgba(255,255,255,0.18);transition:all .25s ease;">Más Noticias →</a>
+</div>
+</div>
+<div class="report-box reveal" style="transition-delay:.12s">
+<h3>Clima en Puertos</h3>
+<div class="weather-hint">🧭 Selecciona un puerto para ver el pronóstico de 10 días</div>
+<div id="weather-container"></div>
+<div style="margin-top:24px;">
+<a href="/es/weather.html" style="display:inline-block;background:#0077b6;color:#5dff9a;padding:14px 24px;border-radius:16px;font-weight:800;font-size:18px;box-shadow:0 10px 24px rgba(0,0,0,0.18);border:2px solid rgba(255,255,255,0.18);transition:all .25s ease;">Más Puertos y Clima de Destinos →</a>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="section card-section">
+<div class="wrap cards">
+<article class="flavor-card ship-card reveal">
+<div><i class="fa-solid fa-ship"></i><h3>Barco y Cabina</h3><p>Qué barco va con el viaje, cuándo la cabina más económica está bien y cuándo pagar más realmente mejora las vacaciones.</p></div>
+</article>
+<a class="gear-link reveal" href="/es/affiliate.html" style="transition-delay:.10s">
+<article class="flavor-card gear-card">
+<div><i class="fa-solid fa-camera-retro"></i><h3>Equipo en el Mar</h3><p>Empacar más inteligente, viajar más ligero y descubrir qué vale la pena llevar antes de salir del muelle.</p></div>
+</article>
+</a>
+<article class="flavor-card casino-card reveal" style="transition-delay:.20s">
+<div><i class="fa-solid fa-dice"></i><h3>Ofertas de Casino y la Realidad</h3><p>Qué incluyen realmente las ofertas de cruceros, qué tiene costo adicional y cómo pensar en las matemáticas antes de aceptar la oferta.</p></div>
+</article>
+</div>
+</section>
+
+<section id="mark" class="section mark-section">
+<div class="wrap meet-mark">
+<img class="bio-img reveal" src="/assets/images/Bio shot.JPG" alt="Mark Millham">
+<div class="meet-mark-text reveal" style="transition-delay:.10s">
+<p class="section-kicker">Conoce a Mark</p>
+<h2>Experiencia,<br><span class="saltwater-line">con algo de sal marina detrás.</span></h2>
+<p>Soy Mark Millham — gerente de TI retirado, veterano, exmarinero de a bordo y crucerista de muchos años.</p>
+<p><img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> es donde desglozo las cosas como realmente las pienso: qué importa, qué no, dónde la gente desperdicia dinero o lo gasta bien, y cómo disfrutar el viaje sin ahogarse en opciones.</p>
+<p class="tagline">Navega más inteligente. Ríe más. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img"></p>
+</div>
+<img class="parrots-accent" src="/assets/images/parrots.JPG" alt="Mark con loros">
+</div>
+</section>
+
+<section id="watch" class="section youtube-section">
+<div class="wrap two-col reveal">
+<div><p class="section-kicker">YouTube muy pronto</p><h2>El canal se construye alrededor del viaje, no de un guion de estudio.</h2></div>
+<div class="video-placeholder"><i class="fa-brands fa-youtube"></i><h3>Los primeros videos llegan pronto</h3><p>Episodios de planificación, selección de barco, preparación para cruceros, lecciones a bordo, decisiones del día de viaje y reseñas post-crucero honestas.</p></div>
+</div>
+</section>
+
+</main>
+<footer><p>© 2026 Still Afloat LLC — Navega más inteligente. Ríe más. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></p></footer>
+
+<script src="/components/navbar.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/news.js"></script>
+<script src="/js/weather.js"></script>
+</body>
+</html>

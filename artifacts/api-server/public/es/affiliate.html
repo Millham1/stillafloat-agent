@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es-419">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Still Afloat | Equipo para Cruceros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#ffca4f;--blue:#4fc3ff;--seafoam:#5dff9a}
+
+body{
+  font-family:'Baloo 2',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+  color:#fff;
+  background:#060f1e;
+  position:relative;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:
+    linear-gradient(180deg,rgba(4,10,22,.55) 0%,rgba(4,10,22,.72) 100%),
+    url('/assets/images/cruising-gear-bg.png') center/cover fixed;
+  z-index:-1;
+}
+
+.page-hero{
+  position:relative;
+  min-height:420px;
+  display:flex;
+  align-items:flex-end;
+  overflow:hidden;
+  border-bottom:4px solid rgba(93,255,154,.22);
+}
+.page-hero-bg{
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(180deg,rgba(4,10,22,.18) 0%,rgba(4,10,22,.68) 100%),
+    url('/assets/images/cruising-gear-bg.png') center/cover no-repeat;
+}
+.page-hero-content{
+  position:relative;
+  z-index:2;
+  max-width:900px;
+  padding:48px 40px 52px;
+}
+.eyebrow{
+  font-size:.78rem;
+  letter-spacing:.26em;
+  text-transform:uppercase;
+  color:var(--gold);
+  font-weight:800;
+  margin-bottom:14px;
+}
+.hero-title{
+  font-family:Pacifico,cursive;
+  font-size:clamp(2.8rem,5vw,4.4rem);
+  line-height:1.22;
+  background:linear-gradient(90deg,#07183f 0%,#0a2c5c 55%,#0077b6 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  letter-spacing:.02em;
+  margin-bottom:16px;
+}
+.hero-sub{
+  font-size:1.1rem;
+  line-height:1.75;
+  color:rgba(255,255,255,.90);
+  max-width:640px;
+  text-shadow:0 2px 10px rgba(0,0,0,.5);
+}
+
+.shell{max-width:1400px;margin:auto;padding:52px 28px 80px}
+
+.feature-wrap{display:flex;justify-content:center;margin-bottom:48px}
+.feature{
+  max-width:740px;
+  width:100%;
+  padding:28px 32px;
+  border-radius:30px;
+  background:rgba(7,18,38,.60);
+  border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  box-shadow:0 12px 36px rgba(0,0,0,.28);
+  transition:border-color .3s ease, box-shadow .3s ease;
+}
+.feature:hover{border-color:rgba(93,255,154,.28);box-shadow:0 16px 44px rgba(0,0,0,.36)}
+.feature small{color:var(--gold);font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:.78rem}
+.feature h2{font-size:1.75rem;margin:10px 0;color:#fff}
+.feature p{line-height:1.65;color:rgba(255,255,255,.88);margin-bottom:18px}
+
+.script{
+  font-family:Pacifico,cursive;
+  background:linear-gradient(90deg,var(--gold),var(--blue));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.btn{
+  display:inline-flex;
+  padding:13px 24px;
+  border-radius:999px;
+  background:linear-gradient(180deg,#ffd76a,#ffbf2f);
+  color:#061426;
+  text-decoration:none;
+  font-weight:800;
+  font-size:.95rem;
+  box-shadow:0 10px 24px rgba(255,191,47,.18);
+  transition:transform .28s ease, box-shadow .28s ease;
+}
+.btn:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 16px 32px rgba(255,191,47,.30)}
+
+.section-label{
+  font-size:.76rem;
+  font-weight:800;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:rgba(93,255,154,.8);
+  margin-bottom:18px;
+}
+.cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:22px;
+  align-items:start;
+}
+.card{
+  min-height:340px;
+  text-decoration:none;
+  color:white;
+  border-radius:28px;
+  overflow:hidden;
+  background:rgba(7,20,43,.70);
+  border:1px solid rgba(255,255,255,.13);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  box-shadow:0 18px 44px rgba(0,0,0,.36);
+  transition:border-color .38s ease, box-shadow .38s ease, background .38s ease;
+  display:flex;
+  flex-direction:column;
+}
+.card:hover{
+  border-color:rgba(79,195,255,.44);
+  background:rgba(7,20,43,.82);
+  box-shadow:0 0 26px rgba(79,195,255,.14), 0 24px 52px rgba(0,0,0,.44);
+}
+.photo{
+  width:100%;
+  display:block;
+  border-radius:14px 14px 0 0;
+  overflow:hidden;
+  transition:transform .5s ease, filter .5s ease;
+}
+.photo img{width:100%;height:auto;display:block;}
+.card:hover .photo{filter:saturate(1.08) brightness(1.05)}
+.card:nth-child(1):hover .photo{transform:translate3d(-3px,-4px,0) scale(1.03)}
+.card:nth-child(2):hover .photo{transform:translate3d(0,-5px,0) scale(1.025)}
+.card:nth-child(3):hover .photo{transform:translate3d(4px,-4px,0) scale(1.03)}
+.card:nth-child(4):hover .photo{transform:translate3d(0,-3px,0) scale(1.025)}
+.card-body{padding:22px;display:flex;flex-direction:column;gap:10px;flex:1;transition:transform .38s ease}
+.card:nth-child(1):hover .card-body{transform:translateX(3px)}
+.card:nth-child(2):hover .card-body{transform:translateY(-2px)}
+.card:nth-child(3):hover .card-body{transform:translateX(-3px)}
+.card:nth-child(4):hover .card-body{transform:translateY(-2px)}
+.card-title{font-size:1.3rem;font-weight:800;line-height:1.2;color:#fff}
+.card-copy{color:rgba(220,240,255,.85);line-height:1.55;font-size:.94rem}
+.see{margin-top:auto;color:var(--gold);font-weight:800;transition:.25s;font-size:.92rem}
+.card:hover .see{color:var(--blue);transform:translateX(5px)}
+
+.disc{
+  text-align:center;
+  padding:32px 0 8px;
+  color:rgba(255,255,255,.70);
+  font-size:.9rem;
+  text-shadow:0 3px 10px rgba(0,0,0,.4);
+}
+
+footer{
+  text-align:center;
+  padding:28px 20px 50px;
+  color:rgba(255,255,255,.42);
+  font-size:.88rem;
+}
+
+@media(max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:680px){
+  .page-hero{min-height:300px}
+  .page-hero-content{padding:36px 24px 40px}
+  .hero-title{font-size:2.4rem}
+  .cards{grid-template-columns:1fr}
+  .shell{padding:36px 18px 60px}
+  .card:hover .photo,.card:hover .card-body{transform:none!important}
+}
+</style>
+</head>
+<body>
+
+<section class="page-hero">
+  <div id="navbar-container"></div>
+  <div class="page-hero-bg"></div>
+  <div class="page-hero-content">
+    <div class="eyebrow">Navega Más Inteligente</div>
+    <div class="hero-title">Equipo para Cruceros</div>
+    <p class="hero-sub">Equipo de cruceros y viajes recomendado para viajar mejor y navegar más inteligente — curado desde el muelle hasta el barco.</p>
+  </div>
+</section>
+
+<main class="shell">
+  <div class="feature-wrap">
+    <div class="feature">
+      <small>Artículo Destacado de la Semana</small>
+      <h2>El Favorito de <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> Esta Semana</h2>
+      <p>Un hallazgo para cruceros, ayuda de viaje o producto práctico que vale la pena destacar antes de explorar las categorías.</p>
+      <a class="btn" href="#featured-item">Ver Este Favorito →</a>
+    </div>
+  </div>
+
+  <div class="cards">
+    <a class="card" href="/under-construction.html">
+      <div class="photo">
+        <img src="/assets/images/air-travel-card.png" alt="Viajes en Avión">
+      </div>
+      <div class="card-body">
+        <div class="card-title">Viajes en Avión</div>
+        <div class="card-copy">Equipo inteligente para vuelos más cómodos y días de embarque más sencillos.</div>
+        <div class="see">Ver Equipo →</div>
+      </div>
+    </a>
+    <a class="card" href="/under-construction.html">
+      <div class="photo">
+        <img src="/assets/images/cabin-essentials-card.png" alt="Esenciales para la Cabina">
+      </div>
+      <div class="card-body">
+        <div class="card-title">Esenciales para la Cabina</div>
+        <div class="card-copy">Artículos imprescindibles para mantener tu cabina organizada, cómoda y funcional.</div>
+        <div class="see">Ver Esenciales →</div>
+      </div>
+    </a>
+    <a class="card" href="/under-construction.html">
+      <div class="photo">
+        <img src="/assets/images/cruise-fun-card.png" alt="Diversión en el Crucero">
+      </div>
+      <div class="card-body">
+        <div class="card-title">¡Diversión en el Crucero!</div>
+        <div class="card-copy">Favoritos de la cubierta de piscina, juegos y accesorios tropicales. Lo que hace memorable un crucero.</div>
+        <div class="see">Ver Favoritos →</div>
+      </div>
+    </a>
+    <a class="card" href="/under-construction.html">
+      <div class="photo">
+        <img src="/assets/images/great-ideas-card.png" alt="Grandes Ideas">
+      </div>
+      <div class="card-body">
+        <div class="card-title">Grandes Ideas en General</div>
+        <div class="card-copy">Gadgets útiles y hallazgos inteligentes que hacen los cruceros más fáciles.</div>
+        <div class="see">Ver Ideas →</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="disc">Como Asociado de Amazon, <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img-sm"> puede ganar comisiones por compras calificadas.</div>
+</main>
+
+<footer>© 2026 Still Afloat LLC — Navega más inteligente. Ríe más. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
+
+<script src="/components/navbar.js"></script>
+</body>
+</html>
