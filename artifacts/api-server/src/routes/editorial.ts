@@ -170,6 +170,11 @@ router.get("/editorial-queue", async (req: Request, res: Response) => {
         homepageCandidate: Boolean(story.homepageCandidate),
         status: (story.status as string) || null,
         decidedAt: (story.decidedAt as string) || null,
+        // Spanish translation overlay fields
+        title_es: (story.title_es as string) || null,
+        summary_es: (story.summary_es as string) || null,
+        travelerImpact_es: (story.travelerImpact_es as string) || null,
+        editorialReasoning_es: (story.editorialReasoning_es as string) || null,
       };
     });
 
@@ -231,6 +236,11 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
     }
 
     const normalizedStory = normalizeStory(story);
+    // Re-attach Spanish overlay fields — normalizeStory() is whitelist-only and strips them
+    const esFields: Record<string, string> = {};
+    for (const key of ["title_es", "summary_es", "travelerImpact_es", "editorialReasoning_es"] as const) {
+      if (story[key]) esFields[key] = String(story[key]);
+    }
     const validationErrors = validatePublishingStory(normalizedStory);
 
     if (action !== "reject" && validationErrors.length) {
@@ -265,6 +275,7 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
     const isFeatured = action === "pin";
     const approvedStory = {
       ...normalizedStory,
+      ...esFields,
       status: isFeatured ? "featured" : "approved",
       approvedAt: decidedAt,
       featured: isFeatured,
@@ -389,15 +400,11 @@ router.post("/scan-news", async (req: Request, res: Response) => {
         }),
       ]);
     } else {
-      // Translate candidate stories to Spanish so the /es/ feeds have real content
-      const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
-      const storiesWithEs = await translateStoriesToSpanish(curatedStories, apiKey);
-      telemetry.translationCompleted = true;
-
+      // Write English candidates immediately so the queue is available without delay
       await writeJson(PATHS.candidates, {
         generatedAt,
         systemStatus: curated.systemStatus || null,
-        stories: storiesWithEs,
+        stories: curatedStories,
         homepageTop5: (curated.homepageTop5 || []).slice(0, 5),
         groupedDevelopments: curated.groupedDevelopments || [],
         telemetry,
@@ -425,6 +432,32 @@ router.post("/scan-news", async (req: Request, res: Response) => {
       telemetry,
       emailResult: emailResult ? { success: emailResult.success, provider: emailResult.provider } : null,
     });
+
+    // Fire-and-forget: translate English candidates to Spanish in the background.
+    // Runs after the HTTP response is sent so it never blocks or times out the scan request.
+    if (lang === "en") {
+      const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
+      if (apiKey) {
+        const bgTranslate = async () => {
+          try {
+            req.log.info({ count: curatedStories.length }, "Background Spanish translation starting");
+            const storiesWithEs = await translateStoriesToSpanish(curatedStories, apiKey);
+            await writeJson(PATHS.candidates, {
+              generatedAt,
+              systemStatus: curated.systemStatus || null,
+              stories: storiesWithEs,
+              homepageTop5: (curated.homepageTop5 || []).slice(0, 5),
+              groupedDevelopments: curated.groupedDevelopments || [],
+              telemetry,
+            });
+            req.log.info({ count: storiesWithEs.length }, "Background Spanish translation saved to candidates");
+          } catch (err) {
+            req.log.warn({ err }, "Background Spanish translation failed — English fallback active");
+          }
+        };
+        setImmediate(() => { bgTranslate().catch(() => {}); });
+      }
+    }
   } catch (error) {
     req.log.error({ err: error }, "Scan pipeline failure");
     (telemetry.errors as unknown[]).push({
