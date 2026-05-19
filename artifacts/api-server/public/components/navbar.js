@@ -357,9 +357,13 @@
     if (!container) return;
     container.innerHTML = navHTML;
 
-    // Active page highlight
+    // Active page highlight — normalize both sides so /index.html, /, and '' all match
+    function normPath(p) {
+      return p.replace(/\/index\.html$/, '/').replace(/\/$/, '') || '/';
+    }
+    const normCurrent = normPath(path);
     container.querySelectorAll('.sa-nav-link').forEach(a => {
-      if (a.getAttribute('href') === path) a.classList.add('active');
+      if (normPath(a.getAttribute('href') || '') === normCurrent) a.classList.add('active');
     });
 
     // Hamburger toggle
