@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unsubscribed | Still Afloat</title>
+<link rel="stylesheet" href="/css/styles.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:linear-gradient(to bottom,#040b16 0%,#071523 50%,#0c2035 100%);color:white;font-family:'Baloo 2',Poppins,sans-serif}
+.center{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 20px}
+.card{max-width:500px;width:100%;background:rgba(9,18,34,.84);border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:44px 40px;backdrop-filter:blur(14px);text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.42)}
+.icon{font-size:44px;margin-bottom:24px}
+h1{font-size:clamp(22px,5vw,34px);font-weight:900;margin:0 0 14px}
+h1 span{color:#5dff9a}
+.lead{font-size:15px;line-height:1.7;color:rgba(255,255,255,.6);margin:0 0 28px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:14px;font-weight:800;font-size:15px;text-decoration:none;background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.14);transition:all .2s}
+.btn:hover{background:rgba(255,255,255,.14)}
+footer{padding:20px;text-align:center;color:rgba(255,255,255,.24);font-size:.82rem}
+</style>
+</head>
+<body>
+<div class="center">
+  <div class="card" id="card">
+    <div class="icon">👋</div>
+    <h1 id="title">You're <span>unsubscribed</span></h1>
+    <p class="lead" id="lead">You've been removed from the Still Afloat mailing list. You won't receive any further emails from us.</p>
+    <a href="/index.html" class="btn">← Back to Still Afloat</a>
+  </div>
+</div>
+<footer>&copy; 2025 Still Afloat</footer>
+<script>
+const params = new URLSearchParams(location.search);
+const result = params.get('result');
+if (result === 'invalid' || result === 'error') {
+  document.getElementById('title').innerHTML = 'Link <span>invalid</span>';
+  document.getElementById('lead').textContent = 'This unsubscribe link is invalid or has already been used. If you continue to receive emails, contact us directly.';
+  document.querySelector('.icon').textContent = '🔗';
+}
+if (result === 'success') {
+  const email = params.get('email');
+  if (email) {
+    document.getElementById('lead').textContent =
+      decodeURIComponent(email) + ' has been removed from the Still Afloat mailing list. Sorry to see you go — you\'re always welcome back!';
+  }
+}
+</script>
+</body>
+</html>

@@ -11,6 +11,8 @@ import ApprovedStories from "@/pages/approved";
 import LiveFeeds from "@/pages/feeds";
 import OperationalAlerts from "@/pages/alerts";
 import AffiliateManager from "@/pages/affiliate";
+import Subscribers from "@/pages/subscribers";
+import Newsletter from "@/pages/newsletter";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,7 +32,9 @@ function Router() {
         <Route path="/approved" component={ApprovedStories} />
         <Route path="/feeds" component={LiveFeeds} />
         <Route path="/alerts" component={OperationalAlerts} />
-        <Route path="/affiliate" component={AffiliateManager} />
+        <Route path="/affiliate"   component={AffiliateManager} />
+        <Route path="/subscribers" component={Subscribers} />
+        <Route path="/newsletter"  component={Newsletter} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
