@@ -5,22 +5,22 @@ outputs = []
 id = "CGKzGbDAYtQPdHY2xus_A"
 uri = "file://artifacts/api-server/public/assets/images/great-ideas-card.png"
 type = "image"
-title = "goofy seagull compact"
+title = "goofy seagull scene square"
 
 [[generated]]
 id = "LNOOrDLKTOZjTFqCqtv2T"
 uri = "file://artifacts/api-server/public/assets/images/cabin-essentials-card.png"
 type = "image"
-title = "cabin essentials compact"
+title = "cruise cabin clean square"
 
 [[generated]]
 id = "KB06vGMF_jCw5CV3-c-kp"
 uri = "file://artifacts/api-server/public/assets/images/cruise-fun-card.png"
 type = "image"
-title = "cruise fun compact"
+title = "cruise fun scene square"
 
 [[generated]]
 id = "hgwz506rYCCdmjxsaL7N_"
 uri = "file://artifacts/api-server/public/assets/images/air-travel-card.png"
 type = "image"
-title = "air travel compact"
+title = "air travel scene square"
