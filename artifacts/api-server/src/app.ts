@@ -37,9 +37,19 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", router);
 
 // Serve the static website — must come after /api routes
-// Both "/" (production with custom domain) and "/preview-site" (dev preview)
-app.use(express.static(PUBLIC_DIR));
-app.use("/preview-site", express.static(PUBLIC_DIR));
+// HTML files get no-cache so code changes are always picked up immediately.
+// Assets (images, CSS, JS bundles) keep default caching for performance.
+const staticOpts: Parameters<typeof express.static>[1] = {
+  setHeaders(res, filePath) {
+    if (filePath.endsWith(".html")) {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+    }
+  },
+};
+app.use(express.static(PUBLIC_DIR, staticOpts));
+app.use("/preview-site", express.static(PUBLIC_DIR, staticOpts));
 
 // Fallback: serve index.html for unmatched paths
 app.get("/{*path}", (_req, res) => {
