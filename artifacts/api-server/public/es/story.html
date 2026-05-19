@@ -67,6 +67,9 @@ footer{padding:28px 20px 50px;text-align:center;color:rgba(255,255,255,.42);font
       <a id="story-link" href="#" target="_blank" rel="noopener noreferrer">
         <i class="fa-solid fa-up-right-from-square"></i> Leer artículo completo
       </a>
+      <a id="translate-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
+        <i class="fa-solid fa-language"></i> Leer en español (Google)
+      </a>
       <a href="/es/news.html">
         <i class="fa-solid fa-newspaper"></i> Volver a noticias
       </a>
@@ -130,7 +133,13 @@ async function loadStory() {
     document.getElementById('story-category').textContent = CATEGORY_ES[catEn] || catEn;
 
     document.getElementById('story-summary').textContent = safeText(story.summary, 'Resumen no disponible.');
-    document.getElementById('story-link').href = safeText(story.originalLink || story.link, '#');
+    const articleUrl = safeText(story.originalLink || story.link, '');
+    document.getElementById('story-link').href = articleUrl || '#';
+    if (articleUrl) {
+      const translateLink = document.getElementById('translate-link');
+      translateLink.href = 'https://translate.google.com/translate?sl=en&tl=es&u=' + encodeURIComponent(articleUrl);
+      translateLink.style.display = '';
+    }
 
     const meta = [];
     if (Array.isArray(story.sources) && story.sources.length) meta.push(story.sources[0]);
