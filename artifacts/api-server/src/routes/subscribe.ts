@@ -258,6 +258,55 @@ router.get("/verify-email", async (req, res) => {
   }
 });
 
+// ── POST /api/resend-verification ────────────────────────────────
+router.post("/resend-verification", async (req, res) => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email) return res.status(400).json({ error: "Email is required." });
+
+    const cleanEmail = email.trim().toLowerCase();
+    const supabase   = getSupabase();
+
+    const { data: subscriber, error: fetchErr } = await supabase
+      .from("subscribers")
+      .select("id, name, status")
+      .eq("email", cleanEmail)
+      .maybeSingle();
+
+    if (fetchErr || !subscriber) {
+      return res.status(404).json({ error: "No subscription found for that email." });
+    }
+    if (subscriber.status === "confirmed") {
+      return res.json({ ok: true, already: "confirmed" });
+    }
+    if (subscriber.status === "unsubscribed") {
+      return res.status(400).json({ error: "This email has been unsubscribed." });
+    }
+
+    const newToken = crypto.randomUUID();
+    const { error: updateErr } = await supabase
+      .from("subscribers")
+      .update({ token: newToken })
+      .eq("id", subscriber.id);
+
+    if (updateErr) {
+      logger.error({ err: updateErr }, "Resend: token update failed");
+      return res.status(500).json({ error: "Could not regenerate your confirmation link." });
+    }
+
+    const proto   = req.headers["x-forwarded-proto"] || req.protocol || "https";
+    const host    = req.headers["host"] || "stillafloatcruising.com";
+    const baseUrl = `${proto}://${host}`;
+
+    const emailResult = await sendVerificationEmail(subscriber.name, cleanEmail, newToken, baseUrl);
+    logger.info({ email: cleanEmail, emailResult }, "Verification email resent");
+    return res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Resend verification route error");
+    return res.status(500).json({ error: "An unexpected error occurred." });
+  }
+});
+
 // ── GET /api/subscribers ─────────────────────────────────────────
 router.get("/subscribers", async (req, res) => {
   try {

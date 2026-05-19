@@ -14,14 +14,29 @@ body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:rad
 .icon-ring{width:88px;height:88px;border-radius:50%;background:rgba(93,255,154,.10);border:2px solid rgba(93,255,154,.25);display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 28px}
 h1{font-size:clamp(24px,5vw,36px);font-weight:900;margin:0 0 14px;line-height:1.1}
 h1 span{color:#5dff9a}
-.lead{font-size:16px;line-height:1.7;color:rgba(255,255,255,.65);margin:0 0 28px}
+.lead{font-size:16px;line-height:1.7;color:rgba(255,255,255,.65);margin:0 0 14px}
 .email-chip{display:inline-block;padding:10px 20px;border-radius:12px;background:rgba(255,202,79,.08);border:1px solid rgba(255,202,79,.2);color:#ffca4f;font-weight:800;font-size:15px;margin-bottom:28px;word-break:break-all}
-.steps{text-align:left;margin:0 0 32px;display:flex;flex-direction:column;gap:14px}
+.steps{text-align:left;margin:0 0 24px;display:flex;flex-direction:column;gap:14px}
 .step{display:flex;align-items:flex-start;gap:14px;color:rgba(255,255,255,.62);font-size:14px;line-height:1.5}
 .step-num{width:28px;height:28px;border-radius:50%;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.22);color:#5dff9a;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.back-link{display:inline-flex;align-items:center;gap:8px;color:rgba(255,255,255,.45);font-size:14px;text-decoration:none;margin-top:8px}
+.spam-note{font-size:13px;color:rgba(255,255,255,.35);margin:0 0 24px}
+.spam-note em{color:rgba(255,255,255,.5)}
+
+/* Resend button */
+.resend-wrap{display:none;flex-direction:column;align-items:center;gap:10px;margin-top:4px}
+.resend-wrap.show{display:flex}
+.btn-resend{display:inline-flex;align-items:center;gap:8px;padding:13px 24px;border-radius:14px;border:1px solid rgba(93,255,154,.3);background:rgba(93,255,154,.08);color:#5dff9a;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-resend:hover:not(:disabled){background:rgba(93,255,154,.16);border-color:rgba(93,255,154,.5)}
+.btn-resend:disabled{opacity:.5;cursor:not-allowed}
+.resend-msg{font-size:13px;color:rgba(255,255,255,.45);display:none}
+.resend-msg.show{display:block}
+.resend-success{color:#5dff9a}
+.resend-error{color:#fca5a5}
+
+.back-link{display:inline-flex;align-items:center;gap:8px;color:rgba(255,255,255,.45);font-size:14px;text-decoration:none;margin-top:20px}
 .back-link:hover{color:rgba(255,255,255,.7)}
 footer{padding:24px 20px 40px;text-align:center;color:rgba(255,255,255,.28);font-size:.82rem}
+footer img{height:18px;vertical-align:middle;opacity:.45}
 </style>
 </head>
 <body>
@@ -29,32 +44,92 @@ footer{padding:24px 20px 40px;text-align:center;color:rgba(255,255,255,.28);font
 <div class="center">
   <div class="card">
     <div class="icon-ring">📬</div>
-    <h1>Check your <span>inbox!</span></h1>
-    <p class="lead">We've sent a confirmation email to:</p>
+    <h1 id="heading">Check your <span>inbox!</span></h1>
+    <p class="lead" id="lead">We've sent a confirmation email to:</p>
     <div class="email-chip" id="emailDisplay">your email</div>
-    <div class="steps">
+    <div class="steps" id="stepsBlock">
       <div class="step"><div class="step-num">1</div><span>Open the email from <strong>Still Afloat</strong></span></div>
-      <div class="step"><div class="step-num">2</div><span>Click the <strong>"Confirm My Subscription"</strong> button</span></div>
+      <div class="step"><div class="step-num">2</div><span>Click <strong>"Confirm My Subscription"</strong></span></div>
       <div class="step"><div class="step-num">3</div><span>You're in — first issue arrives next week!</span></div>
     </div>
-    <p style="font-size:13px;color:rgba(255,255,255,.35);margin:0 0 16px">Didn't get it? Check your spam folder. The email comes from <em>noreply@stillafloatcruising.com</em></p>
+    <p class="spam-note">Didn't get it? Check your spam / junk folder. Email comes from <em>noreply@stillafloatcruising.com</em></p>
+
+    <!-- Resend block — shown when already=pending -->
+    <div class="resend-wrap" id="resendWrap">
+      <button class="btn-resend" id="resendBtn" onclick="resendEmail()">
+        <i class="fa-solid fa-paper-plane"></i> Send a new confirmation email
+      </button>
+      <span class="resend-msg" id="resendMsg"></span>
+    </div>
+
     <a class="back-link" href="/index.html"><i class="fa-solid fa-chevron-left"></i> Back to Still Afloat</a>
   </div>
 </div>
-<footer>&copy; 2025 Still Afloat &middot; <em>Cruise smarter. Laugh more. Stay Afloat.</em></footer>
+<footer>&copy; 2025 <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat"> &middot; <em>Cruise smarter. Laugh more.</em></footer>
 
 <script>
-const params = new URLSearchParams(location.search);
-const email  = params.get('email');
+const params  = new URLSearchParams(location.search);
+const email   = params.get('email') || '';
 const already = params.get('already');
+
 if (email) document.getElementById('emailDisplay').textContent = decodeURIComponent(email);
+
 if (already === 'confirmed') {
-  document.querySelector('h1').innerHTML = 'Already <span>subscribed!</span>';
-  document.querySelector('.lead').textContent = "You're already confirmed — look for next week's issue in:";
+  document.getElementById('heading').innerHTML = 'Already <span>subscribed!</span>';
+  document.getElementById('lead').textContent  = "You're already confirmed — look for next week's issue in:";
+  document.getElementById('stepsBlock').style.display = 'none';
 }
+
 if (already === 'pending') {
-  document.querySelector('h1').innerHTML = 'Almost <span>there!</span>';
-  document.querySelector('.lead').textContent = "We already sent a confirmation to:";
+  document.getElementById('heading').innerHTML = 'Check your <span>spam folder!</span>';
+  document.getElementById('lead').textContent  = "We already sent a confirmation to:";
+  document.getElementById('resendWrap').classList.add('show');
+}
+
+async function resendEmail() {
+  const btn = document.getElementById('resendBtn');
+  const msg = document.getElementById('resendMsg');
+  const rawEmail = decodeURIComponent(email);
+  if (!rawEmail) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending…';
+  msg.className = 'resend-msg';
+  msg.style.display = 'none';
+
+  try {
+    const res  = await fetch('/api/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: rawEmail }),
+    });
+    const data = await res.json();
+
+    if (res.ok && data.ok) {
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> Email sent!';
+      msg.textContent = 'New confirmation email sent — check your inbox (and spam folder).';
+      msg.className   = 'resend-msg show resend-success';
+      // Re-enable after 30 s to allow retry
+      setTimeout(() => {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send another one';
+      }, 30000);
+    } else if (data.already === 'confirmed') {
+      btn.innerHTML   = '<i class="fa-solid fa-check"></i> Already confirmed!';
+      msg.textContent = "Your email is already confirmed — you're all set.";
+      msg.className   = 'resend-msg show resend-success';
+    } else {
+      btn.disabled  = false;
+      btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send a new confirmation email';
+      msg.textContent = data.error || 'Something went wrong. Please try again.';
+      msg.className   = 'resend-msg show resend-error';
+    }
+  } catch {
+    btn.disabled  = false;
+    btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send a new confirmation email';
+    msg.textContent = 'Network error. Please check your connection.';
+    msg.className   = 'resend-msg show resend-error';
+  }
 }
 </script>
 <script src="/components/navbar.js"></script>
