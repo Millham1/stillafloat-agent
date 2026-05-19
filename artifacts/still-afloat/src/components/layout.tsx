@@ -74,7 +74,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <header className="h-14 flex-shrink-0 border-b bg-card flex items-center px-6 gap-4">
           <h1 className="text-sm font-semibold tracking-tight flex-1">Editorial Command Center</h1>
           <a
-            href="/website/"
+            href="/"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
