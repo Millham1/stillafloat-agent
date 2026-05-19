@@ -30,3 +30,9 @@ id = "L3r0aa2g0esLNCfJ4XGhv"
 uri = "file://attached_assets/generated_images/the_text_stay_afloat_eca6.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "fHoCClpOcIyJIi4x0AC_W"
+uri = "file://artifacts/api-server/public/assets/images/still-afloat-text.png"
+type = "image"
+title = "generated_image"
