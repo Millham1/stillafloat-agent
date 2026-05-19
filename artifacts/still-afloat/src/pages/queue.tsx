@@ -79,7 +79,7 @@ export default function EditorialQueue() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [processing, setProcessing] = useState<Record<string, string>>({});
-  const [showReviewed, setShowReviewed] = useState(true);
+  const [showReviewed, setShowReviewed] = useState(false);
 
   const handleAction = async (id: string, action: 'approve' | 'reject' | 'feature' | 'hold') => {
     setProcessing(prev => ({ ...prev, [id]: action }));
@@ -313,11 +313,26 @@ export default function EditorialQueue() {
           <div className="pt-2">
             <button
               onClick={() => setShowReviewed(v => !v)}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 w-full"
             >
               <span className="h-px flex-1 bg-border inline-block" />
-              <span className="shrink-0 font-medium">
-                {showReviewed ? '▾' : '▸'} {reviewed.length} reviewed {showReviewed ? '(hide)' : '(show)'}
+              <span className="shrink-0 flex items-center gap-2 font-medium">
+                {showReviewed ? '▾' : '▸'}
+                <span className="flex items-center gap-1.5">
+                  {(() => {
+                    const approved  = reviewed.filter(s => s.status === 'approved').length;
+                    const featured  = reviewed.filter(s => s.status === 'featured').length;
+                    const rejected  = reviewed.filter(s => s.status === 'rejected').length;
+                    const held      = reviewed.filter(s => s.status === 'held' || s.status === 'deferred').length;
+                    const parts: React.ReactNode[] = [];
+                    if (approved)  parts.push(<span key="a" className="text-green-600 dark:text-green-400">{approved} approved</span>);
+                    if (featured)  parts.push(<span key="f" className="text-purple-600 dark:text-purple-400">{featured} featured</span>);
+                    if (rejected)  parts.push(<span key="r" className="text-red-500 dark:text-red-400">{rejected} rejected</span>);
+                    if (held)      parts.push(<span key="h" className="text-gray-500">{held} held</span>);
+                    return parts.flatMap((p, i) => i < parts.length - 1 ? [p, <span key={`sep${i}`} className="opacity-40">·</span>] : [p]);
+                  })()}
+                </span>
+                <span className="opacity-50">({showReviewed ? 'hide' : 'show'})</span>
               </span>
               <span className="h-px flex-1 bg-border inline-block" />
             </button>
