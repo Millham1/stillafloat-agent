@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { logger } from "../lib/logger";
+import { readJson, writeJson, PATHS } from "../lib/persistence";
 
 const router = Router();
 
@@ -188,6 +189,116 @@ h1{font-family:'Bree Serif',serif;font-size:clamp(24px,5vw,44px);line-height:1.1
 <p style="color:rgba(255,255,255,.6)">${escapeHtml(msg)}</p>
 <p><a href="${escapeHtml(rawUrl)}" target="_blank" rel="noopener" style="color:#5dff9a">Leer artículo original en inglés →</a></p>
 </body></html>`);
+  }
+});
+
+// Translates _es fields for an already-approved story and patches them back into
+// persistence so future page loads are instant (no repeat OpenAI calls).
+router.get("/translate-story", async (req, res) => {
+  const id = (req.query.id as string) ?? "";
+  if (!id) {
+    res.status(400).json({ error: "Missing id" });
+    return;
+  }
+
+  try {
+    const approved = await readJson<{ stories: Record<string, unknown>[] }>(PATHS.approved);
+    const stories: Record<string, unknown>[] = approved?.stories ?? [];
+    const story = stories.find((s) => s.id === id);
+
+    if (!story) {
+      res.status(404).json({ error: "Story not found" });
+      return;
+    }
+
+    // Return cached translations if they already exist
+    if (story.title_es) {
+      res.json({
+        success: true,
+        translated: false,
+        title_es: story.title_es,
+        summary_es: story.summary_es,
+        travelerImpact_es: story.travelerImpact_es ?? null,
+        editorialReasoning_es: story.editorialReasoning_es ?? null,
+      });
+      return;
+    }
+
+    const title = String(story.title ?? "");
+    const summary = String(story.summary ?? "");
+    const travelerImpact = String(story.travelerImpact ?? "");
+    const editorialReasoning = String(story.editorialReasoning ?? "");
+
+    const lines: string[] = [];
+    if (title) lines.push(`TITLE: ${title}`);
+    if (summary) lines.push(`SUMMARY: ${summary}`);
+    if (travelerImpact) lines.push(`TRAVELERIMPACT: ${travelerImpact}`);
+    if (editorialReasoning) lines.push(`EDITORIALREASONING: ${editorialReasoning}`);
+    const inputText = lines.join("\n\n");
+
+    const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"]}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Translate the following cruise-travel news fields from English to Latin American Spanish. " +
+              "Return exactly the same field names in uppercase followed by a colon, one field per paragraph. " +
+              "Example: TITLE: ...\n\nSUMMARY: ...\n\nTRAVELERIMPACT: ...\n\nEDITORIALREASONING: ...\n" +
+              "Translate naturally for a Spanish-speaking cruise travel audience. No extra commentary.",
+          },
+          { role: "user", content: inputText },
+        ],
+        temperature: 0.2,
+        max_tokens: 1200,
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!oaiRes.ok) throw new Error(`OpenAI error ${oaiRes.status}`);
+    const oaiData = (await oaiRes.json()) as { choices: { message: { content: string } }[] };
+    const translated = oaiData.choices[0]?.message?.content ?? "";
+
+    function extractField(text: string, field: string): string {
+      const m = text.match(new RegExp(`${field}:\\s*([\\s\\S]*?)(?=\\n\\n[A-Z]+:|$)`, "i"));
+      return m ? m[1].trim() : "";
+    }
+
+    const esFields: Record<string, string> = {};
+    esFields.title_es = extractField(translated, "TITLE") || title;
+    esFields.summary_es = extractField(translated, "SUMMARY") || summary;
+    if (travelerImpact) esFields.travelerImpact_es = extractField(translated, "TRAVELERIMPACT") || travelerImpact;
+    if (editorialReasoning) esFields.editorialReasoning_es = extractField(translated, "EDITORIALREASONING") || editorialReasoning;
+
+    // Patch approved stories
+    const updatedStories = stories.map((s) => (s.id === id ? { ...s, ...esFields } : s));
+    await writeJson(PATHS.approved, {
+      ...(approved ?? {}),
+      stories: updatedStories,
+      generatedAt: new Date().toISOString(),
+    });
+
+    // Patch story-details so the story-details API endpoint also serves translations
+    const storyDetails = await readJson<{ stories: Record<string, unknown>[] }>(PATHS.storyDetails);
+    if (storyDetails?.stories) {
+      const updatedDetails = storyDetails.stories.map((s) =>
+        s.id === id || s.slug === id ? { ...s, ...esFields } : s
+      );
+      await writeJson(PATHS.storyDetails, { ...storyDetails, stories: updatedDetails });
+    }
+
+    logger.info({ id, fields: Object.keys(esFields) }, "translate-story: saved _es fields");
+    res.json({ success: true, translated: true, ...esFields });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error({ id, err: msg }, "translate-story failed");
+    res.status(500).json({ error: msg });
   }
 });
 
