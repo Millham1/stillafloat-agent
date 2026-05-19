@@ -94,6 +94,56 @@ const CRUISE_LOCATIONS: CruiseLocation[] = [
   { slug:"reykjavik",        name:"Reykjavik, Iceland",           type:"destination", lat:64.1466,  lon:-21.9426  },
 ];
 
+const WEATHER_DESC: Record<number, string> = {
+  0: "clear sky", 1: "mainly clear", 2: "partly cloudy", 3: "overcast",
+  45: "fog", 48: "rime fog",
+  51: "light drizzle", 53: "drizzle", 55: "heavy drizzle",
+  61: "light rain", 63: "rain", 65: "heavy rain",
+  71: "light snow", 73: "snow", 75: "heavy snow", 77: "snow grains",
+  80: "light showers", 81: "showers", 82: "heavy showers",
+  85: "snow showers", 86: "heavy snow showers",
+  95: "thunderstorm", 96: "thunderstorm with hail", 99: "severe thunderstorm",
+};
+
+function weatherCodeDesc(code: number): string {
+  return WEATHER_DESC[code] ?? "partly cloudy";
+}
+
+async function generateSynopsis(
+  locationName: string,
+  forecast: { day: string; high: number; low: number; emoji: string; weatherCode: number }[]
+): Promise<string> {
+  const lines = forecast.map((d, i) =>
+    `Day ${i + 1} (${d.day}): high ${d.high}°F, low ${d.low}°F, ${weatherCodeDesc(d.weatherCode)}`
+  );
+  const prompt =
+    `Location: ${locationName}\n10-day forecast:\n${lines.join("\n")}\n\n` +
+    `Write a 2–3 sentence weather synopsis for cruise travelers. ` +
+    `Mention the temperature range (highs and lows), general sky conditions, and any precipitation patterns. ` +
+    `Be specific and practical. Do not start with "The weather" — start with the city/location name.`;
+
+  const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"]}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You write concise, practical weather summaries for cruise travelers. Plain prose, no bullet points, no markdown." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.4,
+      max_tokens: 120,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!oaiRes.ok) return "";
+  const oaiData = (await oaiRes.json()) as { choices: { message: { content: string } }[] };
+  return oaiData.choices[0]?.message?.content?.trim() ?? "";
+}
+
 function weatherEmoji(code: number): string {
   if (code === 0) return "☀️";
   if ([1, 2].includes(code)) return "🌤️";
@@ -143,6 +193,7 @@ async function fetchForecast(loc: CruiseLocation) {
     forecast: data.daily.time.map((day, i) => ({
       day,
       emoji: weatherEmoji(data.daily.weather_code[i]),
+      weatherCode: data.daily.weather_code[i],
       high: Math.round(data.daily.temperature_2m_max[i]),
       low: Math.round(data.daily.temperature_2m_min[i]),
     })),
@@ -158,7 +209,8 @@ router.get("/weather", async (req: Request, res: Response) => {
       const loc = CRUISE_LOCATIONS.find((l) => l.slug === place);
       if (!loc) { res.status(404).json({ ok: false, error: "Destination not found" }); return; }
       const forecast = await fetchForecast(loc);
-      res.json({ ok: true, forecast });
+      const synopsis = await generateSynopsis(loc.name, forecast.forecast).catch(() => "");
+      res.json({ ok: true, forecast: { ...forecast, synopsis } });
       return;
     }
 

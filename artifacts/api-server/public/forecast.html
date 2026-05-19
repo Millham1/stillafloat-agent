@@ -92,6 +92,18 @@ body{margin:0;font-family:'Baloo 2',system-ui,sans-serif;background:#06111f;colo
   </div>
 </div>
 
+<div id="synopsis-wrap" style="display:none;max-width:860px;margin:0 auto;padding:0 24px 8px;">
+  <div id="synopsis" style="
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:20px 26px;
+    font-size:17px;
+    line-height:1.75;
+    color:rgba(255,255,255,.82);
+    font-family:'Baloo 2',Poppins,sans-serif;
+  "></div>
+</div>
 <div class="forecast-grid" id="forecast"></div>
 
 <script>
@@ -184,6 +196,10 @@ async function loadForecast() {
       document.getElementById('title').textContent = loc.name;
       loadHeroImage(loc.name);
       renderDays(loc.forecast);
+      if (loc.synopsis) {
+        document.getElementById('synopsis').textContent = loc.synopsis;
+        document.getElementById('synopsis-wrap').style.display = '';
+      }
     }
   } catch (err) {
     document.getElementById('title').textContent = 'Forecast unavailable';
