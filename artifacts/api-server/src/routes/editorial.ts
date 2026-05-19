@@ -3,6 +3,7 @@ import { PATHS, readJson, writeJson } from "../lib/persistence";
 import { buildPublishingBundle } from "../lib/publishing-output";
 import { normalizeStory, normalizeStories, validatePublishingStory } from "../lib/story-normalizer";
 import { runEditorialAgent } from "../lib/editorial-agent";
+import { translateStoriesToSpanish } from "../lib/translate";
 import { renderEditorialDigest, sendEditorialDigest } from "../lib/email-delivery";
 
 const router: IRouter = Router();
@@ -388,10 +389,15 @@ router.post("/scan-news", async (req: Request, res: Response) => {
         }),
       ]);
     } else {
+      // Translate candidate stories to Spanish so the /es/ feeds have real content
+      const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
+      const storiesWithEs = await translateStoriesToSpanish(curatedStories, apiKey);
+      telemetry.translationCompleted = true;
+
       await writeJson(PATHS.candidates, {
         generatedAt,
         systemStatus: curated.systemStatus || null,
-        stories: curatedStories,
+        stories: storiesWithEs,
         homepageTop5: (curated.homepageTop5 || []).slice(0, 5),
         groupedDevelopments: curated.groupedDevelopments || [],
         telemetry,

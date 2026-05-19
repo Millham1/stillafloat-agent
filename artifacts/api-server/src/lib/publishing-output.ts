@@ -21,14 +21,14 @@ function normalizeSources(sources: unknown[]): string[] {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildPublishingStory(story: Record<string, any>, featured = false) {
-  return {
+  const base = {
     id: sanitizeText(story.id),
     title: sanitizeText(story.title),
     category: sanitizeText(story.category),
     impactLevel: sanitizeText(story.impactLevel),
     travelerImpact: sanitizeText(story.travelerImpact),
     summary: sanitizeText(story.summary || story.synopsis),
-    editorialReasoning: sanitizeText(story.reasoning),
+    editorialReasoning: sanitizeText(story.reasoning || story.editorialReasoning),
     link: typeof story.link === "string" ? story.link : "",
     originalLink: typeof story.link === "string" ? story.link : "",
     sourceLinks: normalizeLinks(story.sourceLinks || []),
@@ -38,6 +38,15 @@ function buildPublishingStory(story: Record<string, any>, featured = false) {
     approvedAt: story.approvedAt || new Date().toISOString(),
     featured: Boolean(featured || story.featured || story.pinned),
   };
+
+  // Preserve Spanish overlay fields so applyEsOverlay() can use them after approval
+  const es: Record<string, string> = {};
+  if (story.title_es) es.title_es = sanitizeText(story.title_es);
+  if (story.summary_es) es.summary_es = sanitizeText(story.summary_es);
+  if (story.travelerImpact_es) es.travelerImpact_es = sanitizeText(story.travelerImpact_es);
+  if (story.editorialReasoning_es) es.editorialReasoning_es = sanitizeText(story.editorialReasoning_es);
+
+  return { ...base, ...es };
 }
 
 export function buildHomepageOutput({
