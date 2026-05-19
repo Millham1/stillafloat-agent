@@ -171,41 +171,6 @@ body::before{
   object-position:center top;
   display:block;
 }
-.photo-gi{
-  height:280px;
-  background:linear-gradient(160deg,#e8edf8 0%,#d4dcef 50%,#c8d5f0 100%);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  gap:6px;
-}
-.gi-icon-stack{text-align:center}
-.gi-bulb{
-  font-size:62px;
-  color:#ffca4f;
-  filter:drop-shadow(0 0 18px rgba(255,202,79,.65));
-  display:block;
-  margin-bottom:-8px;
-  position:relative;
-  z-index:2;
-}
-.gi-box{
-  font-size:50px;
-  color:#b07d3a;
-  display:block;
-}
-.gi-name{
-  font-family:'Baloo 2',sans-serif;
-  font-weight:900;
-  font-size:.95rem;
-  color:#1a2a52;
-  text-transform:uppercase;
-  letter-spacing:.06em;
-  text-align:center;
-  line-height:1.2;
-  margin-top:10px;
-}
 .card:hover .photo{filter:saturate(1.08) brightness(1.05)}
 .card:nth-child(1):hover .photo{transform:translate3d(-3px,-4px,0) scale(1.03)}
 .card:nth-child(2):hover .photo{transform:translate3d(0,-5px,0) scale(1.025)}
@@ -298,12 +263,8 @@ footer{
       </div>
     </a>
     <a class="card" href="under-construction.html">
-      <div class="photo photo-gi">
-        <div class="gi-icon-stack">
-          <i class="fa-solid fa-lightbulb gi-bulb"></i>
-          <i class="fa-solid fa-box-open gi-box"></i>
-        </div>
-        <div class="gi-name">Generally<br>Great Ideas</div>
+      <div class="photo">
+        <img src="/assets/images/great-ideas-card.png" alt="Generally Great Ideas" style="background:#e8edf8">
       </div>
       <div class="card-body">
         <div class="card-copy">Useful gadgets and clever finds that make cruising easier.</div>

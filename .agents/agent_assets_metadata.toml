@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "CGKzGbDAYtQPdHY2xus_A"
+uri = "file://artifacts/api-server/public/assets/images/great-ideas-card.png"
+type = "image"
+title = "genius seagull great ideas card"
