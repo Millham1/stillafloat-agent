@@ -48,3 +48,15 @@ id = "047CI4Boe_ipJ-jTQNaLi"
 uri = "file://attached_assets/generated_images/stay-afloat-white-bg.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "GWNbaPiA2Gd4KUoNyI5Pj"
+uri = "file://attached_assets/still-afloat-gen.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "vpZJ8m_EXuEdEklsAyBZm"
+uri = "file://attached_assets/still-afloat-v2.png"
+type = "image"
+title = "generated_image"
