@@ -1,5 +1,5 @@
 kind = "api"
-previewPath = "/preview-site"
+previewPath = "/"
 title = "stillafloatcruising.com (preview)"
 version = "1.0.0"
 id = "3B4_FFSkEVBkAeYMFRJ2e"
@@ -7,7 +7,7 @@ id = "3B4_FFSkEVBkAeYMFRJ2e"
 [[services]]
 localPort = 8080
 name = "API Server"
-paths = ["/api", "/preview-site"]
+paths = ["/"]
 
 [services.development]
 run = "pnpm --filter @workspace/api-server run dev"
