@@ -152,7 +152,7 @@ function wxEmoji(code) {
 async function renderTiles(gridId, tiles) {
   const grid = document.getElementById(gridId);
   grid.innerHTML = tiles.map(t => `
-    <a class="tile" href="forecast.html?lat=${t.lat}&lon=${t.lon}&name=${encodeURIComponent(t.name)}">
+    <a class="tile" href="forecast.html?place=${t.slug}">
       <div class="t-emoji" id="e-${t.slug}">⏳</div>
       <div class="t-name">${t.name}</div>
       <div class="t-temp" id="tmp-${t.slug}"><span class="t-loading">…</span></div>
