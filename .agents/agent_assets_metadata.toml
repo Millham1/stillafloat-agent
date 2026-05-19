@@ -36,3 +36,15 @@ id = "fHoCClpOcIyJIi4x0AC_W"
 uri = "file://artifacts/api-server/public/assets/images/still-afloat-text.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "jQb8Yr0K6fMI0h6NdXQ0n"
+uri = "file://attached_assets/generated_images/text_logo_image_saying_1600.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "047CI4Boe_ipJ-jTQNaLi"
+uri = "file://attached_assets/generated_images/stay-afloat-white-bg.png"
+type = "image"
+title = "generated_image"
