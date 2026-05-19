@@ -56,6 +56,7 @@
       </div>
       <div class="sa-nav-row sa-secondary">
         <a href="/under-construction.html" class="sa-nav-link">${bookLabel}</a>
+        <a href="/subscribe.html" class="sa-nav-link sa-subscribe-link">✉ Subscribe</a>
         <a href="${langUrl}" class="sa-nav-link sa-lang-link" title="${langLabel}">${langLabel}</a>
       </div>
     </nav>
@@ -71,6 +72,7 @@
       </button>
       ${mainLinks.map(l => `<a href="${l.href}" class="sa-mobile-link">${l.label}</a>`).join('')}
       <a href="/under-construction.html" class="sa-mobile-link">${bookLabel}</a>
+      <a href="/subscribe.html" class="sa-mobile-link sa-mobile-subscribe">✉ Subscribe Free</a>
       <div class="sa-mobile-lang-divider"></div>
       <a href="${langUrl}" class="sa-mobile-link sa-mobile-lang">${langLabel}</a>
     </div>
@@ -169,6 +171,20 @@
       background: rgba(0,119,182,.32);
       border-color: rgba(93,255,154,.28);
       color: #5dff9a;
+    }
+
+    /* ── Subscribe CTA ── */
+    .sa-subscribe-link {
+      background: linear-gradient(135deg, rgba(93,255,154,.18), rgba(93,255,154,.08)) !important;
+      border-color: rgba(93,255,154,.45) !important;
+      color: #5dff9a !important;
+      font-weight: 900 !important;
+      letter-spacing: .02em;
+    }
+    .sa-subscribe-link:hover {
+      background: linear-gradient(135deg, rgba(93,255,154,.30), rgba(93,255,154,.15)) !important;
+      border-color: #5dff9a !important;
+      box-shadow: 0 0 16px rgba(93,255,154,.25) !important;
     }
 
     /* ── Language switcher — lives inside the nav pill ── */
@@ -298,6 +314,17 @@
     }
     .sa-mobile-lang:hover,
     .sa-mobile-lang:active {
+      background: rgba(93,255,154,.22);
+    }
+
+    .sa-mobile-subscribe {
+      background: rgba(93,255,154,.12);
+      border-color: rgba(93,255,154,.35);
+      color: #5dff9a;
+      font-weight: 900;
+    }
+    .sa-mobile-subscribe:hover,
+    .sa-mobile-subscribe:active {
       background: rgba(93,255,154,.22);
     }
 

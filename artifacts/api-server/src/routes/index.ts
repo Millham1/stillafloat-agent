@@ -5,6 +5,7 @@ import feedsRouter from "./feeds";
 import weatherRouter from "./weather";
 import affiliateRouter from "./affiliate";
 import translateArticleRouter from "./translate-article";
+import subscribeRouter from "./subscribe";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(feedsRouter);
 router.use(weatherRouter);
 router.use(affiliateRouter);
 router.use(translateArticleRouter);
+router.use(subscribeRouter);
 
 export default router;

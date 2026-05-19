@@ -13,7 +13,7 @@ const supabaseKey =
 
 let supabase: ReturnType<typeof createClient> | null = null;
 
-function getSupabase() {
+export function getSupabase() {
   if (!supabase) {
     if (!supabaseKey) {
       throw new Error("SUPABASE_ANON_KEY environment variable is missing");

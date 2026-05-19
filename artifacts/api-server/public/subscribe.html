@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subscribe | Still Afloat</title>
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--navy:#07183f;--ocean:#0077b6;--seafoam:#5dff9a;--gold:#ffca4f}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at top right,rgba(0,119,182,.18),transparent 24%),linear-gradient(to bottom,#040b16 0%,#071523 30%,#0c2035 100%);color:white;font-family:'Baloo 2',Poppins,sans-serif}
+
+.sub-shell{max-width:680px;margin:0 auto;padding:40px 24px 80px}
+
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:999px;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.22);color:#bdfdd3;font-size:12px;font-weight:900;letter-spacing:.10em;text-transform:uppercase;margin-bottom:20px}
+
+h1{font-size:clamp(32px,6vw,52px);font-weight:900;line-height:1.05;margin:0 0 14px}
+h1 span{color:#5dff9a}
+
+.sub-lead{font-size:18px;line-height:1.7;color:rgba(255,255,255,.72);margin:0 0 36px}
+
+.card{background:rgba(9,18,34,.84);border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:36px;backdrop-filter:blur(14px);box-shadow:0 24px 64px rgba(0,0,0,.42)}
+
+.field{margin-bottom:22px}
+label{display:block;font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:8px}
+input[type=text],input[type=email]{width:100%;padding:14px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:white;font-size:16px;font-family:inherit;outline:none;transition:border-color .2s}
+input[type=text]::placeholder,input[type=email]::placeholder{color:rgba(255,255,255,.28)}
+input[type=text]:focus,input[type=email]:focus{border-color:rgba(93,255,154,.5);background:rgba(93,255,154,.04)}
+
+.honey{position:absolute;left:-9999px;height:1px;width:1px;overflow:hidden;opacity:0;pointer-events:none;tab-index:-1}
+
+.privacy-box{border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);padding:18px 20px;margin-bottom:22px}
+.privacy-text{font-size:13px;line-height:1.7;color:rgba(255,255,255,.5);margin:0 0 14px}
+.privacy-text a{color:#5dff9a;text-decoration:none}
+.privacy-text a:hover{text-decoration:underline}
+
+.check-row{display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+.check-row input[type=checkbox]{width:20px;height:20px;border-radius:6px;border:2px solid rgba(93,255,154,.4);background:rgba(93,255,154,.08);accent-color:#5dff9a;flex-shrink:0;margin-top:1px;cursor:pointer}
+.check-label{font-size:14px;line-height:1.6;color:rgba(255,255,255,.72);cursor:pointer}
+
+.btn-submit{width:100%;padding:16px;border-radius:16px;border:none;cursor:pointer;font-size:18px;font-weight:900;font-family:inherit;background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;box-shadow:0 10px 30px rgba(0,119,182,.35);transition:all .22s ease;letter-spacing:.02em}
+.btn-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,119,182,.45)}
+.btn-submit:disabled{opacity:.55;cursor:not-allowed;transform:none}
+
+.error-msg{display:none;margin-bottom:18px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;font-size:14px;font-weight:600}
+.error-msg.show{display:block}
+
+.perks{margin:32px 0 0;display:flex;flex-direction:column;gap:12px}
+.perk{display:flex;align-items:center;gap:14px;color:rgba(255,255,255,.65);font-size:15px}
+.perk-icon{width:36px;height:36px;border-radius:10px;background:rgba(93,255,154,.1);border:1px solid rgba(93,255,154,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+</style>
+</head>
+<body>
+<div id="navbar-container"></div>
+<div class="sub-shell">
+
+  <div class="hero-badge"><i class="fa-solid fa-envelope-open-text"></i>&nbsp; Free Weekly Newsletter</div>
+  <h1>Stay <span>Afloat</span><br>Every Week.</h1>
+  <p class="sub-lead">Curated cruise news, port weather, and travel intelligence — delivered straight to your inbox. No spam. Unsubscribe anytime.</p>
+
+  <div class="card">
+    <div id="errorMsg" class="error-msg"></div>
+
+    <form id="subForm" novalidate>
+      <!-- Honeypot — hidden from humans, filled by bots -->
+      <div class="honey" aria-hidden="true">
+        <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" name="name" placeholder="Your full name" autocomplete="name" required>
+      </div>
+
+      <div class="field">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+
+      <div class="privacy-box">
+        <p class="privacy-text">
+          By subscribing you agree to receive the weekly <strong>Still Afloat</strong> newsletter. Your email will never be sold or shared with any third party. You can unsubscribe instantly at any time via the link in every email. Read our <a href="/privacy.html">Privacy Policy</a>.
+        </p>
+        <label class="check-row">
+          <input type="checkbox" id="privacyCheck" name="privacy" required>
+          <span class="check-label">I agree to the privacy terms and consent to receiving email from Still Afloat.</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submitBtn">
+        <i class="fa-solid fa-paper-plane"></i>&nbsp; Subscribe Free
+      </button>
+    </form>
+
+    <div class="perks">
+      <div class="perk"><div class="perk-icon">⚓</div> Weekly hand-picked cruise news &amp; alerts</div>
+      <div class="perk"><div class="perk-icon">🌤️</div> Port &amp; destination weather intelligence</div>
+      <div class="perk"><div class="perk-icon">🎯</div> No fluff — only stories that matter to cruisers</div>
+    </div>
+  </div>
+
+</div>
+<footer style="padding:28px 20px 50px;text-align:center;color:rgba(255,255,255,.32);font-size:.85rem">
+  &copy; 2025 Still Afloat &middot; <em>Cruise smarter. Laugh more. Stay Afloat.</em>
+</footer>
+
+<script>
+const form    = document.getElementById('subForm');
+const btn     = document.getElementById('submitBtn');
+const errBox  = document.getElementById('errorMsg');
+
+function showError(msg) {
+  errBox.textContent = msg;
+  errBox.classList.add('show');
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Subscribe Free';
+}
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  errBox.classList.remove('show');
+
+  const name    = document.getElementById('name').value.trim();
+  const email   = document.getElementById('email').value.trim();
+  const honey   = document.getElementById('website').value;
+  const privacy = document.getElementById('privacyCheck').checked;
+
+  if (!name)    return showError('Please enter your full name.');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return showError('Please enter a valid email address.');
+  if (!privacy) return showError('Please agree to the privacy terms to continue.');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Sending…';
+
+  try {
+    const res = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, website: honey }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) return showError(data.error || 'Something went wrong. Please try again.');
+
+    // Redirect to pending page regardless of `already` status
+    window.location.href = '/subscribe-pending.html?email=' + encodeURIComponent(email) +
+      (data.already ? '&already=' + data.already : '');
+  } catch {
+    showError('Network error. Please check your connection and try again.');
+  }
+});
+</script>
+<script src="/components/navbar.js"></script>
+</body>
+</html>
