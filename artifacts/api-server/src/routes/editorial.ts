@@ -359,14 +359,44 @@ router.post("/scan-news", async (req: Request, res: Response) => {
       return;
     }
 
-    await writeJson(PATHS.candidates, {
-      generatedAt: new Date().toISOString(),
-      systemStatus: curated.systemStatus || null,
-      stories: curatedStories,
-      homepageTop5: (curated.homepageTop5 || []).slice(0, 5),
-      groupedDevelopments: curated.groupedDevelopments || [],
-      telemetry,
-    });
+    const generatedAt = new Date().toISOString();
+    if (lang === "es") {
+      // Spanish pipeline: AI-curated, auto-published — stored in separate ES paths
+      // so the English editorial queue and feeds are never overwritten.
+      const top5Ids = new Set((curated.homepageTop5 || []).slice(0, 5).map(String));
+      const homepageStories = curatedStories.filter(s => top5Ids.has(String(s.id)));
+      await Promise.all([
+        writeJson(PATHS.candidatesEs, {
+          generatedAt,
+          systemStatus: curated.systemStatus || null,
+          stories: curatedStories,
+          homepageTop5: [...top5Ids],
+          groupedDevelopments: curated.groupedDevelopments || [],
+          telemetry,
+        }),
+        writeJson(PATHS.homepageEs, {
+          generatedAt,
+          stories: homepageStories.length ? homepageStories : curatedStories.slice(0, 5),
+        }),
+        writeJson(PATHS.newsIndexEs, {
+          generatedAt,
+          stories: curatedStories,
+        }),
+        writeJson(PATHS.storyDetailsEs, {
+          generatedAt,
+          stories: curatedStories,
+        }),
+      ]);
+    } else {
+      await writeJson(PATHS.candidates, {
+        generatedAt,
+        systemStatus: curated.systemStatus || null,
+        stories: curatedStories,
+        homepageTop5: (curated.homepageTop5 || []).slice(0, 5),
+        groupedDevelopments: curated.groupedDevelopments || [],
+        telemetry,
+      });
+    }
     telemetry.persistenceCompleted = true;
 
     const dashboardUrl = process.env["DASHBOARD_URL"] ||

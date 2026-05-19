@@ -30,6 +30,11 @@ export const PATHS = {
   homepage: "homepage-feed",
   newsIndex: "news-index",
   storyDetails: "story-details",
+  // Spanish (es-419) streams — stored separately, never overwrite English
+  candidatesEs: "candidate-stories-es",
+  homepageEs: "homepage-feed-es",
+  newsIndexEs: "news-index-es",
+  storyDetailsEs: "story-details-es",
 };
 
 export async function writeJson(key: string, payload: unknown): Promise<boolean> {

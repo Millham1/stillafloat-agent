@@ -278,9 +278,10 @@ function renderNewsPage(stories = []) {
 
 async function initNews() {
   try {
+    const langParam = isSpanish ? '?lang=es' : '';
     const [homepageResponse, newsResponse] = await Promise.all([
-      fetch(`${AGENT_BASE_URL}/api/homepage-feed`),
-      fetch(`${AGENT_BASE_URL}/api/news-feed`)
+      fetch(`${AGENT_BASE_URL}/api/homepage-feed${langParam}`),
+      fetch(`${AGENT_BASE_URL}/api/news-feed${langParam}`)
     ]);
 
     const homepageData = await homepageResponse.json();

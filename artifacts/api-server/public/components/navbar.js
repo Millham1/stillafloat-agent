@@ -22,6 +22,8 @@
     const file = (path.split('/').pop()) || 'index.html';
     langUrl = '/es/' + (file || 'index.html');
   }
+  // Preserve query string (e.g. ?id=... on story pages) when switching languages
+  langUrl = langUrl + window.location.search;
   const langLabel = isSpanish ? '🇺🇸 English' : '🌎 En Español';
 
   // ── Nav links (absolute paths) ──

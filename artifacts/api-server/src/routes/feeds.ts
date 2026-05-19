@@ -5,13 +5,24 @@ const router: IRouter = Router();
 
 router.get("/homepage-feed", async (req: Request, res: Response) => {
   try {
-    const homepage = await readJson<{ generatedAt?: string; stories?: unknown[] }>(PATHS.homepage, { generatedAt: undefined, stories: [] });
+    const lang = String(req.query["lang"] || "en");
+    const isEs = lang === "es";
+    const primaryPath = isEs ? PATHS.homepageEs : PATHS.homepage;
+    const fallbackPath = isEs ? PATHS.homepage : null;
+
+    const primary = await readJson<{ generatedAt?: string; stories?: unknown[] }>(primaryPath, { generatedAt: undefined, stories: [] });
+    // If Spanish feed is empty, fall back to English feed
+    const data = (isEs && !(primary.stories || []).length && fallbackPath)
+      ? await readJson<{ generatedAt?: string; stories?: unknown[] }>(fallbackPath, { generatedAt: undefined, stories: [] })
+      : primary;
+
     res.json({
       success: true,
       source: "stillafloat-agent",
-      generatedAt: homepage.generatedAt || null,
-      count: (homepage.stories || []).length,
-      stories: homepage.stories || [],
+      lang: isEs ? "es" : "en",
+      generatedAt: data.generatedAt || null,
+      count: (data.stories || []).length,
+      stories: data.stories || [],
     });
   } catch (error) {
     req.log.error({ err: error }, "Homepage feed failure");
@@ -21,13 +32,23 @@ router.get("/homepage-feed", async (req: Request, res: Response) => {
 
 router.get("/news-feed", async (req: Request, res: Response) => {
   try {
-    const newsIndex = await readJson<{ generatedAt?: string; stories?: unknown[] }>(PATHS.newsIndex, { generatedAt: undefined, stories: [] });
+    const lang = String(req.query["lang"] || "en");
+    const isEs = lang === "es";
+    const primaryPath = isEs ? PATHS.newsIndexEs : PATHS.newsIndex;
+    const fallbackPath = isEs ? PATHS.newsIndex : null;
+
+    const primary = await readJson<{ generatedAt?: string; stories?: unknown[] }>(primaryPath, { generatedAt: undefined, stories: [] });
+    const data = (isEs && !(primary.stories || []).length && fallbackPath)
+      ? await readJson<{ generatedAt?: string; stories?: unknown[] }>(fallbackPath, { generatedAt: undefined, stories: [] })
+      : primary;
+
     res.json({
       success: true,
       source: "stillafloat-agent",
-      generatedAt: newsIndex.generatedAt || null,
-      count: (newsIndex.stories || []).length,
-      stories: newsIndex.stories || [],
+      lang: isEs ? "es" : "en",
+      generatedAt: data.generatedAt || null,
+      count: (data.stories || []).length,
+      stories: data.stories || [],
     });
   } catch (error) {
     req.log.error({ err: error }, "News feed failure");
@@ -37,11 +58,21 @@ router.get("/news-feed", async (req: Request, res: Response) => {
 
 router.get("/story-details", async (req: Request, res: Response): Promise<void> => {
   try {
-    const storyDetails = await readJson<{ generatedAt?: string; stories?: Record<string, unknown>[] }>(PATHS.storyDetails, { generatedAt: undefined, stories: [] });
+    const lang = String(req.query["lang"] || "en");
+    const isEs = lang === "es";
+    const primaryPath = isEs ? PATHS.storyDetailsEs : PATHS.storyDetails;
+    const fallbackPath = isEs ? PATHS.storyDetails : null;
+
+    const primaryDetails = await readJson<{ generatedAt?: string; stories?: Record<string, unknown>[] }>(primaryPath, { generatedAt: undefined, stories: [] });
     const storyId = String(req.query.id || "").trim();
 
     if (storyId) {
-      const story = (storyDetails.stories || []).find((item) => item.id === storyId);
+      let story = (primaryDetails.stories || []).find((item) => item.id === storyId);
+      // Fall back to English story details if not found in Spanish stream
+      if (!story && isEs && fallbackPath) {
+        const fallback = await readJson<{ stories?: Record<string, unknown>[] }>(fallbackPath, { stories: [] });
+        story = (fallback.stories || []).find((item) => item.id === storyId);
+      }
       if (!story) {
         res.status(404).json({ success: false, error: "Story not found" });
         return;
@@ -53,9 +84,9 @@ router.get("/story-details", async (req: Request, res: Response): Promise<void> 
     res.json({
       success: true,
       source: "stillafloat-agent",
-      generatedAt: storyDetails.generatedAt || null,
-      count: (storyDetails.stories || []).length,
-      stories: storyDetails.stories || [],
+      generatedAt: primaryDetails.generatedAt || null,
+      count: (primaryDetails.stories || []).length,
+      stories: primaryDetails.stories || [],
     });
   } catch (error) {
     req.log.error({ err: error }, "Story details failure");

@@ -117,7 +117,7 @@ async function loadStory() {
   }
 
   try {
-    const response = await fetch(`${AGENT_BASE_URL}/api/story-details?id=${encodeURIComponent(storyId)}`);
+    const response = await fetch(`${AGENT_BASE_URL}/api/story-details?id=${encodeURIComponent(storyId)}&lang=es`);
     const data = await response.json();
 
     if (!data.success || !data.story) throw new Error('Historia no encontrada');
