@@ -56,9 +56,9 @@
       </div>
       <div class="sa-nav-row sa-secondary">
         <a href="/under-construction.html" class="sa-nav-link">${bookLabel}</a>
+        <a href="${langUrl}" class="sa-nav-link sa-lang-link" title="${langLabel}">${langLabel}</a>
       </div>
     </nav>
-    <a href="${langUrl}" class="sa-lang-pill" title="${langLabel}">${langLabel}</a>
     <button class="sa-hamburger" aria-label="Open menu" aria-expanded="false">
       <i class="fa-solid fa-bars"></i>
     </button>
@@ -171,36 +171,16 @@
       color: #5dff9a;
     }
 
-    /* ── Language switcher pill — separate, below the nav ── */
-    .sa-lang-pill {
-      position: absolute;
-      top: 118px;
-      right: 22px;
-      z-index: 19;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(7,24,63,.80);
-      border: 1px solid rgba(93,255,154,.45);
-      border-radius: 20px;
-      padding: 7px 16px;
-      color: #5dff9a;
-      font-family: 'Baloo 2', system-ui, sans-serif;
-      font-size: 13px;
-      font-weight: 800;
-      text-decoration: none;
-      letter-spacing: .3px;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      box-shadow: 0 6px 20px rgba(0,0,0,.32), 0 0 12px rgba(93,255,154,.12);
-      transition: all .22s ease;
-      white-space: nowrap;
+    /* ── Language switcher — lives inside the nav pill ── */
+    .sa-lang-link {
+      background: rgba(93,255,154,.10) !important;
+      border-color: rgba(93,255,154,.35) !important;
+      color: #5dff9a !important;
     }
-    .sa-lang-pill:hover {
-      background: rgba(93,255,154,.18);
-      border-color: rgba(93,255,154,.70);
-      transform: translateY(-2px);
-      box-shadow: 0 10px 28px rgba(0,0,0,.36), 0 0 18px rgba(93,255,154,.20);
+    .sa-lang-link:hover {
+      background: rgba(93,255,154,.22) !important;
+      border-color: rgba(93,255,154,.60) !important;
+      color: #5dff9a !important;
     }
 
     /* ── Hamburger button ── */
