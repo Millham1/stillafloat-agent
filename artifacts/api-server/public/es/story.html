@@ -137,7 +137,21 @@ async function loadStory() {
     document.getElementById('story-link').href = articleUrl || '#';
     if (articleUrl) {
       const translateLink = document.getElementById('translate-link');
-      translateLink.href = 'https://translate.google.com/translate?sl=en&tl=es&u=' + encodeURIComponent(articleUrl);
+      // Build a translate.goog URL — Google's own subdomain format that rewrites
+      // the page through their servers. Works even on sites that block iframes
+      // (unlike the old /translate?u= endpoint which falls back to the raw page).
+      try {
+        const parsed = new URL(articleUrl);
+        const toogHost = parsed.hostname.replace(/\./g, '-') + '.translate.goog';
+        const toogParams = new URLSearchParams(parsed.search);
+        toogParams.set('_x_tr_sl', 'en');
+        toogParams.set('_x_tr_tl', 'es');
+        toogParams.set('_x_tr_hl', 'es');
+        toogParams.set('_x_tr_pto', 'wapp');
+        translateLink.href = `https://${toogHost}${parsed.pathname}?${toogParams.toString()}`;
+      } catch (_) {
+        translateLink.href = 'https://translate.google.com/translate?sl=en&tl=es&u=' + encodeURIComponent(articleUrl);
+      }
       translateLink.style.display = '';
     }
 
