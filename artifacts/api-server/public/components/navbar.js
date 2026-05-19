@@ -1,6 +1,6 @@
 // Still Afloat — Global Site Nav
 // Injects logo (top-left) + glass-navy pill nav (top-right) as position:absolute
-// within whichever parent has position:relative (the hero or banner section).
+// Mobile: hamburger button + slide-down full-screen menu
 (function () {
 
   const isHome = ['', '/', '/index.html', 'index.html'].some(s =>
@@ -23,10 +23,26 @@
         <a href="under-construction.html" class="sa-nav-link">Book a Cruise</a>
       </div>
     </nav>
+    <button class="sa-hamburger" aria-label="Open menu" aria-expanded="false">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  `;
+
+  const mobileMenuHTML = `
+    <div class="sa-mobile-menu" id="saMobileMenu">
+      <button class="sa-mobile-close" aria-label="Close menu">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <a href="index.html"              class="sa-mobile-link">Home</a>
+      <a href="news.html"               class="sa-mobile-link">Cruise News</a>
+      <a href="weather.html"            class="sa-mobile-link">Weather</a>
+      <a href="affiliate.html"          class="sa-mobile-link">Gear</a>
+      <a href="under-construction.html" class="sa-mobile-link">Book a Cruise</a>
+    </div>
+    <div class="sa-mobile-overlay" id="saMobileOverlay"></div>
   `;
 
   const navCSS = `
-    /* navbar-container fills its positioned parent (the hero/banner section) */
     #navbar-container {
       position: absolute;
       inset: 0;
@@ -35,7 +51,6 @@
     }
     #navbar-container > * { pointer-events: auto; }
 
-    /* Logo — top-left of the banner */
     .sa-logo-home {
       position: absolute;
       top: 18px;
@@ -52,7 +67,6 @@
     }
     .sa-logo-home:hover .sa-logo-img { transform: scale(1.05); }
 
-    /* Nav pill — top-right, matches original homepage hero-nav style */
     .sa-site-nav {
       position: absolute;
       top: 22px;
@@ -121,7 +135,109 @@
       color: #5dff9a;
     }
 
-    /* Shared reveal animation */
+    /* ── Hamburger button ── */
+    .sa-hamburger {
+      display: none;
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 30;
+      background: linear-gradient(180deg, rgba(9,72,117,.96), rgba(4,33,66,.96));
+      border: 1px solid rgba(123,214,255,.32);
+      border-radius: 16px;
+      padding: 12px 18px;
+      cursor: pointer;
+      color: white;
+      font-size: 22px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.40);
+      align-items: center;
+      gap: 8px;
+      line-height: 1;
+    }
+    .sa-hamburger:active { transform: scale(0.96); }
+
+    /* ── Mobile slide-down menu ── */
+    .sa-mobile-menu {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: linear-gradient(180deg, rgba(4,17,46,.98) 0%, rgba(7,30,70,.98) 100%);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid rgba(123,214,255,.22);
+      border-radius: 0 0 28px 28px;
+      padding: 72px 20px 28px;
+      box-shadow: 0 28px 60px rgba(0,0,0,.60);
+      transform: translateY(-110%);
+      transition: transform 0.34s cubic-bezier(.22,1,.36,1);
+      pointer-events: none;
+    }
+    .sa-mobile-menu.open {
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .sa-mobile-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.52);
+      z-index: 9998;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .sa-mobile-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sa-mobile-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: white;
+      font-size: 18px;
+      transition: background .2s ease;
+    }
+    .sa-mobile-close:hover { background: rgba(255,255,255,.18); }
+
+    .sa-mobile-link {
+      display: flex;
+      align-items: center;
+      padding: 15px 20px;
+      color: white;
+      font-family: 'Baloo 2', system-ui, sans-serif;
+      font-size: 19px;
+      font-weight: 700;
+      border-radius: 16px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.05);
+      text-decoration: none;
+      transition: all .2s ease;
+      min-height: 48px;
+    }
+    .sa-mobile-link:hover,
+    .sa-mobile-link:active {
+      background: rgba(93,255,154,.14);
+      border-color: rgba(93,255,154,.30);
+      color: #5dff9a;
+    }
+
+    /* Reveal animation */
     .reveal {
       opacity: 0;
       transform: translateY(24px);
@@ -129,18 +245,28 @@
     }
     .reveal.visible { opacity: 1; transform: none; }
 
-    /* Brand text spans — kept as fallback */
     .sa-still  { font-family: Pacifico, cursive; color: #FFD300; text-shadow: 0 2px 8px rgba(255,211,0,.30); }
     .sa-afloat { font-family: Pacifico, cursive; color: #6DCFFF; text-shadow: 0 2px 8px rgba(109,207,255,.28); }
 
-    /* Brand logo images — fixed px so size is consistent regardless of context */
     .brand-img    { height: 44px;  width: auto; vertical-align: middle; display: inline-block; }
     .brand-img-sm { height: 30px;  width: auto; vertical-align: middle; display: inline-block; }
+
+    /* ── Mobile breakpoint ── */
+    @media (max-width: 768px) {
+      .sa-site-nav  { display: none; }
+      .sa-hamburger { display: flex; }
+      .sa-logo-img  { height: 60px; }
+    }
   `;
 
   const style = document.createElement('style');
   style.textContent = navCSS;
   document.head.appendChild(style);
+
+  // Inject mobile menu + overlay into body (so position:fixed works globally)
+  const mobileWrap = document.createElement('div');
+  mobileWrap.innerHTML = mobileMenuHTML;
+  document.body.appendChild(mobileWrap);
 
   function injectNav() {
     const container = document.getElementById('navbar-container');
@@ -153,6 +279,35 @@
       const href = (a.getAttribute('href') || '').split('/').pop();
       if (href && href === current) a.classList.add('active');
     });
+
+    // Hamburger toggle
+    const hamburger   = container.querySelector('.sa-hamburger');
+    const mobileMenu  = document.getElementById('saMobileMenu');
+    const overlay     = document.getElementById('saMobileOverlay');
+    const closeBtn    = mobileMenu && mobileMenu.querySelector('.sa-mobile-close');
+
+    function openMenu() {
+      if (!mobileMenu || !overlay) return;
+      mobileMenu.classList.add('open');
+      overlay.classList.add('open');
+      hamburger && hamburger.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeMenu() {
+      if (!mobileMenu || !overlay) return;
+      mobileMenu.classList.remove('open');
+      overlay.classList.remove('open');
+      hamburger && hamburger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    }
+
+    if (hamburger) hamburger.addEventListener('click', openMenu);
+    if (closeBtn)  closeBtn.addEventListener('click', closeMenu);
+    if (overlay)   overlay.addEventListener('click', closeMenu);
+    document.querySelectorAll('.sa-mobile-link').forEach(link =>
+      link.addEventListener('click', closeMenu)
+    );
 
     // Scroll reveal observer
     const io = new IntersectionObserver(entries => {

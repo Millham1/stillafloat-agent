@@ -339,3 +339,79 @@ footer{
   color:white;
   font-size:18px;
 }
+
+/* ── Report grid — two columns desktop ── */
+.report-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:28px;
+  align-items:stretch;
+}
+
+/* ═══════════════════════════════════════
+   MOBILE RESPONSIVE — 768px and below
+═══════════════════════════════════════ */
+@media(max-width:768px){
+
+  body{ font-size:16px; }
+
+  h2{ font-size:28px; }
+  h3{ font-size:22px; }
+  p{ font-size:16px; line-height:1.65; }
+
+  .section{ padding:40px 16px; }
+
+  /* ── Hero ── */
+  .hero{ padding:56px 16px 70px; }
+  .hero h1{ font-size:34px; line-height:1.15; }
+  .hero p{ font-size:17px; }
+  .hero-text{ padding:20px 18px; border-radius:18px; }
+
+  /* ── Banner image — limit height on phone ── */
+  .banner-image{ max-height:180px; object-fit:cover; object-position:center; }
+
+  /* ── Meet Mark — stack vertically ── */
+  .meet-mark{
+    grid-template-columns:1fr;
+    gap:24px;
+  }
+  .meet-mark .bio-img{
+    max-height:300px;
+    object-fit:cover;
+    object-position:top center;
+  }
+  .meet-mark-text{ padding:22px 18px; }
+  .meet-mark-text h2{ font-size:32px; }
+  .meet-mark .parrots-accent{ display:none; }
+
+  /* ── Vibe section ── */
+  .vibe-section{ padding:60px 16px; }
+  .vibe-panel{ padding:26px 18px; border-radius:20px; }
+
+  /* ── Report section ── */
+  .report-section{ padding:60px 16px; }
+  .report-grid{ grid-template-columns:1fr; }
+  .report-box{ padding:22px 18px; border-radius:20px; }
+
+  /* ── Flavor cards ── */
+  .cards{ padding:8px 4px 16px; gap:16px; }
+  .flavor-card{ min-height:220px; padding:20px; border-radius:20px; }
+  .flavor-card h3{ font-size:24px; }
+  .flavor-card p{ font-size:15px; }
+
+  /* ── YouTube two-col ── */
+  .two-col{ grid-template-columns:1fr; gap:24px; }
+
+  /* ── Footer ── */
+  footer{ padding:24px 16px 32px; font-size:15px; }
+}
+
+/* ═══════════════════════════════════════
+   EXTRA SMALL — 480px and below
+═══════════════════════════════════════ */
+@media(max-width:480px){
+  .hero h1{ font-size:28px; }
+  h2{ font-size:24px; }
+  .meet-mark-text h2{ font-size:26px; }
+  .section-kicker{ font-size:13px; padding:6px 14px; }
+}
