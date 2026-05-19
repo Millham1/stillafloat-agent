@@ -64,9 +64,6 @@ footer{padding:28px 20px 50px;text-align:center;color:rgba(255,255,255,.42);font
       <p id="editorial-reasoning"></p>
     </div>
     <div class="actions">
-      <a id="story-link" href="#" target="_blank" rel="noopener noreferrer">
-        <i class="fa-solid fa-up-right-from-square"></i> Leer artículo completo
-      </a>
       <a id="translate-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
         <i class="fa-solid fa-language"></i> Traducir artículo completo
       </a>
@@ -149,7 +146,6 @@ async function loadStory() {
 
     document.getElementById('story-summary').textContent = safeText(story.summary_es || story.summary, 'Resumen no disponible.');
     const articleUrl = safeText(story.originalLink || story.link, '');
-    document.getElementById('story-link').href = articleUrl || '#';
     if (articleUrl) {
       const translateLink = document.getElementById('translate-link');
       translateLink.href = `${AGENT_BASE_URL}/api/translate-article?url=${encodeURIComponent(articleUrl)}`;
