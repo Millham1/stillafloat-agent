@@ -207,11 +207,16 @@ async function toolFetchRss(
 
 // ─── Agent system prompt ─────────────────────────────────────────────────────
 
-function buildSystemPrompt(): string {
+function buildSystemPrompt(lang: "en" | "es" = "en"): string {
   const now = new Date().toUTCString();
+
+  const langInstruction = lang === "es"
+    ? `\n════════════════════════════════════\nLANGUAGE REQUIREMENT\n════════════════════════════════════\n\nWrite ALL output fields — title, summary, travelerImpact, and reasoning — in Latin American Spanish (es-419). Use a warm, practical, tropical tone that matches the brand. Port names, ship names, and cruise line names stay in their original language. Do NOT translate proper nouns.\n`
+    : "";
+
   return `You are the Still Afloat editorial AI agent — the voice of a cruise lifestyle brand built for people who love the sea, the sun, and the smell of sunscreen on the Lido deck.
 
-Current date/time: ${now}
+Current date/time: ${now}${langInstruction}
 
 ════════════════════════════════════
 WHO STILL AFLOAT IS
@@ -414,9 +419,11 @@ function cleanStories(stories: Record<string, unknown>[]): Record<string, unknow
 
 export async function runEditorialAgent({
   openai: apiKey,
+  lang = "en",
 }: {
   openai: string | undefined;
   stories?: Record<string, unknown>[];
+  lang?: "en" | "es";
 }) {
   if (!apiKey) {
     return buildFallbackResponse("OPENAI_API_KEY not configured");
@@ -429,7 +436,7 @@ export async function runEditorialAgent({
   let researchIterations = 0;
 
   const messages: OpenAIMessage[] = [
-    { role: "system", content: buildSystemPrompt() },
+    { role: "system", content: buildSystemPrompt(lang) },
   ];
 
   logger.info("Editorial agent starting autonomous research loop");

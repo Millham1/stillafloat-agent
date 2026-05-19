@@ -329,7 +329,12 @@ router.post("/scan-news", async (req: Request, res: Response) => {
   try {
     const curated = await runEditorialAgent({
       openai: process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"],
-    });
+    }) as {
+      stories?: Record<string, unknown>[];
+      homepageTop5?: string[];
+      groupedDevelopments?: unknown[];
+      systemStatus?: { degraded?: boolean; reason?: string };
+    };
     telemetry.ingestionCompleted = true;
     telemetry.aiCompleted = true;
     telemetry.degradedMode = Boolean(curated?.systemStatus?.degraded);

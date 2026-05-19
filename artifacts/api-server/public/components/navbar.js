@@ -11,9 +11,17 @@
     : (['', '/', '/index.html', 'index.html'].some(s => path.endsWith(s) || path === s));
 
   const homeUrl  = isSpanish ? '/es/index.html' : '/index.html';
-  const langUrl  = isSpanish
-    ? path.replace(/^\/es\//, '/')          // /es/news.html → /news.html
-    : '/es/' + (path.split('/').pop() || 'index.html'); // /news.html → /es/news.html
+  // Compute equivalent page URL in the other language
+  // Handles /es, /es/, /es/index.html, /es/news.html correctly
+  let langUrl;
+  if (isSpanish) {
+    let eng = path.replace(/^\/es(\/.*)?$/, (_m, rest) => rest || '/index.html');
+    if (eng === '/' || eng === '') eng = '/index.html';
+    langUrl = eng;
+  } else {
+    const file = (path.split('/').pop()) || 'index.html';
+    langUrl = '/es/' + (file || 'index.html');
+  }
   const langLabel = isSpanish ? '🇺🇸 English' : '🌎 En Español';
 
   // ── Nav links (absolute paths) ──

@@ -38,7 +38,7 @@ function articleFromRss(item: any, sourceName: string): Record<string, unknown> 
 }
 
 // All feeds confirmed reachable (200/301/302 — rss-parser follows redirects)
-const RSS_SOURCES = [
+const RSS_SOURCES_EN = [
   // Mainstream news — travel sections
   { url: "http://rss.cnn.com/rss/edition_travel.rss", name: "CNN Travel" },
   { url: "https://feeds.foxnews.com/foxnews/travel", name: "Fox News Travel" },
@@ -62,8 +62,21 @@ const RSS_SOURCES = [
   { url: "https://onemileatatime.com/feed/", name: "One Mile at a Time" },
 ];
 
+// Spanish-language (es-419) travel & cruise RSS sources
+const RSS_SOURCES_ES = [
+  // Latin American & Spanish travel news
+  { url: "https://www.lavanguardia.com/rss/ocio/viajes.xml", name: "La Vanguardia Viajes" },
+  { url: "https://viajes.nationalgeographic.com.es/rss", name: "Nat Geo Viajes" },
+  { url: "https://www.clarin.com/rss/viajes/", name: "Clarín Viajes" },
+  { url: "https://www.milenio.com/rss/turismo", name: "Milenio Turismo" },
+  { url: "https://www.eluniversal.com.mx/rss/turismo.xml", name: "El Universal Turismo" },
+];
+
+// Keep the legacy export alias pointing at English sources
+const RSS_SOURCES = RSS_SOURCES_EN;
+
 // GNews query buckets — 8 queries × 10 articles = up to 80 raw GNews items
-const GNEWS_QUERIES = [
+const GNEWS_QUERIES_EN = [
   "cruise ship OR cruise line port itinerary passengers",
   "airline cancel delay airport disruption strike",
   "travel advisory warning visa entry ban",
@@ -74,12 +87,28 @@ const GNEWS_QUERIES = [
   "tourism destination beach passport traveler",
 ];
 
+// Spanish-language GNews query buckets (GNews lang=es)
+const GNEWS_QUERIES_ES = [
+  "crucero caribe itinerario pasajeros cambio",
+  "aerolínea cancelación vuelo viajero demora",
+  "aviso viaje destino turístico Latinoamérica",
+  "crucero Royal Caribbean Carnival MSC Norwegian",
+  "turismo destino playa isla pasaporte",
+  "puerto crucero Caribe México América Central",
+  "viaje vacaciones consejo equipaje oferta",
+  "estilo de vida crucero historia viajero",
+];
+
+// Legacy alias
+const GNEWS_QUERIES = GNEWS_QUERIES_EN;
+
 async function fetchGNewsQuery(
   query: string,
-  apiKey: string
+  apiKey: string,
+  lang: "en" | "es" = "en"
 ): Promise<Record<string, unknown>[]> {
   const encoded = encodeURIComponent(query);
-  const url = `https://gnews.io/api/v4/search?q=${encoded}&lang=en&max=10&apikey=${apiKey}`;
+  const url = `https://gnews.io/api/v4/search?q=${encoded}&lang=${lang}&max=10&apikey=${apiKey}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const payload = (await fetchJson(url)) as any;
   if (!payload?.articles) return [];
@@ -162,17 +191,20 @@ function filterRecent(
   });
 }
 
-export async function buildCandidateFeed(): Promise<
-  Record<string, unknown>[]
-> {
+export async function buildCandidateFeed(
+  lang: "en" | "es" = "en"
+): Promise<Record<string, unknown>[]> {
   const apiKey = process.env["GNEWS_API_KEY"];
+
+  const rssSources  = lang === "es" ? [...RSS_SOURCES_EN, ...RSS_SOURCES_ES] : RSS_SOURCES_EN;
+  const gnewsQueries = lang === "es" ? GNEWS_QUERIES_ES : GNEWS_QUERIES_EN;
 
   // Fetch all sources in parallel
   const [gnewsResults, rssResults] = await Promise.all([
     apiKey
-      ? Promise.all(GNEWS_QUERIES.map((q) => fetchGNewsQuery(q, apiKey)))
+      ? Promise.all(gnewsQueries.map((q) => fetchGNewsQuery(q, apiKey, lang)))
       : Promise.resolve([]),
-    Promise.all(RSS_SOURCES.map((s) => fetchRssFeed(s.url, s.name))),
+    Promise.all(rssSources.map((s) => fetchRssFeed(s.url, s.name))),
   ]);
 
   const allGNews = (gnewsResults as Record<string, unknown>[][]).flat();

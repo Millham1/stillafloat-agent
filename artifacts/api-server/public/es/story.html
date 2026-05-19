@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es-419">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historia | Still Afloat</title>
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--bg:#07111f;--panel:rgba(9,18,34,.84);--border:rgba(255,255,255,.10)}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top right, rgba(0,119,182,.18), transparent 24%),linear-gradient(to bottom,#040b16 0%,#071523 30%,#0c2035 100%);color:white;font-family:'Baloo 2',Poppins,sans-serif}
+.story-shell{max-width:1400px;margin:auto;padding:36px 24px 80px}
+.hero{width:100%;height:min(42vw,700px);min-height:420px;border-radius:34px;overflow:hidden;margin:24px 0 34px;background:url('/assets/images/cliffnotes-hero-approved-no-nav.png?v=3') center center/cover no-repeat;border:1px solid rgba(255,255,255,.08);box-shadow:0 28px 70px rgba(0,0,0,.42)}
+.story-card{position:relative;margin-top:-110px;z-index:5;width:min(1100px,92%);margin-left:auto;margin-right:auto;border-radius:34px;background:var(--panel);backdrop-filter:blur(14px);border:1px solid var(--border);overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.45)}
+.story-image{width:100%;max-height:460px;object-fit:cover;display:none}
+.story-content{padding:38px}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.22);color:#bdfdd3;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:22px}
+.story-title{font-size:clamp(28px,5vw,56px);line-height:1.05;margin:0 0 18px;font-weight:900}
+.story-meta{color:rgba(255,255,255,.58);margin-bottom:28px;font-weight:700}
+.story-summary{font-size:20px;line-height:1.8;color:rgba(255,255,255,.88);margin-bottom:34px}
+.traveler-impact-panel{margin-top:28px;padding:22px 26px;border-radius:22px;background:rgba(93,255,154,.07);border:1px solid rgba(93,255,154,.18)}
+.traveler-impact-panel p{margin:8px 0 0;font-size:17px;line-height:1.7;color:rgba(255,255,255,.88)}
+.tip-label{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#5dff9a}
+.editorial-panel{margin-top:18px;padding:24px;border-radius:24px;background:rgba(255,202,79,.06);border:1px solid rgba(255,202,79,.18);display:none}
+.editorial-panel p{margin:8px 0 0;font-size:16px;line-height:1.7;color:rgba(255,255,255,.82);font-style:italic}
+.editorial-label{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#ffca4f}
+.actions{display:flex;gap:14px;flex-wrap:wrap;margin:32px 0 24px}
+.actions a{display:inline-flex;align-items:center;gap:8px;padding:14px 24px;border-radius:16px;font-weight:800;font-size:16px;text-decoration:none;transition:all .22s ease}
+.actions a:first-child{background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;box-shadow:0 10px 28px rgba(0,0,0,.24)}
+.actions a:first-child:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(0,0,0,.34)}
+.actions a:nth-child(2){background:rgba(255,255,255,.08);color:white;border:1px solid rgba(255,255,255,.16)}
+.actions a:nth-child(2):hover{background:rgba(255,255,255,.14)}
+.note{font-size:13px;color:rgba(255,255,255,.38);line-height:1.6;margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,.10)}
+footer{padding:28px 20px 50px;text-align:center;color:rgba(255,255,255,.42);font-size:.88rem}
+@media(max-width:680px){
+  .story-shell{padding:16px 14px 50px}
+  .story-card{border-radius:22px;margin-top:-60px}
+  .story-content{padding:22px 18px}
+  .story-title{font-size:22px}
+  .story-summary{font-size:16px}
+  .hero{height:56vw;min-height:220px;border-radius:18px}
+  .actions{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="story-shell">
+<div id="navbar-container" style="position:relative;height:0;overflow:visible;z-index:20;"></div>
+<section class="hero"></section>
+<article class="story-card">
+  <img id="story-image" class="story-image" alt="Imagen del artículo">
+  <div class="story-content">
+    <div class="badge" id="story-category">Noticias de Cruceros</div>
+    <h1 class="story-title" id="story-title">Cargando historia...</h1>
+    <div class="story-meta" id="story-meta"></div>
+    <div class="story-summary" id="story-summary"></div>
+    <div id="traveler-impact-panel" class="traveler-impact-panel" style="display:none;">
+      <div class="tip-label">⚓ Lo que esto significa para ti</div>
+      <p id="traveler-impact-text"></p>
+    </div>
+    <div id="editorial-panel" class="editorial-panel">
+      <div class="editorial-label">🎙️ Por qué importa</div>
+      <p id="editorial-reasoning"></p>
+    </div>
+    <div class="actions">
+      <a id="story-link" href="#" target="_blank" rel="noopener noreferrer">
+        <i class="fa-solid fa-up-right-from-square"></i> Leer artículo completo
+      </a>
+      <a href="/es/news.html">
+        <i class="fa-solid fa-newspaper"></i> Volver a noticias
+      </a>
+    </div>
+    <div class="note">Still Afloat cura y resume novedades de la industria de cruceros, interrupciones de viaje, impactos del clima e inteligencia de destinos, siempre acreditando y enlazando directamente a los editores originales.</div>
+  </div>
+</article>
+</div>
+<footer>© 2026 Still Afloat LLC — Navega más inteligente. Ríe más. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
+
+<script src="/components/navbar.js"></script>
+<script>
+const AGENT_BASE_URL = '';
+
+function getParam(name) {
+  return new URLSearchParams(window.location.search).get(name) || '';
+}
+
+function safeText(value, fallback) {
+  return value || fallback || '';
+}
+
+const CATEGORY_ES = {
+  'Cruise News':        'Noticias de Cruceros',
+  'Aviation':           'Aviación',
+  'Travel Advisory':    'Aviso de Viaje',
+  'Weather & Disruption':'Clima y Disrupciones',
+  'Tourism':            'Turismo',
+  'Travel Tech':        'Tecnología de Viajes',
+  'Health & Safety':    'Salud y Seguridad',
+  'Loyalty & Deals':    'Lealtad y Ofertas',
+};
+
+const IMPACT_ES = {
+  'Critical': 'Crítico',
+  'High':     'Alto',
+  'Medium':   'Medio',
+  'Low':      'Bajo',
+};
+
+async function loadStory() {
+  const storyId = getParam('id');
+
+  if (!storyId) {
+    document.getElementById('story-title').textContent = 'Historia no disponible';
+    document.getElementById('story-summary').textContent = 'No se proporcionó un identificador de historia.';
+    return;
+  }
+
+  try {
+    const response = await fetch(`${AGENT_BASE_URL}/api/story-details?id=${encodeURIComponent(storyId)}`);
+    const data = await response.json();
+
+    if (!data.success || !data.story) throw new Error('Historia no encontrada');
+
+    const story = data.story;
+
+    document.getElementById('story-title').textContent = safeText(story.title, 'Cruceros');
+
+    const catEn = safeText(story.category, 'Cruise News');
+    document.getElementById('story-category').textContent = CATEGORY_ES[catEn] || catEn;
+
+    document.getElementById('story-summary').textContent = safeText(story.summary, 'Resumen no disponible.');
+    document.getElementById('story-link').href = safeText(story.originalLink || story.link, '#');
+
+    const meta = [];
+    if (Array.isArray(story.sources) && story.sources.length) meta.push(story.sources[0]);
+    if (story.approvedAt) {
+      const d = new Date(story.approvedAt);
+      if (!isNaN(d.getTime())) meta.push(d.toLocaleString('es-419'));
+    }
+    if (story.impactLevel) {
+      const imp = IMPACT_ES[story.impactLevel] || story.impactLevel;
+      meta.push(`Impacto: ${imp}`);
+    }
+    document.getElementById('story-meta').textContent = meta.join(' • ');
+
+    if (story.image) {
+      const img = document.getElementById('story-image');
+      img.src = story.image;
+      img.style.display = 'block';
+    }
+
+    if (story.travelerImpact) {
+      document.getElementById('traveler-impact-panel').style.display = 'block';
+      document.getElementById('traveler-impact-text').textContent = story.travelerImpact;
+    }
+
+    if (story.editorialReasoning) {
+      document.getElementById('editorial-panel').style.display = 'block';
+      document.getElementById('editorial-reasoning').textContent = story.editorialReasoning;
+    }
+
+  } catch (error) {
+    console.error('Error al cargar historia', error);
+    document.getElementById('story-title').textContent = 'Historia no disponible';
+    document.getElementById('story-summary').textContent = 'No se pudo cargar la historia en este momento.';
+  }
+}
+
+loadStory();
+</script>
+</body>
+</html>
