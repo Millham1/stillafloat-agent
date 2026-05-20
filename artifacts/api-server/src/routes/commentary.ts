@@ -52,6 +52,11 @@ router.get("/commentary", async (req: Request, res: Response) => {
         res.status(404).json({ success: false, error: "Post not found" });
         return;
       }
+      // Unpublished posts are only visible to authenticated callers
+      if (post.status === "unpublished" && !checkToken(req)) {
+        res.status(404).json({ success: false, error: "Post not found" });
+        return;
+      }
       res.json({ success: true, post });
       return;
     }
