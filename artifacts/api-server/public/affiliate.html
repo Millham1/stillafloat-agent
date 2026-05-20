@@ -286,7 +286,17 @@ function esc(s){const d=document.createElement('div');d.textContent=String(s||''
 
 function renderStrip(wrap,html){
   if(!html||!html.trim())return;
-  const tmp=document.createElement('div');tmp.innerHTML=html;
+  const trimmed=html.trim();
+  // Plain URL → render a gold Buy button instead of injecting raw text
+  if(/^https?:\/\//i.test(trimmed)){
+    const a=document.createElement('a');
+    a.href=trimmed; a.target='_blank'; a.rel='noopener noreferrer';
+    a.className='btn'; a.style.cssText='display:inline-flex;align-items:center;gap:8px;';
+    a.innerHTML='<i class="fa-brands fa-amazon"></i> Buy on Amazon &nbsp;→';
+    wrap.appendChild(a);
+    return;
+  }
+  const tmp=document.createElement('div');tmp.innerHTML=trimmed;
   Array.from(tmp.childNodes).forEach(n=>{if(n.nodeName!=='SCRIPT')wrap.appendChild(n.cloneNode(true))});
   tmp.querySelectorAll('script').forEach(old=>{
     const s=document.createElement('script');
