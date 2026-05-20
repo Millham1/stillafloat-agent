@@ -55,10 +55,7 @@ const RSS_SOURCES_EN = [
   { url: "https://cruiseradio.net/feed/", name: "Cruise Radio" },
   { url: "https://www.cruiseindustrynews.com/cruise-news/feed", name: "Cruise Industry News" },
 
-  // Aviation & airline news
-  { url: "https://simpleflying.com/feed/", name: "Simple Flying" },
-  { url: "https://theaviationgeekclub.com/feed/", name: "Aviation Geek Club" },
-  { url: "https://viewfromthewing.com/feed/", name: "View From The Wing" },
+  // Travel deals & points (cruise-relevant)
   { url: "https://onemileatatime.com/feed/", name: "One Mile at a Time" },
 ];
 
@@ -78,13 +75,13 @@ const RSS_SOURCES = RSS_SOURCES_EN;
 // GNews query buckets — 8 queries × 10 articles = up to 80 raw GNews items
 const GNEWS_QUERIES_EN = [
   "cruise ship OR cruise line port itinerary passengers",
-  "airline cancel delay airport disruption strike",
-  "travel advisory warning visa entry ban",
-  "hurricane typhoon storm airport port closure",
   "cruise line carnival royal caribbean norwegian celebrity MSC",
-  "hotel resort vacation deal booking price",
-  "aviation FAA grounded aircraft flight safety",
-  "tourism destination beach passport traveler",
+  "cruise ship liveaboard lifestyle story personal",
+  "travel advisory warning visa entry ban cruise port",
+  "hurricane typhoon storm cruise ship port closure itinerary",
+  "hotel resort vacation deal cruise booking price",
+  "tourism destination beach island cruise traveler",
+  "cruise news this week passengers onboard",
 ];
 
 // Spanish-language GNews query buckets (GNews lang=es)

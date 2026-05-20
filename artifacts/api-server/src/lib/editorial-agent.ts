@@ -299,22 +299,22 @@ ROUND 1 — fetch all 6 (no skipping):
   fetch_rss_feed("Cruise Radio")
   fetch_rss_feed("Cruise Industry News")
   fetch_rss_feed("Cruise Fever")
-  fetch_rss_feed("Simple Flying")
   fetch_rss_feed("The Points Guy")
+  fetch_rss_feed("Upgraded Points")
 
 ROUND 2 — fetch all 5 + run 2 GNews searches (no skipping):
-  fetch_rss_feed("Upgraded Points")
   fetch_rss_feed("Condé Nast Traveler")
   fetch_rss_feed("Fox News Travel")
   fetch_rss_feed("One Mile at a Time")
   fetch_rss_feed("CNN Travel")
-  search_gnews("cruising lifestyle liveaboard")
+  fetch_rss_feed("Skift")
+  search_gnews("cruising lifestyle liveaboard cruise ship")
   search_gnews("cruise ship personal story OR funny OR surprising")
 
 ROUND 3 — always run this round to reach the 12–18 story target:
-  fetch_rss_feed("Skift")
   search_gnews("cruise ship news itinerary change this week")
-  search_gnews("cruise port destination travel tips")
+  search_gnews("cruise port destination Caribbean travel tips")
+  search_gnews("cruise line deal sale announcement passengers")
 
 After all 3 Rounds are complete, call submit_editorial_decisions.`}
 
@@ -327,10 +327,11 @@ Tier 1 — Direct Cruise Impact (3–5 stories, never more than 5):
   Sources: Cruise Hive, Cruise Radio, Cruise Industry News
   Brand filter: Must be something Mark would text a cruising friend about
 
-Tier 2 — Travel Operations (1–3 stories):
-  Airline disruptions, FAA/TSA policy, airport incidents, travel entry/visa changes, port policy shifts
-  Sources: Simple Flying, Aviation Geek Club, Skift, Fox News Travel, CNN Travel
-  Brand filter: Must directly affect getting to or from a cruise
+Tier 2 — Travel Operations (0–1 stories MAX):
+  Only include if it directly affects getting to or from a cruise — a major airport closure on an embarkation day, a visa/entry change for a cruise port, or a TSA/border policy that impacts cruise passengers.
+  Pure airline/aviation news with no cruise connection is EXCLUDED entirely.
+  Sources: Skift, Fox News Travel, CNN Travel
+  Brand filter: Ask yourself — "Would a cruiser who never flies care about this?" If yes, consider it. If it's purely aviation ops, skip it.
 
 Tier 3 — Mainstream Relevant (0–2 stories):
   ONLY if a cruise ship, cruise port, or cruise itinerary is specifically named:
