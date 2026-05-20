@@ -83,3 +83,9 @@ id = "W1_RoG2S2p49IisawYDww"
 uri = "file://attached_assets/episode1_v2.mp4"
 type = "video"
 title = "Episode 1 — v2 (49.8s) — Beach reveal + Mark + storm transition"
+
+[[outputs]]
+id = "EXUNCKO85jYsBizbLaAO1"
+uri = "file://attached_assets/episode1_v3.mp4"
+type = "video"
+title = "Episode 1 — v3 (49.8s) — Real Still Afloat intro music"
