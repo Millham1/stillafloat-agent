@@ -39,6 +39,8 @@ export const PATHS = {
   affiliateItems: "affiliate-items",
   // Curated favorites (YouTube channels + cruise websites)
   favorites: "favorites",
+  // Mark's personal commentary posts (vlog transcripts)
+  commentary: "commentary-posts",
 };
 
 export async function writeJson(key: string, payload: unknown): Promise<boolean> {
