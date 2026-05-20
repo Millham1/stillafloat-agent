@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "CGKzGbDAYtQPdHY2xus_A"
@@ -72,3 +71,9 @@ id = "_ocFzcKnmGtOYo_VkkKvP"
 uri = "file://artifacts/api-server/public/assets/images/cruise-websites-hero.png"
 type = "image"
 title = "cruise websites hero banner"
+
+[[outputs]]
+id = "i2tsTYy2dTmzErlGfZJGk"
+uri = "file://attached_assets/episode1_v1.mp4"
+type = "video"
+title = "Episode 1 — v1 (42s assembled cut)"
