@@ -78,7 +78,36 @@ router.get("/commentary", async (req: Request, res: Response) => {
   }
 });
 
+async function autoTranslate(text: string): Promise<string> {
+  const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"];
+  if (!apiKey || !text.trim()) return "";
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a professional translator. Translate the following English text to Latin American Spanish (es-419). Preserve the tone, personality, paragraph structure, and formatting. Return only the translated text — no explanations, no preamble.",
+          },
+          { role: "user", content: text },
+        ],
+        temperature: 0.3,
+      }),
+    });
+    if (!response.ok) return "";
+    const data = (await response.json()) as { choices: { message: { content: string } }[] };
+    return data.choices[0]?.message?.content?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
 // POST /api/commentary — create and immediately publish a post
+// If body_es is omitted or empty, it is auto-translated from body_en via OpenAI.
 router.post("/commentary", async (req: Request, res: Response) => {
   if (!checkToken(req)) {
     res.status(401).json({ success: false, error: "Unauthorized" });
@@ -97,13 +126,16 @@ router.post("/commentary", async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: "title and body_en are required" });
       return;
     }
+    const resolvedBodyEs = (body_es || "").trim()
+      ? String(body_es)
+      : await autoTranslate(String(body_en));
     const store = await getStore();
     const now = new Date().toISOString();
     const post: CommentaryPost = {
       id: crypto.randomUUID(),
       title: String(title),
       body_en: String(body_en),
-      body_es: String(body_es || ""),
+      body_es: resolvedBodyEs,
       tags: Array.isArray(tags) ? tags.map(String) : [],
       status: "published",
       published_at: now,
