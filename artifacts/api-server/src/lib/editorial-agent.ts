@@ -308,7 +308,7 @@ ROUND 2 — fetch all 5 + run 2 GNews searches (no skipping):
   fetch_rss_feed("One Mile at a Time")
   fetch_rss_feed("CNN Travel")
   fetch_rss_feed("Skift")
-  search_gnews("cruising lifestyle liveaboard cruise ship")
+  search_gnews("cruise ship vacation tips passengers experience")
   search_gnews("cruise ship personal story OR funny OR surprising")
 
 ROUND 3 — always run this round to reach the 12–18 story target:

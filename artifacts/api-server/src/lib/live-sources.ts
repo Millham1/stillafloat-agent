@@ -76,7 +76,7 @@ const RSS_SOURCES = RSS_SOURCES_EN;
 const GNEWS_QUERIES_EN = [
   "cruise ship OR cruise line port itinerary passengers",
   "cruise line carnival royal caribbean norwegian celebrity MSC",
-  "cruise ship liveaboard lifestyle story personal",
+  "cruise vacation tips advice passengers experience",
   "travel advisory warning visa entry ban cruise port",
   "hurricane typhoon storm cruise ship port closure itinerary",
   "hotel resort vacation deal cruise booking price",
