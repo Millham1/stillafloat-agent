@@ -3,16 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>Still Afloat Editorial Agent</title>
-    <meta name="description" content="Still Afloat Editorial Agent — built on Replit. Update this description to reflect the app." />
-    <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="Still Afloat Editorial Agent" />
-    <meta property="og:description" content="Still Afloat Editorial Agent — built on Replit. Update this description to reflect the app." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Still Afloat Editorial Agent" />
-    <meta name="twitter:description" content="Still Afloat Editorial Agent — built on Replit. Update this description to reflect the app." />
+    <title>Still Afloat Editorial</title>
+    <meta name="description" content="AI-powered editorial command center for stillafloatcruising.com" />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/dashboard/manifest.json" />
+
+    <!-- Theme color (browser chrome + iOS status bar) -->
+    <meta name="theme-color" content="#07183f" />
+
+    <!-- iOS / Safari PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Still Afloat" />
+    <link rel="apple-touch-icon" href="/dashboard/apple-touch-icon.png" />
+
+    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/dashboard/icon-192.png" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,5 +31,13 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/dashboard/sw.js', { scope: '/dashboard/' })
+            .catch((err) => console.warn('SW registration failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>
