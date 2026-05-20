@@ -437,33 +437,35 @@
     setEmotion(emotion);
 
     // Scuttle: animate across the screen
+    // When reduced-motion is on, skip scuttle entirely — re-pick a non-scuttle spawn.
     if (spawn.type === 'scuttle') {
-      const w = window.innerWidth + 200;
-      const dist = spawn.id === 'scuttle-lr' ? w : -w;
-      void stage.offsetWidth;
-      stage.style.transition = 'none';
-      wrap.style.animation = `scuttle-lr 10s linear forwards`;
-      wrap.style.setProperty('--scuttle-dist', dist + 'px');
-      wrap.style.animation = `scuttle-${spawn.id === 'scuttle-lr' ? 'lr' : 'rl'} 10s linear forwards`;
-      // redefine inline
+      if (REDUCED) {
+        // Fall back to a simple edge pop so something still appears
+        activeSpawn = SPAWNS.find(s => s.id === 'edge-right');
+        applyPos(activeSpawn.pos());
+        wrap.classList.remove('sa-flip');
+        setEmotion(rand(['waving', 'happy', 'bored']));
+        hideTimer = setTimeout(dismiss, randInt(5000, 8000));
+        return;
+      }
       const duration = 10000;
       const startX = spawn.id === 'scuttle-lr' ? -(window.innerWidth * 0.15 + 200) : (window.innerWidth + 200);
-      stage.style.left = '';
-      stage.style.right = '';
+      const endX   = spawn.id === 'scuttle-lr' ? (window.innerWidth + 200) : -(window.innerWidth * 0.15 + 200);
       stage.style.left = startX + 'px';
+      stage.style.right = '';
       stage.style.bottom = '8px';
       void stage.offsetWidth;
-      // Animate via requestAnimationFrame
+      let scuttleFrame;
       const startTime = performance.now();
-      const endX = spawn.id === 'scuttle-lr' ? (window.innerWidth + 200) : -(window.innerWidth * 0.15 + 200);
       function tick(now) {
         const progress = Math.min((now - startTime) / duration, 1);
-        const x = startX + (endX - startX) * progress;
-        stage.style.left = x + 'px';
-        if (progress < 1) requestAnimationFrame(tick);
-        else dismiss();
+        stage.style.left = (startX + (endX - startX) * progress) + 'px';
+        if (progress < 1) { scuttleFrame = requestAnimationFrame(tick); }
+        else { scuttleFrame = null; dismiss(); }
       }
-      requestAnimationFrame(tick);
+      scuttleFrame = requestAnimationFrame(tick);
+      // Store cancellation handle on stage so dismiss() can stop it
+      stage._scuttleFrame = () => { if (scuttleFrame) cancelAnimationFrame(scuttleFrame); scuttleFrame = null; };
       return;
     }
 
@@ -481,29 +483,41 @@
   function dismiss() {
     clearTimeout(hideTimer);
     hideBubble();
+
+    // Cancel any in-progress scuttle rAF
+    if (stage._scuttleFrame) { stage._scuttleFrame(); delete stage._scuttleFrame; }
+
     if (!activeSpawn || activeSpawn.type === 'scuttle') {
-      scheduleReappear(); return;
+      clearZzz(); scheduleReappear(); return;
     }
-    if (activeSpawn.type === 'edge') {
-      setEmotion('bye');
-      setTimeout(() => {
-        if (!REDUCED && activeSpawn.exitClass) {
-          wrap.classList.add(activeSpawn.exitClass);
-          wrap.addEventListener('animationend', () => {
-            clearZzz(); scheduleReappear();
-          }, { once: true });
-        } else { clearZzz(); scheduleReappear(); }
-      }, REDUCED ? 0 : 950);
-    } else {
-      // Float types: just pop out
+
+    const spawn = activeSpawn;
+
+    if (REDUCED) {
+      // Reduced-motion: instant vanish, no animation
+      clearZzz();
+      stage.style.opacity = '0';
+      setTimeout(() => { stage.style.opacity = ''; scheduleReappear(); }, 50);
+      return;
+    }
+
+    // All non-scuttle spawns: goodbye wave first, then exit animation
+    setEmotion('bye');
+    const byeDuration = spawn.type === 'edge' ? 1100 : 700; // floats get shorter wave
+    setTimeout(() => {
       setEmotion(null);
-      if (!REDUCED && activeSpawn.exitClass) {
-        wrap.classList.add(activeSpawn.exitClass);
+      if (spawn.exitClass) {
+        wrap.classList.add(spawn.exitClass);
         wrap.addEventListener('animationend', () => {
-          clearZzz(); scheduleReappear();
+          wrap.classList.remove(spawn.exitClass);
+          clearZzz();
+          scheduleReappear();
         }, { once: true });
-      } else { clearZzz(); scheduleReappear(); }
-    }
+      } else {
+        clearZzz();
+        scheduleReappear();
+      }
+    }, byeDuration);
   }
 
   function scheduleReappear() {
