@@ -13,6 +13,8 @@ export interface CommentaryPost {
   status: "published" | "unpublished";
   published_at: string;
   updated_at: string;
+  videoUrl?: string;
+  imageUrl?: string;
 }
 
 interface CommentaryStore {
@@ -71,11 +73,13 @@ router.post("/commentary", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const { title, body_en, body_es, tags } = req.body as {
+    const { title, body_en, body_es, tags, videoUrl, imageUrl } = req.body as {
       title?: string;
       body_en?: string;
       body_es?: string;
       tags?: string[];
+      videoUrl?: string;
+      imageUrl?: string;
     };
     if (!title || !body_en) {
       res.status(400).json({ success: false, error: "title and body_en are required" });
@@ -92,6 +96,8 @@ router.post("/commentary", async (req: Request, res: Response) => {
       status: "published",
       published_at: now,
       updated_at: now,
+      ...(videoUrl ? { videoUrl: String(videoUrl) } : {}),
+      ...(imageUrl ? { imageUrl: String(imageUrl) } : {}),
     };
     store.posts.unshift(post);
     await saveStore(store);
@@ -115,12 +121,14 @@ router.patch("/commentary/:id", async (req: Request, res: Response) => {
       return;
     }
     const post = store.posts[idx]!;
-    const { title, body_en, body_es, tags, status } = req.body as Partial<CommentaryPost>;
+    const { title, body_en, body_es, tags, status, videoUrl, imageUrl } = req.body as Partial<CommentaryPost>;
     if (title !== undefined) post.title = String(title);
     if (body_en !== undefined) post.body_en = String(body_en);
     if (body_es !== undefined) post.body_es = String(body_es);
     if (tags !== undefined) post.tags = Array.isArray(tags) ? tags.map(String) : [];
     if (status !== undefined) post.status = status as "published" | "unpublished";
+    if (videoUrl !== undefined) post.videoUrl = videoUrl ? String(videoUrl) : undefined;
+    if (imageUrl !== undefined) post.imageUrl = imageUrl ? String(imageUrl) : undefined;
     post.updated_at = new Date().toISOString();
     await saveStore(store);
     res.json({ success: true, post });

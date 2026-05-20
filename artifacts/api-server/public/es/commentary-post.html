@@ -26,9 +26,17 @@ body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#
 .post-date{font-size:.75rem;letter-spacing:.12em;color:rgba(255,202,79,.85);text-transform:uppercase;font-weight:700}
 .post-tags{display:flex;gap:6px;flex-wrap:wrap}
 .tag{display:inline-block;padding:2px 10px;border-radius:30px;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.28);color:#5dff9a;font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.article-shell{max-width:720px;margin:auto;padding:48px 28px 72px}
+.post-image-wrap{width:100%;max-height:420px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.post-image{width:100%;max-height:420px;object-fit:cover;object-position:center;display:block}
+.video-wrap{max-width:720px;margin:0 auto;padding:36px 28px 0}
+.video-container{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:18px;background:#000;box-shadow:0 24px 60px rgba(0,0,0,.50);border:1px solid rgba(255,255,255,.12)}
+.video-container iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:18px}
+.video-label{text-align:center;margin-top:12px;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.38);font-weight:700}
+.article-shell{max-width:720px;margin:auto;padding:36px 28px 72px}
 .article-body p{font-size:1.05rem;line-height:1.80;color:rgba(255,255,255,.88);margin-bottom:22px}
 .article-body p:last-child{margin-bottom:0}
+.transcript-divider{display:flex;align-items:center;gap:12px;margin-bottom:24px;color:rgba(255,255,255,.35);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;font-weight:700}
+.transcript-divider::before,.transcript-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.12)}
 .bottom-nav{border-top:1px solid rgba(255,255,255,.10);padding-top:28px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
 .bottom-link{display:inline-flex;align-items:center;gap:6px;color:#4fc3ff;font-size:.82rem;font-weight:800;text-decoration:none;letter-spacing:.08em;text-transform:uppercase;opacity:.85;transition:opacity .2s}
 .bottom-link:hover{opacity:1}
@@ -36,7 +44,7 @@ body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#
 .state-box{text-align:center;padding:80px 20px;color:rgba(255,255,255,.45)}
 .state-box i{font-size:48px;margin-bottom:16px;display:block;color:rgba(93,255,154,.35)}
 footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size:.78rem;border-top:1px solid rgba(255,255,255,.07)}
-@media(max-width:600px){.post-hero-content{padding:28px 18px 24px}.article-shell{padding:32px 16px 52px}}
+@media(max-width:600px){.post-hero-content{padding:28px 18px 24px}.video-wrap{padding:24px 16px 0}.article-shell{padding:28px 16px 52px}}
 </style>
 </head>
 <body>
@@ -52,6 +60,9 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
     <div class="state-box" style="padding:32px 0"><i class="fa-solid fa-circle-notch fa-spin" style="font-size:28px;margin-bottom:0"></i></div>
   </div>
 </section>
+
+<div id="post-image-section"></div>
+<div id="video-section"></div>
 
 <main class="article-shell">
   <div id="article-body">
@@ -85,6 +96,12 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  function getYouTubeId(url) {
+    if (!url) return null;
+    const m = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.exec(url);
+    return m ? m[1] : null;
+  }
+
   async function load() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
@@ -102,7 +119,7 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
         return;
       }
 
-      document.title = `${escHtml(post.title)} | Still Afloat`;
+      document.title = `${post.title} | Still Afloat`;
 
       const body = post.body_es || post.body_en || '';
       const tagsHtml = (post.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
@@ -116,7 +133,32 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
           ${tagsHtml ? `<div class="post-tags">${tagsHtml}</div>` : ''}
         </div>`;
 
+      if (post.imageUrl && !post.videoUrl) {
+        document.getElementById('post-image-section').innerHTML = `
+          <div class="post-image-wrap">
+            <img class="post-image" src="${escHtml(post.imageUrl)}" alt="${escHtml(post.title)}">
+          </div>`;
+      }
+
+      const ytId = getYouTubeId(post.videoUrl || '');
+      if (ytId) {
+        document.getElementById('video-section').innerHTML = `
+          <div class="video-wrap">
+            <div class="video-container">
+              <iframe
+                src="https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1"
+                title="${escHtml(post.title)}"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen>
+              </iframe>
+            </div>
+            <p class="video-label"><i class="fa-brands fa-youtube" style="color:#ff4e4e;margin-right:5px"></i> Ver en YouTube</p>
+          </div>`;
+      }
+
+      const hasVideo = !!ytId;
       document.getElementById('article-body').innerHTML = `
+        ${hasVideo ? '<div class="transcript-divider">Transcripción</div>' : ''}
         <div class="article-body">${bodyToHtml(body)}</div>
         <div class="bottom-nav">
           <a class="bottom-link" href="/es/commentary.html"><i class="fa-solid fa-arrow-left"></i> Volver a comentarios</a>

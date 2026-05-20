@@ -47,11 +47,20 @@ body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#
   display:block;text-decoration:none;color:inherit;
   background:linear-gradient(145deg,rgba(0,119,182,.18),rgba(7,24,63,.60));
   border:1px solid rgba(255,255,255,.10);
-  border-radius:20px;padding:28px 32px;margin-bottom:20px;
+  border-radius:20px;overflow:hidden;margin-bottom:20px;
   transition:transform .26s cubic-bezier(.22,1,.36,1),border-color .26s ease,box-shadow .26s ease;
   backdrop-filter:blur(8px);
 }
+.post-card:not(.post-card--media){padding:28px 32px}
 .post-card:hover{transform:translateY(-4px);border-color:rgba(93,255,154,.30);box-shadow:0 16px 40px rgba(0,0,0,.32)}
+/* Media card layout */
+.post-card--media{display:grid;grid-template-columns:220px 1fr}
+.post-thumb-wrap{position:relative;overflow:hidden;background:#000}
+.post-thumb{width:100%;height:100%;object-fit:cover;object-position:center;display:block;transition:transform .4s ease}
+.post-card--media:hover .post-thumb{transform:scale(1.04)}
+.yt-badge{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.72);color:#fff;font-size:.72rem;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;backdrop-filter:blur(4px)}
+.yt-badge i{color:#ff4e4e}
+.post-card-body{padding:24px 28px;display:flex;flex-direction:column;justify-content:center}
 .post-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
 .post-date{font-size:.75rem;letter-spacing:.12em;color:rgba(255,202,79,.85);text-transform:uppercase;font-weight:700}
 .post-tags{display:flex;gap:6px;flex-wrap:wrap}
@@ -69,10 +78,15 @@ body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#
 /* ── Footer ── */
 footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size:.78rem;border-top:1px solid rgba(255,255,255,.07)}
 
+@media(max-width:700px){
+  .post-card--media{grid-template-columns:1fr;grid-template-rows:180px auto}
+  .post-thumb-wrap{height:180px}
+}
 @media(max-width:600px){
   .page-hero-content{padding:36px 20px 32px}
   .shell{padding:32px 16px 48px}
-  .post-card{padding:20px 18px}
+  .post-card:not(.post-card--media){padding:20px 18px}
+  .post-card-body{padding:18px 18px}
 }
 </style>
 </head>
@@ -122,17 +136,31 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
     return clean.length > max ? clean.slice(0, max).replace(/\s+\S*$/, '') + '…' : clean;
   }
 
+  function getYouTubeId(url) {
+    if (!url) return null;
+    const m = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.exec(url);
+    return m ? m[1] : null;
+  }
+
   function renderPost(post) {
     const tagsHtml = (post.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+    const ytId = getYouTubeId(post.videoUrl || '');
+    const thumbSrc = ytId
+      ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`
+      : (post.imageUrl || '');
+    const hasMedia = !!(ytId || post.imageUrl);
     return `
-      <a class="post-card" href="/commentary-post.html?id=${encodeURIComponent(post.id)}">
-        <div class="post-meta">
-          <span class="post-date">${formatDate(post.published_at)}</span>
-          ${tagsHtml ? `<div class="post-tags">${tagsHtml}</div>` : ''}
+      <a class="post-card ${hasMedia ? 'post-card--media' : ''}" href="/commentary-post.html?id=${encodeURIComponent(post.id)}">
+        ${hasMedia ? `<div class="post-thumb-wrap"><img class="post-thumb" src="${thumbSrc}" alt="${post.title}" loading="lazy">${ytId ? '<span class="yt-badge"><i class="fa-brands fa-youtube"></i></span>' : ''}</div>` : ''}
+        <div class="post-card-body">
+          <div class="post-meta">
+            <span class="post-date">${formatDate(post.published_at)}</span>
+            ${tagsHtml ? `<div class="post-tags">${tagsHtml}</div>` : ''}
+          </div>
+          <h2 class="post-title">${post.title}</h2>
+          <p class="post-excerpt">${excerpt(post.body_en, 220)}</p>
+          <span class="read-more">Read more <i class="fa-solid fa-arrow-right"></i></span>
         </div>
-        <h2 class="post-title">${post.title}</h2>
-        <p class="post-excerpt">${excerpt(post.body_en, 220)}</p>
-        <span class="read-more">Read more <i class="fa-solid fa-arrow-right"></i></span>
       </a>`;
   }
 

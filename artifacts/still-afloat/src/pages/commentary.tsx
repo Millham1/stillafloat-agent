@@ -18,6 +18,8 @@ interface CommentaryPost {
   status: "published" | "unpublished";
   published_at: string;
   updated_at: string;
+  videoUrl?: string;
+  imageUrl?: string;
 }
 
 // ── API helpers ────────────────────────────────────────────────────────────
@@ -33,6 +35,8 @@ async function createPost(body: {
   body_en: string;
   body_es: string;
   tags: string[];
+  videoUrl?: string;
+  imageUrl?: string;
 }): Promise<CommentaryPost> {
   const res = await fetch(`${API}/api/commentary`, {
     method: "POST",
@@ -93,6 +97,8 @@ const emptyForm = () => ({
   body_en: "",
   body_es: "",
   tags: "",
+  videoUrl: "",
+  imageUrl: "",
 });
 
 // ── Format date ─────────────────────────────────────────────────────────────
@@ -168,6 +174,8 @@ export default function CommentaryManager() {
       body_en: post.body_en,
       body_es: post.body_es,
       tags: post.tags.join(", "),
+      videoUrl: post.videoUrl ?? "",
+      imageUrl: post.imageUrl ?? "",
     });
     setModalOpen(true);
   }
@@ -217,10 +225,12 @@ export default function CommentaryManager() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const tags = form.tags.split(",").map(t => t.trim()).filter(Boolean);
+    const videoUrl = form.videoUrl.trim() || undefined;
+    const imageUrl = form.imageUrl.trim() || undefined;
     if (editId) {
       updateMutation.mutate({
         id: editId,
-        body: { title: form.title, body_en: form.body_en, body_es: form.body_es, tags },
+        body: { title: form.title, body_en: form.body_en, body_es: form.body_es, tags, videoUrl, imageUrl },
       });
     } else {
       createMutation.mutate({
@@ -228,6 +238,8 @@ export default function CommentaryManager() {
         body_en: form.body_en,
         body_es: form.body_es,
         tags,
+        videoUrl,
+        imageUrl,
       });
     }
   }
@@ -425,6 +437,32 @@ export default function CommentaryManager() {
                   placeholder="Spanish translation will appear here after clicking Auto-Translate — you can edit it before publishing."
                   className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring resize-y font-mono"
                 />
+              </div>
+
+              {/* Media — YouTube URL */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">YouTube Video URL</label>
+                <input
+                  type="url"
+                  value={form.videoUrl}
+                  onChange={e => setForm(f => ({ ...f, videoUrl: e.target.value }))}
+                  placeholder="https://www.youtube.com/watch?v=…  (optional)"
+                  className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">Paste any youtube.com or youtu.be link — it will be embedded on the post page and shown as a thumbnail on the list.</p>
+              </div>
+
+              {/* Media — Image URL */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Image URL</label>
+                <input
+                  type="url"
+                  value={form.imageUrl}
+                  onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                  placeholder="https://…/photo.jpg  (optional, used when no video)"
+                  className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">Shows as a hero banner on the post page and card thumbnail on the list when no YouTube video is set.</p>
               </div>
 
               {/* Tags */}
