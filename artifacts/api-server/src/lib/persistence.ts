@@ -41,6 +41,8 @@ export const PATHS = {
   favorites: "favorites",
   // Mark's personal commentary posts (vlog transcripts)
   commentary: "commentary-posts",
+  // AI-learned editorial preferences (built from approve/reject history)
+  learnedPrefs: "editorial-learned-prefs",
 };
 
 export async function writeJson(key: string, payload: unknown): Promise<boolean> {

@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { PATHS, readJson, writeJson } from "../lib/persistence";
 import { buildPublishingBundle } from "../lib/publishing-output";
 import { normalizeStory, normalizeStories, validatePublishingStory } from "../lib/story-normalizer";
-import { runEditorialAgent } from "../lib/editorial-agent";
+import { runEditorialAgent, learnFromDecisions } from "../lib/editorial-agent";
 import { translateStoriesToSpanish } from "../lib/translate";
 import { renderEditorialDigest, sendEditorialDigest } from "../lib/email-delivery";
 
@@ -258,6 +258,8 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
         ),
       });
       res.status(200).json({ success: true, message: "Story rejected successfully" });
+      const rejectApiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
+      if (rejectApiKey) setImmediate(() => { learnFromDecisions(rejectApiKey).catch(() => {}); });
       return;
     }
 
@@ -316,6 +318,10 @@ router.get("/agent-action", async (req: Request, res: Response): Promise<void> =
       success: true,
       message: `Story ${isFeatured ? "featured on homepage" : "approved to news feed"} successfully`,
     });
+
+    // Fire-and-forget: update learned preferences after each editorial decision
+    const approveApiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
+    if (approveApiKey) setImmediate(() => { learnFromDecisions(approveApiKey).catch(() => {}); });
   } catch (error) {
     req.log.error({ err: error }, "Agent action failure");
     res.status(500).json({ success: false, error: (error as Error).message });

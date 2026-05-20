@@ -1,5 +1,6 @@
 import { logger } from "./logger";
 import Parser from "rss-parser";
+import { PATHS, readJson, writeJson } from "./persistence";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -220,8 +221,18 @@ async function toolFetchRss(
 
 // ─── Agent system prompt ─────────────────────────────────────────────────────
 
-function buildSystemPrompt(lang: "en" | "es" = "en"): string {
+function buildSystemPrompt(lang: "en" | "es" = "en", learnedPrefs?: string): string {
   const now = new Date().toUTCString();
+
+  const learnedSection = learnedPrefs ? `
+════════════════════════════════════
+LEARNED EDITORIAL PREFERENCES (from Mark's approve/reject history):
+════════════════════════════════════
+
+${learnedPrefs}
+
+Apply these preferences when selecting and prioritizing stories. They override generic tier guidance where they conflict.
+` : "";
 
   const langInstruction = lang === "es"
     ? `\n════════════════════════════════════\nLANGUAGE REQUIREMENT\n════════════════════════════════════\n\nWrite ALL output fields — title, summary, travelerImpact, and reasoning — in Latin American Spanish (es-419). Use a warm, practical, tropical tone that matches the brand. Port names, ship names, and cruise line names stay in their original language. Do NOT translate proper nouns.\n`
@@ -229,7 +240,7 @@ function buildSystemPrompt(lang: "en" | "es" = "en"): string {
 
   return `You are the Still Afloat editorial AI agent — the voice of a cruise lifestyle brand built for people who love the sea, the sun, and the smell of sunscreen on the Lido deck.
 
-Current date/time: ${now}${langInstruction}
+Current date/time: ${now}${langInstruction}${learnedSection}
 
 ════════════════════════════════════
 WHO STILL AFLOAT IS
@@ -311,10 +322,14 @@ ROUND 2 — fetch all 5 + run 2 GNews searches (no skipping):
   search_gnews("cruise ship vacation tips passengers experience")
   search_gnews("cruise ship personal story OR funny OR surprising")
 
-ROUND 3 — always run this round to reach the 12–18 story target:
-  search_gnews("cruise ship news itinerary change this week")
-  search_gnews("cruise port destination Caribbean travel tips")
-  search_gnews("cruise line deal sale announcement passengers")
+ROUND 3 — choose your own searches based on what's missing:
+  Look at what you've gathered so far. What topics are underrepresented?
+  Run 3 GNews searches of YOUR choosing to fill the gaps. Good examples:
+    - If you have no feel-good stories: search "cruise ship passengers heartwarming story"
+    - If you have no destination content: search "Caribbean cruise port hidden gem"
+    - If you have no deals: search "cruise line sale discount announcement"
+    - If you have no Tier 3 stories yet: search "cruise ship viral moment funny"
+  Pick the 3 searches that will most help you reach 15–18 well-rounded stories.
 
 After all 3 Rounds are complete, call submit_editorial_decisions.`}
 
@@ -333,12 +348,18 @@ Tier 2 — Travel Operations (0–1 stories MAX):
   Sources: Skift, Fox News Travel, CNN Travel
   Brand filter: Ask yourself — "Would a cruiser who never flies care about this?" If yes, consider it. If it's purely aviation ops, skip it.
 
-Tier 3 — Mainstream Relevant (0–2 stories):
-  ONLY if a cruise ship, cruise port, or cruise itinerary is specifically named:
-    - A storm that cancels or reroutes a specific sailing
-    - A disease outbreak confirmed ONBOARD a named cruise ship
-    - A travel advisory closing a specific cruise port of call
-  DO NOT include: general disease news, city weather, regional weather, health statistics, land-based outbreaks
+Tier 3 — Mainstream & Feel-Good (2–5 stories — actively seek these):
+  TWO types qualify here:
+
+  a) CRISIS with a cruise angle: A storm canceling a specific sailing, a disease outbreak confirmed onboard a named ship, a travel advisory closing a specific cruise port. Keep hard exclusions: no general weather, no land-based disease, no city news.
+
+  b) FEEL-GOOD & ASPIRATIONAL from mainstream outlets (CNN Travel, BBC Travel, Fox News Travel, Condé Nast, AP, Reuters): Stories that make a cruiser smile, dream, or feel nostalgic — even if no specific ship is named. Examples:
+    ★ "Retirees are ditching assisted living for cruise ships" — CNN Travel
+    ★ "The hidden Caribbean island only reachable by cruise ship" — Condé Nast
+    ★ "Why Gen X is rediscovering cruising after 20 years" — BBC Travel
+    ★ "Cruise passengers rescue a fisherman stranded at sea" — AP
+    ★ "This couple has taken 400 cruises and counting" — Fox News Travel
+  The test: Would a cruiser share this on Facebook? If yes, include it.
 
 Tier 4 — Lifestyle, Stories & Discovery (2–3 stories — REQUIRED, this is the HEART of the brand):
   This tier is the warm center of Still Afloat. Prioritize in this order:
@@ -452,6 +473,85 @@ function cleanStories(stories: Record<string, unknown>[]): Record<string, unknow
   }));
 }
 
+// ─── Feedback loop: learn from Mark's approve/reject decisions ───────────────
+
+export async function learnFromDecisions(apiKey: string): Promise<void> {
+  try {
+    const [approved, candidates] = await Promise.all([
+      readJson<{ stories?: Record<string, unknown>[] }>(PATHS.approved, { stories: [] }),
+      readJson<{ stories?: Record<string, unknown>[] }>(PATHS.candidates, { stories: [] }),
+    ]);
+
+    const approvedStories = (approved.stories || []).slice(0, 40);
+    const rejectedStories = (candidates.stories || [])
+      .filter((s) => s.status === "rejected")
+      .slice(0, 40);
+
+    if (approvedStories.length + rejectedStories.length < 5) {
+      logger.info("Not enough decisions yet to learn from — skipping");
+      return;
+    }
+
+    const prompt = `You are analyzing editorial decisions for the Still Afloat cruise news site owned by Mark Millham.
+
+APPROVED stories (Mark approved these for publication):
+${approvedStories.map((s) => `- [Tier ${s.tier ?? "?"}] [${s.category ?? "?"}] ${s.title} (${s.source ?? "?"})`).join("\n")}
+
+REJECTED stories (Mark rejected these):
+${rejectedStories.length > 0
+  ? rejectedStories.map((s) => `- [Tier ${s.tier ?? "?"}] [${s.category ?? "?"}] ${s.title} (${s.source ?? "?"})`).join("\n")
+  : "(none rejected yet)"}
+
+Based on these decisions, write a concise "learned editorial preferences" note (150–200 words) for future AI scans that:
+1. Describes what types of stories Mark consistently approves — be specific about topics, tones, and sources
+2. Describes what types he avoids or rejects
+3. Gives 2–3 actionable search guidance points (e.g. "Prioritize stories about X", "Avoid Y unless Z")
+4. Notes any patterns in tier, category, or framing
+
+Write in second person addressed to the AI agent ("You have learned that Mark prefers..."). Be specific and concrete — generic guidance is useless.`;
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.1,
+        messages: [{ role: "user", content: prompt }],
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!res.ok) {
+      logger.warn({ status: res.status }, "learnFromDecisions: OpenAI call failed");
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload = await res.json() as any;
+    const content: string = payload?.choices?.[0]?.message?.content || "";
+    if (!content) return;
+
+    await writeJson(PATHS.learnedPrefs, {
+      generatedAt: new Date().toISOString(),
+      preferences: content,
+      basedOn: {
+        approvedCount: approvedStories.length,
+        rejectedCount: rejectedStories.length,
+      },
+    });
+
+    logger.info(
+      { approvedCount: approvedStories.length, rejectedCount: rejectedStories.length },
+      "Editorial preferences learned and saved"
+    );
+  } catch (err) {
+    logger.warn({ err }, "learnFromDecisions failed — non-fatal");
+  }
+}
+
 // ─── Main agent runner ───────────────────────────────────────────────────────
 
 export async function runEditorialAgent({
@@ -472,8 +572,15 @@ export async function runEditorialAgent({
   const MAX_GNEWS_CALLS = 8;
   let researchIterations = 0;
 
+  // Load learned preferences from prior approve/reject decisions
+  const learnedData = await readJson<{ preferences?: string }>(PATHS.learnedPrefs, {});
+  const learnedPrefs = learnedData.preferences || undefined;
+  if (learnedPrefs) {
+    logger.info("Loaded learned editorial preferences for this scan");
+  }
+
   const messages: OpenAIMessage[] = [
-    { role: "system", content: buildSystemPrompt(lang) },
+    { role: "system", content: buildSystemPrompt(lang, learnedPrefs) },
   ];
 
   logger.info("Editorial agent starting autonomous research loop");
@@ -575,20 +682,17 @@ export async function runEditorialAgent({
 
         // Reject if count < 15, >50% Tier 1, missing Tier 1/2/4, or fewer than 2 Tier 4 stories — max 3 rejections
         const t4Count = tierCounts[4] || 0;
-        const t2Count = tierCounts[2] || 0;
         const hasTier1 = Boolean(tierCounts[1]);
-        const hasTier2 = t2Count >= 2;
         const needsMoreT4 = t4Count < 2;
         const tooFewStories = total < 10;
-        const failsDiversity = tooFewStories || t1Pct > 0.6 || !hasTier1 || !hasTier2 || needsMoreT4;
+        const failsDiversity = tooFewStories || t1Pct > 0.6 || !hasTier1 || needsMoreT4;
         if (failsDiversity && researchIterations < 3) {
           const issues: string[] = [];
-          if (tooFewStories) issues.push(`only ${total} stories submitted (need at least 10 — the news page needs depth beyond the homepage)`);
-          if (t1Pct > 0.6) issues.push(`${Math.round(t1Pct * 100)}% Tier 1 (max 60%)`);
-          if (!hasTier1) issues.push("no Tier 1 stories");
-          if (!hasTier2) issues.push(`only ${t2Count} Tier 2 story (need at least 2 travel operations stories)`);
-          if (needsMoreT4) issues.push(`only ${t4Count} Tier 4 story (need at least 2 warm lifestyle/human-interest stories)`);
-          const feedback = `Submission rejected: ${issues.join("; ")}. Current distribution: ${JSON.stringify(tierCounts)}. TARGET: 15–20 stories total — Tier 1 (5–7), Tier 2 (2–4), Tier 3 (0–2), Tier 4 (2–4). Fetch more sources: Cruise Industry News, CNN Travel, Fox News Travel, One Mile at a Time have not been checked yet. Search GNews for "cruising lifestyle" or "cruise news this week". Resubmit with at least 15 stories.`;
+          if (tooFewStories) issues.push(`only ${total} stories submitted (need at least 10)`);
+          if (t1Pct > 0.6) issues.push(`${Math.round(t1Pct * 100)}% Tier 1 (max 60% — add more Tier 3/4 variety)`);
+          if (!hasTier1) issues.push("no Tier 1 stories — check Cruise Hive, Cruise Radio, Cruise Industry News");
+          if (needsMoreT4) issues.push(`only ${t4Count} Tier 4 story — need at least 2 feel-good/lifestyle/human-interest stories`);
+          const feedback = `Submission rejected: ${issues.join("; ")}. Current distribution: ${JSON.stringify(tierCounts)}. TARGET: 15–18 stories — Tier 1 (4–6 cruise ops), Tier 2 (0–1 travel ops only if cruise-adjacent), Tier 3 (2–5 feel-good OR crisis-with-cruise-angle), Tier 4 (2–4 lifestyle/human-interest). Search GNews for feel-good angles like "cruise passengers heartwarming" or "cruise ship funny viral" to fill Tier 3/4. Resubmit with at least 15 stories.`;
           logger.warn({ tierCounts, t1Pct, researchIterations }, "Tier diversity check failed — requesting more research");
           messages.push({
             role: "tool",
