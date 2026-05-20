@@ -37,14 +37,14 @@ function checkToken(req: Request): boolean {
 }
 
 // GET /api/commentary
-// Returns all posts sorted newest-first.
-// Optional: ?status=published  ?id=<uuid>
+// Returns posts sorted newest-first.
+// Unauthenticated callers only see published posts (default).
+// Authenticated callers (valid token) can pass ?status=unpublished or see all via ?status=all.
+// Optional: ?id=<uuid> for single post lookup.
 router.get("/commentary", async (req: Request, res: Response) => {
   try {
     const store = await getStore();
-    let posts = [...store.posts].sort(
-      (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
-    );
+    const authed = checkToken(req);
 
     if (req.query["id"]) {
       const post = store.posts.find((p) => p.id === String(req.query["id"]));
@@ -52,8 +52,7 @@ router.get("/commentary", async (req: Request, res: Response) => {
         res.status(404).json({ success: false, error: "Post not found" });
         return;
       }
-      // Unpublished posts are only visible to authenticated callers
-      if (post.status === "unpublished" && !checkToken(req)) {
+      if (post.status === "unpublished" && !authed) {
         res.status(404).json({ success: false, error: "Post not found" });
         return;
       }
@@ -61,8 +60,16 @@ router.get("/commentary", async (req: Request, res: Response) => {
       return;
     }
 
-    if (req.query["status"]) {
-      posts = posts.filter((p) => p.status === String(req.query["status"]));
+    let posts = [...store.posts].sort(
+      (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+    );
+
+    const statusFilter = String(req.query["status"] || "").toLowerCase();
+    if (!authed) {
+      // Public callers: always only published, ignore status param
+      posts = posts.filter((p) => p.status === "published");
+    } else if (statusFilter && statusFilter !== "all") {
+      posts = posts.filter((p) => p.status === statusFilter);
     }
 
     res.json({ success: true, count: posts.length, posts });
