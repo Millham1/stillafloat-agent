@@ -8,6 +8,7 @@ import { logger } from "./lib/logger";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, "../public");
+const DASHBOARD_DIR = path.resolve(__dirname, "../../still-afloat/dist/public");
 
 const app: Express = express();
 
@@ -48,6 +49,12 @@ const staticOpts: Parameters<typeof express.static>[1] = {
     }
   },
 };
+// Serve the editorial dashboard React app at /dashboard (production build)
+app.use("/dashboard", express.static(DASHBOARD_DIR, staticOpts));
+app.get("/dashboard/{*path}", (_req, res) => {
+  res.sendFile(path.join(DASHBOARD_DIR, "index.html"));
+});
+
 app.use(express.static(PUBLIC_DIR, staticOpts));
 app.use("/preview-site", express.static(PUBLIC_DIR, staticOpts));
 
