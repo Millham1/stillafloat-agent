@@ -3,7 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Story | Still Afloat</title>
+<title>Cruise Story | Still Afloat</title>
+<meta name="description" content="AI-curated cruise industry news with CliffsNotes summaries, traveler impact analysis, and direct links to original sources — by Still Afloat.">
+<link rel="canonical" href="https://stillafloatcruising.com/story.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:url" content="https://stillafloatcruising.com/story.html">
+<meta property="og:title" content="Cruise Story | Still Afloat">
+<meta property="og:description" content="AI-curated cruise industry news with CliffsNotes summaries, traveler impact analysis, and direct links to original sources.">
+<meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cruise Story | Still Afloat">
+<meta name="twitter:description" content="AI-curated cruise industry news with CliffsNotes summaries and traveler impact analysis.">
+<meta name="twitter:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <link rel="stylesheet" href="./css/styles.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
@@ -68,10 +80,25 @@ async function loadStory() {
 
     const story = data.story;
 
-    document.getElementById('story-title').textContent = safeText(story.title, 'Cruise Story');
+    const storyTitle   = safeText(story.title, 'Cruise Story');
+    const storySummary = safeText(story.summary, 'Summary unavailable.');
+    document.getElementById('story-title').textContent = storyTitle;
     document.getElementById('story-category').textContent = safeText(story.category, 'Cruise News');
     // Main CliffsNotes body — agent writes 4-6 sentences
-    document.getElementById('story-summary').textContent = safeText(story.summary, 'Summary unavailable.');
+    document.getElementById('story-summary').textContent = storySummary;
+
+    // Patch document title + OG/Twitter meta tags with actual story content
+    const pageTitle = storyTitle + ' | Still Afloat';
+    const pageDesc  = storySummary.slice(0, 200) + (storySummary.length > 200 ? '…' : '');
+    const storyUrl  = 'https://stillafloatcruising.com/story.html?id=' + encodeURIComponent(storyId);
+    document.title = pageTitle;
+    const sm = (sel, attr, val) => { const el = document.querySelector(sel); if (el) el.setAttribute(attr, val); };
+    sm('meta[property="og:title"]',        'content', pageTitle);
+    sm('meta[property="og:description"]',  'content', pageDesc);
+    sm('meta[property="og:url"]',          'content', storyUrl);
+    sm('meta[name="twitter:title"]',       'content', pageTitle);
+    sm('meta[name="twitter:description"]', 'content', pageDesc);
+    sm('link[rel="canonical"]',            'href',    storyUrl);
 
     document.getElementById('story-link').href = safeText(story.originalLink || story.link, '#');
 
