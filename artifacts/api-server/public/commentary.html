@@ -25,14 +25,10 @@
 :root{--gold:#ffca4f;--blue:#4fc3ff;--seafoam:#5dff9a;--navy:#07183f}
 body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#fff;background:#060f1e}
 
-/* ── Banner header ── */
-.banner-header{width:100%;background:#07183f;overflow:hidden;max-height:160px;display:flex;align-items:center;justify-content:center}
-.banner-image{width:100%;max-height:160px;object-fit:cover;object-position:center top;display:block}
-
 /* ── Page hero ── */
-.page-hero{position:relative;min-height:280px;display:flex;align-items:flex-end;border-bottom:3px solid rgba(93,255,154,.18);overflow:hidden;background:linear-gradient(135deg,#07183f 0%,#0b2a5c 60%,#0a1f4a 100%)}
-.page-hero-accent{position:absolute;inset:0;background:radial-gradient(ellipse at 70% 50%,rgba(93,255,154,.12) 0%,transparent 60%),radial-gradient(ellipse at 20% 80%,rgba(79,195,255,.10) 0%,transparent 50%);pointer-events:none}
-.page-hero-content{position:relative;z-index:2;max-width:700px;padding:48px 40px 44px}
+.page-hero{position:relative;min-height:360px;display:flex;align-items:flex-end;border-bottom:3px solid rgba(93,255,154,.22);overflow:hidden}
+.page-hero-bg{position:absolute;inset:0;background:linear-gradient(to right,rgba(4,10,22,1) 0%,rgba(4,10,22,.94) 38%,rgba(4,10,22,.60) 62%,rgba(4,10,22,.18) 100%),url('/assets/images/Tropical beach with palm trees and ship.png') right center/cover no-repeat;background-color:#060f1e}
+.page-hero-content{position:relative;z-index:2;max-width:700px;padding:72px 40px 56px}
 .eyebrow{font-size:.7rem;letter-spacing:.32em;text-transform:uppercase;color:var(--gold);font-weight:800;margin-bottom:10px;opacity:.88}
 .hero-title{font-family:Pacifico,cursive;font-size:clamp(2.2rem,5vw,3.8rem);line-height:1.15;background:linear-gradient(90deg,#ffca4f,#4fc3ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px}
 .hero-sub{font-size:.97rem;line-height:1.72;color:rgba(255,255,255,.86);max-width:520px}
@@ -92,12 +88,8 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
 </head>
 <body>
 
-<header class="banner-header" id="top">
-  <img class="banner-image" src="/assets/images/Youtube banner cropped.png" alt="Still Afloat YouTube banner">
-</header>
-
-<section class="page-hero">
-  <div class="page-hero-accent"></div>
+<section class="page-hero" id="top">
+  <div class="page-hero-bg"></div>
   <div id="navbar-container"></div>
   <div class="page-hero-content">
     <p class="eyebrow"><i class="fa-solid fa-microphone"></i> Mark's Voice</p>
