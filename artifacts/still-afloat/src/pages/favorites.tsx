@@ -199,7 +199,7 @@ export default function FavoritesManager() {
                       title="Test this link"
                       className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-md border bg-background hover:bg-accent disabled:opacity-40 transition-colors flex-shrink-0 font-medium"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" /> Test
+                      <ExternalLink className="w-3.5 h-3.5" /> Test Link
                     </button>
                   </div>
                 </div>
@@ -254,60 +254,67 @@ export default function FavoritesManager() {
 
       {loading ? (
         <div className="text-sm text-muted-foreground animate-pulse py-6">Loading favorites…</div>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-6">No favorites yet — use "Add Favorite" above to get started.</p>
       ) : (
-        <div className="space-y-8">
-          {grouped.map((cat) => (
-            <div key={cat.value}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-base">{cat.icon}</span>
-                <h3 className="font-semibold text-sm">{cat.label}</h3>
-                <Badge variant="outline" className="text-xs font-mono">{cat.items.length}</Badge>
-                <a
-                  href="/favorites.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ExternalLink className="w-3 h-3" /> View page
-                </a>
-              </div>
-
-              {cat.items.length === 0 ? (
-                <p className="text-sm text-muted-foreground pl-6 pb-2">No entries yet — use "Add Favorite" above.</p>
-              ) : (
-                <div className="space-y-2">
-                  {cat.items.map((item) => (
-                    <Card key={item.id}>
-                      <CardContent className="p-4 flex items-start gap-4">
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.title}
-                            className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-border bg-muted"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-lg flex-shrink-0 border border-border bg-muted flex items-center justify-center text-lg">
-                            {cat.icon}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="font-semibold text-sm truncate">{item.title}</span>
-                            <Badge variant="secondary" className="text-[10px] font-mono shrink-0">#{item.sortOrder}</Badge>
-                          </div>
-                          {item.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{item.description}</p>
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-xs text-muted-foreground uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left font-semibold">Title</th>
+                  <th className="px-4 py-3 text-left font-semibold">Category</th>
+                  <th className="px-4 py-3 text-left font-semibold hidden sm:table-cell">Description</th>
+                  <th className="px-4 py-3 text-center font-semibold w-16">Order</th>
+                  <th className="px-4 py-3 text-right font-semibold w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => {
+                  const cat = CATEGORIES.find((c) => c.value === item.category);
+                  return (
+                    <tr key={item.id} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.title}
+                              className="w-9 h-9 rounded-md object-cover flex-shrink-0 border border-border bg-muted"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-md flex-shrink-0 border border-border bg-muted flex items-center justify-center text-sm">
+                              {cat?.icon ?? "★"}
+                            </div>
                           )}
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[11px] text-blue-500 hover:underline truncate block"
-                          >
-                            {item.url}
-                          </a>
+                          <div className="min-w-0">
+                            <div className="font-medium truncate max-w-[180px]">{item.title}</div>
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] text-blue-500 hover:underline truncate block max-w-[180px]"
+                            >
+                              {item.url}
+                            </a>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="text-xs whitespace-nowrap">
+                          {cat?.icon} {cat?.label ?? item.category}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        <p className="text-xs text-muted-foreground line-clamp-2 max-w-[240px]">
+                          {item.description || <span className="italic opacity-50">—</span>}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-xs font-mono text-muted-foreground">{item.sortOrder}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => openEdit(item)}
                             title="Edit"
@@ -322,14 +329,14 @@ export default function FavoritesManager() {
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   );
