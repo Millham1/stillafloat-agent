@@ -100,10 +100,15 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
     } catch { return iso; }
   }
 
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   function excerpt(text, max) {
     if (!text) return '';
     const clean = text.replace(/\n+/g, ' ').trim();
-    return clean.length > max ? clean.slice(0, max).replace(/\s+\S*$/, '') + '…' : clean;
+    const cut = clean.length > max ? clean.slice(0, max).replace(/\s+\S*$/, '') + '…' : clean;
+    return escHtml(cut);
   }
 
   function getYouTubeId(url) {
@@ -114,21 +119,21 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
 
   function renderPost(post) {
     const body = post.body_es || post.body_en || '';
-    const tagsHtml = (post.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+    const tagsHtml = (post.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
     const ytId = getYouTubeId(post.videoUrl || '');
     const thumbSrc = ytId
       ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`
-      : (post.imageUrl || '');
+      : escHtml(post.imageUrl || '');
     const hasMedia = !!(ytId || post.imageUrl);
     return `
       <a class="post-card ${hasMedia ? 'post-card--media' : ''}" href="/es/commentary-post.html?id=${encodeURIComponent(post.id)}">
-        ${hasMedia ? `<div class="post-thumb-wrap"><img class="post-thumb" src="${thumbSrc}" alt="${post.title}" loading="lazy">${ytId ? '<span class="yt-badge"><i class="fa-brands fa-youtube"></i></span>' : ''}</div>` : ''}
+        ${hasMedia ? `<div class="post-thumb-wrap"><img class="post-thumb" src="${thumbSrc}" alt="${escHtml(post.title)}" loading="lazy">${ytId ? '<span class="yt-badge"><i class="fa-brands fa-youtube"></i></span>' : ''}</div>` : ''}
         <div class="post-card-body">
           <div class="post-meta">
             <span class="post-date">${formatDate(post.published_at)}</span>
             ${tagsHtml ? `<div class="post-tags">${tagsHtml}</div>` : ''}
           </div>
-          <h2 class="post-title">${post.title}</h2>
+          <h2 class="post-title">${escHtml(post.title)}</h2>
           <p class="post-excerpt">${excerpt(body, 220)}</p>
           <span class="read-more">Leer más <i class="fa-solid fa-arrow-right"></i></span>
         </div>

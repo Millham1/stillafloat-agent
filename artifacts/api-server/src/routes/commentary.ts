@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type Request, type Response, json as expressJson } from "express";
 import crypto from "crypto";
 import { PATHS, readJson, writeJson } from "../lib/persistence";
 
@@ -209,7 +209,8 @@ router.post("/translate-commentary", async (req: Request, res: Response) => {
 
 // POST /api/transcribe — OpenAI Whisper audio transcription
 // Body (JSON): { audioBase64: string, fileName?: string, mimeType?: string }
-router.post("/transcribe", async (req: Request, res: Response) => {
+// Uses a 25 MB body limit to accommodate base64-encoded audio files
+router.post("/transcribe", expressJson({ limit: "25mb" }), async (req: Request, res: Response) => {
   if (!checkToken(req)) {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;

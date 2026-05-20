@@ -6,7 +6,7 @@ import {
   Mic, Languages, Loader2, X, Tag,
 } from "lucide-react";
 
-const API = import.meta.env.BASE_URL.replace(/\/$/, "");
+const API = "";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface CommentaryPost {
