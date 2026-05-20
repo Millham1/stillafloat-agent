@@ -133,6 +133,14 @@
 }
 #sa-wrap.sa-flip { transform: scaleX(-1); }
 
+/* Counter-flip the bubble so text stays readable when crab faces left */
+#sa-wrap.sa-flip #sa-bubble {
+  transform: translateX(-50%) scaleX(-1) scale(0.7) translateY(8px);
+}
+#sa-wrap.sa-flip #sa-bubble.sa-bon {
+  transform: translateX(-50%) scaleX(-1) scale(1) translateY(0);
+}
+
 /* ── Bubble ── */
 #sa-bubble {
   position: absolute;
