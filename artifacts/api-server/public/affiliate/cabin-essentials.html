@@ -12,14 +12,14 @@
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--gold:#ffca4f;--blue:#4fc3ff;--seafoam:#5dff9a}
 body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#fff;background:#060f1e}
-.page-hero{position:relative;height:320px;display:flex;align-items:flex-end;border-bottom:3px solid rgba(93,255,154,.20)}
-.page-hero-bg{position:absolute;inset:0;background:linear-gradient(160deg,rgba(4,10,22,.12) 0%,rgba(4,10,22,.78) 55%,rgba(4,10,22,.92) 100%),url('/assets/images/cabin-essentials-card.png') center/cover no-repeat}
-.page-hero-content{position:relative;z-index:2;max-width:860px;padding:0 40px 36px}
+.page-hero{position:relative;min-height:320px;display:flex;align-items:flex-end;border-bottom:3px solid rgba(93,255,154,.20);overflow:hidden}
+.page-hero-bg{position:absolute;inset:0;background:linear-gradient(to right,rgba(4,10,22,1) 0%,rgba(4,10,22,.92) 42%,rgba(4,10,22,.45) 68%,rgba(4,10,22,.08) 100%),url('/assets/images/cabin-essentials-card.png') right center/auto 100% no-repeat}
+.page-hero-content{position:relative;z-index:2;max-width:680px;padding:40px 40px 38px}
 .eyebrow{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:800;margin-bottom:8px;opacity:.85}
-.hero-title{font-family:Pacifico,cursive;font-size:clamp(2.8rem,6vw,4.8rem);line-height:1.1;color:#ffca4f;text-shadow:0 2px 30px rgba(0,0,0,.95),0 0 60px rgba(255,202,79,.22);margin-bottom:8px}
-.hero-sub{font-size:.98rem;line-height:1.7;color:rgba(255,255,255,.85);max-width:520px}
-.hero-brand{display:inline-flex;align-items:center;gap:7px;margin-top:12px;color:#5dff9a;font-weight:800;font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;opacity:.9}
-.hero-brand img{height:16px;vertical-align:middle;opacity:.9}
+.hero-title{font-family:Pacifico,cursive;font-size:clamp(2.4rem,5vw,4rem);line-height:1.18;background:linear-gradient(90deg,#ffca4f,#4fc3ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px}
+.hero-sub{font-size:.97rem;line-height:1.7;color:rgba(255,255,255,.88);max-width:460px}
+.hero-brand{display:inline-flex;align-items:center;gap:7px;margin-top:12px;color:#5dff9a;font-weight:800;font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;opacity:.92}
+.hero-brand img{height:16px;vertical-align:middle;filter:brightness(1.1)}
 .back-link{display:inline-flex;align-items:center;gap:6px;margin-top:10px;color:var(--seafoam);font-weight:700;font-size:.85rem;text-decoration:none;opacity:.8;transition:opacity .2s}
 .back-link:hover{opacity:1}
 .shell{max-width:1100px;margin:auto;padding:44px 28px 80px}
