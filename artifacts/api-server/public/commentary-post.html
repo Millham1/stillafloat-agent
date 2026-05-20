@@ -111,10 +111,24 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  function getYouTubeId(url) {
+  function toYouTubeEmbedUrl(url) {
     if (!url) return null;
-    const m = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.exec(url);
-    return m ? m[1] : null;
+    try {
+      const u = new URL(url);
+      let videoId = null;
+      if (u.hostname === 'youtu.be') {
+        videoId = u.pathname.slice(1).split('?')[0];
+      } else if (u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com') {
+        if (u.pathname === '/watch') {
+          videoId = u.searchParams.get('v');
+        } else if (u.pathname.startsWith('/embed/')) {
+          videoId = u.pathname.split('/embed/')[1].split('?')[0];
+        } else if (u.pathname.startsWith('/shorts/')) {
+          videoId = u.pathname.split('/shorts/')[1].split('?')[0];
+        }
+      }
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+    } catch { return null; }
   }
 
   async function load() {
@@ -147,32 +161,32 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
           ${tagsHtml ? `<div class="post-tags">${tagsHtml}</div>` : ''}
         </div>`;
 
-      // Hero image (shown only if no video, or always if imageUrl present)
-      if (post.imageUrl && !post.videoUrl) {
+      // Hero image (render independently if imageUrl present)
+      if (post.imageUrl) {
         document.getElementById('post-image-section').innerHTML = `
           <div class="post-image-wrap">
             <img class="post-image" src="${escHtml(post.imageUrl)}" alt="${escHtml(post.title)}">
           </div>`;
       }
 
-      // YouTube embed
-      const ytId = getYouTubeId(post.videoUrl || '');
-      if (ytId) {
+      // YouTube embed (render independently if videoUrl present)
+      const embedUrl = toYouTubeEmbedUrl(post.videoUrl || '');
+      if (embedUrl) {
         document.getElementById('video-section').innerHTML = `
           <div class="video-wrap">
             <div class="video-container">
               <iframe
-                src="https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1"
+                src="${escHtml(embedUrl)}?rel=0&modestbranding=1"
                 title="${escHtml(post.title)}"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowfullscreen>
               </iframe>
             </div>
-            <p class="video-label"><i class="fa-brands fa-youtube" style="color:#ff4e4e;margin-right:5px"></i> Watch on YouTube</p>
+            <p class="video-label"><i class="fa-brands fa-youtube" style="color:#ff4e4e;margin-right:5px"></i> Watch the Vlog</p>
           </div>`;
       }
 
-      const hasVideo = !!ytId;
+      const hasVideo = !!embedUrl;
       document.getElementById('article-body').innerHTML = `
         ${hasVideo ? '<div class="transcript-divider">Transcript</div>' : ''}
         <div class="article-body">${bodyToHtml(post.body_en)}</div>

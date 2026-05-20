@@ -112,7 +112,7 @@ router.post("/commentary", async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/commentary/:id — update title, body, tags, status
+// PATCH /api/commentary/:id — update title, body, tags, status, videoUrl, imageUrl
 router.patch("/commentary/:id", async (req: Request, res: Response) => {
   if (!checkToken(req)) {
     res.status(401).json({ success: false, error: "Unauthorized" });

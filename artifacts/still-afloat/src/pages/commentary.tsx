@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   MessageSquare, Plus, Pencil, Trash2, EyeOff, Eye,
-  Mic, Languages, Loader2, X, Tag,
+  Mic, Languages, Loader2, X, Tag, Youtube, Image,
 } from "lucide-react";
 
 const API = "";
@@ -284,6 +284,7 @@ export default function CommentaryManager() {
               <tr className="border-b bg-muted/40 text-muted-foreground">
                 <th className="text-left px-4 py-2.5 font-medium">Title</th>
                 <th className="text-left px-4 py-2.5 font-medium">Tags</th>
+                <th className="text-left px-4 py-2.5 font-medium">Media</th>
                 <th className="text-left px-4 py-2.5 font-medium">Date</th>
                 <th className="text-left px-4 py-2.5 font-medium">Status</th>
                 <th className="text-right px-4 py-2.5 font-medium">Actions</th>
@@ -292,7 +293,7 @@ export default function CommentaryManager() {
             <tbody>
               {posts.map((post, i) => (
                 <tr key={post.id} className={`border-b last:border-0 ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
-                  <td className="px-4 py-3 font-medium max-w-[280px]">
+                  <td className="px-4 py-3 font-medium max-w-[260px]">
                     <div className="truncate">{post.title}</div>
                     <div className="text-xs text-muted-foreground truncate mt-0.5">
                       {post.body_en?.slice(0, 80)}{post.body_en?.length > 80 ? "…" : ""}
@@ -307,6 +308,23 @@ export default function CommentaryManager() {
                       ))}
                       {post.tags.length > 3 && (
                         <span className="text-[10px] text-muted-foreground">+{post.tags.length - 3}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      {post.videoUrl && (
+                        <span title="Has YouTube video" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/15 text-red-400">
+                          <Youtube className="w-2.5 h-2.5" /> Video
+                        </span>
+                      )}
+                      {post.imageUrl && (
+                        <span title="Has image" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/15 text-blue-400">
+                          <Image className="w-2.5 h-2.5" /> Image
+                        </span>
+                      )}
+                      {!post.videoUrl && !post.imageUrl && (
+                        <span className="text-[10px] text-muted-foreground">—</span>
                       )}
                     </div>
                   </td>
@@ -439,32 +457,6 @@ export default function CommentaryManager() {
                 />
               </div>
 
-              {/* Media — YouTube URL */}
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">YouTube Video URL</label>
-                <input
-                  type="url"
-                  value={form.videoUrl}
-                  onChange={e => setForm(f => ({ ...f, videoUrl: e.target.value }))}
-                  placeholder="https://www.youtube.com/watch?v=…  (optional)"
-                  className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <p className="text-xs text-muted-foreground">Paste any youtube.com or youtu.be link — it will be embedded on the post page and shown as a thumbnail on the list.</p>
-              </div>
-
-              {/* Media — Image URL */}
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Image URL</label>
-                <input
-                  type="url"
-                  value={form.imageUrl}
-                  onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
-                  placeholder="https://…/photo.jpg  (optional, used when no video)"
-                  className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <p className="text-xs text-muted-foreground">Shows as a hero banner on the post page and card thumbnail on the list when no YouTube video is set.</p>
-              </div>
-
               {/* Tags */}
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Tags</label>
@@ -475,6 +467,43 @@ export default function CommentaryManager() {
                   className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                 />
                 <p className="text-xs text-muted-foreground">Separate tags with commas</p>
+              </div>
+
+              {/* Rich media */}
+              <div className="rounded-lg border border-dashed border-input p-4 space-y-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rich Media (optional)</p>
+
+                {/* YouTube URL */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <Youtube className="w-4 h-4 text-red-400" />
+                    YouTube Video URL
+                  </label>
+                  <input
+                    type="url"
+                    value={form.videoUrl}
+                    onChange={e => setForm(f => ({ ...f, videoUrl: e.target.value }))}
+                    placeholder="https://www.youtube.com/watch?v=… or https://youtu.be/…"
+                    className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <p className="text-xs text-muted-foreground">Paste any YouTube link — it will be embedded above the post body.</p>
+                </div>
+
+                {/* Image URL */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <Image className="w-4 h-4 text-blue-400" />
+                    Hero Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={form.imageUrl}
+                    onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                    placeholder="https://example.com/photo.jpg"
+                    className="w-full px-3 py-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <p className="text-xs text-muted-foreground">A photo displayed above the text. When both a video and an image are provided, the video appears first and the image appears beneath it.</p>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2 border-t">
