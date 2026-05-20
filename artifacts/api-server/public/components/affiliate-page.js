@@ -10,27 +10,29 @@
   // Inject card + buy-button styles
   const style = document.createElement('style');
   style.textContent = `
-.items-grid{display:flex;flex-direction:column;gap:28px}
-.item-card{display:flex;flex-direction:row;border-radius:22px;overflow:hidden;background:rgba(7,20,43,.75);border:1px solid rgba(255,255,255,.13);backdrop-filter:blur(14px);box-shadow:0 14px 40px rgba(0,0,0,.36)}
-.item-img-wrap{flex:0 0 200px;background:#0a1628;display:flex;align-items:center;justify-content:center;min-height:180px}
-.item-img{width:180px;height:180px;object-fit:contain;display:block;padding:12px}
-.item-body{flex:1;padding:24px 28px;display:flex;flex-direction:column;justify-content:center;gap:8px}
-.item-title{font-family:'Baloo 2',sans-serif;font-size:1.3rem;font-weight:800;color:#fff}
-.item-desc{font-size:.97rem;line-height:1.65;color:rgba(220,240,255,.85)}
-.buy-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;background:#ffca4f;color:#07183f;font-family:'Baloo 2',sans-serif;font-size:.92rem;font-weight:800;border-radius:12px;text-decoration:none;transition:background .15s,transform .1s;width:fit-content;margin-top:6px;white-space:nowrap}
+/* ── Column grid ── */
+.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px}
+
+/* ── Portrait card ── */
+.item-card{display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:rgba(7,20,43,.80);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px);box-shadow:0 8px 24px rgba(0,0,0,.34);transition:transform .15s,box-shadow .15s}
+.item-card:hover{transform:translateY(-3px);box-shadow:0 14px 32px rgba(0,0,0,.46)}
+.item-img-wrap{width:100%;aspect-ratio:1/1;background:#0b1830;display:flex;align-items:center;justify-content:center}
+.item-img{width:75%;height:75%;object-fit:contain;display:block}
+.item-body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.item-title{font-family:'Baloo 2',sans-serif;font-size:1rem;font-weight:800;color:#fff;line-height:1.3}
+.item-desc{font-size:.82rem;line-height:1.55;color:rgba(200,225,255,.78);flex:1}
+.buy-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#ffca4f;color:#07183f;font-family:'Baloo 2',sans-serif;font-size:.82rem;font-weight:800;border-radius:10px;text-decoration:none;transition:background .15s,transform .1s;width:fit-content;margin-top:4px;white-space:nowrap}
 .buy-btn:hover{background:#ffd76b;transform:translateY(-1px)}
-.buy-btn i{font-size:.82rem}
+.buy-btn i{font-size:.74rem}
 .strip-wrap{display:contents}
-.empty-state{text-align:center;padding:80px 20px;color:rgba(255,255,255,.50)}
+.empty-state{text-align:center;padding:80px 20px;color:rgba(255,255,255,.50);grid-column:1/-1}
 .empty-state i{font-size:48px;margin-bottom:18px;display:block;color:rgba(93,255,154,.30)}
 .empty-state h2{font-size:1.4rem;margin-bottom:10px;color:rgba(255,255,255,.70)}
 .empty-state p{font-size:.95rem}
-.loading{text-align:center;padding:60px 20px;color:rgba(255,255,255,.50);font-size:.95rem}
-@media(max-width:680px){
-  .item-card{flex-direction:column}
-  .item-img-wrap{flex:none;width:100%;min-height:140px;padding:8px 0}
-  .item-img{width:130px;height:130px}
-  .item-body{padding:16px 18px}
+.loading{text-align:center;padding:60px 20px;color:rgba(255,255,255,.50);font-size:.95rem;grid-column:1/-1}
+@media(max-width:500px){
+  .items-grid{grid-template-columns:repeat(2,1fr);gap:12px}
+  .item-body{padding:10px 11px 12px}
 }`;
   document.head.appendChild(style);
 
