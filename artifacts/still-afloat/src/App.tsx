@@ -11,6 +11,7 @@ import ApprovedStories from "@/pages/approved";
 import LiveFeeds from "@/pages/feeds";
 import OperationalAlerts from "@/pages/alerts";
 import AffiliateManager from "@/pages/affiliate";
+import FavoritesManager from "@/pages/favorites";
 import Subscribers from "@/pages/subscribers";
 import Newsletter from "@/pages/newsletter";
 
@@ -33,6 +34,7 @@ function Router() {
         <Route path="/feeds" component={LiveFeeds} />
         <Route path="/alerts" component={OperationalAlerts} />
         <Route path="/affiliate"   component={AffiliateManager} />
+        <Route path="/favorites"   component={FavoritesManager} />
         <Route path="/subscribers" component={Subscribers} />
         <Route path="/newsletter"  component={Newsletter} />
         <Route component={NotFound} />

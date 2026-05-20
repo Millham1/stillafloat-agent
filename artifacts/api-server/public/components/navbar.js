@@ -35,11 +35,13 @@
     { href: '/es/index.html',     label: 'Inicio'    },
     { href: '/es/news.html',      label: 'Noticias'  },
     { href: '/es/weather.html',   label: 'Clima'     },
+    { href: '/favorites.html',    label: 'Favoritos' },
     { href: '/es/affiliate.html', label: 'Equipo'    },
   ] : [
     { href: '/index.html',     label: 'Home'       },
     { href: '/news.html',      label: 'Cruise News'},
     { href: '/weather.html',   label: 'Weather'    },
+    { href: '/favorites.html', label: 'Favorites'  },
     { href: '/affiliate.html', label: 'Gear'       },
   ];
 

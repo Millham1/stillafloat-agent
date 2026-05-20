@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mark's Favorites — YouTube & Cruise Sites | Still Afloat</title>
+<meta name="description" content="Mark Millham's personally curated list of the best cruise YouTube channels and essential cruise websites — Still Afloat approved picks.">
+<link rel="canonical" href="https://stillafloatcruising.com/favorites.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:url" content="https://stillafloatcruising.com/favorites.html">
+<meta property="og:title" content="Mark's Favorites — YouTube & Cruise Sites | Still Afloat">
+<meta property="og:description" content="Personally curated YouTube channels and cruise websites — the ones Mark actually watches and bookmarks.">
+<meta property="og:image" content="https://stillafloatcruising.com/assets/images/youtube-channels-hero.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Mark's Favorites — YouTube & Cruise Sites | Still Afloat">
+<meta name="twitter:description" content="Personally curated YouTube channels and cruise websites — the ones Mark actually watches and bookmarks.">
+<meta name="twitter:image" content="https://stillafloatcruising.com/assets/images/youtube-channels-hero.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#ffca4f;--blue:#4fc3ff;--seafoam:#5dff9a;--navy:#07183f}
+body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#fff;background:#060f1e}
+
+/* ── Page hero (top banner) ── */
+.page-hero{position:relative;min-height:260px;display:flex;align-items:flex-end;border-bottom:3px solid rgba(93,255,154,.18);overflow:hidden}
+.page-hero-bg{position:absolute;inset:0;background:linear-gradient(to right,rgba(4,10,22,1) 0%,rgba(4,10,22,.88) 38%,rgba(4,10,22,.40) 65%,rgba(4,10,22,.08) 100%),url('/assets/images/still_afloat_logo.png') right center/auto 90% no-repeat}
+.page-hero-content{position:relative;z-index:2;max-width:680px;padding:40px 40px 38px}
+.eyebrow{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:800;margin-bottom:8px;opacity:.85}
+.hero-title{font-family:Pacifico,cursive;font-size:clamp(2.2rem,5vw,3.6rem);line-height:1.18;background:linear-gradient(90deg,#ffca4f,#4fc3ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px}
+.hero-sub{font-size:.97rem;line-height:1.7;color:rgba(255,255,255,.88);max-width:460px}
+.hero-brand{display:inline-flex;align-items:center;gap:7px;margin-top:12px;color:#5dff9a;font-weight:800;font-size:.75rem;letter-spacing:.2em;text-transform:uppercase;opacity:.92}
+.hero-brand img{height:16px;vertical-align:middle;filter:brightness(1.1)}
+
+/* ── Category section ── */
+.cat-section{margin-bottom:0}
+
+/* Category hero (section banner) */
+.cat-hero{position:relative;min-height:200px;display:flex;align-items:flex-end;overflow:hidden}
+.cat-hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat}
+.cat-hero-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(4,10,22,.97) 0%,rgba(4,10,22,.88) 45%,rgba(4,10,22,.45) 72%,rgba(4,10,22,.10) 100%)}
+.cat-hero-content{position:relative;z-index:2;padding:32px 40px 28px;max-width:620px}
+.cat-eyebrow{font-size:.65rem;letter-spacing:.32em;text-transform:uppercase;color:var(--gold);font-weight:800;opacity:.85;margin-bottom:6px}
+.cat-title{font-family:Pacifico,cursive;font-size:clamp(1.8rem,4vw,2.9rem);line-height:1.2;background:linear-gradient(90deg,#ffca4f,#4fc3ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.cat-tagline{font-size:.92rem;color:rgba(255,255,255,.85);font-weight:600}
+.cat-brand{display:inline-flex;align-items:center;gap:6px;margin-top:10px;color:#5dff9a;font-weight:800;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;opacity:.88}
+.cat-brand img{height:14px;vertical-align:middle}
+
+/* ── Card grid ── */
+.shell{max-width:1100px;margin:auto;padding:36px 28px 24px}
+.cards-grid{display:flex;flex-direction:column;gap:14px}
+
+/* ── Horizontal card ── */
+.fav-card{
+  display:flex;align-items:center;gap:18px;
+  border-radius:16px;overflow:hidden;
+  background:rgba(7,20,43,.80);
+  border:1px solid rgba(255,255,255,.11);
+  backdrop-filter:blur(12px);
+  box-shadow:0 6px 20px rgba(0,0,0,.30);
+  padding:16px 20px;
+  transition:transform .15s,box-shadow .15s,border-color .15s
+}
+.fav-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,0,0,.44);border-color:rgba(93,255,154,.22)}
+.fav-img-wrap{width:72px;height:72px;flex-shrink:0;border-radius:12px;background:#0b1830;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(255,255,255,.10)}
+.fav-img{width:100%;height:100%;object-fit:cover;display:block}
+.fav-placeholder{font-size:32px;line-height:1}
+.fav-body{flex:1;min-width:0}
+.fav-name{font-size:1rem;font-weight:800;color:#fff;line-height:1.3;margin-bottom:4px}
+.fav-desc{font-size:.83rem;line-height:1.55;color:rgba(200,225,255,.76);margin-bottom:8px}
+.visit-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 18px;
+  background:#ffca4f;color:#07183f;
+  font-family:'Baloo 2',sans-serif;font-size:.82rem;font-weight:800;
+  border-radius:10px;text-decoration:none;
+  transition:background .15s,transform .1s;
+  white-space:nowrap;flex-shrink:0
+}
+.visit-btn:hover{background:#ffd76b;transform:translateY(-1px)}
+.visit-btn i{font-size:.74rem}
+
+/* ── Empty / loading ── */
+.empty-state{text-align:center;padding:60px 20px;color:rgba(255,255,255,.48)}
+.empty-state i{font-size:40px;margin-bottom:14px;display:block;color:rgba(93,255,154,.28)}
+.empty-state h3{font-size:1.2rem;margin-bottom:8px;color:rgba(255,255,255,.65)}
+.empty-state p{font-size:.9rem}
+.loading{text-align:center;padding:40px 20px;color:rgba(255,255,255,.45);font-size:.92rem}
+
+/* ── Footer ── */
+footer{text-align:center;padding:32px 20px 56px;color:rgba(255,255,255,.40);font-size:.87rem}
+.brand-img-sm{height:22px;vertical-align:middle;margin:0 3px}
+
+/* ── Mobile ── */
+@media(max-width:680px){
+  .page-hero{min-height:200px}
+  .page-hero-content{padding:28px 20px 30px}
+  .hero-title{font-size:2rem}
+  .cat-hero{min-height:160px}
+  .cat-hero-content{padding:24px 20px 22px}
+  .cat-title{font-size:1.7rem}
+  .shell{padding:28px 16px 20px}
+  .fav-card{padding:13px 14px;gap:13px}
+  .fav-img-wrap{width:58px;height:58px}
+  .visit-btn{padding:7px 14px;font-size:.78rem}
+}
+</style>
+</head>
+<body>
+
+<div id="navbar-container"></div>
+
+<!-- Page hero -->
+<section class="page-hero">
+  <div class="page-hero-bg"></div>
+  <div class="page-hero-content">
+    <div class="eyebrow">Curated by Mark</div>
+    <div class="hero-title">Mark's Favorites</div>
+    <p class="hero-sub">YouTube channels worth subscribing to and cruise websites worth bookmarking — the ones that actually earn their tab.</p>
+    <div class="hero-brand"><img src="/assets/images/still-afloat-text.png" alt="Still Afloat"> &nbsp;·&nbsp; Still Afloat Approved</div>
+  </div>
+</section>
+
+<!-- YouTube Channels section -->
+<section class="cat-section" id="youtube">
+  <div class="cat-hero">
+    <div class="cat-hero-bg" style="background-image:url('/assets/images/youtube-channels-hero.png')"></div>
+    <div class="cat-hero-overlay"></div>
+    <div class="cat-hero-content">
+      <div class="cat-eyebrow">▶ YouTube Channels</div>
+      <div class="cat-title">Where Cruisers Go to Dream</div>
+      <p class="cat-tagline">The vloggers, storytellers, and deck-side philosophers worth following.</p>
+      <div class="cat-brand"><img src="/assets/images/still-afloat-text.png" alt="Still Afloat"> &nbsp;·&nbsp; Curated by Still Afloat</div>
+    </div>
+  </div>
+  <div class="shell">
+    <div id="yt-container" class="cards-grid">
+      <div class="loading"><i class="fa-solid fa-circle-notch fa-spin" style="margin-right:8px"></i>Loading channels…</div>
+    </div>
+  </div>
+</section>
+
+<!-- Cruise Websites section -->
+<section class="cat-section" id="websites">
+  <div class="cat-hero" style="border-top:2px solid rgba(93,255,154,.12)">
+    <div class="cat-hero-bg" style="background-image:url('/assets/images/cruise-websites-hero.png')"></div>
+    <div class="cat-hero-overlay"></div>
+    <div class="cat-hero-content">
+      <div class="cat-eyebrow">🌐 Cruise Websites</div>
+      <div class="cat-title">The Sites We Actually Bookmark</div>
+      <p class="cat-tagline">Research, pricing, reviews, and intel — the real ones that veteran cruisers rely on.</p>
+      <div class="cat-brand"><img src="/assets/images/still-afloat-text.png" alt="Still Afloat"> &nbsp;·&nbsp; Still Afloat Approved</div>
+    </div>
+  </div>
+  <div class="shell">
+    <div id="cw-container" class="cards-grid">
+      <div class="loading"><i class="fa-solid fa-circle-notch fa-spin" style="margin-right:8px"></i>Loading sites…</div>
+    </div>
+  </div>
+</section>
+
+<footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
+
+<script src="/components/navbar.js"></script>
+<script src="/components/crab.js"></script>
+<script>
+(function () {
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = String(s || '');
+    return d.innerHTML;
+  }
+
+  function renderCard(item) {
+    const card = document.createElement('div');
+    card.className = 'fav-card reveal';
+
+    const imgHtml = item.imageUrl
+      ? `<div class="fav-img-wrap">
+           <img class="fav-img" src="${esc(item.imageUrl)}" alt="${esc(item.title)}"
+                loading="lazy" onerror="this.parentElement.innerHTML='<span class=\\'fav-placeholder\\'>★</span>'">
+         </div>`
+      : `<div class="fav-img-wrap">
+           <span class="fav-placeholder">${item.category === 'youtube-channels' ? '▶' : '🌐'}</span>
+         </div>`;
+
+    card.innerHTML = `
+      ${imgHtml}
+      <div class="fav-body">
+        <div class="fav-name">${esc(item.title)}</div>
+        ${item.description ? `<p class="fav-desc">${esc(item.description)}</p>` : ''}
+      </div>
+      <a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer" class="visit-btn">
+        Visit <i class="fa-solid fa-arrow-up-right-from-square"></i>
+      </a>`;
+
+    return card;
+  }
+
+  function renderEmpty(icon, msg) {
+    return `<div class="empty-state">
+      <i class="fa-solid ${icon}"></i>
+      <h3>Coming soon</h3>
+      <p>${msg}</p>
+    </div>`;
+  }
+
+  async function loadSection(category, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    try {
+      const resp = await fetch('/api/favorites?category=' + encodeURIComponent(category));
+      const data = await resp.json();
+      container.innerHTML = '';
+      if (!data.items || data.items.length === 0) {
+        container.innerHTML = category === 'youtube-channels'
+          ? renderEmpty('fa-video', 'Channel picks are being curated — check back soon.')
+          : renderEmpty('fa-globe', 'Site picks are being curated — check back soon.');
+        return;
+      }
+      data.items.forEach(item => container.appendChild(renderCard(item)));
+
+      // Scroll reveal
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+        });
+      }, { threshold: 0.06 });
+      container.querySelectorAll('.reveal').forEach(el => io.observe(el));
+    } catch {
+      container.innerHTML = `<div class="empty-state">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <h3>Could not load</h3>
+        <p>Please try again in a moment.</p>
+      </div>`;
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  function init() {
+    loadSection('youtube-channels', 'yt-container');
+    loadSection('cruise-websites',  'cw-container');
+  }
+})();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import editorialRouter from "./editorial";
 import feedsRouter from "./feeds";
 import weatherRouter from "./weather";
 import affiliateRouter from "./affiliate";
+import favoritesRouter from "./favorites";
 import translateArticleRouter from "./translate-article";
 import subscribeRouter from "./subscribe";
 
@@ -14,6 +15,7 @@ router.use(editorialRouter);
 router.use(feedsRouter);
 router.use(weatherRouter);
 router.use(affiliateRouter);
+router.use(favoritesRouter);
 router.use(translateArticleRouter);
 router.use(subscribeRouter);
 

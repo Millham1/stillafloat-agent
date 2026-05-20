@@ -37,6 +37,8 @@ export const PATHS = {
   storyDetailsEs: "story-details-es",
   // Affiliate product links (Amazon Smart Strip + metadata)
   affiliateItems: "affiliate-items",
+  // Curated favorites (YouTube channels + cruise websites)
+  favorites: "favorites",
 };
 
 export async function writeJson(key: string, payload: unknown): Promise<boolean> {
