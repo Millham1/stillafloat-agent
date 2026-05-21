@@ -115,50 +115,9 @@ The original GitHub repo (`Millham1/stillafloatcruising.com`) is the source of r
 
 - `artifacts/api-server/public/assets/images/seagull-v3-wings-fries-lightbulb.png` — saved seagull render: wings spread wide, fries flying, Einstein feathers, glasses, lightbulb, cruise ship railing background. Use this as the reference for future seagull regenerations. When regenerating `great-ideas-card.png`, always save the outgoing version with a new versioned name first (e.g. `seagull-v4-...png`) before overwriting.
 
-## Episode 1 video editing
+## Episode 1 video
 
-**Rule: never rebuild a segment that hasn't changed. Load from `attached_assets/video_segments/` at session start.**
-
-### Session setup (always run first):
-```bash
-mkdir -p /tmp/ep1-v3
-cp attached_assets/video_segments/*.mp4 /tmp/ep1-v3/
-```
-
-### Saved segments (`attached_assets/video_segments/`):
-| File | Duration | Description | Status |
-|---|---|---|---|
-| `beach_reveal_v3.mp4` | 17.7s | v4 intro: beach reveal → crab enters from afar, grows face-camera → scurries off right → logo + Mark | **CURRENT** |
-| `black_pause5.mp4` | 5.0s | Pure black pause between intro and storm | **CURRENT** |
-| `part_storm_questions.mp4` | 25.0s | Storm questions Q1–Q4 scene-synced to MOV footage (Q4 = "What if I choose wrong?") | source |
-| `part_storm_questions_q4ext.mp4` | 28.0s | part_storm_questions + 3s freeze on Q4 (extends Q4 from ~3s to ~6s) | **CURRENT** |
-| `storm_outro_xfade_v3.mp4` | 33.0s | part_storm_questions_q4ext + beach_outro xfade (offset=26, d=1.5) + 0.5s fade-in | **CURRENT** |
-| `beach_outro.mp4` | 7.0s | Beach sunrise "Your First Steps!" outro | **CURRENT** |
-
-### Current final output:
-- `attached_assets/output/episode1_v8.mp4` — 54.2s, full audio mix
-- **RULE**: Source video is ALWAYS `episode1_v4.mp4` — never use beach_reveal_v3/v4 for the intro (wrong crab)
-- Built as 3 slices from episode1_v4.mp4, reassembled with minimal changes
-
-### v8 structure (source of truth):
-| Piece | v4 source range | Changes |
-|---|---|---|
-| `v8_intro.mp4` | t=0 → 22.7s | None — exact slice |
-| `v8_storm_main.mp4` | t=22.7 → 43.5s | 0.5s fade-in from black (softer transition) |
-| `v8_q4_end.mp4` | t=43.5 → end | tpad=start_mode=clone:start_duration=3 (Q4 extended 3s) |
-
-### v8 audio mix:
-- **Still Afloat Intro** (Still_Afloat_Intro_1779309407911.mp3): t=0, afade-out st=16.5:d=1.5, vol=1.0
-- **Ominous** (Black_Gale_Passage.mp3): adelay=17700ms, afade-in d=0.8 (fast attack), afade-out st=10:d=5.0, vol=0.75
-- **Storm** (MOV audio atrim=start=8): adelay=22700ms, afade-out st=24:d=2.5, vol=0.45
-- **Salt** (Salt_On_My_Boots.mp3): adelay=48500ms, afade-in d=1.5, afade-out st=4:d=1.7, vol=0.85
-- Total video: 54.2s
-
-### What to rebuild vs. load (v8):
-- Changing crab/intro → slice episode1_v4.mp4 t=0–22.7 only (or rebuild v4 first)
-- Changing storm fade-in only → re-slice v8_storm_main from v4 with new fade
-- Extending Q4 more/less → re-slice v8_q4_end from v4 with new tpad duration
-- Changing audio only → skip all segment rebuilds, just re-run the combined ffmpeg command with updated audio params
+Video project has been moved to `ep1-video/`. See `ep1-video/README.md` for segment notes, source asset index, and editing rules. Source assets are in `ep1-video/assets/`.
 
 ## Pointers
 
