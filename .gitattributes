@@ -25,3 +25,4 @@ ep1-video/attached_assets/video_segments/storm_outro_xfade.mp4 filter=lfs diff=l
 ep1-video/attached_assets/video_segments/storm_outro_xfade_v2.mp4 filter=lfs diff=lfs merge=lfs -text
 ep1-video/attached_assets/video_segments/storm_outro_xfade_v3.mp4 filter=lfs diff=lfs merge=lfs -text
 ep1-video/attached_assets/output/episode1_v9.mp4 filter=lfs diff=lfs merge=lfs -text
+ep1-video/attached_assets/output/episode1_v10.mp4 filter=lfs diff=lfs merge=lfs -text

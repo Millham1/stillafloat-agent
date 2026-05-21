@@ -131,3 +131,9 @@ id = "cHgh6oxk2lYmAnQ8Qafqm"
 uri = "file://ep1-video/attached_assets/output/episode1_v9.mp4"
 type = "video"
 title = "Episode 1 v9 — Final"
+
+[[outputs]]
+id = "GHB2kFr8hYurSZ8WpVtqZ"
+uri = "file://ep1-video/attached_assets/output/episode1_v10.mp4"
+type = "video"
+title = "Episode 1 v10 (74.6s)"
