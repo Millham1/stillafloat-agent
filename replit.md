@@ -136,23 +136,29 @@ cp attached_assets/video_segments/*.mp4 /tmp/ep1-v3/
 | `beach_outro.mp4` | 7.0s | Beach sunrise "Your First Steps!" outro | **CURRENT** |
 
 ### Current final output:
-- `attached_assets/output/episode1_v7.mp4` — 55.7s, full audio mix
-- Assembled as: `beach_reveal_v3` + `black_pause5` + `storm_outro_xfade_v3`
+- `attached_assets/output/episode1_v8.mp4` — 54.2s, full audio mix
+- **RULE**: Source video is ALWAYS `episode1_v4.mp4` — never use beach_reveal_v3/v4 for the intro (wrong crab)
+- Built as 3 slices from episode1_v4.mp4, reassembled with minimal changes
 
-### Audio mix (for reference when rebuilding final):
-- **Intro** (MOV audio t=0–17.7): afade-out st=15.7:d=2.0, vol=1.0
-- **Ominous** (Black_Gale_Passage.mp3): adelay=17700ms, afade-in d=0.8 (fast attack), afade-out st=12:d=5.0, vol=0.75
-- **Storm** (MOV audio atrim=start=8): adelay=22700ms, afade-out st=26:d=2.0, vol=0.45
-- **Salt** (Salt_On_My_Boots.mp3): adelay=48700ms, afade-in d=2.0, afade-out st=5.0:d=1.7, vol=0.85
-- Total video: 55.7s
+### v8 structure (source of truth):
+| Piece | v4 source range | Changes |
+|---|---|---|
+| `v8_intro.mp4` | t=0 → 22.7s | None — exact slice |
+| `v8_storm_main.mp4` | t=22.7 → 43.5s | 0.5s fade-in from black (softer transition) |
+| `v8_q4_end.mp4` | t=43.5 → end | tpad=start_mode=clone:start_duration=3 (Q4 extended 3s) |
 
-### What to rebuild vs. load:
-- Changing crab behavior → rebuild `beach_reveal_v3` only
-- Changing storm text/timing → rebuild `part_storm_questions` (from MOV), then `part_storm_questions_q4ext`, then `storm_outro_xfade_v3`
-- Changing Q4 duration only → re-run tpad on `part_storm_questions` → rebuild `storm_outro_xfade_v3`
-- Changing beach_outro → rebuild `storm_outro_xfade_v3` only
-- Changing audio only → skip all segment rebuilds, go straight to final concat + audio mix step
-- Changing concat order → just redo concat + audio steps
+### v8 audio mix:
+- **Still Afloat Intro** (Still_Afloat_Intro_1779309407911.mp3): t=0, afade-out st=16.5:d=1.5, vol=1.0
+- **Ominous** (Black_Gale_Passage.mp3): adelay=17700ms, afade-in d=0.8 (fast attack), afade-out st=10:d=5.0, vol=0.75
+- **Storm** (MOV audio atrim=start=8): adelay=22700ms, afade-out st=24:d=2.5, vol=0.45
+- **Salt** (Salt_On_My_Boots.mp3): adelay=48500ms, afade-in d=1.5, afade-out st=4:d=1.7, vol=0.85
+- Total video: 54.2s
+
+### What to rebuild vs. load (v8):
+- Changing crab/intro → slice episode1_v4.mp4 t=0–22.7 only (or rebuild v4 first)
+- Changing storm fade-in only → re-slice v8_storm_main from v4 with new fade
+- Extending Q4 more/less → re-slice v8_q4_end from v4 with new tpad duration
+- Changing audio only → skip all segment rebuilds, just re-run the combined ffmpeg command with updated audio params
 
 ## Pointers
 
