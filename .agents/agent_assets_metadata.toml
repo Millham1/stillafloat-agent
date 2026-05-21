@@ -125,3 +125,9 @@ id = "xd3VGr0WtoK3C5JApV-wW"
 uri = "file://attached_assets/output/episode1_v8.mp4"
 type = "video"
 title = "Episode 1 v8 (54.2s)"
+
+[[outputs]]
+id = "cHgh6oxk2lYmAnQ8Qafqm"
+uri = "file://ep1-video/attached_assets/output/episode1_v9.mp4"
+type = "video"
+title = "Episode 1 v9 — Crab exits right (fixed)"
