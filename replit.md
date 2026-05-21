@@ -115,6 +115,42 @@ The original GitHub repo (`Millham1/stillafloatcruising.com`) is the source of r
 
 - `artifacts/api-server/public/assets/images/seagull-v3-wings-fries-lightbulb.png` — saved seagull render: wings spread wide, fries flying, Einstein feathers, glasses, lightbulb, cruise ship railing background. Use this as the reference for future seagull regenerations. When regenerating `great-ideas-card.png`, always save the outgoing version with a new versioned name first (e.g. `seagull-v4-...png`) before overwriting.
 
+## Episode 1 video editing
+
+**Rule: never rebuild a segment that hasn't changed. Load from `attached_assets/video_segments/` at session start.**
+
+### Session setup (always run first):
+```bash
+mkdir -p /tmp/ep1-v3
+cp attached_assets/video_segments/*.mp4 /tmp/ep1-v3/
+```
+
+### Saved segments (`attached_assets/video_segments/`):
+| File | Duration | Description | Status |
+|---|---|---|---|
+| `beach_reveal_v4.mp4` | 17.7s | Crab entrance + slide-right exit (t=3, 280px/s) + logo + Mark | **CURRENT** |
+| `black_pause5.mp4` | 5.0s | Pure black pause between intro and storm | **CURRENT** |
+| `storm_questions_v2.mp4` | 30.0s | Storm questions; fade-in from black; Q1–Q4 each 5s; offset from MOV t=8 | **CURRENT** |
+| `storm_outro_xfade_v2.mp4` | 35.5s | storm_questions_v2 + beach_outro xfade (dissolve, offset=28.5, d=1.5) | **CURRENT** |
+| `beach_outro.mp4` | 7.0s | Beach sunrise "Your First Steps!" outro | **CURRENT** |
+
+### Current final output:
+- `attached_assets/output/episode1_v6.mp4` — 58.2s, full audio mix
+- Assembled as: `beach_reveal_v4` + `black_pause5` + `storm_outro_xfade_v2`
+
+### Audio mix (for reference when rebuilding final):
+- **Intro** (MOV audio t=0–17.7): afade-out st=15.7:d=2.0
+- **Ominous** (Black_Gale_Passage.mp3): adelay=17700ms, afade-in d=1.0, afade-out st=28.0:d=4.0, vol=0.70
+- **Storm** (MOV audio atrim=start=8): adelay=22700ms, afade-out st=28.5:d=1.5, vol=0.45
+- **Salt** (Salt_On_My_Boots.mp3): adelay=49000ms, afade-in d=2.0, afade-out st=6.2:d=2.0, vol=0.85
+
+### What to rebuild vs. load:
+- Changing crab behavior → rebuild `beach_reveal_v4` only
+- Changing storm text/timing → rebuild `storm_questions_v2`, then `storm_outro_xfade_v2`
+- Changing beach_outro → rebuild `storm_outro_xfade_v2` only
+- Changing audio only → skip all segment rebuilds, go straight to final audio mix step
+- Changing concat order → just redo concat + audio steps
+
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
