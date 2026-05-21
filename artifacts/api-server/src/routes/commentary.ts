@@ -36,6 +36,10 @@ function checkToken(req: Request): boolean {
   return provided === token;
 }
 
+function stripHtml(str: string): string {
+  return String(str).replace(/<[^>]*>/g, "");
+}
+
 // GET /api/commentary
 // Returns posts sorted newest-first.
 // Unauthenticated callers only see published posts (default).
@@ -133,9 +137,9 @@ router.post("/commentary", async (req: Request, res: Response) => {
     const now = new Date().toISOString();
     const post: CommentaryPost = {
       id: crypto.randomUUID(),
-      title: String(title),
-      body_en: String(body_en),
-      body_es: resolvedBodyEs,
+      title: stripHtml(String(title)),
+      body_en: stripHtml(String(body_en)),
+      body_es: stripHtml(resolvedBodyEs),
       tags: Array.isArray(tags) ? tags.map(String) : [],
       status: "published",
       published_at: now,
@@ -166,9 +170,9 @@ router.patch("/commentary/:id", async (req: Request, res: Response) => {
     }
     const post = store.posts[idx]!;
     const { title, body_en, body_es, tags, status, videoUrl, imageUrl } = req.body as Partial<CommentaryPost>;
-    if (title !== undefined) post.title = String(title);
-    if (body_en !== undefined) post.body_en = String(body_en);
-    if (body_es !== undefined) post.body_es = String(body_es);
+    if (title !== undefined) post.title = stripHtml(String(title));
+    if (body_en !== undefined) post.body_en = stripHtml(String(body_en));
+    if (body_es !== undefined) post.body_es = stripHtml(String(body_es));
     if (tags !== undefined) post.tags = Array.isArray(tags) ? tags.map(String) : [];
     if (status !== undefined) post.status = status as "published" | "unpublished";
     if (videoUrl !== undefined) post.videoUrl = videoUrl ? String(videoUrl) : undefined;

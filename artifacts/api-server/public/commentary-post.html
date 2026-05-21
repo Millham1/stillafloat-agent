@@ -99,16 +99,16 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
     } catch { return iso; }
   }
 
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   function bodyToHtml(text) {
     if (!text) return '<p>No content.</p>';
     return text.split(/\n\n+/).map(para => {
-      const line = para.replace(/\n/g, '<br>').trim();
+      const line = escHtml(para).replace(/\n/g, '<br>').trim();
       return line ? `<p>${line}</p>` : '';
     }).filter(Boolean).join('');
-  }
-
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   function toYouTubeEmbedUrl(url) {
