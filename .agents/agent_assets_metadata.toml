@@ -113,3 +113,9 @@ id = "A7kV5AuJmzw8bIW6fTxXd"
 uri = "file://attached_assets/output/episode1_v6.mp4"
 type = "video"
 title = "Episode 1 v6 (58.2s)"
+
+[[outputs]]
+id = "G-7fIk30liQBgogs5BZHh"
+uri = "file://attached_assets/output/episode1_v7.mp4"
+type = "video"
+title = "Episode 1 v7 (55.7s)"

@@ -128,27 +128,30 @@ cp attached_assets/video_segments/*.mp4 /tmp/ep1-v3/
 ### Saved segments (`attached_assets/video_segments/`):
 | File | Duration | Description | Status |
 |---|---|---|---|
-| `beach_reveal_v4.mp4` | 17.7s | Crab entrance + slide-right exit (t=3, 280px/s) + logo + Mark | **CURRENT** |
+| `beach_reveal_v3.mp4` | 17.7s | v4 intro: beach reveal → crab enters from afar, grows face-camera → scurries off right → logo + Mark | **CURRENT** |
 | `black_pause5.mp4` | 5.0s | Pure black pause between intro and storm | **CURRENT** |
-| `storm_questions_v2.mp4` | 30.0s | Storm questions; fade-in from black; Q1–Q4 each 5s; offset from MOV t=8 | **CURRENT** |
-| `storm_outro_xfade_v2.mp4` | 35.5s | storm_questions_v2 + beach_outro xfade (dissolve, offset=28.5, d=1.5) | **CURRENT** |
+| `part_storm_questions.mp4` | 25.0s | Storm questions Q1–Q4 scene-synced to MOV footage (Q4 = "What if I choose wrong?") | source |
+| `part_storm_questions_q4ext.mp4` | 28.0s | part_storm_questions + 3s freeze on Q4 (extends Q4 from ~3s to ~6s) | **CURRENT** |
+| `storm_outro_xfade_v3.mp4` | 33.0s | part_storm_questions_q4ext + beach_outro xfade (offset=26, d=1.5) + 0.5s fade-in | **CURRENT** |
 | `beach_outro.mp4` | 7.0s | Beach sunrise "Your First Steps!" outro | **CURRENT** |
 
 ### Current final output:
-- `attached_assets/output/episode1_v6.mp4` — 58.2s, full audio mix
-- Assembled as: `beach_reveal_v4` + `black_pause5` + `storm_outro_xfade_v2`
+- `attached_assets/output/episode1_v7.mp4` — 55.7s, full audio mix
+- Assembled as: `beach_reveal_v3` + `black_pause5` + `storm_outro_xfade_v3`
 
 ### Audio mix (for reference when rebuilding final):
-- **Intro** (MOV audio t=0–17.7): afade-out st=15.7:d=2.0
-- **Ominous** (Black_Gale_Passage.mp3): adelay=17700ms, afade-in d=1.0, afade-out st=28.0:d=4.0, vol=0.70
-- **Storm** (MOV audio atrim=start=8): adelay=22700ms, afade-out st=28.5:d=1.5, vol=0.45
-- **Salt** (Salt_On_My_Boots.mp3): adelay=49000ms, afade-in d=2.0, afade-out st=6.2:d=2.0, vol=0.85
+- **Intro** (MOV audio t=0–17.7): afade-out st=15.7:d=2.0, vol=1.0
+- **Ominous** (Black_Gale_Passage.mp3): adelay=17700ms, afade-in d=0.8 (fast attack), afade-out st=12:d=5.0, vol=0.75
+- **Storm** (MOV audio atrim=start=8): adelay=22700ms, afade-out st=26:d=2.0, vol=0.45
+- **Salt** (Salt_On_My_Boots.mp3): adelay=48700ms, afade-in d=2.0, afade-out st=5.0:d=1.7, vol=0.85
+- Total video: 55.7s
 
 ### What to rebuild vs. load:
-- Changing crab behavior → rebuild `beach_reveal_v4` only
-- Changing storm text/timing → rebuild `storm_questions_v2`, then `storm_outro_xfade_v2`
-- Changing beach_outro → rebuild `storm_outro_xfade_v2` only
-- Changing audio only → skip all segment rebuilds, go straight to final audio mix step
+- Changing crab behavior → rebuild `beach_reveal_v3` only
+- Changing storm text/timing → rebuild `part_storm_questions` (from MOV), then `part_storm_questions_q4ext`, then `storm_outro_xfade_v3`
+- Changing Q4 duration only → re-run tpad on `part_storm_questions` → rebuild `storm_outro_xfade_v3`
+- Changing beach_outro → rebuild `storm_outro_xfade_v3` only
+- Changing audio only → skip all segment rebuilds, go straight to final concat + audio mix step
 - Changing concat order → just redo concat + audio steps
 
 ## Pointers
