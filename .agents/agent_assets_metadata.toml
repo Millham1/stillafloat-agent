@@ -137,3 +137,9 @@ id = "GHB2kFr8hYurSZ8WpVtqZ"
 uri = "file://ep1-video/attached_assets/output/episode1_v10.mp4"
 type = "video"
 title = "Episode 1 v10 (74.6s)"
+
+[[outputs]]
+id = "ZHs1AKFnPVDA5nErGbMVI"
+uri = "file://ep1-video/attached_assets/output/episode1_v11.mp4"
+type = "video"
+title = "Episode 1 v11 — Polish (74.9s)"
