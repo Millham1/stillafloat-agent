@@ -173,3 +173,9 @@ id = "NRiNlhhQdBr8kWeL-fI3u"
 uri = "file://ep1-video/attached_assets/output/crab_transparent.mov"
 type = "video"
 title = "Crab Animation — Transparent (ProRes 4444, 5.8s)"
+
+[[outputs]]
+id = "EqDfpgEAbGKrygwjZFmdt"
+uri = "file://ep1-video/attached_assets/output/crab_greenscreen.mp4"
+type = "video"
+title = "Crab Animation — Green Screen (5.8s, H.264)"
