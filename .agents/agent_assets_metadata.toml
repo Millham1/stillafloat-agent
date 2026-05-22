@@ -167,3 +167,9 @@ id = "vcs8Rux2Ovtz31JLUw2IB"
 uri = "file://ep1-video/attached_assets/output/still_afloat_intro_locked.mp4"
 type = "video"
 title = "Still Afloat Intro (22.5s)"
+
+[[outputs]]
+id = "NRiNlhhQdBr8kWeL-fI3u"
+uri = "file://ep1-video/attached_assets/output/crab_transparent.mov"
+type = "video"
+title = "Crab Animation — Transparent (ProRes 4444, 5.8s)"
