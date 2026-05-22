@@ -1,5 +1,22 @@
 # Still Afloat — Episode 1 Video
 
+## v15 TODO (next session)
+
+### Problems in v14 to fix:
+1. **Box artifact in intro** — a visible rectangular box appears in the beach background during the intro. Was not present before. Likely from the `fps=30` re-encode of `intro_biglogo.mp4` or the delogo region on the original. Screenshot saved: `attached_assets/image_1779422293635.png`. Need to diagnose against `still_afloat_intro_locked.mp4` source and find a clean path.
+2. **Storm sequence is double** — v14 has 9 new clips (72s, no captions) followed by `storm_outro_xfade_v3.mp4` (33s, has "What if I choose wrong?" captions). Feels like two storms looped. User wants ONE clean storm sequence.
+3. **Preferred ending** — user likes clip 8 (`Sailor_at_helm_ship_sunlight` — sun breaking through the storm on the ship) as the LAST storm clip, then a direct crossfade to beach. This is the "last scene in the first" he refers to. Clip 9 (calm ocean) may not be needed.
+4. **Soundtrack is wrong** — needs revisiting. Review which music plays when.
+5. **Transitions are poor** — hard cuts between clips are jarring. Need crossfades or dissolves between storm clips.
+
+### v15 plan (draft):
+- Fix intro: use `still_afloat_intro_locked.mp4` directly without fps conversion, or find source of box
+- Storm: use clips 1–8 only (end on sunlight), with dissolve transitions between clips
+- End storm on clip 8 (sunlight), crossfade directly to beach (from `storm_outro_xfade_v3.mp4` or rebuild)
+- Drop or move clip 9 (calm ocean) — may work better before the beach reveal
+- Drop "What if I choose wrong?" outro OR keep it but make it feel like one continuous sequence
+- Fix audio: review music timing and volumes
+
 Standalone video project for the Still Afloat vlog Episode 1.
 
 ## Source assets (`assets/`)
