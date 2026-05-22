@@ -161,3 +161,9 @@ id = "Q9bs_dytv2WRvpEd6LNn0"
 uri = "file://ep1-video/attached_assets/output/episode1_v15.mp4"
 type = "video"
 title = "Episode 1 v15 — Still Afloat (1:39)"
+
+[[outputs]]
+id = "vcs8Rux2Ovtz31JLUw2IB"
+uri = "file://ep1-video/attached_assets/output/still_afloat_intro_locked.mp4"
+type = "video"
+title = "Still Afloat Intro (22.5s)"
