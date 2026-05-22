@@ -26,9 +26,39 @@ Standalone video project for the Still Afloat vlog Episode 1.
 
 ## Current best output
 
-`assets/output/episode1_v10.mp4` — **74.6s** — v10 with rebuilt storm section
+`assets/output/episode1_v14.mp4` — **2:07.5 (127.5s)** — v14 with 9 Veo storm clips, clean Veo blur, no baked text
 
-### v10 structure
+### v14 structure
+| t= | Section | Source |
+|---|---|---|
+| 0–22.5s | Still Afloat intro (beach, Mark, logo) | `still_afloat_intro_locked.mp4` |
+| 22.5–30.5s | Night ocean with dramatic lightning | `storm_raw/Stormy_ocean_at_night_lightning_…mp4` |
+| 30.5–38.5s | Wide tall ship in storm (side view) | `storm_raw/Sailing_ship_in_storm_…(1)_…mp4` |
+| 38.5–46.5s | Ship in heavy rain with sailor | `storm_raw/Sailing_ship_in_storm_2309_…mp4` |
+| 46.5–54.5s | Sailor at helm, lightning behind | `storm_raw/Sailing_ship_in_storm_2310_…mp4` |
+| 54.5–62.5s | Sailor gripping wheel, dark storm | `storm_raw/Sailor_at_helm_storm_2309_…mp4` |
+| 62.5–70.5s | Sailor at helm, dark night | `storm_raw/Sailor_at_helm_storm_2310_…mp4` |
+| 70.5–78.5s | Lightning climax (most dramatic) | `storm_raw/Sailor_controlling_ship_storm_…mp4` |
+| 78.5–86.5s | Light breaking through — hope | `storm_raw/Sailor_at_helm_ship_sunlight_…mp4` |
+| 86.5–94.5s | Calm golden ocean after storm | `storm_raw/Open_ocean_after_storm_…mp4` |
+| 94.5–127.5s | Crossfade storm→beach + "What if I choose wrong?" | `storm_outro_xfade_v3.mp4` |
+
+### v14 audio mix
+- Still Afloat Intro music: 0–22.5s (vol 1.0)
+- Black Gale Passage (ominous): 22.5–94.5s (vol 0.55), under storm native audio
+- Storm native audio: 22.5–94.5s (vol 0.45)
+- Salt on My Boots: 94.5–127.5s (vol 1.0)
+
+### v14 source clips
+9 Veo-generated clips in `assets/video_segments/storm_raw/` — all 8s, 1920×1080, 24fps (normalized to 30fps)
+Veo watermark blurred with `boxblur=15:5` over region x=1700 y=1000 w=220 h=80
+No text baked into any of the 9 storm clips. "What if I choose wrong?" is in `storm_outro_xfade_v3.mp4` (intentional).
+
+---
+
+## Previous output
+
+### v10 structure (archived)
 | t= | Section |
 |---|---|
 | 0–22.7s | Locked intro (beach + crab + logo + Mark, fades to black) |
