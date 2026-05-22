@@ -155,3 +155,9 @@ id = "DIX0ETctsc-1pLTBFCmac"
 uri = "file://ep1-video/attached_assets/output/episode1_v14.mp4"
 type = "video"
 title = "Episode 1 v14 — Still Afloat (2:07.5)"
+
+[[outputs]]
+id = "Q9bs_dytv2WRvpEd6LNn0"
+uri = "file://ep1-video/attached_assets/output/episode1_v15.mp4"
+type = "video"
+title = "Episode 1 v15 — Still Afloat (1:39)"
