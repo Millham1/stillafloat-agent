@@ -201,18 +201,32 @@
   <h2>Real cruise stories. No studio script.</h2>
   <p class="yt-section-sub">Planning episodes, ship selection, cruise prep, onboard lessons, and honest post-cruise takeaways — built around the trip, not an algorithm.</p>
 </div>
-<div class="yt-content">
+<div class="yt-content" id="yt-content">
   <div class="yt-short-wrap">
-    <iframe class="yt-short-frame" src="https://www.youtube.com/embed/qjzM4sm7cqA" title="Still Afloat YouTube Short" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+    <iframe id="yt-iframe" class="yt-short-frame" src="https://www.youtube.com/embed/qjzM4sm7cqA" title="Still Afloat YouTube Short" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
   </div>
   <div class="yt-cta-wrap">
     <div class="yt-logo-row"><i class="fa-brands fa-youtube yt-icon"></i><span class="yt-channel-name">Still Afloat Cruising</span></div>
-    <p class="yt-cta-text">Cruise news, real talk, and zero fluff. New videos dropping as the journey unfolds.</p>
+    <p class="yt-cta-text" id="yt-desc">Cruise news, real talk, and zero fluff. New videos dropping as the journey unfolds.</p>
     <a class="yt-subscribe-btn" href="https://www.youtube.com/@StillAfloatcruising2026" target="_blank" rel="noopener noreferrer">
       <i class="fa-brands fa-youtube"></i> Watch on YouTube
     </a>
   </div>
 </div>
+<script>
+(function(){
+  fetch('/api/youtube-featured')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || !d.videoId) return;
+      var iframe = document.getElementById('yt-iframe');
+      if(iframe) iframe.src = 'https://www.youtube.com/embed/' + d.videoId;
+      var desc = document.getElementById('yt-desc');
+      if(desc && d.title) desc.textContent = d.title;
+    })
+    .catch(function(){});
+})();
+</script>
 </div>
 </section>
 

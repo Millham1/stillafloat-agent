@@ -8,6 +8,7 @@ import favoritesRouter from "./favorites";
 import commentaryRouter from "./commentary";
 import translateArticleRouter from "./translate-article";
 import subscribeRouter from "./subscribe";
+import youtubeRouter from "./youtube";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(favoritesRouter);
 router.use(commentaryRouter);
 router.use(translateArticleRouter);
 router.use(subscribeRouter);
+router.use(youtubeRouter);
 
 export default router;
