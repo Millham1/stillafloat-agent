@@ -81,9 +81,32 @@ export default function EditorialQueue() {
   const [processing, setProcessing] = useState<Record<string, string>>({});
   const [showReviewed, setShowReviewed] = useState(false);
 
+  const ACTION_STATUS: Record<string, string> = {
+    approve: 'approved',
+    reject: 'rejected',
+    feature: 'featured',
+    hold: 'held',
+  };
+
   const handleAction = async (id: string, action: 'approve' | 'reject' | 'feature' | 'hold') => {
     setProcessing(prev => ({ ...prev, [id]: action }));
     const token = import.meta.env.VITE_AGENT_TOKEN || '';
+    const newStatus = ACTION_STATUS[action];
+    const decidedAt = new Date().toISOString();
+
+    // Optimistic update — move the story immediately before the server responds
+    queryClient.setQueryData(
+      getGetEditorialQueueQueryKey(),
+      (old: { stories?: Story[] } | undefined) => {
+        if (!old?.stories) return old;
+        return {
+          ...old,
+          stories: old.stories.map(s =>
+            s.id === id ? { ...s, status: newStatus, decidedAt } : s
+          ),
+        };
+      }
+    );
 
     try {
       const res = await fetch(`/api/agent-action?action=${action}&id=${id}&token=${token}`);
@@ -94,9 +117,12 @@ export default function EditorialQueue() {
           title: action === 'feature' ? 'Story Featured' : action === 'approve' ? 'Story Approved' : action === 'reject' ? 'Story Rejected' : 'Story Held',
           description: action === 'feature' ? 'Will appear on the homepage.' : action === 'approve' ? 'Added to the news feed.' : action === 'reject' ? 'Removed from publishing.' : 'Saved for later review.',
         });
+        // Background sync to make sure server and cache agree
         queryClient.invalidateQueries({ queryKey: getGetEditorialQueueQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetHomepageFeedQueryKey() });
       } else {
+        // Roll back optimistic update on failure
+        queryClient.invalidateQueries({ queryKey: getGetEditorialQueueQueryKey() });
         throw new Error(json.error || "Failed to process action");
       }
     } catch (err: unknown) {
