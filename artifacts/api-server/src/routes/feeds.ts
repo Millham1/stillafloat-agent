@@ -157,7 +157,7 @@ router.get("/weather-alerts", async (req: Request, res: Response) => {
       success: true,
       source: "stillafloat-agent",
       generatedAt: new Date().toISOString(),
-      monitoringEnabled: Boolean(process.env["OPENWEATHER_API_KEY"]),
+      monitoringEnabled: true, // Open-Meteo — no API key required
       monitoredPorts,
       status: "weather aggregation scaffolding active",
     });
@@ -184,7 +184,7 @@ router.get("/system-status", async (req: Request, res: Response) => {
         openaiConfigured: Boolean(process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"]),
         resendConfigured: Boolean(process.env["RESEND_API_KEY"]),
         gnewsConfigured: Boolean(process.env["GNEWS_API_KEY"]),
-        weatherConfigured: Boolean(process.env["OPENWEATHER_API_KEY"]),
+        weatherConfigured: true, // Open-Meteo — no API key required
         approvalConfigured: Boolean(process.env["APPROVAL_EMAIL"] && process.env["RESEND_API_KEY"]),
       },
       publishing: {
