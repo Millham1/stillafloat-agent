@@ -31,7 +31,9 @@ async function saveStore(store: CommentaryStore): Promise<void> {
 
 function checkToken(req: Request): boolean {
   const token = process.env["AGENT_APPROVAL_TOKEN"];
-  if (!token) return true;
+  // Fail closed: if no token is configured, deny all mutations.
+  // Set AGENT_APPROVAL_TOKEN in your environment to authorize.
+  if (!token) return false;
   const provided = req.headers["x-affiliate-token"] || req.query["token"];
   return provided === token;
 }

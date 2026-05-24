@@ -8,6 +8,15 @@ import {
 
 const API = "";
 
+function getToken(): string {
+  return import.meta.env.VITE_AGENT_TOKEN || "";
+}
+
+function authHeaders(): Record<string, string> {
+  const t = getToken();
+  return t ? { "x-affiliate-token": t } : {};
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 interface CommentaryPost {
   id: string;
@@ -24,7 +33,9 @@ interface CommentaryPost {
 
 // ── API helpers ────────────────────────────────────────────────────────────
 async function fetchPosts(): Promise<CommentaryPost[]> {
-  const res = await fetch(`${API}/api/commentary`);
+  const res = await fetch(`${API}/api/commentary?status=all`, {
+    headers: { ...authHeaders() },
+  });
   const data = await res.json();
   if (!data.success) throw new Error(data.error || "Failed to load posts");
   return data.posts as CommentaryPost[];
@@ -40,7 +51,7 @@ async function createPost(body: {
 }): Promise<CommentaryPost> {
   const res = await fetch(`${API}/api/commentary`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
   });
   const data = await res.json();
@@ -51,7 +62,7 @@ async function createPost(body: {
 async function updatePost(id: string, body: Partial<CommentaryPost>): Promise<CommentaryPost> {
   const res = await fetch(`${API}/api/commentary/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
   });
   const data = await res.json();
@@ -60,7 +71,10 @@ async function updatePost(id: string, body: Partial<CommentaryPost>): Promise<Co
 }
 
 async function deletePost(id: string): Promise<void> {
-  const res = await fetch(`${API}/api/commentary/${id}`, { method: "DELETE" });
+  const res = await fetch(`${API}/api/commentary/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeaders() },
+  });
   const data = await res.json();
   if (!data.success) throw new Error(data.error || "Failed to delete post");
 }
@@ -68,7 +82,7 @@ async function deletePost(id: string): Promise<void> {
 async function translateText(text: string): Promise<string> {
   const res = await fetch(`${API}/api/translate-commentary`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ text }),
   });
   const data = await res.json();
@@ -83,7 +97,7 @@ async function transcribeAudio(file: File): Promise<string> {
   );
   const res = await fetch(`${API}/api/transcribe`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ audioBase64: base64, fileName: file.name, mimeType: file.type }),
   });
   const data = await res.json();

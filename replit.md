@@ -105,7 +105,7 @@ The original GitHub repo (`Millham1/stillafloatcruising.com`) is the source of r
 
 - `SUPABASE_ANON_KEY` is required — the server will throw at startup if it's missing
 - Agent approval actions are GET requests with `?action=X&id=Y&token=Z` query params
-- `AGENT_APPROVAL_TOKEN` is optional — if unset, all actions are authorized
+- `AGENT_APPROVAL_TOKEN` **must be set** — commentary mutation and OpenAI endpoints (transcribe, translate) now fail-closed (401) if this token is absent. Set it in Secrets. The editorial queue still reads `AGENT_APPROVAL_TOKEN` the same way.
 - The `pnpm dev` at workspace root has no dev script — run individual artifacts via `--filter`
 - Fonts and theming: CSS custom properties in `artifacts/still-afloat/src/index.css`
 - The old `api/cruise-news.js` Vercel function used NewsAPI — replaced by GNews+RSS in this repo
