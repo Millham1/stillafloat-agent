@@ -128,7 +128,7 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
 
   function excerpt(text, max) {
     if (!text) return '';
-    const clean = text.replace(/\n+/g, ' ').trim();
+    const clean = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     const cut = clean.length > max ? clean.slice(0, max).replace(/\s+\S*$/, '') + '…' : clean;
     return escHtml(cut);
   }

@@ -95,7 +95,7 @@ async function autoTranslate(text: string): Promise<string> {
           {
             role: "system",
             content:
-              "You are a professional translator. Translate the following English text to Latin American Spanish (es-419). Preserve the tone, personality, paragraph structure, and formatting. Return only the translated text — no explanations, no preamble.",
+              "You are a professional translator. Translate the following English text to Latin American Spanish (es-419). Preserve ALL HTML tags exactly as-is — only translate the visible text content between tags. Preserve the tone, personality, paragraph structure, and formatting. Return only the translated HTML — no explanations, no preamble.",
           },
           { role: "user", content: text },
         ],
@@ -138,8 +138,8 @@ router.post("/commentary", async (req: Request, res: Response) => {
     const post: CommentaryPost = {
       id: crypto.randomUUID(),
       title: stripHtml(String(title)),
-      body_en: stripHtml(String(body_en)),
-      body_es: stripHtml(resolvedBodyEs),
+      body_en: String(body_en),
+      body_es: resolvedBodyEs,
       tags: Array.isArray(tags) ? tags.map(String) : [],
       status: "published",
       published_at: now,
@@ -171,8 +171,8 @@ router.patch("/commentary/:id", async (req: Request, res: Response) => {
     const post = store.posts[idx]!;
     const { title, body_en, body_es, tags, status, videoUrl, imageUrl } = req.body as Partial<CommentaryPost>;
     if (title !== undefined) post.title = stripHtml(String(title));
-    if (body_en !== undefined) post.body_en = stripHtml(String(body_en));
-    if (body_es !== undefined) post.body_es = stripHtml(String(body_es));
+    if (body_en !== undefined) post.body_en = String(body_en);
+    if (body_es !== undefined) post.body_es = String(body_es);
     if (tags !== undefined) post.tags = Array.isArray(tags) ? tags.map(String) : [];
     if (status !== undefined) post.status = status as "published" | "unpublished";
     if (videoUrl !== undefined) post.videoUrl = videoUrl ? String(videoUrl) : undefined;
