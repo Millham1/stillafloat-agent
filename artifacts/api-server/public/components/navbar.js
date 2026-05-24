@@ -47,7 +47,7 @@
     { href: '/affiliate.html',     label: 'Gear'        },
   ];
 
-  const bookLabel = isSpanish ? 'Reservar Crucero' : 'Book a Cruise';
+  const bookLabel = isSpanish ? 'Trabaja Con Mark' : 'Work With Mark';
 
   const navHTML = `
     ${isHome ? '' : `
@@ -59,7 +59,7 @@
         ${mainLinks.map(l => `<a href="${l.href}" class="sa-nav-link">${l.label}</a>`).join('')}
       </div>
       <div class="sa-nav-row sa-secondary">
-        <a href="/under-construction.html" class="sa-nav-link">${bookLabel}</a>
+        <a href="/work-with-mark.html" class="sa-nav-link">${bookLabel}</a>
         <a href="/subscribe.html" class="sa-nav-link sa-subscribe-link">✉ Subscribe</a>
         <a href="${langUrl}" class="sa-nav-link sa-lang-link" title="${langLabel}">${langLabel}</a>
       </div>
@@ -75,7 +75,7 @@
         <i class="fa-solid fa-xmark"></i>
       </button>
       ${mainLinks.map(l => `<a href="${l.href}" class="sa-mobile-link">${l.label}</a>`).join('')}
-      <a href="/under-construction.html" class="sa-mobile-link">${bookLabel}</a>
+      <a href="/work-with-mark.html" class="sa-mobile-link">${bookLabel}</a>
       <a href="/subscribe.html" class="sa-mobile-link sa-mobile-subscribe">✉ Subscribe Free</a>
       <div class="sa-mobile-lang-divider"></div>
       <a href="${langUrl}" class="sa-mobile-link sa-mobile-lang">${langLabel}</a>
