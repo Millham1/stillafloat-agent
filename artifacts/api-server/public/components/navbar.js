@@ -14,7 +14,7 @@
   // Compute equivalent page URL in the other language
   // Handles /es, /es/, /es/index.html, /es/news.html correctly
   // Pages that have a Spanish (/es/) counterpart
-  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html']);
+  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html', 'work-with-mark.html']);
   let langUrl;
   if (isSpanish) {
     let eng = path.replace(/^\/es(\/.*)?$/, (_m, rest) => rest || '/index.html');
@@ -48,6 +48,7 @@
   ];
 
   const bookLabel = isSpanish ? 'Trabaja Con Mark' : 'Work With Mark';
+  const bookUrl   = isSpanish ? '/es/work-with-mark.html' : '/work-with-mark.html';
 
   const navHTML = `
     ${isHome ? '' : `
@@ -59,7 +60,7 @@
         ${mainLinks.map(l => `<a href="${l.href}" class="sa-nav-link">${l.label}</a>`).join('')}
       </div>
       <div class="sa-nav-row sa-secondary">
-        <a href="/work-with-mark.html" class="sa-nav-link">${bookLabel}</a>
+        <a href="${bookUrl}" class="sa-nav-link">${bookLabel}</a>
         <a href="/subscribe.html" class="sa-nav-link sa-subscribe-link">✉ Subscribe</a>
         <a href="${langUrl}" class="sa-nav-link sa-lang-link" title="${langLabel}">${langLabel}</a>
       </div>
@@ -75,7 +76,7 @@
         <i class="fa-solid fa-xmark"></i>
       </button>
       ${mainLinks.map(l => `<a href="${l.href}" class="sa-mobile-link">${l.label}</a>`).join('')}
-      <a href="/work-with-mark.html" class="sa-mobile-link">${bookLabel}</a>
+      <a href="${bookUrl}" class="sa-mobile-link">${bookLabel}</a>
       <a href="/subscribe.html" class="sa-mobile-link sa-mobile-subscribe">✉ Subscribe Free</a>
       <div class="sa-mobile-lang-divider"></div>
       <a href="${langUrl}" class="sa-mobile-link sa-mobile-lang">${langLabel}</a>
