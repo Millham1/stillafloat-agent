@@ -45,11 +45,8 @@ function scheduleDailyScan() {
       lastRunDate = dateKey;
       logger.info("Scheduled daily scan starting");
       try {
-        const baseUrl = process.env["REPLIT_DEV_DOMAIN"]
-          ? `https://${process.env["REPLIT_DEV_DOMAIN"]}`
-          : `http://localhost:${port}`;
         const apiKey = process.env["AGENT_APPROVAL_TOKEN"] || "";
-        const url = `${baseUrl}/api/scan-news${apiKey ? `?token=${apiKey}` : ""}`;
+        const url = `http://localhost:${port}/api/scan-news${apiKey ? `?token=${apiKey}` : ""}`;
         const res = await fetch(url, { method: "POST" });
         const body = await res.json() as { success?: boolean; curatedStories?: number };
         logger.info({ success: body.success, curatedStories: body.curatedStories }, "Scheduled daily scan complete");
