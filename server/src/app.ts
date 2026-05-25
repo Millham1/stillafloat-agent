@@ -8,7 +8,7 @@ import { logger } from "./lib/logger";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, "../public");
-const DASHBOARD_DIR = path.resolve(__dirname, "../../still-afloat/dist/public");
+const DASHBOARD_DIR = path.resolve(__dirname, "../../dashboard/dist/public");
 
 const app: Express = express();
 
