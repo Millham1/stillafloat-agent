@@ -19,42 +19,42 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif}
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px}
 .weather-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a}
 .weather-banner-img{width:100%;display:block;height:auto}
 .weather-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:80px;background:linear-gradient(to bottom,transparent,#06111f);pointer-events:none}
 .shell{max-width:1300px;margin:auto;padding:40px 22px 90px}
 .section{margin-bottom:60px;transition:padding-bottom .25s ease}
-.section h2{color:white;font-size:32px;font-weight:900;margin:0 0 8px}
-.section>p{color:rgba(255,255,255,.7);margin:0 0 6px}
-.hint{color:rgba(93,255,154,.88);font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:22px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:16px;margin-bottom:32px}
-.tile{border-radius:24px;border:1px solid rgba(255,255,255,.10);text-align:center;text-decoration:none;padding:22px 10px 18px;display:flex;flex-direction:column;align-items:center;background:rgba(7,24,63,.78);transition:transform .2s,border-color .2s,box-shadow .2s;box-shadow:0 10px 24px rgba(0,0,0,.22)}
+.section h2{color:white;font-size:36px;font-weight:900;margin:0 0 10px}
+.section>p{color:rgba(255,255,255,.7);margin:0 0 8px;font-size:18px}
+.hint{color:rgba(93,255,154,.88);font-size:15px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:22px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:32px}
+.tile{border-radius:24px;border:1px solid rgba(255,255,255,.10);text-align:center;text-decoration:none;padding:24px 12px 20px;display:flex;flex-direction:column;align-items:center;background:rgba(7,24,63,.78);transition:transform .2s,border-color .2s,box-shadow .2s;box-shadow:0 10px 24px rgba(0,0,0,.22)}
 .tile:hover{transform:translateY(-5px) scale(1.03);border-color:rgba(93,255,154,.35);box-shadow:0 20px 40px rgba(0,0,0,.36)}
-.t-emoji{font-size:44px;line-height:1;margin-bottom:10px}
-.t-name{color:white;font-weight:800;font-size:14px;margin-bottom:6px}
-.t-temp{color:#5dff9a;font-size:24px;font-weight:900}
-.t-loading{color:rgba(255,255,255,.35);font-size:12px}
+.t-emoji{font-size:48px;line-height:1;margin-bottom:12px}
+.t-name{color:white;font-weight:800;font-size:17px;margin-bottom:6px}
+.t-temp{color:#5dff9a;font-size:28px;font-weight:900}
+.t-loading{color:rgba(255,255,255,.35);font-size:16px}
 
 /* ── search ── */
 .search-wrap{position:relative;z-index:20}
-.search-label{color:#5dff9a;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;margin-bottom:8px}
+.search-label{color:#5dff9a;font-size:14px;letter-spacing:.10em;text-transform:uppercase;font-weight:800;margin-bottom:10px}
 .search-row{position:relative}
 .s-icon{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.45);pointer-events:none}
-.s-input{width:100%;box-sizing:border-box;padding:17px 17px 17px 50px;background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:20px;color:white;font-size:15px;outline:none;transition:border-color .2s}
+.s-input{width:100%;box-sizing:border-box;padding:18px 18px 18px 52px;background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:20px;color:white;font-size:17px;outline:none;transition:border-color .2s}
 .s-input:focus{border-color:rgba(93,255,154,.4)}
 .s-input::placeholder{color:rgba(255,255,255,.35)}
-.dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:linear-gradient(180deg,#091a30 0%,#071220 100%);border:1px solid rgba(255,255,255,.12);border-radius:20px;max-height:260px;overflow-y:auto;z-index:500;box-shadow:0 24px 48px rgba(0,0,0,.5)}
+.dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:linear-gradient(180deg,#091a30 0%,#071220 100%);border:1px solid rgba(255,255,255,.12);border-radius:20px;max-height:280px;overflow-y:auto;z-index:500;box-shadow:0 24px 48px rgba(0,0,0,.5)}
 .dropdown.open{display:block}
-.d-item{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;color:white;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.06);font-weight:600;font-size:14px;transition:background .15s}
+.d-item{display:flex;align-items:center;justify-content:space-between;padding:15px 22px;color:white;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.06);font-weight:600;font-size:16px;transition:background .15s}
 .d-item:last-child{border-bottom:none}
 .d-item:hover,.d-item:focus{background:rgba(0,119,182,.3);color:#5dff9a;outline:none}
-.d-arrow{color:rgba(255,255,255,.25);font-size:12px;flex-shrink:0}
-.d-empty{padding:16px 20px;color:rgba(255,255,255,.4);font-size:14px}
-.d-searching{padding:14px 20px;color:rgba(255,255,255,.45);font-size:13px;font-style:italic}
-.d-hint{padding:10px 20px 6px;color:rgba(93,255,154,.7);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;border-bottom:1px solid rgba(255,255,255,.06)}
-footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.45)}
-@media(max-width:680px){.grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}.t-emoji{font-size:36px}.t-temp{font-size:20px}}
+.d-arrow{color:rgba(255,255,255,.25);font-size:14px;flex-shrink:0}
+.d-empty{padding:18px 22px;color:rgba(255,255,255,.4);font-size:16px}
+.d-searching{padding:16px 22px;color:rgba(255,255,255,.45);font-size:16px;font-style:italic}
+.d-hint{padding:12px 22px 8px;color:rgba(93,255,154,.7);font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;border-bottom:1px solid rgba(255,255,255,.06)}
+footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font-size:17px}
+@media(max-width:680px){.grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}.t-emoji{font-size:40px}.t-temp{font-size:24px}.t-name{font-size:15px}.section h2{font-size:28px}}
 </style>
 </head>
 <body>
