@@ -200,6 +200,9 @@ async function fetchForecast(loc: CruiseLocation) {
   };
 }
 
+// 15-minute in-memory cache for the all-ports response (avoids 24 parallel fetches on every page load)
+let allPortsCache: { payload: object; expiresAt: number } | null = null;
+
 router.get("/weather", async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=1800");
   try {
@@ -228,10 +231,16 @@ router.get("/weather", async (req: Request, res: Response) => {
       return;
     }
 
+    // Return cached response if still fresh
+    if (allPortsCache && Date.now() < allPortsCache.expiresAt) {
+      res.json(allPortsCache.payload);
+      return;
+    }
+
     const embarkation = featuredByType("embarkation", 12);
     const destinations = featuredByType("destination", 12);
     const cards = await Promise.all([...embarkation, ...destinations].map(fetchForecast));
-    res.json({
+    const payload = {
       ok: true,
       generatedAt: new Date().toISOString(),
       embarkation: cards.filter((c) => c.type === "embarkation"),
@@ -244,7 +253,9 @@ router.get("/weather", async (req: Request, res: Response) => {
         .filter((l) => l.type === "destination")
         .map(publicLocation)
         .sort((a, b) => a.name.localeCompare(b.name)),
-    });
+    };
+    allPortsCache = { payload, expiresAt: Date.now() + 15 * 60 * 1000 };
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ ok: false, error: (error as Error).message, embarkation: [], destinations: [] });
   }

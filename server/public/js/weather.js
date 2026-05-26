@@ -1,48 +1,31 @@
 const weatherContainer = document.getElementById('weather-container');
 
-const ports = [
-  {name:'Miami',         slug:'miami',          lat:25.7617, lon:-80.1918},
-  {name:'Ft. Lauderdale',slug:'fort-lauderdale', lat:26.1224, lon:-80.1373},
-  {name:'Port Canaveral',slug:'port-canaveral',  lat:28.4089, lon:-80.6043},
-  {name:'Tampa',         slug:'tampa',           lat:27.9506, lon:-82.4572},
-  {name:'Jacksonville',  slug:'jacksonville',    lat:30.3322, lon:-81.6557},
-  {name:'Palm Beach',    slug:'palm-beach',      lat:26.7694, lon:-80.0534},
-  {name:'Key West',      slug:'key-west',        lat:24.5551, lon:-81.7800}
-];
-
-function emoji(code){
-  if([0].includes(code)) return '☀️';
-  if([1,2].includes(code)) return '🌤️';
-  if([3].includes(code)) return '☁️';
-  if([45,48].includes(code)) return '🌫️';
-  if([51,53,55,61,63,65,80,81,82].includes(code)) return '🌧️';
-  if([95,96,99].includes(code)) return '⛈️';
-  return '⛅';
-}
-
-async function loadWeather(){
-  if(!weatherContainer) return;
+async function loadWeather() {
+  if (!weatherContainer) return;
 
   weatherContainer.innerHTML = '<div style="color:white;padding:20px;">Loading live port weather...</div>';
 
-  try{
-    const cards = await Promise.all(ports.map(async port => {
-      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${port.lat}&longitude=${port.lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`);
-      const data = await res.json();
+  try {
+    const res = await fetch('/api/weather');
+    if (!res.ok) throw new Error('Weather fetch failed');
+    const data = await res.json();
 
-      return `
-        <a class="home-weather-tile" href="forecast.html?place=${port.slug}">
-          <div class="home-weather-emoji">${emoji(data.current.weather_code)}</div>
-          <div class="home-weather-location">${port.name}</div>
-          <div class="home-weather-temp">${Math.round(data.current.temperature_2m)}°</div>
-        </a>
-      `;
-    }));
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
 
-    weatherContainer.innerHTML = cards.join('');
+    const ports = (data.embarkation || []).slice(0, 7);
 
-  } catch(err){
-    console.error(err);
+    if (ports.length === 0) throw new Error('No ports returned');
+
+    weatherContainer.innerHTML = ports.map(port => `
+      <a class="home-weather-tile" href="forecast.html?place=${port.slug}">
+        <div class="home-weather-emoji">${port.emoji}</div>
+        <div class="home-weather-location">${port.name.replace(/, .*/, '')}</div>
+        <div class="home-weather-temp">${port.temp}°</div>
+      </a>
+    `).join('');
+
+  } catch (err) {
+    console.error('Weather load error:', err);
     weatherContainer.innerHTML = '<div style="color:white;padding:20px;">Unable to load weather right now.</div>';
   }
 }
