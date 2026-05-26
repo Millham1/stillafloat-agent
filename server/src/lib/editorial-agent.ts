@@ -106,7 +106,7 @@ const TOOLS = [
                 travelerImpact: { type: "string", description: "1 crisp sentence: the single most important thing a traveler needs to act on or know right now." },
                 summary: {
                   type: "string",
-                  description: "CliffsNotes-style synopsis (4-6 sentences). Do NOT copy-paste the article lead. Instead synthesize: (1) What happened and who is involved. (2) The underlying cause or context. (3) The scale or significance. (4) What it means specifically for cruisers or travelers. (5) Any action, date, or detail worth knowing. Write as if briefing a busy editor who hasn't read the article — factual, specific, no filler phrases like 'in a significant development'.",
+                  description: "CliffsNotes-style deep summary — MINIMUM 4 full sentences, target 5-7 sentences (100-160 words). A 1-2 sentence response is NEVER acceptable. Do NOT copy-paste or lightly rephrase the article headline or lead. Instead write a genuine paragraph that synthesizes: (1) What happened and who is involved — with specifics (ship name, company, dollar amount, port, date). (2) The underlying cause or context — why did this happen? (3) The scale or significance — how big a deal is this? (4) What it means specifically for cruisers or travelers — practical impact. (5) Any action, deadline, or concrete detail worth knowing. Write as if briefing a busy editor who hasn't read the article — factual, specific, human. If you only have a headline and short blurb to work from, use your knowledge of the cruise industry to fill in context and make the summary stand on its own.",
                 },
                 homepageCandidate: { type: "boolean" },
                 reasoning: { type: "string", description: "2-3 sentences in a personal, opinionated editorial voice — written as if Mark is telling a friend why they should read this. Be specific: mention the concrete detail (ship name, dollar figure, quote, ironic twist) that makes it worth clicking. This text appears on the website as 'Why This Matters'. NEVER write: 'This story is relevant for cruisers', 'provides important information', 'it is important to note', or any other generic opening." },
@@ -208,7 +208,7 @@ async function toolFetchRss(
     const feed = await rssParser.parseURL(url);
     return (feed.items || []).slice(0, 15).map((item) => ({
       title: truncate(item.title, 120),
-      desc: truncate(item.contentSnippet || item.summary || "", 400),
+      desc: truncate(item.contentSnippet || item.summary || "", 800),
       url: item.link || item.guid || "",
       src: name,
       date: item.isoDate || item.pubDate || "",
