@@ -24,7 +24,7 @@ kind = "api"
   VITE_API_BASE_URL = "https://stillafloatcruising.com"
 
   [services.production.run]
-  args = ["pnpm", "--filter", "@workspace/api-server", "run", "start"]
+  args = ["node", "--enable-source-maps", "/home/runner/workspace/server/dist/index.mjs"]
 
   [services.production.run.env]
   PORT = "8080"

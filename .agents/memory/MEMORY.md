@@ -1,0 +1,1 @@
+- [Production run command — absolute path required](deployment-run-command.md) — Cloud Run CWD is not workspace root; relative paths fail silently at health check.
