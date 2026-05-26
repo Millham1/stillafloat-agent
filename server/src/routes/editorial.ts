@@ -184,6 +184,7 @@ router.get("/editorial-queue", async (req: Request, res: Response) => {
       degradedMode: Boolean(candidates.systemStatus?.degraded),
       count: queue.length,
       stories: queue,
+      approvalToken: process.env["AGENT_APPROVAL_TOKEN"] || "",
     });
   } catch (error) {
     req.log.error({ err: error }, "Editorial queue failure");
