@@ -10,6 +10,7 @@ export interface AffiliateItem {
   description: string;
   category: string;
   smartStrip: string;
+  affiliateLink: string;
   imageUrl: string;
   featured: boolean;
   createdAt: string;
@@ -58,7 +59,7 @@ router.post("/affiliate-items", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const { title, description, category, smartStrip, imageUrl, featured, sortOrder } = req.body;
+    const { title, description, category, smartStrip, affiliateLink, imageUrl, featured, sortOrder } = req.body;
     if (!title || !category) {
       res.status(400).json({ success: false, error: "title and category are required" });
       return;
@@ -70,6 +71,7 @@ router.post("/affiliate-items", async (req: Request, res: Response) => {
       description: String(description || ""),
       category: String(category),
       smartStrip: String(smartStrip || ""),
+      affiliateLink: String(affiliateLink || ""),
       imageUrl: String(imageUrl || ""),
       featured: Boolean(featured),
       createdAt: new Date().toISOString(),
@@ -95,13 +97,14 @@ router.patch("/affiliate-items/:id", async (req: Request, res: Response) => {
       res.status(404).json({ success: false, error: "Item not found" });
       return;
     }
-    const { title, description, category, smartStrip, imageUrl, featured, sortOrder } = req.body;
+    const { title, description, category, smartStrip, affiliateLink, imageUrl, featured, sortOrder } = req.body;
     const item = store.items[idx];
     if (item) {
       if (title !== undefined) item.title = String(title);
       if (description !== undefined) item.description = String(description);
       if (category !== undefined) item.category = String(category);
       if (smartStrip !== undefined) item.smartStrip = String(smartStrip);
+      if (affiliateLink !== undefined) item.affiliateLink = String(affiliateLink);
       if (imageUrl !== undefined) item.imageUrl = String(imageUrl);
       if (featured !== undefined) item.featured = Boolean(featured);
       if (sortOrder !== undefined) item.sortOrder = Number(sortOrder);

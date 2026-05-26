@@ -341,7 +341,7 @@ async function loadFeatured(){
       const img=document.getElementById('featured-img');
       img.src=item.imageUrl; img.alt=item.title||'Featured item'; img.style.display='block';
     }
-    const link=extractLink(item.smartStrip);
+    const link=item.affiliateLink||extractLink(item.smartStrip);
     if(link)document.getElementById('featured-link').href=link;
   }catch(e){/* no featured item — stay hidden */}
 }

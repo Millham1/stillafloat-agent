@@ -37,6 +37,7 @@ const EMPTY_FORM = {
   description: "",
   category: "air-travel",
   smartStrip: "",
+  affiliateLink: "",
   imageUrl: "",
   featured: false,
 };
@@ -195,6 +196,17 @@ export default function AffiliateManager() {
                   className="w-full px-3 py-2 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-muted-foreground">Direct link to a product image (Amazon image URL, your own hosted photo, etc.)</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Affiliate Link URL</label>
+                <input
+                  value={form.affiliateLink}
+                  onChange={e => setForm(f => ({ ...f, affiliateLink: e.target.value }))}
+                  placeholder="https://www.amazon.com/dp/ASIN?tag=yourtag-20"
+                  className="w-full px-3 py-2 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-muted-foreground">Your tagged Amazon affiliate URL — this is what the "More Info" button links to.</p>
               </div>
 
               <div className="space-y-1.5">
