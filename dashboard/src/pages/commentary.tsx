@@ -356,11 +356,10 @@ export default function CommentaryManager() {
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        title="Edit"
                         onClick={() => openEdit(post)}
-                        className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-xs transition-colors"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-3 h-3" /> Edit
                       </button>
                       <button
                         title={post.status === "published" ? "Unpublish" : "Republish"}
