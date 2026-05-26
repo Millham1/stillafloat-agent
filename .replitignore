@@ -3,3 +3,8 @@
 
 # No need to store the pnpm store twice.
 .local
+
+# node_modules are not needed at runtime — the production server bundle is fully
+# self-contained (esbuild), and the dashboard is pre-built static files.
+# Excluding these makes the deployed image dramatically smaller and faster to start.
+**/node_modules
