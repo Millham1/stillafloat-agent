@@ -1,0 +1,103 @@
+2026-05-26 11:50:48.16
+79a031d7
+User
+{"level":30,"time":1779810648167,"pid":19,"hostname":"localhost","req":{"id":11,"method":"GET","url":"/css/styles.css"},"res":{"statusCode":304},"responseTime":1,"msg":"request completed"}
+2026-05-26 11:50:48.16
+79a031d7
+User
+{"level":30,"time":1779810648168,"pid":19,"hostname":"localhost","req":{"id":12,"method":"GET","url":"/assets/images/still-afloat-text.png"},"res":{"statusCode":304},"responseTime":1,"msg":"request completed"}
+2026-05-26 11:50:48.17
+79a031d7
+User
+{"level":30,"time":1779810648170,"pid":19,"hostname":"localhost","req":{"id":13,"method":"GET","url":"/assets/images/stay-afloat-text.png"},"res":{"statusCode":304},"responseTime":2,"msg":"request completed"}
+2026-05-26 11:50:48.24
+79a031d7
+User
+{"level":30,"time":1779810648244,"pid":19,"hostname":"localhost","req":{"id":14,"method":"GET","url":"/components/navbar.js"},"res":{"statusCode":304},"responseTime":1,"msg":"request completed"}
+2026-05-26 11:50:48.25
+79a031d7
+User
+{"level":30,"time":1779810648253,"pid":19,"hostname":"localhost","req":{"id":15,"method":"GET","url":"/js/app.js"},"res":{"statusCode":304},"responseTime":1,"msg":"request completed"}
+2026-05-26 11:50:48.31
+79a031d7
+User
+{"level":30,"time":1779810648312,"pid":19,"hostname":"localhost","req":{"id":17,"method":"GET","url":"/js/news.js"},"res":{"statusCode":304},"responseTime":1,"msg":"request completed"}
+2026-05-26 11:50:48.34
+79a031d7
+User
+{"level":30,"time":1779810648347,"pid":19,"hostname":"localhost","req":{"id":18,"method":"GET","url":"/js/weather.js"},"res":{"statusCode":304},"responseTime":0,"msg":"request completed"}
+2026-05-26 11:50:48.37
+79a031d7
+User
+{"level":30,"time":1779810648374,"pid":19,"hostname":"localhost","req":{"id":19,"method":"GET","url":"/components/crab.js"},"res":{"statusCode":304},"responseTime":1,"msg":"request completed"}
+2026-05-26 11:50:48.40
+79a031d7
+User
+{"level":30,"time":1779810648402,"pid":19,"hostname":"localhost","req":{"id":21,"method":"GET","url":"/assets/images/parrots.JPG"},"res":{"statusCode":304},"responseTime":3,"msg":"request completed"}
+2026-05-26 11:50:48.46
+79a031d7
+User
+{"level":30,"time":1779810648467,"pid":19,"hostname":"localhost","req":{"id":23,"method":"GET","url":"/assets/images/Tropical%20beach%20with%20palm%20trees%20and%20ship.png"},"res":{"statusCode":200},"responseTime":11,"msg":"request completed"}
+2026-05-26 11:50:49.14
+79a031d7
+User
+{"level":30,"time":1779810649145,"pid":19,"hostname":"localhost","req":{"id":16,"method":"GET","url":"/api/youtube-featured"},"res":{"statusCode":304},"responseTime":892,"msg":"request completed"}
+2026-05-26 11:50:49.14
+79a031d7
+User
+{"level":30,"time":1779810649147,"pid":19,"hostname":"localhost","req":{"id":20,"method":"GET","url":"/api/homepage-feed"},"res":{"statusCode":304},"responseTime":751,"msg":"request completed"}
+2026-05-26 11:50:49.16
+79a031d7
+User
+{"level":30,"time":1779810649168,"pid":19,"hostname":"localhost","req":{"id":22,"method":"GET","url":"/api/news-feed"},"res":{"statusCode":304},"responseTime":768,"msg":"request completed"}
+2026-05-26 11:50:57.32
+79a031d7
+User
+{"level":30,"time":1779810657325,"pid":19,"hostname":"localhost","req":{"id":24,"method":"GET","url":"/favicon.ico"},"res":{"statusCode":304},"responseTime":3,"msg":"request completed"}
+2026-05-26 11:51:44.32
+79a031d7
+User
+{"level":30,"time":1779810704325,"pid":19,"hostname":"localhost","req":{"id":25,"method":"GET","url":"/work-with-mark.html"},"res":{"statusCode":200},"responseTime":5,"msg":"request completed"}
+2026-05-26 11:51:44.43
+79a031d7
+User
+{"level":30,"time":1779810704436,"pid":19,"hostname":"localhost","req":{"id":28,"method":"GET","url":"/components/navbar.js"},"res":{"statusCode":304},"responseTime":1,"msg":"request completed"}
+2026-05-26 11:51:44.43
+79a031d7
+User
+{"level":30,"time":1779810704437,"pid":19,"hostname":"localhost","req":{"id":27,"method":"GET","url":"/assets/images/mark-bio.JPG"},"res":{"statusCode":200},"responseTime":3,"msg":"request completed"}
+2026-05-26 11:51:44.44
+79a031d7
+User
+{"level":30,"time":1779810704448,"pid":19,"hostname":"localhost","req":{"id":26,"method":"GET","url":"/assets/images/still_afloat_logo.png"},"res":{"statusCode":200},"responseTime":15,"msg":"request completed"}
+2026-05-26 11:51:44.46
+79a031d7
+User
+{"level":30,"time":1779810704468,"pid":19,"hostname":"localhost","req":{"id":29,"method":"GET","url":"/css/styles.css"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-05-26 11:51:44.60
+79a031d7
+User
+{"level":30,"time":1779810704599,"pid":19,"hostname":"localhost","req":{"id":30,"method":"GET","url":"/api/public-config"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-05-26 11:51:44.65
+79a031d7
+User
+{"level":30,"time":1779810704656,"pid":19,"hostname":"localhost","req":{"id":31,"method":"GET","url":"/favicon.ico"},"res":{"statusCode":304},"responseTime":1,"msg":"request completed"}
+2026-05-26 12:11:10.26
+79a031d7
+User
+{"level":30,"time":1779811870267,"pid":19,"hostname":"localhost","req":{"id":32,"method":"GET","url":"/"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+2026-05-26 12:11:10.26
+79a031d7
+User
+{"level":30,"time":1779811870268,"pid":19,"hostname":"localhost","req":{"id":33,"method":"GET","url":"/"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-05-26 12:24:40.17
+79a031d7
+User
+{"level":30,"time":1779812680179,"pid":19,"hostname":"localhost","req":{"id":34,"method":"GET","url":"/wp-admin/install.php"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+
+Collapse
+
+Wrap
+
+Colors
+
