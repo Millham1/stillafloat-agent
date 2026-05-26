@@ -8,6 +8,8 @@ import { logger } from "./lib/logger";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, "../public");
+const DASHBOARD_DIR = path.resolve(__dirname, "../../dashboard/dist/public");
+const DASHBOARD_HOST = "stillafloat-agent.replit.app";
 
 const app: Express = express();
 
@@ -36,9 +38,6 @@ app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 app.use("/api", router);
 
-// Serve the static website — must come after /api routes
-// HTML files get no-cache so code changes are always picked up immediately.
-// Assets (images, CSS, JS bundles) keep default caching for performance.
 const staticOpts: Parameters<typeof express.static>[1] = {
   setHeaders(res, filePath) {
     if (filePath.endsWith(".html")) {
@@ -49,6 +48,15 @@ const staticOpts: Parameters<typeof express.static>[1] = {
   },
 };
 
+// Dashboard — only served on stillafloat-agent.replit.app, invisible on the website
+app.use((req, res, next) => {
+  if (req.hostname !== DASHBOARD_HOST) return next();
+  express.static(DASHBOARD_DIR, staticOpts)(req, res, () => {
+    res.sendFile(path.join(DASHBOARD_DIR, "index.html"));
+  });
+});
+
+// Website static files
 app.use(express.static(PUBLIC_DIR, staticOpts));
 app.use("/preview-site", express.static(PUBLIC_DIR, staticOpts));
 

@@ -20,7 +20,8 @@ kind = "api"
   [services.production.build.env]
   NODE_ENV = "production"
   PORT = "18336"
-  BASE_PATH = "/dashboard"
+  BASE_PATH = "/"
+  VITE_API_BASE_URL = "https://stillafloatcruising.com"
 
   [services.production.run]
   args = ["node", "--enable-source-maps", "server/dist/index.mjs"]
