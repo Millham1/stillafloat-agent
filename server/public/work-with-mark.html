@@ -5,338 +5,405 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Work With Mark | Still Afloat Cruising</title>
 <meta name="description" content="Plan your cruise with Mark Millham — experienced cruiser, former liveaboard sailor, and independent travel advisor. No pressure, no upsell agenda.">
+<link rel="canonical" href="https://stillafloatcruising.com/work-with-mark.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:url" content="https://stillafloatcruising.com/work-with-mark.html">
+<meta property="og:title" content="Work With Mark | Still Afloat Cruising">
+<meta property="og:description" content="Plan your cruise with someone who's actually been there. Independent advisor. No upsell agenda.">
+<meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/css/styles.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
 *{box-sizing:border-box}
 
-.wm-shell{max-width:820px;margin:0 auto;padding:40px 24px 80px}
+/* ── Cinematic hero ── */
+.wm-hero{
+  position:relative;
+  min-height:520px;
+  display:flex;
+  align-items:flex-end;
+  background:
+    linear-gradient(to right, rgba(4,10,22,.92) 0%, rgba(4,10,22,.82) 45%, rgba(4,10,22,.35) 100%),
+    url('/assets/images/mark-bio.JPG') right center / cover no-repeat;
+  border-bottom:3px solid rgba(93,255,154,.22);
+  padding-bottom:0;
+}
+.wm-hero-inner{
+  position:relative;
+  z-index:2;
+  max-width:680px;
+  padding:120px 40px 72px;
+}
+.wm-hero-inner h1{
+  font-size:clamp(40px,6vw,72px);
+  color:#fff;
+  line-height:1.05;
+  margin:16px 0 20px;
+}
+.wm-hero-inner p{
+  font-size:21px;
+  color:rgba(255,255,255,.80);
+  line-height:1.7;
+  margin:0 0 32px;
+  max-width:560px;
+}
+.wm-cta-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  background:linear-gradient(135deg,#0077b6,#023e6e);
+  color:#5dff9a;
+  font-family:'Bree Serif',serif;
+  font-size:19px;
+  font-weight:700;
+  padding:16px 32px;
+  border-radius:50px;
+  text-decoration:none;
+  box-shadow:0 10px 30px rgba(0,119,182,.4);
+  transition:transform .2s, box-shadow .2s;
+}
+.wm-cta-btn:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,119,182,.5)}
 
-/* ── Hero ── */
-.hero-layout{display:grid;grid-template-columns:1fr 340px;gap:40px;align-items:center;margin-bottom:48px}
-@media(max-width:720px){.hero-layout{grid-template-columns:1fr;gap:0}}
-.hero-badge{display:inline-flex;align-items:center;gap:10px;color:#ffca4f;font-size:16px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;margin-bottom:18px;opacity:.92}
-h1.hero-title{font-size:clamp(48px,8vw,82px);font-weight:900;line-height:1.0;margin:0 0 12px;font-family:'Bree Serif',serif;color:white}
-h1.hero-title span{color:#5dff9a}
-.hero-sub{font-size:clamp(20px,2.5vw,24px);line-height:1.55;color:rgba(255,255,255,.82);margin:0 0 20px;font-style:italic}
-.hero-body{font-size:20px;line-height:1.8;color:rgba(255,255,255,.78);margin:0}
-.mark-photo-wrap{position:relative;border-radius:24px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.55);border:2px solid rgba(0,119,182,.3)}
-.mark-photo-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(4,11,22,.6) 0%,transparent 50%);pointer-events:none}
-.mark-photo-wrap img{width:100%;height:420px;object-fit:cover;object-position:center top;display:block}
-.mark-photo-caption{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:14px;color:rgba(255,255,255,.65);letter-spacing:.06em;font-weight:700;text-transform:uppercase;z-index:1}
-@media(max-width:720px){.mark-photo-wrap{margin-top:32px}.mark-photo-wrap img{height:300px}}
+/* ── Divider rule ── */
+.wm-rule{height:1px;background:linear-gradient(to right,transparent,rgba(0,119,182,.5),transparent);margin:0}
 
-/* ── Rule ── */
-.rule{height:1px;background:linear-gradient(to right,transparent,rgba(0,119,182,.5),transparent);margin:40px 0}
-
-/* ── Section headers ── */
-.section-label{font-size:15px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#ffca4f;margin:0 0 10px;display:block}
-h2.section-title{font-size:clamp(30px,4vw,44px);font-weight:900;color:white;margin:0 0 24px;font-family:'Bree Serif',serif;line-height:1.1}
-
-/* ── Why cards ── */
-.why-grid{display:flex;flex-direction:column;gap:14px;margin-bottom:36px}
-.why-item{display:flex;align-items:flex-start;gap:18px;background:rgba(9,18,34,.7);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:20px 24px}
-.why-icon{width:44px;height:44px;border-radius:12px;background:rgba(93,255,154,.1);border:1px solid rgba(93,255,154,.2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;margin-top:2px}
-.why-text{font-size:19px;line-height:1.75;color:rgba(255,255,255,.88)}
-
-/* ── What I help with ── */
-.help-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:36px}
-@media(max-width:600px){.help-grid{grid-template-columns:1fr}}
-.help-card{background:rgba(9,18,34,.7);border:1px solid rgba(0,119,182,.2);border-radius:16px;padding:24px}
-.help-card-title{font-size:18px;font-weight:900;color:#5dff9a;margin:0 0 10px;letter-spacing:.01em}
-.help-card-body{font-size:17px;line-height:1.75;color:rgba(255,255,255,.75);margin:0}
-
-/* ── CTA ── */
-.cta-title{font-size:clamp(32px,5vw,50px);font-weight:900;margin:0 0 14px;font-family:'Bree Serif',serif;line-height:1.1;color:white}
-.cta-body{font-size:19px;line-height:1.75;color:rgba(255,255,255,.78);margin:0 0 8px}
-.cta-es{font-size:16px;color:rgba(255,255,255,.45);margin:0 0 32px;font-style:italic}
+/* ── Credential bar ── */
+.cred-bar{
+  display:flex;
+  justify-content:center;
+  gap:48px;
+  flex-wrap:wrap;
+  padding:40px 20px;
+  background:rgba(4,17,46,.6);
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.cred-item{text-align:center}
+.cred-num{font-family:'Bree Serif',serif;font-size:42px;font-weight:900;color:#5dff9a;line-height:1}
+.cred-label{font-size:16px;color:rgba(255,255,255,.65);margin-top:4px}
 
 /* ── Form card ── */
-.card{background:rgba(9,18,34,.84);border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:40px;backdrop-filter:blur(14px);box-shadow:0 24px 64px rgba(0,0,0,.42)}
+.form-card{
+  background:rgba(9,18,34,.84);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:28px;
+  padding:44px;
+  backdrop-filter:blur(14px);
+  box-shadow:0 24px 64px rgba(0,0,0,.42);
+}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:600px){.form-row{grid-template-columns:1fr}}
 .field{margin-bottom:22px}
-.field-full{grid-column:1/-1}
 label.flabel{display:block;font-size:14px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.60);margin-bottom:9px}
 label.flabel .req{color:#5dff9a;margin-left:2px}
-input[type=text],input[type=email],input[type=tel],input[type=number],select,textarea{width:100%;padding:15px 18px;border-radius:13px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);color:white;font-size:17px;font-family:inherit;outline:none;transition:border-color .2s;appearance:none;-webkit-appearance:none}
+input[type=text],input[type=email],input[type=tel],input[type=number],select,textarea{
+  width:100%;padding:15px 18px;border-radius:13px;border:1px solid rgba(255,255,255,.13);
+  background:rgba(255,255,255,.06);color:white;font-size:17px;font-family:inherit;
+  outline:none;transition:border-color .2s;appearance:none;-webkit-appearance:none
+}
 input::placeholder,textarea::placeholder{color:rgba(255,255,255,.28)}
 input:focus,select:focus,textarea:focus{border-color:rgba(93,255,154,.45);background:rgba(93,255,154,.04)}
 select option{background:#0c2035;color:white}
 textarea{resize:vertical;min-height:110px}
 .radio-row{display:flex;gap:24px;margin-top:6px}
-.radio-row label{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:18px;color:rgba(255,255,255,.82)}
+.radio-row label{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:18px;color:rgba(255,255,255,.82);font-weight:400;text-transform:none;letter-spacing:0}
 .radio-row input[type=radio]{accent-color:#5dff9a;width:18px;height:18px;cursor:pointer}
-
-/* Turnstile */
 .turnstile-wrap{margin-bottom:20px;min-height:65px;display:flex;align-items:center}
 .turnstile-msg{font-size:15px;color:rgba(255,255,255,.4);font-style:italic}
-
-/* Submit */
-.btn-submit{width:100%;padding:19px;border-radius:16px;border:none;cursor:pointer;font-size:20px;font-weight:900;font-family:inherit;background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;box-shadow:0 10px 30px rgba(0,119,182,.35);transition:all .22s ease;letter-spacing:.02em;margin-top:4px}
+.btn-submit{
+  width:100%;padding:19px;border-radius:16px;border:none;cursor:pointer;
+  font-size:20px;font-weight:900;font-family:inherit;
+  background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;
+  box-shadow:0 10px 30px rgba(0,119,182,.35);transition:all .22s ease;
+  letter-spacing:.02em;margin-top:4px
+}
 .btn-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,119,182,.45)}
 .btn-submit:disabled{opacity:.55;cursor:not-allowed;transform:none}
-
-/* Error/Success */
 .msg-box{display:none;margin-bottom:18px;padding:15px 18px;border-radius:12px;font-size:17px;font-weight:600}
 .msg-box.show{display:block}
 .msg-error{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
-.msg-success-state{display:none;text-align:center;padding:40px 20px}
+.msg-success-state{display:none;text-align:center;padding:48px 20px}
 .msg-success-state.show{display:block}
 .success-icon{font-size:56px;margin-bottom:16px}
 .success-title{font-size:clamp(24px,4vw,34px);font-weight:900;color:#5dff9a;margin:0 0 14px;font-family:'Bree Serif',serif}
 .success-body{font-size:19px;line-height:1.75;color:rgba(255,255,255,.78);margin:0 0 28px}
-.success-yt{display:inline-flex;align-items:center;gap:9px;padding:14px 28px;border-radius:12px;background:rgba(0,119,182,.2);border:1px solid rgba(0,119,182,.35);color:#6dcfff;text-decoration:none;font-weight:700;font-size:17px;transition:all .2s}
+.success-yt{
+  display:inline-flex;align-items:center;gap:9px;padding:14px 28px;border-radius:12px;
+  background:rgba(0,119,182,.2);border:1px solid rgba(0,119,182,.35);color:#6dcfff;
+  text-decoration:none;font-weight:700;font-size:17px;transition:all .2s
+}
 .success-yt:hover{background:rgba(0,119,182,.35);transform:translateY(-1px)}
+
+@media(max-width:720px){
+  .wm-hero-inner{padding:80px 20px 52px}
+  .form-row{grid-template-columns:1fr}
+  .form-card{padding:28px 20px}
+  .cred-bar{gap:28px}
+  .cred-num{font-size:32px}
+}
 </style>
 </head>
 <body>
-<div id="navbar-container"></div>
 
-<div class="wm-shell">
-
-  <!-- ── HERO ── -->
-  <div class="hero-layout">
-    <div class="hero-text">
-      <div class="hero-badge"><i class="fa-solid fa-compass"></i>&nbsp; Independent Travel Advisor</div>
-      <h1 class="hero-title">Work With <span>Mark</span></h1>
-      <p class="hero-sub">Plan your cruise with someone who's actually been there.</p>
-      <p class="hero-body">
-        I'm Mark Millham — retired IT senior manager, U.S. veteran, former liveaboard sailor,
-        and experienced cruiser. I'm an independent travel advisor affiliated with
-        Cornerstone Collective, and I help people cut through the noise and book the right cruise
-        for their situation — not the one that's easiest to sell.
-      </p>
-    </div>
-    <div class="mark-photo-wrap">
-      <img src="/assets/images/mark-bio.JPG" alt="Mark Millham — Still Afloat">
-      <div class="mark-photo-caption">Mark Millham · Still Afloat</div>
-    </div>
+<!-- ── HERO ── -->
+<section class="wm-hero">
+  <div id="navbar-container"></div>
+  <div class="wm-hero-inner">
+    <div class="section-kicker">Independent Travel Advisor</div>
+    <h1>Plan your cruise with someone who's actually been there.</h1>
+    <p>I'm Mark Millham — U.S. veteran, former liveaboard sailor, and experienced cruiser affiliated with Cornerstone Collective. I help people book the right cruise for their situation, not the one that's easiest to sell.</p>
+    <a href="#contact" class="wm-cta-btn"><i class="fa-solid fa-compass"></i> Start Planning with Mark</a>
   </div>
+</section>
 
-  <div class="rule"></div>
-
-  <!-- ── WHY WORK WITH MARK ── -->
-  <div class="section-label">Why Work With Mark</div>
-  <h2 class="section-title">What you get that a booking engine doesn't give you</h2>
-  <div class="why-grid">
-    <div class="why-item">
-      <div class="why-icon">⚓</div>
-      <div class="why-text">Someone who has cruised across multiple lines many times over — not someone reading from a brochure.</div>
-    </div>
-    <div class="why-item">
-      <div class="why-icon">💡</div>
-      <div class="why-text">An IT-trained mind applied to cruise math — pricing, cabin categories, onboard costs, and whether a deal is actually a deal.</div>
-    </div>
-    <div class="why-item">
-      <div class="why-icon">🥂</div>
-      <div class="why-text">Real experience planning a cruise for a first-timer. My wife Ceci's first cruise was on the Norwegian Getaway. I know what makes a first cruise work — and what kills it.</div>
-    </div>
-    <div class="why-item">
-      <div class="why-icon">🎖️</div>
-      <div class="why-text">A military background that means I take logistics seriously. Embarkation, port timing, travel days, contingency planning — these are not afterthoughts.</div>
-    </div>
-    <div class="why-item">
-      <div class="why-icon">🚫</div>
-      <div class="why-text">No pressure, no upsell agenda. I get paid when you sail happy — not when I push you into a cabin category you don't need.</div>
-    </div>
+<!-- ── CREDENTIAL BAR ── -->
+<div class="cred-bar">
+  <div class="cred-item">
+    <div class="cred-num">Multiple</div>
+    <div class="cred-label">Cruise lines experienced</div>
   </div>
-
-  <p class="hero-body" style="margin-bottom:36px">
-    I work with first-timers, returning cruisers planning something bigger,
-    and couples where one partner is doing all the research.
-    If that last one sounds familiar — I've been that partner. I know how it goes.
-  </p>
-
-  <div class="rule"></div>
-
-  <!-- ── WHAT I HELP WITH ── -->
-  <div class="section-label">What I Help With</div>
-  <h2 class="section-title">From the first question to the gangway</h2>
-  <div class="help-grid">
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-ship fa-sm"></i> Cruise Line &amp; Ship Selection</div>
-      <div class="help-card-body">Matching the right ship to your travel style, group size, and budget.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-map-location-dot fa-sm"></i> Itinerary Planning</div>
-      <div class="help-card-body">Ports that are worth the day — and ports that look better on paper than in person.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-bed fa-sm"></i> Cabin Category Advice</div>
-      <div class="help-card-body">When the interior is fine, when the balcony changes everything, and what the upgrade actually costs in real terms.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-calculator fa-sm"></i> Understanding the Real Cost</div>
-      <div class="help-card-body">Gratuities, drink packages, specialty dining, excursions, Wi-Fi — I'll walk you through what's included and what adds up.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-dice fa-sm"></i> Casino &amp; Loyalty Offers</div>
-      <div class="help-card-body">What cruise casino offers actually include, how to evaluate them, and whether chasing an offer makes sense for your situation.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-file-contract fa-sm"></i> Booking &amp; Documentation</div>
-      <div class="help-card-body">From deposit to final payment — passport requirements, travel insurance, and everything in between.</div>
-    </div>
+  <div class="cred-item">
+    <div class="cred-num">20+ yrs</div>
+    <div class="cred-label">On the water</div>
   </div>
-
-  <div class="rule"></div>
-
-  <!-- ── CTA + FORM ── -->
-  <div class="cta-title">Ready to start planning?</div>
-  <p class="cta-body">
-    Fill out the form below and I'll be in touch within 24 hours.
-    No commitment, no sales pitch — just a conversation about where you want to go
-    and how to get there without overpaying or overthinking it.
-  </p>
-
-  <div class="card">
-
-    <!-- Success state (hidden until 200 response) -->
-    <div class="msg-success-state" id="successState">
-      <div class="success-icon">🧭</div>
-      <div class="success-title" id="successTitle">You're on the radar.</div>
-      <p class="success-body">
-        Mark will review your details and be in touch within 24 hours.
-        In the meantime, catch up on the channel —
-        there's already something there worth watching.
-      </p>
-      <a href="https://www.youtube.com/@StillAfloatcruising2026" target="_blank" rel="noopener" class="success-yt">
-        <i class="fa-brands fa-youtube"></i> Visit the Still Afloat Channel
-      </a>
-    </div>
-
-    <!-- Error box -->
-    <div id="errorMsg" class="msg-box msg-error"></div>
-
-    <!-- Contact form -->
-    <form id="contactForm" novalidate>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="first_name">First Name<span class="req">*</span></label>
-          <input type="text" id="first_name" name="first_name" placeholder="Jane" autocomplete="given-name" required>
-        </div>
-        <div class="field">
-          <label class="flabel" for="last_name">Last Name<span class="req">*</span></label>
-          <input type="text" id="last_name" name="last_name" placeholder="Smith" autocomplete="family-name" required>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="email">Email Address<span class="req">*</span></label>
-          <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
-        </div>
-        <div class="field">
-          <label class="flabel" for="phone">Phone Number</label>
-          <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" autocomplete="tel">
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="preferred_lang">Preferred Language</label>
-          <select id="preferred_lang" name="preferred_lang">
-            <option value="en">English</option>
-            <option value="es">Español</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="flabel" for="num_travelers">Number of Travelers<span class="req">*</span></label>
-          <input type="number" id="num_travelers" name="num_travelers" placeholder="2" min="1" max="20" required>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="flabel" for="travel_dates">Approximate Travel Dates<span class="req">*</span></label>
-        <input type="text" id="travel_dates" name="travel_dates" placeholder="e.g. Spring 2027 or March 15–22, 2027" required>
-      </div>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="destination">Destination Interest</label>
-          <select id="destination" name="destination">
-            <option value="">— Not sure yet —</option>
-            <option>Caribbean</option>
-            <option>Mediterranean</option>
-            <option>Alaska</option>
-            <option>Bahamas</option>
-            <option>Mexico</option>
-            <option>Europe (River)</option>
-            <option>Not sure yet</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="flabel" for="cruise_line_pref">Cruise Line Preference</label>
-          <select id="cruise_line_pref" name="cruise_line_pref">
-            <option value="">— No preference —</option>
-            <option>Norwegian (NCL)</option>
-            <option>Royal Caribbean</option>
-            <option>Carnival</option>
-            <option>Celebrity</option>
-            <option>Holland America</option>
-            <option>MSC</option>
-            <option>No preference</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="budget_range">Budget Per Person</label>
-          <select id="budget_range" name="budget_range">
-            <option value="">— Select a range —</option>
-            <option>Under $1,000</option>
-            <option>$1,000 – $2,000</option>
-            <option>$2,000 – $3,500</option>
-            <option>$3,500 – $5,000</option>
-            <option>$5,000+</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="flabel" for="referral_source">How did you find us?</label>
-          <select id="referral_source" name="referral_source">
-            <option value="">— Select one —</option>
-            <option>YouTube</option>
-            <option>Website</option>
-            <option>Social Media</option>
-            <option>Friend or family referral</option>
-            <option>Other</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="flabel">Is this your first cruise?<span class="req">*</span></label>
-        <div class="radio-row">
-          <label><input type="radio" name="first_time" value="true" required> Yes, first time</label>
-          <label><input type="radio" name="first_time" value="false"> No, I've cruised before</label>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="flabel" for="notes">Questions or anything else we should know</label>
-        <textarea id="notes" name="notes" placeholder="Tell Mark what you're thinking — destinations, budget questions, concerns, anything." maxlength="1000" rows="4"></textarea>
-      </div>
-
-      <!-- Cloudflare Turnstile -->
-      <div class="turnstile-wrap" id="turnstileWrap">
-        <span class="turnstile-msg" id="turnstileMsg"><i class="fa-solid fa-shield-halved"></i>&nbsp; Loading spam protection…</span>
-      </div>
-
-      <button type="submit" class="btn-submit" id="submitBtn">
-        <i class="fa-solid fa-paper-plane"></i>&nbsp; Send My Details to Mark
-      </button>
-
-    </form>
+  <div class="cred-item">
+    <div class="cred-num">IT brain</div>
+    <div class="cred-label">Applied to cruise math</div>
   </div>
-
+  <div class="cred-item">
+    <div class="cred-num">Zero</div>
+    <div class="cred-label">Upsell agenda</div>
+  </div>
 </div>
 
-<footer style="padding:36px 20px 60px;text-align:center;color:rgba(255,255,255,.45);font-size:17px">
-  &copy; 2026 Still Afloat LLC &middot; <em>Cruise smarter. Laugh more. Stay Afloat.</em>
+<!-- ── BRIEF INTRO ── -->
+<section class="section">
+  <div class="wrap">
+    <div class="meet-mark">
+      <img class="bio-img" src="/assets/images/mark-bio.JPG" alt="Mark Millham — Still Afloat">
+      <div class="meet-mark-text">
+        <div class="section-kicker">The Person Behind the Advice</div>
+        <h2>Retired IT manager. Veteran. Former liveaboard sailor.</h2>
+        <p>I cruise the way my IT brain works — with research, planning, and no tolerance for paying for things that don't deliver. When my wife Ceci decided she wanted to try cruising, I put all of it to use. Her first cruise was on the Norwegian Getaway. She's not a reluctant cruiser anymore.</p>
+        <p>If you're the person in your household doing all the research while your partner trusts you to figure it out — I've been that person. I know exactly what you're dealing with.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW I HELP — image-backed cards ── -->
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:36px">
+      <div class="section-kicker">What I Do</div>
+      <h2>From the first question to the gangway</h2>
+    </div>
+    <div class="cards">
+      <div class="flavor-card ship-card">
+        <div>
+          <h3>Ship &amp; Line Selection</h3>
+          <p>Matching the right ship to your travel style, group, and budget — not whatever's being promoted this week.</p>
+        </div>
+      </div>
+      <div class="flavor-card" style="background-image:url('https://images.unsplash.com/photo-1580541832626-2a7131ee809f?q=80&w=1200&auto=format&fit=crop')">
+        <div>
+          <h3>Cruise Math &amp; Real Cost</h3>
+          <p>Drink packages, gratuities, specialty dining, excursions, Wi-Fi — I'll break down what adds up and what's actually worth it.</p>
+        </div>
+      </div>
+      <div class="flavor-card casino-card">
+        <div>
+          <h3>Casino &amp; Loyalty Offers</h3>
+          <p>What cruise casino offers actually include, how to evaluate them, and whether chasing one makes sense for your situation.</p>
+        </div>
+      </div>
+    </div>
+    <div class="cards" style="margin-top:0">
+      <div class="flavor-card gear-card">
+        <div>
+          <h3>Cabin &amp; Itinerary Advice</h3>
+          <p>When the interior is fine, when the balcony changes everything, and which ports are worth the day — vs. which look better on paper.</p>
+        </div>
+      </div>
+      <div class="flavor-card" style="background-image:url('https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1200&auto=format&fit=crop')">
+        <div>
+          <h3>First-Timer Guidance</h3>
+          <p>Everything the booking engine doesn't tell you — embarkation day logistics, what to pack, port timing, and what to skip entirely.</p>
+        </div>
+      </div>
+      <div class="flavor-card" style="background-image:url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1200&auto=format&fit=crop')">
+        <div>
+          <h3>Booking &amp; Documentation</h3>
+          <p>Deposit to final payment — passport requirements, travel insurance, and every step in between handled cleanly.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── VIBE BREAK — no upsell ── -->
+<div class="vibe-section">
+  <div class="wrap">
+    <div class="vibe-panel">
+      <div class="section-kicker">The One Thing That's Different</div>
+      <h2>I get paid when you sail happy.</h2>
+      <p>That means I have exactly one goal — get you on the right ship, in the right cabin, at a price that makes sense for your budget. If an interior room is genuinely the right call, I'll tell you that. If a balcony changes the entire experience on a particular itinerary, I'll tell you that too.</p>
+      <p style="margin-top:20px">No brochure talk. No upsell pressure. Just someone who has done this many times and wants your trip to be worth it.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── CTA + FORM ── -->
+<section class="section" id="contact">
+  <div class="wrap" style="max-width:820px">
+
+    <div style="margin-bottom:36px">
+      <div class="section-kicker">Get Started</div>
+      <h2>Ready to start planning?</h2>
+      <p>Fill out the form below and I'll be in touch within 24 hours. No commitment, no sales pitch — just a conversation about where you want to go and how to get there without overpaying or overthinking it.</p>
+    </div>
+
+    <div class="form-card">
+
+      <div class="msg-success-state" id="successState">
+        <div class="success-icon">🧭</div>
+        <div class="success-title" id="successTitle">You're on the radar.</div>
+        <p class="success-body">Mark will review your details and be in touch within 24 hours. In the meantime, catch up on the channel — there's already something worth watching.</p>
+        <a href="https://www.youtube.com/@StillAfloatcruising2026" target="_blank" rel="noopener" class="success-yt">
+          <i class="fa-brands fa-youtube"></i> Visit the Still Afloat Channel
+        </a>
+      </div>
+
+      <div id="errorMsg" class="msg-box msg-error"></div>
+
+      <form id="contactForm" novalidate>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="first_name">First Name<span class="req">*</span></label>
+            <input type="text" id="first_name" name="first_name" placeholder="Jane" autocomplete="given-name" required>
+          </div>
+          <div class="field">
+            <label class="flabel" for="last_name">Last Name<span class="req">*</span></label>
+            <input type="text" id="last_name" name="last_name" placeholder="Smith" autocomplete="family-name" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="email">Email Address<span class="req">*</span></label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label class="flabel" for="phone">Phone Number</label>
+            <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" autocomplete="tel">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="preferred_lang">Preferred Language</label>
+            <select id="preferred_lang" name="preferred_lang">
+              <option value="en">English</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="flabel" for="num_travelers">Number of Travelers<span class="req">*</span></label>
+            <input type="number" id="num_travelers" name="num_travelers" placeholder="2" min="1" max="20" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="flabel" for="travel_dates">Approximate Travel Dates<span class="req">*</span></label>
+          <input type="text" id="travel_dates" name="travel_dates" placeholder="e.g. Spring 2027 or March 15–22, 2027" required>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="destination">Destination Interest</label>
+            <select id="destination" name="destination">
+              <option value="">— Not sure yet —</option>
+              <option>Caribbean</option>
+              <option>Mediterranean</option>
+              <option>Alaska</option>
+              <option>Bahamas</option>
+              <option>Mexico</option>
+              <option>Europe (River)</option>
+              <option>Not sure yet</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="flabel" for="cruise_line_pref">Cruise Line Preference</label>
+            <select id="cruise_line_pref" name="cruise_line_pref">
+              <option value="">— No preference —</option>
+              <option>Norwegian (NCL)</option>
+              <option>Royal Caribbean</option>
+              <option>Carnival</option>
+              <option>Celebrity</option>
+              <option>Holland America</option>
+              <option>MSC</option>
+              <option>No preference</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="budget_range">Budget Per Person</label>
+            <select id="budget_range" name="budget_range">
+              <option value="">— Select a range —</option>
+              <option>Under $1,000</option>
+              <option>$1,000 – $2,000</option>
+              <option>$2,000 – $3,500</option>
+              <option>$3,500 – $5,000</option>
+              <option>$5,000+</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="flabel" for="referral_source">How did you find us?</label>
+            <select id="referral_source" name="referral_source">
+              <option value="">— Select one —</option>
+              <option>YouTube</option>
+              <option>Website</option>
+              <option>Social Media</option>
+              <option>Friend or family referral</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="flabel">Is this your first cruise?<span class="req">*</span></label>
+          <div class="radio-row">
+            <label><input type="radio" name="first_time" value="true" required> Yes, first time</label>
+            <label><input type="radio" name="first_time" value="false"> No, I've cruised before</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="flabel" for="notes">Questions or anything else we should know</label>
+          <textarea id="notes" name="notes" placeholder="Tell Mark what you're thinking — destinations, budget questions, concerns, anything." maxlength="1000" rows="4"></textarea>
+        </div>
+
+        <div class="turnstile-wrap" id="turnstileWrap">
+          <span class="turnstile-msg" id="turnstileMsg"><i class="fa-solid fa-shield-halved"></i>&nbsp; Loading spam protection…</span>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <i class="fa-solid fa-paper-plane"></i>&nbsp; Send My Details to Mark
+        </button>
+
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" style="height:20px;vertical-align:middle;opacity:.7"></p>
 </footer>
+
+<script src="/components/navbar.js"></script>
 
 <script>
 const form      = document.getElementById('contactForm');
@@ -363,7 +430,6 @@ function showSuccess(firstName) {
   successEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Load Turnstile dynamically ──
 async function initTurnstile() {
   try {
     const cfg = await fetch('/api/public-config').then(r => r.json());
@@ -373,10 +439,7 @@ async function initTurnstile() {
   const wrap = document.getElementById('turnstileWrap');
   const msg  = document.getElementById('turnstileMsg');
 
-  if (!turnstileSiteKey) {
-    msg.textContent = '';
-    return;
-  }
+  if (!turnstileSiteKey) { msg.textContent = ''; return; }
 
   const script = document.createElement('script');
   script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
@@ -395,7 +458,6 @@ async function initTurnstile() {
 }
 initTurnstile();
 
-// ── Submit ──
 form.addEventListener('submit', async e => {
   e.preventDefault();
   errBox.classList.remove('show');
@@ -413,12 +475,11 @@ form.addEventListener('submit', async e => {
     return showError('Please enter a valid email address.');
   if (!numTrav || parseInt(numTrav) < 1)
     return showError('Please tell us how many travelers.');
-  if (!dates)     return showError('Please enter your approximate travel dates.');
+  if (!dates) return showError('Please enter your approximate travel dates.');
   if (!firstTime) return showError("Please let us know if this is your first cruise.");
 
-  if (turnstileSiteKey && !turnstileToken) {
+  if (turnstileSiteKey && !turnstileToken)
     return showError("Please complete the security check above.");
-  }
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Sending…';
@@ -452,19 +513,18 @@ form.addEventListener('submit', async e => {
       btn.disabled = false;
       btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Send My Details to Mark';
       if (res.status === 400 && data.error?.includes('erification')) {
-        return showError("We couldn't verify that you're human — it happens. Please refresh the page and try again.");
+        return showError('Security check failed — please refresh and try again.');
       }
       return showError(data.error || 'Something went wrong. Please try again.');
     }
 
     showSuccess(firstName);
-  } catch {
+  } catch (err) {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Send My Details to Mark';
-    showError('Network error. Please check your connection and try again.');
+    showError('Network error — please check your connection and try again.');
   }
 });
 </script>
-<script src="/components/navbar.js"></script>
 </body>
 </html>

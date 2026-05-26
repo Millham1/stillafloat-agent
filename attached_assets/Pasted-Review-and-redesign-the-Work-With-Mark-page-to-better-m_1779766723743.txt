@@ -1,0 +1,69 @@
+Review and redesign the “Work With Mark” page to better match the overall Still Afloat brand and styling.
+
+GOALS:
+
+* Reduce the overly columnar layout and excessive vertical stacking
+* Eliminate wasted whitespace
+* Improve visual flow and modernize the page structure
+* Make the page feel more premium, cinematic, and travel-brand oriented
+* Keep consistency with the existing site stylesheet and global design system
+
+CRITICAL REQUIREMENTS:
+
+1. DO NOT use inline CSS or page-specific style blocks unless absolutely necessary
+2. Use the site’s existing global stylesheet classes and design tokens
+3. Reuse existing typography, spacing, button, and card styles from the site
+4. Remove duplicated content from the homepage, especially the repeated “Meet Mark” biography section
+5. Replace the current icon-heavy “Why Work With Mark” section with a cleaner layout:
+    * No oversized generic icons
+    * Use either:
+        a) clean horizontal feature cards
+        b) subtle visual separators
+        c) image-backed content blocks
+    * Focus on storytelling and trust rather than corporate iconography
+
+LAYOUT IMPROVEMENTS:
+
+* Convert stacked vertical sections into wider modern content blocks
+* Use more horizontal layouts on desktop
+* Reduce excessive padding and margins creating dead space
+* Use alternating section layouts for visual rhythm
+* Improve responsive behavior for tablet and mobile
+
+CONTENT STRUCTURE:
+Suggested structure:
+
+1. Hero section with stronger emotional hook
+2. Short personal introduction (NOT full homepage bio)
+3. “How I Help” section with modern cards or split layout
+4. Cruise planning / consulting process section
+5. Social proof or experience section
+6. CTA section with stronger visual hierarchy
+
+DESIGN DIRECTION:
+
+* Modern creator/travel brand aesthetic
+* More cinematic and editorial
+* Less corporate consultant feel
+* Less “template website”
+* Maintain clean readability
+* Preserve Still Afloat branding identity
+
+TECHNICAL:
+
+* Refactor page to rely primarily on shared site CSS
+* Remove duplicated or conflicting local styles
+* Simplify DOM structure where possible
+* Improve spacing consistency across sections
+* Avoid excessive nested containers and grids
+
+DO NOT:
+
+* Add random new colors
+* Introduce cartoonish icons
+* Create giant empty sections
+* Duplicate homepage content
+* Create another generic consultant landing page
+
+Instead:
+Make this feel like an experienced cruiser and creator helping people personally plan better cruise experiences.
