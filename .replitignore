@@ -6,5 +6,7 @@
 
 # node_modules are not needed at runtime — the production server bundle is fully
 # self-contained (esbuild), and the dashboard is pre-built static files.
-# Excluding these makes the deployed image dramatically smaller and faster to start.
 **/node_modules
+
+# Chat-attached screenshots and images — not needed at runtime, but can be 400MB+
+attached_assets
