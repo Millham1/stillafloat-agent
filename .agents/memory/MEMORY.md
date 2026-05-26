@@ -1,1 +1,1 @@
-- [Production run command — absolute path required](deployment-run-command.md) — Cloud Run CWD is not workspace root; relative paths fail silently at health check.
+- [.replitignore deploy bloat](replitignore-deploy-bloat.md) — use **/attached_assets (not attached_assets) or nested dirs sneak in; ep1-video/ is 2.5GB, exclude it always.

@@ -1,0 +1,104 @@
+2026-05-26 09:56:54.50
+79a031d7
+User
+{"level":30,"time":1779803814501,"pid":19,"hostname":"localhost","req":{"id":2,"method":"GET","url":"/robots.txt"},"res":{"statusCode":200},"responseTime":12,"msg":"request completed"}
+2026-05-26 10:04:11.96
+79a031d7
+User
+{"level":30,"time":1779804251963,"pid":19,"hostname":"localhost","req":{"id":3,"method":"GET","url":"/wp-admin/install.php"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+2026-05-26 10:08:17.76
+79a031d7
+User
+{"level":30,"time":1779804497761,"pid":19,"hostname":"localhost","req":{"id":4,"method":"GET","url":"/"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+2026-05-26 10:45:19.03
+79a031d7
+User
+{"level":30,"time":1779806719035,"pid":19,"hostname":"localhost","req":{"id":5,"method":"GET","url":"/"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+2026-05-26 10:45:19.43
+79a031d7
+User
+{"level":30,"time":1779806719439,"pid":19,"hostname":"localhost","req":{"id":6,"method":"GET","url":"/css/styles.css"},"res":{"statusCode":200},"responseTime":7,"msg":"request completed"}
+2026-05-26 10:45:19.45
+79a031d7
+User
+{"level":30,"time":1779806719456,"pid":19,"hostname":"localhost","req":{"id":10,"method":"GET","url":"/components/navbar.js"},"res":{"statusCode":200},"responseTime":10,"msg":"request completed"}
+2026-05-26 10:45:19.46
+79a031d7
+User
+{"level":30,"time":1779806719462,"pid":19,"hostname":"localhost","req":{"id":11,"method":"GET","url":"/components/crab.js"},"res":{"statusCode":200},"responseTime":15,"msg":"request completed"}
+2026-05-26 10:45:19.46
+79a031d7
+User
+{"level":30,"time":1779806719464,"pid":19,"hostname":"localhost","req":{"id":8,"method":"GET","url":"/assets/images/stay-afloat-text.png"},"res":{"statusCode":200},"responseTime":24,"msg":"request completed"}
+2026-05-26 10:45:19.46
+79a031d7
+User
+{"level":30,"time":1779806719466,"pid":19,"hostname":"localhost","req":{"id":9,"method":"GET","url":"/assets/images/still-afloat-text.png"},"res":{"statusCode":200},"responseTime":22,"msg":"request completed"}
+2026-05-26 10:45:19.49
+79a031d7
+User
+{"level":30,"time":1779806719491,"pid":19,"hostname":"localhost","req":{"id":13,"method":"GET","url":"/assets/images/Bio%20shot.JPG"},"res":{"statusCode":200},"responseTime":8,"msg":"request completed"}
+2026-05-26 10:45:19.51
+79a031d7
+User
+{"level":30,"time":1779806719513,"pid":19,"hostname":"localhost","req":{"id":14,"method":"GET","url":"/assets/images/parrots.JPG"},"res":{"statusCode":200},"responseTime":28,"msg":"request completed"}
+2026-05-26 10:45:19.52
+79a031d7
+User
+{"level":30,"time":1779806719522,"pid":19,"hostname":"localhost","req":{"id":7,"method":"GET","url":"/assets/images/Youtube%20banner%20cropped.png"},"res":{"statusCode":200},"responseTime":82,"msg":"request completed"}
+2026-05-26 10:45:19.57
+79a031d7
+User
+{"level":30,"time":1779806719570,"pid":19,"hostname":"localhost","req":{"id":15,"method":"GET","url":"/js/app.js"},"res":{"statusCode":200},"responseTime":14,"msg":"request completed"}
+2026-05-26 10:45:19.63
+79a031d7
+User
+{"level":30,"time":1779806719636,"pid":19,"hostname":"localhost","req":{"id":12,"method":"GET","url":"/js/weather.js"},"res":{"statusCode":200},"responseTime":188,"msg":"request completed"}
+2026-05-26 10:45:19.97
+79a031d7
+User
+{"level":30,"time":1779806719970,"pid":19,"hostname":"localhost","req":{"id":16,"method":"GET","url":"/js/news.js"},"res":{"statusCode":200},"responseTime":7,"msg":"request completed"}
+2026-05-26 10:45:20.73
+79a031d7
+User
+{"level":30,"time":1779806720739,"pid":19,"hostname":"localhost","req":{"id":18,"method":"GET","url":"/assets/images/Tropical%20beach%20with%20palm%20trees%20and%20ship.png"},"res":{"statusCode":200},"responseTime":43,"msg":"request completed"}
+2026-05-26 10:45:21.15
+79a031d7
+User
+{"level":30,"time":1779806721157,"pid":19,"hostname":"localhost","req":{"id":17,"method":"GET","url":"/api/youtube-featured"},"res":{"statusCode":200},"responseTime":1047,"msg":"request completed"}
+2026-05-26 10:45:28.64
+79a031d7
+User
+{"level":30,"time":1779806728642,"pid":19,"hostname":"localhost","req":{"id":19,"method":"GET","url":"/api/homepage-feed"},"res":{"statusCode":200},"responseTime":172,"msg":"request completed"}
+2026-05-26 10:45:28.73
+79a031d7
+User
+{"level":30,"time":1779806728737,"pid":19,"hostname":"localhost","req":{"id":20,"method":"GET","url":"/api/news-feed"},"res":{"statusCode":200},"responseTime":264,"msg":"request completed"}
+2026-05-26 10:45:37.49
+79a031d7
+User
+{"level":30,"time":1779806737497,"pid":19,"hostname":"localhost","req":{"id":21,"method":"GET","url":"/favicon.ico"},"res":{"statusCode":200},"responseTime":3,"msg":"request completed"}
+2026-05-26 10:45:38.02
+79a031d7
+User
+{"level":30,"time":1779806738028,"pid":19,"hostname":"localhost","req":{"id":22,"method":"GET","url":"/apple-touch-icon.png"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+2026-05-26 10:54:21.62
+79a031d7
+User
+{"level":30,"time":1779807261624,"pid":19,"hostname":"localhost","req":{"id":23,"method":"GET","url":"/robots.txt"},"res":{"statusCode":200},"responseTime":2,"msg":"request completed"}
+2026-05-26 11:03:10.40
+79a031d7
+User
+{"level":30,"time":1779807790405,"pid":19,"hostname":"localhost","req":{"id":24,"method":"GET","url":"/api/system-status"},"res":{"statusCode":200},"responseTime":774,"msg":"request completed"}
+2026-05-26 11:05:23.69
+79a031d7
+User
+{"level":30,"time":1779807923698,"pid":19,"hostname":"localhost","req":{"id":25,"method":"GET","url":"/"},"res":{"statusCode":200},"responseTime":1,"msg":"request completed"}
+
+Collapse
+
+Wrap
+
+Colors
+
+Live
