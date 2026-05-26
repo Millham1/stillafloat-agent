@@ -27,8 +27,4 @@ kind = "api"
   args = ["node", "--enable-source-maps", "/home/runner/workspace/server/dist/index.mjs"]
 
   [services.production.run.env]
-  PORT = "8080"
   NODE_ENV = "production"
-
-  [services.production.health.startup]
-  path = "/api/healthz"
