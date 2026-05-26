@@ -60,8 +60,12 @@ app.use((req, res, next) => {
 app.use(express.static(PUBLIC_DIR, staticOpts));
 app.use("/preview-site", express.static(PUBLIC_DIR, staticOpts));
 
-// Fallback: serve index.html for unmatched paths
-app.get("/{*path}", (_req, res) => {
+// Fallback: serve index.html for unmatched paths (but not /dashboard which is its own app)
+app.get("/{*path}", (req, res) => {
+  if (req.path.startsWith("/dashboard")) {
+    res.status(404).send("Not found");
+    return;
+  }
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
 
