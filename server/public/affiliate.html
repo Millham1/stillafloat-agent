@@ -237,12 +237,12 @@ footer{
   <div class="feature-wrap" id="featured-wrap" style="display:none">
     <div class="feature">
       <small>Highlighted Item of the Week</small>
+      <img id="featured-img" src="" alt="" style="display:none;max-width:260px;max-height:220px;object-fit:contain;margin:12px auto 16px;border-radius:8px;">
       <h2 id="featured-title">This Week's <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> Pick</h2>
       <p id="featured-desc">A featured cruise find worth calling out before you browse the categories.</p>
-      <a class="btn" id="featured-link" href="#featured-strip">See This Pick →</a>
+      <a class="btn" id="featured-link" href="#" target="_blank" rel="noopener noreferrer">More Info →</a>
     </div>
   </div>
-  <div id="featured-strip" style="max-width:740px;margin:0 auto 40px;"></div>
 
   <div class="cards">
     <a class="card" href="/affiliate/air-travel.html">
@@ -318,6 +318,15 @@ function renderStrip(wrap,html){
   });
 }
 
+function extractLink(smartStrip){
+  if(!smartStrip)return null;
+  const trimmed=smartStrip.trim();
+  if(/^https?:\/\//i.test(trimmed))return trimmed;
+  // Extract first href from HTML
+  const m=trimmed.match(/href=["']([^"']+)["']/i);
+  return m?m[1]:null;
+}
+
 async function loadFeatured(){
   try{
     const resp=await fetch('/api/affiliate-items?featured=true');
@@ -328,7 +337,12 @@ async function loadFeatured(){
     if(item.title)document.getElementById('featured-title').innerHTML=
       esc(item.title)+' — <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> Pick';
     if(item.description)document.getElementById('featured-desc').textContent=item.description;
-    if(item.smartStrip)renderStrip(document.getElementById('featured-strip'),item.smartStrip);
+    if(item.imageUrl){
+      const img=document.getElementById('featured-img');
+      img.src=item.imageUrl; img.alt=item.title||'Featured item'; img.style.display='block';
+    }
+    const link=extractLink(item.smartStrip);
+    if(link)document.getElementById('featured-link').href=link;
   }catch(e){/* no featured item — stay hidden */}
 }
 
