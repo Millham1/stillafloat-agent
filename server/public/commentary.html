@@ -18,71 +18,65 @@
 <meta name="twitter:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/styles.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{--gold:#ffca4f;--blue:#4fc3ff;--seafoam:#5dff9a;--navy:#07183f}
-body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#fff;background:#060f1e}
-
 /* ── Page hero ── */
 .page-hero{position:relative;min-height:360px;display:flex;align-items:flex-end;border-bottom:3px solid rgba(93,255,154,.22)}
-.page-hero-bg{position:absolute;inset:0;background:linear-gradient(to right,rgba(4,10,22,1) 0%,rgba(4,10,22,.94) 38%,rgba(4,10,22,.60) 62%,rgba(4,10,22,.18) 100%),url('/assets/images/Tropical beach with palm trees and ship.png') right center/cover no-repeat;background-color:#060f1e}
+.page-hero-bg{position:absolute;inset:0;background:linear-gradient(to right,rgba(4,10,22,1) 0%,rgba(4,10,22,.94) 38%,rgba(4,10,22,.60) 62%,rgba(4,10,22,.18) 100%),url('/assets/images/Tropical beach with palm trees and ship.png') right center/cover no-repeat}
 .page-hero-content{position:relative;z-index:2;max-width:700px;padding:72px 40px 64px}
-.eyebrow{font-size:.75rem;letter-spacing:.32em;text-transform:uppercase;color:var(--gold);font-weight:800;margin-bottom:10px;opacity:.88}
+.eyebrow{font-size:.8rem;letter-spacing:.32em;text-transform:uppercase;color:#ffca4f;font-weight:800;margin-bottom:10px;opacity:.88}
 .hero-title{font-family:Pacifico,cursive;font-size:clamp(2.6rem,5vw,4.2rem);line-height:1.25;background:linear-gradient(90deg,#ffca4f,#4fc3ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px;padding-bottom:6px}
-.hero-sub{font-size:1.15rem;line-height:1.75;color:rgba(255,255,255,.86);max-width:520px}
-.hero-brand{display:inline-flex;align-items:center;gap:7px;margin-top:14px;color:#5dff9a;font-weight:800;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;opacity:.90}
-.hero-brand img{height:15px;vertical-align:middle;filter:brightness(1.1)}
+.hero-sub{font-size:1.2rem;line-height:1.75;color:rgba(255,255,255,.88);max-width:560px}
+.hero-brand{display:inline-flex;align-items:center;gap:7px;margin-top:14px;color:#5dff9a;font-weight:800;font-size:.8rem;letter-spacing:.22em;text-transform:uppercase;opacity:.90}
+.hero-brand img{height:16px;vertical-align:middle;filter:brightness(1.1)}
 
 /* ── Main shell ── */
-.shell{max-width:860px;margin:auto;padding:48px 28px 64px}
+.shell{max-width:900px;margin:auto;padding:52px 28px 72px}
 
 /* ── Post card ── */
 .post-card{
   display:block;text-decoration:none;color:inherit;
-  background:linear-gradient(145deg,rgba(0,119,182,.18),rgba(7,24,63,.60));
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:20px;overflow:hidden;margin-bottom:20px;
+  background:linear-gradient(145deg,rgba(0,119,182,.20),rgba(7,24,63,.65));
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:22px;overflow:hidden;margin-bottom:24px;
   transition:transform .26s cubic-bezier(.22,1,.36,1),border-color .26s ease,box-shadow .26s ease;
-  backdrop-filter:blur(8px);
+  backdrop-filter:blur(10px);
 }
-.post-card:not(.post-card--media){padding:28px 32px}
-.post-card:hover{transform:translateY(-4px);border-color:rgba(93,255,154,.30);box-shadow:0 16px 40px rgba(0,0,0,.32)}
-/* Media card layout */
-.post-card--media{display:grid;grid-template-columns:220px 1fr}
+.post-card:not(.post-card--media){padding:32px 36px}
+.post-card:hover{transform:translateY(-4px);border-color:rgba(93,255,154,.30);box-shadow:0 16px 40px rgba(0,0,0,.36)}
+.post-card--media{display:grid;grid-template-columns:240px 1fr}
 .post-thumb-wrap{position:relative;overflow:hidden;background:#000}
 .post-thumb{width:100%;height:100%;object-fit:cover;object-position:center;display:block;transition:transform .4s ease}
 .post-card--media:hover .post-thumb{transform:scale(1.04)}
-.yt-badge{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.72);color:#fff;font-size:.72rem;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;backdrop-filter:blur(4px)}
+.yt-badge{position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.72);color:#fff;font-size:.78rem;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;backdrop-filter:blur(4px)}
 .yt-badge i{color:#ff4e4e}
-.post-card-body{padding:24px 28px;display:flex;flex-direction:column;justify-content:center}
-.post-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
-.post-date{font-size:.75rem;letter-spacing:.12em;color:rgba(255,202,79,.85);text-transform:uppercase;font-weight:700}
+.post-card-body{padding:28px 32px;display:flex;flex-direction:column;justify-content:center}
+.post-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.post-date{font-size:.85rem;letter-spacing:.12em;color:rgba(255,202,79,.90);text-transform:uppercase;font-weight:700}
 .post-tags{display:flex;gap:6px;flex-wrap:wrap}
-.tag{display:inline-block;padding:2px 10px;border-radius:30px;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.28);color:#5dff9a;font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.post-title{font-family:'Baloo 2',sans-serif;font-size:1.45rem;font-weight:800;color:#fff;margin-bottom:10px;line-height:1.35}
-.post-excerpt{font-size:1.08rem;line-height:1.72;color:rgba(255,255,255,.72);margin-bottom:16px}
+.tag{display:inline-block;padding:3px 12px;border-radius:30px;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.28);color:#5dff9a;font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.post-title{font-family:'Bree Serif',serif;font-size:1.6rem;color:#fff;margin-bottom:10px;line-height:1.3}
+.post-excerpt{font-size:1.1rem;line-height:1.8;color:rgba(221,238,255,.80);margin-bottom:18px}
 .read-more{display:inline-flex;align-items:center;gap:6px;color:#5dff9a;font-weight:800;font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;opacity:.90;transition:opacity .2s}
 .post-card:hover .read-more{opacity:1}
 
 /* ── Empty / loading state ── */
 .state-box{text-align:center;padding:64px 20px;color:rgba(255,255,255,.45)}
 .state-box i{font-size:48px;margin-bottom:16px;display:block;color:rgba(93,255,154,.35)}
-.state-box p{font-size:1rem}
-
-/* ── Footer ── */
-footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size:.78rem;border-top:1px solid rgba(255,255,255,.07)}
+.state-box p{font-size:1.1rem}
 
 @media(max-width:700px){
-  .post-card--media{grid-template-columns:1fr;grid-template-rows:180px auto}
-  .post-thumb-wrap{height:180px}
+  .post-card--media{grid-template-columns:1fr;grid-template-rows:200px auto}
+  .post-thumb-wrap{height:200px}
 }
 @media(max-width:600px){
-  .page-hero-content{padding:36px 20px 32px}
-  .shell{padding:32px 16px 48px}
-  .post-card:not(.post-card--media){padding:20px 18px}
-  .post-card-body{padding:18px 18px}
+  .page-hero-content{padding:36px 20px 40px}
+  .shell{padding:32px 16px 52px}
+  .post-card:not(.post-card--media){padding:22px 20px}
+  .post-card-body{padding:20px 20px}
+  .post-title{font-size:1.35rem}
 }
 </style>
 </head>
