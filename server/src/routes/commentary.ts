@@ -29,8 +29,13 @@ async function saveStore(store: CommentaryStore): Promise<void> {
   await writeJson(PATHS.commentary, store);
 }
 
-function checkToken(_req: Request): boolean {
-  return true;
+function checkToken(req: Request): boolean {
+  const expected = process.env["AGENT_APPROVAL_TOKEN"];
+  if (!expected) return false;
+  const header = req.headers["x-affiliate-token"];
+  const query = req.query["token"];
+  const provided = (Array.isArray(header) ? header[0] : header) ?? String(query ?? "");
+  return provided === expected;
 }
 
 function stripHtml(str: string): string {
