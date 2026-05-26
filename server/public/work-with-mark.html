@@ -18,6 +18,12 @@
 <style>
 *{box-sizing:border-box}
 
+/* ── Standalone logo (independent of navbar) ── */
+.wm-logo-link{position:absolute;top:18px;left:22px;z-index:25;display:inline-flex;text-decoration:none;transition:transform .22s ease}
+.wm-logo-link:hover{transform:scale(1.05)}
+.wm-logo-link img{height:90px;width:auto;filter:drop-shadow(0 6px 18px rgba(0,0,0,.65))}
+#navbar-container .sa-logo-home{display:none!important}
+
 /* ── Cinematic hero ── */
 .wm-hero{
   position:relative;
@@ -147,15 +153,15 @@ textarea{resize:vertical;min-height:110px}
 
 <!-- ── HERO ── -->
 <section class="wm-hero">
+  <a class="wm-logo-link" href="/index.html" title="Still Afloat Home">
+    <img src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+  </a>
   <div id="navbar-container"></div>
   <div class="wm-hero-inner">
     <div class="section-kicker">Independent Travel Advisor</div>
     <h1>Plan your cruise with someone who's actually been there.</h1>
     <p>I'm Mark Millham — U.S. veteran, former liveaboard sailor, and experienced cruiser affiliated with Cornerstone Collective. I help people book the right cruise for their situation, not the one that's easiest to sell.</p>
     <a href="#contact" class="wm-cta-btn"><i class="fa-solid fa-compass"></i> Start Planning with Mark</a>
-    <div class="hero-brand" style="margin-top:32px">
-      <img src="/assets/images/still_afloat_logo.png" alt="Still Afloat" style="height:48px;vertical-align:middle;opacity:.9">
-    </div>
   </div>
 </section>
 
