@@ -28,3 +28,7 @@ kind = "api"
 
   [services.production.run.env]
   NODE_ENV = "production"
+  PORT = "8080"
+
+  [services.production.health.startup]
+  enabled = false
