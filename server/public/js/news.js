@@ -47,7 +47,6 @@ function normalizeStory(story = {}) {
       ? story.sources[0]
       : story.source || 'Still Afloat AI',
     description:
-      story.summary ||
       story.travelerImpact ||
       story.editorialReasoning ||
       '',

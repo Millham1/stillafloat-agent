@@ -116,10 +116,6 @@ async function loadStory() {
       }
     }
 
-    if (story.impactLevel) {
-      meta.push(`Impact: ${story.impactLevel}`);
-    }
-
     document.getElementById('story-meta').textContent = meta.join(' • ');
 
     if (story.image) {
