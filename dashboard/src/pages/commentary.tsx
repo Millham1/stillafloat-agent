@@ -6,9 +6,9 @@ import {
   Mic, Languages, Loader2, X, Tag, Youtube, Image,
 } from "lucide-react";
 
-import { authHeaders } from "@/lib/auth-token";
-
 const API = "";
+
+function authHeaders(): Record<string, string> { return {}; }
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface CommentaryPost {

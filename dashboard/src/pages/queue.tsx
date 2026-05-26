@@ -90,7 +90,7 @@ export default function EditorialQueue() {
 
   const handleAction = async (id: string, action: 'approve' | 'reject' | 'feature' | 'hold') => {
     setProcessing(prev => ({ ...prev, [id]: action }));
-    const token = (await import("@/lib/auth-token")).getStoredToken();
+    const token = '';
     const newStatus = ACTION_STATUS[action];
     const decidedAt = new Date().toISOString();
 
