@@ -24,7 +24,7 @@ kind = "api"
   VITE_API_BASE_URL = "https://stillafloatcruising.com"
 
   [services.production.run]
-  args = ["node", "server/dist/index.mjs"]
+  args = ["node", "server/bundle/index.mjs"]
 
   [services.production.run.env]
   NODE_ENV = "production"
