@@ -295,6 +295,80 @@ async function toolFetchArticle(url: string): Promise<{ fullText: string; wordCo
   }
 }
 
+async function enhanceSummaries(
+  stories: Record<string, unknown>[],
+  apiKey: string
+): Promise<Record<string, unknown>[]> {
+  const enhance = async (story: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    const url = String(story.link || story.url || "");
+    const current = String(story.summary || "");
+    const wordCount = current.split(/\s+/).filter(Boolean).length;
+
+    // Skip if already substantive (>= 80 words)
+    if (wordCount >= 80 || !url) return story;
+
+    const article = await toolFetchArticle(url);
+    if (!article.success || !article.fullText) return story;
+
+    try {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          temperature: 0.3,
+          max_tokens: 350,
+          messages: [
+            {
+              role: "user",
+              content: `You are the Still Afloat editorial AI writing a CliffsNotes summary for cruise enthusiasts.
+
+HEADLINE: ${story.title}
+
+FULL ARTICLE:
+${article.fullText}
+
+Write a 5-6 sentence summary (100-150 words) that covers:
+1. What happened and who — be specific (ship name, company, dollar amount, port, date if known)
+2. The underlying cause or context — why did this happen?
+3. The scale or significance — how big a deal is this?
+4. What it means for cruisers specifically
+5. One concrete detail (a quote, price, date, or ironic fact) that makes it memorable
+
+Voice: smart, friendly cruise enthusiast briefing a friend — not a wire-service journalist. Do NOT use "In a significant development", "serves as a reminder", "highlights the importance", or any other filler opener. Start with the most interesting fact.`,
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (!res.ok) return story;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const payload = await res.json() as any;
+      const enhanced = payload?.choices?.[0]?.message?.content?.trim();
+      if (enhanced && enhanced.split(/\s+/).length > wordCount) {
+        logger.info({ title: story.title, oldWords: wordCount, newWords: enhanced.split(/\s+/).length }, "Summary enhanced");
+        return { ...story, summary: enhanced };
+      }
+    } catch (err) {
+      logger.warn({ err, title: story.title }, "Summary enhancement failed — keeping original");
+    }
+    return story;
+  };
+
+  // Run in parallel batches of 5 to avoid overwhelming the network
+  const results: Record<string, unknown>[] = [];
+  for (let i = 0; i < stories.length; i += 5) {
+    const batch = stories.slice(i, i + 5);
+    const enhanced = await Promise.all(batch.map(enhance));
+    results.push(...enhanced);
+  }
+  return results;
+}
+
 // ─── Agent system prompt ─────────────────────────────────────────────────────
 
 function buildSystemPrompt(lang: "en" | "es" = "en", learnedPrefs?: string): string {
@@ -791,8 +865,12 @@ export async function runEditorialAgent({
           continue;
         }
 
+        const rawStories = (args.stories as Record<string, unknown>[]) || [];
+        logger.info({ count: rawStories.length }, "Enhancing summaries with full article content");
+        const enhancedStories = await enhanceSummaries(rawStories, apiKey);
+
         return {
-          stories: cleanStories((args.stories as Record<string, unknown>[]) || []),
+          stories: cleanStories(enhancedStories),
           homepageTop5: args.homepageTop5 || [],
           groupedDevelopments: args.groupedDevelopments || [],
           systemStatus: {
