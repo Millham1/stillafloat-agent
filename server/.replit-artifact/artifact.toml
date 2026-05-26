@@ -28,4 +28,3 @@ kind = "api"
 
   [services.production.run.env]
   NODE_ENV = "production"
-  PORT = "8080"
