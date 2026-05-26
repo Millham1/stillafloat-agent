@@ -20,7 +20,7 @@ kind = "api"
   [services.production.build.env]
   NODE_ENV = "production"
   PORT = "18336"
-  BASE_PATH = "/"
+  BASE_PATH = "/dashboard/"
   VITE_API_BASE_URL = "https://stillafloatcruising.com"
 
   [services.production.run]
@@ -32,4 +32,3 @@ kind = "api"
 
   [services.production.health.startup]
   path = "/api/healthz"
-  

@@ -48,9 +48,13 @@ const staticOpts: Parameters<typeof express.static>[1] = {
   },
 };
 
-// Dashboard — only served on stillafloat-agent.replit.app, invisible on the website
-app.use((req, res, next) => {
-  if (req.hostname !== DASHBOARD_HOST) return next();
+// Dashboard — served at /dashboard on the Replit domain only.
+// Dev: no hostname check (Replit preview needs it at this path).
+// Production: only responds on stillafloat-agent.replit.app, not on stillafloatcruising.com.
+app.use("/dashboard", (req, res, next) => {
+  if (process.env.NODE_ENV === "production" && req.hostname !== DASHBOARD_HOST) {
+    return next();
+  }
   express.static(DASHBOARD_DIR, staticOpts)(req, res, () => {
     res.sendFile(path.join(DASHBOARD_DIR, "index.html"));
   });
