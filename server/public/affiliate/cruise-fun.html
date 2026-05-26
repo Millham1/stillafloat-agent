@@ -24,9 +24,9 @@
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--gold:#ffca4f;--blue:#4fc3ff;--seafoam:#5dff9a}
 body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#fff;background:#060f1e}
-.page-hero{position:relative;min-height:320px;display:flex;align-items:flex-end;border-bottom:3px solid rgba(93,255,154,.20);overflow:hidden}
-.page-hero-bg{position:absolute;inset:0;background:linear-gradient(to right,rgba(4,10,22,1) 0%,rgba(4,10,22,.92) 42%,rgba(4,10,22,.45) 68%,rgba(4,10,22,.08) 100%),url('/assets/images/cruise-fun-card.png') right center/auto 100% no-repeat}
-.page-hero-content{position:relative;z-index:2;max-width:680px;padding:40px 40px 38px}
+.page-hero{position:relative;min-height:400px;display:flex;align-items:flex-end;border-bottom:3px solid rgba(93,255,154,.20);overflow:hidden}
+.page-hero-bg{position:absolute;inset:0;background:linear-gradient(to right,rgba(4,10,22,1) 0%,rgba(4,10,22,.92) 42%,rgba(4,10,22,.45) 68%,rgba(4,10,22,.08) 100%),url('/assets/images/cruise-fun-card.png') right center/cover no-repeat}
+.page-hero-content{position:relative;z-index:2;max-width:680px;padding:80px 40px 48px}
 .eyebrow{font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);font-weight:800;margin-bottom:8px;opacity:.85}
 .hero-title{font-family:Pacifico,cursive;font-size:clamp(2.4rem,5vw,4rem);line-height:1.18;background:linear-gradient(90deg,#ffca4f,#4fc3ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px}
 .hero-sub{font-size:.97rem;line-height:1.7;color:rgba(255,255,255,.88);max-width:460px}
@@ -43,10 +43,9 @@ footer{text-align:center;padding:28px 20px 50px;color:rgba(255,255,255,.42);font
 </head>
 <body>
 
-<div id="navbar-container"></div>
-
 <section class="page-hero">
   <div class="page-hero-bg"></div>
+  <div id="navbar-container"></div>
   <div class="page-hero-content">
     <div class="eyebrow">Cruise Smarter</div>
     <div class="hero-title">Cruise Fun!</div>
