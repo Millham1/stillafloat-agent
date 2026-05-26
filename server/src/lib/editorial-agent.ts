@@ -83,6 +83,24 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "fetch_article_content",
+      description:
+        "Fetch the full text of an article from its URL. Use this for every story you plan to include before writing its summary — it gives you the complete article body so you can write a proper, substantive CliffsNotes paragraph rather than just rephrasing the RSS headline.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "The full URL of the article to fetch",
+          },
+        },
+        required: ["url"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "submit_editorial_decisions",
       description:
         "Submit your final curated list of stories for publication. Call this when you have reviewed enough sources and are confident in your 15–20 story selection. You MUST call this to complete the editorial run.",
@@ -219,6 +237,64 @@ async function toolFetchRss(
   }
 }
 
+async function toolFetchArticle(url: string): Promise<{ fullText: string; wordCount: number; success: boolean }> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) return { fullText: "", wordCount: 0, success: false };
+    const html = await res.text();
+
+    let body = html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
+      .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, " ")
+      .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, " ")
+      .replace(/<aside\b[^<]*(?:(?!<\/aside>)<[^<]*)*<\/aside>/gi, " ")
+      .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, " ")
+      .replace(/<!--[\s\S]*?-->/g, " ");
+
+    const articleMatch = body.match(/<article[^>]*>([\s\S]*?)<\/article>/i)
+      ?? body.match(/<main[^>]*>([\s\S]*?)<\/main>/i)
+      ?? body.match(/<div[^>]*class="[^"]*(?:article|post|content|entry)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+    if (articleMatch) body = articleMatch[1];
+
+    const decodeEntities = (s: string) =>
+      s.replace(/&amp;/g, "&")
+       .replace(/&lt;/g, "<")
+       .replace(/&gt;/g, ">")
+       .replace(/&quot;/g, '"')
+       .replace(/&#39;/g, "'")
+       .replace(/&nbsp;/g, " ")
+       .replace(/&#\d+;/g, "");
+
+    const paragraphs: string[] = [];
+    for (const m of body.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
+      const text = decodeEntities(m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+      if (text.length >= 50) paragraphs.push(text);
+    }
+
+    if (paragraphs.length < 3) {
+      for (const m of body.matchAll(/<(?:h2|h3|li)[^>]*>([\s\S]*?)<\/(?:h2|h3|li)>/gi)) {
+        const text = decodeEntities(m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+        if (text.length >= 30) paragraphs.push(text);
+      }
+    }
+
+    const fullText = paragraphs.slice(0, 20).join("\n\n");
+    const wordCount = fullText.split(/\s+/).filter(Boolean).length;
+    return { fullText: truncate(fullText, 4000), wordCount, success: wordCount > 30 };
+  } catch (err) {
+    logger.warn({ err, url }, "fetch_article_content failed");
+    return { fullText: "", wordCount: 0, success: false };
+  }
+}
+
 // ─── Agent system prompt ─────────────────────────────────────────────────────
 
 function buildSystemPrompt(lang: "en" | "es" = "en", learnedPrefs?: string): string {
@@ -301,7 +377,13 @@ RONDA 3 — completar hasta alcanzar 12–18 historias:
   fetch_rss_feed("Cruise Hive")
   fetch_rss_feed("Cruise Radio")
 
-Después de las 3 Rondas, llama a submit_editorial_decisions.` : `════════════════════════════════════
+RONDA 4 — obtener el texto completo de cada artículo (OBLIGATORIO antes de enviar):
+  Para CADA historia que planeas incluir en tu lista final, llama a fetch_article_content(url).
+  Esto te da el cuerpo completo del artículo — no solo el fragmento RSS — para que puedas escribir
+  un resumen genuino de 4-6 oraciones que no repita simplemente el titular.
+  Si fetch_article_content devuelve success:false, escribe el mejor resumen posible con lo que sabes.
+
+Después de las 4 Rondas, llama a submit_editorial_decisions.` : `════════════════════════════════════
 MANDATORY RESEARCH PLAN — in this order, no skipping:
 ════════════════════════════════════
 
@@ -331,7 +413,13 @@ ROUND 3 — choose your own searches based on what's missing:
     - If you have no Tier 3 stories yet: search "cruise ship viral moment funny"
   Pick the 3 searches that will most help you reach 15–18 well-rounded stories.
 
-After all 3 Rounds are complete, call submit_editorial_decisions.`}
+ROUND 4 — fetch full article content (REQUIRED before submitting):
+  For EVERY story you plan to include in your final list, call fetch_article_content(url) with the story's URL.
+  This gives you the complete article body — not just the RSS snippet — so you can write a genuine 4-6 sentence
+  CliffsNotes summary that stands on its own and doesn't just restate the headline.
+  If fetch_article_content returns success:false for a story, write the best summary you can from what you know.
+
+After all 4 Rounds are complete, call submit_editorial_decisions.`}
 
 ════════════════════════════════════
 EDITORIAL TIERS:
@@ -567,7 +655,7 @@ export async function runEditorialAgent({
   }
 
   const gnewsKey = process.env["GNEWS_API_KEY"];
-  const MAX_ITERATIONS = 18;
+  const MAX_ITERATIONS = 30;
   let gnewsCallCount = 0;
   const MAX_GNEWS_CALLS = 8;
   let researchIterations = 0;
@@ -588,13 +676,13 @@ export async function runEditorialAgent({
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     logger.info({ iteration }, "Agent iteration");
 
-    // After 3 research rounds, inject a user nudge and force submission
-    const forceSubmit = researchIterations >= 3;
+    // After 4 research rounds (including article-fetch round), inject a user nudge and force submission
+    const forceSubmit = researchIterations >= 4;
     if (forceSubmit && messages[messages.length - 1]?.role !== "user") {
       const toolMessages = messages.filter((m) => m.role === "tool").length;
       messages.push({
         role: "user",
-        content: `You have completed all 3 research rounds (${toolMessages} tool responses gathered). Now call submit_editorial_decisions. MINIMUM 15 stories — the queue must have depth for Mark to curate from. Include every cruise-relevant story you found across ALL sources you fetched, not just Cruise Hive. Tier 4 lifestyle stories are especially valuable — include any you found. Do not self-filter aggressively; Mark will do the final curation.`,
+        content: `You have completed all 4 research rounds including article content fetching (${toolMessages} tool responses gathered). Now call submit_editorial_decisions. MINIMUM 15 stories — the queue must have depth for Mark to curate from. Include every cruise-relevant story you found across ALL sources you fetched. Tier 4 lifestyle stories are especially valuable — include any you found. Each summary MUST be 4-6 full sentences written from the full article content you fetched — do NOT just rephrase the headline or RSS snippet. Do not self-filter aggressively; Mark will do the final curation.`,
       });
     }
 
@@ -749,6 +837,23 @@ export async function runEditorialAgent({
           role: "tool",
           tool_call_id: toolCall.id,
           content: JSON.stringify({ feed: feedName, articles: result, count: result.length }),
+        });
+        continue;
+      }
+
+      // ── fetch_article_content ────────────────────────────────────────────
+      if (name === "fetch_article_content") {
+        const articleUrl = String(args.url || "");
+        logger.info({ url: articleUrl }, "Agent fetching full article content");
+        const result = await toolFetchArticle(articleUrl);
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(
+            result.success
+              ? { success: true, wordCount: result.wordCount, fullText: result.fullText }
+              : { success: false, error: "Could not extract article content — write summary from what you know about the story" }
+          ),
         });
         continue;
       }
