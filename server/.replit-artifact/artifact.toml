@@ -3,6 +3,7 @@ kind = "api"
   title = "stillafloatcruising.com (preview)"
   version = "1.0.0"
   id = "3B4_FFSkEVBkAeYMFRJ2e"
+  deploymentTarget = "vm"
 
   [[services]]
   localPort = 8080
