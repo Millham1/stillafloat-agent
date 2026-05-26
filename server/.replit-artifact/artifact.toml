@@ -28,6 +28,4 @@ kind = "api"
 
   [services.production.run.env]
   NODE_ENV = "production"
-
-  [services.production.health.startup]
-  path = "/api/healthz"
+  PORT = "8080"
