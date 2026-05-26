@@ -6,16 +6,9 @@ import {
   Mic, Languages, Loader2, X, Tag, Youtube, Image,
 } from "lucide-react";
 
+import { authHeaders } from "@/lib/auth-token";
+
 const API = "";
-
-function getToken(): string {
-  return import.meta.env.VITE_AGENT_TOKEN || "";
-}
-
-function authHeaders(): Record<string, string> {
-  const t = getToken();
-  return t ? { "x-affiliate-token": t } : {};
-}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface CommentaryPost {
