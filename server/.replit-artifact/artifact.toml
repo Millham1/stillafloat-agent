@@ -22,9 +22,3 @@ kind = "api"
   PORT = "18336"
   BASE_PATH = "/dashboard/"
   VITE_API_BASE_URL = "https://stillafloatcruising.com"
-
-  [services.production.run]
-  args = ["node", "--enable-source-maps", "/home/runner/workspace/server/dist/index.mjs"]
-
-  [services.production.run.env]
-  NODE_ENV = "production"
