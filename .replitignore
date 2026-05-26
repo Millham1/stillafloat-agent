@@ -8,5 +8,8 @@
 # self-contained (esbuild), and the dashboard is pre-built static files.
 **/node_modules
 
-# Chat-attached screenshots and images — not needed at runtime, but can be 400MB+
-attached_assets
+# Chat-attached screenshots and images (can be 400MB+) — exclude at any depth.
+**/attached_assets
+
+# Video production artifacts — not needed at runtime.
+ep1-video
