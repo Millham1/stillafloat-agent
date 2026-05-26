@@ -1,8 +1,10 @@
 # The format of this file is identical to `.dockerignore`.
 # It is used to reduce the size of deployed images to make the process of publishing faster.
 
-# No need to store the pnpm store twice.
+# pnpm global content-addressable store — large and not needed at runtime.
+# Uses both forms: bare name (matches at root) and wildcard (matches nested).
 .local
+**/.local
 
 # node_modules are not needed at runtime — the production server bundle is fully
 # self-contained (esbuild), and the dashboard is pre-built static files.
@@ -13,3 +15,6 @@
 
 # Video production artifacts — not needed at runtime.
 ep1-video
+
+# Source maps are large and not needed in production containers.
+**/*.map
