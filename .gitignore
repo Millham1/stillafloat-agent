@@ -1,5 +1,9 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
+# Export zip — too large for GitHub (451MB), download from Replit Files panel instead
+stillafloat-export.zip
+*.export.zip
+
 # compiled output
 dist
 tmp
