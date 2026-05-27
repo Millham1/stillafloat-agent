@@ -191,3 +191,9 @@ id = "C6cdG_P7rygLhEfZ4qJYE"
 uri = "file://ep1-video/attached_assets/storm_at_sea_ambient.mp3"
 type = "audio"
 title = "Storm at Sea — 90s Ambient Track"
+
+[[outputs]]
+id = "BzQQ_uvrXeo7VkZe3etkj"
+uri = "file://stillafloat-export.zip"
+type = "unspecified"
+title = "stillafloat-export.zip — Full project backup"

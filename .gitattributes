@@ -33,3 +33,4 @@ ep1-video/attached_assets/output/episode1_v14.mp4 filter=lfs diff=lfs merge=lfs 
 ep1-video/attached_assets/output/episode1_v15.mp4 filter=lfs diff=lfs merge=lfs -text
 ep1-video/attached_assets/output/crab_transparent.mov filter=lfs diff=lfs merge=lfs -text
 attached_assets/Cruise_Relationship_Crisis_1779449818692.mp4 filter=lfs diff=lfs merge=lfs -text
+stillafloat-export.zip filter=lfs diff=lfs merge=lfs -text
