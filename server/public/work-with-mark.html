@@ -422,12 +422,25 @@ const successEl = document.getElementById('successState');
 let turnstileToken = null;
 let turnstileSiteKey = null;
 
-function showError(msg) {
+function showError(msg, fieldId) {
   errBox.textContent = msg;
   errBox.classList.add('show');
   btn.disabled = false;
   btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Send My Details to Mark';
-  errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (fieldId) {
+    const field = document.getElementById(fieldId);
+    if (field) {
+      field.style.border = '2px solid #ef4444';
+      field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      field.focus();
+      field.addEventListener('input', () => {
+        field.style.border = '';
+        errBox.classList.remove('show');
+      }, { once: true });
+    }
+  } else {
+    errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 function showSuccess(firstName) {
@@ -478,17 +491,16 @@ form.addEventListener('submit', async e => {
   const dates     = document.getElementById('travel_dates').value.trim();
   const firstTime = document.querySelector('input[name="first_time"]:checked');
 
-  if (!firstName) return showError('Please enter your first name.');
-  if (!lastName)  return showError('Please enter your last name.');
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    return showError('Please enter a valid email address.');
-  if (!numTrav || parseInt(numTrav) < 1)
-    return showError('Please tell us how many travelers.');
-  if (!dates) return showError('Please enter your approximate travel dates.');
-  if (!firstTime) return showError("Please let us know if this is your first cruise.");
-
-  if (turnstileSiteKey && !turnstileToken)
-    return showError("Please complete the security check above.");
+  if (!firstName) return showError('Please enter your first name.', 'first_name');
+if (!lastName)  return showError('Please enter your last name.', 'last_name');
+if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+  return showError('Please enter a valid email address.', 'email');
+if (!numTrav || parseInt(numTrav) < 1)
+  return showError('Please tell us how many travelers.', 'num_travelers');
+if (!dates) return showError('Please enter your approximate travel dates.', 'travel_dates');
+if (!firstTime) return showError('Please let us know if this is your first cruise.', 'first_time');
+if (turnstileSiteKey && !turnstileToken)
+  return showError('Please complete the security check above.');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Sending…';

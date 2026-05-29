@@ -95,7 +95,7 @@ async function sendConfirmationEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Mark at Still Afloat <noreply@stillafloatcruising.com>",
+        from: "Mark at Still Afloat <mark@stillafloatcruising.com>",
         to: email,
         subject: "Got it — I'll be in touch within 24 hours ⚓",
         html,

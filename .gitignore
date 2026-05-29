@@ -51,3 +51,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+server/.env
+server/start.sh
+server/ecosystem.config.cjs

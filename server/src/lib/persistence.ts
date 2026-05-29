@@ -18,7 +18,8 @@ export function getSupabase() {
     if (!supabaseKey) {
       throw new Error("SUPABASE_ANON_KEY environment variable is missing");
     }
-    supabase = createClient(supabaseUrl, supabaseKey);
+    const ws = require('ws');
+supabase = createClient(supabaseUrl, supabaseKey, { realtime: { transport: ws } });
   }
   return supabase;
 }

@@ -13,14 +13,14 @@ export function renderEditorialDigest({
   const token = approvalToken ? `&token=${encodeURIComponent(approvalToken)}` : "";
   const base = dashboardUrl.replace(/\/+$/, "");
 
-  const storyRows = stories
-    .map((story, index) => {
-      const id = encodeURIComponent(story.id);
-      const approveUrl = base ? `${base}/api/agent-action?c=a&id=${id}${token}` : "";
-      const holdUrl    = base ? `${base}/api/agent-action?c=h&id=${id}${token}` : "";
-      const featureUrl = base ? `${base}/api/agent-action?c=f&id=${id}${token}` : "";
+  const storyRows = stories.length === 0
+    ? `<div style="padding:24px;text-align:center;color:#6b7280;font-size:15px;">
+        <p style="margin:0;">The agent ran but did not return any new cruise news this cycle.</p>
+        <p style="margin:8px 0 0;font-size:13px;">This is normal — the editorial filter is working. Check back next scan.</p>
+      </div>`
+    : stories.map((story, index) => {
 
-      const actionButtons = base
+   const actionButtons = base
         ? `<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
             <a href="${approveUrl}" style="background:#16a34a;color:#fff;padding:9px 18px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;display:inline-block;">✅ Approve</a>
             <a href="${holdUrl}"    style="background:#d97706;color:#fff;padding:9px 18px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;display:inline-block;">⏸ Hold</a>
