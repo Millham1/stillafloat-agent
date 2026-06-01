@@ -20,7 +20,10 @@ if (!supabaseKey) {
   throw new Error('SUPABASE_ANON_KEY environment variable is missing');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const ws = require('ws');
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  realtime: { transport: ws }
+});
 
 const PATHS = {
   candidates: 'candidate-stories',

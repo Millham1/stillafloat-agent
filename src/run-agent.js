@@ -29,7 +29,7 @@ async function runEditorialAgent({ stories = [], openai }) {
         'content-type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-5.4-mini',
+        model: 'gpt-4o-mini',
         temperature: 0.15,
         response_format: { type: 'json_object' },
         messages: [

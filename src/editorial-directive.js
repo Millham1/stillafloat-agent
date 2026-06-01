@@ -33,4 +33,5 @@ Each approved story must include:
 - homepageCandidate
 - reasoning
 - sourceAttribution
+Respond only with valid JSON.
 `;
