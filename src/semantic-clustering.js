@@ -19,16 +19,23 @@ function storyText(story = {}) {
   return [story.title, story.summary, story.articleText, story.category].filter(Boolean).join(' ');
 }
 
+// Only operational/geographic entities are strong "same-event" signals. Two stories
+// both naming a cruise line (e.g. "Carnival") are NOT necessarily the same story, so
+// brand names must NOT lower the similarity bar — otherwise distinct same-brand news
+// gets wrongly collapsed into one.
+const OPERATIONAL_ENTITY = /(miami|galveston|tampa|canaveral|port everglades|fort lauderdale|nassau|cozumel|bermuda|san juan|jacksonville|new orleans|seattle|faa|coast guard|hurricane|tropical storm|storm surge|port closure|airport)/gi;
+
 function hasSharedOperationalEntity(a = {}, b = {}) {
-  const entityPattern = /(norwegian|ncl|royal caribbean|carnival|msc|miami|galveston|tampa|canaveral|fort lauderdale|nassau|cozumel|bermuda|san juan|faa|hurricane|storm|airport|port)/gi;
-  const aEntities = new Set((storyText(a).match(entityPattern) || []).map(item => item.toLowerCase()));
-  const bEntities = new Set((storyText(b).match(entityPattern) || []).map(item => item.toLowerCase()));
+  const aEntities = new Set((storyText(a).match(OPERATIONAL_ENTITY) || []).map(item => item.toLowerCase()));
+  const bEntities = new Set((storyText(b).match(OPERATIONAL_ENTITY) || []).map(item => item.toLowerCase()));
   return [...aEntities].some(entity => bEntities.has(entity));
 }
 
 function shouldCluster(a = {}, b = {}) {
   const similarity = jaccard(tokenize(storyText(a)), tokenize(storyText(b)));
-  return similarity >= 0.34 || (similarity >= 0.22 && hasSharedOperationalEntity(a, b));
+  // High textual overlap = same story regardless of topic.
+  // A shared operational/geographic entity lets a slightly lower bar count as the same event.
+  return similarity >= 0.34 || (similarity >= 0.25 && hasSharedOperationalEntity(a, b));
 }
 
 function clusterStories(stories = []) {
