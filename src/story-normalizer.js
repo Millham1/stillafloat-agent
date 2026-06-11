@@ -66,6 +66,9 @@ function normalizeStory(story = {}, index = 0) {
     link,
     image: isValidHttpUrl(story.image || story.imageUrl) ? String(story.image || story.imageUrl) : '',
     publishedAt: story.publishedAt || story.createdAt || new Date().toISOString(),
+    trustLevel: clean(story.trustLevel || ''),
+    lane: clean(story.lane || ''),
+    brand: story.brand || null,
     status: story.status || 'candidate'
   };
 }
