@@ -9,6 +9,9 @@ app.get('/api/homepage-feed', require('./api/homepage-feed'));
 app.get('/api/news-feed', require('./api/news-feed'));
 app.get('/api/editorial-queue', require('./api/editorial-queue'));
 app.post('/api/approve-story', require('./api/approve-story'));
+app.get('/api/approve-story', require('./api/approve-story'));
+app.post('/api/reject-story', require('./api/reject-story'));
+app.get('/api/reject-story', require('./api/reject-story'));
 app.get('/api/system-status', require('./api/system-status'));
 
 const PORT = process.env.PORT || 3000;
