@@ -20,7 +20,45 @@ function buildFallbackResponse(stories = [], reason = 'AI orchestration unavaila
   };
 }
 
-async function runEditorialAgent({ stories = [], openai }) {
+// Compact a stored story down to just the signal the model needs to learn from.
+function toExample(story = {}) {
+  return {
+    title: story.title,
+    category: story.category,
+    source: (story.sources || story.sourceAttribution || [])[0] || story.source || null,
+    reason: story.rejectionReason || story.reasoning || null
+  };
+}
+
+function buildMemoryMessage(editorialMemory = {}) {
+  const approved = (editorialMemory.approvedStories || []).slice(0, 25).map(toExample);
+  const rejected = (editorialMemory.rejectedStories || []).slice(0, 25).map(toExample);
+  const publishedTitles = (editorialMemory.approvedStories || [])
+    .slice(0, 120)
+    .map(story => story.title)
+    .filter(Boolean);
+
+  return `EDITORIAL MEMORY — learn from the editor's past decisions. This is the difference between a fresh start and an agent that improves.
+
+APPROVED before (favor similar topics, sources, and angles):
+${JSON.stringify(approved)}
+
+REJECTED before (avoid similar topics, sources, and angles; treat the stated reasons as standing editorial guidance):
+${JSON.stringify(rejected)}
+
+ALREADY PUBLISHED in prior runs (do NOT re-surface the same development; if a candidate covers one of these events, reject it as a cross-run duplicate):
+${JSON.stringify(publishedTitles)}
+
+SOURCE DIVERSITY IS MANDATORY: never let a single cruise line or outlet dominate the run. If many candidates cover the same brand (e.g. one cruise line), select only the one or two most significant and reject the rest as redundant. Actively surface mainstream and operational/weather stories that affect travelers, not just cruise-trade coverage.
+
+Return a JSON object with exactly this top-level shape:
+{ "stories": [ ...selected stories, ranked best-first... ],
+  "homepageTop5": [ ...up to 5 of the strongest... ],
+  "groupedDevelopments": [ ...optional clusters of related items... ],
+  "rejectedStories": [ ...each with a "reasoning" field stating why... ] }`;
+}
+
+async function runEditorialAgent({ stories = [], openai, editorialMemory = {} }) {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -36,6 +74,10 @@ async function runEditorialAgent({ stories = [], openai }) {
           {
             role: 'system',
             content: directive
+          },
+          {
+            role: 'system',
+            content: buildMemoryMessage(editorialMemory)
           },
           {
             role: 'user',
@@ -88,5 +130,6 @@ async function runEditorialAgent({ stories = [], openai }) {
 }
 
 module.exports = {
-  runEditorialAgent
+  runEditorialAgent,
+  buildMemoryMessage
 };
