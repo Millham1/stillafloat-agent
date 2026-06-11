@@ -8,7 +8,7 @@ Issues reported by Mark as they're discovered. Add new items at the top of each 
 
 | # | Page | Description | Priority | Reported |
 |---|------|-------------|----------|----------|
-| — | — | *(none yet — reviewing in the morning)* | — | — |
+| 1 | News agent | Confirm which code is actually deployed & serving the live editorial emails (host, process, git branch, scheduler) before cutting over to the new `stillafloat-newsagent` repo. Live email matches monorepo `server/`; deploy source unconfirmed. | High | 2026-06-11 |
 
 ---
 
