@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 
-// Supabase-backed persistence layer for Vercel serverless runtime.
+// Supabase-backed persistence layer.
 // Filesystem persistence has been fully removed.
 // Prototype/editorial-stage configuration uses anon/public access
 // to eliminate unnecessary service-role secret management.
@@ -28,6 +28,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 const PATHS = {
   candidates: 'candidate-stories',
   approved: 'approved-stories',
+  rejected: 'rejected-stories',
   archive: 'archive-stories',
   homepage: 'homepage-feed',
   newsIndex: 'news-index',
