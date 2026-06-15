@@ -35,11 +35,14 @@ jobs:
     steps:
       - name: Deploy to Dev VPS
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
         with:
           host: 178.156.154.144
           username: root
           key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
           command_timeout: 20m
+          envs: DEV_DATABASE_URL
           script: |
             set -e
             export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -57,18 +60,21 @@ jobs:
             git reset --hard origin/dev
             pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
             PORT=5000 BASE_PATH=/dashboard/ pnpm --filter @workspace/api-server run build:all
-            # Start is gated: this job mirrors+builds. The server is first started by the
-            # one-time bootstrap (which injects DATABASE_URL + secrets into pm2). On later
-            # pushes we only restart the EXISTING process so its captured env is preserved
-            # (no --update-env, which would wipe DATABASE_URL since CI has no DB creds).
-            if [ -f /root/saf-full/DEPLOY_DEV_START ]; then
-              if pm2 restart saf-full-server; then
-                pm2 save
-                echo "saf-full-server (dev) restarted with new build"
-              else
-                echo "WARN: saf-full-server not running - start it via the bootstrap (needs DATABASE_URL); build is in place"
-              fi
-            else
-              echo "BUILT OK - saf-full-server NOT started (no DEPLOY_DEV_START flag). Run the bootstrap once, then re-deploy."
-            fi
+            # ---- runtime env ----
+            # shared keys (OpenAI/GNews/Resend/Supabase REST + off-prod email/Telegram) from the box's newsagent .env
+            while IFS= read -r line; do
+              case "$line" in ''|\#*) continue;; esac
+              export "${line%%=*}=${line#*=}"
+            done < /root/stillafloat-newsagent/.env
+            # monorepo-specific overrides (DB from encrypted GitHub secret)
+            export DATABASE_URL="$DEV_DATABASE_URL"
+            export PORT=5000
+            export BASE_PATH=/dashboard/
+            export DISABLE_DAILY_SCAN=1
+            unset NODE_ENV
+            # create the monorepo's tables in the dev DB (idempotent)
+            pnpm --filter @workspace/db run push --force
+            # start/restart with the full env injected (CI always has DATABASE_URL now)
+            pm2 restart saf-full-server --update-env || pm2 start node --name saf-full-server --cwd /root/saf-full/server --update-env -- --enable-source-maps ./dist/index.mjs
+            pm2 save
             echo "monorepo dev deployment complete"
