@@ -1,0 +1,28 @@
+name: Deploy Still Afloat (monorepo)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Production VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 5.161.52.102
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 20m
+          script: |
+            set -e
+            cd /root/saf-full
+            git fetch origin
+            git reset --hard origin/main
+            corepack enable >/dev/null 2>&1 || true
+            pnpm install --frozen-lockfile
+            pnpm -r --if-present run build
+            pm2 restart saf-full-server --update-env
+            pm2 save
+            echo "monorepo deployment complete"
