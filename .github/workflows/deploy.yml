@@ -23,7 +23,7 @@ jobs:
             export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
             corepack enable
             pnpm install --frozen-lockfile
-            pnpm -r --if-present run build
+            pnpm --filter "./server..." --filter "./dashboard..." --if-present run build
             pm2 restart saf-full-server --update-env
             pm2 save
             echo "monorepo deployment complete"
