@@ -20,7 +20,8 @@ jobs:
             cd /root/saf-full
             git fetch origin
             git reset --hard origin/main
-            corepack enable >/dev/null 2>&1 || true
+            export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+            corepack enable
             pnpm install --frozen-lockfile
             pnpm -r --if-present run build
             pm2 restart saf-full-server --update-env
