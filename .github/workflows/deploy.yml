@@ -57,13 +57,18 @@ jobs:
             git reset --hard origin/dev
             pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
             PORT=5000 BASE_PATH=/dashboard/ pnpm --filter @workspace/api-server run build:all
-            # start is gated: mirror+build now; start only once the isolated dev .env is in place
+            # Start is gated: this job mirrors+builds. The server is first started by the
+            # one-time bootstrap (which injects DATABASE_URL + secrets into pm2). On later
+            # pushes we only restart the EXISTING process so its captured env is preserved
+            # (no --update-env, which would wipe DATABASE_URL since CI has no DB creds).
             if [ -f /root/saf-full/DEPLOY_DEV_START ]; then
-              export PORT=5000 BASE_PATH=/dashboard/
-              pm2 restart saf-full-server --update-env || pm2 start node --name saf-full-server --cwd /root/saf-full/server --update-env -- --enable-source-maps ./dist/index.mjs
-              pm2 save
-              echo "saf-full-server (dev) started"
+              if pm2 restart saf-full-server; then
+                pm2 save
+                echo "saf-full-server (dev) restarted with new build"
+              else
+                echo "WARN: saf-full-server not running - start it via the bootstrap (needs DATABASE_URL); build is in place"
+              fi
             else
-              echo "BUILT OK - saf-full-server NOT started (no DEPLOY_DEV_START flag). Add isolated .env + flag, then re-deploy."
+              echo "BUILT OK - saf-full-server NOT started (no DEPLOY_DEV_START flag). Run the bootstrap once, then re-deploy."
             fi
             echo "monorepo dev deployment complete"
