@@ -22,8 +22,8 @@ jobs:
             git reset --hard origin/main
             export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
             corepack enable
-            pnpm install --frozen-lockfile
-            pnpm --filter "./server..." --filter "./dashboard..." --if-present run build
-            pm2 restart saf-full-server --update-env
+            pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+            PORT=5000 BASE_PATH=/dashboard/ pnpm --filter @workspace/api-server run build:all
+            pm2 restart saf-full-server
             pm2 save
             echo "monorepo deployment complete"
