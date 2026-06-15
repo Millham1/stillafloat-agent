@@ -10,7 +10,14 @@ if (Number.isNaN(port) || port <= 0) {
 
 app.listen(port, "0.0.0.0", () => {
   logger.info({ port }, "Server listening on 0.0.0.0");
-  scheduleDailyScan();
+  // Daily scan can be disabled per-environment: set DISABLE_DAILY_SCAN=1.
+  // Used to keep the dev mirror quiet, and to retire the monorepo's scheduler
+  // in favor of the standalone newsagent (ends the double digest).
+  if (process.env["DISABLE_DAILY_SCAN"] === "1") {
+    logger.info("Daily scan scheduler DISABLED (DISABLE_DAILY_SCAN=1)");
+  } else {
+    scheduleDailyScan();
+  }
 });
 
 // ── Daily news scan scheduler ─────────────────────────────────────────────────
