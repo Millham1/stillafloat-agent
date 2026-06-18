@@ -28,8 +28,12 @@ service boundary.
 3. **Autonomous agents are separate services** with their own ports and
    lifecycles — never routes buried in the backend. Today: the news/editorial
    agent and the ops manager.
-4. **The only shared dependency is `.env`.** Keys live in one place; no service
-   imports another's code.
+4. **The only shared dependency is `.env`.** Secrets live in ONE file —
+   `/opt/stillafloat/shared.env` (override path via `SHARED_ENV_PATH`) — that
+   every service loads at boot (local `.env` for service-specific config wins,
+   then the shared file fills secrets; an already-set var is never overwritten).
+   All three services now read it, including the monorepo backend (`server/src/env.ts`).
+   No service imports another's code.
 5. **Git is the source of truth. The box only receives deploys.** Code flows
    git -> deploy. Nothing is edited directly on the server, ever. (This rule
    exists because direct-on-server edits caused the live code to drift onto a

@@ -1,3 +1,4 @@
+import "./env"; // must be first — populates process.env from the shared .env
 import app from "./app";
 import { logger } from "./lib/logger";
 
