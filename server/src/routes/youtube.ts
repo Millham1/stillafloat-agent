@@ -46,6 +46,7 @@ interface YTVideo {
   thumbnail: string;
   url: string;
   isShort: boolean;
+  views: number;
 }
 
 async function fetchChannelVideos(channelId: string): Promise<YTVideo[]> {
@@ -67,6 +68,8 @@ async function fetchChannelVideos(channelId: string): Promise<YTVideo[]> {
     const published = /<published>([^<]+)<\/published>/.exec(entry)?.[1] ?? "";
     const thumbUrl = /<media:thumbnail[^>]+url="([^"]+)"/.exec(entry)?.[1]
       ?? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+    // YouTube's channel RSS includes per-video view counts in media:community.
+    const views = Number(/<media:statistics\s+views="(\d+)"/.exec(entry)?.[1] ?? "0");
 
     if (!videoId) continue;
 
@@ -80,6 +83,7 @@ async function fetchChannelVideos(channelId: string): Promise<YTVideo[]> {
       thumbnail: thumbUrl,
       url: `https://www.youtube.com/watch?v=${videoId}`,
       isShort: false,
+      views,
     });
   }
 
@@ -181,6 +185,33 @@ router.get("/youtube-featured", async (_req: Request, res: Response) => {
     });
   } catch (err) {
     logger.error({ err }, "YouTube featured fetch failed");
+    res.status(500).json({ success: false, error: (err as Error).message });
+  }
+});
+
+// ── GET /api/youtube-top ──────────────────────────────────────────────────────
+// Public endpoint used by the homepage to show the most-watched videos.
+// Returns the top N (default 5) by view count, plus the channel URL.
+router.get("/youtube-top", async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 5, 1), 10);
+    const data = (await readJson("youtube-channel")) as { videos?: YTVideo[] } | null;
+
+    const videos = (data?.videos ?? [])
+      .slice()
+      .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
+      .slice(0, limit)
+      .map((v) => ({
+        id: v.id,
+        title: v.title,
+        thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
+        url: v.url || `https://www.youtube.com/watch?v=${v.id}`,
+        views: Number(v.views) || 0,
+      }));
+
+    res.json({ videos, channelUrl: CHANNEL_URL });
+  } catch (err) {
+    logger.error({ err }, "YouTube top fetch failed");
     res.status(500).json({ success: false, error: (err as Error).message });
   }
 });
