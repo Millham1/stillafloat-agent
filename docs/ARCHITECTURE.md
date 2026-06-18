@@ -40,6 +40,9 @@ service boundary.
 - **Website backend** (`:3002`) — Express; the interactive website API. Feature
   routes: affiliate, commentary, contact, favorites, feeds, subscribe,
   translate-article, weather, youtube, health. Each its own class/module.
+  The `youtube` module scans **@StillAfloatcruising2026** on boot + every 6h and
+  serves the homepage's "latest upload" section via `/api/youtube-featured`
+  (gated by `DISABLE_YOUTUBE_SCAN`; independent of the editorial digest).
 - **News / editorial agent** (`:3003`) — standalone service (`stillafloat-newsagent`
   repo): scan -> AI commentary -> daily digest (email + Telegram) -> inline
   `/review` approve loop -> self-scheduler (08:00 ET).
@@ -59,10 +62,14 @@ service boundary.
 
 ## Hosts
 - Production VPS: `5.161.52.102` (ubuntu-8gb-ash-2).
-- Dev VPS: `178.156.154.144` (saf-dev).
+- Dev VPS: `178.156.154.144` (saf-dev) — upgraded 2GB→8GB June 2026; runs all
+  services under pm2, made reboot-safe via `pm2 startup` (a resize had stopped
+  the processes).
 
 ## Open gap (in progress)
-Editorial currently still lives **inside** the backend (and is duplicated). The
-cutover moves editorial fully onto the news agent (`:3003`) and disables the
-backend's 8 AM scheduler, leaving the backend website-only — closing the last
-gap between this target and the running system.
+The standalone news agent (`:3003`, `stillafloat-newsagent`) is the live
+editorial service. The monorepo backend still contains a **duplicate** editorial
+scan; it is now gated behind `DISABLE_DAILY_SCAN`. To fully close the gap (and
+end the double 8 AM digest), set `DISABLE_DAILY_SCAN=1` on the prod monorepo,
+leaving the backend website-only. (The dev mirror already runs with the daily
+and YouTube scans disabled.)
