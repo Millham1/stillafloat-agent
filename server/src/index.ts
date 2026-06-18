@@ -14,12 +14,16 @@ app.listen(port, "0.0.0.0", () => {
   // Used to keep the dev mirror quiet, and to retire the monorepo's scheduler
   // in favor of the standalone newsagent (ends the double digest).
   if (process.env["DISABLE_DAILY_SCAN"] === "1") {
-    logger.info("Autonomous scans DISABLED (DISABLE_DAILY_SCAN=1) — quiet mirror");
+    logger.info("Daily editorial scan DISABLED (DISABLE_DAILY_SCAN=1)");
   } else {
     scheduleDailyScan();
-    // Keep the homepage YouTube section fresh. Gated behind the same flag so the
-    // dev mirror stays quiet — the YouTube scan sends no email, but by design the
-    // dev box runs no autonomous scans.
+  }
+  // Homepage YouTube section. Independent of the editorial digest (it emails
+  // nothing), so it keeps running on prod even after the editorial scan is
+  // retired. Disabled on the dev mirror via DISABLE_YOUTUBE_SCAN=1.
+  if (process.env["DISABLE_YOUTUBE_SCAN"] === "1") {
+    logger.info("YouTube scan scheduler DISABLED (DISABLE_YOUTUBE_SCAN=1)");
+  } else {
     scheduleYouTubeScan();
   }
 });
