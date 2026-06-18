@@ -8,8 +8,6 @@ import { logger } from "./lib/logger";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, "../public");
-const DASHBOARD_DIR = path.resolve(__dirname, "../../dashboard/dist/public");
-const DASHBOARD_HOST = "stillafloat-agent.replit.app";
 
 const app: Express = express();
 
@@ -52,28 +50,16 @@ const staticOpts: Parameters<typeof express.static>[1] = {
   },
 };
 
-// Dashboard — served at /dashboard on the Replit domain only.
-// Dev: no hostname check (Replit preview needs it at this path).
-// Production: only responds on stillafloat-agent.replit.app, not on stillafloatcruising.com.
-app.use("/dashboard", (req, res, next) => {
-  if (process.env.NODE_ENV === "production" && req.hostname !== DASHBOARD_HOST) {
-    return next();
-  }
-  express.static(DASHBOARD_DIR, staticOpts)(req, res, () => {
-    res.sendFile(path.join(DASHBOARD_DIR, "index.html"));
-  });
-});
+// The dashboard is now a standalone app at dashboard.stillafloatcruising.com,
+// served as static files by nginx (built with BASE_PATH=/). The backend only
+// provides its API (/api) — it no longer serves the dashboard bundle.
 
 // Website static files
 app.use(express.static(PUBLIC_DIR, staticOpts));
 app.use("/preview-site", express.static(PUBLIC_DIR, staticOpts));
 
-// Fallback: serve index.html for unmatched paths (but not /dashboard which is its own app)
-app.get("/{*path}", (req, res) => {
-  if (req.path.startsWith("/dashboard")) {
-    res.status(404).send("Not found");
-    return;
-  }
+// Fallback: serve the website index.html for unmatched paths.
+app.get("/{*path}", (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
 
