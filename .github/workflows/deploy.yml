@@ -2,10 +2,11 @@ name: Deploy Still Afloat (monorepo)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 jobs:
   deploy-production:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to Production VPS
@@ -27,3 +28,54 @@ jobs:
             pm2 restart saf-full-server
             pm2 save
             echo "monorepo deployment complete"
+
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Dev VPS
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+        with:
+          host: 178.156.154.144
+          username: root
+          key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+          command_timeout: 20m
+          envs: DEV_DATABASE_URL
+          script: |
+            set -e
+            export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+            corepack enable
+            corepack prepare pnpm@9.15.0 --activate
+            # one-time clone, reusing the GitHub auth the box already has for newsagent
+            if [ ! -d /root/saf-full/.git ]; then
+              echo "saf-full not present - cloning dev branch"
+              NEWS_URL=$(git -C /root/stillafloat-newsagent remote get-url origin)
+              MONO_URL=$(echo "$NEWS_URL" | sed 's/stillafloat-newsagent/stillafloat-agent/')
+              git clone --branch dev "$MONO_URL" /root/saf-full
+            fi
+            cd /root/saf-full
+            git fetch origin
+            git reset --hard origin/dev
+            pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+            PORT=5000 BASE_PATH=/dashboard/ pnpm --filter @workspace/api-server run build:all
+            # ---- runtime env ----
+            # shared keys (OpenAI/GNews/Resend/Supabase REST + off-prod email/Telegram) from the box's newsagent .env
+            while IFS= read -r line; do
+              case "$line" in ''|\#*) continue;; esac
+              export "${line%%=*}=${line#*=}"
+            done < /root/stillafloat-newsagent/.env
+            # monorepo-specific overrides (DB from encrypted GitHub secret)
+            export DATABASE_URL="$DEV_DATABASE_URL"
+            export PORT=5000
+            export BASE_PATH=/dashboard/
+            export DISABLE_DAILY_SCAN=1
+            export DISABLE_YOUTUBE_SCAN=1
+            unset NODE_ENV
+            # create the monorepo's tables in the dev DB (idempotent)
+            pnpm --filter @workspace/db run push --force
+            # start/restart with the full env injected (CI always has DATABASE_URL now)
+            pm2 restart saf-full-server --update-env || pm2 start node --name saf-full-server --cwd /root/saf-full/server --update-env -- --enable-source-maps ./dist/index.mjs
+            pm2 save
+            echo "monorepo dev deployment complete"
