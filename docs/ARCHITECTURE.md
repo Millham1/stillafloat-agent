@@ -66,10 +66,9 @@ service boundary.
   services under pm2, made reboot-safe via `pm2 startup` (a resize had stopped
   the processes).
 
-## Open gap (in progress)
-The standalone news agent (`:3003`, `stillafloat-newsagent`) is the live
-editorial service. The monorepo backend still contains a **duplicate** editorial
-scan; it is now gated behind `DISABLE_DAILY_SCAN`. To fully close the gap (and
-end the double 8 AM digest), set `DISABLE_DAILY_SCAN=1` on the prod monorepo,
-leaving the backend website-only. (The dev mirror already runs with the daily
-and YouTube scans disabled.)
+## Editorial ownership (resolved)
+The standalone news agent (`:3003`, `stillafloat-newsagent`) is the sole live
+editorial service. The monorepo backend still contains the editorial code, but
+its daily scan is now **retired by default** (opt back in with
+`ENABLE_MONOREPO_DAILY_SCAN=1`) — so the backend no longer sends a second 8 AM
+digest. The backend is effectively website-only.

@@ -13,10 +13,13 @@ app.listen(port, "0.0.0.0", () => {
   // Daily scan can be disabled per-environment: set DISABLE_DAILY_SCAN=1.
   // Used to keep the dev mirror quiet, and to retire the monorepo's scheduler
   // in favor of the standalone newsagent (ends the double digest).
-  if (process.env["DISABLE_DAILY_SCAN"] === "1") {
-    logger.info("Daily editorial scan DISABLED (DISABLE_DAILY_SCAN=1)");
-  } else {
+  // The standalone news agent (:3003, stillafloat-newsagent) owns editorial now.
+  // The monorepo's duplicate scan is retired by default so it can't send a second
+  // 8 AM digest. Opt back in with ENABLE_MONOREPO_DAILY_SCAN=1 only if ever needed.
+  if (process.env["ENABLE_MONOREPO_DAILY_SCAN"] === "1") {
     scheduleDailyScan();
+  } else {
+    logger.info("Monorepo daily editorial scan retired (news agent owns editorial)");
   }
   // Homepage YouTube section. Independent of the editorial digest (it emails
   // nothing), so it keeps running on prod even after the editorial scan is

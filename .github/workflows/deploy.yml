@@ -70,7 +70,6 @@ jobs:
             export DATABASE_URL="$DEV_DATABASE_URL"
             export PORT=5000
             export BASE_PATH=/dashboard/
-            export DISABLE_DAILY_SCAN=1
             export DISABLE_YOUTUBE_SCAN=1
             unset NODE_ENV
             # create the monorepo's tables in the dev DB (idempotent)
