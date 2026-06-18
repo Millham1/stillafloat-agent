@@ -14,9 +14,13 @@ app.listen(port, "0.0.0.0", () => {
   // Used to keep the dev mirror quiet, and to retire the monorepo's scheduler
   // in favor of the standalone newsagent (ends the double digest).
   if (process.env["DISABLE_DAILY_SCAN"] === "1") {
-    logger.info("Daily scan scheduler DISABLED (DISABLE_DAILY_SCAN=1)");
+    logger.info("Autonomous scans DISABLED (DISABLE_DAILY_SCAN=1) — quiet mirror");
   } else {
     scheduleDailyScan();
+    // Keep the homepage YouTube section fresh. Gated behind the same flag so the
+    // dev mirror stays quiet — the YouTube scan sends no email, but by design the
+    // dev box runs no autonomous scans.
+    scheduleYouTubeScan();
   }
 });
 
@@ -54,4 +58,27 @@ function scheduleDailyScan() {
   // Check every minute
   setInterval(() => { tick().catch(() => {}); }, 60_000);
   logger.info("Daily scan scheduler active — fires at 08:00 Eastern");
+}
+
+// ── YouTube channel scan scheduler ────────────────────────────────────────────
+// Keeps the homepage YouTube section current. The scan endpoint refreshes the
+// cached video list (newest-first); /api/youtube-featured then surfaces the
+// latest upload. Nothing was triggering this after the front/back split, so the
+// homepage went stale — run it on boot and every 6 hours.
+
+function scheduleYouTubeScan() {
+  const runScan = async () => {
+    try {
+      const res = await fetch(`http://localhost:${port}/api/youtube-scan`);
+      const body = await res.json() as { success?: boolean; videos?: unknown[] };
+      logger.info({ success: body.success, videos: body.videos?.length ?? 0 }, "Scheduled YouTube scan complete");
+    } catch (err) {
+      logger.error({ err }, "Scheduled YouTube scan failed");
+    }
+  };
+
+  // Initial scan shortly after boot (let the listener settle), then every 6 hours.
+  setTimeout(() => { runScan().catch(() => {}); }, 10_000);
+  setInterval(() => { runScan().catch(() => {}); }, 6 * 60 * 60 * 1000);
+  logger.info("YouTube scan scheduler active — on boot + every 6h");
 }

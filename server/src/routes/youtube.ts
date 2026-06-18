@@ -98,14 +98,18 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
     const videos = await fetchChannelVideos(channelId);
     const scannedAt = new Date().toISOString();
 
-    // Persist the scan result
-    const existing = (await readJson("youtube-channel")) as { featuredId?: string } | null;
+    // Persist the scan result. Preserve a manual feature pick if Mark set one;
+    // otherwise leave featuredId unpinned so the homepage tracks the latest upload.
+    const existing = (await readJson("youtube-channel")) as
+      | { featuredId?: string; featuredManual?: boolean }
+      | null;
     await writeJson("youtube-channel", {
       scannedAt,
       channelId,
       channelHandle: CHANNEL_HANDLE,
       videos,
-      featuredId: existing?.featuredId ?? (videos[0]?.id ?? null),
+      featuredId: existing?.featuredId ?? null,
+      featuredManual: existing?.featuredManual ?? false,
     });
 
     res.json({ success: true, scannedAt, channelId, videos });
@@ -130,7 +134,7 @@ router.post("/youtube-feature", async (req: Request, res: Response) => {
       return;
     }
 
-    await writeJson("youtube-channel", { ...existing, featuredId: videoId });
+    await writeJson("youtube-channel", { ...existing, featuredId: videoId, featuredManual: true });
     res.json({ success: true, featuredId: videoId });
   } catch (err) {
     logger.error({ err }, "YouTube feature failed");
@@ -144,26 +148,35 @@ router.get("/youtube-featured", async (_req: Request, res: Response) => {
   try {
     const data = (await readJson("youtube-channel")) as {
       featuredId?: string;
+      featuredManual?: boolean;
       videos?: YTVideo[];
       scannedAt?: string;
     } | null;
 
-    if (!data?.featuredId) {
-      // Default to the hardcoded Short if nothing stored yet
+    const videos = data?.videos ?? [];
+
+    const respond = (v: YTVideo) =>
       res.json({
-        videoId: "qjzM4sm7cqA",
-        title: "Cruise Relationship Crisis",
-        thumbnail: "https://img.youtube.com/vi/qjzM4sm7cqA/mqdefault.jpg",
+        videoId: v.id,
+        title: v.title,
+        thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
         channelUrl: CHANNEL_URL,
       });
-      return;
+
+    // 1. A video Mark explicitly featured wins — as long as it's still in the feed.
+    if (data?.featuredManual && data.featuredId) {
+      const pinned = videos.find(v => v.id === data.featuredId);
+      if (pinned) { respond(pinned); return; }
     }
 
-    const video = data.videos?.find(v => v.id === data.featuredId);
+    // 2. Otherwise track the latest upload (the feed is newest-first).
+    if (videos.length > 0) { respond(videos[0]); return; }
+
+    // 3. Nothing scanned yet — fall back to the hardcoded Short.
     res.json({
-      videoId: data.featuredId,
-      title: video?.title ?? "",
-      thumbnail: video?.thumbnail ?? `https://img.youtube.com/vi/${data.featuredId}/mqdefault.jpg`,
+      videoId: "qjzM4sm7cqA",
+      title: "Cruise Relationship Crisis",
+      thumbnail: "https://img.youtube.com/vi/qjzM4sm7cqA/mqdefault.jpg",
       channelUrl: CHANNEL_URL,
     });
   } catch (err) {
