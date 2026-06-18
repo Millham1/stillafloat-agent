@@ -8,7 +8,7 @@
     <meta name="robots" content="noindex, nofollow" />
 
     <!-- PWA manifest -->
-    <link rel="manifest" href="/dashboard/manifest.json" />
+    <link rel="manifest" href="/manifest.json" />
 
     <!-- Theme color (browser chrome + iOS status bar) -->
     <meta name="theme-color" content="#07183f" />
@@ -17,11 +17,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Still Afloat" />
-    <link rel="apple-touch-icon" href="/dashboard/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/png" href="/dashboard/icon-192.png" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,7 +34,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/dashboard/sw.js', { scope: '/dashboard/' })
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
             .catch((err) => console.warn('SW registration failed:', err));
         });
       }

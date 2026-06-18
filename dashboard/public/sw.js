@@ -1,9 +1,9 @@
-const CACHE_NAME = 'still-afloat-editorial-v1';
+const CACHE_NAME = 'still-afloat-editorial-v2';
 
-// App shell to cache on install
+// App shell to cache on install (root — dashboard is now a standalone subdomain)
 const APP_SHELL = [
-  '/dashboard/',
-  '/dashboard/index.html',
+  '/',
+  '/index.html',
 ];
 
 self.addEventListener('install', (event) => {
@@ -35,7 +35,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() =>
-        caches.match('/dashboard/index.html')
+        caches.match('/index.html')
       )
     );
     return;
