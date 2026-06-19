@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { readJson, writeJson } from "../lib/persistence";
 import { logger } from "../lib/logger";
+import { tokenOk } from "../lib/http-auth";
 
 const router: IRouter = Router();
 
@@ -125,6 +126,10 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
 
 // ── POST /api/youtube-feature ─────────────────────────────────────────────────
 router.post("/youtube-feature", async (req: Request, res: Response) => {
+  if (!tokenOk(req)) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
   try {
     const { videoId } = req.body as { videoId?: string };
     if (!videoId) {

@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { getSupabase, readJson, PATHS } from "../lib/persistence";
 import { logger } from "../lib/logger";
+import { tokenOk } from "../lib/http-auth";
 
 const router = Router();
 
@@ -309,6 +310,7 @@ router.post("/resend-verification", async (req, res) => {
 
 // ── GET /api/subscribers ─────────────────────────────────────────
 router.get("/subscribers", async (req, res) => {
+  if (!tokenOk(req)) return res.status(401).json({ error: "Unauthorized" });
   try {
     const { status, search, page = "1", limit = "100" } = req.query as Record<string, string>;
     const supabase  = getSupabase();
@@ -370,7 +372,8 @@ router.get("/unsubscribe", async (req, res) => {
 });
 
 // ── GET /api/approved-stories-list (for newsletter composer) ─────
-router.get("/approved-stories-list", async (_req, res) => {
+router.get("/approved-stories-list", async (req, res) => {
+  if (!tokenOk(req)) return res.status(401).json({ error: "Unauthorized" });
   try {
     const data = await readJson<{ stories?: Record<string, unknown>[] }>(PATHS.approved, { stories: [] });
     return res.json({ stories: data.stories ?? [] });
@@ -382,6 +385,7 @@ router.get("/approved-stories-list", async (_req, res) => {
 
 // ── POST /api/send-newsletter ─────────────────────────────────────
 router.post("/send-newsletter", async (req, res) => {
+  if (!tokenOk(req)) return res.status(401).json({ error: "Unauthorized" });
   try {
     const { storyIds, subject } = req.body as { storyIds: string[]; subject: string };
 

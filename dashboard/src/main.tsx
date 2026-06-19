@@ -1,7 +1,13 @@
 import { createRoot } from "react-dom/client";
-import { setBaseUrl } from "@workspace/api-client-react";
+import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 import App from "./App";
+import { getStoredToken } from "@/lib/auth-token";
 import "./index.css";
+
+// Generated-client hooks (e.g. editorial-queue) go through customFetch, which
+// attaches `Authorization: Bearer <token>` when this getter returns one. The
+// backend accepts the token via Authorization, x-affiliate-token, or ?token.
+setAuthTokenGetter(() => getStoredToken() || null);
 
 // In dev the Vite proxy forwards /api → localhost:8080, so no base URL needed.
 // For a standalone deployment set VITE_API_BASE_URL to the production API origin,

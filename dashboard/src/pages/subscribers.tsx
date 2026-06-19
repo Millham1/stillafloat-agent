@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, MailCheck, Clock, UserX, Search, Download } from "lucide-react";
+import { authHeaders } from "@/lib/auth-token";
 
 type Subscriber = {
   id: string;
@@ -44,7 +45,7 @@ export default function Subscribers() {
   const { data, isLoading, error } = useQuery<SubscribersResponse>({
     queryKey: ["subscribers", statusFilter, debouncedSearch],
     queryFn: () =>
-      fetch(`/api/subscribers?status=${statusFilter}&search=${encodeURIComponent(debouncedSearch)}&limit=500`)
+      fetch(`/api/subscribers?status=${statusFilter}&search=${encodeURIComponent(debouncedSearch)}&limit=500`, { headers: { ...authHeaders() } })
         .then((r) => r.json()),
     staleTime: 30_000,
   });

@@ -7,14 +7,28 @@ export function TokenGate({ children }: { children: React.ReactNode }) {
   });
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
 
   if (token) return <>{children}</>;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim()) { setError("Please enter your access token."); return; }
-    setStoredToken(input.trim());
-    setToken(input.trim());
+    const t = input.trim();
+    if (!t) { setError("Please enter your access token."); return; }
+    setChecking(true);
+    setError("");
+    try {
+      // Validate server-side before storing, so a wrong token is rejected here
+      // instead of silently failing on every later admin request.
+      const res = await fetch("/api/auth-check", { headers: { "x-affiliate-token": t } });
+      if (!res.ok) { setError("Invalid access token."); return; }
+      setStoredToken(t);
+      setToken(t);
+    } catch {
+      setError("Could not reach the server. Check your connection and try again.");
+    } finally {
+      setChecking(false);
+    }
   }
 
   return (
@@ -36,9 +50,10 @@ export function TokenGate({ children }: { children: React.ReactNode }) {
           {error && <p className="text-xs text-destructive">{error}</p>}
           <button
             type="submit"
-            className="w-full py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+            disabled={checking}
+            className="w-full py-2 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
           >
-            Unlock Dashboard
+            {checking ? "Checking…" : "Unlock Dashboard"}
           </button>
         </form>
       </div>

@@ -37,7 +37,7 @@ export default function Newsletter() {
 
   const { data, isLoading } = useQuery<ApprovedResponse>({
     queryKey: ["approved-stories-list"],
-    queryFn:  () => fetch("/api/approved-stories-list").then((r) => r.json()),
+    queryFn:  () => fetch("/api/approved-stories-list", { headers: { ...authHeaders() } }).then((r) => r.json()),
     staleTime: 60_000,
   });
 

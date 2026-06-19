@@ -5,6 +5,7 @@ import { normalizeStory, normalizeStories, validatePublishingStory } from "../li
 import { runEditorialAgent, learnFromDecisions } from "../lib/editorial-agent";
 import { translateStoriesToSpanish } from "../lib/translate";
 import { renderEditorialDigest, sendEditorialDigest } from "../lib/email-delivery";
+import { tokenOk } from "../lib/http-auth";
 
 const router: IRouter = Router();
 
@@ -113,8 +114,8 @@ function serverSideFilter(stories: Record<string, unknown>[]): Record<string, un
   return titleDeduped;
 }
 
-function authorize(_req: Request): boolean {
-  return true;
+function authorize(req: Request): boolean {
+  return tokenOk(req);
 }
 
 // Resolve action from either full name (?action=approve|reject|hold|feature|pin|defer)
@@ -137,6 +138,10 @@ function canonicalAction(action: string): string {
 }
 
 router.get("/editorial-queue", async (req: Request, res: Response) => {
+  if (!authorize(req)) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
   try {
     const candidates = await readJson<{
       generatedAt?: string;
@@ -181,7 +186,6 @@ router.get("/editorial-queue", async (req: Request, res: Response) => {
       degradedMode: Boolean(candidates.systemStatus?.degraded),
       count: queue.length,
       stories: queue,
-      approvalToken: process.env["AGENT_APPROVAL_TOKEN"] || "",
     });
   } catch (error) {
     req.log.error({ err: error }, "Editorial queue failure");

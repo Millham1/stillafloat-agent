@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ExternalLink, Check, X, Clock, Pin, AlertTriangle, Star } from "lucide-react";
+import { getStoredToken } from "@/lib/auth-token";
 
 const getImpactColor = (impact?: string | null) => {
   switch (impact?.toLowerCase()) {
@@ -90,7 +91,7 @@ export default function EditorialQueue() {
 
   const handleAction = async (id: string, action: 'approve' | 'reject' | 'feature' | 'hold') => {
     setProcessing(prev => ({ ...prev, [id]: action }));
-    const token = (data as { approvalToken?: string } | undefined)?.approvalToken || '';
+    const token = getStoredToken();
     const newStatus = ACTION_STATUS[action];
     const decidedAt = new Date().toISOString();
 
@@ -109,7 +110,7 @@ export default function EditorialQueue() {
     );
 
     try {
-      const res = await fetch(`/api/agent-action?action=${action}&id=${id}&token=${token}`);
+      const res = await fetch(`/api/agent-action?action=${action}&id=${id}`, { headers: { "x-affiliate-token": token } });
       const json = await res.json();
 
       if (res.ok && json.success) {
