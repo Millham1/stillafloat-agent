@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Heart, Trash2, Pencil, Plus, X, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { authHeaders } from "@/lib/auth-token";
 
 const CATEGORIES = [
   { value: "youtube-channels", label: "YouTube Channels", icon: "▶️" },
@@ -89,7 +90,7 @@ export default function FavoritesManager() {
       const endpoint = editId ? `/api/favorites/${editId}` : "/api/favorites";
       const resp = await fetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(form),
       });
       const data = await resp.json();
@@ -107,7 +108,7 @@ export default function FavoritesManager() {
   async function handleDelete(id: string, title: string) {
     if (!confirm(`Delete "${title}"?`)) return;
     try {
-      const resp = await fetch(`/api/favorites/${id}`, { method: "DELETE" });
+      const resp = await fetch(`/api/favorites/${id}`, { method: "DELETE", headers: { ...authHeaders() } });
       const data = await resp.json();
       if (!data.success) throw new Error(data.error);
       toast({ title: "Deleted" });

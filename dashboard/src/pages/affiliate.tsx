@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingBag, Trash2, Star, Plus, X, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { authHeaders } from "@/lib/auth-token";
 
 const CATEGORIES = [
   { value: "air-travel", label: "Air Travel", icon: "✈️" },
@@ -72,7 +73,7 @@ export default function AffiliateManager() {
     try {
       const resp = await fetch(`${API_BASE}/api/affiliate-items`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify(form),
       });
       const data = await resp.json();
@@ -91,7 +92,7 @@ export default function AffiliateManager() {
   async function handleDelete(id: string, title: string) {
     if (!confirm(`Delete "${title}"?`)) return;
     try {
-      const resp = await fetch(`${API_BASE}/api/affiliate-items/${id}`, { method: "DELETE" });
+      const resp = await fetch(`${API_BASE}/api/affiliate-items/${id}`, { method: "DELETE", headers: { ...authHeaders() } });
       const data = await resp.json();
       if (!data.success) throw new Error(data.error);
       toast({ title: "Deleted" });
@@ -105,7 +106,7 @@ export default function AffiliateManager() {
     try {
       const resp = await fetch(`${API_BASE}/api/affiliate-items/${item.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ featured: !item.featured }),
       });
       const data = await resp.json();

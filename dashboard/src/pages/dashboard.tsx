@@ -3,6 +3,7 @@ import { useGetSystemStatus, getGetSystemStatusQueryKey } from "@workspace/api-c
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Radio, Archive, LayoutTemplate, AlertTriangle, Youtube, RefreshCw, Star } from "lucide-react";
+import { authHeaders } from "@/lib/auth-token";
 
 interface YTVideo {
   id: string;
@@ -48,7 +49,7 @@ function YouTubeCard() {
     try {
       const res = await fetch("/api/youtube-feature", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ videoId }),
       });
       const data = await res.json() as { success: boolean };

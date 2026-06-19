@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Send, Eye, EyeOff, CheckSquare, Square, Newspaper, AlertTriangle } from "lucide-react";
+import { authHeaders } from "@/lib/auth-token";
 
 type Story = {
   id: string;
@@ -69,7 +70,7 @@ export default function Newsletter() {
     try {
       const res = await fetch("/api/send-newsletter", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ storyIds: Array.from(selected), subject }),
       });
       const data = await res.json();
