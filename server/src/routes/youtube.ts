@@ -195,10 +195,17 @@ router.get("/youtube-featured", async (_req: Request, res: Response) => {
 router.get("/youtube-top", async (req: Request, res: Response) => {
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 5, 1), 10);
+    const lang = String(req.query.lang || "en").toLowerCase() === "es" ? "es" : "en";
     const data = (await readJson("youtube-channel")) as { videos?: YTVideo[] } | null;
 
+    // Classify a video's language from its title: Spanish titles use ¿/¡ or
+    // accented characters (á é í ó ú ü ñ); English titles don't. This keeps the
+    // English site English-only and the Spanish site (/es/) Spanish-only — the
+    // Spanish version "replaces" the English one on /es/ — with no per-video bookkeeping.
+    const isSpanish = (t: unknown) => /[¡¿áéíóúüñ]/i.test(String(t || ""));
+
     const videos = (data?.videos ?? [])
-      .slice()
+      .filter((v) => (lang === "es" ? isSpanish(v.title) : !isSpanish(v.title)))
       .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
       .slice(0, limit)
       .map((v) => ({
@@ -209,7 +216,7 @@ router.get("/youtube-top", async (req: Request, res: Response) => {
         views: Number(v.views) || 0,
       }));
 
-    res.json({ videos, channelUrl: CHANNEL_URL });
+    res.json({ videos, channelUrl: CHANNEL_URL, lang });
   } catch (err) {
     logger.error({ err }, "YouTube top fetch failed");
     res.status(500).json({ success: false, error: (err as Error).message });

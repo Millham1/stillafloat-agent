@@ -246,7 +246,7 @@
       grid.appendChild(a);
     });
   }
-  fetch('/api/youtube-top?limit=5')
+  fetch('/api/youtube-top?limit=5&lang=en')
     .then(function(r){ return r.json(); })
     .then(function(d){ render((d&&d.videos)||[]); })
     .catch(function(){});
