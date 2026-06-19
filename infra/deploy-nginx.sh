@@ -23,6 +23,18 @@ if [ ! -f "$CERT" ]; then
 fi
 [ -f "$SRC" ] || { echo "ERR: source conf $SRC missing"; exit 1; }
 
+# Install the mTLS CA (public cert only — the CA private key never touches the
+# server or the repo). The dashboard conf references this path for client-cert
+# verification, so install it first or `nginx -t` will fail.
+CA_SRC="$(cd "$(dirname "$0")" && pwd)/nginx/saf-dashboard-ca.crt"
+CA_DEST="/etc/nginx/saf-dashboard-ca.crt"
+if [ -f "$CA_SRC" ]; then
+  cp "$CA_SRC" "$CA_DEST"
+  echo "installed CA: $CA_DEST"
+else
+  echo "WARN: CA cert $CA_SRC missing — mTLS conf will fail nginx -t"
+fi
+
 mkdir -p "$BK_DIR"
 DEFAULT_BK="$BK_DIR/default.$TS.bak"
 DEST_BK="$BK_DIR/saf-dashboard.$TS.bak"
