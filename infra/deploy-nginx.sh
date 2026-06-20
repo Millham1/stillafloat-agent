@@ -23,16 +23,16 @@ if [ ! -f "$CERT" ]; then
 fi
 [ -f "$SRC" ] || { echo "ERR: source conf $SRC missing"; exit 1; }
 
-# Install the mTLS CA (public cert only — the CA private key never touches the
-# server or the repo). The dashboard conf references this path for client-cert
-# verification, so install it first or `nginx -t` will fail.
-CA_SRC="$(cd "$(dirname "$0")" && pwd)/nginx/saf-dashboard-ca.crt"
-CA_DEST="/etc/nginx/saf-dashboard-ca.crt"
-if [ -f "$CA_SRC" ]; then
-  cp "$CA_SRC" "$CA_DEST"
-  echo "installed CA: $CA_DEST"
+# Install the Basic Auth password file (bcrypt/apr1 hash only — no plaintext).
+# The dashboard conf references this path, so install it first or `nginx -t` fails.
+HT_SRC="$(cd "$(dirname "$0")" && pwd)/nginx/saf-dashboard.htpasswd"
+HT_DEST="/etc/nginx/saf-dashboard.htpasswd"
+if [ -f "$HT_SRC" ]; then
+  cp "$HT_SRC" "$HT_DEST"
+  chmod 640 "$HT_DEST"
+  echo "installed htpasswd: $HT_DEST"
 else
-  echo "WARN: CA cert $CA_SRC missing — mTLS conf will fail nginx -t"
+  echo "WARN: htpasswd $HT_SRC missing — auth_basic conf will fail nginx -t"
 fi
 
 mkdir -p "$BK_DIR"
@@ -77,11 +77,13 @@ if ! nginx -t; then echo "nginx -t FAILED"; revert; exit 1; fi
 systemctl reload nginx
 echo "RELOADED OK"
 
-# 4. Smoke test — the dashboard must serve. Revert if it doesn't.
+# 4. Smoke test — nginx must serve the dashboard host. With Basic Auth enabled,
+#    an unauthenticated request returns 401, which proves the gate is active and
+#    nginx is up — so 401 counts as success alongside 2xx/3xx.
 sleep 1
 CODE="$(curl -s -o /dev/null -w '%{http_code}' https://dashboard.stillafloatcruising.com/ || echo 000)"
 echo "dashboard / : $CODE"
 case "$CODE" in
-  2*|3*) echo "DONE" ;;
+  2*|3*|401) echo "DONE" ;;
   *) echo "dashboard smoke test failed ($CODE)"; revert; exit 1 ;;
 esac
