@@ -11,7 +11,7 @@ import {
   type SocialVideo,
 } from "../lib/social-agent";
 import { notifyTelegram, reviewUrl } from "../lib/telegram";
-import { publishBatch } from "../lib/social-publish";
+import { publishBatch, loadMediaMap, setMedia } from "../lib/social-publish";
 
 const router: IRouter = Router();
 
@@ -105,6 +105,24 @@ router.post("/social/queue/:id/:action", requireToken, async (req: Request, res:
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
+});
+
+// GET /api/social/media — registered hosted clip URLs (videoId → Cloudinary URL).
+router.get("/social/media", requireToken, async (_req: Request, res: Response) => {
+  const map = await loadMediaMap();
+  res.json({ success: true, items: map.items });
+});
+
+// POST /api/social/media — register a hosted clip URL for a video.
+// Body: { videoId, videoUrl }  (videoUrl = public Cloudinary/CDN .mp4 for IG Reels / FB video)
+router.post("/social/media", requireToken, async (req: Request, res: Response) => {
+  const { videoId, videoUrl } = req.body as { videoId?: string; videoUrl?: string };
+  if (!videoId || !videoUrl || !/^https?:\/\//.test(videoUrl)) {
+    res.status(400).json({ success: false, error: "videoId and a public http(s) videoUrl are required" });
+    return;
+  }
+  await setMedia(videoId, videoUrl);
+  res.json({ success: true, videoId, videoUrl });
 });
 
 // POST /api/social/notify — send a Telegram nudge for current pending batches (manual/test).
