@@ -11,6 +11,7 @@ import {
   type SocialVideo,
 } from "../lib/social-agent";
 import { notifyTelegram, reviewUrl } from "../lib/telegram";
+import { publishBatch } from "../lib/social-publish";
 
 const router: IRouter = Router();
 
@@ -91,7 +92,16 @@ router.post("/social/queue/:id/:action", requireToken, async (req: Request, res:
       res.status(404).json({ success: false, error: "Batch not found" });
       return;
     }
-    res.json({ success: true, id: batch.id, status: batch.status });
+    if (action === "reject") {
+      res.json({ success: true, id: batch.id, status: batch.status });
+      return;
+    }
+    // Approved → publish (FB now; IG pending media pipeline). Dormant until
+    // MAKE_FB_WEBHOOK is configured, in which case approving posts publicly.
+    const publish = await publishBatch(batch);
+    const anyPosted = publish.some((p) => p.ok);
+    const finalBatch = anyPosted ? await setBatchStatus(batch.id, "posted") : batch;
+    res.json({ success: true, id: batch.id, status: finalBatch?.status ?? "approved", publish });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
