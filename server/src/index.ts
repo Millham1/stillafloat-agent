@@ -11,17 +11,10 @@ if (Number.isNaN(port) || port <= 0) {
 
 app.listen(port, "0.0.0.0", () => {
   logger.info({ port }, "Server listening on 0.0.0.0");
-  // Daily scan can be disabled per-environment: set DISABLE_DAILY_SCAN=1.
-  // Used to keep the dev mirror quiet, and to retire the monorepo's scheduler
-  // in favor of the standalone newsagent (ends the double digest).
-  // The standalone news agent (:3003, stillafloat-newsagent) owns editorial now.
-  // The monorepo's duplicate scan is retired by default so it can't send a second
-  // 8 AM digest. Opt back in with ENABLE_MONOREPO_DAILY_SCAN=1 only if ever needed.
-  if (process.env["ENABLE_MONOREPO_DAILY_SCAN"] === "1") {
-    scheduleDailyScan();
-  } else {
-    logger.info("Monorepo daily editorial scan retired (news agent owns editorial)");
-  }
+  // Editorial/news is owned entirely by the standalone news agent
+  // (:3003, stillafloat-newsagent). The monorepo no longer contains or runs any
+  // editorial scan — it only serves the website + dashboard and reads the
+  // news agent's published data via the feeds routes.
   // Homepage YouTube section. Independent of the editorial digest (it emails
   // nothing), so it keeps running on prod even after the editorial scan is
   // retired. Disabled on the dev mirror via DISABLE_YOUTUBE_SCAN=1.
@@ -31,42 +24,6 @@ app.listen(port, "0.0.0.0", () => {
     scheduleYouTubeScan();
   }
 });
-
-// ── Daily news scan scheduler ─────────────────────────────────────────────────
-// Fires once per day at 8:00 AM Eastern (UTC-4 summer / UTC-5 winter).
-// We approximate with a simple interval that checks the current hour each minute.
-
-function scheduleDailyScan() {
-  let lastRunDate = "";
-
-  const tick = async () => {
-    const now = new Date();
-    // Eastern offset: UTC-4 (EDT, Mar–Nov) or UTC-5 (EST, Nov–Mar)
-    const month = now.getUTCMonth(); // 0=Jan, 11=Dec
-    const isDST = month >= 2 && month <= 10; // rough DST window
-    const offsetHours = isDST ? 4 : 5;
-    const easternHour = (now.getUTCHours() - offsetHours + 24) % 24;
-    const dateKey = now.toISOString().slice(0, 10);
-
-    if (easternHour === 8 && dateKey !== lastRunDate) {
-      lastRunDate = dateKey;
-      logger.info("Scheduled daily scan starting");
-      try {
-        const apiKey = process.env["AGENT_APPROVAL_TOKEN"] || "";
-        const url = `http://localhost:${port}/api/scan-news${apiKey ? `?token=${apiKey}` : ""}`;
-        const res = await fetch(url, { method: "POST" });
-        const body = await res.json() as { success?: boolean; curatedStories?: number };
-        logger.info({ success: body.success, curatedStories: body.curatedStories }, "Scheduled daily scan complete");
-      } catch (err) {
-        logger.error({ err }, "Scheduled daily scan failed");
-      }
-    }
-  };
-
-  // Check every minute
-  setInterval(() => { tick().catch(() => {}); }, 60_000);
-  logger.info("Daily scan scheduler active — fires at 08:00 Eastern");
-}
 
 // ── YouTube channel scan scheduler ────────────────────────────────────────────
 // Keeps the homepage YouTube section current. The scan endpoint refreshes the
