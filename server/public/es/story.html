@@ -90,6 +90,7 @@ footer{padding:28px 20px 50px;text-align:center;color:rgba(255,255,255,.42);font
       <div class="editorial-label">🎙️ Por qué importa</div>
       <p id="editorial-reasoning"></p>
     </div>
+    <p id="es-source-note" class="note" style="display:none;"></p>
     <div class="actions">
       <a id="translate-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">
         <i class="fa-solid fa-language"></i> Traducir artículo completo
@@ -173,9 +174,20 @@ async function loadStory() {
 
     document.getElementById('story-summary').textContent = safeText(story.summary_es || story.summary, 'Resumen no disponible.');
     const articleUrl = safeText(story.originalLink || story.link, '');
-    if (articleUrl) {
-      const translateLink = document.getElementById('translate-link');
-      translateLink.href = `${AGENT_BASE_URL}/es/translate-loading.html?url=${encodeURIComponent(articleUrl)}`;
+    const esUrl = safeText(story.es_source_url, '');
+    const translateLink = document.getElementById('translate-link');
+    const esNote = document.getElementById('es-source-note');
+    if (esUrl) {
+      // A Spanish-language version of the original was found — link it directly.
+      translateLink.href = esUrl;
+      translateLink.innerHTML = '<i class="fa-solid fa-language"></i> Leer el artículo original en español';
+      translateLink.style.display = '';
+    } else if (articleUrl) {
+      // No Spanish version found — note (in Spanish) + link to the English original.
+      esNote.textContent = 'No hay traducción al español de este artículo. Puedes leer la versión original en inglés:';
+      esNote.style.display = '';
+      translateLink.href = articleUrl;
+      translateLink.innerHTML = '<i class="fa-solid fa-up-right-from-square"></i> Leer el artículo original (en inglés)';
       translateLink.style.display = '';
     }
 
