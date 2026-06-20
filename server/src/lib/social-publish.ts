@@ -63,17 +63,16 @@ export async function publishBatch(batch: QueuedBatch): Promise<PublishResult[]>
       continue;
     }
 
-    // facebook
+    // facebook — the active webhook scenario is a photo post, so always send the
+    // YouTube thumbnail as the image. (Native FB video would need the FB Video
+    // scenario, which costs an active-scenario slot.)
     if (!fbWebhook) {
       results.push({ surface: post.surface, platform: "facebook", ok: false, reason: "MAKE_FB_WEBHOOK not configured" });
       continue;
     }
-    // Prefer a hosted clip (native video) when available; else the thumbnail.
-    const clip = media.items[post.videoId]?.videoUrl;
-    const payload = clip
-      ? { video_url: clip, caption: post.link ? `${post.caption}\n\n${post.link}` : post.caption }
-      : { image_url: `https://i.ytimg.com/vi/${post.videoId}/hqdefault.jpg`, caption: post.link ? `${post.caption}\n\n${post.link}` : post.caption };
-    results.push(await postWebhook(fbWebhook, payload, post.surface, "facebook"));
+    const caption = post.link ? `${post.caption}\n\n${post.link}` : post.caption;
+    const image_url = `https://i.ytimg.com/vi/${post.videoId}/hqdefault.jpg`;
+    results.push(await postWebhook(fbWebhook, { image_url, caption }, post.surface, "facebook"));
   }
 
   logger.info({ batch: batch.id, results }, "publishBatch");

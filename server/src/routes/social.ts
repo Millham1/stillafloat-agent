@@ -125,6 +125,69 @@ router.post("/social/media", requireToken, async (req: Request, res: Response) =
   res.json({ success: true, videoId, videoUrl });
 });
 
+// GET /api/social/config — Cloudinary upload config for the uploader page.
+router.get("/social/config", requireToken, (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    cloudName: "duvhvhc2k",
+    uploadPreset: process.env["CLOUDINARY_UPLOAD_PRESET"] ?? null,
+  });
+});
+
+// GET /api/social/upload?token=… — drop a clip → uploads to Cloudinary (unsigned)
+// → registers its URL against a videoId, readying it for Instagram Reels.
+router.get("/social/upload", requireToken, (req: Request, res: Response) => {
+  const token = extractToken(req);
+  res.type("html").send(`<!doctype html><html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="robots" content="noindex,nofollow"/>
+<title>Still Afloat — Clip Uploader</title>
+<style>
+ body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;background:#f3f4f6;color:#111827}
+ header{background:#0f766e;color:#fff;padding:14px 18px}header h1{margin:0;font-size:17px}
+ .wrap{max-width:560px;margin:0 auto;padding:20px 16px}
+ label{display:block;font-size:13px;font-weight:700;margin:14px 0 4px}
+ input{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box}
+ button{margin-top:16px;background:#0f766e;color:#fff;border:0;border-radius:8px;padding:11px 18px;font-weight:700;cursor:pointer}
+ button:disabled{opacity:.5}
+ #msg{margin-top:14px;font-size:13px;line-height:1.6;word-break:break-all}
+ .hint{color:#6b7280;font-size:12px;margin-top:4px}
+</style></head><body>
+<header><h1>Still Afloat — Clip Uploader</h1></header>
+<div class="wrap">
+ <p class="hint">Pick a Short's video file and its YouTube video ID. It uploads to Cloudinary and registers the URL for Instagram Reels.</p>
+ <label>YouTube video ID</label>
+ <input id="vid" placeholder="e.g. u1yqFjLVnvQ"/>
+ <label>Clip file (.mp4)</label>
+ <input id="file" type="file" accept="video/*"/>
+ <button id="go" onclick="up()">Upload &amp; register</button>
+ <div id="msg"></div>
+</div>
+<script>
+ var TOKEN=${JSON.stringify(token)};
+ var CFG=null;
+ fetch('/api/social/config',{headers:{'x-affiliate-token':TOKEN}}).then(r=>r.json()).then(c=>{CFG=c;
+   if(!c.uploadPreset){document.getElementById('msg').innerHTML='<b style="color:#b91c1c">Cloudinary upload preset not configured.</b> Add CLOUDINARY_UPLOAD_PRESET to the server env first.';}});
+ function up(){
+   var vid=document.getElementById('vid').value.trim();
+   var f=document.getElementById('file').files[0];
+   var msg=document.getElementById('msg');
+   if(!CFG||!CFG.uploadPreset){msg.textContent='No upload preset configured.';return;}
+   if(!vid||!f){msg.textContent='Need a video ID and a file.';return;}
+   document.getElementById('go').disabled=true; msg.textContent='Uploading to Cloudinary…';
+   var fd=new FormData(); fd.append('file',f); fd.append('upload_preset',CFG.uploadPreset);
+   fetch('https://api.cloudinary.com/v1_1/'+CFG.cloudName+'/video/upload',{method:'POST',body:fd})
+    .then(r=>r.json()).then(function(cu){
+       if(!cu.secure_url){throw new Error(cu.error&&cu.error.message||'Cloudinary upload failed');}
+       msg.textContent='Registering…';
+       return fetch('/api/social/media',{method:'POST',headers:{'Content-Type':'application/json','x-affiliate-token':TOKEN},body:JSON.stringify({videoId:vid,videoUrl:cu.secure_url})}).then(r=>r.json()).then(function(j){
+         msg.innerHTML = j.success ? ('✅ Registered:<br>'+cu.secure_url) : ('Register failed: '+(j.error||'error'));
+       });
+    }).catch(function(e){msg.textContent='Error: '+e.message;}).finally(function(){document.getElementById('go').disabled=false;});
+ }
+</script>
+</body></html>`);
+});
+
 // POST /api/social/notify — send a Telegram nudge for current pending batches (manual/test).
 router.post("/social/notify", requireToken, async (_req: Request, res: Response) => {
   const queue = await loadQueue();
