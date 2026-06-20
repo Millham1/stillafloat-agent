@@ -128,7 +128,11 @@ export async function ingestProducts(
   const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
   const [published, pending] = await Promise.all([loadAffiliateStore(), loadPending()]);
 
-  const publishedAsins = new Set(published.items.map((i) => asinOf(i.affiliateLink || i.smartStrip)).filter(Boolean));
+  // Existing items may store the ASIN in either field (older items put the
+  // category page in affiliateLink and the Amazon link only in smartStrip).
+  const publishedAsins = new Set(
+    published.items.map((i) => asinOf(i.smartStrip) || asinOf(i.affiliateLink)).filter(Boolean),
+  );
   const pendingAsins = new Set(pending.items.map((i) => i.asin));
 
   const fresh: RawProduct[] = [];
