@@ -1,4 +1,6 @@
+import crypto from "node:crypto";
 import { logger } from "./logger";
+import { readJson, writeJson } from "./persistence";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Still Afloat social content engine.
@@ -239,4 +241,109 @@ export async function generateSocialBatch(
     generatedAt: new Date().toISOString(),
     posts,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Review queue — generated batches wait here for Mark's approval before posting.
+// NOTHING is published from here; approval only flips status. Posting (Make/IG)
+// is wired separately and gated.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type BatchStatus = "pending" | "approved" | "rejected" | "posted";
+
+export interface QueuedBatch extends SocialBatch {
+  id: string;
+  status: BatchStatus;
+  createdAt: string;
+  decidedAt?: string;
+}
+
+interface SocialQueue {
+  batches: QueuedBatch[];
+}
+
+const QUEUE_KEY = "social-queue";
+const CHANNEL_ID = "UC1sZkmM4CezcS5DPIPlrCtA";
+
+export async function loadQueue(): Promise<SocialQueue> {
+  return readJson<SocialQueue>(QUEUE_KEY, { batches: [] });
+}
+
+export async function enqueueBatch(batch: SocialBatch): Promise<QueuedBatch> {
+  const queue = await loadQueue();
+  const queued: QueuedBatch = {
+    ...batch,
+    id: crypto.randomUUID(),
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  };
+  queue.batches.unshift(queued);
+  await writeJson(QUEUE_KEY, queue);
+  return queued;
+}
+
+export async function setBatchStatus(
+  id: string,
+  status: BatchStatus,
+): Promise<QueuedBatch | null> {
+  const queue = await loadQueue();
+  const batch = queue.batches.find((b) => b.id === id);
+  if (!batch) return null;
+  batch.status = status;
+  batch.decidedAt = new Date().toISOString();
+  await writeJson(QUEUE_KEY, queue);
+  return batch;
+}
+
+// Pull recent uploads from the public channel RSS (no API key needed).
+export async function fetchChannelVideos(limit = 15): Promise<SocialVideo[]> {
+  const res = await fetch(
+    `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`,
+    { signal: AbortSignal.timeout(15_000) },
+  );
+  if (!res.ok) throw new Error(`Channel feed HTTP ${res.status}`);
+  const xml = await res.text();
+
+  const videos: SocialVideo[] = [];
+  const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
+  let m: RegExpExecArray | null;
+  while ((m = entryRe.exec(xml)) && videos.length < limit) {
+    const entry = m[1] ?? "";
+    const id = /<yt:videoId>(.*?)<\/yt:videoId>/.exec(entry)?.[1] ?? "";
+    const titleRaw = /<title>(.*?)<\/title>/.exec(entry)?.[1] ?? "";
+    if (!id || !titleRaw) continue;
+    const title = titleRaw
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+    // EN/ES routing: Spanish punctuation/accents → es, else en.
+    const lang: Lang = /[¡¿áéíóúüñ]/i.test(title) ? "es" : "en";
+    const format: "short" | "long" = /#short/i.test(title) ? "short" : "long";
+    videos.push({ id, title, lang, format });
+  }
+  return videos;
+}
+
+// Generate + enqueue batches for recent uploads that aren't already queued
+// (de-duped by videoId+track). Returns the newly created batches.
+export async function scanAndQueue(maxNew = 4): Promise<QueuedBatch[]> {
+  const [videos, queue] = await Promise.all([fetchChannelVideos(12), loadQueue()]);
+  const existing = new Set(queue.batches.map((b) => `${b.videoId}:${b.track}`));
+  const created: QueuedBatch[] = [];
+
+  for (const video of videos) {
+    if (created.length >= maxNew) break;
+    const track: Track = video.lang === "es" ? "A" : "B";
+    if (existing.has(`${video.id}:${track}`)) continue;
+    try {
+      const batch = await generateSocialBatch(video, track);
+      const queued = await enqueueBatch(batch);
+      created.push(queued);
+    } catch (err) {
+      logger.warn({ err, videoId: video.id }, "scanAndQueue: generation failed, skipping");
+    }
+  }
+  return created;
 }
