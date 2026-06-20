@@ -9,6 +9,7 @@ import {
   gatherApprovedStories,
   previewStories,
 } from "../lib/newsletter";
+import { notifyTelegram, reviewUrl } from "../lib/telegram";
 
 const router: IRouter = Router();
 const SITE = "https://stillafloatcruising.com";
@@ -19,6 +20,12 @@ router.post("/newsletter/draft", requireToken, async (_req: Request, res: Respon
     const draft = await draftNewsletter();
     await saveDraft(draft);
     res.json({ success: true, draft });
+    void notifyTelegram({
+      heading: "📨 <b>Newsletter draft ready</b>",
+      lines: [draft.subject, `${draft.storyIds.length} stories${draft.video ? " + video" : ""}${draft.affiliate ? " + affiliate" : ""}`],
+      url: reviewUrl("/api/newsletter/review"),
+      buttonLabel: "Review & send →",
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -57,6 +64,22 @@ router.post("/newsletter/send", requireToken, async (_req: Request, res: Respons
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
+});
+
+// POST /api/newsletter/notify — Telegram nudge for the current draft (manual/test).
+router.post("/newsletter/notify", requireToken, async (_req: Request, res: Response) => {
+  const draft = await loadDraft();
+  if (!draft) {
+    res.status(404).json({ success: false, error: "No draft to notify about" });
+    return;
+  }
+  const result = await notifyTelegram({
+    heading: "📨 <b>Newsletter draft awaiting review</b>",
+    lines: [draft.subject],
+    url: reviewUrl("/api/newsletter/review"),
+    buttonLabel: "Review & send →",
+  });
+  res.json({ success: result.success, reason: result.reason });
 });
 
 // GET /api/newsletter/review?token=… — review surface: live email preview + actions.

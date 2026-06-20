@@ -10,6 +10,7 @@ import {
   type Lang,
   type SocialVideo,
 } from "../lib/social-agent";
+import { notifyTelegram, reviewUrl } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -33,6 +34,12 @@ router.post("/social/generate", requireToken, async (req: Request, res: Response
     const batch = await generateSocialBatch(video, resolvedTrack);
     const queued = await enqueueBatch(batch);
     res.json({ success: true, batch: queued });
+    void notifyTelegram({
+      heading: `📱 <b>1 social draft ready (Track ${queued.track})</b>`,
+      lines: [queued.title],
+      url: reviewUrl("/api/social/review"),
+      buttonLabel: "Review →",
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -48,6 +55,14 @@ router.post("/social/scan", requireToken, async (req: Request, res: Response) =>
       created: created.length,
       batches: created.map((b) => ({ id: b.id, videoId: b.videoId, track: b.track, title: b.title })),
     });
+    if (created.length > 0) {
+      void notifyTelegram({
+        heading: `📱 <b>${created.length} new social draft(s) ready</b>`,
+        lines: created.map((b) => `Track ${b.track}: ${b.title}`),
+        url: reviewUrl("/api/social/review"),
+        buttonLabel: `Review ${created.length} →`,
+      });
+    }
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -80,6 +95,19 @@ router.post("/social/queue/:id/:action", requireToken, async (req: Request, res:
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
+});
+
+// POST /api/social/notify — send a Telegram nudge for current pending batches (manual/test).
+router.post("/social/notify", requireToken, async (_req: Request, res: Response) => {
+  const queue = await loadQueue();
+  const pending = queue.batches.filter((b) => b.status === "pending");
+  const result = await notifyTelegram({
+    heading: `📱 <b>${pending.length} social draft(s) awaiting review</b>`,
+    lines: pending.slice(0, 8).map((b) => `Track ${b.track}: ${b.title}`),
+    url: reviewUrl("/api/social/review"),
+    buttonLabel: `Review ${pending.length} →`,
+  });
+  res.json({ success: result.success, pending: pending.length, reason: result.reason });
 });
 
 // GET /api/social/review?token=… — self-contained HTML review surface.
