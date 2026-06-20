@@ -29,7 +29,10 @@ HT_SRC="$(cd "$(dirname "$0")" && pwd)/nginx/saf-dashboard.htpasswd"
 HT_DEST="/etc/nginx/saf-dashboard.htpasswd"
 if [ -f "$HT_SRC" ]; then
   cp "$HT_SRC" "$HT_DEST"
-  chmod 640 "$HT_DEST"
+  # World-readable so the nginx worker (www-data) can read it; the value is a
+  # salted apr1 hash, not plaintext. 640 root:root caused nginx 500s (worker
+  # couldn't read the file → auth_basic failed).
+  chmod 644 "$HT_DEST"
   echo "installed htpasswd: $HT_DEST"
 else
   echo "WARN: htpasswd $HT_SRC missing — auth_basic conf will fail nginx -t"
