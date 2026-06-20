@@ -26,7 +26,7 @@ function makeUnsubscribeSig(email: string): string {
   return crypto.createHmac("sha256", secret).update(email.toLowerCase()).digest("hex").slice(0, 24);
 }
 
-function unsubscribeUrl(email: string, baseUrl: string): string {
+export function unsubscribeUrl(email: string, baseUrl: string): string {
   const sig = makeUnsubscribeSig(email);
   return `${baseUrl}/api/unsubscribe?email=${encodeURIComponent(email)}&sig=${sig}`;
 }
