@@ -345,6 +345,43 @@ export async function setBatchStatus(
   return batch;
 }
 
+// "Pull all the hooks back and regenerate them." Takes the current campaign
+// (every distinct video×track already in the queue), regenerates fresh copy for
+// each with the latest logic (transcript grounding, brand voice), and REPLACES
+// the queue with the new pending batches. Prior approved/rejected status is
+// cleared — everything comes back to pending for re-review. Returns the fresh set.
+export async function regenerateQueue(): Promise<QueuedBatch[]> {
+  const queue = await loadQueue();
+  const seen = new Set<string>();
+  const targets: { video: SocialVideo; track: Track }[] = [];
+  for (const b of queue.batches) {
+    const key = `${b.videoId}:${b.track}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const format: "short" | "long" = /#short/i.test(b.title) ? "short" : "long";
+    targets.push({ video: { id: b.videoId, title: b.title, lang: b.lang, format }, track: b.track });
+  }
+
+  const fresh: QueuedBatch[] = [];
+  for (const t of targets) {
+    try {
+      const batch = await generateSocialBatch(t.video, t.track);
+      fresh.push({
+        ...batch,
+        id: crypto.randomUUID(),
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      logger.warn({ err, videoId: t.video.id, track: t.track }, "regenerateQueue: generation failed");
+    }
+  }
+
+  await writeJson(QUEUE_KEY, { batches: fresh });
+  logger.info({ count: fresh.length }, "Regenerated social queue");
+  return fresh;
+}
+
 // Pull recent uploads from the public channel RSS (no API key needed).
 export async function fetchChannelVideos(limit = 15): Promise<SocialVideo[]> {
   const res = await fetch(

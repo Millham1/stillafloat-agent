@@ -6,10 +6,12 @@ import {
   loadQueue,
   setBatchStatus,
   scanAndQueue,
+  regenerateQueue,
   type Track,
   type Lang,
   type SocialVideo,
 } from "../lib/social-agent";
+import { logger } from "../lib/logger";
 import { notifyTelegram, reviewUrl } from "../lib/telegram";
 import { publishBatch, loadMediaMap, setMedia } from "../lib/social-publish";
 
@@ -68,6 +70,35 @@ router.post("/social/scan", requireToken, async (req: Request, res: Response) =>
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
+});
+
+// POST /api/social/regenerate — pull every hook in the current campaign back to
+// pending and regenerate the copy with the latest logic (transcript grounding).
+// Runs in the background (many sequential OpenAI calls) so the request returns
+// immediately; a single Telegram fires when the fresh batches are ready.
+router.post("/social/regenerate", requireToken, async (_req: Request, res: Response) => {
+  const queue = await loadQueue();
+  const targets = new Set(queue.batches.map((b) => `${b.videoId}:${b.track}`)).size;
+  if (targets === 0) {
+    res.json({ success: true, started: false, message: "Queue is empty — nothing to regenerate." });
+    return;
+  }
+  res.json({ success: true, started: true, regenerating: targets });
+  void (async () => {
+    try {
+      const fresh = await regenerateQueue();
+      if (fresh.length > 0) {
+        await notifyTelegram({
+          heading: `♻️ <b>${fresh.length} hook(s) regenerated</b>`,
+          lines: fresh.map((b) => `Track ${b.track}: ${b.title}`),
+          url: reviewUrl("/api/social/review"),
+          buttonLabel: `Review ${fresh.length} →`,
+        });
+      }
+    } catch (err) {
+      logger.error({ err }, "social/regenerate failed");
+    }
+  })();
 });
 
 // GET /api/social/queue — list queued batches (newest first).
