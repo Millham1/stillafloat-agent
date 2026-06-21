@@ -270,10 +270,16 @@ function renderReviewPage(batches: any[], token: string): string {
         </div>`,
         )
         .join("");
+      const grounded =
+        typeof b.transcriptChars === "number"
+          ? b.transcriptChars > 0
+            ? `<span class="grd ok" title="Hooks grounded in the video transcript">📄 transcript (${b.transcriptChars} chars)</span>`
+            : `<span class="grd warn" title="No transcript was available — hooks written from the title only">⚠ no transcript — title only</span>`
+          : "";
       return `
       <div class="batch" id="b-${esc(b.id)}">
         <div class="bhead">
-          <div><span class="trk trk-${esc(b.track)}">Track ${esc(b.track)}</span> <strong>${esc(b.title)}</strong></div>
+          <div><span class="trk trk-${esc(b.track)}">Track ${esc(b.track)}</span> <strong>${esc(b.title)}</strong> ${grounded}</div>
           <div class="acts">
             <button class="ap" onclick="decide('${esc(b.id)}','approve')">✅ Approve</button>
             <button class="rj" onclick="decide('${esc(b.id)}','reject')">✕ Reject</button>
@@ -299,6 +305,9 @@ function renderReviewPage(batches: any[], token: string): string {
  .ap{background:#16a34a}.rj{background:#dc2626}
  .trk{font-size:11px;font-weight:700;border-radius:5px;padding:2px 7px;color:#fff}
  .trk-A{background:#7c3aed}.trk-B{background:#0369a1}
+ .grd{display:inline-block;font-size:11px;border-radius:5px;padding:2px 7px;margin-left:4px}
+ .grd.ok{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+ .grd.warn{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
  .post{border-top:1px solid #eee;padding:10px 0}
  .meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
  .pill{font-size:11px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:5px;padding:2px 7px}

@@ -54,6 +54,7 @@ export interface SocialBatch {
   track: Track;
   lang: Lang;
   generatedAt: string;
+  transcriptChars: number; // >0 = hooks were grounded in the video transcript
   posts: SocialPost[];
 }
 
@@ -281,7 +282,30 @@ export async function generateSocialBatch(
     };
   });
 
-  logger.info({ videoId: video.id, track, count: posts.length }, "Generated social batch");
+  // Guarantee a faithful English gloss for EVERY Spanish caption so a
+  // non-Spanish speaker can review exactly what each post says. The combined
+  // generation call returns en_gloss only inconsistently, so backfill any
+  // missing gloss with a dedicated, reliable translation pass.
+  if (lang === "es") {
+    const need = posts
+      .map((p, i) => ({ i, caption: p.caption }))
+      .filter((x) => x.caption && !posts[x.i]?.gloss);
+    if (need.length > 0) {
+      const glosses = await translateCaptions(
+        need.map((x) => x.caption),
+        apiKey,
+      );
+      need.forEach((x, k) => {
+        const g = glosses[k]?.trim();
+        if (g) posts[x.i]!.gloss = g;
+      });
+    }
+  }
+
+  logger.info(
+    { videoId: video.id, track, count: posts.length, transcriptChars: transcript.length },
+    "Generated social batch",
+  );
 
   return {
     videoId: video.id,
@@ -289,8 +313,46 @@ export async function generateSocialBatch(
     track,
     lang,
     generatedAt: new Date().toISOString(),
+    transcriptChars: transcript.length,
     posts,
   };
+}
+
+// Translate Spanish captions to natural English (for the review gloss). One call
+// for the whole set; returns an array aligned to the input order. Graceful: on
+// any failure returns []. Kept separate from generation so gloss coverage is
+// reliable regardless of how the copy model formats its JSON.
+async function translateCaptions(captions: string[], apiKey: string): Promise<string[]> {
+  if (captions.length === 0) return [];
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              'Translate each Spanish social-media caption into natural, faithful English (keep the meaning, tone, and emoji). Respond ONLY with JSON: {"translations":["...", ...]} in the same order as the input.',
+          },
+          { role: "user", content: JSON.stringify({ captions }) },
+        ],
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!response.ok) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload = (await response.json()) as any;
+    const content: string = payload?.choices?.[0]?.message?.content ?? "";
+    const parsed = JSON.parse(content) as { translations?: string[] };
+    return Array.isArray(parsed.translations) ? parsed.translations : [];
+  } catch (err) {
+    logger.warn({ err }, "translateCaptions failed");
+    return [];
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
