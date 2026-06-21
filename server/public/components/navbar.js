@@ -49,6 +49,9 @@
 
   const bookLabel = isSpanish ? 'Trabaja Con Mark' : 'Work With Mark';
   const bookUrl   = isSpanish ? '/es/work-with-mark.html' : '/work-with-mark.html';
+  const subscribeUrl       = isSpanish ? '/es/subscribe.html' : '/subscribe.html';
+  const subscribeLabel     = isSpanish ? '✉ Suscríbete'       : '✉ Subscribe';
+  const subscribeLabelFull = isSpanish ? '✉ Suscríbete gratis' : '✉ Subscribe Free';
 
   const navHTML = `
     ${isHome ? '' : `
@@ -61,7 +64,7 @@
       </div>
       <div class="sa-nav-row sa-secondary">
         <a href="${bookUrl}" class="sa-nav-link">${bookLabel}</a>
-        <a href="/subscribe.html" class="sa-nav-link sa-subscribe-link">✉ Subscribe</a>
+        <a href="${subscribeUrl}" class="sa-nav-link sa-subscribe-link">${subscribeLabel}</a>
         <a href="${langUrl}" class="sa-nav-link sa-lang-link" title="${langLabel}">${langLabel}</a>
       </div>
     </nav>
@@ -77,7 +80,7 @@
       </button>
       ${mainLinks.map(l => `<a href="${l.href}" class="sa-mobile-link">${l.label}</a>`).join('')}
       <a href="${bookUrl}" class="sa-mobile-link">${bookLabel}</a>
-      <a href="/subscribe.html" class="sa-mobile-link sa-mobile-subscribe">✉ Subscribe Free</a>
+      <a href="${subscribeUrl}" class="sa-mobile-link sa-mobile-subscribe">${subscribeLabelFull}</a>
       <div class="sa-mobile-lang-divider"></div>
       <a href="${langUrl}" class="sa-mobile-link sa-mobile-lang">${langLabel}</a>
     </div>
