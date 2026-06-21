@@ -35,7 +35,7 @@ router.post("/social/generate", requireToken, async (req: Request, res: Response
     }
     const resolvedTrack: Track = track === "A" || track === "B" ? track : lang === "es" ? "A" : "B";
     const video: SocialVideo = { id: videoId, title, lang, ...(format ? { format } : {}) };
-    const batch = await generateSocialBatch(video, resolvedTrack);
+    const batch = await generateSocialBatch(video, resolvedTrack, transcript);
     const queued = await enqueueBatch(batch);
     res.json({ success: true, batch: queued });
     void notifyTelegram({
