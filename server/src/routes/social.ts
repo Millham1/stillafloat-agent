@@ -28,13 +28,14 @@ const router: IRouter = Router();
 // Body: { videoId, title, lang, track?, format? }
 router.post("/social/generate", requireToken, async (req: Request, res: Response) => {
   try {
-    const { videoId, title, lang, track, format, transcript } = req.body as {
+    const { videoId, title, lang, track, format, transcript, notify } = req.body as {
       videoId?: string;
       title?: string;
       lang?: Lang;
       track?: Track;
       format?: "short" | "long";
       transcript?: string;
+      notify?: boolean; // default true; pass false when generating many in a run
     };
     if (!videoId || !title || (lang !== "en" && lang !== "es")) {
       res.status(400).json({ success: false, error: "videoId, title and lang('en'|'es') are required" });
@@ -45,12 +46,16 @@ router.post("/social/generate", requireToken, async (req: Request, res: Response
     const batch = await generateSocialBatch(video, resolvedTrack, transcript);
     const queued = await enqueueBatch(batch);
     res.json({ success: true, batch: queued });
-    void notifyTelegram({
-      heading: `📱 <b>1 social draft ready (Track ${queued.track})</b>`,
-      lines: [queued.title],
-      url: reviewUrl("/api/social/review"),
-      buttonLabel: "Review →",
-    });
+    // Per-call nudge is suppressed with notify:false so a multi-video run sends a
+    // single consolidated review nudge at the end (via POST /social/notify).
+    if (notify !== false) {
+      void notifyTelegram({
+        heading: `📱 <b>1 social draft ready (Track ${queued.track})</b>`,
+        lines: [queued.title],
+        url: reviewUrl("/api/social/review"),
+        buttonLabel: "Review →",
+      });
+    }
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
