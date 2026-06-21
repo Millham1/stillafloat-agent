@@ -41,6 +41,7 @@ export interface SocialPost extends Slot {
   track: Track;
   lang: Lang;
   caption: string;
+  gloss?: string; // faithful English gloss of a Spanish caption (for review)
   hashtags: string[];
   link: string;
   videoId: string;
@@ -147,12 +148,15 @@ Caption rules:
 - For Facebook/YouTube, do NOT write the URL yourself; the system appends it. Just write the CTA sentence.
 - hashtags: 3–6 relevant, lowercase, no spaces (Spanish hashtags for Track A). Empty array for Personal Facebook posts.
 
-Respond ONLY with a JSON object: { "posts": [ { "idx": <int>, "caption": "<string>", "hashtags": ["..."] } ] } with one element per requested slot, idx matching the input.`;
+When the caption is in Spanish, ALSO include "en_gloss": a faithful, natural English translation of that caption (so a non-Spanish speaker can review exactly what it says). For English captions, omit en_gloss.
+
+Respond ONLY with a JSON object: { "posts": [ { "idx": <int>, "caption": "<string>", "hashtags": ["..."], "en_gloss": "<English translation, only if caption is Spanish>" } ] } with one element per requested slot, idx matching the input.`;
 
 interface LlmPost {
   idx: number;
   caption: string;
   hashtags?: string[];
+  en_gloss?: string;
 }
 
 export async function generateSocialBatch(
@@ -219,11 +223,13 @@ export async function generateSocialBatch(
       content: slot.ctaType,
     });
     const hashtags = gen && Array.isArray(gen.hashtags) ? gen.hashtags.slice(0, 6) : [];
+    const glossText = lang === "es" ? (gen?.en_gloss?.trim() ?? "") : "";
     return {
       ...slot,
       track,
       lang,
       caption: gen?.caption?.trim() ?? "",
+      ...(glossText ? { gloss: glossText } : {}),
       hashtags,
       link,
       videoId: video.id,

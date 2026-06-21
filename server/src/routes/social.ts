@@ -232,6 +232,7 @@ function renderReviewPage(batches: any[], token: string): string {
         <div class="post">
           <div class="meta"><span class="pill">${esc(p.surface)}</span><span class="pill cta">${esc(p.ctaType)}</span>${p.linkInBio ? '<span class="pill bio">link in bio</span>' : ""}</div>
           <p class="cap">${esc(p.caption)}</p>
+          ${p.gloss ? `<p class="gloss">🇬🇧 ${esc(p.gloss)}</p>` : ""}
           ${p.hashtags?.length ? `<p class="tags">${esc(p.hashtags.join(" "))}</p>` : ""}
           <p class="link">${esc(p.link)}</p>
         </div>`,
@@ -272,6 +273,7 @@ function renderReviewPage(batches: any[], token: string): string {
  .pill.cta{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
  .pill.bio{background:#fef3c7;border-color:#fde68a;color:#92400e}
  .cap{margin:4px 0;font-size:15px;line-height:1.5;white-space:pre-wrap}
+ .gloss{margin:2px 0 4px;font-size:13px;line-height:1.45;color:#475569;background:#f1f5f9;border-left:3px solid #94a3b8;padding:6px 9px;border-radius:4px}
  .tags{margin:4px 0;font-size:13px;color:#2563eb}
  .link{margin:4px 0 0;font-size:11px;color:#6b7280;word-break:break-all}
  .empty{text-align:center;color:#6b7280;padding:50px 0}
