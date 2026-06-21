@@ -220,6 +220,81 @@ router.get("/social/upload", requireToken, (req: Request, res: Response) => {
 </body></html>`);
 });
 
+// GET /api/social/compose?token=… — the forward workflow: for a NEW video, paste
+// its script/transcript, pick the track, and generate hooks GROUNDED in the real
+// content (no YouTube scraping). Queues into the same review flow.
+router.get("/social/compose", requireToken, (req: Request, res: Response) => {
+  const token = extractToken(req);
+  res.type("html").send(`<!doctype html><html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="robots" content="noindex,nofollow"/>
+<title>Still Afloat — Compose Hooks</title>
+<style>
+ body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;background:#f3f4f6;color:#111827}
+ header{background:#0f766e;color:#fff;padding:14px 18px}header h1{margin:0;font-size:17px}
+ .wrap{max-width:640px;margin:0 auto;padding:20px 16px}
+ label{display:block;font-size:13px;font-weight:700;margin:14px 0 4px}
+ input,select,textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;box-sizing:border-box;font-family:inherit}
+ textarea{min-height:200px;resize:vertical}
+ .row{display:flex;gap:10px}.row>div{flex:1}
+ button{margin-top:16px;background:#0f766e;color:#fff;border:0;border-radius:8px;padding:11px 18px;font-weight:700;cursor:pointer}
+ button:disabled{opacity:.5}
+ #msg{margin-top:14px;font-size:13px;line-height:1.6}
+ .hint{color:#6b7280;font-size:12px;margin-top:4px}
+ a{color:#0f766e}
+</style></head><body>
+<header><h1>Still Afloat — Compose Grounded Hooks</h1></header>
+<div class="wrap">
+ <p class="hint">Paste the video's <b>script / transcript</b> so the hooks describe what the video ACTUALLY contains — not just the title. Generates one batch into the review queue.</p>
+ <label>YouTube video ID</label>
+ <input id="vid" placeholder="e.g. OVwKK-FR1Xc"/>
+ <p class="hint">From the watch URL: youtube.com/watch?v=<b>VIDEO_ID</b></p>
+ <label>Title</label>
+ <input id="title" placeholder="The video's title"/>
+ <div class="row">
+   <div>
+     <label>Track</label>
+     <select id="track">
+       <option value="B">B — English (value / convert)</option>
+       <option value="A">A — Spanish (reach)</option>
+     </select>
+   </div>
+   <div>
+     <label>Format</label>
+     <select id="format">
+       <option value="long">Long-form</option>
+       <option value="short">Short</option>
+     </select>
+   </div>
+ </div>
+ <label>Script / transcript</label>
+ <textarea id="script" placeholder="Paste the VO script or a description of what's actually in the video…"></textarea>
+ <button id="go" onclick="gen()">Generate hooks →</button>
+ <div id="msg"></div>
+</div>
+<script>
+ var TOKEN=${JSON.stringify(token)};
+ function gen(){
+   var vid=document.getElementById('vid').value.trim();
+   var title=document.getElementById('title').value.trim();
+   var track=document.getElementById('track').value;
+   var format=document.getElementById('format').value;
+   var script=document.getElementById('script').value.trim();
+   var msg=document.getElementById('msg');
+   if(!vid||!title){msg.textContent='Need a video ID and title.';return;}
+   if(!script){if(!confirm('No script pasted — hooks will fall back to the title only. Continue?'))return;}
+   var lang = track==='A' ? 'es' : 'en';
+   document.getElementById('go').disabled=true; msg.textContent='Generating grounded hooks…';
+   fetch('/api/social/generate',{method:'POST',headers:{'Content-Type':'application/json','x-affiliate-token':TOKEN},
+     body:JSON.stringify({videoId:vid,title:title,lang:lang,track:track,format:format,transcript:script})})
+    .then(function(r){return r.json();}).then(function(j){
+       if(j.success){msg.innerHTML='✅ Hooks generated for Track '+(j.batch&&j.batch.track)+'. <a href="/api/social/review?token='+encodeURIComponent(TOKEN)+'">Open the review page →</a>';}
+       else{msg.textContent='Failed: '+(j.error||'error');}
+    }).catch(function(e){msg.textContent='Error: '+e.message;}).finally(function(){document.getElementById('go').disabled=false;});
+ }
+</script>
+</body></html>`);
+});
+
 // POST /api/social/notify — send a Telegram nudge for current pending batches (manual/test).
 router.post("/social/notify", requireToken, async (_req: Request, res: Response) => {
   const queue = await loadQueue();
