@@ -15,18 +15,34 @@ router.post("/affiliate/ingest", requireToken, async (req: Request, res: Respons
       return;
     }
     const { added, skipped } = await ingestProducts(items);
-    res.json({ success: true, added: added.length, skipped });
+    let notified = false;
     if (added.length > 0) {
-      void notifyTelegram({
+      // Awaited (not fire-and-forget) so the Telegram nudge reliably sends.
+      const r = await notifyTelegram({
         heading: `🛒 <b>${added.length} new affiliate pick(s) for review</b>`,
         lines: added.slice(0, 10).map((a) => `${a.category}: ${a.title.slice(0, 70)}`),
         url: reviewUrl("/api/affiliate/review"),
         buttonLabel: `Review ${added.length} →`,
-      });
+      }).catch(() => ({ success: false }));
+      notified = Boolean(r.success);
     }
+    res.json({ success: true, added: added.length, skipped, notified });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
+});
+
+// POST /api/affiliate/notify — re-send the Telegram nudge for the current queue (manual).
+router.post("/affiliate/notify", requireToken, async (_req: Request, res: Response) => {
+  const pending = await loadPending();
+  const n = pending.items.length;
+  const r = await notifyTelegram({
+    heading: `🛒 <b>${n} affiliate pick(s) awaiting review</b>`,
+    lines: pending.items.slice(0, 10).map((i) => `${i.category}: ${i.title.slice(0, 70)}`),
+    url: reviewUrl("/api/affiliate/review"),
+    buttonLabel: `Review ${n} →`,
+  });
+  res.json({ success: r.success, pending: n, reason: r.reason });
 });
 
 // GET /api/affiliate/pending — queued picks awaiting review.
