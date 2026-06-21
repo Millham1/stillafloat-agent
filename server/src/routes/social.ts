@@ -19,12 +19,13 @@ const router: IRouter = Router();
 // Body: { videoId, title, lang, track?, format? }
 router.post("/social/generate", requireToken, async (req: Request, res: Response) => {
   try {
-    const { videoId, title, lang, track, format } = req.body as {
+    const { videoId, title, lang, track, format, transcript } = req.body as {
       videoId?: string;
       title?: string;
       lang?: Lang;
       track?: Track;
       format?: "short" | "long";
+      transcript?: string;
     };
     if (!videoId || !title || (lang !== "en" && lang !== "es")) {
       res.status(400).json({ success: false, error: "videoId, title and lang('en'|'es') are required" });

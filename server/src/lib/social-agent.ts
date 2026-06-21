@@ -127,6 +127,8 @@ const SYSTEM_PROMPT = `You are the social media copywriter for "Still Afloat," a
 
 Brand premise / north star: "Cruise smarter, laugh more." Humor is core to the brand, not a garnish — content is light-hearted and relatable, NOT cautionary "learn from my mistakes" warnings. The host has 40 years of cruising experience (credibility) and a warm, funny, real voice.
 
+GROUND HOOKS IN THE ACTUAL VIDEO: when a transcript is provided, base every hook on what the video genuinely contains — pull the real, specific moments/tips from it. If the TITLE overstates what the video delivers (e.g., titled "Full Tour & Review" but it's really just a room walkthrough), describe the ACTUAL content — never promise more than the video shows. The transcript is the source of truth, the title is not.
+
 CORE RULE — VALUE, NEVER HYPE:
 - Every post must tie to REALISTIC, concrete value: a specific tip, an honest take, a real tradeoff, a genuine moment. The host's 40 years of credibility (and a travel agency) depend on it.
 - NEVER use hype, empty superlatives, or clickbait fluff. Banned vibes: "escape to luxury," "you won't believe," "ultimate," "amazing," "life-changing," "must-see," vague excitement. Be specific instead (numbers, the actual perk, the real catch).
@@ -159,13 +161,52 @@ interface LlmPost {
   en_gloss?: string;
 }
 
+// Best-effort fetch of a video's transcript (captions) so hooks are grounded in
+// the actual content, not just the title. Returns "" on any failure (then hooks
+// fall back to the title). A caller may also pass a transcript directly.
+export async function fetchTranscript(videoId: string): Promise<string> {
+  try {
+    const res = await fetch(`https://www.youtube.com/watch?v=${videoId}&hl=en`, {
+      headers: {
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        "accept-language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return "";
+    const html = await res.text();
+    const m = html.match(/"captionTracks":(\[.*?\}\])/);
+    if (!m || !m[1]) return "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tracks = JSON.parse(m[1]) as Array<{ baseUrl?: string; languageCode?: string }>;
+    const track = tracks.find((t) => /^en/i.test(t.languageCode ?? "")) ?? tracks[0];
+    if (!track?.baseUrl) return "";
+    const capRes = await fetch(track.baseUrl, { signal: AbortSignal.timeout(15_000) });
+    if (!capRes.ok) return "";
+    const xml = await capRes.text();
+    const text = xml
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"')
+      .replace(/&#34;/g, '"')
+      .replace(/\s+/g, " ")
+      .trim();
+    return text.slice(0, 4000);
+  } catch {
+    return "";
+  }
+}
+
 export async function generateSocialBatch(
   video: SocialVideo,
   track: Track,
+  providedTranscript?: string,
 ): Promise<SocialBatch> {
   const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
 
+  const transcript = (providedTranscript ?? "").trim() || (await fetchTranscript(video.id));
   const lang: Lang = track === "A" ? "es" : "en";
   const slots = planSlots(track);
   const campaign = `${track === "A" ? "reach" : "value"}-${slugify(video.title)}`;
@@ -182,7 +223,10 @@ export async function generateSocialBatch(
   const userContent =
     `Video: "${video.title}" (${video.format ?? "video"}, language ${video.lang}).\n` +
     `Track ${track} (${lang === "es" ? "Spanish reach" : "English value/convert"}).\n` +
-    `Write one post per slot below. Return JSON {"posts":[{idx,caption,hashtags}]}.\n\n` +
+    (transcript
+      ? `\nVIDEO TRANSCRIPT (the source of truth for what the video actually contains — base the hooks on this, not the title):\n"""${transcript}"""\n`
+      : `\n(No transcript available — write conservative hooks from the title and do not promise specifics the video may not contain.)\n`) +
+    `\nWrite one post per slot below. Return JSON {"posts":[{idx,caption,hashtags}]}.\n\n` +
     JSON.stringify(slotPrompt, null, 2);
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
