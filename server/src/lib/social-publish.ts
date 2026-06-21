@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
-import type { QueuedBatch } from "./social-agent";
+import type { QueuedBatch, SocialPost } from "./social-agent";
 
 // Posting actuator. On batch approval the backend pushes each post to its
 // platform via Make.
@@ -37,44 +37,38 @@ export interface PublishResult {
   reason: string;
 }
 
-export async function publishBatch(batch: QueuedBatch): Promise<PublishResult[]> {
+// Publish ONE post to its platform. Used both by publishBatch (post-now) and the
+// social poster cron (scheduled drip). Special reasons the caller may want to
+// treat as "retry later" rather than a hard failure: "youtube-source",
+// "fb-not-configured", "ig-not-configured", "ig-no-clip".
+export async function publishOnePost(post: SocialPost): Promise<PublishResult> {
   const fbWebhook = process.env["MAKE_FB_WEBHOOK"];
   const igWebhook = process.env["MAKE_IG_WEBHOOK"];
-  const media = await loadMediaMap();
-  const results: PublishResult[] = [];
 
-  for (const post of batch.posts) {
-    if (post.platform === "youtube") {
-      results.push({ surface: post.surface, platform: "youtube", ok: false, reason: "source — already on YouTube" });
-      continue;
-    }
-
-    if (post.platform === "instagram") {
-      const clip = media.items[post.videoId]?.videoUrl;
-      if (!clip) {
-        results.push({ surface: post.surface, platform: "instagram", ok: false, reason: "no hosted clip URL registered (Cloudinary) for this video" });
-        continue;
-      }
-      if (!igWebhook) {
-        results.push({ surface: post.surface, platform: "instagram", ok: false, reason: "MAKE_IG_WEBHOOK not configured" });
-        continue;
-      }
-      results.push(await postWebhook(igWebhook, { video_url: clip, caption: post.caption }, post.surface, "instagram"));
-      continue;
-    }
-
-    // facebook — the active webhook scenario is a photo post, so always send the
-    // YouTube thumbnail as the image. (Native FB video would need the FB Video
-    // scenario, which costs an active-scenario slot.)
-    if (!fbWebhook) {
-      results.push({ surface: post.surface, platform: "facebook", ok: false, reason: "MAKE_FB_WEBHOOK not configured" });
-      continue;
-    }
-    const caption = post.link ? `${post.caption}\n\n${post.link}` : post.caption;
-    const image_url = `https://i.ytimg.com/vi/${post.videoId}/hqdefault.jpg`;
-    results.push(await postWebhook(fbWebhook, { image_url, caption }, post.surface, "facebook"));
+  if (post.platform === "youtube") {
+    return { surface: post.surface, platform: "youtube", ok: false, reason: "youtube-source" };
   }
 
+  if (post.platform === "instagram") {
+    const media = await loadMediaMap();
+    const clip = media.items[post.videoId]?.videoUrl;
+    if (!clip) return { surface: post.surface, platform: "instagram", ok: false, reason: "ig-no-clip" };
+    if (!igWebhook) return { surface: post.surface, platform: "instagram", ok: false, reason: "ig-not-configured" };
+    return postWebhook(igWebhook, { video_url: clip, caption: post.caption }, post.surface, "instagram");
+  }
+
+  // facebook — photo post: send the YouTube thumbnail + caption + link.
+  if (!fbWebhook) return { surface: post.surface, platform: "facebook", ok: false, reason: "fb-not-configured" };
+  const caption = post.link ? `${post.caption}\n\n${post.link}` : post.caption;
+  const image_url = `https://i.ytimg.com/vi/${post.videoId}/hqdefault.jpg`;
+  return postWebhook(fbWebhook, { image_url, caption }, post.surface, "facebook");
+}
+
+export async function publishBatch(batch: QueuedBatch): Promise<PublishResult[]> {
+  const results: PublishResult[] = [];
+  for (const post of batch.posts) {
+    results.push(await publishOnePost(post));
+  }
   logger.info({ batch: batch.id, results }, "publishBatch");
   return results;
 }

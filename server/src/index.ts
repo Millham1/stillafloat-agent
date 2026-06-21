@@ -1,6 +1,7 @@
 import "./env"; // must be first — populates process.env from the shared .env
 import app from "./app";
 import { logger } from "./lib/logger";
+import { runDuePosts } from "./lib/social-schedule";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -23,7 +24,31 @@ app.listen(port, "0.0.0.0", () => {
   } else {
     scheduleYouTubeScan();
   }
+  // Social poster — drips approved/scheduled posts out at their slot times.
+  // Disabled on the dev mirror so dev never posts publicly.
+  if (process.env["DISABLE_SOCIAL_POSTER"] === "1") {
+    logger.info("Social poster DISABLED (DISABLE_SOCIAL_POSTER=1)");
+  } else {
+    scheduleSocialPoster();
+  }
 });
+
+// ── Social poster scheduler ───────────────────────────────────────────────────
+// Every 10 minutes, post any scheduled social items whose time has arrived. No-op
+// (and harmless) until the Make webhooks are configured — unconfigured posts stay
+// scheduled and go out once the env vars land.
+function scheduleSocialPoster() {
+  const tick = async () => {
+    try {
+      await runDuePosts();
+    } catch (err) {
+      logger.error({ err }, "Social poster tick failed");
+    }
+  };
+  setTimeout(() => { tick().catch(() => {}); }, 20_000);
+  setInterval(() => { tick().catch(() => {}); }, 10 * 60 * 1000);
+  logger.info("Social poster active — every 10m");
+}
 
 // ── YouTube channel scan scheduler ────────────────────────────────────────────
 // Keeps the homepage YouTube section current. The scan endpoint refreshes the

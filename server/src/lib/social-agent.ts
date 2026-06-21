@@ -46,6 +46,11 @@ export interface SocialPost extends Slot {
   link: string;
   videoId: string;
   videoUrl: string;
+  // Scheduling (set on approve; driven by the social poster cron):
+  scheduledFor?: string; // ISO instant this post should go out
+  postedAt?: string; // ISO instant it actually posted
+  postState?: "scheduled" | "posted" | "failed" | "skipped";
+  postError?: string; // reason if postState === "failed"
 }
 
 export interface SocialBatch {
@@ -361,7 +366,7 @@ async function translateCaptions(captions: string[], apiKey: string): Promise<st
 // is wired separately and gated.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type BatchStatus = "pending" | "approved" | "rejected" | "posted";
+export type BatchStatus = "pending" | "approved" | "scheduled" | "rejected" | "posted";
 
 export interface QueuedBatch extends SocialBatch {
   id: string;
@@ -379,6 +384,10 @@ const CHANNEL_ID = "UC1sZkmM4CezcS5DPIPlrCtA";
 
 export async function loadQueue(): Promise<SocialQueue> {
   return readJson<SocialQueue>(QUEUE_KEY, { batches: [] });
+}
+
+export async function saveQueue(queue: { batches: QueuedBatch[] }): Promise<void> {
+  await writeJson(QUEUE_KEY, queue);
 }
 
 export async function enqueueBatch(batch: SocialBatch): Promise<QueuedBatch> {
