@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
-import { buildUtm, fetchChannelVideos } from "./social-agent";
+import { buildUtm, fetchChannelVideos, type Lang } from "./social-agent";
 import { unsubscribeUrl } from "../routes/subscribe";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -13,7 +13,41 @@ import { unsubscribeUrl } from "../routes/subscribe";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SITE = "https://stillafloatcruising.com";
-const DRAFT_KEY = "newsletter-draft";
+const draftKey = (lang: Lang): string => (lang === "es" ? "newsletter-draft-es" : "newsletter-draft");
+
+// Per-language UI strings for the rendered email.
+const L = {
+  en: {
+    kicker: "Still Afloat Weekly",
+    tagline: "Your curated cruise & travel intelligence",
+    hi: (n: string) => `Hey ${n},`,
+    readMore: "Read More →",
+    watch: "▶ Watch this week",
+    gear: "Gear worth packing",
+    gearCta: "Check it out →",
+    affNote: "Affiliate link — supports Still Afloat at no cost to you.",
+    seeAll: "See All Cruise News →",
+    ps: "P.S.",
+    psCta: "Get in touch →",
+    footTag: "Cruise smarter. Laugh more. Stay Afloat.",
+    unsub: "Unsubscribe",
+  },
+  es: {
+    kicker: "Still Afloat Semanal",
+    tagline: "Tu resumen de cruceros y viajes",
+    hi: (n: string) => `Hola ${n},`,
+    readMore: "Leer más →",
+    watch: "▶ Para ver esta semana",
+    gear: "Equipo que vale la pena",
+    gearCta: "Míralo →",
+    affNote: "Enlace de afiliado — apoya a Still Afloat sin costo para ti.",
+    seeAll: "Ver más noticias de cruceros →",
+    ps: "P.D.",
+    psCta: "Escríbeme →",
+    footTag: "Navega más inteligente. Ríe más.",
+    unsub: "Cancelar suscripción",
+  },
+} as const;
 
 interface Story {
   id: string;
@@ -30,6 +64,7 @@ export interface NewsletterDraft {
   video?: { id: string; title: string; blurb: string; url: string; thumbnail: string };
   affiliate?: { id: string; title: string; blurb: string; imageUrl: string; link: string };
   agencyPs: string;
+  lang: Lang;
   generatedAt: string;
   status: "pending" | "sent";
   sentAt?: string;
@@ -39,14 +74,17 @@ function utm(base: string, content: string): string {
   return buildUtm(base, { source: "newsletter", medium: "email", campaign: "weekly", content });
 }
 
-async function gatherApprovedStories(): Promise<Story[]> {
+async function gatherApprovedStories(lang: Lang = "en"): Promise<Story[]> {
   const data = await readJson<{ stories?: Record<string, unknown>[] }>(PATHS.approved, { stories: [] });
   return (data.stories ?? []).map((s) => ({
     id: String(s.id ?? ""),
-    title: String(s.title ?? ""),
-    summary: String(s.summary ?? s.synopsis ?? ""),
+    // ES uses the Spanish cliffnote/title when present, else falls back to EN.
+    title: String((lang === "es" && s["title_es"]) || s.title || ""),
+    summary: String(
+      (lang === "es" && (s["summary_es"] ?? s["cliffnote_es"])) || s.summary || s.synopsis || "",
+    ),
     link: String(s.link ?? s.originalLink ?? ""),
-    impact: String(s.impactLevel ?? s.travelerImpact ?? ""),
+    impact: String((lang === "es" && s["impactLevel_es"]) || s.impactLevel || s.travelerImpact || ""),
   })).filter((s) => s.id && s.title);
 }
 
@@ -108,12 +146,28 @@ You will receive this week's approved stories, a featured video, and one affilia
 
 Respond ONLY with JSON: { "subject", "intro", "storyIds":[], "video_blurb", "affiliate_blurb", "agency_ps" }.`;
 
-export async function draftNewsletter(): Promise<NewsletterDraft> {
+const SYSTEM_PROMPT_ES = `Eres el editor de "Still Afloat Semanal", un boletín por correo sobre cruceros y viajes, para una audiencia hispanohablante (es-419, español latinoamericano neutro).
+
+Voz de marca: "Navega más inteligente. Ríe más." Cálida, lista y con un toque de humor — escrita por un anfitrión con 40 años de experiencia en cruceros. Mantén nombres propios/de marca en su idioma original (líneas de crucero, barcos, puertos, "Amazon").
+
+REGLA CENTRAL — VALOR, NUNCA EXAGERACIÓN: sé específico y genuinamente útil. Nada de superlativos vacíos ni clickbait ("no vas a creer", "increíble", "lo último"). El asunto se gana la apertura con valor real, no con escándalo.
+
+Recibirás las noticias aprobadas de esta semana, un video destacado y un producto de afiliado. Produce, TODO en español:
+- subject: un asunto específico y con valor (<= 60 caracteres), sin exageración, sin MAYÚSCULAS.
+- intro: 1–2 frases cálidas que reciben al lector y enmarcan la semana (voz de marca).
+- storyIds: los mejores 3–6 ids de noticias, del más valioso al menos (usa SOLO los ids provistos).
+- video_blurb: una frase honesta e invitadora sobre el video destacado.
+- affiliate_blurb: una frase honesta de por qué el producto vale la pena (es un enlace de afiliado — sé sincero, no vendedor).
+- agency_ps: una posdata breve y personal ofreciendo ayuda como agente de viajes (ej.: "¿Planeando un crucero? Ahora los reservo profesionalmente — solo responde a este correo.").
+
+Responde SOLO con JSON: { "subject", "intro", "storyIds":[], "video_blurb", "affiliate_blurb", "agency_ps" }.`;
+
+export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraft> {
   const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
 
   const [stories, video, affiliate] = await Promise.all([
-    gatherApprovedStories(),
+    gatherApprovedStories(lang),
     gatherFeaturedVideo(),
     gatherFeaturedAffiliate(),
   ]);
@@ -137,7 +191,7 @@ export async function draftNewsletter(): Promise<NewsletterDraft> {
       temperature: 0.7,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: lang === "es" ? SYSTEM_PROMPT_ES : SYSTEM_PROMPT },
         { role: "user", content: `Build this week's newsletter from:\n\n${userContent}` },
       ],
     }),
@@ -164,10 +218,13 @@ export async function draftNewsletter(): Promise<NewsletterDraft> {
     .slice(0, 6);
 
   const draft: NewsletterDraft = {
-    subject: (parsed.subject ?? "Still Afloat Weekly").trim(),
+    subject: (parsed.subject ?? (lang === "es" ? "Still Afloat Semanal" : "Still Afloat Weekly")).trim(),
     intro: (parsed.intro ?? "").trim(),
     storyIds: storyIds.length ? storyIds : stories.slice(0, 5).map((s) => s.id),
-    agencyPs: (parsed.agency_ps ?? "Planning a cruise? I book them professionally now — just reply to this email.").trim(),
+    agencyPs: (parsed.agency_ps ?? (lang === "es"
+      ? "¿Planeando un crucero? Ahora los reservo profesionalmente — solo responde a este correo."
+      : "Planning a cruise? I book them professionally now — just reply to this email.")).trim(),
+    lang,
     generatedAt: new Date().toISOString(),
     status: "pending",
   };
@@ -195,10 +252,10 @@ export async function draftNewsletter(): Promise<NewsletterDraft> {
 }
 
 export async function saveDraft(draft: NewsletterDraft): Promise<void> {
-  await writeJson(DRAFT_KEY, draft);
+  await writeJson(draftKey(draft.lang ?? "en"), draft);
 }
-export async function loadDraft(): Promise<NewsletterDraft | null> {
-  const d = await readJson<NewsletterDraft | null>(DRAFT_KEY, null);
+export async function loadDraft(lang: Lang = "en"): Promise<NewsletterDraft | null> {
+  const d = await readJson<NewsletterDraft | null>(draftKey(lang), null);
   return d && d.subject ? d : null;
 }
 
@@ -210,21 +267,24 @@ export function renderEnrichedNewsletter(
   recipientEmail: string,
   baseUrl: string,
 ): string {
+  const lang: Lang = draft.lang ?? "en";
+  const t = L[lang];
+  const esPrefix = lang === "es" ? "/es" : "";
   const unsub = unsubscribeUrl(recipientEmail, baseUrl);
-  const firstName = (recipientName || "there").split(" ")[0] || "there";
+  const firstName = (recipientName || (lang === "es" ? "hola" : "there")).split(" ")[0] || "there";
   const byId = new Map(stories.map((s) => [s.id, s]));
 
   const storyRows = draft.storyIds
     .map((id) => byId.get(id))
     .filter((s): s is Story => Boolean(s))
     .map((s) => {
-      const storyUrl = s.link || `${baseUrl}/story.html?id=${s.id}`;
+      const storyUrl = s.link || `${baseUrl}${esPrefix}/story.html?id=${s.id}`;
       return `
     <div style="border:1px solid #e5e7eb;border-radius:12px;padding:20px 22px;margin-bottom:16px;background:#fff;">
       ${s.impact ? `<span style="display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:2px 10px;font-size:12px;color:#1d4ed8;font-weight:700;margin-bottom:10px;">${s.impact}</span>` : ""}
       <h2 style="margin:0 0 10px;font-size:17px;color:#0c2035;line-height:1.4;font-weight:800;">${s.title}</h2>
       <p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.7;">${s.summary}</p>
-      <a href="${storyUrl}" style="display:inline-block;background:#0077b6;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;">Read More →</a>
+      <a href="${storyUrl}" style="display:inline-block;background:#0077b6;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;">${t.readMore}</a>
     </div>`;
     })
     .join("");
@@ -235,7 +295,7 @@ export function renderEnrichedNewsletter(
       <a href="${draft.video.url}" style="text-decoration:none;">
         ${draft.video.thumbnail ? `<img src="${draft.video.thumbnail}" alt="" style="display:block;width:100%;max-width:600px;"/>` : ""}
         <div style="padding:16px 22px;">
-          <p style="margin:0 0 4px;font-size:12px;color:#0077b6;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">▶ Watch this week</p>
+          <p style="margin:0 0 4px;font-size:12px;color:#0077b6;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">${t.watch}</p>
           <h3 style="margin:0 0 6px;font-size:16px;color:#0c2035;font-weight:800;">${draft.video.title}</h3>
           ${draft.video.blurb ? `<p style="margin:0;color:#374151;font-size:14px;line-height:1.6;">${draft.video.blurb}</p>` : ""}
         </div>
@@ -246,15 +306,15 @@ export function renderEnrichedNewsletter(
   const affiliateBlock = draft.affiliate
     ? `
     <div style="border:1px dashed #cbd5e1;border-radius:12px;padding:18px 22px;margin:16px 0;background:#fbfdff;">
-      <p style="margin:0 0 6px;font-size:12px;color:#0e7490;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">Gear worth packing</p>
+      <p style="margin:0 0 6px;font-size:12px;color:#0e7490;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">${t.gear}</p>
       <h3 style="margin:0 0 6px;font-size:16px;color:#0c2035;font-weight:800;">${draft.affiliate.title}</h3>
       ${draft.affiliate.blurb ? `<p style="margin:0 0 12px;color:#374151;font-size:14px;line-height:1.6;">${draft.affiliate.blurb}</p>` : ""}
-      <a href="${draft.affiliate.link}" style="display:inline-block;background:#0e7490;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;">Check it out →</a>
-      <p style="margin:8px 0 0;color:#9ca3af;font-size:11px;">Affiliate link — supports Still Afloat at no cost to you.</p>
+      <a href="${draft.affiliate.link}" style="display:inline-block;background:#0e7490;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;">${t.gearCta}</a>
+      <p style="margin:8px 0 0;color:#9ca3af;font-size:11px;">${t.affNote}</p>
     </div>`
     : "";
 
-  const agencyUrl = utm(`${baseUrl}/#contact`, "agency");
+  const agencyUrl = utm(`${baseUrl}${esPrefix}/work-with-mark.html#contact`, "agency");
 
   return `
 <!DOCTYPE html>
@@ -263,24 +323,24 @@ export function renderEnrichedNewsletter(
 <body style="font-family:Arial,sans-serif;background:#f0f4f8;padding:0;margin:0;">
   <div style="max-width:600px;margin:32px auto;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10);">
     <div style="background:linear-gradient(135deg,#07183f,#0077b6);padding:28px 32px;text-align:center;">
-      <p style="margin:0 0 6px;color:rgba(255,255,255,.6);font-size:12px;letter-spacing:.10em;text-transform:uppercase;">Still Afloat Weekly</p>
+      <p style="margin:0 0 6px;color:rgba(255,255,255,.6);font-size:12px;letter-spacing:.10em;text-transform:uppercase;">${t.kicker}</p>
       <h1 style="margin:0 0 6px;color:#5dff9a;font-size:24px;font-weight:900;">${draft.subject}</h1>
-      <p style="margin:0;color:rgba(255,255,255,.65);font-size:13px;">Your curated cruise &amp; travel intelligence</p>
+      <p style="margin:0;color:rgba(255,255,255,.65);font-size:13px;">${t.tagline}</p>
     </div>
     <div style="background:#f9fafb;padding:28px 32px;">
-      <p style="margin:0 0 18px;color:#1e3a5f;font-size:15px;line-height:1.6;">Hey ${firstName},${draft.intro ? ` ${draft.intro}` : ""}</p>
+      <p style="margin:0 0 18px;color:#1e3a5f;font-size:15px;line-height:1.6;">${t.hi(firstName)}${draft.intro ? ` ${draft.intro}` : ""}</p>
       ${storyRows}
       ${videoBlock}
       ${affiliateBlock}
       <div style="text-align:center;margin-top:24px;">
-        <a href="${utm(`${baseUrl}/news.html`, "see-all")}" style="display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;padding:14px 28px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:800;">See All Cruise News →</a>
+        <a href="${utm(lang === "es" ? `${baseUrl}/es/` : `${baseUrl}/news.html`, "see-all")}" style="display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;padding:14px 28px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:800;">${t.seeAll}</a>
       </div>
-      ${draft.agencyPs ? `<p style="margin:24px 0 0;color:#475569;font-size:14px;line-height:1.6;border-top:1px solid #e5e7eb;padding-top:18px;"><strong>P.S.</strong> ${draft.agencyPs} <a href="${agencyUrl}" style="color:#0077b6;">Get in touch →</a></p>` : ""}
+      ${draft.agencyPs ? `<p style="margin:24px 0 0;color:#475569;font-size:14px;line-height:1.6;border-top:1px solid #e5e7eb;padding-top:18px;"><strong>${t.ps}</strong> ${draft.agencyPs} <a href="${agencyUrl}" style="color:#0077b6;">${t.psCta}</a></p>` : ""}
     </div>
     <div style="background:#fff;padding:16px 32px;border-top:1px solid #e5e7eb;text-align:center;">
       <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.7;">
-        Still Afloat · <em>Cruise smarter. Laugh more. Stay Afloat.</em><br>
-        <a href="${unsub}" style="color:#9ca3af;font-size:11px;">Unsubscribe</a>
+        Still Afloat · <em>${t.footTag}</em><br>
+        <a href="${unsub}" style="color:#9ca3af;font-size:11px;">${t.unsub}</a>
       </p>
     </div>
   </div>
@@ -296,12 +356,14 @@ export async function sendNewsletterDraft(
   const apiKey = process.env["RESEND_API_KEY"];
   if (!apiKey) throw new Error("RESEND_API_KEY missing");
 
-  const stories = await gatherApprovedStories();
+  const lang: Lang = draft.lang ?? "en";
+  const stories = await gatherApprovedStories(lang);
   const supabase = getSupabase();
   const { data: subscribers, error } = await supabase
     .from("subscribers")
     .select("email, name")
-    .eq("status", "confirmed");
+    .eq("status", "confirmed")
+    .eq("lang", lang); // only this edition's language
   if (error) throw new Error("Failed to load subscribers");
   const list = (subscribers ?? []) as Array<{ email: string; name: string }>;
   if (list.length === 0) return { sent: 0, failed: 0, total: 0 };

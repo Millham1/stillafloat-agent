@@ -37,6 +37,7 @@ async function sendVerificationEmail(
   email: string,
   token: string,
   baseUrl: string,
+  lang: "en" | "es" = "en",
 ) {
   const apiKey = process.env["RESEND_API_KEY"];
   if (!apiKey) {
@@ -47,6 +48,28 @@ async function sendVerificationEmail(
   const verifyUrl = `${baseUrl}/api/verify-email?token=${encodeURIComponent(token)}`;
   const unsub    = unsubscribeUrl(email, baseUrl);
   const firstName = name.split(" ")[0] || name;
+  const es = lang === "es";
+  const T = es
+    ? {
+        subject: "Confirma tu suscripción a Still Afloat ⚓",
+        heading: "¡Un clic para confirmar!",
+        hi: `Hola ${firstName},`,
+        body: "Gracias por suscribirte a <strong>Still Afloat</strong> — tu fuente semanal de noticias de cruceros, clima en los puertos e inteligencia de viaje. Haz clic en el botón para confirmar tu correo y listo.",
+        button: "✅ Confirmar mi suscripción →",
+        ignore: "Si no te suscribiste a Still Afloat, ignora este correo — no quedarás suscrito.",
+        tag: "Navega más inteligente. Ríe más.",
+        unsub: "Cancelar suscripción",
+      }
+    : {
+        subject: "Confirm your Still Afloat subscription ⚓",
+        heading: "One click to confirm!",
+        hi: `Hey ${firstName},`,
+        body: "Thanks for subscribing to <strong>Still Afloat</strong> — your weekly source for smart cruise news, port weather, and travel intelligence. Just click the button below to confirm your email and you're all set.",
+        button: "✅ Confirm My Subscription →",
+        ignore: "If you didn't sign up for Still Afloat, you can safely ignore this email — you won't be subscribed.",
+        tag: "Cruise smarter. Laugh more. Stay Afloat.",
+        unsub: "Unsubscribe",
+      };
 
   const html = `
 <!DOCTYPE html>
@@ -56,26 +79,26 @@ async function sendVerificationEmail(
   <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10);">
     <div style="background:linear-gradient(135deg,#07183f,#0077b6);padding:32px 32px 28px;text-align:center;">
       <p style="margin:0 0 12px;color:rgba(255,255,255,.7);font-size:13px;letter-spacing:.08em;text-transform:uppercase;">Still Afloat Cruising</p>
-      <h1 style="margin:0;color:#5dff9a;font-size:26px;font-weight:900;line-height:1.2;">One click to confirm!</h1>
+      <h1 style="margin:0;color:#5dff9a;font-size:26px;font-weight:900;line-height:1.2;">${T.heading}</h1>
     </div>
     <div style="padding:32px;">
-      <p style="color:#1e3a5f;font-size:16px;line-height:1.6;margin:0 0 20px;">Hey ${firstName},</p>
+      <p style="color:#1e3a5f;font-size:16px;line-height:1.6;margin:0 0 20px;">${T.hi}</p>
       <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 28px;">
-        Thanks for subscribing to <strong>Still Afloat</strong> — your weekly source for smart cruise news, port weather, and travel intelligence. Just click the button below to confirm your email and you're all set.
+        ${T.body}
       </p>
       <div style="text-align:center;margin:0 0 32px;">
         <a href="${verifyUrl}"
            style="display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;font-weight:800;font-size:16px;padding:16px 36px;border-radius:12px;text-decoration:none;letter-spacing:.02em;">
-          ✅ Confirm My Subscription →
+          ${T.button}
         </a>
       </div>
       <p style="color:#9ca3af;font-size:13px;line-height:1.6;margin:0;border-top:1px solid #e5e7eb;padding-top:20px;">
-        If you didn't sign up for Still Afloat, you can safely ignore this email — you won't be subscribed.
+        ${T.ignore}
       </p>
     </div>
     <div style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
-      <p style="margin:0;color:#9ca3af;font-size:12px;">Still Afloat · <em>Cruise smarter. Laugh more. Stay Afloat.</em><br>
-      <a href="${unsub}" style="color:#9ca3af;font-size:11px;">Unsubscribe</a></p>
+      <p style="margin:0;color:#9ca3af;font-size:12px;">Still Afloat · <em>${T.tag}</em><br>
+      <a href="${unsub}" style="color:#9ca3af;font-size:11px;">${T.unsub}</a></p>
     </div>
   </div>
 </body>
@@ -87,7 +110,7 @@ async function sendVerificationEmail(
     body: JSON.stringify({
       from: "Still Afloat <noreply@stillafloatcruising.com>",
       to: email,
-      subject: "Confirm your Still Afloat subscription ⚓",
+      subject: T.subject,
       html,
     }),
   });
@@ -168,7 +191,8 @@ router.post("/subscribe", async (req, res) => {
       return res.status(429).json({ error: "Too many attempts. Please try again later." });
     }
 
-    const { name, email, website } = req.body as Record<string, string>;
+    const { name, email, website, lang } = req.body as Record<string, string>;
+    const subLang = lang === "es" ? "es" : "en"; // tag the subscriber's language
 
     if (website && website.length > 0) {
       logger.info({ ip }, "Honeypot triggered — bot blocked");
@@ -200,7 +224,7 @@ router.post("/subscribe", async (req, res) => {
     const token = crypto.randomUUID();
 
     const { error: insertErr } = await supabase.from("subscribers").insert({
-      email: cleanEmail, name: cleanName, status: "pending", token,
+      email: cleanEmail, name: cleanName, status: "pending", token, lang: subLang,
     });
 
     if (insertErr) {
@@ -212,7 +236,7 @@ router.post("/subscribe", async (req, res) => {
     const host    = req.headers["host"] || "stillafloatcruising.com";
     const baseUrl = `${proto}://${host}`;
 
-    const emailResult = await sendVerificationEmail(cleanName, cleanEmail, token, baseUrl);
+    const emailResult = await sendVerificationEmail(cleanName, cleanEmail, token, baseUrl, subLang);
     logger.info({ email: cleanEmail, emailResult }, "Subscriber added — verification email sent");
     return res.json({ ok: true });
   } catch (err) {
@@ -270,7 +294,7 @@ router.post("/resend-verification", async (req, res) => {
 
     const { data: subscriber, error: fetchErr } = await supabase
       .from("subscribers")
-      .select("id, name, status")
+      .select("id, name, status, lang")
       .eq("email", cleanEmail)
       .maybeSingle();
 
@@ -299,7 +323,10 @@ router.post("/resend-verification", async (req, res) => {
     const host    = req.headers["host"] || "stillafloatcruising.com";
     const baseUrl = `${proto}://${host}`;
 
-    const emailResult = await sendVerificationEmail(subscriber.name, cleanEmail, newToken, baseUrl);
+    const emailResult = await sendVerificationEmail(
+      subscriber.name, cleanEmail, newToken, baseUrl,
+      (subscriber as { lang?: string }).lang === "es" ? "es" : "en",
+    );
     logger.info({ email: cleanEmail, emailResult }, "Verification email resent");
     return res.json({ ok: true });
   } catch (err) {
