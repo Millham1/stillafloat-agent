@@ -73,7 +73,11 @@ function ctaDestination(cta: CtaType, lang: Lang): string {
     case "affiliate":
       return `${SITE}/affiliate.html`;
     case "agency":
-      return `${SITE}/#contact`;
+      // The lead-capture contact form lives on the "Work with Mark" page (EN + ES),
+      // not the homepage. It posts to /api/contact (confirms the prospect + alerts Mark).
+      return lang === "es"
+        ? `${SITE}/es/work-with-mark.html#contact`
+        : `${SITE}/work-with-mark.html#contact`;
     default:
       return `${SITE}/`;
   }
