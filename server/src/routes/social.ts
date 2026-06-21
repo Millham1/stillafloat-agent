@@ -359,6 +359,21 @@ router.get("/social/schedule", requireToken, async (req: Request, res: Response)
   res.status(200).type("html").send(renderSchedulePage(items, cfg));
 });
 
+// GET /api/social/share?token=… — the one-tap SHARE KIT. A mobile-first page that
+// turns each greenlit video into a forward-in-seconds bundle: WhatsApp button,
+// copy caption+link, and the thumbnail to attach. For the high-trust manual shares
+// (wife → WhatsApp groups, Latino cruise communities) that can't be automated.
+router.get("/social/share", requireToken, async (_req: Request, res: Response) => {
+  try {
+    const queue = await loadQueue();
+    // Greenlit content only — skip rejected drafts.
+    const batches = queue.batches.filter((b) => b.status !== "rejected");
+    res.status(200).type("html").send(renderSharePage(batches));
+  } catch (error) {
+    res.status(500).type("html").send(`<p>Error: ${(error as Error).message}</p>`);
+  }
+});
+
 // GET /api/social/review?token=… — self-contained HTML review surface.
 router.get("/social/review", requireToken, async (req: Request, res: Response) => {
   try {
@@ -445,7 +460,7 @@ function renderReviewPage(batches: any[], token: string): string {
  .link{margin:4px 0 0;font-size:11px;color:#6b7280;word-break:break-all}
  .empty{text-align:center;color:#6b7280;padding:50px 0}
 </style></head><body>
-<header><h1>Still Afloat — Social Review</h1></header>
+<header style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h1>Still Afloat — Social Review</h1><a href="/api/social/share?token=${encodeURIComponent(token)}" style="background:#25d366;color:#fff;text-decoration:none;font-size:13px;font-weight:800;padding:7px 12px;border-radius:8px">📣 Share Kit</a></header>
 <div class="wrap">
  ${cards || '<div class="empty">No pending batches. 🎉</div>'}
 </div>
@@ -524,6 +539,79 @@ function renderSchedulePage(items: any[], cfg: { tz: string; times: string[] }):
 </style></head><body>
 <header><h1>Still Afloat — Posting Calendar</h1><p>Slots ${esc(cfg.times.join(", "))} · ${esc(cfg.tz)}</p></header>
 <div class="wrap">${sections || '<div class="empty">Nothing scheduled yet. Approve a batch to schedule it.</div>'}</div>
+</body></html>`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderSharePage(batches: any[]): string {
+  const cards = batches.map((b) => {
+    const post = (b.posts || [])[0] || {};
+    const videoUrl = post.videoUrl || `https://youtu.be/${b.videoId}`;
+    const thumb = `https://i.ytimg.com/vi/${esc(b.videoId)}/hqdefault.jpg`;
+    const tags = Array.isArray(post.hashtags) && post.hashtags.length ? post.hashtags.join(" ") : "";
+    // What gets forwarded: caption + hashtags + the video link (drives views → subscribers).
+    const shareText = [post.caption || "", tags, videoUrl].filter(Boolean).join("\n\n");
+    const enc = encodeURIComponent(shareText);
+    return `
+      <div class="card">
+        <img class="thumb" src="${thumb}" alt="" loading="lazy"/>
+        <div class="body">
+          <div class="line"><span class="trk trk-${esc(b.track)}">Track ${esc(b.track)}</span>
+            <span class="ttl">${esc(b.title)}</span></div>
+          <p class="cap" id="cap-${esc(b.id)}">${esc(post.caption || "")}</p>
+          ${post.gloss ? `<p class="gloss">🇬🇧 ${esc(post.gloss)}</p>` : ""}
+          ${tags ? `<p class="tags">${esc(tags)}</p>` : ""}
+          <div class="acts">
+            <a class="btn wa" href="https://wa.me/?text=${enc}" target="_blank" rel="noopener">📲 WhatsApp</a>
+            <button class="btn copy" data-text="${esc(shareText)}">📋 Copy</button>
+            <a class="btn link" href="${esc(videoUrl)}" target="_blank" rel="noopener">▶ Video</a>
+          </div>
+          <p class="hint">Long-press the image above to save it, then attach it in WhatsApp/Facebook.</p>
+        </div>
+      </div>`;
+  }).join("");
+
+  return `<!doctype html><html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>Still Afloat — Share Kit</title>
+<style>
+ body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;background:#f3f4f6;color:#111827}
+ header{background:#0f766e;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:5}
+ header h1{margin:0;font-size:17px}header p{margin:4px 0 0;font-size:12px;opacity:.9}
+ .wrap{max-width:620px;margin:0 auto;padding:14px 12px 60px}
+ .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;margin-bottom:16px}
+ .thumb{display:block;width:100%;height:auto;background:#e5e7eb}
+ .body{padding:12px 14px}
+ .line{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+ .trk{font-size:11px;font-weight:700;border-radius:5px;padding:1px 7px;color:#fff;flex-shrink:0}
+ .trk-A{background:#7c3aed}.trk-B{background:#0369a1}
+ .ttl{font-size:12px;color:#6b7280}
+ .cap{margin:4px 0;font-size:15px;line-height:1.5;white-space:pre-wrap}
+ .gloss{margin:2px 0;font-size:13px;color:#475569;background:#f1f5f9;border-left:3px solid #94a3b8;padding:6px 9px;border-radius:4px}
+ .tags{margin:4px 0;font-size:13px;color:#2563eb}
+ .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+ .btn{display:inline-block;border:0;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:800;cursor:pointer;text-decoration:none;text-align:center}
+ .btn.wa{background:#25d366;color:#fff}
+ .btn.copy{background:#0f766e;color:#fff}
+ .btn.link{background:#eef2f7;color:#0f172a}
+ .btn.copied{background:#16a34a;color:#fff}
+ .hint{margin:8px 0 0;font-size:11px;color:#9ca3af}
+ .empty{text-align:center;color:#6b7280;padding:50px 0}
+</style></head><body>
+<header><h1>📣 Still Afloat — Share Kit</h1><p>Tap WhatsApp to forward, or Copy to paste into a group. Save the image to attach it.</p></header>
+<div class="wrap">${cards || '<div class="empty">Nothing to share yet — approve a batch first.</div>'}</div>
+<script>
+ document.querySelectorAll('.btn.copy').forEach(function(btn){
+   btn.addEventListener('click', function(){
+     var txt = btn.getAttribute('data-text') || '';
+     function done(){ var o=btn.textContent; btn.textContent='✓ Copied'; btn.classList.add('copied'); setTimeout(function(){btn.textContent=o;btn.classList.remove('copied');},1600); }
+     if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(done).catch(fallback); }
+     else { fallback(); }
+     function fallback(){ var ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); done(); }
+   });
+ });
+</script>
 </body></html>`;
 }
 
