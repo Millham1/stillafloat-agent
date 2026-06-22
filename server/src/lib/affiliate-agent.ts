@@ -10,7 +10,7 @@ import { readJson, writeJson, PATHS } from "./persistence";
 
 const TAG = "stillafloatcr-20";
 const PENDING_KEY = "affiliate-pending";
-export const CATEGORIES = ["air-travel", "cabin-essentials", "cruise-fun", "great-ideas"] as const;
+export const CATEGORIES = ["air-travel", "cabin-essentials", "clothing", "cruise-fun", "great-ideas"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export function buildAffiliateLink(asin: string): string {
@@ -74,12 +74,15 @@ function asinOf(url: string): string {
 const SYSTEM_PROMPT = `You write product blurbs for "Still Afloat," a cruise & travel brand. Voice: "Cruise smarter, laugh more" — warm, specific, lightly funny, value-never-hype (no "amazing", "must-have", "ultimate", no fake urgency). Honest about why a cruiser would actually want it.
 
 For each product, return: a 1–2 sentence description (specific + useful, ~20–40 words) and a category from EXACTLY this list:
-- "air-travel" = flight/airport/travel-day gear (toiletry kits, organizers, comfort, skincare)
+- "clothing" = anything you wear: swimwear, rash guards, cover-ups, linen shirts/pants, dresses, footwear, hats, sunglasses
+- "air-travel" = flight/airport/travel-day gear (packing organizers, toiletry kits, neck pillows, adapters, comfort)
 - "cabin-essentials" = stateroom comfort/organization items
-- "cruise-fun" = swimwear, beachwear, poolside, excursion fun
+- "cruise-fun" = poolside fun, games, drinkware, and excursion extras that are NOT clothing
 - "great-ideas" = genuinely cool/fun things, not necessarily cruise-specific
 
-Respond ONLY with JSON: { "items": [ { "idx": <int>, "description": "<string>", "category": "<one of the four>" } ] }.`;
+Pick "clothing" for ANY wearable item (especially swimwear) — do not put apparel in "cruise-fun".
+
+Respond ONLY with JSON: { "items": [ { "idx": <int>, "description": "<string>", "category": "<one of the categories above>" } ] }.`;
 
 interface LlmItem {
   idx: number;

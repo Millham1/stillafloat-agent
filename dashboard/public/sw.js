@@ -1,4 +1,4 @@
-const CACHE_NAME = 'still-afloat-editorial-v2';
+const CACHE_NAME = 'still-afloat-editorial-v3';
 
 // App shell to cache on install (root — dashboard is now a standalone subdomain)
 const APP_SHELL = [

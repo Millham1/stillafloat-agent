@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { authHeaders } from "@/lib/auth-token";
 
 const CATEGORIES = [
+  { value: "clothing", label: "Clothing & Swimwear", icon: "👕" },
   { value: "air-travel", label: "Air Travel", icon: "✈️" },
   { value: "cabin-essentials", label: "Cruise Cabin Essentials", icon: "🛏️" },
   { value: "cruise-fun", label: "Cruise Fun!", icon: "🏖️" },
@@ -13,6 +14,7 @@ const CATEGORIES = [
 ];
 
 const CATEGORY_PAGES: Record<string, string> = {
+  "clothing": "/affiliate/clothing.html",
   "air-travel": "/affiliate/air-travel.html",
   "cabin-essentials": "/affiliate/cabin-essentials.html",
   "cruise-fun": "/affiliate/cruise-fun.html",
@@ -131,8 +133,13 @@ export default function AffiliateManager() {
           <h2 className="text-2xl font-bold tracking-tight">Affiliate Manager</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Paste an Amazon Smart Strip, add an image, pick a category — it goes live on the website instantly.
-            {totalFeatured > 0 && ` · ${totalFeatured} featured on the Gear landing page.`}
+            {totalFeatured === 1 && ` · 1 featured on the Gear landing page.`}
           </p>
+          {totalFeatured > 1 && (
+            <p className="text-sm font-medium text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded-md px-3 py-2 mt-2">
+              ⚠️ {totalFeatured} items are marked featured — only the first one shows on the Gear landing page. Un-feature the extras so the right pick appears.
+            </p>
+          )}
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
