@@ -119,6 +119,23 @@ export default function AffiliateManager() {
     }
   }
 
+  async function changeCategory(item: AffiliateItem, category: string) {
+    if (category === item.category) return;
+    try {
+      const resp = await fetch(`${API_BASE}/api/affiliate-items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ category }),
+      });
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.error);
+      toast({ title: "Moved", description: `"${item.title}" → ${CATEGORIES.find(c => c.value === category)?.label ?? category}.` });
+      loadItems();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Update failed", description: (err as Error).message });
+    }
+  }
+
   const grouped = CATEGORIES.map(cat => ({
     ...cat,
     items: items.filter(i => i.category === cat.value),
@@ -309,6 +326,16 @@ export default function AffiliateManager() {
                               Smart Strip: {item.smartStrip.substring(0, 55)}…
                             </p>
                           )}
+                          <select
+                            value={item.category}
+                            onChange={e => changeCategory(item, e.target.value)}
+                            title="Move to another category"
+                            className="mt-1.5 text-xs rounded border bg-background px-2 py-1 text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            {CATEGORIES.map(c => (
+                              <option key={c.value} value={c.value}>{c.icon} {c.label}</option>
+                            ))}
+                          </select>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <button
