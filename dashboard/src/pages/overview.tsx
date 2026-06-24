@@ -5,6 +5,7 @@ import {
   Youtube, Facebook, Eye, Users, Video,
 } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from "recharts";
 
 type Summary = { ok: boolean; month: string; total_expense: number; total_income: number; net: number; reimbursable_personal: number; count: number; by_category: Record<string, number> };
 type Cashflow = { ok: boolean; series: { month: string; expense: number; income: number }[]; projected_monthly_spend: number; projected_yearly_spend: number };
@@ -42,7 +43,6 @@ export default function Overview() {
 
   const s = summary.data;
   const series = cashflow.data?.series ?? [];
-  const maxBar = Math.max(1, ...series.map((d) => Math.max(d.expense, d.income)));
   const categories = Object.entries(s?.by_category ?? {}).slice(0, 5);
   const ch = yt.data?.channel;
   const topVid = yt.data?.topVideos?.[0];
@@ -100,16 +100,17 @@ export default function Overview() {
           {series.length === 0 ? (
             <div className="text-sm text-muted-foreground py-8 text-center">{cashflow.isLoading ? "Loading…" : "No transactions yet."}</div>
           ) : (
-            <div className="flex items-end gap-2 h-40">
-              {series.map((d) => (
-                <div key={d.month} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                  <div className="w-full flex items-end justify-center gap-0.5 h-32">
-                    <div className="w-1/2 bg-red-400/80 rounded-t" style={{ height: `${(d.expense / maxBar) * 100}%` }} title={`Spend ${money(d.expense)}`} />
-                    <div className="w-1/2 bg-green-400/70 rounded-t" style={{ height: `${(d.income / maxBar) * 100}%` }} title={`Income ${money(d.income)}`} />
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">{d.month.slice(5)}</div>
-                </div>
-              ))}
+            <div style={{ width: "100%", height: 180 }}>
+              <ResponsiveContainer>
+                <BarChart data={series} margin={{ top: 4, right: 4, bottom: 0, left: -12 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(136,135,128,0.2)" />
+                  <XAxis dataKey="month" tickFormatter={(m: string) => m.slice(5)} tick={{ fill: "#9ca3af", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} axisLine={false} tickLine={false} width={52} tickFormatter={(v: number) => `$${v}`} />
+                  <Tooltip cursor={{ fill: "rgba(136,135,128,0.12)" }} formatter={(v: number, n: string) => [money(v), n]} />
+                  <Bar dataKey="expense" name="Spend" fill="#f87171" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="income" name="Income" fill="#4ade80" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           )}
         </Card>
@@ -151,7 +152,6 @@ export default function Overview() {
           const maxV = Math.max(1, ...vids.map((v) => v.views));
           const an = ytAnalytics.data;
           const daily = an?.daily ?? [];
-          const maxD = Math.max(1, ...daily.map((d) => d.views));
           const topShare = topVid && ch.views ? Math.round((topVid.views / ch.views) * 100) : 0;
           const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
           return (
@@ -173,7 +173,7 @@ export default function Overview() {
                   <div><div className="text-xs text-muted-foreground">Subs gained</div><div className="text-lg font-bold text-green-500">+{num(an.totals.subs_gained)}</div></div>
                 </div>
               ) : (
-                <div className="text-xs text-muted-foreground mb-4">{ytAnalytics.isLoading ? "Loading 28-day analytics…" : "Authorize YouTube Analytics (run setup_youtube_oauth.py) to unlock views, watch-time, and the daily trend."}</div>
+                <div className="text-xs text-muted-foreground mb-4">{ytAnalytics.isLoading ? "Loading 28-day analytics…" : an?.detail ? `Analytics: ${an.detail}` : "Authorize YouTube Analytics (run setup_youtube_oauth.py) to unlock views, watch-time, and the daily trend."}</div>
               )}
 
               {topShare > 0 && (
@@ -199,10 +199,14 @@ export default function Overview() {
                   {daily.length === 0 ? (
                     <div className="text-xs text-muted-foreground h-24 flex items-center justify-center text-center px-4">{ytAnalytics.isLoading ? "Loading…" : "Available once Analytics is authorized."}</div>
                   ) : (
-                    <div className="flex items-end gap-0.5 h-24">
-                      {daily.map((d) => (
-                        <div key={d.date} className="flex-1 bg-blue-400/70 rounded-t min-w-0" style={{ height: `${(d.views / maxD) * 95 + 5}%` }} title={`${d.date}: ${num(d.views)} views`} />
-                      ))}
+                    <div style={{ width: "100%", height: 96 }}>
+                      <ResponsiveContainer>
+                        <AreaChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                          <XAxis dataKey="date" hide />
+                          <Tooltip formatter={(v: number) => [num(v), "views"]} labelFormatter={(l: string) => l} />
+                          <Area dataKey="views" stroke="#60a5fa" fill="#60a5fa" fillOpacity={0.18} strokeWidth={2} />
+                        </AreaChart>
+                      </ResponsiveContainer>
                     </div>
                   )}
                 </div>
