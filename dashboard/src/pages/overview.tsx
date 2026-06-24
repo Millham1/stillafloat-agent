@@ -5,7 +5,7 @@ import {
   Youtube, Facebook, Eye, Users, Video,
 } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from "recharts";
 
 type Summary = { ok: boolean; month: string; total_expense: number; total_income: number; net: number; reimbursable_personal: number; count: number; by_category: Record<string, number> };
 type Cashflow = { ok: boolean; series: { month: string; expense: number; income: number }[]; projected_monthly_spend: number; projected_yearly_spend: number };
@@ -15,6 +15,11 @@ type YT = {
   channel?: { title: string; subscribers: number; views: number; videos: number };
   avgViews?: number;
   topVideos?: { id: string; title: string; views: number; url: string }[];
+};
+type Analytics = {
+  ok?: boolean; detail?: string;
+  daily?: { date: string; views: number; minutes: number; avg_view_seconds: number; subs_gained: number }[];
+  totals?: { views: number; watch_hours: number; avg_view_seconds: number; subs_gained: number };
 };
 
 const money = (n: number | null | undefined, ccy = "USD") =>
@@ -35,6 +40,7 @@ export default function Overview() {
   const cashflow = useApi<Cashflow>("/api/ops/finance/cashflow?months=7", ["ov-cashflow"]);
   const subs = useApi<Subs>("/api/ops/finance/subscriptions", ["ov-subs"]);
   const yt = useApi<YT>("/api/youtube-stats", ["ov-youtube"]);
+  const ytAnalytics = useApi<Analytics>("/api/ops/youtube-analytics?days=28", ["ov-yt-analytics"]);
 
   const s = summary.data;
   const series = cashflow.data?.series ?? [];
@@ -158,6 +164,9 @@ export default function Overview() {
           const vids = (yt.data?.topVideos ?? []).slice(0, 8);
           const maxV = Math.max(1, ...vids.map((v) => v.views));
           const topShare = topVid && ch.views ? Math.round((topVid.views / ch.views) * 100) : 0;
+          const an = ytAnalytics.data;
+          const daily = an?.daily ?? [];
+          const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
           return (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
@@ -166,6 +175,38 @@ export default function Overview() {
                 <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><Video className="w-3.5 h-3.5" />Videos</div><div className="text-2xl font-bold mt-0.5">{num(ch.videos)}</div></div>
                 <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />Avg / video</div><div className="text-2xl font-bold mt-0.5">{num(yt.data?.avgViews)}</div></div>
               </div>
+
+              {/* Last 28 days — from the YouTube Analytics API */}
+              {an?.totals ? (
+                <div className="mb-4">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Last 28 days</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                    <div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Views</div><div className="text-xl font-bold">{num(an.totals.views)}</div></div>
+                    <div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Watch hours</div><div className="text-xl font-bold">{num(an.totals.watch_hours)}</div></div>
+                    <div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Avg view</div><div className="text-xl font-bold">{mmss(an.totals.avg_view_seconds)}</div></div>
+                    <div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Subs gained</div><div className="text-xl font-bold text-green-600">+{num(an.totals.subs_gained)}</div></div>
+                  </div>
+                  {daily.length > 1 && (
+                    <div style={{ width: "100%", height: 110 }}>
+                      <ResponsiveContainer>
+                        <AreaChart data={daily} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(136,135,128,0.18)" />
+                          <XAxis dataKey="date" tickFormatter={(d: string) => d.slice(5)} tick={{ fill: "#888780", fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
+                          <YAxis tick={{ fill: "#888780", fontSize: 11 }} axisLine={false} tickLine={false} width={36} />
+                          <Tooltip formatter={(v: number) => [num(v), "views"]} />
+                          <Area dataKey="views" stroke="#E24B4A" fill="#E24B4A" fillOpacity={0.15} strokeWidth={2} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground mb-4 rounded-md border border-dashed px-3 py-2">
+                  {ytAnalytics.isLoading
+                    ? "Loading 28-day analytics…"
+                    : "28-day views, watch-time and growth load once the Analytics OAuth is connected to the Still Afloat channel."}
+                </div>
+              )}
 
               {topShare > 0 && (
                 <div className="text-sm mb-4 rounded-md bg-muted/40 px-3 py-2">Your top video drives <span className="font-semibold">{topShare}%</span> of all channel views — that's your formula. Lean into it.</div>
