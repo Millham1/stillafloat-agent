@@ -5,7 +5,31 @@ on:
     branches: [ main, dev ]
 
 jobs:
+  # CI gate: compile + bundle in GitHub Actions BEFORE any deploy. Both deploy
+  # jobs `needs: build`, so broken code can never reach a server. Mirrors the
+  # box's actual build command so a green gate guarantees a buildable deploy.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Enable pnpm
+        run: |
+          export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+          corepack enable
+          corepack prepare pnpm@9.15.0 --activate
+      - name: Install
+        run: pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+      - name: Build (compile + bundle gate)
+        env:
+          PORT: "5000"
+          BASE_PATH: "/"
+        run: pnpm --filter @workspace/api-server run build:all
+
   deploy-production:
+    needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -34,6 +58,7 @@ jobs:
             echo "monorepo deployment complete"
 
   deploy-dev:
+    needs: build
     if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     steps:

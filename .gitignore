@@ -48,9 +48,12 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
-# Replit
+# Replit (legacy — migrated off Replit to Hetzner; keep these out)
 .cache/
 .local/
+.replit
+.replitignore
+**/.replit-artifact/
 server/.env
 server/start.sh
 server/ecosystem.config.cjs
