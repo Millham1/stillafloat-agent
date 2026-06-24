@@ -14,7 +14,11 @@ type YT = {
   channel?: { title: string; subscribers: number; views: number; videos: number };
   avgViews?: number;
   topVideos?: { id: string; title: string; views: number; url: string }[];
-  history?: { date: string; subscribers: number; views: number }[];
+};
+type Analytics = {
+  ok?: boolean; detail?: string;
+  daily?: { date: string; views: number; minutes: number; avg_view_seconds: number; subs_gained: number }[];
+  totals?: { views: number; watch_hours: number; avg_view_seconds: number; subs_gained: number };
 };
 
 const money = (n: number | null | undefined, ccy = "USD") =>
@@ -34,6 +38,7 @@ export default function Overview() {
   const cashflow = useApi<Cashflow>("/api/ops/finance/cashflow?months=7", ["ov-cashflow"]);
   const subs = useApi<Subs>("/api/ops/finance/subscriptions", ["ov-subs"]);
   const yt = useApi<YT>("/api/youtube-stats", ["ov-youtube"]);
+  const ytAnalytics = useApi<Analytics>("/api/ops/youtube-analytics?days=28", ["ov-yt-analytics"]);
 
   const s = summary.data;
   const series = cashflow.data?.series ?? [];
@@ -144,21 +149,32 @@ export default function Overview() {
         ) : (() => {
           const vids = yt.data?.topVideos ?? [];
           const maxV = Math.max(1, ...vids.map((v) => v.views));
-          const hist = yt.data?.history ?? [];
-          const first = hist[0], last = hist[hist.length - 1];
-          const subsGain = first && last ? last.subscribers - first.subscribers : 0;
-          const viewsGain = first && last ? last.views - first.views : 0;
+          const an = ytAnalytics.data;
+          const daily = an?.daily ?? [];
+          const maxD = Math.max(1, ...daily.map((d) => d.views));
           const topShare = topVid && ch.views ? Math.round((topVid.views / ch.views) * 100) : 0;
-          const maxH = Math.max(1, ...hist.map((h) => h.views));
-          const minH = Math.min(...hist.map((h) => h.views), maxH);
+          const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
           return (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" />Subscribers</div><div className="text-xl font-bold">{num(ch.subscribers)}{hist.length > 1 && <span className="text-xs text-green-500 ml-1">+{num(subsGain)}</span>}</div></div>
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Eye className="w-3 h-3" />Total views</div><div className="text-xl font-bold">{num(ch.views)}{hist.length > 1 && <span className="text-xs text-green-500 ml-1">+{num(viewsGain)}</span>}</div></div>
+              {/* Lifetime channel stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" />Subscribers</div><div className="text-xl font-bold">{num(ch.subscribers)}</div></div>
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Eye className="w-3 h-3" />Total views</div><div className="text-xl font-bold">{num(ch.views)}</div></div>
                 <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Video className="w-3 h-3" />Videos</div><div className="text-xl font-bold">{num(ch.videos)}</div></div>
                 <div><div className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Avg / video</div><div className="text-xl font-bold">{num(yt.data?.avgViews)}</div></div>
               </div>
+
+              {/* Last-28-day results from the Analytics API */}
+              {an?.totals ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 rounded-md bg-muted/40 p-3">
+                  <div><div className="text-xs text-muted-foreground">Views (28d)</div><div className="text-lg font-bold">{num(an.totals.views)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Watch hours</div><div className="text-lg font-bold">{num(an.totals.watch_hours)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Avg view</div><div className="text-lg font-bold">{mmss(an.totals.avg_view_seconds)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Subs gained</div><div className="text-lg font-bold text-green-500">+{num(an.totals.subs_gained)}</div></div>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground mb-4">{ytAnalytics.isLoading ? "Loading 28-day analytics…" : "Authorize YouTube Analytics (run setup_youtube_oauth.py) to unlock views, watch-time, and the daily trend."}</div>
+              )}
 
               {topShare > 0 && (
                 <div className="text-xs text-muted-foreground mb-3">Your top video drives <span className="text-foreground font-medium">{topShare}%</span> of all views — lean into what worked.</div>
@@ -179,13 +195,13 @@ export default function Overview() {
                 </div>
 
                 <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-2">Views growth (last {hist.length} day{hist.length !== 1 ? "s" : ""})</div>
-                  {hist.length < 2 ? (
-                    <div className="text-xs text-muted-foreground h-24 flex items-center justify-center text-center px-4">Trend starts building today — a snapshot is recorded each day you open this. Check back tomorrow.</div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Daily views (28d)</div>
+                  {daily.length === 0 ? (
+                    <div className="text-xs text-muted-foreground h-24 flex items-center justify-center text-center px-4">{ytAnalytics.isLoading ? "Loading…" : "Available once Analytics is authorized."}</div>
                   ) : (
-                    <div className="flex items-end gap-1 h-24">
-                      {hist.map((h) => (
-                        <div key={h.date} className="flex-1 bg-blue-400/70 rounded-t min-w-0" style={{ height: `${maxH === minH ? 50 : ((h.views - minH) / (maxH - minH)) * 90 + 10}%` }} title={`${h.date}: ${num(h.views)} views`} />
+                    <div className="flex items-end gap-0.5 h-24">
+                      {daily.map((d) => (
+                        <div key={d.date} className="flex-1 bg-blue-400/70 rounded-t min-w-0" style={{ height: `${(d.views / maxD) * 95 + 5}%` }} title={`${d.date}: ${num(d.views)} views`} />
                       ))}
                     </div>
                   )}

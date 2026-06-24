@@ -32,5 +32,6 @@ router.get("/ops/finance/summary", requireToken, (req, res) => proxy("/finance/s
 router.get("/ops/finance/transactions", requireToken, (req, res) => proxy("/finance/transactions", req, res));
 router.get("/ops/finance/cashflow", requireToken, (req, res) => proxy("/finance/cashflow", req, res));
 router.get("/ops/finance/subscriptions", requireToken, (req, res) => proxy("/finance/subscriptions", req, res));
+router.get("/ops/youtube-analytics", requireToken, (req, res) => proxy("/youtube/analytics", req, res));
 
 export default router;
