@@ -233,7 +233,9 @@ router.get("/youtube-top", async (req: Request, res: Response) => {
 // Powers the dashboard cockpit. Cached 15 min so the dashboard never burns quota.
 interface YTStats {
   channel: { title: string; subscribers: number; views: number; videos: number; thumbnail: string };
+  avgViews: number;
   topVideos: { id: string; title: string; views: number; thumbnail: string; url: string }[];
+  history: { date: string; subscribers: number; views: number }[];
   fetchedAt: string;
 }
 let statsCache: { at: number; data: YTStats } | null = null;
@@ -283,19 +285,39 @@ router.get("/youtube-stats", async (req: Request, res: Response) => {
             url: `https://www.youtube.com/watch?v=${v.id}`,
           }))
           .sort((a: any, b: any) => b.views - a.views)
-          .slice(0, 5);
+          .slice(0, 12);
       }
     }
 
+    const subscribers = Number(ch.statistics?.subscriberCount ?? 0);
+    const views = Number(ch.statistics?.viewCount ?? 0);
+    const videos = Number(ch.statistics?.videoCount ?? 0);
+
+    // Daily snapshot → a real growth trend without the Analytics API. One row per
+    // day (deduped); keep ~180 days. Records whenever the dashboard refreshes.
+    let history: YTStats["history"] = [];
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const prior = await readJson<YTStats["history"]>("youtube-snapshots", []);
+      const arr = Array.isArray(prior) ? prior : [];
+      if (!arr.some((s) => s.date === today)) {
+        arr.push({ date: today, subscribers, views });
+        await writeJson("youtube-snapshots", arr.slice(-180));
+      } else {
+        const i = arr.findIndex((s) => s.date === today);
+        if (i >= 0) arr[i] = { date: today, subscribers, views };
+        await writeJson("youtube-snapshots", arr.slice(-180));
+      }
+      history = arr.slice(-30);
+    } catch (e) {
+      logger.warn({ e }, "YouTube snapshot persist failed (non-fatal)");
+    }
+
     const data: YTStats = {
-      channel: {
-        title: ch.snippet?.title ?? "",
-        subscribers: Number(ch.statistics?.subscriberCount ?? 0),
-        views: Number(ch.statistics?.viewCount ?? 0),
-        videos: Number(ch.statistics?.videoCount ?? 0),
-        thumbnail: ch.snippet?.thumbnails?.default?.url ?? "",
-      },
+      channel: { title: ch.snippet?.title ?? "", subscribers, views, videos, thumbnail: ch.snippet?.thumbnails?.default?.url ?? "" },
+      avgViews: videos > 0 ? Math.round(views / videos) : 0,
       topVideos,
+      history,
       fetchedAt: new Date().toISOString(),
     };
     statsCache = { at: Date.now(), data };

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Anchor, Sparkles, TrendingDown, Scale, RefreshCcw, Wallet,
+  Anchor, Sparkles, TrendingDown, TrendingUp, Scale, RefreshCcw, Wallet,
   Youtube, Facebook, Eye, Users, Video,
 } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
@@ -9,7 +9,13 @@ import { authHeaders } from "@/lib/auth-token";
 type Summary = { ok: boolean; month: string; total_expense: number; total_income: number; net: number; reimbursable_personal: number; count: number; by_category: Record<string, number> };
 type Cashflow = { ok: boolean; series: { month: string; expense: number; income: number }[]; projected_monthly_spend: number; projected_yearly_spend: number };
 type Subs = { ok: boolean; monthly_burn: number; annual_burn: number; active_count: number; count: number };
-type YT = { success: boolean; error?: string; channel?: { title: string; subscribers: number; views: number; videos: number }; topVideos?: { id: string; title: string; views: number; url: string }[] };
+type YT = {
+  success: boolean; error?: string;
+  channel?: { title: string; subscribers: number; views: number; videos: number };
+  avgViews?: number;
+  topVideos?: { id: string; title: string; views: number; url: string }[];
+  history?: { date: string; subscribers: number; views: number }[];
+};
 
 const money = (n: number | null | undefined, ccy = "USD") =>
   n == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: ccy, maximumFractionDigits: 0 }).format(n);
@@ -125,41 +131,81 @@ export default function Overview() {
         </Card>
       </div>
 
-      {/* YouTube + Facebook */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Youtube className="w-5 h-5 text-red-500" />
-            <h3 className="text-sm font-semibold">YouTube</h3>
-          </div>
-          {ch ? (
-            <>
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" />Subscribers</div><div className="text-xl font-bold">{num(ch.subscribers)}</div></div>
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Eye className="w-3 h-3" />Total views</div><div className="text-xl font-bold">{num(ch.views)}</div></div>
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Video className="w-3 h-3" />Videos</div><div className="text-xl font-bold">{num(ch.videos)}</div></div>
-              </div>
-              {topVid && (
-                <div className="text-xs text-muted-foreground border-t pt-2">Top: <a href={topVid.url} target="_blank" rel="noreferrer" className="text-foreground hover:underline">{topVid.title}</a> · {num(topVid.views)} views</div>
-              )}
-            </>
-          ) : (
-            <div className="text-sm text-muted-foreground py-6 text-center">
-              {yt.isLoading ? "Loading…" : "YouTube stats not configured yet (add YOUTUBE_API_KEY)."}
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Facebook className="w-5 h-5 text-blue-500" />
-            <h3 className="text-sm font-semibold">Facebook</h3>
-          </div>
+      {/* YouTube */}
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Youtube className="w-5 h-5 text-red-500" />
+          <h3 className="text-sm font-semibold">YouTube performance</h3>
+        </div>
+        {!ch ? (
           <div className="text-sm text-muted-foreground py-6 text-center">
-            Connect a Facebook Page token to enable reach &amp; engagement stats.
+            {yt.isLoading ? "Loading…" : "YouTube stats not configured yet (add YOUTUBE_API_KEY)."}
           </div>
-        </Card>
-      </div>
+        ) : (() => {
+          const vids = yt.data?.topVideos ?? [];
+          const maxV = Math.max(1, ...vids.map((v) => v.views));
+          const hist = yt.data?.history ?? [];
+          const first = hist[0], last = hist[hist.length - 1];
+          const subsGain = first && last ? last.subscribers - first.subscribers : 0;
+          const viewsGain = first && last ? last.views - first.views : 0;
+          const topShare = topVid && ch.views ? Math.round((topVid.views / ch.views) * 100) : 0;
+          const maxH = Math.max(1, ...hist.map((h) => h.views));
+          const minH = Math.min(...hist.map((h) => h.views), maxH);
+          return (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" />Subscribers</div><div className="text-xl font-bold">{num(ch.subscribers)}{hist.length > 1 && <span className="text-xs text-green-500 ml-1">+{num(subsGain)}</span>}</div></div>
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Eye className="w-3 h-3" />Total views</div><div className="text-xl font-bold">{num(ch.views)}{hist.length > 1 && <span className="text-xs text-green-500 ml-1">+{num(viewsGain)}</span>}</div></div>
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Video className="w-3 h-3" />Videos</div><div className="text-xl font-bold">{num(ch.videos)}</div></div>
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Avg / video</div><div className="text-xl font-bold">{num(yt.data?.avgViews)}</div></div>
+              </div>
+
+              {topShare > 0 && (
+                <div className="text-xs text-muted-foreground mb-3">Your top video drives <span className="text-foreground font-medium">{topShare}%</span> of all views — lean into what worked.</div>
+              )}
+
+              <div className="grid lg:grid-cols-2 gap-5">
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Views by video</div>
+                  <div className="space-y-1.5">
+                    {vids.slice(0, 8).map((v) => (
+                      <div key={v.id} className="flex items-center gap-2">
+                        <a href={v.url} target="_blank" rel="noreferrer" className="text-xs w-32 truncate shrink-0 hover:underline" title={v.title}>{v.title}</a>
+                        <div className="flex-1 h-3 bg-muted rounded-sm overflow-hidden"><div className="h-full bg-red-400/80 rounded-sm" style={{ width: `${(v.views / maxV) * 100}%` }} /></div>
+                        <span className="text-xs font-mono w-12 text-right shrink-0">{num(v.views)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Views growth (last {hist.length} day{hist.length !== 1 ? "s" : ""})</div>
+                  {hist.length < 2 ? (
+                    <div className="text-xs text-muted-foreground h-24 flex items-center justify-center text-center px-4">Trend starts building today — a snapshot is recorded each day you open this. Check back tomorrow.</div>
+                  ) : (
+                    <div className="flex items-end gap-1 h-24">
+                      {hist.map((h) => (
+                        <div key={h.date} className="flex-1 bg-blue-400/70 rounded-t min-w-0" style={{ height: `${maxH === minH ? 50 : ((h.views - minH) / (maxH - minH)) * 90 + 10}%` }} title={`${h.date}: ${num(h.views)} views`} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          );
+        })()}
+      </Card>
+
+      {/* Facebook */}
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Facebook className="w-5 h-5 text-blue-500" />
+          <h3 className="text-sm font-semibold">Facebook</h3>
+        </div>
+        <div className="text-sm text-muted-foreground py-4 text-center">
+          Connect a Facebook Page token to enable reach &amp; engagement stats.
+        </div>
+      </Card>
     </div>
   );
 }
