@@ -13,6 +13,7 @@ import translateArticleRouter from "./translate-article";
 import subscribeRouter from "./subscribe";
 import youtubeRouter from "./youtube";
 import contactRouter from "./contact";
+import opsFinanceRouter from "./ops-finance";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(translateArticleRouter);
 router.use(subscribeRouter);
 router.use(youtubeRouter);
 router.use(contactRouter);
+router.use(opsFinanceRouter);
 
 export default router;

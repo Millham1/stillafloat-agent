@@ -16,6 +16,8 @@ import FavoritesManager from "@/pages/favorites";
 import CommentaryManager from "@/pages/commentary";
 import Subscribers from "@/pages/subscribers";
 import Newsletter from "@/pages/newsletter";
+import Finance from "@/pages/finance";
+import Subscriptions from "@/pages/subscriptions";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +42,8 @@ function Router() {
         <Route path="/commentary"  component={CommentaryManager} />
         <Route path="/subscribers" component={Subscribers} />
         <Route path="/newsletter"  component={Newsletter} />
+        <Route path="/finance"       component={Finance} />
+        <Route path="/subscriptions" component={Subscriptions} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

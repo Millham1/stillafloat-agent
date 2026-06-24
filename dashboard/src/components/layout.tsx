@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink, RefreshCw, ShoppingBag, Heart, MessageSquare, Users, Mail } from "lucide-react";
+import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink, RefreshCw, ShoppingBag, Heart, MessageSquare, Users, Mail, Wallet, CreditCard } from "lucide-react";
 import { useScanNews, getGetSystemStatusQueryKey, getGetEditorialQueueQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +42,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/commentary",   label: "Commentary",        icon: MessageSquare },
     { href: "/subscribers",  label: "Subscribers",       icon: Users },
     { href: "/newsletter",   label: "Send Newsletter",   icon: Mail },
+    { href: "/finance",      label: "Finance",           icon: Wallet },
+    { href: "/subscriptions", label: "Subscriptions",    icon: CreditCard },
   ];
 
   return (
