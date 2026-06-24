@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Anchor, Sparkles, TrendingDown, TrendingUp, Scale, RefreshCcw, Wallet,
-  Youtube, Facebook, Eye, Users, Video,
+  Anchor, Sparkles, TrendingDown, Scale, RefreshCcw, Wallet,
+  Youtube, Facebook,
 } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from "recharts";
@@ -18,7 +18,7 @@ type YT = {
 };
 type Analytics = {
   ok?: boolean; detail?: string;
-  daily?: { date: string; views: number; minutes: number; avg_view_seconds: number; subs_gained: number }[];
+  daily?: { date: string; views: number; minutes: number; avg_view_seconds: number; subs_gained: number; subs_net: number }[];
   totals?: { views: number; watch_hours: number; avg_view_seconds: number; subs_gained: number };
 };
 
@@ -167,49 +167,63 @@ export default function Overview() {
           const an = ytAnalytics.data;
           const daily = an?.daily ?? [];
           const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+          // Rebuild net subscriber COUNT per day from the current total + daily net change.
+          const totalNet = daily.reduce((a, d) => a + (d.subs_net ?? 0), 0);
+          let running = (ch.subscribers ?? 0) - totalNet;
+          const subSeries = daily.map((d) => { running += (d.subs_net ?? 0); return { date: d.date, subs: running }; });
+          const subsGain = an?.totals?.subs_gained ?? 0;
+          const hasTrend = !!an?.totals && daily.length > 1;
+          const fmtDay = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
           return (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />Subscribers</div><div className="text-2xl font-bold mt-0.5">{num(ch.subscribers)}</div></div>
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" />Total views</div><div className="text-2xl font-bold mt-0.5">{num(ch.views)}</div></div>
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><Video className="w-3.5 h-3.5" />Videos</div><div className="text-2xl font-bold mt-0.5">{num(ch.videos)}</div></div>
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />Avg / video</div><div className="text-2xl font-bold mt-0.5">{num(yt.data?.avgViews)}</div></div>
-              </div>
-
-              {/* Last 28 days — from the YouTube Analytics API */}
-              {an?.totals ? (
-                <div className="mb-4">
-                  <div className="text-xs font-medium text-muted-foreground mb-2">Last 28 days</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                    <div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Views</div><div className="text-xl font-bold">{num(an.totals.views)}</div></div>
-                    <div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Watch hours</div><div className="text-xl font-bold">{num(an.totals.watch_hours)}</div></div>
-                    <div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Avg view</div><div className="text-xl font-bold">{mmss(an.totals.avg_view_seconds)}</div></div>
-                    <div className="rounded-md bg-muted/40 p-3"><div className="text-xs text-muted-foreground">Subs gained</div><div className="text-xl font-bold text-green-600">+{num(an.totals.subs_gained)}</div></div>
-                  </div>
-                  {daily.length > 1 && (
-                    <div style={{ width: "100%", height: 110 }}>
+              {hasTrend ? (
+                <div className="grid lg:grid-cols-2 gap-6 mb-5">
+                  <div>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-sm text-muted-foreground">Subscribers</span>
+                      <span className="text-2xl font-bold">{num(ch.subscribers)}</span>
+                      <span className={`text-sm ${subsGain >= 0 ? "text-green-600" : "text-red-500"}`}>{subsGain >= 0 ? "▲ +" : "▼ "}{num(Math.abs(subsGain))} <span className="text-muted-foreground">/28d</span></span>
+                    </div>
+                    <div style={{ width: "100%", height: 140 }}>
                       <ResponsiveContainer>
-                        <AreaChart data={daily} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+                        <AreaChart data={subSeries} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(136,135,128,0.18)" />
-                          <XAxis dataKey="date" tickFormatter={(d: string) => d.slice(5)} tick={{ fill: "#888780", fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={24} />
-                          <YAxis tick={{ fill: "#888780", fontSize: 11 }} axisLine={false} tickLine={false} width={36} />
-                          <Tooltip formatter={(v: number) => [num(v), "views"]} />
-                          <Area dataKey="views" stroke="#E24B4A" fill="#E24B4A" fillOpacity={0.15} strokeWidth={2} />
+                          <XAxis dataKey="date" tickFormatter={fmtDay} tick={{ fill: "#888780", fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={32} />
+                          <YAxis tick={{ fill: "#888780", fontSize: 11 }} axisLine={false} tickLine={false} width={34} allowDecimals={false} domain={["dataMin", "dataMax"]} />
+                          <Tooltip formatter={(v: number) => [num(v), "subscribers"]} />
+                          <Area dataKey="subs" stroke="#E24B4A" fill="#E24B4A" fillOpacity={0.15} strokeWidth={2.5} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
-                  )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                      <span className="text-sm text-muted-foreground">Views</span>
+                      <span className="text-2xl font-bold">{num(an?.totals?.views)}</span>
+                      <span className="text-sm text-muted-foreground">/28d · {num(an?.totals?.watch_hours)} watch hrs · {mmss(an?.totals?.avg_view_seconds ?? 0)} avg</span>
+                    </div>
+                    <div style={{ width: "100%", height: 140 }}>
+                      <ResponsiveContainer>
+                        <AreaChart data={daily} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(136,135,128,0.18)" />
+                          <XAxis dataKey="date" tickFormatter={fmtDay} tick={{ fill: "#888780", fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={32} />
+                          <YAxis tick={{ fill: "#888780", fontSize: 11 }} axisLine={false} tickLine={false} width={34} />
+                          <Tooltip formatter={(v: number) => [num(v), "views"]} />
+                          <Area dataKey="views" stroke="#378ADD" fill="#378ADD" fillOpacity={0.15} strokeWidth={2.5} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="text-xs text-muted-foreground mb-4 rounded-md border border-dashed px-3 py-2">
-                  {ytAnalytics.isLoading
-                    ? "Loading 28-day analytics…"
-                    : "28-day views, watch-time and growth load once the Analytics OAuth is connected to the Still Afloat channel."}
+                <div className="text-sm text-muted-foreground mb-5 rounded-md border border-dashed px-3 py-4 text-center">
+                  {ytAnalytics.isLoading ? "Loading growth trends…" : "Growth trends load once the Analytics OAuth is connected to the Still Afloat channel."}
                 </div>
               )}
 
               {topShare > 0 && (
-                <div className="text-sm mb-4 rounded-md bg-muted/40 px-3 py-2">Your top video drives <span className="font-semibold">{topShare}%</span> of all channel views — that's your formula. Lean into it.</div>
+                <div className="text-sm mb-4">Top video drives <span className="font-semibold">{topShare}%</span> of all views — that's your formula.</div>
               )}
 
               <div className="text-xs font-medium text-muted-foreground mb-2">Views by video</div>
@@ -221,6 +235,13 @@ export default function Overview() {
                     <span className="text-sm font-mono w-14 text-right shrink-0 tabular-nums">{num(v.views)}</span>
                   </div>
                 ))}
+              </div>
+
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-4 pt-3 border-t text-xs text-muted-foreground">
+                <span>{num(ch.subscribers)} subscribers</span>
+                <span>{num(ch.views)} total views</span>
+                <span>{num(ch.videos)} videos</span>
+                <span>{num(yt.data?.avgViews)} avg/video</span>
               </div>
             </>
           );
