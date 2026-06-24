@@ -228,4 +228,82 @@ router.get("/youtube-top", async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/youtube-stats ────────────────────────────────────────────────────
+// Accurate channel statistics via the YouTube Data API (needs YOUTUBE_API_KEY).
+// Powers the dashboard cockpit. Cached 15 min so the dashboard never burns quota.
+interface YTStats {
+  channel: { title: string; subscribers: number; views: number; videos: number; thumbnail: string };
+  topVideos: { id: string; title: string; views: number; thumbnail: string; url: string }[];
+  fetchedAt: string;
+}
+let statsCache: { at: number; data: YTStats } | null = null;
+const STATS_TTL_MS = 15 * 60 * 1000;
+
+router.get("/youtube-stats", async (req: Request, res: Response) => {
+  if (!tokenOk(req)) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
+  const key = process.env["YOUTUBE_API_KEY"];
+  if (!key) {
+    res.status(503).json({ success: false, error: "YOUTUBE_API_KEY not configured" });
+    return;
+  }
+  if (statsCache && Date.now() - statsCache.at < STATS_TTL_MS) {
+    res.json({ success: true, cached: true, ...statsCache.data });
+    return;
+  }
+  try {
+    const api = "https://www.googleapis.com/youtube/v3";
+    const handle = CHANNEL_HANDLE.replace(/^@/, "");
+    const chRes = await fetch(`${api}/channels?part=snippet,statistics,contentDetails&forHandle=${handle}&key=${key}`);
+    const chJson = (await chRes.json()) as any;
+    if (chJson.error) throw new Error(chJson.error.message || "channels call failed");
+    const ch = chJson.items?.[0];
+    if (!ch) throw new Error("channel not found");
+
+    let topVideos: YTStats["topVideos"] = [];
+    const uploads = ch.contentDetails?.relatedPlaylists?.uploads;
+    if (uploads) {
+      const plRes = await fetch(`${api}/playlistItems?part=contentDetails&maxResults=50&playlistId=${uploads}&key=${key}`);
+      const plJson = (await plRes.json()) as any;
+      const ids = (plJson.items ?? [])
+        .map((i: any) => i.contentDetails?.videoId)
+        .filter(Boolean)
+        .slice(0, 50);
+      if (ids.length) {
+        const vRes = await fetch(`${api}/videos?part=snippet,statistics&id=${ids.join(",")}&key=${key}`);
+        const vJson = (await vRes.json()) as any;
+        topVideos = (vJson.items ?? [])
+          .map((v: any) => ({
+            id: v.id,
+            title: v.snippet?.title ?? "",
+            views: Number(v.statistics?.viewCount ?? 0),
+            thumbnail: v.snippet?.thumbnails?.medium?.url ?? `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
+            url: `https://www.youtube.com/watch?v=${v.id}`,
+          }))
+          .sort((a: any, b: any) => b.views - a.views)
+          .slice(0, 5);
+      }
+    }
+
+    const data: YTStats = {
+      channel: {
+        title: ch.snippet?.title ?? "",
+        subscribers: Number(ch.statistics?.subscriberCount ?? 0),
+        views: Number(ch.statistics?.viewCount ?? 0),
+        videos: Number(ch.statistics?.videoCount ?? 0),
+        thumbnail: ch.snippet?.thumbnails?.default?.url ?? "",
+      },
+      topVideos,
+      fetchedAt: new Date().toISOString(),
+    };
+    statsCache = { at: Date.now(), data };
+    res.json({ success: true, cached: false, ...data });
+  } catch (err) {
+    logger.error({ err }, "YouTube stats fetch failed");
+    res.status(502).json({ success: false, error: (err as Error).message });
+  }
+});
+
 export default router;
