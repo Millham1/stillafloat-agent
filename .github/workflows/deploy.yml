@@ -10,8 +10,12 @@ jobs:
   # box's actual build command so a green gate guarantees a buildable deploy.
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -20,8 +24,18 @@ jobs:
           export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
           corepack enable
           corepack prepare pnpm@9.15.0 --activate
-      - name: Install
-        run: pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+      - name: Install (keeps lockfile in sync with manifests)
+        run: pnpm install --no-frozen-lockfile
+      - name: Commit synced lockfile (dev only)
+        if: github.ref == 'refs/heads/dev'
+        run: |
+          if ! git diff --quiet -- pnpm-lock.yaml; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pnpm-lock.yaml
+            git commit -m "chore: sync pnpm-lock.yaml [skip ci]"
+            git push origin HEAD:dev || echo "lockfile push skipped (no write perms) — continuing"
+          fi
       - name: Build (compile + bundle gate)
         env:
           PORT: "5000"
@@ -92,11 +106,17 @@ jobs:
             # never points at the prod API.
             PORT=5000 BASE_PATH=/ pnpm --filter @workspace/api-server run build:all
             # ---- runtime env ----
-            # shared keys (OpenAI/GNews/Resend/Supabase REST + off-prod email/Telegram) from the box's newsagent .env
+            # Canonical shared env (matches prod: env.ts reads /opt/stillafloat/shared.env).
+            # One-time seed from the legacy newsagent .env if the shared file is absent.
+            SHARED=/opt/stillafloat/shared.env
+            if [ ! -f "$SHARED" ]; then
+              mkdir -p /opt/stillafloat
+              cp /root/stillafloat-newsagent/.env "$SHARED" 2>/dev/null || true
+            fi
             while IFS= read -r line; do
               case "$line" in ''|\#*) continue;; esac
               export "${line%%=*}=${line#*=}"
-            done < /root/stillafloat-newsagent/.env
+            done < "$SHARED"
             # monorepo-specific overrides (DB from encrypted GitHub secret)
             export DATABASE_URL="$DEV_DATABASE_URL"
             export PORT=5000
