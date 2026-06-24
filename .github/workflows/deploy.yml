@@ -49,13 +49,25 @@ jobs:
     steps:
       - name: Deploy to Production VPS
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         with:
           host: 5.161.52.102
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 20m
+          envs: YOUTUBE_API_KEY
           script: |
             set -e
+            # Publish the YouTube Data API key into the shared env (read by env.ts)
+            # so the dashboard's YouTube panel works. Upsert; no-op if secret unset.
+            if [ -n "${YOUTUBE_API_KEY}" ]; then
+              SHARED=/opt/stillafloat/shared.env
+              mkdir -p /opt/stillafloat; touch "$SHARED"
+              grep -vE '^YOUTUBE_API_KEY=' "$SHARED" > "$SHARED.tmp" 2>/dev/null || true
+              echo "YOUTUBE_API_KEY=${YOUTUBE_API_KEY}" >> "$SHARED.tmp"
+              mv "$SHARED.tmp" "$SHARED"
+            fi
             cd /root/saf-full
             git fetch origin
             git reset --hard origin/main

@@ -18,6 +18,7 @@ import Subscribers from "@/pages/subscribers";
 import Newsletter from "@/pages/newsletter";
 import Finance from "@/pages/finance";
 import Subscriptions from "@/pages/subscriptions";
+import Overview from "@/pages/overview";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,7 +33,8 @@ function Router() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/" component={Overview} />
+        <Route path="/editorial" component={Dashboard} />
         <Route path="/queue" component={EditorialQueue} />
         <Route path="/approved" component={ApprovedStories} />
         <Route path="/feeds" component={LiveFeeds} />
