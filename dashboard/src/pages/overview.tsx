@@ -5,7 +5,7 @@ import {
   Youtube, Facebook, Eye, Users, Video,
 } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
 type Summary = { ok: boolean; month: string; total_expense: number; total_income: number; net: number; reimbursable_personal: number; count: number; by_category: Record<string, number> };
 type Cashflow = { ok: boolean; series: { month: string; expense: number; income: number }[]; projected_monthly_spend: number; projected_yearly_spend: number };
@@ -16,15 +16,11 @@ type YT = {
   avgViews?: number;
   topVideos?: { id: string; title: string; views: number; url: string }[];
 };
-type Analytics = {
-  ok?: boolean; detail?: string;
-  daily?: { date: string; views: number; minutes: number; avg_view_seconds: number; subs_gained: number }[];
-  totals?: { views: number; watch_hours: number; avg_view_seconds: number; subs_gained: number };
-};
 
 const money = (n: number | null | undefined, ccy = "USD") =>
   n == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: ccy, maximumFractionDigits: 0 }).format(n);
 const num = (n: number | null | undefined) => (n == null ? "—" : new Intl.NumberFormat("en-US").format(n));
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function useApi<T>(url: string, key: string[]) {
   return useQuery<T>({
@@ -39,7 +35,6 @@ export default function Overview() {
   const cashflow = useApi<Cashflow>("/api/ops/finance/cashflow?months=7", ["ov-cashflow"]);
   const subs = useApi<Subs>("/api/ops/finance/subscriptions", ["ov-subs"]);
   const yt = useApi<YT>("/api/youtube-stats", ["ov-youtube"]);
-  const ytAnalytics = useApi<Analytics>("/api/ops/youtube-analytics?days=28", ["ov-yt-analytics"]);
 
   const s = summary.data;
   const series = cashflow.data?.series ?? [];
@@ -47,10 +42,18 @@ export default function Overview() {
   const ch = yt.data?.channel;
   const topVid = yt.data?.topVideos?.[0];
 
+  const lastM = series[series.length - 1];
+  const prevM = series[series.length - 2];
+  const spendDelta = lastM && prevM && prevM.expense > 0
+    ? Math.round(((lastM.expense - prevM.expense) / prevM.expense) * 100) : null;
+  const topShare = topVid && ch?.views ? Math.round((topVid.views / ch.views) * 100) : null;
+
   const health = [
-    s ? `Spend this month ${money(s.total_expense)}` : null,
-    subs.data ? `burn ${money(subs.data.monthly_burn)}/mo` : null,
-    ch ? `${num(ch.subscribers)} YouTube subs · ${num(ch.views)} views` : null,
+    spendDelta != null
+      ? `Spend ${spendDelta <= 0 ? "down" : "up"} ${Math.abs(spendDelta)}% vs last month`
+      : (s ? `${money(s.total_expense)} spent this month` : null),
+    subs.data ? `${money(subs.data.monthly_burn)}/mo across ${subs.data.active_count} active subscriptions` : null,
+    ch ? `YouTube: ${num(ch.subscribers)} subs${topShare != null ? `, top video = ${topShare}% of views` : ""}` : null,
   ].filter(Boolean).join(" · ");
 
   const kpis = [
@@ -91,8 +94,12 @@ export default function Overview() {
       {/* Cash flow + category */}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-4">
-          <div className="flex items-baseline justify-between mb-4">
-            <h3 className="text-sm font-semibold">Cash flow</h3>
+          <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-semibold">Cash flow</h3>
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: "#D85A30" }} />Spend</span>
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: "#1D9E75" }} />Income</span>
+            </div>
             <div className="text-xs text-muted-foreground">
               Projected <span className="font-medium text-foreground">{money(cashflow.data?.projected_monthly_spend)}/mo</span>
             </div>
@@ -100,15 +107,15 @@ export default function Overview() {
           {series.length === 0 ? (
             <div className="text-sm text-muted-foreground py-8 text-center">{cashflow.isLoading ? "Loading…" : "No transactions yet."}</div>
           ) : (
-            <div style={{ width: "100%", height: 180 }}>
+            <div style={{ width: "100%", height: 200 }}>
               <ResponsiveContainer>
-                <BarChart data={series} margin={{ top: 4, right: 4, bottom: 0, left: -12 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(136,135,128,0.2)" />
-                  <XAxis dataKey="month" tickFormatter={(m: string) => m.slice(5)} tick={{ fill: "#9ca3af", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} axisLine={false} tickLine={false} width={52} tickFormatter={(v: number) => `$${v}`} />
-                  <Tooltip cursor={{ fill: "rgba(136,135,128,0.12)" }} formatter={(v: number, n: string) => [money(v), n]} />
-                  <Bar dataKey="expense" name="Spend" fill="#f87171" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="income" name="Income" fill="#4ade80" radius={[3, 3, 0, 0]} />
+                <BarChart data={series} margin={{ top: 8, right: 8, bottom: 0, left: -8 }} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(136,135,128,0.18)" />
+                  <XAxis dataKey="month" tickFormatter={(m: string) => MONTHS[Number(m.slice(5, 7)) - 1] ?? m} tick={{ fill: "#888780", fontSize: 12 }} axisLine={false} tickLine={false} dy={4} />
+                  <YAxis tick={{ fill: "#888780", fontSize: 12 }} axisLine={false} tickLine={false} width={52} tickFormatter={(v: number) => `$${v}`} />
+                  <Tooltip cursor={{ fill: "rgba(136,135,128,0.1)" }} formatter={(v: number, n: string) => [money(v), n]} />
+                  <Bar dataKey="expense" name="Spend" fill="#D85A30" radius={[4, 4, 0, 0]} maxBarSize={56} />
+                  <Bar dataKey="income" name="Income" fill="#1D9E75" radius={[4, 4, 0, 0]} maxBarSize={56} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -148,68 +155,31 @@ export default function Overview() {
             {yt.isLoading ? "Loading…" : "YouTube stats not configured yet (add YOUTUBE_API_KEY)."}
           </div>
         ) : (() => {
-          const vids = yt.data?.topVideos ?? [];
+          const vids = (yt.data?.topVideos ?? []).slice(0, 8);
           const maxV = Math.max(1, ...vids.map((v) => v.views));
-          const an = ytAnalytics.data;
-          const daily = an?.daily ?? [];
           const topShare = topVid && ch.views ? Math.round((topVid.views / ch.views) * 100) : 0;
-          const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
           return (
             <>
-              {/* Lifetime channel stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" />Subscribers</div><div className="text-xl font-bold">{num(ch.subscribers)}</div></div>
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Eye className="w-3 h-3" />Total views</div><div className="text-xl font-bold">{num(ch.views)}</div></div>
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><Video className="w-3 h-3" />Videos</div><div className="text-xl font-bold">{num(ch.videos)}</div></div>
-                <div><div className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Avg / video</div><div className="text-xl font-bold">{num(yt.data?.avgViews)}</div></div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />Subscribers</div><div className="text-2xl font-bold mt-0.5">{num(ch.subscribers)}</div></div>
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" />Total views</div><div className="text-2xl font-bold mt-0.5">{num(ch.views)}</div></div>
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><Video className="w-3.5 h-3.5" />Videos</div><div className="text-2xl font-bold mt-0.5">{num(ch.videos)}</div></div>
+                <div><div className="text-xs text-muted-foreground flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" />Avg / video</div><div className="text-2xl font-bold mt-0.5">{num(yt.data?.avgViews)}</div></div>
               </div>
 
-              {/* Last-28-day results from the Analytics API */}
-              {an?.totals ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 rounded-md bg-muted/40 p-3">
-                  <div><div className="text-xs text-muted-foreground">Views (28d)</div><div className="text-lg font-bold">{num(an.totals.views)}</div></div>
-                  <div><div className="text-xs text-muted-foreground">Watch hours</div><div className="text-lg font-bold">{num(an.totals.watch_hours)}</div></div>
-                  <div><div className="text-xs text-muted-foreground">Avg view</div><div className="text-lg font-bold">{mmss(an.totals.avg_view_seconds)}</div></div>
-                  <div><div className="text-xs text-muted-foreground">Subs gained</div><div className="text-lg font-bold text-green-500">+{num(an.totals.subs_gained)}</div></div>
-                </div>
-              ) : (
-                <div className="text-xs text-muted-foreground mb-4">{ytAnalytics.isLoading ? "Loading 28-day analytics…" : an?.detail ? `Analytics: ${an.detail}` : "Authorize YouTube Analytics (run setup_youtube_oauth.py) to unlock views, watch-time, and the daily trend."}</div>
-              )}
-
               {topShare > 0 && (
-                <div className="text-xs text-muted-foreground mb-3">Your top video drives <span className="text-foreground font-medium">{topShare}%</span> of all views — lean into what worked.</div>
+                <div className="text-sm mb-4 rounded-md bg-muted/40 px-3 py-2">Your top video drives <span className="font-semibold">{topShare}%</span> of all channel views — that's your formula. Lean into it.</div>
               )}
 
-              <div className="grid lg:grid-cols-2 gap-5">
-                <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-2">Views by video</div>
-                  <div className="space-y-1.5">
-                    {vids.slice(0, 8).map((v) => (
-                      <div key={v.id} className="flex items-center gap-2">
-                        <a href={v.url} target="_blank" rel="noreferrer" className="text-xs w-32 truncate shrink-0 hover:underline" title={v.title}>{v.title}</a>
-                        <div className="flex-1 h-3 bg-muted rounded-sm overflow-hidden"><div className="h-full bg-red-400/80 rounded-sm" style={{ width: `${(v.views / maxV) * 100}%` }} /></div>
-                        <span className="text-xs font-mono w-12 text-right shrink-0">{num(v.views)}</span>
-                      </div>
-                    ))}
+              <div className="text-xs font-medium text-muted-foreground mb-2">Views by video</div>
+              <div className="space-y-2">
+                {vids.map((v) => (
+                  <div key={v.id} className="flex items-center gap-3">
+                    <a href={v.url} target="_blank" rel="noreferrer" className="text-sm w-48 truncate shrink-0 hover:underline" title={v.title}>{v.title}</a>
+                    <div className="flex-1 h-4 bg-muted/60 rounded overflow-hidden"><div className="h-full bg-[#E24B4A] rounded" style={{ width: `${(v.views / maxV) * 100}%` }} /></div>
+                    <span className="text-sm font-mono w-14 text-right shrink-0 tabular-nums">{num(v.views)}</span>
                   </div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-2">Daily views (28d)</div>
-                  {daily.length === 0 ? (
-                    <div className="text-xs text-muted-foreground h-24 flex items-center justify-center text-center px-4">{ytAnalytics.isLoading ? "Loading…" : "Available once Analytics is authorized."}</div>
-                  ) : (
-                    <div style={{ width: "100%", height: 96 }}>
-                      <ResponsiveContainer>
-                        <AreaChart data={daily} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                          <XAxis dataKey="date" hide />
-                          <Tooltip formatter={(v: number) => [num(v), "views"]} labelFormatter={(l: string) => l} />
-                          <Area dataKey="views" stroke="#60a5fa" fill="#60a5fa" fillOpacity={0.18} strokeWidth={2} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
             </>
           );
