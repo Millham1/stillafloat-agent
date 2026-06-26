@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Cruise Cams | Still Afloat</title>
+<meta name="description" content="Watch live cruise port and tropical beach webcams — Key West, St. Thomas, PortMiami, St. Maarten's Maho Beach, and Belize — streaming 24/7. Curated by Still Afloat.">
+<link rel="canonical" href="https://stillafloatcruising.com/webcams.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:url" content="https://stillafloatcruising.com/webcams.html">
+<meta property="og:title" content="Live Cruise Cams | Still Afloat">
+<meta property="og:description" content="Live cruise port and tropical beach webcams streaming 24/7 — Key West, St. Thomas, PortMiami, Maho Beach, and Belize.">
+<meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Live Cruise Cams | Still Afloat">
+<meta name="twitter:description" content="Live cruise port and tropical beach webcams streaming 24/7 — curated by Still Afloat.">
+<meta name="twitter:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px}
+
+/* ── Banner (CSS hero — matches site chrome, green underline) ── */
+.cams-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;
+  background:radial-gradient(circle at 72% 18%,rgba(0,119,182,.55),transparent 56%),
+            linear-gradient(135deg,#0b2238 0%,#06111f 100%);
+  padding:70px 22px 64px;text-align:center}
+.cams-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(to bottom,transparent,#06111f);pointer-events:none}
+.cams-eyebrow{color:rgba(93,255,154,.9);font-size:14px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;margin:0 0 12px}
+.cams-banner h1{color:#fff;font-size:48px;font-weight:900;margin:0;line-height:1.05;text-shadow:0 4px 18px rgba(0,0,0,.4)}
+.cams-banner h1 i{color:#5dff9a;font-size:.78em;margin-right:12px}
+.cams-banner .sub{color:rgba(255,255,255,.72);font-size:18px;max-width:680px;margin:16px auto 0}
+
+/* ── Shell ── */
+.shell{max-width:1300px;margin:auto;padding:46px 22px 90px}
+.section{margin-bottom:54px}
+.section h2{color:#fff;font-size:34px;font-weight:900;margin:0 0 6px}
+.section h2 i{color:#5dff9a;font-size:.7em;margin-right:10px}
+.section .lede{color:rgba(255,255,255,.68);margin:0 0 24px;font-size:17px}
+
+/* ── Cam grid ── */
+.cams-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:22px}
+.cam{border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.10);background:rgba(7,24,63,.78);box-shadow:0 10px 24px rgba(0,0,0,.22);transition:transform .2s,border-color .2s,box-shadow .2s}
+.cam:hover{transform:translateY(-4px);border-color:rgba(93,255,154,.30);box-shadow:0 20px 40px rgba(0,0,0,.34)}
+
+.cam-frame{position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;margin:0;cursor:pointer;background:#0a1b3a;overflow:hidden}
+.cam-poster{width:100%;height:100%;object-fit:cover;display:block;opacity:.92;transition:opacity .2s,transform .35s}
+.cam-frame:hover .cam-poster{opacity:1;transform:scale(1.04)}
+.cam-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.cam-play i{display:flex;align-items:center;justify-content:center;width:70px;height:70px;padding-left:5px;border-radius:50%;font-size:26px;color:#fff;background:rgba(7,24,63,.72);border:1px solid rgba(93,255,154,.5);box-shadow:0 8px 22px rgba(0,0,0,.42);transition:background .2s,transform .2s}
+.cam-frame:hover .cam-play i{background:rgba(0,119,182,.9);transform:scale(1.08)}
+.cam-iframe{width:100%;aspect-ratio:16/9;border:0;display:block;background:#0a1b3a}
+
+.cam-live{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:7px;background:rgba(7,24,63,.82);border:1px solid rgba(255,80,80,.5);color:#fff;font-size:12px;font-weight:800;letter-spacing:.08em;padding:5px 11px;border-radius:12px;pointer-events:none}
+.cam-live .dot{width:8px;height:8px;border-radius:50%;background:#ff4d4d;box-shadow:0 0 8px #ff4d4d;animation:campulse 1.6s infinite}
+@keyframes campulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.cam-meta{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px}
+.cam-title{color:#fff;font-size:19px;font-weight:800;margin:0}
+.cam-desc{color:rgba(255,255,255,.6);font-size:14px;margin:4px 0 0}
+.cam-cta{flex-shrink:0;color:#5dff9a;text-decoration:none;font-weight:800;font-size:14px;background:rgba(93,255,154,.10);border:1px solid rgba(93,255,154,.30);padding:9px 14px;border-radius:14px;white-space:nowrap;transition:all .2s}
+.cam-cta:hover{background:rgba(93,255,154,.22);border-color:#5dff9a}
+
+/* ── Link-out card (no embeddable feed) ── */
+.cam-frame-static{display:flex;align-items:center;justify-content:center;cursor:default;
+  background:radial-gradient(circle at 50% 35%,rgba(0,119,182,.32),transparent 60%),#0a1b3a}
+.cam-linkout-icon{font-size:48px;color:rgba(93,255,154,.55)}
+
+.cams-credit{color:rgba(255,255,255,.45);font-size:14px;max-width:900px;margin:8px auto 0;text-align:center;line-height:1.5}
+footer{text-align:center;padding:36px 20px 60px;color:rgba(255,255,255,.55);font-size:16px}
+.brand-img-sm{height:26px;width:auto;vertical-align:middle;display:inline-block}
+
+@media(max-width:680px){
+  .cams-banner h1{font-size:34px}
+  .cams-banner{padding:60px 18px 54px}
+  .section h2{font-size:26px}
+  .cams-grid{grid-template-columns:1fr;gap:18px}
+}
+</style>
+</head>
+<body>
+
+<header class="cams-banner">
+  <p class="cams-eyebrow"><i class="fa-solid fa-tower-broadcast"></i> Streaming 24/7</p>
+  <h1><i class="fa-solid fa-video"></i>Live Cruise Cams</h1>
+  <p class="sub">Pull up a chair and watch the ships come and go. Live looks at favorite cruise ports and a few tropical beaches we love — click any cam to start the stream.</p>
+  <div id="navbar-container"></div>
+</header>
+
+<main class="shell">
+
+  <section class="section">
+    <h2><i class="fa-solid fa-ship"></i>Cruise Ports</h2>
+    <p class="lede">Watch ships arrive, dock, and sail away from some of the most popular cruise calls.</p>
+    <div class="cams-grid">
+
+      <article class="cam reveal">
+        <button class="cam-frame" data-embed="8Rw-tZTeBjU" aria-label="Play Key West live cruise cam">
+          <img class="cam-poster" loading="lazy" src="https://img.youtube.com/vi/8Rw-tZTeBjU/hqdefault.jpg" alt="Key West cruise port live cam">
+          <span class="cam-live"><span class="dot"></span> LIVE</span>
+          <span class="cam-play"><i class="fa-solid fa-play"></i></span>
+        </button>
+        <div class="cam-meta">
+          <div><h3 class="cam-title">Key West</h3><p class="cam-desc">Cruise pier &amp; harbor traffic — Florida Keys</p></div>
+          <a class="cam-cta" href="https://www.youtube.com/watch?v=8Rw-tZTeBjU" target="_blank" rel="noopener">YouTube <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </div>
+      </article>
+
+      <article class="cam reveal">
+        <button class="cam-frame" data-embed="QfXuMZ7BQa4" aria-label="Play St. Thomas live cruise cam">
+          <img class="cam-poster" loading="lazy" src="https://img.youtube.com/vi/QfXuMZ7BQa4/hqdefault.jpg" alt="St. Thomas Charlotte Amalie harbor live cam">
+          <span class="cam-live"><span class="dot"></span> LIVE</span>
+          <span class="cam-play"><i class="fa-solid fa-play"></i></span>
+        </button>
+        <div class="cam-meta">
+          <div><h3 class="cam-title">St. Thomas</h3><p class="cam-desc">Charlotte Amalie cruise harbor — USVI</p></div>
+          <a class="cam-cta" href="https://www.youtube.com/watch?v=QfXuMZ7BQa4" target="_blank" rel="noopener">YouTube <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </div>
+      </article>
+
+      <article class="cam reveal">
+        <button class="cam-frame" data-embed="9iV-D-KAtao" aria-label="Play PortMiami live cruise cam">
+          <img class="cam-poster" loading="lazy" src="https://img.youtube.com/vi/9iV-D-KAtao/hqdefault.jpg" alt="PortMiami cruise terminals live cam">
+          <span class="cam-live"><span class="dot"></span> LIVE</span>
+          <span class="cam-play"><i class="fa-solid fa-play"></i></span>
+        </button>
+        <div class="cam-meta">
+          <div><h3 class="cam-title">PortMiami</h3><p class="cam-desc">Cruise terminals &amp; sail-aways — homeport USA</p></div>
+          <a class="cam-cta" href="https://www.youtube.com/watch?v=9iV-D-KAtao" target="_blank" rel="noopener">YouTube <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </div>
+      </article>
+
+      <article class="cam reveal">
+        <div class="cam-frame cam-frame-static">
+          <span class="cam-live"><span class="dot"></span> LIVE</span>
+          <span class="cam-linkout-icon"><i class="fa-solid fa-tower-broadcast"></i></span>
+        </div>
+        <div class="cam-meta">
+          <div><h3 class="cam-title">Nassau</h3><p class="cam-desc">Cruise harbor — Bahamas (opens external feed)</p></div>
+          <a class="cam-cta" href="https://www.portnassauwebcam.com/" target="_blank" rel="noopener">Watch <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <h2><i class="fa-solid fa-umbrella-beach"></i>Tropical &amp; Beach</h2>
+    <p class="lede">A little island therapy between cruises — palm trees, turquoise water, and the famous planes over Maho Beach.</p>
+    <div class="cams-grid">
+
+      <article class="cam reveal">
+        <button class="cam-frame" data-embed="yulhWH4WeFk" aria-label="Play St. Maarten Maho Beach live cam">
+          <img class="cam-poster" loading="lazy" src="https://img.youtube.com/vi/yulhWH4WeFk/hqdefault.jpg" alt="St. Maarten Maho Beach plane spotting live cam">
+          <span class="cam-live"><span class="dot"></span> LIVE</span>
+          <span class="cam-play"><i class="fa-solid fa-play"></i></span>
+        </button>
+        <div class="cam-meta">
+          <div><h3 class="cam-title">Maho Beach</h3><p class="cam-desc">Planes over the sand — St. Maarten (SXM)</p></div>
+          <a class="cam-cta" href="https://www.youtube.com/watch?v=yulhWH4WeFk" target="_blank" rel="noopener">YouTube <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </div>
+      </article>
+
+      <article class="cam reveal">
+        <button class="cam-frame" data-embed="mVvqGrmc-lw" aria-label="Play Ambergris Caye Belize live beach cam">
+          <img class="cam-poster" loading="lazy" src="https://img.youtube.com/vi/mVvqGrmc-lw/hqdefault.jpg" alt="Ambergris Caye Belize beach live cam">
+          <span class="cam-live"><span class="dot"></span> LIVE</span>
+          <span class="cam-play"><i class="fa-solid fa-play"></i></span>
+        </button>
+        <div class="cam-meta">
+          <div><h3 class="cam-title">Ambergris Caye</h3><p class="cam-desc">Caribbean beach, looking west — Belize</p></div>
+          <a class="cam-cta" href="https://www.youtube.com/watch?v=mVvqGrmc-lw" target="_blank" rel="noopener">YouTube <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <p class="cams-credit">Live feeds are embedded from their respective YouTube operators and remain the property of those channels. If a stream is offline, use the YouTube link to watch on the source channel. Nassau opens an external provider in a new tab.</p>
+
+</main>
+
+<footer><p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></p></footer>
+
+<script>
+// Click-to-load facade: only the cam you click starts streaming.
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.cam-frame[data-embed]');
+  if (!btn) return;
+  var id = btn.getAttribute('data-embed');
+  var frame = document.createElement('iframe');
+  frame.className = 'cam-iframe';
+  frame.src = 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0&playsinline=1';
+  frame.title = btn.getAttribute('aria-label') || 'Live cam';
+  frame.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+  frame.setAttribute('allowfullscreen', '');
+  frame.loading = 'eager';
+  btn.replaceWith(frame);
+});
+</script>
+<script src="/components/navbar.js"></script>
+
+</body>
+</html>
