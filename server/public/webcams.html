@@ -21,28 +21,36 @@
 <style>
 body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px}
 
-/* ── Banner (CSS hero — matches site chrome, green underline) ── */
+/* ── Branded banner (tropical scene + logo + plaque), matches Weather/Affiliate pages ── */
 .cams-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;
-  background:radial-gradient(circle at 72% 18%,rgba(0,119,182,.55),transparent 56%),
-            linear-gradient(135deg,#0b2238 0%,#06111f 100%);
-  padding:140px 22px 64px;text-align:center}
-.cams-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(to bottom,transparent,#06111f);pointer-events:none}
-.cams-eyebrow{color:rgba(93,255,154,.9);font-size:14px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;margin:0 0 12px}
-.cams-banner h1{color:#fff;font-size:48px;font-weight:900;margin:0;line-height:1.05;text-shadow:0 4px 18px rgba(0,0,0,.4)}
-.cams-banner h1 i{color:#5dff9a;font-size:.78em;margin-right:12px}
-.cams-banner .sub{color:rgba(255,255,255,.72);font-size:18px;max-width:680px;margin:16px auto 0}
+  background:url('/assets/images/Tropical beach with palm trees and ship.png') center 42%/cover no-repeat;
+  height:clamp(400px,33vw,470px)}
+.cams-banner::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(6,17,31,.12) 0%,rgba(6,17,31,.30) 62%,rgba(6,17,31,.9) 100%)}
+.cams-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:80px;pointer-events:none;
+  background:linear-gradient(to bottom,transparent,#06111f)}
+.cams-lockup{position:absolute;left:0;right:0;bottom:34px;z-index:4;
+  display:flex;flex-direction:column;align-items:center;gap:16px;padding:0 20px;pointer-events:none}
+.cams-logo{height:clamp(116px,15.5vw,182px);width:auto;filter:drop-shadow(0 10px 22px rgba(0,0,0,.5))}
+.cams-plaque{display:inline-flex;align-items:center;gap:14px;
+  background:linear-gradient(180deg,#0e3057 0%,#07182f 100%);
+  border:2px solid rgba(123,214,255,.55);border-radius:16px;padding:9px 22px;
+  box-shadow:0 12px 28px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.18)}
+.cams-plaque .dash{width:24px;height:5px;border-radius:3px;background:#FFD300;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.cams-plaque .txt{color:#fff;font-weight:900;letter-spacing:.18em;text-transform:uppercase;
+  font-size:clamp(19px,2.5vw,31px);text-shadow:0 2px 7px rgba(0,0,0,.45);white-space:nowrap}
 
 /* ── Shell ── */
-.shell{max-width:1300px;margin:auto;padding:46px 22px 90px}
-.section{margin-bottom:54px}
-.section h2{color:#fff;font-size:34px;font-weight:900;margin:0 0 6px}
-.section h2 i{color:#5dff9a;font-size:.7em;margin-right:10px}
-.section .lede{color:rgba(255,255,255,.68);margin:0 0 24px;font-size:17px}
+.shell{max-width:1300px;margin:auto;padding:44px 22px 90px}
+.section{margin-bottom:58px}
+.section h2{color:#fff;font-size:36px;font-weight:900;margin:0 0 10px}
+.section>p{color:rgba(255,255,255,.7);margin:0 0 8px;font-size:18px}
+.hint{color:rgba(93,255,154,.88);font-size:15px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:22px}
 
-/* ── Cam grid ── */
-.cams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:22px}
+/* ── Cam grid (mirrors .grid/.tile treatment) ── */
+.cams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
 .cam{border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,.10);background:rgba(7,24,63,.78);box-shadow:0 10px 24px rgba(0,0,0,.22);transition:transform .2s,border-color .2s,box-shadow .2s}
-.cam:hover{transform:translateY(-4px);border-color:rgba(93,255,154,.30);box-shadow:0 20px 40px rgba(0,0,0,.34)}
+.cam:hover{transform:translateY(-5px) scale(1.01);border-color:rgba(93,255,154,.35);box-shadow:0 20px 40px rgba(0,0,0,.36)}
 
 .cam-frame{position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;margin:0;cursor:pointer;background:#0a1b3a;overflow:hidden}
 .cam-poster{width:100%;height:100%;object-fit:cover;display:block;opacity:.92;transition:opacity .2s,transform .35s}
@@ -62,38 +70,35 @@ body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4
 .cam-cta{flex-shrink:0;color:#5dff9a;text-decoration:none;font-weight:800;font-size:14px;background:rgba(93,255,154,.10);border:1px solid rgba(93,255,154,.30);padding:9px 14px;border-radius:14px;white-space:nowrap;transition:all .2s}
 .cam-cta:hover{background:rgba(93,255,154,.22);border-color:#5dff9a}
 
-/* ── Link-out card (no embeddable feed) ── */
-.cam-frame-static{display:flex;align-items:center;justify-content:center;cursor:default;
-  background:radial-gradient(circle at 50% 35%,rgba(0,119,182,.32),transparent 60%),#0a1b3a}
-.cam-linkout-icon{font-size:48px;color:rgba(93,255,154,.55)}
+.cams-credit{color:rgba(255,255,255,.45);font-size:14px;max-width:900px;margin:6px auto 0;text-align:center;line-height:1.5}
+footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font-size:17px}
+.brand-img-sm{height:28px;width:auto;vertical-align:middle;display:inline-block}
 
-.cams-credit{color:rgba(255,255,255,.45);font-size:14px;max-width:900px;margin:8px auto 0;text-align:center;line-height:1.5}
-footer{text-align:center;padding:36px 20px 60px;color:rgba(255,255,255,.55);font-size:16px}
-.brand-img-sm{height:26px;width:auto;vertical-align:middle;display:inline-block}
-
-@media(max-width:768px){.cams-banner{padding-top:84px}}
 @media(max-width:680px){
-  .cams-banner h1{font-size:34px}
-  .cams-banner{padding:84px 18px 54px}
-  .section h2{font-size:26px}
-  .cams-grid{grid-template-columns:1fr;gap:18px}
+  .cams-banner{height:clamp(240px,62vw,300px)}
+  .cams-logo{height:clamp(96px,26vw,130px)}
+  .cams-lockup{bottom:24px;gap:12px}
+  .section h2{font-size:28px}
+  .cams-grid{grid-template-columns:1fr;gap:16px}
 }
 </style>
 </head>
 <body>
 
 <header class="cams-banner">
-  <p class="cams-eyebrow"><i class="fa-solid fa-tower-broadcast"></i> Streaming 24/7</p>
-  <h1><i class="fa-solid fa-video"></i>Live Cruise Cams</h1>
-  <p class="sub">Pull up a chair and watch the ships come and go. Live looks at favorite cruise ports and a few tropical beaches we love — click any cam to start the stream.</p>
+  <div class="cams-lockup">
+    <img class="cams-logo" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+    <span class="cams-plaque"><span class="dash"></span><span class="txt">Live Streams</span><span class="dash"></span></span>
+  </div>
   <div id="navbar-container"></div>
 </header>
 
 <main class="shell">
 
   <section class="section">
-    <h2><i class="fa-solid fa-ship"></i>Cruise Ports</h2>
-    <p class="lede">Watch ships arrive, dock, and sail away from some of the most popular cruise calls.</p>
+    <h2>Live Cruise Port Cams</h2>
+    <p>Watch ships arrive, dock, and sail away from some of the most popular cruise calls.</p>
+    <div class="hint">🚢 Tap any cam to start the live stream</div>
     <div class="cams-grid">
 
       <article class="cam reveal">
@@ -132,23 +137,13 @@ footer{text-align:center;padding:36px 20px 60px;color:rgba(255,255,255,.55);font
         </div>
       </article>
 
-      <article class="cam reveal">
-        <div class="cam-frame cam-frame-static">
-          <span class="cam-live"><span class="dot"></span> LIVE</span>
-          <span class="cam-linkout-icon"><i class="fa-solid fa-tower-broadcast"></i></span>
-        </div>
-        <div class="cam-meta">
-          <div><h3 class="cam-title">Nassau</h3><p class="cam-desc">Cruise harbor — Bahamas (opens external feed)</p></div>
-          <a class="cam-cta" href="https://www.portnassauwebcam.com/" target="_blank" rel="noopener">Watch <i class="fa-solid fa-arrow-up-right-from-square"></i></a>
-        </div>
-      </article>
-
     </div>
   </section>
 
   <section class="section">
-    <h2><i class="fa-solid fa-umbrella-beach"></i>Tropical &amp; Beach</h2>
-    <p class="lede">A little island therapy between cruises — palm trees, turquoise water, and the famous planes over Maho Beach.</p>
+    <h2>Tropical &amp; Beach Cams</h2>
+    <p>A little island therapy between cruises — palm trees, turquoise water, and the famous planes over Maho Beach.</p>
+    <div class="hint">🌴 Tap any cam to start the live stream</div>
     <div class="cams-grid">
 
       <article class="cam reveal">
@@ -178,7 +173,7 @@ footer{text-align:center;padding:36px 20px 60px;color:rgba(255,255,255,.55);font
     </div>
   </section>
 
-  <p class="cams-credit">Live feeds are embedded from their respective YouTube operators and remain the property of those channels. If a stream is offline, use the YouTube link to watch on the source channel. Nassau opens an external provider in a new tab.</p>
+  <p class="cams-credit">Live feeds are embedded from their respective YouTube operators and remain the property of those channels. If a stream is offline, use the YouTube link to watch on the source channel.</p>
 
 </main>
 
