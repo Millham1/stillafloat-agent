@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://www.youtube.com">
+<link rel="preconnect" href="https://i.ytimg.com">
+<link rel="preconnect" href="https://s.ytimg.com">
+<link rel="dns-prefetch" href="https://googlevideo.com">
 <title>Cámaras en Vivo | Still Afloat</title>
 <meta name="description" content="Mira cámaras en vivo de puertos de crucero y playas tropicales — Cayo Hueso, St. Thomas, PortMiami, Maho Beach en St. Maarten y Belice — transmitiendo 24/7. Seleccionadas por Still Afloat.">
 <link rel="canonical" href="https://stillafloatcruising.com/es/webcams.html">
@@ -233,7 +237,7 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
         ifr.setAttribute('tabindex','-1'); ifr.setAttribute('aria-hidden','true');
         ifr.allow='autoplay; encrypted-media';
         frame.appendChild(ifr); frame.classList.add('previewing');
-      },220);
+      },120);
     });
     frame.addEventListener('mouseleave',function(){
       if(timer){ clearTimeout(timer); timer=null; }
