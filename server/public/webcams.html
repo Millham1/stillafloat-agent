@@ -58,6 +58,10 @@ body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4
 .cam-play i{display:flex;align-items:center;justify-content:center;width:70px;height:70px;padding-left:5px;border-radius:50%;font-size:26px;color:#fff;background:rgba(7,24,63,.72);border:1px solid rgba(93,255,154,.5);box-shadow:0 8px 22px rgba(0,0,0,.42);transition:background .2s,transform .2s}
 .cam-frame:hover .cam-play i{background:rgba(0,119,182,.9);transform:scale(1.08)}
 .cam-iframe{width:100%;aspect-ratio:16/9;border:0;display:block;background:#0a1b3a}
+.cam-live-preview{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none;z-index:1;background:#0a1b3a}
+.cam-live,.cam-play{z-index:2}
+.cam-frame.previewing .cam-play{opacity:0;transition:opacity .25s ease}
+.cam-frame.previewing .cam-poster{opacity:0}
 
 .cam-live{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:7px;background:rgba(7,24,63,.82);border:1px solid rgba(255,80,80,.5);color:#fff;font-size:12px;font-weight:800;letter-spacing:.08em;padding:5px 11px;border-radius:12px;pointer-events:none}
 .cam-live .dot{width:8px;height:8px;border-radius:50%;background:#ff4d4d;box-shadow:0 0 8px #ff4d4d;animation:campulse 1.6s infinite}
@@ -211,6 +215,32 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
     if(f){ e.preventDefault(); open(f.getAttribute('data-embed'), f.getAttribute('aria-label')); }
   });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape') close(); });
+})();
+</script>
+<script>
+// Live preview on hover: load the actual (muted) live feed in a tile while
+// hovered, so you see the real current view. Click still goes full screen.
+(function(){
+  function src(id){ return 'https://www.youtube.com/embed/'+id+'?autoplay=1&mute=1&controls=0&rel=0&playsinline=1&modestbranding=1'; }
+  document.querySelectorAll('.cam-frame[data-embed]').forEach(function(frame){
+    var id=frame.getAttribute('data-embed'), timer=null, ifr=null;
+    frame.addEventListener('mouseenter',function(){
+      if(ifr||timer) return;
+      timer=setTimeout(function(){
+        timer=null;
+        ifr=document.createElement('iframe');
+        ifr.className='cam-live-preview'; ifr.src=src(id);
+        ifr.setAttribute('tabindex','-1'); ifr.setAttribute('aria-hidden','true');
+        ifr.allow='autoplay; encrypted-media';
+        frame.appendChild(ifr); frame.classList.add('previewing');
+      },220);
+    });
+    frame.addEventListener('mouseleave',function(){
+      if(timer){ clearTimeout(timer); timer=null; }
+      if(ifr){ ifr.remove(); ifr=null; }
+      frame.classList.remove('previewing');
+    });
+  });
 })();
 </script>
 <script src="/components/navbar.js?v=20260626-live"></script>
