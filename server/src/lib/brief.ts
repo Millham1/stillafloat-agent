@@ -259,6 +259,176 @@ async function emailBrief(brief: Brief): Promise<boolean> {
   }
 }
 
+export interface ConflictItem {
+  key: string; new_title: string; new_start: string;
+  existing_title: string; existing_start: string; sender: string; subject: string;
+}
+
+/** Pending calendar conflicts from the ops-manager (for the standalone page). */
+export async function fetchConflicts(): Promise<ConflictItem[]> {
+  const key = process.env["IDEAS_API_KEY"];
+  if (!key) return [];
+  try {
+    const r = await fetch(`${OPS_BASE}/brief/conflicts`, {
+      headers: { "x-api-key": key },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!r.ok) return [];
+    return ((await r.json()).conflicts ?? []) as ConflictItem[];
+  } catch {
+    return [];
+  }
+}
+
+/** The standalone brief URL (token baked in) — the home-screen icon target. */
+export function briefViewUrl(): string {
+  const tok = process.env["AGENT_APPROVAL_TOKEN"];
+  return `${SITE}/api/brief/view${tok ? `?token=${encodeURIComponent(tok)}` : ""}`;
+}
+
+/**
+ * Render the brief as a self-contained, phone-first page — NO dashboard, no nav.
+ * This is the home-screen "Brief" app: open the icon, see only today's briefing.
+ * Token is embedded so action buttons work and there's no login.
+ */
+export function renderBriefPage(brief: Brief, conflicts: ConflictItem[], token: string): string {
+  const s = brief.sections;
+  const t = encodeURIComponent(token);
+
+  const card = (inner: string) => `<section class="card">${inner}</section>`;
+  const h = (title: string, n?: number) =>
+    `<div class="h"><span>${esc(title)}</span>${n ? `<span class="count">${n}</span>` : ""}</div>`;
+
+  const conflictsHtml = conflicts.length
+    ? card(h("Calendar conflicts — your call", conflicts.length) +
+        conflicts.map((c) => `
+          <div class="conflict">
+            <div class="ctitle"><b>${esc(c.new_title)}</b> clashes with <b>${esc(c.existing_title)}</b></div>
+            ${c.subject ? `<div class="sub">${esc(c.subject)}</div>` : ""}
+            <div class="btns">
+              <button class="b1" onclick="resolve('${esc(c.key)}','1',this)">Keep new</button>
+              <button onclick="resolve('${esc(c.key)}','2',this)">Keep existing</button>
+              <button onclick="resolve('${esc(c.key)}','3',this)">Keep both</button>
+            </div>
+          </div>`).join(""))
+    : "";
+
+  const actionsHtml = s.actions.length
+    ? card(h("Waiting on you", s.actions.length) +
+        s.actions.map((a) => `
+          <a class="row" href="${esc(a.url)}" target="_blank" rel="noopener">
+            <div><span class="tag ${a.priority === "high" ? "hi" : "med"}">${esc(a.label)}</span>${a.unread ? '<span class="tag unread">unread</span>' : ""} <b>${esc(a.subject)}</b></div>
+            <div class="sub">${esc(a.sender)}${a.snippet ? " — " + esc(a.snippet) : ""}</div>
+          </a>`).join(""))
+    : "";
+
+  const socialHtml = s.social.pending
+    ? card(h("Social posts to review", s.social.pending) +
+        `<div class="sub">${s.social.items.map((i) => esc(i.title)).join(" · ")}</div>
+         <a class="btn-link" href="${SITE}${esc(s.social.reviewPath)}?token=${t}" target="_blank" rel="noopener">Review &amp; approve →</a>`)
+    : "";
+
+  const calHtml = s.calendar.length
+    ? card(h("Today's calendar", s.calendar.length) +
+        s.calendar.map((e) => `<div class="row"><b>${esc(e.time)}</b> — ${esc(e.title)}${e.location ? ` <span class="sub">@ ${esc(e.location)}</span>` : ""}${e.link ? ` <a href="${esc(e.link)}" target="_blank" rel="noopener">join</a>` : ""}</div>`).join(""))
+    : "";
+
+  const tasksHtml = s.tasks.length
+    ? card(h("Open tasks", s.tasks.length) +
+        s.tasks.map((tk) => `<div class="row">${tk.status === "in_progress" ? "▶ " : "• "}${esc(tk.title)}${tk.due_date ? ` <span class="sub">(due ${esc(tk.due_date)})</span>` : ""}</div>`).join(""))
+    : "";
+
+  const ideasHtml = s.ideas.count
+    ? card(h("New phone notes", s.ideas.count) +
+        s.ideas.items.map((i) => `<div class="row">“${esc(i.note)}”</div>`).join(""))
+    : "";
+
+  const m = s.money;
+  const moneyHtml = m
+    ? card(h("Money") +
+        `<div class="row">This month: <b class="${m.month_net >= 0 ? "pos" : "neg"}">${money(m.month_net)}</b> net <span class="sub">(in ${money(m.month_income)} / out ${money(m.month_expense)})</span></div>` +
+        (m.upcoming_charges?.length ? `<div class="row sub">Upcoming: ${m.upcoming_charges.map((c) => `${esc(c.vendor)} ${money(c.amount, c.currency || "USD")} (${esc(c.next_charge_date)})`).join(" · ")}</div>` : "") +
+        (m.recent_receipts?.length ? `<div class="row sub">Recent: ${m.recent_receipts.slice(0, 3).map((r) => `${esc(r.vendor)} ${money(r.amount, r.currency || "USD")}`).join(" · ")}</div>` : ""))
+    : "";
+
+  const nothing = brief.nothingToDo && conflicts.length === 0;
+  const lead = nothing
+    ? `<div class="clear">✓ Nothing needs you today. Inbox, calendar, tasks and posts are all clear. ⚓</div>`
+    : `<div class="lead">${esc(pushBody(brief))}</div>`;
+
+  const offline = brief.opsReachable ? "" :
+    `<div class="warn">⚠ Couldn't reach the ops-manager — some sections may be incomplete.</div>`;
+
+  return `<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Brief">
+<meta name="theme-color" content="#07183f">
+<title>Daily Brief</title>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  body{margin:0;background:#0a1430;color:#e9eefb;font:400 16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased;padding:max(env(safe-area-inset-top),16px) 16px calc(env(safe-area-inset-bottom) + 40px)}
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+  h1{font-size:30px;font-weight:800;margin:0}
+  .date{color:#9fb0d4;margin:2px 0 16px}
+  .refresh{background:none;border:1px solid #2a3a63;color:#cdd8f5;border-radius:10px;padding:8px 14px;font-size:14px}
+  .lead{color:#9fb0d4;margin:0 0 16px}
+  .clear{background:rgba(45,212,150,.10);border:1px solid rgba(45,212,150,.35);color:#bff5dd;border-radius:14px;padding:18px;margin-bottom:16px;font-size:17px}
+  .warn{background:rgba(230,170,60,.10);border:1px solid rgba(230,170,60,.4);color:#f3d9a6;border-radius:12px;padding:12px;margin-bottom:16px;font-size:14px}
+  .card{background:#10204a;border:1px solid #1e2f57;border-radius:16px;padding:16px;margin-bottom:14px}
+  .h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:#cdd8f5;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em}
+  .count{font:600 12px/1 monospace;background:#23386a;color:#cdd8f5;border-radius:6px;padding:3px 7px}
+  .row{padding:8px 0;border-top:1px solid #1a2a4f}
+  .row:first-of-type{border-top:none}
+  .sub{color:#8fa0c6;font-size:14px}
+  a{color:#7fb4ff;text-decoration:none}
+  a.row{display:block;color:inherit}
+  .tag{display:inline-block;font:600 10px/1 monospace;border-radius:5px;padding:3px 6px;margin-right:6px;vertical-align:middle}
+  .tag.hi{background:rgba(220,70,80,.2);color:#ff9aa3}
+  .tag.med{background:rgba(230,170,60,.2);color:#f3d9a6}
+  .tag.unread{background:rgba(90,140,255,.2);color:#aecbff}
+  .pos{color:#5ad6a0}.neg{color:#ff8b93}
+  .conflict{border-top:1px solid #1a2a4f;padding:12px 0}
+  .conflict:first-of-type{border-top:none}
+  .ctitle{margin-bottom:6px}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .btns button{flex:1;min-width:46%;background:#1b2c54;border:1px solid #2a3a63;color:#e9eefb;border-radius:10px;padding:11px 10px;font-size:14px;font-weight:600}
+  .btns button.b1{background:#2f6df0;border-color:#2f6df0;color:#fff;min-width:100%}
+  .btns button:disabled{opacity:.5}
+  .btn-link{display:inline-block;margin-top:10px;background:#2f6df0;color:#fff;border-radius:10px;padding:10px 16px;font-weight:600;font-size:14px}
+</style></head><body>
+  <div class="top"><h1>Today</h1><button class="refresh" onclick="location.href='/api/brief/view?token=${t}&fresh=1'">↻ Refresh</button></div>
+  <div class="date">${esc(brief.date)}</div>
+  ${lead}
+  ${offline}
+  ${conflictsHtml}
+  ${actionsHtml}
+  ${socialHtml}
+  ${calHtml}
+  ${tasksHtml}
+  ${ideasHtml}
+  ${moneyHtml}
+  <script>
+    var TOKEN=${JSON.stringify(token)};
+    function resolve(key,choice,btn){
+      var btns=btn.parentNode.querySelectorAll('button');
+      btns.forEach(function(b){b.disabled=true});
+      btn.textContent='…';
+      fetch('/api/ops/resolve-conflict?token='+encodeURIComponent(TOKEN),{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({key:key,choice:choice})
+      }).then(function(r){return r.json()}).then(function(j){
+        if(j&&j.ok){location.href='/api/brief/view?token='+encodeURIComponent(TOKEN)+'&fresh=1';}
+        else{alert((j&&j.error)||'Failed');btns.forEach(function(b){b.disabled=false});}
+      }).catch(function(e){alert(String(e));btns.forEach(function(b){b.disabled=false});});
+    }
+  </script>
+</body></html>`;
+}
+
 /** Assemble, then deliver via Web Push + email. Returns what happened. */
 export async function runAndDeliverBrief(): Promise<{
   brief: Brief; push: { sent: number; pruned: number }; emailed: boolean;
@@ -267,7 +437,7 @@ export async function runAndDeliverBrief(): Promise<{
   const push = await sendPush({
     title: brief.nothingToDo ? "📋 Daily Brief — all clear" : "📋 Your daily brief",
     body: pushBody(brief),
-    url: "/today",
+    url: briefViewUrl(),
     tag: "daily-brief",
   });
   const emailed = await emailBrief(brief);
