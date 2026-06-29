@@ -214,11 +214,17 @@
     if(s.ideas && s.ideas.count){
       html += section("New phone notes", s.ideas.count, s.ideas.items.map(function(i){return '<div class="row">“'+esc(i.note)+'”</div>';}).join(""));
     }
-    if(s.money){
-      var m=s.money, mh='<div class="row">This month: <b class="'+(m.month_net>=0?"pos":"neg")+'">'+money(m.month_net)+'</b> net <span class="sub">(in '+money(m.month_income)+' / out '+money(m.month_expense)+')</span></div>';
-      if(m.upcoming_charges&&m.upcoming_charges.length) mh+='<div class="row sub">Upcoming: '+m.upcoming_charges.map(function(c){return esc(c.vendor)+" "+money(c.amount,c.currency)+" ("+esc(c.next_charge_date)+")";}).join(" · ")+'</div>';
-      if(m.recent_receipts&&m.recent_receipts.length) mh+='<div class="row sub">Recent: '+m.recent_receipts.slice(0,3).map(function(r){return esc(r.vendor)+" "+money(r.amount,r.currency);}).join(" · ")+'</div>';
-      html += section("Money", 0, mh);
+    if(s.bills && s.bills.length){
+      html += section("Bills due", s.bills.length, s.bills.map(function(b){
+        return '<div class="row">'+esc(b.vendor)+(b.due_date?' <span class="sub">— due '+esc(b.due_date)+'</span>':'')+'</div>';
+      }).join(""));
+    }
+    if(s.pulse && (s.pulse.youtube || s.pulse.facebook)){
+      function arrow(t){return t==="up"?"▲":t==="down"?"▼":"▬";}
+      var pr="";
+      if(s.pulse.youtube) pr+='<div class="row"><b>YouTube '+arrow(s.pulse.youtube.trend)+' '+esc(s.pulse.youtube.trend)+'</b><div class="sub">'+esc(s.pulse.youtube.tip)+'</div></div>';
+      if(s.pulse.facebook) pr+='<div class="row"><b>Facebook '+arrow(s.pulse.facebook.trend)+' '+esc(s.pulse.facebook.trend)+'</b><div class="sub">'+esc(s.pulse.facebook.tip)+'</div></div>';
+      html += section("Reach", 0, pr);
     }
 
     content.innerHTML = html;

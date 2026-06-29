@@ -24,11 +24,9 @@ export interface CalEvent {
 }
 export interface TaskItem { id: string; title: string; status: string; priority?: string | null; due_date?: string | null; }
 export interface IdeaItem { id: string; note: string; category?: string | null; }
-export interface MoneyBlock {
-  month: string; month_expense: number; month_income: number; month_net: number;
-  recent_receipts: Array<{ vendor?: string; amount?: number; currency?: string; category?: string }>;
-  upcoming_charges: Array<{ vendor?: string; amount?: number; currency?: string; cadence?: string; next_charge_date?: string }>;
-}
+export interface BillItem { vendor: string; due_date?: string | null }
+export interface PulseChannel { trend: "up" | "down" | "steady"; tip: string; views?: number; subs?: number; reach?: number; new_followers?: number }
+export interface Pulse { youtube?: PulseChannel; facebook?: PulseChannel; facebook_status?: string }
 export interface SocialBlock {
   pending: number;
   items: Array<{ title: string; track: string }>;
@@ -45,7 +43,8 @@ export interface Brief {
     calendar: CalEvent[];
     tasks: TaskItem[];
     ideas: { count: number; items: IdeaItem[] };
-    money: MoneyBlock | null;
+    bills: BillItem[];
+    pulse: Pulse;
     social: SocialBlock;
   };
   counts: { actions: number; tasks: number; ideasNew: number; socialPending: number; events: number };
@@ -56,7 +55,8 @@ interface OpsFeed {
   actions?: ActionItem[];
   tasks?: TaskItem[];
   ideas?: { count: number; items: IdeaItem[] };
-  money?: MoneyBlock;
+  bills?: BillItem[];
+  pulse?: Pulse;
 }
 
 async function fetchOpsFeed(): Promise<OpsFeed | null> {
@@ -105,7 +105,8 @@ export async function assembleBrief(): Promise<Brief> {
   const calendar = ops?.calendar ?? [];
   const tasks = ops?.tasks ?? [];
   const ideas = ops?.ideas ?? { count: 0, items: [] };
-  const money = ops?.money ?? null;
+  const bills = ops?.bills ?? [];
+  const pulse = ops?.pulse ?? {};
 
   const nothingToDo =
     actions.length === 0 && tasks.length === 0 && ideas.count === 0 && social.pending === 0;
@@ -115,7 +116,7 @@ export async function assembleBrief(): Promise<Brief> {
     generatedAt: new Date().toISOString(),
     nothingToDo,
     opsReachable: ops !== null,
-    sections: { actions, calendar, tasks, ideas, money, social },
+    sections: { actions, calendar, tasks, ideas, bills, pulse, social },
     counts: {
       actions: actions.length,
       tasks: tasks.length,
@@ -193,12 +194,16 @@ export function renderBriefEmail(brief: Brief): string {
         (s.ideas.items.length ? `<div style="color:#6b7794;margin-top:4px">${s.ideas.items.map((i) => "“" + esc(i.note) + "”").join("<br>")}</div>` : ""))
     : "";
 
-  const m = s.money;
-  const moneyHtml = m
-    ? li(`This month: <b>${money(m.month_net)}</b> net (in ${money(m.month_income)} / out ${money(m.month_expense)})` +
-        (m.upcoming_charges?.length ? `<div style="color:#6b7794;margin-top:4px">Upcoming: ${m.upcoming_charges.map((c) => `${esc(c.vendor)} ${money(c.amount, c.currency || "USD")} (${esc(c.next_charge_date)})`).join(" · ")}</div>` : "") +
-        (m.recent_receipts?.length ? `<div style="color:#6b7794;margin-top:4px">Recent: ${m.recent_receipts.slice(0, 3).map((r) => `${esc(r.vendor)} ${money(r.amount, r.currency || "USD")}`).join(" · ")}</div>` : ""))
+  const arrow = (t: string) => (t === "up" ? "▲" : t === "down" ? "▼" : "▬");
+  const billsHtml = s.bills.length
+    ? s.bills.map((b) => li(`${esc(b.vendor)}${b.due_date ? ` <span style="color:#6b7794">— due ${esc(b.due_date)}</span>` : ""}`)).join("")
     : "";
+
+  const p = s.pulse || {};
+  const pulseRows: string[] = [];
+  if (p.youtube) pulseRows.push(li(`<b>YouTube ${arrow(p.youtube.trend)} ${esc(p.youtube.trend)}</b> <span style="color:#6b7794">${esc(p.youtube.tip)}</span>`));
+  if (p.facebook) pulseRows.push(li(`<b>Facebook ${arrow(p.facebook.trend)} ${esc(p.facebook.trend)}</b> <span style="color:#6b7794">${esc(p.facebook.tip)}</span>`));
+  const pulseHtml = pulseRows.join("");
 
   const lead = brief.nothingToDo
     ? `<p style="font:400 15px/1.5 -apple-system,sans-serif;color:#1c2a44">Nothing needs you today — inbox, calendar, tasks and posts are all clear. ⚓</p>`
@@ -221,8 +226,9 @@ export function renderBriefEmail(brief: Brief): string {
       ${section("Today's calendar", cal)}
       ${section("Open tasks", tasks)}
       ${section("New phone notes", ideas)}
-      ${section("Money", moneyHtml)}
-      <p style="font:400 12px/1.4 sans-serif;color:#9aa6bd;margin-top:28px">Sent by your Still Afloat ops-manager — on your own server. Reply-free; manage on the dashboard.</p>
+      ${section("Bills due", billsHtml)}
+      ${section("Reach", pulseHtml)}
+      <p style="font:400 12px/1.4 sans-serif;color:#9aa6bd;margin-top:28px">Sent by your Still Afloat ops-manager — on your own server.</p>
     </div>
   </div></body></html>`;
 }
