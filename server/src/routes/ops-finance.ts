@@ -34,4 +34,27 @@ router.get("/ops/finance/cashflow", requireToken, (req, res) => proxy("/finance/
 router.get("/ops/finance/subscriptions", requireToken, (req, res) => proxy("/finance/subscriptions", req, res));
 router.get("/ops/youtube-analytics", requireToken, (req, res) => proxy("/youtube/analytics", req, res));
 
+// Calendar conflicts — listed + resolved from the Today page (replaces the old
+// Telegram 1/2/3 reply flow).
+router.get("/ops/conflicts", requireToken, (req, res) => proxy("/brief/conflicts", req, res));
+
+router.post("/ops/resolve-conflict", requireToken, async (req: Request, res: Response) => {
+  const key = process.env["IDEAS_API_KEY"];
+  if (!key) {
+    res.status(503).json({ ok: false, error: "IDEAS_API_KEY not configured for the backend" });
+    return;
+  }
+  try {
+    const upstream = await fetch(`${OPS_BASE}/brief/resolve-conflict`, {
+      method: "POST",
+      headers: { "x-api-key": key, "Content-Type": "application/json" },
+      body: JSON.stringify(req.body ?? {}),
+    });
+    const body = await upstream.text();
+    res.status(upstream.status).type("application/json").send(body);
+  } catch (err) {
+    res.status(502).json({ ok: false, error: `ops-manager unreachable: ${(err as Error).message}` });
+  }
+});
+
 export default router;

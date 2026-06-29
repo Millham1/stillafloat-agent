@@ -3,8 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Mail, CalendarDays, ListTodo, Lightbulb, Wallet, Megaphone,
-  RefreshCw, ExternalLink, CheckCircle2, AlertTriangle,
+  RefreshCw, ExternalLink, CheckCircle2, AlertTriangle, CalendarClock,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { authHeaders, getStoredToken } from "@/lib/auth-token";
 import { EnableAlerts } from "@/components/enable-alerts";
 
@@ -55,7 +56,15 @@ function Section({ icon: Icon, title, count, children }: {
   );
 }
 
+interface Conflict {
+  key: string; new_title: string; new_start: string;
+  existing_title: string; existing_start: string; sender: string; subject: string;
+}
+
 export default function Today() {
+  const { toast } = useToast();
+  const [resolving, setResolving] = React.useState<string | null>(null);
+
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["daily-brief"],
     queryFn: async (): Promise<Brief> => {
@@ -66,9 +75,41 @@ export default function Today() {
     },
   });
 
+  const conflictsQuery = useQuery({
+    queryKey: ["calendar-conflicts"],
+    queryFn: async (): Promise<Conflict[]> => {
+      const r = await fetch("/api/ops/conflicts", { headers: { ...authHeaders() } });
+      if (!r.ok) return [];
+      const j = await r.json();
+      return (j.conflicts ?? []) as Conflict[];
+    },
+  });
+  const conflicts = conflictsQuery.data ?? [];
+
+  const resolveConflict = async (key: string, choice: "1" | "2" | "3") => {
+    setResolving(key);
+    try {
+      const r = await fetch("/api/ops/resolve-conflict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ key, choice }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      toast({ title: "Conflict resolved", description: j.message });
+      conflictsQuery.refetch();
+      refetch();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Couldn't resolve", description: (err as Error).message });
+    } finally {
+      setResolving(null);
+    }
+  };
+
   const refresh = async () => {
     await fetch("/api/brief?fresh=1", { headers: { ...authHeaders() } }).catch(() => {});
     refetch();
+    conflictsQuery.refetch();
   };
 
   const s = data?.sections;
@@ -100,7 +141,38 @@ export default function Today() {
         </div>
       )}
 
-      {data?.nothingToDo && (
+      {conflicts.length > 0 && (
+        <Section icon={CalendarClock} title="Calendar conflicts — needs your call" count={conflicts.length}>
+          <div className="space-y-3">
+            {conflicts.map((c) => (
+              <div key={c.key} className="rounded-md border border-red-500/40 bg-red-500/5 p-3">
+                <div className="text-sm">
+                  <span className="font-semibold">{c.new_title}</span>
+                  <span className="text-muted-foreground"> clashes with </span>
+                  <span className="font-semibold">{c.existing_title}</span>
+                </div>
+                {c.subject && <div className="text-xs text-muted-foreground mt-1">From email: {c.subject}{c.sender ? ` — ${c.sender}` : ""}</div>}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button onClick={() => resolveConflict(c.key, "1")} disabled={resolving === c.key}
+                    className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 font-medium">
+                    Keep new (reschedule existing)
+                  </button>
+                  <button onClick={() => resolveConflict(c.key, "2")} disabled={resolving === c.key}
+                    className="text-xs px-3 py-1.5 rounded-md border hover:bg-accent disabled:opacity-60">
+                    Keep existing (decline new)
+                  </button>
+                  <button onClick={() => resolveConflict(c.key, "3")} disabled={resolving === c.key}
+                    className="text-xs px-3 py-1.5 rounded-md border hover:bg-accent disabled:opacity-60">
+                    Keep both
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {data?.nothingToDo && conflicts.length === 0 && (
         <Card className="border-emerald-500/30 bg-emerald-500/5">
           <CardContent className="p-6 flex items-center gap-3">
             <CheckCircle2 className="w-6 h-6 text-emerald-500" />

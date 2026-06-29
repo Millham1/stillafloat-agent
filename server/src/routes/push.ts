@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { requireToken } from "../lib/http-auth";
+import { requireToken, tokenOk } from "../lib/http-auth";
 import {
   getVapidPublicKey,
   generateVapidKeys,
@@ -56,6 +56,36 @@ router.post("/push/unsubscribe", requireToken, async (req: Request, res: Respons
     res.json({ ok: true, devices: await subscriptionCount() });
   } catch (err) {
     res.status(400).json({ ok: false, error: (err as Error).message });
+  }
+});
+
+// Internal: send a custom push. Used by the ops-manager (Python) to deliver
+// alerts now that Telegram is gone. Auth: the dashboard token OR the ops-manager's
+// own IDEAS_API_KEY via x-api-key (it already holds that secret).
+router.post("/push/notify", async (req: Request, res: Response) => {
+  const opsKey = process.env["IDEAS_API_KEY"];
+  const viaApiKey = Boolean(opsKey) && req.headers["x-api-key"] === opsKey;
+  if (!viaApiKey && !tokenOk(req)) {
+    res.status(401).json({ ok: false, error: "Unauthorized" });
+    return;
+  }
+  try {
+    const { title, body, url, tag } = (req.body ?? {}) as {
+      title?: string; body?: string; url?: string; tag?: string;
+    };
+    if (!title && !body) {
+      res.status(400).json({ ok: false, error: "title or body required" });
+      return;
+    }
+    const result = await sendPush({
+      title: title || "Still Afloat",
+      body: body || "",
+      url: url || "/today",
+      tag,
+    });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: (err as Error).message });
   }
 });
 
