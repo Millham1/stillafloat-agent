@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Brief">
+<meta name="theme-color" content="#07183f">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/brief-manifest.json">
+<title>Daily Brief</title>
+<!--
+  Standalone Brief — served from the dashboard subdomain, so it sits behind the
+  same nginx HTTP Basic Auth as the dashboard (NOT a token-in-URL on the public
+  site). Same origin = it reuses the saved admin token (localStorage) and the
+  existing push service worker. Just the briefing; no dashboard chrome.
+-->
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  body{margin:0;background:#0a1430;color:#e9eefb;font:400 16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased;padding:max(env(safe-area-inset-top),16px) 16px calc(env(safe-area-inset-bottom) + 40px)}
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+  h1{font-size:30px;font-weight:800;margin:0}
+  .date{color:#9fb0d4;margin:2px 0 16px}
+  button{font:inherit}
+  .refresh{background:none;border:1px solid #2a3a63;color:#cdd8f5;border-radius:10px;padding:8px 14px;font-size:14px}
+  .lead{color:#9fb0d4;margin:0 0 16px}
+  .clear{background:rgba(45,212,150,.10);border:1px solid rgba(45,212,150,.35);color:#bff5dd;border-radius:14px;padding:18px;margin-bottom:16px;font-size:17px}
+  .warn{background:rgba(230,170,60,.10);border:1px solid rgba(230,170,60,.4);color:#f3d9a6;border-radius:12px;padding:12px;margin-bottom:16px;font-size:14px}
+  .card{background:#10204a;border:1px solid #1e2f57;border-radius:16px;padding:16px;margin-bottom:14px}
+  .h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:#cdd8f5;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+  .count{font:600 12px/1 monospace;background:#23386a;color:#cdd8f5;border-radius:6px;padding:3px 7px}
+  .row{padding:8px 0;border-top:1px solid #1a2a4f}
+  .row:first-of-type{border-top:none}
+  .sub{color:#8fa0c6;font-size:14px}
+  a{color:#7fb4ff;text-decoration:none}
+  a.row{display:block;color:inherit}
+  .tag{display:inline-block;font:600 10px/1 monospace;border-radius:5px;padding:3px 6px;margin-right:6px;vertical-align:middle}
+  .tag.hi{background:rgba(220,70,80,.2);color:#ff9aa3}
+  .tag.med{background:rgba(230,170,60,.2);color:#f3d9a6}
+  .tag.unread{background:rgba(90,140,255,.2);color:#aecbff}
+  .pos{color:#5ad6a0}.neg{color:#ff8b93}
+  .conflict{border-top:1px solid #1a2a4f;padding:12px 0}
+  .conflict:first-of-type{border-top:none}
+  .ctitle{margin-bottom:6px}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .btns button{flex:1;min-width:46%;background:#1b2c54;border:1px solid #2a3a63;color:#e9eefb;border-radius:10px;padding:12px 10px;font-size:14px;font-weight:600}
+  .btns button.b1{background:#2f6df0;border-color:#2f6df0;color:#fff;min-width:100%}
+  .btns button:disabled{opacity:.5}
+  .btn-link{display:inline-block;margin-top:10px;background:#2f6df0;color:#fff;border-radius:10px;padding:10px 16px;font-weight:600;font-size:14px}
+  .alerts{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .alerts .msg{flex:1;min-width:12rem;font-size:14px;color:#9fb0d4}
+  .pill{background:#2f6df0;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:600;font-size:14px}
+  .pill.ghost{background:#1b2c54;border:1px solid #2a3a63;color:#cdd8f5}
+  .tokwrap{display:flex;gap:8px;margin-top:8px}
+  .tokwrap input{flex:1;background:#0a1430;border:1px solid #2a3a63;color:#e9eefb;border-radius:10px;padding:10px;font-size:14px}
+  #loading{color:#8fa0c6;padding:20px 0}
+</style>
+</head>
+<body>
+  <div class="top"><h1>Today</h1><button class="refresh" id="refreshBtn">↻ Refresh</button></div>
+  <div class="date" id="date"></div>
+  <div id="content"><div id="loading">Loading your brief…</div></div>
+
+<script>
+(function(){
+  // The dashboard backend API origin (same one the dashboard app talks to).
+  var API = "https://stillafloatcruising.com";
+  var TOKEN_KEY = "sa_agent_token";
+
+  function token(){ return localStorage.getItem(TOKEN_KEY) || ""; }
+  function authHeaders(){ var t=token(); return t ? {"Authorization":"Bearer "+t} : {}; }
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function money(n,c){ if(n==null) return ""; try{ return new Intl.NumberFormat("en-US",{style:"currency",currency:c||"USD"}).format(n);}catch(e){ return "$"+Number(n).toFixed(2);} }
+
+  var content = document.getElementById("content");
+  var dateEl = document.getElementById("date");
+
+  function needToken(){
+    content.innerHTML =
+      '<div class="card"><div class="h">One-time setup</div>'+
+      '<div class="sub">Enter your dashboard access token (the same one the dashboard uses). It is saved on this device only.</div>'+
+      '<div class="tokwrap"><input id="tok" type="password" placeholder="access token" autocomplete="off">'+
+      '<button class="pill" id="saveTok">Save</button></div></div>';
+    document.getElementById("saveTok").onclick=function(){
+      var v=document.getElementById("tok").value.trim();
+      if(v){ localStorage.setItem(TOKEN_KEY,v); load(false); }
+    };
+  }
+
+  function section(title,count,inner){
+    if(!inner) return "";
+    return '<section class="card"><div class="h"><span>'+esc(title)+'</span>'+
+      (count?'<span class="count">'+count+'</span>':"")+'</div>'+inner+'</section>';
+  }
+
+  function renderAlerts(){
+    var supported = ("serviceWorker" in navigator) && ("PushManager" in window) && ("Notification" in window);
+    var isIos = /iP(hone|ad|od)/.test(navigator.userAgent);
+    var standalone = (navigator.standalone===true) || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+    var box = document.createElement("section"); box.className="card";
+    if(isIos && !standalone){
+      box.innerHTML='<div class="h">Alerts</div><div class="sub">On iPhone: Share → Add to Home Screen, then open this from the icon to turn on alerts.</div>';
+      return box;
+    }
+    if(!supported){
+      box.innerHTML='<div class="h">Alerts</div><div class="sub">This browser can’t do push notifications.</div>';
+      return box;
+    }
+    box.innerHTML='<div class="h">Alerts</div><div class="alerts"><span class="msg" id="alertMsg">Checking…</span>'+
+      '<button class="pill" id="alertBtn" style="display:none"></button>'+
+      '<button class="pill ghost" id="testBtn" style="display:none">Send test</button></div>';
+    setTimeout(wireAlerts,0);
+    return box;
+  }
+
+  function urlB64ToU8(b64){ var pad="=".repeat((4-b64.length%4)%4); var s=(b64+pad).replace(/-/g,"+").replace(/_/g,"/"); var raw=atob(s); var out=new Uint8Array(raw.length); for(var i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i); return out; }
+
+  function wireAlerts(){
+    var msg=document.getElementById("alertMsg"), btn=document.getElementById("alertBtn"), test=document.getElementById("testBtn");
+    if(!msg) return;
+    navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription();
+    }).then(function(sub){
+      var on = !!sub && Notification.permission==="granted";
+      msg.textContent = on ? "On — your brief and urgent items push to this device." : "Off — turn on push for this device.";
+      btn.style.display=""; btn.textContent = on ? "Turn off" : "Enable alerts";
+      test.style.display = on ? "" : "none";
+      btn.onclick = on ? turnOff : turnOn;
+      test.onclick = sendTest;
+    }).catch(function(){ msg.textContent="Couldn’t check alert status."; });
+  }
+
+  function turnOn(){
+    var msg=document.getElementById("alertMsg");
+    Notification.requestPermission().then(function(p){
+      if(p!=="granted"){ msg.textContent="Permission denied."; return; }
+      return fetch(API+"/api/push/vapid-public-key").then(function(r){return r.json();}).then(function(j){
+        return navigator.serviceWorker.ready.then(function(reg){
+          return reg.pushManager.getSubscription().then(function(s){
+            return s || reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlB64ToU8(j.key)});
+          });
+        });
+      }).then(function(sub){
+        return fetch(API+"/api/push/subscribe",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({subscription:sub.toJSON()})});
+      }).then(function(r){ if(!r.ok) throw new Error("subscribe failed ("+r.status+")"); wireAlerts(); });
+    }).catch(function(e){ msg.textContent="Couldn’t enable: "+e.message; });
+  }
+  function turnOff(){
+    navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){
+      if(!sub) return; var ep=sub.endpoint;
+      return sub.unsubscribe().then(function(){ return fetch(API+"/api/push/unsubscribe",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({endpoint:ep})}); });
+    }).then(wireAlerts).catch(function(){});
+  }
+  function sendTest(){
+    fetch(API+"/api/push/test",{method:"POST",headers:authHeaders()}).then(function(r){return r.json();}).then(function(j){
+      alert(j&&j.ok ? ("Test sent to "+j.sent+" device(s).") : "Test failed.");
+    }).catch(function(e){ alert(String(e)); });
+  }
+
+  window.__resolve = function(key,choice,btn){
+    var btns=btn.parentNode.querySelectorAll("button"); btns.forEach(function(b){b.disabled=true;}); btn.textContent="…";
+    fetch(API+"/api/ops/resolve-conflict",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({key:key,choice:choice})})
+      .then(function(r){return r.json();}).then(function(j){
+        if(j&&j.ok){ load(true); } else { alert((j&&j.error)||"Failed"); btns.forEach(function(b){b.disabled=false;}); }
+      }).catch(function(e){ alert(String(e)); btns.forEach(function(b){b.disabled=false;}); });
+  };
+
+  function render(brief, conflicts){
+    dateEl.textContent = brief.date || "";
+    var s = brief.sections, html="";
+    var nothing = brief.nothingToDo && (!conflicts || conflicts.length===0);
+    html += nothing
+      ? '<div class="clear">✓ Nothing needs you today. Inbox, calendar, tasks and posts are all clear. ⚓</div>'
+      : '<div class="lead">'+esc(summary(brief))+'</div>';
+    if(!brief.opsReachable) html += '<div class="warn">⚠ Couldn’t reach the ops-manager — some sections may be incomplete.</div>';
+
+    if(conflicts && conflicts.length){
+      var ch="";
+      conflicts.forEach(function(c){
+        ch += '<div class="conflict"><div class="ctitle"><b>'+esc(c.new_title)+'</b> clashes with <b>'+esc(c.existing_title)+'</b></div>'+
+          (c.subject?'<div class="sub">'+esc(c.subject)+'</div>':"")+
+          '<div class="btns"><button class="b1" onclick="__resolve(\''+esc(c.key)+'\',\'1\',this)">Keep new</button>'+
+          '<button onclick="__resolve(\''+esc(c.key)+'\',\'2\',this)">Keep existing</button>'+
+          '<button onclick="__resolve(\''+esc(c.key)+'\',\'3\',this)">Keep both</button></div></div>';
+      });
+      html += section("Calendar conflicts — your call", conflicts.length, ch);
+    }
+
+    if(s.actions && s.actions.length){
+      html += section("Waiting on you", s.actions.length, s.actions.map(function(a){
+        return '<a class="row" href="'+esc(a.url)+'" target="_blank" rel="noopener"><div>'+
+          '<span class="tag '+(a.priority==="high"?"hi":"med")+'">'+esc(a.label)+'</span>'+
+          (a.unread?'<span class="tag unread">unread</span>':"")+' <b>'+esc(a.subject)+'</b></div>'+
+          '<div class="sub">'+esc(a.sender)+(a.snippet?" — "+esc(a.snippet):"")+'</div></a>';
+      }).join(""));
+    }
+    if(s.social && s.social.pending){
+      html += section("Social posts to review", s.social.pending,
+        '<div class="sub">'+s.social.items.map(function(i){return esc(i.title);}).join(" · ")+'</div>'+
+        '<a class="btn-link" href="'+API+esc(s.social.reviewPath)+'?token='+encodeURIComponent(token())+'" target="_blank" rel="noopener">Review &amp; approve →</a>');
+    }
+    if(s.calendar && s.calendar.length){
+      html += section("Today's calendar", s.calendar.length, s.calendar.map(function(e){
+        return '<div class="row"><b>'+esc(e.time)+'</b> — '+esc(e.title)+(e.location?' <span class="sub">@ '+esc(e.location)+'</span>':"")+(e.link?' <a href="'+esc(e.link)+'" target="_blank" rel="noopener">join</a>':"")+'</div>';
+      }).join(""));
+    }
+    if(s.tasks && s.tasks.length){
+      html += section("Open tasks", s.tasks.length, s.tasks.map(function(t){
+        return '<div class="row">'+(t.status==="in_progress"?"▶ ":"• ")+esc(t.title)+(t.due_date?' <span class="sub">(due '+esc(t.due_date)+')</span>':"")+'</div>';
+      }).join(""));
+    }
+    if(s.ideas && s.ideas.count){
+      html += section("New phone notes", s.ideas.count, s.ideas.items.map(function(i){return '<div class="row">“'+esc(i.note)+'”</div>';}).join(""));
+    }
+    if(s.money){
+      var m=s.money, mh='<div class="row">This month: <b class="'+(m.month_net>=0?"pos":"neg")+'">'+money(m.month_net)+'</b> net <span class="sub">(in '+money(m.month_income)+' / out '+money(m.month_expense)+')</span></div>';
+      if(m.upcoming_charges&&m.upcoming_charges.length) mh+='<div class="row sub">Upcoming: '+m.upcoming_charges.map(function(c){return esc(c.vendor)+" "+money(c.amount,c.currency)+" ("+esc(c.next_charge_date)+")";}).join(" · ")+'</div>';
+      if(m.recent_receipts&&m.recent_receipts.length) mh+='<div class="row sub">Recent: '+m.recent_receipts.slice(0,3).map(function(r){return esc(r.vendor)+" "+money(r.amount,r.currency);}).join(" · ")+'</div>';
+      html += section("Money", 0, mh);
+    }
+
+    content.innerHTML = html;
+    content.appendChild(renderAlerts());
+  }
+
+  function summary(b){
+    var c=b.counts||{}, bits=[];
+    if(c.actions) bits.push(c.actions+" to reply to");
+    if(c.events) bits.push(c.events+" on the calendar");
+    if(c.socialPending) bits.push(c.socialPending+" posts to review");
+    if(c.ideasNew) bits.push(c.ideasNew+" new notes");
+    if(c.tasks) bits.push(c.tasks+" open tasks");
+    return bits.slice(0,3).join(" · ") || "Open your brief.";
+  }
+
+  function load(fresh){
+    if(!token()){ needToken(); return; }
+    content.innerHTML='<div id="loading">Loading your brief…</div>';
+    Promise.all([
+      fetch(API+"/api/brief"+(fresh?"?fresh=1":""),{headers:authHeaders()}).then(function(r){ if(r.status===401) throw new Error("401"); return r.json(); }),
+      fetch(API+"/api/ops/conflicts",{headers:authHeaders()}).then(function(r){return r.ok?r.json():{conflicts:[]};}).catch(function(){return {conflicts:[]};})
+    ]).then(function(res){
+      render(res[0].brief, (res[1]&&res[1].conflicts)||[]);
+    }).catch(function(e){
+      if(String(e.message)==="401"){ localStorage.removeItem(TOKEN_KEY); needToken(); }
+      else content.innerHTML='<div class="warn">Couldn’t load the brief: '+esc(e.message)+'</div>';
+    });
+  }
+
+  document.getElementById("refreshBtn").onclick=function(){ load(true); };
+  load(false);
+})();
+</script>
+</body>
+</html>

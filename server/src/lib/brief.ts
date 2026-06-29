@@ -280,10 +280,11 @@ export async function fetchConflicts(): Promise<ConflictItem[]> {
   }
 }
 
-/** The standalone brief URL (token baked in) — the home-screen icon target. */
+/** The standalone Brief page — the home-screen icon + push target. Served from
+ *  the dashboard subdomain so it sits behind the SAME nginx basic-auth as the
+ *  dashboard (no PII/token on the public domain). */
 export function briefViewUrl(): string {
-  const tok = process.env["AGENT_APPROVAL_TOKEN"];
-  return `${SITE}/api/brief/view${tok ? `?token=${encodeURIComponent(tok)}` : ""}`;
+  return process.env["DASHBOARD_BRIEF_URL"] || "https://dashboard.stillafloatcruising.com/brief.html";
 }
 
 /**
