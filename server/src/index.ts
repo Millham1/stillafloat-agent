@@ -2,6 +2,7 @@ import "./env"; // must be first — populates process.env from the shared .env
 import app from "./app";
 import { logger } from "./lib/logger";
 import { runDuePosts } from "./lib/social-schedule";
+import { runAndDeliverBrief } from "./lib/brief";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -30,6 +31,13 @@ app.listen(port, "0.0.0.0", () => {
     logger.info("Social poster DISABLED (DISABLE_SOCIAL_POSTER=1)");
   } else {
     scheduleSocialPoster();
+  }
+  // Daily brief — assemble + push + email once each morning. Disabled on the dev
+  // mirror so the brief isn't sent twice (same pattern as the poster).
+  if (process.env["DISABLE_DAILY_BRIEF"] === "1") {
+    logger.info("Daily brief DISABLED (DISABLE_DAILY_BRIEF=1)");
+  } else {
+    scheduleDailyBrief();
   }
 });
 
@@ -71,4 +79,38 @@ function scheduleYouTubeScan() {
   setTimeout(() => { runScan().catch(() => {}); }, 10_000);
   setInterval(() => { runScan().catch(() => {}); }, 6 * 60 * 60 * 1000);
   logger.info("YouTube scan scheduler active — on boot + every 6h");
+}
+
+// ── Daily brief scheduler ─────────────────────────────────────────────────────
+// Fires once per local day at DAILY_BRIEF_HOUR (default 7am, in TIMEZONE). We poll
+// every 5 minutes and gate on local hour + date so it's timezone-correct without a
+// scheduling dependency — the same approach the Python ops-manager uses.
+function scheduleDailyBrief() {
+  const TZ = process.env["TIMEZONE"] || "America/New_York";
+  const briefHour = Number(process.env["DAILY_BRIEF_HOUR"] ?? "7");
+  let lastBriefDate: string | null = null;
+
+  const localHourDate = (): { hour: number; date: string } => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: TZ, hour12: false, hour: "2-digit",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    return { hour: Number(get("hour")) % 24, date: `${get("year")}-${get("month")}-${get("day")}` };
+  };
+
+  const tick = async () => {
+    const { hour, date } = localHourDate();
+    if (hour === briefHour && lastBriefDate !== date) {
+      lastBriefDate = date;
+      try {
+        await runAndDeliverBrief();
+      } catch (err) {
+        logger.error({ err }, "Daily brief tick failed");
+      }
+    }
+  };
+
+  setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
+  logger.info({ briefHour, tz: TZ }, "Daily brief scheduler active — checks every 5m");
 }

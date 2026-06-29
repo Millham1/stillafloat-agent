@@ -1,0 +1,276 @@
+import { readJson, writeJson } from "./persistence";
+import { loadQueue } from "./social-agent";
+import { sendPush } from "./push";
+import { logger } from "./logger";
+
+// ── Daily brief assembler + delivery ───────────────────────────────────────────
+// One readable, actionable brief, assembled on our own box. Ops data (calendar,
+// Gmail action queue, tasks, phone notes, money) comes from the ops-manager's
+// /brief/feed; the social-media queue is local. Delivery is in-house: the dashboard
+// Today page reads the stored brief, Web Push nudges the phone, and an archivable
+// copy goes out via Resend. No Telegram, no third-party orchestration.
+
+const OPS_BASE = (process.env["OPS_MANAGER_URL"] ?? "http://127.0.0.1:5000").replace(/\/+$/, "");
+const BRIEF_KEY = "daily-brief";
+const TZ = process.env["TIMEZONE"] || "America/New_York";
+const SITE = "https://stillafloatcruising.com";
+
+export interface ActionItem {
+  thread_id: string; label: string; priority: string;
+  sender: string; subject: string; snippet: string; unread: boolean; url: string;
+}
+export interface CalEvent {
+  title: string; time: string; start_iso: string | null; all_day: boolean; location: string; link: string;
+}
+export interface TaskItem { id: string; title: string; status: string; priority?: string | null; due_date?: string | null; }
+export interface IdeaItem { id: string; note: string; category?: string | null; }
+export interface MoneyBlock {
+  month: string; month_expense: number; month_income: number; month_net: number;
+  recent_receipts: Array<{ vendor?: string; amount?: number; currency?: string; category?: string }>;
+  upcoming_charges: Array<{ vendor?: string; amount?: number; currency?: string; cadence?: string; next_charge_date?: string }>;
+}
+export interface SocialBlock {
+  pending: number;
+  items: Array<{ title: string; track: string }>;
+  reviewPath: string;
+}
+
+export interface Brief {
+  date: string;
+  generatedAt: string;
+  nothingToDo: boolean;
+  opsReachable: boolean;
+  sections: {
+    actions: ActionItem[];
+    calendar: CalEvent[];
+    tasks: TaskItem[];
+    ideas: { count: number; items: IdeaItem[] };
+    money: MoneyBlock | null;
+    social: SocialBlock;
+  };
+  counts: { actions: number; tasks: number; ideasNew: number; socialPending: number; events: number };
+}
+
+interface OpsFeed {
+  calendar?: CalEvent[];
+  actions?: ActionItem[];
+  tasks?: TaskItem[];
+  ideas?: { count: number; items: IdeaItem[] };
+  money?: MoneyBlock;
+}
+
+async function fetchOpsFeed(): Promise<OpsFeed | null> {
+  const key = process.env["IDEAS_API_KEY"];
+  if (!key) {
+    logger.warn("brief: IDEAS_API_KEY unset — ops feed skipped");
+    return null;
+  }
+  try {
+    const r = await fetch(`${OPS_BASE}/brief/feed`, {
+      headers: { "x-api-key": key },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!r.ok) {
+      logger.warn({ status: r.status }, "brief: ops feed non-200");
+      return null;
+    }
+    return (await r.json()) as OpsFeed;
+  } catch (err) {
+    logger.warn({ err }, "brief: ops-manager unreachable");
+    return null;
+  }
+}
+
+function localDateLabel(): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long", month: "long", day: "numeric", timeZone: TZ,
+  }).format(new Date());
+}
+
+/** Assemble the brief from all sources and persist it. */
+export async function assembleBrief(): Promise<Brief> {
+  const [ops, queue] = await Promise.all([
+    fetchOpsFeed(),
+    loadQueue().catch(() => ({ batches: [] as Array<{ status: string; title: string; track: string }> })),
+  ]);
+
+  const pending = queue.batches.filter((b) => b.status === "pending");
+  const social: SocialBlock = {
+    pending: pending.length,
+    items: pending.slice(0, 5).map((b) => ({ title: b.title, track: b.track })),
+    reviewPath: "/api/social/review",
+  };
+
+  const actions = ops?.actions ?? [];
+  const calendar = ops?.calendar ?? [];
+  const tasks = ops?.tasks ?? [];
+  const ideas = ops?.ideas ?? { count: 0, items: [] };
+  const money = ops?.money ?? null;
+
+  const nothingToDo =
+    actions.length === 0 && tasks.length === 0 && ideas.count === 0 && social.pending === 0;
+
+  const brief: Brief = {
+    date: localDateLabel(),
+    generatedAt: new Date().toISOString(),
+    nothingToDo,
+    opsReachable: ops !== null,
+    sections: { actions, calendar, tasks, ideas, money, social },
+    counts: {
+      actions: actions.length,
+      tasks: tasks.length,
+      ideasNew: ideas.count,
+      socialPending: social.pending,
+      events: calendar.length,
+    },
+  };
+
+  await writeJson(BRIEF_KEY, brief);
+  return brief;
+}
+
+export async function getStoredBrief(): Promise<Brief | null> {
+  return readJson<Brief | null>(BRIEF_KEY, null);
+}
+
+/** One-line summary for the push notification body. */
+function pushBody(brief: Brief): string {
+  if (brief.nothingToDo) return "Nothing needs you today. Enjoy it. ⚓";
+  const bits: string[] = [];
+  if (brief.counts.actions) bits.push(`${brief.counts.actions} to reply to`);
+  if (brief.counts.events) bits.push(`${brief.counts.events} on the calendar`);
+  if (brief.counts.socialPending) bits.push(`${brief.counts.socialPending} posts to review`);
+  if (brief.counts.ideasNew) bits.push(`${brief.counts.ideasNew} new notes`);
+  if (brief.counts.tasks) bits.push(`${brief.counts.tasks} open tasks`);
+  return bits.slice(0, 3).join(" · ") || "Open your brief.";
+}
+
+function money(amount?: number, currency = "USD"): string {
+  if (amount == null) return "";
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
+  } catch {
+    return `$${amount.toFixed(2)}`;
+  }
+}
+
+const esc = (s: unknown) =>
+  String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** Render the brief as a standalone HTML email. */
+export function renderBriefEmail(brief: Brief): string {
+  const s = brief.sections;
+  const section = (title: string, inner: string) =>
+    inner
+      ? `<h2 style="font:600 15px/1.3 -apple-system,Segoe UI,Roboto,sans-serif;color:#07183f;margin:24px 0 8px;border-bottom:1px solid #e5e9f2;padding-bottom:4px">${esc(title)}</h2>${inner}`
+      : "";
+
+  const li = (html: string) =>
+    `<div style="font:400 14px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;color:#1c2a44;padding:6px 0;border-bottom:1px solid #f0f2f7">${html}</div>`;
+
+  const actions = s.actions.map((a) =>
+    li(`<a href="${esc(a.url)}" style="color:#0b5cab;text-decoration:none;font-weight:600">${esc(a.subject)}</a>
+        <span style="color:#6b7794"> — ${esc(a.sender)}</span>
+        <span style="display:inline-block;font:600 10px/1 sans-serif;color:#fff;background:${a.priority === "high" ? "#d0414b" : "#c2872f"};border-radius:3px;padding:2px 5px;margin-left:6px">${esc(a.label)}</span>`)
+  ).join("");
+
+  const cal = s.calendar.map((e) =>
+    li(`<b>${esc(e.time)}</b> — ${esc(e.title)}${e.location ? ` <span style="color:#6b7794">@ ${esc(e.location)}</span>` : ""}${e.link ? ` <a href="${esc(e.link)}" style="color:#0b5cab">join</a>` : ""}`)
+  ).join("");
+
+  const tasks = s.tasks.map((t) =>
+    li(`${t.status === "in_progress" ? "▶ " : "• "}${esc(t.title)}${t.due_date ? ` <span style="color:#6b7794">(due ${esc(t.due_date)})</span>` : ""}`)
+  ).join("");
+
+  const social = s.social.pending
+    ? li(`<b>${s.social.pending}</b> social post${s.social.pending === 1 ? "" : "s"} awaiting your review` +
+        (s.social.items.length ? `<div style="color:#6b7794;margin-top:4px">${s.social.items.map((i) => esc(i.title)).join(" · ")}</div>` : "") +
+        `<div style="margin-top:6px"><a href="${SITE}${esc(s.social.reviewPath)}" style="color:#0b5cab">Review &amp; approve →</a></div>`)
+    : "";
+
+  const ideas = s.ideas.count
+    ? li(`<b>${s.ideas.count}</b> new phone note${s.ideas.count === 1 ? "" : "s"} to triage` +
+        (s.ideas.items.length ? `<div style="color:#6b7794;margin-top:4px">${s.ideas.items.map((i) => "“" + esc(i.note) + "”").join("<br>")}</div>` : ""))
+    : "";
+
+  const m = s.money;
+  const moneyHtml = m
+    ? li(`This month: <b>${money(m.month_net)}</b> net (in ${money(m.month_income)} / out ${money(m.month_expense)})` +
+        (m.upcoming_charges?.length ? `<div style="color:#6b7794;margin-top:4px">Upcoming: ${m.upcoming_charges.map((c) => `${esc(c.vendor)} ${money(c.amount, c.currency || "USD")} (${esc(c.next_charge_date)})`).join(" · ")}</div>` : "") +
+        (m.recent_receipts?.length ? `<div style="color:#6b7794;margin-top:4px">Recent: ${m.recent_receipts.slice(0, 3).map((r) => `${esc(r.vendor)} ${money(r.amount, r.currency || "USD")}`).join(" · ")}</div>` : ""))
+    : "";
+
+  const lead = brief.nothingToDo
+    ? `<p style="font:400 15px/1.5 -apple-system,sans-serif;color:#1c2a44">Nothing needs you today — inbox, calendar, tasks and posts are all clear. ⚓</p>`
+    : `<p style="font:400 14px/1.5 -apple-system,sans-serif;color:#6b7794">${esc(pushBody(brief))}</p>`;
+
+  const offline = brief.opsReachable ? "" :
+    `<p style="font:400 13px/1.4 sans-serif;color:#c2872f">⚠ Couldn't reach the ops-manager — calendar, mail, tasks and money may be incomplete.</p>`;
+
+  return `<!doctype html><html><body style="margin:0;background:#f4f6fb;padding:24px">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e9f2">
+    <div style="background:#07183f;padding:20px 24px">
+      <div style="font:700 18px/1.2 -apple-system,sans-serif;color:#fff">📋 Daily Brief</div>
+      <div style="font:400 13px/1.2 -apple-system,sans-serif;color:#9fb0d4;margin-top:4px">${esc(brief.date)}</div>
+    </div>
+    <div style="padding:8px 24px 28px">
+      ${lead}
+      ${offline}
+      ${section("Waiting on you", actions)}
+      ${section("Social posts", social)}
+      ${section("Today's calendar", cal)}
+      ${section("Open tasks", tasks)}
+      ${section("New phone notes", ideas)}
+      ${section("Money", moneyHtml)}
+      <p style="font:400 12px/1.4 sans-serif;color:#9aa6bd;margin-top:28px">Sent by your Still Afloat ops-manager — on your own server. Reply-free; manage on the dashboard.</p>
+    </div>
+  </div></body></html>`;
+}
+
+async function emailBrief(brief: Brief): Promise<boolean> {
+  const apiKey = process.env["RESEND_API_KEY"];
+  const to = process.env["BRIEF_EMAIL_TO"] || "mmillham1@gmail.com";
+  if (!apiKey) {
+    logger.warn("brief: RESEND_API_KEY unset — email skipped");
+    return false;
+  }
+  try {
+    const subject = brief.nothingToDo
+      ? `📋 Daily Brief — ${brief.date} — all clear`
+      : `📋 Daily Brief — ${brief.date} — ${pushBody(brief)}`;
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        from: "Still Afloat <noreply@stillafloatcruising.com>",
+        to: [to],
+        subject,
+        html: renderBriefEmail(brief),
+      }),
+    });
+    if (!r.ok) {
+      logger.warn({ status: r.status }, "brief: Resend non-200");
+      return false;
+    }
+    return true;
+  } catch (err) {
+    logger.warn({ err }, "brief: Resend send failed");
+    return false;
+  }
+}
+
+/** Assemble, then deliver via Web Push + email. Returns what happened. */
+export async function runAndDeliverBrief(): Promise<{
+  brief: Brief; push: { sent: number; pruned: number }; emailed: boolean;
+}> {
+  const brief = await assembleBrief();
+  const push = await sendPush({
+    title: brief.nothingToDo ? "📋 Daily Brief — all clear" : "📋 Your daily brief",
+    body: pushBody(brief),
+    url: "/today",
+    tag: "daily-brief",
+  });
+  const emailed = await emailBrief(brief);
+  logger.info({ counts: brief.counts, push, emailed }, "Daily brief delivered");
+  return { brief, push, emailed };
+}
