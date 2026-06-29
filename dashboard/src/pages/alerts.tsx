@@ -2,11 +2,10 @@ import React from "react";
 import { useGetAlertsFeed, getGetAlertsFeedQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle, Info, ExternalLink } from "lucide-react";
+import { EnableAlerts } from "@/components/enable-alerts";
 
 export default function OperationalAlerts() {
   const { data, isLoading } = useGetAlertsFeed({ query: { queryKey: getGetAlertsFeedQueryKey() } });
-
-  if (isLoading) return <div className="text-sm text-muted-foreground animate-pulse">Loading alerts...</div>;
 
   const alerts = data?.alerts || [];
 
@@ -18,6 +17,12 @@ export default function OperationalAlerts() {
           High and Critical impact stories surfaced immediately.
         </p>
       </div>
+
+      <EnableAlerts />
+
+      {isLoading && (
+        <div className="text-sm text-muted-foreground animate-pulse">Loading alerts...</div>
+      )}
 
       <div className="space-y-4">
         {alerts.map(alert => {

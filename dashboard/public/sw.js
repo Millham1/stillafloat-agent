@@ -1,4 +1,4 @@
-const CACHE_NAME = 'still-afloat-editorial-v3';
+const CACHE_NAME = 'still-afloat-editorial-v4';
 
 // App shell to cache on install (root — dashboard is now a standalone subdomain)
 const APP_SHELL = [
@@ -53,6 +53,42 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return response;
       });
+    })
+  );
+});
+
+// ── Web Push ───────────────────────────────────────────────────────────────
+// In-house notifications: the server signs an encrypted payload with its VAPID
+// key and the push transport relays it here. No Telegram, no third-party service.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_e) { data = {}; }
+  const title = data.title || 'Still Afloat';
+  const options = {
+    body: data.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: data.tag || undefined,
+    renotify: !!data.tag,
+    data: { url: data.url || '/today' },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Tapping a notification focuses an open dashboard tab (or opens one) at the URL.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/today';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          if ('navigate' in client) { try { client.navigate(target); } catch (_e) {} }
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+      return undefined;
     })
   );
 });
