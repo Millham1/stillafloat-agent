@@ -15,6 +15,7 @@ import youtubeRouter from "./youtube";
 import contactRouter from "./contact";
 import opsFinanceRouter from "./ops-finance";
 import pushRouter from "./push";
+import briefRouter from "./brief";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(youtubeRouter);
 router.use(contactRouter);
 router.use(opsFinanceRouter);
 router.use(pushRouter);
+router.use(briefRouter);
 
 export default router;

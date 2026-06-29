@@ -19,6 +19,7 @@ import Newsletter from "@/pages/newsletter";
 import Finance from "@/pages/finance";
 import Subscriptions from "@/pages/subscriptions";
 import Overview from "@/pages/overview";
+import Today from "@/pages/today";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,6 +35,7 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Overview} />
+        <Route path="/today" component={Today} />
         <Route path="/editorial" component={Dashboard} />
         <Route path="/queue" component={EditorialQueue} />
         <Route path="/approved" component={ApprovedStories} />
