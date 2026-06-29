@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink, RefreshCw, ShoppingBag, Heart, MessageSquare, Users, Mail, Wallet, CreditCard, Gauge, Sunrise } from "lucide-react";
+import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink, RefreshCw, ShoppingBag, Heart, MessageSquare, Users, Mail, Wallet, CreditCard, Gauge, Sunrise, Menu, X } from "lucide-react";
 import { useScanNews, getGetSystemStatusQueryKey, getGetEditorialQueueQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +10,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const scanMutation = useScanNews();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+
+  // Close the mobile drawer whenever the route changes.
+  React.useEffect(() => { setSidebarOpen(false); }, [location]);
 
   const handleScan = () => {
     scanMutation.mutate(undefined, {
@@ -50,10 +54,31 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <div className="w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col">
+      {/* Backdrop — mobile only, when the drawer is open */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar — static on md+, slide-in drawer on mobile */}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col transform transition-transform duration-200 md:static md:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="h-14 flex items-center px-6 border-b border-sidebar-border">
           <span className="font-bold text-sidebar-foreground tracking-tight">STILL AFLOAT</span>
           <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono bg-sidebar-accent text-sidebar-accent-foreground">OP</span>
+          <button
+            className="ml-auto md:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1 px-3">
@@ -64,13 +89,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                     active
                       ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4 flex-shrink-0" />
                   {item.label}
                 </Link>
               );
@@ -78,14 +104,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </div>
+
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-14 flex-shrink-0 border-b bg-card flex items-center px-6 gap-4">
-          <h1 className="text-sm font-semibold tracking-tight flex-1">Editorial Command Center</h1>
+        <header className="h-14 flex-shrink-0 border-b bg-card flex items-center px-4 md:px-6 gap-3 md:gap-4">
+          <button
+            className="md:hidden text-muted-foreground hover:text-foreground"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <h1 className="text-sm font-semibold tracking-tight flex-1 truncate">Editorial Command Center</h1>
           <a
             href="/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             View Website
@@ -93,13 +127,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <button
             onClick={handleScan}
             disabled={scanMutation.isPending}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors font-medium"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors font-medium flex-shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${scanMutation.isPending ? "animate-spin" : ""}`} />
-            {scanMutation.isPending ? "Scanning…" : "Trigger Fast Scan"}
+            <span className="hidden sm:inline">{scanMutation.isPending ? "Scanning…" : "Trigger Fast Scan"}</span>
           </button>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
       </div>
