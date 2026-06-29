@@ -72,6 +72,7 @@ jobs:
             git fetch origin
             git reset --hard origin/main
             export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+            export CI=true  # non-interactive: auto-confirm pnpm's modules purge over SSH (no TTY)
             corepack enable
             pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
             # Dashboard is a standalone app at dashboard.stillafloatcruising.com (served
@@ -113,6 +114,7 @@ jobs:
             cd /root/saf-full
             git fetch origin
             git reset --hard origin/dev
+            export CI=true  # non-interactive: auto-confirm pnpm's modules purge over SSH (no TTY)
             pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
             # Dev build mirrors prod (base "/"); API stays relative so the dev mirror
             # never points at the prod API.
