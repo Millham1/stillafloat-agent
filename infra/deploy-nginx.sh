@@ -18,6 +18,31 @@ TS="$(date +%Y%m%d-%H%M%S)"
 if ! command -v nginx >/dev/null 2>&1; then
   echo "nginx not installed — skipping dashboard nginx config"; exit 0
 fi
+
+# ── Performance + security headers (runs on ANY host with nginx) ──────────────
+# Installs conf.d/saf-perf.conf (gzip_types for CSS/JS/SVG/JSON + HSTS). Done
+# BEFORE the dashboard-cert early-exit so it applies on dev and prod alike.
+# Self-verifying: nginx -t gates the reload; auto-reverts on failure. Independent
+# of the dashboard block below so a perf-conf issue can never wedge the site.
+PERF_SRC="$(cd "$(dirname "$0")" && pwd)/nginx/saf-perf.conf"
+PERF_DEST="/etc/nginx/conf.d/saf-perf.conf"
+if [ -f "$PERF_SRC" ]; then
+  mkdir -p "$BK_DIR"
+  PERF_BK="$BK_DIR/saf-perf.$TS.bak"
+  [ -f "$PERF_DEST" ] && cp "$PERF_DEST" "$PERF_BK"
+  cp "$PERF_SRC" "$PERF_DEST"
+  echo "installed: $PERF_DEST"
+  if nginx -t; then
+    systemctl reload nginx && echo "perf conf RELOADED OK"
+  else
+    echo "nginx -t FAILED after perf conf — reverting"
+    if [ -f "$PERF_BK" ]; then cp "$PERF_BK" "$PERF_DEST"; else rm -f "$PERF_DEST"; fi
+    nginx -t >/dev/null 2>&1 && systemctl reload nginx && echo "perf conf reverted" || echo "WARN: revert invalid"
+  fi
+else
+  echo "WARN: $PERF_SRC missing — skipping perf conf"
+fi
+
 if [ ! -f "$CERT" ]; then
   echo "No dashboard TLS cert ($CERT) — not the prod dashboard host; skipping."; exit 0
 fi
