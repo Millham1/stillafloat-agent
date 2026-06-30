@@ -134,7 +134,7 @@ async function describeAndCategorize(products: RawProduct[], apiKey: string): Pr
 export async function ingestProducts(
   raw: RawProduct[],
 ): Promise<{ added: PendingItem[]; skipped: { asin: string; reason: string }[] }> {
-  const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
+  const apiKey = process.env["OPENAI_API_KEY"] || "";
   const [published, pending] = await Promise.all([loadAffiliateStore(), loadPending()]);
 
   // Existing items may store the ASIN in either field (older items put the

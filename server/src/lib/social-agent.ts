@@ -213,7 +213,7 @@ export async function generateSocialBatch(
   track: Track,
   providedTranscript?: string,
 ): Promise<SocialBatch> {
-  const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
+  const apiKey = process.env["OPENAI_API_KEY"] || "";
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
 
   const transcript = (providedTranscript ?? "").trim() || (await fetchTranscript(video.id));
