@@ -179,25 +179,36 @@ async function fetchForecast(loc: CruiseLocation) {
   url.searchParams.set("temperature_unit", "fahrenheit");
   url.searchParams.set("timezone", "auto");
   url.searchParams.set("forecast_days", "10");
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Weather fetch failed for ${loc.slug}`);
-  const data = await res.json() as {
-    current: { temperature_2m: number; weather_code: number };
-    daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[] };
-  };
-  return {
-    ...publicLocation(loc),
-    temp: Math.round(data.current.temperature_2m),
-    emoji: weatherEmoji(data.current.weather_code),
-    forecastUrl: `/forecast.html?place=${loc.slug}`,
-    forecast: data.daily.time.map((day, i) => ({
-      day,
-      emoji: weatherEmoji(data.daily.weather_code[i]),
-      weatherCode: data.daily.weather_code[i],
-      high: Math.round(data.daily.temperature_2m_max[i]),
-      low: Math.round(data.daily.temperature_2m_min[i]),
-    })),
-  };
+  // open-meteo intermittently returns a response Node's HTTP parser rejects
+  // ("Parse Error: Data after Connection: close") under parallel load. Retry
+  // once, with a timeout, so a single transient hiccup doesn't kill the card.
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`Weather fetch failed for ${loc.slug} (${res.status})`);
+      const data = await res.json() as {
+        current: { temperature_2m: number; weather_code: number };
+        daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[] };
+      };
+      return {
+        ...publicLocation(loc),
+        temp: Math.round(data.current.temperature_2m),
+        emoji: weatherEmoji(data.current.weather_code),
+        forecastUrl: `/forecast.html?place=${loc.slug}`,
+        forecast: data.daily.time.map((day, i) => ({
+          day,
+          emoji: weatherEmoji(data.daily.weather_code[i]),
+          weatherCode: data.daily.weather_code[i],
+          high: Math.round(data.daily.temperature_2m_max[i]),
+          low: Math.round(data.daily.temperature_2m_min[i]),
+        })),
+      };
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
 }
 
 // 15-minute in-memory cache for the all-ports response (avoids 24 parallel fetches on every page load)
@@ -237,9 +248,20 @@ router.get("/weather", async (req: Request, res: Response) => {
       return;
     }
 
-    const embarkation = featuredByType("embarkation", 12);
-    const destinations = featuredByType("destination", 12);
-    const cards = await Promise.all([...embarkation, ...destinations].map(fetchForecast));
+    const targets = [...featuredByType("embarkation", 12), ...featuredByType("destination", 12)];
+    // Tolerate partial upstream failures: a single bad open-meteo fetch must
+    // never blank the whole homepage. Keep whatever cards succeeded.
+    const settled = await Promise.allSettled(targets.map(fetchForecast));
+    const cards = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+
+    // If too few cards came back, serve the last good payload rather than a
+    // half-empty homepage (don't overwrite a healthy cache with a degraded set).
+    const minOk = Math.ceil(targets.length / 2);
+    if (cards.length < minOk && allPortsCache) {
+      res.json(allPortsCache.payload);
+      return;
+    }
+
     const payload = {
       ok: true,
       generatedAt: new Date().toISOString(),
@@ -254,9 +276,14 @@ router.get("/weather", async (req: Request, res: Response) => {
         .map(publicLocation)
         .sort((a, b) => a.name.localeCompare(b.name)),
     };
-    allPortsCache = { payload, expiresAt: Date.now() + 15 * 60 * 1000 };
+    // Only cache a healthy payload so we never pin an empty result for 15 min.
+    if (cards.length >= minOk) {
+      allPortsCache = { payload, expiresAt: Date.now() + 15 * 60 * 1000 };
+    }
     res.json(payload);
   } catch (error) {
+    // Last resort: serve stale cache instead of blanking the homepage.
+    if (allPortsCache) { res.json(allPortsCache.payload); return; }
     res.status(500).json({ ok: false, error: (error as Error).message, embarkation: [], destinations: [] });
   }
 });
