@@ -85,7 +85,7 @@ router.get("/commentary", async (req: Request, res: Response) => {
 });
 
 async function autoTranslate(text: string): Promise<string> {
-  const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"];
+  const apiKey = process.env["OPENAI_API_KEY"];
   if (!apiKey || !text.trim()) return "";
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -220,7 +220,7 @@ router.post("/translate-commentary", async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: "text is required" });
       return;
     }
-    const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"];
+    const apiKey = process.env["OPENAI_API_KEY"];
     if (!apiKey) {
       res.status(503).json({ success: false, error: "OpenAI not configured" });
       return;
@@ -275,7 +275,7 @@ router.post("/transcribe", expressJson({ limit: "25mb" }), async (req: Request, 
       res.status(400).json({ success: false, error: "audioBase64 is required" });
       return;
     }
-    const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"];
+    const apiKey = process.env["OPENAI_API_KEY"];
     if (!apiKey) {
       res.status(503).json({ success: false, error: "OpenAI not configured" });
       return;

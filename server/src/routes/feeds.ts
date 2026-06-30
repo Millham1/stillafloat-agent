@@ -181,7 +181,7 @@ router.get("/system-status", async (req: Request, res: Response) => {
       generatedAt: new Date().toISOString(),
       environment: process.env["NODE_ENV"] || "unknown",
       systems: {
-        openaiConfigured: Boolean(process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"]),
+        openaiConfigured: Boolean(process.env["OPENAI_API_KEY"]),
         resendConfigured: Boolean(process.env["RESEND_API_KEY"]),
         gnewsConfigured: Boolean(process.env["GNEWS_API_KEY"]),
         weatherConfigured: true, // Open-Meteo — no API key required
@@ -210,9 +210,7 @@ router.get("/system-status", async (req: Request, res: Response) => {
 
 router.get("/platform-manifest", async (req: Request, res: Response) => {
   try {
-    const siteUrl = process.env["REPLIT_DOMAINS"]?.split(",")[0]
-      ? `https://${process.env["REPLIT_DOMAINS"]?.split(",")[0]}`
-      : "https://stillafloat-agent.replit.app";
+    const siteUrl = process.env["SITE_URL"] || "https://stillafloatcruising.com";
 
     res.json({
       success: true,

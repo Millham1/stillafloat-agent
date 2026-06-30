@@ -163,7 +163,7 @@ Recibirás las noticias aprobadas de esta semana, un video destacado y un produc
 Responde SOLO con JSON: { "subject", "intro", "storyIds":[], "video_blurb", "affiliate_blurb", "agency_ps" }.`;
 
 export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraft> {
-  const apiKey = process.env["OPENAI_API_KEY"] || process.env["REPLIT_OPENAI_API_KEY"] || "";
+  const apiKey = process.env["OPENAI_API_KEY"] || "";
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
 
   const [stories, video, affiliate] = await Promise.all([
