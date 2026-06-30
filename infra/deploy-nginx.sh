@@ -43,6 +43,48 @@ else
   echo "WARN: $PERF_SRC missing — skipping perf conf"
 fi
 
+# ── Main site vhost (runs on ANY host with nginx) ─────────────────────────────
+# Repo-owned replacement for the box's sites-enabled/default. Prod vs dev is
+# chosen by the presence of the main TLS cert. Both variants proxy /api to
+# 127.0.0.1 (NOT localhost) so nginx never tries the IPv6 ::1 address the app
+# doesn't listen on (the cause of intermittent "connect() failed (111)" 503s).
+# Self-verifying: nginx -t + an HTTP smoke test gate the change; auto-reverts
+# from a backup on any failure.
+MAIN_CERT="/etc/letsencrypt/live/stillafloatcruising.com/fullchain.pem"
+DEFAULT="/etc/nginx/sites-enabled/default"
+NGINX_DIR="$(cd "$(dirname "$0")" && pwd)/nginx"
+if [ -f "$MAIN_CERT" ]; then
+  SITE_SRC="$NGINX_DIR/site.prod.conf"
+  mkdir -p /var/www/letsencrypt/.well-known/acme-challenge   # webroot for ACME renewal
+else
+  SITE_SRC="$NGINX_DIR/site.dev.conf"
+fi
+if [ -f "$SITE_SRC" ]; then
+  mkdir -p "$BK_DIR"
+  SITE_BK="$BK_DIR/default.site.$TS.bak"
+  if [ -e "$DEFAULT" ] || [ -L "$DEFAULT" ]; then cp -L "$DEFAULT" "$SITE_BK" 2>/dev/null || true; fi
+  rm -f "$DEFAULT"                 # drop any symlink (dev) or stale file
+  cp "$SITE_SRC" "$DEFAULT"
+  echo "installed main vhost: $DEFAULT (from $(basename "$SITE_SRC"))"
+  revert_site() {
+    echo "REVERTING main vhost"
+    if [ -f "$SITE_BK" ]; then rm -f "$DEFAULT"; cp "$SITE_BK" "$DEFAULT"; fi
+    nginx -t >/dev/null 2>&1 && systemctl reload nginx && echo "main vhost reverted" || echo "WARN: main vhost revert invalid"
+  }
+  if nginx -t; then
+    systemctl reload nginx && echo "main vhost RELOADED OK"
+    sleep 1
+    HOME_CODE="$(curl -s -o /dev/null -w '%{http_code}' http://localhost/ || echo 000)"
+    API_CODE="$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/public-config || echo 000)"
+    echo "main vhost smoke: / => $HOME_CODE ; /api/public-config => $API_CODE"
+    case "$HOME_CODE" in 2*|3*) : ;; *) echo "main vhost smoke FAILED"; revert_site ;; esac
+  else
+    echo "nginx -t FAILED after main vhost — reverting"; revert_site
+  fi
+else
+  echo "WARN: $SITE_SRC missing — skipping main vhost"
+fi
+
 if [ ! -f "$CERT" ]; then
   echo "No dashboard TLS cert ($CERT) — not the prod dashboard host; skipping."; exit 0
 fi
