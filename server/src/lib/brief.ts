@@ -141,7 +141,6 @@ function pushBody(brief: Brief): string {
   if (brief.counts.actions) bits.push(`${brief.counts.actions} to reply to`);
   if (brief.counts.events) bits.push(`${brief.counts.events} on the calendar`);
   if (brief.counts.socialPending) bits.push(`${brief.counts.socialPending} posts to review`);
-  if (brief.counts.ideasNew) bits.push(`${brief.counts.ideasNew} new notes`);
   if (brief.counts.tasks) bits.push(`${brief.counts.tasks} open tasks`);
   return bits.slice(0, 3).join(" · ") || "Open your brief.";
 }
@@ -189,11 +188,6 @@ export function renderBriefEmail(brief: Brief): string {
         `<div style="margin-top:6px"><a href="${SITE}${esc(s.social.reviewPath)}" style="color:#0b5cab">Review &amp; approve →</a></div>`)
     : "";
 
-  const ideas = s.ideas.count
-    ? li(`<b>${s.ideas.count}</b> new phone note${s.ideas.count === 1 ? "" : "s"} to triage` +
-        (s.ideas.items.length ? `<div style="color:#6b7794;margin-top:4px">${s.ideas.items.map((i) => "“" + esc(i.note) + "”").join("<br>")}</div>` : ""))
-    : "";
-
   const arrow = (t: string) => (t === "up" ? "▲" : t === "down" ? "▼" : "▬");
   const billsHtml = s.bills.length
     ? s.bills.map((b) => li(`${esc(b.vendor)}${b.due_date ? ` <span style="color:#6b7794">— due ${esc(b.due_date)}</span>` : ""}`)).join("")
@@ -225,7 +219,6 @@ export function renderBriefEmail(brief: Brief): string {
       ${section("Social posts", social)}
       ${section("Today's calendar", cal)}
       ${section("Open tasks", tasks)}
-      ${section("New phone notes", ideas)}
       ${section("Bills due", billsHtml)}
       ${section("Reach", pulseHtml)}
       <p style="font:400 12px/1.4 sans-serif;color:#9aa6bd;margin-top:28px">Sent by your Still Afloat ops-manager — on your own server.</p>
