@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import compression from "compression";
 import pinoHttp from "pino-http";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -10,6 +11,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, "../public");
 
 const app: Express = express();
+
+// gzip/deflate text responses (HTML, CSS, JS, JSON, SVG). The static assets
+// were shipping uncompressed (only nginx's default text/html was gzipped),
+// flagged by the site audit. compression's default filter skips already-binary
+// types and honors a `x-no-compression` response header for opt-out.
+app.use(compression());
+
+// HSTS: tell browsers to always use HTTPS for a year (incl. subdomains).
+// nginx already 301s http->https; this hardens it against downgrade. The
+// header is forwarded through the nginx proxy to the client.
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains",
+  );
+  next();
+});
 
 app.use(
   pinoHttp({

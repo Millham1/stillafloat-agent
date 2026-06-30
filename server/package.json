@@ -14,6 +14,7 @@
     "@supabase/supabase-js": "^2.105.4",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "compression": "^1.7.5",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "drizzle-orm": "catalog:",
@@ -26,6 +27,7 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

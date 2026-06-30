@@ -1,0 +1,15 @@
+# Still Afloat — https://stillafloatcruising.com
+# Crawlers welcome. Admin/utility pages excluded below.
+
+User-agent: *
+Allow: /
+
+# Transactional / admin pages — no search value
+Disallow: /editorial-queue.html
+Disallow: /preview-site/
+Disallow: /subscribe-pending.html
+Disallow: /subscribe-verified.html
+Disallow: /unsubscribe-confirmed.html
+Disallow: /under-construction.html
+
+Sitemap: https://stillafloatcruising.com/sitemap.xml
