@@ -36,7 +36,7 @@ export async function notifyTelegram(opts: {
     const result = await sendPush({
       title,
       body: body || (opts.buttonLabel ?? "Tap to review"),
-      url: opts.url || "/today",
+      url: opts.url || "/brief.html",
       tag: "saf-review",
     });
     if (result.sent > 0) return { success: true };

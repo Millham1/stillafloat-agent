@@ -70,7 +70,7 @@ self.addEventListener('push', (event) => {
     badge: '/icon-192.png',
     tag: data.tag || undefined,
     renotify: !!data.tag,
-    data: { url: data.url || '/today' },
+    data: { url: data.url || '/brief.html' },
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
@@ -78,7 +78,7 @@ self.addEventListener('push', (event) => {
 // Tapping a notification focuses an open dashboard tab (or opens one) at the URL.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/today';
+  const target = (event.notification.data && event.notification.data.url) || '/brief.html';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {

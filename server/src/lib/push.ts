@@ -28,7 +28,7 @@ interface PushStore {
 export interface PushPayload {
   title: string;
   body: string;
-  url?: string; // dashboard path to open on tap, e.g. "/today"
+  url?: string; // dashboard path to open on tap, e.g. "/brief.html"
   tag?: string; // collapses/replaces same-tag notifications
 }
 
@@ -109,7 +109,7 @@ export async function sendPush(payload: PushPayload): Promise<{ sent: number; pr
   const body = JSON.stringify({
     title: payload.title,
     body: payload.body,
-    url: payload.url || "/today",
+    url: payload.url || "/brief.html",
     tag: payload.tag,
   });
 
