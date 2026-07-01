@@ -226,36 +226,10 @@ export function renderBriefEmail(brief: Brief): string {
   </div></body></html>`;
 }
 
-async function emailBrief(brief: Brief): Promise<boolean> {
-  const apiKey = process.env["RESEND_API_KEY"];
-  const to = process.env["BRIEF_EMAIL_TO"] || "mmillham1@gmail.com";
-  if (!apiKey) {
-    logger.warn("brief: RESEND_API_KEY unset — email skipped");
-    return false;
-  }
-  try {
-    const subject = brief.nothingToDo
-      ? `📋 Daily Brief — ${brief.date} — all clear`
-      : `📋 Daily Brief — ${brief.date} — ${pushBody(brief)}`;
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        from: "Still Afloat <noreply@stillafloatcruising.com>",
-        to: [to],
-        subject,
-        html: renderBriefEmail(brief),
-      }),
-    });
-    if (!r.ok) {
-      logger.warn({ status: r.status }, "brief: Resend non-200");
-      return false;
-    }
-    return true;
-  } catch (err) {
-    logger.warn({ err }, "brief: Resend send failed");
-    return false;
-  }
+async function emailBrief(_brief: Brief): Promise<boolean> {
+  // The daily brief is delivered by Web Push + the phone shortcut only
+  // (Mark, 2026-07-01) — no email copy. Intentional no-op.
+  return false;
 }
 
 export interface ConflictItem {

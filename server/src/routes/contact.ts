@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
+import { sendMail } from "../lib/mailer";
 
 const router = Router();
 
@@ -48,11 +49,7 @@ async function sendConfirmationEmail(
   firstName: string,
   email: string,
 ): Promise<void> {
-  const apiKey = process.env["RESEND_API_KEY"];
-  if (!apiKey) {
-    logger.warn("RESEND_API_KEY not set — skipping confirmation email");
-    return;
-  }
+  // Transactional email now goes via Gmail (ops-manager /send-email), not Resend.
 
   const html = `
 <!DOCTYPE html>
@@ -87,36 +84,21 @@ async function sendConfirmationEmail(
 </body>
 </html>`;
 
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Mark at Still Afloat <mark@stillafloatcruising.com>",
-        to: email,
-        subject: "Got it — I'll be in touch within 24 hours ⚓",
-        html,
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      logger.error({ status: res.status, err }, "Prospect confirmation email failed");
-    }
-  } catch (err) {
-    logger.error({ err }, "Prospect confirmation email exception");
-  }
+  await sendMail({
+    to: email,
+    subject: "Got it — I'll be in touch within 24 hours ⚓",
+    html,
+    fromName: "Mark at Still Afloat",
+    replyTo: "stillafloatcruising@gmail.com",
+  });
 }
 
 // ── Send internal alert to Mark ───────────────────────────────────
 async function sendInternalAlert(
   prospect: Record<string, unknown>,
 ): Promise<void> {
-  const apiKey      = process.env["RESEND_API_KEY"];
-  const alertEmail  = process.env["APPROVAL_EMAIL"];
-  if (!apiKey || !alertEmail) return;
+  const alertEmail = process.env["APPROVAL_EMAIL"];
+  if (!alertEmail) return;
 
   const rows = Object.entries(prospect)
     .filter(([k]) => k !== "id" && k !== "created_at")
@@ -145,23 +127,12 @@ async function sendInternalAlert(
 </div>
 </body></html>`;
 
-  try {
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Still Afloat Agent <noreply@stillafloatcruising.com>",
-        to: alertEmail,
-        subject: `New inquiry from ${prospect.first_name} ${prospect.last_name} — ${prospect.destination || "destination TBD"}`,
-        html,
-      }),
-    });
-  } catch (err) {
-    logger.error({ err }, "Internal prospect alert email failed");
-  }
+  await sendMail({
+    to: alertEmail,
+    subject: `New inquiry from ${prospect.first_name} ${prospect.last_name} — ${prospect.destination || "destination TBD"}`,
+    html,
+    fromName: "Still Afloat Agent",
+  });
 }
 
 // ── GET /api/public-config ───────────────────────────────────────
