@@ -67,6 +67,7 @@ jobs:
               grep -vE '^YOUTUBE_API_KEY=' "$SHARED" > "$SHARED.tmp" 2>/dev/null || true
               echo "YOUTUBE_API_KEY=${YOUTUBE_API_KEY}" >> "$SHARED.tmp"
               mv "$SHARED.tmp" "$SHARED"
+              chmod 600 "$SHARED"
             fi
             cd /root/saf-full
             git fetch origin
@@ -127,6 +128,7 @@ jobs:
               mkdir -p /opt/stillafloat
               cp /root/stillafloat-newsagent/.env "$SHARED" 2>/dev/null || true
             fi
+            chmod 600 "$SHARED" 2>/dev/null || true
             while IFS= read -r line; do
               case "$line" in ''|\#*) continue;; esac
               export "${line%%=*}=${line#*=}"
