@@ -139,8 +139,10 @@ jobs:
             export BASE_PATH=/
             export DISABLE_YOUTUBE_SCAN=1
             unset NODE_ENV
-            # create the monorepo's tables in the dev DB (idempotent)
-            pnpm --filter @workspace/db run push --force
+            # NOTE (2026-07-04): schema is managed via supabase/migrations
+            # (applied dev-first, then prod) — NOT drizzle. The drizzle schema is
+            # empty, so "db push --force" DROPPED every table on the dev DB and wiped
+            # it. Removed — do NOT reinstate. See supabase/migrations/README.md.
             # start/restart with the full env injected (CI always has DATABASE_URL now)
             pm2 restart saf-full-server --update-env || pm2 start node --name saf-full-server --cwd /root/saf-full/server --update-env -- --enable-source-maps ./dist/index.mjs
             pm2 save
