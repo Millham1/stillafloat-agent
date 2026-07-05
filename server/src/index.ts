@@ -3,6 +3,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { runDuePosts } from "./lib/social-schedule";
 import { runAndDeliverBrief } from "./lib/brief";
+import { runStormScan } from "./lib/storm-agent";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -38,6 +39,14 @@ app.listen(port, "0.0.0.0", () => {
     logger.info("Daily brief DISABLED (DISABLE_DAILY_BRIEF=1)");
   } else {
     scheduleDailyBrief();
+  }
+  // Storm-alert scan — pull NHC, draft alerts, nudge Mark to review. Never sends
+  // to subscribers on its own (approval-gated). Disabled on the dev mirror so dev
+  // never pushes/emails; enable on prod only.
+  if (process.env["DISABLE_STORM_SCAN"] === "1") {
+    logger.info("Storm-alert scan DISABLED (DISABLE_STORM_SCAN=1)");
+  } else {
+    scheduleStormScan();
   }
 });
 
@@ -113,4 +122,22 @@ function scheduleDailyBrief() {
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
   logger.info({ briefHour, tz: TZ }, "Daily brief scheduler active — checks every 5m");
+}
+
+// ── Storm-alert scan scheduler ────────────────────────────────────────────────
+// Pull NHC (active systems + Tropical Weather Outlook) on boot and hourly, draft
+// alerts for anything threatening cruising grounds, and nudge Mark to review.
+// Approval-gated: this never emails subscribers on its own.
+function scheduleStormScan() {
+  const tick = async () => {
+    try {
+      const r = await runStormScan();
+      if (r.drafted || r.updated) logger.info(r, "Storm scan produced drafts");
+    } catch (err) {
+      logger.error({ err }, "Storm scan tick failed");
+    }
+  };
+  setTimeout(() => { tick().catch(() => {}); }, 30_000);
+  setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
+  logger.info("Storm-alert scan scheduler active — on boot + hourly");
 }

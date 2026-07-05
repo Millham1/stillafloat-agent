@@ -16,6 +16,7 @@ import contactRouter from "./contact";
 import opsFinanceRouter from "./ops-finance";
 import pushRouter from "./push";
 import briefRouter from "./brief";
+import stormRouter from "./storm";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(contactRouter);
 router.use(opsFinanceRouter);
 router.use(pushRouter);
 router.use(briefRouter);
+router.use(stormRouter);
 
 export default router;
