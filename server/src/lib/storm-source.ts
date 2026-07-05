@@ -19,6 +19,7 @@ export interface RawSystem {
   movement: string | null;
   formationChance: number | null;  // 0-100 (Tropical Weather Outlook)
   advisoryUrl: string | null;
+  coneUrl: string | null;          // NHC forecast cone/track image (named systems)
   outlookText?: string;            // TWO prose (for the AI to summarise)
   source: "current_storms" | "outlook";
   raw: unknown;
@@ -84,6 +85,8 @@ async function fetchActiveStorms(): Promise<RawSystem[]> {
         ? `${s.movementDir} at ${s.movementSpeed} kt` : null,
       formationChance: null,
       advisoryUrl: s?.publicAdvisory?.url ? String(s.publicAdvisory.url) : null,
+      coneUrl: s?.forecastCone?.url ? String(s.forecastCone.url)
+        : (s?.forecastTrack?.url ? String(s.forecastTrack.url) : null),
       source: "current_storms",
       raw: s,
     };
@@ -134,6 +137,7 @@ async function fetchOutlooks(): Promise<RawSystem[]> {
       lat: null, lon: null, intensity: null, movement: null,
       formationChance: chance,
       advisoryUrl: feed.url,
+      coneUrl: null,
       outlookText: desc.slice(0, 2000),
       source: "outlook",
       raw: { basin: feed.basin, outlook: desc.slice(0, 2000) },
@@ -160,7 +164,29 @@ export function fixtureSystem(): RawSystem {
     movement: "WNW at 14 kt",
     formationChance: null,
     advisoryUrl: "https://www.nhc.noaa.gov/",
+    coneUrl: null,
     source: "current_storms",
     raw: { fixture: true, note: "sample system for the storm-alert pipeline" },
   };
+}
+
+/** Public NOAA graphics per basin (verified live): satellite sector + 7-day outlook image. */
+export function basinGraphics(basin: RawSystem["basin"]): { satellite: string; outlook: string } {
+  switch (basin) {
+    case "eastern_pacific":
+      return {
+        satellite: "https://cdn.star.nesdis.noaa.gov/GOES18/ABI/SECTOR/eep/GEOCOLOR/latest.jpg",
+        outlook: "https://www.nhc.noaa.gov/xgtwo/two_pac_7d0.png",
+      };
+    case "central_pacific":
+      return {
+        satellite: "https://cdn.star.nesdis.noaa.gov/GOES18/ABI/SECTOR/hi/GEOCOLOR/latest.jpg",
+        outlook: "https://www.nhc.noaa.gov/xgtwo/two_pac_7d0.png",
+      };
+    default: // atlantic
+      return {
+        satellite: "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/taw/GEOCOLOR/latest.jpg",
+        outlook: "https://www.nhc.noaa.gov/xgtwo/two_atl_7d0.png",
+      };
+  }
 }

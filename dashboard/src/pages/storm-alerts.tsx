@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { CloudLightning, Ship, Send, Trash2, ChevronDown, RefreshCw } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
 
-type ShipRow = { name: string; cruise_line: string; regions: string[] };
+type Sailing = { ship_name: string; cruise_line: string; depart_port: string | null; start_date: string; end_date: string };
+type CruiseInfo = { line: string; note: string; url?: string };
 type Alert = {
   id: string;
   name: string;
@@ -20,7 +21,9 @@ type Alert = {
   formation_chance: number | null;
   headline: string | null;
   body_md: string | null;
-  ships: ShipRow[];
+  detail_md: string | null;
+  cruise_line_info: CruiseInfo[];
+  sailings: Sailing[];
   sent_count: number;
   sent_at: string | null;
 };
@@ -31,6 +34,16 @@ const STATUS_COLORS: Record<string, string> = {
   approved: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
   sent:     "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300",
 };
+
+function formatCruiseInfo(arr: CruiseInfo[]): string {
+  return (arr ?? []).map((a) => [a.line, a.note, a.url].filter(Boolean).join(" :: ")).join("\n");
+}
+function parseCruiseInfo(text: string): CruiseInfo[] {
+  return text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const p = l.split("::").map((x) => x.trim());
+    return { line: p[0] ?? "", note: p[1] ?? "", url: p[2] ?? "" };
+  });
+}
 
 export default function StormAlerts() {
   const { toast } = useToast();
@@ -95,31 +108,37 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
   const { toast } = useToast();
   const [headline, setHeadline] = useState(alert.headline ?? "");
   const [body, setBody] = useState(alert.body_md ?? "");
+  const [cruiseInfo, setCruiseInfo] = useState(formatCruiseInfo(alert.cruise_line_info));
   const [showShips, setShowShips] = useState(false);
   const [busy, setBusy] = useState(false);
-  const dirty = headline !== (alert.headline ?? "") || body !== (alert.body_md ?? "");
+  const dirty = headline !== (alert.headline ?? "")
+    || body !== (alert.body_md ?? "")
+    || cruiseInfo !== formatCruiseInfo(alert.cruise_line_info);
 
   async function call(path: string, method: string, payload?: unknown) {
     setBusy(true);
     try {
-      const r = await fetch(`/api/storm-alerts/${alert.id}${path}`, {
+      return await fetch(`/api/storm-alerts/${alert.id}${path}`, {
         method,
         headers: { "Content-Type": "application/json", ...authHeaders() },
         ...(payload ? { body: JSON.stringify(payload) } : {}),
       }).then((x) => x.json());
-      return r;
     } finally {
       setBusy(false);
     }
   }
 
+  const editPayload = () => ({
+    headline, body_md: body, cruise_line_info: parseCruiseInfo(cruiseInfo),
+  });
+
   async function save() {
-    await call("", "PATCH", { headline, body_md: body });
+    await call("", "PATCH", editPayload());
     toast({ title: "Saved" });
     onChanged();
   }
   async function approve() {
-    if (dirty) await call("", "PATCH", { headline, body_md: body });
+    if (dirty) await call("", "PATCH", editPayload());
     const r = await call("/approve", "POST");
     toast({ title: "Approved & sent", description: `Emailed ${r?.sent ?? 0} subscriber(s).` });
     onChanged();
@@ -146,29 +165,43 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
         <Input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Headline" />
         <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder="What this means for you…" />
 
-        {alert.ships.length > 0 && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowShips((s) => !s)}
-              className="inline-flex items-center gap-1 text-sm font-medium text-sky-700 dark:text-sky-300"
-            >
-              <Ship className="h-4 w-4" />
-              Show Impacted Ships ({alert.ships.length})
-              <ChevronDown className={`h-4 w-4 transition-transform ${showShips ? "rotate-180" : ""}`} />
-            </button>
-            {showShips && (
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">
+            Cruise-line advisories — one per line: <code>Line :: note :: url</code>
+          </label>
+          <Textarea
+            value={cruiseInfo}
+            onChange={(e) => setCruiseInfo(e.target.value)}
+            rows={3}
+            placeholder="Royal Caribbean :: Symphony skipping St. Thomas :: https://…"
+          />
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowShips((s) => !s)}
+            className="inline-flex items-center gap-1 text-sm font-medium text-sky-700 dark:text-sky-300"
+          >
+            <Ship className="h-4 w-4" />
+            Impacted sailings ({alert.sailings.length})
+            <ChevronDown className={`h-4 w-4 transition-transform ${showShips ? "rotate-180" : ""}`} />
+          </button>
+          {showShips && (
+            alert.sailings.length > 0 ? (
               <ul className="mt-2 border rounded-md divide-y">
-                {alert.ships.map((s) => (
-                  <li key={s.name} className="px-3 py-2 text-sm flex justify-between">
-                    <span>{s.name}</span>
-                    <span className="text-muted-foreground">{s.cruise_line}</span>
+                {alert.sailings.map((s, i) => (
+                  <li key={`${s.ship_name}-${i}`} className="px-3 py-2 text-sm flex justify-between gap-3">
+                    <span>{s.ship_name} <span className="text-muted-foreground">· {s.cruise_line}</span></span>
+                    <span className="text-muted-foreground">{s.depart_port ? `${s.depart_port} · ` : ""}{s.start_date}–{s.end_date}</span>
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
-        )}
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">No tracked sailings match this system’s area + dates.</p>
+            )
+          )}
+        </div>
 
         <div className="flex flex-wrap gap-2 pt-1">
           {dirty && (

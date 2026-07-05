@@ -10,7 +10,8 @@ import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { sendPush } from "./push";
 import { emailReviewNudge } from "./storm-send";
-import { fetchSystems, fixtureSystem, type RawSystem } from "./storm-source";
+import { fetchSystems, fixtureSystem, basinGraphics, type RawSystem } from "./storm-source";
+import { defaultWindow } from "./storm-sailings";
 import {
   groundsForPoint, groundsForBasin, shipsForGrounds, labelGrounds, type Ship,
 } from "./storm-grounds";
@@ -124,6 +125,8 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
       const reDraftable = !existing || status === "draft";
       const content = reDraftable ? await draft(sys, grounds) : null;
 
+      const win = defaultWindow();
+      const gfx = basinGraphics(sys.basin);
       const row = {
         nhc_id: sys.nhcId,
         basin: sys.basin,
@@ -134,6 +137,10 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
         formation_chance: sys.formationChance,
         raw: sys.raw as object,
         content_hash: contentHash,
+        window_start: win.start,
+        window_end: win.end,
+        cone_url: sys.coneUrl ?? gfx.outlook,
+        satellite_url: gfx.satellite,
         last_updated: new Date().toISOString(),
         ...(content ? { headline: content.headline, body_md: content.body_md, status: "draft" } : {}),
       };

@@ -7,9 +7,10 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
-import { runStormScan, shipsForAlert } from "../lib/storm-agent";
+import { runStormScan } from "../lib/storm-agent";
 import { emailSubscribers, type AlertRow } from "../lib/storm-send";
 import { labelGrounds, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
+import { sailingsForStorm, defaultWindow, type Sailing } from "../lib/storm-sailings";
 
 const router: IRouter = Router();
 
@@ -17,6 +18,17 @@ interface DbAlert extends AlertRow {
   basin: string | null; classification: string | null; status: string;
   is_threat: boolean; formation_chance: number | null; last_updated: string;
   sent_at: string | null; sent_count: number;
+  window_start: string | null; window_end: string | null;
+  cone_url: string | null; satellite_url: string | null;
+  cruise_line_info: unknown; detail_md: string | null;
+}
+
+/** Impacted sailings for an alert (date + region aware), using its forecast window. */
+async function impactedSailings(a: DbAlert): Promise<Sailing[]> {
+  const w = a.window_start && a.window_end
+    ? { start: a.window_start, end: a.window_end }
+    : defaultWindow();
+  return sailingsForStorm(a.affected_grounds, w.start, w.end);
 }
 
 // ── Dashboard queue ──────────────────────────────────────────────────────────
@@ -33,7 +45,7 @@ router.get("/storm-alerts", requireToken, async (_req: Request, res: Response) =
     const withShips = await Promise.all(alerts.map(async (a) => ({
       ...a,
       grounds_label: labelGrounds(a.affected_grounds),
-      ships: await shipsForAlert(a.affected_grounds),
+      sailings: await impactedSailings(a),
     })));
     res.json({ success: true, alerts: withShips });
   } catch (err) {
@@ -45,10 +57,12 @@ router.get("/storm-alerts", requireToken, async (_req: Request, res: Response) =
 // ── Edit a draft (headline / body) ───────────────────────────────────────────
 router.patch("/storm-alerts/:id", requireToken, async (req: Request, res: Response) => {
   try {
-    const { headline, body_md } = req.body ?? {};
+    const { headline, body_md, detail_md, cruise_line_info } = req.body ?? {};
     const patch: Record<string, unknown> = { last_updated: new Date().toISOString() };
     if (typeof headline === "string") patch["headline"] = headline.slice(0, 120);
     if (typeof body_md === "string") patch["body_md"] = body_md;
+    if (typeof detail_md === "string") patch["detail_md"] = detail_md;
+    if (Array.isArray(cruise_line_info)) patch["cruise_line_info"] = cruise_line_info;
     const supabase = getSupabase();
     const { error } = await supabase.from("storm_alerts").update(patch).eq("id", (req.params["id"] ?? ""));
     if (error) throw error;
@@ -138,13 +152,14 @@ router.get("/storm-watch", async (_req: Request, res: Response) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("storm_alerts")
-      .select("name, classification, basin, headline, body_md, affected_grounds, formation_chance, is_threat, sent_at, last_updated, status")
+      .select("id, name, classification, basin, headline, body_md, affected_grounds, formation_chance, is_threat, last_updated, status, window_start, window_end, cone_url, satellite_url, cruise_line_info, detail_md, sent_at, sent_count")
       .in("status", ["approved", "sent"])
       .eq("is_threat", true)
       .order("last_updated", { ascending: false });
     if (error) throw error;
     const rows = (data ?? []) as unknown as DbAlert[];
     const systems = await Promise.all(rows.map(async (a) => ({
+      id: a.id,
       name: a.name,
       classification: a.classification,
       headline: a.headline,
@@ -153,7 +168,8 @@ router.get("/storm-watch", async (_req: Request, res: Response) => {
       grounds_label: labelGrounds(a.affected_grounds),
       formation_chance: a.formation_chance,
       updated: a.last_updated,
-      ships: await shipsForAlert(a.affected_grounds),
+      detail_url: `/storm-watch.html?id=${a.id}`,
+      sailings: await impactedSailings(a),
     })));
     // Cache a little at the edge; this is public, low-cardinality data.
     res.set("Cache-Control", "public, max-age=300");
@@ -161,6 +177,38 @@ router.get("/storm-watch", async (_req: Request, res: Response) => {
   } catch (err) {
     logger.error({ err }, "GET /storm-watch failed");
     res.status(500).json({ success: false, error: "Failed to load storm watch" });
+  }
+});
+
+// ── Public detail (the "More details" page data) ─────────────────────────────
+router.get("/storm-watch/:id", async (req: Request, res: Response) => {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("storm_alerts").select("*").eq("id", (req.params["id"] ?? "")).maybeSingle();
+    if (error) throw error;
+    const a = data as unknown as DbAlert | null;
+    if (!a || !["approved", "sent"].includes(a.status)) {
+      res.status(404).json({ success: false, error: "not found" });
+      return;
+    }
+    res.set("Cache-Control", "public, max-age=300");
+    res.json({
+      success: true,
+      system: {
+        id: a.id, name: a.name, classification: a.classification, basin: a.basin,
+        headline: a.headline, body_md: a.body_md, detail_md: a.detail_md,
+        grounds: a.affected_grounds, grounds_label: labelGrounds(a.affected_grounds),
+        formation_chance: a.formation_chance, updated: a.last_updated,
+        window_start: a.window_start, window_end: a.window_end,
+        cone_url: a.cone_url, satellite_url: a.satellite_url,
+        cruise_line_info: Array.isArray(a.cruise_line_info) ? a.cruise_line_info : [],
+        sailings: await impactedSailings(a),
+      },
+    });
+  } catch (err) {
+    logger.error({ err }, "GET /storm-watch/:id failed");
+    res.status(500).json({ success: false, error: "Failed to load storm detail" });
   }
 });
 

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vigilancia de Tormentas — Still Afloat</title>
+<meta name="robots" content="index,follow">
+<style>
+  :root{ --navy:#0a1a2f; --panel:#0f2440; --line:rgba(255,255,255,.12); --gold:#ffb703; --ink:#eaf1f8; --muted:#9fb2c6; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--navy);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.55}
+  a{color:#8fd0ff}
+  .wrap{max-width:920px;margin:0 auto;padding:22px 18px 60px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px}
+  .brand{font-weight:800;letter-spacing:.02em;color:#fff;text-decoration:none;font-size:15px}
+  .eyebrow{color:var(--gold);font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:12px;margin:22px 0 4px}
+  h1{font-size:30px;line-height:1.15;margin:0 0 6px;color:#fff}
+  .meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+  .status{display:inline-block;background:rgba(255,183,3,.14);border:1px solid var(--gold);color:var(--gold);font-weight:700;border-radius:999px;padding:5px 12px;font-size:13px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px;margin:16px 0}
+  .card h2{font-size:16px;margin:0 0 10px;color:#fff;text-transform:uppercase;letter-spacing:.06em}
+  .gfx{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .gfx figure{margin:0;background:#08131f;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .gfx img{display:block;width:100%;height:auto}
+  .gfx figcaption{padding:8px 10px;color:var(--muted);font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+  .prose p{margin:0 0 12px}
+  .advisory{padding:10px 0;border-bottom:1px solid var(--line)}
+  .advisory:last-child{border-bottom:none}
+  .advisory .line{font-weight:800;color:#fff}
+  .foot{color:var(--muted);font-size:12px;margin-top:24px}
+  .disclaimer{color:var(--muted);font-size:12px;background:#08131f;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:16px}
+  @media(max-width:620px){.gfx{grid-template-columns:1fr}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="brand" href="/es/">← Still Afloat</a>
+    <span class="meta">Aviso Meteorológico para Cruceros</span>
+  </div>
+  <div id="content"><p class="meta" style="margin-top:30px">Cargando aviso…</p></div>
+  <p class="foot">Fuente: <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">NOAA / Centro Nacional de Huracanes</a>. Still Afloat resume datos públicos del NHC para cruceristas; siga siempre a su línea de crucero y capitán para las decisiones de itinerario.</p>
+</div>
+<script>
+(function(){
+  function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];});}
+  function md(t){if(!t)return"";return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").split(/\n{2,}/).map(function(p){return "<p>"+p.trim().replace(/\n/g,"<br>")+"</p>";}).join("");}
+  var id=new URLSearchParams(location.search).get("id");
+  var host=document.getElementById("content");
+  if(!id){host.innerHTML='<p class="meta" style="margin-top:30px">Ningún aviso seleccionado.</p>';return;}
+  fetch("/api/storm-watch/"+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.success||!d.system){host.innerHTML='<p class="meta" style="margin-top:30px">Este aviso ya no está activo.</p>';return;}
+    var s=d.system;
+    var sail=(s.sailings||[]);
+    var adv=(s.cruise_line_info||[]);
+    var gfx="";
+    if(s.cone_url||s.satellite_url){
+      gfx='<div class="card"><h2>Pronóstico y satélite</h2><div class="gfx">'
+        +(s.cone_url?'<figure><img src="'+esc(s.cone_url)+'" alt="Gráfico del NHC" loading="lazy"><figcaption>Trayectoria / pronóstico del NHC</figcaption></figure>':'')
+        +(s.satellite_url?'<figure><img src="'+esc(s.satellite_url)+'" alt="Satélite GOES" loading="lazy"><figcaption>Satélite GOES (último)</figcaption></figure>':'')
+        +'</div></div>';
+    }
+    var shipsCard='<div class="card"><h2>Salidas potencialmente afectadas</h2>'
+      +(sail.length?('<table><thead><tr><th>Barco</th><th>Línea</th><th>Sale de</th><th>Fechas</th></tr></thead><tbody>'
+        +sail.map(function(v){return '<tr><td>'+esc(v.ship_name)+'</td><td>'+esc(v.cruise_line)+'</td><td>'+esc(v.depart_port||"—")+'</td><td>'+esc(v.start_date)+' – '+esc(v.end_date)+'</td></tr>';}).join("")
+        +'</tbody></table>')
+        :'<p class="meta">Ninguna salida de nuestra lista cae en la zona y fechas afectadas. Confirme su reserva con su línea de crucero.</p>')
+      +'</div>';
+    var advCard=adv.length?('<div class="card"><h2>Avisos de las líneas de crucero</h2>'
+      +adv.map(function(a){return '<div class="advisory"><div class="line">'+esc(a.line||"Aviso")+'</div><div>'+esc(a.note||"")+(a.url?' — <a href="'+esc(a.url)+'" target="_blank" rel="noopener">detalles</a>':'')+'</div></div>';}).join("")
+      +'</div>'):'';
+    host.innerHTML=
+      '<p class="eyebrow">Vigilancia de Tormentas</p>'
+      +'<h1>'+esc(s.headline||s.name)+'</h1>'
+      +'<div class="meta">'+esc(s.classification||"")+' · '+esc(s.grounds_label||"")+(s.formation_chance!=null?' · '+s.formation_chance+'% de probabilidad de formación':'')+'</div>'
+      +'<span class="status">Aviso activo · actualizado '+esc((s.updated||"").slice(0,10))+'</span>'
+      +'<div class="card"><h2>Qué significa esto para usted</h2><div class="prose">'+md(s.detail_md||s.body_md)+'</div></div>'
+      +gfx
+      +shipsCard
+      +advCard
+      +'<div class="disclaimer">Esto es orientación, no una advertencia oficial. Las líneas de crucero deciden los cambios de itinerario; consulte la app de su línea y el Centro Nacional de Huracanes para lo más reciente.</div>';
+  }).catch(function(){host.innerHTML='<p class="meta" style="margin-top:30px">No se pudo cargar este aviso.</p>';});
+})();
+</script>
+</body>
+</html>
