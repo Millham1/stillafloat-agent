@@ -1,15 +1,15 @@
 // storm-send.ts — email for the storm-alert feature.
 //   • emailReviewNudge  → to Mark, with one-tap approve/dismiss links.
 //   • emailSubscribers  → to opted-in confirmed subscribers, on approval.
-// Uses the same Resend transport as the newsletter. If RESEND_API_KEY is unset,
-// sends are skipped (logged) rather than throwing, so approval still succeeds.
+// Sends via the ops-manager Gmail transport (lib/mailer → /send-email). If that
+// is unconfigured, sends are skipped (logged) rather than throwing, so approval
+// still succeeds.
 
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { labelGrounds } from "./storm-grounds";
 import { unsubscribeUrl } from "../routes/subscribe";
-
-const FROM = "Still Afloat <noreply@stillafloatcruising.com>";
+import { sendMail } from "./mailer";
 
 function siteBase(): string {
   return (process.env["PUBLIC_URL"] || process.env["DASHBOARD_URL"] || "https://stillafloatcruising.com")
@@ -32,17 +32,8 @@ function markToHtml(md: string): string {
 }
 
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
-  const apiKey = process.env["RESEND_API_KEY"];
-  if (!apiKey) { logger.warn("storm-send: RESEND_API_KEY unset — email skipped"); return false; }
-  try {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM, to, subject, html }),
-    });
-    if (!r.ok) { logger.warn({ status: r.status, to }, "storm-send: Resend non-200"); return false; }
-    return true;
-  } catch (err) { logger.warn({ err, to }, "storm-send: Resend failed"); return false; }
+  // Transactional email goes through the ops-manager Gmail sender (post-Resend).
+  return sendMail({ to, subject, html, fromName: "Still Afloat", fromAddr: "noreply@stillafloatcruising.com" });
 }
 
 export async function emailReviewNudge(a: {
