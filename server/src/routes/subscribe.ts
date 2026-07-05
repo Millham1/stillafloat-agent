@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { getSupabase, readJson, PATHS } from "../lib/persistence";
 import { logger } from "../lib/logger";
+import { sendMail } from "../lib/mailer";
 import { tokenOk } from "../lib/http-auth";
 
 const router = Router();
@@ -39,11 +40,7 @@ async function sendVerificationEmail(
   baseUrl: string,
   lang: "en" | "es" = "en",
 ) {
-  const apiKey = process.env["RESEND_API_KEY"];
-  if (!apiKey) {
-    logger.warn("RESEND_API_KEY not set — skipping verification email");
-    return { success: false, reason: "no_api_key" };
-  }
+  // Verification email now goes via Gmail (ops-manager /send-email), not Resend.
 
   const verifyUrl = `${baseUrl}/api/verify-email?token=${encodeURIComponent(token)}`;
   const unsub    = unsubscribeUrl(email, baseUrl);
@@ -104,21 +101,15 @@ async function sendVerificationEmail(
 </body>
 </html>`;
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: "Still Afloat <noreply@stillafloatcruising.com>",
-      to: email,
-      subject: T.subject,
-      html,
-    }),
+  const ok = await sendMail({
+    to: email,
+    subject: T.subject,
+    html,
+    fromName: "Still Afloat",
   });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    logger.error({ status: res.status, err }, "Verification email delivery failed");
-    return { success: false, reason: "delivery_failed", status: res.status };
+  if (!ok) {
+    logger.error("Verification email delivery failed");
+    return { success: false, reason: "delivery_failed" };
   }
   return { success: true };
 }

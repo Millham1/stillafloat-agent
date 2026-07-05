@@ -80,7 +80,7 @@ router.post("/push/notify", async (req: Request, res: Response) => {
     const result = await sendPush({
       title: title || "Still Afloat",
       body: body || "",
-      url: url || "/today",
+      url: url || "/brief.html",
       tag,
     });
     res.json({ ok: true, ...result });
@@ -95,7 +95,7 @@ router.post("/push/test", requireToken, async (_req: Request, res: Response) => 
     const result = await sendPush({
       title: "✅ Alerts are working",
       body: "This is a test from your Still Afloat dashboard. No Telegram required.",
-      url: "/today",
+      url: "/brief.html",
       tag: "push-test",
     });
     logger.info(result, "Push test sent");
