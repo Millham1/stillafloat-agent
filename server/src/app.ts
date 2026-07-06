@@ -76,6 +76,19 @@ const staticOpts: Parameters<typeof express.static>[1] = {
 app.use(express.static(PUBLIC_DIR, staticOpts));
 app.use("/preview-site", express.static(PUBLIC_DIR, staticOpts));
 
+// Brief shell — also reachable on THIS origin so Mark can test brief changes on
+// the DEV box before promoting (the dashboard subdomain exists only on prod).
+// brief.html is an empty shell; all data comes from the token-gated /api. We
+// deliberately do NOT serve sw.js here (its cache-first fetch handler must never
+// register against the public website origin).
+const BRIEF_DIR = path.resolve(process.cwd(), "../dashboard/public");
+for (const f of ["brief.html", "brief-manifest.json", "apple-touch-icon.png", "icon-192.png", "icon-512.png"]) {
+  app.get(`/${f}`, (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.sendFile(path.join(BRIEF_DIR, f));
+  });
+}
+
 // Fallback: serve the website index.html for unmatched paths.
 app.get("/{*path}", (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));

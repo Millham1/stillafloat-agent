@@ -74,7 +74,10 @@
 
 <script>
 (function(){
-  var API = "https://stillafloatcruising.com";
+  // API origin: the prod dashboard subdomain talks to the prod API; anywhere
+  // else (dev box, main site) talks to its OWN origin — so dev tests hit dev.
+  var API = /(^|\.)dashboard\.stillafloatcruising\.com$/.test(location.hostname)
+    ? "https://stillafloatcruising.com" : location.origin;
   var TOKEN_KEY = "sa_agent_token";
 
   if ("serviceWorker" in navigator) {
