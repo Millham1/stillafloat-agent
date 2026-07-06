@@ -33,6 +33,7 @@ router.get("/ops/finance/transactions", requireToken, (req, res) => proxy("/fina
 router.get("/ops/finance/cashflow", requireToken, (req, res) => proxy("/finance/cashflow", req, res));
 router.get("/ops/finance/subscriptions", requireToken, (req, res) => proxy("/finance/subscriptions", req, res));
 router.get("/ops/youtube-analytics", requireToken, (req, res) => proxy("/youtube/analytics", req, res));
+router.get("/ops/social-analytics", requireToken, (req, res) => proxy("/social/analytics", req, res));
 
 // Calendar conflicts — listed + resolved from the Today page (replaces the old
 // Telegram 1/2/3 reply flow).

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Anchor, Sparkles, TrendingDown, Scale, RefreshCcw, Wallet,
-  Youtube, Facebook,
+  Youtube, Facebook, Instagram,
 } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from "recharts";
@@ -21,6 +21,8 @@ type Analytics = {
   daily?: { date: string; views: number; minutes: number; avg_view_seconds: number; subs_gained: number; subs_net: number }[];
   totals?: { views: number; watch_hours: number; avg_view_seconds: number; subs_gained: number };
 };
+type Pulse = { connected: boolean; reason?: string; trend?: string; recent_reach?: number; prior_reach?: number; new_followers?: number; followers?: number; username?: string; period_days?: number };
+type Social = { facebook?: Pulse; instagram?: Pulse };
 
 const money = (n: number | null | undefined, ccy = "USD") =>
   n == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: ccy, maximumFractionDigits: 0 }).format(n);
@@ -41,6 +43,7 @@ export default function Overview() {
   const subs = useApi<Subs>("/api/ops/finance/subscriptions", ["ov-subs"]);
   const yt = useApi<YT>("/api/youtube-stats", ["ov-youtube"]);
   const ytAnalytics = useApi<Analytics>("/api/ops/youtube-analytics?days=28", ["ov-yt-analytics"]);
+  const social = useApi<Social>("/api/ops/social-analytics?days=14", ["ov-social"]);
 
   const s = summary.data;
   const series = cashflow.data?.series ?? [];
@@ -248,15 +251,49 @@ export default function Overview() {
         })()}
       </Card>
 
-      {/* Facebook */}
+      {/* Facebook + Instagram */}
       <Card className="p-4">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-3">
           <Facebook className="w-5 h-5 text-blue-500" />
-          <h3 className="text-sm font-semibold">Facebook</h3>
+          <Instagram className="w-5 h-5 text-pink-500" />
+          <h3 className="text-sm font-semibold">Social reach</h3>
         </div>
-        <div className="text-sm text-muted-foreground py-4 text-center">
-          Connect a Facebook Page token to enable reach &amp; engagement stats.
-        </div>
+        {(() => {
+          const fb = social.data?.facebook;
+          const ig = social.data?.instagram;
+          const arrow = (t?: string) =>
+            t === "up" ? <span className="text-green-600">▲</span>
+            : t === "down" ? <span className="text-red-500">▼</span>
+            : <span className="text-muted-foreground">–</span>;
+          if (social.isLoading) return <div className="text-sm text-muted-foreground py-4 text-center">Loading…</div>;
+          if (!fb?.connected && !ig?.connected) return (
+            <div className="text-sm text-muted-foreground py-4 text-center">
+              Connect a Facebook Page token (<code>FB_PAGE_ACCESS_TOKEN</code>) to enable Facebook &amp; Instagram reach + follower stats.
+            </div>
+          );
+          return (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="rounded-md border p-3">
+                <div className="flex items-center gap-2 mb-2"><Facebook className="w-4 h-4 text-blue-500" /><span className="text-sm font-medium">Facebook Page</span></div>
+                {fb?.connected ? (
+                  <div className="space-y-1 text-sm">
+                    <div>Reach <span className="font-bold">{num(fb.recent_reach)}</span> {arrow(fb.trend)} <span className="text-xs text-muted-foreground">/{fb.period_days}d (was {num(fb.prior_reach)})</span></div>
+                    <div>New followers <span className="font-bold">{num(fb.new_followers)}</span> <span className="text-xs text-muted-foreground">/{fb.period_days}d</span></div>
+                  </div>
+                ) : <div className="text-xs text-muted-foreground">{fb?.reason ?? "Not connected"}</div>}
+              </div>
+              <div className="rounded-md border p-3">
+                <div className="flex items-center gap-2 mb-2"><Instagram className="w-4 h-4 text-pink-500" /><span className="text-sm font-medium">Instagram{ig?.username ? ` @${ig.username}` : ""}</span></div>
+                {ig?.connected ? (
+                  <div className="space-y-1 text-sm">
+                    <div>Followers <span className="font-bold">{num(ig.followers)}</span></div>
+                    <div>Reach <span className="font-bold">{num(ig.recent_reach)}</span> {arrow(ig.trend)} <span className="text-xs text-muted-foreground">/{ig.period_days}d</span></div>
+                  </div>
+                ) : <div className="text-xs text-muted-foreground">{ig?.reason ?? "Not connected"}</div>}
+              </div>
+            </div>
+          );
+        })()}
       </Card>
     </div>
   );
