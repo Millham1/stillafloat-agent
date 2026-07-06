@@ -18,6 +18,7 @@ import pushRouter from "./push";
 import briefRouter from "./brief";
 import stormRouter from "./storm";
 import socialAnalyticsRouter from "./social-analytics";
+import actionsRouter from "./actions";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(pushRouter);
 router.use(briefRouter);
 router.use(stormRouter);
 router.use(socialAnalyticsRouter);
+router.use(actionsRouter);
 
 export default router;

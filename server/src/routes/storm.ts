@@ -11,6 +11,7 @@ import { runStormScan } from "../lib/storm-agent";
 import { emailSubscribers, type AlertRow } from "../lib/storm-send";
 import { labelGrounds, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
 import { sailingsForStorm, defaultWindow, type Sailing } from "../lib/storm-sailings";
+import { resolveActionsForSource } from "../lib/actions";
 
 const router: IRouter = Router();
 
@@ -86,6 +87,7 @@ async function approveAndSend(id: string): Promise<{ sent: number; failed: numbe
   await supabase.from("storm_alerts").update({
     status: "sent", sent_at: new Date().toISOString(), sent_count: counts.sent,
   }).eq("id", id);
+  await resolveActionsForSource("storm_alert", id, "done");
   return counts;
 }
 
@@ -104,6 +106,7 @@ router.post("/storm-alerts/:id/dismiss", requireToken, async (req: Request, res:
     const supabase = getSupabase();
     const { error } = await supabase.from("storm_alerts").update({ status: "dismissed" }).eq("id", (req.params["id"] ?? ""));
     if (error) throw error;
+    await resolveActionsForSource("storm_alert", req.params["id"] ?? "", "dismissed");
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, "dismiss failed");

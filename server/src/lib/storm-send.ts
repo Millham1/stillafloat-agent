@@ -36,35 +36,11 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
   return sendMail({ to, subject, html, fromName: "Still Afloat", fromAddr: "noreply@stillafloatcruising.com" });
 }
 
-export async function emailReviewNudge(a: {
-  id: string; name: string; classification: string; headline: string; grounds: string[];
-}): Promise<void> {
-  const to = process.env["ALERT_REVIEW_EMAIL"] || process.env["BRIEF_EMAIL_TO"] || "mmillham1@gmail.com";
-  // Dashboard is its own subdomain; the "edit first" link must go there, not the main site.
-  const dash = `${process.env["DASHBOARD_URL"] || "https://dashboard.stillafloatcruising.com"}/storm-alerts`;
-  // One-tap action links hit the main-site API (token accepted via ?token=), so Mark can
-  // approve/dismiss straight from the email on his phone — no dashboard needed.
-  const token = process.env["AGENT_APPROVAL_TOKEN"] || "";
-  const q = token ? `&token=${encodeURIComponent(token)}` : "";
-  const action = (doo: string) => `${siteBase()}/api/storm-alerts/${a.id}/action?do=${doo}${q}`;
-  const btn = "display:inline-block;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:700";
-  const html = `
-    <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:0 auto">
-      <p style="font-size:15px">A storm alert is drafted and waiting for your review.</p>
-      <table style="border-collapse:collapse;margin:8px 0">
-        <tr><td style="padding:2px 10px 2px 0;color:#555">System</td><td><strong>${a.name}</strong> (${a.classification})</td></tr>
-        <tr><td style="padding:2px 10px 2px 0;color:#555">Grounds</td><td>${labelGrounds(a.grounds) || "—"}</td></tr>
-        <tr><td style="padding:2px 10px 2px 0;color:#555">Draft</td><td>${a.headline}</td></tr>
-      </table>
-      <p style="margin:16px 0">
-        <a href="${action("approve")}" style="${btn};background:#0a7d3a;margin-right:8px">✅ Approve &amp; send</a>
-        <a href="${action("dismiss")}" style="${btn};background:#8a1f1f">✕ Dismiss</a>
-      </p>
-      <p style="font-size:13px;color:#555">Or <a href="${dash}">open the dashboard queue</a> to edit the copy first.</p>
-      <p style="color:#888;font-size:12px">Approve emails your subscribers. Nothing goes out until you tap Approve.</p>
-    </div>`;
-  await sendEmail(to, `🌀 Review storm alert: ${a.name}`, html);
-}
+// NOTE (2026-07-06): the email review nudge was REMOVED by Mark's directive —
+// agents never email him actions. Review requests now flow through the unified
+// action queue (lib/actions.ts → one notification → inline brief buttons).
+// emailSubscribers below is unaffected: that's the OUTBOUND alert to subscribers
+// after Mark approves, which is the product itself, not a notification to Mark.
 
 export interface AlertRow {
   id: string; name: string; headline: string | null; body_md: string | null;

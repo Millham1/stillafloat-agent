@@ -8,8 +8,7 @@
 import * as crypto from "crypto";
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
-import { sendPush } from "./push";
-import { emailReviewNudge } from "./storm-send";
+import { createAction } from "./actions";
 import { fetchSystems, fixtureSystem, basinGraphics, type RawSystem } from "./storm-source";
 import { defaultWindow } from "./storm-sailings";
 import {
@@ -169,20 +168,22 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
 }
 
 async function notifyReview(sys: RawSystem, grounds: string[], headline: string, alertId: string): Promise<void> {
-  // The dashboard is a separate subdomain — the push must open the ABSOLUTE
-  // dashboard URL, not a relative "/storm-alerts" (which is dead on the main site).
-  const dashUrl = `${process.env["DASHBOARD_URL"] || "https://dashboard.stillafloatcruising.com"}/storm-alerts`;
+  // ONE pipeline: an action row in public.actions → exactly one notification →
+  // Mark approves/dismisses inline in the brief (or the notification buttons).
+  // No email. No ad-hoc push. (Mark's directive 2026-07-06.)
   try {
-    await sendPush({
-      title: `🌀 Storm alert to review: ${sys.name}`,
-      body: `${sys.classification} · ${labelGrounds(grounds)}. Tap to review & approve.`,
-      url: dashUrl,
+    await createAction({
+      type: "storm_alert",
+      source_ref: alertId,
+      title: `🌀 Review storm alert: ${sys.name}`,
+      body: `${sys.classification} · ${labelGrounds(grounds)}\n${headline}\nApprove emails subscribers; nothing goes out until you act.`,
+      buttons: [
+        { label: "✅ Approve & send", method: "POST", path: `/api/storm-alerts/${alertId}/approve` },
+        { label: "✕ Dismiss", method: "POST", path: `/api/storm-alerts/${alertId}/dismiss` },
+      ],
       tag: `storm-${sys.nhcId}`,
     });
-  } catch (err) { logger.warn({ err }, "storm-agent: push nudge failed"); }
-  try {
-    await emailReviewNudge({ id: alertId, name: sys.name, classification: sys.classification, headline, grounds });
-  } catch (err) { logger.warn({ err }, "storm-agent: email nudge failed"); }
+  } catch (err) { logger.warn({ err }, "storm-agent: createAction failed"); }
 }
 
 /** Ships that sail the grounds an alert affects (for the review card + panel). */

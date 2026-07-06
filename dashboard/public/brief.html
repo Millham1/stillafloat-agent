@@ -11,10 +11,13 @@
 <link rel="manifest" href="/brief-manifest.json">
 <title>Daily Brief</title>
 <!--
-  Standalone Brief — served from the dashboard subdomain, so it sits behind the
-  same nginx HTTP Basic Auth as the dashboard (NOT a token-in-URL on the public
-  site). Same origin = it reuses the saved admin token (localStorage) and the
-  existing push service worker. Just the briefing; no dashboard chrome.
+  Brief v2 (2026-07-06, Mark's spec):
+  • ALWAYS LIVE — every open forces a fresh assemble (?fresh=1). No stale snapshot.
+  • ONE action pipeline — "Waiting on you" renders public.actions rows with
+    working inline buttons (approve/dismiss/etc. hit the real API and clear the
+    row). Agents never email actions; every action lives here.
+  • Sections: Waiting on you · Calendar conflicts · Inbox (real human email,
+    read-only) · Today's calendar · Open tasks · New notes · Bills · Reach.
 -->
 <style>
   :root{color-scheme:dark}
@@ -29,11 +32,12 @@
   .clear{background:rgba(45,212,150,.10);border:1px solid rgba(45,212,150,.35);color:#bff5dd;border-radius:14px;padding:18px;margin-bottom:16px;font-size:17px}
   .warn{background:rgba(230,170,60,.10);border:1px solid rgba(230,170,60,.4);color:#f3d9a6;border-radius:12px;padding:12px;margin-bottom:16px;font-size:14px}
   .card{background:#10204a;border:1px solid #1e2f57;border-radius:16px;padding:16px;margin-bottom:14px}
+  .card.action{border-color:#3a5aa8;background:#122658}
   .h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:#cdd8f5;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
   .count{font:600 12px/1 monospace;background:#23386a;color:#cdd8f5;border-radius:6px;padding:3px 7px}
   .row{padding:8px 0;border-top:1px solid #1a2a4f}
   .row:first-of-type{border-top:none}
-  .sub{color:#8fa0c6;font-size:14px}
+  .sub{color:#8fa0c6;font-size:14px;white-space:pre-line}
   a{color:#7fb4ff;text-decoration:none}
   a.row{display:block;color:inherit}
   .tag{display:inline-block;font:600 10px/1 monospace;border-radius:5px;padding:3px 6px;margin-right:6px;vertical-align:middle}
@@ -41,12 +45,15 @@
   .tag.med{background:rgba(230,170,60,.2);color:#f3d9a6}
   .tag.unread{background:rgba(90,140,255,.2);color:#aecbff}
   .pos{color:#5ad6a0}.neg{color:#ff8b93}
+  .aitem{border-top:1px solid #24407e;padding:12px 0}
+  .aitem:first-of-type{border-top:none}
   .conflict{border-top:1px solid #1a2a4f;padding:12px 0}
   .conflict:first-of-type{border-top:none}
   .ctitle{margin-bottom:6px}
-  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
   .btns button{flex:1;min-width:46%;background:#1b2c54;border:1px solid #2a3a63;color:#e9eefb;border-radius:10px;padding:12px 10px;font-size:14px;font-weight:600}
-  .btns button.b1{background:#2f6df0;border-color:#2f6df0;color:#fff;min-width:100%}
+  .btns button.b1{background:#2f6df0;border-color:#2f6df0;color:#fff}
+  .btns button.ghost{flex:0 1 auto;min-width:0;background:none;border:1px solid #2a3a63;color:#8fa0c6;padding:12px 14px}
   .btns button:disabled{opacity:.5}
   .btn-link{display:inline-block;margin-top:10px;background:#2f6df0;color:#fff;border-radius:10px;padding:10px 16px;font-weight:600;font-size:14px}
   .alerts{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -56,22 +63,20 @@
   .tokwrap{display:flex;gap:8px;margin-top:8px}
   .tokwrap input{flex:1;background:#0a1430;border:1px solid #2a3a63;color:#e9eefb;border-radius:10px;padding:10px;font-size:14px}
   #loading{color:#8fa0c6;padding:20px 0}
+  .stamp{color:#5d6f96;font-size:12px;text-align:center;margin-top:6px}
 </style>
 </head>
 <body>
   <div class="top"><h1>Today</h1><button class="refresh" id="refreshBtn">↻ Refresh</button></div>
   <div class="date" id="date"></div>
   <div id="content"><div id="loading">Loading your brief…</div></div>
+  <div class="stamp" id="stamp"></div>
 
 <script>
 (function(){
-  // The dashboard backend API origin (same one the dashboard app talks to).
   var API = "https://stillafloatcruising.com";
   var TOKEN_KEY = "sa_agent_token";
 
-  // Register the push service worker for THIS page (the standalone Brief is its own
-  // app; without this, navigator.serviceWorker.ready never resolves and the Alerts
-  // check spins forever).
   if ("serviceWorker" in navigator) {
     try { navigator.serviceWorker.register("/sw.js", { scope: "/" }); } catch (e) {}
   }
@@ -79,10 +84,10 @@
   function token(){ return localStorage.getItem(TOKEN_KEY) || ""; }
   function authHeaders(){ var t=token(); return t ? {"Authorization":"Bearer "+t} : {}; }
   function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-  function money(n,c){ if(n==null) return ""; try{ return new Intl.NumberFormat("en-US",{style:"currency",currency:c||"USD"}).format(n);}catch(e){ return "$"+Number(n).toFixed(2);} }
 
   var content = document.getElementById("content");
   var dateEl = document.getElementById("date");
+  var stampEl = document.getElementById("stamp");
 
   function needToken(){
     content.innerHTML =
@@ -92,14 +97,54 @@
       '<button class="pill" id="saveTok">Save</button></div></div>';
     document.getElementById("saveTok").onclick=function(){
       var v=document.getElementById("tok").value.trim();
-      if(v){ localStorage.setItem(TOKEN_KEY,v); load(false); }
+      if(v){ localStorage.setItem(TOKEN_KEY,v); load(); }
     };
   }
 
-  function section(title,count,inner){
+  function section(title,count,inner,cls){
     if(!inner) return "";
-    return '<section class="card"><div class="h"><span>'+esc(title)+'</span>'+
+    return '<section class="card'+(cls?" "+cls:"")+'"><div class="h"><span>'+esc(title)+'</span>'+
       (count?'<span class="count">'+count+'</span>':"")+'</div>'+inner+'</section>';
+  }
+
+  // ── Unified action queue: the buttons DO the thing, then the row clears. ──
+  window.__act = function(actionId, method, path, btn){
+    var btns=btn.closest(".aitem").querySelectorAll("button");
+    btns.forEach(function(b){b.disabled=true;}); btn.textContent="…";
+    fetch(API+path,{method:method||"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders())})
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json().catch(function(){return{};}); })
+      .then(function(){ // endpoint succeeded → make sure the row is closed, then reload live
+        return fetch(API+"/api/actions/"+actionId+"/resolve",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({status:"done"})}).catch(function(){});
+      })
+      .then(function(){ load(); })
+      .catch(function(e){ alert("Failed: "+e.message); btns.forEach(function(b){b.disabled=false;}); });
+  };
+  window.__clearAction = function(actionId, btn){
+    var btns=btn.closest(".aitem").querySelectorAll("button");
+    btns.forEach(function(b){b.disabled=true;});
+    fetch(API+"/api/actions/"+actionId+"/resolve",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({status:"dismissed"})})
+      .then(function(){ load(); })
+      .catch(function(e){ alert("Failed: "+e.message); btns.forEach(function(b){b.disabled=false;}); });
+  };
+  window.__resolve = function(key,choice,btn){
+    var btns=btn.parentNode.querySelectorAll("button"); btns.forEach(function(b){b.disabled=true;}); btn.textContent="…";
+    fetch(API+"/api/ops/resolve-conflict",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({key:key,choice:choice})})
+      .then(function(r){return r.json();}).then(function(j){
+        if(j&&j.ok){ load(); } else { alert((j&&j.error)||"Failed"); btns.forEach(function(b){b.disabled=false;}); }
+      }).catch(function(e){ alert(String(e)); btns.forEach(function(b){b.disabled=false;}); });
+  };
+
+  function renderActions(actions){
+    if(!actions || !actions.length) return "";
+    return section("Waiting on you", actions.length, actions.map(function(a){
+      var btns = (a.buttons||[]).map(function(b,i){
+        return '<button class="'+(i===0?"b1":"")+'" onclick="__act(\''+esc(a.id)+'\',\''+esc(b.method||"POST")+'\',\''+esc(b.path)+'\',this)">'+esc(b.label)+'</button>';
+      }).join("");
+      btns += '<button class="ghost" onclick="__clearAction(\''+esc(a.id)+'\',this)">Clear</button>';
+      return '<div class="aitem"><div><b>'+esc(a.title)+'</b></div>'+
+        (a.body?'<div class="sub">'+esc(a.body)+'</div>':"")+
+        '<div class="btns">'+btns+'</div></div>';
+    }).join(""), "action");
   }
 
   function renderAlerts(){
@@ -133,8 +178,6 @@
   function wireAlerts(){
     var msg=document.getElementById("alertMsg"), btn=document.getElementById("alertBtn"), test=document.getElementById("testBtn");
     if(!msg) return;
-    // Ensure the SW is registered, then read the subscription — but never hang:
-    // if it isn't ready within 4s, just show "Enable alerts" so the user can act.
     var ready = navigator.serviceWorker.register("/sw.js", { scope: "/" })
       .then(function(){ return navigator.serviceWorker.ready; });
     var timeout = new Promise(function(res){ setTimeout(function(){ res(null); }, 4000); });
@@ -142,7 +185,7 @@
       if(!reg){ showOff(msg, btn, test); return; }
       return reg.pushManager.getSubscription().then(function(sub){
         var on = !!sub && Notification.permission==="granted";
-        msg.textContent = on ? "On — your brief and urgent items push to this device." : "Off — turn on push for this device.";
+        msg.textContent = on ? "On — urgent items push to this device." : "Off — turn on push for this device.";
         btn.style.display=""; btn.textContent = on ? "Turn off" : "Enable alerts";
         test.style.display = on ? "" : "none";
         btn.onclick = on ? turnOff : turnOn;
@@ -178,23 +221,19 @@
     }).catch(function(e){ alert(String(e)); });
   }
 
-  window.__resolve = function(key,choice,btn){
-    var btns=btn.parentNode.querySelectorAll("button"); btns.forEach(function(b){b.disabled=true;}); btn.textContent="…";
-    fetch(API+"/api/ops/resolve-conflict",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({key:key,choice:choice})})
-      .then(function(r){return r.json();}).then(function(j){
-        if(j&&j.ok){ load(true); } else { alert((j&&j.error)||"Failed"); btns.forEach(function(b){b.disabled=false;}); }
-      }).catch(function(e){ alert(String(e)); btns.forEach(function(b){b.disabled=false;}); });
-  };
-
-  function render(brief, conflicts){
+  function render(brief, conflicts, actions){
     dateEl.textContent = brief.date || "";
     var s = brief.sections, html="";
-    var nothing = brief.nothingToDo && (!conflicts || conflicts.length===0);
+    var nothing = brief.nothingToDo && (!conflicts || conflicts.length===0) && (!actions || actions.length===0);
     html += nothing
       ? '<div class="clear">✓ Nothing needs you today. Inbox, calendar, tasks and posts are all clear. ⚓</div>'
-      : '<div class="lead">'+esc(summary(brief))+'</div>';
+      : '<div class="lead">'+esc(summary(brief, actions))+'</div>';
     if(!brief.opsReachable) html += '<div class="warn">⚠ Couldn’t reach the ops-manager — some sections may be incomplete.</div>';
 
+    // 1) THE action queue — everything agents need from you, buttons included.
+    html += renderActions(actions);
+
+    // 2) Calendar conflicts (decision buttons).
     if(conflicts && conflicts.length){
       var ch="";
       conflicts.forEach(function(c){
@@ -204,11 +243,12 @@
           '<button onclick="__resolve(\''+esc(c.key)+'\',\'2\',this)">Keep existing</button>'+
           '<button onclick="__resolve(\''+esc(c.key)+'\',\'3\',this)">Keep both</button></div></div>';
       });
-      html += section("Calendar conflicts — your call", conflicts.length, ch);
+      html += section("Calendar conflicts — your call", conflicts.length, ch, "action");
     }
 
+    // 3) Real human email needing a reply (read-only; opens Gmail).
     if(s.actions && s.actions.length){
-      html += section("Waiting on you", s.actions.length, s.actions.map(function(a){
+      html += section("Inbox — needs your reply", s.actions.length, s.actions.map(function(a){
         return '<a class="row" href="'+esc(a.url)+'" target="_blank" rel="noopener"><div>'+
           '<span class="tag '+(a.priority==="high"?"hi":"med")+'">'+esc(a.label)+'</span>'+
           (a.unread?'<span class="tag unread">unread</span>':"")+' <b>'+esc(a.subject)+'</b></div>'+
@@ -230,6 +270,11 @@
         return '<div class="row">'+(t.status==="in_progress"?"▶ ":"• ")+esc(t.title)+(t.due_date?' <span class="sub">(due '+esc(t.due_date)+')</span>':"")+'</div>';
       }).join(""));
     }
+    if(s.ideas && s.ideas.count){
+      html += section("New notes to triage", s.ideas.count, (s.ideas.items||[]).map(function(n){
+        return '<div class="row">📝 '+esc(n.note)+'</div>';
+      }).join(""));
+    }
     if(s.bills && s.bills.length){
       html += section("Bills due", s.bills.length, s.bills.map(function(b){
         return '<div class="row">'+esc(b.vendor)+(b.due_date?' <span class="sub">— due '+esc(b.due_date)+'</span>':'')+'</div>';
@@ -245,33 +290,38 @@
 
     content.innerHTML = html;
     content.appendChild(renderAlerts());
+    stampEl.textContent = "Live · assembled " + new Date().toLocaleTimeString();
   }
 
-  function summary(b){
+  function summary(b, actions){
     var c=b.counts||{}, bits=[];
+    var act=(actions||[]).length;
+    if(act) bits.push(act+" waiting on you");
     if(c.actions) bits.push(c.actions+" to reply to");
     if(c.events) bits.push(c.events+" on the calendar");
-    if(c.socialPending) bits.push(c.socialPending+" posts to review");
     if(c.tasks) bits.push(c.tasks+" open tasks");
-    return bits.slice(0,3).join(" · ") || "Open your brief.";
+    if(c.ideasNew) bits.push(c.ideasNew+" new notes");
+    return bits.slice(0,4).join(" · ") || "Open your brief.";
   }
 
-  function load(fresh){
+  // ALWAYS LIVE: every load forces a fresh assemble. No stored-snapshot view.
+  function load(){
     if(!token()){ needToken(); return; }
     content.innerHTML='<div id="loading">Loading your brief…</div>';
     Promise.all([
-      fetch(API+"/api/brief"+(fresh?"?fresh=1":""),{headers:authHeaders()}).then(function(r){ if(r.status===401) throw new Error("401"); return r.json(); }),
-      fetch(API+"/api/ops/conflicts",{headers:authHeaders()}).then(function(r){return r.ok?r.json():{conflicts:[]};}).catch(function(){return {conflicts:[]};})
+      fetch(API+"/api/brief?fresh=1",{headers:authHeaders()}).then(function(r){ if(r.status===401) throw new Error("401"); return r.json(); }),
+      fetch(API+"/api/ops/conflicts",{headers:authHeaders()}).then(function(r){return r.ok?r.json():{conflicts:[]};}).catch(function(){return {conflicts:[]};}),
+      fetch(API+"/api/actions",{headers:authHeaders()}).then(function(r){return r.ok?r.json():{actions:[]};}).catch(function(){return {actions:[]};})
     ]).then(function(res){
-      render(res[0].brief, (res[1]&&res[1].conflicts)||[]);
+      render(res[0].brief, (res[1]&&res[1].conflicts)||[], (res[2]&&res[2].actions)||[]);
     }).catch(function(e){
       if(String(e.message)==="401"){ localStorage.removeItem(TOKEN_KEY); needToken(); }
       else content.innerHTML='<div class="warn">Couldn’t load the brief: '+esc(e.message)+'</div>';
     });
   }
 
-  document.getElementById("refreshBtn").onclick=function(){ load(true); };
-  load(false);
+  document.getElementById("refreshBtn").onclick=function(){ load(); };
+  load();
 })();
 </script>
 </body>
