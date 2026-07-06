@@ -1,9 +1,11 @@
-const CACHE_NAME = 'still-afloat-editorial-v4';
+const CACHE_NAME = 'still-afloat-editorial-v5';
 
-// App shell to cache on install (root — dashboard is now a standalone subdomain)
+// App shell to cache on install. MUST only contain basic-auth-EXEMPT paths:
+// caching '/' + '/index.html' (behind the dashboard basic-auth) made every SW
+// install fire 401s and pop the iOS sign-in dialog over the brief (recurring —
+// the SW reinstalls on every update). brief.html is the only shell we need.
 const APP_SHELL = [
-  '/',
-  '/index.html',
+  '/brief.html',
 ];
 
 self.addEventListener('install', (event) => {
@@ -35,7 +37,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() =>
-        caches.match('/index.html')
+        caches.match('/brief.html')
       )
     );
     return;
