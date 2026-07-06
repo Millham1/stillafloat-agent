@@ -36,7 +36,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const navItems = [
-    { href: "/today", label: "Today", icon: Sunrise },
+    // ONE brief surface (Mark, 2026-07-06): "Today" opens the brief itself —
+    // same page as the phone. Plain link (outside the SPA router).
+    { href: "/brief.html", label: "Today", icon: Sunrise, external: true },
     { href: "/", label: "Business Health", icon: Gauge },
     { href: "/editorial", label: "Editorial", icon: LayoutDashboard },
     { href: "/queue", label: "Editorial Queue", icon: ListTodo },
@@ -86,6 +88,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {navItems.map((item) => {
               const active = location === item.href;
               const Icon = item.icon;
+              if ((item as { external?: boolean }).external) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    {item.label}
+                  </a>
+                );
+              }
               return (
                 <Link
                   key={item.href}
