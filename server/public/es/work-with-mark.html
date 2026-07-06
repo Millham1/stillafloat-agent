@@ -96,6 +96,15 @@ textarea{resize:vertical;min-height:100px}
 .success-body{font-size:16px;line-height:1.7;color:rgba(255,255,255,.75);margin:0 0 28px}
 .success-yt{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:12px;background:rgba(0,119,182,.2);border:1px solid rgba(0,119,182,.35);color:#6dcfff;text-decoration:none;font-weight:700;font-size:14px;transition:all .2s}
 .success-yt:hover{background:rgba(0,119,182,.35);transform:translateY(-1px)}
+/* ── CRO: camino más corto al formulario ── */
+.mid-cta{text-align:center;margin:30px 0 6px}
+.mid-cta a{display:inline-flex;align-items:center;gap:10px;background:#0077b6;color:#fff;font-weight:800;padding:14px 26px;border-radius:999px;text-decoration:none;font-size:16px;box-shadow:0 10px 26px rgba(0,0,0,.35)}
+.more-toggle{background:none;border:none;color:#7fd0ff;font:inherit;font-weight:700;cursor:pointer;padding:6px 0;margin:2px 0 10px;display:inline-flex;align-items:center;gap:8px}
+.more-details{display:none}
+.more-details.open{display:block}
+.wm-sticky-cta{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:90;display:none;align-items:center;gap:10px;background:#0077b6;color:#fff;font-weight:800;padding:14px 26px;border-radius:999px;box-shadow:0 12px 30px rgba(0,0,0,.45);text-decoration:none;font-size:16px;border:2px solid rgba(255,255,255,.25)}
+.wm-sticky-cta.show{display:inline-flex}
+@media(max-width:720px){.wm-sticky-cta{bottom:14px;width:calc(100% - 32px);justify-content:center}}
 </style>
 </head>
 <body>
@@ -194,10 +203,12 @@ textarea{resize:vertical;min-height:100px}
     </div>
   </div>
 
+  <div class="mid-cta"><a href="#contact"><i class="fa-solid fa-compass"></i> Empieza a planificar con Mark</a></div>
+
   <div class="rule"></div>
 
   <!-- ── CTA + FORM ── -->
-  <div class="cta-title">¿Listo para empezar a planificar?</div>
+  <div class="cta-title" id="contact">¿Listo para empezar a planificar?</div>
   <p class="cta-body">
     Completa el formulario y me pondré en contacto contigo en 24 horas.
     Sin compromiso, sin discurso de ventas — solo una conversación sobre a dónde quieres ir
@@ -243,20 +254,6 @@ textarea{resize:vertical;min-height:100px}
           <input type="email" id="email" name="email" placeholder="tu@ejemplo.com" autocomplete="email" required>
         </div>
         <div class="field">
-          <label class="flabel" for="phone">Teléfono</label>
-          <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" autocomplete="tel">
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="preferred_lang">Idioma Preferido</label>
-          <select id="preferred_lang" name="preferred_lang">
-            <option value="es" selected>Español</option>
-            <option value="en">English</option>
-          </select>
-        </div>
-        <div class="field">
           <label class="flabel" for="num_travelers">Número de Viajeros<span class="req">*</span></label>
           <input type="number" id="num_travelers" name="num_travelers" placeholder="2" min="1" max="20" required>
         </div>
@@ -265,6 +262,32 @@ textarea{resize:vertical;min-height:100px}
       <div class="field">
         <label class="flabel" for="travel_dates">Fechas Aproximadas de Viaje<span class="req">*</span></label>
         <input type="text" id="travel_dates" name="travel_dates" placeholder="ej. Primavera 2027 o 15–22 de marzo de 2027" required>
+      </div>
+
+      <div class="field">
+        <label class="flabel">¿Es tu primer crucero?<span class="req">*</span></label>
+        <div class="radio-row">
+          <label><input type="radio" name="first_time" value="true" required> Sí, es mi primero</label>
+          <label><input type="radio" name="first_time" value="false"> No, ya he navegado antes</label>
+        </div>
+      </div>
+
+      <!-- CRO: campos opcionales colapsados — el formulario visible queda en 5 respuestas. -->
+      <button type="button" class="more-toggle" id="moreToggle">+ Añadir más detalles <span style="opacity:.6">(opcional)</span></button>
+      <div class="more-details" id="moreDetails">
+
+      <div class="form-row">
+        <div class="field">
+          <label class="flabel" for="phone">Teléfono</label>
+          <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" autocomplete="tel">
+        </div>
+        <div class="field">
+          <label class="flabel" for="preferred_lang">Idioma Preferido</label>
+          <select id="preferred_lang" name="preferred_lang">
+            <option value="es" selected>Español</option>
+            <option value="en">English</option>
+          </select>
+        </div>
       </div>
 
       <div class="form-row">
@@ -322,17 +345,11 @@ textarea{resize:vertical;min-height:100px}
       </div>
 
       <div class="field">
-        <label class="flabel">¿Es tu primer crucero?<span class="req">*</span></label>
-        <div class="radio-row">
-          <label><input type="radio" name="first_time" value="true" required> Sí, es mi primero</label>
-          <label><input type="radio" name="first_time" value="false"> No, ya he navegado antes</label>
-        </div>
-      </div>
-
-      <div class="field">
         <label class="flabel" for="notes">Preguntas o algo más que debamos saber</label>
         <textarea id="notes" name="notes" placeholder="Cuéntale a Mark lo que estás pensando — destinos, preguntas de presupuesto, preocupaciones, cualquier cosa." maxlength="1000" rows="4"></textarea>
       </div>
+
+      </div><!-- /.more-details -->
 
       <!-- Cloudflare Turnstile -->
       <div class="turnstile-wrap" id="turnstileWrap">
@@ -475,5 +492,24 @@ form.addEventListener('submit', async e => {
 });
 </script>
 <script src="/components/navbar.js?v=20260626-live"></script>
+<a href="#contact" class="wm-sticky-cta" id="stickyCta"><i class="fa-solid fa-compass"></i> Empieza a planificar con Mark</a>
+<script>
+// CRO: toggle de detalles opcionales + CTA fijo que se oculta al llegar al formulario.
+document.getElementById('moreToggle').addEventListener('click', function () {
+  var d = document.getElementById('moreDetails');
+  var open = d.classList.toggle('open');
+  this.innerHTML = open ? '&minus; Ocultar detalles' : '+ Añadir más detalles <span style="opacity:.6">(opcional)</span>';
+});
+(function () {
+  var cta = document.getElementById('stickyCta');
+  var hero = document.querySelector('.hero-layout');
+  var form = document.getElementById('contact');
+  if (!cta || !hero || !form || !('IntersectionObserver' in window)) return;
+  var pastHero = false, formVisible = false;
+  function update() { cta.classList.toggle('show', pastHero && !formVisible); }
+  new IntersectionObserver(function (e) { pastHero = !e[0].isIntersecting; update(); }, { threshold: 0 }).observe(hero);
+  new IntersectionObserver(function (e) { formVisible = e[0].isIntersecting; update(); }, { threshold: 0.12 }).observe(form);
+})();
+</script>
 </body>
 </html>

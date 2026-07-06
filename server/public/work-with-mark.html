@@ -145,6 +145,19 @@ textarea{resize:vertical;min-height:110px}
 
 @media(max-width:720px){
   .wm-hero-inner{padding:80px 20px 52px}
+}
+
+/* ── CRO: shorter journey to the form ── */
+.cards .flavor-card{min-height:230px;padding:22px}
+.mid-cta{text-align:center;margin:34px 0 8px}
+.more-toggle{background:none;border:none;color:#7fd0ff;font:inherit;font-weight:700;cursor:pointer;padding:6px 0;margin:2px 0 10px;display:inline-flex;align-items:center;gap:8px}
+.more-details{display:none}
+.more-details.open{display:block}
+.wm-sticky-cta{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:90;display:none;align-items:center;gap:10px;background:#0077b6;color:#fff;font-weight:800;padding:14px 26px;border-radius:999px;box-shadow:0 12px 30px rgba(0,0,0,.45);text-decoration:none;font-size:16px;border:2px solid rgba(255,255,255,.25)}
+.wm-sticky-cta.show{display:inline-flex}
+@media(max-width:720px){
+  .cards .flavor-card{min-height:170px}
+  .wm-sticky-cta{bottom:14px;width:calc(100% - 32px);justify-content:center}
   .form-row{grid-template-columns:1fr}
   .form-card{padding:28px 20px}
   .cred-bar{gap:28px}
@@ -196,6 +209,7 @@ textarea{resize:vertical;min-height:110px}
       <h2>I've been the person doing all the research.</h2>
       <p>When my wife Ceci decided she wanted to try cruising, I did what I always do — researched everything, ran the numbers, and refused to pay for anything that doesn't deliver. Her first cruise was on the Norwegian Getaway. She's not a reluctant cruiser anymore.</p>
       <p>That's what I do for the people I work with: I've spent more than twenty years on ships (and a good stretch of my life living on the water), so you don't have to learn any of this the expensive way.</p>
+      <div class="mid-cta"><a href="#contact" class="wm-cta-btn"><i class="fa-solid fa-compass"></i> Start Planning with Mark</a></div>
     </div>
   </div>
 </section>
@@ -247,6 +261,7 @@ textarea{resize:vertical;min-height:110px}
         </div>
       </div>
     </div>
+    <div class="mid-cta"><a href="#contact" class="wm-cta-btn"><i class="fa-solid fa-compass"></i> Sound useful? Start planning</a></div>
   </div>
 </section>
 
@@ -304,20 +319,6 @@ textarea{resize:vertical;min-height:110px}
             <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
           </div>
           <div class="field">
-            <label class="flabel" for="phone">Phone Number</label>
-            <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" autocomplete="tel">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="field">
-            <label class="flabel" for="preferred_lang">Preferred Language</label>
-            <select id="preferred_lang" name="preferred_lang">
-              <option value="en">English</option>
-              <option value="es">Español</option>
-            </select>
-          </div>
-          <div class="field">
             <label class="flabel" for="num_travelers">Number of Travelers<span class="req">*</span></label>
             <input type="number" id="num_travelers" name="num_travelers" placeholder="2" min="1" max="20" required>
           </div>
@@ -326,6 +327,33 @@ textarea{resize:vertical;min-height:110px}
         <div class="field">
           <label class="flabel" for="travel_dates">Approximate Travel Dates<span class="req">*</span></label>
           <input type="text" id="travel_dates" name="travel_dates" placeholder="e.g. Spring 2027 or March 15–22, 2027" required>
+        </div>
+
+        <div class="field">
+          <label class="flabel">Is this your first cruise?<span class="req">*</span></label>
+          <div class="radio-row">
+            <label><input type="radio" name="first_time" value="true" required> Yes, first time</label>
+            <label><input type="radio" name="first_time" value="false"> No, I've cruised before</label>
+          </div>
+        </div>
+
+        <!-- CRO: everything below is genuinely optional — collapsed so the visible
+             form stays 5 quick answers. All field ids unchanged (submit JS + API). -->
+        <button type="button" class="more-toggle" id="moreToggle">+ Add more details <span style="opacity:.6">(optional)</span></button>
+        <div class="more-details" id="moreDetails">
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="phone">Phone Number</label>
+            <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" autocomplete="tel">
+          </div>
+          <div class="field">
+            <label class="flabel" for="preferred_lang">Preferred Language</label>
+            <select id="preferred_lang" name="preferred_lang">
+              <option value="en">English</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
         </div>
 
         <div class="form-row">
@@ -383,17 +411,11 @@ textarea{resize:vertical;min-height:110px}
         </div>
 
         <div class="field">
-          <label class="flabel">Is this your first cruise?<span class="req">*</span></label>
-          <div class="radio-row">
-            <label><input type="radio" name="first_time" value="true" required> Yes, first time</label>
-            <label><input type="radio" name="first_time" value="false"> No, I've cruised before</label>
-          </div>
-        </div>
-
-        <div class="field">
           <label class="flabel" for="notes">Questions or anything else we should know</label>
           <textarea id="notes" name="notes" placeholder="Tell Mark what you're thinking — destinations, budget questions, concerns, anything." maxlength="1000" rows="4"></textarea>
         </div>
+
+        </div><!-- /.more-details -->
 
         <div class="turnstile-wrap" id="turnstileWrap">
           <span class="turnstile-msg" id="turnstileMsg"><i class="fa-solid fa-shield-halved"></i>&nbsp; Loading spam protection…</span>
@@ -546,6 +568,25 @@ if (turnstileSiteKey && !turnstileToken)
     showError('Network error — please check your connection and try again.');
   }
 });
+</script>
+<a href="#contact" class="wm-sticky-cta" id="stickyCta"><i class="fa-solid fa-compass"></i> Start Planning with Mark</a>
+<script>
+// CRO: optional-details toggle + sticky CTA that hides once the form is on screen.
+document.getElementById('moreToggle').addEventListener('click', function () {
+  var d = document.getElementById('moreDetails');
+  var open = d.classList.toggle('open');
+  this.innerHTML = open ? '&minus; Hide extra details' : '+ Add more details <span style="opacity:.6">(optional)</span>';
+});
+(function () {
+  var cta = document.getElementById('stickyCta');
+  var hero = document.querySelector('.wm-hero');
+  var form = document.getElementById('contact');
+  if (!cta || !hero || !form || !('IntersectionObserver' in window)) return;
+  var pastHero = false, formVisible = false;
+  function update() { cta.classList.toggle('show', pastHero && !formVisible); }
+  new IntersectionObserver(function (e) { pastHero = !e[0].isIntersecting; update(); }, { threshold: 0 }).observe(hero);
+  new IntersectionObserver(function (e) { formVisible = e[0].isIntersecting; update(); }, { threshold: 0.12 }).observe(form);
+})();
 </script>
 </body>
 </html>
