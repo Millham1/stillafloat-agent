@@ -269,9 +269,10 @@
       }).join(""));
     }
     if(s.tasks && s.tasks.length){
-      html += section("Open tasks", s.tasks.length, s.tasks.map(function(t){
+      var more = (s.tasksTotal||0) - s.tasks.length;
+      html += section("Priority tasks", s.tasks.length, s.tasks.map(function(t){
         return '<div class="row">'+(t.status==="in_progress"?"▶ ":"• ")+esc(t.title)+(t.due_date?' <span class="sub">(due '+esc(t.due_date)+')</span>':"")+'</div>';
-      }).join(""));
+      }).join("") + (more>0?'<div class="row sub">+ '+more+' lower-priority open</div>':""));
     }
     if(s.ideas && s.ideas.count){
       html += section("New notes to triage", s.ideas.count, (s.ideas.items||[]).map(function(n){

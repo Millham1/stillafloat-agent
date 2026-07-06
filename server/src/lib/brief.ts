@@ -42,6 +42,7 @@ export interface Brief {
     actions: ActionItem[];
     calendar: CalEvent[];
     tasks: TaskItem[];
+    tasksTotal: number;
     ideas: { count: number; items: IdeaItem[] };
     bills: BillItem[];
     pulse: Pulse;
@@ -54,6 +55,7 @@ interface OpsFeed {
   calendar?: CalEvent[];
   actions?: ActionItem[];
   tasks?: TaskItem[];
+  tasks_total?: number;
   ideas?: { count: number; items: IdeaItem[] };
   bills?: BillItem[];
   pulse?: Pulse;
@@ -104,6 +106,7 @@ export async function assembleBrief(): Promise<Brief> {
   const actions = ops?.actions ?? [];
   const calendar = ops?.calendar ?? [];
   const tasks = ops?.tasks ?? [];
+  const tasksTotal = ops?.tasks_total ?? tasks.length;
   const ideas = ops?.ideas ?? { count: 0, items: [] };
   const bills = ops?.bills ?? [];
   const pulse = ops?.pulse ?? {};
@@ -116,7 +119,7 @@ export async function assembleBrief(): Promise<Brief> {
     generatedAt: new Date().toISOString(),
     nothingToDo,
     opsReachable: ops !== null,
-    sections: { actions, calendar, tasks, ideas, bills, pulse, social },
+    sections: { actions, calendar, tasks, tasksTotal, ideas, bills, pulse, social },
     counts: {
       actions: actions.length,
       tasks: tasks.length,
