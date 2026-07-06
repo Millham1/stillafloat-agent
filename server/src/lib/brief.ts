@@ -26,7 +26,30 @@ export interface TaskItem { id: string; title: string; status: string; priority?
 export interface IdeaItem { id: string; note: string; category?: string | null; }
 export interface BillItem { vendor: string; due_date?: string | null }
 export interface PulseChannel { trend: "up" | "down" | "steady"; tip: string; views?: number; subs?: number; reach?: number; new_followers?: number }
-export interface Pulse { youtube?: PulseChannel; facebook?: PulseChannel; facebook_status?: string }
+export interface Pulse { youtube?: PulseChannel; facebook?: PulseChannel; instagram?: PulseChannel; facebook_status?: string }
+
+// Make-fed FB/IG snapshot (platform_state "social-stats") — the direct Graph
+// token path is dead (Meta developer gate); Make posts stats to /api/social/ingest.
+type SocialSnap = { followers?: number; reach?: number; username?: string };
+type SocialStatsStored = {
+  latest?: { facebook?: SocialSnap; instagram?: SocialSnap; updated_at?: string };
+  previous?: { facebook?: SocialSnap; instagram?: SocialSnap } | null;
+};
+function snapTrend(recent?: number, prior?: number): "up" | "down" | "steady" {
+  if (recent == null || prior == null || prior <= 0) return "steady";
+  const pct = (recent - prior) / prior;
+  return pct > 0.10 ? "up" : pct < -0.10 ? "down" : "steady";
+}
+function snapPulse(cur: SocialSnap, prev?: SocialSnap): PulseChannel {
+  const bits: string[] = [];
+  if (cur.followers != null) bits.push(`${cur.followers} followers`);
+  if (cur.reach != null) bits.push(`${cur.reach} reach`);
+  return {
+    trend: snapTrend(cur.reach ?? cur.followers, prev?.reach ?? prev?.followers),
+    tip: bits.join(" · ") || "connected",
+    ...(cur.reach != null ? { reach: cur.reach } : {}),
+  };
+}
 export interface SocialBlock {
   pending: number;
   items: Array<{ title: string; track: string }>;
@@ -110,6 +133,14 @@ export async function assembleBrief(): Promise<Brief> {
   const ideas = ops?.ideas ?? { count: 0, items: [] };
   const bills = ops?.bills ?? [];
   const pulse = ops?.pulse ?? {};
+  // Reach overlay: FB/IG from the Make-fed snapshot (best-effort).
+  try {
+    const socialStats = await readJson<SocialStatsStored>("social-stats", {});
+    const latest = socialStats.latest;
+    const prevSnap = socialStats.previous ?? {};
+    if (latest?.facebook) pulse.facebook = snapPulse(latest.facebook, prevSnap?.facebook ?? undefined);
+    if (latest?.instagram) pulse.instagram = snapPulse(latest.instagram, prevSnap?.instagram ?? undefined);
+  } catch { /* reach overlay is best-effort */ }
 
   const nothingToDo =
     actions.length === 0 && tasks.length === 0 && ideas.count === 0 && social.pending === 0;
@@ -200,6 +231,7 @@ export function renderBriefEmail(brief: Brief): string {
   const pulseRows: string[] = [];
   if (p.youtube) pulseRows.push(li(`<b>YouTube ${arrow(p.youtube.trend)} ${esc(p.youtube.trend)}</b> <span style="color:#6b7794">${esc(p.youtube.tip)}</span>`));
   if (p.facebook) pulseRows.push(li(`<b>Facebook ${arrow(p.facebook.trend)} ${esc(p.facebook.trend)}</b> <span style="color:#6b7794">${esc(p.facebook.tip)}</span>`));
+  if (p.instagram) pulseRows.push(li(`<b>Instagram ${arrow(p.instagram.trend)} ${esc(p.instagram.trend)}</b> <span style="color:#6b7794">${esc(p.instagram.tip)}</span>`));
   const pulseHtml = pulseRows.join("");
 
   const lead = brief.nothingToDo
