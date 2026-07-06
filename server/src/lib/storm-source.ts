@@ -127,8 +127,9 @@ async function fetchOutlooks(): Promise<RawSystem[]> {
       .trim();
     if (!desc) continue;
     const chance = maxFormationChance(desc);
-    // Nothing brewing → skip (don't create a noise alert).
-    if (chance == null || /not expected/i.test(desc)) continue;
+    // Only surface disturbances with a meaningful formation chance (>=25%).
+    // Skips "near 0 percent / not expected to develop" noise.
+    if (chance == null || chance < 25) continue;
     out.push({
       nhcId: `TWO-${feed.basin}`,
       basin: feed.basin,

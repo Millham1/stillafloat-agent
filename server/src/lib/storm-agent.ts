@@ -145,17 +145,19 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
         ...(content ? { headline: content.headline, body_md: content.body_md, status: "draft" } : {}),
       };
 
+      let alertId = (existing as { id?: string } | null)?.id ?? "";
       if (existing) {
-        await supabase.from("storm_alerts").update(row).eq("id", (existing as { id: string }).id);
+        await supabase.from("storm_alerts").update(row).eq("id", alertId);
         result.updated++;
       } else {
-        await supabase.from("storm_alerts").insert(row);
+        const ins = await supabase.from("storm_alerts").insert(row).select("id").single();
+        alertId = (ins.data as { id?: string } | null)?.id ?? "";
         result.drafted++;
       }
 
-      // Nudge Mark to review — Web Push + email approve links — for fresh/updated drafts.
+      // Nudge Mark to review — Web Push + email approve/dismiss links — for fresh/updated drafts.
       if (reDraftable && isThreat) {
-        await notifyReview(sys, grounds, content?.headline ?? sys.name);
+        await notifyReview(sys, grounds, content?.headline ?? sys.name, alertId);
       }
     } catch (err) {
       logger.error({ err, nhcId: sys.nhcId }, "storm-agent: system failed");
@@ -166,17 +168,20 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
   return result;
 }
 
-async function notifyReview(sys: RawSystem, grounds: string[], headline: string): Promise<void> {
+async function notifyReview(sys: RawSystem, grounds: string[], headline: string, alertId: string): Promise<void> {
+  // The dashboard is a separate subdomain — the push must open the ABSOLUTE
+  // dashboard URL, not a relative "/storm-alerts" (which is dead on the main site).
+  const dashUrl = `${process.env["DASHBOARD_URL"] || "https://dashboard.stillafloatcruising.com"}/storm-alerts`;
   try {
     await sendPush({
       title: `🌀 Storm alert to review: ${sys.name}`,
       body: `${sys.classification} · ${labelGrounds(grounds)}. Tap to review & approve.`,
-      url: "/storm-alerts",
+      url: dashUrl,
       tag: `storm-${sys.nhcId}`,
     });
   } catch (err) { logger.warn({ err }, "storm-agent: push nudge failed"); }
   try {
-    await emailReviewNudge({ name: sys.name, classification: sys.classification, headline, grounds });
+    await emailReviewNudge({ id: alertId, name: sys.name, classification: sys.classification, headline, grounds });
   } catch (err) { logger.warn({ err }, "storm-agent: email nudge failed"); }
 }
 
