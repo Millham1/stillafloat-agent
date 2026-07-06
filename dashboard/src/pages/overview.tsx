@@ -43,7 +43,7 @@ export default function Overview() {
   const subs = useApi<Subs>("/api/ops/finance/subscriptions", ["ov-subs"]);
   const yt = useApi<YT>("/api/youtube-stats", ["ov-youtube"]);
   const ytAnalytics = useApi<Analytics>("/api/ops/youtube-analytics?days=28", ["ov-yt-analytics"]);
-  const social = useApi<Social>("/api/ops/social-analytics?days=14", ["ov-social"]);
+  const social = useApi<Social>("/api/social-analytics", ["ov-social"]);
 
   const s = summary.data;
   const series = cashflow.data?.series ?? [];
