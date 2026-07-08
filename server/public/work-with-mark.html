@@ -153,11 +153,8 @@ textarea{resize:vertical;min-height:110px}
 .more-toggle{background:none;border:none;color:#7fd0ff;font:inherit;font-weight:700;cursor:pointer;padding:6px 0;margin:2px 0 10px;display:inline-flex;align-items:center;gap:8px}
 .more-details{display:none}
 .more-details.open{display:block}
-.wm-sticky-cta{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:90;display:none;align-items:center;gap:10px;background:#0077b6;color:#fff;font-weight:800;padding:14px 26px;border-radius:999px;box-shadow:0 12px 30px rgba(0,0,0,.45);text-decoration:none;font-size:16px;border:2px solid rgba(255,255,255,.25)}
-.wm-sticky-cta.show{display:inline-flex}
 @media(max-width:720px){
   .cards .flavor-card{min-height:170px}
-  .wm-sticky-cta{bottom:14px;width:calc(100% - 32px);justify-content:center}
   .form-row{grid-template-columns:1fr}
   .form-card{padding:28px 20px}
   .cred-bar{gap:28px}
@@ -569,24 +566,13 @@ if (turnstileSiteKey && !turnstileToken)
   }
 });
 </script>
-<a href="#contact" class="wm-sticky-cta" id="stickyCta"><i class="fa-solid fa-compass"></i> Start Planning with Mark</a>
 <script>
-// CRO: optional-details toggle + sticky CTA that hides once the form is on screen.
+// CRO: optional-details toggle.
 document.getElementById('moreToggle').addEventListener('click', function () {
   var d = document.getElementById('moreDetails');
   var open = d.classList.toggle('open');
   this.innerHTML = open ? '&minus; Hide extra details' : '+ Add more details <span style="opacity:.6">(optional)</span>';
 });
-(function () {
-  var cta = document.getElementById('stickyCta');
-  var hero = document.querySelector('.wm-hero');
-  var form = document.getElementById('contact');
-  if (!cta || !hero || !form || !('IntersectionObserver' in window)) return;
-  var pastHero = false, formVisible = false;
-  function update() { cta.classList.toggle('show', pastHero && !formVisible); }
-  new IntersectionObserver(function (e) { pastHero = !e[0].isIntersecting; update(); }, { threshold: 0 }).observe(hero);
-  new IntersectionObserver(function (e) { formVisible = e[0].isIntersecting; update(); }, { threshold: 0.12 }).observe(form);
-})();
 </script>
 </body>
 </html>
