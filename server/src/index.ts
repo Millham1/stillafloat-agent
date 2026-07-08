@@ -4,6 +4,9 @@ import { logger } from "./lib/logger";
 import { runDuePosts } from "./lib/social-schedule";
 import { runAndDeliverBrief } from "./lib/brief";
 import { runStormScan } from "./lib/storm-agent";
+import { scanAndQueue } from "./lib/social-agent";
+import { draftNewsletter, saveDraft } from "./lib/newsletter";
+import { notifyTelegram, reviewUrl } from "./lib/telegram";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -47,6 +50,15 @@ app.listen(port, "0.0.0.0", () => {
     logger.info("Storm-alert scan DISABLED (DISABLE_STORM_SCAN=1)");
   } else {
     scheduleStormScan();
+  }
+  // Weekly marketing cadence — Monday: scan recent uploads into grounded social
+  // drafts; Thursday: assemble the newsletter draft. Both land in the review
+  // queue with a Telegram nudge; Mark's approval stays the only human gate.
+  // Disabled on the dev mirror so nudges/drafts aren't produced twice.
+  if (process.env["DISABLE_WEEKLY_MARKETING"] === "1") {
+    logger.info("Weekly marketing cadence DISABLED (DISABLE_WEEKLY_MARKETING=1)");
+  } else {
+    scheduleWeeklyMarketing();
   }
 });
 
@@ -122,6 +134,68 @@ function scheduleDailyBrief() {
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
   logger.info({ briefHour, tz: TZ }, "Daily brief scheduler active — checks every 5m");
+}
+
+// ── Weekly marketing scheduler ────────────────────────────────────────────────
+// The campaign's standing cadence (goal: $2k/mo, bookings are the KPI):
+//   • Monday 09:00 local — social scan: queue grounded draft batches for recent
+//     channel uploads (de-duped by videoId+track) + ONE Telegram review nudge.
+//   • Thursday 09:00 local — newsletter draft (EN; ES once that list exists) +
+//     Telegram nudge. Sending stays behind the review page's explicit Send.
+// Same timezone-gated polling pattern as the daily brief.
+function scheduleWeeklyMarketing() {
+  const TZ = process.env["TIMEZONE"] || "America/New_York";
+  const runHour = Number(process.env["WEEKLY_MARKETING_HOUR"] ?? "9");
+  let lastRunDate: string | null = null;
+
+  const localNow = (): { weekday: string; hour: number; date: string } => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: TZ, hour12: false, hour: "2-digit", weekday: "short",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    return {
+      weekday: get("weekday"),
+      hour: Number(get("hour")) % 24,
+      date: `${get("year")}-${get("month")}-${get("day")}`,
+    };
+  };
+
+  const tick = async () => {
+    const { weekday, hour, date } = localNow();
+    if (hour !== runHour || lastRunDate === date) return;
+    if (weekday !== "Mon" && weekday !== "Thu") return;
+    lastRunDate = date;
+    try {
+      if (weekday === "Mon") {
+        const created = await scanAndQueue(4);
+        logger.info({ created: created.length }, "Weekly social scan complete");
+        if (created.length > 0) {
+          void notifyTelegram({
+            heading: `📱 <b>${created.length} new social draft(s) ready</b> (weekly scan)`,
+            lines: created.map((b) => `Track ${b.track}: ${b.title}`),
+            url: reviewUrl("/api/social/review"),
+            buttonLabel: `Review ${created.length} →`,
+          });
+        }
+      } else {
+        const draft = await draftNewsletter("en");
+        await saveDraft(draft);
+        logger.info({ subject: draft.subject }, "Weekly newsletter draft complete");
+        void notifyTelegram({
+          heading: "📨 <b>Newsletter draft ready (EN)</b> (weekly)",
+          lines: [draft.subject],
+          url: reviewUrl("/api/newsletter/review"),
+          buttonLabel: "Review & send →",
+        });
+      }
+    } catch (err) {
+      logger.error({ err }, "Weekly marketing tick failed");
+    }
+  };
+
+  setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
+  logger.info({ runHour, tz: TZ }, "Weekly marketing scheduler active — Mon social scan / Thu newsletter draft");
 }
 
 // ── Storm-alert scan scheduler ────────────────────────────────────────────────

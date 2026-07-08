@@ -1,4 +1,5 @@
 import { logger } from "./logger";
+import { sendMail } from "./mailer";
 import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
 import { buildUtm, fetchChannelVideos, type Lang } from "./social-agent";
 import { unsubscribeUrl } from "../routes/subscribe";
@@ -348,14 +349,17 @@ export function renderEnrichedNewsletter(
 </html>`;
 }
 
+// Newsletter goes out via the ops-manager Gmail sender (same path as
+// transactional mail since the 2026-07-01 Resend key compromise). Gmail is fine
+// at the current list size; past the cap below, deliverability and the ~500/day
+// Gmail ceiling both say: move to a real ESP before sending.
+const GMAIL_LIST_CAP = 200;
+
 // ── Send (explicit, approve-first) ───────────────────────────────────────────
 export async function sendNewsletterDraft(
   draft: NewsletterDraft,
   baseUrl: string,
 ): Promise<{ sent: number; failed: number; total: number }> {
-  const apiKey = process.env["RESEND_API_KEY"];
-  if (!apiKey) throw new Error("RESEND_API_KEY missing");
-
   const lang: Lang = draft.lang ?? "en";
   const stories = await gatherApprovedStories(lang);
   const supabase = getSupabase();
@@ -367,26 +371,19 @@ export async function sendNewsletterDraft(
   if (error) throw new Error("Failed to load subscribers");
   const list = (subscribers ?? []) as Array<{ email: string; name: string }>;
   if (list.length === 0) return { sent: 0, failed: 0, total: 0 };
+  if (list.length > GMAIL_LIST_CAP) {
+    throw new Error(
+      `Subscriber list (${list.length}) exceeds the Gmail send cap (${GMAIL_LIST_CAP}) — migrate newsletter sending to a real ESP first.`,
+    );
+  }
 
   let sent = 0;
   let failed = 0;
   for (const sub of list) {
     const html = renderEnrichedNewsletter(draft, stories, sub.name, sub.email, baseUrl);
-    try {
-      const r = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: "Still Afloat <noreply@stillafloatcruising.com>",
-          to: sub.email,
-          subject: draft.subject,
-          html,
-        }),
-      });
-      r.ok ? sent++ : failed++;
-    } catch {
-      failed++;
-    }
+    const ok = await sendMail({ to: sub.email, subject: draft.subject, html, fromName: "Still Afloat" });
+    ok ? sent++ : failed++;
+    await new Promise((r) => setTimeout(r, 1200)); // pace the Gmail API
   }
   logger.info({ subject: draft.subject, sent, failed }, "Newsletter (agent) send complete");
   return { sent, failed, total: list.length };

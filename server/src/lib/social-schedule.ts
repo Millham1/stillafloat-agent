@@ -1,7 +1,7 @@
 import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
 import { loadQueue, saveQueue, type QueuedBatch, type SocialPost } from "./social-agent";
-import { publishOnePost } from "./social-publish";
+import { publishOnePost, isPersonalSurface } from "./social-publish";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Social posting SCHEDULER.
@@ -82,7 +82,9 @@ function* upcomingSlots(cfg: ScheduleConfig, from: Date): Generator<Date> {
   }
 }
 
-const schedulable = (p: SocialPost): boolean => p.platform !== "youtube";
+// YouTube posts are the source video; personal-profile surfaces are manual-only
+// (Share Kit) — neither ever gets a posting slot.
+const schedulable = (p: SocialPost): boolean => p.platform !== "youtube" && !isPersonalSurface(p);
 
 // Assign each schedulable post in `batch` the next free upcoming slot (not
 // colliding with posts already scheduled elsewhere in the queue). Mutates the
@@ -163,6 +165,10 @@ export async function runDuePosts(maxPerTick = 5): Promise<number> {
       } else if (RETRY_REASONS.has(res.reason)) {
         // not configured / no clip yet — leave scheduled, retry next tick
         continue;
+      } else if (res.reason === "personal-manual") {
+        // Legacy scheduled personal-surface post — manual-only, resolve as skipped.
+        post.postState = "skipped";
+        changed = true;
       } else {
         post.postState = "failed";
         post.postError = res.reason;

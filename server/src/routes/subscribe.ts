@@ -412,9 +412,6 @@ router.post("/send-newsletter", async (req, res) => {
       return res.status(400).json({ error: "Select at least one story." });
     }
 
-    const apiKey = process.env["RESEND_API_KEY"];
-    if (!apiKey) return res.status(500).json({ error: "Email not configured (RESEND_API_KEY missing)." });
-
     // Fetch approved stories
     const approved = await readJson<{ stories?: Record<string, unknown>[] }>(PATHS.approved, { stories: [] });
     const allStories = approved.stories ?? [];
@@ -440,28 +437,20 @@ router.post("/send-newsletter", async (req, res) => {
     const host    = req.headers["host"] || "stillafloatcruising.com";
     const baseUrl = `${proto}://${host}`;
 
+    // Via the ops-manager Gmail sender (Resend was retired 2026-07-01). Fine at
+    // this list size; past ~200 recipients, move to a real ESP.
+    if (subscribers.length > 200) {
+      return res.status(400).json({ error: `Subscriber list (${subscribers.length}) exceeds the Gmail send cap — migrate to a real ESP first.` });
+    }
+
     let sent = 0, failed = 0;
 
-    // Send one at a time (Resend free tier: 100/day)
     for (const sub of subscribers) {
       const html = renderNewsletter(selected, subject, sub.name, sub.email, baseUrl);
-      try {
-        const r = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            from: "Still Afloat <noreply@stillafloatcruising.com>",
-            to: sub.email,
-            subject,
-            html,
-          }),
-        });
-        r.ok ? sent++ : failed++;
-        if (!r.ok) logger.error({ email: sub.email, status: r.status }, "Newsletter send failed");
-      } catch (e) {
-        failed++;
-        logger.error({ err: e, email: sub.email }, "Newsletter send exception");
-      }
+      const ok = await sendMail({ to: sub.email, subject, html, fromName: "Still Afloat" });
+      ok ? sent++ : failed++;
+      if (!ok) logger.error({ email: sub.email }, "Newsletter send failed");
+      await new Promise((r) => setTimeout(r, 1200)); // pace the Gmail API
     }
 
     logger.info({ subject, sent, failed }, "Newsletter send complete");

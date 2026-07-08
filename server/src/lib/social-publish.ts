@@ -37,16 +37,26 @@ export interface PublishResult {
   reason: string;
 }
 
+// Personal-profile surfaces (e.g. "Personal Facebook") can never be automated —
+// the Meta APIs only post to Pages / business accounts. They are shared by hand
+// via the Share Kit and must never be routed to the Page webhook.
+export const isPersonalSurface = (post: SocialPost): boolean => /personal/i.test(post.surface);
+
 // Publish ONE post to its platform. Used both by publishBatch (post-now) and the
 // social poster cron (scheduled drip). Special reasons the caller may want to
 // treat as "retry later" rather than a hard failure: "youtube-source",
-// "fb-not-configured", "ig-not-configured", "ig-no-clip".
+// "fb-not-configured", "ig-not-configured", "ig-no-clip". "personal-manual"
+// is terminal: the post is manual-only, resolve it as skipped.
 export async function publishOnePost(post: SocialPost): Promise<PublishResult> {
   const fbWebhook = process.env["MAKE_FB_WEBHOOK"];
   const igWebhook = process.env["MAKE_IG_WEBHOOK"];
 
   if (post.platform === "youtube") {
     return { surface: post.surface, platform: "youtube", ok: false, reason: "youtube-source" };
+  }
+
+  if (isPersonalSurface(post)) {
+    return { surface: post.surface, platform: post.platform, ok: false, reason: "personal-manual" };
   }
 
   if (post.platform === "instagram") {
