@@ -153,7 +153,12 @@ textarea{resize:vertical;min-height:110px}
 .more-toggle{background:none;border:none;color:#7fd0ff;font:inherit;font-weight:700;cursor:pointer;padding:6px 0;margin:2px 0 10px;display:inline-flex;align-items:center;gap:8px}
 .more-details{display:none}
 .more-details.open{display:block}
+/* Cornerstone affiliate credential — in-flow, bottom right above the footer */
+.affiliate-cred{max-width:1160px;margin:36px auto 4px;padding:0 24px;display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+.affiliate-cred img{width:130px;height:auto;background:#fff;border-radius:14px;padding:8px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.affiliate-cred p{margin:10px 2px 0;font-size:12.5px;color:rgba(255,255,255,.72);line-height:1.55}
 @media(max-width:720px){
+  .affiliate-cred img{width:110px}
   .cards .flavor-card{min-height:170px}
   .form-row{grid-template-columns:1fr}
   .form-card{padding:28px 20px}
@@ -426,6 +431,11 @@ textarea{resize:vertical;min-height:110px}
     </div>
   </div>
 </section>
+
+<div class="affiliate-cred">
+  <img src="/assets/images/cornerstone-affiliate-logo.png" alt="Cornerstone — Lets Go Travel Affiliate">
+  <p>California SOT #2158353-50<br>Florida SOT Ref. #ST44927</p>
+</div>
 
 <footer>
   <p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" style="height:20px;vertical-align:middle;opacity:.7"></p>
