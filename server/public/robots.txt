@@ -13,3 +13,4 @@ Disallow: /unsubscribe-confirmed.html
 Disallow: /under-construction.html
 
 Sitemap: https://stillafloatcruising.com/sitemap.xml
+Sitemap: https://stillafloatcruising.com/news-sitemap.xml

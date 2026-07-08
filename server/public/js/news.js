@@ -64,7 +64,35 @@ function normalizeStory(story = {}) {
   };
 }
 
+// ── Static story URLs ────────────────────────────────────────────
+// storySlug() is a byte-for-byte twin of the one in
+// server/src/lib/prerender-news.ts (the news pre-renderer that writes
+// /news/<slug>.html + /es/news/<slug>.html). Change them together.
+function djb2Hex(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(8, '0').slice(-6);
+}
+
+function storySlug(story) {
+  const raw = String(story.id || 'story');
+  const base = raw
+    .toLowerCase()
+    .replace(/-https?-.*$/, '')
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 70)
+    .replace(/-+$/, '');
+  return `${base || 'story'}-${djb2Hex(raw)}`;
+}
+
 function storyUrl(story) {
+  // Pre-rendered static page (crawlable, has the full story content).
+  if (story.id) {
+    return `${isSpanish ? '/es/news/' : '/news/'}${storySlug(story)}.html`;
+  }
+
+  // Legacy fallback for feed items without an id.
   const params = new URLSearchParams({
     id: story.id || '',
     title: story.title || '',

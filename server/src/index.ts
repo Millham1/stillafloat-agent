@@ -7,6 +7,7 @@ import { runStormScan } from "./lib/storm-agent";
 import { scanAndQueue } from "./lib/social-agent";
 import { draftNewsletter, saveDraft } from "./lib/newsletter";
 import { notifyTelegram, reviewUrl } from "./lib/telegram";
+import { runNewsPrerender } from "./lib/prerender-news";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -60,7 +61,27 @@ app.listen(port, "0.0.0.0", () => {
   } else {
     scheduleWeeklyMarketing();
   }
+  // News pre-renderer — writes static, crawlable news pages (SEO). Local file
+  // writes only, so it runs on BOTH boxes (dev gets testable pages).
+  scheduleNewsPrerender();
 });
+
+// ── News pre-render scheduler ─────────────────────────────────────────────────
+// Regenerates the static news listing + story pages from platform_state on boot
+// (deploys reset the tracked listing pages) and hourly (the newsagent updates
+// once a day, so hourly is generous).
+function scheduleNewsPrerender() {
+  const tick = async () => {
+    try {
+      await runNewsPrerender();
+    } catch (err) {
+      logger.error({ err }, "News prerender tick failed");
+    }
+  };
+  setTimeout(() => { tick().catch(() => {}); }, 40_000);
+  setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
+  logger.info("News prerender scheduler active — on boot + hourly");
+}
 
 // ── Social poster scheduler ───────────────────────────────────────────────────
 // Every 10 minutes, post any scheduled social items whose time has arrived. No-op

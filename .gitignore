@@ -48,6 +48,13 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
+# Generated news pages (written on the box by the news pre-renderer —
+# server/src/lib/prerender-news.ts; news.html + es/news.html stay tracked but
+# are overwritten in place on the box)
+server/public/news/
+server/public/es/news/
+server/public/news-sitemap.xml
+
 # Replit (legacy — migrated off Replit to Hetzner; keep these out)
 .cache/
 .local/
