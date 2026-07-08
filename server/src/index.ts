@@ -8,6 +8,7 @@ import { scanAndQueue } from "./lib/social-agent";
 import { draftNewsletter, saveDraft } from "./lib/newsletter";
 import { notifyTelegram, reviewUrl } from "./lib/telegram";
 import { runNewsPrerender } from "./lib/prerender-news";
+import { draftWeeklyCommentary } from "./lib/commentary-agent";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -161,6 +162,8 @@ function scheduleDailyBrief() {
 // The campaign's standing cadence (goal: $2k/mo, bookings are the KPI):
 //   • Monday 09:00 local — social scan: queue grounded draft batches for recent
 //     channel uploads (de-duped by videoId+track) + ONE Telegram review nudge.
+//   • Tuesday 09:00 local — commentary draft from the week's featured story +
+//     Telegram nudge asking for Mark's take (weave → publish is his call).
 //   • Thursday 09:00 local — newsletter draft (EN; ES once that list exists) +
 //     Telegram nudge. Sending stays behind the review page's explicit Send.
 // Same timezone-gated polling pattern as the daily brief.
@@ -185,10 +188,13 @@ function scheduleWeeklyMarketing() {
   const tick = async () => {
     const { weekday, hour, date } = localNow();
     if (hour !== runHour || lastRunDate === date) return;
-    if (weekday !== "Mon" && weekday !== "Thu") return;
+    if (weekday !== "Mon" && weekday !== "Tue" && weekday !== "Thu") return;
     lastRunDate = date;
     try {
-      if (weekday === "Mon") {
+      if (weekday === "Tue") {
+        const draft = await draftWeeklyCommentary(); // notifies via Telegram itself
+        logger.info({ title: draft.suggestedTitle }, "Weekly commentary draft complete");
+      } else if (weekday === "Mon") {
         const created = await scanAndQueue(4);
         logger.info({ created: created.length }, "Weekly social scan complete");
         if (created.length > 0) {
@@ -216,7 +222,7 @@ function scheduleWeeklyMarketing() {
   };
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
-  logger.info({ runHour, tz: TZ }, "Weekly marketing scheduler active — Mon social scan / Thu newsletter draft");
+  logger.info({ runHour, tz: TZ }, "Weekly marketing scheduler active — Mon social scan / Tue commentary / Thu newsletter");
 }
 
 // ── Storm-alert scan scheduler ────────────────────────────────────────────────
