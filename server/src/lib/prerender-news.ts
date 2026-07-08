@@ -424,7 +424,10 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
         String(a.approvedAt || a.generatedAt || ""),
       ),
     );
-  if (stories.length === 0) return { stories: 0, pages: 0 };
+  if (stories.length === 0) {
+    logger.info("News prerender: no stories in story-details — nothing generated");
+    return { stories: 0, pages: 0 };
+  }
 
   const publicDir = resolvePublicDir();
   const enDir = path.join(publicDir, "news");
