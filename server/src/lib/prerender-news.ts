@@ -417,13 +417,22 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
     PATHS.storyDetails,
     { generatedAt: undefined, stories: [] },
   );
+  const seenSlugs = new Set<string>();
   const stories = (data.stories ?? [])
     .filter((s) => s && s.id && s.title)
     .sort((a, b) =>
       String(b.approvedAt || b.generatedAt || "").localeCompare(
         String(a.approvedAt || a.generatedAt || ""),
       ),
-    );
+    )
+    // story-details occasionally carries duplicate records for the same id —
+    // keep the newest so each page (and sitemap entry) appears exactly once.
+    .filter((s) => {
+      const slug = storySlug(s);
+      if (seenSlugs.has(slug)) return false;
+      seenSlugs.add(slug);
+      return true;
+    });
   if (stories.length === 0) {
     logger.info("News prerender: no stories in story-details — nothing generated");
     return { stories: 0, pages: 0 };
