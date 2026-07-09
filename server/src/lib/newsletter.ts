@@ -2,6 +2,7 @@ import { logger } from "./logger";
 import { sendMail } from "./mailer";
 import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
 import { buildUtm, fetchChannelVideos, type Lang } from "./social-agent";
+import { storySlug } from "./prerender-news";
 import { unsubscribeUrl } from "../routes/subscribe";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,8 +101,12 @@ export interface Story {
 export interface NewsletterDraft {
   subject: string;
   intro: string; // legacy field, superseded by `letter`
-  letter?: string; // Mark's opening letter (his voice; from his commentary when available)
-  quickHits?: string[]; // 2–4 plain one-liners, deliberately NO links/buttons
+  // Mark's opening letter. letterTitle is a punchy headline in HIS register
+  // (his own example: "And the winner of the Darwin Award for Cruisers is……");
+  // the letter paraphrases his commentary TRUE TO ITS INTENT — never softened.
+  letterTitle?: string;
+  letter?: string;
+  quickHits?: Array<{ text: string; url?: string }>; // one-liners; headline links to the site's story page
   booking?: { headline: string; body: string }; // the booking CTA centerpiece
   storyIds: string[];
   // Snapshot of the stories the AI worked from (grounding/reference; the new
@@ -289,8 +294,9 @@ TONE ON NEWS: the reader gets doom headlines everywhere else. Pick what a travel
 
 You will receive this week's stories, possibly Mark's latest commentary, a featured video, one affiliate product, and a description of this week's photo. Produce:
 - subject: <= 60 chars, sounds like a text from a friend — specific, human, a little fun. (Good shape: "A 50% sale, a $26 water bottle, and my two cents".)
-- letter: Mark's opening letter, 3–5 sentences. Do NOT begin with a greeting ("Hey friends," etc.) — the email inserts "Hey <first name>," automatically; start mid-thought. Do NOT write a news-roundup frame ("This week's news brings a mix of…") — talk about the ONE thing on Mark's mind (his commentary when provided: his stance, his phrasing, first person), the way he'd actually tell it, then get out. End with one easy, low-key sentence that turns the reader toward planning.
-- quick_hits: 2–4 one-liners from the provided stories, each <= 22 words, plain and useful, no hype. These render WITHOUT links on purpose.
+- letter_title: a punchy headline for Mark's letter, IN HIS REGISTER — wry, a little sharp, the humor doing the work. Mark's own example for a commentary about cruise-ship brawls: "And the winner of the Darwin Award for Cruisers is……". That's the bar: brand, style, and his voice in one line. Never a bland summary title.
+- letter: Mark's opening letter, 3–5 sentences, paraphrasing his commentary TRUE TO ITS INTENT — his stance, his angle, his edge. Keep his sharpest and funniest phrasings close to verbatim; NEVER soften or sanitize them into safety-brochure language (if he mocks, the letter mocks). Do NOT begin with a greeting — the email inserts "Hey <first name>," automatically; start mid-thought. Do NOT write a news-roundup frame ("This week's news brings a mix of…"). End with one easy, low-key sentence that turns the reader toward planning. No commentary provided → write about the season, warm and wry, without inventing personal stories.
+- quick_hits: 2–4 items from the provided stories, each { "text": one-liner <= 22 words, plain and useful, no hype, "story_id": the id of the story it came from }. The text becomes a link to that story on Mark's site, so it must match its story.
 - booking_headline: <= 8 words naming this week's most bookable angle from the stories (a sale, a season, a destination) — or, if nothing qualifies, an evergreen angle (e.g. off-season pricing). Plain and specific, sentence case, no exclamation marks.
 - booking_body: 2–3 sentences the way a friend passes along a tip over a beer — why it's worth a look, no sales-speak, no exclamation points — ending with the low-key offer: Mark can check it against the reader's dates (reply or hit the button).
 - sunny_side: 2–4 sentences for "The Sunny Side" — the LAUGH MORE spirit: life, fun, the small pleasures of cruising. Anchor it in the most enjoyable thing in this week's material (a feel-good story, a season, the simple joy of a sea day). Written warm and a little playful — the humor lives IN the writing, never as a stand-alone joke. You may fold in ONE real, widely documented fun fact if it fits naturally (never invent numbers or records). No invented Mark anecdotes.
@@ -300,7 +306,7 @@ You will receive this week's stories, possibly Mark's latest commentary, a featu
 - affiliate_blurb: one candid sentence on why the product earns its place in a suitcase.
 - agency_ps: one soft, personal P.S. offering booking help.
 
-Respond ONLY with JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "sunny_side", "photo_caption", "pps", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
+Respond ONLY with JSON: { "subject", "letter_title", "letter", "quick_hits":[{"text","story_id"}], "booking_headline", "booking_body", "sunny_side", "photo_caption", "pps", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
 
 const SYSTEM_PROMPT_ES = `Escribes "Still Afloat Semanal" COMO Mark Millham — este correo es una carta de Mark a sus amigos, nunca un boletín corporativo. Español latinoamericano neutro (es-419).
 
@@ -319,8 +325,9 @@ TONO CON LAS NOTICIAS: el lector ya recibe titulares negativos en todas partes. 
 
 Recibirás las noticias de la semana, posiblemente el commentary más reciente de Mark, un video destacado, un producto de afiliado y la descripción de la foto de la semana. Produce, TODO en español:
 - subject: <= 60 caracteres, suena a mensaje de un amigo — específico, humano, con gracia.
-- letter: la carta de apertura de Mark, 3–5 frases. NO empieces con un saludo ("Hola amigos," etc.) — el correo inserta "Hola <nombre>," automáticamente; empieza en medio del pensamiento. NO hagas un resumen noticioso ("Las noticias de esta semana traen…") — habla de LO ÚNICO que Mark trae en mente (su commentary cuando exista: su postura, sus frases, primera persona), como él lo contaría, y cierra con una frase fácil y sin presión que lleve al lector hacia planear.
-- quick_hits: 2–4 líneas de las noticias provistas, cada una <= 22 palabras, útiles y sin exageración. Se muestran SIN enlaces a propósito.
+- letter_title: un titular con punch para la carta de Mark, EN SU REGISTRO — irónico, un poco filoso, donde el humor hace el trabajo. Su propio ejemplo para un commentary sobre peleas en cruceros: "Y el ganador del Premio Darwin de los cruceristas es……". Esa es la vara. Nunca un título de resumen soso.
+- letter: la carta de apertura de Mark, 3–5 frases, parafraseando su commentary FIEL A SU INTENCIÓN — su postura, su ángulo, su filo. Mantén sus frases más agudas casi textuales; NUNCA las suavices a lenguaje de folleto (si él se burla, la carta se burla). NO empieces con un saludo — el correo inserta "Hola <nombre>," automáticamente. NO hagas un resumen noticioso. Cierra con una frase fácil y sin presión que lleve al lector hacia planear. Sin commentary → escribe de la temporada, cálido e irónico, sin inventar historias personales.
+- quick_hits: 2–4 items de las noticias provistas, cada uno { "text": una línea <= 22 palabras, útil y sin exageración, "story_id": el id de la noticia }. El texto será un enlace a esa historia en el sitio de Mark, así que debe corresponderle.
 - booking_headline: <= 8 palabras con el ángulo más reservable de la semana (una oferta, una temporada, un destino) — o un ángulo permanente si nada califica. Directo y específico, sin signos de exclamación.
 - booking_body: 2–3 frases como un amigo que pasa un dato tomando algo — por qué vale la pena, sin lenguaje de ventas, sin exclamaciones — cerrando con la oferta tranquila: Mark puede revisarlo contra tus fechas (responde o toca el botón).
 - sunny_side: 2–4 frases para "El Lado Soleado" — el espíritu de RÍE MÁS: la vida, la diversión, los pequeños placeres de crucerear. Ánclalo en lo más disfrutable del material de la semana (una historia amable, una temporada, el gusto simple de un día de mar). Cálido y juguetón — el humor vive DENTRO de la escritura, nunca como chiste suelto. Puedes integrar UN dato curioso real y ampliamente documentado si cabe con naturalidad (nunca inventes cifras). Sin anécdotas inventadas de Mark.
@@ -330,7 +337,7 @@ Recibirás las noticias de la semana, posiblemente el commentary más reciente d
 - affiliate_blurb: una frase sincera de por qué el producto se gana su lugar en la maleta.
 - agency_ps: una posdata breve y personal ofreciendo ayuda para reservar.
 
-Responde SOLO con JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "sunny_side", "photo_caption", "pps", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
+Responde SOLO con JSON: { "subject", "letter_title", "letter", "quick_hits":[{"text","story_id"}], "booking_headline", "booking_body", "sunny_side", "photo_caption", "pps", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
 
 export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraft> {
   const apiKey = process.env["OPENAI_API_KEY"] || "";
@@ -379,8 +386,9 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
   const content: string = payload?.choices?.[0]?.message?.content ?? "";
   const parsed = JSON.parse(content) as {
     subject?: string;
+    letter_title?: string;
     letter?: string;
-    quick_hits?: string[];
+    quick_hits?: Array<{ text?: string; story_id?: string } | string>;
     booking_headline?: string;
     booking_body?: string;
     sunny_side?: string;
@@ -391,14 +399,26 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
     agency_ps?: string;
   };
 
+  // Each hit links to the story's pre-rendered page on the site (Mark: a
+  // related headline should hyperlink to the story). Unknown ids → no link.
+  const esNewsPrefix = lang === "es" ? "/es/news/" : "/news/";
+  const storyById = new Map(stories.map((s) => [s.id, s]));
   const quickHits = (Array.isArray(parsed.quick_hits) ? parsed.quick_hits : [])
-    .map((h) => String(h).trim())
-    .filter(Boolean)
+    .map((h) => {
+      if (typeof h === "string") return { text: h.trim() };
+      const text = String(h.text ?? "").trim();
+      const id = String(h.story_id ?? "").trim();
+      const hit: { text: string; url?: string } = { text };
+      if (id && storyById.has(id)) hit.url = `${SITE}${esNewsPrefix}${storySlug({ id })}.html`;
+      return hit;
+    })
+    .filter((h) => h.text)
     .slice(0, 4);
 
   const draft: NewsletterDraft = {
     subject: (parsed.subject ?? (lang === "es" ? "Still Afloat Semanal" : "Still Afloat Weekly")).trim(),
     intro: "",
+    letterTitle: (parsed.letter_title ?? "").trim(),
     // Belt & suspenders: the template adds "Hey <name>," itself, so strip any
     // greeting line the model opens with despite the prompt.
     letter: (parsed.letter ?? "").trim().replace(/^(hey|hi|hello|ahoy|hola|saludos)[^\n.!?]{0,40}[,!—–-]\s*\n*/i, ""),
@@ -504,14 +524,16 @@ export function renderEnrichedNewsletter(
   const TROPICAL_BG = `${SITE}/assets/images/news-tropical-bg.png`;
   const CRAB = `${SITE}/assets/images/crab-mascot.png`;
 
-  // ── Mark's letter: frosted panel floating on the beach photo ──
+  // ── Band 1 — hero: Mark's letter as a frosted panel on the beach photo,
+  //    headlined in HIS register (site's hero → frosted-panel pattern) ──
   const letterText = (draft.letter ?? draft.intro ?? "").trim();
   const letterPara = (s: string): string => `<p style="margin:0 0 10px;color:#1e3a5f;font-family:${FONT_BODY};font-size:16px;line-height:1.75;">${s}</p>`;
   const letterBlock = letterText
     ? `
-    <div style="background:#eaf4f9 url('${BEACH_BG}') center/cover no-repeat;border-radius:16px;overflow:hidden;margin:0 0 18px;">
-      <div style="background:rgba(255,253,248,.90);margin:14px;border-radius:12px;padding:20px 24px;">
-        <p style="margin:0 0 10px;">${pill(t.fromMark, "#5dff9a", "rgba(7,24,63,.85)")}</p>
+    <div style="background:#9cc8de url('${BEACH_BG}') center/cover no-repeat;padding:24px 20px;">
+      <div style="background:rgba(255,253,248,.93);border-radius:16px;padding:22px 26px;">
+        <p style="margin:0 0 12px;">${pill(t.fromMark, "#5dff9a", "rgba(7,24,63,.88)")}</p>
+        ${draft.letterTitle ? `<h2 style="margin:0 0 12px;font-family:${FONT_HEAD};font-size:23px;color:#0c2035;line-height:1.3;font-weight:400;">${draft.letterTitle}</h2>` : ""}
         ${letterPara(t.hi(firstName))}
         ${letterText.split(/\n+/).map(letterPara).join("")}
         <p style="margin:0 0 4px;color:#1e3a5f;font-family:${FONT_HEAD};font-size:17px;">${t.signoff}</p>
@@ -520,37 +542,40 @@ export function renderEnrichedNewsletter(
     </div>`
     : "";
 
-  // ── Worth a look: navy card over tropical art, site-green CTA ──
+  // ── Band 2 — deep-water navy (site's midsection): booking tip + cruise
+  //    report share one band, green/gold accents on navy ──
   const bookingUrl = utm(`${baseUrl}${esPrefix}/work-with-mark.html#contact`, "booking");
-  const bookingBlock = draft.booking
+  const bookingPart = draft.booking
     ? `
-    <div style="background:#07183f url('${TROPICAL_BG}') center/cover no-repeat;border-radius:16px;overflow:hidden;margin:0 0 18px;">
-      <div style="background:rgba(4,17,46,.82);padding:22px 26px;">
-        <p style="margin:0 0 10px;">${pill(t.worthBooking, "#07183f", "#ffd21f")}</p>
-        <h3 style="margin:0 0 8px;font-family:${FONT_HEAD};font-size:20px;color:#ffffff;line-height:1.35;font-weight:400;">${draft.booking.headline}</h3>
-        <p style="margin:0 0 16px;color:#cfe3ee;font-family:${FONT_BODY};font-size:14px;line-height:1.7;">${draft.booking.body}</p>
-        <a href="${bookingUrl}" style="display:inline-block;background:#5dff9a;color:#07183f;padding:11px 22px;border-radius:999px;text-decoration:none;font-family:${FONT_BODY};font-size:14px;font-weight:800;">${t.bookingCta}</a>
-      </div>
+      <p style="margin:0 0 10px;">${pill(t.worthBooking, "#07183f", "#ffd21f")}</p>
+      <h3 style="margin:0 0 8px;font-family:${FONT_HEAD};font-size:21px;color:#ffffff;line-height:1.35;font-weight:400;">${draft.booking.headline}</h3>
+      <p style="margin:0 0 16px;color:#cfe3ee;font-family:${FONT_BODY};font-size:15px;line-height:1.7;">${draft.booking.body}</p>
+      <a href="${bookingUrl}" style="display:inline-block;background:#5dff9a;color:#07183f;padding:12px 24px;border-radius:999px;text-decoration:none;font-family:${FONT_BODY};font-size:14px;font-weight:800;">${t.bookingCta}</a>`
+    : "";
+  const hits = (draft.quickHits ?? []).filter((h) => h && h.text);
+  const hitsPart = hits.length
+    ? `
+      <div style="border-top:1px solid rgba(255,255,255,.18);margin:24px 0 0;padding:22px 0 0;">
+        <p style="margin:0 0 8px;">${pill(t.quickHitsLabel, "#0077b6", "#ddeeff")}</p>
+        <h3 style="margin:0 0 12px;font-family:${FONT_HEAD};font-size:19px;color:#ffffff;font-weight:400;">${t.quickHitsTitle}</h3>
+        ${hits.map((h) => `<p style="margin:0 0 10px;color:#cfe3ee;font-family:${FONT_BODY};font-size:14px;line-height:1.65;">⚓&nbsp; ${h.url ? `<a href="${utm(h.url, "story")}" style="color:#8fd8ff;text-decoration:underline;">${h.text}</a>` : h.text}</p>`).join("")}
+      </div>`
+    : "";
+  const navyBand = bookingPart || hitsPart
+    ? `
+    <div style="background:#0a2a5e;background:linear-gradient(180deg,#0d3a74 0%,#04112e 100%);padding:26px 26px 28px;">
+      ${bookingPart}
+      ${hitsPart}
     </div>`
     : "";
 
-  // ── Cruise report: white card, site pill + Bree Serif title ──
-  const hits = (draft.quickHits ?? []).filter(Boolean);
-  const quickHitsBlock = hits.length
+  // ── Band 4 — light band: video + gear + P.S., calm close ──
+  const videoPart = draft.video
     ? `
-    <div style="background:#ffffff;border-radius:16px;padding:20px 24px;margin:0 0 18px;">
-      <p style="margin:0 0 8px;">${pill(t.quickHitsLabel, "#0077b6", "#ddeeff")}</p>
-      <h3 style="margin:0 0 12px;font-family:${FONT_HEAD};font-size:19px;color:#0c2035;font-weight:400;">${t.quickHitsTitle}</h3>
-      ${hits.map((h) => `<p style="margin:0 0 9px;color:#374151;font-family:${FONT_BODY};font-size:14px;line-height:1.65;">⚓&nbsp; ${h}</p>`).join("")}
-    </div>`
-    : "";
-
-  const videoBlock = draft.video
-    ? `
-    <div style="background:#ffffff;border-radius:16px;overflow:hidden;margin:0 0 18px;">
+    <div style="background:#ffffff;border:1px solid #e8e2d4;border-radius:16px;overflow:hidden;margin:0 0 16px;">
       <a href="${draft.video.url}" style="text-decoration:none;">
         ${draft.video.thumbnail ? `<img src="${draft.video.thumbnail}" alt="" style="display:block;width:100%;max-width:600px;"/>` : ""}
-        <div style="padding:16px 24px;">
+        <div style="padding:14px 22px 16px;">
           <p style="margin:0 0 8px;">${pill(t.watch, "#ffffff", "#0077b6")}</p>
           <h3 style="margin:0 0 6px;font-family:${FONT_HEAD};font-size:17px;color:#0c2035;font-weight:400;">${draft.video.title}</h3>
           ${draft.video.blurb ? `<p style="margin:0;color:#374151;font-family:${FONT_BODY};font-size:14px;line-height:1.6;">${draft.video.blurb}</p>` : ""}
@@ -559,9 +584,9 @@ export function renderEnrichedNewsletter(
     </div>`
     : "";
 
-  const affiliateBlock = draft.affiliate
+  const affiliatePart = draft.affiliate
     ? `
-    <div style="background:#ffffff;border-radius:16px;padding:18px 24px;margin:0 0 18px;">
+    <div style="background:#ffffff;border:1px solid #e8e2d4;border-radius:16px;padding:16px 22px;margin:0 0 16px;">
       <p style="margin:0 0 8px;">${pill(t.gear, "#0e7490", "#d9f2f7")}</p>
       <h3 style="margin:0 0 6px;font-family:${FONT_HEAD};font-size:17px;color:#0c2035;font-weight:400;">${draft.affiliate.title}</h3>
       ${draft.affiliate.blurb ? `<p style="margin:0 0 12px;color:#374151;font-family:${FONT_BODY};font-size:14px;line-height:1.6;">${draft.affiliate.blurb}</p>` : ""}
@@ -570,22 +595,23 @@ export function renderEnrichedNewsletter(
     </div>`
     : "";
 
-  // The Sunny Side — the "laugh more" spirit as a section: the week's photo,
-  // a wry caption, and warm writing about enjoying cruise life. The crab
-  // mascot keeps it playful. Not a joke box.
+  // ── Band 3 — The Sunny Side: bright band, the week's photo, warm writing.
+  //    No pill here (Mark: the pill made no sense) — the crab and the title
+  //    carry the playfulness. ──
   const laughBlock = draft.sunnySide || draft.photo
     ? `
-    <div style="background:#ffffff;border-radius:16px;overflow:hidden;margin:0 0 18px;">
-      ${draft.photo ? `<img src="${draft.photo.url}" alt="${escapeAttr(draft.photo.alt)}" style="display:block;width:100%;max-width:600px;"/>` : ""}
-      <div style="padding:16px 24px 18px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 10px;"><tr>
-          <td style="vertical-align:middle;">${pill(t.sunnyLabel, "#b45309", "#ffe9c7")}</td>
-          <td style="vertical-align:middle;padding-left:8px;"><img src="${CRAB}" alt="" width="34" style="display:block;width:34px;height:auto;"/></td>
-        </tr></table>
-        <h3 style="margin:0 0 8px;font-family:${FONT_HEAD};font-size:19px;color:#0c2035;font-weight:400;">${t.sunnyTitle}</h3>
-        ${draft.photoCaption ? `<p style="margin:0 0 12px;color:#64748b;font-family:${FONT_BODY};font-size:13px;line-height:1.6;font-style:italic;">${draft.photoCaption}</p>` : ""}
-        ${draft.sunnySide ? `<p style="margin:0;color:#374151;font-family:${FONT_BODY};font-size:15px;line-height:1.75;">${draft.sunnySide}</p>` : ""}
-        ${draft.photo && draft.photo.photographer ? `<p style="margin:12px 0 0;color:#b8ad93;font-family:${FONT_BODY};font-size:11px;">${t.photoBy}: <a href="${draft.photo.photographerUrl || "https://www.pexels.com"}" style="color:#b8ad93;">${draft.photo.photographer}</a> / Pexels</p>` : ""}
+    <div style="background:#bfe4f7 url('${TROPICAL_BG}') center/cover no-repeat;padding:24px 20px;">
+      <div style="background:rgba(255,255,255,.94);border-radius:16px;overflow:hidden;">
+        ${draft.photo ? `<img src="${draft.photo.url}" alt="${escapeAttr(draft.photo.alt)}" style="display:block;width:100%;max-width:600px;"/>` : ""}
+        <div style="padding:16px 26px 20px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 6px;"><tr>
+            <td style="vertical-align:middle;"><h3 style="margin:0;font-family:${FONT_HEAD};font-size:21px;color:#0c2035;font-weight:400;">☀️ ${t.sunnyTitle}</h3></td>
+            <td style="vertical-align:middle;text-align:right;"><img src="${CRAB}" alt="" width="40" style="display:inline-block;width:40px;height:auto;"/></td>
+          </tr></table>
+          ${draft.photoCaption ? `<p style="margin:0 0 12px;color:#64748b;font-family:${FONT_BODY};font-size:13px;line-height:1.6;font-style:italic;">${draft.photoCaption}</p>` : ""}
+          ${draft.sunnySide ? `<p style="margin:0;color:#374151;font-family:${FONT_BODY};font-size:15px;line-height:1.75;">${draft.sunnySide}</p>` : ""}
+          ${draft.photo && draft.photo.photographer ? `<p style="margin:12px 0 0;color:#b8ad93;font-family:${FONT_BODY};font-size:11px;">${t.photoBy}: <a href="${draft.photo.photographerUrl || "https://www.pexels.com"}" style="color:#b8ad93;">${draft.photo.photographer}</a> / Pexels</p>` : ""}
+        </div>
       </div>
     </div>`
     : "";
@@ -599,23 +625,22 @@ export function renderEnrichedNewsletter(
 <meta charset="UTF-8">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
-<body style="font-family:${FONT_BODY};background:#bfe0f0;padding:0;margin:0;">
-  <div style="max-width:600px;margin:24px auto;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(4,17,46,.25);background:#bfe0f0 url('${TROPICAL_BG}') top center/cover no-repeat;">
+<body style="font-family:${FONT_BODY};background:#04112e;padding:0;margin:0;">
+  <div style="max-width:600px;margin:0 auto;background:#04112e;">
     <img src="${SITE}/assets/images/Youtube%20banner%20cropped.png" alt="Still Afloat — ${t.tagline2}" style="display:block;width:100%;height:auto;"/>
-    <div style="height:6px;background:linear-gradient(90deg,#0077b6,#5bc8f5,#ffd21f,#0077b6);"></div>
-    <div style="padding:20px 18px 6px;">
-      ${letterBlock}
-      ${bookingBlock}
-      ${quickHitsBlock}
-      ${laughBlock}
-      ${videoBlock}
-      ${affiliateBlock}
-      ${draft.agencyPs || draft.pps ? `<div style="background:rgba(255,253,248,.92);border-radius:16px;padding:16px 24px;margin:0 0 18px;">
+    <div style="height:5px;background:linear-gradient(90deg,#0077b6,#5bc8f5,#ffd21f,#0077b6);"></div>
+    ${letterBlock}
+    ${navyBand}
+    ${laughBlock}
+    <div style="background:#fffdf8;padding:22px 20px 8px;">
+      ${videoPart}
+      ${affiliatePart}
+      ${draft.agencyPs || draft.pps ? `<div style="padding:2px 4px 16px;">
         ${draft.agencyPs ? `<p style="margin:0;color:#475569;font-family:${FONT_BODY};font-size:14px;line-height:1.7;"><strong>${t.ps}</strong> ${draft.agencyPs} <a href="${agencyUrl}" style="color:#0077b6;">${t.psCta}</a></p>` : ""}
         ${draft.pps ? `<p style="margin:${draft.agencyPs ? "10px" : "0"} 0 0;color:#64748b;font-family:${FONT_BODY};font-size:13px;line-height:1.6;font-style:italic;"><strong>${t.pps}</strong> ${draft.pps}</p>` : ""}
       </div>` : ""}
     </div>
-    <div style="background:#07183f;padding:18px 32px;text-align:center;">
+    <div style="background:#07183f;padding:20px 32px;text-align:center;">
       <p style="margin:0;color:#9fb3c8;font-family:${FONT_BODY};font-size:12px;line-height:1.8;">
         Still Afloat · <em style="color:#5dff9a;">${t.footTag}</em><br>
         <a href="${unsub}" style="color:#9fb3c8;font-size:11px;">${t.unsub}</a>

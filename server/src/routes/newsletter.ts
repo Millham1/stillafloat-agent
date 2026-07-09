@@ -73,8 +73,9 @@ router.post("/newsletter/draft/update", requireToken, async (req: Request, res: 
     }
     const body = req.body as {
       subject?: string;
+      letterTitle?: string;
       letter?: string;
-      quickHits?: string[];
+      quickHits?: Array<{ text?: string; url?: string } | string>;
       bookingHeadline?: string;
       bookingBody?: string;
       agencyPs?: string;
@@ -90,10 +91,24 @@ router.post("/newsletter/draft/update", requireToken, async (req: Request, res: 
     };
 
     if (typeof body.subject === "string" && body.subject.trim()) draft.subject = body.subject.trim();
+    if (typeof body.letterTitle === "string") {
+      const lt = body.letterTitle.trim();
+      if (lt) draft.letterTitle = lt;
+      else delete draft.letterTitle;
+    }
     if (typeof body.letter === "string") draft.letter = body.letter.trim();
     if (typeof body.agencyPs === "string") draft.agencyPs = body.agencyPs.trim();
     if (Array.isArray(body.quickHits)) {
-      draft.quickHits = body.quickHits.map((h) => String(h).trim()).filter(Boolean).slice(0, 6);
+      draft.quickHits = body.quickHits
+        .map((h) => {
+          if (typeof h === "string") return { text: h.trim() };
+          const hit: { text: string; url?: string } = { text: String(h.text ?? "").trim() };
+          const u = String(h.url ?? "").trim();
+          if (u) hit.url = u;
+          return hit;
+        })
+        .filter((h) => h.text)
+        .slice(0, 6);
     }
     if (typeof body.bookingHeadline === "string" || typeof body.bookingBody === "string") {
       const current = draft.booking ?? { headline: "", body: "" };
@@ -196,7 +211,11 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
 
   // ── Edit panel: every human-visible field of the issue, phone-friendly. ──
   const hitEditors = (draft?.quickHits ?? [])
-    .map((h) => `<label>Quick hit (empty = drop it)<textarea class="s-hit" rows="2">${escapeHtml(h)}</textarea></label>`)
+    .map((h) => {
+      const text = typeof h === "string" ? h : h.text;
+      const url = typeof h === "string" ? "" : (h.url ?? "");
+      return `<label>Quick hit (empty = drop it)<textarea class="s-hit" rows="2" data-url="${escapeHtml(url)}">${escapeHtml(text)}</textarea></label>`;
+    })
     .join("");
 
   const editPanel = draft && draft.status !== "sent"
@@ -204,6 +223,7 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
       <summary>✏️ Edit this issue</summary>
       <div class="card">
         <label>Subject<input type="text" id="e-subject" value="${escapeHtml(draft.subject)}"/></label>
+        <label>Letter headline (your voice, e.g. “And the winner of the Darwin Award for Cruisers is……”)<input type="text" id="e-lettertitle" value="${escapeHtml(draft.letterTitle ?? "")}"/></label>
         <label>Your letter (opens the email, signed “— Mark”)<textarea id="e-letter" rows="7">${escapeHtml(draft.letter ?? draft.intro ?? "")}</textarea></label>
       </div>
       <fieldset class="card"><legend>Worth booking this week (the main CTA)</legend>
@@ -237,7 +257,7 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
     : "";
 
   const preview = draft
-    ? `<iframe title="preview" src="/api/newsletter/email?lang=${lang}&token=${encodeURIComponent(token)}" style="width:100%;height:70vh;border:1px solid #e5e7eb;border-radius:12px;background:#fff;"></iframe>`
+    ? `<iframe title="preview" src="/api/newsletter/email?lang=${lang}&token=${encodeURIComponent(token)}" style="width:100%;height:78vh;border:0;border-radius:14px;background:#04112e;"></iframe>`
     : "";
 
   res.type("html").send(`<!doctype html><html><head><meta charset="utf-8"/>
@@ -245,19 +265,19 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
 <meta name="robots" content="noindex,nofollow"/>
 <title>Still Afloat — Newsletter Review (${lang.toUpperCase()})</title>
 <style>
- body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;background:#f3f4f6;color:#111827}
+ body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;background:#04112e;color:#111827}
  header{background:#07183f;color:#fff;padding:14px 18px;position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
  header h1{margin:0;font-size:17px}
  .btns button{border:0;border-radius:8px;padding:9px 14px;font-weight:700;color:#fff;cursor:pointer;margin-left:6px}
  .gen{background:#0077b6}.send{background:#16a34a}
  .langtabs a{display:inline-block;padding:5px 12px;border-radius:7px;font-size:13px;font-weight:700;text-decoration:none;margin-right:6px}
  .langtabs a.on{background:#5dff9a;color:#07183f}.langtabs a.off{background:rgba(255,255,255,.15);color:#fff}
- .wrap{max-width:680px;margin:0 auto;padding:16px 14px 50px}
+ .wrap{max-width:640px;margin:0 auto;padding:16px 8px 50px}
  .meta{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
  .pill{font-size:12px;background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:3px 9px}
  .pill.pend{background:#fef3c7;border-color:#fde68a;color:#92400e}
  .pill.sent{background:#dcfce7;border-color:#bbf7d0;color:#166534}
- #msg{font-size:13px;color:#6b7280;margin:8px 0}
+ #msg{font-size:13px;color:#cbd5e1;margin:8px 0}
  details#edit{margin:0 0 14px}
  details#edit>summary{cursor:pointer;font-weight:800;font-size:15px;padding:10px 14px;background:#fff;border:1px solid #d1d5db;border-radius:10px}
  .card{background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:12px 14px;margin:10px 0}
@@ -290,11 +310,11 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
  function saveEdits(){
    var msg=document.getElementById('msg');
    var body={
-     subject:val('e-subject'), letter:val('e-letter'), agencyPs:val('e-ps'),
+     subject:val('e-subject'), letterTitle:val('e-lettertitle'), letter:val('e-letter'), agencyPs:val('e-ps'),
      sunnySide:val('e-sunnyside'), pps:val('e-pps'), photoCaption:val('e-photocaption'), quickHits:[]
    };
    document.querySelectorAll('.s-hit').forEach(function(el){
-     if(el.value && el.value.trim()) body.quickHits.push(el.value.trim());
+     if(el.value && el.value.trim()) body.quickHits.push({text:el.value.trim(), url:el.getAttribute('data-url')||''});
    });
    var bookInc=document.getElementById('e-booking-inc');
    if(bookInc && !bookInc.checked){ body.removeBooking=true; }
