@@ -261,9 +261,9 @@ TONE ON NEWS: the reader gets doom headlines everywhere else. Pick what a travel
 
 You will receive this week's stories, possibly Mark's latest commentary, a featured video, and one affiliate product. Produce:
 - subject: <= 60 chars, sounds like a text from a friend — specific, human, a little fun. (Good shape: "A 50% sale, a $26 water bottle, and my two cents".)
-- letter: Mark's opening letter, 3–5 sentences. If his commentary is provided, distill IT — his stance, his phrasing, first person — and end with one easy sentence that turns the reader toward planning/booking. If no commentary, open warm and seasonal without inventing personal stories.
+- letter: Mark's opening letter, 3–5 sentences. Do NOT begin with a greeting ("Hey friends," etc.) — the email inserts "Hey <first name>," automatically; start mid-thought. If his commentary is provided, distill IT — his stance, his phrasing, first person — and end with one easy sentence that turns the reader toward planning/booking. If no commentary, open warm and seasonal without inventing personal stories.
 - quick_hits: 2–4 one-liners from the provided stories, each <= 22 words, plain and useful, no hype. These render WITHOUT links on purpose.
-- booking_headline: <= 8 words naming this week's most bookable angle from the stories (a sale, a season, a destination) — or, if nothing qualifies, an evergreen angle (e.g. off-season pricing).
+- booking_headline: <= 8 words naming this week's most bookable angle from the stories (a sale, a season, a destination) — or, if nothing qualifies, an evergreen angle (e.g. off-season pricing). Plain and specific, no exclamation marks, no "exciting".
 - booking_body: 2–3 sentences on why that angle is smart, ending with Mark offering to check it against the reader's dates ("reply to this email or hit the button").
 - fun_fact: 1–2 sentences for the "Laugh More" corner — a REAL, widely documented cruise or ocean fun fact told with actual humor. HARD RULE: only facts you are highly confident are true; never invent numbers or records.
 - video_blurb: one inviting, honest sentence about the featured video.
@@ -287,9 +287,9 @@ TONO CON LAS NOTICIAS: el lector ya recibe titulares negativos en todas partes. 
 
 Recibirás las noticias de la semana, posiblemente el commentary más reciente de Mark, un video destacado y un producto de afiliado. Produce, TODO en español:
 - subject: <= 60 caracteres, suena a mensaje de un amigo — específico, humano, con gracia.
-- letter: la carta de apertura de Mark, 3–5 frases. Si hay commentary, destílalo — su postura, sus frases, primera persona — y cierra con una frase fácil que lleve al lector hacia planear/reservar. Sin commentary, abre cálido y de temporada sin inventar historias personales.
+- letter: la carta de apertura de Mark, 3–5 frases. NO empieces con un saludo ("Hola amigos," etc.) — el correo inserta "Hola <nombre>," automáticamente; empieza en medio del pensamiento. Si hay commentary, destílalo — su postura, sus frases, primera persona — y cierra con una frase fácil que lleve al lector hacia planear/reservar. Sin commentary, abre cálido y de temporada sin inventar historias personales.
 - quick_hits: 2–4 líneas de las noticias provistas, cada una <= 22 palabras, útiles y sin exageración. Se muestran SIN enlaces a propósito.
-- booking_headline: <= 8 palabras con el ángulo más reservable de la semana (una oferta, una temporada, un destino) — o un ángulo permanente si nada califica.
+- booking_headline: <= 8 palabras con el ángulo más reservable de la semana (una oferta, una temporada, un destino) — o un ángulo permanente si nada califica. Directo y específico, sin signos de exclamación, sin "emocionante".
 - booking_body: 2–3 frases de por qué conviene, cerrando con Mark ofreciendo revisarlo contra las fechas del lector ("responde a este correo o toca el botón").
 - fun_fact: 1–2 frases para "Ríe más" — un dato curioso REAL y ampliamente documentado sobre cruceros o el mar, contado con humor de verdad. REGLA DURA: solo datos verificables; nunca inventes cifras ni récords.
 - video_blurb: una frase honesta e invitadora sobre el video.
@@ -361,7 +361,9 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
   const draft: NewsletterDraft = {
     subject: (parsed.subject ?? (lang === "es" ? "Still Afloat Semanal" : "Still Afloat Weekly")).trim(),
     intro: "",
-    letter: (parsed.letter ?? "").trim(),
+    // Belt & suspenders: the template adds "Hey <name>," itself, so strip any
+    // greeting line the model opens with despite the prompt.
+    letter: (parsed.letter ?? "").trim().replace(/^(hey|hi|hello|ahoy|hola|saludos)[^\n.!?]{0,40}[,!—–-]\s*\n*/i, ""),
     quickHits,
     booking: {
       headline: (parsed.booking_headline ?? (lang === "es" ? "¿Listo para tu próximo crucero?" : "Ready for your next cruise?")).trim(),
