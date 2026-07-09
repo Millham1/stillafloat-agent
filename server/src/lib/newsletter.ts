@@ -41,9 +41,11 @@ const L = {
     fromMark: "From Mark's desk",
     fullTake: "my full take is on the site →",
     signoff: "— Mark",
-    worthBooking: "🛳 Worth booking this week",
+    worthBooking: "🛳 Worth a look this week",
     bookingCta: "Have Mark check your dates →",
     quickHitsLabel: "⚓ Quick hits — worth knowing this week",
+    funFactPrefix: "Fun fact:",
+    groanerPrefix: "Groaner of the week:",
     tagline2: "Cruise smarter. Laugh more. Stay Afloat.",
   },
   es: {
@@ -68,9 +70,11 @@ const L = {
     fromMark: "Desde el escritorio de Mark",
     fullTake: "mi opinión completa está en el sitio →",
     signoff: "— Mark",
-    worthBooking: "🛳 Vale la pena reservar esta semana",
+    worthBooking: "🛳 Vale la pena mirar esta semana",
     bookingCta: "Que Mark revise tus fechas →",
     quickHitsLabel: "⚓ En corto — lo que vale saber esta semana",
+    funFactPrefix: "Dato curioso:",
+    groanerPrefix: "El chiste malo de la semana:",
     tagline2: "Navega más inteligente. Ríe más.",
   },
 } as const;
@@ -101,6 +105,8 @@ export interface NewsletterDraft {
   stories?: Story[];
   commentary?: { id: string; title: string; excerpt: string; url: string; blurb: string };
   funFact?: string;
+  groaner?: string; // one sea-worthy dad joke — "laugh more" is a section, not a one-liner
+  photoCaption?: string;
   photo?: { url: string; alt: string; photographer: string; photographerUrl: string };
   video?: { id: string; title: string; blurb: string; url: string; thumbnail: string };
   affiliate?: { id: string; title: string; blurb: string; imageUrl: string; link: string };
@@ -133,8 +139,15 @@ async function gatherApprovedStories(lang: Lang = "en"): Promise<Story[]> {
   })).filter((s) => s.id && s.title);
 }
 
-async function gatherFeaturedVideo(): Promise<{ id: string; title: string; thumbnail: string } | null> {
-  // Prefer the manually featured video; fall back to the latest channel upload.
+// Spanish-title heuristic: accented/inverted characters are a reliable tell on
+// this channel (EN titles don't use them; the ES localizations always do —
+// that's also how the site routes them to /es/).
+const SPANISH_TITLE = /[¡¿áéíóúñÁÉÍÓÚÑ]/;
+
+async function gatherFeaturedVideo(lang: Lang): Promise<{ id: string; title: string; thumbnail: string } | null> {
+  // Prefer the manually featured video; else the latest upload IN THIS
+  // EDITION'S LANGUAGE (the 2026-07-09 EN issue featured the Spanish site-tour
+  // video because "latest upload" was language-blind).
   const ch = await readJson<{ featuredId?: string; videos?: Array<Record<string, unknown>> }>(
     "youtube-channel",
     {},
@@ -144,16 +157,21 @@ async function gatherFeaturedVideo(): Promise<{ id: string; title: string; thumb
     const v = vids.find((x) => String(x["id"]) === ch.featuredId);
     if (v) return { id: ch.featuredId, title: String(v["title"] ?? ""), thumbnail: String(v["thumbnail"] ?? "") };
   }
-  const first = vids[0];
-  if (first) {
-    return { id: String(first["id"] ?? ""), title: String(first["title"] ?? ""), thumbnail: String(first["thumbnail"] ?? "") };
-  }
+  const langMatch = (title: string): boolean =>
+    lang === "es" ? SPANISH_TITLE.test(title) : !SPANISH_TITLE.test(title);
+  const pickFrom = (list: Array<{ id: string; title: string; thumbnail: string }>): { id: string; title: string; thumbnail: string } | null =>
+    list.find((v) => v.id && langMatch(v.title)) ?? list[0] ?? null;
+
+  const stored = vids.map((v) => ({
+    id: String(v["id"] ?? ""),
+    title: String(v["title"] ?? ""),
+    thumbnail: String(v["thumbnail"] ?? ""),
+  }));
+  const fromStore = pickFrom(stored);
+  if (fromStore) return fromStore;
   try {
-    const latest = await fetchChannelVideos(1);
-    const v = latest[0];
-    if (v) {
-      return { id: v.id, title: v.title, thumbnail: `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg` };
-    }
+    const latest = await fetchChannelVideos(5);
+    return pickFrom(latest.map((v) => ({ id: v.id, title: v.title, thumbnail: `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg` })));
   } catch (err) {
     logger.warn({ err }, "newsletter: channel video fetch failed");
   }
@@ -252,25 +270,30 @@ WHO MARK IS: retired IT senior manager, veteran, lived aboard his own sailboat f
 
 VOICE — the experienced friend on the next barstool: first person singular ("I", never "we"), contractions, plainspoken, warm, wry. Humor is seasoning; useful information is the meal. Reads like Mark talking, not a brand campaign.
 
-BANNED (instant rewrite if you catch yourself): "navigating", "dive into/diving into", "explore the world of", "journey" as filler, "elevate", "unlock", "thrilling", "exciting news", "well-informed", "stay tuned", "in the world of cruising", subject lines shaped like "Verb-ing the X and Y of Z", empty superlatives, clickbait, ALL CAPS.
+BANNED (instant rewrite if you catch yourself): "navigating", "dive into/diving into", "explore the world of", "journey" as filler, "elevate", "unlock", "thrilling", "exciting", "well-informed", "stay tuned", "in the world of cruising", "adventure awaits", subject lines shaped like "Verb-ing the X and Y of Z", empty superlatives, clickbait, exclamation-point enthusiasm, ALL CAPS.
+THE MARKETING TEST: if a sentence could appear in a cruise line's promo email, rewrite it. This email IS marketing, but it must never FEEL like marketing — it feels like a letter from a friend who happens to book cruises.
 NEVER invent personal anecdotes, trips, or experiences for Mark. If his commentary is provided, his words are the raw material; keep his phrases where you can.
+LANGUAGE: everything you write is in English. If a provided story or video title is in Spanish, translate the substance or skip it — never let Spanish text leak into the issue.
+TIME AWARENESS: you are given today's date. Never pitch a deal, sale, or event whose date has passed or is about to (a "July 4th sale" is dead on July 9). If you can't tell whether a promo is still live, pick a different angle.
 
 THE POINT OF THIS EMAIL: the reader should finish it feeling like cruising is fun and smart people book through Mark. It exists to drive BOOKINGS (replies and clicks to his booking page) — NOT to drive clicks to news stories.
 
 TONE ON NEWS: the reader gets doom headlines everywhere else. Pick what a traveler can USE (deals, changes that affect planning, good news). At most ONE cautionary item, and only if travelers genuinely need it — deliver it in one calm line, never as a scare.
 
-You will receive this week's stories, possibly Mark's latest commentary, a featured video, and one affiliate product. Produce:
+You will receive this week's stories, possibly Mark's latest commentary, a featured video, one affiliate product, and a description of this week's photo. Produce:
 - subject: <= 60 chars, sounds like a text from a friend — specific, human, a little fun. (Good shape: "A 50% sale, a $26 water bottle, and my two cents".)
-- letter: Mark's opening letter, 3–5 sentences. Do NOT begin with a greeting ("Hey friends," etc.) — the email inserts "Hey <first name>," automatically; start mid-thought. If his commentary is provided, distill IT — his stance, his phrasing, first person — and end with one easy sentence that turns the reader toward planning/booking. If no commentary, open warm and seasonal without inventing personal stories.
+- letter: Mark's opening letter, 3–5 sentences. Do NOT begin with a greeting ("Hey friends," etc.) — the email inserts "Hey <first name>," automatically; start mid-thought. Do NOT write a news-roundup frame ("This week's news brings a mix of…") — talk about the ONE thing on Mark's mind (his commentary when provided: his stance, his phrasing, first person), the way he'd actually tell it, then get out. End with one easy, low-key sentence that turns the reader toward planning.
 - quick_hits: 2–4 one-liners from the provided stories, each <= 22 words, plain and useful, no hype. These render WITHOUT links on purpose.
-- booking_headline: <= 8 words naming this week's most bookable angle from the stories (a sale, a season, a destination) — or, if nothing qualifies, an evergreen angle (e.g. off-season pricing). Plain and specific, no exclamation marks, no "exciting".
-- booking_body: 2–3 sentences on why that angle is smart, ending with Mark offering to check it against the reader's dates ("reply to this email or hit the button").
-- fun_fact: 1–2 sentences for the "Laugh More" corner — a REAL, widely documented cruise or ocean fun fact told with actual humor. HARD RULE: only facts you are highly confident are true; never invent numbers or records.
+- booking_headline: <= 8 words naming this week's most bookable angle from the stories (a sale, a season, a destination) — or, if nothing qualifies, an evergreen angle (e.g. off-season pricing). Plain and specific, sentence case, no exclamation marks.
+- booking_body: 2–3 sentences the way a friend passes along a tip over a beer — why it's worth a look, no sales-speak, no exclamation points — ending with the low-key offer: Mark can check it against the reader's dates (reply or hit the button).
+- fun_fact: 1–2 sentences — a REAL, widely documented cruise or ocean fun fact told with actual humor. HARD RULE: only facts you are highly confident are true; never invent numbers or records.
+- groaner: one short sea-worthy groaner/dad joke — pure wordplay, the kind Mark would tell at the bar. No facts needed, just make it land.
+- photo_caption: one wry line captioning this week's photo (its description is provided) — observational, not salesy.
 - video_blurb: one inviting, honest sentence about the featured video.
 - affiliate_blurb: one candid sentence on why the product earns its place in a suitcase.
 - agency_ps: one soft, personal P.S. offering booking help.
 
-Respond ONLY with JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "fun_fact", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
+Respond ONLY with JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "fun_fact", "groaner", "photo_caption", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
 
 const SYSTEM_PROMPT_ES = `Escribes "Still Afloat Semanal" COMO Mark Millham — este correo es una carta de Mark a sus amigos, nunca un boletín corporativo. Español latinoamericano neutro (es-419).
 
@@ -278,25 +301,29 @@ QUIÉN ES MARK: gerente senior de TI retirado, veterano, vivió unos 12 años a 
 
 VOZ — el amigo con experiencia en la barra de al lado: primera persona singular ("yo", nunca "nosotros"), cercano, directo, cálido, con humor seco. El humor es el condimento; la información útil es el plato. Mantén nombres propios en su idioma original (líneas, barcos, puertos, "Amazon").
 
-PROHIBIDO (reescribe si te descubres): "navegando por", "sumérgete", "explora el mundo de", "eleva", "emocionante", "no te lo pierdas", "mantente informado", asuntos con forma "Verbo-ando lo X y lo Y de Z", superlativos vacíos, clickbait, MAYÚSCULAS.
+PROHIBIDO (reescribe si te descubres): "navegando por", "sumérgete", "explora el mundo de", "eleva", "emocionante", "no te lo pierdas", "mantente informado", asuntos con forma "Verbo-ando lo X y lo Y de Z", superlativos vacíos, clickbait, entusiasmo con signos de exclamación, MAYÚSCULAS.
+LA PRUEBA DE MARKETING: si una frase podría aparecer en el correo promocional de una naviera, reescríbela. Este correo ES marketing, pero nunca debe SENTIRSE como marketing — se siente como la carta de un amigo que además reserva cruceros.
 NUNCA inventes anécdotas, viajes ni experiencias personales de Mark. Si se provee su commentary, sus palabras son la materia prima.
+CONCIENCIA DEL TIEMPO: recibirás la fecha de hoy. Nunca promociones una oferta o evento cuya fecha ya pasó o está por pasar. Si no sabes si una promo sigue viva, elige otro ángulo.
 
 EL OBJETIVO DEL CORREO: que el lector termine sintiendo que crucerear es divertido y que la gente lista reserva con Mark. Existe para generar RESERVAS (respuestas y clics a su página de reservas) — NO para llevar tráfico a noticias.
 
 TONO CON LAS NOTICIAS: el lector ya recibe titulares negativos en todas partes. Elige lo que un viajero puede USAR (ofertas, cambios que afectan la planificación, buenas noticias). Máximo UNA nota de precaución, solo si es realmente necesaria, en una línea tranquila.
 
-Recibirás las noticias de la semana, posiblemente el commentary más reciente de Mark, un video destacado y un producto de afiliado. Produce, TODO en español:
+Recibirás las noticias de la semana, posiblemente el commentary más reciente de Mark, un video destacado, un producto de afiliado y la descripción de la foto de la semana. Produce, TODO en español:
 - subject: <= 60 caracteres, suena a mensaje de un amigo — específico, humano, con gracia.
-- letter: la carta de apertura de Mark, 3–5 frases. NO empieces con un saludo ("Hola amigos," etc.) — el correo inserta "Hola <nombre>," automáticamente; empieza en medio del pensamiento. Si hay commentary, destílalo — su postura, sus frases, primera persona — y cierra con una frase fácil que lleve al lector hacia planear/reservar. Sin commentary, abre cálido y de temporada sin inventar historias personales.
+- letter: la carta de apertura de Mark, 3–5 frases. NO empieces con un saludo ("Hola amigos," etc.) — el correo inserta "Hola <nombre>," automáticamente; empieza en medio del pensamiento. NO hagas un resumen noticioso ("Las noticias de esta semana traen…") — habla de LO ÚNICO que Mark trae en mente (su commentary cuando exista: su postura, sus frases, primera persona), como él lo contaría, y cierra con una frase fácil y sin presión que lleve al lector hacia planear.
 - quick_hits: 2–4 líneas de las noticias provistas, cada una <= 22 palabras, útiles y sin exageración. Se muestran SIN enlaces a propósito.
-- booking_headline: <= 8 palabras con el ángulo más reservable de la semana (una oferta, una temporada, un destino) — o un ángulo permanente si nada califica. Directo y específico, sin signos de exclamación, sin "emocionante".
-- booking_body: 2–3 frases de por qué conviene, cerrando con Mark ofreciendo revisarlo contra las fechas del lector ("responde a este correo o toca el botón").
-- fun_fact: 1–2 frases para "Ríe más" — un dato curioso REAL y ampliamente documentado sobre cruceros o el mar, contado con humor de verdad. REGLA DURA: solo datos verificables; nunca inventes cifras ni récords.
+- booking_headline: <= 8 palabras con el ángulo más reservable de la semana (una oferta, una temporada, un destino) — o un ángulo permanente si nada califica. Directo y específico, sin signos de exclamación.
+- booking_body: 2–3 frases como un amigo que pasa un dato tomando algo — por qué vale la pena, sin lenguaje de ventas, sin exclamaciones — cerrando con la oferta tranquila: Mark puede revisarlo contra tus fechas (responde o toca el botón).
+- fun_fact: 1–2 frases — un dato curioso REAL y ampliamente documentado sobre cruceros o el mar, con humor de verdad. REGLA DURA: solo datos verificables; nunca inventes cifras ni récords.
+- groaner: un chiste malo corto de tema marino — puro juego de palabras, del tipo que Mark contaría en la barra.
+- photo_caption: una línea irónica/observacional para la foto de la semana (se provee su descripción) — nada de ventas.
 - video_blurb: una frase honesta e invitadora sobre el video.
 - affiliate_blurb: una frase sincera de por qué el producto se gana su lugar en la maleta.
 - agency_ps: una posdata breve y personal ofreciendo ayuda para reservar.
 
-Responde SOLO con JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "fun_fact", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
+Responde SOLO con JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "fun_fact", "groaner", "photo_caption", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
 
 export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraft> {
   const apiKey = process.env["OPENAI_API_KEY"] || "";
@@ -304,7 +331,7 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
 
   const [stories, video, affiliate, commentary, photo] = await Promise.all([
     gatherApprovedStories(lang),
-    gatherFeaturedVideo(),
+    gatherFeaturedVideo(lang),
     gatherFeaturedAffiliate(),
     gatherLatestCommentary(lang),
     fetchCruisePhoto(),
@@ -313,10 +340,12 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
 
   const userContent = JSON.stringify(
     {
+      today: new Date().toDateString(),
       stories: stories.map((s) => ({ id: s.id, title: s.title, summary: s.summary, impact: s.impact })),
       commentary_post: commentary ? { title: commentary.title, body: commentary.body } : null,
       featured_video: video ? { title: video.title } : null,
       affiliate_product: affiliate ? { title: affiliate.title, description: affiliate.description } : null,
+      this_weeks_photo: photo ? { description: photo.alt } : null,
     },
     null,
     2,
@@ -348,6 +377,8 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
     booking_headline?: string;
     booking_body?: string;
     fun_fact?: string;
+    groaner?: string;
+    photo_caption?: string;
     video_blurb?: string;
     affiliate_blurb?: string;
     agency_ps?: string;
@@ -411,7 +442,13 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
   }
   const funFact = (parsed.fun_fact ?? "").trim();
   if (funFact) draft.funFact = funFact;
-  if (photo) draft.photo = photo;
+  const groaner = (parsed.groaner ?? "").trim();
+  if (groaner) draft.groaner = groaner;
+  if (photo) {
+    draft.photo = photo;
+    const caption = (parsed.photo_caption ?? "").trim();
+    if (caption) draft.photoCaption = caption;
+  }
 
   logger.info(
     {
@@ -462,15 +499,15 @@ export function renderEnrichedNewsletter(
     ${draft.commentary ? `<p style="margin:0;font-size:13px;color:#64748b;font-style:italic;">(<a href="${draft.commentary.url}" style="color:#0077b6;">${t.fullTake}</a>)</p>` : ""}`
     : "";
 
-  // ── Worth booking this week — THE call to action ──
+  // ── Worth a look this week — the booking nudge, kept friend-tip quiet ──
   const bookingUrl = utm(`${baseUrl}${esPrefix}/work-with-mark.html#contact`, "booking");
   const bookingBlock = draft.booking
     ? `
-    <div style="border:2px solid #f6b83c;border-radius:14px;padding:22px 24px;margin:26px 0 8px;background:#fffaf0;">
-      <p style="margin:0 0 8px;font-size:13px;color:#b45309;font-weight:800;text-transform:uppercase;letter-spacing:.06em;">${t.worthBooking}</p>
-      <h2 style="margin:0 0 10px;font-size:19px;color:#0c2035;line-height:1.35;font-weight:800;">${draft.booking.headline}</h2>
-      <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.7;">${draft.booking.body}</p>
-      <a href="${bookingUrl}" style="display:inline-block;background:#0077b6;color:#ffffff;padding:13px 26px;border-radius:10px;text-decoration:none;font-size:15px;font-weight:800;">${t.bookingCta}</a>
+    <div style="border:1px solid #d3e6f0;border-left:4px solid #0077b6;border-radius:12px;padding:18px 22px;margin:24px 0 8px;background:#f7fbfd;">
+      <p style="margin:0 0 6px;font-size:12px;color:#0077b6;font-weight:700;letter-spacing:.04em;">${t.worthBooking}</p>
+      <h3 style="margin:0 0 8px;font-size:16px;color:#0c2035;line-height:1.4;font-weight:800;">${draft.booking.headline}</h3>
+      <p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.7;">${draft.booking.body}</p>
+      <a href="${bookingUrl}" style="display:inline-block;background:#0077b6;color:#ffffff;padding:10px 20px;border-radius:9px;text-decoration:none;font-size:13px;font-weight:700;">${t.bookingCta}</a>
     </div>`
     : "";
 
@@ -509,15 +546,20 @@ export function renderEnrichedNewsletter(
     </div>`
     : "";
 
-  // Laugh More corner — licensed photo + verified fun fact.
-  const laughBlock = draft.funFact || draft.photo
+  // Laugh More — a real section (photo + wry caption + fun fact + groaner),
+  // not a one-liner (Mark, 2026-07-09).
+  const laughBlock = draft.funFact || draft.groaner || draft.photo
     ? `
-    <div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:24px 0 16px;background:#fff;">
+    <div style="border:1px solid #f0e3c8;border-radius:12px;overflow:hidden;margin:24px 0 16px;background:#fffcf3;">
+      <div style="padding:14px 22px 0;">
+        <p style="margin:0 0 10px;font-size:13px;color:#d97706;font-weight:800;text-transform:uppercase;letter-spacing:.06em;">${t.laughMore}</p>
+      </div>
       ${draft.photo ? `<img src="${draft.photo.url}" alt="${escapeAttr(draft.photo.alt)}" style="display:block;width:100%;max-width:600px;"/>` : ""}
-      <div style="padding:16px 22px;">
-        <p style="margin:0 0 4px;font-size:12px;color:#d97706;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">${t.laughMore} — ${t.funFactLabel}</p>
-        ${draft.funFact ? `<p style="margin:0;color:#374151;font-size:14px;line-height:1.7;">${draft.funFact}</p>` : ""}
-        ${draft.photo && draft.photo.photographer ? `<p style="margin:8px 0 0;color:#9ca3af;font-size:11px;">${t.photoBy}: <a href="${draft.photo.photographerUrl || "https://www.pexels.com"}" style="color:#9ca3af;">${draft.photo.photographer}</a> / Pexels</p>` : ""}
+      <div style="padding:12px 22px 16px;">
+        ${draft.photoCaption ? `<p style="margin:0 0 12px;color:#64748b;font-size:13px;line-height:1.6;font-style:italic;text-align:center;">${draft.photoCaption}</p>` : ""}
+        ${draft.funFact ? `<p style="margin:0 0 10px;color:#374151;font-size:14px;line-height:1.7;"><strong style="color:#b45309;">${t.funFactPrefix}</strong> ${draft.funFact}</p>` : ""}
+        ${draft.groaner ? `<p style="margin:0;color:#374151;font-size:14px;line-height:1.7;"><strong style="color:#b45309;">${t.groanerPrefix}</strong> ${draft.groaner}</p>` : ""}
+        ${draft.photo && draft.photo.photographer ? `<p style="margin:10px 0 0;color:#b8ad93;font-size:11px;">${t.photoBy}: <a href="${draft.photo.photographerUrl || "https://www.pexels.com"}" style="color:#b8ad93;">${draft.photo.photographer}</a> / Pexels</p>` : ""}
       </div>
     </div>`
     : "";
@@ -530,10 +572,7 @@ export function renderEnrichedNewsletter(
 <head><meta charset="UTF-8"></head>
 <body style="font-family:Georgia,'Times New Roman',serif;background:#eaf4f9;padding:0;margin:0;">
   <div style="max-width:600px;margin:28px auto;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(7,24,63,.12);background:#fffdf8;">
-    <div style="background:#fffdf8;padding:26px 32px 18px;text-align:center;">
-      <img src="${SITE}/assets/images/still_afloat_transparent.png" alt="Still Afloat" width="210" style="display:block;width:210px;max-width:60%;height:auto;margin:0 auto 8px;"/>
-      <p style="margin:0;color:#0c2035;font-size:13px;font-style:italic;">${t.tagline2}</p>
-    </div>
+    <img src="${SITE}/assets/images/Youtube%20banner%20cropped.png" alt="Still Afloat — ${t.tagline2}" style="display:block;width:100%;height:auto;"/>
     <div style="height:6px;background:linear-gradient(90deg,#0077b6,#5bc8f5,#f6b83c,#0077b6);"></div>
     <div style="background:#fffdf8;padding:26px 32px;">
       ${letterBlock}
