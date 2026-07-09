@@ -82,6 +82,7 @@ router.post("/newsletter/draft/update", requireToken, async (req: Request, res: 
       sunnySide?: string;
       pps?: string;
       photoCaption?: string;
+      videoTitle?: string;
       videoBlurb?: string;
       affiliateBlurb?: string;
       removePhoto?: boolean;
@@ -132,6 +133,7 @@ router.post("/newsletter/draft/update", requireToken, async (req: Request, res: 
       if (c) draft.photoCaption = c;
       else delete draft.photoCaption;
     }
+    if (draft.video && typeof body.videoTitle === "string" && body.videoTitle.trim()) draft.video.title = body.videoTitle.trim();
     if (draft.video && typeof body.videoBlurb === "string") draft.video.blurb = body.videoBlurb.trim();
     if (draft.affiliate && typeof body.affiliateBlurb === "string") draft.affiliate.blurb = body.affiliateBlurb.trim();
     if (body.removePhoto) delete draft.photo;
@@ -240,8 +242,9 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
         ${draft.photo ? `<label>Photo caption<textarea id="e-photocaption" rows="2">${escapeHtml(draft.photoCaption ?? "")}</textarea></label>
         <label class="inc"><input type="checkbox" id="e-photo-inc" checked/> keep photo (${escapeHtml(draft.photo.photographer || "Pexels")})</label>` : ""}
       </fieldset>
-      ${draft.video ? `<fieldset class="card"><legend>Video — ${escapeHtml(draft.video.title)}</legend>
+      ${draft.video ? `<fieldset class="card"><legend>Video</legend>
         <label class="inc"><input type="checkbox" id="e-video-inc" checked/> include</label>
+        <label>Card headline<input type="text" id="e-video-title" value="${escapeHtml(draft.video.title)}"/></label>
         <label>Blurb<textarea id="e-video-blurb" rows="2">${escapeHtml(draft.video.blurb)}</textarea></label>
       </fieldset>` : ""}
       ${draft.affiliate ? `<fieldset class="card"><legend>Gear pick — ${escapeHtml(draft.affiliate.title)}</legend>
@@ -319,6 +322,7 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
    var bookInc=document.getElementById('e-booking-inc');
    if(bookInc && !bookInc.checked){ body.removeBooking=true; }
    else { body.bookingHeadline=val('e-booking-headline'); body.bookingBody=val('e-booking-body'); }
+   body.videoTitle=val('e-video-title');
    addBlock(body,'video'); addBlock(body,'affiliate');
    var photoInc=document.getElementById('e-photo-inc');
    if(photoInc && !photoInc.checked) body.removePhoto=true;
