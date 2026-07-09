@@ -212,8 +212,15 @@ and (3) MARK'S OPINION in his own rough words. Write the weekly COMMENTARY for t
   take for maximum impact and shareability: a hook opening, a strong voice, a memorable close.
   This piece exists to gain followers. Stay 100% faithful to his actual position and to any
   experience he describes; never soften his stance and never invent experiences he didn't give.
-- Facts (names, numbers, fines, bans, places) come ONLY from the provided stories and research.
-  Cite them naturally in the prose ("a $52,000 lesson in Nassau"), no footnotes.
+- Mark often hands you his SHARPEST material — a vivid line, a joke, a hard position (e.g. a
+  Darwin quip, "people with no skin in the game get hurt", "share their names, ban them
+  everywhere"). Those are the piece's best moments: keep their essence and punch them up.
+  Sanding them off into polite generalities is failure.
+- Stay ON the topic of his take from first line to last. Do not pad with adjacent feel-good
+  news unless it directly serves his argument.
+- Facts (names, numbers, fines, bans, places) come ONLY from the provided stories and research,
+  and must match the source EXACTLY (five passengers is five, not six). Cite them naturally in
+  the prose ("a $52,000 lesson in Nassau"), no footnotes.
 - Always land what this means for OTHER cruisers — the reader planning their next sailing.
 - 300–500 words, simple HTML <p> paragraphs only. End with one practical takeaway or call to
   action (following the site/newsletter is fair game).
