@@ -41,11 +41,13 @@ const L = {
     fromMark: "From Mark's desk",
     fullTake: "my full take is on the site →",
     signoff: "— Mark",
-    worthBooking: "🛳 Worth a look this week",
+    worthBooking: "Worth a look this week",
     bookingCta: "Have Mark check your dates →",
-    quickHitsLabel: "⚓ Quick hits — worth knowing this week",
-    funFactPrefix: "Fun fact:",
-    groanerPrefix: "Groaner of the week:",
+    quickHitsLabel: "Cruise report",
+    quickHitsTitle: "What's happening out there",
+    sunnyLabel: "Laugh more",
+    sunnyTitle: "The Sunny Side",
+    pps: "P.P.S.",
     tagline2: "Cruise smarter. Laugh more. Stay Afloat.",
   },
   es: {
@@ -70,11 +72,13 @@ const L = {
     fromMark: "Desde el escritorio de Mark",
     fullTake: "mi opinión completa está en el sitio →",
     signoff: "— Mark",
-    worthBooking: "🛳 Vale la pena mirar esta semana",
+    worthBooking: "Vale la pena mirar esta semana",
     bookingCta: "Que Mark revise tus fechas →",
-    quickHitsLabel: "⚓ En corto — lo que vale saber esta semana",
-    funFactPrefix: "Dato curioso:",
-    groanerPrefix: "El chiste malo de la semana:",
+    quickHitsLabel: "Reporte crucero",
+    quickHitsTitle: "Qué está pasando allá afuera",
+    sunnyLabel: "Ríe más",
+    sunnyTitle: "El Lado Soleado",
+    pps: "P.P.D.",
     tagline2: "Navega más inteligente. Ríe más.",
   },
 } as const;
@@ -104,8 +108,11 @@ export interface NewsletterDraft {
   // template renders quickHits, not story cards).
   stories?: Story[];
   commentary?: { id: string; title: string; excerpt: string; url: string; blurb: string };
-  funFact?: string;
-  groaner?: string; // one sea-worthy dad joke — "laugh more" is a section, not a one-liner
+  // "Laugh more" is a STYLE, not a joke repository (Mark, 2026-07-09): the
+  // Sunny Side is a warm passage about enjoying cruise life; any humor rides
+  // inside the writing. A groaner survives only as an optional playful P.P.S.
+  sunnySide?: string;
+  pps?: string;
   photoCaption?: string;
   photo?: { url: string; alt: string; photographer: string; photographerUrl: string };
   video?: { id: string; title: string; blurb: string; url: string; thumbnail: string };
@@ -286,14 +293,14 @@ You will receive this week's stories, possibly Mark's latest commentary, a featu
 - quick_hits: 2–4 one-liners from the provided stories, each <= 22 words, plain and useful, no hype. These render WITHOUT links on purpose.
 - booking_headline: <= 8 words naming this week's most bookable angle from the stories (a sale, a season, a destination) — or, if nothing qualifies, an evergreen angle (e.g. off-season pricing). Plain and specific, sentence case, no exclamation marks.
 - booking_body: 2–3 sentences the way a friend passes along a tip over a beer — why it's worth a look, no sales-speak, no exclamation points — ending with the low-key offer: Mark can check it against the reader's dates (reply or hit the button).
-- fun_fact: 1–2 sentences — a REAL, widely documented cruise or ocean fun fact told with actual humor. HARD RULE: only facts you are highly confident are true; never invent numbers or records.
-- groaner: one short sea-worthy groaner/dad joke — pure wordplay, the kind Mark would tell at the bar. No facts needed, just make it land.
+- sunny_side: 2–4 sentences for "The Sunny Side" — the LAUGH MORE spirit: life, fun, the small pleasures of cruising. Anchor it in the most enjoyable thing in this week's material (a feel-good story, a season, the simple joy of a sea day). Written warm and a little playful — the humor lives IN the writing, never as a stand-alone joke. You may fold in ONE real, widely documented fun fact if it fits naturally (never invent numbers or records). No invented Mark anecdotes.
 - photo_caption: one wry line captioning this week's photo (its description is provided) — observational, not salesy.
+- pps: OPTIONAL one-line playful sign-off for a P.P.S. — a light pun or wink is fine here (this is the only place a joke may stand alone). Empty string if nothing lands.
 - video_blurb: one inviting, honest sentence about the featured video.
 - affiliate_blurb: one candid sentence on why the product earns its place in a suitcase.
 - agency_ps: one soft, personal P.S. offering booking help.
 
-Respond ONLY with JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "fun_fact", "groaner", "photo_caption", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
+Respond ONLY with JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "sunny_side", "photo_caption", "pps", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
 
 const SYSTEM_PROMPT_ES = `Escribes "Still Afloat Semanal" COMO Mark Millham — este correo es una carta de Mark a sus amigos, nunca un boletín corporativo. Español latinoamericano neutro (es-419).
 
@@ -316,14 +323,14 @@ Recibirás las noticias de la semana, posiblemente el commentary más reciente d
 - quick_hits: 2–4 líneas de las noticias provistas, cada una <= 22 palabras, útiles y sin exageración. Se muestran SIN enlaces a propósito.
 - booking_headline: <= 8 palabras con el ángulo más reservable de la semana (una oferta, una temporada, un destino) — o un ángulo permanente si nada califica. Directo y específico, sin signos de exclamación.
 - booking_body: 2–3 frases como un amigo que pasa un dato tomando algo — por qué vale la pena, sin lenguaje de ventas, sin exclamaciones — cerrando con la oferta tranquila: Mark puede revisarlo contra tus fechas (responde o toca el botón).
-- fun_fact: 1–2 frases — un dato curioso REAL y ampliamente documentado sobre cruceros o el mar, con humor de verdad. REGLA DURA: solo datos verificables; nunca inventes cifras ni récords.
-- groaner: un chiste malo corto de tema marino — puro juego de palabras, del tipo que Mark contaría en la barra.
+- sunny_side: 2–4 frases para "El Lado Soleado" — el espíritu de RÍE MÁS: la vida, la diversión, los pequeños placeres de crucerear. Ánclalo en lo más disfrutable del material de la semana (una historia amable, una temporada, el gusto simple de un día de mar). Cálido y juguetón — el humor vive DENTRO de la escritura, nunca como chiste suelto. Puedes integrar UN dato curioso real y ampliamente documentado si cabe con naturalidad (nunca inventes cifras). Sin anécdotas inventadas de Mark.
 - photo_caption: una línea irónica/observacional para la foto de la semana (se provee su descripción) — nada de ventas.
+- pps: OPCIONAL una línea juguetona para una P.P.D. — aquí sí puede vivir un juego de palabras solo. Cadena vacía si nada funciona.
 - video_blurb: una frase honesta e invitadora sobre el video.
 - affiliate_blurb: una frase sincera de por qué el producto se gana su lugar en la maleta.
 - agency_ps: una posdata breve y personal ofreciendo ayuda para reservar.
 
-Responde SOLO con JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "fun_fact", "groaner", "photo_caption", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
+Responde SOLO con JSON: { "subject", "letter", "quick_hits":[], "booking_headline", "booking_body", "sunny_side", "photo_caption", "pps", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
 
 export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraft> {
   const apiKey = process.env["OPENAI_API_KEY"] || "";
@@ -376,9 +383,9 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
     quick_hits?: string[];
     booking_headline?: string;
     booking_body?: string;
-    fun_fact?: string;
-    groaner?: string;
+    sunny_side?: string;
     photo_caption?: string;
+    pps?: string;
     video_blurb?: string;
     affiliate_blurb?: string;
     agency_ps?: string;
@@ -440,10 +447,10 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
       blurb: "",
     };
   }
-  const funFact = (parsed.fun_fact ?? "").trim();
-  if (funFact) draft.funFact = funFact;
-  const groaner = (parsed.groaner ?? "").trim();
-  if (groaner) draft.groaner = groaner;
+  const sunnySide = (parsed.sunny_side ?? "").trim();
+  if (sunnySide) draft.sunnySide = sunnySide;
+  const pps = (parsed.pps ?? "").trim();
+  if (pps) draft.pps = pps;
   if (photo) {
     draft.photo = photo;
     const caption = (parsed.photo_caption ?? "").trim();
@@ -458,7 +465,7 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
       hasVideo: !!draft.video,
       hasAffiliate: !!draft.affiliate,
       hasCommentary: !!draft.commentary,
-      hasFunFact: !!draft.funFact,
+      hasSunnySide: !!draft.sunnySide,
       hasPhoto: !!draft.photo,
     },
     "Drafted newsletter",
@@ -488,48 +495,65 @@ export function renderEnrichedNewsletter(
   const unsub = unsubscribeUrl(recipientEmail, baseUrl);
   const firstName = (recipientName || (lang === "es" ? "hola" : "there")).split(" ")[0] || "there";
 
-  // ── Mark's letter (his voice; the heart of the email) ──
+  // ── Site style tokens (mirrors stillafloatcruising.com) ──
+  const FONT_BODY = "'Baloo 2','Trebuchet MS',Verdana,sans-serif";
+  const FONT_HEAD = "'Bree Serif',Georgia,serif";
+  const pill = (text: string, fg: string, bg: string): string =>
+    `<span style="display:inline-block;background:${bg};color:${fg};border-radius:999px;padding:4px 14px;font-family:${FONT_BODY};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.10em;">${text}</span>`;
+  const BEACH_BG = `${SITE}/assets/images/Tropical%20beach%20with%20palm%20trees%20and%20ship.png`;
+  const TROPICAL_BG = `${SITE}/assets/images/news-tropical-bg.png`;
+  const CRAB = `${SITE}/assets/images/crab-mascot.png`;
+
+  // ── Mark's letter: frosted panel floating on the beach photo ──
   const letterText = (draft.letter ?? draft.intro ?? "").trim();
+  const letterPara = (s: string): string => `<p style="margin:0 0 10px;color:#1e3a5f;font-family:${FONT_BODY};font-size:16px;line-height:1.75;">${s}</p>`;
   const letterBlock = letterText
     ? `
-    <p style="margin:0 0 6px;font-size:12px;color:#b8860b;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">${t.fromMark}</p>
-    <p style="margin:0 0 8px;color:#243b53;font-size:16px;line-height:1.75;">${t.hi(firstName)}</p>
-    <p style="margin:0 0 8px;color:#243b53;font-size:16px;line-height:1.75;">${letterText.replace(/\n+/g, '</p><p style="margin:0 0 8px;color:#243b53;font-size:16px;line-height:1.75;">')}</p>
-    <p style="margin:0 0 4px;color:#243b53;font-size:16px;font-weight:700;">${t.signoff}</p>
-    ${draft.commentary ? `<p style="margin:0;font-size:13px;color:#64748b;font-style:italic;">(<a href="${draft.commentary.url}" style="color:#0077b6;">${t.fullTake}</a>)</p>` : ""}`
-    : "";
-
-  // ── Worth a look this week — the booking nudge, kept friend-tip quiet ──
-  const bookingUrl = utm(`${baseUrl}${esPrefix}/work-with-mark.html#contact`, "booking");
-  const bookingBlock = draft.booking
-    ? `
-    <div style="border:1px solid #d3e6f0;border-left:4px solid #0077b6;border-radius:12px;padding:18px 22px;margin:24px 0 8px;background:#f7fbfd;">
-      <p style="margin:0 0 6px;font-size:12px;color:#0077b6;font-weight:700;letter-spacing:.04em;">${t.worthBooking}</p>
-      <h3 style="margin:0 0 8px;font-size:16px;color:#0c2035;line-height:1.4;font-weight:800;">${draft.booking.headline}</h3>
-      <p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.7;">${draft.booking.body}</p>
-      <a href="${bookingUrl}" style="display:inline-block;background:#0077b6;color:#ffffff;padding:10px 20px;border-radius:9px;text-decoration:none;font-size:13px;font-weight:700;">${t.bookingCta}</a>
+    <div style="background:#eaf4f9 url('${BEACH_BG}') center/cover no-repeat;border-radius:16px;overflow:hidden;margin:0 0 18px;">
+      <div style="background:rgba(255,253,248,.90);margin:14px;border-radius:12px;padding:20px 24px;">
+        <p style="margin:0 0 10px;">${pill(t.fromMark, "#5dff9a", "rgba(7,24,63,.85)")}</p>
+        ${letterPara(t.hi(firstName))}
+        ${letterText.split(/\n+/).map(letterPara).join("")}
+        <p style="margin:0 0 4px;color:#1e3a5f;font-family:${FONT_HEAD};font-size:17px;">${t.signoff}</p>
+        ${draft.commentary ? `<p style="margin:0;font-family:${FONT_BODY};font-size:13px;color:#64748b;font-style:italic;">(<a href="${draft.commentary.url}" style="color:#0077b6;">${t.fullTake}</a>)</p>` : ""}
+      </div>
     </div>`
     : "";
 
-  // ── Quick hits: plain one-liners, deliberately link-free ──
+  // ── Worth a look: navy card over tropical art, site-green CTA ──
+  const bookingUrl = utm(`${baseUrl}${esPrefix}/work-with-mark.html#contact`, "booking");
+  const bookingBlock = draft.booking
+    ? `
+    <div style="background:#07183f url('${TROPICAL_BG}') center/cover no-repeat;border-radius:16px;overflow:hidden;margin:0 0 18px;">
+      <div style="background:rgba(4,17,46,.82);padding:22px 26px;">
+        <p style="margin:0 0 10px;">${pill(t.worthBooking, "#07183f", "#ffd21f")}</p>
+        <h3 style="margin:0 0 8px;font-family:${FONT_HEAD};font-size:20px;color:#ffffff;line-height:1.35;font-weight:400;">${draft.booking.headline}</h3>
+        <p style="margin:0 0 16px;color:#cfe3ee;font-family:${FONT_BODY};font-size:14px;line-height:1.7;">${draft.booking.body}</p>
+        <a href="${bookingUrl}" style="display:inline-block;background:#5dff9a;color:#07183f;padding:11px 22px;border-radius:999px;text-decoration:none;font-family:${FONT_BODY};font-size:14px;font-weight:800;">${t.bookingCta}</a>
+      </div>
+    </div>`
+    : "";
+
+  // ── Cruise report: white card, site pill + Bree Serif title ──
   const hits = (draft.quickHits ?? []).filter(Boolean);
   const quickHitsBlock = hits.length
     ? `
-    <div style="margin:22px 0 6px;">
-      <p style="margin:0 0 10px;font-size:13px;color:#0077b6;font-weight:800;text-transform:uppercase;letter-spacing:.06em;">${t.quickHitsLabel}</p>
-      ${hits.map((h) => `<p style="margin:0 0 8px;color:#374151;font-size:14px;line-height:1.65;">• &nbsp;${h}</p>`).join("")}
+    <div style="background:#ffffff;border-radius:16px;padding:20px 24px;margin:0 0 18px;">
+      <p style="margin:0 0 8px;">${pill(t.quickHitsLabel, "#0077b6", "#ddeeff")}</p>
+      <h3 style="margin:0 0 12px;font-family:${FONT_HEAD};font-size:19px;color:#0c2035;font-weight:400;">${t.quickHitsTitle}</h3>
+      ${hits.map((h) => `<p style="margin:0 0 9px;color:#374151;font-family:${FONT_BODY};font-size:14px;line-height:1.65;">⚓&nbsp; ${h}</p>`).join("")}
     </div>`
     : "";
 
   const videoBlock = draft.video
     ? `
-    <div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin:24px 0 16px;background:#fff;">
+    <div style="background:#ffffff;border-radius:16px;overflow:hidden;margin:0 0 18px;">
       <a href="${draft.video.url}" style="text-decoration:none;">
         ${draft.video.thumbnail ? `<img src="${draft.video.thumbnail}" alt="" style="display:block;width:100%;max-width:600px;"/>` : ""}
-        <div style="padding:16px 22px;">
-          <p style="margin:0 0 4px;font-size:12px;color:#0077b6;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">${t.watch}</p>
-          <h3 style="margin:0 0 6px;font-size:16px;color:#0c2035;font-weight:800;">${draft.video.title}</h3>
-          ${draft.video.blurb ? `<p style="margin:0;color:#374151;font-size:14px;line-height:1.6;">${draft.video.blurb}</p>` : ""}
+        <div style="padding:16px 24px;">
+          <p style="margin:0 0 8px;">${pill(t.watch, "#ffffff", "#0077b6")}</p>
+          <h3 style="margin:0 0 6px;font-family:${FONT_HEAD};font-size:17px;color:#0c2035;font-weight:400;">${draft.video.title}</h3>
+          ${draft.video.blurb ? `<p style="margin:0;color:#374151;font-family:${FONT_BODY};font-size:14px;line-height:1.6;">${draft.video.blurb}</p>` : ""}
         </div>
       </a>
     </div>`
@@ -537,29 +561,31 @@ export function renderEnrichedNewsletter(
 
   const affiliateBlock = draft.affiliate
     ? `
-    <div style="border:1px dashed #cbd5e1;border-radius:12px;padding:18px 22px;margin:16px 0;background:#fbfdff;">
-      <p style="margin:0 0 6px;font-size:12px;color:#0e7490;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">${t.gear}</p>
-      <h3 style="margin:0 0 6px;font-size:16px;color:#0c2035;font-weight:800;">${draft.affiliate.title}</h3>
-      ${draft.affiliate.blurb ? `<p style="margin:0 0 12px;color:#374151;font-size:14px;line-height:1.6;">${draft.affiliate.blurb}</p>` : ""}
-      <a href="${draft.affiliate.link}" style="display:inline-block;background:#0e7490;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;">${t.gearCta}</a>
-      <p style="margin:8px 0 0;color:#9ca3af;font-size:11px;">${t.affNote}</p>
+    <div style="background:#ffffff;border-radius:16px;padding:18px 24px;margin:0 0 18px;">
+      <p style="margin:0 0 8px;">${pill(t.gear, "#0e7490", "#d9f2f7")}</p>
+      <h3 style="margin:0 0 6px;font-family:${FONT_HEAD};font-size:17px;color:#0c2035;font-weight:400;">${draft.affiliate.title}</h3>
+      ${draft.affiliate.blurb ? `<p style="margin:0 0 12px;color:#374151;font-family:${FONT_BODY};font-size:14px;line-height:1.6;">${draft.affiliate.blurb}</p>` : ""}
+      <a href="${draft.affiliate.link}" style="display:inline-block;background:#0e7490;color:#fff;padding:9px 20px;border-radius:999px;text-decoration:none;font-family:${FONT_BODY};font-size:13px;font-weight:700;">${t.gearCta}</a>
+      <p style="margin:8px 0 0;color:#9ca3af;font-family:${FONT_BODY};font-size:11px;">${t.affNote}</p>
     </div>`
     : "";
 
-  // Laugh More — a real section (photo + wry caption + fun fact + groaner),
-  // not a one-liner (Mark, 2026-07-09).
-  const laughBlock = draft.funFact || draft.groaner || draft.photo
+  // The Sunny Side — the "laugh more" spirit as a section: the week's photo,
+  // a wry caption, and warm writing about enjoying cruise life. The crab
+  // mascot keeps it playful. Not a joke box.
+  const laughBlock = draft.sunnySide || draft.photo
     ? `
-    <div style="border:1px solid #f0e3c8;border-radius:12px;overflow:hidden;margin:24px 0 16px;background:#fffcf3;">
-      <div style="padding:14px 22px 0;">
-        <p style="margin:0 0 10px;font-size:13px;color:#d97706;font-weight:800;text-transform:uppercase;letter-spacing:.06em;">${t.laughMore}</p>
-      </div>
+    <div style="background:#ffffff;border-radius:16px;overflow:hidden;margin:0 0 18px;">
       ${draft.photo ? `<img src="${draft.photo.url}" alt="${escapeAttr(draft.photo.alt)}" style="display:block;width:100%;max-width:600px;"/>` : ""}
-      <div style="padding:12px 22px 16px;">
-        ${draft.photoCaption ? `<p style="margin:0 0 12px;color:#64748b;font-size:13px;line-height:1.6;font-style:italic;text-align:center;">${draft.photoCaption}</p>` : ""}
-        ${draft.funFact ? `<p style="margin:0 0 10px;color:#374151;font-size:14px;line-height:1.7;"><strong style="color:#b45309;">${t.funFactPrefix}</strong> ${draft.funFact}</p>` : ""}
-        ${draft.groaner ? `<p style="margin:0;color:#374151;font-size:14px;line-height:1.7;"><strong style="color:#b45309;">${t.groanerPrefix}</strong> ${draft.groaner}</p>` : ""}
-        ${draft.photo && draft.photo.photographer ? `<p style="margin:10px 0 0;color:#b8ad93;font-size:11px;">${t.photoBy}: <a href="${draft.photo.photographerUrl || "https://www.pexels.com"}" style="color:#b8ad93;">${draft.photo.photographer}</a> / Pexels</p>` : ""}
+      <div style="padding:16px 24px 18px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 10px;"><tr>
+          <td style="vertical-align:middle;">${pill(t.sunnyLabel, "#b45309", "#ffe9c7")}</td>
+          <td style="vertical-align:middle;padding-left:8px;"><img src="${CRAB}" alt="" width="34" style="display:block;width:34px;height:auto;"/></td>
+        </tr></table>
+        <h3 style="margin:0 0 8px;font-family:${FONT_HEAD};font-size:19px;color:#0c2035;font-weight:400;">${t.sunnyTitle}</h3>
+        ${draft.photoCaption ? `<p style="margin:0 0 12px;color:#64748b;font-family:${FONT_BODY};font-size:13px;line-height:1.6;font-style:italic;">${draft.photoCaption}</p>` : ""}
+        ${draft.sunnySide ? `<p style="margin:0;color:#374151;font-family:${FONT_BODY};font-size:15px;line-height:1.75;">${draft.sunnySide}</p>` : ""}
+        ${draft.photo && draft.photo.photographer ? `<p style="margin:12px 0 0;color:#b8ad93;font-family:${FONT_BODY};font-size:11px;">${t.photoBy}: <a href="${draft.photo.photographerUrl || "https://www.pexels.com"}" style="color:#b8ad93;">${draft.photo.photographer}</a> / Pexels</p>` : ""}
       </div>
     </div>`
     : "";
@@ -569,23 +595,29 @@ export function renderEnrichedNewsletter(
   return `
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family:Georgia,'Times New Roman',serif;background:#eaf4f9;padding:0;margin:0;">
-  <div style="max-width:600px;margin:28px auto;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(7,24,63,.12);background:#fffdf8;">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body style="font-family:${FONT_BODY};background:#bfe0f0;padding:0;margin:0;">
+  <div style="max-width:600px;margin:24px auto;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(4,17,46,.25);background:#bfe0f0 url('${TROPICAL_BG}') top center/cover no-repeat;">
     <img src="${SITE}/assets/images/Youtube%20banner%20cropped.png" alt="Still Afloat — ${t.tagline2}" style="display:block;width:100%;height:auto;"/>
-    <div style="height:6px;background:linear-gradient(90deg,#0077b6,#5bc8f5,#f6b83c,#0077b6);"></div>
-    <div style="background:#fffdf8;padding:26px 32px;">
+    <div style="height:6px;background:linear-gradient(90deg,#0077b6,#5bc8f5,#ffd21f,#0077b6);"></div>
+    <div style="padding:20px 18px 6px;">
       ${letterBlock}
       ${bookingBlock}
       ${quickHitsBlock}
       ${laughBlock}
       ${videoBlock}
       ${affiliateBlock}
-      ${draft.agencyPs ? `<p style="margin:24px 0 0;color:#475569;font-size:14px;line-height:1.7;border-top:1px solid #ead9b8;padding-top:18px;"><strong>${t.ps}</strong> ${draft.agencyPs} <a href="${agencyUrl}" style="color:#0077b6;">${t.psCta}</a></p>` : ""}
+      ${draft.agencyPs || draft.pps ? `<div style="background:rgba(255,253,248,.92);border-radius:16px;padding:16px 24px;margin:0 0 18px;">
+        ${draft.agencyPs ? `<p style="margin:0;color:#475569;font-family:${FONT_BODY};font-size:14px;line-height:1.7;"><strong>${t.ps}</strong> ${draft.agencyPs} <a href="${agencyUrl}" style="color:#0077b6;">${t.psCta}</a></p>` : ""}
+        ${draft.pps ? `<p style="margin:${draft.agencyPs ? "10px" : "0"} 0 0;color:#64748b;font-family:${FONT_BODY};font-size:13px;line-height:1.6;font-style:italic;"><strong>${t.pps}</strong> ${draft.pps}</p>` : ""}
+      </div>` : ""}
     </div>
     <div style="background:#07183f;padding:18px 32px;text-align:center;">
-      <p style="margin:0;color:#9fb3c8;font-size:12px;line-height:1.8;">
-        Still Afloat · <em style="color:#5bc8f5;">${t.footTag}</em><br>
+      <p style="margin:0;color:#9fb3c8;font-family:${FONT_BODY};font-size:12px;line-height:1.8;">
+        Still Afloat · <em style="color:#5dff9a;">${t.footTag}</em><br>
         <a href="${unsub}" style="color:#9fb3c8;font-size:11px;">${t.unsub}</a>
       </p>
     </div>

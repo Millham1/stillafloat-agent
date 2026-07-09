@@ -78,8 +78,8 @@ router.post("/newsletter/draft/update", requireToken, async (req: Request, res: 
       bookingHeadline?: string;
       bookingBody?: string;
       agencyPs?: string;
-      funFact?: string;
-      groaner?: string;
+      sunnySide?: string;
+      pps?: string;
       photoCaption?: string;
       videoBlurb?: string;
       affiliateBlurb?: string;
@@ -102,15 +102,15 @@ router.post("/newsletter/draft/update", requireToken, async (req: Request, res: 
         body: typeof body.bookingBody === "string" && body.bookingBody.trim() ? body.bookingBody.trim() : current.body,
       };
     }
-    if (typeof body.funFact === "string") {
-      const f = body.funFact.trim();
-      if (f) draft.funFact = f;
-      else delete draft.funFact;
+    if (typeof body.sunnySide === "string") {
+      const s = body.sunnySide.trim();
+      if (s) draft.sunnySide = s;
+      else delete draft.sunnySide;
     }
-    if (typeof body.groaner === "string") {
-      const g = body.groaner.trim();
-      if (g) draft.groaner = g;
-      else delete draft.groaner;
+    if (typeof body.pps === "string") {
+      const p = body.pps.trim();
+      if (p) draft.pps = p;
+      else delete draft.pps;
     }
     if (typeof body.photoCaption === "string") {
       const c = body.photoCaption.trim();
@@ -186,7 +186,7 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
          ${draft.letter ? '<span class="pill">letter</span>' : ""}
          ${draft.booking ? '<span class="pill">booking CTA</span>' : ""}
          <span class="pill">${(draft.quickHits ?? []).length} quick hits</span>
-         ${draft.funFact ? '<span class="pill">+ fun fact</span>' : ""}
+         ${draft.sunnySide ? '<span class="pill">+ sunny side</span>' : ""}
          ${draft.photo ? '<span class="pill">+ photo</span>' : ""}
          ${draft.video ? '<span class="pill">+ video</span>' : ""}
          ${draft.affiliate ? '<span class="pill">+ affiliate</span>' : ""}
@@ -215,9 +215,8 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
         ${hitEditors || "<p style='font-size:13px;color:#6b7280;margin:6px 0'>None this week.</p>"}
         <label>Add another<textarea class="s-hit" rows="2"></textarea></label>
       </fieldset>
-      <fieldset class="card"><legend>Laugh More section</legend>
-        <label>Fun fact (empty = drop it)<textarea id="e-funfact" rows="3">${escapeHtml(draft.funFact ?? "")}</textarea></label>
-        <label>Groaner of the week (empty = drop it)<textarea id="e-groaner" rows="2">${escapeHtml(draft.groaner ?? "")}</textarea></label>
+      <fieldset class="card"><legend>The Sunny Side (Laugh More)</legend>
+        <label>Sunny Side passage (empty = drop it)<textarea id="e-sunnyside" rows="4">${escapeHtml(draft.sunnySide ?? "")}</textarea></label>
         ${draft.photo ? `<label>Photo caption<textarea id="e-photocaption" rows="2">${escapeHtml(draft.photoCaption ?? "")}</textarea></label>
         <label class="inc"><input type="checkbox" id="e-photo-inc" checked/> keep photo (${escapeHtml(draft.photo.photographer || "Pexels")})</label>` : ""}
       </fieldset>
@@ -231,6 +230,7 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
       </fieldset>` : ""}
       <div class="card">
         <label>P.S. (booking nudge)<textarea id="e-ps" rows="2">${escapeHtml(draft.agencyPs)}</textarea></label>
+        <label>P.P.S. (playful sign-off, empty = drop it)<textarea id="e-pps" rows="2">${escapeHtml(draft.pps ?? "")}</textarea></label>
         <button class="save" onclick="saveEdits()">💾 Save changes &amp; refresh preview</button>
       </div>
     </details>`
@@ -291,7 +291,7 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
    var msg=document.getElementById('msg');
    var body={
      subject:val('e-subject'), letter:val('e-letter'), agencyPs:val('e-ps'),
-     funFact:val('e-funfact'), groaner:val('e-groaner'), photoCaption:val('e-photocaption'), quickHits:[]
+     sunnySide:val('e-sunnyside'), pps:val('e-pps'), photoCaption:val('e-photocaption'), quickHits:[]
    };
    document.querySelectorAll('.s-hit').forEach(function(el){
      if(el.value && el.value.trim()) body.quickHits.push(el.value.trim());
