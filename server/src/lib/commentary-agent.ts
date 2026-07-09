@@ -84,7 +84,9 @@ function keywords(title: string): Set<string> {
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, " ")
       .split(/\s+/)
-      .filter((w) => w.length > 3 && !STOPWORDS.has(w)),
+      .filter((w) => w.length > 3 && !STOPWORDS.has(w))
+      // naive stem so fight/fights, brawl/brawls, list/lists cluster together
+      .map((w) => w.replace(/s$/, "")),
   );
 }
 
@@ -133,18 +135,28 @@ export async function pickStoryCluster(): Promise<{
     return String(b["approvedAt"] ?? "").localeCompare(String(a["approvedAt"] ?? ""));
   });
 
-  const lead = sorted[0]!;
-  const leadKw = keywords(String(lead["title"] ?? ""));
+  // The curated featured set IS the week's topic when the editor marked
+  // several stories (e.g. two brawl stories = one commentary). Fall back to
+  // keyword clustering around the top story otherwise.
+  const featured = sorted.filter((s) => s["featured"] || s["pinned"]).slice(0, 4);
+  const cluster = featured.length >= 2 ? featured : [sorted[0]!];
+
+  const clusterIds = new Set(cluster.map((s) => String(s["id"] ?? "")));
+  const clusterKw = new Set<string>();
+  for (const s of cluster) for (const w of keywords(String(s["title"] ?? ""))) clusterKw.add(w);
+
   const related = sorted
-    .slice(1)
-    .map((s) => ({ s, n: overlap(leadKw, keywords(String(s["title"] ?? ""))) }))
+    .filter((s) => !clusterIds.has(String(s["id"] ?? "")))
+    .map((s) => ({ s, n: overlap(clusterKw, keywords(String(s["title"] ?? ""))) }))
     .filter((x) => x.n >= 1)
     .sort((a, b) => b.n - a.n)
     .map((x) => x.s);
 
+  if (cluster.length === 1) cluster.push(...related.splice(0, 3));
+
   return {
-    cluster: [lead, ...related.slice(0, 3)].map(toSeed),
-    research: related.slice(3, 8).map(toSeed),
+    cluster: cluster.map(toSeed),
+    research: related.slice(0, 5).map(toSeed),
   };
 }
 
