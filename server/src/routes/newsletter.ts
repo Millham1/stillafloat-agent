@@ -7,8 +7,6 @@ import {
   sendNewsletterDraft,
   renderEnrichedNewsletter,
   gatherApprovedStories,
-  previewStories,
-  type Story,
 } from "../lib/newsletter";
 import type { Lang } from "../lib/social-agent";
 import { notifyTelegram, reviewUrl } from "../lib/telegram";
@@ -75,60 +73,48 @@ router.post("/newsletter/draft/update", requireToken, async (req: Request, res: 
     }
     const body = req.body as {
       subject?: string;
-      intro?: string;
+      letter?: string;
+      quickHits?: string[];
+      bookingHeadline?: string;
+      bookingBody?: string;
       agencyPs?: string;
       funFact?: string;
-      commentaryBlurb?: string;
       videoBlurb?: string;
       affiliateBlurb?: string;
-      removeCommentary?: boolean;
       removePhoto?: boolean;
       removeVideo?: boolean;
       removeAffiliate?: boolean;
-      stories?: Array<{ id?: string; title?: string; summary?: string; link?: string; impact?: string }>;
+      removeBooking?: boolean;
     };
 
     if (typeof body.subject === "string" && body.subject.trim()) draft.subject = body.subject.trim();
-    if (typeof body.intro === "string") draft.intro = body.intro.trim();
+    if (typeof body.letter === "string") draft.letter = body.letter.trim();
     if (typeof body.agencyPs === "string") draft.agencyPs = body.agencyPs.trim();
+    if (Array.isArray(body.quickHits)) {
+      draft.quickHits = body.quickHits.map((h) => String(h).trim()).filter(Boolean).slice(0, 6);
+    }
+    if (typeof body.bookingHeadline === "string" || typeof body.bookingBody === "string") {
+      const current = draft.booking ?? { headline: "", body: "" };
+      draft.booking = {
+        headline: typeof body.bookingHeadline === "string" && body.bookingHeadline.trim() ? body.bookingHeadline.trim() : current.headline,
+        body: typeof body.bookingBody === "string" && body.bookingBody.trim() ? body.bookingBody.trim() : current.body,
+      };
+    }
     if (typeof body.funFact === "string") {
       const f = body.funFact.trim();
       if (f) draft.funFact = f;
       else delete draft.funFact;
     }
-    if (draft.commentary && typeof body.commentaryBlurb === "string") draft.commentary.blurb = body.commentaryBlurb.trim();
     if (draft.video && typeof body.videoBlurb === "string") draft.video.blurb = body.videoBlurb.trim();
     if (draft.affiliate && typeof body.affiliateBlurb === "string") draft.affiliate.blurb = body.affiliateBlurb.trim();
-    if (body.removeCommentary) delete draft.commentary;
     if (body.removePhoto) delete draft.photo;
     if (body.removeVideo) delete draft.video;
     if (body.removeAffiliate) delete draft.affiliate;
+    if (body.removeBooking) delete draft.booking;
 
-    if (Array.isArray(body.stories)) {
-      // The submitted array IS the issue's story list: order, inclusion, and
-      // edited text all come from it. Unknown fields fall back to the current
-      // snapshot (or the approved store for legacy drafts missing a snapshot).
-      const current = previewStories(draft, await gatherApprovedStories(lang));
-      const byId = new Map(current.map((s) => [s.id, s]));
-      const edited: Story[] = [];
-      for (const s of body.stories) {
-        const id = String(s.id ?? "");
-        if (!id) continue;
-        const base = byId.get(id) ?? { id, title: "", summary: "", link: "", impact: "" };
-        edited.push({
-          id,
-          title: typeof s.title === "string" && s.title.trim() ? s.title.trim() : base.title,
-          summary: typeof s.summary === "string" ? s.summary.trim() : base.summary,
-          link: typeof s.link === "string" && s.link.trim() ? s.link.trim() : base.link,
-          impact: typeof s.impact === "string" ? s.impact.trim() : base.impact,
-        });
-      }
-      if (edited.length === 0) {
-        res.status(400).json({ success: false, error: "Newsletter needs at least one story" });
-        return;
-      }
-      draft.stories = edited;
-      draft.storyIds = edited.map((s) => s.id);
+    if (!draft.letter && (draft.quickHits ?? []).length === 0 && !draft.booking) {
+      res.status(400).json({ success: false, error: "The issue can't be empty — keep a letter, quick hits, or the booking section" });
+      return;
     }
 
     await saveDraft(draft);
@@ -179,15 +165,15 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
   const token = extractToken(req);
   const lang = editionLang(req);
   const draft = await loadDraft(lang);
-  const stories = draft ? previewStories(draft, await gatherApprovedStories(lang)) : [];
   const t = JSON.stringify(token);
   const other: Lang = lang === "es" ? "en" : "es";
 
   const meta = draft
     ? `<div class="meta">
          <span class="pill">Subject: ${escapeHtml(draft.subject)}</span>
-         <span class="pill">${stories.length} stories</span>
-         ${draft.commentary ? '<span class="pill">+ commentary</span>' : ""}
+         ${draft.letter ? '<span class="pill">letter</span>' : ""}
+         ${draft.booking ? '<span class="pill">booking CTA</span>' : ""}
+         <span class="pill">${(draft.quickHits ?? []).length} quick hits</span>
          ${draft.funFact ? '<span class="pill">+ fun fact</span>' : ""}
          ${draft.photo ? '<span class="pill">+ photo</span>' : ""}
          ${draft.video ? '<span class="pill">+ video</span>' : ""}
@@ -197,16 +183,8 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
     : `<p>No ${lang.toUpperCase()} draft yet — generate this week's issue.</p>`;
 
   // ── Edit panel: every human-visible field of the issue, phone-friendly. ──
-  const storyEditors = stories
-    .map(
-      (s, i) => `
-      <fieldset class="card" data-story-id="${escapeHtml(s.id)}">
-        <legend>Story ${i + 1}</legend>
-        <label class="inc"><input type="checkbox" class="s-include" checked/> include</label>
-        <label>Title<input type="text" class="s-title" value="${escapeHtml(s.title)}"/></label>
-        <label>Summary<textarea class="s-summary" rows="4">${escapeHtml(s.summary)}</textarea></label>
-      </fieldset>`,
-    )
+  const hitEditors = (draft?.quickHits ?? [])
+    .map((h) => `<label>Quick hit (empty = drop it)<textarea class="s-hit" rows="2">${escapeHtml(h)}</textarea></label>`)
     .join("");
 
   const editPanel = draft && draft.status !== "sent"
@@ -214,13 +192,17 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
       <summary>✏️ Edit this issue</summary>
       <div class="card">
         <label>Subject<input type="text" id="e-subject" value="${escapeHtml(draft.subject)}"/></label>
-        <label>Intro<textarea id="e-intro" rows="3">${escapeHtml(draft.intro)}</textarea></label>
+        <label>Your letter (opens the email, signed “— Mark”)<textarea id="e-letter" rows="7">${escapeHtml(draft.letter ?? draft.intro ?? "")}</textarea></label>
       </div>
-      ${draft.commentary ? `<fieldset class="card"><legend>Mark's Take — ${escapeHtml(draft.commentary.title)}</legend>
-        <label class="inc"><input type="checkbox" id="e-commentary-inc" checked/> include</label>
-        <label>Blurb<textarea id="e-commentary-blurb" rows="2">${escapeHtml(draft.commentary.blurb)}</textarea></label>
-      </fieldset>` : ""}
-      ${storyEditors}
+      <fieldset class="card"><legend>Worth booking this week (the main CTA)</legend>
+        <label class="inc"><input type="checkbox" id="e-booking-inc" ${draft.booking ? "checked" : ""}/> include</label>
+        <label>Headline<input type="text" id="e-booking-headline" value="${escapeHtml(draft.booking?.headline ?? "")}"/></label>
+        <label>Pitch<textarea id="e-booking-body" rows="3">${escapeHtml(draft.booking?.body ?? "")}</textarea></label>
+      </fieldset>
+      <fieldset class="card"><legend>Quick hits (plain one-liners, no links)</legend>
+        ${hitEditors || "<p style='font-size:13px;color:#6b7280;margin:6px 0'>None this week.</p>"}
+        <label>Add another<textarea class="s-hit" rows="2"></textarea></label>
+      </fieldset>
       <fieldset class="card"><legend>Laugh More corner</legend>
         <label>Fun fact (empty = drop the section)<textarea id="e-funfact" rows="3">${escapeHtml(draft.funFact ?? "")}</textarea></label>
         ${draft.photo ? `<label class="inc"><input type="checkbox" id="e-photo-inc" checked/> keep photo (${escapeHtml(draft.photo.photographer || "Pexels")})</label>` : ""}
@@ -229,12 +211,12 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
         <label class="inc"><input type="checkbox" id="e-video-inc" checked/> include</label>
         <label>Blurb<textarea id="e-video-blurb" rows="2">${escapeHtml(draft.video.blurb)}</textarea></label>
       </fieldset>` : ""}
-      ${draft.affiliate ? `<fieldset class="card"><legend>Affiliate — ${escapeHtml(draft.affiliate.title)}</legend>
+      ${draft.affiliate ? `<fieldset class="card"><legend>Gear pick — ${escapeHtml(draft.affiliate.title)}</legend>
         <label class="inc"><input type="checkbox" id="e-affiliate-inc" checked/> include</label>
         <label>Blurb<textarea id="e-affiliate-blurb" rows="2">${escapeHtml(draft.affiliate.blurb)}</textarea></label>
       </fieldset>` : ""}
       <div class="card">
-        <label>P.S. (agency)<textarea id="e-ps" rows="2">${escapeHtml(draft.agencyPs)}</textarea></label>
+        <label>P.S. (booking nudge)<textarea id="e-ps" rows="2">${escapeHtml(draft.agencyPs)}</textarea></label>
         <button class="save" onclick="saveEdits()">💾 Save changes &amp; refresh preview</button>
       </div>
     </details>`
@@ -294,16 +276,16 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
  function saveEdits(){
    var msg=document.getElementById('msg');
    var body={
-     subject:val('e-subject'), intro:val('e-intro'), agencyPs:val('e-ps'),
-     funFact:val('e-funfact'), stories:[]
+     subject:val('e-subject'), letter:val('e-letter'), agencyPs:val('e-ps'),
+     funFact:val('e-funfact'), quickHits:[]
    };
-   document.querySelectorAll('[data-story-id]').forEach(function(f){
-     if(!f.querySelector('.s-include').checked) return;
-     body.stories.push({ id:f.getAttribute('data-story-id'),
-       title:f.querySelector('.s-title').value, summary:f.querySelector('.s-summary').value });
+   document.querySelectorAll('.s-hit').forEach(function(el){
+     if(el.value && el.value.trim()) body.quickHits.push(el.value.trim());
    });
-   if(body.stories.length===0){ msg.textContent='Keep at least one story in the issue.'; return; }
-   addBlock(body,'commentary'); addBlock(body,'video'); addBlock(body,'affiliate');
+   var bookInc=document.getElementById('e-booking-inc');
+   if(bookInc && !bookInc.checked){ body.removeBooking=true; }
+   else { body.bookingHeadline=val('e-booking-headline'); body.bookingBody=val('e-booking-body'); }
+   addBlock(body,'video'); addBlock(body,'affiliate');
    var photoInc=document.getElementById('e-photo-inc');
    if(photoInc && !photoInc.checked) body.removePhoto=true;
    msg.textContent='Saving…';
