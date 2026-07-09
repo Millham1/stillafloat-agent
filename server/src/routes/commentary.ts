@@ -2,10 +2,10 @@ import { Router, type IRouter, type Request, type Response, json as expressJson 
 import crypto from "crypto";
 import { PATHS, readJson, writeJson } from "../lib/persistence";
 import {
-  draftWeeklyCommentary,
   loadCommentaryDraft,
   saveCommentaryDraft,
-  weaveCommentary,
+  stageWeeklyCommentary,
+  synthesizeCommentary,
 } from "../lib/commentary-agent";
 
 const router: IRouter = Router();
@@ -314,12 +314,14 @@ router.post("/transcribe", expressJson({ limit: "25mb" }), async (req: Request, 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMMENTARY AGENT surface — weekly draft → Mark adds his take → weave →
-// publish (into the CMS above, which auto-translates ES). Approve-first: the
-// cron only drafts and nudges; nothing publishes without Mark's button press.
+// COMMENTARY AGENT surface — Mark's-opinion-first pipeline: stage the story
+// cluster + questions → Mark gives his take → synthesize (his stance as the
+// spine, woven for impact, backed by archive research) → Mark publishes.
+// Approve-first: the cron only stages and nudges; nothing publishes without
+// Mark's button press.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// POST /api/commentary/draft — generate (or regenerate) this week's draft
+// POST /api/commentary/draft — stage this week's ask (cluster + questions)
 router.post("/commentary/draft", async (req: Request, res: Response) => {
   if (!checkToken(req)) {
     res.status(401).json({ success: false, error: "Unauthorized" });
@@ -327,7 +329,7 @@ router.post("/commentary/draft", async (req: Request, res: Response) => {
   }
   try {
     const notify = (req.body as { notify?: boolean } | undefined)?.notify !== false;
-    const draft = await draftWeeklyCommentary({ notify });
+    const draft = await stageWeeklyCommentary({ notify });
     res.json({ success: true, draft });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -343,19 +345,20 @@ router.get("/commentary/draft", async (req: Request, res: Response) => {
   res.json({ success: true, draft: await loadCommentaryDraft() });
 });
 
-// POST /api/commentary/weave — { context } → rewrite draft with Mark's take
-router.post("/commentary/weave", async (req: Request, res: Response) => {
+// POST /api/commentary/synthesize — { take } → write the commentary from
+// Mark's opinion (repeatable: revise the take, re-synthesize)
+router.post("/commentary/synthesize", async (req: Request, res: Response) => {
   if (!checkToken(req)) {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
   try {
-    const context = String((req.body as { context?: string } | undefined)?.context ?? "").trim();
-    if (!context) {
-      res.status(400).json({ success: false, error: "context is required" });
+    const take = String((req.body as { take?: string } | undefined)?.take ?? "").trim();
+    if (!take) {
+      res.status(400).json({ success: false, error: "take is required" });
       return;
     }
-    const draft = await weaveCommentary(context);
+    const draft = await synthesizeCommentary(take);
     res.json({ success: true, draft });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -370,8 +373,8 @@ router.post("/commentary/publish-draft", async (req: Request, res: Response) => 
   }
   try {
     const draft = await loadCommentaryDraft();
-    if (!draft || draft.status !== "pending") {
-      res.status(400).json({ success: false, error: "No pending commentary draft" });
+    if (!draft || draft.status !== "drafted") {
+      res.status(400).json({ success: false, error: "No synthesized commentary to publish — give your take first" });
       return;
     }
     const store = await getStore();
@@ -403,7 +406,7 @@ router.post("/commentary/draft/discard", async (req: Request, res: Response) => 
     return;
   }
   const draft = await loadCommentaryDraft();
-  if (draft && draft.status === "pending") {
+  if (draft && (draft.status === "awaiting_take" || draft.status === "drafted")) {
     draft.status = "discarded";
     await saveCommentaryDraft(draft);
   }
@@ -422,32 +425,47 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
   const esc = (s: string): string =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-  const body = !draft || draft.status !== "pending"
-    ? `<p class="muted">No pending commentary draft. Generate one below.</p>
-       <button class="btn" onclick="gen()">Generate this week's draft</button>`
+  const active = draft && (draft.status === "awaiting_take" || draft.status === "drafted");
+  const storiesHtml = active
+    ? draft!.stories
+        .map(
+          (s) => `<div class="storyline"><b>${esc(s.title)}</b><br><span class="muted">${esc(
+            s.summary,
+          )}</span>${s.link ? ` <a href="${esc(s.link)}" target="_blank" rel="noopener">source →</a>` : ""}</div>`,
+        )
+        .join("")
+    : "";
+
+  const body = !active
+    ? `<p class="muted">No commentary in progress. Stage this week's ask below.</p>
+       <button class="btn" onclick="gen()">Pick this week's stories &amp; ask me</button>`
     : `
   <div class="panel">
-    <div class="label">Featured story</div>
-    <h2>${esc(draft.story.title)}</h2>
-    <p class="muted">${esc(draft.story.summary)}</p>
-    ${draft.story.link ? `<a href="${esc(draft.story.link)}" target="_blank" rel="noopener">Original article →</a>` : ""}
+    <div class="label">This week's featured stories (${draft!.stories.length})</div>
+    ${storiesHtml}
   </div>
   <div class="panel">
-    <div class="label">Draft commentary ${draft.wovenAt ? "(woven with your take)" : "(analysis only — your take not added yet)"}</div>
-    <h2>${esc(draft.suggestedTitle)}</h2>
-    <div class="body">${draft.draftHtml}</div>
-  </div>
-  <div class="panel">
-    <div class="label">Your take — the agent asks:</div>
-    <ul>${draft.questions.map((q) => `<li>${esc(q)}</li>`).join("")}</ul>
-    <textarea id="ctx" rows="7" placeholder="Type your take — experiences, opinions, what you'd tell a client. The agent weaves it in using only what you write.">${esc(draft.markContext)}</textarea>
+    <div class="label">Your opinion — the agent asks:</div>
+    <ul>${draft!.questions.map((q) => `<li>${esc(q)}</li>`).join("")}</ul>
+    <textarea id="take" rows="8" placeholder="Give your raw take — opinions, experiences, what you'd tell a client. The agent weaves it for impact (not verbatim) and backs it with facts from the coverage.">${esc(draft!.markTake)}</textarea>
     <div class="row">
-      <button class="btn" onclick="weave()">Weave my take &amp; regenerate</button>
-      <button class="btn primary" onclick="publish()">Publish to site</button>
+      <button class="btn primary" onclick="synth()">${draft!.status === "drafted" ? "Revise take &amp; re-synthesize" : "Write the commentary from my take"}</button>
       <button class="btn danger" onclick="discard()">Skip this week</button>
     </div>
-    <p class="muted small">Publish posts the woven draft to the Commentary section (Spanish version auto-translated). Nothing posts without this button.</p>
-  </div>`;
+  </div>
+  ${
+    draft!.status === "drafted"
+      ? `<div class="panel">
+    <div class="label">Synthesized commentary — review before publishing</div>
+    <h2>${esc(draft!.suggestedTitle)}</h2>
+    <div class="body">${draft!.draftHtml}</div>
+    <div class="row">
+      <button class="btn primary" onclick="publish()">Publish to site</button>
+    </div>
+    <p class="muted small">Publish posts to the Commentary section (Spanish auto-translated). Nothing posts without this button. The published piece then feeds the Short.</p>
+  </div>`
+      : ""
+  }`;
 
   res.setHeader("content-type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
@@ -460,6 +478,7 @@ h1{font-size:22px}h2{font-size:19px;margin:6px 0 10px}
 .label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5dff9a;margin-bottom:6px}
 .body p{line-height:1.65;color:rgba(255,255,255,.9)}
 .muted{color:rgba(255,255,255,.65)}.small{font-size:12px}
+.storyline{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.1);line-height:1.5}
 textarea{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.25);color:#fff;padding:10px;font-size:15px}
 .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .btn{padding:12px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-weight:700;cursor:pointer}
@@ -477,10 +496,11 @@ async function call(path, payload){
   return true;
 }
 async function gen(){ if(await call("/api/commentary/draft",{notify:false})) location.reload(); }
-async function weave(){
-  const ctx=document.getElementById("ctx").value.trim();
-  if(!ctx){alert("Type your take first — that's the whole point!");return}
-  if(await call("/api/commentary/weave",{context:ctx})) location.reload();
+async function synth(){
+  const take=document.getElementById("take").value.trim();
+  if(!take){alert("Type your take first — that's the whole point!");return}
+  const btn=event.target; btn.disabled=true; btn.textContent="Synthesizing…";
+  if(await call("/api/commentary/synthesize",{take})) location.reload(); else {btn.disabled=false;}
 }
 async function publish(){
   if(!confirm("Publish this commentary to the website?"))return;

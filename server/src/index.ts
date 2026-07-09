@@ -8,7 +8,7 @@ import { scanAndQueue } from "./lib/social-agent";
 import { draftNewsletter, saveDraft } from "./lib/newsletter";
 import { notifyTelegram, reviewUrl } from "./lib/telegram";
 import { runNewsPrerender } from "./lib/prerender-news";
-import { draftWeeklyCommentary } from "./lib/commentary-agent";
+import { stageWeeklyCommentary } from "./lib/commentary-agent";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -192,8 +192,8 @@ function scheduleWeeklyMarketing() {
     lastRunDate = date;
     try {
       if (weekday === "Tue") {
-        const draft = await draftWeeklyCommentary(); // notifies via Telegram itself
-        logger.info({ title: draft.suggestedTitle }, "Weekly commentary draft complete");
+        const draft = await stageWeeklyCommentary(); // notifies via Telegram itself
+        logger.info({ lead: draft.stories[0]?.title }, "Weekly commentary staged — awaiting Mark's take");
       } else if (weekday === "Mon") {
         const created = await scanAndQueue(4);
         logger.info({ created: created.length }, "Weekly social scan complete");

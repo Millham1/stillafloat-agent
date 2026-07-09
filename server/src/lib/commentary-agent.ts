@@ -3,20 +3,28 @@ import { PATHS, readJson, writeJson } from "./persistence";
 import { notifyTelegram, reviewUrl } from "./telegram";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMMENTARY AGENT — the original-vision loop, finally built.
+// COMMENTARY AGENT — Mark's-opinion-first pipeline (his design, 2026-07-08):
 //
-// Weekly (or on demand): pick the featured news story of the week, draft a
-// brand-voice commentary, and — the key step — ASK MARK FOR HIS TAKE. The
-// agent's draft is analysis-only; it never invents Mark's experiences
-// (scripts-no-fabrication rule). The review page shows the draft plus 2–3
-// pointed questions; Mark types (or dictates) his take, the agent weaves it
-// in verbatim-respecting, and only Mark's explicit Publish pushes it to the
-// site's commentary section (via the existing /api/commentary CMS, which
-// auto-translates to es-419).
+//   1. Weekly (Tue) or on demand: pick the featured story of the week PLUS its
+//      related cluster (e.g. the Nassau brawls + the Miami terminal fight are
+//      one topic), and nudge Mark: "review these, give me your opinion" with
+//      2–3 questions to draw the take out. NO prose is drafted yet.
+//   2. Mark answers in his own words (typed or dictated).
+//   3. The agent SYNTHESIZES: his stance is the spine of the piece; it pulls
+//      additional backing coverage from the news archive as research, weaves
+//      his take for maximum impact (Mark's explicit instruction: not verbatim
+//      — sharpen for engagement and follower growth), and frames what it
+//      means for other cruisers.
+//   4. Mark reviews the draft (can revise his take and re-synthesize), then
+//      explicitly publishes → the existing commentary CMS (ES auto-translate).
 //
-// Draft state lives in platform_state "commentary-draft". Downstream (Mac-
-// side skills): an approved commentary is the source script for a YouTube
-// Short — the published post's videoUrl field embeds it once uploaded.
+// Facts discipline: opinions come from Mark's take; facts come ONLY from the
+// provided stories/research. The agent never invents experiences for him —
+// but experiences he writes himself are fair game to feature.
+//
+// Downstream (Mac-side): a published commentary is the source script for a
+// YouTube Short (b-roll pulled by the video skills); the post's videoUrl
+// field embeds it on the site.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DRAFT_KEY = "commentary-draft";
@@ -31,34 +39,82 @@ export interface CommentaryStorySeed {
 }
 
 export interface CommentaryDraft {
-  story: CommentaryStorySeed;
+  stories: CommentaryStorySeed[]; // the featured cluster Mark reacts to
+  research: CommentaryStorySeed[]; // extra archive coverage backing the piece
+  questions: string[];
+  markTake: string;
   suggestedTitle: string;
   draftHtml: string;
-  questions: string[];
-  markContext: string;
   tags: string[];
+  status: "awaiting_take" | "drafted" | "published" | "discarded";
   generatedAt: string;
-  wovenAt?: string;
-  status: "pending" | "published" | "discarded";
+  draftedAt?: string;
 }
 
 export async function loadCommentaryDraft(): Promise<CommentaryDraft | null> {
   const d = await readJson<CommentaryDraft | Record<string, never>>(DRAFT_KEY, {});
-  return d && (d as CommentaryDraft).story ? (d as CommentaryDraft) : null;
+  return d && Array.isArray((d as CommentaryDraft).stories) ? (d as CommentaryDraft) : null;
 }
 
 export async function saveCommentaryDraft(draft: CommentaryDraft): Promise<void> {
   await writeJson(DRAFT_KEY, draft);
 }
 
-// ── featured story of the week ───────────────────────────────────────────────
-// Prefer explicitly featured stories, then high/critical impact, then newest.
-export async function pickFeaturedStory(): Promise<CommentaryStorySeed | null> {
-  const data = await readJson<{ stories?: Array<Record<string, unknown>> }>(PATHS.approved, {
+// ── story selection ──────────────────────────────────────────────────────────
+function toSeed(s: Record<string, unknown>): CommentaryStorySeed {
+  return {
+    id: String(s["id"] ?? ""),
+    title: String(s["title"] ?? ""),
+    summary: String(s["summary"] ?? s["synopsis"] ?? ""),
+    link: String(s["link"] ?? s["originalLink"] ?? ""),
+    impact: String(s["travelerImpact"] ?? s["impactLevel"] ?? ""),
+    category: String(s["category"] ?? "Cruise News"),
+  };
+}
+
+const STOPWORDS = new Set(
+  "the a an and or for of in on at to with after as is are was were over under new more most from by cruise cruises cruising ship ships line lines passenger passengers guest guests port".split(
+    " ",
+  ),
+);
+
+function keywords(title: string): Set<string> {
+  return new Set(
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 3 && !STOPWORDS.has(w)),
+  );
+}
+
+function overlap(a: Set<string>, b: Set<string>): number {
+  let n = 0;
+  for (const w of a) if (b.has(w)) n++;
+  return n;
+}
+
+async function allApprovedStories(): Promise<Array<Record<string, unknown>>> {
+  const approved = await readJson<{ stories?: Array<Record<string, unknown>> }>(PATHS.approved, {
     stories: [],
   });
-  const stories = data.stories ?? [];
-  if (stories.length === 0) return null;
+  if ((approved.stories ?? []).length > 0) return approved.stories!;
+  // Fallback: the richer story archive (covers dev + thin approval weeks).
+  const details = await readJson<{ stories?: Array<Record<string, unknown>> }>(
+    PATHS.storyDetails,
+    { stories: [] },
+  );
+  return details.stories ?? [];
+}
+
+// Featured story + related coverage = the cluster Mark reacts to; the next
+// tier of related stories becomes backing research for the synthesis.
+export async function pickStoryCluster(): Promise<{
+  cluster: CommentaryStorySeed[];
+  research: CommentaryStorySeed[];
+}> {
+  const stories = await allApprovedStories();
+  if (stories.length === 0) return { cluster: [], research: [] };
 
   const score = (s: Record<string, unknown>): number => {
     let n = 0;
@@ -71,19 +127,24 @@ export async function pickFeaturedStory(): Promise<CommentaryStorySeed | null> {
     return n;
   };
 
-  const best = [...stories].sort((a, b) => {
+  const sorted = [...stories].sort((a, b) => {
     const d = score(b) - score(a);
     if (d !== 0) return d;
     return String(b["approvedAt"] ?? "").localeCompare(String(a["approvedAt"] ?? ""));
-  })[0]!;
+  });
+
+  const lead = sorted[0]!;
+  const leadKw = keywords(String(lead["title"] ?? ""));
+  const related = sorted
+    .slice(1)
+    .map((s) => ({ s, n: overlap(leadKw, keywords(String(s["title"] ?? ""))) }))
+    .filter((x) => x.n >= 1)
+    .sort((a, b) => b.n - a.n)
+    .map((x) => x.s);
 
   return {
-    id: String(best["id"] ?? ""),
-    title: String(best["title"] ?? ""),
-    summary: String(best["summary"] ?? best["synopsis"] ?? ""),
-    link: String(best["link"] ?? best["originalLink"] ?? ""),
-    impact: String(best["travelerImpact"] ?? best["impactLevel"] ?? ""),
-    category: String(best["category"] ?? "Cruise News"),
+    cluster: [lead, ...related.slice(0, 3)].map(toSeed),
+    research: related.slice(3, 8).map(toSeed),
   };
 }
 
@@ -122,94 +183,98 @@ lightly funny — "sounds like Mark talking to someone at a bar," never a campai
 seasoning; information is the meal. Value, never hype. No banned hype words (ultimate, luxurious,
 epic, amazing).`;
 
-const DRAFT_PROMPT = `${VOICE}
+const QUESTIONS_PROMPT = `${VOICE}
 
-You are drafting this week's COMMENTARY for the website: a short op-ed (250–400 words, simple
-HTML: <p> paragraphs only) reacting to the featured cruise news story of the week. Explain what
-happened, what it actually means for everyday cruisers, and end with one practical takeaway.
+Mark is about to give his opinion on this week's featured cruise story (or story cluster).
+Write 2–3 SHORT, pointed questions that will draw out his strongest personal take — his
+opinion, what he'd tell clients, whether he's seen it himself. Questions only, no draft.
 
-HARD RULE — NO FABRICATION: you do NOT know Mark's personal experiences. Do not invent anecdotes,
-sailings, or opinions attributed to him. Write sturdy analysis from the story's facts only. Mark's
-personal take gets woven in later, in his own words.
+Respond ONLY with JSON: { "questions": ["...", "..."] }`;
 
-Also produce 2–3 SHORT, pointed questions that would draw out Mark's personal take on this story
-(e.g. has he seen this on a sailing, what would he tell a client booking next month, does this
-change any advice he gives).
+const SYNTHESIZE_PROMPT = `${VOICE}
+
+You have: (1) this week's featured story cluster, (2) additional backing coverage (research),
+and (3) MARK'S OPINION in his own rough words. Write the weekly COMMENTARY for the website.
+
+- Mark's stance is the SPINE of the piece. Do NOT quote him verbatim — weave and sharpen his
+  take for maximum impact and shareability: a hook opening, a strong voice, a memorable close.
+  This piece exists to gain followers. Stay 100% faithful to his actual position and to any
+  experience he describes; never soften his stance and never invent experiences he didn't give.
+- Facts (names, numbers, fines, bans, places) come ONLY from the provided stories and research.
+  Cite them naturally in the prose ("a $52,000 lesson in Nassau"), no footnotes.
+- Always land what this means for OTHER cruisers — the reader planning their next sailing.
+- 300–500 words, simple HTML <p> paragraphs only. End with one practical takeaway or call to
+  action (following the site/newsletter is fair game).
 
 Respond ONLY with JSON:
-{ "title": "...", "body_html": "<p>...</p>", "questions": ["...", "..."], "tags": ["...", "..."] }`;
+{ "title": "...", "body_html": "<p>...</p>", "tags": ["...", "..."] }`;
 
-const WEAVE_PROMPT = `${VOICE}
-
-You have a draft commentary and MARK'S OWN TAKE (his typed/dictated notes). Rewrite the
-commentary weaving his take in as the heart of the piece — his experiences and opinions in
-first person, staying faithful to HIS words and facts.
-
-HARD RULES:
-- Use ONLY the experiences, opinions and facts Mark actually wrote. Never extend, embellish or
-  invent details he didn't give. Light grammar cleanup is fine; new claims are not.
-- Keep 250–450 words, simple HTML <p> paragraphs, one practical takeaway at the end.
-
-Respond ONLY with JSON: { "title": "...", "body_html": "<p>...</p>" }`;
-
-// ── draft + weave ────────────────────────────────────────────────────────────
-export async function draftWeeklyCommentary(options?: {
+// ── pipeline steps ───────────────────────────────────────────────────────────
+// Step 1 — stage the ask: pick the cluster, generate questions, nudge Mark.
+export async function stageWeeklyCommentary(options?: {
   notify?: boolean;
 }): Promise<CommentaryDraft> {
-  const story = await pickFeaturedStory();
-  if (!story) throw new Error("No approved stories to draft a commentary from");
+  const { cluster, research } = await pickStoryCluster();
+  if (cluster.length === 0) throw new Error("No stories available to stage a commentary");
 
   const out = await chatJson(
-    DRAFT_PROMPT,
-    `Featured story of the week:\n${JSON.stringify(story, null, 2)}`,
+    QUESTIONS_PROMPT,
+    `This week's featured story cluster:\n${JSON.stringify(cluster, null, 2)}`,
   );
 
   const draft: CommentaryDraft = {
-    story,
-    suggestedTitle: String(out["title"] ?? story.title),
-    draftHtml: String(out["body_html"] ?? ""),
+    stories: cluster,
+    research,
     questions: Array.isArray(out["questions"]) ? out["questions"].map(String).slice(0, 3) : [],
-    markContext: "",
-    tags: Array.isArray(out["tags"]) ? out["tags"].map(String).slice(0, 5) : [],
+    markTake: "",
+    suggestedTitle: "",
+    draftHtml: "",
+    tags: [],
+    status: "awaiting_take",
     generatedAt: new Date().toISOString(),
-    status: "pending",
   };
   await saveCommentaryDraft(draft);
-  logger.info({ story: story.title }, "Commentary draft generated");
+  logger.info({ lead: cluster[0]!.title, cluster: cluster.length }, "Commentary staged — awaiting Mark's take");
 
   if (options?.notify !== false) {
     void notifyTelegram({
-      heading: "🗣️ <b>Commentary draft ready — your take needed</b>",
-      lines: [draft.suggestedTitle, ...draft.questions.map((q) => `• ${q}`)],
+      heading: "🗣️ <b>This week's commentary — your opinion needed</b>",
+      lines: [cluster[0]!.title, ...draft.questions.map((q) => `• ${q}`)],
       url: reviewUrl("/api/commentary/review"),
-      buttonLabel: "Add your take →",
+      buttonLabel: "Give your take →",
     });
   }
   return draft;
 }
 
-export async function weaveCommentary(markContext: string): Promise<CommentaryDraft> {
+// Step 2 — synthesize: Mark's take + cluster + research → the commentary.
+// Callable repeatedly (revise take → re-synthesize).
+export async function synthesizeCommentary(markTake: string): Promise<CommentaryDraft> {
   const draft = await loadCommentaryDraft();
-  if (!draft || draft.status !== "pending") throw new Error("No pending commentary draft");
+  if (!draft || (draft.status !== "awaiting_take" && draft.status !== "drafted")) {
+    throw new Error("No staged commentary awaiting a take");
+  }
 
   const out = await chatJson(
-    WEAVE_PROMPT,
+    SYNTHESIZE_PROMPT,
     JSON.stringify(
       {
-        story: draft.story,
-        current_draft_html: draft.draftHtml,
-        marks_take: markContext,
+        featured_stories: draft.stories,
+        backing_research: draft.research,
+        marks_opinion: markTake,
       },
       null,
       2,
     ),
   );
 
-  draft.suggestedTitle = String(out["title"] ?? draft.suggestedTitle);
-  draft.draftHtml = String(out["body_html"] ?? draft.draftHtml);
-  draft.markContext = markContext;
-  draft.wovenAt = new Date().toISOString();
+  draft.markTake = markTake;
+  draft.suggestedTitle = String(out["title"] ?? draft.stories[0]!.title);
+  draft.draftHtml = String(out["body_html"] ?? "");
+  draft.tags = Array.isArray(out["tags"]) ? out["tags"].map(String).slice(0, 5) : [];
+  draft.status = "drafted";
+  draft.draftedAt = new Date().toISOString();
   await saveCommentaryDraft(draft);
-  logger.info("Commentary draft rewoven with Mark's take");
+  logger.info({ title: draft.suggestedTitle }, "Commentary synthesized from Mark's take");
   return draft;
 }
