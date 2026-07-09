@@ -558,7 +558,7 @@ export function renderEnrichedNewsletter(
       <div style="border-top:1px solid rgba(255,255,255,.18);margin:24px 0 0;padding:22px 0 0;">
         <p style="margin:0 0 8px;">${pill(t.quickHitsLabel, "#0077b6", "#ddeeff")}</p>
         <h3 style="margin:0 0 12px;font-family:${FONT_HEAD};font-size:19px;color:#ffffff;font-weight:400;">${t.quickHitsTitle}</h3>
-        ${hits.map((h) => `<p style="margin:0 0 10px;color:#cfe3ee;font-family:${FONT_BODY};font-size:14px;line-height:1.65;">⚓&nbsp; ${h.url ? `<a href="${utm(h.url, "story")}" style="color:#8fd8ff;text-decoration:underline;">${h.text}</a>` : h.text}</p>`).join("")}
+        ${hits.map((h) => `<p style="margin:0 0 10px;color:#cfe3ee;font-family:${FONT_BODY};font-size:14px;line-height:1.65;">•&nbsp; ${h.url ? `<a href="${utm(h.url, "story")}" style="color:#8fd8ff;text-decoration:underline;">${h.text}</a>` : h.text}</p>`).join("")}
       </div>`
     : "";
   const navyBand = bookingPart || hitsPart
