@@ -123,7 +123,7 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
         for (let i = 0; i < videos.length; i += 50) {
           const ids = videos.slice(i, i + 50).map((v) => v.id).join(",");
           const r = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=${ids}&key=${apiKey}`,
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${ids}&key=${apiKey}`,
           );
           if (!r.ok) throw new Error(`videos.list ${r.status}`);
           const stats = (await r.json()) as {
@@ -131,6 +131,10 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
               id: string;
               statistics?: { viewCount?: string };
               contentDetails?: { duration?: string };
+              snippet?: {
+                title?: string;
+                thumbnails?: Record<string, { url?: string }>;
+              };
             }[];
           };
           for (const item of stats.items ?? []) {
@@ -139,6 +143,13 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
             if (item.statistics?.viewCount != null) {
               v.views = Number(item.statistics.viewCount) || v.views;
             }
+            // Titles and thumbnails change after upload (vidIQ optimization
+            // passes) — refresh them for the WHOLE history, not just the RSS
+            // window, so the site always shows the current packaging.
+            if (item.snippet?.title) v.title = item.snippet.title;
+            const th = item.snippet?.thumbnails;
+            const best = th?.["high"]?.url || th?.["medium"]?.url || th?.["default"]?.url;
+            if (best) v.thumbnail = best;
             const iso = item.contentDetails?.duration;
             if (iso) {
               const dm = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso);
