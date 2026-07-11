@@ -209,17 +209,27 @@ router.get("/youtube-top", async (req: Request, res: Response) => {
     // Spanish version "replaces" the English one on /es/ — with no per-video bookkeeping.
     const isSpanish = (t: unknown) => /[¡¿áéíóúüñ]/i.test(String(t || ""));
 
-    const videos = (data?.videos ?? [])
-      .filter((v) => (lang === "es" ? isSpanish(v.title) : !isSpanish(v.title)))
-      .sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0))
-      .slice(0, limit)
-      .map((v) => ({
-        id: v.id,
-        title: v.title,
-        thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
-        url: v.url || `https://www.youtube.com/watch?v=${v.id}`,
-        views: Number(v.views) || 0,
-      }));
+    const pool = (data?.videos ?? []).filter((v) =>
+      lang === "es" ? isSpanish(v.title) : !isSpanish(v.title),
+    );
+
+    // The newest upload always takes the first slot so fresh videos surface
+    // immediately (a 0-view upload can never crack a pure top-by-views list);
+    // the remaining slots stay most-watched-first.
+    const latest = [...pool].sort(
+      (a, b) => new Date(b.published || 0).getTime() - new Date(a.published || 0).getTime(),
+    )[0];
+    const byViews = [...pool].sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+    const ordered = latest ? [latest, ...byViews.filter((v) => v.id !== latest.id)] : byViews;
+
+    const videos = ordered.slice(0, limit).map((v) => ({
+      id: v.id,
+      title: v.title,
+      thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
+      url: v.url || `https://www.youtube.com/watch?v=${v.id}`,
+      views: Number(v.views) || 0,
+      isLatest: latest ? v.id === latest.id : false,
+    }));
 
     res.json({ videos, channelUrl: CHANNEL_URL, lang });
   } catch (err) {

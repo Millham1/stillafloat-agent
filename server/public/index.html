@@ -262,6 +262,7 @@
   #watch .yt-card-meta{padding:10px 12px 12px;}
   #watch .yt-card-title{font-size:.9rem;line-height:1.3;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
   #watch .yt-more-row{text-align:center;}
+  #watch .yt-card-new{position:absolute;top:8px;left:8px;background:#e63946;color:#fff;font-size:.68rem;font-weight:700;letter-spacing:.4px;padding:3px 8px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.35);}
 </style>
 <script>
 (function(){
@@ -282,6 +283,11 @@
       var play=document.createElement('span'); play.className='yt-card-play';
       play.innerHTML='<i class="fa-brands fa-youtube"></i>';
       tw.appendChild(play);
+      if(v.isLatest){
+        var nb=document.createElement('span'); nb.className='yt-card-new';
+        nb.textContent='NEW';
+        tw.appendChild(nb);
+      }
       var meta=document.createElement('span'); meta.className='yt-card-meta';
       var t=document.createElement('span'); t.className='yt-card-title'; t.textContent=v.title||'';
       meta.appendChild(t);
