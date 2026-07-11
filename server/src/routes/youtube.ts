@@ -123,16 +123,29 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
         for (let i = 0; i < videos.length; i += 50) {
           const ids = videos.slice(i, i + 50).map((v) => v.id).join(",");
           const r = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${ids}&key=${apiKey}`,
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails&id=${ids}&key=${apiKey}`,
           );
           if (!r.ok) throw new Error(`videos.list ${r.status}`);
           const stats = (await r.json()) as {
-            items?: { id: string; statistics?: { viewCount?: string } }[];
+            items?: {
+              id: string;
+              statistics?: { viewCount?: string };
+              contentDetails?: { duration?: string };
+            }[];
           };
           for (const item of stats.items ?? []) {
             const v = byId.get(item.id);
-            if (v && item.statistics?.viewCount != null) {
+            if (!v) continue;
+            if (item.statistics?.viewCount != null) {
               v.views = Number(item.statistics.viewCount) || v.views;
+            }
+            const iso = item.contentDetails?.duration;
+            if (iso) {
+              const dm = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso);
+              const secs = dm
+                ? Number(dm[1] || 0) * 3600 + Number(dm[2] || 0) * 60 + Number(dm[3] || 0)
+                : 0;
+              v.isShort = secs > 0 && secs <= 180;
             }
           }
         }
@@ -140,6 +153,11 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
       } catch (err) {
         logger.warn({ err }, "YouTube stats refresh failed; keeping last-known view counts");
       }
+    }
+
+    // Title fallback for Shorts when the Data API isn't available.
+    for (const v of byId.values()) {
+      if (!v.isShort && /#shorts/i.test(v.title)) v.isShort = true;
     }
 
     // Newest-first, capped so the history can't grow unbounded.
@@ -251,9 +269,12 @@ router.get("/youtube-top", async (req: Request, res: Response) => {
     // Spanish version "replaces" the English one on /es/ — with no per-video bookkeeping.
     const isSpanish = (t: unknown) => /[¡¿áéíóúüñ]/i.test(String(t || ""));
 
-    const pool = (data?.videos ?? []).filter((v) =>
-      lang === "es" ? isSpanish(v.title) : !isSpanish(v.title),
-    );
+    // type=long|short|all — lets the homepage split Episodes vs Shorts rows.
+    const type = String(req.query.type || "all").toLowerCase();
+    const wantShort = (v: YTVideo) => v.isShort || /#shorts/i.test(v.title);
+    const pool = (data?.videos ?? [])
+      .filter((v) => (lang === "es" ? isSpanish(v.title) : !isSpanish(v.title)))
+      .filter((v) => (type === "short" ? wantShort(v) : type === "long" ? !wantShort(v) : true));
 
     // The newest upload always takes the first slot so fresh videos surface
     // immediately (a 0-view upload can never crack a pure top-by-views list);
