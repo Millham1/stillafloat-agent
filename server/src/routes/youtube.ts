@@ -156,7 +156,9 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
               const secs = dm
                 ? Number(dm[1] || 0) * 3600 + Number(dm[2] || 0) * 60 + Number(dm[3] || 0)
                 : 0;
-              v.isShort = secs > 0 && secs <= 180;
+              // 65s, not YouTube's 3-min ceiling: this channel's Shorts are all <=61s,
+              // and 2-3 min landscape episodes were landing in the Shorts row.
+              v.isShort = secs > 0 && secs <= 65;
             }
           }
         }
