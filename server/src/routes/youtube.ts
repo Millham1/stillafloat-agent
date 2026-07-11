@@ -100,14 +100,56 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
       return;
     }
 
-    const videos = await fetchChannelVideos(channelId);
+    const scanned = await fetchChannelVideos(channelId);
     const scannedAt = new Date().toISOString();
 
-    // Persist the scan result. Preserve a manual feature pick if Mark set one;
-    // otherwise leave featuredId unpinned so the homepage tracks the latest upload.
     const existing = (await readJson("youtube-channel")) as
-      | { featuredId?: string; featuredManual?: boolean }
+      | { featuredId?: string; featuredManual?: boolean; videos?: YTVideo[] }
       | null;
+
+    // MERGE into history instead of overwriting: YouTube's channel RSS only
+    // exposes the ~15 newest videos, so a pure overwrite made older popular
+    // videos vanish from the homepage grid once they aged out of the feed.
+    const byId = new Map<string, YTVideo>((existing?.videos ?? []).map((v) => [v.id, v]));
+    for (const v of scanned) byId.set(v.id, v); // fresh feed data wins
+    let videos = [...byId.values()];
+
+    // Refresh view counts for the whole history when the Data API key is
+    // available (RSS stops reporting stats for aged-out videos). Best-effort:
+    // a failure here keeps last-known views rather than failing the scan.
+    const apiKey = process.env["YOUTUBE_API_KEY"];
+    if (apiKey && videos.length > 0) {
+      try {
+        for (let i = 0; i < videos.length; i += 50) {
+          const ids = videos.slice(i, i + 50).map((v) => v.id).join(",");
+          const r = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${ids}&key=${apiKey}`,
+          );
+          if (!r.ok) throw new Error(`videos.list ${r.status}`);
+          const stats = (await r.json()) as {
+            items?: { id: string; statistics?: { viewCount?: string } }[];
+          };
+          for (const item of stats.items ?? []) {
+            const v = byId.get(item.id);
+            if (v && item.statistics?.viewCount != null) {
+              v.views = Number(item.statistics.viewCount) || v.views;
+            }
+          }
+        }
+        videos = [...byId.values()];
+      } catch (err) {
+        logger.warn({ err }, "YouTube stats refresh failed; keeping last-known view counts");
+      }
+    }
+
+    // Newest-first, capped so the history can't grow unbounded.
+    videos.sort(
+      (a, b) => new Date(b.published || 0).getTime() - new Date(a.published || 0).getTime(),
+    );
+    videos = videos.slice(0, 200);
+
+    // Preserve a manual feature pick if Mark set one; otherwise leave
+    // featuredId unpinned so the homepage tracks the latest upload.
     await writeJson("youtube-channel", {
       scannedAt,
       channelId,
