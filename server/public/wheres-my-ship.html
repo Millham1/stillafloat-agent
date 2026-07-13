@@ -198,6 +198,7 @@ const T = {
   saveFail: 'Could not save your watch — try again in a moment.',
   noSignal: (ship) => `${ship} hasn't reported a position to our receivers yet. Terrestrial AIS coverage fades in open water — tracking picks back up automatically when she's within the service area. Check back soon.`,
   trackerOffline: 'Live tracking is warming up — check back shortly.',
+  waking: (ship) => `Waking up ${ship}'s tracker — she's in our registry and her live feed is switching on now. First position usually lands within a couple of minutes (in coastal coverage).`,
   stale: (ship, ago) => `${ship} last reported <strong>${ago}</strong>. She's likely in open water between coverage areas — the map shows her last known position, and tracking picks back up automatically when she re-enters the service area.`,
   stopped: 'Done — that ship watch is stopped. Fair winds!',
   livePill: 'Live', stalePill: 'Last known', arrivalDay: 'Expected arrival',

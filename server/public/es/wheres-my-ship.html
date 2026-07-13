@@ -188,6 +188,7 @@ const T = {
   saveFail: 'No pudimos guardar tu vigilancia — intenta de nuevo en un momento.',
   noSignal: (ship) => `${ship} todavía no reporta posición a nuestros receptores. La cobertura AIS terrestre se pierde en mar abierto — el rastreo se reanuda automáticamente cuando el barco vuelve al área de servicio. Vuelve pronto.`,
   trackerOffline: 'El rastreo en vivo está calentando motores — vuelve en un momento.',
+  waking: (ship) => `Despertando el rastreador de ${ship} — está en nuestro registro y su señal en vivo se está activando. La primera posición suele llegar en un par de minutos (con cobertura costera).`,
   stale: (ship, ago) => `${ship} reportó por última vez <strong>${ago}</strong>. Probablemente está en mar abierto entre zonas de cobertura — el mapa muestra su última posición conocida y el rastreo se reanuda automáticamente cuando vuelva al área de servicio.`,
   stopped: 'Listo — esa vigilancia quedó detenida. ¡Buen viento!',
   livePill: 'En vivo', stalePill: 'Última posición', arrivalDay: 'Llegada prevista',

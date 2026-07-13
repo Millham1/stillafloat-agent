@@ -29,7 +29,7 @@
 
   function shipItems(list) {
     return list.map((s) =>
-      `<div class="d-item" data-ship="${s.name}"><span>${s.name}</span><small>${s.cruiseLine}</small></div>`
+      `<div class="d-item" data-ship="${s.name}"><span>${s.live ? '<span style="color:#5dff9a">●</span> ' : ''}${s.name}</span><small>${s.cruiseLine}</small></div>`
     ).join('');
   }
 
@@ -192,14 +192,22 @@
     if (!d.tracking) {
       $('i-ship').textContent = shipName;
       $('i-line').textContent = '';
-      ['i-course','i-speed','i-dest','i-eta','i-departed','i-age'].forEach((id) => { $(id).textContent = '—'; });
+      ['i-status','i-course','i-speed','i-dest','i-eta','i-departed','i-age'].forEach((id) => { $(id).textContent = '—'; });
       const banner = $('stale-banner');
-      banner.innerHTML = d.reason === 'tracker_offline' ? T.trackerOffline : T.noSignal(shipName);
+      banner.innerHTML = d.reason === 'tracker_offline' ? T.trackerOffline
+        : d.reason === 'waking' ? T.waking(shipName)
+        : T.noSignal(shipName);
       banner.style.display = 'block';
       $('live-pill').style.display = 'none';
       $('wx-card').style.display = 'none';
       ensureMap();
       $('updated').textContent = '';
+      // A waking ship reports within moments of the subscription update —
+      // poll faster until she does.
+      if (d.reason === 'waking') {
+        clearInterval(pollTimer);
+        pollTimer = setInterval(() => refresh(shipName).catch(() => {}), 20_000);
+      }
       return;
     }
 
@@ -228,6 +236,13 @@
   }
 
   function selectShip(shipName) {
+    // Wake the ship's tracking (stamps the request; retained in the scheduler).
+    // Fire-and-forget: the position poll below reports the current state.
+    fetch('/api/wms/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ship: shipName }),
+    }).catch(() => {});
     startTracking(shipName);
   }
 
