@@ -9,6 +9,8 @@ import { draftNewsletter, saveDraft } from "./lib/newsletter";
 import { notifyTelegram, reviewUrl } from "./lib/telegram";
 import { runNewsPrerender } from "./lib/prerender-news";
 import { stageWeeklyCommentary } from "./lib/commentary-agent";
+import { startShipTracker } from "./lib/ship-tracker";
+import { runWatchSweep } from "./lib/wms-alerts";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -65,7 +67,35 @@ app.listen(port, "0.0.0.0", () => {
   // News pre-renderer — writes static, crawlable news pages (SEO). Local file
   // writes only, so it runs on BOTH boxes (dev gets testable pages).
   scheduleNewsPrerender();
+  // Where's-My-Ship AIS tracker — reads the free aisstream.io feed into an
+  // in-memory position cache. No-ops without AISSTREAM_API_KEY. Runs on BOTH
+  // boxes (each writes only to its own Supabase; dev makes the page testable).
+  void startShipTracker();
+  // WMS watch alerts — hourly sweep that emails subscribers who saved a
+  // sailing. Disabled on the dev mirror so watchers are never emailed twice.
+  if (process.env["DISABLE_WMS_ALERTS"] === "1") {
+    logger.info("WMS watch alerts DISABLED (DISABLE_WMS_ALERTS=1)");
+  } else {
+    scheduleWmsAlerts();
+  }
 });
+
+// ── WMS watch-alert scheduler ─────────────────────────────────────────────────
+// Hourly sweep of active ship watches: itinerary changes, weather threats, and
+// cruise-line news, emailed via the ops-manager Gmail sender with per-event
+// dedup. First tick waits 15 minutes so the AIS cache has positions to check.
+function scheduleWmsAlerts() {
+  const tick = async () => {
+    try {
+      await runWatchSweep();
+    } catch (err) {
+      logger.error({ err }, "WMS watch sweep failed");
+    }
+  };
+  setTimeout(() => { tick().catch(() => {}); }, 15 * 60 * 1000);
+  setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
+  logger.info("WMS watch-alert scheduler active — hourly");
+}
 
 // ── News pre-render scheduler ─────────────────────────────────────────────────
 // Regenerates the static news listing + story pages from platform_state on boot
