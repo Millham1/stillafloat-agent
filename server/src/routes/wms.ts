@@ -13,6 +13,7 @@ import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import {
   getPosition, allPositions, trackerEnabled, trackerHealthy,
+  requestShip, isSubscribed, inRegistry, subscribedNames, capacity,
 } from "../lib/ship-tracker";
 import { makeWatchSig } from "../lib/wms-alerts";
 import { portBySlug } from "../lib/ports";
@@ -60,9 +61,11 @@ async function confirmedSubscriber(email: string): Promise<SubInfo | null> {
   return sub;
 }
 
-// ── GET /api/wms/ships — the searchable ship list (public) ───────────────────
+// ── GET /api/wms/ships — the full searchable registry (public) ───────────────
+// Every registry ship is searchable; `live` marks the ones in the current AIS
+// subscription (everything else wakes on request). Short cache: liveness moves.
 router.get("/wms/ships", async (_req: Request, res: Response) => {
-  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
+  res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=3600");
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase
@@ -72,12 +75,35 @@ router.get("/wms/ships", async (_req: Request, res: Response) => {
       .order("cruise_line")
       .order("name");
     if (error) throw new Error(error.message);
+    const live = subscribedNames();
     const ships = ((data ?? []) as { name: string; cruise_line: string; mmsi: string | null }[])
-      .map((s) => ({ name: s.name, cruiseLine: s.cruise_line, tracked: Boolean(s.mmsi) }));
-    res.json({ ok: true, trackerOnline: trackerEnabled() && trackerHealthy(), ships });
+      .map((s) => ({
+        name: s.name,
+        cruiseLine: s.cruise_line,
+        tracked: Boolean(s.mmsi),
+        live: live.has(s.name.toLowerCase()),
+      }));
+    res.json({ ok: true, trackerOnline: trackerEnabled() && trackerHealthy(), capacity: capacity(), ships });
   } catch (err) {
     logger.error({ err }, "wms: ships list failed");
     res.status(500).json({ ok: false, error: "Could not load ships" });
+  }
+});
+
+// ── POST /api/wms/request — wake tracking for a registry ship (public) ───────
+// Stamps last_requested_at (retention) and pulls the ship into the active
+// subscription immediately. Rate-limited: it's a public write-ish action.
+router.post("/wms/request", async (req: Request, res: Response) => {
+  if (rateLimited(clientIp(req), 20)) return res.status(429).json({ ok: false, error: "Too many requests" });
+  const ship = String((req.body as Record<string, string>)?.ship ?? "").trim();
+  if (!ship) return res.status(400).json({ ok: false, error: "ship required" });
+  try {
+    const state = await requestShip(ship);
+    if (state === "unknown") return res.status(404).json({ ok: false, error: "Unknown ship" });
+    return res.json({ ok: true, state }); // live | waking
+  } catch (err) {
+    logger.error({ err }, "wms: request failed");
+    return res.status(500).json({ ok: false, error: "Request failed" });
   }
 });
 
@@ -92,7 +118,11 @@ router.get("/wms/position", async (req: Request, res: Response) => {
     }
     const pos = getPosition(shipName);
     if (!pos || pos.lat === null || !pos.lastPosAt) {
-      return res.json({ ok: true, tracking: false, reason: "no_signal" });
+      // Distinguish "subscribed, just hasn't reported" from "not yet in the
+      // active set" so the page can show the wake-up message vs the coverage one.
+      const reason = !inRegistry(shipName) ? "unknown_ship"
+        : isSubscribed(shipName) ? "no_signal" : "waking";
+      return res.json({ ok: true, tracking: false, reason });
     }
 
     const ageMin = Math.round((Date.now() - Date.parse(pos.lastPosAt)) / 60000);

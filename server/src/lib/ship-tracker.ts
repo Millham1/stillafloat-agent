@@ -1,18 +1,30 @@
 // ship-tracker.ts — live cruise-ship positions for "Where's My Ship?" (WMS).
 //
-// One persistent websocket to the free aisstream.io feed, subscribed to the
-// MMSIs in the `ships` table, keeps an in-memory position cache that the whole
-// site reads from — marginal cost per visitor is zero. Terrestrial AIS only:
-// ships go quiet mid-ocean, so every consumer must honor `lastPosAt` (the page
-// shows "last reported Xh ago — tracking picks back up in coverage").
+// v2 (Mark's design): the `ships` table is the FULL cruise-ship registry —
+// search covers every ship in it. Live AIS tracking activates on request and
+// is then RETAINED: the active set = ships with active watches, the seeded
+// US-coast fleet (seed_active), and everything ever requested, newest first,
+// up to capacity. Capacity = (number of API keys) × WMS_MAX_PER_CONN (the
+// aisstream per-connection MMSI-filter allowance; default 50 — verify
+// empirically). Under capacity pressure the least-recently-requested
+// non-seeded ships rotate out; a new request instantly rotates a ship back in.
+//
+// One websocket PER KEY to the free aisstream.io feed (aisstream allows one
+// connection per key), the active MMSI list sharded across them. Terrestrial
+// AIS only: ships go quiet mid-ocean, so consumers must honor `lastPosAt`.
+//
+// Self-heal: vessels broadcast their name in voyage frames — a mismatch vs.
+// the registry name (or a reflagging making an MMSI go permanently silent)
+// flags the row `mmsi_suspect` for re-verification instead of silently
+// tracking the wrong vessel.
 //
 // The tracker also derives itineraries from what it observes (port calls +
 // declared destinations) and maintains one rolling source='ais' row per ship
 // in the `sailings` table — the same table the storm feature matches impacted
-// ships against, so storm alerts get real itinerary data for free.
+// ships against.
 //
-// Requires AISSTREAM_API_KEY in shared.env (free key — aisstream.io). Without
-// it the tracker no-ops and the WMS page reports tracking offline.
+// Env: AISSTREAM_API_KEYS (comma-separated) or AISSTREAM_API_KEY. Without a
+// key the tracker no-ops and the WMS page reports tracking offline.
 
 import { getSupabase, readJson, writeJson } from "./persistence";
 import { logger } from "./logger";
@@ -27,12 +39,16 @@ const PORT_RADIUS_KM = 4;      // within this of a known port + slow = "in port"
 const IN_PORT_MAX_KN = 0.7;    // at/under this speed counts as moored/anchored
 const DEPART_MIN_KN = 2.0;     // above this (or out of radius) = departed
 const PERSIST_EVERY_MS = 5 * 60 * 1000;
+const REFRESH_SET_EVERY_MS = 5 * 60 * 1000;
 const SAILINGS_EVERY_MS = 6 * 60 * 60 * 1000;
 
-export interface TrackedShip {
+export interface RegistryShip {
   mmsi: string;
-  name: string;          // ships.name (site-canonical)
+  name: string;
   cruiseLine: string;
+  seedActive: boolean;
+  hasWatch: boolean;
+  lastRequestedAt: string | null;
 }
 
 export interface ShipPosition {
@@ -51,19 +67,39 @@ export interface ShipPosition {
   lastPortDepartedAt: string | null;
   lastPosAt: string | null;        // when the last position report arrived
   // itinerary derivation (internal — not for display)
-  currentSailingStart: string | null; // date the ship left its embarkation port
+  currentSailingStart: string | null;
   currentDepartPort: string | null;
-  regionsSeen: string[];              // storm-ground keys observed this sailing
+  regionsSeen: string[];
   inPortSlug: string | null;
 }
 
-const positions = new Map<string, ShipPosition>(); // by MMSI
-let shipsByMmsi = new Map<string, TrackedShip>();
+const positions = new Map<string, ShipPosition>();   // by MMSI (tracked now or previously)
+let registryByMmsi = new Map<string, RegistryShip>(); // full registry (all ships w/ MMSI)
+let activeMmsis = new Set<string>();                  // currently subscribed
+const nameFlagged = new Set<string>();                // reported-name mismatches already persisted
 let started = false;
-let socketAlive = false;
 let lastMessageAt = 0;
 
-function blankPosition(ship: TrackedShip): ShipPosition {
+interface Conn {
+  key: string;
+  ws: import("ws") | null;
+  mmsis: string[];   // shard assigned to this connection
+  alive: boolean;
+}
+const conns: Conn[] = [];
+
+function apiKeys(): string[] {
+  const multi = process.env["AISSTREAM_API_KEYS"];
+  if (multi) return multi.split(",").map((k) => k.trim()).filter(Boolean);
+  const single = process.env["AISSTREAM_API_KEY"];
+  return single ? [single] : [];
+}
+
+function maxPerConn(): number {
+  return Number(process.env["WMS_MAX_PER_CONN"] ?? "50");
+}
+
+function blankPosition(ship: RegistryShip): ShipPosition {
   return {
     mmsi: ship.mmsi, name: ship.name, cruiseLine: ship.cruiseLine,
     lat: null, lon: null, cogDeg: null, sogKn: null, headingDeg: null,
@@ -77,11 +113,42 @@ function blankPosition(ship: TrackedShip): ShipPosition {
 // ── Public reads ──────────────────────────────────────────────────────────────
 
 export function trackerEnabled(): boolean {
-  return Boolean(process.env["AISSTREAM_API_KEY"]);
+  return apiKeys().length > 0;
 }
 
 export function trackerHealthy(): boolean {
-  return socketAlive && Date.now() - lastMessageAt < 15 * 60 * 1000;
+  return conns.some((c) => c.alive) && Date.now() - lastMessageAt < 15 * 60 * 1000;
+}
+
+export function capacity(): { active: number; max: number } {
+  return { active: activeMmsis.size, max: apiKeys().length * maxPerConn() };
+}
+
+function registryByName(shipName: string): RegistryShip | null {
+  const lower = shipName.toLowerCase();
+  for (const ship of registryByMmsi.values()) {
+    if (ship.name.toLowerCase() === lower) return ship;
+  }
+  return null;
+}
+
+export function isSubscribed(shipName: string): boolean {
+  const ship = registryByName(shipName);
+  return Boolean(ship && activeMmsis.has(ship.mmsi));
+}
+
+export function inRegistry(shipName: string): boolean {
+  return registryByName(shipName) !== null;
+}
+
+/** Lower-cased names of ships in the current live subscription (for list views). */
+export function subscribedNames(): Set<string> {
+  const names = new Set<string>();
+  for (const mmsi of activeMmsis) {
+    const ship = registryByMmsi.get(mmsi);
+    if (ship) names.add(ship.name.toLowerCase());
+  }
+  return names;
 }
 
 export function getPosition(shipName: string): ShipPosition | null {
@@ -95,18 +162,93 @@ export function allPositions(): ShipPosition[] {
   return [...positions.values()];
 }
 
-// ── Ship registry ─────────────────────────────────────────────────────────────
+/**
+ * A visitor asked for this ship: stamp the request (retention) and pull the
+ * active set forward immediately so the wake-up takes moments, not minutes.
+ */
+export async function requestShip(shipName: string): Promise<"live" | "waking" | "unknown"> {
+  const ship = registryByName(shipName);
+  if (!ship) return "unknown";
+  const already = activeMmsis.has(ship.mmsi);
+  ship.lastRequestedAt = new Date().toISOString();
+  try {
+    const supabase = getSupabase();
+    await (supabase.from("ships") as ReturnType<typeof supabase.from>)
+      .update({ last_requested_at: ship.lastRequestedAt })
+      .eq("mmsi", ship.mmsi);
+  } catch (err) {
+    logger.warn({ err, ship: ship.name }, "wms: request stamp failed");
+  }
+  if (already) return "live";
+  await refreshActiveSet().catch(() => {});
+  return "waking";
+}
 
-async function loadShips(): Promise<TrackedShip[]> {
+// ── Registry + active-set scheduler ──────────────────────────────────────────
+
+async function loadRegistry(): Promise<void> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("ships")
-    .select("name, cruise_line, mmsi")
+    .select("name, cruise_line, mmsi, seed_active, last_requested_at")
     .eq("active", true)
     .not("mmsi", "is", null);
-  if (error) throw new Error(`loadShips: ${error.message}`);
-  return ((data ?? []) as { name: string; cruise_line: string; mmsi: string }[])
-    .map((r) => ({ mmsi: String(r.mmsi), name: r.name, cruiseLine: r.cruise_line }));
+  if (error) throw new Error(`loadRegistry: ${error.message}`);
+
+  // Ships with an active watch are top priority — they have paying-attention
+  // subscribers expecting alerts.
+  const { data: watches } = await supabase
+    .from("ship_watches")
+    .select("ship_name")
+    .eq("status", "active");
+  const watched = new Set(((watches ?? []) as { ship_name: string }[]).map((w) => w.ship_name.toLowerCase()));
+
+  registryByMmsi = new Map(
+    ((data ?? []) as { name: string; cruise_line: string; mmsi: string; seed_active: boolean | null; last_requested_at: string | null }[])
+      .map((r) => [String(r.mmsi), {
+        mmsi: String(r.mmsi),
+        name: r.name,
+        cruiseLine: r.cruise_line,
+        seedActive: Boolean(r.seed_active),
+        hasWatch: watched.has(r.name.toLowerCase()),
+        lastRequestedAt: r.last_requested_at,
+      }]),
+  );
+}
+
+/** Priority-ordered active set: watches → seeded US fleet → requested, newest first. */
+function buildActiveSet(): Set<string> {
+  const ships = [...registryByMmsi.values()];
+  const rank = (s: RegistryShip): number => (s.hasWatch ? 0 : s.seedActive ? 1 : s.lastRequestedAt ? 2 : 3);
+  ships.sort((a, b) =>
+    rank(a) - rank(b) ||
+    (b.lastRequestedAt ?? "").localeCompare(a.lastRequestedAt ?? "") ||
+    a.name.localeCompare(b.name));
+  const cap = apiKeys().length * maxPerConn();
+  // Rank 3 (never requested, not seeded) ships stay registry-only until asked for.
+  return new Set(ships.filter((s) => rank(s) < 3).slice(0, cap).map((s) => s.mmsi));
+}
+
+/** Re-shard the active set across connections; resubscribe the ones that changed. */
+async function refreshActiveSet(): Promise<void> {
+  await loadRegistry();
+  const next = buildActiveSet();
+  const changed = next.size !== activeMmsis.size || [...next].some((m) => !activeMmsis.has(m));
+  activeMmsis = next;
+  for (const mmsi of next) {
+    if (!positions.has(mmsi)) positions.set(mmsi, blankPosition(registryByMmsi.get(mmsi)!));
+  }
+  if (!changed) return;
+
+  const list = [...next].sort();
+  const per = maxPerConn();
+  conns.forEach((conn, i) => {
+    const shard = list.slice(i * per, (i + 1) * per);
+    const shardChanged = shard.length !== conn.mmsis.length || shard.some((m, j) => conn.mmsis[j] !== m);
+    conn.mmsis = shard;
+    if (shardChanged) subscribe(conn);
+  });
+  logger.info({ active: next.size, capacity: apiKeys().length * per }, "wms: active tracking set updated");
 }
 
 // ── AIS message handling ─────────────────────────────────────────────────────
@@ -138,7 +280,6 @@ function handlePositionReport(pos: ShipPosition, msg: Record<string, unknown>) {
   pos.headingDeg = isFinite(hdg) && hdg >= 0 && hdg < 360 ? hdg : null; // 511 = unavailable
   pos.lastPosAt = new Date().toISOString();
 
-  // Accumulate storm grounds seen this sailing (feeds the derived itinerary).
   for (const g of groundsForPoint(lat, lon)) {
     if (!pos.regionsSeen.includes(g)) pos.regionsSeen.push(g);
   }
@@ -153,6 +294,22 @@ function handleStaticData(pos: ShipPosition, msg: Record<string, unknown>) {
     pos.destinationSlug = matchDestination(destRaw)?.slug ?? null;
   }
   pos.etaUtc = etaToIso(msg["Eta"] as AisEta | undefined) ?? pos.etaUtc;
+
+  // Self-heal: the vessel tells us its name. A mismatch means our MMSI likely
+  // went stale (reflagging) and we're hearing a different ship — flag it.
+  const reported = typeof msg["Name"] === "string" ? (msg["Name"] as string).trim() : "";
+  if (reported && !nameFlagged.has(pos.mmsi)) {
+    const a = reported.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const b = pos.name.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (a && b && !a.includes(b) && !b.includes(a)) {
+      nameFlagged.add(pos.mmsi);
+      logger.warn({ mmsi: pos.mmsi, registry: pos.name, reported }, "wms: AIS name mismatch — flagging MMSI for re-verification");
+      const supabase = getSupabase();
+      void (supabase.from("ships") as ReturnType<typeof supabase.from>)
+        .update({ reported_name: reported, mmsi_suspect: true })
+        .eq("mmsi", pos.mmsi);
+    }
+  }
 }
 
 /**
@@ -168,7 +325,6 @@ function detectPortCall(pos: ShipPosition) {
   if (near && slow && pos.inPortSlug !== near.slug) {
     pos.inPortSlug = near.slug;
     if (near.type === "embarkation") {
-      // Back at a homeport: the current sailing (if any) is over.
       pos.currentSailingStart = null;
       pos.currentDepartPort = near.slug;
       pos.regionsSeen = [];
@@ -213,7 +369,6 @@ export async function syncDerivedSailings(): Promise<number> {
 
   for (const pos of positions.values()) {
     if (pos.lat === null || pos.lon === null || !pos.lastPosAt) continue;
-    // Skip stale ships (no fix in 48h) — don't feed the storm matcher guesses.
     if (Date.now() - Date.parse(pos.lastPosAt) > 48 * 3_600_000) continue;
 
     const regions = new Set<string>(pos.regionsSeen);
@@ -235,7 +390,6 @@ export async function syncDerivedSailings(): Promise<number> {
       source: "ais",
     };
 
-    // One AIS row per ship: update-else-insert keyed on (ship_name, source).
     const { data: existing, error: selErr } = await supabase
       .from("sailings")
       .select("id")
@@ -267,27 +421,39 @@ async function persistSnapshot() {
 async function warmFromSnapshot() {
   const snap = await readJson<{ ships?: ShipPosition[] }>(STATE_KEY, {});
   for (const s of snap.ships ?? []) {
-    if (s?.mmsi && shipsByMmsi.has(s.mmsi)) positions.set(s.mmsi, { ...blankPosition(shipsByMmsi.get(s.mmsi)!), ...s });
+    const reg = s?.mmsi ? registryByMmsi.get(s.mmsi) : undefined;
+    if (reg) positions.set(s.mmsi, { ...blankPosition(reg), ...s, name: reg.name, cruiseLine: reg.cruiseLine });
   }
 }
 
-// ── Websocket lifecycle ──────────────────────────────────────────────────────
+// ── Websocket lifecycle (one per key, shard per connection) ──────────────────
 
-function connect(apiKey: string) {
+function subscribe(conn: Conn) {
+  if (!conn.ws || !conn.alive || !conn.mmsis.length) return;
+  try {
+    conn.ws.send(JSON.stringify({
+      APIKey: conn.key,
+      BoundingBoxes: [[[-90, -180], [90, 180]]], // MMSI filter does the narrowing
+      FiltersShipMMSI: conn.mmsis,
+      FilterMessageTypes: ["PositionReport", "ShipStaticData"],
+    }));
+    logger.info({ ships: conn.mmsis.length }, "wms: subscription sent");
+  } catch (err) {
+    logger.warn({ err }, "wms: subscribe send failed");
+  }
+}
+
+function connect(conn: Conn) {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const WebSocket = require("ws");
   const ws = new WebSocket(AIS_URL);
+  conn.ws = ws;
   let closed = false;
 
   ws.on("open", () => {
-    socketAlive = true;
-    ws.send(JSON.stringify({
-      APIKey: apiKey,
-      BoundingBoxes: [[[-90, -180], [90, 180]]], // MMSI filter does the narrowing
-      FiltersShipMMSI: [...shipsByMmsi.keys()],
-      FilterMessageTypes: ["PositionReport", "ShipStaticData"],
-    }));
-    logger.info({ ships: shipsByMmsi.size }, "wms: aisstream connected + subscribed");
+    conn.alive = true;
+    subscribe(conn);
+    logger.info({ ships: conn.mmsis.length }, "wms: aisstream connected + subscribed");
   });
 
   ws.on("message", (buf: Buffer) => {
@@ -295,7 +461,7 @@ function connect(apiKey: string) {
     try {
       const frame = JSON.parse(buf.toString());
       const mmsi = String(frame?.MetaData?.MMSI ?? "");
-      const ship = shipsByMmsi.get(mmsi);
+      const ship = registryByMmsi.get(mmsi);
       if (!ship) return;
       let pos = positions.get(mmsi);
       if (!pos) { pos = blankPosition(ship); positions.set(mmsi, pos); }
@@ -310,9 +476,10 @@ function connect(apiKey: string) {
   const reconnect = (why: string) => {
     if (closed) return;
     closed = true;
-    socketAlive = false;
+    conn.alive = false;
+    conn.ws = null;
     logger.warn({ why }, "wms: aisstream disconnected — reconnecting in 30s");
-    setTimeout(() => connect(apiKey), 30_000);
+    setTimeout(() => connect(conn), 30_000);
   };
   ws.on("close", () => reconnect("close"));
   ws.on("error", (err: Error) => { logger.warn({ err }, "wms: socket error"); ws.terminate?.(); reconnect("error"); });
@@ -323,25 +490,25 @@ export async function startShipTracker() {
   if (started) return;
   started = true;
 
-  const apiKey = process.env["AISSTREAM_API_KEY"];
-  if (!apiKey) {
-    logger.info("wms: AISSTREAM_API_KEY unset — ship tracker disabled");
+  const keys = apiKeys();
+  if (!keys.length) {
+    logger.info("wms: AISSTREAM_API_KEY(S) unset — ship tracker disabled");
     return;
   }
 
   try {
-    const ships = await loadShips();
-    shipsByMmsi = new Map(ships.map((s) => [s.mmsi, s]));
-    if (!shipsByMmsi.size) {
-      logger.warn("wms: no ships have MMSIs — tracker idle (seed ships.mmsi)");
+    await loadRegistry();
+    if (!registryByMmsi.size) {
+      logger.warn("wms: registry empty — tracker idle (seed ships.mmsi)");
       return;
     }
-    for (const ship of ships) if (!positions.has(ship.mmsi)) positions.set(ship.mmsi, blankPosition(ship));
     await warmFromSnapshot();
-    connect(apiKey);
+    for (const key of keys) conns.push({ key, ws: null, mmsis: [], alive: false });
+    await refreshActiveSet(); // shards the initial set
+    for (const conn of conns) connect(conn);
+    setInterval(() => { refreshActiveSet().catch((err) => logger.warn({ err }, "wms: set refresh failed")); }, REFRESH_SET_EVERY_MS);
     setInterval(() => { persistSnapshot().catch(() => {}); }, PERSIST_EVERY_MS);
     setInterval(() => { syncDerivedSailings().catch((err) => logger.warn({ err }, "wms: sailings sync failed")); }, SAILINGS_EVERY_MS);
-    // First sailings sync shortly after boot once some positions have arrived.
     setTimeout(() => { syncDerivedSailings().catch(() => {}); }, 10 * 60 * 1000);
   } catch (err) {
     logger.error({ err }, "wms: tracker failed to start");
