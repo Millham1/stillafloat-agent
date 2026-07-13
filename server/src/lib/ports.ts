@@ -90,6 +90,10 @@ export const CRUISE_LOCATIONS: CruiseLocation[] = [
   { slug:"mykonos",          name:"Mykonos, Greece",              type:"destination", lat:37.4467,  lon:25.3289   },
   { slug:"naples",           name:"Naples, Italy",                type:"destination", lat:40.8518,  lon:14.2681   },
   { slug:"santorini",        name:"Santorini, Greece",            type:"destination", lat:36.3932,  lon:25.4615   },
+  // ── MEXICAN RIVIERA / PACIFIC NORTHWEST (WMS destinations) ───
+  { slug:"ensenada",         name:"Ensenada, Mexico",             type:"destination", lat:31.8667,  lon:-116.6167 },
+  { slug:"victoria-bc",      name:"Victoria, BC, Canada",         type:"destination", lat:48.4284,  lon:-123.3656 },
+  { slug:"sitka",            name:"Sitka, Alaska",                type:"destination", lat:57.0531,  lon:-135.3300 },
   // ── PACIFIC / OTHER ──────────────────────────────────────────
   { slug:"bali",             name:"Bali, Indonesia",              type:"destination", lat:-8.3405,  lon:115.0920  },
   { slug:"bora-bora",        name:"Bora Bora, French Polynesia",  type:"destination", lat:-16.5004, lon:-151.7415 },
@@ -138,7 +142,31 @@ const DEST_ALIASES: Record<string, string> = {
   "PUERTO VALLARTA": "puerto-vallarta", "ST KITTS": "st-kitts", "BASSETERRE": "st-kitts",
   "ST LUCIA": "st-lucia", "CASTRIES": "st-lucia", "TORTOLA": "tortola", "ROAD TOWN": "tortola",
   "JUNEAU": "juneau", "KETCHIKAN": "ketchikan", "SKAGWAY": "skagway",
-  "VANCOUVER": "vancouver",
+  "VANCOUVER": "vancouver", "VICTORIA": "victoria-bc", "SITKA": "sitka",
+  "ENSENADA": "ensenada", "LONG BEACH": "los-angeles",
+};
+
+// UN/LOCODE forms crews commonly type into the AIS destination field
+// ("US JNU", "MX ESE", "US MIA > BS NAS"). Matched on the space-stripped
+// text; the LAST code in the string wins (that's the current leg).
+const DEST_LOCODES: Record<string, string> = {
+  USMIA: "miami", USPEF: "fort-lauderdale", USFLL: "fort-lauderdale",
+  USPCV: "port-canaveral", USTPA: "tampa", USGLS: "galveston",
+  USNYC: "new-york", USBAY: "new-york", USMSY: "new-orleans",
+  USSEA: "seattle", USLAX: "los-angeles", USLGB: "los-angeles",
+  USHNL: "honolulu", USBAL: "baltimore", USSFO: "san-francisco",
+  USBOS: "boston", USCHS: "charleston-sc", USJAX: "jacksonville",
+  USORF: "norfolk", USSAN: "san-diego", USEYW: "key-west",
+  USJNU: "juneau", USKTN: "ketchikan", USSGY: "skagway", USSIT: "sitka",
+  CAVAN: "vancouver", CAVIC: "victoria-bc",
+  BSNAS: "nassau", MXCZM: "cozumel", MXCSL: "cabo-san-lucas",
+  MXPVR: "puerto-vallarta", MXESE: "ensenada",
+  JMOCJ: "ocho-rios", JMMBJ: "montego-bay", KYGEC: "grand-cayman",
+  PRSJU: "san-juan", SXPHI: "st-maarten", BMBDA: "bermuda",
+  BBBGI: "barbados", LCCAS: "st-lucia", KNBAS: "st-kitts",
+  AGSJO: "antigua", DOPOP: "amber-cove", TCGDT: "grand-turk",
+  HNRTB: "roatan", BZBZE: "belize-city", COCTG: "cartagena",
+  CWWIL: "curacao",
 };
 
 function normalizeDest(text: string): string {
@@ -154,6 +182,15 @@ export function matchDestination(raw: string | null | undefined): CruiseLocation
   if (!raw) return null;
   const norm = normalizeDest(raw);
   if (!norm) return null;
+  // LOCODE pass first — "US JNU" style codes are unambiguous when present.
+  const compact = norm.replace(/ /g, "");
+  let locodeHit: string | null = null;
+  let locodeIdx = -1;
+  for (const [code, slug] of Object.entries(DEST_LOCODES)) {
+    const idx = compact.lastIndexOf(code);
+    if (idx > locodeIdx) { locodeIdx = idx; locodeHit = slug; }
+  }
+  if (locodeHit) return BY_SLUG.get(locodeHit) ?? null;
   let hit: string | null = null;
   for (const [alias, slug] of Object.entries(DEST_ALIASES)) {
     const idx = norm.lastIndexOf(alias);
