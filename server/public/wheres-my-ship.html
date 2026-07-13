@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where's My Ship? — Live Cruise Ship Tracker | Still Afloat</title>
+<meta name="description" content="Track your cruise ship live on a satellite map — free. Course, speed, next port, and arrival-day weather. Subscribers get email updates on itinerary changes, weather, and cruise-line news.">
+<link rel="canonical" href="https://stillafloatcruising.com/wheres-my-ship.html">
+<link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/wheres-my-ship.html">
+<link rel="alternate" hreflang="es-419" href="https://stillafloatcruising.com/es/wheres-my-ship.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:url" content="https://stillafloatcruising.com/wheres-my-ship.html">
+<meta property="og:title" content="Where's My Ship? — Live Cruise Ship Tracker | Still Afloat">
+<meta property="og:description" content="Track your cruise ship live on a satellite map — course, speed, next port, and port weather.">
+<meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px}
+.wms-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;background:linear-gradient(135deg,#07183f 0%,#0b2f52 60%,#0f4a6e 100%);background-image:url('./assets/images/wheres-my-ship-hero.png');background-size:cover;background-position:center 38%;height:clamp(440px,46vw,680px)}
+.wms-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:80px;background:linear-gradient(to bottom,transparent,#06111f);pointer-events:none}
+.wms-plaque{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);background:rgba(4,14,28,.62);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:13px 30px;color:#fff;font-weight:600;font-size:clamp(15px,2.2vw,21px);letter-spacing:.22em;white-space:nowrap;z-index:5;text-transform:uppercase}
+.wms-plaque .dash{color:#ffd95d;font-weight:700;margin:0 12px}
+.shell{max-width:1150px;margin:auto;padding:40px 22px 90px}
+.section{margin-bottom:52px}
+.section h2{color:white;font-size:34px;font-weight:900;margin:0 0 10px}
+.section>p{color:rgba(255,255,255,.72);margin:0 0 8px;font-size:18px;line-height:1.6}
+.hint{color:rgba(93,255,154,.88);font-size:15px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:22px}
+
+/* search */
+.search-wrap{position:relative;z-index:600;max-width:640px}
+.search-row{position:relative}
+.s-icon{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.45);pointer-events:none}
+.s-input{width:100%;box-sizing:border-box;padding:18px 18px 18px 52px;background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:20px;color:white;font-size:17px;outline:none;transition:border-color .2s}
+.s-input:focus{border-color:rgba(93,255,154,.4)}
+.s-input::placeholder{color:rgba(255,255,255,.35)}
+.dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:linear-gradient(180deg,#091a30 0%,#071220 100%);border:1px solid rgba(255,255,255,.12);border-radius:20px;max-height:300px;overflow-y:auto;z-index:700;box-shadow:0 24px 48px rgba(0,0,0,.5)}
+.dropdown.open{display:block}
+.d-item{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;color:white;border-bottom:1px solid rgba(255,255,255,.06);font-weight:600;font-size:16px;cursor:pointer;transition:background .15s}
+.d-item:last-child{border-bottom:none}
+.d-item:hover{background:rgba(0,119,182,.3);color:#5dff9a}
+.d-item small{color:rgba(255,255,255,.45);font-weight:600}
+.d-empty{padding:18px 22px;color:rgba(255,255,255,.4);font-size:16px}
+
+.btn{display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;font-weight:800;font-size:16px;padding:14px 26px;border-radius:14px;border:1px solid rgba(93,255,154,.25);cursor:pointer;text-decoration:none;font-family:inherit;transition:transform .15s,box-shadow .15s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(0,0,0,.35)}
+.btn.yellow{background:#ffd95d;color:#07183f;border:none}
+.err{color:#ff9d9d;font-size:15px;margin-top:10px;display:none}
+
+/* tracker layout */
+#tracker{display:none}
+.track-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:stretch}
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
+.bottom-grid .card{margin-bottom:0}
+@media(max-width:900px){.track-grid{grid-template-columns:1fr}.bottom-grid{grid-template-columns:1fr}}
+#map{height:480px;border-radius:24px;border:1px solid rgba(255,255,255,.12);box-shadow:0 10px 30px rgba(0,0,0,.35);background:#04101e}
+.map-wrap{position:relative}
+.live-pill{position:absolute;top:14px;right:14px;z-index:1100;background:rgba(4,14,28,.78);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:6px 14px;color:#fff;font-weight:800;font-size:13px;letter-spacing:.08em;display:none;text-transform:uppercase}
+.live-pill .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#5dff9a;margin-right:7px;animation:wmspulse 1.6s ease-in-out infinite}
+.live-pill.stale .dot{background:#ffd95d;animation:none}
+@keyframes wmspulse{0%,100%{opacity:1}50%{opacity:.35}}
+.leaflet-container{font-family:'Baloo 2',system-ui,sans-serif}
+.track-grid .card{height:100%;box-sizing:border-box;margin-bottom:0}
+.card{background:rgba(7,24,63,.82);border:1px solid rgba(255,255,255,.10);border-radius:24px;padding:22px 24px;box-shadow:0 10px 24px rgba(0,0,0,.22);margin-bottom:18px}
+.card h3{color:#fff;margin:0 0 4px;font-size:22px;font-weight:800}
+.card .line{color:rgba(255,255,255,.5);font-size:14px;margin:0 0 16px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.stat{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.stat:last-child{border-bottom:none}
+.stat .k{color:rgba(255,255,255,.55);font-size:14px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.stat .v{color:#5dff9a;font-weight:800;font-size:17px;text-align:right}
+.stale-banner{display:none;background:rgba(255,217,93,.12);border:1px solid rgba(255,217,93,.4);color:#ffd95d;border-radius:16px;padding:14px 18px;font-size:15px;line-height:1.55;margin-bottom:18px}
+.updated{color:rgba(255,255,255,.4);font-size:13px;text-align:right;margin-top:8px}
+
+/* weather card */
+.wx-days{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.wx-day{flex:1 1 0;min-width:0;text-align:center;background:rgba(10,30,56,.7);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 4px}
+.wx-day.big{padding:16px 10px}
+.wx-day.big .d{font-size:13px;letter-spacing:.05em}
+.wx-day.big .e{font-size:40px;line-height:1.25}
+.wx-day.big .t{font-size:19px}
+.wx-day .d{color:rgba(255,255,255,.55);font-size:12px;font-weight:700;text-transform:uppercase}
+.wx-day .e{font-size:24px;line-height:1.3}
+.wx-day .t{color:#fff;font-size:13px;font-weight:700}
+.wx-day .t small{color:rgba(255,255,255,.45)}
+.wx-syn{color:rgba(255,255,255,.7);font-size:14px;line-height:1.6;margin:12px 0 0}
+.wx-link{color:#5dff9a;font-size:14px;font-weight:700;text-decoration:none}
+
+/* watch CTA */
+.watch-card{background:linear-gradient(135deg,rgba(0,119,182,.25),rgba(7,24,63,.85));border:1px solid rgba(93,255,154,.25)}
+.watch-card p{color:rgba(255,255,255,.75);font-size:15px;line-height:1.6;margin:0 0 16px}
+.watch-form{display:none;margin-top:14px}
+.watch-form label{display:block;color:rgba(255,255,255,.6);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:12px 0 6px}
+.watch-form input[type=date]{width:100%;box-sizing:border-box;padding:12px 14px;background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;font-size:15px;font-family:inherit;outline:none;color-scheme:dark}
+.watch-form .btn{margin-top:16px;width:100%;text-align:center}
+.ok-msg{display:none;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.4);color:#5dff9a;border-radius:14px;padding:14px 16px;font-size:15px;line-height:1.55;margin-top:14px}
+
+footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font-size:17px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:680px){.section h2{font-size:27px}#map{height:380px}}
+</style>
+</head>
+<body>
+<header class="wms-banner" role="img" aria-label="Golden-hour harbor view — tracking a cruise ship at sea">
+  <div id="navbar-container"></div>
+  <div class="wms-plaque"><span class="dash">—</span>Where's My Ship?<span class="dash">—</span></div>
+</header>
+
+<main class="shell">
+  <h1 class="sr-only">Where's My Ship? — Live Cruise Ship Tracker</h1>
+
+  <section class="section">
+    <h2>Your ship, live on the map</h2>
+    <p>After a lifetime around ships, Mark can tell you the question every cruise family asks isn't "how's the weather out there?" — it's <em>"where's the ship right now?"</em> So here's the answer, live: pick a ship and we'll show you exactly where she is on a satellite map, with her course, speed, and the port she's steaming toward. Waiting on someone you love to sail home, or counting down to your own embarkation day? This is the page to leave open.</p>
+    <div class="hint">🛰 Free to look — no sign-up · updates every minute</div>
+
+    <div class="search-wrap">
+      <div class="search-row">
+        <i class="fa-solid fa-magnifying-glass s-icon"></i>
+        <input class="s-input" id="ship-input" type="text" placeholder="Type a ship name — try &quot;Icon of the Seas&quot;…" autocomplete="off" spellcheck="false">
+        <div class="dropdown" id="ship-dropdown" role="listbox"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- tracker -->
+  <section class="section" id="tracker">
+    <div class="stale-banner" id="stale-banner"></div>
+    <div class="track-grid">
+      <div>
+        <div class="map-wrap">
+          <div id="map"></div>
+          <div class="live-pill" id="live-pill"><span class="dot"></span><span id="live-pill-text">Live</span></div>
+        </div>
+        <div class="updated" id="updated"></div>
+      </div>
+      <div>
+        <div class="card" id="info-card">
+          <h3 id="i-ship">—</h3>
+          <p class="line" id="i-line"></p>
+          <div class="stat"><span class="k">Status</span><span class="v" id="i-status">—</span></div>
+          <div class="stat"><span class="k">Course</span><span class="v" id="i-course">—</span></div>
+          <div class="stat"><span class="k">Speed</span><span class="v" id="i-speed">—</span></div>
+          <div class="stat"><span class="k">Destination</span><span class="v" id="i-dest">—</span></div>
+          <div class="stat"><span class="k">Est. arrival</span><span class="v" id="i-eta">—</span></div>
+          <div class="stat"><span class="k">Departed</span><span class="v" id="i-departed">—</span></div>
+          <div class="stat"><span class="k">Last report</span><span class="v" id="i-age">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-grid">
+        <div class="card" id="wx-card" style="display:none">
+          <h3 style="font-size:18px">Weather at <span id="wx-port">next port</span></h3>
+          <div class="wx-days" id="wx-days"></div>
+          <p class="wx-syn" id="wx-syn"></p>
+          <a class="wx-link" id="wx-more" href="#">Full 10-day forecast →</a>
+        </div>
+        <div class="card watch-card">
+          <h3 style="font-size:19px">📬 Sailing on her soon?</h3>
+          <p>Anyone can peek at the map — but subscribers get the good stuff: save your sailing and we'll email you if the itinerary changes, weather threatens the route, or your cruise line makes news that matters. You'll hear it before the buffet rumor mill does. <strong>Free for subscribers during our launch period.</strong></p>
+          <button class="btn yellow" id="watch-open">Track this sailing — I'll email you the updates</button>
+          <div class="watch-form" id="watch-form">
+            <label for="w-email">Your subscriber email</label>
+            <input type="email" id="w-email" placeholder="you@example.com" autocomplete="email"
+                   style="width:100%;box-sizing:border-box;padding:12px 14px;background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;font-size:15px;font-family:inherit;outline:none">
+            <label for="w-start">Sailing start</label>
+            <input type="date" id="w-start">
+            <label for="w-end">Sailing end</label>
+            <input type="date" id="w-end">
+            <button class="btn" id="watch-save">Save my ship watch →</button>
+            <div class="err" id="watch-err"></div>
+          </div>
+          <div class="ok-msg" id="watch-ok"></div>
+        </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>How it works (and one honest caveat)</h2>
+    <p>Ships report their position constantly over a radio system called AIS, and we listen. Near coastlines and islands, updates flow in around the clock — and since cruise itineraries mostly hug the coast, that covers the Caribbean, the Mediterranean, Alaska, Northern Europe, Asia, South America, you name it. <strong>Out in open water, coverage can go quiet for a stretch</strong> — think a transatlantic crossing or a long sea day. When that happens we show the last reported position and the tracking picks right back up the moment your ship returns to the service area. She didn't go anywhere she shouldn't — she's just between radio towers.</p>
+  </section>
+</main>
+
+<footer><p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></p></footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+const LANG = 'en';
+const T = {
+  inPort: 'In port', kn: 'kn', invalidDates: 'Please pick your sailing start and end dates.',
+  needShip: 'Pick a ship first.', needEmail: 'Enter the email you subscribed with.',
+  savedNew: "You're on the watch list! Check your inbox for a confirmation — we'll email you the moment something changes on your sailing.",
+  savedAlready: "You're already tracking this sailing — we'll keep the updates coming.",
+  needSub: 'Ship watches are a subscriber perk (free during our launch period). We couldn\'t find a confirmed subscription for that email — double-check it, or <a href="/subscribe.html" style="color:#5dff9a">join the crew free here</a>, confirm your email, and come right back.',
+  saveFail: 'Could not save your watch — try again in a moment.',
+  noSignal: (ship) => `${ship} hasn't reported a position to our receivers yet. Terrestrial AIS coverage fades in open water — tracking picks back up automatically when she's within the service area. Check back soon.`,
+  trackerOffline: 'Live tracking is warming up — check back shortly.',
+  stale: (ship, ago) => `${ship} last reported <strong>${ago}</strong>. She's likely in open water between coverage areas — the map shows her last known position, and tracking picks back up automatically when she re-enters the service area.`,
+  stopped: 'Done — that ship watch is stopped. Fair winds!',
+  livePill: 'Live', stalePill: 'Last known', arrivalDay: 'Expected arrival',
+  statusSea: 'At sea — sea day', statusArriving: 'At sea — arriving today', statusInPort: 'In port',
+  ago: (min) => min < 2 ? 'just now' : min < 60 ? `${min} min ago` : `${Math.round(min/60*10)/10} h ago`,
+  compass: ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'],
+};
+</script>
+<script src="/js/wheres-my-ship.js?v=20260712"></script>
+<script src="/components/navbar.js?v=20260712-wms"></script>
+</body>
+</html>

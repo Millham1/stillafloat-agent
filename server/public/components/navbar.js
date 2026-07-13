@@ -14,7 +14,7 @@
   // Compute equivalent page URL in the other language
   // Handles /es, /es/, /es/index.html, /es/news.html correctly
   // Pages that have a Spanish (/es/) counterpart
-  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'webcams.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html', 'work-with-mark.html']);
+  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'webcams.html', 'wheres-my-ship.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html', 'work-with-mark.html']);
   let langUrl;
   if (isSpanish) {
     let eng = path.replace(/^\/es(\/.*)?$/, (_m, rest) => rest || '/index.html');
@@ -36,6 +36,7 @@
     { href: '/es/news.html',           label: 'Noticias'     },
     { href: '/es/weather.html',        label: 'Clima'        },
     { href: '/es/webcams.html',        label: 'Cámaras'      },
+    { href: '/es/wheres-my-ship.html', label: 'Mi Barco'     },
     { href: '/favorites.html',         label: 'Favoritos'    },
     { href: '/es/commentary.html',     label: 'Comentarios'  },
     { href: '/es/affiliate.html',      label: 'Equipo'       },
@@ -44,6 +45,7 @@
     { href: '/news.html',          label: 'Cruise News'  },
     { href: '/weather.html',       label: 'Weather'      },
     { href: '/webcams.html',       label: 'Live Streams' },
+    { href: '/wheres-my-ship.html',label: "Where's My Ship?" },
     { href: '/favorites.html',     label: 'Favorites'    },
     { href: '/commentary.html',    label: 'Commentary'  },
     { href: '/affiliate.html',     label: 'Gear'        },
