@@ -490,14 +490,23 @@ export async function startShipTracker() {
   if (started) return;
   started = true;
 
+  // The registry always loads — search metadata and requestShip() must work
+  // even without an AIS key, so visitor requests are stamped and retained
+  // for the moment tracking comes online.
+  try {
+    await loadRegistry();
+  } catch (err) {
+    logger.error({ err }, "wms: registry load failed");
+    return;
+  }
+
   const keys = apiKeys();
   if (!keys.length) {
-    logger.info("wms: AISSTREAM_API_KEY(S) unset — ship tracker disabled");
+    logger.info("wms: AISSTREAM_API_KEY(S) unset — live tracking disabled (registry + request retention active)");
     return;
   }
 
   try {
-    await loadRegistry();
     if (!registryByMmsi.size) {
       logger.warn("wms: registry empty — tracker idle (seed ships.mmsi)");
       return;
