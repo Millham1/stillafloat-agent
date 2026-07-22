@@ -57,6 +57,7 @@ function basinFromId(id: string): RawSystem["basin"] {
 function classify(code: string): string {
   const map: Record<string, string> = {
     TD: "Tropical Depression", TS: "Tropical Storm", HU: "Hurricane",
+    MH: "Major Hurricane",
     STS: "Subtropical Storm", SD: "Subtropical Depression",
     PTC: "Potential Tropical Cyclone",
   };

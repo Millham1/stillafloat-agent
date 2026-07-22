@@ -41,6 +41,8 @@ jobs:
           PORT: "5000"
           BASE_PATH: "/"
         run: pnpm --filter @workspace/api-server run build:all
+      - name: Unit tests
+        run: pnpm --filter @workspace/api-server run test
 
   deploy-production:
     needs: build

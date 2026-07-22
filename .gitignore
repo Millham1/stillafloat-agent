@@ -6,6 +6,7 @@ stillafloat-export.zip
 
 # compiled output
 dist
+dist-test
 tmp
 out-tsc
 *.tsbuildinfo
