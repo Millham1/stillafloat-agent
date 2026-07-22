@@ -64,12 +64,14 @@ function classify(code: string): string {
   return map[code.toUpperCase()] ?? (code || "Tropical System");
 }
 
-/** Active/named systems from CurrentStorms.json (all basins). */
-async function fetchActiveStorms(): Promise<RawSystem[]> {
+/** Active/named systems from CurrentStorms.json (all basins).
+ *  Returns null when the FEED failed (vs. [] for a genuinely quiet tropics) —
+ *  the lifecycle death-watch must never mistake an outage for a dead storm. */
+async function fetchActiveStorms(): Promise<RawSystem[] | null> {
   const txt = await fetchText("https://www.nhc.noaa.gov/CurrentStorms.json");
-  if (!txt) return [];
+  if (!txt) return null;
   let parsed: unknown;
-  try { parsed = JSON.parse(txt); } catch { return []; }
+  try { parsed = JSON.parse(txt); } catch { return null; }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const storms: any[] = Array.isArray((parsed as any)?.activeStorms) ? (parsed as any).activeStorms : [];
   return storms.map((s): RawSystem => {
@@ -111,10 +113,12 @@ function maxFormationChance(text: string): number | null {
  * the individual areas. (Precise per-invest parsing is a fast-follow — see the
  * ship-tracking-API task.)
  */
-async function fetchOutlooks(): Promise<RawSystem[]> {
+async function fetchOutlooks(): Promise<{ systems: RawSystem[]; okByBasin: Record<string, boolean> }> {
   const out: RawSystem[] = [];
+  const okByBasin: Record<string, boolean> = {};
   for (const feed of OUTLOOK_FEEDS) {
     const xml = await fetchText(feed.url);
+    okByBasin[feed.basin] = xml !== null;
     if (!xml) continue;
     // Grab the "Tropical Weather Outlook" item's <description> (CDATA-wrapped).
     const item = xml.split(/<item>/i).find((chunk) => /Tropical Weather Outlook/i.test(chunk));
@@ -145,13 +149,29 @@ async function fetchOutlooks(): Promise<RawSystem[]> {
       raw: { basin: feed.basin, outlook: desc.slice(0, 2000) },
     });
   }
-  return out;
+  return { systems: out, okByBasin };
+}
+
+/** Everything the scan needs: current systems + per-feed health, so absence of
+ *  a system is only treated as evidence when its feed actually answered. */
+export interface SystemsSnapshot {
+  systems: RawSystem[];
+  currentStormsOk: boolean;
+  outlookOkByBasin: Record<string, boolean>;
+}
+
+export async function fetchSystemsSnapshot(): Promise<SystemsSnapshot> {
+  const [active, outlooks] = await Promise.all([fetchActiveStorms(), fetchOutlooks()]);
+  return {
+    systems: [...(active ?? []), ...outlooks.systems],
+    currentStormsOk: active !== null,
+    outlookOkByBasin: outlooks.okByBasin,
+  };
 }
 
 /** All current systems worth considering (active storms + outlook disturbances). */
 export async function fetchSystems(): Promise<RawSystem[]> {
-  const [active, outlooks] = await Promise.all([fetchActiveStorms(), fetchOutlooks()]);
-  return [...active, ...outlooks];
+  return (await fetchSystemsSnapshot()).systems;
 }
 
 /** A canned system for exercising the pipeline off-season / in tests / for demos. */

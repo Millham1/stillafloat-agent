@@ -26,6 +26,12 @@ type Alert = {
   sailings: Sailing[];
   sent_count: number;
   sent_at: string | null;
+  ended_at: string | null;
+  all_clear_headline: string | null;
+  all_clear_body_md: string | null;
+  all_clear_sent_at: string | null;
+  all_clear_sent_count: number | null;
+  all_clear_skipped_at: string | null;
 };
 type AlertsResponse = { alerts: Alert[] };
 
@@ -33,6 +39,7 @@ const STATUS_COLORS: Record<string, string> = {
   draft:    "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300",
   approved: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
   sent:     "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300",
+  ended:    "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300",
 };
 
 function formatCruiseInfo(arr: CruiseInfo[]): string {
@@ -109,11 +116,17 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
   const [headline, setHeadline] = useState(alert.headline ?? "");
   const [body, setBody] = useState(alert.body_md ?? "");
   const [cruiseInfo, setCruiseInfo] = useState(formatCruiseInfo(alert.cruise_line_info));
+  const [acHeadline, setAcHeadline] = useState(alert.all_clear_headline ?? "");
+  const [acBody, setAcBody] = useState(alert.all_clear_body_md ?? "");
   const [showShips, setShowShips] = useState(false);
   const [busy, setBusy] = useState(false);
+  const ended = alert.status === "ended";
+  const allClearPending = ended && !!alert.all_clear_headline && !alert.all_clear_sent_at && !alert.all_clear_skipped_at;
   const dirty = headline !== (alert.headline ?? "")
     || body !== (alert.body_md ?? "")
-    || cruiseInfo !== formatCruiseInfo(alert.cruise_line_info);
+    || cruiseInfo !== formatCruiseInfo(alert.cruise_line_info)
+    || acHeadline !== (alert.all_clear_headline ?? "")
+    || acBody !== (alert.all_clear_body_md ?? "");
 
   async function call(path: string, method: string, payload?: unknown) {
     setBusy(true);
@@ -130,6 +143,7 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
 
   const editPayload = () => ({
     headline, body_md: body, cruise_line_info: parseCruiseInfo(cruiseInfo),
+    all_clear_headline: acHeadline, all_clear_body_md: acBody,
   });
 
   async function save() {
@@ -146,6 +160,17 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
   async function dismiss() {
     await call("/dismiss", "POST");
     toast({ title: "Dismissed" });
+    onChanged();
+  }
+  async function sendAllClear() {
+    if (dirty) await call("", "PATCH", editPayload());
+    const r = await call("/all-clear", "POST");
+    toast({ title: "All-clear sent", description: `Emailed ${r?.sent ?? 0} subscriber(s).` });
+    onChanged();
+  }
+  async function skipAllClear() {
+    await call("/all-clear-skip", "POST");
+    toast({ title: "All-clear skipped" });
     onChanged();
   }
 
@@ -203,20 +228,46 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
           )}
         </div>
 
+        {allClearPending && (
+          <div className="border border-emerald-300 dark:border-emerald-800 rounded-md p-3 space-y-2 bg-emerald-50/50 dark:bg-emerald-900/10">
+            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              🟢 Storm has dissipated — review the all-clear before it goes to subscribers
+            </p>
+            <Input value={acHeadline} onChange={(e) => setAcHeadline(e.target.value)} placeholder="All-clear headline" />
+            <Textarea value={acBody} onChange={(e) => setAcBody(e.target.value)} rows={5} placeholder="All-clear body…" />
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 pt-1">
           {dirty && (
             <Button variant="outline" size="sm" onClick={save} disabled={busy}>Save edits</Button>
           )}
-          {alert.status !== "sent" && (
+          {!ended && alert.status !== "sent" && (
             <Button size="sm" onClick={approve} disabled={busy}>
               <Send className="h-4 w-4 mr-1" /> Approve &amp; Send
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={dismiss} disabled={busy}>
-            <Trash2 className="h-4 w-4 mr-1" /> Dismiss
-          </Button>
+          {!ended && (
+            <Button variant="ghost" size="sm" onClick={dismiss} disabled={busy}>
+              <Trash2 className="h-4 w-4 mr-1" /> Dismiss
+            </Button>
+          )}
+          {allClearPending && (
+            <>
+              <Button size="sm" onClick={sendAllClear} disabled={busy}>
+                <Send className="h-4 w-4 mr-1" /> Send all-clear
+              </Button>
+              <Button variant="ghost" size="sm" onClick={skipAllClear} disabled={busy}>Skip</Button>
+            </>
+          )}
           {alert.status === "sent" && (
             <span className="text-sm text-muted-foreground self-center">Sent to {alert.sent_count} subscriber(s)</span>
+          )}
+          {ended && alert.all_clear_sent_at && (
+            <span className="text-sm text-muted-foreground self-center">All-clear sent to {alert.all_clear_sent_count ?? 0} subscriber(s)</span>
+          )}
+          {ended && alert.all_clear_skipped_at && (
+            <span className="text-sm text-muted-foreground self-center">All-clear skipped</span>
           )}
         </div>
       </CardContent>

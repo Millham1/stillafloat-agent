@@ -76,3 +76,39 @@ export async function emailSubscribers(a: AlertRow): Promise<{ sent: number; fai
   logger.info({ alert: a.name, sent, failed }, "storm-send: subscriber send complete");
   return { sent, failed, total: list.length };
 }
+
+export interface AllClearRow {
+  id: string; name: string; affected_grounds: string[];
+  all_clear_headline: string | null; all_clear_body_md: string | null;
+}
+
+/** Send the approved all-clear to the same opted-in subscriber base the storm
+ *  alert went to. Only called from the approval endpoint — never automatic. */
+export async function emailAllClear(a: AllClearRow): Promise<{ sent: number; failed: number; total: number }> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("subscribers").select("email, name")
+    .eq("status", "confirmed").eq("alerts_opt_in", true);
+  if (error) throw new Error(`emailAllClear: ${error.message}`);
+  const list = (data ?? []) as unknown as Array<{ email: string; name: string }>;
+  if (!list.length) return { sent: 0, failed: 0, total: 0 };
+
+  const subject = a.all_clear_headline || `All clear: ${a.name}`;
+  const bodyHtml = markToHtml(a.all_clear_body_md || "");
+  let sent = 0, failed = 0;
+  for (const sub of list) {
+    const unsub = unsubscribeUrl(sub.email, siteBase());
+    const html = `
+      <div style="font-family:system-ui,Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a2330">
+        <h2 style="color:#166534;margin:0 0 6px">🟢 ${subject}</h2>
+        <p style="color:#5a6b7a;margin:0 0 16px;font-size:13px">Still Afloat · Cruise Weather All-Clear · ${labelGrounds(a.affected_grounds)}</p>
+        ${bodyHtml}
+        <hr style="border:none;border-top:1px solid #e3e8ee;margin:20px 0">
+        <p style="color:#98a4b0;font-size:12px">You're getting this because you opted into Still Afloat cruise alerts.
+          <a href="${unsub}" style="color:#98a4b0">Unsubscribe</a>.</p>
+      </div>`;
+    (await sendEmail(sub.email, subject, html)) ? sent++ : failed++;
+  }
+  logger.info({ alert: a.name, sent, failed }, "storm-send: all-clear send complete");
+  return { sent, failed, total: list.length };
+}

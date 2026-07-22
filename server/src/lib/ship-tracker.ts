@@ -76,6 +76,7 @@ export interface ShipPosition {
 const positions = new Map<string, ShipPosition>();   // by MMSI (tracked now or previously)
 let registryByMmsi = new Map<string, RegistryShip>(); // full registry (all ships w/ MMSI)
 let activeMmsis = new Set<string>();                  // currently subscribed
+let stormMmsis = new Set<string>();                   // storm-impacted ships — always tracked while a storm is live
 const nameFlagged = new Set<string>();                // reported-name mismatches already persisted
 let started = false;
 let lastMessageAt = 0;
@@ -135,6 +136,27 @@ function registryByName(shipName: string): RegistryShip | null {
 export function isSubscribed(shipName: string): boolean {
   const ship = registryByName(shipName);
   return Boolean(ship && activeMmsis.has(ship.mmsi));
+}
+
+/** Registry MMSI for a ship name (null when unknown / no MMSI on file). */
+export function mmsiForShip(shipName: string): string | null {
+  return registryByName(shipName)?.mmsi ?? null;
+}
+
+/**
+ * Storm lifecycle hook: ships impacted by live storm alerts get top tracking
+ * priority for the storm's duration — including ships that were never seeded
+ * or requested. Pass the full current set each scan; pass [] when no storms
+ * are live to release them back to normal rotation.
+ */
+export async function setStormShips(mmsis: string[]): Promise<void> {
+  const next = new Set(mmsis.filter(Boolean));
+  const changed = next.size !== stormMmsis.size || [...next].some((m) => !stormMmsis.has(m));
+  stormMmsis = next;
+  if (!changed || !started) return;
+  await refreshActiveSet().catch((err) => {
+    logger.warn({ err }, "wms: storm-ship refresh failed");
+  });
 }
 
 export function inRegistry(shipName: string): boolean {
@@ -216,16 +238,21 @@ async function loadRegistry(): Promise<void> {
   );
 }
 
-/** Priority-ordered active set: watches → seeded US fleet → requested, newest first. */
+/** Priority-ordered active set: storm-impacted + watches → seeded US fleet →
+ *  requested, newest first. Storm ships are pinned for the storm's lifetime
+ *  (Mark's lifecycle design 2026-07-22) — they claim slots even if they were
+ *  never seeded or requested. */
 function buildActiveSet(): Set<string> {
   const ships = [...registryByMmsi.values()];
-  const rank = (s: RegistryShip): number => (s.hasWatch ? 0 : s.seedActive ? 1 : s.lastRequestedAt ? 2 : 3);
+  const rank = (s: RegistryShip): number =>
+    (stormMmsis.has(s.mmsi) || s.hasWatch ? 0 : s.seedActive ? 1 : s.lastRequestedAt ? 2 : 3);
   ships.sort((a, b) =>
     rank(a) - rank(b) ||
     (b.lastRequestedAt ?? "").localeCompare(a.lastRequestedAt ?? "") ||
     a.name.localeCompare(b.name));
   const cap = apiKeys().length * maxPerConn();
-  // Rank 3 (never requested, not seeded) ships stay registry-only until asked for.
+  // Rank 3 (never requested, not seeded, no storm) ships stay registry-only
+  // until asked for — EXCEPT storm ships, which qualify via rank 0 above.
   return new Set(ships.filter((s) => rank(s) < 3).slice(0, cap).map((s) => s.mmsi));
 }
 

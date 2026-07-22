@@ -36,9 +36,18 @@ await esbuild({
   outdir: outDir,
   outExtension: { ".js": ".mjs" },
   logLevel: "warning",
-  external: ["node:*"],
+  // Optional native deps (ws etc.) that must not be resolved at bundle time.
+  external: ["node:*", "bufferutil", "utf-8-validate", "fsevents"],
+  banner: {
+    js: `import { createRequire as __trCrReq } from 'node:module';\nglobalThis.require = __trCrReq(import.meta.url);`,
+  },
 });
 
-const result = spawnSync(process.execPath, ["--test", outDir], { stdio: "inherit" });
+// NODE_ENV=production keeps the logger on the plain pino path (no pino-pretty
+// worker transport, which does not resolve from a bundled test file).
+const result = spawnSync(process.execPath, ["--test", outDir], {
+  stdio: "inherit",
+  env: { ...process.env, NODE_ENV: "production" },
+});
 await rm(outDir, { recursive: true, force: true });
 process.exit(result.status ?? 1);

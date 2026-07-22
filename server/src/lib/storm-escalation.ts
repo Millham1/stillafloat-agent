@@ -49,6 +49,12 @@ export function planScanAction(
   contentHash: string,
 ): ScanAction {
   if (!existing) return { kind: "insert" };
+  // A system back in the feed after its alert ended (3+ absent scans) is a
+  // regeneration — revive the alert through the escalation path even if the
+  // content hash happens to match.
+  if (existing.status === "ended") {
+    return { kind: "escalate", from: `${existing.classification ?? "unknown"} (ended)`, to: sys.classification };
+  }
   if (existing.content_hash === contentHash) return { kind: "touch" };
 
   const prev = severityRank(existing.classification);

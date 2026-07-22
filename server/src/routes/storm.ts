@@ -8,7 +8,7 @@ import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
 import { runStormScan } from "../lib/storm-agent";
-import { emailSubscribers, type AlertRow } from "../lib/storm-send";
+import { emailSubscribers, emailAllClear, type AlertRow, type AllClearRow } from "../lib/storm-send";
 import { labelGrounds, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
 import { sailingsForStorm, defaultWindow, type Sailing } from "../lib/storm-sailings";
 import { resolveActionsForSource } from "../lib/actions";
@@ -58,12 +58,14 @@ router.get("/storm-alerts", requireToken, async (_req: Request, res: Response) =
 // ── Edit a draft (headline / body) ───────────────────────────────────────────
 router.patch("/storm-alerts/:id", requireToken, async (req: Request, res: Response) => {
   try {
-    const { headline, body_md, detail_md, cruise_line_info } = req.body ?? {};
+    const { headline, body_md, detail_md, cruise_line_info, all_clear_headline, all_clear_body_md } = req.body ?? {};
     const patch: Record<string, unknown> = { last_updated: new Date().toISOString() };
     if (typeof headline === "string") patch["headline"] = headline.slice(0, 120);
     if (typeof body_md === "string") patch["body_md"] = body_md;
     if (typeof detail_md === "string") patch["detail_md"] = detail_md;
     if (Array.isArray(cruise_line_info)) patch["cruise_line_info"] = cruise_line_info;
+    if (typeof all_clear_headline === "string") patch["all_clear_headline"] = all_clear_headline.slice(0, 120);
+    if (typeof all_clear_body_md === "string") patch["all_clear_body_md"] = all_clear_body_md;
     const supabase = getSupabase();
     const { error } = await supabase.from("storm_alerts").update(patch).eq("id", (req.params["id"] ?? ""));
     if (error) throw error;
@@ -111,6 +113,51 @@ router.post("/storm-alerts/:id/dismiss", requireToken, async (req: Request, res:
   } catch (err) {
     logger.error({ err }, "dismiss failed");
     res.status(500).json({ success: false, error: "Dismiss failed" });
+  }
+});
+
+// ── All-clear (storm lifecycle): approval-gated send + skip ──────────────────
+router.post("/storm-alerts/:id/all-clear", requireToken, async (req: Request, res: Response) => {
+  try {
+    const id = req.params["id"] ?? "";
+    const supabase = getSupabase();
+    const { data, error } = await supabase.from("storm_alerts").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    const alert = data as unknown as (DbAlert & {
+      ended_at: string | null; all_clear_headline: string | null;
+      all_clear_body_md: string | null; all_clear_sent_at: string | null;
+    }) | null;
+    if (!alert) { res.status(404).json({ success: false, error: "not found" }); return; }
+    if (alert.status !== "ended") { res.status(409).json({ success: false, error: "Alert has not ended" }); return; }
+    if (alert.all_clear_sent_at) { res.json({ success: true, sent: 0, alreadySent: true }); return; }
+    if (!alert.all_clear_headline) { res.status(422).json({ success: false, error: "No all-clear draft on this alert" }); return; }
+
+    const counts = await emailAllClear(alert as unknown as AllClearRow);
+    await supabase.from("storm_alerts").update({
+      all_clear_sent_at: new Date().toISOString(),
+      all_clear_sent_count: counts.sent,
+      last_updated: new Date().toISOString(),
+    }).eq("id", id);
+    await resolveActionsForSource("storm_alert", id, "done");
+    res.json({ success: true, ...counts });
+  } catch (err) {
+    logger.error({ err }, "all-clear send failed");
+    res.status(500).json({ success: false, error: "All-clear send failed" });
+  }
+});
+
+router.post("/storm-alerts/:id/all-clear-skip", requireToken, async (req: Request, res: Response) => {
+  try {
+    const id = req.params["id"] ?? "";
+    const supabase = getSupabase();
+    const { error } = await supabase.from("storm_alerts")
+      .update({ all_clear_skipped_at: new Date().toISOString() }).eq("id", id);
+    if (error) throw error;
+    await resolveActionsForSource("storm_alert", id, "dismissed");
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "all-clear skip failed");
+    res.status(500).json({ success: false, error: "All-clear skip failed" });
   }
 });
 

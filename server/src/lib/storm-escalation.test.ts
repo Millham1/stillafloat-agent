@@ -87,6 +87,15 @@ test("material change on a live draft → redraft", () => {
   assert.deepEqual(action, { kind: "redraft" });
 });
 
+test("a regenerated storm revives its ended alert via escalation, even on an identical hash", () => {
+  const action = planScanAction(
+    sentRow({ status: "ended", classification: "Tropical Storm", name: "Bertha", content_hash: "same" }),
+    { classification: "Tropical Storm", name: "Bertha" },
+    "same",
+  );
+  assert.equal(action.kind, "escalate");
+});
+
 test("downgrade (Hurricane → TS) on a sent row does NOT escalate → refresh", () => {
   const action = planScanAction(
     sentRow({ classification: "Hurricane", name: "Bertha" }),

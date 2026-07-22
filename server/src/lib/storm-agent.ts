@@ -9,9 +9,11 @@ import * as crypto from "crypto";
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { createAction, resolveActionsForSource } from "./actions";
-import { fetchSystems, fixtureSystem, basinGraphics, type RawSystem } from "./storm-source";
+import { fetchSystemsSnapshot, fixtureSystem, basinGraphics, type RawSystem, type SystemsSnapshot } from "./storm-source";
 import { defaultWindow } from "./storm-sailings";
 import { planScanAction, type ExistingAlertState } from "./storm-escalation";
+import { runStormLifecycle } from "./storm-lifecycle";
+import { runStormIntel } from "./storm-intel";
 import {
   groundsForPoint, groundsForBasin, shipsForGrounds, labelGrounds, type Ship,
 } from "./storm-grounds";
@@ -93,14 +95,17 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
   };
 }
 
-interface ScanResult { scanned: number; drafted: number; updated: number; skipped: number; escalated: number; }
+interface ScanResult { scanned: number; drafted: number; updated: number; skipped: number; escalated: number; ended: number; }
 
 /** One full scan cycle. `opts.test` injects a fixture system so the pipeline can
  *  be exercised off-season / for the demo without waiting on real weather. */
 export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanResult> {
   const supabase = getSupabase();
-  const systems = opts.test ? [fixtureSystem()] : await fetchSystems();
-  const result: ScanResult = { scanned: systems.length, drafted: 0, updated: 0, skipped: 0, escalated: 0 };
+  const snapshot: SystemsSnapshot = opts.test
+    ? { systems: [fixtureSystem()], currentStormsOk: true, outlookOkByBasin: {} }
+    : await fetchSystemsSnapshot();
+  const systems = snapshot.systems;
+  const result: ScanResult = { scanned: systems.length, drafted: 0, updated: 0, skipped: 0, escalated: 0, ended: 0 };
 
   for (const sys of systems) {
     try {
@@ -187,6 +192,24 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
       }
     } catch (err) {
       logger.error({ err, nhcId: sys.nhcId }, "storm-agent: system failed");
+    }
+  }
+
+  // Lifecycle pass (Mark's design 2026-07-22): impacted-ship tracking +
+  // diversion flags, death detection, gated all-clear drafting — then the
+  // cruise-line/news intel sweep for live named storms. Both are best-effort;
+  // a failure never breaks the core scan. Skipped in fixture/test mode.
+  if (!opts.test) {
+    try {
+      const lifecycle = await runStormLifecycle(snapshot);
+      result.ended = lifecycle.ended;
+    } catch (err) {
+      logger.error({ err }, "storm-agent: lifecycle pass failed");
+    }
+    try {
+      await runStormIntel();
+    } catch (err) {
+      logger.error({ err }, "storm-agent: intel pass failed");
     }
   }
 
