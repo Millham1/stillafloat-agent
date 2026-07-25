@@ -19,6 +19,7 @@ import briefRouter from "./brief";
 import stormRouter from "./storm";
 import socialAnalyticsRouter from "./social-analytics";
 import actionsRouter from "./actions";
+import proposalsRouter from "./proposals";
 import webcamsRouter from "./webcams";
 import wmsRouter from "./wms";
 
@@ -44,6 +45,7 @@ router.use(briefRouter);
 router.use(stormRouter);
 router.use(socialAnalyticsRouter);
 router.use(actionsRouter);
+router.use(proposalsRouter);
 router.use(webcamsRouter);
 router.use(wmsRouter);
 
