@@ -176,7 +176,7 @@ const STORY_CSS = `:root{--bg:#07111f;--panel:rgba(9,18,34,.84);--border:rgba(25
 
 const L = {
   en: {
-    impactLabel: "⚓ What This Means For You",
+    impactLabel: "💡 What This Means For You",
     editorialLabel: "📝 Mark's Take",
     readOriginal: "Read Full Article",
     backToFeed: "Return to Feed",
@@ -191,9 +191,14 @@ const L = {
     archive: "Earlier stories",
     openDetail: "Open Story Detail →",
     feedPath: "/news.html",
+    ctaTitle: "Planning a cruise?",
+    ctaBody:
+      "Talk to Mark — a real cruise advisor who's actually sailed it, not a call center. Honest picks, no pressure, and no booking fees to you.",
+    ctaButton: "Work with Mark →",
+    ctaHref: "/work-with-mark.html",
   },
   es: {
-    impactLabel: "⚓ Lo que esto significa para ti",
+    impactLabel: "💡 Lo que esto significa para ti",
     editorialLabel: "🎙️ Por qué importa",
     readOriginal: "Leer el artículo original (en inglés)",
     backToFeed: "Volver a noticias",
@@ -208,6 +213,11 @@ const L = {
     archive: "Historias anteriores",
     openDetail: "Ver detalle →",
     feedPath: "/es/news.html",
+    ctaTitle: "¿Estás planeando un crucero?",
+    ctaBody:
+      "Habla con Mark — un asesor de cruceros de verdad que los ha navegado, no un centro de llamadas. Recomendaciones honestas, sin presión y sin costo para ti.",
+    ctaButton: "Trabaja con Mark →",
+    ctaHref: "/es/work-with-mark.html",
   },
 } as const;
 
@@ -239,6 +249,9 @@ function storyPageHtml(story: NewsStory, slug: string, lang: Lang, related: News
   const t = L[lang];
   const u = urls(slug);
   const self = lang === "es" ? u.es : u.en;
+  // Zero-intent Carnival-outage ES article — keep it out of the index to preserve
+  // crawl equity (it ranks pos ~36 for "is carnival down", never converts). Task 2fa90ac7.
+  const noindex = lang === "es" && slug.startsWith("carnival-s-website-is-down-for-18-hours");
   const title = escapeHtml(pick(story, "title", lang));
   const desc = escapeHtml(metaDescription(story, lang));
   const summary = escapeHtml(pick(story, "summary", lang));
@@ -268,6 +281,7 @@ function storyPageHtml(story: NewsStory, slug: string, lang: Lang, related: News
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title} | Still Afloat</title>
 <meta name="description" content="${desc}">
+${noindex ? '<meta name="robots" content="noindex">' : ""}
 ${hreflangLinks(slug, lang)}
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Still Afloat Cruising">
@@ -302,6 +316,11 @@ ${original ? `<a href="${original}" target="_blank" rel="noopener noreferrer">${
 <div class="note">${t.note}</div>
 </div>
 </article>
+<section class="story-cta" style="max-width:1100px;width:92%;margin:26px auto 0;padding:28px 30px;border-radius:26px;background:linear-gradient(135deg,rgba(93,255,154,.10),rgba(0,119,182,.12));border:1px solid rgba(93,255,154,.24);text-align:center;box-shadow:0 12px 32px rgba(0,0,0,.24)">
+<h2 style="margin:0 0 8px;font-size:24px;font-weight:900;color:#fff">${t.ctaTitle}</h2>
+<p style="margin:0 auto 18px;max-width:560px;color:rgba(255,255,255,.84);line-height:1.65">${t.ctaBody}</p>
+<a href="${t.ctaHref}" style="display:inline-block;padding:14px 30px;border-radius:16px;background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;font-weight:800;text-decoration:none;box-shadow:0 10px 28px rgba(0,0,0,.30)">${t.ctaButton}</a>
+</section>
 ${relatedHtml}
 </div>
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
