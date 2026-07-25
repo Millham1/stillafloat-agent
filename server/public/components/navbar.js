@@ -98,6 +98,11 @@
       pointer-events: none;
       z-index: 10;
     }
+    /* Reserve vertical space for the (absolutely-positioned) nav on whatever element
+       hosts it, so the bar is a consistent top strip and never overlaps page content.
+       Padding works for BOTH block and flex hosts (unlike making the container itself
+       reserve height, which collapses to 0 width inside a flex hero). */
+    .sa-navbar-host { padding-top: 132px; }
     #navbar-container > * { pointer-events: auto; }
 
     .sa-logo-home {
@@ -356,6 +361,7 @@
 
     /* ── Mobile breakpoint ── */
     @media (max-width: 768px) {
+      .sa-navbar-host { padding-top: 90px; }
       .sa-site-nav  { display: none; }
       .sa-lang-pill { display: none; }
       .sa-hamburger { display: flex; }
@@ -374,6 +380,7 @@
   function injectNav() {
     const container = document.getElementById('navbar-container');
     if (!container) return;
+    if (container.parentElement) container.parentElement.classList.add('sa-navbar-host');
     container.innerHTML = navHTML;
 
     // Active page highlight — normalize both sides so /index.html, /, and '' all match
