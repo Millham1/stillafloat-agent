@@ -25,6 +25,10 @@
 :root{--gold:#ffca4f;--blue:#4fc3ff;--seafoam:#5dff9a;--navy:#07183f}
 body{font-family:'Baloo 2',sans-serif;min-height:100vh;overflow-x:hidden;color:#fff;background:#060f1e}
 
+/* ── Site top bar: reserves space for the absolutely-positioned navbar so it no
+   longer overlays (and covers) the hero's right-side logo. ── */
+.site-topbar{position:relative;height:120px}
+
 /* ── Page hero (top banner) ── */
 .page-hero{position:relative;min-height:260px;display:flex;align-items:flex-end;border-bottom:3px solid rgba(93,255,154,.18);overflow:hidden}
 .page-hero-bg{position:absolute;inset:0;background:linear-gradient(to right,rgba(4,10,22,1) 0%,rgba(4,10,22,.88) 38%,rgba(4,10,22,.40) 65%,rgba(4,10,22,.08) 100%),url('/assets/images/still_afloat_logo.png') right center/auto 90% no-repeat}
@@ -111,7 +115,7 @@ footer{text-align:center;padding:32px 20px 56px;color:rgba(255,255,255,.40);font
 </head>
 <body>
 
-<div id="navbar-container"></div>
+<header class="site-topbar"><div id="navbar-container"></div></header>
 
 <!-- Page hero -->
 <section class="page-hero">
