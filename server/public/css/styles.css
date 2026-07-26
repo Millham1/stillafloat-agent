@@ -292,6 +292,16 @@ a{text-decoration:none;color:inherit;}
 
 .flavor-link{display:block;text-decoration:none;color:inherit;}
 
+.meet-mark-cta{
+  display:inline-flex;align-items:center;gap:8px;margin-top:22px;
+  padding:14px 28px;border-radius:14px;
+  background:linear-gradient(135deg,#0077b6,#023e6e);
+  color:#ffffff;font-weight:800;text-decoration:none;
+  box-shadow:0 10px 26px rgba(0,0,0,0.18);
+  transition:transform 0.2s ease, box-shadow 0.2s ease;
+}
+.meet-mark-cta:hover{ transform:translateY(-2px); box-shadow:0 16px 34px rgba(0,0,0,0.24); }
+
 .flavor-card:hover{
   transform:translateY(-6px);
   box-shadow:0 24px 42px rgba(0,0,0,0.18);
