@@ -150,7 +150,7 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
         return;
       }
 
-      document.title = `${post.title} | Still Afloat`;
+      document.title = `${post.title_es || post.title} | Still Afloat`;
 
       const body = post.body_es || post.body_en || '';
       const tagsHtml = (post.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
@@ -158,7 +158,7 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
       document.getElementById('post-hero-inner').innerHTML = `
         <p class="eyebrow"><i class="fa-solid fa-microphone"></i> Comentario</p>
         <a class="back-link" href="/es/commentary.html"><i class="fa-solid fa-arrow-left"></i> Todos los comentarios</a>
-        <h1 class="post-title">${escHtml(post.title)}</h1>
+        <h1 class="post-title">${escHtml(post.title_es || post.title)}</h1>
         <div class="post-meta">
           <span class="post-date">${formatDate(post.published_at)}</span>
           ${tagsHtml ? `<div class="post-tags">${tagsHtml}</div>` : ''}

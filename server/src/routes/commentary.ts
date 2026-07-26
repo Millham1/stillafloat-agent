@@ -13,6 +13,7 @@ const router: IRouter = Router();
 export interface CommentaryPost {
   id: string;
   title: string;
+  title_es?: string;
   body_en: string;
   body_es: string;
   tags: string[];
@@ -141,11 +142,13 @@ router.post("/commentary", async (req: Request, res: Response) => {
     const resolvedBodyEs = (body_es || "").trim()
       ? String(body_es)
       : await autoTranslate(String(body_en));
+    const resolvedTitleEs = stripHtml(await autoTranslate(stripHtml(String(title))));
     const store = await getStore();
     const now = new Date().toISOString();
     const post: CommentaryPost = {
       id: crypto.randomUUID(),
       title: stripHtml(String(title)),
+      ...(resolvedTitleEs ? { title_es: resolvedTitleEs } : {}),
       body_en: String(body_en),
       body_es: resolvedBodyEs,
       tags: Array.isArray(tags) ? tags.map(String) : [],
@@ -379,9 +382,12 @@ router.post("/commentary/publish-draft", async (req: Request, res: Response) => 
     }
     const store = await getStore();
     const now = new Date().toISOString();
+    const draftTitle = stripHtml(draft.suggestedTitle);
+    const draftTitleEs = stripHtml(await autoTranslate(draftTitle));
     const post: CommentaryPost = {
       id: crypto.randomUUID(),
-      title: stripHtml(draft.suggestedTitle),
+      title: draftTitle,
+      ...(draftTitleEs ? { title_es: draftTitleEs } : {}),
       body_en: draft.draftHtml,
       body_es: await autoTranslate(draft.draftHtml),
       tags: draft.tags,

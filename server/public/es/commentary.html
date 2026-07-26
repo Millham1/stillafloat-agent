@@ -134,7 +134,7 @@ footer{text-align:center;padding:28px 20px;color:rgba(255,255,255,.38);font-size
             <span class="post-date">${formatDate(post.published_at)}</span>
             ${tagsHtml ? `<div class="post-tags">${tagsHtml}</div>` : ''}
           </div>
-          <h2 class="post-title">${escHtml(post.title)}</h2>
+          <h2 class="post-title">${escHtml(post.title_es || post.title)}</h2>
           <p class="post-excerpt">${excerpt(body, 220)}</p>
           <span class="read-more">Leer más <i class="fa-solid fa-arrow-right"></i></span>
         </div>
