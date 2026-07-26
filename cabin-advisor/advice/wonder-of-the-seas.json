@@ -1,0 +1,557 @@
+{
+  "ship": "Wonder of the Seas",
+  "class": "Oasis",
+  "model": "claude-haiku-4-5-20251001",
+  "archetypes": 12,
+  "generatedCount": 12,
+  "byArchetype": {
+    "first-couple-ocean-steady": {
+      "label": "First-time couple, wants the ocean, sensitive stomach",
+      "recommendations": [
+        {
+          "cabin": 8280,
+          "rank": 1,
+          "reason": "Cabin 8280 is the best fit for you. It sits in the middle of the ship and low down, so the motion is minimal, which helps with any tummy troubles. It's in a quiet stretch with nothing noisy above or below you, so your light sleeping won't be disturbed the way it would near the elevators or busier areas. The bonus is waking up to a real ocean view each morning."
+        },
+        {
+          "cabin": 8146,
+          "rank": 2,
+          "reason": "Cabin 8146 gives you the same steady, quiet mid-ship position as 8280, so the motion and sleep conditions are equally good. The only real difference is that it's a bit smaller and sleeps three instead of four, which saves you money if you don't need the extra bed. If space matters to you, stick with 8280; if budget does, this one delivers the same peace and ocean view."
+        },
+        {
+          "cabin": 6662,
+          "rank": 3,
+          "reason": "Cabin 6662 sits low and central on deck 6, which keeps motion gentle for queasy stomachs. The balcony juts past the lifeboats so you get a wider ocean view than standard cabins. The trade-off is a bit more everyday ship noise on this deck compared to the quieter mid-ship stretch, and it sleeps three, but the price is noticeably lower and the view is genuinely special."
+        },
+        {
+          "cabin": 7692,
+          "rank": 4,
+          "reason": "Cabin 7692 is on the lowest deck available, which means steady, smooth motion — excellent for anyone prone to queasiness. It's toward the back of the ship, still central enough to stay quiet. You get a real ocean view and peaceful sleep, though it does sleep three rather than four, and being aft means slightly less company nearby if you prefer real solitude."
+        },
+        {
+          "cabin": 9136,
+          "rank": 5,
+          "reason": "Cabin 9136 is essentially the same room as 8280 — same mid-ship quiet position, same gentle motion, same ocean view — just one deck higher. If 8280 is booked, this is your reliable backup with no meaningful downside for your needs."
+        },
+        {
+          "cabin": 8636,
+          "rank": 6,
+          "reason": "Cabin 8636 is a junior suite on deck 8 with the same excellent motion and quiet position as 8280, plus it sleeps five and gives you suite perks like a lounge and restaurant. If you want more space and are willing to spend a bit more, this is the cabin to splurge on — the steadiness and sleep quality are the same, but you get breathing room and real ocean views."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 14570,
+          "reason": "Cabin 14570 is high on the ship where the motion is noticeably more pronounced, which will aggravate the queasy stomach. On top of that, the pool deck sits directly above it, so early-morning chair noise will disrupt your light sleep."
+        },
+        {
+          "cabin": 9643,
+          "reason": "Cabin 9643 has a steel structure blocking most of the view, so you won't wake up to the ocean the way you're hoping. Royal Caribbean doesn't label it as obstructed, which makes it a trap — you're paying for an ocean view you won't really get."
+        },
+        {
+          "cabin": 11699,
+          "reason": "Cabin 11699 faces the interior Boardwalk with nightly shows, so evening noise will disturb your light sleep. You won't have the real ocean or the quiet you need, even though the price might seem attractive."
+        }
+      ]
+    },
+    "couple-ocean-balcony-treat": {
+      "label": "Couple treating themselves to a great balcony",
+      "recommendations": [
+        {
+          "cabin": 8280,
+          "rank": 1,
+          "reason": "Cabin 8280 is the best choice for you. It's in the middle of the ship on deck 8, where the motion is minimal and the surroundings are genuinely quiet — nothing noisy above or below you. You get a real ocean view from your balcony, and the whole setup lets you have that peaceful retreat you're after."
+        },
+        {
+          "cabin": 8146,
+          "rank": 2,
+          "reason": "Cabin 8146 gives you the same quiet mid-ship location and steadiness as 8280, just one category smaller — it still sleeps two comfortably with room to spare. It's the honest tie-breaker if 8280 books, or if you find the slightly tighter quarters work fine for a couple treating themselves without the extra space."
+        },
+        {
+          "cabin": 9136,
+          "rank": 3,
+          "reason": "Cabin 9136 is essentially 8280 one deck higher on deck 9. You get the same quiet mid-ship peace and real ocean view, but you're a bit higher up, which some people prefer. The trade-off is you're slightly farther from the waterline, so the ocean feels a touch more distant."
+        },
+        {
+          "cabin": 6662,
+          "rank": 4,
+          "reason": "Cabin 6662 sits on the hump — the balcony juts out past the lifeboats, so your view of the ocean is wider and more open than a standard cabin at the same level. It's lower and central, which keeps motion gentle. Deck 6 does have a little more ambient ship noise than the quieter mid-ship stretch, but the view premium might be worth that trade for you."
+        },
+        {
+          "cabin": 7692,
+          "rank": 5,
+          "reason": "Cabin 7692 is toward the back on a low deck, which gives you a smooth, steady ride and genuine quiet since fewer guests are back there. You get a real ocean balcony with no obstructions. The downside is being aft means slightly more engine presence if you're sensitive to that, and it's a bit farther from the heart of the ship's restaurants and shows."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 14570,
+          "reason": "The pool deck is directly above you, so early morning chair noise and daytime activity will interrupt the peace and quiet you value. Being high also puts you in rougher water, which can make the ship rock more."
+        },
+        {
+          "cabin": 9643,
+          "reason": "This cabin is sold as a standard balcony, but the ship's steel structure blocks most of the real ocean view — Royal Caribbean doesn't label it obstructed, which is why you need to know. You're paying for an ocean-view balcony and you'd be looking at metal, not sea."
+        },
+        {
+          "cabin": 11699,
+          "reason": "This faces the Boardwalk interior and the AquaTheater, not the ocean. You wanted a real ocean-view balcony, and more importantly, there's a nightly show with noise in the evenings, which conflicts with the quiet time you're seeking."
+        }
+      ]
+    },
+    "anniversary-suite-splurge": {
+      "label": "Anniversary splurge, no ceiling",
+      "recommendations": [
+        {
+          "cabin": 8280,
+          "rank": 1,
+          "reason": "Cabin 8280 is the best choice for your anniversary. It gives you a real ocean balcony, plenty of space for two, and sits in the quietest part of the ship—mid-deck and low enough that the gentle motion won't intrude on your celebration. You get the steady platform and ocean view you want without paying a premium for height you don't need."
+        },
+        {
+          "cabin": 8636,
+          "rank": 2,
+          "reason": "Cabin 8636 is a Junior Suite with a real ocean balcony and the suite perks that come with it—a private lounge and a restaurant just for suite guests. It sleeps five, so you have genuine extra room, and it sits in the same quiet mid-ship stretch as 8280. This is where you step up to real suite treatment while keeping the steady, comfortable ride."
+        },
+        {
+          "cabin": 11242,
+          "rank": 3,
+          "reason": "Cabin 11242 is another Junior Suite with ocean view and suite privileges, but it's one deck higher than 8636. You get the lounge access and dedicated dining, along with a real ocean balcony and good space. It's a bit higher than 8280 or 8636, so the motion is slightly more noticeable—a fair trade-off if the extra deck appeal matters to you."
+        },
+        {
+          "cabin": 6662,
+          "rank": 4,
+          "reason": "Cabin 6662 sits on the hump, which means your balcony juts past the lifeboats for a wider ocean view than standard cabins at the same deck level. It's low and central, so the motion is steady, and you'll pay less than the higher decks while still getting that expansive sightline. The trade is that deck 6 carries a little more ship noise than the quietest mid-ship stretch."
+        },
+        {
+          "cabin": 9136,
+          "rank": 5,
+          "reason": "Cabin 9136 is essentially the same room as 8280—a real ocean balcony, quiet mid-ship position, steady motion—but one deck higher. If you prefer a slightly elevated vantage point or want the option of a higher cabin without losing the calm location, this is your honest alternative. Otherwise, 8280 does the same job from a better price."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 1712,
+          "reason": "The Grand Suite offers top-tier perks and a real ocean view, but it sits on deck 17 toward the aft, where the ship's motion is noticeably more pronounced. For an anniversary where you want to relax and enjoy each other, the extra rocking will work against you."
+        },
+        {
+          "cabin": 9643,
+          "reason": "This cabin is sold as a standard balcony, but the ship's steel structure blocks most of the ocean view. Royal Caribbean doesn't label it obstructed, so you'd discover the problem after you've paid for an ocean view you won't actually have."
+        },
+        {
+          "cabin": 14570,
+          "reason": "High-deck appeal, but the pool deck sits directly above, which means early-morning chair noise will interrupt your sleep. For a quiet anniversary getaway, this location works against you."
+        }
+      ]
+    },
+    "family-action-boardwalk": {
+      "label": "Family, kids, wants the action",
+      "recommendations": [
+        {
+          "cabin": 11699,
+          "rank": 1,
+          "reason": "Cabin 11699 is the best fit for your family. It faces the Boardwalk and the AquaTheater, so you're right in the middle of the ship's action — your kids will love watching the nightly shows from your balcony, and the lively atmosphere is exactly what you're after. It sleeps four, and the noise and energy are part of the appeal, not a drawback."
+        },
+        {
+          "cabin": 10305,
+          "rank": 2,
+          "reason": "Cabin 10305 is essentially the same setup as 11699 — Boardwalk-facing, family-lively, sleeps four — but one deck lower, which means slightly less motion if anyone gets a little queasy during rough seas, and you're still right in the thick of things. Pick this if you want the action with a touch more stability."
+        },
+        {
+          "cabin": 8280,
+          "rank": 3,
+          "reason": "Cabin 8280 sleeps four and sits mid-ship in a steady spot with a real ocean view. If there are evenings when the kids want quiet or you'd rather not be in the Boardwalk buzz, this gives you a solid home base that's central to the ship's layout and easy to navigate from. It's a good fallback for families who want a bit of both worlds."
+        },
+        {
+          "cabin": 8636,
+          "rank": 4,
+          "reason": "Cabin 8636 is a Junior Suite that sleeps five, so you have breathing room if anyone needs their own bunk. You get a real ocean balcony, access to the suite lounge and restaurant, and it's in a stable mid-ship spot. If your budget is comfortable, the extra space and suite perks are worth it for a family with young kids."
+        },
+        {
+          "cabin": 9136,
+          "rank": 5,
+          "reason": "Cabin 9136 is essentially cabin 8280 one deck higher — mid-ship, sleeps four, real ocean view, steady and quiet. It's a solid choice if 8280 books out, though you're trading the lower, more central position for a slightly higher deck with no real upside for your crew."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 14570,
+          "reason": "The pool deck sits directly above this cabin, which means early-morning chair noise from people setting up loungers. Since you want to be near the action but not bothered by it during sleep, this high deck is the wrong trade-off."
+        },
+        {
+          "cabin": 9643,
+          "reason": "This cabin is flagged with heavy obstruction — a steel structure blocks most of the view from the balcony. Royal Caribbean doesn't label it as obstructed, but you'll feel cramped and boxed in. Skip it."
+        },
+        {
+          "cabin": 11329,
+          "reason": "The Ultimate Abyss slide tubes clip part of the view and create noise during shows. You want the Boardwalk energy, but this one sacrifices your actual sight line and peace for the chaos — cabin 11699 gives you both without the blockage."
+        }
+      ]
+    },
+    "family-value-space": {
+      "label": "Budget family that needs room",
+      "recommendations": [
+        {
+          "cabin": 8280,
+          "rank": 1,
+          "reason": "Cabin 8280 is the right pick for you. It sleeps four, sits in the middle of the ship on a quiet stretch, and costs less than the higher decks. You get a real ocean view and the bonus of steady motion low down—which is kind to family stomachs on longer days at sea."
+        },
+        {
+          "cabin": 6662,
+          "rank": 2,
+          "reason": "Cabin 6662 books cheaper than 8280 because it's lower and on the hump—the balcony juts past the lifeboats so your view opens up wider. The tradeoff is it sleeps three, not four, so one family member would be on a sofa bed. If budget is tight and that works for your family, the savings add up."
+        },
+        {
+          "cabin": 6678,
+          "rank": 3,
+          "reason": "Cabin 6678 is essentially the same as 6662—same hump advantage, same price, same three-person sleep setup. Both are good value, so pick whichever cabin number feels lucky to you. The real choice is between the hump cabins and cabin 8280."
+        },
+        {
+          "cabin": 9136,
+          "rank": 4,
+          "reason": "Cabin 9136 sleeps four and sits in the quiet mid-ship stretch, just like 8280 but one deck higher. You pay a bit more for the higher position, and you gain nothing—the real benefit of being on deck 8 is the lower cost and steadier ride. Go with 8280 instead."
+        },
+        {
+          "cabin": 11242,
+          "rank": 5,
+          "reason": "Cabin 11242 is a junior suite that sleeps four with a real ocean balcony and your own suite lounge and restaurant. It costs more than a standard balcony, but if the family budget stretches and you want to feel a little pampered without going crazy, the suite perks are real—quieter spaces and nicer dining."
+        },
+        {
+          "cabin": 10305,
+          "rank": 6,
+          "reason": "Cabin 10305 sleeps four and costs less than an ocean balcony because it faces the interior Boardwalk instead of the sea. If your family likes being in the middle of the action and doesn't mind missing the ocean, it's a roomy, lively option. But view matters less to you, and the Boardwalk scene is noisy at show time."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 9643,
+          "reason": "Cabin 9643 is labeled as a standard balcony, and a steel wall blocks most of the view—Royal Caribbean doesn't flag it as obstructed. You'd pay for an ocean view you don't get."
+        },
+        {
+          "cabin": 14570,
+          "reason": "Cabin 14570 sleeps four, but the pool deck sits directly above it, so early-morning chair noise wakes the family. On a lean budget, you're better off on a quieter, lower deck."
+        },
+        {
+          "cabin": 1712,
+          "reason": "Cabin 1712 is a grand suite with top perks, but it's on the high, aft end of the ship where motion is noticeable and the price jumps way beyond your budget."
+        }
+      ]
+    },
+    "quiet-retirees-calm": {
+      "label": "Quiet-seeking retirees",
+      "recommendations": [
+        {
+          "cabin": 8280,
+          "rank": 1,
+          "reason": "Cabin 8280 is the best choice for you. It sits in the middle of the ship and low down, so the motion is minimal, which helps with any tummy troubles. It's in a quiet stretch with nothing noisy above or below you, so your light sleeping won't be disturbed. The bonus is waking up to a real ocean view each morning."
+        },
+        {
+          "cabin": 8146,
+          "rank": 2,
+          "reason": "Cabin 8146 is essentially the same quiet mid-ship location as 8280 — same peace and stillness, same rock-solid stability. The only difference is it's a bit smaller and sleeps three instead of four, which is fine for a couple and actually means even more elbow room for the two of you. It's a touch cheaper if budget matters."
+        },
+        {
+          "cabin": 9136,
+          "rank": 3,
+          "reason": "Cabin 9136 gives you the same mid-ship quiet and stability as 8280, just one deck higher. You'll still have nothing noisy above or below, and the real ocean view is just as good. The only trade is that you're a deck up, so the ship's motion is barely perceptible but just a hair more than on deck 8 — for a couple with steady stomachs this won't matter, but 8280 wins on pure calm."
+        },
+        {
+          "cabin": 7692,
+          "rank": 4,
+          "reason": "Cabin 7692 is low and steady, which is ideal for easy rest and no queasy mornings. It's toward the back of the ship, which some couples find even more peaceful because you're away from the buzz of the main lobby and elevators. The trade-off is that aft cabins feel the ship's motion a touch more than dead center, but deck 7 is low enough that you won't really notice it."
+        },
+        {
+          "cabin": 6662,
+          "rank": 5,
+          "reason": "Cabin 6662 sits low and central for stability, and the balcony juts out past the lifeboats so your ocean view is genuinely wide and open. It's also priced cheaper than the higher decks without any real downside in motion or stability. The catch is deck 6 has slightly more ambient ship noise than the quieter mid-deck stretch, which matters for light sleepers — not a deal-breaker, but it tips the balance below your top picks."
+        },
+        {
+          "cabin": 11242,
+          "rank": 6,
+          "reason": "Cabin 11242 is a junior suite with a real ocean view, so you get more actual room to spread out and relax, plus access to a quiet suite-only lounge and restaurant. It's steady and in the quiet mid-ship zone. The honest trade is you're higher up (deck 11), so ship motion is just barely more noticeable than on deck 8 — for peace and quiet as your top priority, the ocean-view cabins lower down are the safer call."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 9643,
+          "reason": "Cabin 9643 is labeled as an ocean view, but a steel wall blocks most of what you'd actually see from the balcony. Royal Caribbean doesn't flag this as obstructed, which is why it books cheaper — but for a couple who wants to wake up to a calm ocean view, you'd feel short-changed."
+        },
+        {
+          "cabin": 14570,
+          "reason": "Cabin 14570 is high up on deck 14 with the pool deck directly above it, so early-morning chair noise and activity will likely disturb your light sleeping. The higher altitude also means more ship motion, which doesn't align with your priority for easy rest."
+        },
+        {
+          "cabin": 11699,
+          "reason": "Cabin 11699 faces the interior Boardwalk and the AquaTheater, where nightly shows run with showtimes in the evenings. For light sleepers seeking peace and quiet, the regular entertainment noise and lively foot traffic would be a constant intrusion on the calm you're after."
+        }
+      ]
+    },
+    "value-hunter-ocean": {
+      "label": "Value hunter who still wants the sea",
+      "recommendations": [
+        {
+          "cabin": 6662,
+          "rank": 1,
+          "reason": "Cabin 6662 is the smart move for your budget. It's on the hump, which means your balcony juts past the lifeboats and gives you a wider, more open ocean view than a standard balcony — and it books cheaper than the higher decks because it's lower down. You get a real ocean view, steady motion, and genuine savings in one room."
+        },
+        {
+          "cabin": 6678,
+          "rank": 2,
+          "reason": "Cabin 6678 is essentially the same as 6662 — same hump advantage, same lower-deck pricing, same wide view. The honest tie-breaker is cabin position, so if one appeals to you more on the deck plan, go with it. Otherwise, book whichever comes up first at the price you're chasing."
+        },
+        {
+          "cabin": 8146,
+          "rank": 3,
+          "reason": "Cabin 8146 gives you a real ocean view in a quiet stretch of mid-ship without the hump premium — you're paying for straightforward steadiness and peace rather than a fancy view angle. It sleeps three, so it's a touch cheaper than the four-sleeper cabins, and you lose nothing on motion or sound."
+        },
+        {
+          "cabin": 7692,
+          "rank": 4,
+          "reason": "Cabin 7692 sits low and toward the back, which means it books cheaper and the motion stays gentle. You're trading mid-ship quiet for a slightly aft position, but it's still steady, and the ocean view is real. It's a good fallback if the hump cabins or mid-ship rooms are booked out."
+        },
+        {
+          "cabin": 8280,
+          "rank": 5,
+          "reason": "Cabin 8280 is the gold standard for comfort — mid-ship, quiet, steady, and a beautiful ocean view with nothing above or below you. The trade-off is price; it costs more than the hump cabins and lower decks because it sleeps four and sits in the most peaceful real estate on the ship. Book it if budget loosens."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 6154,
+          "reason": "The lifeboat blocks your view straight down, which defeats the purpose of an ocean-view cabin. Yes, it books cheaper, but you're staring at steel instead of sea — not worth the savings for what you're after."
+        },
+        {
+          "cabin": 9643,
+          "reason": "This one is labeled as a standard balcony, not obstructed, but the steel structure blocks most of the view. Royal Caribbean doesn't flag it, so you'd discover the problem too late. Skip it entirely."
+        },
+        {
+          "cabin": 14570,
+          "reason": "High up and mid-ship sounds great, but the pool deck sits directly above, which means early-morning chair noise will wake you. You're paying for a balcony you can't enjoy in peace."
+        }
+      ]
+    },
+    "solo-first-value": {
+      "label": "Solo first-timer, budget-minded",
+      "recommendations": [
+        {
+          "cabin": 6662,
+          "rank": 1,
+          "reason": "Cabin 6662 is the best choice for you. The hump balcony juts past the lifeboats, so you get a real ocean view that's noticeably wider than standard cabins — and it books cheaper than the higher decks because it's on deck 6. You're still in the steady middle of the ship, so motion won't bother you, and a real ocean view makes those mornings feel special without the premium price tag."
+        },
+        {
+          "cabin": 6678,
+          "rank": 2,
+          "reason": "Cabin 6678 is essentially the same room as 6662 — same hump advantage, same price point, same quiet mid-ship location. The honest tie-breaker is cabin position within the hump stretch; if you're drawn to one number over the other, either will serve you just as well on your first cruise."
+        },
+        {
+          "cabin": 8146,
+          "rank": 3,
+          "reason": "Cabin 8146 sits in the quietest stretch of the ship, mid-deck and surrounded by empty space above and below, so you'll sleep undisturbed. It's a real ocean balcony and costs less than the higher decks, making it a solid alternative if the hump cabins are booked. You trade the extra-wide view for genuine peace and quiet."
+        },
+        {
+          "cabin": 7692,
+          "rank": 4,
+          "reason": "Cabin 7692 is low on the ship and toward the back, which keeps costs down and minimizes motion. You get a real ocean view and a quiet spot, though it's a touch farther from the main action if you want to explore the ship easily. It's a good budget-friendly option with all the basics you need."
+        },
+        {
+          "cabin": 11185,
+          "rank": 5,
+          "reason": "Cabin 11185 faces the interior Central Park garden — lush, peaceful, and completely quiet, which is a real plus for light sleeping on your first cruise. There's no ocean, so you lose the sea breeze and morning horizon, but the garden view and lower cost make this worth considering if you value tranquility over traditional ocean gazing."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 9643,
+          "reason": "Cabin 9643 is sold as an ocean balcony, but a steel wall blocks most of the view — Royal Caribbean doesn't flag it as obstructed, which is misleading. You'd pay for an ocean room and get a wall instead; not worth it on your first cruise when you want the real experience."
+        },
+        {
+          "cabin": 14570,
+          "reason": "Cabin 14570 is high up, which adds motion you don't need, and the pool deck sits directly above, so early-morning chair noise will wake you. For a light sleeper on a budget, it's working against you on both fronts."
+        },
+        {
+          "cabin": 11699,
+          "reason": "Cabin 11699 faces the lively Boardwalk with nightly shows, which means evening noise right outside your balcony. As a solo traveler trying to keep costs down, you'd be paying for a room with sound carrying into your space when you're trying to rest."
+        }
+      ]
+    },
+    "solo-with-group": {
+      "label": "Solo traveling with a group",
+      "recommendations": [
+        {
+          "cabin": 8280,
+          "rank": 1,
+          "reason": "Cabin 8280 is your best bet. You're solo but traveling with a group, so you want to be central and able to get to the action fast — this one sits right in the middle of the ship on deck 8, which is low enough that you'll feel minimal motion but high enough that you're close to all the main venues. It's in a genuinely quiet stretch with nothing noisy above or below, so you get real peace when you want it. The ocean balcony is a real bonus for waking up to the sea."
+        },
+        {
+          "cabin": 9136,
+          "rank": 2,
+          "reason": "Cabin 9136 is essentially the same room as 8280, just one deck higher. You get the same mid-ship central location and the same quiet surroundings, which means you're equally close to your group and the action. The only honest tie-breaker is that being slightly higher might give you a marginally better view from the balcony, but you'll also feel a tiny bit more ship motion — for a solo traveler who wants to be in the middle of things, 8280's lower position wins."
+        },
+        {
+          "cabin": 6662,
+          "rank": 3,
+          "reason": "Cabin 6662 is worth considering because your budget matters and this one books cheaper than the higher decks. It's on the hump, which means your balcony juts past the lifeboats and gives you a really wide, unobstructed ocean view — a real perk. You're still mid-ship and central to the group, and the motion is steady. The trade-off is deck 6 has a little more ambient ship noise than the quiet stretch on deck 8, but if the price difference appeals to you, the view and location make it a solid choice."
+        },
+        {
+          "cabin": 8146,
+          "rank": 4,
+          "reason": "Cabin 8146 gives you the same central, quiet mid-ship location as 8280, just in a slightly smaller cabin that sleeps three instead of four. If you're traveling solo and don't need the extra sleeping space, this one costs less and puts you in the exact same peaceful spot — still close to your group and all the main action. The ocean balcony is real, and the quiet neighborhood is the same."
+        },
+        {
+          "cabin": 11699,
+          "rank": 5,
+          "reason": "Cabin 11699 faces the interior Boardwalk and the AquaTheater, which is pure action and energy — if being near your group and the liveliness of the ship is what you're after, this delivers exactly that. You're on deck 11 mid-ship, so you're still reasonably central, and you get a front-row seat to the nightly shows and the bustle of the Boardwalk. The trade-off is evening showtime noise, but for a solo traveler who wants to be in the middle of the fun, that's probably a feature, not a bug."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 9643,
+          "reason": "Avoid cabin 9643. It's sold as an ocean view, but a big steel structure blocks most of the actual view — Royal Caribbean doesn't even label it obstructed, which is the real problem. You'd be paying for a balcony you can't actually see out of."
+        },
+        {
+          "cabin": 14570,
+          "reason": "Cabin 14570 is high up on deck 14 with the pool deck directly above, which means early-morning chair noise wakes you before you're ready. For a light sleeper in a group, that's not worth the location."
+        },
+        {
+          "cabin": 11242,
+          "reason": "Cabin 11242 is a junior suite with nice extras like a suite lounge and private restaurant, but it stretches your budget without being central to the main action the way a regular ocean view mid-ship cabin is. Since you want to be near your group and near the energy, the extra cost and quieter suite perks work against what you're actually after."
+        }
+      ]
+    },
+    "big-group-together": {
+      "label": "Group that wants to stay together",
+      "recommendations": [
+        {
+          "cabin": 8280,
+          "rank": 1,
+          "reason": "Cabin 8280 is the best fit for your group. It sleeps four, sits mid-ship in the quietest stretch, and puts you steps from everything — the elevators, dining, and the main attractions are all close by. You'll have a real ocean view and steady footing, which matters when you're moving around as a group."
+        },
+        {
+          "cabin": 8636,
+          "rank": 2,
+          "reason": "This junior suite sleeps five, so if your group is that size, it's worth the upgrade. You get more room to spread out, a real ocean balcony, and access to the suite lounge and restaurant — quieter spaces to gather. It's mid-ship and steady, same location perks as 8280."
+        },
+        {
+          "cabin": 9136,
+          "rank": 3,
+          "reason": "Cabin 9136 is essentially the same room as 8280, just one deck higher. If 8280 books out, this is your backup — same mid-ship quiet, same everything-nearby access, same real ocean view. The only difference is you're slightly higher up, which some people prefer for the view."
+        },
+        {
+          "cabin": 8146,
+          "rank": 4,
+          "reason": "Cabin 8146 sleeps three and sits in the same quiet mid-ship stretch as 8280, so it's a solid second cabin if you're splitting your group into two rooms. You stay close together with the same convenience and calm."
+        },
+        {
+          "cabin": 6662,
+          "rank": 5,
+          "reason": "This hump cabin is a budget-friendly option if cost matters. Your balcony juts past the lifeboats for a wider ocean view, and it's low and central, so you're still close to the action. Deck 6 has a touch more ship noise than the quieter decks above, but it's not a deal-breaker for a group that wants to be near everything."
+        },
+        {
+          "cabin": 11242,
+          "rank": 6,
+          "reason": "Cabin 11242 is a junior suite with a real ocean view and sleeps four. The bonus is access to a suite-only lounge and restaurant — private gathering spots for your group. It's mid-ship and near everything, though being higher up means a slightly longer elevator ride to some venues."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 9643,
+          "reason": "This cabin is labeled as a standard balcony, but the ship's steel structure blocks most of your view — not flagged by Royal Caribbean, but it matters. For a group prioritizing being near everything, you don't want to spend time on a balcony you can't actually enjoy."
+        },
+        {
+          "cabin": 11699,
+          "reason": "This Boardwalk cabin is lively and faces the AquaTheater with nightly shows — exciting, but the noise carries into your room during evening performances. If your group wants to relax together after a long day, the noise will work against you."
+        },
+        {
+          "cabin": 14570,
+          "reason": "Cabin 14570 is high up with a real view, but the pool deck directly above means early-morning chair noise that will cut into your sleep. For a group traveling together, quiet mornings matter so everyone can recharge."
+        }
+      ]
+    },
+    "experienced-ocean-midship": {
+      "label": "Experienced cruisers, know they want a real ocean balcony",
+      "recommendations": [
+        {
+          "cabin": 8280,
+          "rank": 1,
+          "reason": "Cabin 8280 is the best match for you. It's a real ocean balcony in the exact middle of the ship on deck 8, so the motion is minimal and you get a rock-solid, steady ride. It sits in a quiet stretch with nothing noisy above or below you, which means you'll have the peace you're after. Pure ocean view, no gimmicks."
+        },
+        {
+          "cabin": 8146,
+          "rank": 2,
+          "reason": "Cabin 8146 gives you the same steady mid-ship position and quiet surroundings as 8280, with the same real ocean balcony and no obstructions. The only difference is it sleeps three instead of four, so book this one if you don't need the extra berth and want to save a bit."
+        },
+        {
+          "cabin": 9136,
+          "rank": 3,
+          "reason": "Cabin 9136 is basically 8280 one deck higher on deck 9. You'll still get the steady mid-ship ride and unobstructed ocean view, and it sleeps four. The trade-off is you're a little higher up, so you'll feel slightly more motion than deck 8, but it's still well-centered and stable. Pick this if 8280 is booked."
+        },
+        {
+          "cabin": 7692,
+          "rank": 4,
+          "reason": "Cabin 7692 gives you the lowest, steadiest platform on the ship — deck 7 toward the back — so motion is minimal and you get a real ocean balcony with no obstruction. It sleeps three and sits in a quiet section. The downside is it's aft rather than mid-ship, so you're slightly farther from the heart of the vessel, but the stability trade-off is real."
+        },
+        {
+          "cabin": 8636,
+          "rank": 5,
+          "reason": "Cabin 8636 is a junior suite with a real ocean balcony on deck 8 mid-ship, so you get the steady ride and clean ocean view you want, plus extra space and suite perks like a private lounge and dining. It sleeps five, so it's worth considering if you want more room and don't mind the modest upgrade cost."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 9643,
+          "reason": "Cabin 9643 is sold as a balcony with an ocean view, but Royal Caribbean doesn't label it as obstructed — the ship's steel structure blocks most of what you'd see. You came for a real ocean view; this isn't it."
+        },
+        {
+          "cabin": 14570,
+          "reason": "Cabin 14570 sits high on deck 14 directly under the pool deck, so you'll get early-morning chair noise and activity that'll wake you. It's also high enough that motion is noticeable, which goes against the steady ride you're after."
+        },
+        {
+          "cabin": 11699,
+          "reason": "Cabin 11699 faces the interior Boardwalk, not the ocean, and there's a nightly show right below your balcony with evening noise. You said no gimmicks and you want a real ocean view — this isn't either."
+        }
+      ]
+    },
+    "seasick-priority-steady": {
+      "label": "Motion is the whole concern",
+      "recommendations": [
+        {
+          "cabin": 8280,
+          "rank": 1,
+          "reason": "Cabin 8280 is the steadiest choice for you. It sits in the middle of the ship and low down, so the motion is minimal, which helps with any tummy troubles. It's in a quiet stretch with nothing noisy above or below you, and you wake up to a real ocean view each morning — the best of both worlds without any trade-off."
+        },
+        {
+          "cabin": 8146,
+          "rank": 2,
+          "reason": "Cabin 8146 gives you the same stability and ocean view as 8280, in the same quiet mid-ship spot. The only difference is it sleeps three instead of four, so if you're a couple, you don't need the extra bed — but you're paying a bit less and getting exactly the same steadiness and calm."
+        },
+        {
+          "cabin": 6662,
+          "rank": 3,
+          "reason": "Cabin 6662 sits low and central, so it's very steady for your queasy concerns. The bonus is that the balcony juts past the lifeboats, so your ocean view is wider than standard cabins at this price. Deck 6 has a little more ambient ship noise than the quieter mid-ship stretch, but the trade-off is a real savings and a better view."
+        },
+        {
+          "cabin": 7692,
+          "rank": 4,
+          "reason": "Cabin 7692 is steady and sits low on the ship, which is good for seasickness. It's toward the back, which you might feel slightly more than dead center, but the difference is small — and you get a real ocean view without paying suite prices."
+        },
+        {
+          "cabin": 11242,
+          "rank": 5,
+          "reason": "Cabin 11242 is a junior suite with a real ocean view, full stability, and access to a quiet suite-only lounge and dining room — nice extras if your budget allows. The trade-off is it's higher on the ship than cabins 8280 or 6662, so you'll feel the motion a touch more, but it's still steady enough and the suite perks add real comfort for a couple."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": 14570,
+          "reason": "Cabin 14570 is high on the ship and sits where the pool deck is directly above, so you'll hear early-morning chair noise and feel more motion — exactly the opposite of what steadies your stomach."
+        },
+        {
+          "cabin": 9643,
+          "reason": "Cabin 9643 is sold as a balcony but Royal Caribbean doesn't label the view as obstructed even though a steel wall blocks most of it. You came for a real ocean view, and this one won't deliver — you're paying for ocean and getting a steel wall."
+        },
+        {
+          "cabin": 11699,
+          "reason": "Cabin 11699 faces the Boardwalk and the AquaTheater, so nightly shows mean evening noise and lively energy. For a couple where seasickness is your top worry, you need quiet and calm, not a front-row seat to the action."
+        }
+      ]
+    }
+  }
+}
