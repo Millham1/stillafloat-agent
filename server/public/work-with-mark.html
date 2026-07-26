@@ -505,6 +505,7 @@ async function initTurnstile() {
     wrap.appendChild(widget);
     turnstile.render('#cfTurnstile', {
       sitekey: turnstileSiteKey,
+      appearance: 'interaction-only',
       callback: (token) => { turnstileToken = token; },
       'expired-callback': () => { turnstileToken = null; },
     });
