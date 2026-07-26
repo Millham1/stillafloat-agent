@@ -123,6 +123,32 @@ function metaDescription(story: NewsStory, lang: Lang): string {
   return raw.length > 158 ? `${raw.slice(0, 155)}…` : raw;
 }
 
+// ── per-story SEO overrides ──────────────────────────────────────────────────
+// Optional, keyed by story id (platform_state key `seo-overrides`). They tune the
+// <title>/meta/OG snippet a page presents to search engines WITHOUT touching the
+// visible <h1> headline or the story body. Living under their own key means the
+// newsagent's daily story-details rewrite can never clobber them. Any field left
+// unset falls back to the normal title/summary behavior.
+export interface SeoOverride {
+  title?: string; // EN search title (the " | Still Afloat" suffix is added by the template)
+  desc?: string; // EN meta description
+  title_es?: string; // ES search title
+  desc_es?: string; // ES meta description
+}
+export type SeoOverrideMap = Record<string, SeoOverride>;
+
+function seoTitleFor(story: NewsStory, lang: Lang, ov?: SeoOverride): string {
+  const v = ov && (lang === "es" ? ov.title_es : ov.title);
+  if (typeof v === "string" && v.trim()) return v.trim();
+  return pick(story, "title", lang);
+}
+
+function seoDescFor(story: NewsStory, lang: Lang, ov?: SeoOverride): string {
+  const v = ov && (lang === "es" ? ov.desc_es : ov.desc);
+  if (typeof v === "string" && v.trim()) return v.trim();
+  return metaDescription(story, lang);
+}
+
 function fmtDate(iso: string | undefined, lang: Lang): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -221,13 +247,13 @@ const L = {
   },
 } as const;
 
-function jsonLd(story: NewsStory, slug: string, lang: Lang): string {
+function jsonLd(story: NewsStory, slug: string, lang: Lang, ov?: SeoOverride): string {
   const u = urls(slug);
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     headline: pick(story, "title", lang),
-    description: metaDescription(story, lang),
+    description: seoDescFor(story, lang, ov),
     datePublished: story.approvedAt || story.generatedAt || undefined,
     inLanguage: lang === "es" ? "es-419" : "en-US",
     mainEntityOfPage: lang === "es" ? u.es : u.en,
@@ -245,15 +271,24 @@ function jsonLd(story: NewsStory, slug: string, lang: Lang): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
-function storyPageHtml(story: NewsStory, slug: string, lang: Lang, related: NewsStory[]): string {
+function storyPageHtml(
+  story: NewsStory,
+  slug: string,
+  lang: Lang,
+  related: NewsStory[],
+  ov?: SeoOverride,
+): string {
   const t = L[lang];
   const u = urls(slug);
   const self = lang === "es" ? u.es : u.en;
   // Zero-intent Carnival-outage ES article — keep it out of the index to preserve
   // crawl equity (it ranks pos ~36 for "is carnival down", never converts). Task 2fa90ac7.
   const noindex = lang === "es" && slug.startsWith("carnival-s-website-is-down-for-18-hours");
+  // `title` is the on-page <h1> headline (unchanged); `seoTitle` is what search
+  // engines see in <title>/OG — the two differ only when an SEO override is set.
   const title = escapeHtml(pick(story, "title", lang));
-  const desc = escapeHtml(metaDescription(story, lang));
+  const seoTitle = escapeHtml(seoTitleFor(story, lang, ov));
+  const desc = escapeHtml(seoDescFor(story, lang, ov));
   const summary = escapeHtml(pick(story, "summary", lang));
   const impact = escapeHtml(pick(story, "travelerImpact", lang));
   const editorial = escapeHtml(pick(story, "editorialReasoning", lang));
@@ -279,21 +314,21 @@ function storyPageHtml(story: NewsStory, slug: string, lang: Lang, related: News
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title} | Still Afloat</title>
+<title>${seoTitle} | Still Afloat</title>
 <meta name="description" content="${desc}">
 ${noindex ? '<meta name="robots" content="noindex">' : ""}
 ${hreflangLinks(slug, lang)}
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Still Afloat Cruising">
 <meta property="og:url" content="${self}">
-<meta property="og:title" content="${title}">
+<meta property="og:title" content="${seoTitle}">
 <meta property="og:description" content="${desc}">
 <meta property="og:image" content="${story.image ? escapeHtml(story.image) : LOGO}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${title}">
+<meta name="twitter:title" content="${seoTitle}">
 <meta name="twitter:description" content="${desc}">
 <link rel="stylesheet" href="/css/styles.css">
-<script type="application/ld+json">${jsonLd(story, slug, lang)}</script>
+<script type="application/ld+json">${jsonLd(story, slug, lang, ov)}</script>
 <style>${STORY_CSS}</style>
 </head>
 <body>
@@ -439,6 +474,8 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
     PATHS.storyDetails,
     { generatedAt: undefined, stories: [] },
   );
+  // Per-story SEO title/description overrides (optional; keyed by story id).
+  const seoOverrides = await readJson<SeoOverrideMap>(PATHS.seoOverrides, {});
   const seenSlugs = new Set<string>();
   const stories = (data.stories ?? [])
     .filter((s) => s && s.id && s.title)
@@ -473,8 +510,9 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
       .filter((r) => r.id !== story.id && r.category === story.category)
       .slice(0, 3);
     const rel = related.length ? related : stories.filter((r) => r.id !== story.id).slice(0, 3);
-    await writeFile(path.join(enDir, `${slug}.html`), storyPageHtml(story, slug, "en", rel));
-    await writeFile(path.join(esDir, `${slug}.html`), storyPageHtml(story, slug, "es", rel));
+    const ov = story.id ? seoOverrides[story.id] : undefined;
+    await writeFile(path.join(enDir, `${slug}.html`), storyPageHtml(story, slug, "en", rel, ov));
+    await writeFile(path.join(esDir, `${slug}.html`), storyPageHtml(story, slug, "es", rel, ov));
     pages += 2;
   }
 

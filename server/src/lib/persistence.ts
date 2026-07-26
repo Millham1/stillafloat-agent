@@ -49,6 +49,9 @@ export const PATHS = {
   commentary: "commentary-posts",
   // AI-learned editorial preferences (built from approve/reject history)
   learnedPrefs: "editorial-learned-prefs",
+  // Per-story SEO title/description overrides for the news prerenderer, keyed by
+  // story id. Lets us tune search snippets without changing the on-page headline.
+  seoOverrides: "seo-overrides",
 };
 
 export async function writeJson(key: string, payload: unknown): Promise<boolean> {
