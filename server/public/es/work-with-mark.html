@@ -4,101 +4,155 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trabaja Con Mark | Still Afloat Cruising</title>
-<meta name="description" content="Planifica tu crucero con Mark Millham — asesor de viajes independiente con más de 20 años de experiencia en cruceros. Sin presión, sin agenda de ventas.">
+<meta name="description" content="Planifica tu crucero con Mark Millham — más de 20 años de experiencia en cruceros, asesor de viajes independiente. Consejos honestos, cuentas reales del crucero, sin agenda de ventas.">
+<link rel="canonical" href="https://stillafloatcruising.com/es/work-with-mark.html">
+<link rel="alternate" hreflang="es-419" href="https://stillafloatcruising.com/es/work-with-mark.html">
+<link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/work-with-mark.html">
+<link rel="alternate" hreflang="x-default" href="https://stillafloatcruising.com/work-with-mark.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:url" content="https://stillafloatcruising.com/es/work-with-mark.html">
+<meta property="og:title" content="Trabaja Con Mark | Still Afloat Cruising">
+<meta property="og:description" content="Planifica tu crucero con alguien que realmente ha estado allí. Asesor independiente. Sin agenda de ventas.">
+<meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/css/styles.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-:root{--navy:#07183f;--ocean:#0077b6;--seafoam:#5dff9a;--gold:#ffca4f}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:radial-gradient(circle at top right,rgba(0,119,182,.18),transparent 24%),linear-gradient(to bottom,#040b16 0%,#071523 30%,#0c2035 100%);color:white;font-family:'Baloo 2',Poppins,sans-serif}
 
-.wm-shell{max-width:820px;margin:0 auto;padding:40px 24px 80px}
+/* ── Logo independiente (independiente del navbar) ── */
+.wm-logo-link{position:absolute;top:18px;left:22px;z-index:25;display:inline-flex;text-decoration:none;transition:transform .22s ease}
+.wm-logo-link:hover{transform:scale(1.05)}
+.wm-logo-link img{height:90px;width:auto;filter:drop-shadow(0 6px 18px rgba(0,0,0,.65))}
+#navbar-container .sa-logo-home{display:none!important}
 
-/* ── Brand bar ── */
-.sa-brand-bar{display:flex;align-items:center;gap:20px;padding:32px 40px 0;margin-bottom:36px}
-.sa-brand-bar img{height:72px;width:auto}
-.sa-brand-tagline{font-size:16px;color:rgba(255,255,255,.55);letter-spacing:.04em;font-style:italic;line-height:1.4}
+/* ── Sobrescribir seafoam → dorado en esta página ── */
+.section-kicker{background:rgba(255,210,31,.13);border-color:rgba(255,210,31,.34);color:#ffd21f;text-shadow:none;box-shadow:none}
 
-/* ── Hero ── */
-.hero-layout{display:grid;grid-template-columns:1fr 340px;gap:40px;align-items:center;margin-bottom:48px}
-@media(max-width:720px){.hero-layout{grid-template-columns:1fr;gap:0}}
-.hero-text{background:transparent!important}
-.hero-badge{display:inline-flex;align-items:center;gap:10px;color:#ffca4f!important;font-size:14px;font-weight:900;letter-spacing:.20em;text-transform:uppercase;margin-bottom:18px;opacity:.92}
-h1.hero-title{font-size:clamp(48px,8vw,82px)!important;font-weight:900!important;line-height:1.0;margin:0 0 12px!important;font-family:'Bree Serif',serif!important;color:white!important}
-h1.hero-title span{color:#5dff9a!important}
-.hero-sub{font-size:clamp(18px,2.5vw,23px)!important;line-height:1.55;color:rgba(255,255,255,.78)!important;margin:0 0 20px!important;font-style:italic}
-.hero-body{font-size:17px!important;line-height:1.8;color:rgba(255,255,255,.75)!important;margin:0!important}
-h2.section-title,h2.section-title *{color:white!important}
-.section-label{color:#ffca4f!important}
-.cta-title{color:white!important;font-size:clamp(30px,5vw,48px)!important;font-weight:900!important;margin:0 0 12px!important;font-family:'Bree Serif',serif!important;line-height:1.1}
-.mark-photo-wrap{position:relative;border-radius:24px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.55);border:2px solid rgba(0,119,182,.3)}
-.mark-photo-wrap::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(4,11,22,.6) 0%,transparent 50%);pointer-events:none}
-.mark-photo-wrap img{width:100%;height:420px;object-fit:cover;object-position:center top;display:block}
-.mark-photo-caption{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,.65);letter-spacing:.06em;font-weight:700;text-transform:uppercase;z-index:1}
-@media(max-width:720px){.mark-photo-wrap{margin-top:32px}.mark-photo-wrap img{height:300px}}
+/* ── Hero cinematográfico ── */
+.wm-hero{
+  position:relative;
+  min-height:520px;
+  display:flex;
+  align-items:flex-end;
+  background:
+    linear-gradient(to right, rgba(4,10,22,.92) 0%, rgba(4,10,22,.82) 45%, rgba(4,10,22,.35) 100%),
+    url('/assets/images/mark-bio.JPG') right top / cover no-repeat;
+  border-bottom:3px solid rgba(0,119,182,.35);
+  padding-bottom:0;
+}
+.wm-hero-inner{
+  position:relative;
+  z-index:2;
+  max-width:680px;
+  padding:120px 40px 72px;
+}
+.wm-hero-inner h1{
+  font-size:clamp(40px,6vw,72px);
+  color:#fff;
+  line-height:1.05;
+  margin:16px 0 20px;
+}
+.wm-hero-inner p{
+  font-size:21px;
+  color:rgba(255,255,255,.80);
+  line-height:1.7;
+  margin:0 0 32px;
+  max-width:560px;
+}
+.wm-cta-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  background:linear-gradient(135deg,#0077b6,#023e6e);
+  color:#ffd21f;
+  font-family:'Bree Serif',serif;
+  font-size:19px;
+  font-weight:700;
+  padding:16px 32px;
+  border-radius:50px;
+  text-decoration:none;
+  box-shadow:0 10px 30px rgba(0,119,182,.4);
+  transition:transform .2s, box-shadow .2s;
+}
+.wm-cta-btn:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,119,182,.5)}
 
-/* ── Rule ── */
-.rule{height:1px;background:linear-gradient(to right,transparent,rgba(0,119,182,.5),transparent);margin:36px 0}
+/* ── Regla divisoria ── */
+.wm-rule{height:1px;background:linear-gradient(to right,transparent,rgba(0,119,182,.5),transparent);margin:0}
 
-/* ── Section headers ── */
-.section-label{font-size:15px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;margin:0 0 10px}
-h2.section-title{font-size:clamp(28px,4vw,42px);font-weight:900;margin:0 0 24px;font-family:'Bree Serif',serif;line-height:1.1}
+/* ── Barra de credenciales ── */
+.cred-bar{
+  display:flex;
+  justify-content:center;
+  gap:48px;
+  flex-wrap:wrap;
+  padding:40px 20px;
+  background:rgba(4,17,46,.6);
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.cred-item{text-align:center}
+.cred-num{font-family:'Bree Serif',serif;font-size:42px;font-weight:900;color:#ffffff;line-height:1}
+.cred-label{font-size:20px;color:rgba(255,255,255,.65);margin-top:6px}
 
-/* ── Why card ── */
-.why-grid{display:flex;flex-direction:column;gap:14px;margin-bottom:36px}
-.why-item{display:flex;align-items:flex-start;gap:16px;background:rgba(9,18,34,.7);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:18px 20px}
-.why-icon{width:40px;height:40px;border-radius:12px;background:rgba(93,255,154,.1);border:1px solid rgba(93,255,154,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;margin-top:1px}
-.why-text{font-size:15px;line-height:1.7;color:rgba(255,255,255,.8)}
-
-/* ── What I help with ── */
-.help-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:36px}
-@media(max-width:600px){.help-grid{grid-template-columns:1fr}}
-.help-card{background:rgba(9,18,34,.7);border:1px solid rgba(0,119,182,.2);border-radius:16px;padding:20px}
-.help-card-title{font-size:14px;font-weight:900;color:#5dff9a;margin:0 0 6px;letter-spacing:.02em}
-.help-card-body{font-size:13.5px;line-height:1.7;color:rgba(255,255,255,.68);margin:0}
-
-/* ── CTA ── */
-.cta-body{font-size:15px;line-height:1.7;color:rgba(255,255,255,.72);margin:0 0 32px}
-
-/* ── Form card ── */
-.card{background:rgba(9,18,34,.84);border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:36px;backdrop-filter:blur(14px);box-shadow:0 24px 64px rgba(0,0,0,.42)}
+/* ── Tarjeta de formulario ── */
+.form-card{
+  background:rgba(9,18,34,.84);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:28px;
+  padding:44px;
+  backdrop-filter:blur(14px);
+  box-shadow:0 24px 64px rgba(0,0,0,.42);
+}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media(max-width:600px){.form-row{grid-template-columns:1fr}}
-.field{margin-bottom:20px}
-label.flabel{display:block;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:7px}
-label.flabel .req{color:#5dff9a;margin-left:2px}
-input[type=text],input[type=email],input[type=tel],input[type=number],select,textarea{width:100%;padding:13px 16px;border-radius:13px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);color:white;font-size:15px;font-family:inherit;outline:none;transition:border-color .2s;appearance:none;-webkit-appearance:none}
+.field{margin-bottom:22px}
+label.flabel{display:block;font-size:14px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.60);margin-bottom:9px}
+label.flabel .req{color:#ffd21f;margin-left:2px}
+input[type=text],input[type=email],input[type=tel],input[type=number],select,textarea{
+  width:100%;padding:15px 18px;border-radius:13px;border:1px solid rgba(255,255,255,.13);
+  background:rgba(255,255,255,.06);color:white;font-size:17px;font-family:inherit;
+  outline:none;transition:border-color .2s;appearance:none;-webkit-appearance:none
+}
 input::placeholder,textarea::placeholder{color:rgba(255,255,255,.28)}
-input:focus,select:focus,textarea:focus{border-color:rgba(93,255,154,.45);background:rgba(93,255,154,.04)}
+input:focus,select:focus,textarea:focus{border-color:rgba(255,210,31,.45);background:rgba(255,210,31,.04)}
 select option{background:#0c2035;color:white}
-textarea{resize:vertical;min-height:100px}
-.radio-row{display:flex;gap:20px;margin-top:4px}
-.radio-row label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:15px;color:rgba(255,255,255,.78)}
-.radio-row input[type=radio]{accent-color:#5dff9a;width:17px;height:17px;cursor:pointer}
-
-/* Turnstile */
+textarea{resize:vertical;min-height:110px}
+.radio-row{display:flex;gap:24px;margin-top:6px}
+.radio-row label{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:18px;color:rgba(255,255,255,.82);font-weight:400;text-transform:none;letter-spacing:0}
+.radio-row input[type=radio]{accent-color:#ffd21f;width:18px;height:18px;cursor:pointer}
 .turnstile-wrap{margin-bottom:20px;min-height:65px;display:flex;align-items:center}
-.turnstile-msg{font-size:13px;color:rgba(255,255,255,.4);font-style:italic}
-
-/* Submit */
-.btn-submit{width:100%;padding:17px;border-radius:16px;border:none;cursor:pointer;font-size:18px;font-weight:900;font-family:inherit;background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;box-shadow:0 10px 30px rgba(0,119,182,.35);transition:all .22s ease;letter-spacing:.02em;margin-top:4px}
+.turnstile-msg{font-size:15px;color:rgba(255,255,255,.4);font-style:italic}
+.btn-submit{
+  width:100%;padding:19px;border-radius:16px;border:none;cursor:pointer;
+  font-size:20px;font-weight:900;font-family:inherit;
+  background:linear-gradient(135deg,#0077b6,#023e6e);color:#ffd21f;
+  box-shadow:0 10px 30px rgba(0,119,182,.35);transition:all .22s ease;
+  letter-spacing:.02em;margin-top:4px
+}
 .btn-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,119,182,.45)}
 .btn-submit:disabled{opacity:.55;cursor:not-allowed;transform:none}
-
-/* Error/Success */
-.msg-box{display:none;margin-bottom:18px;padding:13px 16px;border-radius:12px;font-size:14px;font-weight:600}
+.msg-box{display:none;margin-bottom:18px;padding:15px 18px;border-radius:12px;font-size:17px;font-weight:600}
 .msg-box.show{display:block}
 .msg-error{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
-.msg-success-state{display:none;text-align:center;padding:40px 20px}
+.msg-success-state{display:none;text-align:center;padding:48px 20px}
 .msg-success-state.show{display:block}
-.success-icon{font-size:52px;margin-bottom:16px}
-.success-title{font-size:clamp(22px,4vw,30px);font-weight:900;color:#5dff9a;margin:0 0 12px;font-family:'Bree Serif',serif}
-.success-body{font-size:16px;line-height:1.7;color:rgba(255,255,255,.75);margin:0 0 28px}
-.success-yt{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:12px;background:rgba(0,119,182,.2);border:1px solid rgba(0,119,182,.35);color:#6dcfff;text-decoration:none;font-weight:700;font-size:14px;transition:all .2s}
+.success-icon{font-size:56px;margin-bottom:16px}
+.success-title{font-size:clamp(24px,4vw,34px);font-weight:900;color:#ffd21f;margin:0 0 14px;font-family:'Bree Serif',serif}
+.success-body{font-size:19px;line-height:1.75;color:rgba(255,255,255,.78);margin:0 0 28px}
+.success-yt{
+  display:inline-flex;align-items:center;gap:9px;padding:14px 28px;border-radius:12px;
+  background:rgba(0,119,182,.2);border:1px solid rgba(0,119,182,.35);color:#6dcfff;
+  text-decoration:none;font-weight:700;font-size:17px;transition:all .2s
+}
 .success-yt:hover{background:rgba(0,119,182,.35);transform:translateY(-1px)}
+
+@media(max-width:720px){
+  .wm-hero-inner{padding:80px 20px 52px}
+}
+
 /* ── CRO: camino más corto al formulario ── */
-.mid-cta{text-align:center;margin:30px 0 6px}
-.mid-cta a{display:inline-flex;align-items:center;gap:10px;background:#0077b6;color:#fff;font-weight:800;padding:14px 26px;border-radius:999px;text-decoration:none;font-size:16px;box-shadow:0 10px 26px rgba(0,0,0,.35)}
+.cards .flavor-card{min-height:230px;padding:22px}
+.mid-cta{text-align:center;margin:34px 0 8px}
 .more-toggle{background:none;border:none;color:#7fd0ff;font:inherit;font-weight:700;cursor:pointer;padding:6px 0;margin:2px 0 10px;display:inline-flex;align-items:center;gap:8px}
 .more-details{display:none}
 .more-details.open{display:block}
@@ -106,275 +160,296 @@ textarea{resize:vertical;min-height:100px}
 .affiliate-cred{max-width:1160px;margin:36px auto 4px;padding:0 24px;display:flex;flex-direction:column;align-items:flex-end;text-align:right}
 .affiliate-cred img{width:130px;height:auto;background:#fff;border-radius:14px;padding:8px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .affiliate-cred p{margin:10px 2px 0;font-size:12.5px;color:rgba(255,255,255,.72);line-height:1.55}
-@media(max-width:720px){.affiliate-cred img{width:110px}}
+@media(max-width:720px){
+  .affiliate-cred img{width:110px}
+  .cards .flavor-card{min-height:170px}
+  .form-row{grid-template-columns:1fr}
+  .form-card{padding:28px 20px}
+  .cred-bar{gap:28px}
+  .cred-num{font-size:32px}
+}
 </style>
 </head>
 <body>
-<div id="navbar-container"></div>
 
-<!-- ── BRAND BAR (full-width, left-anchored) ── -->
-<div class="sa-brand-bar">
-  <img src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
-  <span class="sa-brand-tagline">Navega más inteligente. Ríe más. Mantente a flote.</span>
+<!-- ── HERO ── -->
+<section class="wm-hero">
+  <a class="wm-logo-link" href="/es/index.html" title="Still Afloat Inicio">
+    <img src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+  </a>
+  <div id="navbar-container"></div>
+  <div class="wm-hero-inner">
+    <div class="section-kicker">Asesor de Viajes Independiente</div>
+    <h1>Planifica tu crucero con alguien que realmente ha estado allí.</h1>
+    <p>Soy Mark Millham — veterano de EE. UU., gerente de TI retirado, exmarinero de a bordo y asesor de cruceros independiente con más de 20 años en el agua (Cornerstone Collective). Yo hago la investigación, las cuentas del crucero y te hablo con honestidad, para que reserves el barco y el camarote correctos sin pagar de más — y sin volverte loco pensándolo.</p>
+    <a href="#contact" class="wm-cta-btn"><i class="fa-solid fa-compass"></i> Empieza a planificar con Mark</a>
+  </div>
+</section>
+
+<!-- ── BARRA DE CREDENCIALES ── -->
+<div class="cred-bar">
+  <div class="cred-item">
+    <div class="cred-num">Múltiples</div>
+    <div class="cred-label">Líneas de crucero navegadas</div>
+  </div>
+  <div class="cred-item">
+    <div class="cred-num">20+ años</div>
+    <div class="cred-label">En el agua</div>
+  </div>
+  <div class="cred-item">
+    <div class="cred-num">Cuentas claras</div>
+    <div class="cred-label">Cada dólar justificado</div>
+  </div>
+  <div class="cred-item">
+    <div class="cred-num">Militar</div>
+    <div class="cred-label">Me tomo la logística en serio</div>
+  </div>
+  <div class="cred-item">
+    <div class="cred-num">Cero</div>
+    <div class="cred-label">Agenda de ventas</div>
+  </div>
 </div>
 
-<div class="wm-shell">
-
-  <!-- ── HERO ── -->
-  <div class="hero-layout">
-    <div class="hero-text">
-      <div class="hero-badge"><i class="fa-solid fa-compass"></i>&nbsp; Asesor de Viajes Independiente</div>
-      <h1 class="hero-title">Trabaja Con <span>Mark</span></h1>
-      <p class="hero-sub">Planifica tu crucero con alguien que realmente ha estado allí.</p>
-      <p class="hero-body">
-        Soy Mark Millham — veterano de EE. UU., gerente de TI retirado, exmarinero de a bordo y
-        asesor de cruceros independiente con más de 20 años en el agua (Cornerstone Collective).
-        Yo hago la investigación, las cuentas del crucero y te hablo con honestidad, para que
-        reserves el barco y el camarote correctos sin pagar de más — y sin volverte loco pensándolo.
-      </p>
-    </div>
-    <div class="mark-photo-wrap">
-      <img src="/assets/images/mark-bio.JPG" alt="Mark Millham — Still Afloat">
-      <div class="mark-photo-caption">Mark Millham · Still Afloat</div>
+<!-- ── INTRO BREVE ── -->
+<section class="section">
+  <div class="wrap">
+    <div class="meet-mark-text" style="max-width:820px;margin:0 auto">
+      <div class="section-kicker">La Persona Detrás del Consejo</div>
+      <h2>Yo he sido la persona que hace toda la investigación.</h2>
+      <p>Cuando mi esposa Ceci decidió que quería probar un crucero, hice lo que siempre hago — investigué todo, saqué las cuentas y me negué a pagar por cualquier cosa que no valiera la pena. Su primer crucero fue en el Norwegian Getaway. Ya no es una crucerista reacia.</p>
+      <p>Eso es lo que hago por las personas con las que trabajo: he pasado más de veinte años en barcos (y buena parte de mi vida viviendo en el agua), para que tú no tengas que aprender nada de esto por las malas.</p>
+      <div class="mid-cta"><a href="#contact" class="wm-cta-btn"><i class="fa-solid fa-compass"></i> Empieza a planificar con Mark</a></div>
     </div>
   </div>
+</section>
 
-  <div class="rule"></div>
+<!-- ── EN QUÉ TE AYUDO — tarjetas con imagen ── -->
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:36px">
+      <div class="section-kicker">Lo Que Hago</div>
+      <h2>Desde la primera pregunta hasta la pasarela</h2>
+    </div>
+    <div class="cards">
+      <div class="flavor-card ship-card">
+        <div>
+          <h3>Selección de Barco y Línea</h3>
+          <p>Encontrar el barco adecuado para tu estilo de viaje, tu grupo y tu presupuesto — no lo que estén promocionando esta semana.</p>
+        </div>
+      </div>
+      <div class="flavor-card" style="background-image:url('https://images.unsplash.com/photo-1548574505-5e239809ee19?q=80&w=1200&auto=format&fit=crop')">
+        <div>
+          <h3>Cuentas del Crucero y Costo Real</h3>
+          <p>Paquetes de bebidas, propinas, restaurantes especiales, excursiones, Wi-Fi — te desgloso lo que se acumula y lo que realmente vale la pena.</p>
+        </div>
+      </div>
+      <div class="flavor-card casino-card">
+        <div>
+          <h3>Ofertas de Casino y Lealtad</h3>
+          <p>Qué incluyen realmente las ofertas de casino de cruceros, cómo evaluarlas y si perseguir una tiene sentido para tu situación.</p>
+        </div>
+      </div>
+    </div>
+    <div class="cards" style="margin-top:0">
+      <div class="flavor-card" style="background-image:url('https://images.unsplash.com/photo-1499678329028-101435549a4e?q=80&w=1200&auto=format&fit=crop')">
+        <div>
+          <h3>Consejos de Camarote e Itinerario</h3>
+          <p>Cuándo el interior está bien, cuándo el balcón lo cambia todo, y qué puertos valen el día — frente a cuáles se ven mejor en papel.</p>
+        </div>
+      </div>
+      <div class="flavor-card" style="background-image:url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=1200&auto=format&fit=crop')">
+        <div>
+          <h3>Guía para Primerizos</h3>
+          <p>Todo lo que el motor de reservas no te dice — la logística del día de embarque, qué empacar, los horarios de puerto y qué saltarte por completo.</p>
+        </div>
+      </div>
+      <div class="flavor-card" style="background-image:url('https://images.unsplash.com/photo-1505118380757-91f5f5632de0?q=80&w=1200&auto=format&fit=crop')">
+        <div>
+          <h3>Reserva y Documentación</h3>
+          <p>Desde el depósito hasta el pago final — requisitos de pasaporte, seguro de viaje y cada paso intermedio manejado con claridad.</p>
+        </div>
+      </div>
+    </div>
+    <div class="mid-cta"><a href="#contact" class="wm-cta-btn"><i class="fa-solid fa-compass"></i> ¿Te suena útil? Empieza a planificar</a></div>
+  </div>
+</section>
 
-  <!-- ── POR QUÉ TRABAJAR CON MARK ── -->
-  <div class="section-label">Por Qué Trabajar Con Mark</div>
-  <h2 class="section-title">Lo que obtienes que un motor de reservas no te da</h2>
-  <div class="why-grid">
-    <div class="why-item">
-      <div class="why-icon">🧭</div>
-      <div class="why-text">Alguien que ha navegado en múltiples líneas de cruceros muchas veces — no alguien leyendo un folleto.</div>
-    </div>
-    <div class="why-item">
-      <div class="why-icon">💡</div>
-      <div class="why-text">Matemáticas de crucero, dólar por dólar — precios, categorías de camarotes, costos a bordo y si una oferta es realmente una oferta.</div>
-    </div>
-    <div class="why-item">
-      <div class="why-icon">🥂</div>
-      <div class="why-text">Experiencia real planeando un crucero para alguien por primera vez. El primer crucero de mi esposa Ceci fue en el Norwegian Getaway. Sé qué hace funcionar un primer crucero — y qué lo arruina.</div>
-    </div>
-    <div class="why-item">
-      <div class="why-icon">🎖️</div>
-      <div class="why-text">Un trasfondo militar que significa que me tomo la logística en serio. Embarque, horarios de puertos, días de viaje, planes de contingencia — estos no son pensamientos de último momento.</div>
-    </div>
-    <div class="why-item">
-      <div class="why-icon">🚫</div>
-      <div class="why-text">Sin presión, sin agenda de ventas. Me pagan cuando navegas feliz — no cuando te meto en una categoría de cabina que no necesitas.</div>
+<!-- ── PAUSA DE ONDA — sin agenda de ventas ── -->
+<div class="vibe-section">
+  <div class="wrap">
+    <div class="vibe-panel">
+      <div class="section-kicker">Lo Único Que Es Diferente</div>
+      <h2>Me pagan cuando navegas feliz.</h2>
+      <p>Eso significa que tengo exactamente una meta — ponerte en el barco correcto, en el camarote correcto, a un precio que tenga sentido para tu presupuesto. Si un camarote interior es de verdad la mejor opción, te lo diré. Si un balcón cambia por completo la experiencia en un itinerario en particular, también te lo diré.</p>
+      <p style="margin-top:20px">Sin discurso de folleto. Sin presión de venta. Solo alguien que ha hecho esto muchas veces y quiere que tu viaje valga la pena.</p>
     </div>
   </div>
-
-  <p class="hero-body" style="margin-bottom:36px">
-    Trabajo con primerizos, cruceristas que regresan planeando algo más grande,
-    y parejas donde uno de los dos está haciendo toda la investigación.
-    Si ese último caso te suena familiar — yo he sido ese compañero. Sé cómo funciona.
-  </p>
-
-  <div class="rule"></div>
-
-  <!-- ── EN QUÉ TE AYUDO ── -->
-  <div class="section-label">En Qué Te Ayudo</div>
-  <h2 class="section-title">Desde la primera pregunta hasta la pasarela</h2>
-  <div class="help-grid">
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-ship fa-sm"></i> Selección de Línea y Barco</div>
-      <div class="help-card-body">Encontrar el barco adecuado para tu estilo de viaje, tamaño del grupo y presupuesto.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-map-location-dot fa-sm"></i> Planificación de Itinerario</div>
-      <div class="help-card-body">Puertos que valen la pena — y puertos que se ven mejor en papel que en persona.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-bed fa-sm"></i> Consejos sobre Categoría de Cabina</div>
-      <div class="help-card-body">Cuándo el interior está bien, cuándo el balcón lo cambia todo, y lo que realmente cuesta la mejora.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-calculator fa-sm"></i> Entendiendo el Costo Real</div>
-      <div class="help-card-body">Propinas, paquetes de bebidas, restaurantes especiales, excursiones, Wi-Fi — te explicaré qué está incluido y qué se acumula.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-dice fa-sm"></i> Ofertas de Casino y Lealtad</div>
-      <div class="help-card-body">Qué incluyen realmente las ofertas de casino de cruceros, cómo evaluarlas y si perseguir una oferta tiene sentido para tu situación.</div>
-    </div>
-    <div class="help-card">
-      <div class="help-card-title"><i class="fa-solid fa-file-contract fa-sm"></i> Reserva y Documentación</div>
-      <div class="help-card-body">Desde el depósito hasta el pago final — requisitos de pasaporte, seguro de viaje y todo lo demás.</div>
-    </div>
-  </div>
-
-  <div class="mid-cta"><a href="#contact"><i class="fa-solid fa-compass"></i> Empieza a planificar con Mark</a></div>
-
-  <div class="rule"></div>
-
-  <!-- ── CTA + FORM ── -->
-  <div class="cta-title" id="contact">¿Listo para empezar a planificar?</div>
-  <p class="cta-body">
-    Completa el formulario y me pondré en contacto contigo en 24 horas.
-    Sin compromiso, sin discurso de ventas — solo una conversación sobre a dónde quieres ir
-    y cómo llegar sin pagar de más ni pensarlo demasiado.
-  </p>
-
-  <div class="card">
-
-    <!-- Estado de éxito -->
-    <div class="msg-success-state" id="successState">
-      <div class="success-icon">🧭</div>
-      <div class="success-title" id="successTitle">Estás en el radar.</div>
-      <p class="success-body">
-        Mark revisará tus detalles y se pondrá en contacto contigo en 24 horas.
-        Mientras tanto, echa un vistazo al canal —
-        ya hay algo allí que vale la pena ver.
-      </p>
-      <a href="https://www.youtube.com/@StillAfloatcruising2026" target="_blank" rel="noopener" class="success-yt">
-        <i class="fa-brands fa-youtube"></i> Ver Still Afloat en YouTube
-      </a>
-    </div>
-
-    <!-- Mensaje de error -->
-    <div id="errorMsg" class="msg-box msg-error"></div>
-
-    <!-- Formulario de contacto -->
-    <form id="contactForm" novalidate>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="first_name">Nombre<span class="req">*</span></label>
-          <input type="text" id="first_name" name="first_name" placeholder="Ana" autocomplete="given-name" required>
-        </div>
-        <div class="field">
-          <label class="flabel" for="last_name">Apellido<span class="req">*</span></label>
-          <input type="text" id="last_name" name="last_name" placeholder="García" autocomplete="family-name" required>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="email">Correo Electrónico<span class="req">*</span></label>
-          <input type="email" id="email" name="email" placeholder="tu@ejemplo.com" autocomplete="email" required>
-        </div>
-        <div class="field">
-          <label class="flabel" for="num_travelers">Número de Viajeros<span class="req">*</span></label>
-          <input type="number" id="num_travelers" name="num_travelers" placeholder="2" min="1" max="20" required>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="flabel" for="travel_dates">Fechas Aproximadas de Viaje<span class="req">*</span></label>
-        <input type="text" id="travel_dates" name="travel_dates" placeholder="ej. Primavera 2027 o 15–22 de marzo de 2027" required>
-      </div>
-
-      <div class="field">
-        <label class="flabel">¿Es tu primer crucero?<span class="req">*</span></label>
-        <div class="radio-row">
-          <label><input type="radio" name="first_time" value="true" required> Sí, es mi primero</label>
-          <label><input type="radio" name="first_time" value="false"> No, ya he navegado antes</label>
-        </div>
-      </div>
-
-      <!-- CRO: campos opcionales colapsados — el formulario visible queda en 5 respuestas. -->
-      <button type="button" class="more-toggle" id="moreToggle">+ Añadir más detalles <span style="opacity:.6">(opcional)</span></button>
-      <div class="more-details" id="moreDetails">
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="phone">Teléfono</label>
-          <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" autocomplete="tel">
-        </div>
-        <div class="field">
-          <label class="flabel" for="preferred_lang">Idioma Preferido</label>
-          <select id="preferred_lang" name="preferred_lang">
-            <option value="es" selected>Español</option>
-            <option value="en">English</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="destination">Destino de Interés</label>
-          <select id="destination" name="destination">
-            <option value="">— Aún no estoy seguro/a —</option>
-            <option>Caribe</option>
-            <option>Mediterráneo</option>
-            <option>Alaska</option>
-            <option>Bahamas</option>
-            <option>México</option>
-            <option>Europa (Río)</option>
-            <option>Aún no estoy seguro/a</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="flabel" for="cruise_line_pref">Preferencia de Línea de Crucero</label>
-          <select id="cruise_line_pref" name="cruise_line_pref">
-            <option value="">— Sin preferencia —</option>
-            <option>Norwegian (NCL)</option>
-            <option>Royal Caribbean</option>
-            <option>Carnival</option>
-            <option>Celebrity</option>
-            <option>Holland America</option>
-            <option>MSC</option>
-            <option>Sin preferencia</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="field">
-          <label class="flabel" for="budget_range">Presupuesto Por Persona</label>
-          <select id="budget_range" name="budget_range">
-            <option value="">— Selecciona un rango —</option>
-            <option>Menos de $1,000</option>
-            <option>$1,000 – $2,000</option>
-            <option>$2,000 – $3,500</option>
-            <option>$3,500 – $5,000</option>
-            <option>$5,000+</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="flabel" for="referral_source">¿Cómo nos encontraste?</label>
-          <select id="referral_source" name="referral_source">
-            <option value="">— Selecciona una opción —</option>
-            <option>YouTube</option>
-            <option>Sitio web</option>
-            <option>Redes sociales</option>
-            <option>Recomendación de amigo o familiar</option>
-            <option>Otro</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="flabel" for="notes">Preguntas o algo más que debamos saber</label>
-        <textarea id="notes" name="notes" placeholder="Cuéntale a Mark lo que estás pensando — destinos, preguntas de presupuesto, preocupaciones, cualquier cosa." maxlength="1000" rows="4"></textarea>
-      </div>
-
-      </div><!-- /.more-details -->
-
-      <!-- Cloudflare Turnstile -->
-      <div class="turnstile-wrap" id="turnstileWrap">
-        <span class="turnstile-msg" id="turnstileMsg"><i class="fa-solid fa-shield-halved"></i>&nbsp; Cargando protección antispam…</span>
-      </div>
-
-      <button type="submit" class="btn-submit" id="submitBtn">
-        <i class="fa-solid fa-paper-plane"></i>&nbsp; Enviar Mis Datos a Mark
-      </button>
-
-    </form>
-  </div>
-
 </div>
+
+<!-- ── CTA + FORMULARIO ── -->
+<section class="section" id="contact">
+  <div class="wrap" style="max-width:820px">
+
+    <div style="margin-bottom:36px">
+      <div class="section-kicker">Empieza Aquí</div>
+      <h2>¿Listo para empezar a planificar?</h2>
+      <p>Completa el formulario y me pondré en contacto contigo en 24 horas. Sin compromiso, sin discurso de ventas — solo una conversación sobre a dónde quieres ir y cómo llegar sin pagar de más ni pensarlo demasiado.</p>
+    </div>
+
+    <div class="form-card">
+
+      <div class="msg-success-state" id="successState">
+        <div class="success-icon">🧭</div>
+        <div class="success-title" id="successTitle">Estás en el radar.</div>
+        <p class="success-body">Mark revisará tus detalles y se pondrá en contacto contigo en 24 horas. Mientras tanto, echa un vistazo al canal — ya hay algo allí que vale la pena ver.</p>
+        <a href="https://www.youtube.com/@StillAfloatcruising2026" target="_blank" rel="noopener" class="success-yt">
+          <i class="fa-brands fa-youtube"></i> Visita el Canal de Still Afloat
+        </a>
+      </div>
+
+      <div id="errorMsg" class="msg-box msg-error"></div>
+
+      <form id="contactForm" novalidate>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="first_name">Nombre<span class="req">*</span></label>
+            <input type="text" id="first_name" name="first_name" placeholder="Ana" autocomplete="given-name" required>
+          </div>
+          <div class="field">
+            <label class="flabel" for="last_name">Apellido<span class="req">*</span></label>
+            <input type="text" id="last_name" name="last_name" placeholder="García" autocomplete="family-name" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="email">Correo Electrónico<span class="req">*</span></label>
+            <input type="email" id="email" name="email" placeholder="tu@ejemplo.com" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label class="flabel" for="num_travelers">Número de Viajeros<span class="req">*</span></label>
+            <input type="number" id="num_travelers" name="num_travelers" placeholder="2" min="1" max="20" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="flabel" for="travel_dates">Fechas Aproximadas de Viaje<span class="req">*</span></label>
+          <input type="text" id="travel_dates" name="travel_dates" placeholder="ej. Primavera 2027 o 15–22 de marzo de 2027" required>
+        </div>
+
+        <div class="field">
+          <label class="flabel">¿Es tu primer crucero?<span class="req">*</span></label>
+          <div class="radio-row">
+            <label><input type="radio" name="first_time" value="true" required> Sí, es mi primero</label>
+            <label><input type="radio" name="first_time" value="false"> No, ya he navegado antes</label>
+          </div>
+        </div>
+
+        <!-- CRO: todo lo de abajo es genuinamente opcional — colapsado para que el
+             formulario visible queden 5 respuestas rápidas. Los id de los campos no
+             cambian (JS de envío + API). -->
+        <button type="button" class="more-toggle" id="moreToggle">+ Añadir más detalles <span style="opacity:.6">(opcional)</span></button>
+        <div class="more-details" id="moreDetails">
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="phone">Teléfono</label>
+            <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567" autocomplete="tel">
+          </div>
+          <div class="field">
+            <label class="flabel" for="preferred_lang">Idioma Preferido</label>
+            <select id="preferred_lang" name="preferred_lang">
+              <option value="es" selected>Español</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="destination">Destino de Interés</label>
+            <select id="destination" name="destination">
+              <option value="">— Aún no estoy seguro/a —</option>
+              <option>Caribe</option>
+              <option>Mediterráneo</option>
+              <option>Alaska</option>
+              <option>Bahamas</option>
+              <option>México</option>
+              <option>Europa (Río)</option>
+              <option>Aún no estoy seguro/a</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="flabel" for="cruise_line_pref">Preferencia de Línea de Crucero</label>
+            <select id="cruise_line_pref" name="cruise_line_pref">
+              <option value="">— Sin preferencia —</option>
+              <option>Norwegian (NCL)</option>
+              <option>Royal Caribbean</option>
+              <option>Carnival</option>
+              <option>Celebrity</option>
+              <option>Holland America</option>
+              <option>MSC</option>
+              <option>Sin preferencia</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="flabel" for="budget_range">Presupuesto Por Persona</label>
+            <select id="budget_range" name="budget_range">
+              <option value="">— Selecciona un rango —</option>
+              <option>Menos de $1,000</option>
+              <option>$1,000 – $2,000</option>
+              <option>$2,000 – $3,500</option>
+              <option>$3,500 – $5,000</option>
+              <option>$5,000+</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="flabel" for="referral_source">¿Cómo nos encontraste?</label>
+            <select id="referral_source" name="referral_source">
+              <option value="">— Selecciona una opción —</option>
+              <option>YouTube</option>
+              <option>Sitio web</option>
+              <option>Redes sociales</option>
+              <option>Recomendación de amigo o familiar</option>
+              <option>Otro</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="flabel" for="notes">Preguntas o algo más que debamos saber</label>
+          <textarea id="notes" name="notes" placeholder="Cuéntale a Mark lo que estás pensando — destinos, preguntas de presupuesto, preocupaciones, cualquier cosa." maxlength="1000" rows="4"></textarea>
+        </div>
+
+        </div><!-- /.more-details -->
+
+        <div class="turnstile-wrap" id="turnstileWrap">
+          <span class="turnstile-msg" id="turnstileMsg"><i class="fa-solid fa-shield-halved"></i>&nbsp; Cargando protección antispam…</span>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <i class="fa-solid fa-paper-plane"></i>&nbsp; Enviar Mis Datos a Mark
+        </button>
+
+      </form>
+    </div>
+  </div>
+</section>
 
 <div class="affiliate-cred">
   <img src="/assets/images/cornerstone-affiliate-logo.png" alt="Cornerstone — Lets Go Travel Affiliate">
   <p>California SOT #2158353-50<br>Florida SOT Ref. #ST44927</p>
 </div>
 
-<footer style="padding:28px 20px 50px;text-align:center;color:rgba(255,255,255,.32);font-size:.85rem">
-  &copy; 2025 Still Afloat &middot; <em>Navega más inteligente. Ríe más. Mantente a flote.</em>
+<footer>
+  <p>© 2026 Still Afloat LLC — Navega más inteligente. Ríe más. <img src="/assets/images/stay-afloat-text.png" alt="Mantente a flote" style="height:20px;vertical-align:middle;opacity:.7"></p>
 </footer>
+
+<script src="/components/navbar.js?v=20260725-topbar2"></script>
 
 <script>
 const form      = document.getElementById('contactForm');
@@ -384,12 +459,25 @@ const successEl = document.getElementById('successState');
 let turnstileToken = null;
 let turnstileSiteKey = null;
 
-function showError(msg) {
+function showError(msg, fieldId) {
   errBox.textContent = msg;
   errBox.classList.add('show');
   btn.disabled = false;
   btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Enviar Mis Datos a Mark';
-  errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (fieldId) {
+    const field = document.getElementById(fieldId);
+    if (field) {
+      field.style.border = '2px solid #ef4444';
+      field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      field.focus();
+      field.addEventListener('input', () => {
+        field.style.border = '';
+        errBox.classList.remove('show');
+      }, { once: true });
+    }
+  } else {
+    errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 function showSuccess(firstName) {
@@ -440,18 +528,16 @@ form.addEventListener('submit', async e => {
   const dates     = document.getElementById('travel_dates').value.trim();
   const firstTime = document.querySelector('input[name="first_time"]:checked');
 
-  if (!firstName) return showError('Por favor ingresa tu nombre.');
-  if (!lastName)  return showError('Por favor ingresa tu apellido.');
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    return showError('Por favor ingresa un correo electrónico válido.');
-  if (!numTrav || parseInt(numTrav) < 1)
-    return showError('Por favor indícanos cuántos viajeros son.');
-  if (!dates)     return showError('Por favor ingresa tus fechas aproximadas de viaje.');
-  if (!firstTime) return showError('Por favor indícanos si es tu primer crucero.');
-
-  if (turnstileSiteKey && !turnstileToken) {
-    return showError('Por favor completa la verificación de seguridad.');
-  }
+  if (!firstName) return showError('Por favor ingresa tu nombre.', 'first_name');
+if (!lastName)  return showError('Por favor ingresa tu apellido.', 'last_name');
+if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+  return showError('Por favor ingresa un correo electrónico válido.', 'email');
+if (!numTrav || parseInt(numTrav) < 1)
+  return showError('Por favor indícanos cuántos viajeros son.', 'num_travelers');
+if (!dates) return showError('Por favor ingresa tus fechas aproximadas de viaje.', 'travel_dates');
+if (!firstTime) return showError('Por favor indícanos si es tu primer crucero.', 'first_time');
+if (turnstileSiteKey && !turnstileToken)
+  return showError('Por favor completa la verificación de seguridad de arriba.');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Enviando…';
@@ -485,26 +571,25 @@ form.addEventListener('submit', async e => {
       btn.disabled = false;
       btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Enviar Mis Datos a Mark';
       if (res.status === 400 && data.error?.includes('erif')) {
-        return showError('No pudimos verificar que eres humano. Por favor recarga la página e intenta de nuevo.');
+        return showError('No pudimos verificar que eres humano — por favor recarga la página e intenta de nuevo.');
       }
       return showError(data.error || 'Algo salió mal. Por favor intenta de nuevo.');
     }
 
     showSuccess(firstName);
-  } catch {
+  } catch (err) {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Enviar Mis Datos a Mark';
-    showError('Error de red. Por favor verifica tu conexión e intenta de nuevo.');
+    showError('Error de red — por favor verifica tu conexión e intenta de nuevo.');
   }
 });
 </script>
-<script src="/components/navbar.js?v=20260725-topbar2"></script>
 <script>
 // CRO: toggle de detalles opcionales.
 document.getElementById('moreToggle').addEventListener('click', function () {
   var d = document.getElementById('moreDetails');
   var open = d.classList.toggle('open');
-  this.innerHTML = open ? '&minus; Ocultar detalles' : '+ Añadir más detalles <span style="opacity:.6">(opcional)</span>';
+  this.innerHTML = open ? '&minus; Ocultar detalles extra' : '+ Añadir más detalles <span style="opacity:.6">(opcional)</span>';
 });
 </script>
 </body>
