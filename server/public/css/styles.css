@@ -290,6 +290,8 @@ a{text-decoration:none;color:inherit;}
 
 .flavor-card > div{position:relative;z-index:2;}
 
+.flavor-link{display:block;text-decoration:none;color:inherit;}
+
 .flavor-card:hover{
   transform:translateY(-6px);
   box-shadow:0 24px 42px rgba(0,0,0,0.18);

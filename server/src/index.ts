@@ -8,6 +8,7 @@ import { scanAndQueue } from "./lib/social-agent";
 import { draftNewsletter, saveDraft } from "./lib/newsletter";
 import { notifyTelegram, reviewUrl } from "./lib/telegram";
 import { runNewsPrerender } from "./lib/prerender-news";
+import { runGuidesPrerender } from "./lib/prerender-guides";
 import { stageWeeklyCommentary } from "./lib/commentary-agent";
 import { startShipTracker } from "./lib/ship-tracker";
 import { runWatchSweep } from "./lib/wms-alerts";
@@ -67,6 +68,7 @@ app.listen(port, "0.0.0.0", () => {
   // News pre-renderer — writes static, crawlable news pages (SEO). Local file
   // writes only, so it runs on BOTH boxes (dev gets testable pages).
   scheduleNewsPrerender();
+  scheduleGuidesPrerender();
   // Where's-My-Ship AIS tracker — reads the free aisstream.io feed into an
   // in-memory position cache. No-ops without AISSTREAM_API_KEY. Runs on BOTH
   // boxes (each writes only to its own Supabase; dev makes the page testable).
@@ -112,6 +114,22 @@ function scheduleNewsPrerender() {
   setTimeout(() => { tick().catch(() => {}); }, 40_000);
   setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
   logger.info("News prerender scheduler active — on boot + hourly");
+}
+
+// ── Cruising Guides prerender scheduler ───────────────────────────────────────
+// Evergreen guide pages regenerated from the `guides` data on boot + hourly, the
+// same cadence and error-isolation as the news prerender.
+function scheduleGuidesPrerender() {
+  const tick = async () => {
+    try {
+      await runGuidesPrerender();
+    } catch (err) {
+      logger.error({ err }, "Guides prerender tick failed");
+    }
+  };
+  setTimeout(() => { tick().catch(() => {}); }, 50_000);
+  setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
+  logger.info("Guides prerender scheduler active — on boot + hourly");
 }
 
 // ── Social poster scheduler ───────────────────────────────────────────────────

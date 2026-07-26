@@ -1,9 +1,8 @@
-import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { logger } from "./logger";
 import { PATHS, readJson } from "./persistence";
+import { resolvePublicDir } from "./public-dir";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // News PRE-RENDERER — replaces the JS-built news pages with real static HTML.
@@ -56,17 +55,6 @@ export interface NewsStory {
 }
 
 type Lang = "en" | "es";
-
-function resolvePublicDir(): string {
-  // Works from both src/lib (tsx) and the bundled dist/ output.
-  let dir = path.dirname(fileURLToPath(import.meta.url));
-  for (let i = 0; i < 5; i++) {
-    const candidate = path.join(dir, "public");
-    if (existsSync(path.join(candidate, "index.html"))) return candidate;
-    dir = path.dirname(dir);
-  }
-  throw new Error("prerender-news: cannot locate server/public");
-}
 
 // ── slug (twin lives in public/js/news.js) ──────────────────────────────────
 function djb2(s: string): string {

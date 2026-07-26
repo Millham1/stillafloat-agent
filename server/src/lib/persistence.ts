@@ -52,6 +52,9 @@ export const PATHS = {
   // Per-story SEO title/description overrides for the news prerenderer, keyed by
   // story id. Lets us tune search snippets without changing the on-page headline.
   seoOverrides: "seo-overrides",
+  // Evergreen "Cruising Guides" — curated long-form advisory articles (Track A/B).
+  // Prerendered to static /guides/<slug>.html pages, EN + ES.
+  guides: "guides",
 };
 
 export async function writeJson(key: string, payload: unknown): Promise<boolean> {
