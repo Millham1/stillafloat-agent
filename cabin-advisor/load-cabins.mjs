@@ -19,10 +19,15 @@ if (!slug) { console.error("usage: node load-cabins.mjs <ship-slug>"); process.e
 const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_KEY;
 if (!url || !key) { console.error("SUPABASE_URL and SUPABASE_SERVICE_KEY are required"); process.exit(1); }
 
-const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "data", "cabins");
+const dir = process.env.CABIN_DATA_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), "data", "cabins");
 const full = JSON.parse(fs.readFileSync(path.join(dir, `${slug}-full.json`)));
 const curPath = path.join(dir, `${slug}.json`);
 const cur = fs.existsSync(curPath) ? JSON.parse(fs.readFileSync(curPath)) : { cabins: [] };
+
+if (!Array.isArray(full.cabins) || full.cabins.length === 0) {
+  console.log(`${slug}: 0 cabins in source file — skipping (not a real grid, e.g. ship absent from source)`);
+  process.exit(0);
+}
 
 const sb = createClient(url, key, { realtime: { transport: ws }, auth: { persistSession: false } });
 
@@ -36,10 +41,21 @@ const { error: se } = await sb.from("cabin_ships").upsert({
 if (se) { console.error("cabin_ships upsert error", se); process.exit(1); }
 
 await sb.from("cabins").delete().eq("ship_slug", slug);
-const rows = full.cabins.map((c) => ({
-  ship_slug: slug, cabin_num: String(c.num), deck: c.deck, category: c.category,
-  section: c.section, side: c.side, x: c.x, y: c.y, fill: c.fill, obstructed: !!c.obstructed,
-}));
+// Dedupe by cabin_num: multi-deck suites (e.g. lofts/townhouses) are listed once per
+// deck they occupy in the source, but are ONE stateroom. Keep the first occurrence.
+const seen = new Set();
+const rows = [];
+for (const c of full.cabins) {
+  const num = String(c.num);
+  if (seen.has(num)) continue;
+  seen.add(num);
+  rows.push({
+    ship_slug: slug, cabin_num: num, deck: c.deck, category: c.category,
+    section: c.section, side: c.side, x: c.x, y: c.y, fill: c.fill, obstructed: !!c.obstructed,
+  });
+}
+const dupes = full.cabins.length - rows.length;
+if (dupes) console.log(`(collapsed ${dupes} multi-deck-suite duplicate rows)`);
 for (let i = 0; i < rows.length; i += 500) {
   const { error } = await sb.from("cabins").insert(rows.slice(i, i + 500));
   if (error) { console.error("cabins insert error @", i, error); process.exit(1); }
