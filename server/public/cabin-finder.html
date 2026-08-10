@@ -130,11 +130,19 @@ function drawDots(){
   dots.innerHTML = STEPS.map((_,i)=>`<div class="dot ${i<=step?'on':''}"></div>`).join("");
 }
 
+// NEVER gate the first paint on a network call. Gating render() behind this
+// fetch meant that if /api/cabins/ships hung (route not deployed, API down, slow
+// link) the visitor got a dead page: header, no question, no way forward. Draw
+// first, fill the ship list in when it arrives.
+let shipsLoaded = false;
 async function loadShips(){
+  const ctl = new AbortController();
+  const t = setTimeout(()=>ctl.abort(), 8000);
   try{
-    const r = await fetch("/api/cabins/ships");
+    const r = await fetch("/api/cabins/ships", { signal: ctl.signal });
     ships = (await r.json()).ships || [];
   }catch{ ships = []; }
+  finally{ clearTimeout(t); shipsLoaded = true; }
 }
 
 function render(){
@@ -147,7 +155,9 @@ function render(){
              <option value="">Choose your ship…</option>
              ${ships.map(x=>`<option value="${x.slug}">${x.ship} — ${x.line}</option>`).join("")}
            </select>`
-        : `<div class="err">No ships are loaded yet. Once a ship's cabin data is in, it appears here.</div>`)
+        : (shipsLoaded
+            ? `<div class="err">I can't reach the ship list right now. Refresh in a moment — your answers aren't lost.</div>`
+            : `<select class="ship" disabled><option>Loading ships…</option></select>`))
     : `<div class="opts">${s.opts.map(o=>`
         <button class="opt ${answers[s.key]===o.v?'sel':''}" data-v="${o.v}">
           <i class="fa-solid ${o.i}"></i><span><b>${o.t}</b><span>${o.d}</span></span>
@@ -226,7 +236,9 @@ function show(d){
     <p class="note">Booked through me, this costs you nothing extra — the cruise line pays the commission either way.</p>`;
 }
 
-(async ()=>{ await loadShips(); render(); })();
+// Paint immediately; the ship list arrives on its own and re-renders step 0.
+render();
+loadShips().then(()=>{ if (step === 0) render(); });
 </script>
 </body>
 </html>
