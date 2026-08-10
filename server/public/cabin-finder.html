@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Which Cabin Should You Book? — Cabin Concierge | Still Afloat</title>
+<meta name="description" content="Answer four questions and get specific cabin numbers on your ship — why each one, the honest tie-breaker between them, and which cabins to avoid. Free, from a real cruise advisor.">
+<link rel="canonical" href="https://stillafloatcruising.com/cabin-finder.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:title" content="Which Cabin Should You Book? — Cabin Concierge">
+<meta property="og:description" content="Specific cabin numbers for your ship, with the reason behind each one — and the ones to avoid.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#06111f;--ink2:#0b2238;--green:#5dff9a;--gold:#ffd95d;--line:rgba(255,255,255,.12)}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 45%,#102f4d 100%);min-height:100vh;
+     font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:#fff}
+.shell{max-width:820px;margin:auto;padding:34px 22px 90px}
+
+/* header */
+.top{text-align:center;margin-bottom:30px}
+.kicker{color:var(--green);letter-spacing:.18em;text-transform:uppercase;font-size:13px;font-weight:700;margin-bottom:8px}
+.top h1{font-size:clamp(30px,5vw,46px);font-weight:900;margin:0 0 10px;line-height:1.1}
+.top p{color:rgba(255,255,255,.72);margin:0 auto;max-width:560px;line-height:1.6;font-size:17px}
+
+/* progress */
+.dots{display:flex;gap:8px;justify-content:center;margin:26px 0 22px}
+.dot{width:34px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);transition:background .25s}
+.dot.on{background:var(--green)}
+
+/* one question per screen — this is an advisor, not a filter form */
+.card{background:rgba(9,26,48,.72);border:1px solid var(--line);border-radius:22px;padding:30px 26px;
+      box-shadow:0 24px 48px rgba(0,0,0,.35)}
+.q{font-size:clamp(21px,3.4vw,28px);font-weight:800;margin:0 0 6px;line-height:1.25}
+.qsub{color:rgba(255,255,255,.6);margin:0 0 22px;font-size:16px;line-height:1.5}
+.opts{display:grid;gap:12px}
+.opt{display:flex;align-items:flex-start;gap:14px;width:100%;text-align:left;cursor:pointer;
+     background:rgba(255,255,255,.045);border:1.5px solid var(--line);border-radius:16px;
+     padding:17px 19px;color:#fff;font:inherit;transition:border-color .18s,background .18s,transform .12s}
+.opt:hover{border-color:rgba(93,255,154,.5);background:rgba(93,255,154,.07)}
+.opt:active{transform:scale(.99)}
+.opt.sel{border-color:var(--green);background:rgba(93,255,154,.12)}
+.opt i{color:var(--green);font-size:19px;width:24px;text-align:center;margin-top:2px}
+.opt b{display:block;font-weight:700;font-size:17px}
+.opt span{display:block;color:rgba(255,255,255,.62);font-size:14.5px;line-height:1.45;margin-top:2px}
+select.ship{width:100%;padding:16px 18px;border-radius:16px;background:rgba(255,255,255,.06);
+     border:1.5px solid var(--line);color:#fff;font:inherit;font-size:17px;outline:none}
+select.ship:focus{border-color:rgba(93,255,154,.5)}
+select.ship option{background:#0b2238}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:22px}
+.back{background:none;border:none;color:rgba(255,255,255,.55);font:inherit;cursor:pointer;padding:8px 4px}
+.back:hover{color:#fff}
+.go{background:var(--green);color:#06111f;border:none;border-radius:14px;padding:14px 26px;
+    font:inherit;font-weight:800;font-size:17px;cursor:pointer}
+.go[disabled]{opacity:.35;cursor:not-allowed}
+
+/* results */
+.res-head{margin:0 0 4px;font-size:clamp(24px,4vw,34px);font-weight:900}
+.res-sub{color:rgba(255,255,255,.66);margin:0 0 26px;line-height:1.55}
+.pick{background:rgba(9,26,48,.72);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:16px}
+.pick.top{border-color:rgba(93,255,154,.45);box-shadow:0 0 0 1px rgba(93,255,154,.15)}
+.pick-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.num{font-size:32px;font-weight:900;color:var(--green);line-height:1}
+.badge{background:rgba(255,217,93,.16);color:var(--gold);border-radius:999px;padding:4px 12px;
+       font-size:12.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.facts{color:rgba(255,255,255,.6);font-size:14.5px;margin:2px 0 12px}
+.reason{color:rgba(255,255,255,.9);line-height:1.65;margin:0;font-size:16.5px}
+.avoid{background:rgba(255,120,120,.07);border:1px solid rgba(255,140,140,.22);border-radius:18px;padding:20px 22px;margin:22px 0}
+.avoid h3{margin:0 0 10px;font-size:18px;color:#ffb4b4;font-weight:800}
+.avoid li{color:rgba(255,255,255,.8);line-height:1.6;margin-bottom:8px}
+.cta{background:linear-gradient(135deg,#0b2f52,#0f4a6e);border:1px solid rgba(93,255,154,.28);
+     border-radius:22px;padding:28px 26px;text-align:center;margin-top:26px}
+.cta h3{margin:0 0 8px;font-size:23px;font-weight:900}
+.cta p{color:rgba(255,255,255,.75);margin:0 0 18px;line-height:1.6}
+.cta a{display:inline-block;background:var(--gold);color:#06111f;text-decoration:none;border-radius:14px;
+       padding:14px 28px;font-weight:800}
+.note{color:rgba(255,255,255,.45);font-size:14px;text-align:center;margin-top:22px;line-height:1.5}
+.err{background:rgba(255,120,120,.1);border:1px solid rgba(255,140,140,.3);border-radius:14px;padding:16px;color:#ffc9c9}
+.hide{display:none}
+.spin{text-align:center;padding:40px;color:rgba(255,255,255,.6)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="top">
+    <div class="kicker">Cabin Concierge</div>
+    <h1>Which cabin should you actually book?</h1>
+    <p>Four questions. You'll get specific cabin numbers on your ship — the reason behind each one,
+       the honest difference between them, and the ones I'd steer you away from.</p>
+  </div>
+
+  <div class="dots" id="dots"></div>
+  <div id="stage"></div>
+
+  <p class="note">Free. No account, no email required to see your cabins.</p>
+</div>
+
+<script>
+// The advisor's reasoning is pre-written and stored server-side, so this page
+// never waits on an AI — it just asks four questions and fetches the answer.
+const STEPS = [
+  { key:"ship", q:"Which ship are you sailing?", sub:"Pick your ship and I'll give you real cabin numbers on it.", type:"ship" },
+  { key:"party", q:"Who's travelling?", sub:"This changes the answer more than anything else.", opts:[
+      {v:"couple", i:"fa-heart", t:"Just the two of us", d:"A couple sharing one cabin."},
+      {v:"family", i:"fa-children", t:"Family with kids", d:"You'll want space and somewhere the kids can be loud."},
+      {v:"solo",  i:"fa-user",  t:"Solo", d:"I'll flag where the single supplement is worth fighting."},
+      {v:"group", i:"fa-users", t:"A group of us", d:"Several cabins — being near each other matters."} ]},
+  { key:"budget", q:"Where's your budget, honestly?", sub:"No judgement. It just decides which decks are in play.", opts:[
+      {v:"lean",   i:"fa-tag",    t:"Keep it lean", d:"Best value — I'll tell you where the money doesn't buy much."},
+      {v:"middle", i:"fa-scale-balanced", t:"Comfortable middle", d:"A good balcony without a suite price."},
+      {v:"treat",  i:"fa-champagne-glasses", t:"Treating ourselves", d:"This is the trip you've been saving for."},
+      {v:"sky",    i:"fa-crown", t:"No ceiling", d:"Show me the best room on the ship."} ]},
+  { key:"priority", q:"What matters most once you're aboard?", sub:"If two cabins are close, this breaks the tie.", opts:[
+      {v:"ocean", i:"fa-water",     t:"Waking up to the ocean", d:"A real sea view, not a courtyard."},
+      {v:"quiet", i:"fa-moon",      t:"Peace and quiet", d:"Away from lifts, bars and the pool deck."},
+      {v:"action",i:"fa-bolt",      t:"Being near the action", d:"Steps from the pool, food and the shows."},
+      {v:"space", i:"fa-up-right-and-down-left-from-center", t:"Room to spread out", d:"Square footage and a proper balcony."} ]},
+  { key:"motion", q:"Does anyone get seasick?", sub:"If so I'll keep you low and mid-ship, where the movement is least.", opts:[
+      {v:"yes", i:"fa-triangle-exclamation", t:"Yes — keep us steady", d:"Motion is the priority."},
+      {v:"no",  i:"fa-check", t:"No, we're fine", d:"Opens up the higher decks."} ]},
+];
+
+const answers = {}; let step = 0; let ships = [];
+const stage = document.getElementById("stage"), dots = document.getElementById("dots");
+
+function drawDots(){
+  dots.innerHTML = STEPS.map((_,i)=>`<div class="dot ${i<=step?'on':''}"></div>`).join("");
+}
+
+async function loadShips(){
+  try{
+    const r = await fetch("/api/cabins/ships");
+    ships = (await r.json()).ships || [];
+  }catch{ ships = []; }
+}
+
+function render(){
+  drawDots();
+  if (step >= STEPS.length) return submit();
+  const s = STEPS[step];
+  const body = s.type === "ship"
+    ? (ships.length
+        ? `<select class="ship" id="shipSel">
+             <option value="">Choose your ship…</option>
+             ${ships.map(x=>`<option value="${x.slug}">${x.ship} — ${x.line}</option>`).join("")}
+           </select>`
+        : `<div class="err">No ships are loaded yet. Once a ship's cabin data is in, it appears here.</div>`)
+    : `<div class="opts">${s.opts.map(o=>`
+        <button class="opt ${answers[s.key]===o.v?'sel':''}" data-v="${o.v}">
+          <i class="fa-solid ${o.i}"></i><span><b>${o.t}</b><span>${o.d}</span></span>
+        </button>`).join("")}</div>`;
+
+  stage.innerHTML = `<div class="card">
+      <h2 class="q">${s.q}</h2><p class="qsub">${s.sub}</p>
+      ${body}
+      <div class="nav">
+        <button class="back" ${step===0?'style="visibility:hidden"':''}>← Back</button>
+        <button class="go" ${answers[s.key]?'':'disabled'}>${step===STEPS.length-1?'Show my cabins':'Next'}</button>
+      </div></div>`;
+
+  const go = stage.querySelector(".go");
+  stage.querySelector(".back").onclick = ()=>{ step=Math.max(0,step-1); render(); };
+  go.onclick = ()=>{ step++; render(); };
+
+  const sel = stage.querySelector("#shipSel");
+  if (sel){
+    sel.value = answers.ship || "";
+    sel.onchange = ()=>{ answers.ship = sel.value; go.disabled = !sel.value; };
+  }
+  stage.querySelectorAll(".opt").forEach(b=>{
+    b.onclick = ()=>{ answers[s.key]=b.dataset.v; step++; render(); };
+  });
+}
+
+async function submit(){
+  stage.innerHTML = `<div class="spin"><i class="fa-solid fa-compass fa-spin"></i> Working out your cabins…</div>`;
+  try{
+    const r = await fetch("/api/cabins/recommend",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ ship:answers.ship, party:answers.party, budget:answers.budget,
+                             priority:answers.priority, motion:answers.motion==="yes" })
+    });
+    if (!r.ok) throw new Error((await r.json()).error || "Something went wrong");
+    show(await r.json());
+  }catch(e){
+    stage.innerHTML = `<div class="card"><div class="err">${e.message}</div>
+      <div class="nav"><button class="back">← Start over</button><span></span></div></div>`;
+    stage.querySelector(".back").onclick = ()=>{ step=0; render(); };
+  }
+}
+
+function show(d){
+  dots.classList.add("hide");
+  const facts = f => !f ? "" : [
+      f.deck?`Deck ${f.deck}`:null, f.category, f.view,
+      f.sleeps?`sleeps ${f.sleeps}`:null,
+      f.obstruction && f.obstruction!=="none" ? `${f.obstruction} obstruction` : null
+    ].filter(Boolean).join(" · ");
+
+  const picks = (d.picks||[]).map((p,i)=>`
+    <div class="pick ${i===0?'top':''}">
+      <div class="pick-head"><div class="num">${p.cabin}</div>
+        ${i===0?'<span class="badge">My first pick</span>':''}</div>
+      <div class="facts">${facts(p.facts)}</div>
+      <p class="reason">${p.reason||""}</p>
+    </div>`).join("");
+
+  const avoid = (d.steerClear||[]).length ? `
+    <div class="avoid"><h3>I'd steer you away from these</h3><ul>
+      ${d.steerClear.map(s=>`<li>${typeof s==="string"?s:`<b>${s.cabin||s.area||""}</b> — ${s.reason||""}`}</li>`).join("")}
+    </ul></div>` : "";
+
+  stage.innerHTML = `
+    <h2 class="res-head">Your cabins on ${d.ship?.ship||"this ship"}</h2>
+    <p class="res-sub">Based on what you told me. Every number below is a real cabin you can look up on the deck plan.</p>
+    ${picks}${avoid}
+    <div class="cta">
+      <h3>Want me to price these?</h3>
+      <p>I'll check live availability on these exact cabins and what they'd actually cost you —
+         including whether a different sailing date makes them cheaper.</p>
+      <a href="/work-with-mark.html?from=cabin-finder&ship=${encodeURIComponent(d.ship?.ship||"")}">Get my live price</a>
+    </div>
+    <p class="note">Booked through me, this costs you nothing extra — the cruise line pays the commission either way.</p>`;
+}
+
+(async ()=>{ await loadShips(); render(); })();
+</script>
+</body>
+</html>
