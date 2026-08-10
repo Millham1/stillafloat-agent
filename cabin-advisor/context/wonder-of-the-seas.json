@@ -1,0 +1,322 @@
+{
+  "class": "Oasis",
+  "sisterShips": [
+    "Oasis of the Seas",
+    "Allure of the Seas",
+    "Harmony of the Seas",
+    "Symphony of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "These decks sit directly above the lifeboat line; lifeboats block the lower portion of the view while the horizon and sky remain visible.",
+      "effect": "Ocean view and balcony cabins see boats instead of water when looking straight down or at a downward angle, though distant views are unobstructed.",
+      "mattersTo": "Matters to guests who want unobstructed water views at all angles; irrelevant to those focused on horizon views or interior cabins.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 15 Central Park overhead creates a neighborhood open to sky but shaded by overhangs and surrounded by rising deck structures.",
+      "effect": "Central Park Balcony cabins on Deck 14 mid open onto a living-plant park rather than open ocean; quieter and shaded but with no ocean horizon.",
+      "mattersTo": "Matters greatly to those expecting traditional ocean balconies; appeals to guests seeking unique, park-like outdoor space.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Boardwalk with AquaTheater on Deck 15/16 is directly overhead; open-air venue with performances, crowds, and activity until late evening.",
+      "effect": "Boardwalk Balcony cabins on Deck 14 aft open onto a neighborhood amphitheater environment with performance noise and foot traffic overhead.",
+      "mattersTo": "Matters to guests seeking quiet oceanfront balconies; appeals to those wanting entertainment-district energy and AquaTheater access.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Central Park on Deck 15 is directly overhead (3-4 decks above); outdoor walking neighborhood with restaurants and foot traffic until late.",
+      "effect": "Limited noise transmission due to distance and open-air design; occasional voices or live music may reach upper balconies during events.",
+      "mattersTo": "Minor consideration for light sleepers on Deck 12; generally irrelevant on Deck 11 and below.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Boardwalk and AquaTheater on Deck 15/16 are 3-7 decks overhead; open-air performance venue with evening shows and ambient crowd noise.",
+      "effect": "Boardwalk Balcony cabins on these decks open inward to the Boardwalk canyon; occasional performance audio and crowd sounds filter down, especially Decks 11-12.",
+      "mattersTo": "Matters for guests expecting traditional quiet balconies; appeals to those wanting Boardwalk immersion and easy AquaTheater access.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        18
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Deck 17 Grand Suites are directly below; Deck 16 public venues (pools, buffet, Suite Lounge) are two decks down.",
+      "effect": "Top-deck location ensures no foot traffic or venue noise from above; pool deck activity two decks below is typically inaudible inside suites.",
+      "mattersTo": "Premium benefit for suite guests; the absence of overhead activity enhances privacy and quiet.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        14,
+        17
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Main pool decks, Windjammer buffet, and Solarium on Deck 15/16 are directly below, with heavy daytime foot traffic, dining service, and pool activity.",
+      "effect": "Cabins on Deck 14 may experience muffled noise from deck furniture moving, crowds, or buffet service during the day; Deck 17 is insulated by one deck.",
+      "mattersTo": "Matters to daytime nappers and those sensitive to activity vibrations on Deck 14; less relevant on Deck 17 where distance mutes most impact.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Royal Theater main showroom on Decks 3-5 is below forward sections; evening performances with amplified audio and subwoofers.",
+      "effect": "Cabins in forward sections may detect low-frequency audio or vibration during shows, typically 7-10 PM; structure transmits bass better than voices.",
+      "mattersTo": "Matters to guests in early-to-bed routines or sensitive to vibration; irrelevant to those out for evening activities.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Elevator banks run forward, midship, and aft on all cabin decks; midship banks serve Central Park/Boardwalk neighborhoods with high traffic.",
+      "effect": "Cabins immediately adjacent to elevator lobbies experience door chimes, conversation, and foot traffic at all hours; convenience trades against lobby noise.",
+      "mattersTo": "Matters to light sleepers who should avoid elevator-adjacent cabins; appeals to mobility-limited guests prioritizing short walks.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 3 is the lowest guest cabin deck and sits near crew access routes; service corridors run through this deck with crew foot traffic.",
+      "effect": "Cabins on Deck 3 may be near crew stairs or service doors with periodic activity during early morning and late-night crew changes.",
+      "mattersTo": "Matters to guests sensitive to hallway traffic noise; generally minor due to good soundproofing but more noticeable than higher decks.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3,
+        6,
+        7
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins on lower decks are closer to propulsion machinery spaces; low-frequency vibration and hum may be present, especially at cruising speed.",
+      "effect": "Aft cabins on Deck 3 are most susceptible to engine vibration; Decks 6-7 aft are higher and experience less, but some guests may still detect a hum.",
+      "mattersTo": "Matters to vibration-sensitive sleepers and those bothered by white noise; irrelevant to guests who find engine hum soothing or don't notice it.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3,
+        6,
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters in the forward hull activate during docking maneuvers; produces brief, loud mechanical grinding transmitted through the hull structure.",
+      "effect": "Forward cabins on lower decks hear and feel thruster activation during port arrivals and departures, typically early morning; lasts 5-15 minutes.",
+      "mattersTo": "Matters to guests who value undisturbed sleep on port mornings; irrelevant to early risers or those eager to watch docking.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain locker is in the bow below forward cabins; anchor deployment creates loud metallic rattling through hull structure each port arrival.",
+      "effect": "Forward cabins on lower decks experience anchor chain noise on port mornings, typically 6-8 AM; brief (2-5 minutes) but very loud and impossible to sleep through.",
+      "mattersTo": "Matters significantly to guests prioritizing sleep on port days; irrelevant to early risers planning to be awake for arrivals.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Oasis-class ships have balconies cantilevered beyond the hull line on these decks in forward and aft sections, creating deeper balcony spaces.",
+      "effect": "Select ocean-view balconies on Decks 11-12 forward and aft have extra-deep balconies extending past neighbors above and below, offering more privacy and space.",
+      "mattersTo": "Appeals to guests seeking larger private outdoor space; premium benefit for balcony users who entertain or lounge outside.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Promenade View Interior cabins have windows overlooking the Royal Promenade, an interior boulevard with shops, bars, and parades.",
+      "effect": "These cabins have interior views of an active indoor street with activity until midnight or later; parade noise and people-watching replace ocean views.",
+      "mattersTo": "Matters to guests expecting quiet or dark interior cabins; appeals to those wanting entertainment-district energy and human activity views.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Central Park Balcony cabins overlook an open-air park with living plants on Deck 15, not the ocean; lined with restaurants and foot traffic until late.",
+      "effect": "Balconies open to a unique park neighborhood with greenery and ambient restaurant/pedestrian activity; no ocean views but distinctive outdoor environment.",
+      "mattersTo": "Matters greatly to those expecting ocean balconies; highly appealing to guests seeking unique, urban-garden ambiance instead of traditional sea views.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Boardwalk Balcony cabins overlook the Boardwalk neighborhood on Deck 15, an open-air entertainment district with carousel, AquaTheater, and dining.",
+      "effect": "Balconies open inward to a neighborhood amphitheater with performances, crowds, and activity; no ocean views but immersive entertainment-district experience.",
+      "mattersTo": "Matters greatly to those expecting ocean balconies; highly appealing to guests with kids or those seeking high-energy, entertainment-focused environment.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Boardwalk and Park View interior cabins have windows overlooking either the Boardwalk or Central Park neighborhoods, not the ocean or traditional interior corridors.",
+      "effect": "Interior cabins with natural light and views of active outdoor neighborhoods; ambient activity noise and people-watching replace typical interior cabin darkness.",
+      "mattersTo": "Appeals to guests seeking interior pricing with windowed views and natural light; matters to those expecting quiet, dark interior cabins.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Specific cabin numbers immediately adjacent to elevator lobbies on each deck",
+    "Exact decks where galley or main dining room kitchens sit and which cabins are directly above them",
+    "Whether any specific sections on Deck 14 or 17 are affected by HVAC equipment noise from pool deck machinery",
+    "Precise location and impact radius of nightclub or disco venues and which cabin decks/sections are below them",
+    "Whether aft AquaTheater Suites on Decks 8-10 experience different performance noise levels than standard Boardwalk cabins"
+  ],
+  "ship": "Wonder of the Seas",
+  "shipSlug": "wonder-of-the-seas",
+  "line": "Royal Caribbean",
+  "totalCabins": 2886,
+  "cabinsTouchedByAZone": 2886,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.056015999999999996
+}
