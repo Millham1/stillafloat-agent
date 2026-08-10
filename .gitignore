@@ -65,3 +65,7 @@ server/public/news-sitemap.xml
 server/.env
 server/start.sh
 server/ecosystem.config.cjs
+
+# cabin-advisor: per-ship intermediate chunks that combine into *-full.json.
+# Derived output — regenerate rather than version ~4MB of them.
+cabin-advisor/data/cabins/parts/
