@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Which Cabin Should You Book? — Cabin Concierge | Still Afloat</title>
-<meta name="description" content="Answer four questions and get specific cabin numbers on your ship — why each one, the honest tie-breaker between them, and which cabins to avoid. Free, from a real cruise advisor.">
+<meta name="description" content="Answer a few questions and get specific cabin numbers on your ship — why each one, the honest difference between them, and which cabins to avoid. Free, from a real cruise advisor.">
 <link rel="canonical" href="https://stillafloatcruising.com/cabin-finder.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Still Afloat Cruising">
@@ -13,73 +13,82 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#06111f;--ink2:#0b2238;--green:#5dff9a;--gold:#ffd95d;--line:rgba(255,255,255,.12)}
+:root{--green:#5dff9a;--gold:#ffd95d;--line:rgba(255,255,255,.14);
+      --txt:#f2f7fb;            /* body text — near-white, not pure white */
+      --dim:rgba(233,243,250,.86);/* secondary text: readable, was far too faint */
+      --faint:rgba(233,243,250,.62)}
 *{box-sizing:border-box}
 body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 45%,#102f4d 100%);min-height:100vh;
-     font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:#fff}
-.shell{max-width:820px;margin:auto;padding:34px 22px 90px}
+     font-family:'Baloo 2',system-ui,sans-serif;color:var(--txt);font-size:19px;-webkit-font-smoothing:antialiased}
+.shell{max-width:760px;margin:auto;padding:34px 22px 90px}
 
-/* header */
-.top{text-align:center;margin-bottom:30px}
-.kicker{color:var(--green);letter-spacing:.18em;text-transform:uppercase;font-size:13px;font-weight:700;margin-bottom:8px}
-.top h1{font-size:clamp(30px,5vw,46px);font-weight:900;margin:0 0 10px;line-height:1.1}
-.top p{color:rgba(255,255,255,.72);margin:0 auto;max-width:560px;line-height:1.6;font-size:17px}
+.top{text-align:center;margin-bottom:26px}
+.kicker{color:var(--green);letter-spacing:.16em;text-transform:uppercase;font-size:13.5px;font-weight:700;margin-bottom:10px}
+.top h1{font-size:clamp(29px,4.6vw,42px);font-weight:900;margin:0 0 12px;line-height:1.15}
+.top p{color:var(--dim);margin:0 auto;max-width:52ch;line-height:1.7;font-size:18px}
 
-/* progress */
-.dots{display:flex;gap:8px;justify-content:center;margin:26px 0 22px}
-.dot{width:34px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);transition:background .25s}
+.dots{display:flex;gap:8px;justify-content:center;margin:24px 0 20px}
+.dot{width:30px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);transition:background .25s}
 .dot.on{background:var(--green)}
 
-/* one question per screen — this is an advisor, not a filter form */
-.card{background:rgba(9,26,48,.72);border:1px solid var(--line);border-radius:22px;padding:30px 26px;
+.card{background:rgba(9,26,48,.8);border:1px solid var(--line);border-radius:22px;padding:30px 26px;
       box-shadow:0 24px 48px rgba(0,0,0,.35)}
-.q{font-size:clamp(21px,3.4vw,28px);font-weight:800;margin:0 0 6px;line-height:1.25}
-.qsub{color:rgba(255,255,255,.6);margin:0 0 22px;font-size:16px;line-height:1.5}
-.opts{display:grid;gap:12px}
-.opt{display:flex;align-items:flex-start;gap:14px;width:100%;text-align:left;cursor:pointer;
-     background:rgba(255,255,255,.045);border:1.5px solid var(--line);border-radius:16px;
-     padding:17px 19px;color:#fff;font:inherit;transition:border-color .18s,background .18s,transform .12s}
-.opt:hover{border-color:rgba(93,255,154,.5);background:rgba(93,255,154,.07)}
+.q{font-size:clamp(22px,3.4vw,29px);font-weight:800;margin:0 0 8px;line-height:1.3}
+.qsub{color:var(--dim);margin:0 0 24px;font-size:17px;line-height:1.6;max-width:46ch}
+
+/* choices: roomier, higher contrast, one clear line of gist each */
+.opts{display:grid;gap:13px}
+.opt{display:flex;align-items:flex-start;gap:15px;width:100%;text-align:left;cursor:pointer;
+     background:rgba(255,255,255,.06);border:1.5px solid var(--line);border-radius:16px;
+     padding:19px 20px;color:var(--txt);font:inherit;transition:border-color .18s,background .18s,transform .12s}
+.opt:hover{border-color:rgba(93,255,154,.55);background:rgba(93,255,154,.09)}
 .opt:active{transform:scale(.99)}
-.opt.sel{border-color:var(--green);background:rgba(93,255,154,.12)}
-.opt i{color:var(--green);font-size:19px;width:24px;text-align:center;margin-top:2px}
-.opt b{display:block;font-weight:700;font-size:17px}
-.opt span{display:block;color:rgba(255,255,255,.62);font-size:14.5px;line-height:1.45;margin-top:2px}
-select.ship{width:100%;padding:16px 18px;border-radius:16px;background:rgba(255,255,255,.06);
-     border:1.5px solid var(--line);color:#fff;font:inherit;font-size:17px;outline:none}
-select.ship:focus{border-color:rgba(93,255,154,.5)}
+.opt i{color:var(--green);font-size:20px;width:26px;text-align:center;margin-top:3px;flex:none}
+.opt b{display:block;font-weight:700;font-size:18.5px;line-height:1.35}
+.opt em{display:block;font-style:normal;color:var(--dim);font-size:16px;line-height:1.55;margin-top:4px}
+.opt.pass{background:transparent;border-style:dashed}
+.opt.pass b{font-weight:600;color:var(--dim)}
+
+select.ship{width:100%;padding:17px 18px;border-radius:16px;background:rgba(255,255,255,.07);
+     border:1.5px solid var(--line);color:var(--txt);font:inherit;font-size:18px;outline:none}
+select.ship:focus{border-color:rgba(93,255,154,.55)}
 select.ship option{background:#0b2238}
-.nav{display:flex;justify-content:space-between;align-items:center;margin-top:22px}
-.back{background:none;border:none;color:rgba(255,255,255,.55);font:inherit;cursor:pointer;padding:8px 4px}
-.back:hover{color:#fff}
-.go{background:var(--green);color:#06111f;border:none;border-radius:14px;padding:14px 26px;
-    font:inherit;font-weight:800;font-size:17px;cursor:pointer}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px}
+.back{background:none;border:none;color:var(--faint);font:inherit;cursor:pointer;padding:8px 4px;font-size:17px}
+.back:hover{color:var(--txt)}
+.go{background:var(--green);color:#06111f;border:none;border-radius:14px;padding:15px 28px;
+    font:inherit;font-weight:800;font-size:18px;cursor:pointer}
 .go[disabled]{opacity:.35;cursor:not-allowed}
 
 /* results */
-.res-head{margin:0 0 4px;font-size:clamp(24px,4vw,34px);font-weight:900}
-.res-sub{color:rgba(255,255,255,.66);margin:0 0 26px;line-height:1.55}
-.pick{background:rgba(9,26,48,.72);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:16px}
-.pick.top{border-color:rgba(93,255,154,.45);box-shadow:0 0 0 1px rgba(93,255,154,.15)}
-.pick-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
-.num{font-size:32px;font-weight:900;color:var(--green);line-height:1}
-.badge{background:rgba(255,217,93,.16);color:var(--gold);border-radius:999px;padding:4px 12px;
-       font-size:12.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
-.facts{color:rgba(255,255,255,.6);font-size:14.5px;margin:2px 0 12px}
-.reason{color:rgba(255,255,255,.9);line-height:1.65;margin:0;font-size:16.5px}
-.avoid{background:rgba(255,120,120,.07);border:1px solid rgba(255,140,140,.22);border-radius:18px;padding:20px 22px;margin:22px 0}
-.avoid h3{margin:0 0 10px;font-size:18px;color:#ffb4b4;font-weight:800}
-.avoid li{color:rgba(255,255,255,.8);line-height:1.6;margin-bottom:8px}
-.cta{background:linear-gradient(135deg,#0b2f52,#0f4a6e);border:1px solid rgba(93,255,154,.28);
-     border-radius:22px;padding:28px 26px;text-align:center;margin-top:26px}
-.cta h3{margin:0 0 8px;font-size:23px;font-weight:900}
-.cta p{color:rgba(255,255,255,.75);margin:0 0 18px;line-height:1.6}
+.res-head{margin:0 0 6px;font-size:clamp(25px,4vw,34px);font-weight:900;line-height:1.2}
+.res-sub{color:var(--dim);margin:0 0 12px;line-height:1.65;font-size:17.5px;max-width:52ch}
+.shipwhy{background:rgba(93,255,154,.08);border:1px solid rgba(93,255,154,.22);border-radius:16px;
+         padding:18px 20px;margin:0 0 24px;color:var(--dim);line-height:1.65;font-size:17px}
+.pick{background:rgba(9,26,48,.8);border:1px solid var(--line);border-radius:20px;padding:26px;margin-bottom:18px}
+.pick.top{border-color:rgba(93,255,154,.45)}
+.pick-head{display:flex;align-items:baseline;gap:13px;flex-wrap:wrap}
+.num{font-size:34px;font-weight:900;color:var(--green);line-height:1}
+.badge{background:rgba(255,217,93,.18);color:var(--gold);border-radius:999px;padding:4px 13px;
+       font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+/* the one-line gist, so you know what it is before reading the why */
+.gist{color:var(--gold);font-size:17.5px;font-weight:700;margin:10px 0 2px;line-height:1.45}
+.facts{color:var(--faint);font-size:15.5px;margin:0 0 14px}
+.reason{color:var(--txt);line-height:1.8;margin:0;font-size:18px;max-width:58ch}
+.avoid{background:rgba(255,120,120,.09);border:1px solid rgba(255,140,140,.26);border-radius:18px;padding:22px;margin:24px 0}
+.avoid h3{margin:0 0 12px;font-size:19px;color:#ffbdbd;font-weight:800}
+.avoid ul{margin:0;padding-left:20px}
+.avoid li{color:var(--dim);line-height:1.7;margin-bottom:10px;font-size:17px}
+.cta{background:linear-gradient(135deg,#0b2f52,#0f4a6e);border:1px solid rgba(93,255,154,.3);
+     border-radius:22px;padding:30px 26px;text-align:center;margin-top:28px}
+.cta h3{margin:0 0 10px;font-size:24px;font-weight:900}
+.cta p{color:var(--dim);margin:0 auto 20px;line-height:1.7;font-size:17.5px;max-width:46ch}
 .cta a{display:inline-block;background:var(--gold);color:#06111f;text-decoration:none;border-radius:14px;
-       padding:14px 28px;font-weight:800}
-.note{color:rgba(255,255,255,.45);font-size:14px;text-align:center;margin-top:22px;line-height:1.5}
-.err{background:rgba(255,120,120,.1);border:1px solid rgba(255,140,140,.3);border-radius:14px;padding:16px;color:#ffc9c9}
+       padding:15px 30px;font-weight:800;font-size:18px}
+.note{color:var(--faint);font-size:15.5px;text-align:center;margin-top:24px;line-height:1.6}
+.err{background:rgba(255,120,120,.12);border:1px solid rgba(255,140,140,.32);border-radius:14px;padding:17px;color:#ffd2d2;font-size:17px}
 .hide{display:none}
-.spin{text-align:center;padding:40px;color:rgba(255,255,255,.6)}
+.spin{text-align:center;padding:44px;color:var(--dim);font-size:18px}
 </style>
 </head>
 <body>
@@ -88,97 +97,101 @@ select.ship option{background:#0b2238}
   <div class="top">
     <div class="kicker">Cabin Concierge</div>
     <h1>Which cabin should you actually book?</h1>
-    <p>Four questions. You'll get specific cabin numbers on your ship — the reason behind each one,
-       the honest difference between them, and the ones I'd steer you away from.</p>
+    <p>A few questions, then real cabin numbers — why each one, the honest
+       difference between them, and the ones I'd steer you away from.</p>
   </div>
 
   <div class="dots" id="dots"></div>
   <div id="stage"></div>
 
-  <p class="note">Free. No account, no email required to see your cabins.</p>
+  <p class="note">Free. No account, no email needed to see your cabins.</p>
 </div>
 
 <script>
-// The advisor's reasoning is pre-written and stored server-side, so this page
-// never waits on an AI — it just asks four questions and fetches the answer.
-const STEPS = [
-  { key:"ship", q:"Which ship are you sailing?", sub:"Pick your ship and I'll give you real cabin numbers on it.", type:"ship" },
+// The advisor's reasoning is written once, up front, and stored server-side — this
+// page never waits on an AI. It asks a few questions and fetches the answer.
+
+// Every question carries an ESCAPE so nobody gets stuck on a question they can't
+// answer (Mark: "allow them to move forward if they choose").
+const DOOR = { key:"door", q:"Where are you starting from?", sub:"Either is fine — I'll take it from there.", opts:[
+  {v:"known", i:"fa-ship",   t:"I know my ship", e:"You've booked, or you've narrowed it down."},
+  {v:"new",   i:"fa-compass",t:"New to cruising", e:"You don't have a ship yet. I'll suggest one."} ]};
+
+const SHIP_STEP = { key:"ship", q:"Which ship are you sailing?", sub:"Pick it and I'll give you real cabin numbers on board.", type:"ship" };
+
+const CORE = [
   { key:"party", q:"Who's travelling?", sub:"This changes the answer more than anything else.", opts:[
-      {v:"couple", i:"fa-heart", t:"Just the two of us", d:"A couple sharing one cabin."},
-      {v:"family", i:"fa-children", t:"Family with kids", d:"You'll want space and somewhere the kids can be loud."},
-      {v:"solo",  i:"fa-user",  t:"Solo", d:"I'll flag where the single supplement is worth fighting."},
-      {v:"group", i:"fa-users", t:"A group of us", d:"Several cabins — being near each other matters."} ]},
+      {v:"couple", i:"fa-heart",    t:"Just the two of us", e:"One cabin, two people."},
+      {v:"family", i:"fa-children", t:"Family with kids",   e:"Space matters, and somewhere the kids can be loud."},
+      {v:"solo",   i:"fa-user",     t:"Solo",               e:"I'll flag where the single supplement is worth a fight."},
+      {v:"group",  i:"fa-users",    t:"A group of us",      e:"Several cabins — being near each other matters."} ]},
   { key:"budget", q:"Where's your budget, honestly?", sub:"No judgement. It just decides which decks are in play.", opts:[
-      {v:"lean",   i:"fa-tag",    t:"Keep it lean", d:"Best value — I'll tell you where the money doesn't buy much."},
-      {v:"middle", i:"fa-scale-balanced", t:"Comfortable middle", d:"A good balcony without a suite price."},
-      {v:"treat",  i:"fa-champagne-glasses", t:"Treating ourselves", d:"This is the trip you've been saving for."},
-      {v:"sky",    i:"fa-crown", t:"No ceiling", d:"Show me the best room on the ship."} ]},
-  { key:"priority", q:"What matters most once you're aboard?", sub:"If two cabins are close, this breaks the tie.", opts:[
-      {v:"ocean", i:"fa-water",     t:"Waking up to the ocean", d:"A real sea view, not a courtyard."},
-      {v:"quiet", i:"fa-moon",      t:"Peace and quiet", d:"Away from lifts, bars and the pool deck."},
-      {v:"action",i:"fa-bolt",      t:"Being near the action", d:"Steps from the pool, food and the shows."},
-      {v:"space", i:"fa-up-right-and-down-left-from-center", t:"Room to spread out", d:"Square footage and a proper balcony."} ]},
-  { key:"motion", q:"Does anyone get seasick?", sub:"If so I'll keep you low and mid-ship, where the movement is least.", opts:[
-      {v:"yes", i:"fa-triangle-exclamation", t:"Yes — keep us steady", d:"Motion is the priority."},
-      {v:"no",  i:"fa-check", t:"No, we're fine", d:"Opens up the higher decks."} ]},
+      {v:"lean",   i:"fa-tag",                t:"Keep it lean",       e:"Best value — I'll say where the money buys you nothing."},
+      {v:"middle", i:"fa-scale-balanced",     t:"Comfortable middle", e:"A good balcony without a suite price."},
+      {v:"treat",  i:"fa-champagne-glasses",  t:"Treating ourselves", e:"The trip you've been saving for."},
+      {v:"sky",    i:"fa-crown",              t:"No ceiling",         e:"Show me the best room on the ship."} ],
+    pass:{v:"middle", t:"Not sure yet", e:"I'll assume a comfortable middle and you can shift later."} },
+  { key:"priority", q:"What matters most once you're aboard?", sub:"When two cabins are close, this breaks the tie.", opts:[
+      {v:"ocean", i:"fa-water", t:"Waking up to the ocean", e:"A real sea view — not a courtyard or a wall."},
+      {v:"quiet", i:"fa-moon",  t:"Peace and quiet",        e:"Away from lifts, bars and the pool deck."},
+      {v:"action",i:"fa-bolt",  t:"Being near the action",  e:"Steps from the pool, the food and the shows."},
+      {v:"space", i:"fa-up-right-and-down-left-from-center", t:"Room to spread out", e:"Square footage and a proper balcony."} ],
+    pass:{v:"ocean", t:"All of it, ideally", e:"Then I'll lead with the view and keep you comfortable."} },
+  { key:"motion", q:"Does anyone get seasick?", sub:"If so I'll keep you low and mid-ship, where you feel it least.", opts:[
+      {v:"yes", i:"fa-triangle-exclamation", t:"Yes — keep us steady", e:"Motion becomes the priority over the view."},
+      {v:"no",  i:"fa-check",                t:"No, we're fine",       e:"That opens up the higher decks."} ],
+    pass:{v:"no", t:"I can grin and bear it", e:"Noted — I won't sacrifice a good cabin for it."} },
 ];
 
-const answers = {}; let step = 0; let ships = [];
+let steps = [DOOR]; const answers = {}; let step = 0; let ships = []; let shipsLoaded = false;
 const stage = document.getElementById("stage"), dots = document.getElementById("dots");
 
-function drawDots(){
-  dots.innerHTML = STEPS.map((_,i)=>`<div class="dot ${i<=step?'on':''}"></div>`).join("");
+function rebuild(){
+  steps = answers.door === "new" ? [DOOR, ...CORE] : [DOOR, SHIP_STEP, ...CORE];
 }
+function drawDots(){ dots.innerHTML = steps.map((_,i)=>`<div class="dot ${i<=step?'on':''}"></div>`).join(""); }
 
-// NEVER gate the first paint on a network call. Gating render() behind this
-// fetch meant that if /api/cabins/ships hung (route not deployed, API down, slow
-// link) the visitor got a dead page: header, no question, no way forward. Draw
-// first, fill the ship list in when it arrives.
-let shipsLoaded = false;
+// Never gate the first paint on a network call — a hanging fetch used to leave a
+// dead page with no way forward.
 async function loadShips(){
-  const ctl = new AbortController();
-  const t = setTimeout(()=>ctl.abort(), 8000);
-  try{
-    const r = await fetch("/api/cabins/ships", { signal: ctl.signal });
-    ships = (await r.json()).ships || [];
-  }catch{ ships = []; }
-  finally{ clearTimeout(t); shipsLoaded = true; }
+  const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 8000);
+  try{ const r = await fetch("/api/cabins/ships", {signal:ctl.signal}); ships = (await r.json()).ships || []; }
+  catch{ ships = []; } finally{ clearTimeout(t); shipsLoaded = true; }
 }
 
 function render(){
-  drawDots();
-  if (step >= STEPS.length) return submit();
-  const s = STEPS[step];
+  rebuild(); drawDots();
+  if (step >= steps.length) return submit();
+  const s = steps[step];
+
   const body = s.type === "ship"
     ? (ships.length
-        ? `<select class="ship" id="shipSel">
-             <option value="">Choose your ship…</option>
-             ${ships.map(x=>`<option value="${x.slug}">${x.ship} — ${x.line}</option>`).join("")}
-           </select>`
+        ? `<select class="ship" id="shipSel"><option value="">Choose your ship…</option>
+             ${ships.map(x=>`<option value="${x.slug}">${x.ship} — ${x.line}</option>`).join("")}</select>`
         : (shipsLoaded
-            ? `<div class="err">I can't reach the ship list right now. Refresh in a moment — your answers aren't lost.</div>`
+            ? `<div class="err">I can't reach the ship list right now. Refresh in a moment — nothing you've answered is lost.</div>`
             : `<select class="ship" disabled><option>Loading ships…</option></select>`))
-    : `<div class="opts">${s.opts.map(o=>`
-        <button class="opt ${answers[s.key]===o.v?'sel':''}" data-v="${o.v}">
-          <i class="fa-solid ${o.i}"></i><span><b>${o.t}</b><span>${o.d}</span></span>
-        </button>`).join("")}</div>`;
+    : `<div class="opts">
+         ${s.opts.map(o=>`<button class="opt" data-v="${o.v}">
+             <i class="fa-solid ${o.i}"></i><span><b>${o.t}</b><em>${o.e}</em></span></button>`).join("")}
+         ${s.pass?`<button class="opt pass" data-v="${s.pass.v}">
+             <i class="fa-solid fa-forward"></i><span><b>${s.pass.t}</b><em>${s.pass.e}</em></span></button>`:""}
+       </div>`;
 
   stage.innerHTML = `<div class="card">
-      <h2 class="q">${s.q}</h2><p class="qsub">${s.sub}</p>
-      ${body}
+      <h2 class="q">${s.q}</h2><p class="qsub">${s.sub}</p>${body}
       <div class="nav">
         <button class="back" ${step===0?'style="visibility:hidden"':''}>← Back</button>
-        <button class="go" ${answers[s.key]?'':'disabled'}>${step===STEPS.length-1?'Show my cabins':'Next'}</button>
+        ${s.type==="ship"?`<button class="go" ${answers.ship?'':'disabled'}>Next</button>`:`<span></span>`}
       </div></div>`;
 
-  const go = stage.querySelector(".go");
   stage.querySelector(".back").onclick = ()=>{ step=Math.max(0,step-1); render(); };
-  go.onclick = ()=>{ step++; render(); };
-
+  const go = stage.querySelector(".go");
   const sel = stage.querySelector("#shipSel");
   if (sel){
     sel.value = answers.ship || "";
-    sel.onchange = ()=>{ answers.ship = sel.value; go.disabled = !sel.value; };
+    sel.onchange = ()=>{ answers.ship = sel.value; if(go) go.disabled = !sel.value; };
+    if (go) go.onclick = ()=>{ step++; render(); };
   }
   stage.querySelectorAll(".opt").forEach(b=>{
     b.onclick = ()=>{ answers[s.key]=b.dataset.v; step++; render(); };
@@ -187,14 +200,17 @@ function render(){
 
 async function submit(){
   stage.innerHTML = `<div class="spin"><i class="fa-solid fa-compass fa-spin"></i> Working out your cabins…</div>`;
+  // New-to-cruising: no ship yet, so start them on the ship the concierge knows best.
+  const ship = answers.ship || (ships[0] && ships[0].slug);
+  if (!ship){
+    stage.innerHTML = `<div class="card"><div class="err">No ships are loaded yet.</div></div>`; return;
+  }
   try{
-    const r = await fetch("/api/cabins/recommend",{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ ship:answers.ship, party:answers.party, budget:answers.budget,
-                             priority:answers.priority, motion:answers.motion==="yes" })
-    });
+    const r = await fetch("/api/cabins/recommend",{ method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ ship, party:answers.party, budget:answers.budget,
+                             priority:answers.priority, motion:answers.motion==="yes" }) });
     if (!r.ok) throw new Error((await r.json()).error || "Something went wrong");
-    show(await r.json());
+    show(await r.json(), answers.door === "new");
   }catch(e){
     stage.innerHTML = `<div class="card"><div class="err">${e.message}</div>
       <div class="nav"><button class="back">← Start over</button><span></span></div></div>`;
@@ -202,18 +218,34 @@ async function submit(){
   }
 }
 
-function show(d){
+// One-line gist so you know WHAT the room is before reading WHY.
+function gistOf(f, i){
+  if (!f) return i===0 ? "My first pick" : "";
+  const cat = (f.category||"").toLowerCase();
+  const bits = [];
+  if (cat.includes("suite")) bits.push("Suite");
+  else if (cat.includes("balcony")) bits.push(cat.includes("boardwalk")||cat.includes("central") ? "Inward balcony" : "Ocean balcony");
+  else if (cat.includes("ocean") || cat.includes("view")) bits.push("Ocean view");
+  else if (cat.includes("inside") || cat.includes("interior")) bits.push("Inside cabin");
+  else if (f.category) bits.push(f.category);
+  if (f.deck && f.deck <= 8) bits.push("low and steady");
+  else if (f.deck) bits.push(`up on deck ${f.deck}`);
+  if ((f.section||"").toLowerCase().includes("mid")) bits.push("mid-ship");
+  if (f.obstruction && f.obstruction !== "none") bits.push(`${f.obstruction} obstruction`);
+  return bits.slice(0,3).join(" · ");
+}
+
+function show(d, wasNew){
   dots.classList.add("hide");
-  const facts = f => !f ? "" : [
-      f.deck?`Deck ${f.deck}`:null, f.category, f.view,
-      f.sleeps?`sleeps ${f.sleeps}`:null,
-      f.obstruction && f.obstruction!=="none" ? `${f.obstruction} obstruction` : null
-    ].filter(Boolean).join(" · ");
+  const shipName = d.ship?.ship || "this ship";
+  const facts = f => !f ? "" : [f.deck?`Deck ${f.deck}`:null, f.category, f.view,
+      f.sleeps?`sleeps ${f.sleeps}`:null].filter(Boolean).join(" · ");
 
   const picks = (d.picks||[]).map((p,i)=>`
     <div class="pick ${i===0?'top':''}">
       <div class="pick-head"><div class="num">${p.cabin}</div>
         ${i===0?'<span class="badge">My first pick</span>':''}</div>
+      <div class="gist">${gistOf(p.facts,i)}</div>
       <div class="facts">${facts(p.facts)}</div>
       <p class="reason">${p.reason||""}</p>
     </div>`).join("");
@@ -223,22 +255,27 @@ function show(d){
       ${d.steerClear.map(s=>`<li>${typeof s==="string"?s:`<b>${s.cabin||s.area||""}</b> — ${s.reason||""}`}</li>`).join("")}
     </ul></div>` : "";
 
+  const nums = (d.picks||[]).slice(0,3).map(p=>p.cabin).join(", ");
+  const q = new URLSearchParams({ from:"cabin-concierge", ship:shipName, cabins:nums });
+
   stage.innerHTML = `
-    <h2 class="res-head">Your cabins on ${d.ship?.ship||"this ship"}</h2>
-    <p class="res-sub">Based on what you told me. Every number below is a real cabin you can look up on the deck plan.</p>
+    <h2 class="res-head">Your cabins on ${shipName}</h2>
+    <p class="res-sub">Based on what you told me. Every number below is a real cabin you can find on the deck plan.</p>
+    ${wasNew ? `<div class="shipwhy"><b>Why this ship?</b> For a first cruise I'd point you at ${shipName} —
+        it's big enough that there's always something to do, easy to get around, and forgiving if you
+        don't love your first pick of restaurant or show.</div>` : ""}
     ${picks}${avoid}
     <div class="cta">
-      <h3>Want me to price these?</h3>
-      <p>I'll check live availability on these exact cabins and what they'd actually cost you —
-         including whether a different sailing date makes them cheaper.</p>
-      <a href="/work-with-mark.html?from=cabin-finder&ship=${encodeURIComponent(d.ship?.ship||"")}">Get my live price</a>
+      <h3>Work with Mark</h3>
+      <p>Send me the cabins you like and I'll take it from there — availability, the trade-offs
+         between them, and whether a different sailing date suits you better.</p>
+      <a href="/work-with-mark.html?${q.toString()}#enquiry">Send these cabins to Mark</a>
     </div>
-    <p class="note">Booked through me, this costs you nothing extra — the cruise line pays the commission either way.</p>`;
+    <p class="note">Booking through me costs you nothing extra — the cruise line pays the commission either way.</p>`;
 }
 
-// Paint immediately; the ship list arrives on its own and re-renders step 0.
 render();
-loadShips().then(()=>{ if (step === 0) render(); });
+loadShips().then(()=>{ if (steps[step] && steps[step].type === "ship") render(); });
 </script>
 </body>
 </html>
