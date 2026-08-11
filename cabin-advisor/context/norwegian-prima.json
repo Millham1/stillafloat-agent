@@ -1,0 +1,186 @@
+{
+  "class": "Prima",
+  "sisterShips": [
+    "Norwegian Viva"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 8; they obstruct downward and outward views from balconies on Decks 9, 10, and 11, with Deck 9 experiencing the most significant obstruction.",
+      "effect": "Balcony views look directly at or over lifeboat tops instead of straight down to the water; horizon views remain unobstructed.",
+      "mattersTo": "Matters to guests who want unobstructed water views directly below their balcony or enjoy watching port operations; does not matter to those focused on horizon views or who rarely use the balcony.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Infinity Beach pool, Infinity Beach bar, and outdoor deck activity areas are directly above on Deck 16.",
+      "effect": "Daytime noise from pool deck activities, music, and foot traffic overhead; potential for water splashing or drainage sounds; activity extends into evening.",
+      "mattersTo": "Matters to light sleepers, those working from the cabin during the day, or anyone sensitive to overhead noise and activity; less relevant to guests who are out exploring most of the day.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14,
+        15
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Concourse sports complex (including Galaxy Pavilion and stadium seating) is on Deck 17, two decks above Deck 15 and three decks above Deck 14.",
+      "effect": "Occasional noise from active sports activities above, though distance (multiple decks) provides significant buffering; impact is intermittent rather than constant.",
+      "mattersTo": "Minor concern for very noise-sensitive guests; most guests will not notice given the vertical distance.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "The Prima Theater spans Decks 6-8 directly below, with main seating on Deck 7 and balcony seating on Deck 8.",
+      "effect": "Evening show noise (music, sound effects, applause) transmitted upward during performance times, typically ending by 11 PM; no impact during sea days when theater is dark.",
+      "mattersTo": "Matters to early-to-bed guests or those in cabin during evening show times; not relevant to night owls or those attending the shows.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10,
+        11
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Indulge Food Hall (buffet venue) is located on Deck 8 aft, two decks below Deck 10 and three decks below Deck 11.",
+      "effect": "Breakfast and lunch preparation sounds, dishwashing, and high foot traffic during meal hours; vertical distance provides buffering but some sound may transmit during peak meal service.",
+      "mattersTo": "Potential minor concern for light sleepers during early morning breakfast prep (6-7 AM); distance minimizes impact for most guests.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Local Bar and The Commodore are located on Deck 6 directly above.",
+      "effect": "Evening and late-night bar noise, music, conversation, and foot traffic overhead until closing time (typically midnight or later).",
+      "mattersTo": "Significant concern for early sleepers or light sleepers; not relevant to late-night guests or those using the cabin primarily for sleeping after midnight.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        5,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Primary elevator banks are located forward and mid-ship on all cabin decks, with the largest concentration mid-ship.",
+      "effect": "Cabins immediately adjacent to elevator lobbies experience frequent foot traffic, door chimes, and conversation noise at all hours; cabins further down the corridor are quieter but less convenient.",
+      "mattersTo": "Convenience vs. noise trade-off: matters to mobility-limited guests who prioritize proximity, and to noise-sensitive guests who should avoid immediately adjacent cabins.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 5 aft is low in the ship and closest to propulsion machinery.",
+      "effect": "Low-frequency vibration and hum, particularly noticeable when the ship is maneuvering or at high speed; most noticeable in the cabin at night.",
+      "mattersTo": "Matters to vibration-sensitive sleepers or those who notice mechanical hum; many guests acclimate quickly or don't notice.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Low forward location exposes cabins to bow thruster use during docking and maneuvering.",
+      "effect": "Loud thruster noise during port arrivals and departures, typically early morning and evening; brief (15-30 minutes) but can be quite loud.",
+      "mattersTo": "Matters to light sleepers during port-intensive itineraries; not a concern on sea days or for those already awake during maneuvering.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on lower decks are positioned near the anchor chain mechanism.",
+      "effect": "Loud metallic chain noise during anchor deployment and retrieval, typically early morning in tender ports; brief but very loud when it occurs.",
+      "mattersTo": "Matters to light sleepers on itineraries with tender ports; not a factor on all-dock itineraries or for those awake early.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Precise location and extent of any hull hump where superstructure extends past the lifeboat line—I cannot confirm this feature exists on Prima class or identify specific decks and sections where balconies would cantilever outward",
+    "Exact location of i95 crew corridor access points and which cabin sections experience the most crew service traffic",
+    "Specific cabin numbers that are designated as connecting rooms across the various decks",
+    "Whether the Studio complex locations (Deck 12 and 13 mid-ship, Deck 5 forward) create any unique noise or traffic patterns from the Studio Lounge",
+    "Precise galley locations and whether any cabins sit directly above or below main food preparation areas beyond the Indulge Food Hall already noted",
+    "Whether The Haven complex location and private facilities create any noise or access impacts on surrounding cabins"
+  ],
+  "ship": "Norwegian Prima",
+  "shipSlug": "norwegian-prima",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 1606,
+  "cabinsTouchedByAZone": 1606,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.036486
+}

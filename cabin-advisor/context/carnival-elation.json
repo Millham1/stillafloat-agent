@@ -1,0 +1,187 @@
+{
+  "class": "Fantasy",
+  "sisterShips": [
+    "Carnival Fantasy",
+    "Carnival Ecstasy",
+    "Carnival Sensation",
+    "Carnival Fascination",
+    "Carnival Imagination",
+    "Carnival Inspiration",
+    "Carnival Elation",
+    "Carnival Paradise"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 1/Main Deck level; they obstruct the view downward from Decks 4, 5, and 6, with Deck 4 experiencing the most obstruction and Deck 6 the least, while horizon views remain clear.",
+      "effect": "You lose the view straight down to the water but keep the ocean horizon; some guests find the boats themselves an eyesore in photos.",
+      "mattersTo": "Matters to first-time cruisers who envision unobstructed water views and photographers; experienced cruisers and those focused on horizon views typically don't mind.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 9 aft cabins sit directly below the Lido Deck pool area and buffet on Deck 10.",
+      "effect": "Expect noise from deck chairs scraping, foot traffic, and early-morning buffet setup starting around 6:00-6:30 AM.",
+      "mattersTo": "Light sleepers and late risers should avoid; early risers and those out of the cabin most of the day won't notice.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 7 forward cabins sit two decks below the Lido Deck pool and buffet area.",
+      "effect": "Some noise transmission from pool deck activity, but dampened by the intervening deck; less severe than Deck 9 aft but still noticeable during peak hours.",
+      "mattersTo": "Light sleepers may notice during busy pool times; most guests find it tolerable given the distance.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 5 and 6 forward cabins sit above the Universe Lounge main showroom, which spans Decks 3-4 forward.",
+      "effect": "Show noise typically ends by 10:30-11:00 PM; bass and applause can transmit upward, especially on Deck 5.",
+      "mattersTo": "Early-to-bed guests and families with young children should consider midship or aft; night owls and show-goers won't mind.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 6 and 7 aft cabins sit above the main dining rooms on Decks 4 and 5 aft.",
+      "effect": "Galley service noise and dining room activity during meal times; kitchen prep can start as early as 5:30-6:00 AM.",
+      "mattersTo": "Light sleepers and those sensitive to early-morning noise should avoid; most guests find it acceptable given dining hours are predictable.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        4,
+        5,
+        6,
+        7,
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator banks are located midship, with stairwell access at forward, midship, and aft positions on each deck.",
+      "effect": "Cabins near midship elevators offer maximum convenience but experience hallway traffic and bell chimes; cabins farther forward or aft trade some walking for quiet.",
+      "mattersTo": "Mobility-limited guests and those prioritizing convenience should stay near elevators; light sleepers and those seeking quiet should avoid immediate elevator adjacency.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room sits low and aft; Deck 4 and 5 aft cabins, particularly those farthest aft, experience low-frequency vibration when engines are running.",
+      "effect": "Subtle but constant vibration and hum, most noticeable at night in calm seas; some guests find it soothing, others find it prevents sleep.",
+      "mattersTo": "Vibration-sensitive sleepers should avoid; those who sleep through white noise or find engine hum comforting may prefer these cabins for their lower price.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters operate low and forward during maneuvering in port; Deck 4-6 forward cabins hear the thruster tunnel activity during arrival and departure.",
+      "effect": "Loud mechanical grinding noise for 10-20 minutes during docking and undocking, typically early morning arrival and evening departure.",
+      "mattersTo": "Light sleepers docking in port early morning will be awakened; heavy sleepers and those already awake for port days won't mind.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain runs through the bow; Deck 4-6 forward cabins, especially those closest to the centerline, hear anchor deployment and retrieval.",
+      "effect": "Loud metallic rumbling for 5-10 minutes during anchor operations, typically 6:00-7:00 AM on tender port mornings.",
+      "mattersTo": "Anyone sleeping during tender port arrivals will be awakened; useless to avoid if you're already up for port.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Main crew corridor (I-95) runs along the centerline with access points near midship elevator areas on all cabin decks.",
+      "effect": "Cabins immediately adjacent to crew access doors experience periodic crew traffic, particularly during service hours (early morning, meal times, evening turndown).",
+      "mattersTo": "Light sleepers near crew doors may notice hallway activity; most cabins are sufficiently distant that this is not a factor.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether Fantasy-class ships have a hump (balconies cantilevered past the hull line); the deck plans do not clearly indicate this and I cannot confirm with certainty",
+    "Precise location and extent of any promenade deck and which cabins sit directly above or below it",
+    "Specific cabin numbers immediately adjacent to crew access doors",
+    "Whether any cabins on Deck 7 sit above or below the nightclub/disco and its location",
+    "Exact positioning of galley vents and their impact on specific cabin sections"
+  ],
+  "ship": "Carnival Elation",
+  "shipSlug": "carnival-elation",
+  "line": "Carnival Cruise Line",
+  "totalCabins": 1044,
+  "cabinsTouchedByAZone": 1044,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.033267
+}

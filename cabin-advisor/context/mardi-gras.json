@@ -1,0 +1,156 @@
+{
+  "class": "Excel",
+  "sisterShips": [
+    "Carnival Mardi Gras",
+    "Carnival Celebration",
+    "Carnival Jubilee"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 8; they obstruct downward and partial horizon views for Decks 8-11, with Deck 8 having the most severe obstruction.",
+      "effect": "Balcony and ocean view cabins look directly at or over lifeboat tops instead of open water; the view improves progressively on higher decks as you see past the boats.",
+      "mattersTo": "Matters greatly to anyone who wants unobstructed ocean views and is booking ocean view or balcony cabins; interior cabin guests are unaffected.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 17 above houses interior cabins and some public spaces in the forward and midship sections.",
+      "effect": "Potential for footfall noise from guests in cabins or corridors directly overhead, though both decks are primarily accommodation so activity is similar.",
+      "mattersTo": "Light sleepers may notice evening foot traffic; most guests will not be bothered as both decks serve the same purpose.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        15,
+        16
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The main pool deck and Lido buffet area are located on Deck 16 aft, directly below or one deck below parts of the aft accommodation.",
+      "effect": "Daytime activity, music, and crowd noise from the pool area can carry to cabins above, particularly during the day and early evening.",
+      "mattersTo": "Matters to anyone planning to nap or relax in their cabin during the day; those out exploring won't notice.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The main theatre (Deck 4) sits directly below the forward section of Deck 5.",
+      "effect": "Late-night shows can produce bass and vibration that carries upward, typically until 10-11 PM.",
+      "mattersTo": "Early sleepers should avoid this zone; night owls and those attending shows anyway will not care.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "These are the lowest guest decks in the aft section, closest to propulsion machinery.",
+      "effect": "Low-frequency vibration and hum are perceptible underway, more noticeable at higher speeds or maneuvering.",
+      "mattersTo": "Sensitive sleepers or those who want absolute quiet should avoid; many guests adapt quickly or don't notice.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Lowest forward cabins are near bow thruster machinery and anchor chain mechanisms.",
+      "effect": "Bow thrusters create vibration during docking/undocking; anchor chains rattle early morning in port.",
+      "mattersTo": "Light sleepers arriving in port at dawn will hear the anchor; others sleep through or are already awake.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14,
+        15,
+        16,
+        17
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Primary elevator banks run through forward and midship sections across all guest decks.",
+      "effect": "Cabins immediately adjacent to elevator lobbies get convenient access but also hear chimes, doors, and conversation throughout the day and evening.",
+      "mattersTo": "Mobility-limited guests benefit from proximity; those sensitive to hallway noise should request cabins mid-corridor.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        10,
+        11
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The superstructure steps outward past the lifeboat line in the midship sections of Decks 10 and 11, creating extended balconies.",
+      "effect": "These balconies extend wider than the hull below, offering better sightlines past the lifeboats and a more open feel; they're also midship where motion is minimal.",
+      "mattersTo": "Value-conscious cruisers get better views for less money; those who want high decks or specific locations may not find them here.",
+      "severity": "moderate",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Exact location and span of the I95 crew corridor access points and which cabin sections experience the most service traffic",
+    "Whether specific Havana cabins on Decks 4, 12, and 17 have direct access to the Havana pool area or require walking through public spaces",
+    "Precise location and noise profile of the main galley and whether it affects specific cabin sections",
+    "Whether Cloud 9 Spa cabins on Deck 5 have spa access privileges or just theming",
+    "The exact deck location of nightclubs or late-night venues and their impact on cabins directly above or below"
+  ],
+  "ship": "Carnival Mardi Gras",
+  "shipSlug": "mardi-gras",
+  "line": "Carnival Cruise Line",
+  "totalCabins": 1555,
+  "cabinsTouchedByAZone": 1555,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.028455
+}

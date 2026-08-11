@@ -1,0 +1,121 @@
+{
+  "class": "Beachcomber class",
+  "sisterShips": [],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        1,
+        2,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats mounted at Deck 6 obstruct views from Deck 1, Deck 2, and partially Deck 6 balconies and ocean view cabins.",
+      "effect": "Ocean view and balcony cabins on these decks see lifeboats instead of open water when looking straight out or down; the horizon remains visible above the boats.",
+      "mattersTo": "Matters greatly to guests who want unobstructed water views or photos; insignificant to those focused on having a balcony for air and light or to interior cabin guests.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Main pool deck and buffet venue are located on Deck 11, four decks above Deck 7 aft.",
+      "effect": "Deck 7 aft cabins are well insulated from pool deck activity by distance; noise and foot traffic are minimal.",
+      "mattersTo": "Not a concern for most guests given the four-deck separation.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Pool deck, buffet, and outdoor activity areas are located on Deck 11, directly above Deck 10.",
+      "effect": "Deck 10 cabins experience daytime foot traffic, pool furniture scraping, and music from directly overhead; can continue into evening hours.",
+      "mattersTo": "Significant for light sleepers or guests in cabins during the day; minor for those spending days off the ship or out and about.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room is located low and aft, directly below and adjacent to Deck 1 and Deck 2 aft cabins.",
+      "effect": "Low-frequency vibration and hum are noticeable underway, especially at night when ambient noise is low.",
+      "mattersTo": "Matters to vibration-sensitive guests and light sleepers; less important to those who sleep through white noise or spend little time in the cabin.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters located low and forward operate during docking and undocking maneuvers.",
+      "effect": "Brief but loud thruster noise occurs early morning arrivals and during port departures, typically lasting several minutes.",
+      "mattersTo": "Matters to light sleepers who are in the cabin during port days; irrelevant to early risers or those already awake.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain runs through the bow and drops each port arrival, typically early morning.",
+      "effect": "Loud rumbling and vibration in forward cabins during anchor deployment, lasting a few minutes per port call.",
+      "mattersTo": "Significant for light sleepers in forward cabins on port-intensive itineraries; minor for those who wake early anyway or on sea days.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether this class has a hump (balconies cantilevered past the hull line) and if so, on which decks and sections",
+    "Precise elevator and stair bank locations along the hull and their noise/convenience profile",
+    "I95 crew corridor routing and where service access points create traffic near guest areas",
+    "Specific theater, show lounge, nightclub, or galley locations and which cabin decks sit directly above or below them",
+    "Whether there are sister ships sharing this exact hull layout—Margaritaville at Sea has other vessels but shared layout needs confirmation",
+    "Connecting cabin availability patterns beyond what the deck plan data shows",
+    "Whether Wake staterooms (Wake Ocean View, Wake View Balcony) have specific positioning quirks related to wake views"
+  ],
+  "ship": "Margaritaville at Sea Beachcomber",
+  "shipSlug": "margaritaville-at-sea-beachcomber",
+  "line": "Margaritaville at Sea",
+  "totalCabins": 1358,
+  "cabinsTouchedByAZone": 1358,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.023646
+}

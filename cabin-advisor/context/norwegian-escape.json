@@ -1,0 +1,249 @@
+{
+  "class": "Breakaway Plus",
+  "sisterShips": [
+    "Norwegian Escape",
+    "Norwegian Joy",
+    "Norwegian Bliss",
+    "Norwegian Encore"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; they obstruct downward and partial lateral views from Decks 8, 9, and 10, with Deck 8 experiencing the most severe obstruction and Deck 10 the least.",
+      "effect": "Balconies look down at orange boat covers instead of water; horizon views remain clear, and the boats provide some wind shelter.",
+      "mattersTo": "Matters greatly to guests who want unobstructed water views directly below; irrelevant to those focused on horizon, sunset, or port views, or to inside/oceanview cabins.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The main pool deck, outdoor buffet seating, and pools are directly above on Deck 16 midship and aft.",
+      "effect": "Daytime foot traffic, deck chair scraping, and pool activity create noise overhead from early morning through evening; heaviest midday.",
+      "mattersTo": "Matters to light sleepers, those napping during the day, or anyone sensitive to overhead noise; less relevant to guests out and about during peak pool hours.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Waterfront outdoor dining and walking promenade on Deck 8 is six decks below.",
+      "effect": "This deck-to-deck relationship does not materially change cabin experience.",
+      "mattersTo": "Not applicable — no material impact on cabin experience.",
+      "severity": "minor",
+      "confidence": "low"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Escape Theater (main showroom) sits on Decks 6 and 7 directly below the forward sections.",
+      "effect": "Show nights bring bass, music, and applause until 10-11 PM; the theater is dark some nights, making this intermittent.",
+      "mattersTo": "Matters to early sleepers and families with young children on show nights; irrelevant to night owls or those out at evening entertainment.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Haven sundeck, pool, and hot tubs are directly below on Deck 17 forward (which also has cabins).",
+      "effect": "Daytime and evening Haven guest activity creates foot traffic and conversation noise below, though Haven areas tend to be quieter than main pools.",
+      "mattersTo": "Matters to Haven guests on Deck 16 who are light sleepers or value midday quiet; the activity level is much lower than the main pool deck.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        17
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Haven sundeck, pool, and hot tubs on Deck 17 have the observation deck and walking area directly above on Deck 18.",
+      "effect": "Foot traffic and conversation from the observation deck create minor noise overhead, typically during the day and at sunset.",
+      "mattersTo": "Matters minimally; the observation deck is not a high-activity venue and Haven guests expect some shared-space proximity.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator banks run midship through all main guest decks with lobbies and machine rooms creating structural noise and guest traffic.",
+      "effect": "Cabins adjacent to elevator shafts hear chimes, door mechanisms, and hydraulic hums 24/7; cabins near lobbies get hallway conversation and foot traffic at embark/debark and port days.",
+      "mattersTo": "Matters significantly to light sleepers and those sensitive to mechanical hum; convenient for guests prioritizing fast vertical access over quiet.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 5 sits low in the hull where propulsion vibration and engine hum are most perceptible, particularly in the forward and midship machinery spaces.",
+      "effect": "Low-frequency vibration and a faint but constant hum are present underway; most noticeable at night in quiet cabins and when the ship is at cruising speed.",
+      "mattersTo": "Matters to vibration-sensitive guests and light sleepers; less relevant to sound sleepers, those who run white noise, or guests who are rarely in the cabin.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        8,
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thruster machinery sits low and forward; anchor chain runs through the bow on Deck 5 forward and is audible on Decks 8 and 9 forward during anchoring.",
+      "effect": "Every port morning where the ship anchors (not docks), the anchor chain creates loud metallic rumbling for 1-3 minutes, typically between 6-8 AM.",
+      "mattersTo": "Matters greatly to late sleepers on tender port days; irrelevant on docked days or to early risers already awake.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The superstructure extends outboard past the lifeboat line midship on these decks, giving balconies a cantilever that juts beyond the hull.",
+      "effect": "These balconies sit lower and more central (smoother ride), clear the lifeboats entirely for unobstructed water views, and typically price lower than higher decks despite the better view geometry.",
+      "mattersTo": "Matters to value-focused cruisers wanting balcony views without lifeboat obstruction and those who prefer midship stability; less relevant to guests prioritizing high-deck status or aft location.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        5,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Crew access points to the I-95 crew corridor sit forward and aft on guest cabin decks, with service doors, crew foot traffic, and cart movement during early morning and late night service hours.",
+      "effect": "Service activity creates door noise, cart rolling, and crew conversation from roughly 5-7 AM (breakfast prep) and 9 PM-midnight (turndown, galley service); intermittent but predictable.",
+      "mattersTo": "Matters to light sleepers in cabins near crew access doors, especially those who sleep during service hours; irrelevant to guests out of the cabin during these times.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Studio complex (solo cabins with shared lounge) occupies a dedicated section midship on Deck 11 with 16 interior-access cabins.",
+      "effect": "Studios share a private keycard-access lounge and have inward-facing doors to an interior corridor, creating a distinct micro-community separate from the main hallway traffic.",
+      "mattersTo": "Matters only to solo travelers booking Studios; the separate entry and lounge make it a different cabin experience than standard inside cabins.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Spa cabins on Decks 11 and 12 forward include access to the Mandara Spa thermal suite and priority spa booking.",
+      "effect": "These cabins are marketed with spa access as the differentiator; the location is forward and low, subject to the same bow motion and anchor noise as non-spa cabins in this section.",
+      "mattersTo": "Matters to guests prioritizing spa amenities and willing to accept forward/low location trade-offs; the spa perks, not location, are the value.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        17,
+        18
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Haven is a ship-within-a-ship complex on Decks 17 and 18 forward with private keycard access, dedicated pool, sundeck, restaurant, and concierge.",
+      "effect": "Haven guests experience restricted access (secure elevator and stairwell), exclusive amenities, and separation from the main guest flow; cabins here are suites with butler service.",
+      "mattersTo": "Matters only to guests booking Haven suites; this is a premium enclave with different service, pricing, and access than the rest of the ship.",
+      "severity": "minor",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Exact placement of galley exhaust vents and whether they affect specific aft or midship sections on any deck.",
+    "Whether the Breakaway Plus class has any structural hum or vibration from azipod propulsion units affecting specific aft cabins, and if so, which decks and sections.",
+    "Precise location and operating hours of late-night venues (nightclub, casino) on Decks 6-8 and whether they create noise for cabins on Deck 9 or 10 directly above.",
+    "Confirmation of which 'null' category cabins (6 per deck on several decks) represent — crew, accessible, connecting, or other — and their implications for adjacent guest cabins."
+  ],
+  "ship": "Norwegian Escape",
+  "shipSlug": "norwegian-escape",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 2180,
+  "cabinsTouchedByAZone": 2180,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.046629000000000004
+}

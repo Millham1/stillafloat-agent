@@ -1,0 +1,213 @@
+{
+  "class": "Vista",
+  "sisterShips": [
+    "Carnival Horizon",
+    "Carnival Panorama"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        2,
+        3,
+        5,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 2; they obstruct the downward view from Decks 2, 3, and 5, with Deck 2 cabins sitting right at boat level and upper decks seeing progressively less obstruction.",
+      "effect": "You'll see the boat tops and davits below you instead of water, though the horizon remains clear; Deck 2 has boats right outside, Deck 3 looks down onto boat tops, Deck 5 sees them further below.",
+      "mattersTo": "Matters to guests who want unobstructed water views or dislike the industrial look of safety equipment; doesn't matter if you focus on horizon views or spend little time looking straight down from your cabin.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Lido Deck (pool deck, buffet) is directly above on Deck 10, with the main pool, bars, and Lido Marketplace buffet creating foot traffic, deck chair scraping, and activity from early morning through late evening.",
+      "effect": "Expect noise from above starting around 6 AM when the buffet opens—footsteps, chairs moving, occasional dropped items, music from pool deck—continuing until late evening.",
+      "mattersTo": "Matters greatly to light sleepers or anyone spending quiet time in the cabin during the day; less important if you're out exploring or sleep through noise.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The main theater (Liquid Lounge) sits directly above on Deck 9 midship, with shows running until late evening and sound system use during performances.",
+      "effect": "You may hear muffled bass, applause, and vibration from shows, typically evening performances ending around 10-11 PM.",
+      "mattersTo": "Matters to early sleepers or those sensitive to vibration and low-frequency sound; minimal impact if you're attending shows yourself or turn in late.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10,
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "SportSquare and SkyRide are directly above on Deck 12 forward, with the suspended bike attraction, ropes course, and activity zone creating intermittent impact noise and excited voices during the day.",
+      "effect": "Daytime noise from activity above—wheels on tracks, safety equipment clicks, participant shouts—mostly during sea days and afternoons.",
+      "mattersTo": "Matters if you nap or relax in your cabin during the day; not an issue for those out and about or who sleep at night only.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 5 below contains the main dining rooms (Horizons and Reflections) in forward and midship sections, with dinner service, galley activity, and staff movement from approximately 5 PM to 10 PM.",
+      "effect": "Possible muffled kitchen sounds, dish clatter, and vibration during dinner hours, particularly in early and late seating times.",
+      "mattersTo": "Matters to those sensitive to evening noise or vibration from below; minimal impact if you're at dinner yourself during those hours.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        2,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Main elevator banks run forward, midship, and aft through all cabin decks with 24-hour operation; cabins immediately adjacent hear bell chimes, door mechanisms, and occasional conversation.",
+      "effect": "Cabins next to elevator shafts experience ding sounds, mechanical hum, and passenger chatter at all hours, most frequent during embarkation, mealtimes, and show times.",
+      "mattersTo": "Matters significantly to light sleepers or those bothered by repetitive mechanical sounds; ideal for guests prioritizing convenience who don't mind ambient noise.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "These are the lowest aft cabins, closest to propulsion machinery; low-frequency vibration is more noticeable here, particularly during maneuvering and high-speed sailing.",
+      "effect": "A persistent low hum and subtle vibration in the cabin, more pronounced when engines change speed or during rough seas.",
+      "mattersTo": "Matters to those sensitive to vibration or who need complete stillness to sleep; doesn't bother guests who find engine hum soothing or sleep soundly.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thruster operation occurs below these forward cabins during docking and maneuvering, creating short bursts of significant vibration and rumbling noise.",
+      "effect": "Intermittent loud rumbling for a few minutes during arrival and departure at each port, typically early morning departures.",
+      "mattersTo": "Matters if you're a light sleeper bothered by being woken during port arrivals around 6-7 AM; not an issue if you wake early anyway or sleep through noise.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The hull widens above the lifeboat line on Decks 6 and 7, creating balconies that extend past the lifeboats for wider side views and less obstructed sightlines.",
+      "effect": "Balconies on these decks sit on the widest part of the ship with better lateral views past the safety equipment, combining lower pricing with practical view advantages.",
+      "mattersTo": "Excellent value for balcony seekers who want ocean views without lifeboat obstruction and don't need higher decks; the benefit is purely visual, not about deck height.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Havana cabins on Deck 2 aft have exclusive access to the Havana Bar and pool area on Deck 5 aft, creating a distinct neighborhood feel with dedicated outdoor space.",
+      "effect": "You're part of a ship-within-a-ship community with private pool access, but these are the lowest aft cabins with proximity to engine vibration.",
+      "mattersTo": "Matters to those who value exclusive amenity access and community vibe over cabin location concerns; the trade-off is real and deliberate.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Family Harbor cabins on Deck 2 midship provide access to the Family Harbor Lounge on Deck 2, creating a dedicated family zone with exclusive indoor play space and concierge.",
+      "effect": "Families get a dedicated hangout space and support services, though these are lower deck cabins that may experience more motion than higher decks.",
+      "mattersTo": "Specifically designed for families with kids who will use the lounge heavily; the location trade-off is intentional for the amenity access.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Cloud 9 Spa cabins on Decks 11 and 12 forward provide unlimited thermal suite access and priority spa bookings, positioned directly integrated with the Cloud 9 Spa facility.",
+      "effect": "You're living inside the spa complex with immediate access to thermal experiences, but these are the highest forward cabins with more motion in rough seas.",
+      "mattersTo": "Perfect for spa enthusiasts who prioritize wellness amenities and will use thermal suite daily; motion sensitivity is the trade-off for the integration.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Exact location and reach of i95 crew corridor access points near guest cabin areas—while this corridor system exists, I cannot confidently map which specific cabin sections experience crew traffic without deck-by-deck verification",
+    "Whether the anchor chain noise affects Deck 3 forward Ocean View cabins differently than typical Vista-class forward cabins, given their unique forward-only configuration",
+    "Specific galley locations and their relationship to cabins directly above or below—while main dining rooms are on Deck 5, the exact galley footprints and vent placements need verification",
+    "Whether Deck 10 balconies in the midship section (167 cabins) experience any overflow noise from Lido Deck activities occurring on the same deck level in adjacent spaces"
+  ],
+  "ship": "Carnival Vista",
+  "shipSlug": "carnival-vista",
+  "line": "Carnival Cruise Line",
+  "totalCabins": 1725,
+  "cabinsTouchedByAZone": 1725,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.042198
+}

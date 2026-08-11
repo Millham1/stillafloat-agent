@@ -1,0 +1,200 @@
+{
+  "class": "Quantum",
+  "sisterShips": [
+    "Anthem of the Seas",
+    "Ovation of the Seas",
+    "Spectrum of the Seas",
+    "Odyssey of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats mounted at Deck 5 obstruct the downward view from balconies on Decks 6-8, with Deck 6 most affected and obstruction lessening on higher decks; horizon view remains clear.",
+      "effect": "You see the lifeboat tops when looking down but have unobstructed ocean views at eye level and above; the boats are simply part of the foreground.",
+      "mattersTo": "Matters to those who want to watch the water directly below or photograph straight down; doesn't matter to those focused on horizon views, sunsets, or port scenery.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Mid-ship balconies on Decks 7-8 extend past the hull line where the superstructure cantilevers over the lifeboat line.",
+      "effect": "These balconies jut out for wider side views without lifeboat obstruction below, sit low and central for steadier motion, and typically price lower than high-deck cabins despite the view advantage.",
+      "mattersTo": "Value play for anyone wanting balcony width and clear views without paying for upper decks; ideal for those prioritizing steady ride over height.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        13
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Solarium pool, whirlpools, and outdoor seating directly above on Deck 14.",
+      "effect": "Expect noise from pool activity, chair scraping, and conversation overhead from morning through evening; some vibration from whirlpool pumps.",
+      "mattersTo": "Light sleepers and anyone in cabin during the day should avoid; doesn't matter if you're only there to sleep late at night.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        13
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Two70 entertainment venue with robotic screens and performance space directly above on Deck 14.",
+      "effect": "Evening show noise, music, and audience activity overhead; typically quiet during daytime hours.",
+      "mattersTo": "Matters to early sleepers during show times; doesn't matter to night owls or those attending the shows anyway.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Royal Theater spans Decks 3-5 directly below most of Deck 6.",
+      "effect": "Show music, audience movement, and stage effects audible in cabins during evening performances; typically two shows per night on sea days.",
+      "mattersTo": "Matters to anyone wanting early-evening quiet or turning in before 10 PM; minimal impact if you attend the shows or stay out late.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Music Hall live venue on Deck 6 directly below.",
+      "effect": "Live music and late-night entertainment noise from below, particularly during evening and night hours.",
+      "mattersTo": "Light sleepers should avoid; doesn't matter to those who enjoy the energy or are out late.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        11,
+        12,
+        13
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "SeaPlex activity space (sports court, bumper cars, roller skating) on Deck 10 aft, two to three decks below.",
+      "effect": "Intermittent activity noise and vibration from bumper cars and sports during daytime and early evening; typically quieter after 10 PM.",
+      "mattersTo": "Matters during sea days when SeaPlex is heavily used; less impact on port days or for those out of cabin during activity hours.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 13 aft features outdoor sports and activity areas directly overhead.",
+      "effect": "Daytime noise from sports activities, jogging track use, and outdoor games above.",
+      "mattersTo": "Matters to those in cabin during the day; minimal impact if you're exploring the ship or in port.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Proximity to engine room below and propulsion systems creates low-frequency vibration in aft cabins, most noticeable on lower decks.",
+      "effect": "Subtle vibration and low hum at cruising speed; more noticeable during maneuvering and departure/arrival; Deck 6 aft typically feels it most.",
+      "mattersTo": "Matters to vibration-sensitive sleepers and those bothered by constant background hum; many guests don't notice or find it soothing.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters and anchor machinery in forward sections create intermittent noise and vibration during docking and anchoring.",
+      "effect": "Loud mechanical noise and vibration during port arrivals, departures, and tendering operations; anchor chain noise every port morning.",
+      "mattersTo": "Critical for anyone who wants to sleep in on port days; doesn't matter to early risers or those prioritizing low price.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Elevator banks located forward, mid-ship, and aft on all guest cabin decks with typical cruise ship positioning.",
+      "effect": "Cabins adjacent to elevator lobbies have convenient access but experience door chimes, conversation, and foot traffic at all hours; cabins mid-corridor trade some steps for quiet.",
+      "mattersTo": "Mobility-limited guests benefit from elevator proximity; light sleepers should avoid cabins immediately adjacent to lobbies.",
+      "severity": "minor",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Precise location and extent of I95 crew corridor access points and which cabin sections experience service traffic",
+    "Whether Windjammer buffet on Deck 14 creates noise/odor impact on specific Deck 13 sections",
+    "Specific cabin numbers adjacent to elevator banks on each deck",
+    "Whether the North Star observation capsule machinery creates noise for any Deck 13 forward cabins",
+    "Extent of galley positioning and whether cooking odors or ventilation noise affects specific cabin sections"
+  ],
+  "ship": "Quantum of the Seas",
+  "shipSlug": "quantum-of-the-seas",
+  "line": "Royal Caribbean International",
+  "totalCabins": 2098,
+  "cabinsTouchedByAZone": 2098,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.035781
+}

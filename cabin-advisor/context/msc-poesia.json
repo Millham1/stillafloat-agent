@@ -1,0 +1,149 @@
+{
+  "class": "Musica",
+  "sisterShips": [
+    "MSC Musica",
+    "MSC Orchestra",
+    "MSC Magnifica"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        5,
+        8,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats mounted at Deck 5 obstruct views from Deck 5 cabins completely and partially obstruct ocean views from Deck 8 and lower Deck 9 cabins, though horizon remains visible.",
+      "effect": "Deck 5 ocean-view cabins look directly into or over orange lifeboat shells; Deck 8 ocean views are partially blocked especially when looking down; low Deck 9 balconies may see boat tops at the edge of view.",
+      "mattersTo": "Critical for anyone who wants unobstructed water views or photos; less important if you spend little time in the cabin or prefer the lower price point.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 11 Orchestra Restaurant (main dining room) sits directly above aft Deck 10 and two decks above aft Deck 9.",
+      "effect": "Dinner service noise—chair scraping, footfall, occasional dropped items—filters down during evening hours, roughly 6pm to 10:30pm across two seatings.",
+      "mattersTo": "Matters to light sleepers or anyone in the cabin during dinner hours; irrelevant if you're out exploring the ship in the evenings.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 11 and Deck 12 public venues (L'Oleandro Restaurant forward, buffet and pools mid-ship) sit above forward and mid Deck 10.",
+      "effect": "Daytime and evening foot traffic, pool deck activity, and buffet service create intermittent noise overhead; most active roughly 7am to 11pm.",
+      "mattersTo": "Affects light sleepers and anyone wanting afternoon naps; less relevant for guests who are rarely in cabins during the day.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Theater Deck (Deck 7) sits two decks below forward Deck 9; showtime vibration and bass can carry upward during evening performances.",
+      "effect": "Low-frequency sound from shows (typically 8pm and 10pm) may be faintly perceptible, though significantly dampened by two deck layers.",
+      "mattersTo": "Mainly concerns extremely noise-sensitive guests; most won't notice or will be at the show themselves.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 9 cabins sit directly overhead mid and aft Deck 8 cabins (standard guest cabin construction).",
+      "effect": "Normal footfall, drawer closing, and conversation from the cabin above audible with typical cruise ship soundproofing; most noticeable early morning and late evening.",
+      "mattersTo": "Sensitive sleepers may prefer top cabin deck (Deck 10) to avoid overhead neighbors; most guests find it tolerable background.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        5,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Elevator banks run forward, mid-ship, and aft on all cabin decks with machinery noise and passenger traffic at landings.",
+      "effect": "Cabins immediately adjacent to elevator lobbies hear mechanical hum, door chimes, and conversation as guests wait; cabins one or two doors away gain convenience without most noise.",
+      "mattersTo": "Mobility-limited guests benefit from proximity despite noise; light sleepers should avoid immediate-adjacent cabins.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 5 aft section sits relatively low and toward stern, closer to propulsion machinery zones.",
+      "effect": "Low-frequency vibration may be perceptible underway, particularly at higher speeds; typically felt as subtle hum through floor and bed frame.",
+      "mattersTo": "Vibration-sensitive guests should avoid; those who sleep through anything or like the engine hum as white noise won't mind.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thruster machinery operates in forward sections during docking and maneuvering, and anchor chain deploys through hawsepipe during port arrivals.",
+      "effect": "Loud mechanical grinding from thrusters during port arrival/departure (5-15 minutes); anchor chain roar early morning in port (brief but startling if asleep).",
+      "mattersTo": "Critical for light sleepers who value quiet mornings in port; non-issue for early risers or those who sleep through noise.",
+      "severity": "significant",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether Musica class has hump balconies (cantilevered section mid-ship low decks) and if so, which precise deck and cabin ranges—need deck plan cross-sections to confirm",
+    "Exact location of I-95 crew corridor access points and whether service traffic creates noticeable disturbance near specific cabin clusters",
+    "Whether Deck 5 forward section extends far enough forward to experience more pronounced bow movement in rough seas",
+    "Specific cabin numbers adjacent to galley service areas and whether galley noise/activity affects particular cabins",
+    "Whether any cabins have connecting door configurations characteristic of this class beyond standard industry practice"
+  ],
+  "ship": "MSC Poesia",
+  "shipSlug": "msc-poesia",
+  "line": "MSC Cruises",
+  "totalCabins": 640,
+  "cabinsTouchedByAZone": 640,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.027942
+}

@@ -1,0 +1,167 @@
+{
+  "class": "Jewel",
+  "sisterShips": [
+    "Norwegian Pearl",
+    "Norwegian Gem",
+    "Norwegian Jade"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        5,
+        6,
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7 (not a guest cabin deck), obstructing views from decks directly above and below.",
+      "effect": "Cabins on Deck 5 look up at boat hulls; Decks 6 and 8 have partial to full obstruction depending on exact position, with horizon often clear but the view straight down or at a shallow angle blocked.",
+      "mattersTo": "Matters greatly to anyone who paid for an oceanview or balcony expecting unobstructed water views; inside cabin guests are unaffected. Deck 8 balconies are most impacted as they sit just above the boat line.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Garden Café (buffet) sits directly above on Deck 12, open long hours from early breakfast through late-night snacks.",
+      "effect": "Foot traffic, chair scraping, and service activity audible from cabins below, particularly during breakfast and lunch rushes; continues until late evening.",
+      "mattersTo": "Light sleepers and anyone sensitive to overhead noise should avoid; heavy sleepers and those spending days ashore may not notice.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Bliss Lounge and Bar sits on Deck 11 directly above, operating into late night hours.",
+      "effect": "Music, dancing, and bar activity create noise and vibration below, particularly Thursday through Saturday nights and sea days.",
+      "mattersTo": "Anyone wanting quiet evenings should avoid this section; those out late themselves or using earplugs may be fine.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Stardust Theater sits on Deck 6 and Deck 7, two to three decks below these cabins.",
+      "effect": "Show audio and bass can transmit upward during evening performances, though distance reduces impact compared to cabins on the theater decks themselves.",
+      "mattersTo": "Minor concern for sensitive sleepers during showtimes (typically 7:30 and 9:30 PM); most guests report minimal disturbance at this distance.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        14,
+        15
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Haven courtyard pool and hot tubs sit on Deck 14, with private sundeck areas.",
+      "effect": "The two Deck 15 forward Haven suites sit directly above the Haven pool area, so daytime pool activity is audible; Deck 14 cabins surround the courtyard.",
+      "mattersTo": "Haven guests expect this communal outdoor space; it's a feature of the complex, not a bug, though light sleepers may hear morning pool setup.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        4,
+        5,
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator banks run mid-ship on all main guest cabin decks, with stairwells adjacent.",
+      "effect": "Cabins immediately adjacent to elevator lobbies offer maximum convenience but experience door chimes, conversation, and foot traffic 24/7; cabins further fore or aft are quieter but mean longer walks.",
+      "mattersTo": "Mobility-limited guests benefit from elevator-adjacent cabins; light sleepers and those valuing quiet should choose cabins away from mid-ship elevator cores.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room sits low and aft; these are the lowest guest decks in the aft section.",
+      "effect": "Low-frequency vibration and hum may be noticeable underway, particularly at higher speeds or during maneuvering; typically felt more than heard.",
+      "mattersTo": "Vibration-sensitive guests should avoid; many guests don't notice or find the hum soothing; worst in aft cabins on Deck 4.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters are located low and forward, used during docking and maneuvering in port.",
+      "effect": "Loud mechanical grinding during port arrivals and departures, typically early morning and evening; silent during sea days and while at dock.",
+      "mattersTo": "Anyone wanting to sleep through port arrival should avoid; those already awake for arrival won't care; Deck 4 forward is loudest.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain locker sits in the bow below Deck 6 forward suites.",
+      "effect": "Loud rattling and vibration every time the anchor drops or is raised, typically early morning in port; brief but very loud.",
+      "mattersTo": "The nine forward suites on Deck 6 experience this; it's a few minutes of noise per port call, so matters only to very light sleepers or those who value quiet mornings highly.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether this Jewel-class hull features a hump (cantilevered balconies past the hull line) on specific lower decks, and if so, which decks and sections—need deck plan cross-sections to verify",
+    "Exact I-95 crew corridor routing and which cabin sections have crew access doors creating service traffic—layout varies by refit",
+    "Whether any connecting cabin pairs are concentrated in specific sections or distributed evenly",
+    "Specific locations of accessible/ADA cabins beyond knowing they typically cluster near elevators",
+    "Whether recent refits have added soundproofing that mitigates theater or venue noise to cabins above/below"
+  ],
+  "ship": "Norwegian Jewel",
+  "shipSlug": "norwegian-jewel",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 1198,
+  "cabinsTouchedByAZone": 1188,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.031179
+}

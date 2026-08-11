@@ -1,0 +1,154 @@
+{
+  "class": "Sphere class",
+  "sisterShips": [
+    "Sun Princess",
+    "Star Princess"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        6,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 6; they obstruct downward and outward views from Decks 6, 9, and 10, with Deck 6 most affected.",
+      "effect": "Oceanview and balcony cabins on these decks look directly at or over orange lifeboat tops instead of clean water views; the horizon remains visible above the boats.",
+      "mattersTo": "Matters greatly to guests prioritizing unobstructed ocean views or photography; doesn't matter to those focused on having a balcony for air and space rather than the vista, or to anyone in an interior cabin.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Dome (multi-story entertainment venue) sits directly below the midship section of Deck 9.",
+      "effect": "Evening entertainment noise and vibration from live shows and performances may be noticeable in cabins directly above, particularly during peak evening hours.",
+      "mattersTo": "Matters to light sleepers and early-to-bed travelers; doesn't matter to those who stay out late or aren't noise-sensitive.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Main dining rooms and galley operations sit directly below the aft section of Deck 10.",
+      "effect": "Matters to light sleepers and those sensitive to mechanical hums or service activity sounds; doesn't matter to sound sleepers or those rarely in their cabin during meal times.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The Dome upper levels and the Pool Deck sit directly above midship and aft Deck 16.",
+      "effect": "Daytime pool deck activity, furniture dragging, and evening entertainment noise may be audible; foot traffic and music from the pool bar can carry through until late evening.",
+      "mattersTo": "Matters to those wanting quiet during the day or early evenings; doesn't matter to heavy sleepers or guests who prefer the energy of being near the action.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The World Fresh Marketplace (buffet) operates directly above portions of midship and aft Deck 15.",
+      "effect": "Early morning buffet prep (starting around 6 AM), foot traffic, chair movement, and service activity throughout breakfast and lunch hours create noise overhead.",
+      "mattersTo": "Matters significantly to late sleepers and those sensitive to early morning noise; doesn't matter to early risers or those planning to be at breakfast anyway.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins on the lowest guest decks sit closest to propulsion machinery and stabilizer mechanisms.",
+      "effect": "Low-frequency vibration and mechanical hum are most noticeable here, particularly during maneuvering, rough seas, or when stabilizers are active.",
+      "mattersTo": "Matters to vibration-sensitive guests and light sleepers; doesn't matter to those unbothered by background hum or who use white noise anyway.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        6,
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on lower decks experience bow thruster noise during docking and maneuvering, plus anchor chain deployment in port.",
+      "effect": "Loud mechanical rumble during docking (usually early morning arrival) and anchor operations; the sound is brief but can be jarring if asleep.",
+      "mattersTo": "Matters greatly to light sleepers on port days with early arrival times; doesn't matter to heavy sleepers or early risers who'll be up anyway.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        5,
+        6,
+        9,
+        10,
+        11,
+        12,
+        14,
+        15,
+        16,
+        17
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Elevator and stair banks are positioned forward, midship, and aft on all cabin decks, with midship banks serving the highest traffic.",
+      "effect": "Cabins immediately adjacent to elevator lobbies experience door chimes, conversation, and foot traffic throughout the night; midship elevators are busiest due to main dining room and atrium access.",
+      "mattersTo": "Matters to light sleepers and those sensitive to hallway noise; doesn't matter to sound sleepers or those who prioritize convenience over quiet.",
+      "severity": "minor",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether the Sphere class has a hump configuration (balconies cantilevered past the hull line) and, if so, on which specific decks and sections",
+    "Exact location and extent of the I-95 crew corridor access points and whether service traffic noticeably impacts specific guest cabin areas",
+    "Whether the theatre location creates noise for cabins on adjacent decks, and if so, which decks and sections",
+    "Specific cabin numbers or ranges that are connecting cabins or ADA-accessible beyond what's standard",
+    "Whether any Deck 17 cabins experience noise from sports court, open deck activities, or radar mast equipment"
+  ],
+  "ship": "Sun Princess",
+  "shipSlug": "sun-princess",
+  "line": "Princess Cruises",
+  "totalCabins": 2157,
+  "cabinsTouchedByAZone": 2157,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.029823000000000002
+}

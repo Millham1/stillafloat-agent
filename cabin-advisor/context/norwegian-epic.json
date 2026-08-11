@@ -1,0 +1,167 @@
+{
+  "class": "Epic",
+  "sisterShips": [],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; they obstruct the view downward from Decks 8-10, with Deck 8 experiencing the most significant obstruction and Deck 10 the least, while the horizon view remains clear.",
+      "effect": "Balconies look straight out to sea but you cannot see the waterline or watch port activities below; the sensation is of being suspended over the boats rather than directly over water.",
+      "mattersTo": "Matters to guests who want to watch tender operations, see the ship's hull meeting the water, or have young children who enjoy looking straight down; irrelevant to those focused on horizon views and sunsets.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 15 directly above houses the main pool area, Spice H2O adults area, and outdoor deck activities in the mid and aft sections.",
+      "effect": "Daytime noise from pool deck furniture, music, and foot traffic directly overhead; activity typically runs from early morning through late evening.",
+      "mattersTo": "Significant for light sleepers or those planning to nap or relax in the cabin during the day; less relevant for guests who are rarely in their cabin during daytime hours.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        13
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Epic Theater occupies Decks 14-15 in the aft section, two decks above.",
+      "effect": "Evening show noise and audience movement may be noticeable during performance times, typically during dinner hours and late evening.",
+      "mattersTo": "Relevant for early-to-bed guests or those sensitive to periodic noise during show times; minimal impact for those attending shows or dining during performance hours.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 7 directly below contains public venues including restaurants, bars, casino, and the Bliss nightclub.",
+      "effect": "Late-night noise and vibration from nightclub bass, casino activity, and bar crowds can transmit upward, particularly Thursday through Sunday nights when these venues are busiest.",
+      "mattersTo": "Critical for light sleepers and those with early port excursions; less relevant for night owls and those who stay out late themselves.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The main dining rooms on Deck 8 sit directly below the mid-section cabins.",
+      "effect": "Noise during dinner service hours from chair movement, table setup, and crowd conversation; typically 5:30 PM to 10:30 PM.",
+      "mattersTo": "Matters to those who prefer quiet early evenings in the cabin; non-issue for guests dining out during these hours.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Primary elevator banks are located forward and mid-ship on all cabin decks, with the forward bank serving The Haven on Decks 16-17.",
+      "effect": "Cabins immediately adjacent to elevator lobbies experience door chimes, conversation, and foot traffic at all hours; cabins within 2-3 doors have convenient access with minimal noise.",
+      "mattersTo": "High-frequency elevator users value the proximity for mobility or convenience; light sleepers should avoid immediate adjacency to the lobbies.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Propulsion machinery is located low and aft; these cabins sit close to the engine room and propeller shafts.",
+      "effect": "Low-frequency vibration during maneuvering and at cruising speed, most noticeable when lying in bed; modern dampening reduces but does not eliminate the sensation.",
+      "mattersTo": "Bothers guests sensitive to vibration or those planning to spend significant time resting in the cabin; others may not notice or may find the hum soothing.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters are located in the forward section below these decks and activate during docking and departure.",
+      "effect": "Loud rumbling and vibration during port arrivals and departures, typically 15-30 minutes per event; silent while at sea or fully docked.",
+      "mattersTo": "Matters to those sleeping during early morning arrivals or afternoon departures; negligible for early risers or those on deck during port operations.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        16,
+        17
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Haven is a ship-within-a-ship concept with private keycard access, dedicated concierge, private pool, sundeck, and restaurant on Deck 16.",
+      "effect": "Complete separation from the main ship's crowds with exclusive amenities and priority services; limited interaction with other guests.",
+      "mattersTo": "Premium amenity seekers and those valuing privacy and personalized service will appreciate the seclusion; those who enjoy the full ship experience may find it isolating.",
+      "severity": "significant",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether Norwegian Epic has a hump configuration where balconies cantilever past the hull line on lower/mid decks, and if so, which specific decks and sections",
+    "Precise location of I95 crew corridor access points and which cabin sections experience the most service traffic",
+    "Whether anchor chain noise is significant enough on this class to warrant noting for forward low-deck cabins",
+    "Specific cabin numbers that are connecting rooms, as Epic was designed with an unusually high number of Studios and configuration variations",
+    "Location and impact of galley operations, particularly whether any galleys create noise/odor issues for cabins on adjacent decks"
+  ],
+  "ship": "Norwegian Epic",
+  "shipSlug": "norwegian-epic",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 2114,
+  "cabinsTouchedByAZone": 2114,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.031257
+}

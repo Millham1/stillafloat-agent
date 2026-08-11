@@ -1,0 +1,205 @@
+{
+  "class": "Freedom",
+  "sisterShips": [
+    "Freedom of the Seas",
+    "Liberty of the Seas",
+    "Independence of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        2,
+        3,
+        6,
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 5 (not a cabin deck), obstructing views from Decks 2, 3, 6, and 7, with Decks 2 and 3 most severely affected.",
+      "effect": "Oceanview and balcony cabins on these decks look directly at orange lifeboat shells instead of open water; the horizon remains visible above the boats.",
+      "mattersTo": "Matters greatly to anyone wanting unobstructed ocean views; irrelevant to interior cabins or those who don't spend time looking out their window.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The hull cantilevers outward past the lifeboat line starting at Deck 6, creating wider balconies in mid and aft sections on Decks 6, 7, and 8.",
+      "effect": "These balconies extend beyond the lifeboats for clearer side views and more balcony space, typically at lower prices than higher deck balconies.",
+      "mattersTo": "Value hunters wanting balconies with better views than the lifeboat-obstructed lower decks, and those who prefer midship stability over height.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Pool deck (Deck 11 and 12 aft/mid) sits directly above or adjacent to cabins on Deck 11 and below cabins on Deck 12.",
+      "effect": "Daytime deck chair scraping, pool activity, and music from above until late evening; Deck 12 cabins may have limited overhang protection.",
+      "mattersTo": "Light sleepers and anyone wanting quiet during pool hours (typically 8am-midnight) should avoid; doesn't affect those out exploring all day.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The main showroom (theater) sits on Deck 3 and 4 forward, three to four decks below Deck 10 forward cabins.",
+      "effect": "No significant noise or vibration impact at this distance; showroom activity does not materially affect Deck 10 forward cabins.",
+      "mattersTo": "No concern for cabin selection; the vertical separation is sufficient.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "The Royal Promenade (interior boulevard with bars, cafes, and evening events) runs below on Deck 5, directly beneath Decks 6, 7, and 8 promenade-view interior cabins.",
+      "effect": "Promenade activity, music, parades, and foot traffic can be heard through the floor until 1-2am on event nights.",
+      "mattersTo": "Light sleepers should avoid promenade-view cabins; those wanting to be close to action or who sleep heavily won't mind.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The sports deck and mini-golf area sit on Deck 13 forward, two decks above Deck 11 forward cabins.",
+      "effect": "Occasional ball bounce and footsteps during daytime and early evening sports activities.",
+      "mattersTo": "Minor annoyance for daytime nappers; most guests won't notice or will be elsewhere during activity hours.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine rooms sit low and aft, directly below Deck 2 and 3 aft cabins.",
+      "effect": "Low-frequency vibration and hum, noticeable when the ship is underway, particularly during maneuvering.",
+      "mattersTo": "Anyone sensitive to vibration or low hum should avoid; those who sleep through anything or use white noise won't care.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters are located low and forward, below and near Deck 2, 3, and 6 forward cabins.",
+      "effect": "Loud thruster rumble during docking and undocking (typically early morning arrival and evening departure), lasting 10-30 minutes per event.",
+      "mattersTo": "Very disruptive for early morning sleepers in forward cabins; doesn't affect mid or aft, and only happens during port maneuvers.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain runs through the bow area, affecting Deck 2 and 3 forward cabins.",
+      "effect": "Loud chain noise during anchor dropping and retrieval, typically early morning in tender ports.",
+      "mattersTo": "Disruptive for those anchoring in tender ports who want to sleep past 6-7am; irrelevant in dock-only itineraries.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        2,
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Elevator and stair banks are distributed forward, mid, and aft on all cabin decks, with major banks midship near the Royal Promenade access.",
+      "effect": "Cabins near elevators benefit from convenience but may hear doors, bell chimes, and hallway conversation; peak traffic during embarkation, meal times, and evening shows.",
+      "mattersTo": "Mobility-limited guests prioritize proximity; light sleepers should request cabins away from elevator cores.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Windjammer buffet (Deck 11 forward) sits one to two decks above Deck 9 and 10 forward cabins.",
+      "effect": "Early morning buffet setup noise (chairs, carts, kitchen prep) starting around 6-6:30am, and foot traffic until late evening.",
+      "mattersTo": "Early risers won't mind; those wanting to sleep past 7am on sea days should avoid Deck 9 and 10 forward.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Precise I-95 crew corridor routing and service access points that create traffic near specific guest cabin sections",
+    "Whether any accessible cabin conversions or connecting cabin patterns are disproportionately concentrated on specific decks or sections beyond standard distribution",
+    "Exact galley locations and whether galley ventilation or service elevators create noise zones on specific decks",
+    "Whether any cabins have obstructed or partially obstructed balconies due to structural elements, escape slides, or safety equipment beyond the standard lifeboat obstruction"
+  ],
+  "ship": "Freedom of the Seas",
+  "shipSlug": "freedom-of-the-seas",
+  "line": "Royal Caribbean International",
+  "totalCabins": 1962,
+  "cabinsTouchedByAZone": 1962,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.037335
+}

@@ -1,0 +1,177 @@
+{
+  "class": "Sunshine class",
+  "sisterShips": [],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        1,
+        2,
+        3
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats hang at Deck 1 level; their bulk obstructs the view downward from Decks 1, 2, and 3, with Deck 1 having the most obstruction and Deck 3 the least, while the horizon remains visible.",
+      "effect": "You see boats and davits when looking down, but ocean and horizon stay clear; the view feels industrial rather than open.",
+      "mattersTo": "Matters greatly to anyone who wants unobstructed ocean views or dislikes the look of safety equipment; immaterial to those focused on horizon views or staying in interior cabins.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Lido Deck pool area, buffet, and outdoor活动 spaces sit directly above Deck 9 midship cabins.",
+      "effect": "Expect noise from deck chairs scraping, music, crowds, and foot traffic from early morning through late evening; the action overhead runs long hours.",
+      "mattersTo": "Critical for light sleepers or anyone expecting quiet mornings; irrelevant for those who are out exploring during the day and tolerate ambient resort noise.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Lido Deck pool and buffet area sits one deck above Deck 8 midship cabins.",
+      "effect": "You'll hear muffled pool activity, music, and crowd movement, though one deck of separation reduces it compared to Deck 9.",
+      "mattersTo": "Matters to light sleepers and those sensitive to overhead noise; less of an issue for sound sleepers or those planning to be out most of the day.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "The main theatre (Liquid Lounge) sits directly below Deck 2 forward and midship sections.",
+      "effect": "You may hear show music, bass vibration, and audience applause during evening performances, typically ending by 11 PM.",
+      "mattersTo": "Matters to early sleepers or anyone turned in before the second show ends; not an issue for night owls or those attending the shows themselves.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The main dining rooms sit two decks below Deck 6 forward and one deck below Deck 7 forward.",
+      "effect": "You may detect galley ventilation hum, service activity, and muffled dinner crowd noise during meal times (roughly 5-10 PM).",
+      "mattersTo": "Matters to those sensitive to mechanical hum or who want absolute quiet during dinner hours; minimal impact for most guests.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Cabins in the aft sections of Decks 1 and 2 sit low and near the engine room and propulsion machinery.",
+      "effect": "You'll feel low-frequency vibration and hear a steady mechanical hum, most noticeable when the ship is at cruising speed.",
+      "mattersTo": "Significant for vibration-sensitive sleepers or anyone bothered by constant background hum; less relevant for heavy sleepers or those who find engine noise soothing.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2,
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on Decks 1, 2, and 3 sit near bow thrusters, which activate during docking and maneuvering.",
+      "effect": "You'll hear pronounced mechanical grinding and feel vibration during port arrivals and departures, typically early morning and late afternoon.",
+      "mattersTo": "Matters to light sleepers who want undisturbed mornings; not an issue for those already awake during port days or who sleep through mechanical noise.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2,
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain runs through the bow area on Decks 1, 2, and 3; it deploys and retracts during anchoring operations.",
+      "effect": "You'll hear loud metallic grinding and rattling during tender port arrivals, usually very early morning (6-7 AM).",
+      "mattersTo": "Critical for anyone who values sleeping in on port days; irrelevant for early risers or those planning to be up for port arrival anyway.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        1,
+        2,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator banks run through the midship sections, creating both convenience and traffic.",
+      "effect": "You're steps from vertical transportation and central amenities, but you'll hear elevator machinery, door chimes, and hallway conversation throughout the day and evening.",
+      "mattersTo": "Matters to those who prioritize quiet over convenience; ideal for mobility-limited guests or those who value quick access to all decks.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 10 forward houses Cloud 9 Spa cabins with exclusive spa access and spa-themed amenities.",
+      "effect": "You get spa perks (thermal suite access, spa products) and a quiet forward location, but you're isolated from main elevator banks and central activities.",
+      "mattersTo": "Ideal for spa enthusiasts and those seeking a quieter, wellness-focused experience; less suitable for those who want to be near main dining and entertainment.",
+      "severity": "minor",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether this class has a hump (balconies cantilevered past the hull line) and if so, which specific decks and sections benefit from it",
+    "Exact location and operational hours of any nightclub or late-night venue and which decks sit below it",
+    "Precise location of i95 crew corridor access points and which cabin sections experience the most crew service traffic",
+    "Whether Carnival Sunshine has any sister ships sharing this exact hull layout, or if modifications during her 2013 transformation made her configuration unique",
+    "Specific location and impact of galley ventilation systems beyond the main dining room areas"
+  ],
+  "ship": "Carnival Sunshine",
+  "shipSlug": "carnival-sunshine",
+  "line": "Carnival Cruise Line",
+  "totalCabins": 1439,
+  "cabinsTouchedByAZone": 1439,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.032637
+}

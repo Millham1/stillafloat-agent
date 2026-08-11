@@ -1,0 +1,210 @@
+{
+  "class": "Breakaway",
+  "sisterShips": [
+    "Norwegian Getaway",
+    "Norwegian Breakaway"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; they obstruct the view downward from Decks 8, 9, and 10, with Deck 8 experiencing the most significant obstruction and the effect diminishing on higher decks.",
+      "effect": "You can see the horizon and ocean clearly, but looking straight down you'll see the white fiberglass roof of the lifeboat instead of water—Deck 8 cabins sit almost level with the boat tops.",
+      "mattersTo": "Matters to guests who want an unobstructed view in all directions or who feel claustrophobic with boats outside; doesn't matter to those focused on horizon views or who prioritize lower pricing on these decks.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 15 features the Vibe Beach Club (adults-only pool/lounge area) and Spice H2O directly above the mid and aft sections of Deck 14.",
+      "effect": "Daytime foot traffic, deck chair scraping, and music from above can filter down, particularly during the day; evenings are generally quieter as the outdoor venues wind down.",
+      "mattersTo": "Light sleepers or daytime nappers should avoid this; doesn't bother guests who are out exploring during the day or who appreciate being close to these venues.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        13,
+        14
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Sports Complex (basketball court, ropes course activity area) on Deck 16 forward sits above forward cabins on Decks 13 and 14.",
+      "effect": "Occasional thuds and activity noise during the day when the sports facilities are in use; typically quiet in evenings and early mornings.",
+      "mattersTo": "Matters to daytime peace-seekers; fine for guests who are rarely in the cabin during the day or unbothered by sporadic overhead activity.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "The main theatre (Breakaway Theatre) occupies Decks 6 and 7, two decks directly below Deck 9 cabins.",
+      "effect": "Late show nights (typically 10:30 PM or later) can transmit bass and audience applause upward; most noticeable in forward and mid sections directly above the stage and seating.",
+      "mattersTo": "Early-to-bed guests should be aware; night owls or those attending the shows won't notice, and the issue is limited to show nights only.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        13,
+        14
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Garden Café (buffet) on Deck 12 mid sits directly below Deck 13 and two decks below Deck 14 mid-ship cabins.",
+      "effect": "Early morning setup noise (chairs, equipment) starting around 6:00-6:30 AM; daytime clatter is generally masked by ship ambient noise but early risers are unavoidable.",
+      "mattersTo": "Matters to those who sleep past 7 AM and are sensitive to overhead activity; early risers and breakfast buffet fans may actually appreciate the proximity.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        5,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator banks run mid-ship with additional banks forward and aft; mid-ship location provides best access to main venues but cabins immediately adjacent experience lobby foot traffic and elevator machinery hum.",
+      "effect": "Cabins within 2-3 cabin numbers of elevator lobbies hear periodic dings, door mechanisms, and conversation from guests coming and going at all hours.",
+      "mattersTo": "Light sleepers should request cabins away from elevator banks; mobility-challenged guests or those prioritizing convenience over quiet will want to be nearby.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room machinery sits below and aft; Deck 5 aft cabins are the lowest and furthest aft guest accommodations, closest to propulsion systems.",
+      "effect": "Low-frequency vibration and hum are most noticeable here, particularly at cruising speed; sensation is subtle but constant, more felt than heard.",
+      "mattersTo": "Vibration-sensitive sleepers should avoid; guests who find engine hum soothing (or who simply don't notice it) can benefit from lower pricing in this zone.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters activate during docking maneuvers, affecting forward cabins on lower decks; Deck 5 forward is closest to thruster machinery.",
+      "effect": "Loud grinding/rumbling for 5-15 minutes during arrival and departure maneuvers, typically early morning or late evening; silent during sea days and while cruising.",
+      "mattersTo": "Matters only to those who are in their cabin during port arrivals/departures and are sensitive to mechanical noise; most guests are on deck watching anyway.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        8,
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain runs through the bow structure; early morning anchoring (tender ports) creates chain noise in forward cabins, worst on lowest decks.",
+      "effect": "Loud metallic rumbling for 2-5 minutes during anchor deployment or retrieval, typically 6:00-7:30 AM at tender ports; silent at dock ports and sea days.",
+      "mattersTo": "Matters to light sleepers at tender ports only; deep sleepers and early risers won't be bothered, and the issue doesn't exist at most ports where the ship docks.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Studio cabins (solo traveler accommodations with shared studio lounge access) are concentrated in Deck 11 forward, creating a distinct social zone.",
+      "effect": "The studio lounge creates a built-in community space for solo travelers; cabins in this section are efficiently designed singles rather than repurposed doubles.",
+      "mattersTo": "Matters to solo travelers who want the studio experience and community; couples and families won't book here as these are genuinely single-occupancy by design.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Haven (ship-within-a-ship complex) occupies Deck 16 forward with private restaurant, lounge, pool, and concierge—keycard access only.",
+      "effect": "These suites have completely separate facilities and a secluded atmosphere; you rarely interact with the main ship except by choice.",
+      "mattersTo": "Matters to guests willing to pay the Haven premium for exclusivity and service; not accessible to standard cabin guests so it creates a distinct class divide.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Spa cabins on Deck 15 forward include special amenities (rain showers, spa décor) and unlimited thermal suite access throughout the cruise.",
+      "effect": "You get spa access as a cabin perk rather than a daily fee, plus the cabins themselves have spa-inspired design; you're steps from the fitness center and thermal suites.",
+      "mattersTo": "Matters to spa enthusiasts who will use the thermal suite daily; won't justify the premium for guests who rarely visit the spa or prefer balconies (these are spa balconies but limited in number).",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether this specific class has a hump (balconies cantilevered past the hull line) on lower/mid decks, and if so, which exact deck range and sections—cannot confirm without deck plan cross-sections",
+    "Exact location of I-95 crew corridor access points and which cabin sections experience crew service traffic",
+    "Whether any cabins have obstructed balconies due to structural supports or overhang from decks above beyond the general lifeboat obstruction",
+    "Specific cabin numbers immediately adjacent to elevator banks on each deck",
+    "Whether connecting cabin availability is characteristic/unusual for this class or standard across NCL fleet"
+  ],
+  "ship": "Norwegian Breakaway",
+  "shipSlug": "norwegian-breakaway",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 2023,
+  "cabinsTouchedByAZone": 2023,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.041388
+}

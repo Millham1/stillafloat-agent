@@ -1,0 +1,158 @@
+{
+  "class": "Grand class",
+  "sisterShips": [
+    "Golden Princess",
+    "Star Princess"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 8, obstructing views from Decks 8, 9, and 10 with diminishing severity as you go higher.",
+      "effect": "Deck 8 sees boats filling most of the downward view; Deck 9 sees boat tops and partial obstruction; Deck 10 typically clears the boats with horizon intact but boats visible when looking down.",
+      "mattersTo": "Matters greatly to anyone who values an unobstructed ocean view or dislikes the industrial look of safety equipment; irrelevant to those focused on price, interior cabins, or those who spend little time in the cabin.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 6 sits directly above Deck 5 Plaza public areas (shops, atrium activities, guest services) with frequent daytime traffic and announcements.",
+      "effect": "Potential noise and vibration from foot traffic, announcements, and public gatherings below during the day and evening; quieter overnight.",
+      "mattersTo": "Matters to light sleepers or those wanting daytime quiet in the cabin; less relevant to those out exploring the ship most of the day.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Lido Deck (14) pool area, Horizon Court buffet, and outdoor activity zones sit directly above mid and aft sections of Decks 11 and 12.",
+      "effect": "Daytime deck chair scraping, pool activity noise, and buffet traffic overhead from early morning through late evening; Deck 12 closer to the source than Deck 11.",
+      "mattersTo": "Matters to anyone sensitive to overhead footfall and activity noise, especially morning risers; irrelevant to those joining the Lido action anyway.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Princess Theatre (Decks 6-7) sits directly above forward Deck 5 cabins.",
+      "effect": "Late-night show noise, applause, and foot traffic from theatre audiences overhead until shows end around 10-11pm.",
+      "mattersTo": "Matters to early sleepers or those turning in before entertainment wraps; non-issue for night owls or those attending the shows.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft Deck 5 and 6 cabins sit low and near the engine room and propulsion machinery.",
+      "effect": "Low-frequency vibration and mechanical hum, most noticeable at higher speeds or during maneuvering; felt more than heard.",
+      "mattersTo": "Matters to vibration-sensitive sleepers or those who notice and dislike mechanical sensations; often unnoticed by sound sleepers or first-time cruisers.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        6,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters operate during docking and departure, creating mechanical noise and vibration in forward low-deck cabins.",
+      "effect": "Short-duration (5-15 minutes) grinding or humming during port arrival and departure; happens early morning in many ports.",
+      "mattersTo": "Matters to light sleepers bothered by mechanical noise during port mornings; irrelevant to those already awake or deep sleepers.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Grand class has elevator/stair banks forward, midship, and aft on each guest deck, with midship banks seeing the heaviest traffic near main dining rooms and atrium.",
+      "effect": "Cabins very close to elevator lobbies hear chimes, door mechanisms, and conversation throughout the day and night; midship banks busiest, forward and aft quieter.",
+      "mattersTo": "Matters to noise-sensitive guests who prefer quiet corridors; appreciated by mobility-limited guests who value proximity over silence.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        5,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Crew access points and service corridors are typically located forward on guest cabin decks, with most intensive use on lower accommodation decks.",
+      "effect": "Early morning (5-7am) crew movement for breakfast setup and cabin service staging; brief periods of hallway traffic and door noise.",
+      "mattersTo": "Matters to light sleepers in forward cabins near crew access doors; minimal impact on those sleeping through alarms or already early risers.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether Grand class has a hump (cantilevered balconies) and on which decks — data suggests balconies on Decks 8-14 but not whether any jut past the lifeboat line",
+    "Specific cabin numbers adjacent to elevator banks or crew doors",
+    "Whether any Deck 14 aft cabins sit below outdoor sports court or walking track noise",
+    "Exact location and noise profile of galley operations relative to guest cabins",
+    "Whether anchor chain noise affects specific Deck 5 or 6 forward cabin ranges"
+  ],
+  "ship": "Grand Princess",
+  "shipSlug": "grand-princess",
+  "line": "Princess Cruises",
+  "totalCabins": 1301,
+  "cabinsTouchedByAZone": 1301,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.029109
+}

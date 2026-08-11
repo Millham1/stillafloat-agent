@@ -1,0 +1,170 @@
+{
+  "class": "Royal class",
+  "sisterShips": [
+    "Regal Princess",
+    "Majestic Princess",
+    "Sky Princess",
+    "Enchanted Princess",
+    "Discovery Princess"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; they obstruct the view downward from Decks 8-10, with Deck 8 experiencing the most significant obstruction and the effect diminishing on higher decks.",
+      "effect": "Looking straight out you see the ocean and horizon clearly, but looking down you see the white fiberglass boat tops instead of water; the sense of height above the waterline is reduced.",
+      "mattersTo": "Matters to guests who want an unobstructed view in all directions or who enjoy watching the water directly below; doesn't matter to those focused on horizon views or who rarely look down from their balcony.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 15 directly above houses the main pool area (Fountain Pool, Movies Under the Stars screen) in the mid to aft sections.",
+      "effect": "Daytime pool activity, music, movies, and deck parties create noise and vibration from footfall above; activity often continues until late evening.",
+      "mattersTo": "Significant for light sleepers or anyone wanting a quiet retreat during the day; less important for guests who are out exploring or don't mind ambient resort sounds.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 15 directly above houses the World Fresh Marketplace buffet in the forward section.",
+      "effect": "Breakfast and lunch periods bring chair scraping, footfall, and general dining noise from above; buffet operates long hours starting early morning.",
+      "mattersTo": "Matters to those sensitive to overhead noise, especially early risers who want to sleep in; minimal concern for guests on the same meal schedule who won't be in the cabin during buffet hours.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 16 directly above houses the Sports Court and additional open deck space.",
+      "effect": "Daytime sports activities and foot traffic create intermittent noise and vibration overhead, though typically less intensive than the main pool deck.",
+      "mattersTo": "Minor concern for most guests; mainly relevant to very noise-sensitive travelers during daytime hours.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Princess Theater (main showroom) spans Decks 6 and 7 directly below the forward section of Deck 8.",
+      "effect": "Evening show times bring music, bass vibration, and applause from below; shows typically run twice nightly with the late show ending around 10-11 PM.",
+      "mattersTo": "Relevant for early-to-bed guests or those sensitive to vibration; not a concern for night owls or those attending the shows themselves.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Club6 nightclub/disco is located on Deck 7 below the aft section of Deck 9.",
+      "effect": "Late-night bass and vibration from music and dancing can transmit upward, typically from around 10 PM until 2-3 AM on active nights.",
+      "mattersTo": "Critical for guests who sleep early or are sensitive to bass vibration; irrelevant for late-night partygoers or heavy sleepers.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "The Royal class has three main elevator banks: forward (near the atrium), mid-ship (port and starboard), and aft; cabins immediately adjacent experience mechanical noise and hallway traffic.",
+      "effect": "Elevator machinery creates periodic humming and movement sounds; adjacent hallways see concentrated foot traffic as guests come and go, especially during embarkation, mealtimes, and show times.",
+      "mattersTo": "Matters to light sleepers or those seeking maximum quiet; benefits guests prioritizing convenience who don't mind trading some noise for proximity to vertical transport.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        8,
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "These lowest guest decks in the aft section sit relatively close to the propulsion machinery below.",
+      "effect": "A low-frequency hum or vibration may be noticeable underway, particularly at higher speeds; the sensation is subtle on modern ships but perceptible to sensitive guests.",
+      "mattersTo": "Relevant for guests highly sensitive to vibration or mechanical noise; most guests either don't notice or quickly acclimate.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters used for docking and maneuvering are located in the forward lower section of the hull.",
+      "effect": "Brief periods of rumbling vibration during docking and undocking, typically early morning in port and evening when departing; lasts only minutes per operation.",
+      "mattersTo": "Minor inconvenience for very light sleepers in port mornings; most guests are awake or quickly return to sleep after the brief activity.",
+      "severity": "minor",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether the Royal class features a hump (cantilevered balconies) and if so, on which specific decks and sections",
+    "Precise location of I95 crew corridor access points relative to guest cabin clusters",
+    "Specific location and extent of galley facilities and whether any guest cabins sit directly above main galley operations",
+    "Whether anchor chain noise is significantly audible in forward cabins on Deck 8 or 9 during port arrivals",
+    "Exact deck assignment of the Horizon Court/World Fresh Marketplace buffet (stated as Deck 15 forward but should verify)",
+    "Whether the Crown Grill or other specialty dining venues create noise affecting specific cabin sections"
+  ],
+  "ship": "Royal Princess",
+  "shipSlug": "royal-princess",
+  "line": "Princess Cruises",
+  "totalCabins": 1780,
+  "cabinsTouchedByAZone": 1780,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.032586000000000004
+}

@@ -1,0 +1,214 @@
+{
+  "class": "Solstice",
+  "sisterShips": [
+    "Celebrity Equinox",
+    "Celebrity Eclipse",
+    "Celebrity Silhouette",
+    "Celebrity Reflection"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 5; they obstruct the lower portion of the view from Decks 6, 7, and 8, with Deck 6 experiencing the most significant obstruction and the effect diminishing as you go higher.",
+      "effect": "On Deck 6, you look directly at or just over the boats—horizon is visible but the ocean view down is blocked; Deck 7 sees mostly over them with partial obstruction; Deck 8 has minimal interference.",
+      "mattersTo": "Matters greatly to guests who want an unobstructed ocean view or watch the water directly below; doesn't matter to those focused on horizon views, sunsets, or who spend little balcony time.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Pool deck, Solarium, and outdoor leisure areas are located on Deck 12 directly above mid and aft sections of Deck 11.",
+      "effect": "Daytime noise from pool activities, deck furniture moving, and music; foot traffic and splashing sounds can carry through to balconies and inside cabins below.",
+      "mattersTo": "Light sleepers, those working during the day, or anyone sensitive to intermittent activity noise overhead; doesn't bother guests who are out exploring during pool hours.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Blu restaurant (AquaClass dining) and Café al Bacio are on Deck 11 mid-ship, directly above Deck 10 mid cabins.",
+      "effect": "Occasional noise from restaurant service, chair movement, and kitchen activity during breakfast and dinner hours; generally quieter than pool deck but still present.",
+      "mattersTo": "Guests who are in their cabin during meal times and are sensitive to overhead activity; minimal impact for those dining out or exploring during those hours.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Main dining room (Grand Epernay) is located on Deck 10 mid-ship, directly above Deck 9 mid cabins.",
+      "effect": "Noise from dining service, particularly during the two main dinner seatings—chair scraping, footsteps, service activity from approximately 6pm to 10pm.",
+      "mattersTo": "Early-to-bed guests or those in cabin during dinner hours; doesn't affect those dining out or at shows during evening hours.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Main theater (Celebrity Theater) spans Decks 4 and 5 below forward and mid sections of Decks 7 and 8.",
+      "effect": "Show audio and bass can transmit upward during evening performances, typically 7pm-10pm; the effect diminishes with distance but is noticeable on Deck 7.",
+      "mattersTo": "Early-to-bed guests or those trying to relax in cabin during show times; doesn't affect night owls or those attending the shows.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Fortunes Casino and Sky Conference Center are on Deck 11 directly below Deck 12 aft cabins.",
+      "effect": "Casino noise—music, slot machines, voices—can be heard in cabins above, particularly in evening hours when casino activity peaks.",
+      "mattersTo": "Light sleepers and those who retire early; doesn't bother guests who stay up late or enjoy the casino themselves.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Elevator banks are located forward, mid-ship, and aft on all guest cabin decks, with the mid-ship bank being the primary vertical circulation hub.",
+      "effect": "Cabins adjacent to elevator lobbies experience door chimes, conversation, and foot traffic throughout the day and night; convenience is excellent but noise trade-off exists.",
+      "mattersTo": "Light sleepers and those sensitive to hallway noise should avoid cabins immediately adjacent to elevator banks; mobility-limited guests benefit greatly from proximity.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3,
+        6,
+        7
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room and propulsion machinery are located low and aft, below and behind the aftmost cabins on Decks 3, 6, and 7.",
+      "effect": "Low-frequency vibration and hum are noticeable in aft cabins on these lower decks, particularly when engines are working hard during maneuvering or high-speed cruising.",
+      "mattersTo": "Guests sensitive to vibration or mechanical noise; doesn't bother those who sleep through ambient sounds or who value aft balcony wake views more than silence.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3,
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters are located in the forward hull below the lowest guest decks.",
+      "effect": "Thruster noise—a loud rushing or rumbling—occurs during docking and departure maneuvers in forward cabins, particularly on lower decks; typically brief but intrusive when it happens.",
+      "mattersTo": "Light sleepers who are in cabin during early morning arrivals or evening departures; doesn't affect those who are up and out during port days.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain locker is located in the bow below Deck 3 forward cabins.",
+      "effect": "Loud metallic rattling and rumbling when anchor is dropped or raised, typically during early morning port arrivals; the noise is distinctive and can wake sleepers.",
+      "mattersTo": "Light sleepers in forward Deck 3 cabins on port-intensive itineraries; doesn't affect those who wake early anyway or who sleep through mechanical sounds.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Crew access points and service corridors intersect with guest areas on Deck 3, particularly near the forward and mid sections where crew movement supports lower-deck operations.",
+      "effect": "Occasional crew traffic and service cart movement in early morning hours for cabin service prep and galley supply; brief but noticeable in adjacent cabins.",
+      "mattersTo": "Very light sleepers in Deck 3 cabins near crew access points; most guests won't notice or won't be bothered by brief, professional crew activity.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10,
+        11
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "AquaClass cabins on Decks 10 and 11 have exclusive access to the Persian Garden thermal suite and Blu restaurant, creating higher foot traffic in these corridors.",
+      "effect": "More hallway activity from spa-goers in robes during morning and evening hours; a different demographic mix and slightly more corridor noise than standard cabin decks.",
+      "mattersTo": "Guests seeking maximum hallway quiet may notice the difference; AquaClass guests value the exclusive amenity access and won't mind the traffic they're contributing to.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether Solstice-class ships have a hump (balconies cantilevered past hull line) at all—I cannot confidently confirm the presence, location, or affected decks for this specific class without risking the error described.",
+    "Precise location and extent of galley noise impact—while galleys exist, their exact deck location and which cabins experience ventilation or service noise is uncertain.",
+    "Specific connecting cabin configurations beyond what's typical for the category mix shown—whether certain deck sections have higher concentrations of connecting doors.",
+    "Accessible cabin distribution—while they exist across the inventory, their specific concentration points and associated features are not certain from the data provided."
+  ],
+  "ship": "Celebrity Solstice",
+  "shipSlug": "celebrity-solstice",
+  "line": "Celebrity Cruises",
+  "totalCabins": 1480,
+  "cabinsTouchedByAZone": 1453,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.041064
+}

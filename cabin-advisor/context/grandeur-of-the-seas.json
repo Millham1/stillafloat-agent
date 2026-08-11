@@ -1,0 +1,174 @@
+{
+  "class": "Vision",
+  "sisterShips": [
+    "Legend of the Seas",
+    "Splendour of the Seas",
+    "Rhapsody of the Seas",
+    "Vision of the Seas",
+    "Enchantment of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        2,
+        3,
+        4
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 3; they obstruct ocean view cabins on Decks 2, 3, and 4, with Deck 2 experiencing the most severe obstruction looking down and Deck 4 having partial upper obstruction.",
+      "effect": "Ocean view cabins see lifeboat equipment instead of open water when looking down or outward; horizon and sky remain visible by looking up or out, but the classic ocean vista is interrupted.",
+      "mattersTo": "Matters greatly to first-time cruisers expecting unobstructed water views and photographers; experienced cruisers booking ocean view often expect this trade-off on lower decks and price accordingly.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 8 mid and aft sections sit directly below the Windjammer Cafe (buffet) on Deck 9, which operates from early morning through late evening.",
+      "effect": "Cabins below may hear footfalls, chair scraping, and general dining activity from approximately 6:00 AM through 10:00 PM; aft Deck 7 is also near the buffet's outdoor seating transition.",
+      "mattersTo": "Light sleepers and anyone planning to nap or sleep early should avoid; those out enjoying the ship most of the day will rarely notice.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 8 forward sits directly below the Viking Crown Lounge on Deck 10, which hosts evening entertainment and bar service.",
+      "effect": "Cabins below may experience music, footfalls, and bar activity during evening hours, typically until midnight or later on active nights.",
+      "mattersTo": "Matters to early sleepers and those sensitive to overhead music/vibration; night owls and those who join the lounge activities won't be in the cabin during peak noise.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        4,
+        7,
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Deck 5 Centrum (multi-deck atrium) sits above portions of Deck 4 mid-ship and opens through Decks 5-6, with Decks 7-8 mid sitting two to three decks above it.",
+      "effect": "Deck 4 mid cabins may hear atrium activity and music during events; Decks 7-8 are far enough above to be largely insulated but may notice major parties or glass elevator activity.",
+      "mattersTo": "Deck 4 mid matters to anyone wanting quiet evenings, as atrium events can run late; upper decks rarely affected except during sailaway parties or special events.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Deck 2 forward section sits directly above the Masquerade Theater, which hosts nightly shows typically at 8:30 PM and 10:30 PM.",
+      "effect": "Cabins on Deck 3 forward may hear musical numbers, bass from sound systems, and applause during showtimes; the late show can push noise past 11:30 PM.",
+      "mattersTo": "Matters significantly to early sleepers and families with young children; show-goers and late-night types often aren't in cabins during performances.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        2,
+        3,
+        4,
+        7,
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Vision class has elevator banks forward, mid-ship, and aft on all cabin decks; cabins immediately adjacent to elevator lobbies experience door chimes, conversation, and mechanical hum 24 hours.",
+      "effect": "Cabins next to elevators trade maximum convenience for constant low-level noise and hallway foot traffic; cabins mid-corridor are quieter but require longer walks.",
+      "mattersTo": "Matters to light sleepers and anyone sensitive to hallway noise; mobility-limited guests and those prioritizing convenience over quiet actively prefer elevator-adjacent locations.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Decks 2 and 3 aft sit low and near the engine room and propulsion machinery, which generate low-frequency vibration and hum underway.",
+      "effect": "Cabins may feel subtle vibration through the floor and hear a low ambient hum, most noticeable at night when the ship is quiet and at higher speeds; not loud but constant.",
+      "mattersTo": "Matters to vibration-sensitive sleepers and those bothered by white noise; many find the hum soothing or ignore it entirely after the first night.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3,
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on lower decks sit near bow thrusters, which activate during maneuvering (docking, tendering, tight navigation) with a loud grinding/rushing sound, and the anchor chain, which deploys early morning in port with heavy metallic rumbling.",
+      "effect": "Bow thruster noise is sporadic but jarring when it occurs; anchor drop typically happens between 6:00-7:00 AM in port and can wake sleepers, lasting several minutes of loud chain movement.",
+      "mattersTo": "Matters significantly to anyone who values sleeping in while in port; those planning to be up early for excursions or port days won't be affected.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        2,
+        3,
+        4,
+        7,
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "The I-95 crew corridor runs the length of the ship on Deck 2, with vertical access points distributed forward, mid, and aft; crew traffic is heaviest early morning (5:00-7:00 AM) and late evening (10:00 PM-midnight) near service areas.",
+      "effect": "Deck 2 cabins near crew access points may hear early-morning crew movement, service carts, and brief conversations during shift changes; other decks are largely insulated from crew corridor activity.",
+      "mattersTo": "Matters primarily to Deck 2 guests who are light sleepers during early morning hours; most guests don't notice or are already awake during peak crew times.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether Vision class has a hump (balconies cantilevered past the hull) and on which specific decks/sections; I cannot confidently confirm this feature exists on this class or its precise location.",
+    "Specific cabin numbers immediately adjacent to elevator banks on each deck; while I know elevator locations exist forward/mid/aft, I cannot state exact cabin ranges without the detailed plans.",
+    "Whether any cabins have connecting door options as a class-wide standard versus ad-hoc installations.",
+    "The exact distance and sound insulation between Deck 3 forward cabins and the theater below; severity may vary by specific cabin row.",
+    "Whether any Deck 8 suites have unique design quirks (layout, bathroom configuration, balcony furniture) characteristic of early Vision-class builds versus later updates."
+  ],
+  "ship": "Grandeur of the Seas",
+  "shipSlug": "grandeur-of-the-seas",
+  "line": "Royal Caribbean",
+  "totalCabins": 996,
+  "cabinsTouchedByAZone": 996,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.035571
+}

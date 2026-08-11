@@ -1,0 +1,170 @@
+{
+  "class": "Conquest",
+  "sisterShips": [
+    "Carnival Glory",
+    "Carnival Valor",
+    "Carnival Liberty",
+    "Carnival Freedom"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        1,
+        2,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 1; they obstruct downward and outward views from Ocean View cabins on Decks 1, 2, and to a lesser extent Deck 6.",
+      "effect": "Ocean View cabins on Deck 1 look directly into or over the boats; Deck 2 looks down at them; Deck 6 forward and aft may catch the top edge depending on exact position.",
+      "mattersTo": "Matters greatly to anyone wanting open ocean views or natural light; irrelevant to Interior cabin guests or those prioritizing price over vista.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Lido Deck pool area, buffet, and outdoor activities are directly above Deck 9 midship and aft sections.",
+      "effect": "Daytime foot traffic, deck chair dragging, pool sounds, and music carry through; activity runs from early breakfast until late evening.",
+      "mattersTo": "Light sleepers and anyone sensitive to overhead noise should avoid; doesn't bother those out enjoying the ship most of the day.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 9 aft contains public venues and outdoor spaces directly above Deck 8 aft cabins.",
+      "effect": "Overhead noise and vibration from foot traffic and venue activity, though less intense than directly under the Lido pool area.",
+      "mattersTo": "Matters to noise-sensitive guests; one deck of separation helps but doesn't eliminate sound transmission.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Main dining rooms, galley operations, and public venues are on Decks 2 and 3, directly below Deck 6 forward and midship cabins.",
+      "effect": "Kitchen noise, plate clattering, and ventilation hum carry upward, especially during meal service times (breakfast, lunch, dinner rushes).",
+      "mattersTo": "Matters to those wanting quiet evenings and early mornings; background noise is persistent but not usually intrusive.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Main theatre (Toulouse-Lautrec) is located on Decks 3-4, two to three decks below Deck 6 forward cabins.",
+      "effect": "Show music and sound effects can carry upward during performances (typically early and late evening); distance attenuates but doesn't eliminate bass tones.",
+      "mattersTo": "Light sleepers or early-to-bed guests may notice; most find it minor given the vertical distance.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        1,
+        2,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Primary elevator banks are located forward and midship on all cabin decks, with stair towers adjacent.",
+      "effect": "Cabins near elevator/stair banks benefit from quick vertical access but experience intermittent hallway traffic, door chimes, and conversation noise at all hours.",
+      "mattersTo": "Mobility-limited guests benefit from proximity; light sleepers should request cabins away from banks; severity varies by how close the cabin is.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room and propulsion machinery are located low and aft; vibration and low-frequency hum are most noticeable in aft cabins on the lowest guest decks.",
+      "effect": "A persistent low rumble and subtle vibration underfoot, most noticeable when engines are working (maneuvering, sea days at speed); white noise effect for some, annoying for others.",
+      "mattersTo": "Sensitive sleepers or those bothered by vibration should avoid; many guests don't notice or find it soothing; worsens in rough seas.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters are located forward below the waterline; they create vibration and mechanical noise during docking and maneuvering in port.",
+      "effect": "Brief but noticeable vibration and rumbling during arrivals and departures; can wake early sleepers on port mornings.",
+      "mattersTo": "Matters only during maneuvering (15-30 minutes per port); deep sleepers won't notice, light sleepers should be aware.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2,
+        6,
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain runs through the bow; deployment and retrieval create loud mechanical noise and vibration in forward cabins on lower decks.",
+      "effect": "Sharp metallic rumbling every time the ship anchors or weighs anchor, typically early morning in tender ports; brief but unmistakable.",
+      "mattersTo": "Light sleepers in tender-heavy itineraries should avoid bow cabins; doesn't affect ships docking pier-side.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether this Conquest-class hull has a pronounced hump (cantilevered balconies on lower-mid decks) and if so, the exact deck range; this feature is common on contemporary ships but I cannot confirm specifics for this class without cross-referencing deck plans.",
+    "The exact location and extent of the I-95 crew corridor access points and which cabin sections experience the most service traffic.",
+    "Specific connecting cabin pairs or ADA-accessible cabin distribution beyond what's visible in aggregate counts.",
+    "Whether recent refurbishments have altered soundproofing or repositioned any public venues that would change noise profiles."
+  ],
+  "ship": "Carnival Conquest",
+  "shipSlug": "carnival-conquest",
+  "line": "Carnival Cruise Line",
+  "totalCabins": 1468,
+  "cabinsTouchedByAZone": 1468,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.030759
+}

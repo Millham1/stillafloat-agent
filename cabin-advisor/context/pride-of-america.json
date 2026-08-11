@@ -1,0 +1,183 @@
+{
+  "class": "Pride of America",
+  "sisterShips": [],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 6; they obstruct the view downward from balconies and oceanview cabins on Decks 7–9, with Deck 7 experiencing the most pronounced blockage and Deck 9 the least.",
+      "effect": "You see the horizon and ocean clearly, but looking straight down reveals orange lifeboat roofs instead of water—the view feels elevated rather than intimate with the sea.",
+      "mattersTo": "Matters to guests who want that classic 'right on the water' feeling or enjoy watching the ship's wake directly below; irrelevant to those focused on horizon views, sunsets, or ports of call.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Decks 10 and 11 directly above house the main pool deck (Aloha Pool, Waikiki Bar) with daytime activity, deck furniture dragging, and evening events.",
+      "effect": "Expect footfall noise, music, and occasional furniture movement overhead from late morning through evening; early sleepers may hear late-night pool deck stragglers.",
+      "mattersTo": "Light sleepers and those turning in early should avoid; day-sleepers and those out enjoying the ship most of the time won't notice.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The Aloha Café buffet sits directly above on Deck 11 mid and aft, operating from early morning through late evening with foot traffic, chair scraping, and service activity.",
+      "effect": "Overhead noise from breakfast prep starting around 6:00 AM, steady footfall during meal times, and occasional kitchen service sounds; quieter mid-afternoon and after dinner service ends.",
+      "mattersTo": "Early risers unbothered by morning buffet setup will find this irrelevant; late sleepers and those sensitive to intermittent daytime noise should steer clear.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The Mardi Gras two-level show lounge occupies Decks 5 and 6 below, directly underneath mid and aft sections, with evening performances and occasional rehearsals.",
+      "effect": "Late-night shows (typically ending 10:00–11:00 PM) may transmit bass notes and applause; most guests report this as faint and infrequent, limited to show times.",
+      "mattersTo": "Sensitive sleepers who retire before 10:30 PM might notice; those out late or unbothered by muffled evening sound can ignore this.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        11,
+        12,
+        13
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Sky High Bar and observation area sit on Deck 13 and 14 forward, creating foot traffic and late-night socializing one or two decks above.",
+      "effect": "Late-evening and nighttime noise from bar patrons, conversation, and occasional live music drifts down; the forward observation deck sees steady use during scenic cruising.",
+      "mattersTo": "Light sleepers on Decks 11–12 forward should be cautious; heavy sleepers and those enjoying the bar themselves will find this a non-issue.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator and stair banks run through mid-ship on all main cabin decks, clustered around the main atrium and Grand Aloha Suite area.",
+      "effect": "Cabins very close to elevator lobbies experience door chimes, conversation, and foot traffic at all hours; those a few doors away gain convenience without meaningful noise.",
+      "mattersTo": "Mobility-limited guests and families with strollers benefit from proximity; noise-sensitive guests should choose cabins at least three doors away from elevator banks.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 4 aft sits low and near the engine room and propulsion machinery, transmitting low-frequency vibration and hum during maneuvering and open-ocean cruising.",
+      "effect": "A subtle, steady vibration underfoot and faint mechanical hum audible in quiet moments; most noticeable during port departures, arrivals, and speed changes.",
+      "mattersTo": "Vibration-sensitive sleepers and those bothered by low hum should avoid; budget-conscious guests unbothered by mechanical presence find excellent value here.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 4 forward sits near bow thrusters, which activate during docking and undocking with a pronounced rumble and vibration.",
+      "effect": "Noticeable vibration and mechanical noise during port arrivals and departures, typically lasting 10–20 minutes; silent during open-ocean cruising.",
+      "mattersTo": "Guests who sleep through port operations or enjoy watching docking maneuvers won't mind; light sleepers in port-intensive itineraries should choose higher or mid-ship.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The anchor chain locker sits in the bow below forward cabins; anchor deployment creates a loud grinding and rattling sound, typically during early morning arrivals.",
+      "effect": "A brief (2–5 minute) but very loud metallic grinding wakes most sleepers when the anchor drops, usually between 6:00–8:00 AM on port days; silent at sea and in dock.",
+      "mattersTo": "Guests planning to sleep in on port mornings should avoid forward cabins entirely; early risers and those already awake for port arrivals won't be affected.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        4,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Crew corridors (I-95) run through mid-ship with access points near the central elevator lobbies, creating occasional crew foot traffic through guest corridors during service hours.",
+      "effect": "Brief, infrequent crew movement through guest hallways during cabin service, meal delivery, and turndown; professional and quiet but noticeable to those near access doors.",
+      "mattersTo": "Most guests never notice; only those extremely sensitive to hallway activity or in cabins directly adjacent to crew doors should consider this.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether this hull has a hump (balconies cantilevered past the lifeboat line) and if so, which decks and sections—this feature is not definitively documented for Pride of America",
+    "Precise lifeboat mounting deck—stated as Deck 6 based on typical obstruction pattern for Decks 7–9, but not verified from primary source",
+    "Exact location and extent of galley areas and whether any transmit ventilation or service noise to cabins above or adjacent",
+    "Whether any cabins have guaranteed connecting-door configurations characteristic of this class",
+    "Specific accessible cabin distribution beyond what's typical for NCL vessels of this era"
+  ],
+  "ship": "Pride of America",
+  "shipSlug": "pride-of-america",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 1095,
+  "cabinsTouchedByAZone": 1095,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.036198
+}

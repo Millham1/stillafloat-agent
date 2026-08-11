@@ -1,0 +1,103 @@
+{
+  "class": "Islander class",
+  "sisterShips": [
+    "Margaritaville at Sea Paradise"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 4 level and obstruct views from Decks 4, 5, and 6, with Deck 4 having the most severe obstruction and impact diminishing on higher decks.",
+      "effect": "Partial Ocean View and some balcony cabins on these decks look directly at or over orange lifeboat tops instead of open water; horizon remains visible but the immediate downward view is blocked.",
+      "mattersTo": "Matters greatly to guests who want unobstructed water views or photography; does not matter to those prioritizing price over view or who spend little time on their balcony.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "These cabins sit directly below the upper public deck areas and navigational bridge structure.",
+      "effect": "Potential for footfall noise, deck furniture movement, and early morning bridge activity overhead, though severity depends on specific venue placement above.",
+      "mattersTo": "Light sleepers and those sensitive to overhead noise should avoid; not a concern for heavy sleepers or guests who rise early.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        1
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 1 cabins sit low in the hull with public venue decks, dining, and entertainment spaces on multiple decks above.",
+      "effect": "These are the lowest guest accommodations with the most hull structure overhead; minimal natural light in corridors and a more enclosed feeling than higher decks.",
+      "mattersTo": "Matters to guests who prefer the openness of upper decks or natural corridor lighting; benefits those seeking lower pricing and who don't mind being several decks below main activities.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        4
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins on lower decks sit closer to propulsion machinery and steering equipment.",
+      "effect": "Potential for low-frequency vibration and mechanical hum, especially noticeable when engines change speed during maneuvering.",
+      "mattersTo": "Sensitive sleepers and those bothered by vibration should avoid; not a concern for guests who sleep through ambient noise or use white noise.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        4,
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on lower decks experience bow thruster noise during docking and anchor chain deployment in port.",
+      "effect": "Loud mechanical grinding during docking maneuvers (usually brief) and metallic chain noise early morning when anchoring or departing ports with anchorage.",
+      "mattersTo": "Very disruptive for light sleepers or those who value quiet mornings in port; negligible for heavy sleepers or guests who rise early for port days.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Precise location and span of elevator/stair banks along the hull and their noise impact zones",
+    "Existence and location of I-95 crew corridor access points near guest cabin areas",
+    "Whether this class has a hull hump (cantilevered balconies) and on which specific decks/sections it occurs",
+    "Specific venue placements above Decks 9 and 10 that would refine overhead noise assessment",
+    "Distance and noise transmission from galley operations to nearby cabin sections",
+    "Whether any decks have connecting cabin configurations as a standard offering pattern"
+  ],
+  "ship": "Margaritaville at Sea Islander",
+  "shipSlug": "margaritaville-at-sea-islander",
+  "line": "Margaritaville at Sea",
+  "totalCabins": 1069,
+  "cabinsTouchedByAZone": 679,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.021837
+}

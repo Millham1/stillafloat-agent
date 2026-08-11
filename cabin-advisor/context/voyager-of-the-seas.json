@@ -1,0 +1,170 @@
+{
+  "class": "Voyager",
+  "sisterShips": [
+    "Explorer of the Seas",
+    "Adventure of the Seas",
+    "Navigator of the Seas",
+    "Mariner of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        2,
+        3,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 3; they obstruct the ocean view from Deck 2 (looking up at boat bottoms) and partially from Deck 3 (looking through davits and boat sides), with Deck 6 outside cabins sitting just above the obstruction with horizon clear.",
+      "effect": "Deck 2 sees boat hulls filling the lower half of the window; Deck 3 views thread between boats and gear; Deck 6 clears the boats but looks down at their tops before reaching water.",
+      "mattersTo": "Matters greatly to anyone booking ocean view for the vista; meaningless if you rarely look out the window or just need natural light.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Decks 11 and 12 forward sit directly beneath the sports deck, mini-golf, and outdoor activity areas where balls bounce and people run.",
+      "effect": "Daytime noise from above—footfalls, equipment, games—filters down; generally quiet after evening but can start early morning.",
+      "mattersTo": "Light sleepers and anyone in the cabin during the day should avoid; non-issue for those who are out exploring from breakfast to bedtime.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 9 mid and aft sit one deck below the Windjammer (buffet) on Deck 10 aft and the Solarium pool area on Deck 11, with associated foot traffic and early morning galley prep noise.",
+      "effect": "Chair scraping, breakfast setup starting around 6am, and general movement from the busiest casual dining venue overhead.",
+      "mattersTo": "Early risers won't care; those wanting to sleep past 7am or value evening quiet after buffet closes may notice activity.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Decks 6, 7, and 8 mid run along both sides of the Royal Promenade, a four-deck-high interior boulevard with bars, cafes, shops, and parades.",
+      "effect": "Promenade View Interior cabins face inward onto this space; you hear the pub, parade music, and late-night crowd through the window (which you can curtain but not soundproof).",
+      "mattersTo": "Only affects Promenade View Interior category; treat these as inside cabins with entertainment noise until midnight or later—fine if you're out late anyway, tough if you turn in at 10pm.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 3 forward sits two decks directly below the main theatre on Deck 5.",
+      "effect": "Show nights bring bass and vibration through the ceiling during performances (typically evening); silent on non-show nights or sea days without programming.",
+      "mattersTo": "Mainly an issue if you're in the cabin during showtimes (8pm-10pm); if you're at the show or in the bars, it's invisible.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Main elevator and stair banks sit forward, mid (Promenade level), and aft on each cabin deck, with hydraulic hum and foot traffic at lobby areas.",
+      "effect": "Cabins immediately adjacent to elevator shafts hear machinery cycling and doors; cabins near stair landings get foot traffic at embark/debark and port mornings; one corridor away is usually quiet.",
+      "mattersTo": "Convenience vs. noise trade—next to elevators means no long walks but possible hum; far aft or forward means quieter but longer schlep to dining.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "The I-95 crew corridor runs horizontally through lower decks (below Deck 3) with vertical access points near forward and aft stair towers; Deck 2 and 3 cabins near these access points see crew movement during shift changes.",
+      "effect": "Early morning (5am-7am) and late evening (10pm-midnight) crew shift changes bring brief bursts of foot traffic and door sounds near access points.",
+      "mattersTo": "Typically only noticeable if your cabin is within two doors of a crew stair access; mid-ship cabins away from vertical cores rarely hear it.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Decks 2 and 3 aft sit low and near the stern, close to propulsion machinery and stabilizer pumps.",
+      "effect": "Low-frequency hum and subtle vibration underway, more noticeable at higher speeds or maneuvering; many guests sleep through it, some find it soothing, a few find it intrusive.",
+      "mattersTo": "Vibration-sensitive guests should avoid; those who sleep through white noise or wear earplugs likely won't notice.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters (used for docking and maneuvering in port) sit low and forward; anchor chain runs through hawsepipe in the bow, active during arrival mornings.",
+      "effect": "Thruster rumble during docking (usually brief, arrival and departure only); anchor chain roar starting around 6am-7am on port mornings as the ship positions or departs.",
+      "mattersTo": "Forward cabins on lower decks will hear both; if you sleep through your alarm or enjoy early port arrivals, it's a non-issue; light sleepers should book mid or aft.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Exact deck and section span of the hump (if present)—Voyager class has balconies that cantilever past the hull on lower decks mid-ship, but I cannot confirm with certainty which specific deck range (likely Decks 6-8 or 7-9) without deck plan cross-section.",
+    "Precise location of galley exhaust vents and whether any cabin sections experience cooking odors.",
+    "Whether the ice rink (located low and center) generates noticeable compressor noise or vibration to adjacent cabins on Deck 3 or 4 mid-ship.",
+    "Specific cabin numbers immediately adjacent to crew access doors on Decks 2 and 3."
+  ],
+  "ship": "Voyager of the Seas",
+  "shipSlug": "voyager-of-the-seas",
+  "line": "Royal Caribbean",
+  "totalCabins": 1715,
+  "cabinsTouchedByAZone": 1715,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.035559
+}

@@ -1,0 +1,168 @@
+{
+  "class": "Coral class",
+  "sisterShips": [
+    "Island Princess"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; they obstruct the view downward from Decks 8 and 9, with Deck 8 experiencing the most significant blockage.",
+      "effect": "You see the horizon and ocean clearly, but looking straight down you see orange fiberglass boat roofs instead of water; Deck 8 cabins sit almost level with the boat tops.",
+      "mattersTo": "Matters to first-time cruisers or those who want unobstructed water views at all angles; doesn't matter to experienced cruisers who focus on the horizon, or anyone who prefers the steadier ride and lower cost of these decks.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Horizon Court buffet (Lido deck restaurant) operates directly below the midship section of Deck 9 and two decks below midship Deck 10.",
+      "effect": "Expect noise and foot traffic from early breakfast service (typically 6:00-6:30 AM) through late evening snacks; chairs scraping, dishes, and conversation carry upward.",
+      "mattersTo": "Matters to light sleepers and anyone sensitive to early-morning noise; doesn't matter if you're up early anyway or sleep soundly.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The pool deck, including the main pools, hot tubs, and Movies Under the Stars screen, sits directly above midship and aft Deck 11.",
+      "effect": "Daytime pool activity, deck chair dragging, and evening movie sound systems operate overhead until 10-11 PM; poolside music and announcements are audible.",
+      "mattersTo": "Significant for anyone wanting quiet during the day or early evening; doesn't matter if you're out exploring the ship during those hours anyway.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "The Sports Deck with basketball/volleyball court sits directly above forward and midship Deck 12.",
+      "effect": "Occasional thumping from sports activities during the day, though usage is typically lighter than pool deck activity.",
+      "mattersTo": "Minor concern for light sleepers during daytime cabin use; most guests are off the ship or elsewhere during peak sports hours.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "The Princess Theater (main show lounge) sits directly below Deck 6, with the balcony level of the theater occupying Deck 5.",
+      "effect": "Evening show sound and vibration from the theater's sound system carry upward, typically 7-10 PM; also pre-show and post-show crowd noise in corridors.",
+      "mattersTo": "Matters to anyone wanting early-to-bed quiet; doesn't matter if you're attending the shows yourself or are out late anyway.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins on Decks 5 and 6 sit close to the propulsion machinery spaces.",
+      "effect": "Low-frequency vibration and hum are noticeable, especially at cruising speed; the motion is steadier here but the mechanical presence is real.",
+      "mattersTo": "Significant for anyone sensitive to vibration or mechanical noise; doesn't matter to sound sleepers or those who find the hum soothing (some do).",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        6,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thruster operation during docking and tendering creates brief but intense vibration in forward cabins on lower decks.",
+      "effect": "Loud rumbling for 2-5 minutes during port arrival and departure maneuvers; the anchor chain also runs through this area with metallic grinding sounds early on port mornings.",
+      "mattersTo": "Matters to light sleepers who are aboard during early port arrivals; doesn't matter if you're an early riser anyway or sleep through mechanical noise.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        5,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Primary elevator and stair banks are located forward, midship, and aft on all cabin decks, with midship banks seeing the heaviest traffic.",
+      "effect": "Cabins near elevator lobbies (typically within 3-4 cabin numbers) experience corridor foot traffic, ding sounds, and conversation from embarkation afternoon through late evening.",
+      "mattersTo": "Matters to those wanting hallway quiet and privacy; doesn't matter to those who prioritize elevator convenience over noise, or who are rarely in the cabin during peak hours.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        5,
+        6
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Crew access points to the I-95 crew corridor are concentrated midship on lower decks where crew services (laundry, storage, galley access) connect.",
+      "effect": "Crew foot traffic in these corridors runs 24 hours, with peak activity during meal prep times (5-7 AM, 4-6 PM) and turnover days; voices and service cart noise carry.",
+      "mattersTo": "Matters to those sensitive to hallway activity at odd hours; less relevant on higher decks where crew access is more limited.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether this class features a hump (cantilevered balconies past the hull line) and if so, on which specific decks and sections—this requires deck-by-deck architectural verification",
+    "The exact location and extent of galley operations and whether any cabin sections sit directly above active galley spaces",
+    "Specific cabin numbers that are designated accessible or have guaranteed connecting door arrangements",
+    "Whether any Deck 9 or 10 cabins are affected by the Lotus Spa operations above them",
+    "The presence and impact of any nightclub or late-night venue locations relative to cabin decks"
+  ],
+  "ship": "Coral Princess",
+  "shipSlug": "coral-princess",
+  "line": "Princess Cruises",
+  "totalCabins": 1000,
+  "cabinsTouchedByAZone": 1000,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.031671000000000005
+}

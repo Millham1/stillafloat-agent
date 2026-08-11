@@ -1,0 +1,152 @@
+{
+  "class": "Spirit",
+  "sisterShips": [
+    "Norwegian Spirit"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        5,
+        6,
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; they obstruct the view downward from Decks 8, and partially from Deck 6, while horizon views remain clear.",
+      "effect": "You cannot see straight down to the water or watch tender operations, but the ocean horizon and ports are visible — the balcony or window feels elevated rather than open to the sea below.",
+      "mattersTo": "Matters to guests who want the full open-to-the-water feeling or enjoy watching tender loading; does not matter if you care only about horizon views and sunsets.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The main pool deck, buffet, and outdoor activity areas are on Deck 11 directly above.",
+      "effect": "Daytime foot traffic, deck chair dragging, pool sounds, and buffet activity from above can be heard; evenings are quieter once the pool deck closes.",
+      "mattersTo": "Matters to light sleepers and anyone in the cabin during the day; does not matter if you are out exploring and return only to sleep.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The main dining rooms are on Deck 6, three decks below midship Deck 9 cabins.",
+      "effect": "Dining room activity is far enough below that noise and vibration are typically not noticeable in Deck 9 cabins.",
+      "mattersTo": "Does not matter for most guests; spacing provides good insulation.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "mid",
+        "forward"
+      ],
+      "what": "The showroom/theatre is on Deck 6 directly above most of Deck 5.",
+      "effect": "Late-night show sound, applause, and foot traffic during performances can filter down; the theatre typically goes quiet by 11 PM.",
+      "mattersTo": "Matters to early sleepers or anyone turning in before the second show; does not matter if you attend the shows or stay out late.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "These cabins are low and aft, near the engine room and propulsion machinery.",
+      "effect": "A low hum or vibration is noticeable underway, especially at cruising speed; it is constant white noise rather than banging or rattling.",
+      "mattersTo": "Matters to guests sensitive to vibration or who want absolute quiet; does not matter to those who sleep through white noise or use the cabin only to sleep.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thruster operation during docking and maneuvering can be heard and felt in forward cabins on lower decks.",
+      "effect": "A loud mechanical whine and vibration for a few minutes during port arrivals and departures; it does not occur at sea.",
+      "mattersTo": "Matters to light sleepers who are in the cabin during early-morning arrivals; does not matter if you sleep heavily or are up and out early.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The anchor chain locker is in the bow; anchor drop and retrieval create loud clanking early in the morning at every port.",
+      "effect": "A brief but very loud mechanical noise at anchor operations, typically between 6 and 8 AM; it lasts a few minutes.",
+      "mattersTo": "Matters to anyone who values sleeping in at port; does not matter to early risers or those planning to wake for arrival anyway.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        4,
+        5,
+        6,
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The main elevator and stair banks run midship through all guest decks.",
+      "effect": "Midship cabins near the elevators offer maximum convenience but may hear elevator machinery hum, door chimes, and hallway conversation during busy embarkation and port days.",
+      "mattersTo": "Matters to guests prioritizing quiet over convenience; does not matter to those who value short walks to elevators and public areas.",
+      "severity": "minor",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether Norwegian Spirit has a hump (balconies cantilevered past the hull line on lower-midship decks) — this hull class predates the era when humps became standard, and I cannot confirm its presence or absence without deck cross-sections.",
+    "Exact location of crew corridor (I-95) access points and whether service traffic is noticeable near specific guest cabin sections.",
+    "Whether any sister ships were built to this Spirit-class layout beyond Norwegian Spirit itself — this may be a single-ship class.",
+    "Precise deck assignment of nightclub or late-night venues and their impact on cabins below.",
+    "Connecting cabin patterns specific to this class."
+  ],
+  "ship": "Norwegian Spirit",
+  "shipSlug": "norwegian-spirit",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 1012,
+  "cabinsTouchedByAZone": 1012,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.02706
+}

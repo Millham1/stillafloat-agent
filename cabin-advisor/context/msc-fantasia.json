@@ -1,0 +1,181 @@
+{
+  "class": "Fantasia",
+  "sisterShips": [
+    "MSC Splendida",
+    "MSC Divina",
+    "MSC Preziosa"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 8; they obstruct the view downward from Decks 8, 9, and 10, with Deck 8 cabins sitting at boat level experiencing the most obstruction.",
+      "effect": "You see the lifeboat roof instead of the water directly below, but the horizon and sea views remain clear; forward and aft cabins are less affected than mid-ship.",
+      "mattersTo": "Matters to guests who want an unobstructed view straight down to the water; irrelevant to those focused on horizon views or who accept this as normal cruise ship design.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        13
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The main pool deck (Aqua Park) is on Deck 14 directly above Deck 13 mid and aft sections.",
+      "effect": "Daytime noise from pool activities, deck chairs moving, music, and foot traffic; activity continues into the evening.",
+      "mattersTo": "Significant for light sleepers or anyone in the cabin during the day; less important for guests who are out exploring when the pool is busy.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Savannah buffet (Deck 13 aft) sits directly above Deck 12 aft cabins.",
+      "effect": "Early morning noise starting around 6:00 AM with setup, plus foot traffic and activity throughout breakfast and lunch service.",
+      "mattersTo": "Critical for those wanting to sleep past 6:30 AM; not an issue for early risers or guests who breakfast elsewhere.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Royal Theatre spans Decks 5, 6, and 7 below the forward sections of Decks 9-12.",
+      "effect": "Evening show noise (music, bass) typically 8:00-11:00 PM on show nights, felt most on Deck 9, diminishing higher up.",
+      "mattersTo": "Matters to early-to-bed guests on show evenings; minimal impact if you're attending shows or out late anyway.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        13
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Safari Lounge nightclub is on Deck 7, directly below Deck 13 forward (two decks intervene: 8-12 forward are offset).",
+      "effect": "Late-night bass and vibration possible until 2:00-3:00 AM, though the distance and intervening structure attenuate it significantly.",
+      "mattersTo": "Potentially affects very sensitive sleepers; most guests report minimal disturbance given the vertical separation.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator banks are located mid-ship on all main cabin decks, with secondary banks forward and aft.",
+      "effect": "Mid-ship cabins near elevators offer excellent convenience but experience hallway traffic and bell chimes at all hours; end-of-corridor cabins are quieter but require longer walks.",
+      "mattersTo": "Convenience matters to those with mobility concerns or heavy port-day schedules; noise-sensitive guests should avoid cabins immediately adjacent to elevator lobbies.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        8,
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room and propulsion machinery sit below and behind the aft-most cabins on Decks 8 and 9.",
+      "effect": "Low-frequency vibration and hum, particularly noticeable when the ship is maneuvering or at full speed; Deck 8 aft typically feels more than Deck 9.",
+      "mattersTo": "Significant for vibration-sensitive sleepers; many guests don't notice or consider it the 'heartbeat' of the ship and don't mind.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters are located forward at the lower decks, affecting the forward-most cabins on Decks 5 and 8 during port maneuvering.",
+      "effect": "Loud thruster noise during docking and departure, typically early morning and late afternoon; brief but intense.",
+      "mattersTo": "Matters to light sleepers in port-heavy itineraries with early arrivals; thrusters only operate during maneuvering, not at sea.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Mid-ship balcony cabins on Decks 9-12 have balconies that cantilever outward past the lifeboat line.",
+      "effect": "These balconies are wider than standard and offer unobstructed views past the lifeboats with no view-blocking below; they sit at the ship's center of motion for the smoothest ride.",
+      "mattersTo": "Excellent value for balcony seekers wanting clear views without paying for upper decks; the steadiest ride benefits those prone to seasickness.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        15,
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "MSC Yacht Club area is exclusive to Decks 15 and 16 forward, with private pool, lounge, restaurant, and controlled access.",
+      "effect": "Complete separation from main ship traffic with dedicated elevators and facilities; quiet and private but geographically isolated from main entertainment venues.",
+      "mattersTo": "Perfect for guests prioritizing exclusivity and willing to pay premium; requires walks or elevator rides to main dining and shows.",
+      "severity": "significant",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Exact cabin numbers adjacent to crew corridor (I-95) access points—would require detailed deck plan review to map service door locations",
+    "Whether anchor chain noise affects specific forward cabins on Deck 5 during early port arrivals—depends on chain locker placement relative to cabin soundproofing",
+    "Degree of galley noise/odor transmission to Deck 12 cabins near the Savannah buffet pantry areas—ventilation design specifics not confirmed"
+  ],
+  "ship": "MSC Fantasia",
+  "shipSlug": "msc-fantasia",
+  "line": "MSC Cruises",
+  "totalCabins": 1580,
+  "cabinsTouchedByAZone": 1580,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.033525
+}

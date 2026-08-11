@@ -1,0 +1,184 @@
+{
+  "class": "Meraviglia",
+  "sisterShips": [
+    "MSC Bellissima",
+    "MSC Grandiosa",
+    "MSC Virtuosa"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; they obstruct the downward view from Decks 8, 9, and 10, with Deck 8 most affected and obstruction lessening as you go higher.",
+      "effect": "You'll see the boat deck and tenders below instead of open water straight down, though the horizon view remains clear; this matters for photographers and those who want an unobstructed sight line to the waterline.",
+      "mattersTo": "Matters to guests who want a fully open ocean view or to watch port operations; doesn't matter to those focused on horizon views, sunsets, or privacy (the boats actually shield you from being seen from the pier).",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Mid-ship balconies on Decks 9, 10, and 11 cantilever outboard past the lifeboat line, creating wider balconies with side views along the hull.",
+      "effect": "These balconies are wider and offer better side-to-side views compared to standard balconies elsewhere; they sit low and central where motion is minimal, and typically price lower than higher decks despite the extra space.",
+      "mattersTo": "Value hunters and those who prioritize space and stability over height; these are among the best balcony deals on the ship for people who understand the geometry.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 16 sits directly above Deck 15 forward, both dedicated MSC Yacht Club decks with cabins and likely YC-exclusive outdoor space on 16.",
+      "effect": "Minimal impact as both decks are Yacht Club and share the same guest profile; any foot traffic above is limited to YC guests accessing their own cabins or private areas.",
+      "mattersTo": "Low concern; Yacht Club guests on 15 should expect comparable activity patterns overhead.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 8 below houses the Panorama Lounge (forward) and portions of the promenade and shopping area (mid-ship), which operate into evening hours.",
+      "effect": "Some music, foot traffic, and ambient noise from entertainment and shopping venues directly below, particularly evenings; not a nightclub-level issue but more active than a cabin-over-cabin scenario.",
+      "mattersTo": "Light sleepers in forward and mid-ship Deck 9 should consider this; aft Deck 9 sits over more cabins and public spaces that close earlier.",
+      "severity": "moderate",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 16 mid and aft areas contain the main pool deck, including two main pools, whirlpools, and the Atmosphere Pool Bar, active from early morning through late evening.",
+      "effect": "Pool deck activity directly overhead means daytime and evening foot traffic, deck chair dragging, music, and pool sounds; this continues until the pools close around 10-11 PM.",
+      "mattersTo": "Deck 15 cabins exist only forward, so this doesn't affect guest cabins directly; included for completeness as the pool deck geography is important for understanding Decks 14 and below.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Top Sail Lounge occupies Deck 15 forward directly below Deck 16 cabins, operating as an observation lounge and bar.",
+      "effect": "Lounge activity below during daytime and evening hours; generally quieter than a nightclub but not silent, with music and conversation filtering up.",
+      "mattersTo": "Yacht Club guests on Deck 16 seeking absolute silence may notice some ambient sound from below in evenings; those unbothered by muted lounge atmosphere won't care.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 15 mid and aft house the buffet (Marketplace) and related dining venues that operate from early breakfast through late-night snacks.",
+      "effect": "Buffet activity overhead means foot traffic, chair movement, and kitchen sounds from roughly 6 AM to midnight or later; this is one of the busiest public venues on the ship.",
+      "mattersTo": "Anyone in mid or aft Deck 14 should expect this; light sleepers and those wanting quiet mornings should avoid these sections, while those who sleep through noise or are rarely in the cabin won't mind.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins on the lowest guest decks (5 and 8) sit closest to the engine room and propulsion machinery.",
+      "effect": "Low-frequency vibration and hum, particularly noticeable when engines are working hard during maneuvering or rough seas; modern MSC dampening reduces but doesn't eliminate it.",
+      "mattersTo": "Vibration-sensitive guests should avoid these; those who sleep through white noise or wear earplugs often don't notice, and the aft location offers other benefits like closer proximity to aft entertainment.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Deck 5 sits near bow thrusters, which activate during docking and maneuvering in port.",
+      "effect": "Loud thruster noise during port arrivals and departures, typically early morning and late afternoon; the sound is intense but brief, lasting minutes rather than hours.",
+      "mattersTo": "Matters to anyone who wants to sleep through port days; doesn't matter if you're up early anyway or appreciate the operational sounds as part of the experience.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        5,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Primary crew corridor access points are typically located at the forward and aft ends of each cabin deck, where crew enter guest corridors from service areas.",
+      "effect": "Increased crew foot traffic in these zones during service hours (early morning room service, evening turndown, overnight cleaning shifts); doors may close audibly and you'll see crew coming and going.",
+      "mattersTo": "Cabins at the extreme forward or aft ends of corridors may notice more activity; mid-ship cabins are typically quieter from this perspective.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Exact location and operating hours of the theater and whether it creates noise issues for specific cabin sections",
+    "Precise location of the nightclub/disco and which deck sections sit directly above or below it",
+    "Specific elevator bank locations along the forward-mid-aft axis and their noise profiles",
+    "Anchor chain routing and which forward cabins on Deck 5 are most affected by anchor deployment",
+    "Whether the Atmosphere Pool Bar or other deck venues have late-night entertainment that extends noise beyond typical pool closing hours",
+    "Galley locations and whether any cabin sections sit directly adjacent to or above active galleys with 24-hour operation",
+    "Connecting cabin availability patterns by deck and section"
+  ],
+  "ship": "MSC Meraviglia",
+  "shipSlug": "msc-meraviglia",
+  "line": "MSC Cruises",
+  "totalCabins": 2218,
+  "cabinsTouchedByAZone": 2218,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.037827
+}

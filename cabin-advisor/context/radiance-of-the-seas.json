@@ -1,0 +1,181 @@
+{
+  "class": "Radiance",
+  "sisterShips": [
+    "Brilliance of the Seas",
+    "Serenade of the Seas",
+    "Jewel of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        3,
+        4
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 3 level; obstructions affect views from Decks 3 and 4, with Deck 3 facing the boats directly and Deck 4 looking over them.",
+      "effect": "Ocean view and balcony cabins see lifeboats filling the lower frame when looking down or straight out; horizon remains clear when looking up or forward/aft along the ship.",
+      "mattersTo": "Matters to guests who want unobstructed water views for photography or aesthetic reasons; doesn't matter to guests prioritizing price, interior cabins, or those who spend little time on their balcony.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Solarium (indoor/outdoor pool area with glass roof) sits on Deck 10 directly above mid and aft sections.",
+      "effect": "Potential for daytime deck chair movement, occasional splashing sounds, and activity from early morning through late evening in the covered pool area overhead.",
+      "mattersTo": "Matters to light sleepers or those seeking quiet during the day; minimal impact for guests out exploring or who tolerate ambient resort noise.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Main pool deck, whirlpools, and outdoor activity area on Deck 10 directly above.",
+      "effect": "Daytime and evening noise from pool activities, deck chairs being moved, music, and foot traffic until late evening.",
+      "mattersTo": "Significant for light sleepers or anyone in the cabin during peak pool hours; not an issue for guests who are out during the day and sleep soundly.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8,
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Windjammer Café (buffet venue) on Deck 9 sits above Deck 8 mid-section cabins.",
+      "effect": "Early morning galley prep noise (from around 6:00 AM), foot traffic, and chair/table movement from breakfast through late evening snacks.",
+      "mattersTo": "Matters to anyone sensitive to early morning noise or wanting guaranteed quiet in their cabin; less relevant for early risers or those rarely in the cabin.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 2 below houses the main theatre (Tropical Theatre) in the forward section.",
+      "effect": "Evening show noise and vibration transmitted upward, particularly during performances with music and bass, typically until 10:30-11:00 PM.",
+      "mattersTo": "Matters to guests with early bedtimes or sensitive to vibration; minimal issue for night owls or those attending shows themselves.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 3 directly below houses the main theatre (Tropical Theatre) in the forward section.",
+      "effect": "Evening show noise and vibration one deck removed, less intense than Deck 3 but still noticeable during louder performances.",
+      "mattersTo": "Minor concern for sensitive sleepers during show times; most guests won't notice or will be at the shows.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        2,
+        3,
+        4,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Main elevator banks run forward and aft on the Radiance class, with stairwells adjacent; mid-ship has limited vertical access.",
+      "effect": "Cabins near forward and aft elevator/stair areas experience convenient access but mechanical hum and foot traffic 24/7; mid-ship cabins trade longer walks for quieter corridors.",
+      "mattersTo": "Mobility-limited guests and families with small children benefit from proximity despite noise; guests prioritizing quiet should avoid cabins immediately adjacent to elevator cores.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft Deck 2 and lower Deck 3 aft sit closest to propulsion machinery.",
+      "effect": "Low-frequency vibration and hum, more noticeable at cruising speed and during maneuvering, particularly in the lower aft cabins.",
+      "mattersTo": "Matters to vibration-sensitive sleepers or those wanting the quietest possible cabin; many guests acclimate quickly or don't notice at all.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3,
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thruster machinery forward on lower decks operates during docking and departure maneuvers.",
+      "effect": "Loud mechanical grinding/whirring for 10-30 minutes during port arrivals and departures, typically early morning and late afternoon.",
+      "mattersTo": "Significant for light sleepers during port-intensive itineraries; minimal impact for sound sleepers or guests who are awake during maneuvering.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain mechanism at the bow on lower forward decks.",
+      "effect": "Loud chain rumble when dropping or raising anchor, typically very early morning in tender ports (can be 6:00-7:00 AM).",
+      "mattersTo": "Critical for light sleepers on tender-port itineraries; not relevant for dock-only itineraries or guests unconcerned with early wake-ups.",
+      "severity": "significant",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Exact location and extent of the I-95 crew corridor access points and which guest cabin sections experience the most service traffic",
+    "Whether the Radiance class has a hump (cantilevered balconies past the hull line) and if so, which decks and sections — construction details for this 2001-2004 class are unclear",
+    "Specific galley locations beyond the Windjammer buffet service area and whether lower-deck galleys create noise/vibration issues",
+    "Whether any sections have unusual concentrations of connecting cabins beyond typical family-friendly areas",
+    "Precise noise transmission from the disco/nightclub venues and which cabin sections they affect"
+  ],
+  "ship": "Radiance of the Seas",
+  "shipSlug": "radiance-of-the-seas",
+  "line": "Royal Caribbean International",
+  "totalCabins": 1071,
+  "cabinsTouchedByAZone": 1071,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.033186
+}

@@ -1,0 +1,154 @@
+{
+  "class": "Dawn class",
+  "sisterShips": [
+    "Norwegian Star",
+    "Norwegian Dawn"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        5,
+        6,
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; cabins on Decks 5, 6, and 8 sit in the lifeboat zone, with Deck 8 directly above the boats experiencing the most significant view obstruction downward, while Decks 5 and 6 below have views blocked upward by the boat hulls.",
+      "effect": "From Deck 8 you lose the view straight down but retain horizon and ocean views; from Decks 5-6 the boats overhead can block sky and create a ceiling effect when looking up from your balcony or window.",
+      "mattersTo": "Matters greatly to first-time cruisers or those who want unobstructed photo angles; experienced cruisers often accept this trade for lower pricing or midship stability.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 11 mid and aft cabins sit directly below Deck 12's buffet (Garden Café) and pool deck area, with Deck 12 cabins directly beneath open pool deck on Deck 13.",
+      "effect": "Expect noise from deck chairs scraping, foot traffic, and buffet activity starting early morning (6-7am) and continuing until late evening; pool deck noise includes music and announcements.",
+      "mattersTo": "Light sleepers and anyone planning to sleep past 7am should avoid these; early risers and those out all day won't notice.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Deck 5 and 6 cabins sit two and three decks below the Stardust Theater (spans Decks 7-8), which hosts evening shows and events.",
+      "effect": "Vibration and bass from theatrical sound systems can transmit downward during shows, typically 8pm-11pm; the structural gap means it's muffled but still noticeable in quiet moments.",
+      "mattersTo": "Matters to those who turn in early or are sensitive to vibration; if you're at the show or out late anyway, it's irrelevant.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 8 mid-section sits directly above the main theater level and atrium spaces on Decks 6-7.",
+      "effect": "Generally quiet as theaters are well-insulated from above, but the atrium below can create occasional sound bleed from events or live music in that central space.",
+      "mattersTo": "Minimal concern; atrium events are typically daytime or early evening and insulation is good on this class.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Primary elevator banks run forward and midship through the main accommodation decks, with the busiest concentration midship serving the main dining rooms, atrium, and theater.",
+      "effect": "Cabins adjacent to elevator lobbies get convenience for embarkation, tendering, and dining but endure hallway traffic noise and door chimes from early morning through late night.",
+      "mattersTo": "Mobility-limited guests prize elevator proximity; light sleepers should stay at least two cabin-lengths away from the banks.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins on Decks 4 and 5 sit low and toward the stern, near the propulsion machinery spaces.",
+      "effect": "Persistent low-frequency vibration and hum, more pronounced underway and during maneuvering; it's the classic aft cabin trade—lower price, more motion and noise.",
+      "mattersTo": "Noise-sensitive cruisers and first-timers should avoid; seasoned cruisers hunting value or who sleep through anything won't mind.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on lower decks (4, 5, 6) are subject to bow thruster noise during docking and maneuvering, and anchor chain noise in ports where the ship anchors.",
+      "effect": "Loud mechanical grinding or rumbling in early morning arrivals and during night departures; bow thrusters are high-pitched whine, anchor chain is metallic thunder directly overhead in the chain locker.",
+      "mattersTo": "Anyone who values sleep-in mornings in port should avoid forward cabins on these decks; if you're up early for excursions anyway, it's a non-issue.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        4,
+        5,
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Crew access corridors (I-95) run along the sides and through forward/aft sections on working decks, with service doors appearing near the elevator lobbies and stairwells on accommodation decks.",
+      "effect": "Cabins near crew access points may experience early morning (5-6am) foot traffic, trolley noise from room service and housekeeping, and door closure sounds as crew shift changes occur.",
+      "mattersTo": "Light sleepers should avoid cabins immediately adjacent to crew doors (often marked on deck plans or near stairwells); most guests won't notice past the initial morning rush.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether Dawn class has a hump (balconies cantilevered past hull line) and on which specific decks and sections—this requires deck-by-deck blueprint confirmation I cannot verify",
+    "Precise location of galley ventilation or exhaust that might affect specific aft or mid cabins on upper decks",
+    "Exact placement and impact of nightclub or disco on Dawn class—need to verify if Spinnaker Lounge or another venue creates noise issues for cabins below",
+    "Whether connecting cabin configurations are unusually prevalent or limited on specific decks compared to other NCL ships"
+  ],
+  "ship": "Norwegian Dawn",
+  "shipSlug": "norwegian-dawn",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 1177,
+  "cabinsTouchedByAZone": 1175,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.031263
+}

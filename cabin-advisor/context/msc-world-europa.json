@@ -1,0 +1,169 @@
+{
+  "class": "World",
+  "sisterShips": [
+    "MSC World America"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 9; they obstruct the downward and outward view from balconies on Decks 10, 11, and 12, with Deck 10 experiencing the most severe obstruction.",
+      "effect": "Balconies look directly at or over orange lifeboat covers instead of open water down to the waterline; the horizon remains clear but the romantic 'look down at the ocean' view is blocked.",
+      "mattersTo": "Matters greatly to first-time cruisers and photographers who imagine an unobstructed ocean view; experienced cruisers and those who spend little time on the balcony often don't mind, especially given the price advantage.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Y-shaped hull design extends the midship superstructure outward past the lifeboat line, creating wider balconies with unobstructed side views.",
+      "effect": "Midship balconies on these decks cantilever beyond the hull giving wider lateral sightlines past the lifeboats and a more stable ride than higher or end cabins, typically at a lower price point than upper decks.",
+      "mattersTo": "Value-focused cruisers seeking balcony space and stability without premium pricing; less relevant to those prioritizing height or aft views.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        15,
+        16
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The main pool deck (Deck 17 aft) sits directly above with sun loungers, music, and poolside activity throughout the day.",
+      "effect": "Expect daytime noise from pool activities, music, and foot traffic overhead from mid-morning through evening; vibration from deck furniture being moved.",
+      "mattersTo": "Light sleepers and those wanting quiet daytime cabin time should avoid; night owls and those out exploring the ship all day won't notice.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        19,
+        20,
+        21
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The open-air sports deck and activity area (Deck 22) sits directly overhead with basketball, shuffleboard, and running track.",
+      "effect": "Daytime noise from bouncing balls, running footsteps, and sports activity; mostly quiet after evening hours.",
+      "mattersTo": "Daytime nappers and remote workers will be disturbed; those using the cabin only for sleeping won't care.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The two-deck Europa Theater spans Decks 7 and 8 directly below the forward cabin sections.",
+      "effect": "Low-frequency sound from theater performances and shows can transmit upward, particularly during evening showtimes; Deck 11 is closer and more affected than Deck 14.",
+      "mattersTo": "Early-to-bed guests in forward cabins on Deck 11 may hear muffled bass during 9-10pm shows; Deck 14 is far enough that most won't notice.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The World Galleria (shopping promenade) and main dining rooms on Deck 15 sit directly below.",
+      "effect": "Ambient noise from dining service, music, and foot traffic until approximately 11pm; chair scraping and conversation carry upward during dinner hours.",
+      "mattersTo": "Guests turning in at 9-10pm may hear activity below; late diners and night owls won't be in the cabin during the noise.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 5 cabins sit low in the hull where bow thruster vibration is noticeable during maneuvering (docking and tendering) and anchor chain noise occurs at port arrivals.",
+      "effect": "Rumbling vibration during port arrivals and departures, typically early morning; the anchor chain creates loud mechanical sounds when deployed or retrieved.",
+      "mattersTo": "Extremely relevant to light sleepers who will be awakened on port days; heavy sleepers and early risers are unaffected.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "promenade",
+      "decks": [
+        11,
+        12,
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The 'Promenade Balcony' and 'Promenade View' cabins face inward to the ship's internal World Promenade rather than the ocean.",
+      "effect": "Balconies overlook the indoor shopping and dining street with pedestrian traffic, ambient music, and retail activity; no ocean view but protected from weather and often discounted.",
+      "mattersTo": "Matters to those expecting ocean views who didn't read the category name carefully; a deliberate choice for people-watchers and those prioritizing price over seascape.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        18,
+        19,
+        20,
+        21
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "MSC Yacht Club exclusive decks with restricted access via dedicated elevators and keycard-controlled areas.",
+      "effect": "Quieter environment with less through-traffic and smaller guest population; proximity to private Yacht Club facilities but farther from main ship amenities.",
+      "mattersTo": "Yacht Club guests value the exclusivity and separation; those wanting to be near main dining and entertainment should consider lower decks.",
+      "severity": "minor",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Exact vertical distance between entertainment venues and cabins above (is the theater two decks below Deck 11 or three, accounting for ceiling height variations)",
+    "Whether the buffet venue location and hours create noise issues for any cabin decks",
+    "Precise I95 crew corridor routing and whether access points create noticeable service traffic near guest areas",
+    "Main elevator bank locations along the forward/mid/aft axis and their proximity to specific cabin blocks",
+    "Whether aft cabins on any deck experience propulsion vibration at cruising speed",
+    "Infinite Ocean View cabin design specifics and whether the virtual balcony technology creates any acoustic or privacy considerations"
+  ],
+  "ship": "MSC World Europa",
+  "shipSlug": "msc-world-europa",
+  "line": "MSC Cruises",
+  "totalCabins": 2320,
+  "cabinsTouchedByAZone": 2320,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.034056
+}

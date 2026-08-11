@@ -1,0 +1,186 @@
+{
+  "class": "Dream class",
+  "sisterShips": [
+    "Carnival Dream",
+    "Carnival Magic",
+    "Carnival Breeze"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        1,
+        2,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 1; they obstruct ocean views from Decks 1, 2, and portions of Deck 6, with Deck 1 most affected and Deck 6 showing partial obstruction depending on cabin position.",
+      "effect": "Ocean view and balcony cabins look directly at or over orange lifeboat shells; the horizon remains visible but the view down to the water is blocked.",
+      "mattersTo": "Matters greatly to guests who want unobstructed water views or photo opportunities; irrelevant to interior cabin guests and those prioritizing price over view quality.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 9 forward and midship sits directly below the Lido Deck pool area, buffet, and outdoor activities on Deck 10.",
+      "effect": "Expect foot traffic noise, deck chair scraping, and activity sounds from above starting early morning through late evening.",
+      "mattersTo": "Light sleepers and those sensitive to overhead noise should avoid; won't bother guests out of the cabin most of the day.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 11 midship sits directly below the SportSquare and outdoor recreation area on Deck 12.",
+      "effect": "Noise from basketball, mini-golf, and ropes course activity overhead during the day.",
+      "mattersTo": "Problematic for daytime nappers or remote workers; Cloud 9 Spa guests here expect tranquility and may be disappointed.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 2 midship sits directly above main dining room and galley operations on Deck 1.",
+      "effect": "Possible galley noise, ventilation hum, and occasional clattering during meal prep hours, especially early morning and dinner service.",
+      "mattersTo": "Sensitive sleepers should note this; won't affect heavy sleepers or those dining when the galley is active anyway.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Decks 7 and 8 aft sit above the main theater (Encore Showroom) which spans Decks 3-5 aft.",
+      "effect": "Theater is two to four decks below, so sound transmission is minimal, but late shows may produce faint vibration or bass.",
+      "mattersTo": "Only the most sensitive guests need consider this; distance provides good insulation.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        1,
+        2,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Primary elevator banks run forward and midship on all guest decks, with forward elevators serving the main atrium area.",
+      "effect": "Cabins adjacent to elevators gain convenience for mobility-limited guests but experience bell chimes, door sounds, and hallway congregation noise throughout the day and night.",
+      "mattersTo": "High-traffic hallways bother light sleepers; convenience is essential for those with mobility issues or young children with strollers.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Decks 1 and 2 aft sit closest to engine room operations low in the hull.",
+      "effect": "Low-frequency vibration and hum are most noticeable here, particularly when engines throttle up during departure or maneuvering.",
+      "mattersTo": "Vibration-sensitive guests and those bothered by mechanical sounds should avoid; others may not notice or may find the hum soothing.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thruster operation occurs low and forward during docking and maneuvering in port.",
+      "effect": "Loud grinding or humming noise during port arrival and departure, typically early morning and evening for a few minutes at a time.",
+      "mattersTo": "Light sleepers in forward cabins on port days will be awakened; deep sleepers and early risers unaffected.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Cloud 9 Spa cabins on Decks 11 and 12 include dedicated spa access and spa-themed amenities.",
+      "effect": "Premium pricing for spa proximity and amenities; these cabins cater to wellness-focused guests willing to pay extra for the spa experience.",
+      "mattersTo": "Only worthwhile for guests who will use the spa facilities extensively; unnecessary expense for others.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 2 features Cove Balcony cabins with balconies positioned lower and closer to the waterline than standard balconies.",
+      "effect": "Unique perspective closer to the water, but more wave spray potential in rough seas and less privacy as balconies are visible from public decks above.",
+      "mattersTo": "Appeals to those wanting a different view experience and typically lower pricing; rough-weather cruisers should note spray risk.",
+      "severity": "minor",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Hump configuration: whether Dream class has a hump (cantilevered balconies past the hull line), and if so, which specific decks and sections feature it",
+    "I95 crew corridor: precise location of crew corridor access points and which guest cabin sections experience the most service traffic",
+    "Anchor chain: exact cabins most affected by anchor deployment noise on Deck 1 forward",
+    "Connecting cabin distribution: specific decks and sections where connecting cabins are most concentrated",
+    "Accessible cabin concentration: which decks have the highest density of ADA-accessible cabins beyond proximity to elevators"
+  ],
+  "ship": "Carnival Dream",
+  "shipSlug": "carnival-dream",
+  "line": "Carnival Cruise Line",
+  "totalCabins": 1807,
+  "cabinsTouchedByAZone": 1807,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.032376
+}

@@ -1,0 +1,131 @@
+{
+  "class": "Icon",
+  "sisterShips": [
+    "Star of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; they obstruct the downward view from Decks 7, 8, and 9 aft cabins while the horizon remains visible.",
+      "effect": "You lose the view of the waterline and sea immediately below, but can still see out to the horizon and watch sunsets or ports from your balcony.",
+      "mattersTo": "Matters to guests who want to watch the ship move through water or see tender operations; does not matter to those focused on horizon views, sunsets, or simply having outdoor space.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 17 and 18 Icon Loft Suites and Royal Loft Suite sit directly above, with multi-level occupancy.",
+      "effect": "You may hear footsteps or movement from the loft suites above, particularly if occupants use the upper levels frequently.",
+      "mattersTo": "Matters to light sleepers in Deck 16 suites; less relevant to those who sleep soundly or are out of the cabin during the day.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8,
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Royal Promenade, Royal Theater, and central atrium are located on Deck 6, directly below portions of Deck 7, with evening activity extending to around 11 PM or midnight.",
+      "effect": "You may hear muffled music, announcements, or crowd noise from entertainment venues two decks below during evening hours.",
+      "mattersTo": "Matters to early sleepers or those sensitive to distant ambient noise; does not matter to night owls or those who enjoy being near the action.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Thrill Island waterpark and AquaDome pool area are located on Deck 16 and 17, directly above Deck 14.",
+      "effect": "You may hear daytime splash noise, music, and pool activity from above, typically from morning until early evening.",
+      "mattersTo": "Matters to those wanting midday quiet in the cabin; does not matter to guests who are out exploring during the day or enjoy the energy of being near pool decks.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room and propulsion machinery are located low and aft, several decks below Deck 7 and 8 aft sections.",
+      "effect": "You may feel low-frequency vibration or hear a distant hum, particularly during maneuvering, though modern stabilization minimizes this on Icon class.",
+      "mattersTo": "Matters to those highly sensitive to vibration; most guests on these decks report minimal disturbance on this ship class.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3,
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters are located low and forward, used during docking and maneuvering in port.",
+      "effect": "You may hear a loud rumble or feel vibration during port arrivals and departures, typically early morning or late afternoon, lasting 15-30 minutes.",
+      "mattersTo": "Matters to light sleepers during port days; does not matter to those already awake or who sleep through mechanical noise.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3,
+        4,
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain runs through the bow, deployed and retrieved in port.",
+      "effect": "You will hear loud metallic grinding and chain noise during anchor operations, typically early morning arrivals at tender ports, lasting 10-20 minutes.",
+      "mattersTo": "Matters significantly to anyone wanting to sleep past 6 or 7 AM on tender port days; unavoidable in forward cabins on these decks.",
+      "severity": "significant",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether Icon class has a hump (balconies cantilevered past the lifeboat line on mid-ship decks) and which specific decks and sections it affects",
+    "Precise location of I-95 crew corridor access points and which guest cabin areas experience service traffic",
+    "Exact elevator bank locations along the hull (forward/mid/aft) and noise characteristics specific to Icon class",
+    "Location and operating hours of galley facilities and which decks/sections sit directly above or adjacent",
+    "Whether Deck 14 forward cabins experience noise from the AquaDome activities on Deck 15/16 forward, or if sound insulation is sufficient"
+  ],
+  "ship": "Icon of the Seas",
+  "shipSlug": "icon-of-the-seas",
+  "line": "Royal Caribbean International",
+  "totalCabins": 2814,
+  "cabinsTouchedByAZone": 1291,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.027777
+}

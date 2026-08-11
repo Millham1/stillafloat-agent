@@ -1,0 +1,161 @@
+{
+  "class": "Lirica class",
+  "sisterShips": [
+    "MSC Lirica",
+    "MSC Opera",
+    "MSC Armonia"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 7; they obstruct the view downward and outward from Decks 7, 8, and 9, with Deck 7 cabins sitting at lifeboat level experiencing the most direct obstruction.",
+      "effect": "Ocean view and balcony cabins on these decks look out at or over orange boats rather than straight down to the water; the horizon remains visible but the view lacks the open sweep of higher decks.",
+      "mattersTo": "Matters greatly to guests who want unobstructed water views or photos without boat hardware; less important to those prioritizing price, stability, or easy stair access to public areas.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 10 directly above hosts the main pool, Bora Bora Pool Bar, and surrounding pool deck in the mid and aft sections.",
+      "effect": "Mid and aft Deck 9 cabins sit one deck below the daytime social hub; expect foot traffic, deck chair dragging, and music from mid-morning until evening, loudest in afternoon.",
+      "mattersTo": "Problematic for light sleepers, daytime nappers, or anyone working remotely; non-issue for guests out exploring during the day or those who sleep deeply.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 10 directly above has the buffet restaurant (Il Patio) in the forward section.",
+      "effect": "Forward Deck 9 cabins sit below the buffet; expect early morning setup noise, chair movement, and foot traffic from breakfast service starting around 6:30 AM, continuing through late evening.",
+      "mattersTo": "Significant for anyone wanting to sleep past 7 AM or seeking quiet evenings in the cabin; less important to early risers or those rarely in the cabin during meal hours.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 11 directly below has the Teatro la Fenice (main theatre) in the forward section, with showtimes typically at night.",
+      "effect": "All Deck 12 suites sit above the theatre; show audio and applause may be audible through the floor during evening performances, usually 9:30–11 PM.",
+      "mattersTo": "Matters to early-to-bed guests or those sensitive to evening vibration and bass; minimal impact on night owls or those attending the shows themselves.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 7 directly below contains the Teatro la Fenice (main theatre) spanning two decks in the forward section.",
+      "effect": "Forward Deck 8 cabins sit above the upper balcony of the theatre; evening show audio and crowd noise may transmit upward, typically 9:30–11 PM.",
+      "mattersTo": "Relevant for guests retiring early or needing quiet for calls or sleep by 9 PM; not an issue for those out late or attending shows.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator and stair banks are located mid-ship on all guest cabin decks, with forward and aft sections farther from vertical circulation.",
+      "effect": "Mid-ship cabins offer the shortest walk to elevators and stairs but may experience door chimes, conversation, and foot traffic; forward and aft cabins trade convenience for quieter hallways.",
+      "mattersTo": "Convenience matters to guests with mobility limits, heavy luggage, or young children; quiet matters more to light sleepers or those prioritizing cabin tranquility over access speed.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room sits low and aft; Decks 7 and 8 aft cabins are closest to propulsion machinery.",
+      "effect": "Aft cabins on these decks may experience low-frequency vibration and hum when the ship is underway, most noticeable at night in calm seas or during maneuvering.",
+      "mattersTo": "Significant for vibration-sensitive sleepers or those bothered by mechanical noise; typically imperceptible to sound sleepers or guests accustomed to ship operations.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters are located low and forward; forward cabins on lower decks may experience thruster noise during docking and maneuvering in port.",
+      "effect": "Forward cabins on these decks may hear loud mechanical grinding or humming during port arrival and departure, typically early morning and late evening, lasting 10–30 minutes per event.",
+      "mattersTo": "Matters to light sleepers or those in port-intensive itineraries with frequent maneuvering; less relevant on sea days or to guests who sleep through mechanical noise.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor equipment is located at the bow; Deck 12 forward suites sit several decks above the anchor chain mechanism.",
+      "effect": "Matters to guests who value sleeping in on port days; the noise is brief (5–15 minutes) and non-issue for early risers or those expecting port arrival sounds.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether this class has a hump (balconies cantilevered past the hull line) and if so, which specific decks and sections — architectural drawings needed to confirm",
+    "Exact location and extent of I95 crew corridor access points that generate service traffic near guest cabins",
+    "Specific location of galleys and whether any guest cabins sit directly above or adjacent with noise/vibration impact",
+    "Whether any connecting cabin configurations are particularly common or characterize this class beyond standard cruise ship practice",
+    "Promenade deck configuration and whether any cabins face onto or sit below a public promenade walkway"
+  ],
+  "ship": "MSC Sinfonia",
+  "shipSlug": "msc-sinfonia",
+  "line": "MSC Cruises",
+  "totalCabins": 897,
+  "cabinsTouchedByAZone": 897,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.03189
+}

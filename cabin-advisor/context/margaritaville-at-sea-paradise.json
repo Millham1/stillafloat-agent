@@ -1,0 +1,101 @@
+{
+  "class": "Paradise class (Margaritaville at Sea)",
+  "sisterShips": [],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats mounted at Deck 4 obstruct ocean view cabins on Decks 4, 5, and 6, with Deck 4 seeing boats directly at eye level and Decks 5-6 looking down onto them.",
+      "effect": "The horizon remains visible but the downward view shows orange lifeboat roofs instead of open water; balcony views feel more enclosed.",
+      "mattersTo": "Matters greatly to photographers and those who want unobstructed water views; won't bother guests who focus on the horizon or prefer interior cabins anyway.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 7 sits directly below the primary open pool deck and buffet venue on Deck 8.",
+      "effect": "Daytime foot traffic, pool activity, deck furniture moving, and buffet service create overhead noise from early morning through evening; heaviest midday and at mealtimes.",
+      "mattersTo": "Light sleepers and anyone in the cabin during the day should avoid this; won't matter to guests who are out exploring and only sleep at night.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Grand Terrace Suites on Deck 10 sit two decks above the main pool deck activity on Deck 8.",
+      "effect": "Distance provides sound insulation but suites are still above the social hub; excellent access to pool amenities but cannot escape daytime activity entirely.",
+      "mattersTo": "Minor consideration for suite guests who value quiet; the elevation and likely suite insulation minimize impact.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 4 and 5 aft cabins sit low and near the stern, closest to propulsion machinery.",
+      "effect": "Low-frequency vibration and engine hum most noticeable during maneuvering and at cruising speed; sensation rather than loud noise.",
+      "mattersTo": "Vibration-sensitive sleepers should avoid; many guests don't notice or find the hum soothing background noise.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on lower decks experience bow thruster use during docking and anchor chain deployment at port mornings.",
+      "effect": "Loud mechanical grinding during docking maneuvers and a heavy chain rumble during early morning anchoring; brief but can wake light sleepers.",
+      "mattersTo": "Matters to anyone who values sleeping in at port days; won't affect those up early for excursions or heavy sleepers.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether this Paradise-class hull has a hump (cantilevered balconies) and if so, which decks and sections benefit from it",
+    "Exact location and noise impact of the main theater relative to cabin decks",
+    "Precise location of nightclub or late-night entertainment venues and which cabins sit below them",
+    "I95 crew corridor routing and which cabin sections experience crew service traffic",
+    "Exact elevator bank locations along the forward-mid-aft axis on each deck",
+    "Whether Margaritaville at Sea Islander shares this exact hull layout and cabin configuration as a sister ship",
+    "Galley location and which cabins are adjacent or directly above/below it"
+  ],
+  "ship": "Margaritaville at Sea Paradise",
+  "shipSlug": "margaritaville-at-sea-paradise",
+  "line": "Margaritaville at Sea",
+  "totalCabins": 658,
+  "cabinsTouchedByAZone": 658,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.019818
+}

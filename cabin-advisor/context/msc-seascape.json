@@ -1,0 +1,166 @@
+{
+  "class": "Seaside EVO",
+  "sisterShips": [
+    "MSC Seashore"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 8; they obstruct downward views from Decks 8-11, with Decks 10-11 most affected, though the horizon remains clear.",
+      "effect": "You cannot see the water directly below or watch tender operations, but the ocean view at eye level is unobstructed; balconies feel more private from the promenade below.",
+      "mattersTo": "Matters to those who want to see straight down or watch port operations; irrelevant to those focused on horizon views or who value the promenade-side privacy the boats provide.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 15 directly below houses the Aurea Spa, a quieter venue but with some daytime activity.",
+      "effect": "Minimal noise or vibration from below; the spa operates on a calmer schedule than pool or buffet areas.",
+      "mattersTo": "Low impact for most guests; mainly noted for completeness as Deck 16 sits above a non-disruptive venue.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        19
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 18 aft directly below houses the Garage Bar, a high-energy venue with music and late-night activity.",
+      "effect": "Potential for bass, vibration, and noise until late evening, especially on nights with live entertainment or DJ sets.",
+      "mattersTo": "Significant for light sleepers or those turning in early; non-issue for night owls or those who enjoy the energy.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 5 sits directly above Deck 4 public venues, though Deck 5 itself is the lowest guest cabin deck and Deck 4 is not heavily trafficked at night.",
+      "effect": "Minimal noise from below during sleeping hours; Deck 5 is well-insulated from operational areas further down.",
+      "mattersTo": "Low concern; Deck 5 forward and mid are generally quiet at night.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Primary elevator banks are located forward and aft on the main guest cabin decks, with mid-ship sections further from vertical traffic.",
+      "effect": "Cabins near elevator banks offer maximum convenience but may experience hallway foot traffic and occasional door chimes; mid-ship cabins are quieter but require longer walks.",
+      "mattersTo": "Convenience matters to those with mobility concerns or heavy luggage; quiet matters to light sleepers who prioritize rest over quick access.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 5 aft sits low and near the stern, closer to propulsion machinery.",
+      "effect": "Possible low-frequency vibration or hum, more noticeable during maneuvering or high-speed sailing; minimal when at anchor.",
+      "mattersTo": "Sensitive to those who notice vibration or mechanical noise; usually imperceptible to those accustomed to ship sounds or who sleep deeply.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 5 forward sits low near bow thrusters, which activate during docking and maneuvering.",
+      "effect": "Occasional rumbling or vibration during port arrivals and departures, typically early morning or late afternoon; silent during open-sea cruising.",
+      "mattersTo": "Affects early risers or light sleepers during port days; irrelevant during sea days or for those unbothered by brief mechanical sounds.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 16 directly above houses MSC Yacht Club cabins and the exclusive Top Sail Lounge, a low-traffic, adults-only venue.",
+      "effect": "Minimal noise from above; the Yacht Club areas are quieter and more controlled than public zones.",
+      "mattersTo": "Low impact; Deck 15 benefits from having a calm, restricted-access area overhead.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        18
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 19 directly above houses MSC Yacht Club cabins, the quietest occupants on the ship.",
+      "effect": "No noise or activity from above; Deck 18 enjoys a peaceful ceiling neighbor.",
+      "mattersTo": "Positive for all; contributes to a quieter environment with no foot traffic or public venues overhead.",
+      "severity": "minor",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether the Seaside EVO class has a hump (balconies cantilevered past the hull line at lower decks mid-ship); the Seaside class is known for its unique promenade design, but the specific deck-by-deck hump geometry for MSC Seascape requires deck plan cross-referencing I cannot verify with certainty.",
+    "The exact location and extent of the I-95 crew corridor access points on each deck; while crew corridors run the length of most ships, the specific doors and service traffic patterns near guest cabins on this class would need direct observation or insider documentation.",
+    "Anchor chain noise specifics for Deck 5 forward cabins; while bow cabins universally risk early-morning anchor noise, the insulation and cabin placement on this particular class would need guest reports to quantify severity.",
+    "The deck location of the main galley and whether it creates noise/vibration for cabins directly above or adjacent; galley placement varies and I cannot confirm it for Seaside EVO without hull-specific documentation.",
+    "Whether any decks sit above or below the theatre or nightclub; I know public venues exist but cannot confidently map their vertical relationship to the cabin decks listed without seeing the full venue deck plans."
+  ],
+  "ship": "MSC Seascape",
+  "shipSlug": "msc-seascape",
+  "line": "MSC Cruises",
+  "totalCabins": 1959,
+  "cabinsTouchedByAZone": 1959,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.032505
+}

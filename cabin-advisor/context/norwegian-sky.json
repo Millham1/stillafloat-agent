@@ -1,0 +1,155 @@
+{
+  "class": "Sun class",
+  "sisterShips": [
+    "Norwegian Sun"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        5,
+        6,
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 5; they obstruct the view downward from Decks 5, 6, and 7, with Deck 5 having the most severe obstruction and higher decks progressively less affected, though horizon views remain clear.",
+      "effect": "You'll see orange boats instead of water when looking straight down, but the ocean horizon is unobstructed—matters most if you like watching the water directly below or tender operations.",
+      "mattersTo": "Matters to guests who want unobstructed views straight down to the waterline; doesn't matter to those focused on horizon views or who spend little time on their balcony/at the window.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 10 overhead houses the main pool deck, buffet venue, and outdoor activity areas directly above the mid and aft sections.",
+      "effect": "You'll hear deck chair scraping, footfalls, and pool activity from early morning through late evening, especially in good weather when the pool deck is heavily used.",
+      "mattersTo": "Matters to light sleepers and those in cabins during the day; doesn't matter to guests who are rarely in their cabin or sleep heavily.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 9 overhead houses dining venues and public rooms in the mid and aft sections.",
+      "effect": "You may hear chair movement, footfalls, and activity from dining service and public room use, mostly during meal times and evening hours.",
+      "mattersTo": "Matters to light sleepers and early-to-bed guests; doesn't matter to those on a similar schedule to the venues above or who tolerate ambient noise well.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        5,
+        6,
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 4 below has guest cabins, but Decks 5-7 forward sit two to four decks above the main show lounge on Deck 6 and cinema on Deck 7 in the forward section.",
+      "effect": "The show lounge and cinema generate bass and vibration during performances and screenings, typically felt most on the deck immediately above and diminishing with distance.",
+      "mattersTo": "Matters to guests sensitive to bass and vibration during evening show times; doesn't matter to those who attend the shows anyway or who are out during performance hours.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator and stair banks run through the mid-ship section on all cabin decks, with machinery noise, door chimes, and passenger traffic concentrated there.",
+      "effect": "Cabins very close to elevators offer maximum convenience but come with mechanical hums, dings, and hallway conversation throughout the day and night; cabins farther away are quieter but require longer walks.",
+      "mattersTo": "Matters to guests prioritizing quiet over convenience, those with mobility concerns who need proximity, and families with young children making frequent cabin trips.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "These lower aft cabins sit closest to the engine room and propulsion machinery below and behind.",
+      "effect": "You'll experience a low-frequency hum and occasional vibration, most noticeable when the ship is at full speed or maneuvering; white noise that some find soothing and others find intrusive.",
+      "mattersTo": "Matters to vibration-sensitive guests and those who need absolute quiet; doesn't matter to those who sleep through white noise or find the hum comforting.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "These lower forward cabins sit above and near the bow thrusters, which activate during docking and maneuvering.",
+      "effect": "You'll hear and feel significant thruster noise and vibration during port arrivals and departures, typically early morning and late afternoon—brief but intense.",
+      "mattersTo": "Matters to light sleepers and early risers on port days; doesn't matter to those already awake during port operations or who sleep through mechanical noise.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The anchor chain runs through the bow structure, closest to the lowest forward cabins.",
+      "effect": "When the anchor deploys or retrieves—common on tender port mornings—you'll hear loud chain rattle and grinding, typically brief but startling if unexpected.",
+      "mattersTo": "Matters to light sleepers on itineraries with tender ports; doesn't matter on all-dock itineraries or to those already awake during tender operations.",
+      "severity": "moderate",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether this Sun-class hull features a hump (balconies cantilevered past the lifeboat line) and if so, which specific decks and sections—need to verify against hull profile drawings.",
+    "Exact location and extent of I-95 crew corridor access points relative to guest cabin clusters—would need crew deck plans to map service traffic accurately.",
+    "Specific location of galley facilities and whether any cabin sections sit directly above or below active galley operations.",
+    "Whether any cabins have systematic connecting door configurations characteristic of this class beyond standard industry practice.",
+    "Nightclub or late-night venue locations and which cabin sections might be affected by bass or activity."
+  ],
+  "ship": "Norwegian Sky",
+  "shipSlug": "norwegian-sky",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 1010,
+  "cabinsTouchedByAZone": 1010,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.029118
+}

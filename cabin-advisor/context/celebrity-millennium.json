@@ -1,0 +1,192 @@
+{
+  "class": "Millennium",
+  "sisterShips": [
+    "Celebrity Summit",
+    "Celebrity Infinity",
+    "Celebrity Constellation"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        2,
+        3,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted at Deck 3; they partially obstruct ocean view cabins on Deck 2 (worst affected), Deck 3 (boats at cabin level), and lower Deck 6 cabins (minimal obstruction, horizon clear).",
+      "effect": "On Deck 2, you look directly at boat davits and hulls with limited ocean visible; Deck 3 views are interrupted by boat structures; Deck 6 loses some downward view but keeps clear horizon.",
+      "mattersTo": "Critical for anyone choosing an ocean view cabin on Deck 2 who expects open sea views; less important on Deck 3; mostly irrelevant on Deck 6 where the horizon remains unobstructed and veranda cabins look outward.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "The Lido Deck pool area, buffet, and outdoor activity zones sit directly above Deck 10 forward and extend over portions of Deck 9.",
+      "effect": "Expect deck chair dragging, pool activity, and foot traffic overhead from early morning through late evening; most pronounced on Deck 10 directly beneath the main pool deck.",
+      "mattersTo": "Light sleepers and anyone sensitive to overhead noise should avoid Deck 10 entirely; matters less to those spending days ashore or who sleep through ambient noise.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 11 aft sits directly below the Sunrise Deck (Deck 12) open-air jogging track and sports court.",
+      "effect": "Jogging track overhead means rhythmic footfalls from early morning joggers; sports court adds ball bouncing and activity noise during the day.",
+      "mattersTo": "Early risers bothered by footsteps overhead should choose elsewhere; non-issue for those who rise late or don't mind ambient outdoor activity sounds.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Celebrity Theater (main showroom) occupies Decks 4 and 5 forward, two to three decks below forward cabins on Decks 7 and 8.",
+      "effect": "Late-night shows (typically ending 10:30-11pm) may produce bass vibration or muffled sound transmission upward, though separation of two-plus decks significantly dampens this.",
+      "mattersTo": "Very sensitive sleepers going to bed before 11pm might notice; most guests find the distance sufficient insulation, especially with modern soundproofing.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The two-deck Continuum restaurant and indoor/outdoor spaces occupy Decks 4-5 aft, directly below aft cabins on Decks 6 and 7.",
+      "effect": "Dining service noise, kitchen activity, and guest traffic during meal hours; most intense during breakfast and dinner service.",
+      "mattersTo": "Those in aft cabins on Decks 6-7 wanting quiet during mealtimes should be aware; typically subsides after dinner service ends.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        2,
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Primary elevator banks are located forward and amidships on all cabin decks, with forward banks serving all decks and midship banks serving Decks 2-11.",
+      "effect": "Cabins immediately adjacent to elevator lobbies have convenient access but experience intermittent door chimes, conversation, and foot traffic at all hours; cabins one or two away get convenience without most noise.",
+      "mattersTo": "Mobility-limited guests prioritize proximity; light sleepers should choose cabins at least two doors away from the elevator vestibule.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Engine room machinery sits below and slightly aft of the lowest cabin decks; aft cabins on Decks 2 and 3 are closest to propulsion systems.",
+      "effect": "Potential for low-frequency vibration underway, most noticeable during maneuvering or high-speed sailing; typically steady and many find it becomes background white noise.",
+      "mattersTo": "Those highly sensitive to vibration should choose mid or forward sections; others often find it unnoticeable or even soothing.",
+      "severity": "minor",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters operate in the forward section below the lowest cabin decks, used during docking and maneuvering in port.",
+      "effect": "Loud mechanical grinding or rumbling during port arrivals and departures, typically 15-30 minutes per event; silent during open-sea sailing.",
+      "mattersTo": "Only matters if you're in the cabin during port arrival/departure and are noise-sensitive; irrelevant if you're on deck or ashore during these times.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Anchor chain locker is located in the bow below forward cabins; anchor deployment creates loud chain noise early morning in port.",
+      "effect": "Rattling metallic chain noise during anchoring operations, typically pre-dawn on tender port days; lasts 2-5 minutes but very audible.",
+      "mattersTo": "Forward cabin guests on tender port itineraries will hear this if anchoring; non-issue on all-dock itineraries or for those unbothered by brief early wake-up.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        2,
+        3,
+        6,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Crew corridors (I-95) run through lower decks with access points near forward and aft stairwells; service staff use these routes for cabin service, meal delivery, and housekeeping throughout the day.",
+      "effect": "Cabins near crew access doors may experience brief periods of service cart traffic and crew conversation, most active during morning turndown (8-10am) and evening turndown (6-8pm).",
+      "mattersTo": "Guests in cabin during peak service hours may notice; those on tours or at dinner miss the activity entirely.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether Millennium class has the balcony hump configuration on mid-ship lower decks (6-7) — requires deck plan cross-section verification to confirm if veranda cabins cantilever past hull line",
+    "Exact location and impact of galley ventilation stacks and their relationship to specific cabin sections",
+    "Presence and location of any AquaClass-specific features that might create noise or activity near non-AquaClass cabins on Decks 9 and 11",
+    "Whether the Sunset Veranda category on Decks 7-9 has any structural differences (aft overhang, unusual positioning) that create zone-specific factors"
+  ],
+  "ship": "Celebrity Millennium",
+  "shipSlug": "celebrity-millennium",
+  "line": "Celebrity Cruises",
+  "totalCabins": 1106,
+  "cabinsTouchedByAZone": 1106,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.036828
+}

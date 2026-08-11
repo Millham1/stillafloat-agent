@@ -115,7 +115,24 @@ Return ONLY JSON:
  "unknowns": ["<anything you could not establish for this class and would need checking>"]
 }
 
-Only include zones with confidence high or medium. Put anything shakier in "unknowns" instead.`;
+Only include zones with confidence high or medium. Put anything shakier in "unknowns" instead.
+
+ERRORS FOUND IN AN EARLIER RUN OF THIS EXACT TASK — do not repeat them:
+
+- **The hump.** On most modern hulls the hump is LOW AND MID-SHIP, where the superstructure
+  steps out past the lifeboat line, not high and not at the ends. It is a VALUE play: those
+  balconies jut past the boats for a wide view, sit low and central where the ride is steadiest,
+  and typically book cheaper than high decks. A previous run placed it on the top decks forward
+  and aft, which is backwards. If you are not certain this class has a hump and where, put it in
+  "unknowns" — do not place it by guesswork.
+- **Lifeboat span.** State the full range of decks the boats affect, not just the deck they sit
+  on. Boats mounted at one deck typically obstruct the two or three guest decks above them to
+  differing degrees; give the range and say which decks are worst.
+- **Sister ships.** List EVERY ship sharing this hull layout, including recent additions. An
+  incomplete list means sister ships silently miss out on this research.
+
+Be equally careful with any fact you would be embarrassed to have a cruiser correct you on. A
+gap recorded in "unknowns" costs nothing; a confident wrong answer costs Mark's credibility.`;
 
 console.log(`Researching context for ${raw.ship} (${raw.class || "?"} class), ${cabins.length} cabins, decks ${decks.join(",")}...`);
 

@@ -1,0 +1,155 @@
+{
+  "class": "Splendor",
+  "sisterShips": [],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        1,
+        2,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats mounted at Deck 1 obstruct views from Decks 1, 2, and 6, with Deck 1 having the most severe obstruction and Deck 6 having partial obstruction where the horizon remains visible above the boat line.",
+      "effect": "Ocean view cabins see lifeboats instead of open water when looking down or straight out; the horizon and sky remain clear above, so sunset and sea gazing work but the full seascape is interrupted.",
+      "mattersTo": "Matters greatly to first-time cruisers or those expecting unobstructed ocean views; experienced cruisers and those focused on value over view typically accept this trade-off, especially on lower decks where rates are better.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Lido Deck pool area, buffet, and outdoor activity zones sit directly above on Deck 11 and the upper superstructure.",
+      "effect": "Daytime noise from pool deck furniture, music, and foot traffic; early morning buffet setup noise; potential for water splashing or drainage sounds during pool operations.",
+      "mattersTo": "Light sleepers and those valuing quiet mornings should avoid; party-seekers and those out all day won't notice.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Main dining rooms and galley operations on Deck 2 and Deck 1 sit two to six decks below these mid-to-aft cabins.",
+      "effect": "Generally well-insulated by distance; galley noise and vibration rarely penetrate this far up, though occasional late-night service elevator activity may be audible in cabins near vertical service cores.",
+      "mattersTo": "Low concern for most guests; only hyper-sensitive sleepers in cabins immediately above service areas might notice.",
+      "severity": "minor",
+      "confidence": "medium"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Main theatre (Spectacular!) sits on Decks 2-5 forward; show times and lobby activity create noise events directly below these forward cabins.",
+      "effect": "Bass from sound system and audience applause during evening shows (typically 7pm and 9:30pm); lobby crowd noise before and after performances.",
+      "mattersTo": "Early-to-bed guests and families with young children should avoid forward on these decks; night owls and show-goers won't be in the cabin during these hours anyway.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        1,
+        2,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Primary elevator banks run through midship sections with machinery and waiting areas creating consistent service cores.",
+      "effect": "Cabins within two or three doors of elevators get frequent ding/door sounds and hallway conversation at all hours; offset by maximum convenience for embark/debark, dining, and deck access.",
+      "mattersTo": "Mobility-limited guests and those prioritizing convenience should seek these; light sleepers should stay at least four cabin numbers away from elevator lobbies.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Propulsion machinery sits low and aft; these cabins are closest to engine room bulkheads and propeller shafts.",
+      "effect": "Low-frequency vibration and hum, most noticeable during maneuvering, rough seas, or high-speed transits; modern dampening reduces this but doesn't eliminate it.",
+      "mattersTo": "Vibration-sensitive guests and those bothered by constant background hum should avoid; guests seeking value pricing and those who sleep through anything won't mind.",
+      "severity": "moderate",
+      "confidence": "high"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters operate during docking and maneuvering in port; anchor chain and windlass sit at the very bow on these lower forward decks.",
+      "effect": "Thruster rumble during port arrival and departure (brief but intense); anchor chain roar during early morning port arrivals as chain pays out through the hawsepipe.",
+      "mattersTo": "The 6am anchor drop will wake everyone in forward cabins on port days; only deep sleepers or those already planning to wake early should book the lowest forward sections.",
+      "severity": "significant",
+      "confidence": "high"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Main crew corridor (I-95) runs the length of these lower decks with service access points near midship and aft elevator lobbies.",
+      "effect": "Crew foot traffic, equipment movement, and service door activity during night turndown and early morning cabin steward rounds; brief but frequent interruptions.",
+      "mattersTo": "Cabins near crew doors (typically marked on deck plans) may hear door closures and brief conversations during service hours; most guests sleep through it, but light sleepers should check proximity to crew access.",
+      "severity": "minor",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether Carnival Splendor has any sister ships sharing this exact layout; Splendor was a unique delivery and I cannot confirm any identical hulls",
+    "Whether this class features a hump (cantilevered balconies past the hull line) and on which specific decks/sections it appears; I do not have confident geometry data for this feature on Splendor",
+    "Exact location and extent of any promenade deck and which cabins sit directly inside it",
+    "Specific cabin numbers or ranges immediately adjacent to crew access doors on Decks 1-2",
+    "Whether Cloud 9 Spa cabins on Deck 11 forward have any unique acoustic or vibration characteristics from spa facilities",
+    "Details of any connecting cabin inventory or accessible cabin concentrations beyond what's typical"
+  ],
+  "ship": "Carnival Splendor",
+  "shipSlug": "carnival-splendor",
+  "line": "Carnival Cruise Line",
+  "totalCabins": 1482,
+  "cabinsTouchedByAZone": 1465,
+  "model": "claude-sonnet-4-5-20250929",
+  "cost": 0.03039
+}
