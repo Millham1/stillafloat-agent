@@ -119,6 +119,11 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
     // a failure here keeps last-known views rather than failing the scan.
     const apiKey = process.env["YOUTUBE_API_KEY"];
     if (apiKey && videos.length > 0) {
+      // Track which of the full history's ids the Data API actually confirms as still
+      // publicly resolvable this pass, so we can prune anything that went private/was
+      // deleted (an unauthenticated videos.list call simply omits those ids from the
+      // response — that omission IS the signal, we just never acted on it before).
+      const seenIds = new Set<string>();
       try {
         for (let i = 0; i < videos.length; i += 50) {
           const ids = videos.slice(i, i + 50).map((v) => v.id).join(",");
@@ -138,6 +143,7 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
             }[];
           };
           for (const item of stats.items ?? []) {
+            seenIds.add(item.id);
             const v = byId.get(item.id);
             if (!v) continue;
             if (item.statistics?.viewCount != null) {
@@ -162,9 +168,23 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
             }
           }
         }
+        // Every id in byId was requested across the batches above, so any id NOT in
+        // seenIds is confirmed gone (private/deleted) — prune it. Only runs when the
+        // whole refresh succeeded (the catch below skips this on any batch failure),
+        // so a transient API error can never be mistaken for a video going private.
+        let prunedCount = 0;
+        for (const id of [...byId.keys()]) {
+          if (!seenIds.has(id)) {
+            byId.delete(id);
+            prunedCount++;
+          }
+        }
+        if (prunedCount > 0) {
+          logger.info({ prunedCount }, "youtube-scan: pruned private/deleted videos from history");
+        }
         videos = [...byId.values()];
       } catch (err) {
-        logger.warn({ err }, "YouTube stats refresh failed; keeping last-known view counts");
+        logger.warn({ err }, "YouTube stats refresh failed; keeping last-known view counts (no pruning this pass)");
       }
     }
 
