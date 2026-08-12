@@ -33,11 +33,25 @@ type Answers = {
   motion?: boolean;    // prone to seasickness
 };
 
+// Every archetype needs a row here. The fallback (splitting the id) produced a
+// real mis-match: "quiet-retirees-calm" split to [quiet, retirees, calm] — no
+// "couple" tag — so a quiet-seeking couple lost the party bonus against
+// "first-couple-ocean-steady" and was served sensitive-stomach reasoning they
+// never asked for (caught 2026-08-12 walking the UI). All 12 covered; the
+// id-split fallback below stays only as a net for archetypes added later.
 const ARCHETYPE_TAGS: Record<string, string[]> = {
   "first-couple-ocean-steady":   ["couple", "middle", "ocean", "steady"],
   "couple-ocean-balcony-treat":  ["couple", "treat", "ocean"],
-  "anniversary-suite-splurge":   ["couple", "sky", "space"],
+  "anniversary-suite-splurge":   ["couple", "sky", "treat", "space"],
   "family-action-boardwalk":     ["family", "middle", "action"],
+  "family-value-space":          ["family", "lean", "space"],
+  "quiet-retirees-calm":         ["couple", "quiet", "middle"],
+  "value-hunter-ocean":          ["lean", "ocean"],
+  "solo-first-value":            ["solo", "lean"],
+  "solo-with-group":             ["solo-group"],
+  "big-group-together":          ["group", "space"],
+  "experienced-ocean-midship":   ["couple", "ocean", "middle", "steady"],
+  "seasick-priority-steady":     ["steady", "quiet"],
 };
 
 function pickArchetype(rows: { archetype_id: string }[], a: Answers): string | null {

@@ -37,12 +37,22 @@ def sb(path: str):
 
 
 # Mirrors routes/cabins.ts — party is weighted highest so a family never gets a
-# couple's advice.
+# couple's advice. Keep this table IDENTICAL to the one in cabins.ts: a partial
+# table caused quiet-seeking couples to be served the sensitive-stomach
+# archetype's reasoning (fixed both places 2026-08-12).
 ARCHETYPE_TAGS = {
     "first-couple-ocean-steady":  ["couple", "middle", "ocean", "steady"],
     "couple-ocean-balcony-treat": ["couple", "treat", "ocean"],
-    "anniversary-suite-splurge":  ["couple", "sky", "space"],
+    "anniversary-suite-splurge":  ["couple", "sky", "treat", "space"],
     "family-action-boardwalk":    ["family", "middle", "action"],
+    "family-value-space":         ["family", "lean", "space"],
+    "quiet-retirees-calm":        ["couple", "quiet", "middle"],
+    "value-hunter-ocean":         ["lean", "ocean"],
+    "solo-first-value":           ["solo", "lean"],
+    "solo-with-group":            ["solo-group"],
+    "big-group-together":         ["group", "space"],
+    "experienced-ocean-midship":  ["couple", "ocean", "middle", "steady"],
+    "seasick-priority-steady":    ["steady", "quiet"],
 }
 
 
