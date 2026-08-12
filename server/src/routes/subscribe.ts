@@ -32,8 +32,9 @@ export function unsubscribeUrl(email: string, baseUrl: string): string {
   return `${baseUrl}/api/unsubscribe?email=${encodeURIComponent(email)}&sig=${sig}`;
 }
 
-// ── Send verification email via Resend ──
-async function sendVerificationEmail(
+// ── Send verification email (also reused for pending-subscriber reminders,
+// see lib/subscriber-hygiene.ts — same template, it's the same ask either way) ──
+export async function sendVerificationEmail(
   name: string,
   email: string,
   token: string,
@@ -352,6 +353,43 @@ router.get("/subscribers", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Subscribers list error");
     return res.status(500).json({ error: "Failed to load subscribers" });
+  }
+});
+
+// ── POST /api/subscribers/mark-bounced ───────────────────────────
+// Called by saf-ops-manager's Gmail bounce-scanner when it finds a confirmed
+// bounce-back (DSN) for one of our subscriber addresses. Setting status to
+// 'bounced' is enough on its own to stop future sends — both newsletter send
+// paths filter on status='confirmed', so a bounced row is automatically
+// excluded without needing a separate suppression list.
+router.post("/subscribers/mark-bounced", async (req, res) => {
+  if (!tokenOk(req)) return res.status(401).json({ error: "Unauthorized" });
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email) return res.status(400).json({ error: "Email is required." });
+
+    const cleanEmail = email.trim().toLowerCase();
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("subscribers")
+      .update({ status: "bounced", bounced_at: new Date().toISOString() })
+      .eq("email", cleanEmail)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      logger.error({ err: error, email: cleanEmail }, "Mark-bounced update failed");
+      return res.status(500).json({ error: "Could not update subscriber." });
+    }
+    if (!data) {
+      return res.status(404).json({ error: "No subscriber found for that email." });
+    }
+
+    logger.info({ email: cleanEmail }, "Subscriber marked bounced");
+    return res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "Mark-bounced route error");
+    return res.status(500).json({ error: "An unexpected error occurred." });
   }
 });
 

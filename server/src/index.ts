@@ -12,6 +12,7 @@ import { runGuidesPrerender } from "./lib/prerender-guides";
 import { stageWeeklyCommentary } from "./lib/commentary-agent";
 import { startShipTracker } from "./lib/ship-tracker";
 import { runWatchSweep } from "./lib/wms-alerts";
+import { sendPendingReminders, archiveStaleUnconfirmed } from "./lib/subscriber-hygiene";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -80,6 +81,15 @@ app.listen(port, "0.0.0.0", () => {
   } else {
     scheduleWmsAlerts();
   }
+  // Subscriber hygiene — daily: reminds never-confirmed subscribers once
+  // (3 days after signup), then archives them (21 days, kept for future
+  // re-permission marketing, not deleted). Disabled on the dev mirror so
+  // subscribers are never reminded/archived twice.
+  if (process.env["DISABLE_SUBSCRIBER_HYGIENE"] === "1") {
+    logger.info("Subscriber hygiene DISABLED (DISABLE_SUBSCRIBER_HYGIENE=1)");
+  } else {
+    scheduleSubscriberHygiene();
+  }
 });
 
 // ── WMS watch-alert scheduler ─────────────────────────────────────────────────
@@ -97,6 +107,43 @@ function scheduleWmsAlerts() {
   setTimeout(() => { tick().catch(() => {}); }, 15 * 60 * 1000);
   setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
   logger.info("WMS watch-alert scheduler active — hourly");
+}
+
+// ── Subscriber hygiene scheduler ──────────────────────────────────────────────
+// Fires once per local day at SUBSCRIBER_HYGIENE_HOUR (default 10am, in TIMEZONE).
+// Same timezone-gated polling pattern as the daily brief. Order matters: reminders
+// run before archiving each tick, so a subscriber always gets the reminder before
+// they're ever eligible to be archived (3-day vs 21-day thresholds already keep
+// them well apart, this is just belt-and-suspenders).
+function scheduleSubscriberHygiene() {
+  const TZ = process.env["TIMEZONE"] || "America/New_York";
+  const runHour = Number(process.env["SUBSCRIBER_HYGIENE_HOUR"] ?? "10");
+  let lastRunDate: string | null = null;
+
+  const localHourDate = (): { hour: number; date: string } => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: TZ, hour12: false, hour: "2-digit",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    return { hour: Number(get("hour")) % 24, date: `${get("year")}-${get("month")}-${get("day")}` };
+  };
+
+  const tick = async () => {
+    const { hour, date } = localHourDate();
+    if (hour !== runHour || lastRunDate === date) return;
+    lastRunDate = date;
+    try {
+      const { reminded, failed } = await sendPendingReminders();
+      const { archived } = await archiveStaleUnconfirmed();
+      logger.info({ reminded, failed, archived }, "Subscriber hygiene tick complete");
+    } catch (err) {
+      logger.error({ err }, "Subscriber hygiene tick failed");
+    }
+  };
+
+  setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
+  logger.info({ runHour, tz: TZ }, "Subscriber hygiene scheduler active — daily reminder + archive sweep");
 }
 
 // ── News pre-render scheduler ─────────────────────────────────────────────────

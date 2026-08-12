@@ -9,7 +9,7 @@ type Subscriber = {
   id: string;
   email: string;
   name: string;
-  status: "pending" | "confirmed" | "unsubscribed";
+  status: "pending" | "confirmed" | "unsubscribed" | "bounced" | "archived";
   created_at: string;
   confirmed_at: string | null;
 };
@@ -23,6 +23,8 @@ const STATUS_COLORS: Record<string, string> = {
   confirmed:    "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
   pending:      "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800",
   unsubscribed: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700",
+  bounced:      "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
+  archived:     "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700",
 };
 
 function fmt(dateStr: string | null) {
@@ -130,7 +132,7 @@ export default function Subscribers() {
           />
         </div>
         <div className="flex gap-1">
-          {["all", "confirmed", "pending", "unsubscribed"].map((s) => (
+          {["all", "confirmed", "pending", "unsubscribed", "bounced", "archived"].map((s) => (
             <button
               key={s}
               onClick={() => setStatus(s)}
