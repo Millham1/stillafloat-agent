@@ -1,0 +1,393 @@
+<title>Still Afloat — Cabin Concierge</title>
+<style>
+  :root{
+    --bg:#f3ede1;--bg2:#ece3d3;--card:#ffffff;--card2:#faf6ee;--ink:#123039;--muted:#5b7681;--line:#ddd0b8;
+    --brass:#b07d1e;--teal:#1b6b7d;--good:#2f8f5b;--good-bg:#e6f2ea;--warn:#b8791f;--warn-bg:#f6ecd8;--bad:#c0503f;--bad-bg:#f7e6e2;
+    --shadow:0 1px 2px rgba(18,48,57,.06),0 8px 24px rgba(18,48,57,.08);
+    --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  }
+  @media (prefers-color-scheme:dark){:root{--bg:#0b1f2a;--bg2:#0e2833;--card:#10303c;--card2:#0e2b35;--ink:#e9f2f4;--muted:#9fb6bf;--line:#244f5e;--brass:#d5a44c;--teal:#48b0c7;--good:#57c78b;--good-bg:#123329;--warn:#e3ad42;--warn-bg:#33280f;--bad:#e57a63;--bad-bg:#361d19;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35)}}
+  :root[data-theme="light"]{--bg:#f3ede1;--bg2:#ece3d3;--card:#ffffff;--card2:#faf6ee;--ink:#123039;--muted:#5b7681;--line:#ddd0b8;--brass:#b07d1e;--teal:#1b6b7d;--good:#2f8f5b;--good-bg:#e6f2ea;--warn:#b8791f;--warn-bg:#f6ecd8;--bad:#c0503f;--bad-bg:#f7e6e2;--shadow:0 1px 2px rgba(18,48,57,.06),0 8px 24px rgba(18,48,57,.08)}
+  :root[data-theme="dark"]{--bg:#0b1f2a;--bg2:#0e2833;--card:#10303c;--card2:#0e2b35;--ink:#e9f2f4;--muted:#9fb6bf;--line:#244f5e;--brass:#d5a44c;--teal:#48b0c7;--good:#57c78b;--good-bg:#123329;--warn:#e3ad42;--warn-bg:#33280f;--bad:#e57a63;--bad-bg:#361d19;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35)}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 500px at 82% -12%,color-mix(in srgb,var(--teal) 18%,transparent),transparent 60%),var(--bg);color:var(--ink);font-family:var(--font-ui);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1140px;margin:0 auto;padding:26px 20px 60px}
+  header.top{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:22px}
+  .brand{font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12px;color:var(--brass)}
+  .brand .dot{opacity:.5;margin:0 7px}
+  h1{font-family:var(--font-serif);font-weight:600;font-size:clamp(25px,4vw,38px);margin:6px 0 3px;letter-spacing:-.01em;text-wrap:balance}
+  .sub{color:var(--muted);font-size:15px;max-width:62ch}
+  .sub b{color:var(--ink);font-weight:600}
+  .layout{display:grid;grid-template-columns:342px 1fr;gap:24px;align-items:start}
+  @media (max-width:860px){.layout{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+  .criteria{position:sticky;top:16px;padding:18px 18px 20px}
+  @media (max-width:860px){.criteria{position:static}}
+  .criteria h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:700}
+  .field{margin-bottom:15px}
+  .field.door{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 12px 13px;margin-bottom:18px}
+  .field > label.q{display:block;font-weight:650;font-size:13px;margin-bottom:8px}
+  .field > label.q .hint{font-weight:500;color:var(--muted);font-size:11.5px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 11px;border-radius:999px;font-size:12.5px;font-weight:600;transition:.12s;user-select:none}
+  .field:not(.door) .chip{background:var(--card2)}
+  .chip:hover{border-color:var(--teal)}
+  .chip[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
+  .go{margin-top:8px;width:100%;border:0;background:var(--brass);color:#20140a;font-weight:800;font-size:15px;padding:13px;border-radius:12px;cursor:pointer}
+  .go:hover{filter:brightness(1.06)}
+  .reset{margin-top:9px;width:100%;background:none;border:0;color:var(--muted);font-size:12.5px;cursor:pointer;text-decoration:underline}
+  .intro{font-family:var(--font-serif);font-size:17px;line-height:1.55;margin:2px 4px 16px}
+  .intro b{color:var(--ink)}
+  .solo{background:var(--warn-bg);border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line));border-radius:12px;padding:12px 15px;margin:0 4px 18px;font-size:13.5px;line-height:1.55;color:var(--ink)}
+  .solo b{color:var(--warn)}
+  .sec{font-size:12px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:800;margin:22px 4px 12px}
+  .card{padding:17px 18px;margin-bottom:14px}
+  .cabtop{display:flex;align-items:flex-start;gap:14px;justify-content:space-between}
+  .cabno{font-family:var(--font-serif);font-size:27px;font-weight:700;line-height:1;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .cabno small{display:block;font-family:var(--font-ui);font-size:11.5px;font-weight:650;letter-spacing:.02em;color:var(--muted);margin-top:5px}
+  .badge{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:6px 10px;border-radius:999px;white-space:nowrap}
+  .b-fit{background:var(--good-bg);color:var(--good);border:1px solid color-mix(in srgb,var(--good) 40%,transparent)}
+  .b-value{background:var(--warn-bg);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent)}
+  .reason{font-family:var(--font-serif);font-size:15.5px;line-height:1.58;margin:13px 0 12px}
+  .reason .ins{color:var(--muted)}
+  .chips-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:13px}
+  .tag{font-size:11px;font-weight:650;padding:4px 8px;border-radius:7px;background:var(--card2);border:1px solid var(--line);color:var(--muted)}
+  .tag.good{color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+  .tag.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
+  .tag.bad{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,transparent)}
+  .loc{display:flex;align-items:center;gap:11px;margin:2px 0 14px}
+  .shipbar{position:relative;flex:1;height:24px;border-radius:999px;border:1px solid var(--line);background:linear-gradient(90deg,var(--card2),color-mix(in srgb,var(--teal) 10%,var(--card2)));overflow:hidden}
+  .shipbar span{position:absolute;top:0;bottom:0;display:flex;align-items:center;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:0 9px}
+  .shipbar .fwd{left:0}.shipbar .aft{right:0}
+  .shipbar .dot{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--brass);border:2px solid var(--card);top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 3px color-mix(in srgb,var(--brass) 35%,transparent)}
+  .deckpill{font-size:11px;font-weight:750;color:var(--ink);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:5px 9px;white-space:nowrap}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .cta{border:0;background:var(--brass);color:#20140a;font-weight:800;font-size:13.5px;padding:11px 15px;border-radius:11px;cursor:pointer}
+  .cta:hover{filter:brightness(1.06)}
+  .watch{display:inline-flex;align-items:center;gap:7px;text-decoration:none;font-weight:700;font-size:13px;color:var(--teal);border:1px solid color-mix(in srgb,var(--teal) 45%,transparent);padding:10px 13px;border-radius:11px}
+  .watch:hover{background:color-mix(in srgb,var(--teal) 12%,transparent)}
+  .watch.cat{color:var(--muted);border-color:var(--line)}
+  .skip{border:1px dashed color-mix(in srgb,var(--bad) 50%,var(--line));background:var(--bad-bg);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+  .skip .cabno{font-size:19px}
+  .skip .reason{margin:8px 0 0;font-size:14.5px}
+  .empty{padding:34px 18px;text-align:center;color:var(--muted)}
+  .valueline{margin-top:24px;font-family:var(--font-serif);font-size:14.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:15px;line-height:1.55}
+  .valueline b{color:var(--ink);font-style:normal}
+  .modal-bg{position:fixed;inset:0;background:rgba(6,18,24,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal-bg.on{display:flex}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:16px;max-width:450px;width:100%;padding:22px;box-shadow:var(--shadow)}
+  .modal h3{margin:0 0 4px;font-family:var(--font-serif);font-size:22px;font-weight:600}
+  .modal p{color:var(--muted);font-size:14px;margin:8px 0}
+  .modal .lead{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;font-size:13.5px;margin:12px 0;line-height:1.7}
+  .modal .lead b{color:var(--ink)}
+  .modal .x{float:right;background:none;border:0;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;margin:-4px -4px 0 0}
+  :focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:6px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Still Afloat<span class="dot">•</span>Cabin Concierge</div>
+    <h1>Let's find the cabin that actually fits you</h1>
+    <div class="sub">New to cruising or already dialed in — tell me about your trip and I'll point you to the right room, and warn you off the wrong ones. <b>We're starting with Wonder of the Seas</b> as the example ship; more to come.</div>
+  </header>
+
+  <div class="layout">
+    <aside class="panel criteria">
+      <div class="field door">
+        <label class="q">Where are you in planning?</label>
+        <div class="chips" data-single="mode">
+          <div class="chip" data-val="known" role="button" tabindex="0" aria-pressed="false">I've picked my ship</div>
+          <div class="chip" data-val="new" role="button" tabindex="0" aria-pressed="true">New to this — help me</div>
+        </div>
+      </div>
+
+      <h2>Tell me about your trip</h2>
+      <div class="field" style="margin-top:12px">
+        <label class="q">Who's aboard?</label>
+        <div class="chips" data-single="party">
+          <div class="chip" data-val="solo" role="button" tabindex="0" aria-pressed="false">Just me</div>
+          <div class="chip" data-val="two" role="button" tabindex="0" aria-pressed="true">The two of us</div>
+          <div class="chip" data-val="family" role="button" tabindex="0" aria-pressed="false">Family with kids</div>
+          <div class="chip" data-val="group" role="button" tabindex="0" aria-pressed="false">A group</div>
+          <div class="chip" data-val="sologroup" role="button" tabindex="0" aria-pressed="false">Solo, with a group</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="q">Your budget vibe</label>
+        <div class="chips" data-single="budget">
+          <div class="chip" data-val="lean" role="button" tabindex="0" aria-pressed="false">Keep it lean</div>
+          <div class="chip" data-val="middle" role="button" tabindex="0" aria-pressed="true">Comfortable</div>
+          <div class="chip" data-val="treat" role="button" tabindex="0" aria-pressed="false">Treat ourselves</div>
+          <div class="chip" data-val="sky" role="button" tabindex="0" aria-pressed="false">No ceiling</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="q">The view out your door</label>
+        <div class="chips" data-single="feel">
+          <div class="chip" data-val="ocean" role="button" tabindex="0" aria-pressed="true">Open ocean</div>
+          <div class="chip" data-val="garden" role="button" tabindex="0" aria-pressed="false">Quiet garden</div>
+          <div class="chip" data-val="boardwalk" role="button" tabindex="0" aria-pressed="false">Lively plaza</div>
+          <div class="chip" data-val="any" role="button" tabindex="0" aria-pressed="false">Not sure yet</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="q">What matters most? <span class="hint">up to 3</span></label>
+        <div class="chips" data-multi="prio" data-cap="3">
+          <div class="chip" data-val="ocean" role="button" tabindex="0" aria-pressed="false">The view</div>
+          <div class="chip" data-val="quiet" role="button" tabindex="0" aria-pressed="false">Peace &amp; quiet</div>
+          <div class="chip" data-val="action" role="button" tabindex="0" aria-pressed="false">Near the action</div>
+          <div class="chip" data-val="space" role="button" tabindex="0" aria-pressed="false">Room to spread out</div>
+          <div class="chip" data-val="walk" role="button" tabindex="0" aria-pressed="false">Short walk to it all</div>
+          <div class="chip" data-val="price" role="button" tabindex="0" aria-pressed="false">Getting a deal</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="q">Anything I should know? <span class="hint">tap all that fit</span></label>
+        <div class="chips" data-multi="sens">
+          <div class="chip" data-val="queasy" role="button" tabindex="0" aria-pressed="false">We get queasy</div>
+          <div class="chip" data-val="light" role="button" tabindex="0" aria-pressed="false">Light sleepers</div>
+          <div class="chip" data-val="early" role="button" tabindex="0" aria-pressed="false">Early risers</div>
+          <div class="chip" data-val="owl" role="button" tabindex="0" aria-pressed="false">Night owls</div>
+        </div>
+      </div>
+
+      <button class="go" id="go">Show me the cabins</button>
+      <button class="reset" id="reset">Start over</button>
+    </aside>
+
+    <main class="results">
+      <div id="intro"></div>
+      <div id="out"></div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalbg">
+  <div class="modal" role="dialog" aria-modal="true">
+    <button class="x" id="modalx" aria-label="Close">×</button>
+    <h3>Good pick. Let's get you a real number.</h3>
+    <p>Here's what I'll have in front of me, so I can come back with the current price and whether it's still open:</p>
+    <div class="lead" id="leadbody"></div>
+    <button class="cta" id="modalok" style="width:100%;margin-top:4px">Send it to Mark</button>
+  </div>
+</div>
+
+<script>
+const YT="https://www.youtube.com/watch?v=";
+const CABINS=[
+ {id:8280,deck:8,cat:"Ocean View Balcony",type:"balcony",view:"ocean",real:true,sleeps:4,pos:.5,steady:true,obs:0,labeled:null,tags:["quiet"],yt:"35dpaXpr330",tier:3},
+ {id:9136,deck:9,cat:"Ocean View Balcony",type:"balcony",view:"ocean",real:true,sleeps:4,pos:.48,steady:true,obs:0,labeled:null,tags:["quiet"],yt:"va8M0jT2OfI",tier:3},
+ {id:8146,deck:8,cat:"Ocean View Balcony",type:"balcony",view:"ocean",real:true,sleeps:3,pos:.44,steady:true,obs:0,labeled:null,tags:["quiet"],yt:"n2OVCS1km7g",tier:3},
+ {id:7692,deck:7,cat:"Ocean View Balcony",type:"balcony",view:"ocean",real:true,sleeps:3,pos:.74,steady:true,obs:0,labeled:null,tags:["quiet","aft"],yt:"vATuxWJjgsI",tier:3},
+ {id:14570,deck:14,cat:"Ocean View Balcony",type:"balcony",view:"ocean",real:true,sleeps:4,pos:.5,steady:false,above:"the pool deck",obs:0,labeled:null,tags:[],yt:"I6r_ca62JFs",tier:3},
+ {id:6662,deck:6,cat:"Ocean View Balcony",type:"balcony",view:"ocean",real:true,sleeps:3,pos:.5,steady:true,obs:0,labeled:null,tags:["quiet","value"],yt:"pUHJ-Q6oFK0",tier:2,hump:true},
+ {id:6678,deck:6,cat:"Ocean View Balcony",type:"balcony",view:"ocean",real:true,sleeps:3,pos:.53,steady:true,obs:0,labeled:null,tags:["quiet","value"],yt:"TXEDd3QI7I0",tier:2,hump:true},
+ {id:6154,deck:6,cat:"Ocean View Balcony",type:"balcony",view:"ocean",real:true,sleeps:3,pos:.28,steady:true,obs:1,labeled:true,tags:["value"],yt:null,tier:2},
+ {id:9643,deck:9,cat:"Balcony",type:"balcony",view:"ocean",real:false,sleeps:3,pos:.5,steady:true,obs:3,labeled:false,tags:[],yt:null,tier:3},
+ {id:9245,deck:9,cat:"Balcony",type:"balcony",view:"ocean",real:false,sleeps:3,pos:.5,steady:true,obs:2,labeled:false,tags:[],yt:null,tier:3},
+ {id:11589,deck:11,cat:"Central Park Balcony",type:"balcony",view:"garden",real:false,sleeps:3,pos:.48,steady:true,obs:0,labeled:null,tags:["quiet"],yt:"MMZ0gQIhiN0",tier:3},
+ {id:11185,deck:11,cat:"Central Park Balcony",type:"balcony",view:"garden",real:false,sleeps:3,pos:.46,steady:true,obs:0,labeled:null,tags:["quiet"],yt:"ycn2k7JMyM4",tier:3},
+ {id:11237,deck:11,cat:"Central Park Balcony",type:"balcony",view:"garden",real:false,sleeps:3,pos:.5,steady:true,obs:0,labeled:null,tags:["quiet"],yt:"8VIj3wdU58c",tier:3},
+ {id:10205,deck:10,cat:"Central Park Balcony",type:"balcony",view:"garden",real:false,sleeps:3,pos:.44,steady:true,below:"the park's restaurants",obs:0,labeled:null,tags:["quiet"],yt:"pwuZDumVnjs",tier:3},
+ {id:14649,deck:14,cat:"Central Park Balcony",type:"balcony",view:"garden",real:false,sleeps:4,pos:.5,steady:false,above:"the pool deck",obs:0,labeled:null,tags:[],yt:"q1xJIhco7g8",tier:3},
+ {id:11699,deck:11,cat:"Boardwalk Balcony",type:"balcony",view:"boardwalk",real:false,sleeps:4,pos:.72,steady:true,obs:0,labeled:null,tags:["lively","family"],yt:"TzV8NUje1OI",tier:3},
+ {id:10305,deck:10,cat:"Boardwalk Balcony",type:"balcony",view:"boardwalk",real:false,sleeps:4,pos:.7,steady:true,obs:0,labeled:null,tags:["lively","family"],yt:"5byG-ZQJ_8I",tier:3},
+ {id:11329,deck:11,cat:"Boardwalk Balcony",type:"balcony",view:"boardwalk",real:false,sleeps:4,pos:.78,steady:true,obs:2,labeled:false,tags:["lively","family"],yt:"Ngj8lwIczjQ",tier:3},
+ {id:11727,deck:11,cat:"Boardwalk Balcony",type:"balcony",view:"boardwalk",real:false,sleeps:4,pos:.8,steady:true,obs:2,labeled:false,tags:["lively","family"],yt:"zXlM8_qqhZE",tier:3},
+ {id:11242,deck:11,cat:"Junior Suite",type:"suite",view:"ocean",real:true,sleeps:4,pos:.5,steady:true,obs:0,labeled:null,tags:["quiet","space"],yt:"tkWXfdZ5Bzw",tier:4},
+ {id:8636,deck:8,cat:"Junior Suite",type:"suite",view:"ocean",real:true,sleeps:5,pos:.5,steady:true,obs:0,labeled:null,tags:["quiet","space","family"],yt:"pFw9SATpZ6A",tier:4},
+ {id:1712,deck:17,cat:"Grand Suite",type:"suite",view:"ocean",real:true,sleeps:4,pos:.7,steady:false,obs:1,labeled:false,tags:["space","perks"],yt:"8qQ1CToTmkw",tier:4},
+ {id:1718,deck:17,cat:"Grand Suite",type:"suite",view:"ocean",real:true,sleeps:4,pos:.72,steady:false,obs:1,labeled:false,tags:["space","perks"],yt:"8oTtS-qIdX0",tier:4}
+];
+const OBSTAG={1:"Open sea, not the view straight down",2:"Part of the view blocked",3:"View mostly blocked"};
+const state={mode:"new",party:"two",budget:"middle",feel:"ocean",prio:new Set(),sens:new Set()};
+const has=(s,v)=>s.has(v);
+function budgetTier(){return {lean:2,middle:3,treat:4,sky:4}[state.budget];}
+const solo=()=>state.party==="solo"||state.party==="sologroup";
+function you(){return state.party==="two"?"the two of you":solo()?"you":"your group";}
+
+function passesHard(c){
+  if(state.feel==="ocean"&&!c.real)return false;
+  if(state.feel==="garden"&&c.view!=="garden"&&c.type!=="suite")return false;
+  if(state.feel==="boardwalk"&&c.view!=="boardwalk")return false;
+  if(state.budget==="lean"&&c.type==="suite")return false;
+  if(state.feel==="ocean"&&c.obs>=2)return false;
+  return true;
+}
+function scoreCabin(c){
+  let s=0;
+  if(c.tier<=budgetTier())s+=1.5; else s-=(c.tier-budgetTier());
+  if(c.type==="suite"){if(state.budget==="treat")s+=2;if(state.budget==="sky")s+=3;if(state.budget==="middle")s-=1;}
+  if(has(state.prio,"ocean")&&c.real&&c.view==="ocean")s+=3;
+  if(has(state.prio,"quiet")){if(c.tags.includes("quiet"))s+=3;if(c.tags.includes("lively"))s-=3;if(c.above)s-=1;}
+  if(has(state.prio,"action")){if(c.tags.includes("lively"))s+=3;if(c.view==="boardwalk")s+=1;if(c.tags.includes("quiet"))s-=1;}
+  if(has(state.prio,"space")){if(c.type==="suite")s+=3;if(c.sleeps>=4)s+=1;}
+  if(has(state.prio,"walk")){if(c.pos>.4&&c.pos<.6)s+=2;if(c.deck>=15||c.deck<=4)s-=1;}
+  if(has(state.prio,"price")){if(c.tags.includes("value"))s+=3;if(c.obs===1)s+=1;if(c.tier>=4)s-=2;}
+  if(has(state.sens,"queasy")){if(c.steady)s+=3;else s-=2;}
+  if(has(state.sens,"light")){if(c.tags.includes("lively"))s-=3;if(c.above)s-=2;}
+  if(has(state.sens,"owl")&&c.tags.includes("lively"))s+=1;
+  if(state.party==="family"){if(c.sleeps>=4)s+=2;if(c.sleeps>=5)s+=1;if(c.tags.includes("family"))s+=1;}
+  if(state.party==="group"){if(c.type==="suite")s+=1;if(c.sleeps>=4)s+=1;}
+  if(state.feel==="ocean"&&c.real)s+=1;
+  if(state.feel==="garden"&&c.view==="garden")s+=2;
+  if(state.feel==="boardwalk"&&c.view==="boardwalk")s+=2;
+  if(c.hump)s+=1.5;
+  if(c.obs>=1&&!has(state.prio,"price"))s-=c.obs;
+  return s;
+}
+
+// ---------- VOICE: advisory, grounded, explains the reason ----------
+function profile(){
+  const w=[];
+  if(state.feel==="ocean")w.push("a view of the open ocean");
+  if(state.feel==="garden")w.push("a quiet, sheltered view");
+  if(state.feel==="boardwalk")w.push("to be near the action");
+  if(has(state.prio,"quiet"))w.push("peace and quiet");
+  if(has(state.prio,"space"))w.push("room to spread out");
+  if(has(state.prio,"price"))w.push("a fair deal");
+  if(has(state.sens,"queasy"))w.push("a steady ride");
+  if(has(state.sens,"light"))w.push("quiet enough to sleep");
+  return w.length?w.slice(0,3).join(", "):"a good room without the guesswork";
+}
+function partyWord(){return {solo:"Just you",sologroup:"You, traveling with a group",two:"The two of you",family:"The family, kids along",group:"A group"}[state.party];}
+function introLine(){
+  const p=partyWord(), wants=profile();
+  if(state.mode==="new"){
+    return `<div class="intro">New to cruising, so let's keep it plain. Wonder of the Seas is one of the largest ships at sea — closer to a floating resort town than a boat, with enough going on that a first week never drags. That's why it's a common first cruise. The room you choose sets the tone for the whole trip, so based on what you told me — <b>${p.toLowerCase()}, after ${wants}</b> — here's where I'd start you, and the reason for each:</div>`;
+  }
+  return `<div class="intro"><b>${p}, after ${wants}.</b> Here's what fits, the reason it fits, and a few I'd have you avoid:</div>`;
+}
+function soloNote(){
+  if(!solo())return "";
+  return `<div class="solo"><b>One thing worth knowing as a solo traveler:</b> cruise lines usually add a “single supplement,” so one person can pay close to the price of two. Which sailings waive or trim it moves around constantly — that's the kind of thing worth asking me before you lock anything in, and it's often where I save solo cruisers real money.</div>`;
+}
+function headline(c){
+  const q=has(state.sens,"queasy");
+  if(c.hump){
+    return `This one sits on the “hump,” where the hull curves outward — so the balcony reaches out past the lifeboats to a full, open view of the ocean. It's also low and near the middle of the ship, the steadiest place to be if the water turns. You get one of the best views on board without paying for a high deck.`;
+  }
+  if(c.type==="suite"){
+    return `A suite buys you two things that matter: real room to spread out, and a couple of quiet comforts — a private lounge, and the Coastal Kitchen, a restaurant kept strictly for suite guests, so meals stay calm and you're not waiting for a table. If you want the week to feel like a step up, this is where it starts.`;
+  }
+  if(c.view==="ocean"&&c.real){
+    let base=`A true ocean-facing balcony — you open the door to open water, not the side of the ship or an inside courtyard. It's the part of a cruise people tend to remember most, and this is a well-placed, uncomplicated one.`;
+    if(q&&c.steady)base+=` It's low and central too, so it rides steady.`;
+    return base;
+  }
+  if(c.view==="garden"){
+    return `This faces Central Park — an open-air garden in the middle of the ship, with real trees and plants. It's calm and green, and honestly a nice surprise for people who pictured hallways. A restful spot to come back to.`;
+  }
+  if(c.view==="boardwalk"){
+    return state.party==="family"
+      ? `This balcony looks down over the Boardwalk and its open-air theater, where divers and acrobats perform over a pool. With kids along, that's a show most evenings, watched from your own rail.`
+      : `This looks down over the Boardwalk — the ship's lively outdoor plaza, with a carousel and an aerial-and-diving theater. A front seat to the busiest, most spirited corner of the ship.`;
+  }
+  return `A solid, well-placed cabin with no surprises — it does the basics right for what you're after.`;
+}
+function aside(c){
+  const out=[];
+  if(c.view==="garden"&&state.feel!=="garden")out.push(`no ocean view and no sea breeze from here — better you hear that from me than at the door`);
+  if(c.view==="boardwalk"&&(has(state.prio,"quiet")||has(state.sens,"light")))out.push(`it can be lively into the evening, so it suits a group that stays up more than early sleepers`);
+  if(c.above&&(has(state.prio,"quiet")||has(state.sens,"light"))&&!has(state.sens,"early"))out.push(`${c.above} sits right overhead, so mornings can start with some noise up top`);
+  if(c.below)out.push(`${c.below} are below, so there's a little dinner-hour hum`);
+  if(c.obs===1)out.push(`a lifeboat sits under the rail, so you lose the view straight down but keep the open sea ahead — which is why it costs less`);
+  if(c.deck>=17)out.push(`it's high up and toward the back: the horizon is wide open, though the ship's shape hides the view straight down`);
+  return out.length?` <span class="ins">Worth knowing: ${out.join("; ")}.</span>`:"";
+}
+function skipReason(c){
+  if(c.labeled===false&&c.obs>=2)return `I'd pass on this one. It's sold as a standard balcony, but part of the ship's structure blocks much of the view — and that isn't flagged when you book. You'd only notice after you'd unpacked, so better to rule it out now.`;
+  if(c.view==="garden")return `This is priced as a balcony, but it faces the inside garden, not the sea. Pleasant in its own right — just not the ocean view you asked for.`;
+  if(c.view==="boardwalk")return `This faces the Boardwalk — fun, but lively into the evening. Not the quiet you're after.`;
+  if(c.deck>=14&&has(state.sens,"queasy"))return `A nice room, but it's high up, and you mentioned queasy stomachs — you feel more motion up here. I'd keep you lower.`;
+  return `Fine on paper, but it doesn't match what you told me.`;
+}
+function posLabel(p){return p<0.37?"forward":p>0.63?"toward the back":"mid-ship";}
+
+function cardHTML(c,rank,value){
+  const badge=value?'<span class="badge b-value">Smart value</span>':'<span class="badge b-fit">'+(rank===0?"Best fit":"Good fit")+'</span>';
+  const tags=[];
+  if(c.real&&c.view==="ocean")tags.push('<span class="tag good">Real ocean view</span>');
+  if(c.hump)tags.push('<span class="tag good">Wide open view</span>');
+  if(c.view==="garden")tags.push('<span class="tag warn">Faces the garden</span>');
+  if(c.view==="boardwalk")tags.push('<span class="tag warn">Faces the plaza</span>');
+  if(c.obs>0)tags.push('<span class="tag '+(c.obs>=2?"bad":"warn")+'">'+OBSTAG[c.obs]+'</span>');
+  if(c.steady&&has(state.sens,"queasy"))tags.push('<span class="tag good">Steady ride</span>');
+  if(c.type==="suite")tags.push('<span class="tag good">Suite-only lounge &amp; dining</span>');
+  if((state.party==="family"||state.party==="group")&&c.sleeps>=4)tags.push('<span class="tag">Fits up to '+c.sleeps+'</span>');
+  const watch=c.yt
+    ?'<a class="watch" target="_blank" rel="noopener" href="'+YT+c.yt+'">▶ See this exact room</a>'
+    :'<a class="watch cat" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=Wonder+of+the+Seas+'+encodeURIComponent(c.cat)+'+tour">▶ See a room like it</a>';
+  return `<div class="panel card"><div class="cabtop"><div class="cabno">${c.id}<small>${c.cat.toUpperCase()} · DECK ${c.deck}</small></div>${badge}</div>
+    <div class="reason">${headline(c)}${aside(c)}</div>
+    <div class="chips-row">${tags.join("")}</div>
+    <div class="loc"><span class="deckpill">Deck ${c.deck} · ${posLabel(c.pos)}</span>
+      <div class="shipbar"><span class="fwd">Fwd</span><span class="aft">Aft</span><span class="dot" style="left:${8+c.pos*84}%"></span></div></div>
+    <div class="actions"><button class="cta" data-lead="${c.id}">Get Mark's live price →</button>${watch}</div></div>`;
+}
+function skipHTML(c){return `<div class="skip"><div class="cabno">${c.id} <span style="font-size:11px;font-weight:650;color:var(--muted);letter-spacing:.02em">${c.cat.toUpperCase()} · DECK ${c.deck}</span></div><div class="reason">${skipReason(c)}</div></div>`;}
+
+function run(){
+  const eligible=CABINS.filter(passesHard).map(c=>({c,s:scoreCabin(c)})).sort((a,b)=>b.s-a.s);
+  const out=document.getElementById("out");
+  document.getElementById("intro").innerHTML=introLine()+soloNote();
+  if(!eligible.length){out.innerHTML='<div class="panel empty">Nothing cleared every must-have. Loosen one thing — try “Not sure yet” on the view, or add “Getting a deal” — and I\'ll find you plenty.</div>';return;}
+  const picks=eligible.slice(0,6), pickIds=new Set(picks.map(p=>p.c.id)), skips=[];
+  const un=CABINS.find(c=>!pickIds.has(c.id)&&c.labeled===false&&c.obs>=2); if(un)skips.push(un);
+  if(state.feel==="ocean")CABINS.filter(c=>!pickIds.has(c.id)&&(c.view==="garden"||c.view==="boardwalk")).slice(0,2).forEach(c=>{if(!skips.includes(c))skips.push(c);});
+  else if(has(state.prio,"quiet"))CABINS.filter(c=>!pickIds.has(c.id)&&c.view==="boardwalk").slice(0,2).forEach(c=>{if(!skips.includes(c))skips.push(c);});
+  if(has(state.sens,"queasy")){const hi=CABINS.find(c=>!pickIds.has(c.id)&&c.deck>=14&&!skips.includes(c));if(hi)skips.push(hi);}
+  const skip3=skips.slice(0,3);
+  const valueIds=new Set(picks.filter(p=>p.c.tags.includes("value")||p.c.obs===1).map(p=>p.c.id));
+  let html='<div class="sec">'+picks.length+' rooms I\'d put you in</div>';
+  html+=picks.map((p,i)=>cardHTML(p.c,i,valueIds.has(p.c.id))).join("");
+  if(skip3.length){html+='<div class="sec">And '+skip3.length+' I\'d steer you clear of</div>'+skip3.map(skipHTML).join("");}
+  html+='<div class="valueline">Every room here is one I\'d stand behind. When you\'re ready, I\'ll pull the current price and make sure it\'s still open — <b>that part\'s me.</b> Pick any room and I\'ll get back to you.</div>';
+  out.innerHTML=html;
+  out.querySelectorAll("[data-lead]").forEach(b=>b.onclick=()=>openLead(+b.dataset.lead));
+}
+
+// lead modal
+function critText(){
+  const b=[];b.push({solo:"Solo",sologroup:"Solo (with a group)",two:"Couple",family:"Family with kids",group:"Group"}[state.party]);
+  b.push({lean:"budget-minded",middle:"comfortable budget",treat:"treat-themselves",sky:"no ceiling"}[state.budget]);
+  b.push({ocean:"open-ocean view",garden:"quiet garden",boardwalk:"lively plaza",any:"open on view"}[state.feel]);
+  state.prio.forEach(p=>b.push({ocean:"the view",quiet:"quiet",action:"near the action",space:"space",walk:"central location",price:"a deal"}[p]));
+  state.sens.forEach(x=>b.push({queasy:"seasickness-prone",light:"light sleepers",early:"early risers",owl:"night owls"}[x]));
+  if(state.mode==="new")b.push("new to cruising");
+  return b.join(" · ");
+}
+function openLead(id){const c=CABINS.find(x=>x.id===id);
+  document.getElementById("leadbody").innerHTML='<b>Wonder of the Seas</b><br>Cabin: <b>'+c.id+'</b> — '+c.cat+', Deck '+c.deck+'<br>Traveler: '+critText();
+  document.getElementById("modalbg").classList.add("on");}
+document.getElementById("modalx").onclick=()=>document.getElementById("modalbg").classList.remove("on");
+document.getElementById("modalok").onclick=()=>document.getElementById("modalbg").classList.remove("on");
+document.getElementById("modalbg").onclick=e=>{if(e.target.id==="modalbg")e.target.classList.remove("on")};
+
+// controls
+document.querySelectorAll('.chips[data-single]').forEach(g=>g.querySelectorAll('.chip').forEach(chip=>{
+  const act=()=>{g.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed','false'));chip.setAttribute('aria-pressed','true');state[g.dataset.single]=chip.dataset.val;run();};
+  chip.onclick=act;chip.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();act();}};}));
+document.querySelectorAll('.chips[data-multi]').forEach(function(g){
+  var key=g.dataset.multi, cap=+(g.dataset.cap||99);
+  g.querySelectorAll('.chip').forEach(function(chip){
+    var act=function(){
+      var on=chip.getAttribute('aria-pressed')==='true';
+      if(!on){ if(state[key].size>=cap) return; state[key].add(chip.dataset.val); chip.setAttribute('aria-pressed','true'); }
+      else{ state[key].delete(chip.dataset.val); chip.setAttribute('aria-pressed','false'); }
+      run();
+    };
+    chip.onclick=act;
+    chip.onkeydown=function(e){ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); act(); } };
+  });
+});
+document.getElementById('go').onclick=run;
+document.getElementById('reset').onclick=()=>location.reload();
+run();
+</script>

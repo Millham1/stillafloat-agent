@@ -1,0 +1,340 @@
+{
+  "compiledNote": "current as of July 2026; verify new/retiring ships. 2026 debuts tagged (2026); not-yet-sailing newbuilds tagged (on order). Class = hull/design family (shared cabin layouts).",
+  "lines": {
+    "Carnival Cruise Line": {
+      "classes": {
+        "Excel": {
+          "ships": [
+            "Mardi Gras",
+            "Carnival Celebration",
+            "Carnival Jubilee"
+          ]
+        },
+        "Vista": {
+          "ships": [
+            "Carnival Vista",
+            "Carnival Horizon",
+            "Carnival Panorama",
+            "Carnival Venezia",
+            "Carnival Firenze"
+          ]
+        },
+        "Dream": {
+          "ships": [
+            "Carnival Dream",
+            "Carnival Magic",
+            "Carnival Breeze"
+          ]
+        },
+        "Conquest": {
+          "ships": [
+            "Carnival Conquest",
+            "Carnival Glory",
+            "Carnival Valor",
+            "Carnival Liberty",
+            "Carnival Freedom"
+          ]
+        },
+        "Splendor": {
+          "ships": [
+            "Carnival Splendor"
+          ]
+        },
+        "Spirit": {
+          "ships": [
+            "Carnival Spirit",
+            "Carnival Pride",
+            "Carnival Legend",
+            "Carnival Miracle",
+            "Carnival Luminosa"
+          ]
+        },
+        "Sunshine": {
+          "ships": [
+            "Carnival Sunshine",
+            "Carnival Sunrise",
+            "Carnival Radiance"
+          ]
+        },
+        "Fantasy": {
+          "ships": [
+            "Carnival Elation",
+            "Carnival Paradise"
+          ]
+        },
+        "Grand": {
+          "ships": [
+            "Carnival Adventure",
+            "Carnival Encounter"
+          ]
+        }
+      }
+    },
+    "Royal Caribbean International": {
+      "classes": {
+        "Icon": {
+          "ships": [
+            "Icon of the Seas",
+            "Star of the Seas",
+            "Legend of the Seas (2026)"
+          ]
+        },
+        "Oasis": {
+          "ships": [
+            "Oasis of the Seas",
+            "Allure of the Seas",
+            "Harmony of the Seas",
+            "Symphony of the Seas",
+            "Wonder of the Seas",
+            "Utopia of the Seas"
+          ]
+        },
+        "Quantum": {
+          "ships": [
+            "Quantum of the Seas",
+            "Anthem of the Seas",
+            "Ovation of the Seas",
+            "Spectrum of the Seas",
+            "Odyssey of the Seas"
+          ]
+        },
+        "Freedom": {
+          "ships": [
+            "Freedom of the Seas",
+            "Liberty of the Seas",
+            "Independence of the Seas"
+          ]
+        },
+        "Voyager": {
+          "ships": [
+            "Voyager of the Seas",
+            "Explorer of the Seas",
+            "Adventure of the Seas",
+            "Navigator of the Seas",
+            "Mariner of the Seas"
+          ]
+        },
+        "Radiance": {
+          "ships": [
+            "Radiance of the Seas",
+            "Brilliance of the Seas",
+            "Serenade of the Seas",
+            "Jewel of the Seas"
+          ]
+        },
+        "Vision": {
+          "ships": [
+            "Grandeur of the Seas",
+            "Rhapsody of the Seas",
+            "Enchantment of the Seas",
+            "Vision of the Seas"
+          ]
+        }
+      }
+    },
+    "Norwegian Cruise Line": {
+      "classes": {
+        "Prima": {
+          "ships": [
+            "Norwegian Prima",
+            "Norwegian Viva"
+          ]
+        },
+        "Prima Plus": {
+          "ships": [
+            "Norwegian Aqua",
+            "Norwegian Luna (2026)"
+          ]
+        },
+        "Breakaway Plus": {
+          "ships": [
+            "Norwegian Escape",
+            "Norwegian Joy",
+            "Norwegian Bliss",
+            "Norwegian Encore"
+          ]
+        },
+        "Breakaway": {
+          "ships": [
+            "Norwegian Breakaway",
+            "Norwegian Getaway"
+          ]
+        },
+        "Epic": {
+          "ships": [
+            "Norwegian Epic"
+          ]
+        },
+        "Jewel": {
+          "ships": [
+            "Norwegian Jewel",
+            "Norwegian Jade",
+            "Norwegian Pearl",
+            "Norwegian Gem"
+          ]
+        },
+        "Dawn": {
+          "ships": [
+            "Norwegian Dawn",
+            "Norwegian Star"
+          ]
+        },
+        "Sun": {
+          "ships": [
+            "Norwegian Sun",
+            "Norwegian Sky"
+          ]
+        },
+        "Leo": {
+          "ships": [
+            "Norwegian Spirit"
+          ]
+        },
+        "Pride of America": {
+          "ships": [
+            "Pride of America"
+          ]
+        }
+      }
+    },
+    "MSC Cruises": {
+      "classes": {
+        "World": {
+          "ships": [
+            "MSC World Europa",
+            "MSC World America",
+            "MSC World Asia (2026)"
+          ]
+        },
+        "Meraviglia": {
+          "ships": [
+            "MSC Meraviglia",
+            "MSC Bellissima",
+            "MSC Grandiosa",
+            "MSC Virtuosa",
+            "MSC Euribia"
+          ]
+        },
+        "Seaside": {
+          "ships": [
+            "MSC Seaside",
+            "MSC Seaview",
+            "MSC Seashore",
+            "MSC Seascape"
+          ]
+        },
+        "Fantasia": {
+          "ships": [
+            "MSC Fantasia",
+            "MSC Splendida",
+            "MSC Divina",
+            "MSC Preziosa"
+          ]
+        },
+        "Musica": {
+          "ships": [
+            "MSC Musica",
+            "MSC Orchestra",
+            "MSC Poesia",
+            "MSC Magnifica"
+          ]
+        },
+        "Lirica": {
+          "ships": [
+            "MSC Lirica",
+            "MSC Opera",
+            "MSC Armonia",
+            "MSC Sinfonia"
+          ]
+        }
+      }
+    },
+    "Princess Cruises": {
+      "classes": {
+        "Sphere": {
+          "ships": [
+            "Sun Princess",
+            "Star Princess"
+          ]
+        },
+        "Royal": {
+          "ships": [
+            "Royal Princess",
+            "Regal Princess",
+            "Majestic Princess",
+            "Sky Princess",
+            "Enchanted Princess",
+            "Discovery Princess"
+          ]
+        },
+        "Grand": {
+          "ships": [
+            "Grand Princess",
+            "Caribbean Princess",
+            "Crown Princess",
+            "Emerald Princess",
+            "Ruby Princess",
+            "Diamond Princess",
+            "Sapphire Princess"
+          ]
+        },
+        "Coral": {
+          "ships": [
+            "Coral Princess",
+            "Island Princess"
+          ]
+        }
+      }
+    },
+    "Celebrity Cruises": {
+      "classes": {
+        "Edge": {
+          "ships": [
+            "Celebrity Edge",
+            "Celebrity Apex",
+            "Celebrity Beyond",
+            "Celebrity Ascent",
+            "Celebrity Xcel"
+          ]
+        },
+        "Solstice": {
+          "ships": [
+            "Celebrity Solstice",
+            "Celebrity Equinox",
+            "Celebrity Eclipse",
+            "Celebrity Silhouette",
+            "Celebrity Reflection"
+          ]
+        },
+        "Millennium": {
+          "ships": [
+            "Celebrity Millennium",
+            "Celebrity Infinity",
+            "Celebrity Summit",
+            "Celebrity Constellation"
+          ]
+        }
+      }
+    },
+    "Margaritaville at Sea": {
+      "classes": {
+        "Islander": {
+          "ships": [
+            "Margaritaville at Sea Islander"
+          ]
+        },
+        "Paradise": {
+          "ships": [
+            "Margaritaville at Sea Paradise"
+          ]
+        },
+        "Beachcomber": {
+          "ships": [
+            "Margaritaville at Sea Beachcomber (on order)"
+          ]
+        }
+      }
+    }
+  },
+  "scope": "MAINSTREAM OCEAN SHIPS ONLY. Expedition and luxury outlier vessels are OUT OF SCOPE \u2014 that market is hands-on and books through a specialist, not this self-serve tool (Mark, 2026-07-27). Excludes e.g. Celebrity's Galapagos expedition ships (Flora/Xpedition/Xploration)."
+}

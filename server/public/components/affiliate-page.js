@@ -113,9 +113,16 @@
             <div class="strip-wrap" id="${stripId}"></div>
           </div>`;
         container.appendChild(card);
-        if (item.smartStrip) {
+        // smartStrip (pasted HTML ad widget) wins if present; affiliateLink (plain
+        // tagged URL, what the dashboard's "Affiliate Link URL" field actually saves)
+        // is the fallback. Without this fallback, any item added with only that field
+        // filled in — the normal case — silently rendered with no buy button at all
+        // (observed 2026-08-11: 4 new clothing items had real affiliateLink values but
+        // smartStrip:"", so renderStrip() never ran).
+        const stripValue = item.smartStrip || item.affiliateLink;
+        if (stripValue) {
           const sw = document.getElementById(stripId);
-          if (sw) renderStrip(sw, item.smartStrip);
+          if (sw) renderStrip(sw, stripValue);
         }
       });
     } catch (err) {
