@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Send Your Cabins to Mark | Still Afloat</title>
+<meta name="description" content="Send your cabin picks to Mark and he'll check real availability on your sailing.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://stillafloatcruising.com/cabin-request.html">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+/* Deliberately spare: they already hit the CTA. This page has ONE job —
+   collect what Mark needs to run the numbers. No pitch, no cred bar. */
+*{box-sizing:border-box}
+.cr-wrap{max-width:640px;margin:auto;padding:16px 20px 90px}
+.cr-hero{text-align:center;padding:24px 0 6px}
+.cr-hero h1{font-size:clamp(28px,4.4vw,40px);line-height:1.16;margin:12px 0 10px}
+.cr-hero p{color:rgba(247,251,255,.86);max-width:46ch;margin:0 auto;line-height:1.7;font-size:17.5px}
+.cr-picks{background:rgba(0,119,182,.16);border:1px solid rgba(93,255,154,.3);border-radius:16px;
+          padding:16px 20px;margin:22px 0 26px;text-align:center}
+.cr-picks .ship{font-family:'Bree Serif',serif;font-size:20px;color:#f7fbff}
+.cr-picks .cabs{color:var(--seafoam);font-size:22px;font-weight:800;margin-top:4px;letter-spacing:.04em}
+.cr-picks .none{color:rgba(247,251,255,.75);font-size:16px}
+.cr-card{background:rgba(7,24,63,.72);border:1px solid rgba(255,255,255,.14);border-radius:20px;
+         padding:28px 24px;box-shadow:0 22px 46px rgba(0,0,0,.36)}
+.cr-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:520px){.cr-row{grid-template-columns:1fr}}
+.cr-field{margin-bottom:16px}
+.cr-field label{display:block;font-size:15.5px;color:rgba(247,251,255,.85);margin-bottom:6px;font-weight:600}
+.cr-field input,.cr-field textarea{width:100%;padding:14px 15px;border-radius:12px;
+  background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.16);color:#f7fbff;
+  font-family:'Baloo 2',system-ui,sans-serif;font-size:16.5px;outline:none}
+.cr-field input:focus,.cr-field textarea:focus{border-color:rgba(93,255,154,.55)}
+.cr-field input::placeholder,.cr-field textarea::placeholder{color:rgba(247,251,255,.32)}
+.cr-field textarea{resize:vertical;min-height:88px}
+.turnstile-wrap{margin:4px 0 16px;min-height:0}
+.cr-btn{width:100%;background:var(--sun);color:var(--navy);border:none;border-radius:14px;
+        padding:16px;font-family:'Baloo 2',system-ui,sans-serif;font-weight:800;font-size:18px;cursor:pointer}
+.cr-btn[disabled]{opacity:.5;cursor:not-allowed}
+.cr-note{color:rgba(247,251,255,.6);font-size:15px;text-align:center;margin-top:16px;line-height:1.6}
+.cr-err{display:none;background:rgba(255,122,24,.12);border:1px solid rgba(255,122,24,.34);
+        border-radius:12px;padding:14px;color:#ffd9c2;font-size:16px;margin-bottom:14px}
+.cr-err.show{display:block}
+.cr-done{display:none;text-align:center;padding:36px 10px}
+.cr-done.show{display:block}
+.cr-done i{font-size:42px;color:var(--seafoam);margin-bottom:14px}
+.cr-done h2{font-size:26px;margin:0 0 10px}
+.cr-done p{color:rgba(247,251,255,.85);line-height:1.7;font-size:17px;max-width:44ch;margin:0 auto}
+</style>
+</head>
+<body>
+
+<div id="navbar-container"></div>
+
+<div class="cr-wrap">
+
+  <div class="cr-hero">
+    <span class="section-kicker">Almost done</span>
+    <h1>Send these over.</h1>
+    <p>Give me the basics and I'll check what's actually open on your sailing.
+       You keep your sun lounger — the homework part is mine.</p>
+  </div>
+
+  <div class="cr-picks" id="picks"></div>
+
+  <div class="cr-card">
+    <div class="cr-err" id="err"></div>
+
+    <form id="crForm" novalidate>
+      <div class="cr-row">
+        <div class="cr-field"><label for="first_name">First name</label>
+          <input type="text" id="first_name" autocomplete="given-name" placeholder="Jane" required></div>
+        <div class="cr-field"><label for="last_name">Last name</label>
+          <input type="text" id="last_name" autocomplete="family-name" placeholder="Smith" required></div>
+      </div>
+      <div class="cr-row">
+        <div class="cr-field"><label for="email">Email</label>
+          <input type="email" id="email" autocomplete="email" placeholder="you@example.com" required></div>
+        <div class="cr-field"><label for="num_travelers">How many travelers?</label>
+          <input type="number" id="num_travelers" min="1" max="20" placeholder="2" required></div>
+      </div>
+      <div class="cr-field"><label for="travel_dates">When are you sailing (roughly is fine)?</label>
+        <input type="text" id="travel_dates" placeholder="e.g. March 15–22, or 'sometime next spring'" required></div>
+      <div class="cr-field"><label for="notes">Anything else I should know? <span style="opacity:.55;font-weight:400">(optional)</span></label>
+        <textarea id="notes" maxlength="800" placeholder="Celebrating something, mobility needs, a deck you loved before — whatever helps."></textarea></div>
+
+      <div class="turnstile-wrap" id="turnstileWrap"><span id="turnstileMsg"></span></div>
+
+      <button type="submit" class="cr-btn" id="sendBtn"><i class="fa-solid fa-paper-plane"></i>&nbsp; Send to Mark</button>
+    </form>
+
+    <div class="cr-done" id="done">
+      <i class="fa-solid fa-anchor"></i>
+      <h2 id="doneHead">Got it.</h2>
+      <p id="doneMsg"></p>
+    </div>
+  </div>
+
+  <p class="cr-note">No booking fees to you, ever — the cruise line pays me, not you.</p>
+</div>
+
+<footer>
+  <p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" style="height:20px;vertical-align:middle;opacity:.7"></p>
+</footer>
+
+<script src="/components/navbar.js?v=20260725-topbar2"></script>
+<script>
+// Their picks ride in on the URL from the concierge.
+const P = new URLSearchParams(location.search);
+const ship = (P.get("ship") || "").trim();
+const cabins = (P.get("cabins") || "").trim();
+
+const picksEl = document.getElementById("picks");
+if (ship || cabins){
+  picksEl.innerHTML = `${ship ? `<div class="ship">${ship}</div>` : ""}
+    ${cabins ? `<div class="cabs">Cabin${cabins.includes(",") ? "s" : ""} ${cabins}</div>` : ""}`;
+} else {
+  picksEl.innerHTML = `<div class="none">No cabins attached — that's fine, tell me what you're thinking in the notes.</div>`;
+}
+
+// Same Turnstile pattern as the main contact form.
+let turnstileToken = null, turnstileSiteKey = null;
+(async function(){
+  try{ const cfg = await fetch("/api/public-config").then(r=>r.json()); turnstileSiteKey = cfg.turnstileSiteKey; }catch(_){}
+  if (!turnstileSiteKey) return;
+  const s = document.createElement("script");
+  s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  s.onload = () => {
+    const wrap = document.getElementById("turnstileWrap");
+    wrap.innerHTML = "";
+    const w = document.createElement("div"); w.id = "cfTurnstile"; wrap.appendChild(w);
+    turnstile.render("#cfTurnstile", {
+      sitekey: turnstileSiteKey, appearance: "interaction-only",
+      callback: t => { turnstileToken = t; },
+      "expired-callback": () => { turnstileToken = null; },
+    });
+  };
+  document.head.appendChild(s);
+})();
+
+const err = document.getElementById("err");
+function showErr(m){ err.textContent = m; err.classList.add("show"); err.scrollIntoView({behavior:"smooth", block:"center"}); }
+
+document.getElementById("crForm").addEventListener("submit", async e => {
+  e.preventDefault(); err.classList.remove("show");
+  const v = id => document.getElementById(id).value.trim();
+  const firstName = v("first_name"), lastName = v("last_name"), email = v("email");
+  const numTrav = document.getElementById("num_travelers").value, dates = v("travel_dates");
+
+  if (!firstName) return showErr("Please enter your first name.");
+  if (!lastName)  return showErr("Please enter your last name.");
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr("Please enter a valid email address.");
+  if (!numTrav || parseInt(numTrav) < 1) return showErr("How many travelers?");
+  if (!dates) return showErr("Rough dates are fine — but I do need something to check against.");
+  if (turnstileSiteKey && !turnstileToken) return showErr("Please complete the security check above.");
+
+  const btn = document.getElementById("sendBtn");
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Sending…';
+
+  const context = `[Cabin Concierge]${ship ? " Ship: " + ship + "." : ""}${cabins ? " Cabins picked: " + cabins + "." : ""}`;
+  const notes = v("notes");
+
+  try{
+    const res = await fetch("/api/contact", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        first_name: firstName, last_name: lastName, email,
+        num_travelers: parseInt(numTrav), travel_dates: dates,
+        referral_source: "cabin-concierge",
+        notes: (context + (notes ? "\n" + notes : "")).slice(0, 1000),
+        "cf-turnstile-response": turnstileToken || null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok){
+      btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Send to Mark';
+      return showErr(data.error || "Something went wrong. Please try again.");
+    }
+    document.getElementById("crForm").style.display = "none";
+    document.getElementById("doneHead").textContent = `Got it, ${firstName}.`;
+    document.getElementById("doneMsg").textContent =
+      `I'll check ${cabins ? "cabin" + (cabins.includes(",") ? "s " : " ") + cabins : "your options"} against real availability on your dates and come back to you at ${email}. Usually within a day — faster if I'm not mid-buffet.`;
+    document.getElementById("done").classList.add("show");
+  }catch(_){
+    btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Send to Mark';
+    showErr("Network error — please check your connection and try again.");
+  }
+});
+</script>
+</body>
+</html>

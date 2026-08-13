@@ -185,7 +185,7 @@ Write, for each shortlisted cabin, in rank order:
 - "reason": 2-4 sentences in your voice, reasoned for this traveler's answers specifically. Differentiate every cabin; where two are nearly the same, say so and give the honest tie-breaker. Vary your openings — don't start each one the same way.
 And rewrite each steer-clear reason for this traveler (1-2 sentences).
 
-Speak ONLY to concerns they actually told you. Respond with ONLY a JSON object:
+Speak ONLY to concerns they actually told you. The brand is "Cruise smarter. Laugh more." — one light, dry touch of humor across the whole set is welcome where it lands naturally; never forced, never at the traveler's expense. Respond with ONLY a JSON object:
 {"recommendations":[{"cabin":"<number>","hook":"...","reason":"..."}],"steerClear":[{"cabin":"<number or area>","reason":"..."}]}`;
 
   try {

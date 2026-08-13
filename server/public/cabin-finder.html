@@ -159,23 +159,26 @@ const SHIP_STEP = { key:"ship", q:"Which ship?", sub:"Pick it and I'll talk you 
 // the way an advisor would actually ask it.
 const CORE = [
   { key:"party", q:"Who's going?", sub:"This changes my answer more than anything else.", opts:[
-      {v:"couple", i:"fa-heart",    t:"Just the two of us", e:"One cabin, two people."},
+      {v:"couple", i:"fa-heart",    t:"Just the two of us", e:"One cabin, two people, zero compromises on whose side gets the good pillow."},
       {v:"family", i:"fa-children", t:"Family with kids",   e:"Room to spread out, and neighbors who won't mind."},
       {v:"solo",   i:"fa-user",     t:"Just me",            e:"I'll tell you where going solo actually works in your favor."},
-      {v:"group",  i:"fa-users",    t:"A group of us",      e:"Several cabins — staying near each other matters."} ]},
-  { key:"room", q:"What kind of room are you picturing?", sub:"Think about how you'll actually use it — that matters more than the brochure photos.", opts:[
-      {v:"inside",    i:"fa-bed",         t:"An inside room",        e:"You're there to sleep. The ship is the destination."},
-      {v:"oceanview", i:"fa-sun",         t:"A window on the water", e:"Daylight and a view, without the balcony."},
-      {v:"balcony",   i:"fa-door-open",   t:"A balcony",             e:"Morning coffee outside. For most people, this is the sweet spot."},
-      {v:"suite",     i:"fa-champagne-glasses", t:"A suite",         e:"Space to properly settle in — this is the treat trip."} ],
-    pass:{v:"balcony", t:"Honestly, not sure", e:"Then I'll show you what I'd pick for your group and tell you why."} },
+      {v:"group",  i:"fa-users",    t:"A group of us",      e:"Several cabins — close enough to find each other, far enough to escape each other."} ]},
+  // No room-CLASS names here — a first-timer doesn't know an oceanview from a
+  // balcony grade, and they shouldn't have to (Mark, 2026-08-12). Ask how they
+  // picture USING the room; the mapping to a category is my job, not theirs.
+  { key:"room", q:"How do you picture using your room?", sub:"Be honest — this matters more than any brochure photo.", opts:[
+      {v:"inside",    i:"fa-bed",         t:"Crash and recharge",             e:"You'll be out living the ship all day. The room just has to sleep you."},
+      {v:"oceanview", i:"fa-sun",         t:"Wake up to daylight and water",  e:"You want to see where you are — without needing to sit outside in it."},
+      {v:"balcony",   i:"fa-mug-hot",     t:"Coffee outside in my pajamas",   e:"Your own private piece of outdoors. Nobody judges the pajamas at sea."},
+      {v:"suite",     i:"fa-couch",       t:"The room is part of the vacation", e:"Space to spread out, settle in, maybe never leave. I get it."} ],
+    pass:{v:"balcony", t:"Honestly, no idea", e:"That's what I'm here for. I'll pick for your group and tell you why."} },
   { key:"priority", q:"What matters most once you're aboard?", sub:"When two rooms are close, this is my tie-breaker.", opts:[
       {v:"ocean", i:"fa-water", t:"Waking up to the ocean", e:"A real sea view, not a courtyard or a wall."},
       {v:"quiet", i:"fa-moon",  t:"Peace and quiet",        e:"Away from the elevators, the bars and the pool deck."},
-      {v:"action",i:"fa-bolt",  t:"Being near the action",  e:"Steps from the pool, the food and the shows."},
+      {v:"action",i:"fa-bolt",  t:"Being near the action",  e:"Steps from the pool, the shows, and the occasional conga line."},
       {v:"space", i:"fa-up-right-and-down-left-from-center", t:"Room to spread out", e:"A real living space, not just a bed with a view."} ],
     pass:{v:"ocean", t:"All of it, ideally", e:"Then I'll lead with the view and keep you comfortable."} },
-  { key:"motion", q:"Does anyone get seasick?", sub:"If so I'll keep you low and mid-ship, where you feel it least.", opts:[
+  { key:"motion", q:"Does anyone get seasick?", sub:"No shame in it — half the fun of a ship is that it moves. I'll just keep you where it moves least.", opts:[
       {v:"yes", i:"fa-triangle-exclamation", t:"Yes — keep us steady", e:"Then steadiness beats the view. That's the right call."},
       {v:"no",  i:"fa-check",                t:"No, we're fine",       e:"Good — that opens up the higher decks."} ],
     pass:{v:"no", t:"I can grin and bear it", e:"Noted — I won't give up a good room over it."} },
@@ -273,10 +276,12 @@ function drawSendBar(){
   if (!bar) return;
   if (!picked.size){ bar.classList.remove("show"); return; }
   const nums = [...picked].join(", ");
-  const q = new URLSearchParams({ from:"cabin-concierge", ship:resultShip, cabins:nums });
+  const q = new URLSearchParams({ ship:resultShip, cabins:nums });
   bar.querySelector(".count").textContent =
     picked.size === 1 ? `Cabin ${nums} picked` : `${picked.size} cabins picked — ${nums}`;
-  bar.querySelector("a").href = `/work-with-mark.html?${q.toString()}`;
+  // The dedicated request page — they've already said yes, so no more selling,
+  // just the details Mark needs (Mark, 2026-08-12).
+  bar.querySelector("a").href = `/cabin-request.html?${q.toString()}`;
   bar.classList.add("show");
 }
 
@@ -301,7 +306,7 @@ function show(d, wasNew){
     </ul></div>` : "";
 
   const nums = (d.picks||[]).slice(0,3).map(p=>p.cabin).join(", ");
-  const q = new URLSearchParams({ from:"cabin-concierge", ship:shipName, cabins:nums });
+  const q = new URLSearchParams({ ship:shipName, cabins:nums });
 
   stage.innerHTML = `<div class="cf-res">
     <h2>Here's where I'd put you on ${shipName}.</h2>
@@ -314,8 +319,9 @@ function show(d, wasNew){
     <div class="cf-cta">
       <h3>Like any of these?</h3>
       <p>Send them over and I'll check what's actually open on your sailing, how they compare,
-         and whether one of them is a mistake for your dates. That part is my job, not yours.</p>
-      <a href="/work-with-mark.html?${q.toString()}">Send my picks to Mark</a>
+         and whether one of them is a mistake for your dates. That part is my job, not yours —
+         you go back to arguing about which excursion to book.</p>
+      <a href="/cabin-request.html?${q.toString()}">Send my picks to Mark</a>
     </div>
     <p class="cf-note">Booking through me costs you nothing extra — the cruise line pays the commission either way.</p>
   </div>
