@@ -1,0 +1,275 @@
+/* ═══════════════════════════════════════════════════════════════════
+   STILL AFLOAT — GLOBAL DESIGN TOKENS + SHARED COMPONENTS
+   Source of truth: docs/BRAND_GUIDE.md ("tropical premium")
+
+   WHAT THIS FILE IS
+   A single additive stylesheet every page can link. It contains ONLY:
+     1. :root custom properties (all prefixed --saf-*)
+     2. Namespaced component classes (all prefixed .saf-)
+   There are NO bare-element rules (no body/h1/p/a/label/input selectors),
+   so linking this file cannot change the look of an existing page.
+   Existing page classes (.card, .btn, .section-kicker, ...) never collide
+   with the .saf- namespace.
+
+   HOW A PAGE MIGRATES (see subscribe.html for the reference migration)
+     1. Add to <head>, BEFORE the page's own <style> block:
+          <link rel="stylesheet" href="/css/global.css">
+        (Page rules then win any tie, so adoption is always safe.)
+     2. Replace hard-coded values in the page's inline CSS with tokens:
+          #5dff9a                      -> var(--saf-seafoam)
+          rgba(255,255,255,.12) border -> var(--saf-border)
+          border-radius:24px           -> var(--saf-r-xl)
+          font-family:'Baloo 2',...    -> var(--saf-font-body)
+     3. Swap bespoke component CSS for the shared classes and DELETE the
+        page's now-dead rules:
+          bespoke glass card    -> class="saf-card"
+          kicker / hero badge   -> class="saf-kicker"
+          pill / badge          -> class="saf-pill" (+ saf-pill-gold|blue)
+          primary CTA button    -> class="saf-btn saf-btn-primary"
+          secondary/gold button -> class="saf-btn saf-btn-gold"
+          form label            -> class="saf-label"
+          text/email input      -> class="saf-input"
+          glass overlay panel   -> class="saf-panel"
+     4. Keep anything genuinely page-specific in the page's own <style>.
+        Never add page-specific rules to this file.
+
+   COLOR NOTE — canonical brand gold is #ffca4f (Sun Gold). The legacy
+   variants #ffd21f / #ffd95d / #FFD300 found on older pages should be
+   replaced with var(--saf-gold) as pages migrate.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&family=Pacifico&display=swap');
+
+:root {
+  /* ── Core palette (BRAND_GUIDE.md) ─────────────────────────────── */
+  --saf-navy:    #07183f;   /* Deep Navy — structure & authority      */
+  --saf-ocean:   #0077b6;   /* Ocean Blue — energy & identity         */
+  --saf-seafoam: #5dff9a;   /* Seafoam — accents & highlights         */
+  --saf-gold:    #ffca4f;   /* Sun Gold — CTAs & warmth               */
+  --saf-white:   #f7fbff;   /* Cloud White                            */
+
+  /* Derived darks used by page backgrounds across the site */
+  --saf-navy-deep:  #04112e;
+  --saf-navy-abyss: #06111f;
+  --saf-ocean-deep: #023e6e;
+
+  /* ── Text tiers (on dark backgrounds) ──────────────────────────── */
+  --saf-text-hi:    #ffffff;
+  --saf-text:       #ddeeff;
+  --saf-text-mid:   rgba(255,255,255,.72);
+  --saf-text-dim:   rgba(255,255,255,.55);
+  --saf-text-faint: rgba(255,255,255,.40);
+
+  /* ── Borders & tints ───────────────────────────────────────────── */
+  --saf-border:        rgba(255,255,255,.12);
+  --saf-border-strong: rgba(255,255,255,.18);
+  --saf-seafoam-tint:   rgba(93,255,154,.12);
+  --saf-seafoam-border: rgba(93,255,154,.30);
+  --saf-gold-tint:      rgba(255,202,79,.14);
+  --saf-gold-border:    rgba(255,202,79,.35);
+  --saf-ocean-tint:     rgba(0,119,182,.18);
+
+  /* ── Surfaces (glassy dark panels) ─────────────────────────────── */
+  --saf-surface:       rgba(7,24,63,.82);   /* card body              */
+  --saf-surface-soft:  rgba(4,17,46,.52);   /* lighter glass panel    */
+  --saf-surface-input: rgba(255,255,255,.06);
+
+  /* ── Gradients ─────────────────────────────────────────────────── */
+  --saf-grad-ocean: linear-gradient(135deg, var(--saf-ocean), var(--saf-ocean-deep));
+  --saf-grad-page:  radial-gradient(circle at top right, var(--saf-ocean-tint), transparent 24%),
+                    linear-gradient(to bottom, var(--saf-navy-abyss) 0%, #0b2238 40%, #102f4d 100%);
+
+  /* ── Typography ────────────────────────────────────────────────── */
+  --saf-font-heading: 'Bree Serif', serif;
+  --saf-font-body:    'Baloo 2', system-ui, sans-serif;
+  --saf-font-accent:  'Pacifico', cursive;   /* accent/logo use ONLY  */
+
+  /* ── Spacing scale ─────────────────────────────────────────────── */
+  --saf-sp-1: 4px;
+  --saf-sp-2: 8px;
+  --saf-sp-3: 12px;
+  --saf-sp-4: 16px;
+  --saf-sp-5: 24px;
+  --saf-sp-6: 32px;
+  --saf-sp-7: 48px;
+  --saf-sp-8: 64px;
+
+  /* ── Radii ─────────────────────────────────────────────────────── */
+  --saf-r-sm:   12px;
+  --saf-r-md:   16px;
+  --saf-r-lg:   20px;
+  --saf-r-xl:   24px;
+  --saf-r-2xl:  28px;
+  --saf-r-pill: 999px;
+
+  /* ── Shadows (soft, per brand guide) ───────────────────────────── */
+  --saf-shadow-sm: 0 6px 18px rgba(0,0,0,.22);
+  --saf-shadow-md: 0 10px 24px rgba(0,0,0,.22);
+  --saf-shadow-lg: 0 18px 40px rgba(0,0,0,.30);
+  --saf-shadow-xl: 0 24px 64px rgba(0,0,0,.42);
+  --saf-glow-seafoam: 0 0 18px rgba(93,255,154,.10);
+
+  /* ── Motion ────────────────────────────────────────────────────── */
+  --saf-ease:      cubic-bezier(.22,1,.36,1);
+  --saf-lift:      translateY(-2px);
+  --saf-lift-card: translateY(-5px);
+}
+
+/* ═══ Page background helper (opt-in: <body class="saf-page">) ═════ */
+.saf-page {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--saf-grad-page);
+  color: var(--saf-text-hi);
+  font-family: var(--saf-font-body);
+}
+
+/* ═══ Card — dark glass content card ═══════════════════════════════ */
+.saf-card {
+  background: var(--saf-surface);
+  border: 1px solid var(--saf-border);
+  border-radius: var(--saf-r-2xl);
+  padding: var(--saf-sp-6);
+  box-shadow: var(--saf-shadow-xl);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* ═══ Glass panel — lighter overlay (over photos/heroes) ═══════════ */
+.saf-panel {
+  background: var(--saf-surface-soft);
+  border: 1px solid var(--saf-border);
+  border-radius: var(--saf-r-xl);
+  padding: var(--saf-sp-6);
+  box-shadow: var(--saf-shadow-lg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* ═══ Section kicker — the seafoam eyebrow pill above headings ═════ */
+.saf-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--saf-sp-2);
+  background: var(--saf-seafoam-tint);
+  border: 1px solid var(--saf-seafoam-border);
+  color: var(--saf-seafoam);
+  padding: 8px 18px;
+  border-radius: var(--saf-r-pill);
+  font-family: var(--saf-font-body);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  box-shadow: var(--saf-glow-seafoam);
+}
+.saf-kicker-gold {
+  background: var(--saf-gold-tint);
+  border-color: var(--saf-gold-border);
+  color: var(--saf-gold);
+  box-shadow: none;
+}
+
+/* ═══ Pill / badge — small status or label chip ════════════════════ */
+.saf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: var(--saf-r-pill);
+  background: var(--saf-seafoam-tint);
+  border: 1px solid var(--saf-seafoam-border);
+  color: var(--saf-seafoam);
+  font-family: var(--saf-font-body);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.saf-pill-gold { background: var(--saf-gold-tint);  border-color: var(--saf-gold-border); color: var(--saf-gold); }
+.saf-pill-blue { background: var(--saf-ocean-tint); border-color: rgba(0,119,182,.45);    color: #9bd6ff; }
+
+/* ═══ Buttons ══════════════════════════════════════════════════════ */
+.saf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border: none;
+  border-radius: var(--saf-r-md);
+  font-family: var(--saf-font-body);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .2s var(--saf-ease), box-shadow .2s var(--saf-ease), background .2s;
+}
+.saf-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.saf-btn-block { width: 100%; }
+
+/* Primary — ocean gradient with seafoam text (site-wide CTA pattern) */
+.saf-btn-primary {
+  background: var(--saf-grad-ocean);
+  color: var(--saf-seafoam);
+  box-shadow: 0 10px 30px rgba(0,119,182,.35);
+}
+.saf-btn-primary:hover:not(:disabled) {
+  transform: var(--saf-lift);
+  box-shadow: 0 16px 40px rgba(0,119,182,.45);
+}
+
+/* Secondary — solid Sun Gold with navy text */
+.saf-btn-gold {
+  background: var(--saf-gold);
+  color: var(--saf-navy);
+  box-shadow: 0 10px 26px rgba(255,202,79,.28);
+}
+.saf-btn-gold:hover:not(:disabled) {
+  transform: var(--saf-lift);
+  box-shadow: 0 16px 34px rgba(255,202,79,.38);
+}
+
+/* Ghost — quiet outline button */
+.saf-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--saf-seafoam-border);
+  color: var(--saf-seafoam);
+}
+.saf-btn-ghost:hover:not(:disabled) {
+  background: var(--saf-seafoam-tint);
+  transform: var(--saf-lift);
+}
+
+/* ═══ Form elements ════════════════════════════════════════════════ */
+.saf-label {
+  display: block;
+  font-family: var(--saf-font-body);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--saf-text-dim);
+  margin-bottom: var(--saf-sp-2);
+}
+
+.saf-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: var(--saf-surface-input);
+  color: var(--saf-text-hi);
+  font-size: 16px;
+  font-family: var(--saf-font-body);
+  outline: none;
+  transition: border-color .2s, background .2s;
+}
+.saf-input::placeholder { color: rgba(255,255,255,.28); }
+.saf-input:focus {
+  border-color: rgba(93,255,154,.5);
+  background: rgba(93,255,154,.04);
+}
