@@ -12,7 +12,7 @@ import {
   type SocialVideo,
 } from "../lib/social-agent";
 import { logger } from "../lib/logger";
-import { notifyTelegram, reviewUrl } from "../lib/telegram";
+import { notifyMark, reviewUrl } from "../lib/notify";
 import { publishBatch, loadMediaMap, setMedia } from "../lib/social-publish";
 import {
   scheduleApprovedBatch,
@@ -49,11 +49,11 @@ router.post("/social/generate", requireToken, async (req: Request, res: Response
     // Per-call nudge is suppressed with notify:false so a multi-video run sends a
     // single consolidated review nudge at the end (via POST /social/notify).
     if (notify !== false) {
-      void notifyTelegram({
-        heading: `📱 <b>1 social draft ready (Track ${queued.track})</b>`,
-        lines: [queued.title],
+      void notifyMark({
+        title: `📱 1 social draft ready (Track ${queued.track})`,
+        body: queued.title,
         url: reviewUrl("/api/social/review"),
-        buttonLabel: "Review →",
+        tag: "social-review",
       });
     }
   } catch (error) {
@@ -72,11 +72,11 @@ router.post("/social/scan", requireToken, async (req: Request, res: Response) =>
       batches: created.map((b) => ({ id: b.id, videoId: b.videoId, track: b.track, title: b.title })),
     });
     if (created.length > 0) {
-      void notifyTelegram({
-        heading: `📱 <b>${created.length} new social draft(s) ready</b>`,
-        lines: created.map((b) => `Track ${b.track}: ${b.title}`),
+      void notifyMark({
+        title: `📱 ${created.length} new social draft(s) ready`,
+        body: created.map((b) => `Track ${b.track}: ${b.title}`).join("\n"),
         url: reviewUrl("/api/social/review"),
-        buttonLabel: `Review ${created.length} →`,
+        tag: "social-review",
       });
     }
   } catch (error) {
@@ -100,11 +100,11 @@ router.post("/social/regenerate", requireToken, async (_req: Request, res: Respo
     try {
       const fresh = await regenerateQueue();
       if (fresh.length > 0) {
-        await notifyTelegram({
-          heading: `♻️ <b>${fresh.length} hook(s) regenerated</b>`,
-          lines: fresh.map((b) => `Track ${b.track}: ${b.title}`),
+        await notifyMark({
+          title: `♻️ ${fresh.length} hook(s) regenerated`,
+          body: fresh.map((b) => `Track ${b.track}: ${b.title}`).join("\n"),
           url: reviewUrl("/api/social/review"),
-          buttonLabel: `Review ${fresh.length} →`,
+          tag: "social-review",
         });
       }
     } catch (err) {
@@ -317,17 +317,17 @@ router.get("/social/compose", requireToken, (req: Request, res: Response) => {
 </body></html>`);
 });
 
-// POST /api/social/notify — send a Telegram nudge for current pending batches (manual/test).
+// POST /api/social/notify — send a review nudge for current pending batches (manual/test).
 router.post("/social/notify", requireToken, async (_req: Request, res: Response) => {
   const queue = await loadQueue();
   const pending = queue.batches.filter((b) => b.status === "pending");
-  const result = await notifyTelegram({
-    heading: `📱 <b>${pending.length} social draft(s) awaiting review</b>`,
-    lines: pending.slice(0, 8).map((b) => `Track ${b.track}: ${b.title}`),
+  const channel = await notifyMark({
+    title: `📱 ${pending.length} social draft(s) awaiting review`,
+    body: pending.slice(0, 8).map((b) => `Track ${b.track}: ${b.title}`).join("\n"),
     url: reviewUrl("/api/social/review"),
-    buttonLabel: `Review ${pending.length} →`,
+    tag: "social-review",
   });
-  res.json({ success: result.success, pending: pending.length, reason: result.reason });
+  res.json({ success: channel !== "none", pending: pending.length, channel });
 });
 
 // GET /api/social/schedule-config — current cadence. POST to update.

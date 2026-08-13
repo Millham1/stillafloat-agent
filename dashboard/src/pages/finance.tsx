@@ -153,7 +153,7 @@ export default function Finance() {
             <tbody className="divide-y divide-border">
               {txns.isLoading && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>}
               {txns.error && <tr><td colSpan={5} className="px-4 py-8 text-center text-destructive">Failed to load transactions.</td></tr>}
-              {!txns.isLoading && !txns.error && transactions.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No transactions yet — snap a receipt to the Telegram bot.</td></tr>}
+              {!txns.isLoading && !txns.error && transactions.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No transactions yet — receipts and invoices that arrive in the inbox are captured automatically.</td></tr>}
               {transactions.map((t) => (
                 <tr key={t.id} className="hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{fmtDate(t.txn_date)}</td>

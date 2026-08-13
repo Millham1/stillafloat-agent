@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { requireToken, extractToken } from "../lib/http-auth";
 import { ingestProducts, loadPending, approvePending, rejectPending, type RawProduct } from "../lib/affiliate-agent";
-import { notifyTelegram, reviewUrl } from "../lib/telegram";
+import { notifyMark, reviewUrl } from "../lib/notify";
 
 const router: IRouter = Router();
 
@@ -17,14 +17,14 @@ router.post("/affiliate/ingest", requireToken, async (req: Request, res: Respons
     const { added, skipped } = await ingestProducts(items);
     let notified = false;
     if (added.length > 0) {
-      // Awaited (not fire-and-forget) so the Telegram nudge reliably sends.
-      const r = await notifyTelegram({
-        heading: `🛒 <b>${added.length} new affiliate pick(s) for review</b>`,
-        lines: added.slice(0, 10).map((a) => `${a.category}: ${a.title.slice(0, 70)}`),
+      // Awaited (not fire-and-forget) so the review nudge reliably sends.
+      const channel = await notifyMark({
+        title: `🛒 ${added.length} new affiliate pick(s) for review`,
+        body: added.slice(0, 10).map((a) => `${a.category}: ${a.title.slice(0, 70)}`).join("\n"),
         url: reviewUrl("/api/affiliate/review"),
-        buttonLabel: `Review ${added.length} →`,
-      }).catch(() => ({ success: false }));
-      notified = Boolean(r.success);
+        tag: "affiliate-review",
+      }).catch(() => "none" as const);
+      notified = channel !== "none";
     }
     res.json({ success: true, added: added.length, skipped, notified });
   } catch (error) {
@@ -32,17 +32,17 @@ router.post("/affiliate/ingest", requireToken, async (req: Request, res: Respons
   }
 });
 
-// POST /api/affiliate/notify — re-send the Telegram nudge for the current queue (manual).
+// POST /api/affiliate/notify — re-send the review nudge for the current queue (manual).
 router.post("/affiliate/notify", requireToken, async (_req: Request, res: Response) => {
   const pending = await loadPending();
   const n = pending.items.length;
-  const r = await notifyTelegram({
-    heading: `🛒 <b>${n} affiliate pick(s) awaiting review</b>`,
-    lines: pending.items.slice(0, 10).map((i) => `${i.category}: ${i.title.slice(0, 70)}`),
+  const channel = await notifyMark({
+    title: `🛒 ${n} affiliate pick(s) awaiting review`,
+    body: pending.items.slice(0, 10).map((i) => `${i.category}: ${i.title.slice(0, 70)}`).join("\n"),
     url: reviewUrl("/api/affiliate/review"),
-    buttonLabel: `Review ${n} →`,
+    tag: "affiliate-review",
   });
-  res.json({ success: r.success, pending: n, reason: r.reason });
+  res.json({ success: channel !== "none", pending: n, channel });
 });
 
 // GET /api/affiliate/pending — queued picks awaiting review.
