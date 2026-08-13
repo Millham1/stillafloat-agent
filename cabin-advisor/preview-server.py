@@ -101,7 +101,7 @@ def _answers_sentences(a):
     elif pri == "space": bits.append("What matters most to them: room to spread out.")
     bits.append("Someone in the cabin gets seasick — steadiness genuinely matters to them."
                 if a.get("motion") else
-                "Nobody gets seasick. Do NOT mention motion, steadiness, queasiness or stomachs at all.")
+                "Nobody gets seasick. Do NOT mention motion, sway, steadiness, queasiness, stomachs or seasickness at all — not even to reassure them.")
     return " ".join(bits)
 
 
@@ -130,7 +130,7 @@ Write, for each shortlisted cabin, in rank order:
 - "reason": 2-4 sentences in your voice, reasoned for this traveler's answers specifically. Differentiate every cabin; where two are nearly the same, say so and give the honest tie-breaker. Vary your openings — don't start each one the same way.
 And rewrite each steer-clear reason for this traveler (1-2 sentences).
 
-Speak ONLY to concerns they actually told you. The brand is "Cruise smarter. Laugh more." — one light, dry touch of humor across the whole set is welcome where it lands naturally; never forced, never at the traveler's expense. Respond with ONLY a JSON object:
+Speak ONLY to concerns they actually told you. REQUIRED, not optional: at least one genuinely funny dry line across the set, in your register (situational — buffets, conga lines, pool-chair hogs, pajamas at sea — never at the traveler). Final check before answering: if any sentence contains "best match", "perfect for", "exactly what you're after", "boasts", "offers", "features", or could run in a cruise brochure unchanged, rewrite it first. Respond with ONLY a JSON object:
 {{"recommendations":[{{"cabin":"<number>","hook":"...","reason":"..."}}],"steerClear":[{{"cabin":"<number or area>","reason":"..."}}]}}"""
 
     try:
