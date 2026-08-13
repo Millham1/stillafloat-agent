@@ -1,10 +1,13 @@
 import { logger } from "./logger";
 import { sendPush } from "./push";
 
-// Marketing/approval nudges. Formerly Telegram — now in-house Web Push to the
-// dashboard PWA (no third-party service, no phone number). The export name and
-// signature are unchanged so existing callers (social, newsletter, affiliate)
-// keep working; only the transport changed. No-ops cleanly if push isn't set up.
+// DEPRECATED — kept for one release, no longer imported anywhere.
+//
+// Marketing/approval nudges formerly went out via Telegram, then via this shim
+// (raw Web Push). All callers (social, newsletter, affiliate, commentary,
+// index) now use notifyMark() + reviewUrl() from ./notify — THE single
+// notification channel (ntfy-primary, Web Push fallback). This shim bypassed
+// the ntfy path, so nothing may import it; delete the file next release.
 
 const SITE = "https://stillafloatcruising.com";
 
@@ -19,11 +22,13 @@ function stripHtml(s: string): string {
 
 // Build a token-bearing review URL. Tapping the push opens this page; the token
 // rides only in the (private, on-device) notification, same as before.
+/** @deprecated Use reviewUrl from ./notify (handles paths that already carry a query string). */
 export function reviewUrl(path: string): string {
   const tok = process.env["AGENT_APPROVAL_TOKEN"];
   return `${SITE}${path}${tok ? `?token=${encodeURIComponent(tok)}` : ""}`;
 }
 
+/** @deprecated Use notifyMark from ./notify — the single channel (ntfy + Web Push fallback). */
 export async function notifyTelegram(opts: {
   heading: string; // may contain HTML (e.g. <b>…</b>) — stripped for the push title
   lines?: string[];
