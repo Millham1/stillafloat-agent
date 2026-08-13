@@ -1,4 +1,8 @@
-const CACHE_NAME = 'still-afloat-editorial-v5';
+// v6: purge runtime-cached bundles from older builds. Combined with the
+// heuristically-cached app shell (index.html had no Cache-Control header),
+// stale runtime entries could pin an old bundle — and old dashboard numbers
+// (e.g. the YouTube subscriber count) — on an installed PWA for days.
+const CACHE_NAME = 'still-afloat-editorial-v6';
 
 // App shell to cache on install. MUST only contain basic-auth-EXEMPT paths:
 // caching '/' + '/index.html' (behind the dashboard basic-auth) made every SW
@@ -33,10 +37,15 @@ self.addEventListener('fetch', (event) => {
   // Never intercept API calls — always go to network
   if (url.pathname.startsWith('/api/')) return;
 
-  // Network-first for navigation requests (so fresh content always loads)
+  // Network-first for navigation requests (so fresh content always loads).
+  // cache: 'no-store' bypasses the HTTP cache: nginx served index.html with no
+  // Cache-Control, so Safari's heuristic caching could hand back a days-old app
+  // shell that references (SW-cached) stale bundles — the stale-dashboard gotcha.
+  // Fetch by URL because a mode:'navigate' Request cannot be re-constructed
+  // with init options.
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() =>
+      fetch(event.request.url, { cache: 'no-store', credentials: 'include' }).catch(() =>
         caches.match('/brief.html')
       )
     );
