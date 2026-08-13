@@ -24,6 +24,7 @@ import actionsRouter from "./actions";
 import proposalsRouter from "./proposals";
 import webcamsRouter from "./webcams";
 import wmsRouter from "./wms";
+import congaLineRouter from "./conga-line";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(actionsRouter);
 router.use(proposalsRouter);
 router.use(webcamsRouter);
 router.use(wmsRouter);
+router.use(congaLineRouter);
 
 export default router;

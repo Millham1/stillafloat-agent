@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Which Cabin Should You Book? — Cabin Concierge | Still Afloat</title>
+<meta name="description" content="Answer a few questions and get real cabin numbers on your ship — why each one, the honest difference between them, and the ones I'd tell you to avoid. Free.">
+<link rel="canonical" href="https://stillafloatcruising.com/cabin-finder.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:url" content="https://stillafloatcruising.com/cabin-finder.html">
+<meta property="og:title" content="Which Cabin Should You Book? — Cabin Concierge | Still Afloat">
+<meta property="og:description" content="Real cabin numbers for your ship, with the reason behind each one — and the ones to avoid.">
+<meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
+<!-- site stylesheet: brings the palette (--navy/--blue/--sun/--seafoam), Bree Serif
+     headings + Baloo 2 body, and the shared section/footer chrome -->
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*{box-sizing:border-box}
+.cf-wrap{max-width:800px;margin:auto;padding:8px 20px 80px}
+
+/* The page lives on the site's own hero art (same image as the homepage), washed
+   navy so the dark UI keeps its contrast — text-only read as off-brand (Mark, 2026-08-13). */
+html{background:#07183f}
+body{background:transparent}
+body::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(7,24,63,.7) 0%,rgba(7,24,63,.9) 42%,rgba(7,24,63,.985) 78%,#07183f 100%),
+             url('/assets/images/Tropical beach with palm trees and ship.png') center top/cover no-repeat}
+
+/* hero */
+.cf-hero{text-align:center;padding:26px 0 8px}
+.cf-hero h1{font-size:clamp(30px,4.8vw,46px);line-height:1.14;margin:14px 0 14px}
+.cf-hero p{color:rgba(247,251,255,.86);max-width:52ch;margin:0 auto;line-height:1.72;font-size:18px}
+
+/* what we can actually advise on — never promise a ship we can't reason about.
+   One quiet line, not a boxed billboard: the coverage is a disclosure, not a feature. */
+.cf-cover{text-align:center;margin:18px 0 6px;color:rgba(247,251,255,.68);font-size:15.5px;line-height:1.6}
+.cf-cover b{color:var(--seafoam);font-weight:700}
+.cf-cover a{color:var(--seafoam)}
+
+/* progress */
+.cf-dots{display:flex;gap:8px;justify-content:center;margin:26px 0 20px}
+.cf-dot{width:30px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);transition:background .25s}
+.cf-dot.on{background:var(--seafoam)}
+
+/* question card — every question opens on a photo, not a wall of text */
+.cf-card{background:rgba(7,24,63,.72);border:1px solid rgba(255,255,255,.14);border-radius:22px;
+         padding:30px 26px;box-shadow:0 22px 46px rgba(0,0,0,.36);overflow:hidden}
+.cf-photo{margin:-30px -26px 24px;height:136px;background-size:cover;background-position:center;
+          border-bottom:1px solid rgba(255,255,255,.12)}
+@media(max-width:520px){.cf-photo{height:106px}}
+.cf-q{font-size:clamp(23px,3.4vw,30px);margin:0 0 8px;line-height:1.3}
+.cf-sub{color:rgba(247,251,255,.84);margin:0 0 24px;font-size:17px;line-height:1.65;max-width:46ch}
+.cf-opts{display:grid;gap:13px}
+.cf-opt{display:flex;align-items:flex-start;gap:15px;width:100%;text-align:left;cursor:pointer;
+        background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.16);border-radius:16px;
+        padding:19px 20px;color:#f7fbff;font-family:'Baloo 2',system-ui,sans-serif;
+        transition:border-color .18s,background .18s,transform .12s}
+.cf-opt:hover{border-color:rgba(93,255,154,.55);background:rgba(93,255,154,.09)}
+.cf-opt:active{transform:scale(.99)}
+.cf-opt i{color:var(--seafoam);font-size:20px;width:26px;text-align:center;margin-top:3px;flex:none}
+.cf-opt b{display:block;font-weight:700;font-size:18.5px;line-height:1.35}
+.cf-opt em{display:block;font-style:normal;color:rgba(247,251,255,.84);font-size:16px;line-height:1.55;margin-top:4px}
+.cf-opt.pass{background:transparent;border-style:dashed}
+.cf-opt.pass b{font-weight:600;color:rgba(247,251,255,.82)}
+.cf-select{width:100%;padding:17px 18px;border-radius:16px;background:rgba(255,255,255,.07);
+           border:1.5px solid rgba(255,255,255,.16);color:#f7fbff;font-family:'Baloo 2',system-ui,sans-serif;
+           font-size:18px;outline:none}
+.cf-select:focus{border-color:rgba(93,255,154,.55)}
+.cf-select option{background:#07183f}
+.cf-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px}
+.cf-back{background:none;border:none;color:rgba(247,251,255,.62);font-family:'Baloo 2',system-ui,sans-serif;
+         font-size:17px;cursor:pointer;padding:8px 4px}
+.cf-back:hover{color:#f7fbff}
+.cf-go{background:var(--seafoam);color:var(--navy);border:none;border-radius:14px;padding:15px 28px;
+       font-family:'Baloo 2',system-ui,sans-serif;font-weight:800;font-size:18px;cursor:pointer}
+.cf-go[disabled]{opacity:.35;cursor:not-allowed}
+
+/* results */
+.cf-res h2{font-size:clamp(26px,4vw,36px);margin:0 0 8px;line-height:1.2}
+.cf-res>p{color:rgba(247,251,255,.84);margin:0 0 14px;line-height:1.68;font-size:17.5px;max-width:52ch}
+.cf-why{background:rgba(0,119,182,.16);border:1px solid rgba(93,255,154,.24);border-radius:16px;
+        padding:18px 20px;margin:0 0 24px;color:rgba(247,251,255,.88);line-height:1.68;font-size:17px}
+.cf-pick{background:rgba(7,24,63,.72);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:26px;margin-bottom:18px}
+.cf-pick.first{border-color:rgba(93,255,154,.45)}
+.cf-pickhead{display:flex;align-items:baseline;gap:13px;flex-wrap:wrap}
+.cf-num{font-family:'Bree Serif',serif;font-size:34px;color:var(--seafoam);line-height:1}
+.cf-badge{background:rgba(255,210,31,.18);color:var(--sun);border-radius:999px;padding:4px 13px;
+          font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+/* The hook line is WRITTEN BY THE ADVISOR at generation time — a headline that ties
+   the room type to what this traveler wants ("Boardwalk balcony to watch the action
+   from your own roost"). Never computed from facts here: a facts-derived line is a
+   brochure line, which is exactly what Mark rejected (2026-08-12). */
+.cf-hook{color:var(--sun);font-size:18px;font-weight:700;margin:8px 0 14px;line-height:1.5;max-width:52ch}
+.cf-reason{color:#f7fbff;line-height:1.8;margin:0;font-size:18px;max-width:58ch}
+/* pick-and-send: each card is selectable, a sticky bar sends the selection to Mark */
+.cf-pickactions{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:16px}
+.cf-add{display:inline-flex;align-items:center;gap:9px;background:transparent;
+        border:1.5px solid rgba(93,255,154,.4);color:var(--seafoam);border-radius:12px;
+        padding:10px 18px;font-family:'Baloo 2',system-ui,sans-serif;font-weight:700;
+        font-size:16px;cursor:pointer;transition:background .15s,color .15s}
+.cf-add:hover{background:rgba(93,255,154,.12)}
+.cf-add.on{background:var(--seafoam);color:var(--navy);border-color:var(--seafoam)}
+.cf-sendbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;
+            background:rgba(7,24,63,.97);border-top:1px solid rgba(93,255,154,.35);
+            padding:14px 20px;box-shadow:0 -10px 30px rgba(0,0,0,.4)}
+.cf-sendbar.show{display:block}
+.cf-sendbar .inner{max-width:800px;margin:auto;display:flex;align-items:center;gap:14px;
+                   justify-content:space-between;flex-wrap:wrap}
+.cf-sendbar .count{color:#f7fbff;font-size:16.5px}
+.cf-sendbar a{background:var(--sun);color:var(--navy);text-decoration:none;border-radius:12px;
+              padding:12px 24px;font-weight:800;font-size:17px;font-family:'Baloo 2',system-ui,sans-serif}
+.cf-avoid{background:rgba(255,122,24,.1);border:1px solid rgba(255,122,24,.3);border-radius:18px;padding:22px;margin:24px 0}
+.cf-avoid h3{font-size:19px;color:#ffb887;margin:0 0 12px}
+.cf-avoid ul{margin:0;padding-left:20px}
+.cf-avoid li{color:rgba(247,251,255,.88);line-height:1.7;margin-bottom:10px;font-size:17px}
+/* CTA panel — swap the gradient for one of Mark's generated images when they land:
+   background:linear-gradient(...same wash...), url('/assets/images/concierge/cta.jpg') center/cover */
+.cf-cta{background:linear-gradient(135deg,rgba(0,119,182,.4),rgba(7,24,63,.75));
+        border:1px solid rgba(93,255,154,.3);border-radius:22px;padding:34px 26px;text-align:center;margin-top:28px}
+.cf-cta h3{font-size:25px;margin:0 0 10px}
+.cf-cta p{color:rgba(247,251,255,.86);margin:0 auto 20px;line-height:1.7;font-size:17.5px;max-width:46ch}
+.cf-cta a{display:inline-block;background:var(--sun);color:var(--navy);text-decoration:none;border-radius:14px;
+          padding:15px 30px;font-weight:800;font-size:18px;font-family:'Baloo 2',system-ui,sans-serif}
+.cf-note{color:rgba(247,251,255,.6);font-size:15.5px;text-align:center;margin-top:24px;line-height:1.6}
+.cf-err{background:rgba(255,122,24,.12);border:1px solid rgba(255,122,24,.34);border-radius:14px;
+        padding:17px;color:#ffd9c2;font-size:17px}
+.cf-spin{text-align:center;padding:44px;color:rgba(247,251,255,.84);font-size:18px}
+.hide{display:none}
+
+/* Conga Line — the crowd-sourced 1-5 audience score, shown near the ship name
+   in the results header. Renders nothing when a ship has no published rating
+   yet (most won't) — no placeholder, no "no rating yet" clutter (Mark's call). */
+.cf-conga{margin:10px 0 20px;padding:14px 18px;background:rgba(255,255,255,.05);
+          border:1px solid rgba(93,255,154,.22);border-radius:14px}
+.cf-conga-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cf-conga-dancers svg{display:inline-block;vertical-align:middle;margin-right:1px}
+.cf-conga-score{font-weight:800;color:var(--seafoam);font-size:15.5px}
+.cf-conga-comment{color:rgba(247,251,255,.86);margin:8px 0 0;line-height:1.6;font-size:15.5px}
+/* The Grinch's take: a distinct label + tone, never blended into the main comment. */
+.cf-conga-grinch{color:rgba(247,251,255,.62);margin:8px 0 0;line-height:1.55;font-size:14px;
+                  font-style:italic}
+.cf-conga-grinch b{font-style:normal;color:rgba(255,210,31,.85);font-weight:700}
+</style>
+</head>
+<body>
+
+<div id="navbar-container"></div>
+
+<div class="cf-wrap">
+
+  <div class="cf-hero">
+    <span class="section-kicker">Cabin Concierge</span>
+    <h1>Let's find the right cabin.</h1>
+    <p>Tell me a little about your trip and I'll point you to the exact rooms I'd book —
+       and the ones I'd walk past.</p>
+  </div>
+
+  <!-- Only ever advertise ships the concierge can genuinely reason about. -->
+  <div class="cf-cover" id="coverage"></div>
+
+  <div class="cf-dots" id="dots"></div>
+  <div id="stage"></div>
+
+  <p class="cf-note">Free, and no email needed to see your cabins.</p>
+</div>
+
+<footer>
+  <p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" style="height:20px;vertical-align:middle;opacity:.7"></p>
+</footer>
+
+<script src="/components/navbar.js?v=20260725-topbar2"></script>
+<script>
+// The reasoning is written once, up front, and stored server-side — this page
+// never waits on an AI. It asks a few questions and fetches the answer.
+
+// One photo per question. Mark is generating these himself (2026-08-13 — my Unsplash
+// picks read as generic resorts, not cruising). Drop his images into
+// /assets/images/concierge/ and fill in the paths; a question with no entry simply
+// renders without a photo strip, so this can go live half-filled.
+const IMG = {
+  door:    "",   // e.g. "/assets/images/concierge/door.jpg"
+  ship:    "",
+  party:   "",
+  room:    "",
+  priority:"",
+  motion:  "",
+};
+
+const DOOR = { key:"door", q:"First things first — do you know your ship?", sub:"Either answer is fine. I'll take it from there.", opts:[
+  {v:"known", i:"fa-ship",    t:"I've got my ship",     e:"Booked, or close to it."},
+  {v:"new",   i:"fa-compass", t:"Not yet — I'm new to this", e:"No problem. I'll start you somewhere easy to love."} ]};
+
+const SHIP_STEP = { key:"ship", q:"Which ship?", sub:"Pick it and I'll talk you through the actual rooms on board.", type:"ship" };
+
+// Every question has an escape, so nobody gets stuck on one they can't answer.
+// NO budget question — we don't show prices, so asking about money would promise
+// a price-shaped answer this tool can't give. Room type covers the same ground
+// the way an advisor would actually ask it.
+const CORE = [
+  { key:"party", q:"Who's going?", sub:"This changes my answer more than anything else.", opts:[
+      {v:"couple", i:"fa-heart",    t:"Just the two of us", e:"One cabin, two people, zero compromises on whose side gets the good pillow."},
+      {v:"family", i:"fa-children", t:"Family with kids",   e:"Room to spread out, and neighbors who won't mind."},
+      {v:"solo",   i:"fa-user",     t:"Just me",            e:"I'll tell you where going solo actually works in your favor."},
+      {v:"group",  i:"fa-users",    t:"A group of us",      e:"Several cabins — close enough to find each other, far enough to escape each other."} ]},
+  // No room-CLASS names here — a first-timer doesn't know an oceanview from a
+  // balcony grade, and they shouldn't have to (Mark, 2026-08-12). Ask how they
+  // picture USING the room; the mapping to a category is my job, not theirs.
+  { key:"room", q:"How do you picture using your room?", sub:"Be honest — this matters more than any brochure photo.", opts:[
+      {v:"inside",    i:"fa-bed",         t:"Crash and recharge",             e:"You'll be out living the ship all day. The room just has to sleep you."},
+      {v:"oceanview", i:"fa-sun",         t:"Wake up to daylight and water",  e:"You want to see where you are — without needing to sit outside in it."},
+      {v:"balcony",   i:"fa-mug-hot",     t:"Coffee outside in my pajamas",   e:"Your own private piece of outdoors. Nobody judges the pajamas at sea."},
+      {v:"suite",     i:"fa-couch",       t:"The room is part of the vacation", e:"Space to spread out, settle in, maybe never leave. I get it."} ],
+    pass:{v:"balcony", t:"Honestly, no idea", e:"That's what I'm here for. I'll pick for your group and tell you why."} },
+  { key:"priority", q:"What matters most once you're aboard?", sub:"When two rooms are close, this is my tie-breaker.", opts:[
+      {v:"ocean", i:"fa-water", t:"Waking up to the ocean", e:"A real sea view, not a courtyard or a wall."},
+      {v:"quiet", i:"fa-moon",  t:"Peace and quiet",        e:"Away from the elevators, the bars and the pool deck."},
+      {v:"action",i:"fa-bolt",  t:"Being near the action",  e:"Steps from the pool, the shows, and the occasional conga line."},
+      {v:"space", i:"fa-up-right-and-down-left-from-center", t:"Room to spread out", e:"A real living space, not just a bed with a view."} ],
+    pass:{v:"ocean", t:"All of it, ideally", e:"Then I'll lead with the view and keep you comfortable."} },
+  { key:"motion", q:"Does anyone get seasick?", sub:"No shame in it — half the fun of a ship is that it moves. I'll just keep you where it moves least.", opts:[
+      {v:"yes", i:"fa-triangle-exclamation", t:"Yes — keep us steady", e:"Then steadiness beats the view. That's the right call."},
+      {v:"no",  i:"fa-check",                t:"No, we're fine",       e:"Good — that opens up the higher decks."} ],
+    pass:{v:"no", t:"I can grin and bear it", e:"Noted — I won't give up a good room over it."} },
+];
+
+let steps = [DOOR]; const answers = {}; let step = 0; let ships = []; let shipsLoaded = false;
+const stage = document.getElementById("stage"), dots = document.getElementById("dots"),
+      coverage = document.getElementById("coverage");
+
+function rebuild(){ steps = answers.door === "new" ? [DOOR, ...CORE] : [DOOR, SHIP_STEP, ...CORE]; }
+function drawDots(){ dots.innerHTML = steps.map((_,i)=>`<div class="cf-dot ${i<=step?'on':''}"></div>`).join(""); }
+
+// Never gate the first paint on a network call — a hanging fetch once left a dead page.
+async function loadShips(){
+  const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 8000);
+  try{ const r = await fetch("/api/cabins/ships", {signal:ctl.signal}); ships = (await r.json()).ships || []; }
+  catch{ ships = []; } finally{ clearTimeout(t); shipsLoaded = true; drawCoverage(); }
+}
+
+// Say exactly which lines/ships are loaded. If a ship isn't here, the concierge
+// can't reason about it and we don't imply otherwise.
+function drawCoverage(){
+  if (!ships.length){
+    coverage.innerHTML = shipsLoaded
+      ? `<h2>Ships I can advise on</h2><p>I can't reach the list right now — try a refresh in a moment.</p>`
+      : `<p>Checking which ships I've got loaded…</p>`;
+    return;
+  }
+  const named = ships.map(s => `<b>${s.ship}</b> (${s.line})`).join(", ");
+  coverage.innerHTML =
+    `So far I've done the room-by-room homework on ${named} — more on the way.
+     Yours isn't here yet? <a href="/work-with-mark.html">Ask me directly</a>.`;
+}
+
+function render(){
+  rebuild(); drawDots();
+  if (step >= steps.length) return submit();
+  const s = steps[step];
+  const body = s.type === "ship"
+    ? (ships.length
+        ? `<select class="cf-select" id="shipSel"><option value="">Choose your ship…</option>
+             ${ships.map(x=>`<option value="${x.slug}">${x.ship} — ${x.line}</option>`).join("")}</select>`
+        : (shipsLoaded
+            ? `<div class="cf-err">I can't reach the ship list right now. Refresh in a moment — nothing you've answered is lost.</div>`
+            : `<select class="cf-select" disabled><option>Loading ships…</option></select>`))
+    : `<div class="cf-opts">
+         ${s.opts.map(o=>`<button class="cf-opt" data-v="${o.v}">
+             <i class="fa-solid ${o.i}"></i><span><b>${o.t}</b><em>${o.e}</em></span></button>`).join("")}
+         ${s.pass?`<button class="cf-opt pass" data-v="${s.pass.v}">
+             <i class="fa-solid fa-forward"></i><span><b>${s.pass.t}</b><em>${s.pass.e}</em></span></button>`:""}
+       </div>`;
+
+  stage.innerHTML = `<div class="cf-card">
+      ${IMG[s.key] ? `<div class="cf-photo" style="background-image:linear-gradient(rgba(7,24,63,.16),rgba(7,24,63,.44)),url('${IMG[s.key]}')"></div>` : ""}
+      <h2 class="cf-q">${s.q}</h2><p class="cf-sub">${s.sub}</p>${body}
+      <div class="cf-nav">
+        <button class="cf-back" ${step===0?'style="visibility:hidden"':''}>← Back</button>
+        ${s.type==="ship"?`<button class="cf-go" ${answers.ship?'':'disabled'}>Next</button>`:`<span></span>`}
+      </div></div>`;
+
+  stage.querySelector(".cf-back").onclick = ()=>{ step=Math.max(0,step-1); render(); };
+  const go = stage.querySelector(".cf-go"), sel = stage.querySelector("#shipSel");
+  if (sel){
+    sel.value = answers.ship || "";
+    sel.onchange = ()=>{ answers.ship = sel.value; if(go) go.disabled = !sel.value; };
+    if (go) go.onclick = ()=>{ step++; render(); };
+  }
+  stage.querySelectorAll(".cf-opt").forEach(b=>{
+    b.onclick = ()=>{ answers[s.key]=b.dataset.v; step++; render(); };
+  });
+}
+
+async function submit(){
+  stage.innerHTML = `<div class="cf-spin"><i class="fa-solid fa-compass fa-spin"></i> Working out your cabins…</div>`;
+  const ship = answers.ship || (ships[0] && ships[0].slug);
+  if (!ship){ stage.innerHTML = `<div class="cf-card"><div class="cf-err">No ships are loaded yet.</div></div>`; return; }
+  try{
+    const r = await fetch("/api/cabins/recommend",{ method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ ship, party:answers.party, room:answers.room,
+                             priority:answers.priority, motion:answers.motion==="yes" }) });
+    if (!r.ok) throw new Error((await r.json()).error || "Something went wrong");
+    show(await r.json(), answers.door === "new");
+  }catch(e){
+    stage.innerHTML = `<div class="cf-card"><div class="cf-err">${e.message}</div>
+      <div class="cf-nav"><button class="cf-back">← Start over</button><span></span></div></div>`;
+    stage.querySelector(".cf-back").onclick = ()=>{ step=0; render(); };
+  }
+}
+
+// ── Conga Line — small reusable inline SVG helper (compact, in-product use) ──
+// 5 simple dancer silhouettes, N filled (seafoam) + rest unfilled. The full
+// illustrated 6-character "Grinch to Conga King/Queen" cast Mark generated is
+// for a future ABOUT/EXPLAINER page, not this compact in-results icon.
+function congaLineSvg(rating){
+  const filled = Math.max(0, Math.min(5, Math.round(rating)));
+  let out = "";
+  for (let i = 0; i < 5; i++){
+    const on = i < filled;
+    const color = on ? "var(--seafoam)" : "rgba(247,251,255,.22)";
+    out += `<svg viewBox="0 0 20 28" width="18" height="25" aria-hidden="true">
+      <circle cx="10" cy="4" r="3.4" fill="${color}"/>
+      <path d="M10 8 L10 16 M10 10 L4 8 M10 10 L17 13 M10 16 L5 26 M10 16 L15 22"
+            stroke="${color}" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    </svg>`;
+  }
+  return out;
+}
+
+// Fetches the ship's rating AFTER the results already painted — never blocks
+// the recommendation itself. Most ships have no rating yet: a 404 (or any
+// failure) renders nothing, not a placeholder (Mark's call, 2026-08-13).
+async function loadRating(shipSlug){
+  const el = document.getElementById("congaLine");
+  if (!el || !shipSlug) return;
+  try{
+    const r = await fetch(`/api/ships/${encodeURIComponent(shipSlug)}/rating`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.ok || !d.rating) return;
+    el.innerHTML = `<div class="cf-conga">
+      <div class="cf-conga-top">
+        <span class="cf-conga-dancers">${congaLineSvg(d.rating)}</span>
+        <span class="cf-conga-score">${d.ratingDisplay || (d.rating + "/5 Conga Line")}</span>
+      </div>
+      ${d.comment ? `<p class="cf-conga-comment">${d.comment}</p>` : ""}
+      ${d.grinchTake ? `<p class="cf-conga-grinch"><b>The Grinch says:</b> ${d.grinchTake}</p>` : ""}
+    </div>`;
+  }catch{ /* silent — no rating shown */ }
+}
+
+// Cabins the visitor has picked to send to Mark.
+const picked = new Set();
+let resultShip = "";
+
+function drawSendBar(){
+  const bar = document.getElementById("sendbar");
+  if (!bar) return;
+  if (!picked.size){ bar.classList.remove("show"); return; }
+  const nums = [...picked].join(", ");
+  const q = new URLSearchParams({ ship:resultShip, cabins:nums });
+  bar.querySelector(".count").textContent =
+    picked.size === 1 ? `Cabin ${nums} picked` : `${picked.size} cabins picked — ${nums}`;
+  // The dedicated request page — they've already said yes, so no more selling,
+  // just the details Mark needs (Mark, 2026-08-12).
+  bar.querySelector("a").href = `/cabin-request.html?${q.toString()}`;
+  bar.classList.add("show");
+}
+
+function show(d, wasNew){
+  dots.classList.add("hide"); coverage.classList.add("hide");
+  const shipName = d.ship?.ship || "this ship";
+  resultShip = shipName; picked.clear();
+
+  const picks = (d.picks||[]).map((p,i)=>`
+    <div class="cf-pick ${i===0?'first':''}">
+      <div class="cf-pickhead"><div class="cf-num">${p.cabin}</div>
+        ${i===0?'<span class="cf-badge">Where I’d start</span>':''}</div>
+      ${p.hook ? `<div class="cf-hook">${p.hook}</div>` : ""}
+      <p class="cf-reason">${p.reason||""}</p>
+      <div class="cf-pickactions">
+        <button class="cf-add" data-cabin="${p.cabin}">
+          <i class="fa-solid fa-plus"></i> Send this one to me</button>
+      </div>
+    </div>`).join("");
+
+  const avoid = (d.steerClear||[]).length ? `
+    <div class="cf-avoid"><h3>The ones I'd walk past</h3><ul>
+      ${d.steerClear.map(s=>`<li>${typeof s==="string"?s:`<b>${s.cabin||s.area||""}</b> — ${s.reason||""}`}</li>`).join("")}
+    </ul></div>` : "";
+
+  const nums = (d.picks||[]).slice(0,3).map(p=>p.cabin).join(", ");
+  const q = new URLSearchParams({ ship:shipName, cabins:nums });
+
+  stage.innerHTML = `<div class="cf-res">
+    <h2>Here's where I'd put you on ${shipName}.</h2>
+    <div id="congaLine"></div>
+    <p>Every number below is a real room. Pick the ones you'd consider and send them over.</p>
+    ${wasNew ? `<div class="cf-why"><b>Why this ship?</b> You told me you're new to this, so I'd start
+        you on ${shipName}. It's an easy ship to have a great first cruise on — plenty to do, hard to
+        get lost on, and if the first restaurant you try isn't your thing, there are plenty more.</div>` : ""}
+    ${picks}${avoid}
+    <div class="cf-cta">
+      <h3>Like any of these?</h3>
+      <p>Send them over and I'll check what's actually open on your sailing, how they compare,
+         and whether one of them is a mistake for your dates. That part is my job, not yours —
+         you go back to arguing about which excursion to book.</p>
+      <a href="/cabin-request.html?${q.toString()}">Send my picks to Mark</a>
+    </div>
+    <p class="cf-note">Booking through me costs you nothing extra — the cruise line pays the commission either way.</p>
+  </div>
+  <div class="cf-sendbar" id="sendbar"><div class="inner">
+    <span class="count"></span><a href="#">Send them to Mark →</a>
+  </div></div>`;
+
+  stage.querySelectorAll(".cf-add").forEach(b=>{
+    b.onclick = ()=>{
+      const c = b.dataset.cabin;
+      if (picked.has(c)){ picked.delete(c); b.classList.remove("on");
+        b.innerHTML = '<i class="fa-solid fa-plus"></i> Send this one to me'; }
+      else { picked.add(c); b.classList.add("on");
+        b.innerHTML = '<i class="fa-solid fa-check"></i> On the list'; }
+      drawSendBar();
+    };
+  });
+
+  loadRating(d.ship?.slug);
+}
+
+render();
+loadShips().then(()=>{ if (steps[step] && steps[step].type === "ship") render(); });
+</script>
+</body>
+</html>
