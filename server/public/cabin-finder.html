@@ -20,6 +20,14 @@
 *{box-sizing:border-box}
 .cf-wrap{max-width:800px;margin:auto;padding:8px 20px 80px}
 
+/* The page lives on the site's own hero art (same image as the homepage), washed
+   navy so the dark UI keeps its contrast — text-only read as off-brand (Mark, 2026-08-13). */
+html{background:#07183f}
+body{background:transparent}
+body::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(7,24,63,.7) 0%,rgba(7,24,63,.9) 42%,rgba(7,24,63,.985) 78%,#07183f 100%),
+             url('/assets/images/Tropical beach with palm trees and ship.png') center top/cover no-repeat}
+
 /* hero */
 .cf-hero{text-align:center;padding:26px 0 8px}
 .cf-hero h1{font-size:clamp(30px,4.8vw,46px);line-height:1.14;margin:14px 0 14px}
@@ -36,9 +44,12 @@
 .cf-dot{width:30px;height:4px;border-radius:2px;background:rgba(255,255,255,.18);transition:background .25s}
 .cf-dot.on{background:var(--seafoam)}
 
-/* question card */
+/* question card — every question opens on a photo, not a wall of text */
 .cf-card{background:rgba(7,24,63,.72);border:1px solid rgba(255,255,255,.14);border-radius:22px;
-         padding:30px 26px;box-shadow:0 22px 46px rgba(0,0,0,.36)}
+         padding:30px 26px;box-shadow:0 22px 46px rgba(0,0,0,.36);overflow:hidden}
+.cf-photo{margin:-30px -26px 24px;height:136px;background-size:cover;background-position:center;
+          border-bottom:1px solid rgba(255,255,255,.12)}
+@media(max-width:520px){.cf-photo{height:106px}}
 .cf-q{font-size:clamp(23px,3.4vw,30px);margin:0 0 8px;line-height:1.3}
 .cf-sub{color:rgba(247,251,255,.84);margin:0 0 24px;font-size:17px;line-height:1.65;max-width:46ch}
 .cf-opts{display:grid;gap:13px}
@@ -104,8 +115,10 @@
 .cf-avoid h3{font-size:19px;color:#ffb887;margin:0 0 12px}
 .cf-avoid ul{margin:0;padding-left:20px}
 .cf-avoid li{color:rgba(247,251,255,.88);line-height:1.7;margin-bottom:10px;font-size:17px}
+/* CTA panel — swap the gradient for one of Mark's generated images when they land:
+   background:linear-gradient(...same wash...), url('/assets/images/concierge/cta.jpg') center/cover */
 .cf-cta{background:linear-gradient(135deg,rgba(0,119,182,.4),rgba(7,24,63,.75));
-        border:1px solid rgba(93,255,154,.3);border-radius:22px;padding:30px 26px;text-align:center;margin-top:28px}
+        border:1px solid rgba(93,255,154,.3);border-radius:22px;padding:34px 26px;text-align:center;margin-top:28px}
 .cf-cta h3{font-size:25px;margin:0 0 10px}
 .cf-cta p{color:rgba(247,251,255,.86);margin:0 auto 20px;line-height:1.7;font-size:17.5px;max-width:46ch}
 .cf-cta a{display:inline-block;background:var(--sun);color:var(--navy);text-decoration:none;border-radius:14px;
@@ -147,6 +160,19 @@
 <script>
 // The reasoning is written once, up front, and stored server-side — this page
 // never waits on an AI. It asks a few questions and fetches the answer.
+
+// One photo per question. Mark is generating these himself (2026-08-13 — my Unsplash
+// picks read as generic resorts, not cruising). Drop his images into
+// /assets/images/concierge/ and fill in the paths; a question with no entry simply
+// renders without a photo strip, so this can go live half-filled.
+const IMG = {
+  door:    "",   // e.g. "/assets/images/concierge/door.jpg"
+  ship:    "",
+  party:   "",
+  room:    "",
+  priority:"",
+  motion:  "",
+};
 
 const DOOR = { key:"door", q:"First things first — do you know your ship?", sub:"Either answer is fine. I'll take it from there.", opts:[
   {v:"known", i:"fa-ship",    t:"I've got my ship",     e:"Booked, or close to it."},
@@ -233,6 +259,7 @@ function render(){
        </div>`;
 
   stage.innerHTML = `<div class="cf-card">
+      ${IMG[s.key] ? `<div class="cf-photo" style="background-image:linear-gradient(rgba(7,24,63,.16),rgba(7,24,63,.44)),url('${IMG[s.key]}')"></div>` : ""}
       <h2 class="cf-q">${s.q}</h2><p class="cf-sub">${s.sub}</p>${body}
       <div class="cf-nav">
         <button class="cf-back" ${step===0?'style="visibility:hidden"':''}>← Back</button>
