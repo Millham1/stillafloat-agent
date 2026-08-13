@@ -49,8 +49,16 @@ Candidate cabins (all real, with the quirks that matter):
 ${JSON.stringify(cabins)}
 
 Recommend the best 4-6 cabins for THIS traveler, ranked (rank 1 = book first). Each reason must be distinct and tied to what they told you; where two cabins are nearly identical, say so and give the honest tie-breaker. Then list 2-3 cabins you would steer them clear of, with the honest reason.
+
+For each recommendation also write "hook": a short headline (5-10 words) that names the room TYPE and ties it to what THIS traveler wants — the reason-to-care, not a spec. Like: "Boardwalk balcony to watch the action from your own roost" or "An ocean balcony for your quiet morning coffee". Never "Ocean View Balcony on Deck 8" — that is a brochure line, not you. Every hook must be different in wording AND structure from the others; no template reuse.
+
+Fidelity rules:
+- Speak ONLY to concerns this traveler actually told you. If they never mentioned seasickness, do not bring up motion, steadiness or stomachs. If they never mentioned noise, don't lead with quiet.
+- The voice example in your instructions is a TONE reference, not content — do not reuse its phrases ("tummy troubles", "the bonus is waking up") unless this traveler genuinely has that concern.
+- Vary your openings. Do not start every reason with "Cabin NNNN is..."
+
 Respond with ONLY a JSON object:
-{"recommendations":[{"cabin":<number>,"rank":<number>,"reason":"<2-4 sentences in your voice>"}],"steerClear":[{"cabin":<number>,"reason":"<1-2 sentences>"}]}`;
+{"recommendations":[{"cabin":<number>,"rank":<number>,"hook":"<5-10 words>","reason":"<2-4 sentences in your voice>"}],"steerClear":[{"cabin":<number>,"reason":"<1-2 sentences>"}]}`;
 }
 
 function parse(text) {

@@ -76,21 +76,31 @@ These are **per-class geometric facts** that get researched once and reused acro
 Position + deck alone cannot produce them; the model must be given the class's real geometry, or
 it will invent plausible-sounding noise. Do not let it infer these silently.
 
-## 5. Cost model — the "cliffnotes" pattern
+## 5. Cost model — two layers (revised by Mark, 2026-08-12)
 
-Pre-generate advice **once per class per archetype**, store it, serve it free. **Never call the
-LLM live per customer** — that scales cost with traffic.
+**Layer A — SELECTION, pre-computed (the 2026-07-26 cliffnotes pattern).** Which cabins suit
+which traveller archetype is reasoned ONCE per class per archetype over the **full grid**, by a
+cheap model, and stored in `cabin_advice`. This is the expensive reasoning (the model must see
+every cabin to differentiate) and it never runs at request time.
 
-Runtime = deterministic cabin selection from the customer's answers + serve the matched
-archetype's pre-written reasoning. A traffic spike costs the same as a quiet day: nothing.
+**Layer B — PRESENTATION, reasoned live per search (Mark's direction, 2026-08-12: *"the agent
+should REASON a description, not regurgitate something stored in the table"*).** Serving stored
+archetype text verbatim reads canned and speaks to concerns the visitor never raised (a couple
+who said seasickness doesn't matter was reading about tummy troubles). So at request time a
+**scoped** Haiku call sees ONLY the selected 4-6 cabins' saved facts + the stored write-ups as
+grounding notes + the visitor's actual answers, and writes the hook + reasoning fresh for that
+client. Scoped cost ≈ a penny per search; identical answer-sets are served from an in-memory
+cache; any failure falls back to the stored text so the page never breaks.
 
-Model: **Claude Haiku 4.5** (near-Opus quality here for pennies). gpt-4o-mini is the fallback —
-flatter, and mis-ranked once in testing. Regenerate only when cabin data or the voice guide
-changes.
+This does NOT reopen the original "never call the LLM live" fear — that fear was about
+reasoning over the whole grid (or an Opus-class model) per visitor. The full-grid pass stays
+pre-computed; the live call is small, capped, cached and fallback-protected.
 
-> **REVISIT if this takes off.** If real volume justifies it, revisit live *per-person* reasoning
-> on a stronger model — claude-opus-5 produced truly bespoke output in testing. Archetype
-> pre-generation is the cheap approximation. Flagged by Mark 2026-07-26.
+Models: **Claude Haiku 4.5** both layers. gpt-4o-mini is the batch fallback — flatter, and
+mis-ranked once in testing. Regenerate Layer A only when cabin data or the voice guide changes.
+
+> **REVISIT if this takes off.** If real volume justifies it, consider a stronger model for the
+> live layer — claude-opus-5 produced truly bespoke output in testing. Flagged by Mark 2026-07-26.
 
 ## 6. Voice and honesty
 

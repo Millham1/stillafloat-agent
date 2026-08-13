@@ -25,6 +25,13 @@ URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 if not URL or not KEY:
     sys.exit("SUPABASE_URL and SUPABASE_SERVICE_KEY are required")
+# Optional: enables the live presentation-reasoning pass (mirrors cabins.ts).
+# Without it the preview serves the stored archetype text (the fallback path).
+AKEY = os.environ.get("ANTHROPIC_API_KEY", "")
+
+# Live reasoning uses the SAME locked voice guide as everything else.
+_vg = (Path(__file__).resolve().parent / "voice-guide.md").read_text()
+VOICE = _vg.split("\n---\n", 1)[1].strip() if "\n---\n" in _vg else _vg.strip()
 
 
 def sb(path: str):
@@ -41,23 +48,23 @@ def sb(path: str):
 # table caused quiet-seeking couples to be served the sensitive-stomach
 # archetype's reasoning (fixed both places 2026-08-12).
 ARCHETYPE_TAGS = {
-    "first-couple-ocean-steady":  ["couple", "middle", "ocean", "steady"],
-    "couple-ocean-balcony-treat": ["couple", "treat", "ocean"],
-    "anniversary-suite-splurge":  ["couple", "sky", "treat", "space"],
-    "family-action-boardwalk":    ["family", "middle", "action"],
-    "family-value-space":         ["family", "lean", "space"],
-    "quiet-retirees-calm":        ["couple", "quiet", "middle"],
-    "value-hunter-ocean":         ["lean", "ocean"],
-    "solo-first-value":           ["solo", "lean"],
+    "first-couple-ocean-steady":  ["couple", "middle", "ocean", "steady", "oceanview", "balcony"],
+    "couple-ocean-balcony-treat": ["couple", "treat", "ocean", "balcony"],
+    "anniversary-suite-splurge":  ["couple", "sky", "treat", "space", "suite"],
+    "family-action-boardwalk":    ["family", "middle", "action", "balcony"],
+    "family-value-space":         ["family", "lean", "space", "inside", "oceanview"],
+    "quiet-retirees-calm":        ["couple", "quiet", "middle", "balcony"],
+    "value-hunter-ocean":         ["lean", "ocean", "oceanview", "inside"],
+    "solo-first-value":           ["solo", "lean", "inside", "oceanview"],
     "solo-with-group":            ["solo-group"],
     "big-group-together":         ["group", "space"],
-    "experienced-ocean-midship":  ["couple", "ocean", "middle", "steady"],
+    "experienced-ocean-midship":  ["couple", "ocean", "middle", "steady", "balcony"],
     "seasick-priority-steady":    ["steady", "quiet"],
 }
 
 
 def pick_archetype(rows, a):
-    want = {v for v in [a.get("party"), a.get("budget"), a.get("priority"),
+    want = {v for v in [a.get("party"), a.get("room"), a.get("budget"), a.get("priority"),
                         "steady" if a.get("motion") else ""] if v}
     best, best_score = rows[0]["archetype_id"], -1
     for r in rows:
@@ -68,6 +75,87 @@ def pick_archetype(rows, a):
         if score > best_score:
             best, best_score = r["archetype_id"], score
     return best
+
+
+# ── Live presentation reasoning (mirrors cabins.ts reasonLive) ────────────────
+_live_cache = {}
+
+
+def _answers_sentences(a):
+    bits = []
+    party = a.get("party")
+    if party == "couple": bits.append("They are a couple — one cabin, two people.")
+    elif party == "family": bits.append("They are a family with kids and need room for everyone.")
+    elif party == "solo": bits.append("They are travelling solo.")
+    elif party == "solo-group": bits.append("They are travelling solo, alongside a group of friends in other cabins.")
+    elif party == "group": bits.append("They are a group booking several cabins who want to stay near each other.")
+    room = a.get("room")
+    if room == "inside": bits.append("They're picturing an inside room — the ship is the destination.")
+    elif room == "oceanview": bits.append("They want a window on the water, without a balcony.")
+    elif room == "balcony": bits.append("They're picturing a balcony.")
+    elif room == "suite": bits.append("They want a suite — space to properly settle in.")
+    pri = a.get("priority")
+    if pri == "ocean": bits.append("What matters most to them: waking up to a real ocean view.")
+    elif pri == "quiet": bits.append("What matters most to them: peace and quiet.")
+    elif pri == "action": bits.append("What matters most to them: being near the action.")
+    elif pri == "space": bits.append("What matters most to them: room to spread out.")
+    bits.append("Someone in the cabin gets seasick — steadiness genuinely matters to them."
+                if a.get("motion") else
+                "Nobody gets seasick. Do NOT mention motion, steadiness, queasiness or stomachs at all.")
+    return " ".join(bits)
+
+
+def reason_live(ship_name, answers, picks, steer_clear):
+    if not AKEY or not picks:
+        return None
+    key = json.dumps([ship_name, answers.get("party"), answers.get("room"),
+                      answers.get("priority"), bool(answers.get("motion"))])
+    if key in _live_cache:
+        return _live_cache[key]
+
+    cabin_data = [{"cabin": p["cabin"], "facts": p.get("facts"),
+                   "backgroundNotes": p.get("reason")} for p in picks]
+    prompt = f"""The traveler in front of you: {_answers_sentences(answers)}
+
+Ship: {ship_name}.
+
+The cabins you've already shortlisted for them, with saved facts and your background notes on each (the notes are research — take the facts from them, but write fresh for THIS traveler; do not copy their wording):
+{json.dumps(cabin_data)}
+
+Cabins you'd steer them away from (same treatment):
+{json.dumps(steer_clear)}
+
+Write, for each shortlisted cabin, in rank order:
+- "hook": a 5-10 word headline naming the room type and tying it to what THIS traveler told you they want. Like "Boardwalk balcony to watch the action from your own roost" or "An ocean balcony for your quiet morning coffee". Never a spec line like "Ocean View Balcony on Deck 8". Every hook different in wording AND structure — no template reuse.
+- "reason": 2-4 sentences in your voice, reasoned for this traveler's answers specifically. Differentiate every cabin; where two are nearly the same, say so and give the honest tie-breaker. Vary your openings — don't start each one the same way.
+And rewrite each steer-clear reason for this traveler (1-2 sentences).
+
+Speak ONLY to concerns they actually told you. Respond with ONLY a JSON object:
+{{"recommendations":[{{"cabin":"<number>","hook":"...","reason":"..."}}],"steerClear":[{{"cabin":"<number or area>","reason":"..."}}]}}"""
+
+    try:
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=json.dumps({
+                "model": "claude-haiku-4-5", "max_tokens": 1800, "system": VOICE,
+                "messages": [{"role": "user", "content": prompt}],
+            }).encode(),
+            headers={"x-api-key": AKEY, "anthropic-version": "2023-06-01",
+                     "content-type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            j = json.load(r)
+        text = "".join(b.get("text", "") for b in j.get("content", []) if b.get("type") == "text")
+        start, end = text.find("{"), text.rfind("}")
+        out = json.loads(text[start:end + 1])
+        if not out.get("recommendations"):
+            raise ValueError("empty recommendations")
+        _live_cache[key] = out
+        return out
+    except Exception as e:
+        print(f"live reasoning failed ({e}); serving stored text", file=sys.stderr)
+        return None
 
 
 class H(SimpleHTTPRequestHandler):
@@ -121,11 +209,26 @@ class H(SimpleHTTPRequestHandler):
             picks = [{**r, "cabin": str(r["cabin"]), "facts": by_num.get(str(r["cabin"]))} for r in recs]
 
             srow = sb(f"cabin_ships?select=ship,line,class&slug=eq.{urllib.parse.quote(ship)}")
+            ship_name = (srow[0].get("ship") if srow else None) or ship
+            steer = advice.get("steer_clear") or []
+
+            # Live pass: rewrite hook + reason for THIS visitor. Stored text is
+            # the grounding and the fallback — never blocks the response.
+            live = reason_live(ship_name, body, picks, steer)
+            if live:
+                by_cabin = {str(r["cabin"]): r for r in live["recommendations"]}
+                picks = [{**p, "hook": by_cabin.get(p["cabin"], {}).get("hook", p.get("hook")),
+                          "reason": by_cabin.get(p["cabin"], {}).get("reason") or p.get("reason")}
+                         for p in picks]
+                if live.get("steerClear"):
+                    steer = live["steerClear"]
+
             return self._json({
                 "ship": srow[0] if srow else {"ship": ship},
                 "archetype": {"id": advice["archetype_id"], "label": advice.get("label")},
                 "picks": picks,
-                "steerClear": advice.get("steer_clear") or [],
+                "steerClear": steer,
+                "reasonedLive": bool(live),
             })
         except Exception as e:
             return self._json({"error": str(e)}, 500)

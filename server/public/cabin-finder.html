@@ -25,15 +25,11 @@
 .cf-hero h1{font-size:clamp(30px,4.8vw,46px);line-height:1.14;margin:14px 0 14px}
 .cf-hero p{color:rgba(247,251,255,.86);max-width:52ch;margin:0 auto;line-height:1.72;font-size:18px}
 
-/* what we can actually advise on — never promise a ship we can't reason about */
-.cf-cover{background:rgba(0,119,182,.14);border:1px solid rgba(93,255,154,.26);border-radius:18px;
-          padding:20px 22px;margin:26px 0 10px}
-.cf-cover h2{font-size:19px;margin:0 0 6px;letter-spacing:0}
-.cf-cover p{color:rgba(247,251,255,.8);margin:0 0 12px;font-size:16.5px;line-height:1.6}
-.cf-lines{display:flex;flex-wrap:wrap;gap:9px;margin:0}
-.cf-line{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:999px;
-         padding:7px 15px;font-size:15.5px;color:rgba(247,251,255,.92)}
-.cf-line b{color:var(--seafoam);font-weight:700}
+/* what we can actually advise on — never promise a ship we can't reason about.
+   One quiet line, not a boxed billboard: the coverage is a disclosure, not a feature. */
+.cf-cover{text-align:center;margin:18px 0 6px;color:rgba(247,251,255,.68);font-size:15.5px;line-height:1.6}
+.cf-cover b{color:var(--seafoam);font-weight:700}
+.cf-cover a{color:var(--seafoam)}
 
 /* progress */
 .cf-dots{display:flex;gap:8px;justify-content:center;margin:26px 0 20px}
@@ -81,9 +77,28 @@
 .cf-num{font-family:'Bree Serif',serif;font-size:34px;color:var(--seafoam);line-height:1}
 .cf-badge{background:rgba(255,210,31,.18);color:var(--sun);border-radius:999px;padding:4px 13px;
           font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-.cf-gist{color:var(--sun);font-size:17.5px;font-weight:700;margin:10px 0 2px;line-height:1.45}
-.cf-facts{color:rgba(247,251,255,.6);font-size:15.5px;margin:0 0 14px}
+/* The hook line is WRITTEN BY THE ADVISOR at generation time — a headline that ties
+   the room type to what this traveler wants ("Boardwalk balcony to watch the action
+   from your own roost"). Never computed from facts here: a facts-derived line is a
+   brochure line, which is exactly what Mark rejected (2026-08-12). */
+.cf-hook{color:var(--sun);font-size:18px;font-weight:700;margin:8px 0 14px;line-height:1.5;max-width:52ch}
 .cf-reason{color:#f7fbff;line-height:1.8;margin:0;font-size:18px;max-width:58ch}
+/* pick-and-send: each card is selectable, a sticky bar sends the selection to Mark */
+.cf-add{margin-top:16px;display:inline-flex;align-items:center;gap:9px;background:transparent;
+        border:1.5px solid rgba(93,255,154,.4);color:var(--seafoam);border-radius:12px;
+        padding:10px 18px;font-family:'Baloo 2',system-ui,sans-serif;font-weight:700;
+        font-size:16px;cursor:pointer;transition:background .15s,color .15s}
+.cf-add:hover{background:rgba(93,255,154,.12)}
+.cf-add.on{background:var(--seafoam);color:var(--navy);border-color:var(--seafoam)}
+.cf-sendbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;
+            background:rgba(7,24,63,.97);border-top:1px solid rgba(93,255,154,.35);
+            padding:14px 20px;box-shadow:0 -10px 30px rgba(0,0,0,.4)}
+.cf-sendbar.show{display:block}
+.cf-sendbar .inner{max-width:800px;margin:auto;display:flex;align-items:center;gap:14px;
+                   justify-content:space-between;flex-wrap:wrap}
+.cf-sendbar .count{color:#f7fbff;font-size:16.5px}
+.cf-sendbar a{background:var(--sun);color:var(--navy);text-decoration:none;border-radius:12px;
+              padding:12px 24px;font-weight:800;font-size:17px;font-family:'Baloo 2',system-ui,sans-serif}
 .cf-avoid{background:rgba(255,122,24,.1);border:1px solid rgba(255,122,24,.3);border-radius:18px;padding:22px;margin:24px 0}
 .cf-avoid h3{font-size:19px;color:#ffb887;margin:0 0 12px}
 .cf-avoid ul{margin:0;padding-left:20px}
@@ -109,14 +124,13 @@
 
   <div class="cf-hero">
     <span class="section-kicker">Cabin Concierge</span>
-    <h1>Which cabin should you actually book?</h1>
-    <p>Same ship, same price, wildly different week. Answer a few questions and I'll give you
-       real cabin numbers — why each one, the honest difference between them, and the ones
-       I'd tell you to skip.</p>
+    <h1>Let's find the right cabin.</h1>
+    <p>Tell me a little about your trip and I'll point you to the exact rooms I'd book —
+       and the ones I'd walk past.</p>
   </div>
 
   <!-- Only ever advertise ships the concierge can genuinely reason about. -->
-  <div class="cf-cover" id="coverage"><p>Checking which ships I've got loaded…</p></div>
+  <div class="cf-cover" id="coverage"></div>
 
   <div class="cf-dots" id="dots"></div>
   <div id="stage"></div>
@@ -133,35 +147,38 @@
 // The reasoning is written once, up front, and stored server-side — this page
 // never waits on an AI. It asks a few questions and fetches the answer.
 
-const DOOR = { key:"door", q:"Where are you starting from?", sub:"Either is fine — I'll take it from there.", opts:[
-  {v:"known", i:"fa-ship",    t:"I know my ship",  e:"You've booked, or you've narrowed it down."},
-  {v:"new",   i:"fa-compass", t:"New to cruising", e:"No ship yet. I'll point you at one."} ]};
+const DOOR = { key:"door", q:"First things first — do you know your ship?", sub:"Either answer is fine. I'll take it from there.", opts:[
+  {v:"known", i:"fa-ship",    t:"I've got my ship",     e:"Booked, or close to it."},
+  {v:"new",   i:"fa-compass", t:"Not yet — I'm new to this", e:"No problem. I'll start you somewhere easy to love."} ]};
 
-const SHIP_STEP = { key:"ship", q:"Which ship are you sailing?", sub:"Pick it and I'll give you real cabin numbers on board.", type:"ship" };
+const SHIP_STEP = { key:"ship", q:"Which ship?", sub:"Pick it and I'll talk you through the actual rooms on board.", type:"ship" };
 
 // Every question has an escape, so nobody gets stuck on one they can't answer.
+// NO budget question — we don't show prices, so asking about money would promise
+// a price-shaped answer this tool can't give. Room type covers the same ground
+// the way an advisor would actually ask it.
 const CORE = [
-  { key:"party", q:"Who's travelling?", sub:"This changes the answer more than anything else.", opts:[
+  { key:"party", q:"Who's going?", sub:"This changes my answer more than anything else.", opts:[
       {v:"couple", i:"fa-heart",    t:"Just the two of us", e:"One cabin, two people."},
-      {v:"family", i:"fa-children", t:"Family with kids",   e:"Space matters, and somewhere the kids can be loud."},
-      {v:"solo",   i:"fa-user",     t:"Solo",               e:"I'll flag where the single supplement is worth fighting."},
-      {v:"group",  i:"fa-users",    t:"A group of us",      e:"Several cabins — being near each other matters."} ]},
-  { key:"budget", q:"Where's the budget, honestly?", sub:"No judgement. It just decides which decks are in play.", opts:[
-      {v:"lean",   i:"fa-tag",               t:"Keep it lean",       e:"Best value — and I'll say where the money buys you nothing."},
-      {v:"middle", i:"fa-scale-balanced",    t:"Comfortable middle", e:"A good balcony without the suite price."},
-      {v:"treat",  i:"fa-champagne-glasses", t:"Treating ourselves", e:"This is the trip you've been saving for."},
-      {v:"sky",    i:"fa-crown",             t:"No ceiling",         e:"Show me the best room on the ship."} ],
-    pass:{v:"middle", t:"Not sure yet", e:"I'll assume the comfortable middle — you can shift either way later."} },
-  { key:"priority", q:"What matters most once you're aboard?", sub:"When two cabins are close, this is the tie-breaker.", opts:[
+      {v:"family", i:"fa-children", t:"Family with kids",   e:"Room to spread out, and neighbors who won't mind."},
+      {v:"solo",   i:"fa-user",     t:"Just me",            e:"I'll tell you where going solo actually works in your favor."},
+      {v:"group",  i:"fa-users",    t:"A group of us",      e:"Several cabins — staying near each other matters."} ]},
+  { key:"room", q:"What kind of room are you picturing?", sub:"Think about how you'll actually use it — that matters more than the brochure photos.", opts:[
+      {v:"inside",    i:"fa-bed",         t:"An inside room",        e:"You're there to sleep. The ship is the destination."},
+      {v:"oceanview", i:"fa-sun",         t:"A window on the water", e:"Daylight and a view, without the balcony."},
+      {v:"balcony",   i:"fa-door-open",   t:"A balcony",             e:"Morning coffee outside. For most people, this is the sweet spot."},
+      {v:"suite",     i:"fa-champagne-glasses", t:"A suite",         e:"Space to properly settle in — this is the treat trip."} ],
+    pass:{v:"balcony", t:"Honestly, not sure", e:"Then I'll show you what I'd pick for your group and tell you why."} },
+  { key:"priority", q:"What matters most once you're aboard?", sub:"When two rooms are close, this is my tie-breaker.", opts:[
       {v:"ocean", i:"fa-water", t:"Waking up to the ocean", e:"A real sea view, not a courtyard or a wall."},
-      {v:"quiet", i:"fa-moon",  t:"Peace and quiet",        e:"Away from the lifts, the bars and the pool deck."},
+      {v:"quiet", i:"fa-moon",  t:"Peace and quiet",        e:"Away from the elevators, the bars and the pool deck."},
       {v:"action",i:"fa-bolt",  t:"Being near the action",  e:"Steps from the pool, the food and the shows."},
-      {v:"space", i:"fa-up-right-and-down-left-from-center", t:"Room to spread out", e:"Square footage and a proper balcony."} ],
+      {v:"space", i:"fa-up-right-and-down-left-from-center", t:"Room to spread out", e:"A real living space, not just a bed with a view."} ],
     pass:{v:"ocean", t:"All of it, ideally", e:"Then I'll lead with the view and keep you comfortable."} },
   { key:"motion", q:"Does anyone get seasick?", sub:"If so I'll keep you low and mid-ship, where you feel it least.", opts:[
-      {v:"yes", i:"fa-triangle-exclamation", t:"Yes — keep us steady", e:"Motion beats the view as the priority."},
-      {v:"no",  i:"fa-check",                t:"No, we're fine",       e:"That opens up the higher decks."} ],
-    pass:{v:"no", t:"I can grin and bear it", e:"Noted — I won't give up a good cabin over it."} },
+      {v:"yes", i:"fa-triangle-exclamation", t:"Yes — keep us steady", e:"Then steadiness beats the view. That's the right call."},
+      {v:"no",  i:"fa-check",                t:"No, we're fine",       e:"Good — that opens up the higher decks."} ],
+    pass:{v:"no", t:"I can grin and bear it", e:"Noted — I won't give up a good room over it."} },
 ];
 
 let steps = [DOOR]; const answers = {}; let step = 0; let ships = []; let shipsLoaded = false;
@@ -187,17 +204,10 @@ function drawCoverage(){
       : `<p>Checking which ships I've got loaded…</p>`;
     return;
   }
-  const byLine = {};
-  ships.forEach(s => (byLine[s.line] = byLine[s.line] || []).push(s.ship));
-  const total = ships.length;
+  const named = ships.map(s => `<b>${s.ship}</b> (${s.line})`).join(", ");
   coverage.innerHTML =
-    `<h2>Ships I can advise on right now</h2>
-     <p>I only list ships where I've actually done the cabin work — ${total} so far, and growing.
-        If yours isn't here yet, <a href="/work-with-mark.html" style="color:var(--seafoam)">ask me directly</a>.</p>
-     <div class="cf-lines">
-       ${Object.entries(byLine).map(([line, list]) =>
-         `<span class="cf-line"><b>${line}</b> — ${list.join(", ")}</span>`).join("")}
-     </div>`;
+    `So far I've done the room-by-room homework on ${named} — more on the way.
+     Yours isn't here yet? <a href="/work-with-mark.html">Ask me directly</a>.`;
 }
 
 function render(){
@@ -243,7 +253,7 @@ async function submit(){
   if (!ship){ stage.innerHTML = `<div class="cf-card"><div class="cf-err">No ships are loaded yet.</div></div>`; return; }
   try{
     const r = await fetch("/api/cabins/recommend",{ method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ ship, party:answers.party, budget:answers.budget,
+      body: JSON.stringify({ ship, party:answers.party, room:answers.room,
                              priority:answers.priority, motion:answers.motion==="yes" }) });
     if (!r.ok) throw new Error((await r.json()).error || "Something went wrong");
     show(await r.json(), answers.door === "new");
@@ -254,38 +264,39 @@ async function submit(){
   }
 }
 
-// A one-line gist, so you know WHAT the room is before you read WHY.
-function gistOf(f, i){
-  if (!f) return i===0 ? "My first pick" : "";
-  const cat = (f.category||"").toLowerCase(); const bits = [];
-  if (cat.includes("suite")) bits.push("Suite");
-  else if (cat.includes("balcony")) bits.push(cat.includes("boardwalk")||cat.includes("central") ? "Inward balcony" : "Ocean balcony");
-  else if (cat.includes("ocean")||cat.includes("view")) bits.push("Ocean view");
-  else if (cat.includes("inside")||cat.includes("interior")) bits.push("Inside cabin");
-  else if (f.category) bits.push(f.category);
-  if (f.deck && f.deck <= 8) bits.push("low and steady"); else if (f.deck) bits.push(`up on deck ${f.deck}`);
-  if ((f.section||"").toLowerCase().includes("mid")) bits.push("mid-ship");
-  if (f.obstruction && f.obstruction !== "none") bits.push(`${f.obstruction} obstruction`);
-  return bits.slice(0,3).join(" · ");
+// Cabins the visitor has picked to send to Mark.
+const picked = new Set();
+let resultShip = "";
+
+function drawSendBar(){
+  const bar = document.getElementById("sendbar");
+  if (!bar) return;
+  if (!picked.size){ bar.classList.remove("show"); return; }
+  const nums = [...picked].join(", ");
+  const q = new URLSearchParams({ from:"cabin-concierge", ship:resultShip, cabins:nums });
+  bar.querySelector(".count").textContent =
+    picked.size === 1 ? `Cabin ${nums} picked` : `${picked.size} cabins picked — ${nums}`;
+  bar.querySelector("a").href = `/work-with-mark.html?${q.toString()}`;
+  bar.classList.add("show");
 }
 
 function show(d, wasNew){
   dots.classList.add("hide"); coverage.classList.add("hide");
   const shipName = d.ship?.ship || "this ship";
-  const facts = f => !f ? "" : [f.deck?`Deck ${f.deck}`:null, f.category, f.view,
-      f.sleeps?`sleeps ${f.sleeps}`:null].filter(Boolean).join(" · ");
+  resultShip = shipName; picked.clear();
 
   const picks = (d.picks||[]).map((p,i)=>`
     <div class="cf-pick ${i===0?'first':''}">
       <div class="cf-pickhead"><div class="cf-num">${p.cabin}</div>
-        ${i===0?'<span class="cf-badge">My first pick</span>':''}</div>
-      <div class="cf-gist">${gistOf(p.facts,i)}</div>
-      <div class="cf-facts">${facts(p.facts)}</div>
+        ${i===0?'<span class="cf-badge">Where I’d start</span>':''}</div>
+      ${p.hook ? `<div class="cf-hook">${p.hook}</div>` : ""}
       <p class="cf-reason">${p.reason||""}</p>
+      <button class="cf-add" data-cabin="${p.cabin}">
+        <i class="fa-solid fa-plus"></i> Send this one to me</button>
     </div>`).join("");
 
   const avoid = (d.steerClear||[]).length ? `
-    <div class="cf-avoid"><h3>The ones I'd skip</h3><ul>
+    <div class="cf-avoid"><h3>The ones I'd walk past</h3><ul>
       ${d.steerClear.map(s=>`<li>${typeof s==="string"?s:`<b>${s.cabin||s.area||""}</b> — ${s.reason||""}`}</li>`).join("")}
     </ul></div>` : "";
 
@@ -293,20 +304,35 @@ function show(d, wasNew){
   const q = new URLSearchParams({ from:"cabin-concierge", ship:shipName, cabins:nums });
 
   stage.innerHTML = `<div class="cf-res">
-    <h2>Your cabins on ${shipName}</h2>
-    <p>Based on what you told me. Every number below is a real cabin you can pull up on the deck plan.</p>
-    ${wasNew ? `<div class="cf-why"><b>Why this ship?</b> For a first cruise I'd start you on ${shipName} —
-        big enough that there's always something to do, easy to find your way around, and forgiving
-        if the first restaurant or show you try isn't your thing.</div>` : ""}
+    <h2>Here's where I'd put you on ${shipName}.</h2>
+    <p>Every number below is a real room — pull any of them up on the deck plan and check me.
+       Pick the ones you'd consider and send them over.</p>
+    ${wasNew ? `<div class="cf-why"><b>Why this ship?</b> You told me you're new to this, so I'd start
+        you on ${shipName}. It's an easy ship to have a great first cruise on — plenty to do, hard to
+        get lost on, and if the first restaurant you try isn't your thing, there are plenty more.</div>` : ""}
     ${picks}${avoid}
     <div class="cf-cta">
-      <h3>Work with Mark</h3>
-      <p>Send these over and I'll take it from there — what's actually available, how they compare,
-         and whether a different sailing date suits you better.</p>
-      <a href="/work-with-mark.html?${q.toString()}">Send these cabins to Mark</a>
+      <h3>Like any of these?</h3>
+      <p>Send them over and I'll check what's actually open on your sailing, how they compare,
+         and whether one of them is a mistake for your dates. That part is my job, not yours.</p>
+      <a href="/work-with-mark.html?${q.toString()}">Send my picks to Mark</a>
     </div>
     <p class="cf-note">Booking through me costs you nothing extra — the cruise line pays the commission either way.</p>
-  </div>`;
+  </div>
+  <div class="cf-sendbar" id="sendbar"><div class="inner">
+    <span class="count"></span><a href="#">Send them to Mark →</a>
+  </div></div>`;
+
+  stage.querySelectorAll(".cf-add").forEach(b=>{
+    b.onclick = ()=>{
+      const c = b.dataset.cabin;
+      if (picked.has(c)){ picked.delete(c); b.classList.remove("on");
+        b.innerHTML = '<i class="fa-solid fa-plus"></i> Send this one to me'; }
+      else { picked.add(c); b.classList.add("on");
+        b.innerHTML = '<i class="fa-solid fa-check"></i> On the list'; }
+      drawSendBar();
+    };
+  });
 }
 
 render();
