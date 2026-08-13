@@ -17,7 +17,8 @@ what actually exists.
 | Full-grid capability | Engine now accepts full grids (`FULL_GRID=1`); writes to `advice/<slug>-fullgrid.json` so fixture output can't be overwritten | 2026-08-10, run below |
 | Full-grid proof run | Wonder, 2,886 cabins, 12/12 archetypes, **$1.39**. Motion/position reasoning held; **moat reasoning absent** (no noise/hump/obstruction facts in grids) | 2026-08-10 |
 | Layer 2 zones | `context/*.json` — 40 classes, 370 zones, 100% cabin coverage, $1.32. **Uncommitted quality: hump wrong on Oasis twice; 8/9 other hump calls correct; not yet wired into any prompt** | 2026-08-10 |
-| UI | `server/public/cabin-finder.html`, rebuilt to brand guide, Mark's 6 review points addressed, **his further review incomplete** — this was the actual task | preview: `preview-server.py 8899` |
+| UI | `server/public/cabin-finder.html`, rebuilt again 2026-08-12 to Mark's 4-point review: budget question removed (replaced w/ room-type), all copy in his voice, per-cabin pick-and-send funnel + sticky send bar into work-with-mark prefill, decluttered hero | preview: `preview-server.py 8899` |
+| Live presentation reasoning | Runtime now REASONS the hook + per-cabin write-up live per search (scoped Haiku call: selected cabins' facts + stored write-ups as grounding + visitor's actual answers). ~1¢/search, answer-set cache, stored text = fallback. Mark's direction 2026-08-12; DESIGN.md §5 rewritten to the two-layer model. Needs ANTHROPIC_API_KEY in server env | 2026-08-12, verified on preview: no-motion couple gets zero motion talk; hooks unique per cabin |
 
 ## What does NOT exist
 
