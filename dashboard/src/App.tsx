@@ -22,6 +22,7 @@ import Subscriptions from "@/pages/subscriptions";
 import Overview from "@/pages/overview";
 import Today from "@/pages/today";
 import StormAlerts from "@/pages/storm-alerts";
+import Search from "@/pages/search";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +46,7 @@ function Router() {
         <Route path="/feeds" component={LiveFeeds} />
         <Route path="/alerts" component={OperationalAlerts} />
         <Route path="/storm-alerts" component={StormAlerts} />
+        <Route path="/search" component={Search} />
         <Route path="/affiliate"   component={AffiliateManager} />
         <Route path="/favorites"   component={FavoritesManager} />
         <Route path="/commentary"  component={CommentaryManager} />
