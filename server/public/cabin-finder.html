@@ -84,7 +84,20 @@
 .cf-hook{color:var(--sun);font-size:18px;font-weight:700;margin:8px 0 14px;line-height:1.5;max-width:52ch}
 .cf-reason{color:#f7fbff;line-height:1.8;margin:0;font-size:18px;max-width:58ch}
 /* pick-and-send: each card is selectable, a sticky bar sends the selection to Mark */
-.cf-add{margin-top:16px;display:inline-flex;align-items:center;gap:9px;background:transparent;
+.cf-pickactions{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:16px}
+/* OUR deck view — drawn from our own extracted cabin geometry, never an external
+   deck-plan link (Mark: "it's throwing the other company a bone"). */
+.cf-map{background:none;border:none;color:rgba(247,251,255,.66);font-family:'Baloo 2',system-ui,sans-serif;
+        font-size:15.5px;cursor:pointer;padding:0}
+.cf-map:hover{color:var(--seafoam)}
+.cf-mapbox{display:none;margin-top:16px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1);
+           border-radius:14px;padding:14px 16px 8px}
+.cf-mapbox.show{display:block}
+.cf-mapbox svg{width:100%;height:auto;display:block}
+.cf-maplabels{display:flex;justify-content:space-between;color:rgba(247,251,255,.5);
+              font-size:13.5px;padding:4px 2px 6px}
+.cf-mapnote{color:rgba(247,251,255,.45);font-size:13.5px;text-align:center;padding-bottom:4px}
+.cf-add{display:inline-flex;align-items:center;gap:9px;background:transparent;
         border:1.5px solid rgba(93,255,154,.4);color:var(--seafoam);border-radius:12px;
         padding:10px 18px;font-family:'Baloo 2',system-ui,sans-serif;font-weight:700;
         font-size:16px;cursor:pointer;transition:background .15s,color .15s}
@@ -269,7 +282,76 @@ async function submit(){
 
 // Cabins the visitor has picked to send to Mark.
 const picked = new Set();
-let resultShip = "";
+let resultShip = "", resultSlug = "";
+
+// ── Our own deck view ────────────────────────────────────────────────────────
+// Drawn from our extracted cabin geometry (x = across the beam, y = bow→stern).
+// Every dot is a real cabin; the pick glows. Never an external deck-plan link.
+const deckCache = new Map();
+async function fetchDeck(deck){
+  if (deckCache.has(deck)) return deckCache.get(deck);
+  const r = await fetch(`/api/cabins/deckmap?ship=${encodeURIComponent(resultSlug)}&deck=${deck}`);
+  const j = await r.json();
+  const cabs = j.cabins || [];
+  deckCache.set(deck, cabs);
+  return cabs;
+}
+
+function deckSvg(cabs, highlightNum, deck){
+  if (!cabs.length) return "";
+  const ys = cabs.map(c=>c.y), xs = cabs.map(c=>c.x);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const W = 960, H = 150, padL = 34, padR = 34, padT = 20, padB = 20;
+  const sx = v => padL + ((v - minY) / Math.max(maxY - minY, 1)) * (W - padL - padR);
+  const sy = v => padT + ((v - minX) / Math.max(maxX - minX, 1)) * (H - padT - padB);
+  let dots = "", hl = "";
+  for (const c of cabs){
+    const cx = sx(c.y), cy = sy(c.x);
+    if (String(c.cabin_num) === String(highlightNum)){
+      // Label below the dot when the cabin sits in the top rows, so the number
+      // never clips outside the viewBox.
+      const ly = cy - 16 < 14 ? cy + 28 : cy - 16;
+      hl = `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9" fill="none" stroke="#5dff9a" stroke-width="2.5" opacity=".9"/>
+            <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="#5dff9a"/>
+            <text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" fill="#5dff9a"
+                  font-family="Baloo 2,system-ui,sans-serif" font-size="15" font-weight="800">${highlightNum}</text>`;
+    } else {
+      dots += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2.1" fill="rgba(247,251,255,.30)"/>`;
+    }
+  }
+  // A soft hull outline so it reads as a ship: rounded stern (right), drawn-in bow (left).
+  const hull = `<path d="M ${padL-16} ${H/2} Q ${padL-16} ${padT-8} ${padL+40} ${padT-8}
+      L ${W-padR-10} ${padT-8} Q ${W-padR+22} ${padT-8} ${W-padR+22} ${H/2}
+      Q ${W-padR+22} ${H-padB+8} ${W-padR-10} ${H-padB+8}
+      L ${padL+40} ${H-padB+8} Q ${padL-16} ${H-padB+8} ${padL-16} ${H/2} Z"
+      fill="rgba(0,119,182,.10)" stroke="rgba(247,251,255,.18)" stroke-width="1.5"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img"
+       aria-label="Deck ${deck} — cabin ${highlightNum} highlighted">${hull}${dots}${hl}</svg>`;
+}
+
+async function toggleMap(btn){
+  const cabin = btn.dataset.cabin, deck = btn.dataset.deck;
+  const box = document.getElementById(`mapbox-${cabin}`);
+  if (!box) return;
+  if (box.classList.contains("show")){ box.classList.remove("show"); return; }
+  if (!box.innerHTML){
+    box.innerHTML = `<div class="cf-mapnote">Fetching the deck…</div>`;
+    box.classList.add("show");
+    try{
+      const cabs = await fetchDeck(deck);
+      box.innerHTML = cabs.length
+        ? `${deckSvg(cabs, cabin, deck)}
+           <div class="cf-maplabels"><span>◀ Front of the ship</span><span>Deck ${deck}</span><span>Back of the ship ▶</span></div>
+           <div class="cf-mapnote">Drawn from the ship's real layout — every dot is a cabin.</div>`
+        : `<div class="cf-mapnote">I can't draw this deck yet.</div>`;
+    }catch(_){
+      box.innerHTML = `<div class="cf-mapnote">Couldn't fetch the deck just now.</div>`;
+    }
+  } else {
+    box.classList.add("show");
+  }
+}
 
 function drawSendBar(){
   const bar = document.getElementById("sendbar");
@@ -288,7 +370,11 @@ function drawSendBar(){
 function show(d, wasNew){
   dots.classList.add("hide"); coverage.classList.add("hide");
   const shipName = d.ship?.ship || "this ship";
-  resultShip = shipName; picked.clear();
+  resultShip = shipName; resultSlug = d.ship?.slug || "";
+  picked.clear();
+  // Only make the "see where it sits" claim when we hold the geometry to draw
+  // it ourselves — never an external deck-plan link.
+  const dm = !!d.hasDeckMap;
 
   const picks = (d.picks||[]).map((p,i)=>`
     <div class="cf-pick ${i===0?'first':''}">
@@ -296,8 +382,13 @@ function show(d, wasNew){
         ${i===0?'<span class="cf-badge">Where I’d start</span>':''}</div>
       ${p.hook ? `<div class="cf-hook">${p.hook}</div>` : ""}
       <p class="cf-reason">${p.reason||""}</p>
-      <button class="cf-add" data-cabin="${p.cabin}">
-        <i class="fa-solid fa-plus"></i> Send this one to me</button>
+      <div class="cf-pickactions">
+        <button class="cf-add" data-cabin="${p.cabin}">
+          <i class="fa-solid fa-plus"></i> Send this one to me</button>
+        ${dm && p.facts?.deck ? `<button class="cf-map" data-cabin="${p.cabin}" data-deck="${p.facts.deck}">
+          <i class="fa-solid fa-map-location-dot"></i> Show me where it sits</button>` : ""}
+      </div>
+      <div class="cf-mapbox" id="mapbox-${p.cabin}"></div>
     </div>`).join("");
 
   const avoid = (d.steerClear||[]).length ? `
@@ -310,7 +401,7 @@ function show(d, wasNew){
 
   stage.innerHTML = `<div class="cf-res">
     <h2>Here's where I'd put you on ${shipName}.</h2>
-    <p>Every number below is a real room — pull any of them up on the deck plan and check me.
+    <p>Every number below is a real room${dm ? ` — tap “show me where it sits” and check me` : ""}.
        Pick the ones you'd consider and send them over.</p>
     ${wasNew ? `<div class="cf-why"><b>Why this ship?</b> You told me you're new to this, so I'd start
         you on ${shipName}. It's an easy ship to have a great first cruise on — plenty to do, hard to
@@ -339,6 +430,7 @@ function show(d, wasNew){
       drawSendBar();
     };
   });
+  stage.querySelectorAll(".cf-map").forEach(b=>{ b.onclick = ()=>toggleMap(b); });
 }
 
 render();

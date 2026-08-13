@@ -223,6 +223,31 @@ Speak ONLY to concerns they actually told you. The brand is "Cruise smarter. Lau
   }
 }
 
+// ── Our own deck map ─────────────────────────────────────────────────────────
+// Mark, 2026-08-12: don't send visitors to the cruise line's site for deck
+// plans — "it's throwing the other company a bone." We extracted every cabin's
+// real position into public.cabins (x = across the beam, y = bow→stern), so we
+// draw our OWN schematic from our own facts. Nothing rehosted, nobody boned.
+router.get("/cabins/deckmap", async (req: Request, res: Response) => {
+  try {
+    const ship = String(req.query["ship"] || "");
+    const deck = Number(req.query["deck"]);
+    if (!ship || !deck) return res.status(400).json({ error: "ship and deck are required" });
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("cabins")
+      .select("cabin_num,x,y,category")
+      .eq("ship_slug", ship)
+      .eq("deck", deck)
+      .not("x", "is", null);
+    if (error) throw new Error(error.message);
+    res.json({ deck, cabins: data ?? [] });
+  } catch (err) {
+    logger.error({ err }, "cabins/deckmap failed");
+    res.status(500).json({ error: "Could not load the deck map" });
+  }
+});
+
 // ── Ships the concierge can actually advise on ───────────────────────────────
 // Only ships that HAVE generated advice — offering a ship with no reasoning
 // behind it would be a dead end.
@@ -279,6 +304,14 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     const { data: shipRow } = await supabase
       .from("cabin_ships").select("ship,line,class").eq("slug", ship).maybeSingle();
 
+    // Whether this ship's grid carries geometry — gates the "show me where it
+    // sits" deck view in the UI (only claim what we can actually draw).
+    const { count: geomCount } = await supabase
+      .from("cabins")
+      .select("id", { count: "exact", head: true })
+      .eq("ship_slug", ship)
+      .not("x", "is", null);
+
     // Live pass: rewrite hook + reason for THIS visitor's answers. Stored text
     // is the grounding and the fallback — the response never blocks on failure.
     let steerClear = (advice.steer_clear ?? []) as { cabin?: string; area?: string; reason?: string }[];
@@ -295,11 +328,12 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     }
 
     res.json({
-      ship: shipRow ?? { ship },
+      ship: { ...(shipRow ?? { ship }), slug: ship },
       archetype: { id: advice.archetype_id, label: advice.label },
       picks,
       steerClear,
       reasonedLive: !!live,
+      hasDeckMap: (geomCount ?? 0) > 0,
     });
   } catch (err) {
     logger.error({ err }, "cabins/recommend failed");

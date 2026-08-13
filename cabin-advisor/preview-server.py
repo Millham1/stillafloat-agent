@@ -182,6 +182,18 @@ class H(SimpleHTTPRequestHandler):
                 return self._json({"ships": ships})
             except Exception as e:
                 return self._json({"error": str(e)}, 500)
+        if self.path.startswith("/api/cabins/deckmap"):
+            try:
+                qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                ship = (qs.get("ship") or [""])[0]
+                deck = (qs.get("deck") or [""])[0]
+                if not ship or not deck:
+                    return self._json({"error": "ship and deck are required"}, 400)
+                cabs = sb(f"cabins?select=cabin_num,x,y,category&ship_slug=eq.{urllib.parse.quote(ship)}"
+                          f"&deck=eq.{urllib.parse.quote(deck)}&x=not.is.null")
+                return self._json({"deck": int(deck), "cabins": cabs})
+            except Exception as e:
+                return self._json({"error": str(e)}, 500)
         return super().do_GET()
 
     def do_POST(self):
@@ -211,6 +223,7 @@ class H(SimpleHTTPRequestHandler):
             srow = sb(f"cabin_ships?select=ship,line,class&slug=eq.{urllib.parse.quote(ship)}")
             ship_name = (srow[0].get("ship") if srow else None) or ship
             steer = advice.get("steer_clear") or []
+            geom = sb(f"cabins?select=id&ship_slug=eq.{urllib.parse.quote(ship)}&x=not.is.null&limit=1")
 
             # Live pass: rewrite hook + reason for THIS visitor. Stored text is
             # the grounding and the fallback — never blocks the response.
@@ -224,11 +237,12 @@ class H(SimpleHTTPRequestHandler):
                     steer = live["steerClear"]
 
             return self._json({
-                "ship": srow[0] if srow else {"ship": ship},
+                "ship": {**(srow[0] if srow else {"ship": ship}), "slug": ship},
                 "archetype": {"id": advice["archetype_id"], "label": advice.get("label")},
                 "picks": picks,
                 "steerClear": steer,
                 "reasonedLive": bool(live),
+                "hasDeckMap": bool(geom),
             })
         except Exception as e:
             return self._json({"error": str(e)}, 500)
