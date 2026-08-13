@@ -73,7 +73,16 @@ jobs:
             fi
             cd /root/saf-full
             git fetch origin
+            # Preserve the box-generated news listing pages across the reset.
+            # They are written by the news pre-renderer (prerender-news.ts) and
+            # untracked in git; the reset that removes their last tracked copies
+            # would otherwise leave /news.html 404 until the on-boot prerender.
+            mkdir -p /tmp/saf-prerender-keep/es
+            cp server/public/news.html /tmp/saf-prerender-keep/ 2>/dev/null || true
+            cp server/public/es/news.html /tmp/saf-prerender-keep/es/ 2>/dev/null || true
             git reset --hard origin/main
+            [ -f server/public/news.html ] || cp /tmp/saf-prerender-keep/news.html server/public/ 2>/dev/null || true
+            [ -f server/public/es/news.html ] || cp /tmp/saf-prerender-keep/es/news.html server/public/es/ 2>/dev/null || true
             export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
             export CI=true  # non-interactive: auto-confirm pnpm's modules purge over SSH (no TTY)
             corepack enable
@@ -116,7 +125,13 @@ jobs:
             fi
             cd /root/saf-full
             git fetch origin
+            # Preserve box-generated news listing pages across the reset (see prod job).
+            mkdir -p /tmp/saf-prerender-keep/es
+            cp server/public/news.html /tmp/saf-prerender-keep/ 2>/dev/null || true
+            cp server/public/es/news.html /tmp/saf-prerender-keep/es/ 2>/dev/null || true
             git reset --hard origin/dev
+            [ -f server/public/news.html ] || cp /tmp/saf-prerender-keep/news.html server/public/ 2>/dev/null || true
+            [ -f server/public/es/news.html ] || cp /tmp/saf-prerender-keep/es/news.html server/public/es/ 2>/dev/null || true
             export CI=true  # non-interactive: auto-confirm pnpm's modules purge over SSH (no TTY)
             pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
             # Dev build mirrors prod (base "/"); API stays relative so the dev mirror
