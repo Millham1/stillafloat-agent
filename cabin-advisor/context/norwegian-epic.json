@@ -1,56 +1,9 @@
 {
-  "class": "Epic",
+  "class": "Epic-class (Norwegian Cruise Line) — a one-ship class",
   "sisterShips": [],
   "zones": [
     {
       "factor": "lifeboat",
-      "decks": [
-        8,
-        9,
-        10
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Lifeboats are mounted at Deck 7; they obstruct the view downward from Decks 8-10, with Deck 8 experiencing the most significant obstruction and Deck 10 the least, while the horizon view remains clear.",
-      "effect": "Balconies look straight out to sea but you cannot see the waterline or watch port activities below; the sensation is of being suspended over the boats rather than directly over water.",
-      "mattersTo": "Matters to guests who want to watch tender operations, see the ship's hull meeting the water, or have young children who enjoy looking straight down; irrelevant to those focused on horizon views and sunsets.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        14
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "Deck 15 directly above houses the main pool area, Spice H2O adults area, and outdoor deck activities in the mid and aft sections.",
-      "effect": "Daytime noise from pool deck furniture, music, and foot traffic directly overhead; activity typically runs from early morning through late evening.",
-      "mattersTo": "Significant for light sleepers or those planning to nap or relax in the cabin during the day; less relevant for guests who are rarely in their cabin during daytime hours.",
-      "severity": "significant",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        13
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "The Epic Theater occupies Decks 14-15 in the aft section, two decks above.",
-      "effect": "Evening show noise and audience movement may be noticeable during performance times, typically during dinner hours and late evening.",
-      "mattersTo": "Relevant for early-to-bed guests or those sensitive to periodic noise during show times; minimal impact for those attending shows or dining during performance hours.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
       "decks": [
         8
       ],
@@ -59,109 +12,194 @@
         "mid",
         "aft"
       ],
-      "what": "Deck 7 directly below contains public venues including restaurants, bars, casino, and the Bliss nightclub.",
-      "effect": "Late-night noise and vibration from nightclub bass, casino activity, and bar crowds can transmit upward, particularly Thursday through Sunday nights when these venues are busiest.",
-      "mattersTo": "Critical for light sleepers and those with early port excursions; less relevant for night owls and those who stay out late themselves.",
+      "what": "Only deck 8 cabins have the most minimally obstructed view due to the lifeboats on the deck below, and their view is only obstructed when looking down. Except for the forward-most cabins (8026/8027 and beyond forward) and the aft-most cabins (8190/8191 and beyond aft), most deck 8 port and starboard cabins look down onto the tops of the lifeboats slung on the deck below (Deck 7).",
+      "effect": "Sitting on the balcony you look straight down onto red-and-white lifeboat roofs instead of water; the outward/horizon view is not blocked. Guests also report the lifeboats reflect heat, making the balcony warmer/less pleasant to sit on in hot climates.",
+      "mattersTo": "Matters to anyone who wants an unobstructed view straight down (sunbathers who like to see the water, photographers) or who is heat-sensitive; does not matter to anyone mainly interested in the horizon/sunset view, which stays open.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "malcolmoliver.wordpress.com first-person review; cruisecriticuk.wordpress.com first-person review; cruisedeckplans.com deck 8 plan"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 8 forward cabins sit directly above Bliss Ultra Lounge, the onboard nightclub that stays open until 2 a.m. every night. All cabins on this deck are above public areas on the deck below and may experience noise issues, more likely for the forward cabins which are above the Bliss Lounge.",
+      "effect": "Bass and crowd noise carry up through the floor until the small hours, one deck straight down.",
+      "mattersTo": "Matters a lot to light sleepers and early-to-bed guests; nightlife-seekers may not mind or may even like the proximity.",
       "severity": "significant",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisecritic.com editorial cabin review; cruisedeckplans.com deck 8 plan"
     },
     {
       "factor": "below",
       "decks": [
-        9
+        14
+      ],
+      "sections": [
+        "aft",
+        "forward"
+      ],
+      "what": "Cabins toward the aft of deck 14 sit directly below the buffet, and cruisers staying there have reported noises like chairs being moved. All cabins on deck 14 are below a deck of public areas, an issue more likely for cabins located forward, which sit below the Garden Cafe. All cabins on deck 14 are also under the main sun deck, so it isn't abnormal to hear sunloungers being moved or music from the pool deck.",
+      "effect": "Two distinct overhead noise sources one deck up: buffet/Garden Cafe chair-scraping by day, and pool-deck lounger-dragging/music by day into early evening; usually stops overnight.",
+      "mattersTo": "Matters to nappers and very light sleepers during the day; not a big deal for anyone gone all day or who sleeps through daytime noise.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "emmacruises.com; cruisedeckplans.com deck 14 plan; cruisecritic.com editorial review"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        13
       ],
       "sections": [
         "mid"
       ],
-      "what": "The main dining rooms on Deck 8 sit directly below the mid-section cabins.",
-      "effect": "Noise during dinner service hours from chair movement, table setup, and crowd conversation; typically 5:30 PM to 10:30 PM.",
-      "mattersTo": "Matters to those who prefer quiet early evenings in the cabin; non-issue for guests dining out during these hours.",
+      "what": "Cabins 13140 to 13190 on the port side, plus inside cabins 13152 to 13191, sit below the fitness center and could experience noise issues from that area.",
+      "effect": "Thumping from treadmills/weights can be heard through the ceiling, worst early morning and (per fleet-wide NCL reports) sometimes late at night when crew use the gym after hours.",
+      "mattersTo": "Matters to light sleepers in that specific cabin range; irrelevant to any other cabin on the ship.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruisedeckplans.com deck 13 plan (ship-specific cabin range, not generic boilerplate)"
     },
     {
       "factor": "elevator",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Cabins on decks 9 and 10 near the elevator banks should be avoided, as these can get very noisy from foot traffic.",
+      "effect": "Constant door-chime, hallway chatter and foot traffic right outside the door at all hours.",
+      "mattersTo": "Matters to light sleepers; convenience-seekers (mobility issues, lots of luggage, families needing quick pool/deck access) may prefer it despite the noise.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com editorial cabin review"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        10,
+        13
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "A guest in aft cabin 10304 reported the engine vibration was really bad coming into port — fine at sea, but the shaking and noise reliably woke them early every port morning. Another guest in an aft cabin reported being woken by tremendous vibration from the engines at 5am every morning as the ship pulled into port, strong enough to rattle the glass bathroom doors.",
+      "effect": "Low-frequency shaking/rumble concentrated at the stern, most noticeable specifically during arrival/departure manoeuvring rather than steady cruising.",
+      "mattersTo": "Matters to anyone who wants to sleep in on port mornings; largely a non-issue on sea days.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com member reviews; tomlovescruising.com first-person review"
+    },
+    {
+      "factor": "other",
       "decks": [
         8,
         9,
         10,
         11,
         12,
-        13,
         14
       ],
       "sections": [
-        "forward",
-        "mid"
+        "forward"
       ],
-      "what": "Primary elevator banks are located forward and mid-ship on all cabin decks, with the forward bank serving The Haven on Decks 16-17.",
-      "effect": "Cabins immediately adjacent to elevator lobbies experience door chimes, conversation, and foot traffic at all hours; cabins within 2-3 doors have convenient access with minimal noise.",
-      "mattersTo": "High-frequency elevator users value the proximity for mobility or convenience; light sleepers should avoid immediate adjacency to the lobbies.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "All forward-facing balconies across the decks on Norwegian Epic are designed as in-hull balconies. Per-deck plans give specific ranges: deck 8 cabins 8004–8018 (port) / 8005–8019 (starboard) have a metal railing instead of a see-through glass railing, restricting the view when sitting down; the same 'hull style balcony' note recurs for decks 9 (9000–9016/9001–9017), 10 (10000–10016/10001–10017), 11 (11000–11016/11001–11017), 12 (12000–12014/12001–12015) and 14 (14000–14004/14001–14009). Guest review of category B6 confirms it is a 'Priv-a-sea' balcony with a smaller viewing area surrounded in steel, and NCL's own category note flags B6 staterooms forward on decks 10, 11 and 12 — plus specific cabins 12000, 12001, 12004, 12005, 12008, 12009 and 12012–12017 — as having enclosed or solid rather than plexiglas balconies.",
+      "effect": "These forward balconies sit recessed within the hull's curve at the bow; instead of a clear glass railing you get a solid/metal wall at sitting height, so the view while standing is fine but the seated view — and the sense of openness — is much reduced. This is the opposite of a 'hump' (cantilevered-out) balcony: it's a hull-recessed, walled-in balcony.",
+      "mattersTo": "Matters to anyone who plans to spend a lot of time sitting on the balcony enjoying an open view (privacy-seekers may actually like it); labeling is only confirmed explicit for category B6 — other forward categories in the same ranges are not confirmed as flagged, so buyers should not assume the same disclosure applies fleet-wide across all categories.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisedeckplans.com per-deck plans (deck-specific ranges, cross-validated); cruiseline.com guest review of category B6; cruisemapper.com cabin guide"
     },
     {
-      "factor": "engine",
+      "factor": "other",
       "decks": [
-        8,
-        9,
-        10
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Propulsion machinery is located low and aft; these cabins sit close to the engine room and propeller shafts.",
-      "effect": "Low-frequency vibration during maneuvering and at cruising speed, most noticeable when lying in bed; modern dampening reduces but does not eliminate the sensation.",
-      "mattersTo": "Bothers guests sensitive to vibration or those planning to spend significant time resting in the cabin; others may not notice or may find the hum soothing.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        8,
-        9,
-        10,
         11,
         12
       ],
       "sections": [
         "forward"
       ],
-      "what": "Bow thrusters are located in the forward section below these decks and activate during docking and departure.",
-      "effect": "Loud rumbling and vibration during port arrivals and departures, typically 15-30 minutes per event; silent while at sea or fully docked.",
-      "mattersTo": "Matters to those sleeping during early morning arrivals or afternoon departures; negligible for early risers or those on deck during port operations.",
-      "severity": "moderate",
+      "what": "The balconies of cabins 11000, 11001, 11004 and 11005 are shaded by the overhang of the bridge two decks above. Cabins 12000 and 12001 are shaded by the bridge overhang on the deck above.",
+      "effect": "These specific forward cabins get a shaded/covered balcony rather than open sun — a plus in hot climates, a minus for sunbathers.",
+      "mattersTo": "Matters to sun-seekers who want an uncovered balcony; a benefit for anyone wanting shade or rain cover.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com deck 11 and deck 12 plans"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "8026 and forward (port) / 8027 and forward (starboard); 8190 and aft (port) / 8191 and aft (starboard)",
+      "claim": "These deck-8 forward and aft cabin ranges escape the lifeboat obstruction that affects the rest of deck 8's port/starboard cabins.",
+      "source": "cruisedeckplans.com deck 8 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "12000, 12001, 12004, 12005, 12008, 12009, 12012–12017 (category B6, forward decks 10/11/12)",
+      "claim": "NCL's own category note and a guest review confirm these have enclosed/solid steel balconies rather than the standard plexiglas/glass balcony.",
+      "source": "cruiseline.com guest review of category B6",
       "confidence": "high"
     },
     {
-      "factor": "other",
-      "decks": [
-        16,
-        17
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "The Haven is a ship-within-a-ship concept with private keycard access, dedicated concierge, private pool, sundeck, and restaurant on Deck 16.",
-      "effect": "Complete separation from the main ship's crowds with exclusive amenities and priority services; limited interaction with other guests.",
-      "mattersTo": "Premium amenity seekers and those valuing privacy and personalized service will appreciate the seclusion; those who enjoy the full ship experience may find it isolating.",
-      "severity": "significant",
-      "confidence": "high"
+      "cabins": "9020–9032, 9202–9226, 9268–9288 (port) / 9021–9031, 9201–9225, 9267–9287 (starboard); 8020–8046 & 8076–8110 (port) / 8021–8047 & 8077–8111 (starboard)",
+      "claim": "These balconies are open to view from the cabins directly above (less rain protection, more sun/less privacy) — a distinct quirk from the hull-recessed balconies nearby.",
+      "source": "cruisedeckplans.com deck 8 and deck 9 plans",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "11564, 11565 (deck 11); 12514, 12515 (deck 12)",
+      "claim": "These cabins sit next to the entrance door to the Studios and have had noise complaints from that door opening/closing.",
+      "source": "cruisedeckplans.com deck 11 and deck 12 plans",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "14052D",
+      "claim": "This newer (2025 dry dock) cabin shares a wall with the Splash Academy kids' club, causing loud noise all day into the evening.",
+      "source": "cruisecritic.com editorial cabin review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "16025, 16027, 16029 (deck 16, The Haven)",
+      "claim": "These cabins sit directly across from a crew access door that starts slamming around 2 a.m. and continues into the morning.",
+      "source": "cruisecritic.com member review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "13140–13190 (port) and inside cabins 13152–13191 (deck 13)",
+      "claim": "These sit below the fitness center and may pick up thumping/noise from workout equipment.",
+      "source": "cruisedeckplans.com deck 13 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "10304 (deck 10 aft); 13265 (deck 13 aft)",
+      "claim": "Named examples of aft cabins where guests specifically reported strong engine vibration/noise on port-arrival mornings.",
+      "source": "cruisecritic.com member review; tomlovescruising.com first-person review",
+      "confidence": "medium"
     }
   ],
   "unknowns": [
-    "Whether Norwegian Epic has a hump configuration where balconies cantilever past the hull line on lower/mid decks, and if so, which specific decks and sections",
-    "Precise location of I95 crew corridor access points and which cabin sections experience the most service traffic",
-    "Whether anchor chain noise is significant enough on this class to warrant noting for forward low-deck cabins",
-    "Specific cabin numbers that are connecting rooms, as Epic was designed with an unusually high number of Studios and configuration variations",
-    "Location and impact of galley operations, particularly whether any galleys create noise/odor issues for cabins on adjacent decks"
+    "Whether Epic has genuine 'hump' balconies (cantilevered past the hull line) — a Cruise Critic forum thread raises the question of 'bump out' balconies on several decks but no answer with specific decks/cabins was found.",
+    "Whether the highest decks (16/17, The Haven) have a hull taper that hides the straight-down view from suite balconies — only bridge-overhang shading (decks 11/12) and Haven forward-bow window features (decks 16/17) were found, neither of which clearly matches the taper definition.",
+    "Bow thruster noise/vibration and anchor chain noise for specific forward cabins on Norwegian Epic — no ship-specific source was found; only generic, non-Epic-specific claims exist for the NCL fleet.",
+    "Deck-specific motion (rocking/sway) penalty by deck for Epic specifically — sources found were either generic NCL fleet advice or non-deck-specific (e.g., a bathroom door swinging open in rough seas), not tied to particular decks/sections on Epic.",
+    "Whether the 'in-hull/steel balcony' obstruction is disclosed by NCL for balcony categories other than B6 in the same forward ranges (BC, BF, BX, etc.) — only B6 was confirmed as explicitly flagged."
   ],
   "ship": "Norwegian Epic",
   "shipSlug": "norwegian-epic",
   "line": "Norwegian Cruise Line",
   "totalCabins": 2114,
-  "cabinsTouchedByAZone": 2114,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.031257
+  "cabinsTouchedByAZone": 2054,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 17,
+    "maxAllowed": 25
+  },
+  "cost": 1.9280300000000001
 }

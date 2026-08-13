@@ -1,108 +1,202 @@
 {
-  "class": "Excel",
+  "class": "Excel-class (Carnival Cruise Line) — sub-class of Excellence-class",
   "sisterShips": [
     "Carnival Mardi Gras",
     "Carnival Celebration",
-    "Carnival Jubilee"
+    "Carnival Jubilee",
+    "Carnival Festivale (delivery spring 2027)",
+    "Carnival Tropicale (delivery spring 2028)"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        8,
-        9,
-        10,
-        11
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Lifeboats are mounted at Deck 8; they obstruct downward and partial horizon views for Decks 8-11, with Deck 8 having the most severe obstruction.",
-      "effect": "Balcony and ocean view cabins look directly at or over lifeboat tops instead of open water; the view improves progressively on higher decks as you see past the boats.",
-      "mattersTo": "Matters greatly to anyone who wants unobstructed ocean views and is booking ocean view or balcony cabins; interior cabin guests are unaffected.",
-      "severity": "significant",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        16
+        5
       ],
       "sections": [
         "forward",
         "mid"
       ],
-      "what": "Deck 17 above houses interior cabins and some public spaces in the forward and midship sections.",
-      "effect": "Potential for footfall noise from guests in cabins or corridors directly overhead, though both decks are primarily accommodation so activity is similar.",
-      "mattersTo": "Light sleepers may notice evening foot traffic; most guests will not be bothered as both decks serve the same purpose.",
+      "what": "Cove Balcony staterooms on Deck 5 sit low over the water directly beneath the lifeboat/davit line carried on the non-cabin decks (6/7) above them.",
+      "effect": "Cabins positioned under a boat lose view and sunlight on the balcony, though the boats also shield the cove balcony from rain; cabins without a boat overhead get a fuller sea view.",
+      "mattersTo": "View-focused cove-balcony bookers should pick a cabin the guide identifies as boat-free; guests who mainly want the enclosed, close-to-water feel and don't mind a partial view won't be bothered.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "carnival-mardi-gras.blogspot.com first-person cabin Q&A: cabin 5235 'has not the best position for a cove balcony due to the lifeboat above'; corroborated by cruiseyourself.com noting cove-balcony choosers should 'select a cabin that does not have lifeboats directly above.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Havana Lanai/pool and smoking-permitted crew common area sit on Deck 8 forward/aft, directly beneath balcony cabins on Decks 9 and 10.",
+      "effect": "Cigarette smoke and music/noise from the Deck 8 outdoor areas drift upward, most noticeably one and two decks up; a first-person Havana-cabana reviewer reported smoke blowing onto their own balcony from a crew lounge sunk one level below.",
+      "mattersTo": "Smoke-sensitive guests and light sleepers should avoid Deck 9-10 balconies stacked above the Lanai/Havana pool and crew lounge; people who don't mind ambient noise/smoke and value people-watching may prefer the starboard-side stack for the livelier view.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruiseyourself.com: 'This will affect the lower decks (Decks 9 and 10) more than the higher decks'; cruiseline.com Havana Extended Cabana guest review describing crew-lounge smoke rising into the balcony."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Grand Central atrium/nightlife extends up through Deck 8 on Excel-class ships (one deck higher than on older Carnival classes), with DJ/atrium noise reaching the deck directly above.",
+      "effect": "Deck 9 midship cabins sit right above the atrium's upper noise envelope, unlike older Carnival ships where the buffer deck is different; guests wanting to avoid late-night atrium sound should skip Deck 9 midship.",
+      "mattersTo": "Light sleepers who go to bed before the party ends; not a concern for guests centered on nightlife or who use earplugs.",
       "severity": "minor",
-      "confidence": "medium"
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'on the Excel-class ships [DJ/atrium noise] extends right up to Deck 8, so Deck 9 mid-ship is the spot to avoid.'"
     },
     {
-      "factor": "below",
-      "decks": [
-        15,
-        16
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "The main pool deck and Lido buffet area are located on Deck 16 aft, directly below or one deck below parts of the aft accommodation.",
-      "effect": "Daytime activity, music, and crowd noise from the pool area can carry to cabins above, particularly during the day and early evening.",
-      "mattersTo": "Matters to anyone planning to nap or relax in their cabin during the day; those out exploring won't notice.",
-      "severity": "moderate",
-      "confidence": "medium"
-    },
-    {
-      "factor": "below",
+      "factor": "above",
       "decks": [
         5
       ],
       "sections": [
-        "forward"
+        "mid"
       ],
-      "what": "The main theatre (Deck 4) sits directly below the forward section of Deck 5.",
-      "effect": "Late-night shows can produce bass and vibration that carries upward, typically until 10-11 PM.",
-      "mattersTo": "Early sleepers should avoid this zone; night owls and those attending shows anyway will not care.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Deck 5 Cove Balcony and Cloud 9 Spa cabins sit directly beneath Grand Central, the Punchliner Comedy Club, Piano Bar 88, the Fortune Teller Bar, the MDR and the Mardi Gras Theater, all on Deck 6.",
+      "effect": "Shows, rehearsals and events run through the day and into the early morning directly overhead; cabins under these specific venues get the worst of it, and forum posters specifically ask about noise under Grand Central and the Punchliner club.",
+      "mattersTo": "Anyone wanting to sleep in or turn in early should avoid Deck 5 cabins stacked under these venues; nightlife-focused guests are less bothered.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruiseyourself.com: 'cabins below Grand Central may be particularly loud, as there are shows, events, and rehearsals... including the middle of the night and early morning'; Cruise Critic thread asking about noise under Grand Central and under the Punchliner club on Deck 5."
     },
     {
-      "factor": "engine",
+      "factor": "above",
       "decks": [
-        4,
-        5
+        15
       ],
       "sections": [
         "aft"
       ],
-      "what": "These are the lowest guest decks in the aft section, closest to propulsion machinery.",
-      "effect": "Low-frequency vibration and hum are perceptible underway, more noticeable at higher speeds or maneuvering.",
-      "mattersTo": "Sensitive sleepers or those who want absolute quiet should avoid; many guests adapt quickly or don't notice.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "The BOLT Ultimate Sea Coaster runs on Deck 19 aft, roughly four decks above Deck 15 cabins in the same aft column.",
+      "effect": "A first-person cabin-tour account on Deck 15, four decks below the coaster, could hear it running and feel slight vibration, though it was not loud.",
+      "mattersTo": "Very noise-sensitive guests may still notice a faint hum/vibration during coaster operating hours (roughly 9am-6pm); most guests found it a minor, non-disruptive background effect.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "attractionsmagazine.com first-person report: 'Our cabin was on Deck 15, four decks below the coaster and we could hear it running and feel a little vibration in our room... It wasn't loud.'"
     },
     {
-      "factor": "engine",
+      "factor": "below",
       "decks": [
-        4,
-        5,
-        8
+        10
       ],
       "sections": [
-        "forward"
+        "aft"
       ],
-      "what": "Lowest forward cabins are near bow thruster machinery and anchor chain mechanisms.",
-      "effect": "Bow thrusters create vibration during docking/undocking; anchor chains rattle early morning in port.",
-      "mattersTo": "Light sleepers arriving in port at dawn will hear the anchor; others sleep through or are already awake.",
+      "what": "Specific Deck 10 aft balcony cabins (e.g., cabin 10330) sit directly above/adjacent to the Bonsai Teppanyaki/Sushi restaurant complex on Deck 8-9.",
+      "effect": "A guest in cabin 10330 reported the restaurant's music played from 7am to midnight was audible on the balcony and blocked much of the view.",
+      "mattersTo": "Balcony-time guests wanting quiet or an open view should avoid this specific stack; diners who like being near dining venues may not mind.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "Cruise Critic thread 'Mardi Gras Cabin 10330 not good': guest reports the room 'over looks the Teppanyaki / Sushi Restaurants' and music played '7:00am to Midnight.'"
     },
     {
       "factor": "elevator",
       "decks": [
+        4,
+        5,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14,
+        15,
+        16,
+        17
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Midship elevator lobbies are the busiest bank fleet-wide on this class; forward and aft banks see much lighter traffic.",
+      "effect": "Cabins directly off the midship lobbies get more door-ding, hallway chatter and late-night noise; forward and aft elevator cabins are quieter but require a longer walk to central venues.",
+      "mattersTo": "Light sleepers and mobility-limited guests who want minimal walking but also want quiet should aim for forward or aft banks, not midship.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "wheelswaltertravel.com first-person review: 'Avoid the midship elevators as much as possible, they are always crowded. The elevators in the very front are the least crowded with the ones in the aft second best.'"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Interior cabins on Deck 16 sit along the walking route from the forward elevator bank to the Lido pool deck.",
+      "effect": "This corridor carries heavy foot traffic from guests moving to/from the pool all day, producing more hallway noise than a typical interior cabin.",
+      "mattersTo": "Guests who want a quiet interior cabin should avoid this specific stretch; families who want to be near the pool deck may like the convenience.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseyourself.com: 'avoid the interior cabins on Deck 16 on the way from the forward elevators to the Lido deck. This area has high foot traffic and can be quite noisy.'"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The anchor and chain locker sit forward on Deck 4; cabins in the forward-most range are closest to it.",
+      "effect": "On tender/anchor mornings, guests can hear the chain rattle out and back in, typically very early; itineraries with no tender ports avoid the issue entirely.",
+      "mattersTo": "Light sleepers on tender-heavy itineraries should avoid the forward-most Deck 4 cabins; guests on all-pier itineraries can ignore this.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseyourself.com: 'these cabins are closest to the anchor, so you may hear a loud noise in the early morning when the anchor lowers... anchors are typically only used in tender ports'; cruiseoverload.com corroborates the same forward Deck 4 anchor-noise pattern."
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        16,
+        17
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Decks 16 and 17 carry cabins only in the forward section (no aft or midship cabins on these top decks).",
+      "effect": "Being both high and far-forward compounds pitch and roll; a guide written from firsthand sailing experience flags these as the cabins most likely to feel ship movement.",
+      "mattersTo": "Motion-sensitive/seasickness-prone guests should avoid this specific high-forward combination; guests who enjoy feeling the ship's movement or want top-deck proximity to Lido/Serenity may not mind.",
+      "severity": "significant",
+      "confidence": "medium",
+      "source": "cruiseyourself.com (author sailed Mardi Gras's inaugural season): 'There are only forward cabins on decks 16 and 17. Cruisers in these cabins will most likely experience the most movement of the ship... If you are prone to seasickness, definitely avoid these rooms.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14,
+        15
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward corner-style balconies (Forward-View Extended Balcony 8L, Excel Corner Suites KS, Havana Extended Cabana HG) are built with a solid steel privacy/wind-break railing at the outer corner of the hull rather than open rail, and Carnival's own knowledge-base flags this as an obstruction 'when sitting.'",
+      "effect": "Standing, guests get a full forward/wraparound view; seated on the balcony furniture, the steel panel blocks the straight-down and much of the side view while the forward horizon stays visible. A stationary glass windbreaker is also fitted to cut wind.",
+      "mattersTo": "Guests who mainly sit on the balcony (reading, coffee) will feel boxed in; guests who stand at the rail to take in the forward view are unaffected. Confirmed as a design characteristic (not a one-off obstruction) since the exact same cabin-number pattern is published by Carnival for Mardi Gras, Celebration and Jubilee alike.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "help.goccl.com (Carnival's own Knowledge Center) 'Mardi Gras (MD) Obstructed Views': 'the following balcony staterooms and suites have a steel railing; therefore, the view is obstructed when sitting,' listing 8L cabins across Decks 9,10,11,12,14,15 and KS suites; corroborated by a first-person Tripadvisor guest ('I *HATE* those steel walls... the narrow steel wall that you cant see through when you sit') and by cruise.blog describing the same cove/extended-balcony steel-panel design as Excel-class-specific."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        4,
+        5,
         8,
         9,
         10,
@@ -115,42 +209,87 @@
       ],
       "sections": [
         "forward",
-        "mid"
+        "mid",
+        "aft"
       ],
-      "what": "Primary elevator banks run through forward and midship sections across all guest decks.",
-      "effect": "Cabins immediately adjacent to elevator lobbies get convenient access but also hear chimes, doors, and conversation throughout the day and evening.",
-      "mattersTo": "Mobility-limited guests benefit from proximity; those sensitive to hallway noise should request cabins mid-corridor.",
-      "severity": "minor",
-      "confidence": "high"
+      "what": "During an October 2025 dry dock in Marseille, Carnival converted 100 existing staterooms into connecting cabins fleet-wide on Mardi Gras.",
+      "effect": "Guests who booked before the refit expecting a non-connecting room may now find an adjoining door installed next to or in their cabin, raising privacy and noise concerns since a neighbor can access via the connecting door.",
+      "mattersTo": "Groups/families wanting connecting rooms benefit; solo travelers or couples who specifically want an isolated cabin should double-check current deck plans, since this changed after original construction and caught previously-booked guests off guard.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisehive.com: 'Carnival's flagship Mardi Gras is back at sea... with 100 new connecting cabins, sparking frustration among guests who say they weren't notified'; Brand Ambassador confirmed 'no security implications' but guests cited ongoing noise/privacy concerns."
     },
     {
-      "factor": "hump",
+      "factor": "other",
       "decks": [
-        10,
-        11
+        8
       ],
       "sections": [
-        "mid"
+        "forward"
       ],
-      "what": "The superstructure steps outward past the lifeboat line in the midship sections of Decks 10 and 11, creating extended balconies.",
-      "effect": "These balconies extend wider than the hull below, offering better sightlines past the lifeboats and a more open feel; they're also midship where motion is minimal.",
-      "mattersTo": "Value-conscious cruisers get better views for less money; those who want high decks or specific locations may not find them here.",
-      "severity": "moderate",
+      "what": "The starboard-side cabins overlooking the Deck 8 Lanai (aft) and Havana Pool (forward) can be seen into from the pool deck below, while port-side cabins in the equivalent stack face more obstruction but more privacy.",
+      "effect": "Starboard balconies trade privacy for a livelier, less-obstructed view (good for people-watching); port-side balconies are quieter and more private but see more of the ship's structure.",
+      "mattersTo": "Guests who value privacy over view should choose port side on this stack; guests who enjoy watching pool activity should choose starboard, knowing people below can look up.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseyourself.com: 'anyone in those areas on Deck 8 can easily look up into your balcony... there is much less privacy and quiet on the starboard side. However, the views are more interesting and less obstructed than the port side.'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "4202-4209",
+      "claim": "Named as the specific forward Deck 4 range closest to the anchor, most likely to hear chain noise on tender-port mornings.",
+      "source": "cruiseoverload.com 'Cabins To Avoid On Carnival Mardi Gras'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "10330 (and similar aft-Deck 10 stack, e.g. 10331, 10335 corridor)",
+      "claim": "Balcony blocked by/overlooking Teppanyaki-Sushi restaurant complex with restaurant music audible 7am-midnight.",
+      "source": "Cruise Critic thread 'Mardi Gras Cabin 10330 not good'",
       "confidence": "medium"
+    },
+    {
+      "cabins": "8305",
+      "claim": "Directly next to the Havana Bar, which plays Latin music nightly — noise concern for this specific Havana cabin.",
+      "source": "cruiseyourself.com Best and Worst Cabins on Carnival Mardi Gras",
+      "confidence": "low"
+    },
+    {
+      "cabins": "5235",
+      "claim": "Cove balcony with a lifeboat directly above, reducing view/light versus other Deck 5 cove balconies.",
+      "source": "carnival-mardi-gras.blogspot.com first-person cabin Q&A",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Deck 5 Premium Interior cabins directly under Grand Central (e.g., near cabin numbers referenced in CC thread 'Premium Interior on Mardi Gras on Deck 5')",
+      "claim": "Guest specifically flagged booking directly under Grand Central and asked about noise from above; no confirmed reply found in this session.",
+      "source": "Cruise Critic thread 'Premium Interior on Mardi Gras on Deck 5'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Deck 10 aft balcony stack (\"after the middle hump\")",
+      "claim": "Deck plans suggest a larger-than-standard balcony on Deck 10 aft, in the narrow section after a hull 'hump'; unconfirmed by any first-hand stay report found this session.",
+      "source": "Cruise Critic thread 'Mardi Gras deck 10'",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Exact location and span of the I95 crew corridor access points and which cabin sections experience the most service traffic",
-    "Whether specific Havana cabins on Decks 4, 12, and 17 have direct access to the Havana pool area or require walking through public spaces",
-    "Precise location and noise profile of the main galley and whether it affects specific cabin sections",
-    "Whether Cloud 9 Spa cabins on Deck 5 have spa access privileges or just theming",
-    "The exact deck location of nightclubs or late-night venues and their impact on cabins directly above or below"
+    "Whether bow-thruster noise/vibration is noticeably reported by guests in the forward-most Mardi Gras cabins specifically (only generic bow-thruster acoustics literature found, not ship-specific guest reports).",
+    "Whether aft-cabin propulsion/engine vibration is a noted complaint for Mardi Gras specifically (only generic Carnival-fleet and other-ship forum chatter found; no Mardi-Gras-specific aft vibration reports located this session).",
+    "Exact location and guest-facing impact of the I-95 crew corridor on this ship (general cruise-industry description found, but no Mardi-Gras-specific access-point or noise-bleed report located).",
+    "Whether a true structural 'hump' (cantilevered hull bulge) exists on this class beyond the single, unconfirmed Deck 10 aft forum question — no first-person stay report verifying balcony size/shape difference was found.",
+    "Whether Family Harbor cabins on Deck 4 (forward-midship) experience any distinct above/below noise profile from the adjacent Family Harbor Lounge.",
+    "Confirmed cabin-number ranges for cabins directly under BOLT (Deck 19 aft) beyond the single Deck 15 first-person account — Decks 14 and 17 aft under/near the coaster and Ultimate Playground were not independently confirmed this session."
   ],
   "ship": "Carnival Mardi Gras",
   "shipSlug": "mardi-gras",
   "line": "Carnival Cruise Line",
   "totalCabins": 1555,
   "cabinsTouchedByAZone": 1555,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.028455
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 19,
+    "maxAllowed": 25
+  },
+  "cost": 2.173633
 }

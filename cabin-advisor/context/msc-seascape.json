@@ -1,73 +1,151 @@
 {
-  "class": "Seaside EVO",
+  "class": "MSC Seaside class (including Seaside EVO sub-class)",
   "sisterShips": [
+    "MSC Seaside",
+    "MSC Seaview",
     "MSC Seashore"
   ],
   "zones": [
     {
-      "factor": "lifeboat",
+      "factor": "below",
       "decks": [
-        8,
-        9,
+        15
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 15 aft cabins sit directly beneath the Deck 16 Marketplace Buffet.",
+      "effect": "Early cart/chair noise and foot traffic from the buffet can carry down into the ceiling of the cabin below; this is a one-deck, direct vertical relationship, not a diffuse multi-deck effect.",
+      "mattersTo": "Light sleepers and anyone planning to sleep in past the buffet's opening hours should avoid; guests who are out all day and just need a bed won't notice much.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com/cruise/msc/msc-seascape/cabins: \"if your cabin is located towards the aft of the ship on Deck 15, it may be directly below the Marketplace Buffet.\""
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Aurea-category aft suites on decks 9 through 15 all overlook the Infinity Pool area lower on the ship, with the lower cabins closest to the pool deck and the higher ones progressively further from it.",
+      "effect": "Lower-deck aft suites (10-11 in this inventory) pick up more pool noise and activity; the higher decks (14-15) get the same wake/ocean view with much less pool noise because they're further from the source.",
+      "mattersTo": "Noise-sensitive guests should pick the highest aft deck they can afford in this stack; sun-and-splash guests who want to be close to the action should pick low.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com editor review: cabins between decks 9 and 15 aft \"look over the Infinity pool,\" and \"these cabins on the lower decks are exposed to noise from the pool... the suites on the higher don't have this issue.\""
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "No guest cabins sit adjacent to the Le Cabaret Rouge nightclub; the Infinity Pool deck is interposed directly above it instead.",
+      "effect": "The pool deck acts as a buffer, so aft-stack cabins get pool noise (daytime) rather than nightclub bass (nighttime) — a meaningfully different, generally milder noise profile than a true above-nightclub cabin would have.",
+      "mattersTo": "Good news for anyone worried specifically about late-night club bass; the trade-off is daytime pool noise instead.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisecritic.com: \"there are no cabins located near the nightclub venue Le Cabaret Rouge, as only the Infinity Pool is located right above this nightclub venue.\""
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Standard cabins on Decks 9 and 10 forward sit above the Chora Theatre.",
+      "effect": "Show bass and rehearsal noise can bleed up through the ceiling into forward cabins on this deck.",
+      "mattersTo": "Anyone in a forward Deck 10 cabin who wants an early night on show nights should ask to move away from the theatre footprint.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "deeparrival.com: \"Passengers should avoid standard cabins on Deck 15 due to buffet noise above, and cabins on Decks 9 and 10 forward above the Chora Theatre.\""
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "MSC Seascape has 50 terraced cabins/suites at the stern where each deck's balcony steps outward past the deck below, a hallmark of the Seaside-class 'beach condo' design.",
+      "effect": "The terrace buys unusually large aft balconies and open-air feel, but it also means the balcony floor of the deck above extends over the balcony of the deck below, so lower-deck terraced balconies are more visible from the decks above and the design leaves them generally more exposed to noise from the outdoor public spaces they overlook.",
+      "mattersTo": "Sun-worshippers who want a huge balcony love this tier; anyone wanting total privacy on a lower terraced deck should go higher in the stack instead.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "MSC's own Seascape page advertises \"50 terraced suites with extended balconies\"; CruiseMapper confirms \"50 terraced cabins (overlooking the Promenade Deck)\"; Cruise Critic's ship-specific review states \"MSC Seascape's tiered design leaves lower deck balcony cabins more exposed... The noise level also increases, as you'll be closer to outdoor public spaces.\""
+    },
+    {
+      "factor": "engine",
+      "decks": [
         10,
         11
       ],
       "sections": [
-        "forward",
-        "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 8; they obstruct downward views from Decks 8-11, with Decks 10-11 most affected, though the horizon remains clear.",
-      "effect": "You cannot see the water directly below or watch tender operations, but the ocean view at eye level is unobstructed; balconies feel more private from the promenade below.",
-      "mattersTo": "Matters to those who want to see straight down or watch port operations; irrelevant to those focused on horizon views or who value the promenade-side privacy the boats provide.",
+      "what": "Cabins at the aft, lower end of the guest-cabin stack sit closest to the propulsion machinery.",
+      "effect": "Guests in the lowest aft cabins report a continuous low-frequency hum/vibration that can be felt through the floor and bed, most noticeable at higher cruising speed and during maneuvering.",
+      "mattersTo": "Vibration-sensitive sleepers should move up the stack or off the aft end; guests who sleep through anything, or who love aft wake views, may not mind the trade-off.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "techimaging.co.uk: \"cabins located too close to the engines or propellers may experience strong vibrations... felt through the floor, furniture, and even the bed.\" Also cruisesnooze.com: \"On ships like the MSC Seascape, aft engine hum has been described as a 'distant earthquake' that lasts for hours.\""
     },
     {
-      "factor": "below",
+      "factor": "engine",
       "decks": [
-        16
+        5
       ],
       "sections": [
-        "forward",
-        "mid",
-        "aft"
+        "forward"
       ],
-      "what": "Deck 15 directly below houses the Aurea Spa, a quieter venue but with some daytime activity.",
-      "effect": "Minimal noise or vibration from below; the spa operates on a calmer schedule than pool or buffet areas.",
-      "mattersTo": "Low impact for most guests; mainly noted for completeness as Deck 16 sits above a non-disruptive venue.",
+      "what": "Deck 5 forward cabins sit near the bow thrusters.",
+      "effect": "A returning guest reported audible thruster noise specifically during docking maneuvers, though it was silent the rest of the time underway.",
+      "mattersTo": "Matters mainly to guests on itineraries with frequent early-morning port calls; guests who sleep through docking won't notice.",
       "severity": "minor",
-      "confidence": "medium"
+      "confidence": "high",
+      "source": "cruisewithleo.com, first-person account of a Deck 5 cabin: \"the cabin was also at the very front of the ship and was quite noisy during docking maneuvers... big cruises have bow thrusters that are placed near the bow.\""
     },
     {
-      "factor": "below",
+      "factor": "motion",
       "decks": [
-        19
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
       ],
       "sections": [
-        "aft"
+        "forward"
       ],
-      "what": "Deck 18 aft directly below houses the Garage Bar, a high-energy venue with music and late-night activity.",
-      "effect": "Potential for bass, vibration, and noise until late evening, especially on nights with live entertainment or DJ sets.",
-      "mattersTo": "Significant for light sleepers or those turning in early; non-issue for night owls or those who enjoy the energy.",
-      "severity": "significant",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        6
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Deck 5 sits directly above Deck 4 public venues, though Deck 5 itself is the lowest guest cabin deck and Deck 4 is not heavily trafficked at night.",
-      "effect": "Minimal noise from below during sleeping hours; Deck 5 is well-insulated from operational areas further down.",
-      "mattersTo": "Low concern; Deck 5 forward and mid are generally quiet at night.",
-      "severity": "minor",
-      "confidence": "medium"
+      "what": "Forward cabins take the strongest wave motion and wind on this ship.",
+      "effect": "Guests in forward cabins can feel more pitching in rough seas, and strong headwinds can make sitting out on the balcony uncomfortable.",
+      "mattersTo": "Motion-sensitive guests should book midship; guests who like a front-row, wind-in-your-hair balcony experience may prefer it.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "techimaging.co.uk: \"Forward cabins are located at the front of the ship, where the movement of waves is strongest... In addition to motion, strong winds can also make balcony use less comfortable.\""
     },
     {
       "factor": "elevator",
@@ -80,46 +158,68 @@
         15
       ],
       "sections": [
-        "forward",
+        "mid",
         "aft"
       ],
-      "what": "Primary elevator banks are located forward and aft on the main guest cabin decks, with mid-ship sections further from vertical traffic.",
-      "effect": "Cabins near elevator banks offer maximum convenience but may experience hallway foot traffic and occasional door chimes; mid-ship cabins are quieter but require longer walks.",
-      "mattersTo": "Convenience matters to those with mobility concerns or heavy luggage; quiet matters to light sleepers who prioritize rest over quick access.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "MSC Seascape's elevator banks are concentrated in the midship and aft atriums, with the aft bank fully glass-walled and panoramic.",
+      "effect": "Cabins near either atrium get quick lift access and, at the aft bank, a scenic ride; the trade-off is elevator-lobby foot traffic and chime noise close to those cabins on every deck the bank serves.",
+      "mattersTo": "Mobility-limited guests and anyone who values quick access should book near a bank; light sleepers directly adjacent to a lobby should not.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "CruiseMapper's Deck 15 plan for MSC Seascape notes \"Panoramic Elevators (in the midship and aft atriums)\""
     },
     {
-      "factor": "engine",
+      "factor": "elevator",
       "decks": [
-        5
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        18,
+        19
       ],
       "sections": [
+        "mid"
+      ],
+      "what": "Multiple reviewers report the elevators running slow and overcrowded even at partial ship capacity.",
+      "effect": "Expect waits of several minutes at peak times (meal seatings, show call, disembarkation), which pushes some guests toward the stairs instead.",
+      "mattersTo": "Guests who prioritize quick vertical access, or who have mobility constraints, should factor in wait time regardless of cabin location.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "thepointsguy.com first-impressions review: \"The elevators on MSC Seascape are painfully slow, sometimes taking several minutes to arrive.\""
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "mid",
         "aft"
       ],
-      "what": "Deck 5 aft sits low and near the stern, closer to propulsion machinery.",
-      "effect": "Possible low-frequency vibration or hum, more noticeable during maneuvering or high-speed sailing; minimal when at anchor.",
-      "mattersTo": "Sensitive to those who notice vibration or mechanical noise; usually imperceptible to those accustomed to ship sounds or who sleep deeply.",
+      "what": "MSC's frequent-port itineraries mean crew move luggage through service stairwells near guest cabins most nights, a fleet-wide MSC pattern rather than something unique to this hull.",
+      "effect": "Cabins next to a crew stairwell access point can hear suitcases being lugged down late at night on multi-port itineraries.",
+      "mattersTo": "Light sleepers on back-to-back-port itineraries should check the deck plan for a stairwell icon next to their cabin and avoid it; this is less relevant on itineraries with few port days.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: \"this can cause issues if you get a cabin next to a crew stairwell... every night, guests who are leaving the ship will place their suitcases outside their stateroom door, and the crew then move them... that's not a quiet job.\""
     },
     {
-      "factor": "engine",
+      "factor": "other",
       "decks": [
-        5
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Deck 5 forward sits low near bow thrusters, which activate during docking and maneuvering.",
-      "effect": "Occasional rumbling or vibration during port arrivals and departures, typically early morning or late afternoon; silent during open-sea cruising.",
-      "mattersTo": "Affects early risers or light sleepers during port days; irrelevant during sea days or for those unbothered by brief mechanical sounds.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
+        10,
+        11,
+        12,
+        13,
+        14,
         15
       ],
       "sections": [
@@ -127,40 +227,106 @@
         "mid",
         "aft"
       ],
-      "what": "Deck 16 directly above houses MSC Yacht Club cabins and the exclusive Top Sail Lounge, a low-traffic, adults-only venue.",
-      "effect": "Minimal noise from above; the Yacht Club areas are quieter and more controlled than public zones.",
-      "mattersTo": "Low impact; Deck 15 benefits from having a calm, restricted-access area overhead.",
+      "what": "Connecting-cabin doors are markedly thinner than a standard cabin wall.",
+      "effect": "Neighbor conversations, TV, and even snoring can pass through the connecting door clearly, whether or not the connection is in use.",
+      "mattersTo": "Families/groups who book both connected cabins won't mind; couples or solo travelers who get a connecting cabin assigned next to strangers should ask to switch.",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "techimaging.co.uk: \"The connecting door between cabins is often thinner than a regular wall, allowing sound to pass through more easily. Conversations, television sounds, or even snoring can be heard clearly.\""
     },
     {
-      "factor": "above",
+      "factor": "other",
       "decks": [
-        18
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
       ],
       "sections": [
         "forward",
-        "mid"
+        "mid",
+        "aft"
       ],
-      "what": "Deck 19 directly above houses MSC Yacht Club cabins, the quietest occupants on the ship.",
-      "effect": "No noise or activity from above; Deck 18 enjoys a peaceful ceiling neighbor.",
-      "mattersTo": "Positive for all; contributes to a quieter environment with no foot traffic or public venues overhead.",
+      "what": "Some cabins run parallel to long, high-traffic corridors rather than being reached by a short perpendicular hallway stub.",
+      "effect": "The full long wall of these cabins faces the corridor, so footsteps, luggage wheels and late-night hallway chatter are more audible than in a typical cabin.",
+      "mattersTo": "Light sleepers should check the deck plan orientation of the cabin's long wall relative to the corridor before booking.",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "techimaging.co.uk: \"Some cabins on MSC Seascape are positioned along long hallways that see constant movement. Cabins that run parallel to these corridors can be more exposed to noise.\""
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "MSC discloses in the fine print that some balcony cabins have a solid metal front rather than a glass balustrade, without specifying exactly which cabins carry the metal front on this ship's current deck plan.",
+      "effect": "A metal-front balcony blocks the sea view for anyone seated, leaving only a view of sky when not standing at the rail.",
+      "mattersTo": "Anyone who plans to sit and look at the ocean from a chair, rather than stand at the rail, should verify glass-vs-metal for their specific cabin before booking, especially in Bella/lower-tier balcony grades.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "msccruises.com Seascape ship page: \"*Some cabins have a metal balcony front, instead of glass.\""
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "12002, 12003, 13002, 13003, 14002, 14003, 14004, 14005",
+      "claim": "Flagged on MSC's own deck plan (half-colored circle) as partially obstructed-view balcony cabins, blocked by metal parts or protruding decks.",
+      "source": "cruisewithleo.com first-person MSC Seascape review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "10029",
+      "claim": "Reported to have a metal (steel balustrade) balcony rather than glass.",
+      "source": "Cruise Critic Community thread, but about sister ship MSC Seaside, not confirmed on Seascape's current plan",
+      "confidence": "low"
+    },
+    {
+      "cabins": "10071 and 10075 (vs. 10065, 10067, 10069 below); 11071 and vertical column 11062/11066/11067/11071",
+      "claim": "'Bump-out'/hump balconies on higher decks look directly down onto the balconies of the terraced cabins below them, reducing privacy for the lower cabins; documented specifically for MSC Seaside, not confirmed against MSC Seascape's own cabin numbering.",
+      "source": "cruisebooking.com MSC Seaside cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Aurea Panoramic Window Suites (category, exact numbers not specified)",
+      "claim": "Floor-to-ceiling sealed windows are partly obstructed at the bottom by a metal wind deflector.",
+      "source": "cruisegalore.com MSC best/worst cabins roundup",
+      "confidence": "low"
+    },
+    {
+      "cabins": "16019",
+      "claim": "Reported as very noisy from overnight galley-prep dragging/dropping sounds with no sound barrier; documented for sister ship MSC Seaside, unconfirmed for Seascape's equivalent cabin.",
+      "source": "cruisebooking.com MSC Seaside cabins-to-avoid guide",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether the Seaside EVO class has a hump (balconies cantilevered past the hull line at lower decks mid-ship); the Seaside class is known for its unique promenade design, but the specific deck-by-deck hump geometry for MSC Seascape requires deck plan cross-referencing I cannot verify with certainty.",
-    "The exact location and extent of the I-95 crew corridor access points on each deck; while crew corridors run the length of most ships, the specific doors and service traffic patterns near guest cabins on this class would need direct observation or insider documentation.",
-    "Anchor chain noise specifics for Deck 5 forward cabins; while bow cabins universally risk early-morning anchor noise, the insulation and cabin placement on this particular class would need guest reports to quantify severity.",
-    "The deck location of the main galley and whether it creates noise/vibration for cabins directly above or adjacent; galley placement varies and I cannot confirm it for Seaside EVO without hull-specific documentation.",
-    "Whether any decks sit above or below the theatre or nightclub; I know public venues exist but cannot confidently map their vertical relationship to the cabin decks listed without seeing the full venue deck plans."
+    "Exact deck on which MSC Seascape's lifeboats/tenders are stowed, and whether any deck-10 (lowest balcony deck in current inventory) cabins have a lifeboat-obstructed view; sister ships Seaside/Seaview have cabins directly on the lifeboat deck (8) with documented 50-70% obstruction, but Seascape's Deck 8 is a non-cabin Promenade/Spa/Pool deck, so the same effect may not transfer directly.",
+    "Whether Yacht Club suites on the highest decks (18-19) sit atop an inward hull taper that hides the straight-down view — no ship-specific source found confirming or denying this for Seascape.",
+    "Anchor-chain noise for forward-most cabins on port mornings — no ship-specific source found.",
+    "Deck 9 appears in third-party deck-plan sources (with its own Aurea suite cabins, e.g. 9001-9285) despite being absent from the provided 'real inventory' deck list; worth reconciling against the live booking engine before advising customers.",
+    "Specific cabin ranges on Seascape's own deck plan that carry the metal (vs. glass) balcony front disclosed by MSC — not itemized in any source found this session."
   ],
   "ship": "MSC Seascape",
   "shipSlug": "msc-seascape",
   "line": "MSC Cruises",
   "totalCabins": 1959,
   "cabinsTouchedByAZone": 1959,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.032505
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 18,
+    "maxAllowed": 25
+  },
+  "cost": 2.8506000000000005
 }

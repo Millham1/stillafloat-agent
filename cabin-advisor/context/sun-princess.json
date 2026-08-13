@@ -1,41 +1,88 @@
 {
-  "class": "Sphere class",
+  "class": "Sphere-class (Princess Cruises)",
   "sisterShips": [
-    "Sun Princess",
     "Star Princess"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        6,
-        9,
-        10
+        5,
+        6
       ],
       "sections": [
         "forward",
         "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 6; they obstruct downward and outward views from Decks 6, 9, and 10, with Deck 6 most affected.",
-      "effect": "Oceanview and balcony cabins on these decks look directly at or over orange lifeboat tops instead of clean water views; the horizon remains visible above the boats.",
-      "mattersTo": "Matters greatly to guests prioritizing unobstructed ocean views or photography; doesn't matter to those focused on having a balcony for air and space rather than the vista, or to anyone in an interior cabin.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "A first-person cabin review of Sun Princess reports the ship has no designated obstructed-view balcony category among its 2,100+ staterooms, unlike older Princess Royal-class ships that explicitly sell lifeboat-obstructed categories (e.g. DV/DW/DZ on Discovery Princess).",
+      "effect": "Guests are unlikely to be sold a standard balcony cabin whose view is blocked by a lifeboat hull the way they might on an older Princess ship; the class appears to route lifeboats/tenders away from overhanging guest balconies or below the lowest guest deck.",
+      "mattersTo": "Shoppers hunting for a cheap 'obstructed-view' discount balcony won't find that category here; guests worried about lifeboat-blocked balconies can be reassured for standard categories, though exact lifeboat deck placement could not be confirmed.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "eatsleepcruise.com balcony-cabin review: 'no obstructed view cabins' among 2100+ staterooms; corroborated by absence of obstructed-category codes in cruisemapper.com's Sun Princess cabin-category breakdown (contrast with Discovery Princess's explicit DV/DW/DZ obstructed categories on cruisedeckplans.com)."
     },
     {
-      "factor": "below",
+      "factor": "above",
       "decks": [
-        9
+        9,
+        10
       ],
       "sections": [
         "mid"
       ],
-      "what": "The Dome (multi-story entertainment venue) sits directly below the midship section of Deck 9.",
-      "effect": "Evening entertainment noise and vibration from live shows and performances may be noticeable in cabins directly above, particularly during peak evening hours.",
-      "mattersTo": "Matters to light sleepers and early-to-bed travelers; doesn't matter to those who stay out late or aren't noise-sensitive.",
+      "what": "The three-story Piazza atrium (with the glass Sphere) sits roughly on Decks 7-9, and Decks 9 and 10 cabins that border or sit above it catch noise from evening productions and performances.",
+      "effect": "Light sleepers in cabins bordering or above the Piazza report hearing shows and performances well into the evening; these cabins are also easy to spot on the deck plan because the Sphere bows outward on both port and starboard sides.",
+      "mattersTo": "Light sleepers and early-to-bed guests should avoid Deck 9-10 cabins near or above the Piazza; night owls or those who don't mind ambient noise won't be bothered.",
       "severity": "moderate",
-      "confidence": "medium"
+      "confidence": "high",
+      "source": "cruisecritic.com Sun Princess cabins review: guests 'directly above, or that border, the Piazza' report hearing production noise into the evening, and the Sphere 'bows out on both port and starboard sides' making it identifiable on deck plans."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Eatery (Sun Princess's buffet/World Fresh Marketplace) occupies most of the aft portion of Deck 9, next to the Piazza and outdoor Promenade, and is described as roughly eight decks below the main pool deck.",
+      "effect": "Cabins along the corridor to the buffet on Deck 9 get crowded and loud beginning around 6 a.m. as breakfast service starts and foot traffic builds.",
+      "mattersTo": "Guests who value a quiet morning should avoid Deck 9 aft corridor cabins near The Eatery; those who want to be steps from breakfast may prefer it.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com dining review: 'The Eatery... takes up most of the aft portion of Deck 9'; cruisebooking.com: 'Deck 9 cabins along the corridor to The Eatery buffet also get crowded and loud from 6 a.m.'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 16 forward and midship cabins sit directly beneath The Dome pool/entertainment structure on Deck 17, which converts into a late-night disco running until about 1:30 a.m.",
+      "effect": "Guests in these cabins can expect daytime pool activity noise overhead and, more disruptively, dance-club bass and crowd noise into the small hours.",
+      "mattersTo": "Anyone who isn't a night owl should avoid forward Deck 16; those who want to be close to nightlife may see it as a plus.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisecritic.com Sun Princess cabins review: forward Deck 16 cabins are 'directly under The Dome, which becomes the late-night disco that goes on until 1:30 am.'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "On the identical Sphere-class layout (documented for sister ship Star Princess), cabins from the ship's widened midsection ('the bump') aft on Deck 16 sit under other Deck 17 cabins rather than under the pool deck.",
+      "effect": "These aft Deck 16 cabins are quieter than their forward counterparts because they are shielded from direct pool-deck noise by cabins above rather than open deck space.",
+      "mattersTo": "Guests wanting Deck 16's larger 'bump' balcony without the pool noise should pick aft over forward on that deck.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisecritic.com Star Princess deck-plan guide (identical Sphere-class hull): 'Cabins from the bump to the aft of Deck 16 sit under other cabins on Deck 17, and should be quieter.'"
     },
     {
       "factor": "below",
@@ -43,80 +90,140 @@
         10
       ],
       "sections": [
-        "aft"
-      ],
-      "what": "Main dining rooms and galley operations sit directly below the aft section of Deck 10.",
-      "effect": "Matters to light sleepers and those sensitive to mechanical hums or service activity sounds; doesn't matter to sound sleepers or those rarely in their cabin during meal times.",
-      "severity": "moderate",
-      "confidence": "medium"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        16
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "The Dome upper levels and the Pool Deck sit directly above midship and aft Deck 16.",
-      "effect": "Daytime pool deck activity, furniture dragging, and evening entertainment noise may be audible; foot traffic and music from the pool bar can carry through until late evening.",
-      "mattersTo": "Matters to those wanting quiet during the day or early evenings; doesn't matter to heavy sleepers or guests who prefer the energy of being near the action.",
-      "severity": "moderate",
-      "confidence": "medium"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        15
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "The World Fresh Marketplace (buffet) operates directly above portions of midship and aft Deck 15.",
-      "effect": "Early morning buffet prep (starting around 6 AM), foot traffic, chair movement, and service activity throughout breakfast and lunch hours create noise overhead.",
-      "mattersTo": "Matters significantly to late sleepers and those sensitive to early morning noise; doesn't matter to early risers or those planning to be at breakfast anyway.",
-      "severity": "moderate",
-      "confidence": "medium"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        5,
-        6
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Aft cabins on the lowest guest decks sit closest to propulsion machinery and stabilizer mechanisms.",
-      "effect": "Low-frequency vibration and mechanical hum are most noticeable here, particularly during maneuvering, rough seas, or when stabilizers are active.",
-      "mattersTo": "Matters to vibration-sensitive guests and light sleepers; doesn't matter to those unbothered by background hum or who use white noise anyway.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        5,
-        6,
-        9
-      ],
-      "sections": [
         "forward"
       ],
-      "what": "Forward cabins on lower decks experience bow thruster noise during docking and maneuvering, plus anchor chain deployment in port.",
-      "effect": "Loud mechanical rumble during docking (usually early morning arrival) and anchor operations; the sound is brief but can be jarring if asleep.",
-      "mattersTo": "Matters greatly to light sleepers on port days with early arrival times; doesn't matter to heavy sleepers or early risers who'll be up anyway.",
-      "severity": "significant",
-      "confidence": "high"
+      "what": "Certain Premium Deluxe Balcony (category D2) cabins on Deck 10, including 10236 and 10237, sit directly above the hot tub area on the Cabana Deck (Deck 9) reserved exclusively for Cabana Mini-Suite guests.",
+      "effect": "Occupants look straight down onto a hot tub they are not permitted to use, an awkward visual/privacy dynamic for both parties.",
+      "mattersTo": "Guests who want a private balcony experience or who dislike overlooking other guests' loungers should avoid 10236/10237; those who don't mind won't notice much difference.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'the absolute worst of these large balcony cabins are 10236 and 10237... right over the hot tub on the Cabana deck,' cabin numbers confirmed as real D2-category cabins on cruiseline.com."
     },
     {
       "factor": "elevator",
       "decks": [
-        5,
         6,
+        17
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The aft elevator bank on Sun Princess is a small two-car bank that starts around Deck 6/7 (Horizons dining room) and terminates at Deck 17.",
+      "effect": "Guests who want to be far from elevator traffic and ding noise can book aft cabins away from this small bank; those wanting quick access to the aft pool/dining areas have only two cars serving that whole run.",
+      "mattersTo": "Elevator-noise-sensitive guests can safely pick far-aft cabins since only two cars serve that shaft; mobility-limited guests relying on the aft bank may face waits.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com Sun Princess thread: 'Just two, so a small \"bank\" of lifts... initiates on deck 6 or 7... last stop is deck 17.'"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Decks 10 through 15 are cabin-only decks with easy access to the ship's midship elevator bank connecting guests down to dining/entertainment hubs.",
+      "effect": "Midship cabins on these decks offer the shortest walk to elevators, useful for quick access but also the most elevator-lobby foot traffic.",
+      "mattersTo": "Guests prioritizing convenience over quiet should book midship on 10-15; those wanting distance from elevator lobby noise should go forward or aft.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "dailycruiseinfo.com: 'Deck 10 to 15: Staterooms with easy access to midship elevators, making it simple to reach dining and entertainment.'"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        10,
+        11,
+        12,
+        14,
+        15,
+        16,
+        17
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Sun Princess has a widened midship hull section — nicknamed 'the bump' on sister ship Star Princess — where certain Premium Deluxe Balcony (category D2) cabins on Decks 10, 11, 12, 14, 15, 16 and 17 (e.g. 10236/10237, 11248/11249, 12248/12249, 14246/14247, 15238/15239, 16244-16460, 17418/17419) get larger, angled balconies that jut past the straight hull line.",
+      "effect": "These cabins get noticeably bigger balconies with side-on sea views down the length of the ship, but the right-angle corner layout means neighboring and higher balconies can see directly onto them, reducing privacy; being overlooked from above is the main complaint.",
+      "mattersTo": "Guests chasing balcony square footage will love these; guests who value balcony privacy over space should avoid them, especially on lower decks where more cabins sit above.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruiseline.com D2 category cabin list (10236, 11248, 12248, 14246, 15238, 16244, 16320, 16418, 17418, etc.); cruisebooking.com/cruisemummy.co.uk: corner Premium Deluxe Balconies are 'at a right angle to each other' and 'overlooked from above'; cruisecritic.com Star Princess guide calls the equivalent Deck 16 feature 'the bump... the wider part of the ship.'"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        17
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "On the top guest deck (17), the same corner/'bump' Premium Deluxe Balcony cabins escape being overlooked from above since there is no deck of cabins above them.",
+      "effect": "Guests get the larger bump-style balcony without the worst of the privacy loss that affects the same category on Decks 10-16.",
+      "mattersTo": "Privacy-conscious guests who still want the bigger bump balcony should target Deck 17 over lower decks.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'best booking one on Deck 17 if you can... you at least won't be overlooked by the balconies above, so the intrusion will be minimal.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        16,
+        17
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "On the identical Sphere-class hull (documented for Star Princess's top decks), high, forward-leaning cabins are noted to transmit more of the ship's rocking motion in rough seas than lower/midship cabins.",
+      "effect": "Guests in high forward or aft cabins will feel more roll and pitch in rough weather than midship guests on lower decks.",
+      "mattersTo": "Motion-sensitive guests should favor lower, midship cabins (Decks 9-12 midship); guests chasing the biggest balconies and views on Decks 16-17 should accept a motion trade-off.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com Star Princess deck-plan guide (same Sphere-class hull): high deck rooms mean 'you'll feel the ship rocking a bit more if you're prone to sea sickness and seas are rough.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
         9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Princess's own guidance for choosing a room states that midship cabins on lower decks offer the most stability for motion-sensitive guests fleet-wide, which applies to Sun Princess's Decks 9-12 midship.",
+      "effect": "These cabins are the most stable ride on the ship, at the cost of being farther from top-deck pools and entertainment.",
+      "mattersTo": "Seasickness-prone guests should prioritize this zone; guests who want to be near pools/nightlife may prefer higher decks despite more motion.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "princess.com official blog: 'Midship cabins on lower decks offer the most stability for travelers sensitive to motion.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Sun Princess includes Family Suites (e.g. D105/D101 and D106/D102) that are interconnecting staterooms accommodating up to 8 guests, part of roughly 100 connecting rooms fleet-wide on this ship.",
+      "effect": "Large families/groups can combine cabins, but connecting-door sound transmission is a known concern raised by guests.",
+      "mattersTo": "Families/groups wanting to stay together should look at these; guests paired with strangers behind a connecting door in adjacent cabins should ask about noise reduction options.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseline.com deck plan: 'Family Suites D105/D101 & D106/D102 are interconnecting staterooms with private balcony; accommodates up to 8 people'; britsonaship.com: ship has '100 connecting rooms.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
         10,
         11,
         12,
@@ -130,25 +237,80 @@
         "mid",
         "aft"
       ],
-      "what": "Elevator and stair banks are positioned forward, midship, and aft on all cabin decks, with midship banks serving the highest traffic.",
-      "effect": "Cabins immediately adjacent to elevator lobbies experience door chimes, conversation, and foot traffic throughout the night; midship elevators are busiest due to main dining room and atrium access.",
-      "mattersTo": "Matters to light sleepers and those sensitive to hallway noise; doesn't matter to sound sleepers or those who prioritize convenience over quiet.",
+      "what": "Wheelchair-accessible cabins on Sun Princess are deliberately larger and located close to elevators across the ship.",
+      "effect": "Accessible-cabin guests get shorter rolling distances to elevator lobbies, at the cost of elevator-lobby noise/traffic.",
+      "mattersTo": "Mobility-impaired guests benefit from this placement; noise-sensitive accessible-cabin guests should expect some elevator-lobby activity.",
       "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com: 'Handicap cabins are larger-sized... and located close to elevators.'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "10236, 10237",
+      "claim": "Premium Deluxe Balcony (D2) cabins directly overlook the exclusive Cabana Deck hot tub on Deck 9, an awkward sightline since occupants can't use that hot tub themselves.",
+      "source": "cruisemummy.co.uk, corroborated as real D2 cabins by cruiseline.com category listing",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "11248, 11249, 12248, 12249, 14246, 14247, 15238, 15239, 16244, 16247, 16320, 16321, 16418, 16421, 16422, 16425, 16459, 16460, 17418, 17419",
+      "claim": "Full list of 'bump'/corner Premium Deluxe Balcony (D2) cabins across Decks 10-17 with larger, angled balconies but reduced privacy from being overlooked (except Deck 17).",
+      "source": "cruiseline.com official D2 category cabin list",
       "confidence": "high"
+    },
+    {
+      "cabins": "16321",
+      "claim": "A specific Sun Princess balcony cabin reported to have an 'enormous balcony with views out to sea, and then down the length of the ship' — direct evidence of the Deck 16 hump feature on this specific ship.",
+      "source": "boards.cruisecritic.com Sun Princess thread ('Sun Princess Premium Deluxe Balcony')",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "5302",
+      "claim": "Interior cabin shares a long wall with the Deck 5 self-service laundromat, described as the worst laundry-noise cabin on the ship.",
+      "source": "cruisebooking.com Sun Princess cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "10324, 10328",
+      "claim": "Staterooms on Deck 10 are beside the self-service laundromat, generating noise from washer/dryer use and foot traffic.",
+      "source": "cruisegalore.com best-and-worst Princess cabins article",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "06305, 06322, 06325, 06429",
+      "claim": "Wheelchair-accessible interior cabins on Deck 6 with roll-in showers.",
+      "source": "cruiseline.com Interior Stateroom (IB) category page, official cabin list",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Forward Sphere/Piazza-area balcony cabins (exact numbers unconfirmed)",
+      "claim": "A guest raised concern that the forward extension of the ship's 'bumpout' sphere structure could create excessive wind on the balcony at speed, though no confirmed first-hand report was found.",
+      "source": "boards.cruisecritic.com thread 'Balcony on the sphere on Sun Princess?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "D601-D623 (Deck 6 forward range)",
+      "claim": "An obstructed-view page for Sun Princess/sister ships lists this Deck 6 cabin range under 'obstructed view,' potentially contradicting the class-wide 'no obstructed cabins' claim.",
+      "source": "cruisedeckplans.com Sun Princess Obstructed View page",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether the Sphere class has a hump configuration (balconies cantilevered past the hull line) and, if so, on which specific decks and sections",
-    "Exact location and extent of the I-95 crew corridor access points and whether service traffic noticeably impacts specific guest cabin areas",
-    "Whether the theatre location creates noise for cabins on adjacent decks, and if so, which decks and sections",
-    "Specific cabin numbers or ranges that are connecting cabins or ADA-accessible beyond what's standard",
-    "Whether any Deck 17 cabins experience noise from sports court, open deck activities, or radar mast equipment"
+    "Exact deck location of the ship's lifeboats/tenders (likely around Deck 7-8, a non-guest deck) could not be confirmed from research, so the precise span of decks affected by any lifeboat sightline could not be established.",
+    "No ship-specific, non-boilerplate evidence was found for aft main-engine vibration intensity, bow-thruster noise, or anchor-chain noise on this Sphere-class hull; generic articles found were either boilerplate reused across multiple different Princess classes or referred to an unrelated 1995-built ship that once carried the same name 'Sun Princess.'",
+    "No evidence was found describing an I-95-style crew corridor or its guest-facing service access points for this class.",
+    "No evidence was found describing hull taper effects (inward hull step) on the highest decks (16-17) hiding straight-down views while keeping the horizon clear.",
+    "Deck 6 Cove Balcony cabins' relationship to lifeboats specifically (as opposed to general upper-deck overhangs) was not conclusively confirmed; one open forum question on this topic went unanswered."
   ],
   "ship": "Sun Princess",
   "shipSlug": "sun-princess",
   "line": "Princess Cruises",
   "totalCabins": 2157,
   "cabinsTouchedByAZone": 2157,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.029823000000000002
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 19,
+    "maxAllowed": 25
+  },
+  "cost": 2.246323
 }

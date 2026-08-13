@@ -1,90 +1,85 @@
 {
-  "class": "Dawn class",
+  "class": "Dawn-class (Norwegian Cruise Line)",
   "sisterShips": [
-    "Norwegian Star",
-    "Norwegian Dawn"
+    "Norwegian Star"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        5,
-        6,
         8
       ],
       "sections": [
-        "forward",
         "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 7; cabins on Decks 5, 6, and 8 sit in the lifeboat zone, with Deck 8 directly above the boats experiencing the most significant view obstruction downward, while Decks 5 and 6 below have views blocked upward by the boat hulls.",
-      "effect": "From Deck 8 you lose the view straight down but retain horizon and ocean views; from Decks 5-6 the boats overhead can block sky and create a ceiling effect when looking up from your balcony or window.",
-      "mattersTo": "Matters greatly to first-time cruisers or those who want unobstructed photo angles; experienced cruisers often accept this trade for lower pricing or midship stability.",
+      "what": "Lifeboats and davits are mounted on Deck 7 (a non-guest deck), and Deck 8 oceanview/balcony cabins directly above them look down onto the boats.",
+      "effect": "The straight-down view is blocked by the lifeboat itself, but guests can typically still see a strip of open horizon above the boat; NCL sells these as category OK (obstructed) or with obstruction disclosed on balcony categories.",
+      "mattersTo": "Sun-worshippers who want to see the water below their rail will be annoyed; guests who mainly want daylight/horizon and a lower price should be fine.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruise.blog first-person cabin tour: Our cabin's view was partially obstructed by a lifeboat suspended from the deck outside of our cabin, blocking an estimated 75% of the view, with a small glimpse of the horizon above the lifeboat; corroborated by cruisedeckplans.com category notes and boards.cruisecritic.com confirming lifeboats sit on the deck below Deck 8."
     },
     {
       "factor": "above",
       "decks": [
-        11,
-        12
+        8
       ],
       "sections": [
-        "mid",
         "aft"
       ],
-      "what": "Deck 11 mid and aft cabins sit directly below Deck 12's buffet (Garden Café) and pool deck area, with Deck 12 cabins directly beneath open pool deck on Deck 13.",
-      "effect": "Expect noise from deck chairs scraping, foot traffic, and buffet activity starting early morning (6-7am) and continuing until late evening; pool deck noise includes music and announcements.",
-      "mattersTo": "Light sleepers and anyone planning to sleep past 7am should avoid these; early risers and those out all day won't notice.",
+      "what": "Aft Deck 8 cabins sit directly above a nighttime lounge/bar (Spinnaker Lounge area).",
+      "effect": "Bass and music noise can carry into the cabin late into the night.",
+      "mattersTo": "Night owls who like nightlife noise won't mind; light sleepers wanting an early night should avoid aft Deck 8.",
       "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        5,
-        6
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Forward Deck 5 and 6 cabins sit two and three decks below the Stardust Theater (spans Decks 7-8), which hosts evening shows and events.",
-      "effect": "Vibration and bass from theatrical sound systems can transmit downward during shows, typically 8pm-11pm; the structural gap means it's muffled but still noticeable in quiet moments.",
-      "mattersTo": "Matters to those who turn in early or are sensitive to vibration; if you're at the show or out late anyway, it's irrelevant.",
-      "severity": "minor",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Dawn deck 8 notes: Aft cabins sit above night time lounge and may experience noise from floor below late into the night; corroborated by cruisebooking.com noting aft Deck 8 cabins near Spinnaker Lounge with loud music into the early hours."
     },
     {
       "factor": "below",
       "decks": [
-        8
-      ],
-      "sections": [
-        "mid"
-      ],
-      "what": "Deck 8 mid-section sits directly above the main theater level and atrium spaces on Decks 6-7.",
-      "effect": "Generally quiet as theaters are well-insulated from above, but the atrium below can create occasional sound bleed from events or live music in that central space.",
-      "mattersTo": "Minimal concern; atrium events are typically daytime or early evening and insulation is good on this class.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "elevator",
-      "decks": [
-        8,
-        9,
-        10,
         11
       ],
       "sections": [
-        "forward",
-        "mid"
+        "mid",
+        "aft"
       ],
-      "what": "Primary elevator banks run forward and midship through the main accommodation decks, with the busiest concentration midship serving the main dining rooms, atrium, and theater.",
-      "effect": "Cabins adjacent to elevator lobbies get convenience for embarkation, tendering, and dining but endure hallway traffic noise and door chimes from early morning through late night.",
-      "mattersTo": "Mobility-limited guests prize elevator proximity; light sleepers should stay at least two cabin-lengths away from the banks.",
+      "what": "Deck 11 mid/aft cabins (roughly cabin 11560 and further aft, per the ship's own deck-plan notes) sit directly beneath Deck 12's pool, buffet, and sports/jogging track.",
+      "effect": "Chair-dragging, pool-party music, buffet service noise, and jogging-track footsteps overhead are reported, especially in early morning and daytime hours.",
+      "mattersTo": "Families who like being near the pool won't mind; anyone wanting a lie-in or afternoon nap should pick forward Deck 11 or a different deck.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Dawn deck 11: All cabins from 11560 and back on this deck are below public deck above and therefore may have noise issue from floor above; corroborated by a specific-cabin example: some rooms will be under a pool deck where sound from a DJ spinning music may come through (cabin 11069) and a Cruise Critic poster noting they were Hesitant to consider a mini suite due to the pool deck above on 12."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft Deck 10 cabins sit directly below the Deck 11 spa (El Dorado Spa).",
+      "effect": "Despite being under a public venue, this pairing is specifically flagged as not a noise problem.",
+      "mattersTo": "Good reassurance for anyone nervous about booking aft Deck 10 thinking any 'below a venue' cabin is risky — this particular pairing is quiet.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Dawn deck 10 notes: Aft cabins on this deck are below the spa, but there is no reported noise issues."
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The crew corridor ('I-95') runs fore-to-aft on Deck 3, below the lowest guest cabin deck (4), with crew cabins, personnel/medical offices, and provisions/luggage staging concentrated toward the forward end.",
+      "effect": "Forward Deck 4 guest cabins sit closest to the busiest crew-corridor activity (luggage handling, provisions, crew shift changes), which can mean occasional bumps, cart noise, or door activity felt through the deck.",
+      "mattersTo": "Most guests won't notice; very light sleepers in forward Deck 4 cabins might.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "First-person NCL Dawn behind-the-scenes tour blog: we were able to walk down I95 - it seems like this is what many ships call the crew corridor down the middle of the ship; things like the personnel office, medical office, bulletin boards, training rooms were located on I95, with crew cabins accessed about half way down, and luggage bins toward the front end of the ship."
     },
     {
       "factor": "engine",
@@ -95,60 +90,107 @@
       "sections": [
         "aft"
       ],
-      "what": "Aft cabins on Decks 4 and 5 sit low and toward the stern, near the propulsion machinery spaces.",
-      "effect": "Persistent low-frequency vibration and hum, more pronounced underway and during maneuvering; it's the classic aft cabin trade—lower price, more motion and noise.",
-      "mattersTo": "Noise-sensitive cruisers and first-timers should avoid; seasoned cruisers hunting value or who sleep through anything won't mind.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Lower aft cabins sit closest to the Azipod propulsion machinery.",
+      "effect": "Guests report low-level vibration and mechanical hum on lower decks, especially at night while underway.",
+      "mattersTo": "Some find the hum relaxing white noise; others find it disruptive — light sleepers should avoid the lowest aft cabins.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisebooking.com Dawn-specific guide: extremely low-deck cabins may be subjected to some low-level vibration from engines due to proximity, which can also cause discomfort especially at night; general NCL-fleet corroboration that Older ships in Norwegian's fleet seem more prone to engine noise."
     },
     {
-      "factor": "engine",
+      "factor": "taper",
       "decks": [
-        4,
-        5,
-        6
+        9,
+        10
       ],
       "sections": [
         "forward"
       ],
-      "what": "Forward cabins on lower decks (4, 5, 6) are subject to bow thruster noise during docking and maneuvering, and anchor chain noise in ports where the ship anchors.",
-      "effect": "Loud mechanical grinding or rumbling in early morning arrivals and during night departures; bow thrusters are high-pitched whine, anchor chain is metallic thunder directly overhead in the chain locker.",
-      "mattersTo": "Anyone who values sleep-in mornings in port should avoid forward cabins on these decks; if you're up early for excursions anyway, it's a non-issue.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "NCL's own Dawn/Star deck-plan legend designates specific forward cabins on Decks 9 and 10 (e.g. 9000, 9500, 9502, 10000, 10002, 10500, 10502, and the 10062–10172/10562–10568 range) as 'PrivaSea' — partially enclosed balconies where the hull curves inward near the bow.",
+      "effect": "The side/down view is partly blocked by solid metal balcony walling for privacy, while the forward horizon view remains open.",
+      "mattersTo": "Guests who want to lean over and see straight down or sideways along the hull will be limited; those who mainly want forward ocean view and extra privacy will like it.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "Official NCL Dawn/Star deck-plan PDF legend and cabin-category pages listing 'PrivaSea (partially enclosed) balcony' cabins by number on Decks 9–10; cross-confirmed on cruiseline.com's Dawn cabin pages listing the same PrivaSea cabin numbers."
     },
     {
-      "factor": "i95",
+      "factor": "motion",
       "decks": [
-        4,
-        5,
-        8,
-        9,
         10,
         11
       ],
       "sections": [
-        "forward",
-        "aft"
+        "forward"
       ],
-      "what": "Crew access corridors (I-95) run along the sides and through forward/aft sections on working decks, with service doors appearing near the elevator lobbies and stairwells on accommodation decks.",
-      "effect": "Cabins near crew access points may experience early morning (5-6am) foot traffic, trolley noise from room service and housekeeping, and door closure sounds as crew shift changes occur.",
-      "mattersTo": "Light sleepers should avoid cabins immediately adjacent to crew doors (often marked on deck plans or near stairwells); most guests won't notice past the initial morning rush.",
-      "severity": "minor",
+      "what": "Forward cabins on the higher passenger decks (10–11) are furthest from the ship's pitch/roll pivot point and highest above the waterline.",
+      "effect": "Guests report more pronounced pitching and rolling in rough seas than midship or lower-deck cabins.",
+      "mattersTo": "Motion-sensitive guests should avoid forward Decks 10–11; midship Decks 5–8 are recommended instead.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisebooking.com Dawn-specific guide: Cabins that are positioned far forward on high-deck levels (such as Decks 10 and 11) will feel greater motion... those on upper decks will likely feel more motion especially when conditions are harsher. Historical corroboration: a 2005 rogue-wave incident on Norwegian Dawn caused wave damage specifically at the ship's forward upper decks."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "4565, 4563",
+      "claim": "Positioned next to a gangway; guest reported near-constant nighttime noise ('3-4 hours of sleep per night') on an October 2025 sailing with no resolution offered by NCL.",
+      "source": "cruisecritic.com member review, Oct 2025 sailing",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8076",
+      "claim": "Cited as a specific cheap Deck 8 obstructed-oceanview cabin, centrally midship, with minimal motion but ~75% lifeboat view obstruction.",
+      "source": "cruise.blog first-person cabin tour, Feb 2024",
       "confidence": "medium"
+    },
+    {
+      "cabins": "9150",
+      "claim": "Guest expressed concern about noise from Sheehan's bar/grill area and the cabin being 'open to the 7th floor' (possible atrium overlook).",
+      "source": "boards.cruisecritic.com forum thread, 2017",
+      "confidence": "low"
+    },
+    {
+      "cabins": "11069",
+      "claim": "Specifically named as experiencing DJ/pool-deck music noise from the deck above.",
+      "source": "cruisegear.com Dawn review, 2024",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8120, 8122, 8126, 8128, 8620, 8622, 8626, 8628",
+      "claim": "Wheelchair-accessible obstructed-oceanview (category OK) cabins on Deck 8.",
+      "source": "cruiseline.com Dawn cabin category OK page",
+      "confidence": "high"
+    },
+    {
+      "cabins": "Category MB aft mini-suites, Deck 11",
+      "claim": "Partition walls between adjoining balconies are angled and 'offer very little privacy.'",
+      "source": "cruisedeckplans.com Norwegian Dawn stateroom notes",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Deck 11 midship mini-suite (unspecified numbers)",
+      "claim": "A guest noticed a visible structural overhang above their Deck 11 balcony where Deck 12 extends outward, though no confirmed detail on which side/range.",
+      "source": "boards.cruisecritic.com forum thread, 2019 ('NCL Dawn Balcony Overhang')",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether Dawn class has a hump (balconies cantilevered past hull line) and on which specific decks and sections—this requires deck-by-deck blueprint confirmation I cannot verify",
-    "Precise location of galley ventilation or exhaust that might affect specific aft or mid cabins on upper decks",
-    "Exact placement and impact of nightclub or disco on Dawn class—need to verify if Spinnaker Lounge or another venue creates noise issues for cabins below",
-    "Whether connecting cabin configurations are unusually prevalent or limited on specific decks compared to other NCL ships"
+    "Whether Dawn-class has a genuine cantilevered 'hump' (balconies extending past the hull line) on any deck — the moulded-vs-max beam difference (32.2m vs 38.1m per Wikipedia) hints at hull flare, but no ship-specific source confirmed a hump zone or named affected cabins.",
+    "Section-level (forward/mid/aft) breakdown of exactly which Deck 8 cabins suffer full vs. partial lifeboat obstruction — sources confirm the deck but not a precise cabin-range map.",
+    "Bow-thruster noise and anchor-chain noise for forward-lower cabins specifically on Norwegian Dawn — no ship-specific source found (only generic/other-ship citations).",
+    "Whether Deck 9 is genuinely quieter for being 'sandwiched' between two all-cabin decks — this claim appears as identical boilerplate text across multiple non-Dawn-class ships (Jewel, Gem, Pearl), so it could not be confirmed as Dawn-specific.",
+    "Specific elevator-bank noise/traffic complaints tied to named Dawn cabin numbers — only generic, non-ship-specific listicle claims were found.",
+    "Precise square-footage/location boundaries of the PrivaSea partially enclosed balcony ranges beyond the cabin numbers explicitly listed in the NCL/partner deck-plan PDFs."
   ],
   "ship": "Norwegian Dawn",
   "shipSlug": "norwegian-dawn",
   "line": "Norwegian Cruise Line",
   "totalCabins": 1177,
-  "cabinsTouchedByAZone": 1175,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.031263
+  "cabinsTouchedByAZone": 1125,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 18,
+    "maxAllowed": 25
+  },
+  "cost": 2.784708
 }

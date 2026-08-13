@@ -1,205 +1,264 @@
 {
-  "class": "Freedom",
+  "class": "Freedom-class cruise ship (Royal Caribbean International)",
   "sisterShips": [
-    "Freedom of the Seas",
     "Liberty of the Seas",
     "Independence of the Seas"
   ],
   "zones": [
     {
-      "factor": "lifeboat",
+      "factor": "other",
       "decks": [
-        2,
-        3,
         6,
-        7
+        7,
+        8
       ],
       "sections": [
-        "forward",
-        "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 5 (not a cabin deck), obstructing views from Decks 2, 3, 6, and 7, with Decks 2 and 3 most severely affected.",
-      "effect": "Oceanview and balcony cabins on these decks look directly at orange lifeboat shells instead of open water; the horizon remains visible above the boats.",
-      "mattersTo": "Matters greatly to anyone wanting unobstructed ocean views; irrelevant to interior cabins or those who don't spend time looking out their window.",
-      "severity": "significant",
-      "confidence": "high"
+      "what": "Aft-facing balconies on decks 6, 7 and 8 sit inside a large metal hull structure that forms the shape of the stern, and the balcony floor looks down onto a metal platform rather than open water.",
+      "effect": "The horizon view is fine, but the view straight down and to the sides toward the centerline is cut off by steel; cabins nearer the centerline feel more enclosed than the corner units.",
+      "mattersTo": "Photographers and wake-watchers who want an unobstructed view down will be disappointed; guests who just want horizon views and a private-feeling nook often prefer these because they are less overlooked than other aft cabins.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisemummy.co.uk: explicitly names Freedom Class and Voyager Class as sharing this aft design, describing the metal structure and downward-blocked view."
     },
     {
       "factor": "hump",
       "decks": [
         6,
-        7,
-        8
+        7
       ],
       "sections": [
-        "mid",
-        "aft"
+        "mid"
       ],
-      "what": "The hull cantilevers outward past the lifeboat line starting at Deck 6, creating wider balconies in mid and aft sections on Decks 6, 7, and 8.",
-      "effect": "These balconies extend beyond the lifeboats for clearer side views and more balcony space, typically at lower prices than higher deck balconies.",
-      "mattersTo": "Value hunters wanting balconies with better views than the lifeboat-obstructed lower decks, and those who prefer midship stability over height.",
-      "severity": "moderate",
-      "confidence": "medium"
+      "what": "Freedom class carries a widened hull section ('the hump') at midship on decks 6 and 7, where a distinct balcony category (e.g. 2D on deck 7) is sold specifically for its location on this bulge.",
+      "effect": "Outer-hump cabins get extra deck/balcony width and better along-the-side sightlines; cabins closest to the inward turn of the hump have their side view partly blocked by the hump itself.",
+      "mattersTo": "Balcony loungers who value extra outdoor space will seek these out; people wanting a clean side view all the way down the hull should ask exactly where on the hump their cabin sits.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com forum threads on Freedom class hump cabins (deck 7 category 2D, deck 6 hump availability) — first-person cruiser discussion, not aggregator boilerplate."
     },
     {
-      "factor": "above",
+      "factor": "elevator",
       "decks": [
-        11,
-        12
+        3
       ],
       "sections": [
-        "mid",
-        "aft"
+        "mid"
       ],
-      "what": "Pool deck (Deck 11 and 12 aft/mid) sits directly above or adjacent to cabins on Deck 11 and below cabins on Deck 12.",
-      "effect": "Daytime deck chair scraping, pool activity, and music from above until late evening; Deck 12 cabins may have limited overhang protection.",
-      "mattersTo": "Light sleepers and anyone wanting quiet during pool hours (typically 8am-midnight) should avoid; doesn't affect those out exploring all day.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "On deck 3 the midship corridor is physically interrupted by Studio B and the ice rink, so passengers cannot walk from the forward block of cabins to the aft block along that deck.",
+      "effect": "Guests in a deck 3 cabin must commit to using the correct forward or aft elevator/stair bank to reach their room, or detour via deck 2 or 4; picking the wrong bank means a longer walk.",
+      "mattersTo": "Mobility-limited guests and anyone who dislikes backtracking should confirm which elevator bank serves their specific deck 3 cabin before booking.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemummy.co.uk: deck 3 mid-section blocked by Studio B/ice rink, forcing use of the correct fore/aft elevator bank."
     },
     {
-      "factor": "above",
+      "factor": "i95",
       "decks": [
-        10
+        2
+      ],
+      "sections": [
+        "aft",
+        "mid",
+        "forward"
+      ],
+      "what": "Deck 2 guest cabins sit directly above the crew-only 'I-95' corridor and crew cabins that run bow-to-stern on the lowest decks, with crew elevator and stair access points feeding up through deck 2.",
+      "effect": "Some deck 2 occupants report being near a crew-access elevator with associated foot traffic, though this is not universally reported as a problem.",
+      "mattersTo": "Very light sleepers booking deck 2 may want a cabin away from crew stair/elevator access points; most cruisers report no issue.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "bluewin.ch/thetravel.com description of RCI's bow-to-stern crew corridor beneath guest decks, corroborated by a Cruise Critic forum poster assigned a deck 2 cabin near crew cabins and an elevator."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The aft end of deck 2 sits above the engine/propulsion machinery spaces (Freedom class uses diesel-electric Azipod propulsion at the stern).",
+      "effect": "Occupants may feel low-frequency vibration and hear engine noise, especially during maneuvering and docking, and may also hear chair-scraping/vacuuming from the dining room above.",
+      "mattersTo": "Light sleepers and vibration-sensitive guests should avoid the extreme aft end of deck 2; bargain-hunters who don't mind a hum often find it tolerable or even soothing.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisemummy.co.uk: aft deck 2 cabins sit above the engine room with noise/vibration risk and below the dining room."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
       ],
       "sections": [
         "forward"
       ],
-      "what": "The main showroom (theater) sits on Deck 3 and 4 forward, three to four decks below Deck 10 forward cabins.",
-      "effect": "No significant noise or vibration impact at this distance; showroom activity does not materially affect Deck 10 forward cabins.",
-      "mattersTo": "No concern for cabin selection; the vertical separation is sufficient.",
+      "what": "Forward cabins on the lowest decks sit closest to the anchor and windlass machinery in the bow.",
+      "effect": "On the (uncommon) mornings the ship anchors or tenders, guests can be woken by loud metallic clanging as the anchor chain runs out, though this happens only at tender ports.",
+      "mattersTo": "Very light sleepers on forward-lower cabins should expect occasional early-morning anchor noise at tender ports; not an issue on ports where the ship docks alongside.",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "royalcaribbeanblog.com: forward cabins on Royal Caribbean ships are subject to anchor-chain noise, occurring only at tender ports."
     },
     {
       "factor": "below",
       "decks": [
-        6,
-        7,
-        8
+        3
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 3 midship cabins sit adjacent to and partly above/below Studio B, the ice-skating and entertainment venue with a metal rink floor.",
+      "effect": "Ice-show rehearsals and sound checks happen at unpredictable hours (not just published show times), and the metal floor/speaker systems can transmit thumps and vibration into nearby cabins.",
+      "mattersTo": "Nappers and light sleepers wanting a midship deck 3 cabin should be aware rehearsal noise doesn't follow the printed schedule; most guests who are out and about during the day won't notice.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisesnooze.com: Studio B rehearsals/sound checks create vibration and noise for nearby cabins at unpredictable hours (cabin ranges cited, treat specific numbers cautiously)."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 6 cabins located above the Star Lounge (a live-music venue on deck 5) sit directly over that venue's evening entertainment.",
+      "effect": "Guests here can pick up bass and music noise from the lounge below, especially in the evenings.",
+      "mattersTo": "Early sleepers should avoid this stack; night owls who enjoy the buzz won't mind.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: deck 6 cabins above the Star Lounge on deck 5 can hear the venue's live music."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft deck 6 cabins sit directly above the multi-deck Main Dining Room (which spans decks 3–5).",
+      "effect": "Diners are typically gone by 10:30pm, but guests may still hear vacuuming and post-service cleaning noise travel upward.",
+      "mattersTo": "Very light sleepers may notice late cleaning sounds; most guests report this as minor.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: aft deck 6 cabins are above the Main Dining Room and may pick up post-dinner cleaning noise."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
       ],
       "sections": [
         "forward",
         "mid"
       ],
-      "what": "The Royal Promenade (interior boulevard with bars, cafes, and evening events) runs below on Deck 5, directly beneath Decks 6, 7, and 8 promenade-view interior cabins.",
-      "effect": "Promenade activity, music, parades, and foot traffic can be heard through the floor until 1-2am on event nights.",
-      "mattersTo": "Light sleepers should avoid promenade-view cabins; those wanting to be close to action or who sleep heavily won't mind.",
+      "what": "All deck 10 cabins sit directly beneath deck 11's pool decks, gym, and Windjammer buffet, and specific cabin ranges (1578–1630 / 1278–1330 and 1544-forward / 1244-forward) sit under overhangs from the deck above.",
+      "effect": "Early risers doing laps, moving loungers, or getting breakfast can be heard from below starting early morning; the overhangs do offer some shade/rain protection as a side benefit.",
+      "mattersTo": "Guests who like to sleep in should avoid deck 10, especially forward/mid; sun-shy guests benefit from the overhang shade on the specific cabin ranges noted.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisemummy.co.uk (deck 10 below gym/pool/Windjammer) and cruisedeckplans.com Freedom of the Seas deck 10 plan (specific overhang cabin ranges and shade benefit)."
     },
     {
-      "factor": "above",
+      "factor": "motion",
       "decks": [
-        11
+        11,
+        12
       ],
       "sections": [
         "forward"
       ],
-      "what": "The sports deck and mini-golf area sit on Deck 13 forward, two decks above Deck 11 forward cabins.",
-      "effect": "Occasional ball bounce and footsteps during daytime and early evening sports activities.",
-      "mattersTo": "Minor annoyance for daytime nappers; most guests won't notice or will be elsewhere during activity hours.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        2,
-        3
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Engine rooms sit low and aft, directly below Deck 2 and 3 aft cabins.",
-      "effect": "Low-frequency vibration and hum, noticeable when the ship is underway, particularly during maneuvering.",
-      "mattersTo": "Anyone sensitive to vibration or low hum should avoid; those who sleep through anything or use white noise won't care.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        2,
-        3,
-        6
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Bow thrusters are located low and forward, below and near Deck 2, 3, and 6 forward cabins.",
-      "effect": "Loud thruster rumble during docking and undocking (typically early morning arrival and evening departure), lasting 10-30 minutes per event.",
-      "mattersTo": "Very disruptive for early morning sleepers in forward cabins; doesn't affect mid or aft, and only happens during port maneuvers.",
+      "what": "Decks 11 and 12 are the highest passenger decks and sit far forward at the bow; the deck 12 forward cabins were added in a 2015 refit specifically in this position.",
+      "effect": "These cabins/suites feel the most pitch and roll motion in rough seas of any cabins on the ship.",
+      "mattersTo": "Seasickness-prone travelers should avoid forward decks 11–12; those chasing the biggest windows/panoramic views often accept the trade-off.",
       "severity": "significant",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisemummy.co.uk (deck 12 forward cabins feel movement most) and cruisedeckplans.com Freedom of the Seas deck 12 plan (cabins added 2015, more likely to feel ocean motion in rough seas)."
     },
     {
-      "factor": "engine",
+      "factor": "other",
       "decks": [
-        2,
-        3
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Anchor chain runs through the bow area, affecting Deck 2 and 3 forward cabins.",
-      "effect": "Loud chain noise during anchor dropping and retrieval, typically early morning in tender ports.",
-      "mattersTo": "Disruptive for those anchoring in tender ports who want to sleep past 6-7am; irrelevant in dock-only itineraries.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "elevator",
-      "decks": [
-        2,
-        3,
         6,
         7,
         8,
-        9,
-        10,
-        11,
-        12
+        9
       ],
       "sections": [
         "forward",
         "mid",
         "aft"
       ],
-      "what": "Elevator and stair banks are distributed forward, mid, and aft on all cabin decks, with major banks midship near the Royal Promenade access.",
-      "effect": "Cabins near elevators benefit from convenience but may hear doors, bell chimes, and hallway conversation; peak traffic during embarkation, meal times, and evening shows.",
-      "mattersTo": "Mobility-limited guests prioritize proximity; light sleepers should request cabins away from elevator cores.",
-      "severity": "minor",
+      "what": "Interconnecting-door cabins exist throughout decks 6–9 (Freedom class categories like CP/CB), and Royal Promenade-facing cabins have a large bay window onto the interior atrium promenade.",
+      "effect": "Connecting doors are not as soundproof as a solid wall, letting neighbor noise through; Promenade View cabin windows are not soundproofed either, so promenade crowd noise and music can bleed into these rooms.",
+      "mattersTo": "Families wanting connecting rooms gain flexibility but sacrifice some privacy/quiet; light sleepers should avoid Promenade View cabins, while value-seekers who don't mind ambient noise like the affordability and vibe.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisemummy.co.uk (connecting-door soundproofing) and royalcaribbeanblog.com, which explicitly names Freedom Class Promenade View cabins as having a non-soundproof bay window onto the Promenade."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "6305",
+      "claim": "A Promenade-view cabin with an obstructed view — the window looks directly at the rear/legs of two cow statues atop the Ben & Jerry's below; guests reportedly get complimentary daily scoops as compensation.",
+      "source": "cruisecritic.com Freedom of the Seas cabin editorial review",
       "confidence": "high"
     },
     {
-      "factor": "above",
-      "decks": [
-        9,
-        10
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "The Windjammer buffet (Deck 11 forward) sits one to two decks above Deck 9 and 10 forward cabins.",
-      "effect": "Early morning buffet setup noise (chairs, carts, kitchen prep) starting around 6-6:30am, and foot traffic until late evening.",
-      "mattersTo": "Early risers won't mind; those wanting to sleep past 7am on sea days should avoid Deck 9 and 10 forward.",
-      "severity": "moderate",
-      "confidence": "high"
+      "cabins": "7410",
+      "claim": "Aft balcony room described in a cabin-tour video as 'partially obstructed' despite being marketed as an aft-view balcony.",
+      "source": "YouTube cabin tour ('Aft Balcony Tour | Freedom of the Seas | Room 7410')",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7708",
+      "claim": "Categorized as an obstructed-view balcony, but the balcony is reportedly 4–5x larger than a standard balcony for the same price, and the poster argues the view is actually among the best on the ship.",
+      "source": "TikTok cabin-tour content on Freedom of the Seas cabin 7708",
+      "confidence": "low"
+    },
+    {
+      "cabins": "1802, 1852",
+      "claim": "Deck 12 forward Oceanview/suite cabins reported as much larger than average and forward-facing for premium views.",
+      "source": "cruisemummy.co.uk Freedom of the Seas cabins guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Deck 6 hump cabins (both port and starboard)",
+      "claim": "A cruiser noted that Freedom's deck 6 hump balcony cabins were unusually still available on both sides for their sailing, prompting the question of whether something is wrong with the deck 6 hump specifically (as opposed to the deck 7 hump, which is well regarded).",
+      "source": "boards.cruisecritic.com 'Freedom Class Hump Cabins' thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "3200–3280 (deck 3 midship)",
+      "claim": "Listed as cabins to avoid due to Studio B rehearsal/sound-check noise and vibration through the metal rink flooring.",
+      "source": "cruisesnooze.com Freedom of the Seas cabins-to-avoid listicle (SEO-style source; specific numbers unverified against official deck plan)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "2630 (deck 2 oceanview)",
+      "claim": "Guest reported being assigned this cabin and understood it to be located under crew cabins and near an elevator, raising a (never definitively answered) concern about noise.",
+      "source": "boards.cruisecritic.com 'Freedom of the Seas Cabin question' thread",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Precise I-95 crew corridor routing and service access points that create traffic near specific guest cabin sections",
-    "Whether any accessible cabin conversions or connecting cabin patterns are disproportionately concentrated on specific decks or sections beyond standard distribution",
-    "Exact galley locations and whether galley ventilation or service elevators create noise zones on specific decks",
-    "Whether any cabins have obstructed or partially obstructed balconies due to structural elements, escape slides, or safety equipment beyond the standard lifeboat obstruction"
+    "Whether lifeboats/davits themselves (as distinct from the aft hull structure) create a blocked-straight-down/clear-horizon obstruction on any specific Freedom of the Seas deck 6 or 7 cabin range — sister-ship (Independence) reports suggest this pattern exists on the class, but no Freedom-specific cabin numbers were found.",
+    "Whether deck 12 forward cabins/suites sit atop an inward hull taper that hides the straight-down view while keeping the horizon clear (a distinct phenomenon from the motion penalty already confirmed for that deck).",
+    "Bow thruster noise reports specific to Freedom of the Seas forward-low cabins (class has 4 bow thrusters per Wikipedia, but no cruiser reports of resulting cabin noise were found).",
+    "Specific cabin numbers for Junior Suites where a Royal Caribbean Blog author personally found the balcony view blocked by stored cleaning equipment — the account is credible but no cabin number was given.",
+    "Whether the deck 6 hump availability anomaly (see leads) reflects an actual known defect (e.g., partial lifeboat/equipment obstruction) or is coincidental to one sailing."
   ],
   "ship": "Freedom of the Seas",
   "shipSlug": "freedom-of-the-seas",
   "line": "Royal Caribbean International",
   "totalCabins": 1962,
   "cabinsTouchedByAZone": 1962,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.037335
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 18,
+    "maxAllowed": 25
+  },
+  "cost": 1.884627
 }

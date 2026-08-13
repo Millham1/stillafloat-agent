@@ -1,106 +1,142 @@
 {
-  "class": "Prima",
+  "class": "Prima-class (Norwegian Cruise Line / Fincantieri Marghera)",
   "sisterShips": [
-    "Norwegian Viva"
+    "Norwegian Viva",
+    "Norwegian Aqua",
+    "Norwegian Luna",
+    "Norwegian Aura (2027, unbuilt)",
+    "unnamed sixth ship (2028, unbuilt)"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        9,
-        10,
-        11
+        9
       ],
       "sections": [
-        "forward",
-        "mid",
-        "aft"
+        "forward"
       ],
-      "what": "Lifeboats are mounted at Deck 8; they obstruct downward and outward views from balconies on Decks 9, 10, and 11, with Deck 9 experiencing the most significant obstruction.",
-      "effect": "Balcony views look directly at or over lifeboat tops instead of straight down to the water; horizon views remain unobstructed.",
-      "mattersTo": "Matters to guests who want unobstructed water views directly below their balcony or enjoy watching port operations; does not matter to those focused on horizon views or who rarely use the balcony.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Lifeboats sit on Deck 7, which (like Deck 6) carries no passenger cabins, and the deck directly above them (Deck 8) is the open-air Ocean Boulevard promenade, not staterooms.",
+      "effect": "Because the nearest cabin deck (9) is two decks above the boats rather than one, Prima-class ships largely avoid the classic 'lifeboat blocks the straight-down view' problem that plagues most ships; Deck 9 forward cabins instead have a theater below them, not a boat obstruction.",
+      "mattersTo": "Cruisers fixated on lifeboat-obstructed views can mostly stop worrying about it on this class; the real Deck 9-forward issue is noise, not sightlines.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "stylishcruising.com: 'on the Prima, the lifeboats are on Deck 7, which has no passenger cabins, and no cabins either above or below them'"
     },
     {
       "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 9 forward cabins sit directly above the three-story Prima Theater & Club (which spans Decks 6-7-8), and the venue runs late-night club programming after the shows end.",
+      "effect": "Guests report hearing bass, club beats, and loud music coming up through the floor, especially at night.",
+      "mattersTo": "Light sleepers and early-to-bed guests should avoid this specific forward pocket of Deck 9; late-night partiers may not mind.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisecritic.com editor review: 'Cabins on Deck 9 forward are located right above the Prima Theater & Club, and noise is a real problem'; corroborated first-hand by eatsleepcruise.com and emmacruises.com"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The forward portion of Deck 5 sits below the same Prima Theater & Club complex, two decks down (Decks 6-7 intervene).",
+      "effect": "Being two decks removed softens the noise compared with Deck 9 directly above the venue, but a blogger who studied the plans still flags this pocket as one to avoid.",
+      "mattersTo": "Budget cabin shoppers eyeing forward Deck 5 balcony/inside cabins who are noise-sensitive.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "stylishcruising.com: 'the forward portion of Deck 5 is below the Theater and the forward portion of Deck 9 is above it'"
+    },
+    {
+      "factor": "below",
       "decks": [
         15
       ],
       "sections": [
-        "mid",
         "aft"
       ],
-      "what": "Infinity Beach pool, Infinity Beach bar, and outdoor deck activity areas are directly above on Deck 16.",
-      "effect": "Daytime noise from pool deck activities, music, and foot traffic overhead; potential for water splashing or drainage sounds; activity extends into evening.",
-      "mattersTo": "Matters to light sleepers, those working from the cabin during the day, or anyone sensitive to overhead noise and activity; less relevant to guests who are out exploring most of the day.",
+      "what": "Aft Haven cabins on Deck 15 sit directly beneath the Haven Restaurant/Outdoor Lounge & Bar on Deck 16, where chairs are dragged and carts rolled during service.",
+      "effect": "A guest staying in a Haven cabin here reported hearing chair-scraping and cart noise from the dining venue above.",
+      "mattersTo": "Haven guests paying a premium for quiet may want to avoid Deck 15 aft in favor of Deck 14 or elsewhere in the complex.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "stylishcruising.com first-hand account of cabin 15902: 'heard a lot of noise from chairs scraping and carts being moved around in the Haven Restaurant above us'; echoed by a Cruise Critic thread asking about noise under the Haven dining area on Deck 15"
     },
     {
-      "factor": "above",
+      "factor": "below",
       "decks": [
-        14,
         15
       ],
       "sections": [
         "forward"
       ],
-      "what": "The Concourse sports complex (including Galaxy Pavilion and stadium seating) is on Deck 17, two decks above Deck 15 and three decks above Deck 14.",
-      "effect": "Occasional noise from active sports activities above, though distance (multiple decks) provides significant buffering; impact is intermittent rather than constant.",
-      "mattersTo": "Minor concern for very noise-sensitive guests; most guests will not notice given the vertical distance.",
-      "severity": "minor",
-      "confidence": "medium"
+      "what": "Forward Deck 15 cabins sit beneath the Deck 16 Fitness Center, located at the bow.",
+      "effect": "Dropped dumbbells and treadmill impact noise can carry down into these cabins.",
+      "mattersTo": "Anyone wanting a quiet cabin should skip forward Deck 15 under the gym; not an issue for those out most of the day.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "stylishcruising.com: 'The Fitness Center is located in the front (bow) of the ship on Deck 16. The sound of dumbbells being dropped and people running on treadmills can disturb guests in the cabins below'"
     },
     {
       "factor": "below",
       "decks": [
-        10
+        16
       ],
       "sections": [
-        "forward",
-        "mid",
-        "aft"
+        "mid"
       ],
-      "what": "The Prima Theater spans Decks 6-8 directly below, with main seating on Deck 7 and balcony seating on Deck 8.",
-      "effect": "Evening show noise (music, sound effects, applause) transmitted upward during performance times, typically ending by 11 PM; no impact during sea days when theater is dark.",
-      "mattersTo": "Matters to early-to-bed guests or those in cabin during evening show times; not relevant to night owls or those attending the shows.",
+      "what": "A band of Deck 16 cabins sits below the Deck 17 pool deck where loungers are set out each morning, and a nearby band sits below the Surfside Cafe buffet.",
+      "effect": "Early-morning chair-scraping and cart-rolling noise from deck-chair setup and buffet service can wake guests below.",
+      "mattersTo": "Guests who want to sleep in should avoid this specific stretch of Deck 16; not a concern for early risers.",
       "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        10,
-        11
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Indulge Food Hall (buffet venue) is located on Deck 8 aft, two decks below Deck 10 and three decks below Deck 11.",
-      "effect": "Breakfast and lunch preparation sounds, dishwashing, and high foot traffic during meal hours; vertical distance provides buffering but some sound may transmit during peak meal service.",
-      "mattersTo": "Potential minor concern for light sleepers during early morning breakfast prep (6-7 AM); distance minimizes impact for most guests.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        5
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Local Bar and The Commodore are located on Deck 6 directly above.",
-      "effect": "Evening and late-night bar noise, music, conversation, and foot traffic overhead until closing time (typically midnight or later).",
-      "mattersTo": "Significant concern for early sleepers or light sleepers; not relevant to late-night guests or those using the cabin primarily for sleeping after midnight.",
-      "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "stylishcruising.com: 'Directly below are some passenger cabins that may hear noise from chairs scraping the floor while being moved for cleaning, or from carts being rolled around'"
     },
     {
       "factor": "elevator",
       "decks": [
-        5,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Elevator/stair banks run forward and midship on most guest decks; some inside cabins are tucked directly beside or 'flanking' an elevator shaft.",
+      "effect": "Convenience is high (short walk to venues), but cabins immediately adjacent can hear the elevator ding and mechanism through the wall; one guest booked into cabin 14187 specifically flanking the elevator bank asked what to expect.",
+      "mattersTo": "Light sleepers should ask for a cabin a few doors away from the lobby; those prioritizing convenience over quiet can book right next to it.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "eatsleepcruise.com: cabin 'conveniently located near the forward bank of elevators'; stylishcruising.com advises staying 'a few cabins away from the elevators' to avoid the dinging; Cruise Critic thread on Prima/Viva 'behind the elevator' cabins"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The anchor is housed in the bow, and far-forward cabins are close to the chain locker and windlass.",
+      "effect": "Guests in far-forward cabins are likely to be woken by the anchor dropping early on port mornings.",
+      "mattersTo": "Anyone forward on any low or mid deck who wants to sleep in on port days; not an issue for midship or aft cabins.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "stylishcruising.com first-hand: 'guests in cabins very far forward are likely to hear the anchor dropping very early on port days, disturbing their sleep'"
+    },
+    {
+      "factor": "other",
+      "decks": [
         9,
         10,
         11,
@@ -111,76 +147,158 @@
         16
       ],
       "sections": [
-        "forward",
-        "mid"
+        "aft"
       ],
-      "what": "Primary elevator banks are located forward and mid-ship on all cabin decks, with the largest concentration mid-ship.",
-      "effect": "Cabins immediately adjacent to elevator lobbies experience frequent foot traffic, door chimes, and conversation noise at all hours; cabins further down the corridor are quieter but less convenient.",
-      "mattersTo": "Convenience vs. noise trade-off: matters to mobility-limited guests who prioritize proximity, and to noise-sensitive guests who should avoid immediately adjacent cabins.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Two multi-deck dry slides, 'The Rush' (dueling racer) and 'The Drop' (10-story free-fall), run down the side/corner of the hull past a consistent stack of aft-positioned cabins on almost every guest deck.",
+      "effect": "Balconies in the slide's path have their view partly or fully blocked by slide tubing; NCL's own site labels only a fraction of these (mostly Haven family suites and a few ADA rooms) as 'partially obstructed,' while independent reviewers say most affected cabins are not flagged at all.",
+      "mattersTo": "View-focused cruisers on decks 9-16 aft should check this specific corner of the deck plan regardless of what NCL's website says; the noise of screaming sliders is a bonus/nuisance depending on taste.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisecritic.com: 'A number of cabins have views of the slides: The Rush and the Drop run past them, obstructing their balcony views'; emmacruises.com: 'This can affect any cabin between decks 9 and 16'; NCL's own deck-plan notes flag 13300/13900/14300/14900/15300/15900, 9900/10300/10900/11300/11900, 12300/12900 as partially obstructed"
     },
     {
-      "factor": "engine",
+      "factor": "other",
       "decks": [
         5
       ],
       "sections": [
+        "forward"
+      ],
+      "what": "Forward-facing Club Balcony Suites and similar forward suites are fitted with solid metal bulwarks (railings) and/or glass windscreens instead of open railings, per NCL's own stateroom pages.",
+      "effect": "The wind shielding changes the balcony feel (more enclosed, less open-rail view) compared with a standard side balcony, in exchange for protection from high bow wind speeds.",
+      "mattersTo": "Guests who want the classic open-rail balcony photo/feel should know forward suites trade that for wind protection; not a problem for anyone prioritizing usability in windy conditions.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "ncl.com stateroom pages: 'Due to potential high wind speeds at the front of the ship, this cabin features solid metal bulwarks (railings) and/or glass windscreens'; cruisedeckplans.com confirms 'FORWARD FACING BALCONIES HAVE SOLID METAL RAILINGS'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        5,
+        16
+      ],
+      "sections": [
+        "forward",
         "aft"
       ],
-      "what": "Deck 5 aft is low in the ship and closest to propulsion machinery.",
-      "effect": "Low-frequency vibration and hum, particularly noticeable when the ship is maneuvering or at high speed; most noticeable in the cabin at night.",
-      "mattersTo": "Matters to vibration-sensitive sleepers or those who notice mechanical hum; many guests acclimate quickly or don't notice.",
+      "what": "Cabins far forward or aft, and on the highest decks, feel the most pitch/roll motion in choppy seas; Deck 5 is the lowest guest deck and Deck 16 the highest.",
+      "effect": "Motion-sensitive guests are steered toward midship, mid-height cabins (roughly Decks 9-14) rather than the extremes.",
+      "mattersTo": "Anyone prone to seasickness; irrelevant for guests unaffected by ship movement.",
       "severity": "moderate",
+      "confidence": "medium",
+      "source": "stylishcruising.com: 'it's best to choose a cabin in the middle of the ship... on too high or low a deck'; corroborated by a first-hand Prima review at abreathoffreshsarah.com advising midship, lower-deck cabins for motion sensitivity"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "5100-5124, 5700-5724",
+      "claim": "Forward Deck 5 cabins below the Prima Theater/Club, flagged for noise",
+      "source": "stylishcruising.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9122-9152, 9722-9752",
+      "claim": "Forward Deck 9 cabins directly above the Prima Theater/Club, flagged for noise",
+      "source": "stylishcruising.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "15100-15108, 15700-15708",
+      "claim": "Forward Deck 15 cabins below the Fitness Center, flagged for gym noise",
+      "source": "stylishcruising.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "16124-16152, 16724-16752",
+      "claim": "Deck 16 cabins below pool-deck chair storage/setup area, flagged for morning noise",
+      "source": "stylishcruising.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "16168-16190",
+      "claim": "Deck 16 cabins below Surfside Cafe buffet, flagged for cart/chair noise",
+      "source": "stylishcruising.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "15902",
+      "claim": "First-hand report of noise from Haven Restaurant chair-scraping/carts heard in this Haven cabin",
+      "source": "stylishcruising.com",
       "confidence": "high"
     },
     {
-      "factor": "engine",
-      "decks": [
-        5,
-        9,
-        10
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Low forward location exposes cabins to bow thruster use during docking and maneuvering.",
-      "effect": "Loud thruster noise during port arrivals and departures, typically early morning and evening; brief (15-30 minutes) but can be quite loud.",
-      "mattersTo": "Matters to light sleepers during port-intensive itineraries; not a concern on sea days or for those already awake during maneuvering.",
-      "severity": "moderate",
+      "cabins": "13300, 13900, 14300, 14900, 15300, 15900",
+      "claim": "NCL officially labels these Haven family suites 'partially obstructed view' (widely believed to be the dry-slide path)",
+      "source": "ncl.com stateroom/deck-plan pages",
       "confidence": "high"
     },
     {
-      "factor": "engine",
-      "decks": [
-        5,
-        9,
-        10,
-        11
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Forward cabins on lower decks are positioned near the anchor chain mechanism.",
-      "effect": "Loud metallic chain noise during anchor deployment and retrieval, typically early morning in tender ports; brief but very loud when it occurs.",
-      "mattersTo": "Matters to light sleepers on itineraries with tender ports; not a factor on all-dock itineraries or for those awake early.",
-      "severity": "moderate",
+      "cabins": "9900, 10300, 10900, 11300, 11900",
+      "claim": "NCL officially labels these aft-facing suites 'partially obstructed view'",
+      "source": "ncl.com / cruise.com stateroom pages",
       "confidence": "high"
+    },
+    {
+      "cabins": "12300, 12900, 12322, 12926",
+      "claim": "NCL flags 12300/12900 as partially obstructed; 12322/12926 noted as lacking a separate bedroom/bathtub",
+      "source": "ncl.com deck-plan pages",
+      "confidence": "high"
+    },
+    {
+      "cabins": "10814",
+      "claim": "NCL officially labels this suite 'partially obstructed view'",
+      "source": "ncl.com stateroom pages",
+      "confidence": "high"
+    },
+    {
+      "cabins": "10216, 10302, 10902, 11302, 11902, 13210, 14192, 15198, 15798",
+      "claim": "NCL/partner sites flag these ADA staterooms as having a partially obstructed balcony view",
+      "source": "cruise.com stateroom pages",
+      "confidence": "high"
+    },
+    {
+      "cabins": "11214, 11814, 14792",
+      "claim": "NCL flags these staterooms as having a partially obstructed view",
+      "source": "cruise.com stateroom pages",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "14187",
+      "claim": "Inside guarantee cabin flanks the elevator bank; guest asked whether it would be loud or have an unusual layout (no confirmed answer found)",
+      "source": "Cruise Critic forum thread 'Viva/Prima behind the elevator cabins?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "13207",
+      "claim": "Guest asked about noise levels near this cabin in a Facebook cruise group; nature of noise unspecified in available snippet",
+      "source": "Facebook group post 'Noise level near cabin 13207 on Norwegian Prima?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9354, 9954",
+      "claim": "Aft Penthouse cabins on Deck 9 said to overlook a cafe underneath them; poster wanted feedback on the location",
+      "source": "Cruise Critic forum thread on Deck 9 aft Penthouse cabins",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Precise location and extent of any hull hump where superstructure extends past the lifeboat line—I cannot confirm this feature exists on Prima class or identify specific decks and sections where balconies would cantilever outward",
-    "Exact location of i95 crew corridor access points and which cabin sections experience the most crew service traffic",
-    "Specific cabin numbers that are designated as connecting rooms across the various decks",
-    "Whether the Studio complex locations (Deck 12 and 13 mid-ship, Deck 5 forward) create any unique noise or traffic patterns from the Studio Lounge",
-    "Precise galley locations and whether any cabins sit directly above or below main food preparation areas beyond the Indulge Food Hall already noted",
-    "Whether The Haven complex location and private facilities create any noise or access impacts on surrounding cabins"
+    "No source found confirming or describing a true 'hump' (balcony cantilevered past the hull line) on Prima-class ships; the notable balcony-obstruction feature found instead is the side-mounted dry slides, not a hump.",
+    "No source found describing hull taper on the highest decks (15-16) hiding the straight-down view while keeping the horizon clear; this needs direct deck-plan/side-profile verification.",
+    "Crew corridor (I-95) layout and its access-point locations relative to guest cabins were not documented in any source found this session.",
+    "Engine-room vibration in aft/low cabins (Decks 5, 9) is only supported by generic, non-Prima-specific fleet advice; no Prima-specific cruiser report of vibration was found, despite the ship's diesel-electric Azipod propulsion being aft-mounted.",
+    "Bow-thruster noise specific to forward cabins was not documented in any Prima-specific source found.",
+    "A complete, verified list of every cabin obstructed by 'The Rush'/'The Drop' slides does not exist publicly; NCL labels only a handful, and independent bloggers agree most affected cabins are unlabeled, but no single exhaustive list was found.",
+    "Norwegian Aqua and Norwegian Luna are marketed as Prima-class sisters but are built on a ~10%-larger hull (156,300 GT vs. 142,500 GT) with a distinct 'Prima Plus' subclass designation; their deck/cabin geometry should not be assumed identical to Prima/Viva without separate verification."
   ],
   "ship": "Norwegian Prima",
   "shipSlug": "norwegian-prima",
   "line": "Norwegian Cruise Line",
   "totalCabins": 1606,
   "cabinsTouchedByAZone": 1606,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.036486
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 16,
+    "maxAllowed": 25
+  },
+  "cost": 2.229658
 }

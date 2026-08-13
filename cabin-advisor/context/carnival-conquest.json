@@ -1,5 +1,5 @@
 {
-  "class": "Conquest",
+  "class": "Conquest-class (Carnival Cruise Line)",
   "sisterShips": [
     "Carnival Glory",
     "Carnival Valor",
@@ -10,8 +10,6 @@
     {
       "factor": "lifeboat",
       "decks": [
-        1,
-        2,
         6
       ],
       "sections": [
@@ -19,26 +17,29 @@
         "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 1; they obstruct downward and outward views from Ocean View cabins on Decks 1, 2, and to a lesser extent Deck 6.",
-      "effect": "Ocean View cabins on Deck 1 look directly into or over the boats; Deck 2 looks down at them; Deck 6 forward and aft may catch the top edge depending on exact position.",
-      "mattersTo": "Matters greatly to anyone wanting open ocean views or natural light; irrelevant to Interior cabin guests or those prioritizing price over vista.",
-      "severity": "significant",
-      "confidence": "high"
+      "what": "Lifeboats are stowed on Deck 4 (Atlantic), recessed inboard rather than slung out past the hull; Deck 6 (Upper) is the first cabin deck above them, separated by the windowless Promenade deck.",
+      "effect": "Because the boats are recessed rather than overhung, the classic 'staring straight at a lifeboat' obstruction is less severe on this class than on ships with outboard-hung boats, but Carnival's own category coding still marks some Deck 6 cabins (4J-Obstructed) as view-obstructed.",
+      "mattersTo": "Photographers and view-focused balcony bookers on Deck 6 should check the specific obstructed-view code before booking; casual cruisers who mainly want a horizon view largely won't notice.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseind.com virtual tour ('Deck 04 is slightly narrower as this is where the lifeboats are... recessed inboard'); CruiseMapper deck 6 plan lists a '4J-Obstructed' inside category."
     },
     {
       "factor": "above",
       "decks": [
-        9
+        6
       ],
       "sections": [
+        "forward",
         "mid",
         "aft"
       ],
-      "what": "Lido Deck pool area, buffet, and outdoor activities are directly above Deck 9 midship and aft sections.",
-      "effect": "Daytime foot traffic, deck chair dragging, pool sounds, and music carry through; activity runs from early breakfast until late evening.",
-      "mattersTo": "Light sleepers and anyone sensitive to overhead noise should avoid; doesn't bother those out enjoying the ship most of the day.",
+      "what": "Deck 6 sits directly above the Promenade Deck's theatre (upper level), casino, disco/lounges and arcade, with specific cruisedeckplans notes flagging cabins 6327–6375 (starboard, above the casino) and cabin 6394-and-aft (near the lounges) as noise-prone.",
+      "effect": "Bass, crowd noise and late-night music carry up through the floor for most of this deck; only the very forward end (above/below the theatre's quieter early hours) or far aft escape it partially.",
+      "mattersTo": "Light sleepers and early-to-bed cruisers should avoid Deck 6 mid/aft; nightlife-focused guests may actually like being close to the action.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck 6 plan ('cabins on the starboard side, from cabins 6327 to 6375 are above an area near the casino'; 'cabins 6394 and back may experience noise issue from the lounges'); corroborated by ShermansTravel and CruiseMummy general Carnival guidance."
     },
     {
       "factor": "above",
@@ -48,11 +49,12 @@
       "sections": [
         "aft"
       ],
-      "what": "Deck 9 aft contains public venues and outdoor spaces directly above Deck 8 aft cabins.",
-      "effect": "Overhead noise and vibration from foot traffic and venue activity, though less intense than directly under the Lido pool area.",
-      "mattersTo": "Matters to noise-sensitive guests; one deck of separation helps but doesn't eliminate sound transmission.",
-      "severity": "minor",
-      "confidence": "medium"
+      "what": "Deck 8 aft cabins sit directly below the Lido Deck's Grand Buffet (Deck 9).",
+      "effect": "Early-morning footfalls and chair/cart noise from buffet setup can be heard in these cabins.",
+      "mattersTo": "Guests planning to sleep in past early breakfast service should look elsewhere on Deck 8; those who don't mind an early wake-up won't be bothered much.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "ShermansTravel ('cabins on deck 8 aft are located below the Grand Buffet, so you may hear early-morning footfalls')."
     },
     {
       "factor": "below",
@@ -63,31 +65,48 @@
         "forward",
         "mid"
       ],
-      "what": "Main dining rooms, galley operations, and public venues are on Decks 2 and 3, directly below Deck 6 forward and midship cabins.",
-      "effect": "Kitchen noise, plate clattering, and ventilation hum carry upward, especially during meal service times (breakfast, lunch, dinner rushes).",
-      "mattersTo": "Matters to those wanting quiet evenings and early mornings; background noise is persistent but not usually intrusive.",
-      "severity": "minor",
-      "confidence": "medium"
+      "what": "Deck 2 forward cabins sit above/below the main theatre's lower levels, and inside cabins 2370–2425 specifically sit below the galley.",
+      "effect": "Forward cabins can pick up stage-show or rehearsal noise; the named galley-adjacent range can hear kitchen activity from the deck above.",
+      "mattersTo": "Guests sensitive to noise should avoid cabins 2370–2425 and far-forward Deck 2 rooms; unaffected cabins on this deck are otherwise quiet.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck 2 plan ('Inside cabins 2370 to 2425 are below galley and may experience noise'; 'Forward cabins... above or below the main theater')."
     },
     {
       "factor": "below",
       "decks": [
-        6
+        10
       ],
       "sections": [
         "forward"
       ],
-      "what": "Main theatre (Toulouse-Lautrec) is located on Decks 3-4, two to three decks below Deck 6 forward cabins.",
-      "effect": "Show music and sound effects can carry upward during performances (typically early and late evening); distance attenuates but doesn't eliminate bass tones.",
-      "mattersTo": "Light sleepers or early-to-bed guests may notice; most find it minor given the vertical distance.",
+      "what": "Deck 10 (Panorama) forward cabins 1001, 1002, 1003 and 1004 sit directly below the Fitness Center, which is forward on Deck 11 (Spa).",
+      "effect": "Weight-dropping and cardio-machine noise from the gym can carry down into these four specific cabins.",
+      "mattersTo": "Light sleepers/late-risers should avoid this exact four-cabin range; gym-goers may not mind at all.",
       "severity": "minor",
-      "confidence": "medium"
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck 10 plan ('Forward cabins 1001, 1002, 1003, 1004 are below the gym and may experience noise from that area')."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 7 (Empress) cabins are sandwiched between Deck 6 and Deck 8, both entirely cabins, and the midship section is made up entirely of suites.",
+      "effect": "Because there are no public venues immediately above or below, Deck 7 is structurally the quietest cabin deck on the class, apart from one localized crew-service pinch point.",
+      "mattersTo": "Noise-sensitive cruisers should prioritize Deck 7 over 6, 8, 9 or the lower decks.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck 7 plan ('cabins on this deck are above and below decks with only cabins on them... tend to have less noise issues'); cruiseind.com virtual tour ('Deck 7 also contains cabins. The midship ones are all suites')."
     },
     {
       "factor": "elevator",
       "decks": [
-        1,
-        2,
         6,
         7,
         8,
@@ -95,15 +114,29 @@
         10
       ],
       "sections": [
-        "forward",
-        "mid",
-        "aft"
+        "forward"
       ],
-      "what": "Primary elevator banks are located forward and midship on all cabin decks, with stair towers adjacent.",
-      "effect": "Cabins near elevator/stair banks benefit from quick vertical access but experience intermittent hallway traffic, door chimes, and conversation noise at all hours.",
-      "mattersTo": "Mobility-limited guests benefit from proximity; light sleepers should request cabins away from banks; severity varies by how close the cabin is.",
+      "what": "The main Studio Atrium and its elevator bank run from Deck 3 up through Deck 10, forward of midship.",
+      "effect": "Cabins near this forward bank get the shortest walk to elevators but also the most elevator-lobby chatter, ding, and foot traffic, especially at meal and show times.",
+      "mattersTo": "Mobility-limited guests benefit from proximity; light sleepers directly adjacent may prefer a cabin a few doors down the corridor.",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruisedeckplans.com deck 7 plan ('Atrium that begins on deck 3 and rises to deck 10. Elevators span up the entire distance')."
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "A crew-service area/access point surfaces near inside cabin 7361 on Deck 7, tied into the ship's below-decks crew corridor ('I-95') network that runs bow-to-stern beneath guest decks.",
+      "effect": "Cabins immediately around this pinch point can pick up crew foot traffic and service noise that doesn't affect the rest of the otherwise-quiet Deck 7.",
+      "mattersTo": "Guests booking Deck 7 for its general quiet should still avoid the immediate vicinity of cabin 7361.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com deck 7 plan ('There is a crew area in the blank space near inside cabin 7361. Cabins around this area may experience noise issues')."
     },
     {
       "factor": "engine",
@@ -114,57 +147,213 @@
       "sections": [
         "aft"
       ],
-      "what": "Engine room and propulsion machinery are located low and aft; vibration and low-frequency hum are most noticeable in aft cabins on the lowest guest decks.",
-      "effect": "A persistent low rumble and subtle vibration underfoot, most noticeable when engines are working (maneuvering, sea days at speed); white noise effect for some, annoying for others.",
-      "mattersTo": "Sensitive sleepers or those bothered by vibration should avoid; many guests don't notice or find it soothing; worsens in rough seas.",
+      "what": "Aft cabins on Deck 1 (Riviera) and Deck 2 (Main) sit low and near the stern machinery spaces.",
+      "effect": "These cabins can pick up engine hum and vibration, most noticeable during maneuvering, docking, and port arrivals/departures.",
+      "mattersTo": "Vibration-sensitive sleepers should avoid the aft ends of Decks 1 and 2; those used to a low steady hum may find it unobtrusive.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck 1 and deck 2 plans, both stating 'Cabins in the aft part of this deck may experience engine noise and vibrations.'"
     },
     {
-      "factor": "engine",
+      "factor": "hump",
       "decks": [
-        1,
-        2,
-        6
+        6,
+        7,
+        8
       ],
       "sections": [
-        "forward"
+        "aft"
       ],
-      "what": "Bow thrusters are located forward below the waterline; they create vibration and mechanical noise during docking and maneuvering in port.",
-      "effect": "Brief but noticeable vibration and rumbling during arrivals and departures; can wake early sleepers on port mornings.",
-      "mattersTo": "Matters only during maneuvering (15-30 minutes per port); deep sleepers won't notice, light sleepers should be aware.",
+      "what": "Premium Vista Balcony cabins wrap around the aft corners of Decks 6 through 8, extending the balcony footprint past the standard straight-hull line to curve around the stern corner.",
+      "effect": "This wraparound shape buys a panoramic side-and-stern view and, unlike the standard aft-facing balconies on the same decks (which are described as semi-private and visible from the cabin above and to each side), the corner wrap gives more visual separation from neighboring balconies.",
+      "mattersTo": "Aft-corner-balcony seekers get a wider view for a premium price; this is a genuine Conquest-class feature, not shared with most other Carnival classes.",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "Carnival.com official Conquest page ('Premium Vista Balcony staterooms were designed to wrap around the aft corners'); Cruise.Blog notes this is 'unique... aboard Dream, Conquest, and Sunshine Class ships' (checked against other classes, not generic boilerplate); ShermansTravel confirms location as 'aft corners of decks 6 through 8.'"
     },
     {
-      "factor": "engine",
+      "factor": "motion",
       "decks": [
         1,
-        2,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Forward cabins (including Deck 1 and far-forward Deck 9/10) report more pitch and wave/sea noise in rough weather, aft cabins report more vibration, and the higher the deck the more side-to-side roll is felt.",
+      "effect": "A Deck 1 forward cabin can be noisier in swells; a Deck 9 cabin forward of the elevators pitches more than a midship one; higher decks amplify roll even though 'if the ship is rocking, the whole ship is rocking.'",
+      "mattersTo": "Motion-sensitive cruisers should choose midship, lower-to-mid deck cabins (Deck 6–7 midship); those who find gentle rocking soothing (as one Deck 9 forward reviewer did) can safely take a forward cabin on a calm itinerary.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck 1 plan ('Forward cabins on this deck tend to have more sea noise during rough seas'); CruiseAddicts forum sister-ship review ('being that far forward means your cabin will pitch... the higher you go the more you will feel the roll'); CruiseSnooze Conquest review ('Forward cabins may feel extra movement, and aft cabins might have vibration... midship cabins on lower decks are usually your best bet')."
+    },
+    {
+      "factor": "other",
+      "decks": [
         6,
         7
       ],
       "sections": [
         "forward"
       ],
-      "what": "Anchor chain runs through the bow; deployment and retrieval create loud mechanical noise and vibration in forward cabins on lower decks.",
-      "effect": "Sharp metallic rumbling every time the ship anchors or weighs anchor, typically early morning in tender ports; brief but unmistakable.",
-      "mattersTo": "Light sleepers in tender-heavy itineraries should avoid bow cabins; doesn't affect ships docking pier-side.",
-      "severity": "moderate",
+      "what": "The 'Interior with Picture Window' category on the forward ends of Decks 6 and 7 has windows that overlook the ship's forward open/observation deck rather than the open ocean, and Carnival flags these as partially obstructed.",
+      "effect": "Guests get natural light and a view of the outside deck and sky, but not a private ocean view — passersby on the open deck can potentially see in.",
+      "mattersTo": "Budget-minded cruisers who want a window without paying full Ocean View price should know this is a semi-public view, not a true sea view.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "Carnival.com official page ('picture window gives you views... of the observation deck outside... Note: view will be partially obstructed'); Cruise Critic editor review ('Most ocean-view rooms feature... obstructed views (in this case, overlooking Carnival Conquest's forward open decks)')."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Standard balcony rails on Conquest-class ships are glass-panel (no cove-style solid steel outer rail like on Vista/Dream/Excel-class ships), but connecting balcony cabins are separated by a solid steel partition rather than open railing.",
+      "effect": "A first-hand reviewer in category 8D reported the steel partition between connecting balconies is only opened by the crew while the ship is in port, closed underway 'as policy,' frustrating families who booked connecting balconies expecting to socialize at sea.",
+      "mattersTo": "Families/groups booking connecting balcony cabins for at-sea togetherness should know the partition stays shut while sailing; this is not an issue for guests who just want an unobstructed outward view.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "Carnival's own balcony-info page (Conquest listed among ships with standard glass-panel rails, no cove balconies); Cruiseline.com member review of cabin category 8D ('to talk to family we had to lean out over the rail and around a huge steel plate dividing the balconies... only opened while in port')."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        1,
+        2,
+        6,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Connecting ('family') cabins are offered across Decks 1, 2, 6, 7, 8, 9 and 11 in several category combinations.",
+      "effect": "Families have a wide range of deck choices for connecting cabins, which is unusually broad compared with some newer, smaller-cabin-count ships.",
+      "mattersTo": "Multi-generational or larger family groups have more flexibility in balancing connecting-cabin availability against the noise/motion factors above.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "CruiseMapper cabins page ('Connecting rooms (\"family cabins\") are located on decks 1, 2, 6, 7, 8, 9, and 11')."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "2273",
+      "claim": "Cabin located directly under an outdoor smoking/deck area; guest reported constant footstep and chair-scraping noise from 1am–6:30am",
+      "source": "Cruise Critic member review (Carnival Conquest)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6275, 6277, 6279, 6449, 6431, 6433, 6435, 6437, 6439",
+      "claim": "Deck 6 balcony cabins asked about specifically for noise above bars/casino; question left unanswered in thread",
+      "source": "Cruise Critic forum thread on Conquest deck 6 noise",
+      "confidence": "low"
+    },
+    {
+      "cabins": "6442",
+      "claim": "Cabin sits directly above the Aft Lounge; noise level queried, unanswered",
+      "source": "Cruise Critic 'Carnival Conquest - Cabin Selection Tips' forum thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "6327–6375",
+      "claim": "Starboard-side range flagged as sitting above an area near the casino with loud music",
+      "source": "cruisedeckplans.com deck 6 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6394 and aft",
+      "claim": "Flagged as near lounges on the deck below, possible noise issue",
+      "source": "cruisedeckplans.com deck 6 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "2370–2425",
+      "claim": "Inside cabins below the galley, may experience noise from that area",
+      "source": "cruisedeckplans.com deck 2 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "1001, 1002, 1003, 1004",
+      "claim": "Below the gym on Deck 11 forward; may hear equipment/weight noise",
+      "source": "cruisedeckplans.com deck 10 plan",
       "confidence": "high"
+    },
+    {
+      "cabins": "7361 (vicinity)",
+      "claim": "Adjacent to a crew service area; potential noise from crew activity",
+      "source": "cruisedeckplans.com deck 7 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "2246, 2249",
+      "claim": "Deck 2 category 6C cabins marked as obstructed view",
+      "source": "Seascanner Carnival Conquest deck plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9205, 9206",
+      "claim": "Slightly smaller balconies than neighboring suite category; balcony can be viewed from the adjacent Captain's Suite balcony above (privacy overlap)",
+      "source": "cruisedeckplans.com Carnival Conquest cabin notes",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7228",
+      "claim": "Modified accessible/handicap cabin, unusually large at 450 sq ft with a 110 sq ft balcony",
+      "source": "cruisedeckplans.com Carnival Conquest cabin notes",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "1027",
+      "claim": "Deck 10 forward balcony cabin flagged by a first-time cruiser worried about motion sickness; no substantive answer recorded in thread",
+      "source": "Cruise Critic 'front vs back rougher ride' forum thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "2201, 2202",
+      "claim": "Forward 1A category cabins with an irregular layout; poster notes past experience with bow noise issues in this range",
+      "source": "Cruise Critic forum thread on Conquest-class cabin 2201/2202",
+      "confidence": "low"
+    },
+    {
+      "cabins": "1066, 1067 (sister ship Carnival Valor)",
+      "claim": "Questioned for noise from an outside/Lido-adjacent wall and unusual balcony-end configuration; same cabin numbering/layout likely applies fleet-wide across Conquest-class sisters",
+      "source": "Cruise Critic forum thread on Conquest-class cabin 1066/1067 (Valor)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "2446–2453 (sister ship Carnival Freedom)",
+      "claim": "Deck 2 oceanview range with partially obstructed windows; because Conquest-class sisters share an identical cabin layout, the same range number is plausible on Conquest itself but not independently confirmed",
+      "source": "Jackson Jetsetting Carnival Freedom deck-plan walkthrough",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether this Conquest-class hull has a pronounced hump (cantilevered balconies on lower-mid decks) and if so, the exact deck range; this feature is common on contemporary ships but I cannot confirm specifics for this class without cross-referencing deck plans.",
-    "The exact location and extent of the I-95 crew corridor access points and which cabin sections experience the most service traffic.",
-    "Specific connecting cabin pairs or ADA-accessible cabin distribution beyond what's visible in aggregate counts.",
-    "Whether recent refurbishments have altered soundproofing or repositioned any public venues that would change noise profiles."
+    "Whether bow thruster noise is specifically reported for forward Deck 1/2 cabins on Conquest itself (only generic/sister-ship-adjacent mentions found).",
+    "Whether anchor-chain noise on port mornings is specifically documented for Conquest's forward cabins (searches returned only unanswered forum questions).",
+    "Whether any hull taper exists on the highest decks (9, 10, 11) that hides the straight-down view from balconies there — no source explicitly described this for Conquest.",
+    "The exact cabin ranges on Deck 6 whose balcony view is most obstructed by the recessed Deck 4 lifeboats (only the general obstructed-category code was found, not a specific range).",
+    "Why Deck 9 has no aft cabin section per the inventory (aft of Deck 9 is occupied by pool/venue space) and whether that creates any above/below noise effect for Deck 9 midship cabins relative to Deck 10 aft venues — not documented in sources found.",
+    "Whether Carnival's 2012 and subsequent refurbishments changed any of the above venue-adjacency facts from their original 2002–2007 construction layout."
   ],
   "ship": "Carnival Conquest",
   "shipSlug": "carnival-conquest",
   "line": "Carnival Cruise Line",
   "totalCabins": 1468,
   "cabinsTouchedByAZone": 1468,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.030759
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 18,
+    "maxAllowed": 25
+  },
+  "cost": 2.0902380000000003
 }

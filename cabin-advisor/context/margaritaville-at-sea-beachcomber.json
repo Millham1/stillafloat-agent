@@ -1,87 +1,91 @@
 {
-  "class": "Beachcomber class",
-  "sisterShips": [],
+  "class": "Fortuna-class (Costa Fortuna/Costa Magica hull, shared platform with Carnival Destiny/Sunshine-class)",
+  "sisterShips": [
+    "Costa Magica",
+    "Carnival Sunshine (ex-Carnival Destiny)",
+    "Carnival Sunrise (ex-Carnival Triumph)",
+    "Carnival Radiance (ex-Carnival Victory)"
+  ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        1,
-        2,
-        6
+        6,
+        7
       ],
       "sections": [
-        "forward",
-        "mid",
-        "aft"
+        "mid"
       ],
-      "what": "Lifeboats mounted at Deck 6 obstruct views from Deck 1, Deck 2, and partially Deck 6 balconies and ocean view cabins.",
-      "effect": "Ocean view and balcony cabins on these decks see lifeboats instead of open water when looking straight out or down; the horizon remains visible above the boats.",
-      "mattersTo": "Matters greatly to guests who want unobstructed water views or photos; insignificant to those focused on having a balcony for air and light or to interior cabin guests.",
-      "severity": "significant",
-      "confidence": "high"
+      "what": "Margaritaville's own Beachcomber accommodations page sells a 'Partial Ocean View Stateroom' category present on decks 6 and 7 that has partially or fully obstructed views but still offers natural light and superior comfort, and the sister-hull Carnival Radiance shows the same design obstructing specific balcony cabin blocks with lifeboats.",
+      "effect": "The straight-down sightline to the water is blocked by lifeboat/tender equipment slung on the deck below; the open horizon and sea ahead remain visible, so it reads as a partial rather than total obstruction.",
+      "mattersTo": "Budget-conscious cruisers who mainly want a window/breeze and don't need to see straight down won't care; photographers or anyone wanting to watch the waterline directly below the rail should avoid these specific cabins.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "margaritavilleatsea.com Beachcomber accommodations page (partial ocean view = partially/fully obstructed) plus Carnival Radiance sister-ship cabin lists naming lifeboat-obstructed balcony blocks 7050-7090/7550-7590 etc. (shinecruise.com)"
     },
     {
       "factor": "below",
       "decks": [
-        7
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Main pool deck and buffet venue are located on Deck 11, four decks above Deck 7 aft.",
-      "effect": "Deck 7 aft cabins are well insulated from pool deck activity by distance; noise and foot traffic are minimal.",
-      "mattersTo": "Not a concern for most guests given the four-deck separation.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        10
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Pool deck, buffet, and outdoor activity areas are located on Deck 11, directly above Deck 10.",
-      "effect": "Deck 10 cabins experience daytime foot traffic, pool furniture scraping, and music from directly overhead; can continue into evening hours.",
-      "mattersTo": "Significant for light sleepers or guests in cabins during the day; minor for those spending days off the ship or out and about.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        1,
-        2
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Engine room is located low and aft, directly below and adjacent to Deck 1 and Deck 2 aft cabins.",
-      "effect": "Low-frequency vibration and hum are noticeable underway, especially at night when ambient noise is low.",
-      "mattersTo": "Matters to vibration-sensitive guests and light sleepers; less important to those who sleep through white noise or spend little time in the cabin.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        1,
-        2
+        6
       ],
       "sections": [
         "forward"
       ],
-      "what": "Bow thrusters located low and forward operate during docking and undocking maneuvers.",
-      "effect": "Brief but loud thruster noise occurs early morning arrivals and during port departures, typically lasting several minutes.",
-      "mattersTo": "Matters to light sleepers who are in the cabin during port days; irrelevant to early risers or those already awake.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "A returning Costa Fortuna passenger confirmed a forward starboard Deck 6 (Lisbona) cabin is exactly above the Rex theatre, whose top level occupies the forward part of Deck 5.",
+      "effect": "Performance sound and audience movement can transmit upward during shows and rehearsals; being one deck above the theatre also means a very short walk down to evening entertainment.",
+      "mattersTo": "Light sleepers who go to bed early should avoid; people who want to be steps from the theatre will like it.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread, poster confirming forward Deck 6 sits directly over the Rex Theatre"
     },
     {
-      "factor": "engine",
+      "factor": "below",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Multiple Costa Fortuna cabin-review reports place aft Deck 6 cabins (e.g. 6420, and the 6441/6455 block) directly above the aft Deck 5 lounges, including the 'Leonardo da Vinci' dance/live-music salon; one guest in cabin 6420 was directly over a lounge/disco on deck 5, the noise was so loud that it vibrated the floor.",
+      "effect": "Bass and vibration from evening entertainment can carry into the cabin above until the venue closes (guests elsewhere on the same deck reported it stops by roughly 1:00-1:30am).",
+      "mattersTo": "Anyone going to bed before the late show ends should avoid; night owls who like being close to the music won't mind.",
+      "severity": "significant",
+      "confidence": "medium",
+      "source": "cruisecritic.com Costa Fortuna member review (cabin 6420) and forum.crocieristi.it Costa Fortuna cabin thread (6441/6455 over Leonardo da Vinci salon)"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "A returning Costa Fortuna passenger warned that Deck 8 (Vigo, all-cabin deck) sits just under the Deck 9 (Napoli) Lido/buffet, and the important thing is not to have the buffet right over your head, otherwise the cart traffic in the early morning will beat any alarm clock.",
+      "effect": "Early-morning cart and setup noise from the buffet restaurant can be heard through the ceiling before most guests are awake.",
+      "mattersTo": "Late sleepers should pick a cabin away from the buffet footprint on Deck 8; early risers headed to breakfast anyway won't mind.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread describing Deck 8 (Vigo) relative to the Deck 9 buffet"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "CruiseMapper's Beachcomber-specific writeup states Margaritaville Beachcomber's two Bridge Wing Suites (Deck 9 forward) are positioned directly atop the Navigation Bridge/Wheelhouse.",
+      "effect": "Sitting directly over the bridge means a very stable, quiet forward position (no cabins overhead, minimal foot traffic) with a private bridge-tour perk, but it is as far forward as guest cabins go, so motion in heavy seas is felt most here.",
+      "mattersTo": "Suite guests wanting quiet and a novelty bridge tour will love it; anyone prone to seasickness should be cautious given the extreme forward position.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemapper.com Margaritaville At Sea Beachcomber ship review, Bridge Wing Suite placement"
+    },
+    {
+      "factor": "elevator",
       "decks": [
         1,
         2,
@@ -93,29 +97,178 @@
         11
       ],
       "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Repeated Costa Fortuna forum posts describe three elevator banks (forward, central, aft) running through the ship, and note that the Deck 1 corridor is nearly deserted and crosses the whole ship from bow to stern, letting you use all 3 elevator banks.",
+      "effect": "Cabins near any of the three elevator lobbies get fast access to dining/pool decks but pick up door-chime and foot-traffic noise; the Deck 1 corridor itself is a quiet through-route rather than a noisy shortcut.",
+      "mattersTo": "Mobility-limited guests or families benefit from being near a lift bank; light sleepers should ask for a cabin a few doors away from the lobby itself.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "forum.crocieristi.it Costa Fortuna cabin threads describing the three elevator banks and Deck 1 corridor"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        1
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "A Costa Fortuna forum regular pinpointed the ship's noisiest stretch of Deck 1 as the zone between cabins 1350 and 1360 and the area of the air-conditioning plant, where a door marked 'Impianto di Condizionamento' opens onto the passenger corridor.",
+      "effect": "Machinery-room noise and vibration bleed into nearby cabins through this service-access point, worse while under way and during maneuvering.",
+      "mattersTo": "Anyone booking a Deck 1 aft-mid cabin near the 1350s block should ask about proximity to the AC plant; forward Deck 1 cabins were reported as much quieter by the same posters.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread on the Deck 1 air-conditioning plant access point"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "A Costa Fortuna cruise review reported a lot of vibration at the back of the ship during rough seas in an aft balcony cabin, and Italian forum posters confirmed the aft-mid Deck 1 zone vibrates and carries engine hum most strongly during docking/departure.",
+      "effect": "Aft, low cabins feel more hull vibration from the propulsion pods, especially in heavy weather or while maneuvering into port.",
+      "mattersTo": "Guests sensitive to vibration/noise should avoid the lowest aft cabins; wake-watchers who prize the view over quiet may still prefer it for the aft balcony experience.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com Costa Fortuna member review (aft vibration in rough seas) and forum.crocieristi.it Deck 1 aft-mid noise discussion"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        11
+      ],
+      "sections": [
         "forward"
       ],
-      "what": "Anchor chain runs through the bow and drops each port arrival, typically early morning.",
-      "effect": "Loud rumbling and vibration in forward cabins during anchor deployment, lasting a few minutes per port call.",
-      "mattersTo": "Significant for light sleepers in forward cabins on port-intensive itineraries; minor for those who wake early anyway or on sea days.",
+      "what": "Several Costa Fortuna forum posters in the far-forward Deck 11 (Cannes) window-cabin block reported a mysterious hammering/thumping noise every morning around 5-7am, which another poster attributed to not only the thrusters but also the mooring/anchor winches, usually active in the early morning hours, and phenomena that are very noisy in rough seas.",
+      "effect": "Forward cabins, even high up, can pick up transmitted noise from anchor/mooring gear and bow thrusters during arrival maneuvers and anchor drops.",
+      "mattersTo": "Early-morning sleepers in forward cabins on itineraries with tender/anchor calls should be warned; itineraries that dock alongside every day are less affected.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "low",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread describing recurring 5-7am hammering noise near forward Deck 11/1 window cabins"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "A Costa Fortuna guest who booked aft-corner cabin 6459 described it as having a large balcony, right at the very back, in the corner; the same wraparound aft-corner balcony design is documented on sister-hull Carnival Sunshine as Premium Vista Balcony ... located on the aft corners of decks 6 through 8.",
+      "effect": "These corner cabins get an oversized, wraparound balcony extending past the normal hull line, buying a much wider panoramic view (both astern and to the side) than a standard balcony of the same category.",
+      "mattersTo": "View-seekers and photographers benefit most; note the same wraparound structure means aft-corner balconies can sometimes be overlooked by the deck above/below per Carnival's own balcony-privacy notices on this hull.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread (cabin 6459) and shermanstravel.com Carnival Sunshine deck plan decoder (Premium Vista Balcony, aft corners decks 6-8)"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A Costa Fortuna forum contributor warned that a forward, low window cabin category is not objectively the best position if you particularly suffer from seasickness, sitting partly under the theatre's first level and partly under the open promenade where the lifeboats are mounted.",
+      "effect": "Forward-low cabins amplify pitching motion in a swell more than midship cabins, on top of any theatre/promenade noise from just above.",
+      "mattersTo": "Seasickness-prone travelers should choose midship, and preferably not the lowest forward cabins; it's a non-issue for calm itineraries or stabilized seas.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread discussing motion sickness risk in forward-low window cabins"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Forum posters confirm that Costa Fortuna's only quadruple-configured suites are the GS category, 8 in total, on Deck 7 Caracas in a central position.",
+      "effect": "These suites combine the most stable, central location on the ship with 4-person capacity, a rare pairing on this hull.",
+      "mattersTo": "Families or groups of 4 wanting suite space and minimal motion should look here first.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread on GS quad suites, Deck 7 Caracas"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "1066, 1067 (Deck 10 / Barcellona)",
+      "claim": "Located next to the air-conditioning extractor plant room; multiple posters report strong, near-constant noise and vibration, worse than during normal maneuvering, some easing slightly at night.",
+      "source": "forum.crocieristi.it Costa Fortuna cabin threads (multiple independent posts) and ticketcrociere.it Costa Fortuna guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "1108, 1110 (Deck 11 / Cannes, forward)",
+      "claim": "Recurring reports of an unexplained hammering/thumping noise every morning roughly 5-7am; ship staff reportedly could not identify the source on at least one sailing.",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "1350-1360 (Deck 1 / Rio de Janeiro, between the central and aft elevator banks)",
+      "claim": "Noisiest stretch of Deck 1 during navigation; engine hum and floor vibration noticeable, especially at docking/departure; forward Deck 1 cabins reported as much quieter by the same posters.",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6420",
+      "claim": "Directly above a Deck 5 lounge/disco; noise loud enough to vibrate the floor, with an unresponsive customer service experience reported.",
+      "source": "cruisecritic.com Costa Fortuna member review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6441, 6455",
+      "claim": "Aft Deck 6 cabins sitting above the Leonardo da Vinci salon (lounge/dance venue on Deck 5 aft); forum advice flagged possible noise exposure though not confirmed firsthand.",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "6459",
+      "claim": "Aft-corner cabin with an oversized wraparound balcony ('gran balcone'), consistent with the class's aft-corner extended-balcony design.",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "2251 (category E2, forward, Deck 2 / Miami)",
+      "claim": "Forward window cabin flagged by forum members as a weaker choice for seasickness-prone travelers due to position under the theatre and open promenade/lifeboat area.",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "1216 (Deck 1 / Rio de Janeiro, forward, interior guarantee category)",
+      "claim": "Identified by forum members as one of the last few cabins forward on Deck 1, offered as a guarantee-category assignment; no noise complaint attached, included here only as a positional data point.",
+      "source": "forum.crocieristi.it Costa Fortuna cabin thread",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether this class has a hump (balconies cantilevered past the hull line) and if so, on which decks and sections",
-    "Precise elevator and stair bank locations along the hull and their noise/convenience profile",
-    "I95 crew corridor routing and where service access points create traffic near guest areas",
-    "Specific theater, show lounge, nightclub, or galley locations and which cabin decks sit directly above or below them",
-    "Whether there are sister ships sharing this exact hull layout—Margaritaville at Sea has other vessels but shared layout needs confirmation",
-    "Connecting cabin availability patterns beyond what the deck plan data shows",
-    "Whether Wake staterooms (Wake Ocean View, Wake View Balcony) have specific positioning quirks related to wake views"
+    "Whether hull taper affects the top guest deck (11/Cannes, all Oceanview) balconies — deck 11 appears to be window-only with no balconies, so taper-hidden-view issues may not apply, but this was not independently confirmed against actual hull lines.",
+    "Exact section (forward/mid/aft) placement of the lifeboat davits relative to the Partial Ocean View cabin blocks on decks 6 and 7 for this specific ship — inferred from a sister-hull (Carnival Radiance) cabin list, not confirmed on a Beachcomber/Costa Fortuna deck plan.",
+    "Deck-specific locations of the 27 wheelchair-accessible cabins and 138 connecting cabins reported fleet-wide for Beachcomber — no deck/section breakdown found in this session.",
+    "Whether the post-2026 Margaritaville refurbishment changes any of the above (e.g., relocates the buffet, adds/removes balcony partitions, changes cabin numbering) since most sourcing here reflects the ship's pre-refit Costa Fortuna configuration.",
+    "Confirmed identity/deck of the disco or main nightclub venue under the Margaritaville brand, which could shift which deck 6/7 sections are most noise-exposed once the ship is reflagged."
   ],
   "ship": "Margaritaville at Sea Beachcomber",
   "shipSlug": "margaritaville-at-sea-beachcomber",
   "line": "Margaritaville at Sea",
   "totalCabins": 1358,
   "cabinsTouchedByAZone": 1358,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.023646
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 15,
+    "maxAllowed": 25
+  },
+  "cost": 2.430507
 }

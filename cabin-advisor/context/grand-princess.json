@@ -1,15 +1,227 @@
 {
-  "class": "Grand class",
+  "class": "Grand-class (original Grand Princess hull design)",
   "sisterShips": [
-    "Golden Princess",
-    "Star Princess"
+    "Carnival Adventure (ex Golden Princess, ex Pacific Adventure)",
+    "Carnival Encounter (ex Star Princess, ex Pacific Encounter)"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats and tender boats are mounted on Deck 8 (Emerald), and Princess's own category codes OV, OW, OY and OZ mark the oceanview cabins on that deck as partially or fully blocked by them.",
+      "effect": "Guests in these Emerald-deck oceanview categories look at a lifeboat hull instead of open sea; some cabins between boats keep a partial view.",
+      "mattersTo": "View-focused oceanview bookers should avoid U-Z coded cabins unless discounted; sunlight-only seekers or budget cruisers who don't care about a clear sightline can take the savings",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Grand Princess Emerald deck page: 'Category OV, OW, OY, OZ have obstructed views'; corroborated by cruisemummy.co.uk and a Cruise Critic member cabin review describing an OW cabin as 'about 3/4 clear of obstructions'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 12 (Aloha) sits one physical deck directly below Deck 14 (Lido), since the ship's numbering skips deck 13.",
+      "effect": "Guests hear early-morning deck-chair scraping and late-night pool-deck cleaning through the ceiling, and must walk to the fore or aft stairs/lifts to reach the pool one level up.",
+      "mattersTo": "Light sleepers and late-risers should avoid Aloha-deck mid cabins; pool-deck convenience seekers may still prefer it despite the noise",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruiseaddicts.com Grand Princess forum: a guest reports their 'stateroom was mid-ship on the Aloha deck (one below Lido)' and found it inconvenient to reach the pool; corroborated independently by cruisemummy.co.uk's account of a guest credited on-board spend after complaining about pool-deck scraping noise"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Certain Emerald-deck (8) cabins sit directly over the stage of the Explorer's Lounge / Club Fusion nightspot.",
+      "effect": "When the band plays, the floor and furniture vibrate with the drumbeat, and the venue runs until nearly midnight.",
+      "mattersTo": "Anyone wanting an early, quiet night should avoid this stack; nightlife-adjacent guests may not mind",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "Cruise Critic member review of Grand Princess cabin E516: 'directly over the stage of the Explorer's Lounge... floor and chairs vibrate with each drumbeat... party down below lasts until about 11:40 pm'; cruisedeckplans.com Emerald deck notes separately warn to 'avoid cabins above Club Fusion and Explorers Lounge'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Emerald-deck (8) cabins sit above and/or below the main Princess Theater, and above a crew work area.",
+      "effect": "Stage-production show noise and rehearsal sound can carry into these cabins, plus occasional crew-area noise.",
+      "mattersTo": "Show-noise-sensitive guests should avoid forward Emerald cabins; theater-goers who like proximity may not mind the short walk",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Grand Princess Emerald deck page: 'Forward cabins on this deck are above or below the main theater and may have noise' and 'Forward cabins are above crew area and may have noise at times'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The seven Suite-category cabins added to Deck 6 (Fiesta) in the 2011 refurbishment sit near the casino and entertainment lounges.",
+      "effect": "Late-night casino and lounge traffic/noise reaches these suites more than other suite locations on the ship.",
+      "mattersTo": "Suite guests wanting quiet evenings should ask for a different suite deck; guests who enjoy being near the action may like it",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "Cruise Critic Grand Princess cabins editorial: 'The newest were added on Deck 6, near the casino, during the 2011 refurbishment'"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
         8,
         9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "On Grand Princess the midship passenger staircase does not continue above Deck 7, unlike the forward and aft staircases.",
+      "effect": "Guests in midship cabins on higher decks must wait for an elevator or walk to the fore/aft stairwells to change decks, which can mean 5-10 minute elevator waits at busy times.",
+      "mattersTo": "Guests who dislike elevator waits or want quick stair access should book near the forward or aft stairs, not midship on the upper decks",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "Cruise Critic member review of Grand Princess: 'the Grand Princess has no passenger staircase midship above deck 7, you must either wait for an elevator... or walk to the forward or aft lift/staircases'"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The forward staircase on Grand Princess is reserved for crew, not passengers.",
+      "effect": "Guests near the forward stairwell can hear crew moving between decks early in the morning as they prepare the ship for the day.",
+      "mattersTo": "Very light sleepers who want a lie-in should avoid cabins near the forward stairwell; most guests find this a minor, occasional issue",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk Grand Princess guide: 'The staircase at the front of the ship is for crew only, and some guests have reported that there can be some noise early in the morning when the crew are moving around'"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "There is a crew work area on Dolphin deck (9) near cabin D123, distinct from the surrounding all-cabin stretch of that deck.",
+      "effect": "Cabins immediately around this blank/crew space pick up service noise that neighboring all-passenger stretches of the deck do not.",
+      "mattersTo": "Noise-sensitive guests booking Dolphin deck should avoid the D123 vicinity; the rest of the deck is unusually quiet because it's sandwiched between all-cabin decks",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Grand Princess Dolphin deck page: 'Avoid cabins around blank space near D123. This is a crew area and may have noise'"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Guests on a dedicated Grand Princess forum thread report that most of the ship's noise and vibration is concentrated aft.",
+      "effect": "Aft cabins feel engine/propulsion vibration more than midship cabins on the same deck.",
+      "mattersTo": "Vibration-sensitive sleepers should choose midship over aft; wake-view lovers may accept the trade-off",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruiseaddicts.com thread 'Best Rooms with Less Movement/GRAND PRINCESS': 'Most of the noise and vibration is in the aft, and the worst movement is at the bow'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The same Grand Princess-specific forum thread identifies the bow/forward area as where motion is worst.",
+      "effect": "Forward cabins, especially on higher decks, pitch and roll more in rough seas than midship cabins.",
+      "mattersTo": "First-time cruisers or those prone to seasickness should pick a low, midship, inside or oceanview cabin; motion-tolerant guests can enjoy the forward view",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruiseaddicts.com Grand Princess forum: 'the closer to the center of gravity you are, the less movement you will feel... the worst movement is at the bow'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Grand Princess balconies are tiered/stepped outward as you go down the hull, so each lower deck's balcony floor extends further out than the deck above it.",
+      "effect": "Passengers on a higher deck can look down onto the balconies of the deck immediately below them, reducing privacy for the lower cabin.",
+      "mattersTo": "Privacy-conscious sunbathers should book the topmost balcony deck available or a covered aft mini-suite; guests unconcerned about being seen from above can ignore this",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "Cruise Critic Grand Princess cabins editorial: 'verandas are tiered, growing larger the lower on the ship you go... passengers with balconies on upper decks can see onto the balconies of those below them, leaving little privacy'; corroborated by a Grand Princess-specific cruiseaddicts.com thread"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "A small number of aft mini-suites on Emerald deck (8), including E728 and E729, have a full covered/overhung balcony rather than the open tiered style.",
+      "effect": "These specific cabins escape the look-down privacy loss that affects most tiered balconies on the class, at the cost of full sun exposure.",
+      "mattersTo": "Guests who want balcony privacy over tanning should target these specific cabins; sun-worshippers should avoid them",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Grand Princess Emerald deck page: 'Aft Mini-Suites also have covered balconies (protection from rain and private from cabins above)... Mini-Suites E728 and E729 have extra large covered balcony'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "BF-category forward balcony cabins on Emerald deck (8) sit inboard where the hull steps up toward the bow, directly beside the transition stairs from the Promenade deck.",
+      "effect": "These balconies are fully covered (little sun), do not look straight out over the open sea because they are set back from the hull edge, and lack privacy because passengers climbing the stairway to the bow pass right by them.",
+      "mattersTo": "Guests wanting an open sea view or balcony privacy should avoid this specific BF forward category; bargain-hunters who just want outdoor space may be fine with it",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruiseaddicts.com Grand Princess balcony thread: the BF forward cabins have a balcony that 'doesn't look down over the ocean, as it is fairly far inboard... sits out along the little section of the promenade where it transitions up... a pretty significant lack of privacy'"
+    },
+    {
+      "factor": "other",
+      "decks": [
         10
       ],
       "sections": [
@@ -17,91 +229,15 @@
         "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 8, obstructing views from Decks 8, 9, and 10 with diminishing severity as you go higher.",
-      "effect": "Deck 8 sees boats filling most of the downward view; Deck 9 sees boat tops and partial obstruction; Deck 10 typically clears the boats with horizon intact but boats visible when looking down.",
-      "mattersTo": "Matters greatly to anyone who values an unobstructed ocean view or dislikes the industrial look of safety equipment; irrelevant to those focused on price, interior cabins, or those who spend little time in the cabin.",
-      "severity": "significant",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        6
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Deck 6 sits directly above Deck 5 Plaza public areas (shops, atrium activities, guest services) with frequent daytime traffic and announcements.",
-      "effect": "Potential noise and vibration from foot traffic, announcements, and public gatherings below during the day and evening; quieter overnight.",
-      "mattersTo": "Matters to light sleepers or those wanting daytime quiet in the cabin; less relevant to those out exploring the ship most of the day.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        11,
-        12
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "Lido Deck (14) pool area, Horizon Court buffet, and outdoor activity zones sit directly above mid and aft sections of Decks 11 and 12.",
-      "effect": "Daytime deck chair scraping, pool activity noise, and buffet traffic overhead from early morning through late evening; Deck 12 closer to the source than Deck 11.",
-      "mattersTo": "Matters to anyone sensitive to overhead footfall and activity noise, especially morning risers; irrelevant to those joining the Lido action anyway.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        5
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Princess Theatre (Decks 6-7) sits directly above forward Deck 5 cabins.",
-      "effect": "Late-night show noise, applause, and foot traffic from theatre audiences overhead until shows end around 10-11pm.",
-      "mattersTo": "Matters to early sleepers or those turning in before entertainment wraps; non-issue for night owls or those attending the shows.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        5,
-        6
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Aft Deck 5 and 6 cabins sit low and near the engine room and propulsion machinery.",
-      "effect": "Low-frequency vibration and mechanical hum, most noticeable at higher speeds or during maneuvering; felt more than heard.",
-      "mattersTo": "Matters to vibration-sensitive sleepers or those who notice and dislike mechanical sensations; often unnoticed by sound sleepers or first-time cruisers.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        5,
-        6,
-        8
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Bow thrusters operate during docking and departure, creating mechanical noise and vibration in forward low-deck cabins.",
-      "effect": "Short-duration (5-15 minutes) grinding or humming during port arrival and departure; happens early morning in many ports.",
-      "mattersTo": "Matters to light sleepers bothered by mechanical noise during port mornings; irrelevant to those already awake or deep sleepers.",
+      "what": "Caribe deck (10) balconies are markedly larger than the standard tiered balconies on other decks, and are about half covered, half open.",
+      "effect": "Guests get a bigger outdoor space with some sun and some shade/privacy, widely called the 'best of both worlds' by repeat cruisers.",
+      "mattersTo": "Balcony-space seekers should target Caribe deck; budget cruisers indifferent to balcony size can ignore this",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruiseaddicts.com Grand Princess balcony thread: 'the Caribe Deck is the way to go... Huge balcony and somewhat private'; corroborated by a Fodor's Grand Princess thread giving Caribe balcony dimensions as 9ft x 10ft"
     },
     {
-      "factor": "elevator",
+      "factor": "other",
       "decks": [
         8,
         9,
@@ -111,48 +247,111 @@
         14
       ],
       "sections": [
-        "forward",
-        "mid",
         "aft"
       ],
-      "what": "Grand class has elevator/stair banks forward, midship, and aft on each guest deck, with midship banks seeing the heaviest traffic near main dining rooms and atrium.",
-      "effect": "Cabins very close to elevator lobbies hear chimes, door mechanisms, and conversation throughout the day and night; midship banks busiest, forward and aft quieter.",
-      "mattersTo": "Matters to noise-sensitive guests who prefer quiet corridors; appreciated by mobility-limited guests who value proximity over silence.",
+      "what": "Unlike her Grand-class sister ships, Grand Princess had her elevated aft Skywalkers-style nightclub removed in the 2011 refit because the top-heavy structure caused the ship to sail bow-up and hurt fuel efficiency.",
+      "effect": "High-deck aft cabins on Grand Princess do not sit under a late-night nightclub/observation lounge the way equivalent cabins do on sister ships that retain the structure.",
+      "mattersTo": "Aft-cabin bookers comparing Grand Princess to her sisters should know this specific noise source is absent on Grand Princess; nightlife fans who liked the Skywalkers vibe on sister ships won't find it here",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "Wikipedia (Grand Princess): 'The aft nightclub atop the aft of Grand Princess was removed in the 2011 refit'; Travel Weekly's Skywalkers feature explains it 'had to be removed from the Grand Princess because it caused the ship to sail bow-up, reducing fuel efficiency'"
     },
     {
-      "factor": "i95",
+      "factor": "other",
       "decks": [
-        5,
-        8,
-        9,
-        10,
-        11,
-        12
+        9
       ],
       "sections": [
         "forward"
       ],
-      "what": "Crew access points and service corridors are typically located forward on guest cabin decks, with most intensive use on lower accommodation decks.",
-      "effect": "Early morning (5-7am) crew movement for breakfast setup and cabin service staging; brief periods of hallway traffic and door noise.",
-      "mattersTo": "Matters to light sleepers in forward cabins near crew access doors; minimal impact on those sleeping through alarms or already early risers.",
+      "what": "Grand Princess has Family Suites on Dolphin deck (9), specifically D105/D101 and D106/D102, sold as interconnecting staterooms sharing a private balcony and accommodating up to 8 guests.",
+      "effect": "These connecting-cabin sets let large family groups book adjoining rooms, but also mean noise/activity from one side is easily heard through the connecting door.",
+      "mattersTo": "Large families/groups wanting adjoining rooms should look here; guests wanting isolation from neighboring strangers should avoid connecting-door categories generally",
       "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseline.com Grand Princess deck plan notes: 'Family Suites D105/D101 & D106/D102 are interconnecting staterooms with private balcony; accommodates up to 8 people'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "E516",
+      "claim": "Directly over the stage of the Explorer's Lounge; floor/chairs vibrate with the band, party noise until ~11:40pm",
+      "source": "Cruise Critic member review of Grand Princess",
+      "confidence": "high"
+    },
+    {
+      "cabins": "E728, E729",
+      "claim": "Extra-large covered aft mini-suite balconies, private from cabins above",
+      "source": "cruisedeckplans.com Grand Princess Emerald deck page",
       "confidence": "medium"
+    },
+    {
+      "cabins": "D732, D733",
+      "claim": "Extra-large balcony mini-suites on Dolphin deck",
+      "source": "cruisedeckplans.com Grand Princess Dolphin deck page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Cabins near D123",
+      "claim": "Adjacent to a crew work area/blank space on Dolphin deck; may have service noise",
+      "source": "cruisedeckplans.com Grand Princess Dolphin deck page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "B744, B745",
+      "claim": "Angled balconies (larger than standard) on Baja deck",
+      "source": "cruisedeckplans.com Grand Princess Balcony category page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "E209-E231",
+      "claim": "Listed obstructed-view cabin range on Emerald deck (starboard and port variants), part of the OV/OW/OY/OZ lifeboat-obstructed set",
+      "source": "cruisedeckplans.com Grand Princess Obstructed View page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "BF forward category (Emerald deck)",
+      "claim": "Fully covered, inboard balcony with little sun, no real ocean view, and lack of privacy from Promenade-deck stair traffic",
+      "source": "cruiseaddicts.com Grand Princess balcony forum thread",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "D101/D105 and D102/D106",
+      "claim": "Interconnecting Family Suites sharing a private balcony, sleeps up to 8",
+      "source": "cruiseline.com Grand Princess deck plan page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Caribe deck BA/BB/BC categories",
+      "claim": "Balcony 9ft x 10ft, roughly double a standard balcony, half-covered/half-open",
+      "source": "Fodor's Travel Talk Forums Grand Princess cabin-size thread, corroborated by cruiseaddicts.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "AD staterooms (Baja/Aloha decks aft, per forum)",
+      "claim": "Only balcony category with a full roof, giving complete privacy from decks above but limited sun",
+      "source": "Fodor's Travel Talk Forums Grand Princess cabin-size thread",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether Grand class has a hump (cantilevered balconies) and on which decks — data suggests balconies on Decks 8-14 but not whether any jut past the lifeboat line",
-    "Specific cabin numbers adjacent to elevator banks or crew doors",
-    "Whether any Deck 14 aft cabins sit below outdoor sports court or walking track noise",
-    "Exact location and noise profile of galley operations relative to guest cabins",
-    "Whether anchor chain noise affects specific Deck 5 or 6 forward cabin ranges"
+    "Whether hull taper near the top decks (e.g. Lido/Sun) hides the straight-down view for any specific suites on Grand Princess — no source found either way",
+    "Whether Grand Princess has any true cantilevered 'hump' balconies (past the hull line, Oasis-style) — none found; the ship instead has a tiered/stepped-out balcony design, treated separately above",
+    "Bow thruster noise for forward cabins on Grand Princess specifically — general principle plausible but no ship-specific source found",
+    "Anchor chain noise for forward lower-deck cabins on Grand Princess specifically — only found in templated aggregator listicles repeated verbatim across multiple different ships (Discovery, Crown, Enchanted, Regal), so discarded per boilerplate control-check; no independent Grand Princess-specific confirmation",
+    "Whether lifeboat obstruction on Deck 8 spills upward to affect Deck 9 (Dolphin) sightlines on Grand Princess specifically — this pattern is documented for other Princess ships (e.g. Discovery Princess) but not confirmed for Grand Princess's own lifeboat placement",
+    "Current, up-to-date breakdown of which of Grand Princess's 14 elevators fall in which fore/mid/aft bank — only anecdotal single-review data on midship staircase limitations was found",
+    "Whether a midship passenger staircase above Deck 7 was later added/restored after the 2015-era review that reported its absence — sources conflict in date and detail"
   ],
   "ship": "Grand Princess",
   "shipSlug": "grand-princess",
   "line": "Princess Cruises",
   "totalCabins": 1301,
-  "cabinsTouchedByAZone": 1301,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.029109
+  "cabinsTouchedByAZone": 1209,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 17,
+    "maxAllowed": 25
+  },
+  "cost": 1.8192499999999998
 }

@@ -1,86 +1,163 @@
 {
-  "class": "Icon",
+  "class": "Icon-class (Royal Caribbean International)",
   "sisterShips": [
-    "Star of the Seas"
+    "Star of the Seas (2025)",
+    "Legend of the Seas (2026)",
+    "Hero of the Seas (2027, under construction)"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        7,
         8,
-        9
+        9,
+        10
       ],
       "sections": [
-        "aft"
+        "mid"
       ],
-      "what": "Lifeboats are mounted at Deck 7; they obstruct the downward view from Decks 7, 8, and 9 aft cabins while the horizon remains visible.",
-      "effect": "You lose the view of the waterline and sea immediately below, but can still see out to the horizon and watch sunsets or ports from your balcony.",
-      "mattersTo": "Matters to guests who want to watch the ship move through water or see tender operations; does not matter to those focused on horizon views, sunsets, or simply having outdoor space.",
+      "what": "Exterior photos of the hull show large white lifeboat/tender housings spanning three guest decks (8, 9, 10) on both sides midship; Royal Caribbean flags some of these cabins with a stated percentage obstruction (e.g. one guest's travel agent was told cabin 8564 carried a 20% obstruction).",
+      "effect": "The view straight down toward the water is blocked by the boat itself, though the open horizon above the boat line remains visible; deck 8 sits most directly at the boat line so it is generally the worst-affected, with 9 and 10 progressively less blocked.",
+      "mattersTo": "Matters to photographers/view-focused cruisers and to anyone who booked expecting a completely clear balcony rail-to-water view; does not matter much to guests who mainly want fresh air, horizon, and sunlight, which are largely preserved.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com thread on 'Icon of the Seas cabins with 20% obstruction' describing 3 lifeboat-marked decks (8,9,10); confirmed as a real, cruise-line-labeled obstruction type in a Fodor's forum thread where a poster changed cabins after being told theirs had 'lifeboat obstruction.'"
     },
     {
       "factor": "above",
       "decks": [
-        16
+        10
       ],
       "sections": [
-        "forward",
-        "mid",
-        "aft"
+        "mid"
       ],
-      "what": "Deck 17 and 18 Icon Loft Suites and Royal Loft Suite sit directly above, with multi-level occupancy.",
-      "effect": "You may hear footsteps or movement from the loft suites above, particularly if occupants use the upper levels frequently.",
-      "mattersTo": "Matters to light sleepers in Deck 16 suites; less relevant to those who sleep soundly or are out of the cabin during the day.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        8,
-        9
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "The Royal Promenade, Royal Theater, and central atrium are located on Deck 6, directly below portions of Deck 7, with evening activity extending to around 11 PM or midnight.",
-      "effect": "You may hear muffled music, announcements, or crowd noise from entertainment venues two decks below during evening hours.",
-      "mattersTo": "Matters to early sleepers or those sensitive to distant ambient noise; does not matter to night owls or those who enjoy being near the action.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        15
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Thrill Island waterpark and AquaDome pool area are located on Deck 16 and 17, directly above Deck 14.",
-      "effect": "You may hear daytime splash noise, music, and pool activity from above, typically from morning until early evening.",
-      "mattersTo": "Matters to those wanting midday quiet in the cabin; does not matter to guests who are out exploring during the day or enjoy the energy of being near pool decks.",
+      "what": "Infinite Central Park View Balcony cabins on deck 10 midship (e.g. cabin 10225) sit directly above a large entrance structure to the Royal Promenade (the 'Pearl' installation), which occupies much of the view straight down into Central Park.",
+      "effect": "A first-hand review reported the obstruction was not disclosed at booking and meaningfully blocked the intended park view from the room.",
+      "mattersTo": "Matters to buyers of Central Park-facing infinite balconies who want an unobstructed park view; less relevant to guests who just want the indoor/outdoor infinite-balcony feature itself.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "royalcaribbeanblog.com first-hand review: 'Because my cabin was located right above The Pearl, my view was partially obstructed... My cabin was not labeled as obstructed online.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 14 forward/midship cabins sit directly beneath the Chill Island pool deck (deck 15), where crew move and stack lounge chairs early morning and late at night.",
+      "effect": "Guests report being woken by chair-scraping noise around or before 6am and hearing pool activity/music during the day.",
+      "mattersTo": "Matters to light sleepers and anyone wanting to sleep in; less relevant to guests who plan to be up early anyway or who value proximity to the pool deck.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "royalcaribbeanblog.com 'cabins to avoid': 'being directly below the pool deck can be noisy... crew members shuffling chairs around the pool deck very early in the morning'; corroborated by CruiseCritic editor review."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins on deck 14 sit beneath both The Hideaway adults-only pool/bar and, adjacent to it, the Windjammer buffet (deck 15).",
+      "effect": "A first-hand account reported DJ music from The Hideaway blasting through most sea days and separately, heavy early-morning foot traffic/noise from Windjammer buffet operations overhead.",
+      "mattersTo": "Matters to light sleepers or anyone avoiding daytime noise; less relevant to guests who want to be near the adult pool scene or grab-and-go breakfast.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "royalcaribbeanblog.com: 'I would avoid booking any cabins at the aft of the ship on deck 14 since these are located below The Hideaway... these aft cabins are directly under the Windjammer.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        12,
+        14
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Far-forward cabins on decks 12 and 14 sit near/below the AquaDome, which hosts evening aqua-acrobatic shows with amplified bass music.",
+      "effect": "Light sleepers may pick up thumping bass on show nights; RoyalCaribbeanBlog notes shows run only a handful of times per cruise, so it is not a constant nightly issue.",
+      "mattersTo": "Matters to light sleepers on show nights; not a concern for most cruisers most nights.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisecritic.com editor review: 'cabins far forward on Deck 12 or Deck 14... pick up some noise from the AquaDome – mostly bass'; royalcaribbeanblog.com corroborates with same forward-deck-12/14 claim."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        3,
+        4
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Oceanview/Interior cabins around numbers 4156–4670 sit near the two-deck Music Hall nightclub and the Absolute Zero ice-skating arena/theater (decks 4–5), and the Royal Theater also spans decks 4–5 forward.",
+      "effect": "Forward cabins near these decks-4–6 entertainment venues get post-show hallway crowds and, per one listicle, complaints about noise near the Royal Theater and Attic comedy club.",
+      "mattersTo": "Matters to light sleepers and families with early bedtimes; irrelevant to night owls who'll be at the shows anyway.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com deck-4 plan lists cabins 4156–4670 as Oceanview/Interior adjacent to Absolute Zero and Music Hall; cruisecritic.com notes Royal Theater 'spans decks 4 and 5 on the forward end of the ship.'"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        3,
+        4,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Icon-class ships use 22 'destination' elevators grouped into forward and aft atrium banks rather than scattered midship banks, with digital panels assigning guests to a car before boarding so cars make fewer stops.",
+      "effect": "This concentrates elevator traffic (and associated door-ding/hallway noise) tightly around the forward and aft atrium zones rather than spreading it along the whole corridor, so cabins right next to those two atrium banks get the most 24/7 traffic while cabins between them are quieter.",
+      "mattersTo": "Matters to light sleepers booking cabins immediately adjacent to either atrium; matters positively to guests who want fast, low-wait vertical access.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemapper.com: '22 destination elevators (located in the forward and aft atriums)... digital panels before boarding... fewer stops along the way'; worldofcruising.co.uk confirms elevators are 'positioned in the forward and aft atriums.'"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "A bow-to-stern crew corridor nicknamed 'I-95' runs on the lowest decks, lined with crew cabins, staff dining, and access points into machinery spaces; on Icon/Oasis-class ships this network is described as unusually large given the scale of the crew complement (2,350).",
+      "effect": "Guest cabins on the lowest passenger decks (3–4) sitting above this corridor may be closer to crew movement and service-elevator activity than upper decks, though the corridor itself is not guest-accessible.",
+      "mattersTo": "Matters mainly to guests booking the lowest-numbered guest cabins who are sensitive to any residual footstep/service noise from below; not a concern for mid-to-upper deck cabins.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "thetravel.com: crew corridor 'I-95'... 'On mega ships such as Royal Caribbean's Icon Class or Oasis Class vessels, the corridor is massive, reflecting the need to serve over 7,000 passengers.'"
     },
     {
       "factor": "engine",
       "decks": [
-        7,
-        8
+        12
       ],
       "sections": [
         "aft"
       ],
-      "what": "Engine room and propulsion machinery are located low and aft, several decks below Deck 7 and 8 aft sections.",
-      "effect": "You may feel low-frequency vibration or hear a distant hum, particularly during maneuvering, though modern stabilization minimizes this on Icon class.",
-      "mattersTo": "Matters to those highly sensitive to vibration; most guests on these decks report minimal disturbance on this ship class.",
-      "severity": "minor",
-      "confidence": "high"
+      "what": "A guest in an aft-facing stateroom on deck 12 reported vibration that was absent for the first five days of a cruise and then became pronounced enough to 'literally shake the cabin non stop.'",
+      "effect": "Vibration in aft cabins can be intermittent rather than constant, possibly tied to speed/heading changes, but when present it is strong enough to be a comfort complaint even fairly high up the ship (deck 12).",
+      "mattersTo": "Matters to light sleepers and anyone sensitive to vibration booking aft cabins, even on mid-to-upper decks, not just the lowest aft decks.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "royalcaribbeanblog.com forum post 'Icon: Excessive vibration deck 12 aft': 'the vibrations have become very pronounced and literally shake the cabin non stop.'"
     },
     {
       "factor": "engine",
@@ -91,41 +168,157 @@
       "sections": [
         "forward"
       ],
-      "what": "Bow thrusters are located low and forward, used during docking and maneuvering in port.",
-      "effect": "You may hear a loud rumble or feel vibration during port arrivals and departures, typically early morning or late afternoon, lasting 15-30 minutes.",
-      "mattersTo": "Matters to light sleepers during port days; does not matter to those already awake or who sleep through mechanical noise.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Forward cabins are noted to experience anchor-chain noise during port-morning anchoring/mooring operations.",
+      "effect": "Guests in forward cabins on the lower decks can be woken by chain noise on port-arrival mornings.",
+      "mattersTo": "Matters to light sleepers who prefer to sleep past early port arrivals; less relevant to guests planning to be up early for excursions anyway.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "about2cruise.co.uk Icon of the Seas cabin guide: 'Forward rooms may have anchor noise during port arrivals.'"
     },
     {
-      "factor": "engine",
+      "factor": "motion",
       "decks": [
-        3,
-        4,
-        7
+        16,
+        17,
+        18
       ],
       "sections": [
         "forward"
       ],
-      "what": "Anchor chain runs through the bow, deployed and retrieved in port.",
-      "effect": "You will hear loud metallic grinding and chain noise during anchor operations, typically early morning arrivals at tender ports, lasting 10-20 minutes.",
-      "mattersTo": "Matters significantly to anyone wanting to sleep past 6 or 7 AM on tender port days; unavoidable in forward cabins on these decks.",
+      "what": "Most of Icon's top-tier suites (Grand Suites, Owner's Suites, Sky/Panoramic Suites, Royal/Icon Loft Suites) are clustered forward on decks 16–18, the highest and farthest-forward guest decks on the ship.",
+      "effect": "This combination of high-deck-plus-far-forward placement is repeatedly flagged as the worst spot for motion sensitivity on this class, despite the ship's stabilizer technology.",
+      "mattersTo": "Matters greatly to motion-sensitive suite shoppers who may want to trade the forward suite view for a midship or aft one; irrelevant to guests unaffected by motion.",
       "severity": "significant",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisemummy.co.uk: 'Many of the top suites on Icon of the Seas are situated on Decks 16, 17 and 18, right at the front of the ship. That's the worst area you could be in if you feel seasick.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        3,
+        4,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Royal Caribbean Blog and Cruise Critic both advise that despite Icon's stabilizers, the ship still noticeably moves in rough seas, and that midship cabins (including many of the new Infinite Balcony cabins) feel the least motion.",
+      "effect": "Midship cabins on lower-to-mid decks are the recommended, lowest-motion choice class-wide; forward and aft extremes on any deck feel more sway.",
+      "mattersTo": "Matters to any motion-sensitive guest choosing between forward, midship, and aft on this very long (365m) ship.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "royalcaribbeanblog.com: 'those who are prone to seasickness should prioritize cabins located midship. Many of the new infinite cabins onboard Icon of the Seas are located midship'; cruisecritic.com corroborates ship still moves when rough."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Icon-class Infinite Balcony cabins that face inward onto Central Park or Surfside have no solid balcony privacy divider from the cabins directly across the atrium-like neighborhood, unlike a traditional side balcony.",
+      "effect": "Guests must lower the window shade for privacy, which then removes the view/daylight entirely — reviewers explicitly contrast this unfavorably with a traditional balcony that keeps some privacy via drapes while the outdoor space stays usable.",
+      "mattersTo": "Matters to guests booking Central Park/Surfside-view Infinite Balconies who value being able to sit outside without being seen; does not matter to guests who plan to keep the shade down anyway or who booked for the neighborhood view rather than privacy.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruiseline.com: 'all the cabins across from you can see directly into your cabin and vice versa. You have to lower your window shade for privacy... no view and no daylight.'"
+    },
+    {
+      "factor": "connecting",
+      "decks": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Icon and Star of the Seas replaced the traditional flimsy interior connecting door between connecting cabins with two separate exterior (hallway-facing) doors that can each be locked independently.",
+      "effect": "This is reported to meaningfully reduce the classic connecting-cabin noise/privacy complaint (thin shared interior door) versus older Royal Caribbean ship classes.",
+      "mattersTo": "Matters positively to families/groups booking connecting cabins on this class; a genuine class-specific improvement not present on older sister-line ships.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "nationaltoday.com / royalcaribbeanblog.com: Icon and Star of the Seas 'feature exterior doors to connecting cabins — replacing the traditional interior door,' addressing sound/privacy complaints."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "8564",
+      "claim": "Travel agent told guest this cabin carries a 20% obstruction; poster identified 3 decks (8, 9, 10) with large lifeboat housings visible in exterior ship photos.",
+      "source": "boards.cruisecritic.com topic 'Icon of the Seas cabins with 20% obstruction'",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "10225 (and other Central Park-facing Infinite Balcony cabins on deck 10 midship)",
+      "claim": "Sits directly above 'The Pearl' entrance structure to the Royal Promenade, partially obstructing the Central Park view; not labeled as obstructed at time of booking.",
+      "source": "royalcaribbeanblog.com first-hand review of cabin 10225",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "14258",
+      "claim": "Ocean View Balcony cabin has a slight obstruction from a structural beam supporting the deck above, and is near the Crown's Edge attraction.",
+      "source": "eatsleepcruise.com cabin review",
+      "confidence": "low"
+    },
+    {
+      "cabins": "14194",
+      "claim": "Guest specifically asked whether excessive pool-deck noise (forward port side) affects this cabin, suggesting a known noisy spot under Chill Island.",
+      "source": "boards.cruisecritic.com 'Icon Of The Seas Deck 14 noise from pool deck?' thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "14100–14150 / 14164–14286 / 14564–14686",
+      "claim": "Various blog listicles (not fully consistent with each other) identify these deck-14 ranges as the most noise-affected by Chill Island chair-scraping and pool activity directly overhead.",
+      "source": "cruisesnooze.com and cruisegalore.com 'cabins to avoid' listicles (ranges differ between the two sources)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "12134–12162, 12530–12562, 14538–14562, 14138–14162",
+      "claim": "Listed as the specific cabin ranges directly below The Hideaway adults-only pool/bar, subject to DJ music and party noise.",
+      "source": "cruisemummy.co.uk Icon of the Seas cabins guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "4156–4670 (Oceanview/Interior N4-N5,N1,V4 categories)",
+      "claim": "These cabins sit adjacent to the Absolute Zero ice arena and the two-level Music Hall nightclub on deck 4, both nightly entertainment/music venues.",
+      "source": "cruisemapper.com deck 4 plan",
+      "confidence": "medium"
     }
   ],
   "unknowns": [
-    "Whether Icon class has a hump (balconies cantilevered past the lifeboat line on mid-ship decks) and which specific decks and sections it affects",
-    "Precise location of I-95 crew corridor access points and which guest cabin areas experience service traffic",
-    "Exact elevator bank locations along the hull (forward/mid/aft) and noise characteristics specific to Icon class",
-    "Location and operating hours of galley facilities and which decks/sections sit directly above or adjacent",
-    "Whether Deck 14 forward cabins experience noise from the AquaDome activities on Deck 15/16 forward, or if sound insulation is sufficient"
+    "Whether Icon-class hulls have a genuine cantilevered 'hump' balcony feature (as on Oasis-class ships); the only 'hump' text found was boilerplate on an aggregator's Wonder of the Seas (Oasis-class) page and did not appear on that same aggregator's Icon of the Seas deck pages — treated as boilerplate and excluded rather than assumed.",
+    "Whether the highest forward suite decks (16-18) sit atop an inward hull taper that hides the straight-down view while preserving the horizon — no ship-specific source confirming a taper effect was found for Icon class.",
+    "Exact cabin-number ranges and percentages that Royal Caribbean's own deck-plan tool flags as lifeboat-obstructed on decks 8, 9, and 10 (confirmed the line does label some cabins, but the specific ranges/percentages beyond cabin 8564 were not found).",
+    "Whether bow-thruster noise is a distinct, reported issue for very-forward lower-deck cabins on this class specifically (no ship-specific first-hand account found, only generic forward-cabin anchor/motion commentary).",
+    "Whether Deck 3's Music Hall-adjacent cabins (per the per-deck profile) experience the same or different noise levels than the Deck 4 cabins near the same venue."
   ],
   "ship": "Icon of the Seas",
   "shipSlug": "icon-of-the-seas",
   "line": "Royal Caribbean International",
   "totalCabins": 2814,
-  "cabinsTouchedByAZone": 1291,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.027777
+  "cabinsTouchedByAZone": 2814,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 17,
+    "maxAllowed": 25
+  },
+  "cost": 1.767227
 }

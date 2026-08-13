@@ -1,5 +1,5 @@
 {
-  "class": "Musica",
+  "class": "MSC Musica-class (MSC Poesia)",
   "sisterShips": [
     "MSC Musica",
     "MSC Orchestra",
@@ -9,79 +9,96 @@
     {
       "factor": "lifeboat",
       "decks": [
-        5,
-        8,
-        9
+        8
       ],
       "sections": [
         "forward",
         "mid",
         "aft"
       ],
-      "what": "Lifeboats mounted at Deck 5 obstruct views from Deck 5 cabins completely and partially obstruct ocean views from Deck 8 and lower Deck 9 cabins, though horizon remains visible.",
-      "effect": "Deck 5 ocean-view cabins look directly into or over orange lifeboat shells; Deck 8 ocean views are partially blocked especially when looking down; low Deck 9 balconies may see boat tops at the edge of view.",
-      "mattersTo": "Critical for anyone who wants unobstructed water views or photos; less important if you spend little time in the cabin or prefer the lower price point.",
+      "what": "On MSC Poesia's own deck-by-deck notes, Deck 8 (Tasso) is the deck where the hull is indented and lifeboats sit alongside the cabins, and MSC's own category system lists a 'Deluxe Ocean View with Obstructed View' (OR2) subcategory specifically on Deck 8.",
+      "effect": "Most Deck 8 oceanview cabins look sideways into a lifeboat rather than open sea; a first-person tour of a Deck 8 obstructed oceanview called the view '70% obstructed' by the boats.",
+      "mattersTo": "View-focused guests and photographers should avoid Deck 8 obstructed-view cabins; guests who just want a porthole for light and don't care about the horizon can take the discount.",
       "severity": "significant",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisedeckplans.com Poesia Deck 8 page ('Indented...oceanview cabins on this deck are mostly obstructed by lifeboats'); beautifullifebeautifulworld.com first-person Deck 8 obstructed-oceanview tour ('the view is 70% obstructed... by the life boats')."
     },
     {
-      "factor": "below",
-      "decks": [
-        9,
-        10
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Deck 11 Orchestra Restaurant (main dining room) sits directly above aft Deck 10 and two decks above aft Deck 9.",
-      "effect": "Dinner service noise—chair scraping, footfall, occasional dropped items—filters down during evening hours, roughly 6pm to 10:30pm across two seatings.",
-      "mattersTo": "Matters to light sleepers or anyone in the cabin during dinner hours; irrelevant if you're out exploring the ship in the evenings.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        10
-      ],
-      "sections": [
-        "forward",
-        "mid"
-      ],
-      "what": "Deck 11 and Deck 12 public venues (L'Oleandro Restaurant forward, buffet and pools mid-ship) sit above forward and mid Deck 10.",
-      "effect": "Daytime and evening foot traffic, pool deck activity, and buffet service create intermittent noise overhead; most active roughly 7am to 11pm.",
-      "mattersTo": "Affects light sleepers and anyone wanting afternoon naps; less relevant for guests who are rarely in cabins during the day.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        9
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Theater Deck (Deck 7) sits two decks below forward Deck 9; showtime vibration and bass can carry upward during evening performances.",
-      "effect": "Low-frequency sound from shows (typically 8pm and 10pm) may be faintly perceptible, though significantly dampened by two deck layers.",
-      "mattersTo": "Mainly concerns extremely noise-sensitive guests; most won't notice or will be at the show themselves.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "above",
+      "factor": "lifeboat",
       "decks": [
         8
       ],
       "sections": [
+        "forward"
+      ],
+      "what": "Cabins 8097, 8099, 8101, 8122, 8124 and 8126 are named by Poesia's own deck-plan notes as the exception to the Deck 8 lifeboat obstruction.",
+      "effect": "These specific numbers should have mostly clear views despite being on the 'lifeboat deck', unlike most of their Deck 8 neighbours.",
+      "mattersTo": "Worth requesting by number if you want a Deck 8 price with a Deck 5-style clear view.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Poesia Deck 8 page: 'The only exception to this are cabins 8097,8099,8101,8122,8124,8126 - which should have mostly clear views.'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on Deck 8 sit directly above or below the ship's main theatre.",
+      "effect": "Rehearsals and evening production shows can be heard as noise/vibration through the floor or ceiling.",
+      "mattersTo": "Light sleepers and early-to-bed guests should avoid forward Deck 8; theatre-goers who nap during the day won't notice much since shows are evening-only.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Poesia Deck 8 page: 'Forward cabins on this deck are above or below the main theater and may have noise from stage production shows or practice shows.'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins from 8161 back on the port side and 8188 back on the starboard side sit above a lounge on the deck below.",
+      "effect": "Guests can hear lounge activity, especially into the late evening when the venue is busiest.",
+      "mattersTo": "Night owls who don't mind muffled music won't mind; anyone wanting lights-out quiet before midnight should pick a different aft range.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Poesia Deck 8 page: 'Aft cabins from 8161 and back...are above a lounge on the deck below and may hear noise during activities in that lounge (especially into the night).'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Cabins 5013 to 5040 sit directly under a lounge area on the deck above.",
+      "effect": "Chair movement and lounge foot traffic overhead can be heard in these specific cabins more than elsewhere on Deck 5.",
+      "mattersTo": "Light sleepers booking Deck 5 midship should ask to avoid this exact range; guests not sensitive to overhead noise can ignore it.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Poesia Deck 5 page: 'All cabins on this deck are below public areas on the deck above...This is especially true for cabins 5013 to 5040 which are under the lounge area on the deck above.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward",
         "mid",
         "aft"
       ],
-      "what": "Deck 9 cabins sit directly overhead mid and aft Deck 8 cabins (standard guest cabin construction).",
-      "effect": "Normal footfall, drawer closing, and conversation from the cabin above audible with typical cruise ship soundproofing; most noticeable early morning and late evening.",
-      "mattersTo": "Sensitive sleepers may prefer top cabin deck (Deck 10) to avoid overhead neighbors; most guests find it tolerable background.",
+      "what": "Deck 9 (Ungaretti) has no public venues of its own — it is an all-cabin deck.",
+      "effect": "Cabins here tend to have quieter neighbours above and below compared to decks sandwiched between entertainment venues.",
+      "mattersTo": "Guests prioritizing a quiet stay should lean toward Deck 9 over Deck 8 or the decks near the buffet/theatre; not a differentiator for guests who don't care about noise.",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "icruise.com Poesia Deck 9 page: 'There are no Public Areas on this deck'; cruisedeckplans.com Poesia deck pages repeat that all-cabin decks 'tend to have less noise issues from public areas on the ship.'"
     },
     {
       "factor": "elevator",
@@ -96,54 +113,179 @@
         "mid",
         "aft"
       ],
-      "what": "Elevator banks run forward, mid-ship, and aft on all cabin decks with machinery noise and passenger traffic at landings.",
-      "effect": "Cabins immediately adjacent to elevator lobbies hear mechanical hum, door chimes, and conversation as guests wait; cabins one or two doors away gain convenience without most noise.",
-      "mattersTo": "Mobility-limited guests benefit from proximity despite noise; light sleepers should avoid immediate-adjacent cabins.",
+      "what": "The ship is organized around three main stair/lift banks — forward (near the theatre), midship (near the atrium), and aft (near the lounges/buffet) — that divide each deck into three cabin zones.",
+      "effect": "Cabins right next to any of the three banks get maximum convenience but also hallway and door-chime traffic; cabins between banks are quieter but involve a longer walk.",
+      "mattersTo": "Mobility-limited guests and families with strollers benefit from being near a bank; light sleepers should aim for a cabin at least a few doors away from one.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "solotravel1974.com Poesia guide: 'The ship has three main stair and lift areas, which help divide it into forward, midship and aft sections... the theatre is forward, the atrium is midship and the larger lounges and buffet are towards the aft.'"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        5,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Cabins adjacent to a crew stairwell get extra service traffic because departing guests' luggage is collected and moved down these stairwells by crew every night before disembarkation days.",
+      "effect": "The nightly luggage-moving process can be heard through the wall by cabins next to these crew access points, which is described as worse on MSC than on many other lines.",
+      "mattersTo": "Guests on itineraries with frequent port turnarounds or back-to-back cruises should ask to avoid cabins next to a crew stairwell; single-cruise guests on longer itineraries will notice it less.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'MSC's crew-stairwell-adjacent rooms tend to suffer much more disturbance...guests who are leaving the ship will place their suitcases outside their stateroom door, and the crew then move them.'"
     },
     {
       "factor": "engine",
       "decks": [
-        5
+        8,
+        9,
+        10
       ],
       "sections": [
         "aft"
       ],
-      "what": "Deck 5 aft section sits relatively low and toward stern, closer to propulsion machinery zones.",
-      "effect": "Low-frequency vibration may be perceptible underway, particularly at higher speeds; typically felt as subtle hum through floor and bed frame.",
-      "mattersTo": "Vibration-sensitive guests should avoid; those who sleep through anything or like the engine hum as white noise won't mind.",
+      "what": "Guests in aft cabins on this hull have repeatedly reported engine/propulsion vibration strong enough to rattle drapes, safes, and beds.",
+      "effect": "Vibration can be felt overnight in aft cabins; some guests have had cabins reassigned away from the aft section to stop it.",
+      "mattersTo": "Light sleepers and anyone sensitive to low-frequency vibration should avoid the far aft sections on any deck; guests who sleep through anything, or who want the larger aft-facing balconies, may accept the trade-off.",
       "severity": "moderate",
+      "confidence": "medium",
+      "source": "Cruise Critic MSC Orchestra (sister ship, same hull/engine layout) member reviews: 'The vibration on the rear of the ship bothered me the first night'; 'the vibration of motors below, were the worst..Our bed vibrated all night' (cabin 12175); forum thread 'loads of complaints about the vibrations in aft cabins aboard the Orchestra.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 5 is a low, mostly-midship deck close to the waterline.",
+      "effect": "Cruisedeckplans' own Poesia-specific note states these cabins carry less motion than higher decks, making Deck 5 the class's recommended pick for seasickness-prone guests.",
+      "mattersTo": "Motion-sensitive cruisers should prioritize Deck 5 midship; guests unaffected by ship movement can ignore this.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Poesia Deck 5 page: 'Because this is a lower deck and most cabins are located midship...this is a good deck for those prone to seasickness. You should feel less motion in these cabins compared to cabins on higher decks.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        5,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Both a Poesia-specific cruise blog and a sister-class (Musica) cabin guide flag extreme forward and far aft positions as the motion-penalty zones on this hull.",
+      "effect": "Pitching in forward cabins and a mix of vibration plus movement in aft cabins are both called out, with far aft balconies specifically noted as 'not always the calmest option' despite good views.",
+      "mattersTo": "Guests with motion sensitivity on any of the four guest decks should favor midship over the far forward or far aft ends; sea-view chasers who accept some motion can still choose those ends.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisesnooze.com MSC Poesia review: 'Avoid extreme forward cabins if motion bothers you. Far aft cabins may have nice views, but they are not always the calmest option.'; cruisebooking.com MSC Musica cabin guide: 'the forward/aft positions further amplify motion sickness when the seas are choppy.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        5,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "MSC's own Poesia deck-plan legend distinguishes 'Balcony with metal balustrade', 'half glass half metal balustrade', and 'side view or shadow' balconies as distinct icons.",
+      "effect": "A metal (rather than glass) balcony railing means you cannot see the sea while seated — you get sky only until you stand up. This is concentrated in the cheapest Bella-fare balcony assignments.",
+      "mattersTo": "Guests who plan to sit and view the sea from a chair should check for the glass-railing icon before booking Bella-guarantee balconies; sunbathers who mostly stand or lie down won't be bothered.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "msccruisesusa.com Poesia ship page legend: 'Balcony with metal balustrade Balcony with half glass half metal balustrade Balcony with side view or shadow'; cruisemummy.co.uk: 'when you're sitting on a chair on the balcony, you can't see out – you get a lovely sky view, but you want to see the sea.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        5,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "MSC's Bella fare tier does not let guests choose a specific cabin — it is assigned by the line, and is described by multiple independent guides as skewing toward the least desirable locations (near stairwells, metal-rail balconies, etc.).",
+      "effect": "Two guests booking the identical cabin category can end up in very different real locations depending on fare tier; Bella bookers have the least control over noise/view outcomes.",
+      "mattersTo": "Budget-conscious guests willing to gamble on location can save money on Bella; anyone who cares about a specific zone (quiet, view, elevator-adjacent) should book Fantastica or Aurea instead.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'Bella is the lowest rate, and part of the deal is that you get rooms in less desirable locations... you don't get to choose your cabin.'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "8097, 8099, 8101, 8122, 8124, 8126",
+      "claim": "Named as the exception to Deck 8's lifeboat-obstructed oceanview cabins — these should have mostly clear views despite being on the obstructed-view deck.",
+      "source": "cruisedeckplans.com MSC Poesia Deck 8 (Tasso) page",
       "confidence": "medium"
     },
     {
-      "factor": "engine",
-      "decks": [
-        5,
-        8
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Bow thruster machinery operates in forward sections during docking and maneuvering, and anchor chain deploys through hawsepipe during port arrivals.",
-      "effect": "Loud mechanical grinding from thrusters during port arrival/departure (5-15 minutes); anchor chain roar early morning in port (brief but startling if asleep).",
-      "mattersTo": "Critical for light sleepers who value quiet mornings in port; non-issue for early risers or those who sleep through noise.",
-      "severity": "significant",
-      "confidence": "high"
+      "cabins": "8161 and aft (port side), 8188 and aft (starboard side)",
+      "claim": "Sit above a lounge on the deck below and may hear noise from activities there, especially into the night.",
+      "source": "cruisedeckplans.com MSC Poesia Deck 8 (Tasso) page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "5013–5040",
+      "claim": "Sit directly under a lounge area on the deck above and are especially likely to hear chair-scraping and foot traffic noise.",
+      "source": "cruisedeckplans.com MSC Poesia Deck 5 (Petrarca) page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8116",
+      "claim": "Cited as a 'notorious' example of a Deck 8 'Partial View' cabin that is almost entirely blocked by a lifeboat, described as looking at 'a lifeboat winch or orange plastic.'",
+      "source": "cruisesnooze.com MSC cabins-to-avoid listicle — note this example is attributed to sister ship MSC Musica, not confirmed on Poesia's own numbering",
+      "confidence": "low"
+    },
+    {
+      "cabins": "12175 (sister ship MSC Orchestra)",
+      "claim": "Guest reported severe engine/motor vibration ('vibration of motors below...bed vibrated all night') and was reassigned to cabin 15024 to resolve it.",
+      "source": "Cruise Critic MSC Orchestra member review",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Deck 12 aft cabins below the Villa Pompeiiana Cafeteria (Poesia)",
+      "claim": "A Poesia guest in a 12th-floor aft balcony cabin reported noise from scraping chairs in the cafeteria directly above.",
+      "source": "Cruise Critic MSC Poesia member review",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether Musica class has hump balconies (cantilevered section mid-ship low decks) and if so, which precise deck and cabin ranges—need deck plan cross-sections to confirm",
-    "Exact location of I-95 crew corridor access points and whether service traffic creates noticeable disturbance near specific cabin clusters",
-    "Whether Deck 5 forward section extends far enough forward to experience more pronounced bow movement in rough seas",
-    "Specific cabin numbers adjacent to galley service areas and whether galley noise/activity affects particular cabins",
-    "Whether any cabins have connecting door configurations characteristic of this class beyond standard industry practice"
+    "Exact cause of the obstruction on Deck 5's OR1 'obstructed view' oceanview category — no source specified whether it is lifeboats, tender equipment, or an overhang.",
+    "Whether Deck 9 or Deck 10 cabins have any view-down obstruction from the Deck 8 lifeboats (no source discussed this for the decks above 8, only for Deck 12 which is outside this ship's given guest-deck inventory).",
+    "Specific bow-thruster and anchor-chain noise reports for MSC Poesia's forward cabins — no ship- or class-specific source found; only generic industry information available.",
+    "Whether MSC Poesia has any cantilevered 'hump' balconies — no evidence found; the 'hump' terminology used by deck-plan aggregators for other ships (Oasis/Utopia class) is confirmed boilerplate not used for the Musica class, so this factor was omitted rather than asserted.",
+    "Precise current cabin numbering/category map after the February–April 2026 drydock, which added Yacht Club suites and 63 staterooms — most obstruction/noise notes gathered predate or straddle that refit and should be reverified against the post-refit deck plan for decks 5, 8, 9, and 10."
   ],
   "ship": "MSC Poesia",
   "shipSlug": "msc-poesia",
   "line": "MSC Cruises",
   "totalCabins": 640,
   "cabinsTouchedByAZone": 640,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.027942
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 19,
+    "maxAllowed": 25
+  },
+  "cost": 2.2983190000000002
 }

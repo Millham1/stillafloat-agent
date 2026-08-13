@@ -1,167 +1,185 @@
 {
-  "class": "Jewel",
+  "class": "Jewel-class (Norwegian Cruise Line)",
   "sisterShips": [
+    "Norwegian Jade (ex Pride of Hawaii)",
     "Norwegian Pearl",
-    "Norwegian Gem",
-    "Norwegian Jade"
+    "Norwegian Gem"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        5,
-        6,
+        4,
         8
       ],
       "sections": [
-        "forward",
-        "mid",
-        "aft"
+        "mid"
       ],
-      "what": "Lifeboats are mounted at Deck 7 (not a guest cabin deck), obstructing views from decks directly above and below.",
-      "effect": "Cabins on Deck 5 look up at boat hulls; Decks 6 and 8 have partial to full obstruction depending on exact position, with horizon often clear but the view straight down or at a shallow angle blocked.",
-      "mattersTo": "Matters greatly to anyone who paid for an oceanview or balcony expecting unobstructed water views; inside cabin guests are unaffected. Deck 8 balconies are most impacted as they sit just above the boat line.",
-      "severity": "significant",
-      "confidence": "high"
+      "what": "Oceanview category OK and guarantee category OX cabins on decks 4 and 8 sit beside the lifeboat/tender stowage and are officially sold as fully or partially obstructed.",
+      "effect": "The lifeboat sits right outside the window; some of these cabins have frosted glass that cannot be seen through at all, while others just have a boat hull filling part of the frame. The horizon above the boat is usually still visible.",
+      "mattersTo": "View-focused guests and photographers should avoid OK/OX; budget-focused cruisers who just want daylight and a lower fare are the target market for this category and generally don't mind.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisemapper.com and cruisedeckplans.com (OK/OX obstructed by lifeboats, frosted-glass warning); cruiseline.com (OK found on Deck 4 and Deck 8); cruiseline.com OX review ('obstructed view really is obstructed by a life boat...but you do get some daylight')"
     },
     {
       "factor": "above",
       "decks": [
         11
       ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "Garden Café (buffet) sits directly above on Deck 12, open long hours from early breakfast through late-night snacks.",
-      "effect": "Foot traffic, chair scraping, and service activity audible from cabins below, particularly during breakfast and lunch rushes; continues until late evening.",
-      "mattersTo": "Light sleepers and anyone sensitive to overhead noise should avoid; heavy sleepers and those spending days ashore may not notice.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        10
-      ],
-      "sections": [
-        "mid"
-      ],
-      "what": "Bliss Lounge and Bar sits on Deck 11 directly above, operating into late night hours.",
-      "effect": "Music, dancing, and bar activity create noise and vibration below, particularly Thursday through Saturday nights and sea days.",
-      "mattersTo": "Anyone wanting quiet evenings should avoid this section; those out late themselves or using earplugs may be fine.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        9,
-        10
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Stardust Theater sits on Deck 6 and Deck 7, two to three decks below these cabins.",
-      "effect": "Show audio and bass can transmit upward during evening performances, though distance reduces impact compared to cabins on the theater decks themselves.",
-      "mattersTo": "Minor concern for sensitive sleepers during showtimes (typically 7:30 and 9:30 PM); most guests report minimal disturbance at this distance.",
-      "severity": "minor",
-      "confidence": "medium"
+      "sections": [],
+      "what": "Deck 11 suite categories (S4, M1, MA, MB, MX) sit directly beneath the Deck 12 Body Waves Fitness Center, which is part of the same pool/spa/buffet complex.",
+      "effect": "A guest in Suite 11518 reported hearing treadmill runners and dropped free weights 'liked war missiles' directly overhead during afternoon naps, and that gym use started around 5:00am.",
+      "mattersTo": "Guests wanting an afternoon nap or early sleep should ask whether their suite falls under the weights area; those who don't nap during the day may not notice.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisecritic.com member review of Suite 11518 on Norwegian Jewel ('we both realized our beautiful, extremely expensive suite was directly beneath the fitness center')"
     },
     {
       "factor": "below",
       "decks": [
-        14,
-        15
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Haven courtyard pool and hot tubs sit on Deck 14, with private sundeck areas.",
-      "effect": "The two Deck 15 forward Haven suites sit directly above the Haven pool area, so daytime pool activity is audible; Deck 14 cabins surround the courtyard.",
-      "mattersTo": "Haven guests expect this communal outdoor space; it's a feature of the complex, not a bug, though light sleepers may hear morning pool setup.",
-      "severity": "minor",
-      "confidence": "high"
-    },
-    {
-      "factor": "elevator",
-      "decks": [
-        4,
-        5,
-        8,
-        9,
-        10,
-        11
+        5
       ],
       "sections": [
         "mid"
       ],
-      "what": "Primary elevator banks run mid-ship on all main guest cabin decks, with stairwells adjacent.",
-      "effect": "Cabins immediately adjacent to elevator lobbies offer maximum convenience but experience door chimes, conversation, and foot traffic 24/7; cabins further fore or aft are quieter but mean longer walks.",
-      "mattersTo": "Mobility-limited guests benefit from elevator-adjacent cabins; light sleepers and those valuing quiet should choose cabins away from mid-ship elevator cores.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Deck 6 midship houses the Jewel Casino, Le Bistro, and several bars; Deck 5 cabins directly below are Oceanview/Inside staterooms in categories O4, OB, OF, IF, and IT.",
+      "effect": "Cruisers specifically ask about noise levels in cabins under the casino, suggesting late-night activity/foot traffic from slot machines and bar service can carry down.",
+      "mattersTo": "Light sleepers who retire early should be cautious of deck-5 midship; night owls unaffected by casino sounds may not care.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseline.com deck-by-deck listing (Deck 6 = Jewel Casino, Deck 5 = O4/OB/OF/IF/IT cabins); cruisecritic.com forum thread titled 'How noisy? Cabin under Casino-Jewel'"
     },
     {
-      "factor": "engine",
+      "factor": "above",
       "decks": [
-        4,
-        5
+        8
       ],
       "sections": [
-        "aft"
+        "mid"
       ],
-      "what": "Engine room sits low and aft; these are the lowest guest decks in the aft section.",
-      "effect": "Low-frequency vibration and hum may be noticeable underway, particularly at higher speeds or during maneuvering; typically felt more than heard.",
-      "mattersTo": "Vibration-sensitive guests should avoid; many guests don't notice or find the hum soothing; worst in aft cabins on Deck 4.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "The Stardust Theater's upper level occupies part of Deck 7 midship, directly beneath Deck 8 balcony category BD cabins.",
+      "effect": "A Cruise Critic poster specifically asked whether BD balcony cabins on deck 8 are noisy at night because they sit over the theater; deck-plan confirms the theater's top tier is on deck 7 below.",
+      "mattersTo": "Guests who want to be in bed during evening showtimes should ask about BD category specifically; those out at the shows themselves won't be in the cabin to notice.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseline.com deck-by-deck listing (Deck 7 = upper level Stardust Theater); cruisecritic.com forum thread 'Jewel balcony Cabin on deck 8' asking about BD category noise over the theater"
     },
     {
       "factor": "engine",
       "decks": [
-        4,
-        5,
-        6
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Bow thrusters are located low and forward, used during docking and maneuvering in port.",
-      "effect": "Loud mechanical grinding during port arrivals and departures, typically early morning and evening; silent during sea days and while at dock.",
-      "mattersTo": "Anyone wanting to sleep through port arrival should avoid; those already awake for arrival won't care; Deck 4 forward is loudest.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        6
+        4
       ],
       "sections": [
         "forward"
       ],
-      "what": "Anchor chain locker sits in the bow below Deck 6 forward suites.",
-      "effect": "Loud rattling and vibration every time the anchor drops or is raised, typically early morning in port; brief but very loud.",
-      "mattersTo": "The nine forward suites on Deck 6 experience this; it's a few minutes of noise per port call, so matters only to very light sleepers or those who value quiet mornings highly.",
+      "what": "A cruiser in a far-forward Deck 4 cabin on Norwegian Jewel's transatlantic crossing reported hearing the anchor chain and engine noise clearly.",
+      "effect": "Far-forward, low-deck cabins pick up anchor-drop rumble every port morning and general engine/mechanical sound transmitted through the hull.",
+      "mattersTo": "Light sleepers and those sensitive to mechanical noise should avoid the extreme forward end of Deck 4; those who like white noise or don't mind early anchor sounds may be fine.",
       "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruiseaddicts.com forum ('We heard the achors, the engines, everything... Loved the ship, hated the cabin location')"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forum guidance specific to a Norwegian Jewel deck-4 booking question notes pitching (up-and-down motion) is more noticeable at the forward and aft ends of the ship, and thrusters create noise/vibration while docking.",
+      "effect": "A far-forward Deck 4 cabin will feel more pitch in rough seas and more thruster noise/vibration during every docking maneuver than a midship cabin on the same deck.",
+      "mattersTo": "Motion-sensitive cruisers should pick midship over forward on the lowest deck; those who don't get seasick and don't mind mechanical hum during arrivals/departures can disregard.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruiseaddicts.com forum on Norwegian Jewel deck 4 ('Pitching...is more noticeable at the forward and aft ends of the ship, and the thrusters will create lots of noise and vibration when maneuvering in and out of dock')"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "NCL's own stateroom page states plainly that the two Deck 15 suites (numbered 15500 and 15000) do not have elevator access.",
+      "effect": "Guests booked in these top-deck suites must use stairs to reach their room; there is no elevator serving Deck 15 at all.",
+      "mattersTo": "Mobility-limited guests or anyone with heavy luggage should avoid or specifically confirm accessibility for these two suites; able-bodied guests seeking the top-deck view may not mind the stair climb.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "ncl.com official Norwegian Jewel deck plans page ('*Suites on deck 15 (15500 and 15000) do not have elevator access')"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        8,
+        11
+      ],
+      "sections": [],
+      "what": "Multiple Norwegian Jewel cabins are booked directly adjacent to or across from elevator lobbies (e.g., cabin 8588 near elevators on deck 8-mid, cabins 11572/11574 directly across from the elevator on deck 11).",
+      "effect": "Proximity to elevators is a recurring booking question on Jewel; general cruise-line guidance also flags elevator-adjacent cabins for foot-traffic and door-chime noise, though no confirmed noise complaint was found for these specific cabins.",
+      "mattersTo": "Guests prioritizing quiet should ask for cabins a few doors down the hall from a bank; guests prioritizing easy access (families, mobility needs) often prefer these locations.",
+      "severity": "minor",
+      "confidence": "low",
+      "source": "cruisecritic.com forum threads on Norwegian Jewel cabins 8588 and 11572/11574 near elevators; elliestraveltips.com general guide advising against elevator-adjacent cabins"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "11518",
+      "claim": "Suite located directly beneath the Deck 12 fitness center/weights area; guests reported being woken by treadmill and weight noise starting around 5am.",
+      "source": "cruisecritic.com member review, 'Avoid Suite 11518'",
       "confidence": "high"
+    },
+    {
+      "cabins": "8588",
+      "claim": "Obstructed oceanview cabin on deck 8-mid, described by the booked guest as 'close to the elevators.'",
+      "source": "cruisecritic.com forum 'How noisy? Cabin under Casino-Jewel'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "11572, 11574",
+      "claim": "Adjoining cabins located directly across from an elevator bank on deck 11; guest asked whether this would hurt privacy/create noise (no confirmed answer found).",
+      "source": "cruisecritic.com forum 'Jewel Cabin near elevator - Is this a Plus or Minus?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8100",
+      "claim": "Accessible/handicapped oceanview room with an unusual layout: one large undivided bathroom, L-shaped room, beds that cannot be joined, and only a hard chair (no comfortable seating).",
+      "source": "cruisedeckplans.com stateroom detail notes for Norwegian Jewel cabin 8100",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8030",
+      "claim": "Booked as an 'enclosed balcony' category with no clear explanation found by the guest of what that means versus a standard open balcony.",
+      "source": "cruisecritic.com forum 'What is an enclosed balcony on the Jewel?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "BD category, deck 8",
+      "claim": "Balcony category BD on deck 8 sits above the Stardust Theater's upper level; a guest asked whether these cabins are noisy at night from the shows below (unanswered in the thread found).",
+      "source": "cruisecritic.com forum 'Jewel balcony Cabin on deck 8'",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether this Jewel-class hull features a hump (cantilevered balconies past the hull line) on specific lower decks, and if so, which decks and sections—need deck plan cross-sections to verify",
-    "Exact I-95 crew corridor routing and which cabin sections have crew access doors creating service traffic—layout varies by refit",
-    "Whether any connecting cabin pairs are concentrated in specific sections or distributed evenly",
-    "Specific locations of accessible/ADA cabins beyond knowing they typically cluster near elevators",
-    "Whether recent refits have added soundproofing that mitigates theater or venue noise to cabins above/below"
+    "Whether Deck 9 balconies directly above the Deck 8 lifeboat line have any view-down obstruction; NCL does not appear to officially label a deck-9 obstructed category on Jewel, but no source confirmed or denied a partial sightline block for the two decks above the boats.",
+    "Exact deck and route of the Norwegian Jewel's crew-only 'I-95' corridor; NCL fleet-wide use of this corridor is confirmed generically, and it is documented running the length of Deck 4 on the larger Breakaway-class Norwegian Getaway, but no Jewel-specific source locating it was found.",
+    "Whether Jewel-class balconies have any cantilevered 'hump' sections that extend past the hull line; no first-person or class-specific source (as opposed to generic aggregator boilerplate) was found supporting this for the class.",
+    "The 'In Hull'/metal-enclosed forward balcony claim from cruisedeckplans.com appears verbatim on Norwegian Dawn, Norwegian Star, and Norwegian Gem deck-plan pages regardless of class, indicating boilerplate template text; it was discarded as unverified for Jewel-class specifically per the control-check rule, so true forward hull-taper balcony geometry for this class remains unconfirmed.",
+    "Bow thruster noise/vibration reports specific to Norwegian Jewel deck 8 forward cabins (a relevant-looking Facebook thread was found but not accessible for verification).",
+    "Whether connecting-cabin ranges or specific accessible-cabin ranges beyond deck 8 (cabin 8100) carry any class-wide quirks."
   ],
   "ship": "Norwegian Jewel",
   "shipSlug": "norwegian-jewel",
   "line": "Norwegian Cruise Line",
   "totalCabins": 1198,
-  "cabinsTouchedByAZone": 1188,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.031179
+  "cabinsTouchedByAZone": 617,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 16,
+    "maxAllowed": 25
+  },
+  "cost": 1.782304
 }

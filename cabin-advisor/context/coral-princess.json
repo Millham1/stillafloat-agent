@@ -1,5 +1,5 @@
 {
-  "class": "Coral class",
+  "class": "Coral-class (Princess Cruises Panamax class)",
   "sisterShips": [
     "Island Princess"
   ],
@@ -7,162 +7,226 @@
     {
       "factor": "lifeboat",
       "decks": [
-        8,
-        9
+        8
       ],
       "sections": [
-        "forward",
         "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 7; they obstruct the view downward from Decks 8 and 9, with Deck 8 experiencing the most significant blockage.",
-      "effect": "You see the horizon and ocean clearly, but looking straight down you see orange fiberglass boat roofs instead of water; Deck 8 cabins sit almost level with the boat tops.",
-      "mattersTo": "Matters to first-time cruisers or those who want unobstructed water views at all angles; doesn't matter to experienced cruisers who focus on the horizon, or anyone who prefers the steadier ride and lower cost of these decks.",
+      "what": "Lifeboats and tenders are stowed on Deck 7 (Promenade, no cabins), and the Deck 8 (Emerald) balconies/windows sit at the same height as the boats, so certain Oceanview (categories OV/OW/OY/OZ) and Balcony (obstructed-view Balcony, ~35 sq ft) staterooms look straight into the boat hulls.",
+      "effect": "The straight-down view is blocked by the boat, but the horizon and open sea to the side are usually still visible; cabins sandwiched directly between two boat davits get the worst blockage while cabins at the end of a boat run keep more open sight-line.",
+      "mattersTo": "View-driven cruisers and photographers should avoid these; sunlight-only or budget-conscious guests who don't need a clear view can save money here.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisebooking.com/rolcruise.co.uk/princess.com confirm Deck 8 Emerald obstructed categories; forum threads (cruiseaddicts 'question for anyone who has had obstructed view cabins Emerald deck', cruisecritic 'ocean obstructed cabins on deck 8 of coral princess') describe specific obstructed cabins (e.g. E314, area between E518/519 and E701/702) as midship and blocked by lifeboats/tenders."
     },
     {
       "factor": "below",
       "decks": [
+        5
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 5 (Plaza) sits directly beneath Deck 6 (Fiesta), which hosts the Princess Casino, Explorers Lounge (nightclub-style venue) and part of the Princess Theater.",
+      "effect": "Late-night casino chatter/slot noise and nightclub bass can carry down into Deck 5 cabins through the floor.",
+      "mattersTo": "Light sleepers and early-to-bed guests should avoid Deck 5; night owls or those wanting a lower, more stable deck for seasickness may not mind.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "insightcruises.com deck plan PDF places Princess Casino and Explorers Lounge on Deck 6; foreverkaren.com Coral Princess review states cabins on deck 5 are 'underneath the casino and busy traffic areas'; a Cruise Critic thread titled 'Coral Princess Deck 5 Cabins - Noise from casino' independently raises the same concern."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 8 (Emerald) cabins numbered roughly 311-335 sit directly above the Wheelhouse Bar, a live-music piano/pub venue on Deck 7 (Promenade).",
+      "effect": "Live music, dancing and stage performances in the Wheelhouse Bar can be heard in the cabins directly overhead, especially in the evening.",
+      "mattersTo": "Guests wanting quiet evenings should avoid these specific numbers; those who like being close to nightlife may see it as a plus.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "foreverkaren.com Coral Princess review: 'Mid-ship cabins on deck 8, numbered 312 to 334 and 311 to 335, are over the Wheelhouse Bar'; cruisemapper/cruisedeckplans confirm Wheelhouse Bar is located on Deck 7 Promenade."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 12 (Aloha) is the top guest deck and sits directly under Deck 14 (Lido), which carries the Lido Pool, pizzeria, ice-cream bar and Horizon Court dining areas (no Deck 13 exists in the numbering).",
+      "effect": "Early-morning deck-chair scraping and pool-deck foot traffic, plus occasional late-night crew cleaning, can be heard in Deck 12 cabins below.",
+      "mattersTo": "Guests sensitive to morning noise should avoid Deck 12 under the pool zone; sun-and-pool loyalists who want to be one deck from the action may prefer it.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "foreverkaren.com: 'Many staterooms on deck 12 are over the Horizon Buffet and pool areas... hear staff scraping and moving the chairs and loungers'; cruisemummy.co.uk independently describes rooms under pool decking being disturbed by chair-scraping in the morning and by crew cleaning as late as midnight."
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6,
+        8,
         9,
+        10,
+        11
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Self-service laundry rooms exist on multiple decks, and several specific cabins sit both next to a laundry room and between it and the elevator lobby: P623 (Deck 6), E717 (Deck 8), D720 (Deck 9), C710 (Deck 10), B711 (Deck 11).",
+      "effect": "These cabins get machine noise/vibration through a shared wall plus extra hallway foot traffic from guests moving between the lift and the laundry; B711 and E717 are somewhat better off because the laundry machines back onto them perpendicularly rather than sharing a full wall.",
+      "mattersTo": "Light sleepers and anyone wanting a quiet corridor should avoid this named list; families needing quick laundry access may prefer being close.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemummy.co.uk and foreverkaren.com independently name the same laundry-adjacent cabins (B711, E717 in both; P623/D720/C710 added by foreverkaren), agreeing B711 and E717 are less affected because the machines run perpendicular to those particular rooms."
+    },
+    {
+      "factor": "hump",
+      "decks": [
         10
       ],
       "sections": [
         "mid"
       ],
-      "what": "The Horizon Court buffet (Lido deck restaurant) operates directly below the midship section of Deck 9 and two decks below midship Deck 10.",
-      "effect": "Expect noise and foot traffic from early breakfast service (typically 6:00-6:30 AM) through late evening snacks; chairs scraping, dishes, and conversation carry upward.",
-      "mattersTo": "Matters to light sleepers and anyone sensitive to early-morning noise; doesn't matter if you're up early anyway or sleep soundly.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "On Deck 10 (Caribe) a set of corner cabins (C416, C417, C503, C504, C622, C637) have balconies that bump outward past the straight hull line, while adjacent recessed cabins (C414, C415, C505, C506, C620, C633) sit tucked in beside them.",
+      "effect": "The bumped-out corner balconies give a wider viewing angle (straight out and to one side without leaning over the rail) but are visible to the recessed neighbours and vice versa, which some guests find uncomfortably close; the recessed cabins are a little more private but can see sideways into the bumped-out balconies.",
+      "mattersTo": "Photographers/view-seekers may like the corner bump-outs for the wider sightline; privacy-focused couples should pick the recessed cabins or avoid this cluster altogether.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Coral Princess Deck 10 (Caribe) page names these exact cabin numbers and describes the bumped-out vs recessed relationship; the identical cabin numbers and description also appear on sister ship Island Princess's Deck 10 page, confirming it is a shared Coral-class hull feature rather than site boilerplate (a search of a different-class ship's Deck 10/Caribe page, e.g. Caribbean Princess or Crown Princess, shows generic laundry-room text only, with none of these specific corner-cabin numbers, ruling out generic boilerplate)."
     },
     {
-      "factor": "above",
+      "factor": "engine",
       "decks": [
         11
       ],
       "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "The pool deck, including the main pools, hot tubs, and Movies Under the Stars screen, sits directly above midship and aft Deck 11.",
-      "effect": "Daytime pool activity, deck chair dragging, and evening movie sound systems operate overhead until 10-11 PM; poolside music and announcements are audible.",
-      "mattersTo": "Significant for anyone wanting quiet during the day or early evening; doesn't matter if you're out exploring the ship during those hours anyway.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        12
-      ],
-      "sections": [
-        "forward",
         "mid"
       ],
-      "what": "The Sports Deck with basketball/volleyball court sits directly above forward and midship Deck 12.",
-      "effect": "Occasional thumping from sports activities during the day, though usage is typically lighter than pool deck activity.",
-      "mattersTo": "Minor concern for light sleepers during daytime cabin use; most guests are off the ship or elsewhere during peak sports hours.",
-      "severity": "minor",
-      "confidence": "high"
+      "what": "A Tripadvisor reviewer reported persistent, unexplained vibration in a Deck 11 (Baja) cabin that ran around the clock and was severe enough that the ship moved them to a Deck 8 cabin instead.",
+      "effect": "Vibration of this kind, even on a mid-height deck, can disturb sleep continuously rather than just during maneuvering.",
+      "mattersTo": "Light sleepers or anyone sensitive to mechanical hum should ask to be reassigned if they experience similar symptoms; most guests will not notice this, since Princess promotes the Coral Princess's diesel-electric plant (housed in the funnel) as producing fewer vibrations than older designs.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "Tripadvisor Coral Princess cruise review: 'nasty vibration in our cabin on deck 11 which went on 24/7 and kept us awake all night so required a shift to another cabin on deck 8'; cruisemapper.com separately notes the ship's engines 'are installed in the funnel' and are described as producing 'fewer vibrations and emissions' by design."
     },
     {
-      "factor": "below",
+      "factor": "engine",
       "decks": [
+        5,
         6
       ],
       "sections": [
         "forward",
-        "mid",
         "aft"
       ],
-      "what": "The Princess Theater (main show lounge) sits directly below Deck 6, with the balcony level of the theater occupying Deck 5.",
-      "effect": "Evening show sound and vibration from the theater's sound system carry upward, typically 7-10 PM; also pre-show and post-show crowd noise in corridors.",
-      "mattersTo": "Matters to anyone wanting early-to-bed quiet; doesn't matter if you're attending the shows yourself or are out late anyway.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Coral Princess's lowest guest decks (5 and 6, forward and aft ends) are closer to the anchor gear forward and the propulsion spaces aft.",
+      "effect": "Guests near the bow tip may hear anchor-chain noise during early-morning port arrivals; those aft may feel more engine hum, particularly during docking.",
+      "mattersTo": "Very light sleepers on early-arrival itineraries (e.g. frequent-port cruises) may want to avoid the extreme forward/aft ends of these decks; most guests will not notice it outside of docking windows.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "elliestraveltips.com Coral Princess cabins guide: 'Front and aft areas might feel more engine or anchor noise, especially during docking.'"
     },
     {
-      "factor": "engine",
+      "factor": "motion",
       "decks": [
-        5,
-        6
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Aft cabins on Decks 5 and 6 sit close to the propulsion machinery spaces.",
-      "effect": "Low-frequency vibration and hum are noticeable, especially at cruising speed; the motion is steadier here but the mechanical presence is real.",
-      "mattersTo": "Significant for anyone sensitive to vibration or mechanical noise; doesn't matter to sound sleepers or those who find the hum soothing (some do).",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        5,
-        6,
-        8
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Bow thruster operation during docking and tendering creates brief but intense vibration in forward cabins on lower decks.",
-      "effect": "Loud rumbling for 2-5 minutes during port arrival and departure maneuvers; the anchor chain also runs through this area with metallic grinding sounds early on port mornings.",
-      "mattersTo": "Matters to light sleepers who are aboard during early port arrivals; doesn't matter if you're an early riser anyway or sleep through mechanical noise.",
-      "severity": "significant",
-      "confidence": "high"
-    },
-    {
-      "factor": "elevator",
-      "decks": [
-        5,
-        6,
-        8,
-        9,
-        10,
         11,
         12
       ],
       "sections": [
         "forward",
-        "mid",
         "aft"
       ],
-      "what": "Primary elevator and stair banks are located forward, midship, and aft on all cabin decks, with midship banks seeing the heaviest traffic.",
-      "effect": "Cabins near elevator lobbies (typically within 3-4 cabin numbers) experience corridor foot traffic, ding sounds, and conversation from embarkation afternoon through late evening.",
-      "mattersTo": "Matters to those wanting hallway quiet and privacy; doesn't matter to those who prioritize elevator convenience over noise, or who are rarely in the cabin during peak hours.",
+      "what": "On the two highest guest decks, both the far-forward cabin runs (roughly A209-A321 on Aloha, B201-B310 on Baja) and the far-aft runs (A618-A722, B618-B737) are flagged for motion sensitivity.",
+      "effect": "These high, far-forward or far-aft cabins pitch and roll noticeably more than midship/lower cabins in rough seas.",
+      "mattersTo": "Guests prone to seasickness should avoid these ranges and choose lower, more midship cabins instead; those who enjoy feeling the ship move, or who prioritize higher-deck views, may not mind.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: cabins 'A209 to A321 and A618 to A722, B201 to B310 and B618 to B737' are named as the ranges where 'you'll want to avoid... if you're someone that's worried about potentially getting seasick.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Coral Princess has no private balconies at the extreme stern; the aft-most staterooms there are Oceanview-only cabins near a public 'secret' open-deck area rather than true private balconies.",
+      "effect": "Guests wanting an aft-facing balcony view of the wake cannot get one on this class; the nearest option is an Oceanview cabin adjacent to the public aft deck, which trades a private balcony for a semi-public outdoor space nearby.",
+      "mattersTo": "Wake-view balcony seekers should look at other Princess classes; guests happy with an Oceanview window near a quiet public deck may find this a good value option.",
       "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'Coral Princess is not designed for aft views – the rear of the ship doesn't have any balconies at all'; a Cruise Critic thread on cabin B728 asks about privacy/noise near this aft 'secret' balcony area."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "E314; area between E518/E519 and E701/E702",
+      "claim": "Named as lifeboat/tender-obstructed Deck 8 Oceanview cabins; cabins not falling between the boats have the worst obstruction, those between boat clusters see more.",
+      "source": "cruiseaddicts.com forum thread on Emerald deck obstructed cabins (discussing sister-line Grand-class layout but naming Coral-specific E314) and cruisecritic.com Deck 8 obstructed-cabin thread",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "B711, E717, P623, D720, C710",
+      "claim": "Cabins directly adjacent to self-service laundry rooms and near elevator lobbies; B711 and E717 are less affected because machines run perpendicular to those two rooms.",
+      "source": "cruisemummy.co.uk Coral Princess cabins guide and foreverkaren.com Coral Princess review (cross-corroborating)",
       "confidence": "high"
     },
     {
-      "factor": "i95",
-      "decks": [
-        5,
-        6
-      ],
-      "sections": [
-        "mid"
-      ],
-      "what": "Crew access points to the I-95 crew corridor are concentrated midship on lower decks where crew services (laundry, storage, galley access) connect.",
-      "effect": "Crew foot traffic in these corridors runs 24 hours, with peak activity during meal prep times (5-7 AM, 4-6 PM) and turnover days; voices and service cart noise carry.",
-      "mattersTo": "Matters to those sensitive to hallway activity at odd hours; less relevant on higher decks where crew access is more limited.",
-      "severity": "minor",
+      "cabins": "C416, C417, C503, C504, C622, C637 (bumped-out corner) and C414, C415, C505, C506, C620, C633 (recessed)",
+      "claim": "Corner 'hump' balconies with wider viewing angles vs. adjacent recessed balconies with more privacy but sideways sightlines into neighbors; also 'Coral Corner Hump' forum nickname for C622 specifically.",
+      "source": "cruisedeckplans.com Coral Princess Deck 10 (Caribe) page; Cruise Critic thread 'Coral Corner Hump Caribe C622 Balcony Cabin'",
       "confidence": "medium"
+    },
+    {
+      "cabins": "C728",
+      "claim": "Aft mini-suite balcony on Caribe deck has no cover, exposed to direct sun and rain.",
+      "source": "Cruise Critic thread 'Coral mini-suites, Caribe deck 10, aft corner'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "A209-A321, A618-A722 (Aloha/Deck 12); B201-B310, B618-B737 (Baja/Deck 11)",
+      "claim": "Flagged specifically for motion/seasickness sensitivity due to being far-forward or far-aft on the two highest guest decks.",
+      "source": "cruisemummy.co.uk Coral Princess cabins guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "B734",
+      "claim": "Noise from an aft public-deck door slamming at odd hours near this cabin.",
+      "source": "Cruise Critic thread 'Coral Princess cabin B734 - noise from aft door'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "P517",
+      "claim": "Reported as excessively noisy interior cabin with little resolution from Princess.",
+      "source": "Cruise Critic thread 'Coral Princess Inside Cabin P517 - Excessively Noisy'",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether this class features a hump (cantilevered balconies past the hull line) and if so, on which specific decks and sections—this requires deck-by-deck architectural verification",
-    "The exact location and extent of galley operations and whether any cabin sections sit directly above active galley spaces",
-    "Specific cabin numbers that are designated accessible or have guaranteed connecting door arrangements",
-    "Whether any Deck 9 or 10 cabins are affected by the Lotus Spa operations above them",
-    "The presence and impact of any nightclub or late-night venue locations relative to cabin decks"
+    "Hull taper on the highest deck (Aloha/Deck 12) and whether any suite or aft balconies sit atop an inward hull step hiding the straight-down view — no source found describing this for Coral-class specifically.",
+    "Exact crew corridor (I-95 style) layout and where its access doors open onto guest hallways — no ship-specific source located.",
+    "Bow thruster-specific noise reports (as distinct from general anchor/engine noise) for Coral Princess forward cabins.",
+    "Whether Deck 9 (Dolphin) has any bumped-out/recessed corner balcony configuration similar to Deck 10 — no source found either confirming or denying.",
+    "Full extent of Deck 5/6 casino-nightclub noise footprint (which specific cabin number ranges, not just 'almost all of deck 5') was not specified in available sources.",
+    "Whether connecting-cabin sound transfer is a genuinely documented Coral-class issue or generic aggregator boilerplate — could not confirm with a non-templated, ship-specific source."
   ],
   "ship": "Coral Princess",
   "shipSlug": "coral-princess",
   "line": "Princess Cruises",
   "totalCabins": 1000,
   "cabinsTouchedByAZone": 1000,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.031671000000000005
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 15,
+    "maxAllowed": 25
+  },
+  "cost": 1.423911
 }

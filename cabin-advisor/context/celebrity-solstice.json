@@ -1,5 +1,5 @@
 {
-  "class": "Solstice",
+  "class": "Solstice-class (Celebrity Cruises)",
   "sisterShips": [
     "Celebrity Equinox",
     "Celebrity Eclipse",
@@ -12,94 +12,195 @@
       "decks": [
         6,
         7,
-        8
+        8,
+        9
       ],
       "sections": [
         "forward",
         "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 5; they obstruct the lower portion of the view from Decks 6, 7, and 8, with Deck 6 experiencing the most significant obstruction and the effect diminishing as you go higher.",
-      "effect": "On Deck 6, you look directly at or just over the boats—horizon is visible but the ocean view down is blocked; Deck 7 sees mostly over them with partial obstruction; Deck 8 has minimal interference.",
-      "mattersTo": "Matters greatly to guests who want an unobstructed ocean view or watch the water directly below; doesn't matter to those focused on horizon views, sunsets, or who spend little balcony time.",
-      "severity": "significant",
-      "confidence": "high"
+      "what": "Deck 6 balcony cabins sit directly at lifeboat/davit level, and the obstruction tapers off but is still detectable looking down at roughly a 45-degree angle from decks 7, 8 and 9 above.",
+      "effect": "On Deck 6 the boats and davits block a straight-down view of the water; on 7-9 the horizon/outward view stays clear but a steep downward glance still catches boat structure. Cruise Solstice's own deck-by-deck notes pinpoint the worst stretch as the cabins fronting the largest boats.",
+      "mattersTo": "Photographers and anyone who wants to watch the water directly below (dolphins, embarkation activity) will be disappointed on Deck 6; guests who mainly want an open horizon/sunset view are largely unaffected, especially on 7-9.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com editor review + cruisemapper.com cabin page + cruisedeckplans.com deck-6 notes + first-person Cruise Critic review 93364",
+      "leadDetail": "See leads for named cabin ranges (6155-6178, 6187-6206)."
     },
     {
       "factor": "above",
       "decks": [
-        11
+        3
       ],
       "sections": [
-        "mid",
-        "aft"
+        "forward"
       ],
-      "what": "Pool deck, Solarium, and outdoor leisure areas are located on Deck 12 directly above mid and aft sections of Deck 11.",
-      "effect": "Daytime noise from pool activities, deck furniture moving, and music; foot traffic and splashing sounds can carry through to balconies and inside cabins below.",
-      "mattersTo": "Light sleepers, those working during the day, or anyone sensitive to intermittent activity noise overhead; doesn't bother guests who are out exploring during pool hours.",
+      "what": "Portside forward cabins on Deck 3 sit directly beneath the nightclub venue one deck up (Deck 4), and accessible cabins on this deck are described as right forward, near the theatre and just forward of the nightclub/Celebrity Central above.",
+      "effect": "Bass and late-night nightclub activity can be heard through the floor in this specific forward stretch; starboard-side cabins under the casino/entertainment court by contrast draw little complaint.",
+      "mattersTo": "Light sleepers and anyone doing an early port day should avoid the named portside-forward range; night owls who are out late anyway won't notice.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Deck 3 notes + Cruise Critic boards thread on Deck 3 accessible cabins",
+      "leadDetail": "Named range: cabins 3105-3129 (portside forward)."
     },
     {
       "factor": "above",
       "decks": [
-        10
+        3
       ],
       "sections": [
         "mid"
       ],
-      "what": "Blu restaurant (AquaClass dining) and Café al Bacio are on Deck 11 mid-ship, directly above Deck 10 mid cabins.",
-      "effect": "Occasional noise from restaurant service, chair movement, and kitchen activity during breakfast and dinner hours; generally quieter than pool deck but still present.",
-      "mattersTo": "Guests who are in their cabin during meal times and are sensitive to overhead activity; minimal impact for those dining out or exploring during those hours.",
+      "what": "Deck 3 cabins sit at the level of the ship's 3-deck Grand Foyer atrium, which hosts live music, auctions and daily events.",
+      "effect": "Cruisers repeatedly report hearing music and crowd noise from the atrium bleeding into nearby Deck 3 cabins, though it usually quiets by late evening.",
+      "mattersTo": "Guests wanting total quiet in the evening should pick a cabin away from the atrium well; those who enjoy ambient music won't mind.",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruisegalore.com Celebrity cabin guide"
     },
     {
-      "factor": "above",
+      "factor": "below",
       "decks": [
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Some aft Deck 6 balconies have a service ladder running from the roof of the Blu restaurant below (Deck 5) up past the veranda, and guests in that stretch heard banging/knocking noises from Blu until roughly 2-2:30am.",
+      "effect": "Intermittent late-night/early-morning mechanical or service noise from the restaurant below, on a ship the same reviewer otherwise described as unusually free of engine noise or vibration.",
+      "mattersTo": "Very light sleepers on the aft Deck 6 verandas above Blu should be aware; most guests found it a minor issue outweighed by an otherwise quiet ship.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "Cruise Critic member review 553734 (first-person, cabin-specific)"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "AquaClass cabins on Deck 11 sit directly beneath the fitness center on Deck 12.",
+      "effect": "A guest reported treadmill thumping every morning around 6am that crew could not resolve.",
+      "mattersTo": "Guests wanting to sleep past dawn should avoid AquaClass cabins stacked under the gym; early risers who exercise themselves won't mind.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "Cruise Critic boards thread \"Avoid Aqua class cabins on deck 11\""
+    },
+    {
+      "factor": "below",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 11 sits directly beneath the Deck 12 pool deck.",
+      "effect": "As with most ships, early-morning lounger movement and pool-deck foot traffic carry down into Deck 11 cabins.",
+      "mattersTo": "Guests hoping for a lie-in should avoid Deck 11; those planning to be up early for the pool won't be bothered.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Celebrity Solstice Cabins & Suites editor review"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6,
+        7,
+        8,
         9
       ],
       "sections": [
         "mid"
       ],
-      "what": "Main dining room (Grand Epernay) is located on Deck 10 mid-ship, directly above Deck 9 mid cabins.",
-      "effect": "Noise from dining service, particularly during the two main dinner seatings—chair scraping, footsteps, service activity from approximately 6pm to 10pm.",
-      "mattersTo": "Early-to-bed guests or those in cabin during dinner hours; doesn't affect those dining out or at shows during evening hours.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Solstice-class ships have a midship 'hump' where the hull steps outward; Solstice, as the lead ship, even carried a large glass 'X' logo on the hump-stateroom railings as part of the original design.",
+      "effect": "Cabins on the flat part of the hump (e.g. 6216-6234/6217-6235, 7266-7284/7221-7239, 8232-8250/8259-8277, 9272-9290/9217-9235) get an unobstructed straight-down view where straight-hull cabins nearby are blocked by lifeboats or structure, and several hump balconies run roughly three times the size of a standard veranda.",
+      "mattersTo": "Anyone wanting the biggest balcony and a clear view straight down (not just outward) should target these specific ranges; guests who don't care about looking straight down gain little extra from the hump besides square footage.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "en.wikipedia.org Solstice-class article + cruisedeckplans.com deck 6/7/8/9 notes + perthtravelers.com first-person Deck 9 hump review"
     },
     {
-      "factor": "below",
+      "factor": "elevator",
       "decks": [
+        6,
         7,
-        8
+        8,
+        9,
+        10,
+        11,
+        12
       ],
       "sections": [
         "forward",
         "mid"
       ],
-      "what": "Main theater (Celebrity Theater) spans Decks 4 and 5 below forward and mid sections of Decks 7 and 8.",
-      "effect": "Show audio and bass can transmit upward during evening performances, typically 7pm-10pm; the effect diminishes with distance but is noticeable on Deck 7.",
-      "mattersTo": "Early-to-bed guests or those trying to relax in cabin during show times; doesn't affect night owls or those attending the shows.",
+      "what": "Solstice has only two elevator/stair banks - forward and midship (the midship bank is glass, rising through the atrium) - with no dedicated aft bank.",
+      "effect": "Reaching aft venues from Deck 11 upward requires walking aft and using stairs, or crossing an open weather deck on 12/14; cabins near the glass midship bank also sit close to the atrium, where live music and events are audible in the elevator lobby and can carry into nearby cabins.",
+      "mattersTo": "Guests who dislike long walks value the midship bank's convenience; those sensitive to atrium noise or wanting an aft-access shortcut should book away from it.",
       "severity": "minor",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "Cruise Critic member review 218117 (elevator layout) + Fodor's Travel Talk forum thread on atrium noise near elevators"
     },
     {
-      "factor": "below",
+      "factor": "engine",
       "decks": [
-        12
+        6,
+        7,
+        8
       ],
       "sections": [
         "aft"
       ],
-      "what": "Fortunes Casino and Sky Conference Center are on Deck 11 directly below Deck 12 aft cabins.",
-      "effect": "Casino noise—music, slot machines, voices—can be heard in cabins above, particularly in evening hours when casino activity peaks.",
-      "mattersTo": "Light sleepers and those who retire early; doesn't bother guests who stay up late or enjoy the casino themselves.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Low, aft cabins are flagged for engine noise and vibration, while low, forward cabins can pick up bow-thruster noise during docking/undocking.",
+      "effect": "The effect is inconsistent across reports: some guides flag aft-lower cabins for vibration, while at least one detailed first-person Solstice review found the ship 'extremely quiet' with almost no transmitted engine noise or vibration in her cabin.",
+      "mattersTo": "Vibration-sensitive sleepers should still default to a mid, higher-up cabin as a precaution, but shouldn't assume aft-lower cabins will be loud on this particular ship.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "perthtravelers.com Solstice veranda review + Cruise Critic member review 553734 (counter-evidence of a quiet ship)"
     },
     {
-      "factor": "elevator",
+      "factor": "motion",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A Solstice-specific cabin guide flags decks 3, 6, 11 and 12 as decks to 'be careful of,' and separately recommends a mid-ship, lower deck for guests prone to seasickness.",
+      "effect": "Far-forward cabins on the highest guest decks (11-12) will feel the most pitch and roll in rough seas; low, midship cabins feel the least motion.",
+      "mattersTo": "Motion-sensitive cruisers should avoid forward cabins on 11/12 and favor mid-ship, lower decks (7-9 per the same guide).",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "perthtravelers.com Celebrity Solstice Veranda Stateroom Review"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft-facing balconies on decks 6 through 11 are cantilevered but are visible from the Sunset Bar and the outdoor buffet dining area located above them.",
+      "effect": "Guests on these aft balconies can be seen (and can see) diners/drinkers above, reducing privacy even though the balcony itself is not obstructed.",
+      "mattersTo": "Guests wanting private balcony time (sunbathing, etc.) should avoid this stack; those who don't mind being overlooked gain wake views instead.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisecritic.com Celebrity Solstice Cabins & Suites editor review"
+    },
+    {
+      "factor": "other",
       "decks": [
         6,
         7,
@@ -113,102 +214,109 @@
         "mid",
         "aft"
       ],
-      "what": "Elevator banks are located forward, mid-ship, and aft on all guest cabin decks, with the mid-ship bank being the primary vertical circulation hub.",
-      "effect": "Cabins adjacent to elevator lobbies experience door chimes, conversation, and foot traffic throughout the day and night; convenience is excellent but noise trade-off exists.",
-      "mattersTo": "Light sleepers and those sensitive to hallway noise should avoid cabins immediately adjacent to elevator banks; mobility-limited guests benefit greatly from proximity.",
+      "what": "Many interior cabins on Solstice-class ships run lengthwise along the corridor with the entrance on the short wall, so the long wall (where the bed sits) faces the hallway rather than just the door.",
+      "effect": "Passersby end up walking alongside the bed wall rather than just past the entrance, which cruisers report as feeling 'more like a hallway than a cabin' and noisier from late-night hallway chatter.",
+      "mattersTo": "Light sleepers booking interior cabins should ask about the room's orientation; guests who don't mind hallway sound won't notice a difference from category alone.",
       "severity": "minor",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        3,
-        6,
-        7
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Engine room and propulsion machinery are located low and aft, below and behind the aftmost cabins on Decks 3, 6, and 7.",
-      "effect": "Low-frequency vibration and hum are noticeable in aft cabins on these lower decks, particularly when engines are working hard during maneuvering or high-speed cruising.",
-      "mattersTo": "Guests sensitive to vibration or mechanical noise; doesn't bother those who sleep through ambient sounds or who value aft balcony wake views more than silence.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        3,
-        6,
-        7,
-        8
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Bow thrusters are located in the forward hull below the lowest guest decks.",
-      "effect": "Thruster noise—a loud rushing or rumbling—occurs during docking and departure maneuvers in forward cabins, particularly on lower decks; typically brief but intrusive when it happens.",
-      "mattersTo": "Light sleepers who are in cabin during early morning arrivals or evening departures; doesn't affect those who are up and out during port days.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        3
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Anchor chain locker is located in the bow below Deck 3 forward cabins.",
-      "effect": "Loud metallic rattling and rumbling when anchor is dropped or raised, typically during early morning port arrivals; the noise is distinctive and can wake sleepers.",
-      "mattersTo": "Light sleepers in forward Deck 3 cabins on port-intensive itineraries; doesn't affect those who wake early anyway or who sleep through mechanical sounds.",
-      "severity": "significant",
-      "confidence": "high"
-    },
-    {
-      "factor": "i95",
-      "decks": [
-        3
-      ],
-      "sections": [
-        "forward",
-        "mid"
-      ],
-      "what": "Crew access points and service corridors intersect with guest areas on Deck 3, particularly near the forward and mid sections where crew movement supports lower-deck operations.",
-      "effect": "Occasional crew traffic and service cart movement in early morning hours for cabin service prep and galley supply; brief but noticeable in adjacent cabins.",
-      "mattersTo": "Very light sleepers in Deck 3 cabins near crew access points; most guests won't notice or won't be bothered by brief, professional crew activity.",
-      "severity": "minor",
-      "confidence": "medium"
+      "confidence": "medium",
+      "source": "cruisegalore.com Best and Worst Celebrity Cabins guide"
     },
     {
       "factor": "other",
       "decks": [
-        10,
-        11
+        6,
+        7
       ],
       "sections": [
+        "forward",
         "mid",
         "aft"
       ],
-      "what": "AquaClass cabins on Decks 10 and 11 have exclusive access to the Persian Garden thermal suite and Blu restaurant, creating higher foot traffic in these corridors.",
-      "effect": "More hallway activity from spa-goers in robes during morning and evening hours; a different demographic mix and slightly more corridor noise than standard cabin decks.",
-      "mattersTo": "Guests seeking maximum hallway quiet may notice the difference; AquaClass guests value the exclusive amenity access and won't mind the traffic they're contributing to.",
+      "what": "Celebrity Solstice has 121 connecting rooms on board, including Veranda staterooms whose connecting pairs share adjoining balconies.",
+      "effect": "Families/groups can link two cabins with a connecting door and adjoining balconies for easier supervision of children, though connecting doors are reported anecdotally as a possible sound path between rooms.",
+      "mattersTo": "Families traveling together benefit; solo travelers or couples wanting full sound isolation from neighbors should ask for a non-connecting cabin.",
       "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisecritic.com Celebrity Solstice Cabins & Suites editor review"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Service/crew access doors (laundry carts, room-service staging, internal stairwell access) are scattered along guest corridors on Solstice-class ships, generally unlabeled on deck plans as plain utility boxes.",
+      "effect": "Cabins next to these doors can pick up cart-rolling, door-banging and crew-conversation noise concentrated around turn-down and early-morning service hours; a Solstice-specific guest asked directly about reported crew-area noise near cabin 7320 but no confirmed public account was found.",
+      "mattersTo": "Very light sleepers should ask their travel agent or Celebrity to check for adjacent service doors before booking a specific cabin number.",
+      "severity": "minor",
+      "confidence": "low",
+      "source": "cruisesnooze.com Celebrity Silhouette cabins-to-avoid guide (same Solstice-class hull, service-door pattern generalized) + Cruise Critic boards thread on cabin 7320 (unconfirmed, Solstice-specific)"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "6301, 6303",
+      "claim": "Reviewer states these balconies were 'worse than obstructed' - the deck extends ~10 feet past the rail and crew were frequently on that extended deck while in port.",
+      "source": "Cruise Critic member review, titled \"Avoid Cabin 6301 & 6303\"",
+      "confidence": "high"
+    },
+    {
+      "cabins": "6155-6178 (port and starboard)",
+      "claim": "Flagged on the ship's obstructed-view page as cabins with a lifeboat/structure view looking at the window or balcony.",
+      "source": "cruisedeckplans.com Celebrity Solstice Obstructed View page",
       "confidence": "medium"
+    },
+    {
+      "cabins": "6187-6206 (both sides)",
+      "claim": "The largest lifeboats on Deck 6 sit directly in front of this specific range, making the obstruction more severe than elsewhere on the deck.",
+      "source": "cruisedeckplans.com Deck 6 (Continental) notes",
+      "confidence": "high"
+    },
+    {
+      "cabins": "3105-3129 (portside forward)",
+      "claim": "Located below the nightclub on Deck 4; some noise reports from that venue.",
+      "source": "cruisedeckplans.com Deck 3 (Plaza) notes",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9155, 9157, 9207, 9209, 9211, 9215, 9237, 9239, 9241, 9243, 9295 (port); 9192, 9194, 9264, 9266, 9268, 9270, 9292, 9294, 9296, 9298, 9366 (starboard)",
+      "claim": "Hump-section verandas on Deck 9 with balconies noticeably larger (extra depth not shown on the standard deck plan) than standard verandas.",
+      "source": "perthtravelers.com first-person Celebrity Solstice veranda review",
+      "confidence": "high"
+    },
+    {
+      "cabins": "8160, 8197, 8226, 8230, 8252, 8253, 8256, 8257, 8279, 8283",
+      "claim": "Listed as the largest balconies on Deck 8, generally corresponding to the hump section.",
+      "source": "cruisedeckplans.com Deck 8 (Vista) notes",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7320",
+      "claim": "A prospective guest asked specifically whether this cabin experiences crew-area noise; no confirmed firsthand answer was found in the thread at time of research.",
+      "source": "Cruise Critic boards thread \"Crew noise by cabin 7320 on solstice?\"",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether Solstice-class ships have a hump (balconies cantilevered past hull line) at all—I cannot confidently confirm the presence, location, or affected decks for this specific class without risking the error described.",
-    "Precise location and extent of galley noise impact—while galleys exist, their exact deck location and which cabins experience ventilation or service noise is uncertain.",
-    "Specific connecting cabin configurations beyond what's typical for the category mix shown—whether certain deck sections have higher concentrations of connecting doors.",
-    "Accessible cabin distribution—while they exist across the inventory, their specific concentration points and associated features are not certain from the data provided."
+    "Whether the highest guest decks (e.g. 15, or suites on 11/12) sit atop an inward hull taper that hides the straight-down view while keeping the horizon clear - no ship-specific source confirmed this for Solstice.",
+    "Exact hump cabin numbers on Deck 10 - source text was garbled/truncated and could not be confirmed with confidence.",
+    "Precise routing of the crew ('I-95')-style corridor on Solstice itself - only inferred from an identical-layout sister ship (Silhouette), not confirmed firsthand for Solstice.",
+    "Specific deck/cabin range affected by anchor-chain noise - one source lumped anchor noise in with 'low and at the rear' engine noise, which is inconsistent with typical bow anchor placement; not reliable enough to state as fact.",
+    "Whether Celebrity's official obstructed-view labeling (2C/2D) covers the full lifeboat-affected range on Decks 7-9, or only Deck 6 - sources only confirmed formal labeling for Deck 6 categories 2C/2D."
   ],
   "ship": "Celebrity Solstice",
   "shipSlug": "celebrity-solstice",
   "line": "Celebrity Cruises",
   "totalCabins": 1480,
   "cabinsTouchedByAZone": 1453,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.041064
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 17,
+    "maxAllowed": 25
+  },
+  "cost": 1.897745
 }

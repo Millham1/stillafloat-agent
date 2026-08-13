@@ -1,70 +1,216 @@
 {
-  "class": "Sunshine class",
-  "sisterShips": [],
+  "class": "Sunshine-class (ex-Destiny-class) cruise ship",
+  "sisterShips": [
+    "Carnival Sunrise (ex-Carnival Triumph)",
+    "Carnival Radiance (ex-Carnival Victory)",
+    "Costa Fortuna (now Margaritaville Beachcomber) — near-sister, same base Destiny-class hull",
+    "Costa Magica (now Goddess of the Night / Neonyx Cruises) — near-sister, same base Destiny-class hull"
+  ],
   "zones": [
     {
       "factor": "lifeboat",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 1 cabins 1409, 1410, 1414, 1415 and Deck 2 cabins 2109, 2110 have small round portholes rather than windows, and the view out is partly blocked by lifeboats or other ship equipment.",
+      "effect": "Guests get natural light through the porthole but a narrower, sometimes blocked, look at the horizon rather than a clear picture-window view.",
+      "mattersTo": "Matters to anyone booking a porthole cabin expecting a clean sea view; doesn't matter to guests who just want cheap outside light.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisebooking.com and shinecruise.com both independently name the same Deck 1/2 cabin numbers with lifeboat/equipment obstruction",
+      "confidenceNote": "corroborated across two independent ship-specific listicles"
+    },
+    {
+      "factor": "lifeboat",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "All forward Deck 3 cabins (roughly 3101–3143) are Interior-type staterooms whose window looks out onto an outside walkway/observation area rather than directly to sea, with lifeboats and lifeboat equipment visible beyond, and the glass is tinted so passers-by on the walkway can't see in.",
+      "effect": "You get a window and daylight, but the 'view' is really an access walkway shared with other guests, with lifeboat gear in the background — a look-alike ocean-view cabin that isn't a clean sea view.",
+      "mattersTo": "Matters to guests booking these on the assumption of an unobstructed sea view; doesn't matter much to budget-focused cruisers who just want a window cabin.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisemapper.com deck-3 page: \"Lobby Deck passenger cabins from 3101 to 3143 ... Interior with walkway view / obstructed\"; corroborated by shinecruise.com's parallel Sunrise page describing the same category as obstructed by lifeboats and lifeboat equipment"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8,
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 8 aft cabins sit directly beneath the Lido pool/buffet/Havana Bar deck (Deck 9), and Deck 9 cabins sit under gym/spa deck 10 in forward sections.",
+      "effect": "Deck 8 aft cabins catch early-morning deck-chair dragging, deck parties and buffet foot traffic from directly overhead; Deck 9 forward cabins (around 9138–9139 and forward) sit under the fitness area and can pick up workout noise.",
+      "mattersTo": "Light sleepers and anyone wanting a lie-in should avoid these; doesn't matter to guests who are up early and out of the cabin anyway.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Deck 8 page: \"more likely an issue for the cabins on the aft of the deck which are below the buffet and Havana Bar areas\"; Deck 9 page: \"Cabins between 9138 and 9139 and forward are below the gym area on the deck above and could experience noise issues\""
+    },
+    {
+      "factor": "below",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The lowest aft guest cabins sit closest to the engine room and machinery spaces.",
+      "effect": "Some low-deck aft cabins pick up engine hum/vibration that higher, more midship cabins don't.",
+      "mattersTo": "Matters to noise- and vibration-sensitive guests; less relevant to those who sleep through anything and want the cheapest fare.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisebooking.com: \"Lower deck cabins near an engine room (Deck 1 & 2 aft) will experience vibrations and noises from machinery\""
+    },
+    {
+      "factor": "below",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 5 aft is home to Ocean Plaza, the casino, RedFrog Pub and the Limelight Lounge, all clustered together.",
+      "effect": "Cabins on this deck near the aft nightlife cluster hear music and crowd noise into the late evening.",
+      "mattersTo": "Matters to light sleepers; nightlife-seekers may actually prefer the proximity.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruise.blog: \"Deck 5 on Carnival Sunshine is another hub of activity, home to venues like Ocean Plaza, the Sunshine Casino, RedFrog Pub, and the Limelight Lounge\""
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Some Deck 6 cabins sit directly above the casino or above the Limelight Theater on Deck 5.",
+      "effect": "First-person reports describe hearing show music and casino activity through the floor.",
+      "mattersTo": "Matters to guests wanting quiet; theatre-goers who go to bed late won't mind.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruise.blog citing guest reports: one stayed \"above the casino and regretted it\"; another \"above the Limelight Theater\" could hear show music"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8,
+        9
+      ],
+      "sections": [
+        "aft",
+        "midship"
+      ],
+      "what": "Deck 8 cabins below and Deck 9 cabins near the RedFrog Rum Bar and BlueIguana Tequila Bar pick up bar noise.",
+      "effect": "Music and conversation from these poolside bars carry into nearby cabins on sea days and evenings.",
+      "mattersTo": "Matters to anyone wanting an afternoon nap; bar-hoppers may like being close.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "shinecruise.com: \"Cabins on Deck 8 that are below and Cabins on Deck 9 that are near the RedFrog Rum Bar and BlueIguana Tequila Bar can be noisy\""
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "midship"
+      ],
+      "what": "Cabins directly beside or across from elevator/stair banks on Decks 6–9 sit next to constant door-chime and foot-traffic noise.",
+      "effect": "Convenient for quick access to public decks, but the trade-off is elevator-door noise and hallway traffic at all hours.",
+      "mattersTo": "Matters to light sleepers and those sensitive to hallway noise; convenient for mobility-limited guests who want minimal walking.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisebooking.com: rooms near elevators/staircases on \"Decks 6, 7, 8, 9\" hear \"constant traffic noises, door slams, footsteps\""
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        1
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "The crew-only I-95 corridor runs on Deck 0, one level below the lowest guest cabin deck (Deck 1), connecting crew messes, laundry, and engine spaces bow to stern.",
+      "effect": "Passengers occasionally glimpse this corridor at the gangway or during tendering, and its stairwell/access points nearest Deck 1 can create brief service traffic near the lowest guest cabins.",
+      "mattersTo": "Barely matters to most guests; relevant only to Deck 1 bookers curious about occasional crew movement near stairwells.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisehive.com: \"I-95 will usually be on deck zero\"; ProPublica CDC inspection log for Carnival Sunshine references a \"Buffet-Deck 0 - Crew Mess\", confirming Deck 0 as the crew corridor level on this ship"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Main propulsion machinery sits low and aft; the original Destiny-class design (unchanged in hull form for Sunshine) carries six transverse thrusters, three forward and three aft, in addition to the main engines.",
+      "effect": "Aft low-deck cabins are closest to engine vibration/hum, while both the bow and stern get thruster noise/vibration during docking and maneuvering — the aft thrusters are somewhat unusual and mean stern cabins aren't as thruster-quiet as on many other ships.",
+      "mattersTo": "Matters to vibration-sensitive sleepers, especially on port-heavy itineraries with frequent docking; less relevant to guests who spend little time in the cabin.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisingjournal.com on the original Destiny-class hull: \"equipped with six transverse thrusters (three forward and three aft)\"; cruisebooking.com on Sunshine specifically: lower aft cabins near the engine room feel \"vibrations and noises from machinery\""
+    },
+    {
+      "factor": "engine",
       "decks": [
         1,
         2,
         3
       ],
       "sections": [
+        "forward"
+      ],
+      "what": "The anchor chain and windlass sit low in the bow, and Carnival Sunshine's itineraries include tender ports (e.g., Half Moon Cay, Princess Cays) requiring anchoring.",
+      "effect": "Forward, lower-deck guests can hear the anchor chain running out and being hauled, typically in the early morning on tender-port days.",
+      "mattersTo": "Matters to light sleepers on tender-port itineraries; irrelevant on pure-dock itineraries.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruise.blog: \"Forward cabins on a lower deck may also hear the noisy anchor drop in tender ports like Half Moon Cay and Princess Cays\""
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
         "forward",
-        "mid",
         "aft"
       ],
-      "what": "Lifeboats hang at Deck 1 level; their bulk obstructs the view downward from Decks 1, 2, and 3, with Deck 1 having the most obstruction and Deck 3 the least, while the horizon remains visible.",
-      "effect": "You see boats and davits when looking down, but ocean and horizon stay clear; the view feels industrial rather than open.",
-      "mattersTo": "Matters greatly to anyone who wants unobstructed ocean views or dislikes the look of safety equipment; immaterial to those focused on horizon views or staying in interior cabins.",
+      "what": "As on any ship, forward and aft cabins feel more pitch/roll than midship, and higher decks amplify roll versus lower decks.",
+      "effect": "One member review reported the ship \"rocking left and right ALL THE TIME\" even in fairly mild seas and needing medication despite prior cruise experience; a separate 2026 news report described Carnival Sunshine tilting hard enough to send objects sliding after a mechanical/technical issue.",
+      "mattersTo": "Matters greatly to motion-sensitive guests choosing forward/aft or upper decks; less relevant to guests choosing midship, lower/mid decks.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "CruiseCritic member review of Carnival Sunshine: ship was \"rocking left and right ALL THE TIME\"; CBS News report: the ship \"tipped to one side ... sending loose items sliding\""
     },
     {
-      "factor": "above",
-      "decks": [
-        9
-      ],
-      "sections": [
-        "mid"
-      ],
-      "what": "The Lido Deck pool area, buffet, and outdoor活动 spaces sit directly above Deck 9 midship cabins.",
-      "effect": "Expect noise from deck chairs scraping, music, crowds, and foot traffic from early morning through late evening; the action overhead runs long hours.",
-      "mattersTo": "Critical for light sleepers or anyone expecting quiet mornings; irrelevant for those who are out exploring during the day and tolerate ambient resort noise.",
-      "severity": "significant",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        8
-      ],
-      "sections": [
-        "mid"
-      ],
-      "what": "The Lido Deck pool and buffet area sits one deck above Deck 8 midship cabins.",
-      "effect": "You'll hear muffled pool activity, music, and crowd movement, though one deck of separation reduces it compared to Deck 9.",
-      "mattersTo": "Matters to light sleepers and those sensitive to overhead noise; less of an issue for sound sleepers or those planning to be out most of the day.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        2
-      ],
-      "sections": [
-        "forward",
-        "mid"
-      ],
-      "what": "The main theatre (Liquid Lounge) sits directly below Deck 2 forward and midship sections.",
-      "effect": "You may hear show music, bass vibration, and audience applause during evening performances, typically ending by 11 PM.",
-      "mattersTo": "Matters to early sleepers or anyone turned in before the second show ends; not an issue for night owls or those attending the shows themselves.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
+      "factor": "other",
       "decks": [
         6,
         7
@@ -72,106 +218,114 @@
       "sections": [
         "forward"
       ],
-      "what": "The main dining rooms sit two decks below Deck 6 forward and one deck below Deck 7 forward.",
-      "effect": "You may detect galley ventilation hum, service activity, and muffled dinner crowd noise during meal times (roughly 5-10 PM).",
-      "mattersTo": "Matters to those sensitive to mechanical hum or who want absolute quiet during dinner hours; minimal impact for most guests.",
+      "what": "Deck 6 interior cabins 6101–6106 and Deck 7 interior cabins 7101–7106 are described as having obstructed views because of lifeboats/tenders directly outside.",
+      "effect": "These specific interior cabin blocks lose what little forward outlook they might have to lifeboat/tender equipment.",
+      "mattersTo": "Matters only to guests booking these specific interior-with-window cabins expecting any kind of view.",
       "severity": "minor",
-      "confidence": "medium"
+      "confidence": "medium",
+      "source": "shinecruise.com: \"Interior cabins with obstructed views include those on Deck 6 from cabins 6101 to 6106 and Deck 7 from cabins 7101 to 7106\""
     },
     {
-      "factor": "engine",
+      "factor": "other",
       "decks": [
         1,
-        2
+        2,
+        6,
+        9,
+        10,
+        11
       ],
       "sections": [
+        "forward",
+        "midship",
         "aft"
       ],
-      "what": "Cabins in the aft sections of Decks 1 and 2 sit low and near the engine room and propulsion machinery.",
-      "effect": "You'll feel low-frequency vibration and hear a steady mechanical hum, most noticeable when the ship is at cruising speed.",
-      "mattersTo": "Significant for vibration-sensitive sleepers or anyone bothered by constant background hum; less relevant for heavy sleepers or those who find engine noise soothing.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Connecting staterooms (\"family cabins\") exist on Decks 1, 2, 6, 9, 10, and 11 across several categories (PT, 4E, 4G, 6A/B/C/D, 8S, 8T, 4J).",
+      "effect": "Connecting doors are convenient for families/groups but are thinner than a standard cabin wall, so sound (TV, conversation, kids) can pass through more easily than a normal partition.",
+      "mattersTo": "Matters to groups wanting linked rooms (a plus) and to solo/couple travelers randomly assigned next to a noisy connecting pair (a minus).",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemapper.com: \"Connecting staterooms ('family cabins') are located on Decks 1, 2, 6, 9, 10, and 11\"; cruisecritic.com Editor's Review: Sunshine offers \"more than 200 connecting rooms, which sometimes permits sound through the connecting doors\""
     },
     {
-      "factor": "engine",
+      "factor": "other",
       "decks": [
-        1,
-        2,
-        3
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Forward cabins on Decks 1, 2, and 3 sit near bow thrusters, which activate during docking and maneuvering.",
-      "effect": "You'll hear pronounced mechanical grinding and feel vibration during port arrivals and departures, typically early morning and late afternoon.",
-      "mattersTo": "Matters to light sleepers who want undisturbed mornings; not an issue for those already awake during port days or who sleep through mechanical noise.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        1,
-        2,
-        3
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Anchor chain runs through the bow area on Decks 1, 2, and 3; it deploys and retracts during anchoring operations.",
-      "effect": "You'll hear loud metallic grinding and rattling during tender port arrivals, usually very early morning (6-7 AM).",
-      "mattersTo": "Critical for anyone who values sleeping in on port days; irrelevant for early risers or those planning to be up for port arrival anyway.",
-      "severity": "significant",
-      "confidence": "high"
-    },
-    {
-      "factor": "elevator",
-      "decks": [
-        1,
-        2,
-        5,
         6,
         7,
         8,
         9
       ],
       "sections": [
-        "mid"
+        "aft"
       ],
-      "what": "Primary elevator banks run through the midship sections, creating both convenience and traffic.",
-      "effect": "You're steps from vertical transportation and central amenities, but you'll hear elevator machinery, door chimes, and hallway conversation throughout the day and evening.",
-      "mattersTo": "Matters to those who prioritize quiet over convenience; ideal for mobility-limited guests or those who value quick access to all decks.",
+      "what": "Premium Vista/wraparound balcony cabins (categories 8M/9C) are built to wrap around the aft corners of the ship on Decks 6 through 9, giving a larger balcony (up to ~75 sq ft) than the standard 35 sq ft balcony.",
+      "effect": "These corner cabins get a noticeably wider side-and-stern panorama than a standard side balcony, at the cost of being closer to whatever noise/activity sits at the aft end of that deck.",
+      "mattersTo": "Matters to view- and balcony-space-focused guests willing to pay for a premium/wraparound category; not a true hull-cantilever 'hump' extending past the hull line, just a corner-wrap design, so it doesn't change straight-down sightlines like a true hump would.",
       "severity": "minor",
+      "confidence": "high",
+      "source": "carnival.com: \"Premium Vista Balcony staterooms were designed to wrap around the aft corners of Carnival Sunshine\"; cruisecritic.com Editor's Review confirms wraparound balconies measure ~75 sq ft vs 35 sq ft standard"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "1409, 1410, 1414, 1415 (Deck 1); 2109, 2110 (Deck 2)",
+      "claim": "Porthole cabins with view partially blocked by lifeboats or ship equipment",
+      "source": "cruisebooking.com, shinecruise.com",
       "confidence": "high"
     },
     {
-      "factor": "other",
-      "decks": [
-        10
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Deck 10 forward houses Cloud 9 Spa cabins with exclusive spa access and spa-themed amenities.",
-      "effect": "You get spa perks (thermal suite access, spa products) and a quiet forward location, but you're isolated from main elevator banks and central activities.",
-      "mattersTo": "Ideal for spa enthusiasts and those seeking a quieter, wellness-focused experience; less suitable for those who want to be near main dining and entertainment.",
-      "severity": "minor",
-      "confidence": "high"
+      "cabins": "2128, 2129 (Deck 2)",
+      "claim": "Category 6B 'Picture Window' interior cabins with an obstructed view",
+      "source": "cruisemapper.com cabins page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6101–6106 (Deck 6); 7101–7106 (Deck 7)",
+      "claim": "Interior cabins with obstructed views due to lifeboats/tenders outside",
+      "source": "shinecruise.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6195, 6199, 6203 (Deck 6); 9123, 9127, 9131 (Deck 9)",
+      "claim": "Interior cabins with connecting doors that allow noise transfer between rooms",
+      "source": "shinecruise.com",
+      "confidence": "low"
+    },
+    {
+      "cabins": "5301, 5302, 5303, 5304 (Deck 5)",
+      "claim": "Near a bar/club, subject to nightlife noise",
+      "source": "shinecruise.com 'Carnival Cruise Cabins to Avoid' roundup",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9138, 9139 and forward (Deck 9)",
+      "claim": "Sit below the gym area on Deck 10 and may pick up workout-related noise",
+      "source": "cruisedeckplans.com Deck 9 page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Unspecified staterooms near the former dance-club location (pre-2013 Carnival Destiny era)",
+      "claim": "Historically marketed by Carnival as 'Night Owl Cabins' because they absorbed noise from the dance club above; reportedly fixed in a later dry dock, so current applicability to today's Carnival Sunshine layout is uncertain",
+      "source": "cruiseradio.net",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether this class has a hump (balconies cantilevered past the hull line) and if so, which specific decks and sections benefit from it",
-    "Exact location and operational hours of any nightclub or late-night venue and which decks sit below it",
-    "Precise location of i95 crew corridor access points and which cabin sections experience the most crew service traffic",
-    "Whether Carnival Sunshine has any sister ships sharing this exact hull layout, or if modifications during her 2013 transformation made her configuration unique",
-    "Specific location and impact of galley ventilation systems beyond the main dining room areas"
+    "Whether Carnival Sunshine has any true hull 'hump' (balconies cantilevered past the hull line) — no source found describing this; the wraparound aft-corner balconies are a corner-wrap design, not a confirmed hull bulge.",
+    "Whether any high-deck (9–10) suites sit atop a hull taper that hides the straight-down view while keeping the horizon clear — no ship-specific source found for this class.",
+    "Precise deck-by-deck location of every elevator/stair bank shaft (only general 'Decks 6–9' guidance found, not a full bank-by-bank map).",
+    "Whether the pre-2013 'Night Owl Cabin' noise issue from the old dance club location persists in the post-refit Sunshine layout.",
+    "Specific cabin numbers for Deck 5 aft cabins nearest Ocean Plaza/RedFrog Pub/Limelight Lounge (only the general deck/section was confirmed, not exact room ranges)."
   ],
   "ship": "Carnival Sunshine",
   "shipSlug": "carnival-sunshine",
   "line": "Carnival Cruise Line",
   "totalCabins": 1439,
   "cabinsTouchedByAZone": 1439,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.032637
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 15,
+    "maxAllowed": 25
+  },
+  "cost": 1.7684069999999998
 }

@@ -1,59 +1,29 @@
 {
-  "class": "Spirit class",
+  "class": "Spirit-class",
   "sisterShips": [
-    "Carnival Spirit",
     "Carnival Pride",
     "Carnival Legend",
-    "Carnival Miracle"
+    "Carnival Miracle",
+    "Carnival Luminosa"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
         4,
-        5,
-        6
+        5
       ],
       "sections": [
         "forward",
         "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 1; they obstruct downward and outboard views from oceanview and balcony cabins on Decks 4, 5, and 6, with Deck 4 typically most affected.",
-      "effect": "You'll see the lifeboat equipment when looking down or out, though horizon views remain clear if you look straight out or up; balconies feel less open.",
-      "mattersTo": "Matters greatly to first-time cruisers or those who want unobstructed water views; experienced cruisers often don't mind since the horizon is still visible and these cabins usually cost less.",
+      "what": "Lifeboats, water-shuttle boats and davits are mounted on Deck 4 (Main), and their tops/davit arms sit directly beneath the balconies and picture windows of Deck 5 (Upper) cabins in categories 7A (cove balcony) and 9A (premium balcony), while Deck 4's own 4K interior cabins look out at the same boats through fixed glass with no opening French doors.",
+      "effect": "Sitting on a Deck 5 obstructed balcony, the boat blocks the view straight down; standing, the horizon is still visible looking straight ahead. Deck 4's 4K cabins lose the ability to open their doors and keep the boat filling part of the window.",
+      "mattersTo": "Photographers or anyone wanting an unbroken sea view down to the waterline should avoid these; guests who mainly want fresh air/light at a lower price are fine here.",
       "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        7
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "Lido Deck pool area, buffet, and outdoor activities are directly above on Deck 9.",
-      "effect": "Expect noise from deck chairs scraping, music, announcements, and foot traffic from early morning through late evening; occasional water dripping from pool deck.",
-      "mattersTo": "Light sleepers and anyone planning to nap or turn in early should avoid; doesn't bother those who are out enjoying the ship during the day.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        5,
-        6
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Main theater (Pharaoh's Palace) is located on Decks 6-7 forward.",
-      "effect": "Late-night shows can generate noise and vibration from sound systems and audience activity until around 11 PM; hallway traffic before and after performances.",
-      "mattersTo": "Affects early-to-bed guests in cabins on Deck 5 forward (below the theater) and Deck 6 forward (same level); won't disturb those out late or heavy sleepers.",
-      "severity": "moderate",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "help.goccl.com Spirit-class obstructed-view staterooms page: boats obstruct the balcony view looking down but not looking straight ahead; cruisemapper.com and shinecruise.com confirm Deck 4 4K cabins lost French doors and have fixed obstructed windows."
     },
     {
       "factor": "below",
@@ -61,18 +31,127 @@
         8
       ],
       "sections": [
+        "aft",
         "forward"
       ],
-      "what": "Main theater (Pharaoh's Palace) seating is two decks below on Deck 6.",
-      "effect": "Generally quiet — theaters below don't transmit much noise upward through modern insulation.",
-      "mattersTo": "Not a concern for most guests; structural isolation makes this a non-issue.",
-      "severity": "minor",
-      "confidence": "medium"
+      "what": "Deck 8 (Panorama) cabins sit directly under Deck 9's Lido/Serenity pool deck; aft Deck 8 cabins are under the Serenity adults-only pool area and forward Deck 8 cabins between the two stairways are under the main Dome/Sun pool area.",
+      "effect": "Early-morning deck-chair dragging and late-night Serenity-area entertainment can be heard through the ceiling in these specific pockets of Deck 8.",
+      "mattersTo": "Light sleepers and nap-takers should avoid these pockets; nightlife-seekers who want to be close to the pool scene may not mind.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Carnival Spirit Deck 8 page: cabins below public areas 'especially true of aft cabins underneath the Serenity Pool area...and the cabins between the two staircases forward which are under the main pool area,' matched against cruisemapper.com's Deck 9 layout confirming Serenity aft and Sun/Dome pools forward-midship."
     },
     {
-      "factor": "elevator",
+      "factor": "above",
       "decks": [
-        1,
+        1
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 1 (Riviera) sits directly below Deck 2, where the Louis XIV Casino is located.",
+      "effect": "Cabins on Deck 1 under the casino can pick up crowd noise and slot-machine/gaming sound from above.",
+      "mattersTo": "Guests wanting a quiet lowest-deck interior should check exact cabin position relative to the casino footprint.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "shinecruise.com: 'Cabins on Deck 1 that are directly below Louis XIV Casino on Deck 2 can hear noise from gaming activities.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Some Deck 4 (Main) cabins sit directly above the Deco Foyer Lounge and Shanghai Piano Bar on Deck 3.",
+      "effect": "Music and crowd noise from the lounge/piano bar can carry up into these Deck 4 cabins, especially in the evenings.",
+      "mattersTo": "Early sleepers should avoid this pocket; guests who like being near nightlife venues may prefer it.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "shinecruise.com: 'Cabins on Deck 4 that are directly above the Deco Foyer Lounge and Shanghai Piano Bar on Deck 3 may hear noise from music and crowds.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Deck 5 cabins sit directly above or below the ship's main theater.",
+      "effect": "Rehearsals and stage productions can be heard as low rumble/music in these forward cabins.",
+      "mattersTo": "Anyone sensitive to bass/show noise during afternoon rehearsals should avoid forward Deck 5; theater-goers who want to be close to venue won't mind.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Carnival Spirit Deck 5 page: 'Forward cabins on this deck are above or below the main theater and may have noise from stage production shows or practice shows.'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 6 (Empress) is sandwiched between two other cabin-only decks, with no public venue directly above or below it.",
+      "effect": "This deck experiences less noise bleed from public-area activity than decks adjacent to venues.",
+      "mattersTo": "Quiet-seekers should favor Deck 6 over decks next to entertainment/dining venues.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Carnival Spirit Deck 6 page: 'The cabins on this deck are above and below decks with only cabins on them...they tend to have less noise issues from public areas.'"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        1
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The forward-most cabins on both sides of Deck 1 sit in a high-traffic area next to service closets, consistent with proximity to crew-access/I-95-style corridor points that typically sit on the lowest guest deck.",
+      "effect": "Cart traffic and crew movement in and out of service closets can be heard or seen near these forward cabins.",
+      "mattersTo": "Guests wanting minimal hallway traffic should avoid the extreme forward end of Deck 1.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Carnival Spirit Deck 1 page: 'The forward 4 cabins on the port side and the 4 cabins on the starboard side are in a high traffic area and near service closets.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "On all Spirit-class ships, some top-category aft-balcony suites have a crew-access stairway built directly outside/adjacent to the balcony, which is not always disclosed clearly on deck plans or in marketing imagery.",
+      "effect": "Guests can find crew members using a stairwell just outside what was marketed as a private, secluded balcony, and Carnival's own materials were flagged for depicting these balconies as more private than they are.",
+      "mattersTo": "Suite buyers paying a premium for balcony privacy/seclusion should verify this specifically for their aft suite category before booking; those not fussed about occasional crew passage won't care.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "nbcnews.com investigative piece: 'crew-access stairways like this can be found outside similar suites on all of Carnival's Spirit-class vessels: Carnival Spirit, Carnival Pride, Carnival Legend and Carnival Miracle.'"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "A specific run of Deck 5 balconies (cabins 5107–5131 starboard, 5108–5130 port) are enlarged to about 60 square feet, extending outward so the outer part of the balcony is visible from the cabins on the deck above.",
+      "effect": "These cabins get extra balcony footage compared to the deck's other balconies, at the cost of being overlooked from above when using the outer portion of the balcony.",
+      "mattersTo": "Guests who want extra balcony space may value this; those prioritizing overhead privacy should ask for a cabin outside this specific range.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Carnival Spirit Deck 5 page: 'The balconies of cabins 5107 to 5131...and 5108 to 5130...are 60 square feet and the outer part of the balcony is open to view by the cabins above.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
         4,
         5,
         6,
@@ -81,93 +160,97 @@
       ],
       "sections": [
         "forward",
-        "mid",
         "aft"
       ],
-      "what": "Elevator banks are positioned forward, midship, and aft on Spirit class, with midship banks serving as the main traffic hubs near the atrium.",
-      "effect": "Cabins directly adjacent to elevator lobbies experience door chimes, conversation, and foot traffic at all hours; trade-off is convenient access to stairs and elevators.",
-      "mattersTo": "Matters to light sleepers who should avoid cabins immediately next to elevator/stair alcoves; doesn't bother guests who prioritize convenience and aren't noise-sensitive.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Forward cabins on Carnival Spirit are reported to carry more perceptible ship movement, while aft cabins get a good view but can feel more isolated and pick up slight vibration.",
+      "effect": "Guests prone to seasickness may notice more motion at the forward end; aft guests may feel a faint hum/vibration underfoot at speed.",
+      "mattersTo": "Midship cabins are the safer bet for motion-sensitive guests; forward/aft picks trade some comfort for view or show/venue proximity.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisesnooze.com Carnival Spirit review: 'Forward cabins...come with more movement...Aft cabins deliver great scenery but can feel more isolated and sometimes vibrate slightly.'"
     },
     {
-      "factor": "engine",
+      "factor": "other",
       "decks": [
-        1,
-        4
+        8
       ],
       "sections": [
         "aft"
       ],
-      "what": "Main engine room is located low and aft; propulsion vibration and low-frequency hum are most noticeable in the aftmost cabins on the lowest guest decks.",
-      "effect": "A subtle vibration and mechanical hum, especially noticeable when the ship is at speed or maneuvering; some find it soothing (like white noise), others find it intrusive.",
-      "mattersTo": "Vibration-sensitive guests and light sleepers should avoid; doesn't bother those who sleep through background noise or actually like the engine hum.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Aft-facing balconies on the Panorama deck are reported to run warmer than side-facing balconies in cold-weather itineraries such as Alaska.",
+      "effect": "Guests booking aft balconies for cold-climate cruises may get a slightly more comfortable outdoor space than side balconies of the same deck.",
+      "mattersTo": "Alaska/cold-itinerary cruisers who want to actually use their balcony may prefer aft over side-facing on this deck.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Carnival Spirit Deck 8 page: 'Balconies that face aft of ship tend to be warmer than other balconies during cold weather cruising.'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "5142–5191, 5224–5239, 5245 (category 7A); 5241, 5243 (category 9A)",
+      "claim": "Deck 5 obstructed-view balcony cabins where lifeboat/water-shuttle boat and supports block the view when seated on the balcony.",
+      "source": "help.goccl.com Spirit-class staterooms page; shinecruise.com Carnival Spirit cabins-to-avoid list",
+      "confidence": "medium"
     },
     {
-      "factor": "engine",
-      "decks": [
-        1,
-        4,
-        5
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Bow thrusters operate from the lowest forward section during docking and maneuvering in port.",
-      "effect": "Loud mechanical grinding and vibration during thruster use, typically early morning arrival and evening departure; lasts 10-30 minutes per use.",
-      "mattersTo": "Highly disruptive to anyone sleeping in during port arrival; won't matter if you're an early riser or already up on deck.",
-      "severity": "significant",
-      "confidence": "high"
+      "cabins": "4105–4155, 4188–4201 (category 4K, obstructed); 4202, 4203, 4205, 4207 (category 4K but full picture window, no obstruction, ADA)",
+      "claim": "Deck 4 interior cabins with floor-to-ceiling windows obstructed by lifeboats and no longer fitted with French doors; four specific ADA cabins retain a clear picture window instead.",
+      "source": "shinecruise.com; cruisedeckplans.com Carnival Spirit main deck page",
+      "confidence": "medium"
     },
     {
-      "factor": "engine",
-      "decks": [
-        1,
-        4,
-        5,
-        6
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Anchor chain locker is located in the bow; chain deployment and retrieval create loud rumbling every port arrival morning.",
-      "effect": "Very loud metallic thunder early in the morning (often 6-7 AM) as the anchor drops or is raised; brief but unmistakable wake-up call.",
-      "mattersTo": "Anyone who wants to sleep in on port days should absolutely avoid; early risers won't care since they're already awake.",
-      "severity": "significant",
-      "confidence": "high"
+      "cabins": "1238, 1240",
+      "claim": "Deck 1 aft cabins near the dance club may have late-night noise issues.",
+      "source": "cruisedeckplans.com Carnival Spirit Deck 1 page",
+      "confidence": "low"
     },
     {
-      "factor": "i95",
-      "decks": [
-        1
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Main crew corridor (I-95) runs the length of Deck 1 with multiple access points throughout; crew traffic is heaviest during shift changes and early morning services.",
-      "effect": "Metal doors clanging, crew conversation, and foot traffic at all hours but especially 5-7 AM and during evening turndown; some cabins have crew doors very close.",
-      "mattersTo": "Light sleepers should avoid Deck 1 cabins near crew access points; heavy sleepers and those out of the cabin most of the day won't notice.",
-      "severity": "moderate",
-      "confidence": "high"
+      "cabins": "1111, 1114",
+      "claim": "Deck 1 cabins near a stairwell can be noisy from stair traffic.",
+      "source": "shinecruise.com Carnival Spirit cabins-to-avoid",
+      "confidence": "low"
+    },
+    {
+      "cabins": "4202, 4207",
+      "claim": "Deck 4 cabins near a stairwell can be noisy from stair traffic (these are also the ADA picture-window cabins noted above).",
+      "source": "shinecruise.com Carnival Spirit cabins-to-avoid",
+      "confidence": "low"
+    },
+    {
+      "cabins": "5105/5107, 5106/5108 (Deck 5); 6108/6112, 6109/6115 (Deck 6); 7106/7108, 7105/7107 (Deck 7)",
+      "claim": "Named connecting-door cabin pairs said to have thinner walls and more sound transfer between rooms.",
+      "source": "shinecruise.com Carnival Spirit cabins-to-avoid",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8211, 8215, 8217",
+      "claim": "Guest forum question (unanswered in available search results) about whether these midship Deck 8 cabins are noisy because part of the buffet/food-prep area on Lido deck sits above them.",
+      "source": "boards.cruisecritic.com thread 'Carnival Spirit 8211,8215, 8217 noisy?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "5186, 5188",
+      "claim": "Guest inquiry about how obstructed the Deck 5 obstructed-balcony cabins actually feel in practice; no first-hand answer captured.",
+      "source": "boards.cruisecritic.com thread 'Obstructed view Balcony on Spirit'",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether Spirit class has a hump (cantilevered balconies) and if so, which decks and sections — I cannot confidently verify this architectural feature for this specific class",
-    "Exact location of galley operations and which cabin sections are most affected by galley noise, exhaust, or early-morning prep activity",
-    "Whether there is a nightclub or late-night venue and which deck/section would be affected by music and vibration",
-    "Specific cabin numbers that are directly adjacent to elevator alcoves on each deck",
-    "Whether connecting cabins are concentrated in particular sections or distributed throughout",
-    "Promenade deck configuration (if present) and whether any cabins have foot traffic outside their windows"
+    "Exact forward/midship/aft elevator and stairway bank locations on Carnival Spirit and whether Carnival's fleet-wide 'aft elevator bank above nightclub' / 'forward elevator bank above atrium-casino' pattern (reported generically for Carnival ships) specifically applies to Spirit's deck layout.",
+    "Whether engine/Azipod propulsion vibration is noticeable in aft cabins on Decks 4–8; a Cruise Critic thread asked this directly but no first-hand answer was found in this search session.",
+    "Bow thruster noise for forward-most cabins on Deck 1, and anchor-drop noise on port mornings — plausible by general Carnival cabin-noise commentary but not confirmed specifically for Carnival Spirit in this session.",
+    "Whether Deck 8 (the top guest deck) balconies at the forward/aft ends sit atop a hull taper that hides the straight-down view — the only source found ('indented balconies... overhang from the deck above') is templated text that also appears verbatim on unrelated ship classes (MSC Splendida, Ovation of the Seas, Quantum of the Seas, etc.) and was discarded per the boilerplate rule.",
+    "Precise current wording of Carnival's official 'flagged as obstructed' labeling versus 'sold unlabeled' status for each obstructed-view cabin range (7A, 9A, 4K) at time of booking — categories are documented but the per-range labeling/confidence distinction Carnival applies was not independently verified beyond the help.goccl.com staterooms page."
   ],
   "ship": "Carnival Spirit",
   "shipSlug": "carnival-spirit",
   "line": "Carnival Cruise Line",
   "totalCabins": 1068,
   "cabinsTouchedByAZone": 1068,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.031587000000000004
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 15,
+    "maxAllowed": 25
+  },
+  "cost": 2.169639
 }

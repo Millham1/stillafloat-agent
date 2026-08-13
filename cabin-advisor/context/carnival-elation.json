@@ -1,5 +1,5 @@
 {
-  "class": "Fantasy",
+  "class": "Carnival Fantasy-class (Carnival Elation)",
   "sisterShips": [
     "Carnival Fantasy",
     "Carnival Ecstasy",
@@ -7,41 +7,86 @@
     "Carnival Fascination",
     "Carnival Imagination",
     "Carnival Inspiration",
-    "Carnival Elation",
     "Carnival Paradise"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        4,
-        5,
-        6
+        11
       ],
       "sections": [
-        "forward",
-        "mid",
-        "aft"
+        "forward"
       ],
-      "what": "Lifeboats are mounted at Deck 1/Main Deck level; they obstruct the view downward from Decks 4, 5, and 6, with Deck 4 experiencing the most obstruction and Deck 6 the least, while horizon views remain clear.",
-      "effect": "You lose the view straight down to the water but keep the ocean horizon; some guests find the boats themselves an eyesore in photos.",
-      "mattersTo": "Matters to first-time cruisers who envision unobstructed water views and photographers; experienced cruisers and those focused on horizon views typically don't mind.",
+      "what": "The entire Carnival Fantasy class was the last cruise ship design built with lifeboats on the upper deck only, and on Elation the boats sit on the Verandah Deck (11) itself — Verandah Deck passenger cabins from V1 to V42 are all located forward, in categories 4I-Inside, JS-Junior Suite, and OB-Junior Suite Obstructed View, alongside 12 lifeboats, 6 tender/rescue boats, and 36 liferafts.",
+      "effect": "The obstruction is lateral (same-deck, beside the balcony) rather than a look-down-from-above situation: balconies on this deck are small, lack privacy and look down on the deck below, but the balconies obstructed by lifeboats actually offer more privacy. Because Fantasy-class boats never hang over decks 4-9, none of the standard inventory decks in this profile sit below a lifeboat overhang.",
+      "mattersTo": "View purists booking Deck 11 OB suites (V21,V23,V25,V27,V30,V34,V38,V42) should expect a partial view block; guests wanting extra privacy from neighbors may actually prefer the obstructed units. Guests on decks 4,5,6,7,9 do not need to worry about lifeboat obstruction at all.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisemapper.com deck11 plan + cruisehive.com class history + cruisedeckplans.com Verandah deck tips"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        5,
+        6,
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Because the Fantasy-class ships (like the Queen Mary) were built with lifeboats atop the ship, clip-on balconies could only be added in hull areas where no lifeboats hung above, and this drove the 2017-era conversion that added 98 balconies to each ship; on Elation this landed specifically on decks 5 (Main), 6 (Upper), and 7 (Empress).",
+      "effect": "This is a direct interaction with the lifeboat zone: balcony placement on 5/6/7 was dictated by where the lifeboat deck (11) does NOT overhang, not purely by view desirability, so balcony distribution across the ship is uneven and retrofitted rather than original hull design.",
+      "mattersTo": "Guests who assume all balcony cabins were originally engineered into the hull should know these are bolted-on retrofits; doesn't change the actual view but explains why balcony stock is concentrated on 5-7 only.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "seatravel.wordpress.com (clip-on balcony mechanics) + cruisemapper.com cabins page (2017 refit details)"
     },
     {
       "factor": "above",
       "decks": [
-        9
+        7
       ],
       "sections": [
         "aft"
       ],
-      "what": "Deck 9 aft cabins sit directly below the Lido Deck pool area and buffet on Deck 10.",
-      "effect": "Expect noise from deck chairs scraping, foot traffic, and early-morning buffet setup starting around 6:00-6:30 AM.",
-      "mattersTo": "Light sleepers and late risers should avoid; early risers and those out of the cabin most of the day won't notice.",
-      "severity": "significant",
-      "confidence": "high"
+      "what": "Duke's Piano Bar is directly above rooms E68 through E78 on the deck above (Atlantic Deck 8).",
+      "effect": "Guests in these cabins could be dealing with late-night noise from this popular live music spot.",
+      "mattersTo": "Light sleepers and early-to-bed cruisers should avoid E68-E78; nightlife fans may not mind.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruise.blog Elation rooms-to-avoid guide"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Cabins between the aft two stair cases are underneath the galley and might experience noise issues from that area during prep and cleanup times.",
+      "effect": "Clanging pots/prep noise at odd hours (early morning, late night cleanup) rather than constant background noise.",
+      "mattersTo": "Anyone in aft-stairwell-adjacent Empress deck cabins wanting quiet mornings should ask to be reassigned.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Empress (deck 7) plan tips"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Deck 7 has multiple crew-access points bleeding into guest corridors: forward cabins may hear noise coming from the forward crew area, especially when the ship is docking, there is a crew area in the space before the aft elevator, and a crew area next to cabin E56.",
+      "effect": "Cart traffic, crew conversation, and docking-related bustle carry into nearby cabins at specific times (arrival mornings, meal turnover) rather than all day.",
+      "mattersTo": "Guests very sensitive to daytime service noise should avoid the forward-most and aft-elevator-adjacent E-numbered cabins; most cruisers won't notice.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Empress (deck 7) plan tips"
     },
     {
       "factor": "above",
@@ -51,29 +96,63 @@
       "sections": [
         "forward"
       ],
-      "what": "Deck 7 forward cabins sit two decks below the Lido Deck pool and buffet area.",
-      "effect": "Some noise transmission from pool deck activity, but dampened by the intervening deck; less severe than Deck 9 aft but still noticeable during peak hours.",
-      "mattersTo": "Light sleepers may notice during busy pool times; most guests find it tolerable given the distance.",
-      "severity": "minor",
-      "confidence": "medium"
+      "what": "Forward cabins on this deck are above or below the main theater and may have noise from stage production shows or practice shows, and the theater complex is the two-tiered show lounge with a capacity of 1300 that spans this deck upward.",
+      "effect": "Rehearsal and evening-show sound bleed for forward E-numbered cabins, on show nights specifically.",
+      "mattersTo": "Theater-noise-sensitive guests should pick midship or aft on deck 7 instead of forward.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Empress deck plan tips + cruisedeckplans Promenade deck description"
     },
     {
-      "factor": "below",
+      "factor": "other",
       "decks": [
-        5,
-        6
+        9
       ],
       "sections": [
-        "forward"
+        "aft"
       ],
-      "what": "Deck 5 and 6 forward cabins sit above the Universe Lounge main showroom, which spans Decks 3-4 forward.",
-      "effect": "Show noise typically ends by 10:30-11:00 PM; bass and applause can transmit upward, especially on Deck 5.",
-      "mattersTo": "Early-to-bed guests and families with young children should consider midship or aft; night owls and show-goers won't mind.",
+      "what": "30 new staterooms and the Alchemy Bar were added aft on Deck 9 (Promenade) in the space formerly occupied by the Cole Porter Lounge during the 2019/2020 drydock — matching this profile's deck-9 count of 30 aft-only cabins.",
+      "effect": "Guests in rooms close to the Alchemy Bar may find it difficult to sleep or relax due to the persistent noise levels, since the cabins and the bar share the same aft footprint rather than being separated by a full deck.",
+      "mattersTo": "Anyone booking the newer aft Promenade-deck cabins for a bargain should know they sit right beside (not just below) a working bar venue.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruisemapper.com deck-plan refurbishment history + shinecruise.com rooms-to-avoid guide"
     },
     {
-      "factor": "below",
+      "factor": "above",
+      "decks": [
+        7,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Carnival Elation Inside cabins can be found on decks 4, 5, 6, 7, 9, 11 and 14, and if you're worried about nighttime noise the rooms to avoid are those on Empress and Promenade decks (7 and 9), as they're directly above and/or below busy public spaces.",
+      "effect": "These two decks are structurally sandwiched between major entertainment/dining venues (theater, atrium, bars) on the decks immediately above and below them.",
+      "mattersTo": "Noise-sensitive guests should treat decks 7 and 9 as the ship's least quiet standard cabin decks overall, versus 4, 5, or 6.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Editor's Review (Carnival Elation ship page)"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Carnival Elation's best non-suite cabins are balcony staterooms in the midship section of Deck 5 (Main), as they're the least affected by noise and ship motion.",
+      "effect": "This is the quiet/stable benchmark location on the ship — the opposite end of the spectrum from decks 7/9 above and aft engine-adjacent cabins.",
+      "mattersTo": "Motion-sensitive or noise-sensitive guests should prioritize this pocket first.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisecritic.com Cabins & Suites editorial review"
+    },
+    {
+      "factor": "engine",
       "decks": [
         6,
         7
@@ -81,14 +160,78 @@
       "sections": [
         "aft"
       ],
-      "what": "Deck 6 and 7 aft cabins sit above the main dining rooms on Decks 4 and 5 aft.",
-      "effect": "Galley service noise and dining room activity during meal times; kitchen prep can start as early as 5:30-6:00 AM.",
-      "mattersTo": "Light sleepers and those sensitive to early-morning noise should avoid; most guests find it acceptable given dining hours are predictable.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Elation and sister Paradise are the two Fantasy-class ships fitted with two 14 MW Azipods, which reduce vibration versus the shaft-and-propeller propulsion on the other six sisters, but aft cabins still sit directly over the pods.",
+      "effect": "Real cruiser reports contradict the 'reduced vibration' marketing at the very-aft cabins: one warns 'Cabin U175 try to avoid this cabin, loud motor noise and vibration' (Deck 6 aft), another recounts booking aft cabin E255 and calling it 'the noisiest cabin ever' with azipod sound pounding, and a third reviewer flatly states 'Aft cabin balconies on Deck 6 are very loud'.",
+      "mattersTo": "Vibration/noise-sensitive guests should avoid the last few cabins aft on decks 6 and 7 even though this class markets Azipods as quieter; wake-view seekers who don't mind engine hum can still enjoy these.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "boards.cruisecritic.com cabin-warning threads (U175, E255) + cruiseline.com member review"
     },
     {
-      "factor": "elevator",
+      "factor": "engine",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins close to R248 and R241 are likely to feel and hear more engine vibrations while the ship is moving.",
+      "effect": "Lower-deck aft cabins are closest to the propulsion machinery, so vibration is most noticeable here even compared to higher aft decks.",
+      "mattersTo": "Sensitive sleepers should skip aft Riviera-deck (4) cabins in this numbered range.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Riviera (deck 4) plan tips"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Rear cabins are close to the propellers, resulting in more vibration and noise during speed changes, and the constant sound of the ship's wake is noticeable; depending on wind, some rear cabins might smell like exhaust from the funnel.",
+      "effect": "Beyond pure vibration, aft cabins can pick up funnel exhaust odor on certain wind headings, and feel more side-to-side sway in weather.",
+      "mattersTo": "Guests who want aft views but are sensitive to smell/motion should ask about wind patterns for their itinerary before booking.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "shinecruise.com Elation rooms-to-avoid guide"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on this deck tend to have more sea noise during rough seas, and forward cabins on a lower deck may hear the noisy anchor drop in tender ports like Half Moon Cay.",
+      "effect": "Two distinct forward-lower-deck noise sources: wave slap in rough weather, and anchor chain rattle every tender-port morning.",
+      "mattersTo": "Light sleepers on tender-heavy itineraries (Half Moon Cay calls) should avoid forward Riviera-deck (4) cabins; those who don't mind an early wake-up alarm can ignore this.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Riviera deck tips + cruise.blog rooms-to-avoid guide"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The ship's thrusters also create loud noise when docking, on top of front cabins experiencing more movement and noise from waves and wind.",
+      "effect": "Bow-thruster noise is a short, loud burst specifically during docking/undocking maneuvers, distinct from the constant wave noise.",
+      "mattersTo": "Guests in forward cabins on any of the lower decks should expect a noisy 15-30 minutes at each port arrival/departure.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "shinecruise.com Elation rooms-to-avoid guide"
+    },
+    {
+      "factor": "motion",
       "decks": [
         4,
         5,
@@ -97,63 +240,18 @@
         9
       ],
       "sections": [
-        "mid"
-      ],
-      "what": "Primary elevator banks are located midship, with stairwell access at forward, midship, and aft positions on each deck.",
-      "effect": "Cabins near midship elevators offer maximum convenience but experience hallway traffic and bell chimes; cabins farther forward or aft trade some walking for quiet.",
-      "mattersTo": "Mobility-limited guests and those prioritizing convenience should stay near elevators; light sleepers and those seeking quiet should avoid immediate elevator adjacency.",
-      "severity": "minor",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        4,
-        5
-      ],
-      "sections": [
+        "forward",
         "aft"
       ],
-      "what": "Engine room sits low and aft; Deck 4 and 5 aft cabins, particularly those farthest aft, experience low-frequency vibration when engines are running.",
-      "effect": "Subtle but constant vibration and hum, most noticeable at night in calm seas; some guests find it soothing, others find it prevents sleep.",
-      "mattersTo": "Vibration-sensitive sleepers should avoid; those who sleep through white noise or find engine hum comforting may prefer these cabins for their lower price.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Multiple independent first-person reviews describe Elation as unusually motion-prone for its size: one titled thread asks 'I usually book cruises for July because the waters are typically calm... is there really an issue?' after reading about stabilizer complaints, and a reviewer flatly reports 'we ROCK and ROLL. No stabilizers I was told'.",
+      "effect": "General guidance holds across the class: midship cabins are the safest bet for motion, forward cabins feel more movement and can be less stable, and aft cabins may come with vibration.",
+      "mattersTo": "Anyone prone to seasickness should prioritize midship on the lower-middle decks (5-6) over forward or aft, and should treat this specific ship as more motion-prone than average per repeated reviewer complaints.",
+      "severity": "significant",
+      "confidence": "medium",
+      "source": "cruiseline.com member reviews + boards.cruisecritic.com thread + cruisesnooze.com review (2026)"
     },
     {
-      "factor": "engine",
-      "decks": [
-        4,
-        5,
-        6
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Bow thrusters operate low and forward during maneuvering in port; Deck 4-6 forward cabins hear the thruster tunnel activity during arrival and departure.",
-      "effect": "Loud mechanical grinding noise for 10-20 minutes during docking and undocking, typically early morning arrival and evening departure.",
-      "mattersTo": "Light sleepers docking in port early morning will be awakened; heavy sleepers and those already awake for port days won't mind.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        4,
-        5,
-        6
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Anchor chain runs through the bow; Deck 4-6 forward cabins, especially those closest to the centerline, hear anchor deployment and retrieval.",
-      "effect": "Loud metallic rumbling for 5-10 minutes during anchor operations, typically 6:00-7:00 AM on tender port mornings.",
-      "mattersTo": "Anyone sleeping during tender port arrivals will be awakened; useless to avoid if you're already up for port.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "i95",
+      "factor": "elevator",
       "decks": [
         4,
         5,
@@ -161,27 +259,113 @@
         7
       ],
       "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Rooms near elevators include Deck 4 cabins R299, R141, and R154, Deck 5 cabins M299, M144, M145, M148 and M149, Deck 6 cabin U299, and Deck 7 cabins E124, E127 and E299, indicating two elevator/stair banks per deck — one amidships (numbers in the 120-160 range) and one aft (numbers near 290-299).",
+      "effect": "These cabins may see increased noise from foot traffic, elevator machinery, and passengers waiting for or exiting elevators, traded off against very short walks to the lobby/atrium or aft nightlife.",
+      "mattersTo": "Mobility-limited guests benefit from booking near either bank; light sleepers should request cabins a few doors away instead of directly adjacent.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "shinecruise.com Elation rooms-to-avoid guide"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Connecting cabins run through interior categories on Decks 4 through 7, in categories 6B, 6C, 6D, and 6E, plus balcony connecting pairs such as Deck 6 category 8B cabins (U214/U218 and U227/U231) and Deck 7 category 8C cabins (E226/E230 and E241/E245).",
+      "effect": "The connecting doors are not soundproof, so TV or loud conversations can be disturbing for the adjoining room, a known short-cruise (3-5 night, Jacksonville Bahamas run) party-crowd risk factor for this specific ship.",
+      "mattersTo": "Families traveling together benefit from connecting cabins; solo/couple guests booking standard cabins should ask whether their neighbor room is a connecting unit, especially on spring-break sailings.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com cabins editorial + shinecruise.com rooms-to-avoid guide"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6
+      ],
+      "sections": [
         "mid"
       ],
-      "what": "Main crew corridor (I-95) runs along the centerline with access points near midship elevator areas on all cabin decks.",
-      "effect": "Cabins immediately adjacent to crew access doors experience periodic crew traffic, particularly during service hours (early morning, meal times, evening turndown).",
-      "mattersTo": "Light sleepers near crew doors may notice hallway activity; most cabins are sufficiently distant that this is not a factor.",
+      "what": "Grand Suites (GS category) on Deck 6 (Upper), midship, have a bottom half of balcony railing that is a solid steel panel rather than glass.",
+      "effect": "This cove-style enclosure trades a clear sightline straight down for greater privacy and shade versus a standard glass-rail balcony.",
+      "mattersTo": "Suite guests who want to see the water from a seated position should know the view is partially screened; those wanting privacy from balconies below/beside will like it.",
       "severity": "minor",
+      "confidence": "high",
+      "source": "mykindofcruise.com Elation suite cabin details + seascanner.com deck-plan cabin table (GS = deck 6, midships)"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "V21, V23, V25, V27, V30, V34, V38, V42 (Deck 11, category OB)",
+      "claim": "Partially obstructed-view Junior Suites due to lifeboats/davits/rescue-boat stairs; one first-hand reviewer of V21 called it 'only partially obstructed... view from the balcony was still quite nice.'",
+      "source": "cruisedeckplans.com + cruisecritic.com member review of V21",
+      "confidence": "high"
+    },
+    {
+      "cabins": "U175",
+      "claim": "Named specifically by a Cruise Critic forum poster as having loud motor noise and vibration; avoid.",
+      "source": "boards.cruisecritic.com 'Elation Cabin Noise' thread",
       "confidence": "medium"
+    },
+    {
+      "cabins": "E255",
+      "claim": "Named by a returning cruiser as the noisiest cabin they've had in 16 cruises, attributed to azipod noise from the aft section.",
+      "source": "boards.cruisecritic.com 'Carnival Elation cabin warning' thread",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "R59, R74, R151, R164, R201, R210 (Deck 4); R67, R68, R158, R159, R204, R209 (Deck 5); U122, U123, U172, U183 (Deck 6); E134, E137, E184, E197 (Deck 7)",
+      "claim": "Listed by one SEO listicle as near-stairwell cabins with associated noise disturbances.",
+      "source": "shinecruise.com Elation rooms-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "R50, R52, R54, R56, R58, R60, R62, R64, R66 (Deck 4, Category 1A interior upper/lower)",
+      "claim": "Smaller-than-standard interior cabins with non-combinable upper/lower bunks rather than a real double bed.",
+      "source": "cruise.blog Elation rooms-to-avoid guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "U214/U218, U227/U231 (Deck 6, cat 8B); E226/E230, E241/E245 (Deck 7, cat 8C)",
+      "claim": "Named connecting balcony cabin pairs where noise can pass through the connecting door despite balcony sound insulation.",
+      "source": "shinecruise.com Elation rooms-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "U114/U116, U115/U117 (Deck 6)",
+      "claim": "Oceanview cabins connecting to Grand Suites, useful for suite travelers wanting extra connected space.",
+      "source": "cruisebooking.com Elation rooms-to-avoid guide",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether Fantasy-class ships have a hump (balconies cantilevered past the hull line); the deck plans do not clearly indicate this and I cannot confirm with certainty",
-    "Precise location and extent of any promenade deck and which cabins sit directly above or below it",
-    "Specific cabin numbers immediately adjacent to crew access doors",
-    "Whether any cabins on Deck 7 sit above or below the nightclub/disco and its location",
-    "Exact positioning of galley vents and their impact on specific cabin sections"
+    "Whether Carnival Elation currently has functioning stabilizers is disputed by a single forum poster claim ('No stabilizers I was told') with no corroborating technical source found; needs verification against Carnival's technical fact sheet.",
+    "No evidence found of a true 'hump' (hull-line-cantilevered balcony) on this class; the 2017 balcony retrofit instead used bolted-on 'clip-on' units confined to zones without overhead lifeboats, which is a related but distinct mechanism.",
+    "No ship-specific evidence found of hull taper affecting the highest decks (11/14, outside this profile's scope) hiding the view straight down while keeping the horizon clear.",
+    "Exact aft cabin-number boundary where azipod vibration becomes noticeable (vs. tolerable) on decks 6 and 7 was not pinned down beyond named examples (U175, E255, U228).",
+    "Whether the deck-9 (Promenade) aft cabin block added in 2019/2020 has documented noise complaints beyond the general Alchemy Bar proximity claim from a single listicle.",
+    "Precise galley/theater deck adjacency for decks 4, 5, 6, and 9 (only deck 7's above/below public-space adjacencies were documented in ship-specific sources)."
   ],
   "ship": "Carnival Elation",
   "shipSlug": "carnival-elation",
   "line": "Carnival Cruise Line",
   "totalCabins": 1044,
   "cabinsTouchedByAZone": 1044,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.033267
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 18,
+    "maxAllowed": 25
+  },
+  "cost": 2.2236330000000004
 }

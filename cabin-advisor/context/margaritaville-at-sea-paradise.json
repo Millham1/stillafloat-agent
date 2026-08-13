@@ -1,101 +1,186 @@
 {
-  "class": "Paradise class (Margaritaville at Sea)",
-  "sisterShips": [],
+  "class": "Classica-class (Costa Classica / Costa Romantica hull)",
+  "sisterShips": [
+    "Costa neoRomantica (ex-Costa Romantica; sold to Celestyal in 2020, renamed Antares Experience, scrapped at Gadani, Pakistan in December 2021 — no longer sailing)"
+  ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        4,
-        5,
-        6
+        10
       ],
       "sections": [
         "forward",
-        "mid",
         "aft"
       ],
-      "what": "Lifeboats mounted at Deck 4 obstruct ocean view cabins on Decks 4, 5, and 6, with Deck 4 seeing boats directly at eye level and Decks 5-6 looking down onto them.",
-      "effect": "The horizon remains visible but the downward view shows orange lifeboat roofs instead of open water; balcony views feel more enclosed.",
-      "mattersTo": "Matters greatly to photographers and those who want unobstructed water views; won't bother guests who focus on the horizon or prefer interior cabins anyway.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "Deck 10 (Exuma/Portofino Deck) houses cruise cabins from 1001 to 1010, all midship-located Grand Terrace Suites, and also carries the ship's service boats (6 tenders, 8 lifeboats), and a first-hand visitor account reports the buffet dining area's windows had an obstructed view, with lifeboats blocking what would otherwise be a water view.",
+      "effect": "Diners in the buffet (fore/aft ends of Deck 10) look out at boat hulls instead of open water; the Grand Terrace Suites, which sit midship on the same deck, are not described as obstructed in any first-hand cabin review found.",
+      "mattersTo": "Matters to anyone picking a buffet-adjacent window seat expecting an open sea view; does not appear to matter to Grand Terrace Suite bookers, whose balcony reviews describe open, unobstructed views.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com deck-10 plan page (boat stowage + suite location) and outandback.live first-hand blog (buffet window obstruction)"
     },
     {
       "factor": "above",
-      "decks": [
-        7
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Deck 7 sits directly below the primary open pool deck and buffet venue on Deck 8.",
-      "effect": "Daytime foot traffic, pool activity, deck furniture moving, and buffet service create overhead noise from early morning through evening; heaviest midday and at mealtimes.",
-      "mattersTo": "Light sleepers and anyone in the cabin during the day should avoid this; won't matter to guests who are out exploring and only sleep at night.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
       "decks": [
         10
       ],
       "sections": [
         "mid"
       ],
-      "what": "The Grand Terrace Suites on Deck 10 sit two decks above the main pool deck activity on Deck 8.",
-      "effect": "Distance provides sound insulation but suites are still above the social hub; excellent access to pool amenities but cannot escape daytime activity entirely.",
-      "mattersTo": "Minor consideration for suite guests who value quiet; the elevation and likely suite insulation minimize impact.",
+      "what": "The License to Chill pool deck sits one deck above the Grand Terrace Suites, and even in the ship's Grand Terrace suite on Deck 10, reviewers still heard quite a bit of noise from the pool deck above, with crew pulling out deck chairs every morning.",
+      "effect": "The top cabin deck's most expensive rooms get an early-morning wake-up from chair-dragging on the pool deck directly overhead, despite being the 'premium' product on the ship.",
+      "mattersTo": "Matters to suite guests who want to sleep in; less relevant to guests on lower decks 4-7 who are insulated from this by several public decks in between.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Margaritaville at Sea Paradise Cabins & Suites editor review (first-hand stay in a Grand Terrace Suite)"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        5,
+        6,
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "On this hull, Deck 5 is the second lowest deck with passenger cabins, with the Atrium, reception, tour office and a small chapel situated amidships; the five-deck-high Atrium begins on Deck 5 and reaches Deck 9, which is why the per-deck data shows almost no midship cabins on Decks 5-6 and only a partial midship pocket reappearing on Deck 7 as the atrium void narrows higher up.",
+      "effect": "Midship cabins on Decks 5 and 6 are squeezed to a handful (or zero) because the multi-deck atrium/lobby occupies that footprint; guests in the few midship cabins that do exist there are close to lobby foot traffic, the reception desk, and stairs/lifts serving the atrium.",
+      "mattersTo": "Matters to guests sensitive to lobby noise and elevator/stair traffic; a non-issue for forward or aft cabins on the same decks, which are structurally separated from the atrium well.",
       "severity": "minor",
-      "confidence": "medium"
+      "confidence": "medium",
+      "source": "cruisewonderland.tiyogami.com Costa Classica ship tour (same hull, pre-rename, deck-by-deck architectural description)"
     },
     {
       "factor": "engine",
       "decks": [
-        4,
-        5
+        4
       ],
       "sections": [
         "aft"
       ],
-      "what": "Deck 4 and 5 aft cabins sit low and near the stern, closest to propulsion machinery.",
-      "effect": "Low-frequency vibration and engine hum most noticeable during maneuvering and at cruising speed; sensation rather than loud noise.",
-      "mattersTo": "Vibration-sensitive sleepers should avoid; many guests don't notice or find the hum soothing background noise.",
+      "what": "A ship-specific cabin guide warns that lower aft cabins on Deck 4 have porthole-only windows and proximity to the engine room on a 35-year-old ship, meaning vibration is a real issue, consistent with the class's 4 × diesel engines on 2 shafts propulsion arrangement typically housed low and aft.",
+      "effect": "Guests in aft Deck 4 oceanview/interior cabins may feel low-frequency engine hum/vibration, especially at higher cruising speeds or rough seas.",
+      "mattersTo": "Matters to light sleepers and vibration-sensitive travelers; not a concern for forward or midship cabins on Deck 4, or for any cabins on Decks 5-7 and 10.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "planetpatrick.net 'Best Cabins on Margaritaville Paradise' cabin guide"
     },
     {
-      "factor": "engine",
+      "factor": "other",
+      "decks": [
+        5,
+        6,
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "A ship-specific cabin guide separately flags cabins adjacent to the central atrium, noting the atrium on a 1991-built ship does not have the acoustic separation of modern designs, so corridor and common-area noise carries at night, and a Cruise Critic editor's stay in a Deck 5 oceanview cabin found a ton of hallway noise... even with the door closed, conversations from across-the-hall neighbors carried through.",
+      "effect": "Thin cabin walls/doors on this 1991-built hull let hallway and neighbor conversation through even with doors shut, independent of proximity to any single noisy venue.",
+      "mattersTo": "Matters to anyone wanting a quiet room regardless of deck; this appears to be a ship-wide construction-era trait rather than a location-specific one.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com Paradise Cabins editor review + planetpatrick.net cabin guide"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "A cabin guide describes the midship Deck 10 Grand Terrace Suite position as the most stable point on the ship at sea, while Cruise Critic's own editors advise that if you're prone to seasickness, you'll want to pick a room in the middle of the ship on a lower deck.",
+      "effect": "Motion is felt least in midship cabins on the lower-numbered guest decks (4-6) and in the midship Deck 10 suites; forward and aft cabins, and cabins on higher decks generally, will roll and pitch more in swell.",
+      "mattersTo": "Matters most to first-time cruisers or anyone prone to seasickness choosing between forward/aft oceanview cabins versus midship options.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisecritic.com Paradise editor review + planetpatrick.net cabin guide"
+    },
+    {
+      "factor": "other",
       "decks": [
         4,
         5,
-        6
+        6,
+        7,
+        10
+      ],
+      "sections": [],
+      "what": "CruiseMapper's cabin inventory notes the ship has no connecting (family) or Spa cabins, and separately that there are 6 wheelchair-accessible cabins aboard.",
+      "effect": "Families needing two adjoining rooms cannot book connecting cabins on this ship at all, unlike many newer ships; accessible cabins are limited in number fleet-wide.",
+      "mattersTo": "Matters to families/groups wanting adjoining rooms and to wheelchair users needing to confirm specific accessible cabin locations before booking.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemapper.com Margaritaville At Sea Paradise cabins and suites page"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10
       ],
       "sections": [
-        "forward"
+        "mid"
       ],
-      "what": "Forward cabins on lower decks experience bow thruster use during docking and anchor chain deployment at port mornings.",
-      "effect": "Loud mechanical grinding during docking maneuvers and a heavy chain rumble during early morning anchoring; brief but can wake light sleepers.",
-      "mattersTo": "Matters to anyone who values sleeping in at port days; won't affect those up early for excursions or heavy sleepers.",
-      "severity": "moderate",
+      "what": "Multiple sources confirm Paradise doesn't have traditional balcony cabins at all; it jumps straight from an Oceanview cabin to a Junior Suite, and only the Grand Terrace Suite tier has an outdoor balcony — the mid-range balcony category found on most other cruise lines does not exist on this ship.",
+      "effect": "There is no 'standard balcony' price point to book; guests wanting any private outdoor space must pay the full suite premium for one of the 10 Grand Terrace Suites.",
+      "mattersTo": "Matters to shoppers used to a balcony/oceanview/interior three-tier structure; budget-balcony seekers will not find that option here at any price.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "famvia.com room-options guide + planetpatrick.net cabin guide"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "Deck 4, aft, oceanview/interior (exact numbers not given)",
+      "claim": "Lower aft Deck 4 cabins are called out by name as having engine-room-proximity vibration issues on this 35-year-old ship.",
+      "source": "planetpatrick.net 'Best Cabins on Margaritaville Paradise, and Why'",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "1001-1010 (Grand Terrace Suites, Deck 10, midship)",
+      "claim": "Even in the top-tier suite, reviewers heard pool-deck noise (crew dragging deck chairs) from the deck directly above every morning.",
+      "source": "cruisecritic.com Margaritaville at Sea Paradise Cabins & Suites editor review",
       "confidence": "high"
+    },
+    {
+      "cabins": "Deck 5 oceanview (specific cabin number not given)",
+      "claim": "Thin walls/doors let hallway conversation and foot traffic noise through clearly, despite being far from the pool.",
+      "source": "cruisecritic.com Margaritaville at Sea Paradise Cabins & Suites editor review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Buffet-area window seats, Deck 10 (High Tide Market / Port of Indecision Buffet, not guest cabins)",
+      "claim": "Buffet windows on Deck 10 have an obstructed, lifeboat-blocked view rather than open water.",
+      "source": "outandback.live first-hand cruise blog",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Oceanview cabins generally (unspecified numbers, decks 4-7)",
+      "claim": "Cabin walls lack soft wall coverings, producing a noticeable cold echo/acoustic bounce inside the room.",
+      "source": "fraseratsea.com oceanview cabin room-tour review",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether this Paradise-class hull has a hump (cantilevered balconies) and if so, which decks and sections benefit from it",
-    "Exact location and noise impact of the main theater relative to cabin decks",
-    "Precise location of nightclub or late-night entertainment venues and which cabins sit below them",
-    "I95 crew corridor routing and which cabin sections experience crew service traffic",
-    "Exact elevator bank locations along the forward-mid-aft axis on each deck",
-    "Whether Margaritaville at Sea Islander shares this exact hull layout and cabin configuration as a sister ship",
-    "Galley location and which cabins are adjacent or directly above/below it"
+    "No source found describing a 'hump' (cantilevered balcony) feature on this hull; given the ship's 1991 vintage and that only 10 midship suites have any balcony at all, a hump is unlikely but not confirmed either way.",
+    "No source found describing hull taper effects at the top of the ship (Deck 10 suites are midship, where taper is least likely to matter, but this was not directly confirmed).",
+    "No source found on the specific location of the crew-only 'I-95'-style corridor or its service-access points relative to guest cabins on Decks 4-7.",
+    "No source found confirming bow thruster noise or anchor-chain noise for forward Deck 4 cabins specifically, despite Deck 4 forward being the most likely candidate structurally.",
+    "No source gives exact cabin numbers for the 6 wheelchair-accessible cabins or confirms which decks they are on.",
+    "Whether Deck 6 and Deck 7 midship cabins (30 on Deck 7 per the inventory) are close enough to the atrium void to experience the same noise reported on Deck 5 was not independently confirmed by a first-hand review."
   ],
   "ship": "Margaritaville at Sea Paradise",
   "shipSlug": "margaritaville-at-sea-paradise",
   "line": "Margaritaville at Sea",
   "totalCabins": 658,
   "cabinsTouchedByAZone": 658,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.019818
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 18,
+    "maxAllowed": 25
+  },
+  "cost": 3.3537780000000006
 }

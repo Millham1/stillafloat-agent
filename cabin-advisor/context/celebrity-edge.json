@@ -1,90 +1,91 @@
 {
-  "class": "Edge",
+  "class": "Edge-class (Celebrity Cruises)",
   "sisterShips": [
-    "Celebrity Apex",
-    "Celebrity Beyond",
-    "Celebrity Ascent"
+    "Celebrity Edge (2018)",
+    "Celebrity Apex (2020/2021)",
+    "Celebrity Beyond (2022)",
+    "Celebrity Ascent (2023)",
+    "Celebrity Xcel (2025)",
+    "Celebrity Xcite / \"Edge 6\" (unnamed, expected 2028)"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        6,
-        7,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 6 balcony cabins sit directly over the lifeboat/tender line, and forward Deck 6 cabins additionally face a large blue metal housing right in front of the balcony.",
+      "effect": "Looking straight down from the balcony you see boat tops or the metal housing instead of water; the horizon view outward is still open.",
+      "mattersTo": "Matters to anyone who wants to watch the water below the rail (e.g. spotting marine life, port approach); doesn't matter if you mainly care about the horizon/sunset view.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Deck 6 page: \"All balcony cabins on this deck will either look down on deck 5 below or lifeboats,\" and \"Forward cabins will have a large blue metal roof in front of the balcony that obstructs the view looking down\" — identical wording verified present on Apex, Ascent and Beyond deck-6 pages (same class layout, not cross-class boilerplate)."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 3 is the lowest cabin deck, sitting directly beneath Decks 4-5's casino, theatre, shops, Grand Plaza restaurants and Martini Bar.",
+      "effect": "Foot traffic, music and late-night activity from the venues above are audible in these cabins, more so than higher decks.",
+      "mattersTo": "Light sleepers should avoid Deck 3; bargain-hunters indifferent to noise can save money here.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Editor's Review: \"cruisers may want to steer clear of those on the third deck, as these are under the casino, restaurants, and some shops\"; corroborated by cruisemummy.co.uk: \"Just one deck up you'll find the theatre, The Club, shops, the casino, and several speciality restaurants.\""
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Eden is a three-deck venue built into the aft of Decks 4, 5 and 6, so Deck 7 aft cabins sit directly above its roof.",
+      "effect": "Eden runs live music and evening shows; guests directly above have reported the sound carrying into aft staterooms at night.",
+      "mattersTo": "Nightlife lovers may enjoy being close; light sleepers wanting quiet evenings should pick forward or midship instead.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemapper.com deck-6 plan: \"Eden is a 3-deck high (aft-location on decks 4, 5, 6) lounge-bar-restaurant venue with live music\" (confirmed identical placement on Edge, Apex, Beyond deck plans); cruisebooking.com Apex guide notes \"aft staterooms on Deck 7 (directly above the Eden venue's nightly live shows)\" for the same Eden layout."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 12 is the top cabin deck and sits directly beneath the Resort/Pool Deck (Deck 14) since Deck 13 is skipped in the numbering.",
+      "effect": "Early lounger-dragging, deck cleaning and pool-deck foot traffic can be heard from below, especially on sea days.",
+      "mattersTo": "Sea-day sleepers/late risers should avoid; pool-deck-adjacent convenience seekers may not mind.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisegalore.com: \"Midship cabins on Deck 12 (directly under the pool deck) can also get particularly noisy on sea days\"; deck-skip pattern (12→14, no 13) confirmed on cruisedeckplans.com Edge deck list."
+    },
+    {
+      "factor": "hump",
+      "decks": [
         8
       ],
       "sections": [
         "forward",
-        "mid",
-        "aft"
+        "mid"
       ],
-      "what": "Lifeboats are mounted at Deck 5; they obstruct the downward view from Decks 6, 7, and 8, with Deck 6 most affected and obstruction decreasing as you go higher.",
-      "effect": "You'll see the horizon and ocean clearly, but looking straight down you'll see orange lifeboat roofs instead of water—Deck 6 cabins look almost directly at the boat tops.",
-      "mattersTo": "Matters to photographers and anyone who wants an unobstructed view straight down to the waterline; doesn't matter if you care more about horizon views and sunsets.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        14
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "Resort Deck (Deck 14) sits directly above Deck 12 mid and aft sections, with the main pool, Rooftop Garden, and pool bar creating daytime foot traffic and activity.",
-      "effect": "You may hear poolside music, deck furniture being moved, and crowd noise during the day, typically quieting after evening; the activity is directly overhead.",
-      "mattersTo": "Light sleepers and anyone planning to nap or relax in their cabin during the day should avoid these; evening-only cabin users won't notice.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        11
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "The spa, thermal suite, and adjacent Solarium are located on Deck 12 directly above portions of Deck 11 mid and aft.",
-      "effect": "Potential for spa treatment room activity, foot traffic, and water feature sounds from the Solarium during spa operating hours directly overhead.",
-      "mattersTo": "Light sleepers who are in their cabin during daytime hours; most guests out exploring won't be affected.",
+      "what": "Guests booking Prime Edge Stateroom (E1) on Deck 8 describe their location as sitting \"on the hump\" of the hull.",
+      "effect": "A first-person cruiser account distinguishes this location from the plain lifeboat-obstructed Deck 6 E3 cabins, implying a different (less boxed-in) balcony feel at the hull's outward step.",
+      "mattersTo": "Cabin-feel-sensitive travelers curious about hull-shape differences between decks; not something the cruise line itself labels as a distinct category.",
       "severity": "minor",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        7,
-        8
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "The main theater (theater deck and balcony seating) is located on Decks 4 and 5, two to three decks below the forward cabins on Decks 7 and 8.",
-      "effect": "Show audio and bass can sometimes transmit upward during evening performances, though the distance (2-3 decks) significantly dampens the effect.",
-      "mattersTo": "Sensitive sleepers who turn in before 10 PM might notice; most guests attending shows or late dining won't be in their cabins during performance times.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        8,
-        9,
-        10
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "The main dining room spans Decks 3 and 4, multiple decks below mid and aft cabin sections on Decks 8, 9, and 10.",
-      "effect": "The multi-deck distance makes noise transmission unlikely, but very sensitive guests might detect faint kitchen or service activity during early morning breakfast prep or late dinner service.",
-      "mattersTo": "Only the most noise-sensitive guests; the distance makes this a non-issue for the vast majority.",
-      "severity": "minor",
-      "confidence": "medium"
+      "confidence": "low",
+      "source": "boards.cruisecritic.com forum post: \"I've only sailed Edge once and we were on the hump on Deck 8 in an E1 cabin\" (first-person account; no aggregator confirmation of a size/view benefit)."
     },
     {
       "factor": "elevator",
@@ -100,96 +101,168 @@
       "sections": [
         "mid"
       ],
-      "what": "Primary elevator banks run through the midship section on all guest cabin decks, with the main bank centrally located near the Grand Plaza.",
-      "effect": "Cabins very close to elevator lobbies offer unbeatable convenience but may hear door chimes, mechanical sounds, and hallway conversation at all hours; cabins further along corridors are quieter but require more walking.",
-      "mattersTo": "Mobility-challenged guests and those prioritizing convenience should seek elevator-adjacent cabins; light sleepers should avoid the immediate elevator lobby area.",
-      "severity": "moderate",
-      "confidence": "high"
+      "what": "On Edge-class ships the elevator banks sit midship, with staterooms stretching between them and the restaurants at either end of most decks.",
+      "effect": "Midship cabins get short walks to elevators (and reported hallway convenience without excess noise), while cabins toward the ends have a longer walk to dining venues.",
+      "mattersTo": "Mobility-limited or elevator-dependent guests should favor midship; those wanting distance from elevator-bank foot traffic can go forward/aft instead.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: \"on the Edge-class ships, the nearest elevators are mid-ship, and there are staterooms between them and the restaurants\"; corroborated by a first-person Celebrity Edge YouTube walkthrough of elevator-to-stateroom proximity."
     },
     {
-      "factor": "engine",
+      "factor": "motion",
       "decks": [
-        3
+        11,
+        12
       ],
       "sections": [
+        "forward",
         "aft"
       ],
-      "what": "Deck 3 aft cabins (8 cabins total) sit relatively low and toward the stern, closer to propulsion machinery spaces.",
-      "effect": "These cabins may experience more low-frequency vibration and mechanical hum than higher or more forward locations, particularly noticeable at cruising speed.",
-      "mattersTo": "Vibration-sensitive guests should avoid; those who aren't bothered by white noise or who want the lowest-priced ocean views may find this a fair trade.",
+      "what": "Decks 11 and 12 are the highest and most forward/aft-reaching cabin decks on Celebrity Edge.",
+      "effect": "Pitching (bow) and swaying (stern) motion is most noticeable at the extreme ends of these top decks in rough seas.",
+      "mattersTo": "Motion-sensitive cruisers should avoid far forward/aft on Decks 11-12; those wanting the biggest view and top-deck proximity may accept the trade-off.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: \"On Celebrity Edge, that means you may want to avoid cabins situated at the very front or rear of Decks 11 and 12... Combine that with the extra elevation on the upper decks, and you'll feel the movement far more.\""
     },
     {
-      "factor": "engine",
+      "factor": "other",
       "decks": [
-        3
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Deck 3 forward cabins sit low at the bow where bow thruster operation during docking and maneuvering creates mechanical noise and vibration.",
-      "effect": "You'll hear and feel the thrusters during port arrivals and departures—typically early morning and evening—with a grinding or rumbling sensation that can be startling if you're unaware.",
-      "mattersTo": "Light sleepers and early risers in port-heavy itineraries should avoid; doesn't matter at sea or for guests who sleep through mechanical sounds.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        3,
         6,
-        7
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
       ],
       "sections": [
-        "forward"
+        "forward",
+        "mid",
+        "aft"
       ],
-      "what": "Forward sections on these decks are near the anchor chain machinery, which operates during every port arrival as the anchor is deployed.",
-      "effect": "Early morning arrivals in port bring loud chain-running noise—a distinctive grinding and rattling that can wake even sound sleepers, typically between 6-7 AM.",
-      "mattersTo": "Anyone who values sleeping in on port days should avoid forward cabins on these decks; early risers and port-focused cruisers won't mind.",
-      "severity": "significant",
-      "confidence": "high"
+      "what": "Infinite Veranda cabins use a single powered blackout shade covering the whole glass wall rather than separate curtains for bed and sitting areas.",
+      "effect": "Raising or lowering the shade lightens or darkens the entire room at once, which is a problem if one person wants to sleep while another wants light or an early view.",
+      "mattersTo": "Roommates/couples with different wake times or light sensitivity should be aware; solo travelers or same-schedule couples are unaffected.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com: \"there is only a power shade on the verandah and will darken the whole room when closed and brighten the whole room when open. This is a concern if your room mate still wants to sleep\" (identical note verified across Edge, Apex and Beyond category pages, confirming it's a class-wide design trait)."
     },
     {
-      "factor": "above",
+      "factor": "other",
       "decks": [
-        9
+        6,
+        7,
+        8
       ],
       "sections": [
         "mid"
       ],
-      "what": "Deck 9 midship sits directly below the Grand Plaza atrium on Deck 10, a social hub with bars and often live music.",
-      "effect": "Music, conversation, and foot traffic from the Grand Plaza can transmit downward during evening hours when the atrium is most active, typically until 11 PM or midnight.",
-      "mattersTo": "Early sleepers should avoid; guests who are out enjoying evening entertainment won't be in their cabins during the noisy hours.",
-      "severity": "moderate",
+      "what": "The Magic Carpet is a cantilevered platform on the starboard side that stops at various decks (including guest-cabin decks) and hosts bars/gatherings.",
+      "effect": "When the platform is docked near a cabin's deck, crowd noise and mechanical movement can reach nearby staterooms and reduce balcony privacy.",
+      "mattersTo": "Guests wanting a quiet balcony should check if their cabin is near a Magic Carpet stop; people who enjoy activity/energy may like it.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisebooking.com Celebrity Edge guide: \"The Magic Carpet's movement can lead to the gathering of people, which in turn can lead to noise... your moment of relaxing on the balcony may not be as tranquil as you wanted.\""
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Celebrity Edge offers 178 connecting staterooms across its Edge/Porthole/Single categories.",
+      "effect": "Families or groups can link adjoining rooms via an interior connecting door, unusual in this concentration versus older Celebrity classes.",
+      "mattersTo": "Families/groups traveling together benefit; solo/couple travelers may hear more through a connecting door than a standard wall.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "celebritycruises.com veranda staterooms page: \"170 possible options of connecting staterooms make it easier than ever for families and friends to connect at sea\"; cruisemapper.com cabin page confirms 178 connecting cabins fleet-wide on Edge."
+    },
+    {
+      "factor": "accessible",
+      "decks": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Wheelchair-accessible cabins are concentrated in specific room-number clusters: E1 accessible cabins 8230-8236 and 8239-8245 on Deck 8, plus scattered accessible Oceanview/Sky Suite rooms (8106, 8109, 9108, 9113, 9210, 10182, 10180 area).",
+      "effect": "Accessible-cabin seekers have the widest choice on Deck 8; other decks have only one or two accessible rooms per category.",
+      "mattersTo": "Wheelchair users planning ahead should target Deck 8 for the most accessible-cabin options.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemapper.com Celebrity Edge cabins page listing handicap cabin numbers by deck; cruiseline.com category E1 page: \"Wheelchair Accessible Staterooms: 8230-8236 and 8239-8245.\""
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "6128, 6129, 6180, 6182, 6196, 6198 (Deck 6)",
+      "claim": "Listed as having partially obstructed veranda views on Celebrity's own deck-plan PDF and on cruisedeckplans.com.",
+      "source": "celebritycorporatekit.com official 2019-20 Edge deck-plans PDF; cruisedeckplans.com Deck 6 page",
       "confidence": "high"
     },
     {
-      "factor": "below",
-      "decks": [
-        15
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "The Edge Villas on Deck 15 sit directly above the Rooftop Garden and Resort Deck pool area, with two decks of separation.",
-      "effect": "Pool music, activity, and crowd noise may be faintly audible on the villa terraces during peak daytime hours, though the two-deck separation significantly dampens the effect.",
-      "mattersTo": "Villa guests seeking absolute tranquility on their terrace during peak pool hours might notice; most won't find it intrusive given the separation and villa insulation.",
-      "severity": "minor",
+      "cabins": "7222, 7225, 7244, 7247, 8228, 8237, 8246, 8255, 9160, 9169 (category E1)",
+      "claim": "Obstructed-view Prime Edge Infinite Veranda staterooms per Celebrity's own category notes.",
+      "source": "cruiseline.com category E1 page (sourced from Celebrity stateroom notes)",
+      "confidence": "high"
+    },
+    {
+      "cabins": "7158, 7165, 8164, 8173 (category E2)",
+      "claim": "Obstructed-view Edge Infinite Veranda staterooms per Celebrity's own category notes.",
+      "source": "cruiseline.com category E2 page",
+      "confidence": "high"
+    },
+    {
+      "cabins": "7247,7225,7165,7244,7222,7210,7206,7192,7190,7158 (Deck 7); 8196,8198,8212,8216,8228,8246,8255,8237,8173 (Deck 8); 9160,9186,9188,9206,9212,9224,9242,9241,9223,9169 (Deck 9); 10224,10198,10184,10178,10160,10158,10132,10215,10189,10133 (Deck 10); 11220,11194,11182,11176,11158,11156,11122,11221,11195,11125 (Deck 11)",
+      "claim": "Full official list of partially-obstructed-veranda staterooms spanning Decks 6-11, beyond just the lifeboat line — likely a mix of lifeboat, Magic Carpet-track, and structural-overhang obstructions that were not individually differentiated in the source.",
+      "source": "celebritycorporatekit.com official 2019-20 Celebrity Edge Deck Plans PDF",
+      "confidence": "high"
+    },
+    {
+      "cabins": "6102 (category P2, porthole balcony)",
+      "claim": "First-person reviewer reported the balcony view was ~40% blocked by the hull jutting out, poor soundproofing letting in Grand Plaza music/vibration, and cigarette smoke drifting in.",
+      "source": "cruiseline.com category P2 cabin review",
       "confidence": "medium"
+    },
+    {
+      "cabins": "7156 (category E2, Infinite Veranda, forward Deck 7)",
+      "claim": "Reviewer noted the glazing bar sits at eye-level when seated, so standing gives a better view; otherwise no obstruction complaint.",
+      "source": "emmacruises.com Infinite Veranda review",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether the Edge class has a hump (cantilevered balconies past the hull line) and if so, which specific deck sections—I cannot confidently establish this from the data provided and would need deck plan verification.",
-    "Precise location of I95 crew corridor access points and where they create service traffic near guest cabins—while crew corridors exist, I cannot confidently map their interface with guest areas on this class without deck plans.",
-    "Exact location and operational noise profile of galley facilities and which specific cabin sections are affected—general dining room location is known but precise galley-to-cabin relationships need verification.",
-    "Whether connecting cabins are disproportionately common in certain categories or sections beyond industry standard—no class-specific intelligence to confirm this as a distinctive Edge characteristic."
+    "No ship-specific evidence found for i95 crew corridor access points or where they create service traffic near guest cabins on Edge.",
+    "No ship-specific evidence found tying bow-thruster noise (far forward, low decks) or anchor-chain noise to particular Edge cabins.",
+    "Engine/Azipod propulsion vibration by specific deck/section not documented for Edge itself with adequate confidence (only generic, unverified claims found for a sister ship).",
+    "No evidence found of a hull-taper effect (inward hull step hiding the straight-down view) on Edge's highest decks (15/16, Edge Villas/Iconic Suite/Rooftop Garden area).",
+    "Whether lifeboat obstruction meaningfully extends to Deck 7 (one deck above the confirmed Deck 6 lifeboat line) is unconfirmed — only Deck 6 has direct sourcing.",
+    "Exact deck/section for cabins reported as noisy from Sunset Bar specifically (as opposed to Eden or Rooftop Garden) could not be pinned down.",
+    "Whether Deck 8's reported 'hump' comes with a measurable size or obstruction difference versus neighboring decks is unconfirmed beyond one forum anecdote."
   ],
   "ship": "Celebrity Edge",
   "shipSlug": "celebrity-edge",
   "line": "Celebrity Cruises",
   "totalCabins": 1461,
-  "cabinsTouchedByAZone": 1461,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.038424
+  "cabinsTouchedByAZone": 1455,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 19,
+    "maxAllowed": 25
+  },
+  "cost": 2.403481
 }

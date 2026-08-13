@@ -1,135 +1,60 @@
 {
-  "class": "Pride of America",
+  "class": "Pride of America class (Project America class) — Norwegian Cruise Line",
   "sisterShips": [],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
         7,
-        8,
-        9
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Lifeboats are mounted at Deck 6; they obstruct the view downward from balconies and oceanview cabins on Decks 7–9, with Deck 7 experiencing the most pronounced blockage and Deck 9 the least.",
-      "effect": "You see the horizon and ocean clearly, but looking straight down reveals orange lifeboat roofs instead of water—the view feels elevated rather than intimate with the sea.",
-      "mattersTo": "Matters to guests who want that classic 'right on the water' feeling or enjoy watching the ship's wake directly below; irrelevant to those focused on horizon views, sunsets, or ports of call.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        9
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "Decks 10 and 11 directly above house the main pool deck (Aloha Pool, Waikiki Bar) with daytime activity, deck furniture dragging, and evening events.",
-      "effect": "Expect footfall noise, music, and occasional furniture movement overhead from late morning through evening; early sleepers may hear late-night pool deck stragglers.",
-      "mattersTo": "Light sleepers and those turning in early should avoid; day-sleepers and those out enjoying the ship most of the time won't notice.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        10
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "The Aloha Café buffet sits directly above on Deck 11 mid and aft, operating from early morning through late evening with foot traffic, chair scraping, and service activity.",
-      "effect": "Overhead noise from breakfast prep starting around 6:00 AM, steady footfall during meal times, and occasional kitchen service sounds; quieter mid-afternoon and after dinner service ends.",
-      "mattersTo": "Early risers unbothered by morning buffet setup will find this irrelevant; late sleepers and those sensitive to intermittent daytime noise should steer clear.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        7,
         8
-      ],
-      "sections": [
-        "mid",
-        "aft"
-      ],
-      "what": "The Mardi Gras two-level show lounge occupies Decks 5 and 6 below, directly underneath mid and aft sections, with evening performances and occasional rehearsals.",
-      "effect": "Late-night shows (typically ending 10:00–11:00 PM) may transmit bass notes and applause; most guests report this as faint and infrequent, limited to show times.",
-      "mattersTo": "Sensitive sleepers who retire before 10:30 PM might notice; those out late or unbothered by muffled evening sound can ignore this.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "below",
-      "decks": [
-        11,
-        12,
-        13
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "The Sky High Bar and observation area sit on Deck 13 and 14 forward, creating foot traffic and late-night socializing one or two decks above.",
-      "effect": "Late-evening and nighttime noise from bar patrons, conversation, and occasional live music drifts down; the forward observation deck sees steady use during scenic cruising.",
-      "mattersTo": "Light sleepers on Decks 11–12 forward should be cautious; heavy sleepers and those enjoying the bar themselves will find this a non-issue.",
-      "severity": "minor",
-      "confidence": "medium"
-    },
-    {
-      "factor": "elevator",
-      "decks": [
-        7,
-        8,
-        9,
-        10
       ],
       "sections": [
         "mid"
       ],
-      "what": "Primary elevator and stair banks run through mid-ship on all main cabin decks, clustered around the main atrium and Grand Aloha Suite area.",
-      "effect": "Cabins very close to elevator lobbies experience door chimes, conversation, and foot traffic at all hours; those a few doors away gain convenience without meaningful noise.",
-      "mattersTo": "Mobility-limited guests and families with strollers benefit from proximity; noise-sensitive guests should choose cabins at least three doors away from elevator banks.",
-      "severity": "minor",
-      "confidence": "high"
+      "what": "Lifeboats/tenders are slung on Deck 7 midship — the OK/OX 'Obstructed Oceanview' category exists on Deck 7 midship, and a cruise blogger who sailed the ship confirmed the boats 'jut out from the side of the ship on deck 7 and are visible below most balcony cabins and especially those located directly above them on deck 8.'",
+      "effect": "On Deck 7 itself the boats sit right at window/balcony level, blocking part of the view outward; on Deck 8, directly above, the horizon is clear but looking straight down at the water is blocked by the boat tops, and the boats show up in balcony photos.",
+      "mattersTo": "Photographers and anyone who wants an unobstructed straight-down view will notice it on Deck 8 (and more so on Deck 7); horizon-gazers and most vacationers barely notice. The blogger recommended a higher deck or a far-forward/far-aft cabin to avoid it entirely.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "profcruise.com (first-person cabin-selection blog) + seascanner.com deck-plan legend (OK category = 'deck 7, midships, obstructed view') + cruisemapper.com ('Categories OK and OX have obstructed views due to lifeboats')"
     },
     {
-      "factor": "engine",
+      "factor": "above",
       "decks": [
-        4
+        7
       ],
       "sections": [
+        "mid",
         "aft"
       ],
-      "what": "Deck 4 aft sits low and near the engine room and propulsion machinery, transmitting low-frequency vibration and hum during maneuvering and open-ocean cruising.",
-      "effect": "A subtle, steady vibration underfoot and faint mechanical hum audible in quiet moments; most noticeable during port departures, arrivals, and speed changes.",
-      "mattersTo": "Vibration-sensitive sleepers and those bothered by low hum should avoid; budget-conscious guests unbothered by mechanical presence find excellent value here.",
+      "what": "Deck 7 sits directly above the Deck 6 Mardi Gras Cabaret Lounge & Nightclub (a no-cabin entertainment deck); cabins 7522 and 7526 were specifically flagged by cruisers as sitting directly over it.",
+      "effect": "Reports are mixed: one Cruise Critic reviewer near the Mardi Gras room said they 'never heard a sound' because they were at the front of the ship away from the club, while a Gangwaze cabin reviewer for 7526 said it was 'directly above the Mardi Gras night club' and would 'choose deck 8 or above' next time.",
+      "mattersTo": "Light sleepers and late-to-bed cruisers booking Deck 7 balcony/oceanview cabins mid-to-aft should ask about proximity to the nightclub footprint; guests who stay out late or don't mind bass won't care.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "medium",
+      "source": "boards.cruisecritic.co.uk thread on cabin 7522 + gangwaze.com cabin 9656 page (quoting a reviewer on cabin 7526) + cruisecritic.com member review ('never heard a sound' near Mardi Gras)"
     },
     {
-      "factor": "engine",
+      "factor": "below",
       "decks": [
-        4
+        10
       ],
       "sections": [
-        "forward"
+        "mid",
+        "aft"
       ],
-      "what": "Deck 4 forward sits near bow thrusters, which activate during docking and undocking with a pronounced rumble and vibration.",
-      "effect": "Noticeable vibration and mechanical noise during port arrivals and departures, typically lasting 10–20 minutes; silent during open-ocean cruising.",
-      "mattersTo": "Guests who sleep through port operations or enjoy watching docking maneuvers won't mind; light sleepers in port-intensive itineraries should choose higher or mid-ship.",
+      "what": "Deck 10 sits directly beneath the Deck 11 Aloha Café buffet, South Beach Pool, and specialty dining (Little Italy/Moderno Churrascaria); a cabin 10640 reviewer wrote they 'were right below the buffet restaurant, late at night and early morning we could hear lots of noise from above us.'",
+      "effect": "Chair-dragging, foot traffic, and early-morning buffet setup carry down one deck; noise is concentrated at breakfast set-up hours and late-night pool/bar activity, not constant.",
+      "mattersTo": "Guests who value sleeping in should avoid Deck 10 mid/aft under the buffet and pool footprint; a Deck 10 aft cabin (10678) directly under the Moderno café reported no noise issue, so it varies by exact spot.",
       "severity": "moderate",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruiseline.com cabin 10640 review ('right below the buffet restaurant... lots of noise from above') + cruisecritic.com review of cabin 10678 (no noise issue under Moderno café) + cruisemapper/NCL venue placement (Aloha Café & South Beach Pool on Deck 11)"
     },
     {
-      "factor": "engine",
+      "factor": "elevator",
       "decks": [
+        5,
+        6,
         7,
         8,
         9,
@@ -139,45 +64,161 @@
         13
       ],
       "sections": [
-        "forward"
+        "mid"
       ],
-      "what": "The anchor chain locker sits in the bow below forward cabins; anchor deployment creates a loud grinding and rattling sound, typically during early morning arrivals.",
-      "effect": "A brief (2–5 minute) but very loud metallic grinding wakes most sleepers when the anchor drops, usually between 6:00–8:00 AM on port days; silent at sea and in dock.",
-      "mattersTo": "Guests planning to sleep in on port mornings should avoid forward cabins entirely; early risers and those already awake for port arrivals won't be affected.",
-      "severity": "significant",
-      "confidence": "high"
+      "what": "The ship's main circulation hub is the Capitol Atrium, described by CruiseMapper as an 'eight-deck midship hub' housing the central elevator bank (10 elevators total across the ship).",
+      "effect": "Cabins near the midship atrium/elevator bank get the shortest walk to dining, theater, and the Capitol Atrium, at the cost of some hallway and lobby noise/traffic.",
+      "mattersTo": "Guests with mobility needs or who want convenience benefit from booking near this bank; light sleepers wanting quiet should ask for a cabin a few doors away rather than immediately adjacent. One Cruise Critic reviewer specifically praised cabin 7668 as 'a great position - no noise and close to lifts.'",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com ('eight-deck midship hub', '10 elevators') + cruisecritic.com member review of cabin 7668"
     },
     {
-      "factor": "i95",
+      "factor": "engine",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Propulsion is two Rolls-Royce Mermaid electric propulsion pods mounted aft under the hull, per the ship's technical specifications.",
+      "effect": "Pod (as opposed to traditional shaft) propulsion generally transmits less vibration into aft cabins than older shaft-driven ships, but Deck 4 — the lowest guest deck and closest to the machinery spaces — is the most exposed to any residual hum or vibration at speed.",
+      "mattersTo": "Vibration-sensitive guests should be aware Deck 4 aft is the closest guest deck to the propulsion pods, though pod drives make this less of an issue than on older tonnage.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "en.wikipedia.org Pride of America infobox ('Propulsion: Two Rolls-Royce Mermaid pods; Three Rolls-Royce bow thrusters')"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Three Rolls-Royce bow thrusters are mounted forward and low in the hull, used heavily during the ship's frequent port arrivals/departures on its Hawaii inter-island itinerary.",
+      "effect": "Deck 4 forward cabins — the lowest and most forward guest deck — are the closest to thruster noise/vibration, which is most noticeable during docking maneuvers rather than constantly at sea.",
+      "mattersTo": "Guests sensitive to mechanical noise during frequent (near-daily) port maneuvers should note Deck 4 forward is closest to this equipment; it's a non-issue once underway.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "en.wikipedia.org Pride of America infobox ('Three Rolls-Royce bow thrusters')"
+    },
+    {
+      "factor": "motion",
       "decks": [
         4,
         7,
         8,
         9,
-        10
+        10,
+        11,
+        12,
+        13
       ],
       "sections": [
-        "mid"
+        "forward",
+        "aft"
       ],
-      "what": "Crew corridors (I-95) run through mid-ship with access points near the central elevator lobbies, creating occasional crew foot traffic through guest corridors during service hours.",
-      "effect": "Brief, infrequent crew movement through guest hallways during cabin service, meal delivery, and turndown; professional and quiet but noticeable to those near access doors.",
-      "mattersTo": "Most guests never notice; only those extremely sensitive to hallway activity or in cabins directly adjacent to crew doors should consider this.",
+      "what": "Multiple cruiser threads describe variable inter-island motion; one reviewer reported the ship 'rocked so hard people were tripping over their own feet' and a port call was cancelled due to swell, while others describe calm summer sailing, and a Tripadvisor forum reply advised sensitive guests to 'book a cabin mid-ship' and stayed on Deck 9.",
+      "effect": "Motion is inconsistent by season/weather rather than a fixed structural trait, but higher decks and far forward/aft cabins will still amplify whatever motion occurs, same as any ship.",
+      "mattersTo": "Motion-sensitive guests should favor lower-to-mid decks and midship sections, especially outside the calmer summer season; most cruisers report no issues.",
       "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisecritic.com member review ('rocked so hard people were tripping... canceled a port of call') + tripadvisor.com Honolulu forum thread ('book a cabin mid-ship... stayed on deck nine')"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        7
+      ],
+      "sections": [],
+      "what": "Some Deck 7 cabins are interconnecting, and a Cruise Critic top-10-tips reviewer specifically warned that their cabin was 'an inter connecting room, so you hear almost every sound from room 7012.'",
+      "effect": "Interconnecting cabins carry conversation and TV noise through the connecting door much more than a standard shared wall.",
+      "mattersTo": "Guests wanting privacy/quiet should ask specifically whether their cabin has a connecting door, not just what's above/below/beside it; families wanting to book adjoining rooms benefit from the same feature.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisecritic.com member review ('Pride of America-top 10 tips') citing cabin 7012"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "4550",
+      "claim": "Guest reported loud metallic banging noise (like 'hitting a metal garbage can with a baseball bat') coming from below the cabin for the first two nights of the cruise; source of noise (mechanical/crew space) not identified.",
+      "source": "boards.cruisecritic.com thread '4550 Noisy: What's below deck 4?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "7522 / 7526",
+      "claim": "Cabins sit directly above the Deck 6 Mardi Gras Cabaret Lounge & Nightclub; one reviewer of 7526 said they'd 'choose deck 8 or above' on a future cruise to avoid it.",
+      "source": "boards.cruisecritic.co.uk cabin-location thread + gangwaze.com cabin 9656 review",
       "confidence": "medium"
+    },
+    {
+      "cabins": "7012",
+      "claim": "Interconnecting cabin; neighboring guest reported hearing 'almost every sound' through the connecting door.",
+      "source": "cruisecritic.com 'Pride of America-top 10 tips' member review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7668",
+      "claim": "Praised as a 'great position - no noise and close to lifts,' i.e. quiet despite elevator proximity.",
+      "source": "cruisecritic.com member review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "10678",
+      "claim": "Aft-facing family suite on Deck 10, positioned under the Moderno Churrascaria restaurant; reviewer specifically noted 'noise was NOT an issue.'",
+      "source": "cruisecritic.com member review of cabin 10678",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "10640",
+      "claim": "Balcony cabin directly below the buffet restaurant on Deck 11; reviewer reported audible noise from above in late night and early morning hours.",
+      "source": "cruiseline.com cabin 10640 review",
+      "confidence": "high"
+    },
+    {
+      "cabins": "9124",
+      "claim": "Deck 9 midship balcony cabin recommended by a forum poster specifically for motion-sensitive travelers; guest 'slept through an apparently rough night.'",
+      "source": "tripadvisor.com Honolulu forum thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "4000",
+      "claim": "This specific cabin has a porthole window instead of the picture window standard to its category.",
+      "source": "ncl.com official stateroom options page",
+      "confidence": "high"
+    },
+    {
+      "cabins": "4088, 4090, 4588, 4590",
+      "claim": "Wheelchair-accessible oceanview staterooms, larger than standard at 222 sq ft versus 144 sq ft for the category.",
+      "source": "cruiseline.com Pride of America OA cabin category page",
+      "confidence": "high"
+    },
+    {
+      "cabins": "SQ/SJ category obstructed-view family suites (approx. 4 cabins, deck unconfirmed)",
+      "claim": "Two-room family suites with no balcony whose window looks directly onto a stowed lifeboat.",
+      "source": "cruisecritic.com editor cabin review + cruisemapper.com cabin category page",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Whether this hull has a hump (balconies cantilevered past the lifeboat line) and if so, which decks and sections—this feature is not definitively documented for Pride of America",
-    "Precise lifeboat mounting deck—stated as Deck 6 based on typical obstruction pattern for Decks 7–9, but not verified from primary source",
-    "Exact location and extent of galley areas and whether any transmit ventilation or service noise to cabins above or adjacent",
-    "Whether any cabins have guaranteed connecting-door configurations characteristic of this class",
-    "Specific accessible cabin distribution beyond what's typical for NCL vessels of this era"
+    "No evidence found of a 'hump' (cantilevered overhang past the hull line) on this class; may not be architecturally present, but not confirmed either way.",
+    "No evidence found of hull taper affecting top-deck (12/13) balconies' downward view; unconfirmed.",
+    "No ship-specific source found describing an I-95-style crew corridor or its guest-deck access points for this vessel.",
+    "No ship-specific citation found for anchor-chain noise on forward cabins (a common cruise-ship issue generically, but not documented for Pride of America specifically in this research pass).",
+    "Exact fore/aft section of the Mardi Gras Cabaret Lounge & Nightclub footprint on Deck 6 (and therefore the precise cabin range on Deck 7 above it) could not be pinned down beyond the specific cabin numbers found in leads.",
+    "Whether lifeboat obstruction is worse on the port or starboard side specifically for Deck 7/8 was suggested by one blog (recommending port-side booking) but not independently corroborated."
   ],
   "ship": "Pride of America",
   "shipSlug": "pride-of-america",
   "line": "Norwegian Cruise Line",
   "totalCabins": 1095,
   "cabinsTouchedByAZone": 1095,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.036198
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 17,
+    "maxAllowed": 25
+  },
+  "cost": 1.916747
 }

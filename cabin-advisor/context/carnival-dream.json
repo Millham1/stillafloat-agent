@@ -1,57 +1,58 @@
 {
-  "class": "Dream class",
+  "class": "Dream-class (Carnival Cruise Line)",
   "sisterShips": [
-    "Carnival Dream",
     "Carnival Magic",
-    "Carnival Breeze"
+    "Carnival Breeze",
+    "Costa Diadema"
   ],
   "zones": [
     {
       "factor": "lifeboat",
       "decks": [
-        1,
-        2,
-        6
+        2
       ],
       "sections": [
         "forward",
         "mid",
         "aft"
       ],
-      "what": "Lifeboats are mounted at Deck 1; they obstruct ocean views from Decks 1, 2, and portions of Deck 6, with Deck 1 most affected and Deck 6 showing partial obstruction depending on cabin position.",
-      "effect": "Ocean view and balcony cabins look directly at or over orange lifeboat shells; the horizon remains visible but the view down to the water is blocked.",
-      "mattersTo": "Matters greatly to guests who want unobstructed water views or photo opportunities; irrelevant to interior cabin guests and those prioritizing price over view quality.",
+      "what": "Deck 2 Cove Balcony cabins sit low in the hull directly beneath the ship's suspended lifeboats.",
+      "effect": "The lifeboats overhead shade the cove balcony rather than blocking the horizon view outward; the balcony itself is recessed/enclosed by steel sides so it already feels like a big porthole rather than an open deck.",
+      "mattersTo": "Sun-seekers lose some direct sun and rain shelter is a plus; horizon-gazers are unaffected since the obstruction is overhead, not straight-ahead.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 2 notes: cove balconies 'tend to be shaded by lifeboats above'; corroborated by cruisemummy/love2cruise describing cove balconies as tucked under lifeboats for privacy/shelter."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 6 aft cabins (from roughly cabin 6412 aft) sit directly above the Deck 5 Burgundy Lounge/karaoke bar and the Caliente Dance Club & nightclub.",
+      "effect": "Live bands, karaoke and late-night DJ bass carry up through the floor into these cabins into the small hours.",
+      "mattersTo": "Night owls and comedy-club/nightlife fans may not mind; light sleepers and early-to-bed guests should avoid this stretch.",
       "severity": "significant",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 6: 'All aft cabins on this deck beginning with 6412 and back are above night lounges and may experience noise...into the late night'; confirmed by a Tripadvisor cruiser whose aft extended-balcony cabin was 'directly above the Burgundy Lounge' with intrusive band noise."
     },
     {
       "factor": "above",
       "decks": [
-        9
+        2,
+        6
       ],
       "sections": [
-        "forward",
-        "mid"
+        "forward"
       ],
-      "what": "Deck 9 forward and midship sits directly below the Lido Deck pool area, buffet, and outdoor activities on Deck 10.",
-      "effect": "Expect foot traffic noise, deck chair scraping, and activity sounds from above starting early morning through late evening.",
-      "mattersTo": "Light sleepers and those sensitive to overhead noise should avoid; won't bother guests out of the cabin most of the day.",
+      "what": "Forward cabins on Deck 2 and Deck 6 sandwich the main theater (Encore Theater on Deck 5), sitting immediately below and above the stage/seating.",
+      "effect": "Rehearsals and production-show sound/bass can transmit into the floor or ceiling of these forward cabins.",
+      "mattersTo": "Matters to anyone sensitive to bass/vibration in the evening; not an issue for guests who are out at shows themselves.",
       "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "above",
-      "decks": [
-        11
-      ],
-      "sections": [
-        "mid"
-      ],
-      "what": "Deck 11 midship sits directly below the SportSquare and outdoor recreation area on Deck 12.",
-      "effect": "Noise from basketball, mini-golf, and ropes course activity overhead during the day.",
-      "mattersTo": "Problematic for daytime nappers or remote workers; Cloud 9 Spa guests here expect tranquility and may be disappointed.",
-      "severity": "moderate",
-      "confidence": "high"
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 2 and deck 6 notes: 'Forward cabins on this deck are above or below the main theater and may have noise from stage production shows or practice shows.'"
     },
     {
       "factor": "below",
@@ -59,31 +60,229 @@
         2
       ],
       "sections": [
-        "mid"
+        "aft"
       ],
-      "what": "Deck 2 midship sits directly above main dining room and galley operations on Deck 1.",
-      "effect": "Possible galley noise, ventilation hum, and occasional clattering during meal prep hours, especially early morning and dinner service.",
-      "mattersTo": "Sensitive sleepers should note this; won't affect heavy sleepers or those dining when the galley is active anyway.",
-      "severity": "minor",
-      "confidence": "medium"
+      "what": "Cabins located between the two aft elevator banks on Deck 2 sit directly below the galley.",
+      "effect": "Prep and clean-up activity in the galley (carts, clanging, running water) can be heard during meal-prep windows.",
+      "mattersTo": "Matters to light sleepers wanting a late lie-in; less relevant to early risers already up for breakfast.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 2: 'Cabins between the aft two elevators are below the galley and may experience noise from that area during prep and cleanup times.'"
     },
     {
-      "factor": "below",
+      "factor": "above",
       "decks": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Deck 5 outdoor Lanai/promenade juts out further than the hull line of the balcony decks stacked above it (Decks 6–9), and cabins near 6241/6238 aft, 8220 aft, and most of Deck 9 sit above this walkway or an interior public space one-to-two decks below.",
+      "effect": "Passengers walking or hot-tubbing on the Deck 5 promenade below can see up into these balconies, and foot traffic/chair noise from the promenade or the public deck below carries upward.",
+      "mattersTo": "Privacy-conscious balcony guests should check exact cabin position; those who don't mind being seen or who close their balcony curtain at night are unaffected.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruiseradio.net: 'the outdoor lanai on the promenade deck (Deck 5) juts out further than the balcony decks above it (Decks 6-9)...passengers hot-tubbing...can see directly into balcony rooms on Deck 6'; cruisedeckplans.com Dream deck 6 and deck 8 notes on cabins above the promenade/exterior deck with reduced privacy and walker noise."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Cabins clustered near 6331/6326/6453/6422 on Deck 6, and near 7317/7312/7407/7406 on Deck 7, sit one or two decks above the ship's outdoor hot tubs.",
+      "effect": "Splashing, laughter and late-night hot-tub activity below is audible in these cabins at most hours.",
+      "mattersTo": "Families or groups who use the hot tubs won't mind; anyone hoping for quiet evenings should avoid these specific numbers.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 6 ('Watch cabins around 6331, 6326, 6453, 6422...above outdoor hot tub') and deck 7 ('Cabins near 7317, 7312, 7407 and 7406 are two decks above outside hot tubs...busy at all times of day and night')."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Balconies from roughly cabin 9303 aft sit directly under an overhang from Deck 10.",
+      "effect": "These balconies get noticeably less direct sun but more shelter from rain than unshaded balconies elsewhere on the ship.",
+      "mattersTo": "Sun-worshippers should avoid this range; guests prioritizing shade or expecting rainy itineraries may prefer it.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 9: 'There is an overhang from the deck above the balconies of cabins 9303 to the aft...will cause the balcony to receive less sun. But it does offer more protection from rain.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins 11201–11204 sit directly below the fitness center on Deck 12, and cabins 11261–11278 sit below the WaterWorks water park.",
+      "effect": "Early-morning gym equipment/floor noise affects the forward-most cabins; the water-park-adjacent cabins get slide/splash noise whenever the park is open.",
+      "mattersTo": "Fitness-center noise mostly bothers late sleepers; water-park noise is a bigger, all-day nuisance for anyone wanting a nap or quiet reading time.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 11: 'Forward cabins 11201, 11202, 11203 and 11204 are directly below the fitness center'; 'Cabins 11261 to 11277 and cabins 11262 to 11278 are below the water park and may experience noise coming from that area when in use.'"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The grey zone near the forward elevators on Deck 9 is used as steward supply-closet space.",
+      "effect": "Heavy day-long steward traffic in and out of these closets makes the immediately adjacent cabins noisier than typical elevator-adjacent cabins elsewhere.",
+      "mattersTo": "Convenience-seekers who want to be near an elevator should pick a different bank; light sleepers should avoid this specific cluster.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 9: 'The gray area near the forward elevators are supply closets for the staterooms...gets a lot of use by stateroom stewards and therefore the cabins around this area are not recommended.'"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "On Carnival ships generally, the aft elevator bank on the deck sitting just above the main entertainment deck is a known noise hotspot, combining elevator-lobby chatter with sound rising up the adjacent stairwell from the piano bar/nightclub below.",
+      "effect": "Late-night elevator traffic plus rising nightclub/piano-bar sound stacks two noise sources in the same cabins.",
+      "mattersTo": "Matters most to early sleepers; night owls near the action may not notice or may prefer the convenience.",
+      "severity": "significant",
+      "confidence": "medium",
+      "source": "The Points Guy: cabins 'around the aft elevator bank on the cabin deck that sits just above the main entertainment deck' suffer 'noise of the...rowdies emerging from the elevators' plus 'sounds of the piano bar and nightclub emanating up the stairway'; this general Carnival pattern is reinforced by Dream-specific evidence that Deck 6 aft sits above the Burgundy Lounge/Caliente nightclub."
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        1
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Below the lowest guest deck (Deck 1/Riviera) sits the crew-only 'I-95' corridor (deck 0) running bow to stern, used for crew cabins, laundry, provisions, and — critically — the luggage marshaling area during embarkation/debarkation.",
+      "effect": "Deck 1 cabins are the closest guest cabins to this crew traffic backbone and to the luggage-handling bustle on turnaround days.",
+      "mattersTo": "Not usually audible as a distinct nuisance day-to-day, but matters to guests curious why Deck 1 can feel like the 'basement' of the ship; more relevant combined with Deck 1's known engine-noise issue below.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisehive.com: the I-95 'will usually be on deck zero,' used for luggage marshaling during embarkation, and confirmed as a cross-fleet feature including Carnival by thetravel.com."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 1 (Riviera Deck), the lowest passenger deck on Dream-class ships, sits directly above the engine spaces.",
+      "effect": "Constant low-frequency engine noise and vibration are more noticeable here than on any other passenger deck, on top of having the worst views.",
+      "mattersTo": "Budget cabin-hunters should know the trade-off; those prone to feeling vibration (not just motion) should avoid Deck 1.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruiseradio.net: staterooms on 'the Riviera Deck (Deck 1)...are situated above the engines, resulting in constant noise and vibrations.'"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft cabins on Deck 2 are specifically flagged as more likely to feel engine vibration than aft cabins on other decks.",
+      "effect": "Guests may notice rattling hangers or a low hum, especially at higher cruising speeds.",
+      "mattersTo": "Vibration-sensitive guests should avoid aft Deck 2; deep sleepers who find engine hum soothing may not mind.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 2: 'Aft cabins on this deck are more likely to feel engine vibration and noise.'"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6,
         7,
         8
       ],
       "sections": [
         "aft"
       ],
-      "what": "Decks 7 and 8 aft sit above the main theater (Encore Showroom) which spans Decks 3-5 aft.",
-      "effect": "Theater is two to four decks below, so sound transmission is minimal, but late shows may produce faint vibration or bass.",
-      "mattersTo": "Only the most sensitive guests need consider this; distance provides good insulation.",
+      "what": "Select aft cabins (e.g., 6460/6468/6493/6499 on Deck 6, 7454/7455 on Deck 7, 8462/8469 on Deck 8) have 'extended' balconies roughly twice the length of a standard balcony, nicknamed 'Bowling Alley' balconies, cantilevered further from the hull at the stern.",
+      "effect": "These balconies buy substantially more outdoor lounging space and a wider wake view than the standard 35–65 sq ft balcony.",
+      "mattersTo": "Balcony-space maximizers and photographers of the wake should seek these out; not relevant to interior/oceanview shoppers.",
       "severity": "minor",
-      "confidence": "medium"
+      "confidence": "high",
+      "source": "cruisedeckplans.com Dream deck 6, deck 7, and deck 8 notes identifying specific extended 'Bowling Alley' balcony cabins that are 'twice as long as normal balconies.'"
     },
     {
-      "factor": "elevator",
+      "factor": "hump",
+      "decks": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Premium Vista Balcony staterooms are purpose-built to wrap around the aft corners of the hull on multiple decks, extending the balcony around the side rather than stopping at the stern face.",
+      "effect": "These corner cabins get a panoramic wraparound view of both the wake and the side of the ship, at the same room size as a standard balcony.",
+      "mattersTo": "Couples wanting a unique view/extra balcony footage; families needing interior space should look elsewhere since the room itself isn't larger.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "Carnival.com: 'Premium Vista Balcony staterooms were designed to wrap around the aft corners of Carnival Dream'; CruiseMapper confirms these are 'located at the aft corners of the ship, offer wraparound balconies.'"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Deck 5 outdoor Lanai includes several whirlpools cantilevered out past the hull line over the ship's side (part of the ship's 6 cantilevered Jacuzzis fleet-wide figure).",
+      "effect": "This is a public-deck feature, not a cabin balcony, but it is the structural reason the balconies stacked above it on Decks 6-9 can be overlooked (see the 'above' zone) — the lower public deck physically projects past the cabin decks' hull line.",
+      "mattersTo": "Relevant mainly as the explanation for the privacy issue on Decks 6-9 aft/mid balconies noted above, not a selling point for a specific cabin category.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "NBC News on Carnival Dream's debut: the Lanai features 'four cantilevered whirlpools suspended over the ship's side'; CruiseMapper confirms Dream has '9 outdoor Jacuzzis (6 cantilevered).'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        1,
+        2,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "As on any ship, the pivot point is near the midline, so the lowest decks (1-2) and the highest/furthest-forward or aft decks (10-12, especially forward) register the most pitch and roll.",
+      "effect": "Guests in these zones feel more up-and-down/side-to-side motion in rough seas than midship, mid-height cabins.",
+      "mattersTo": "Motion-sensitive cruisers should avoid low-forward and high-forward/aft cabins; bargain-hunters comfortable with motion can save by booking there.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "Parade.com cruise-expert interview: cabins 'on lower decks as well as cabins in the front of the ship' are where 'you can feel the motion of the ship very apparently'; general physics of higher-deck/forward-aft motion is echoed across cruise-advice sources."
+    },
+    {
+      "factor": "other",
       "decks": [
         1,
         2,
@@ -92,95 +291,69 @@
         8,
         9,
         10,
-        11,
-        12
-      ],
-      "sections": [
-        "forward",
-        "mid"
-      ],
-      "what": "Primary elevator banks run forward and midship on all guest decks, with forward elevators serving the main atrium area.",
-      "effect": "Cabins adjacent to elevators gain convenience for mobility-limited guests but experience bell chimes, door sounds, and hallway congregation noise throughout the day and night.",
-      "mattersTo": "High-traffic hallways bother light sleepers; convenience is essential for those with mobility issues or young children with strollers.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        1,
-        2
-      ],
-      "sections": [
-        "aft"
-      ],
-      "what": "Decks 1 and 2 aft sit closest to engine room operations low in the hull.",
-      "effect": "Low-frequency vibration and hum are most noticeable here, particularly when engines throttle up during departure or maneuvering.",
-      "mattersTo": "Vibration-sensitive guests and those bothered by mechanical sounds should avoid; others may not notice or may find the hum soothing.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "engine",
-      "decks": [
-        1,
-        2
-      ],
-      "sections": [
-        "forward"
-      ],
-      "what": "Bow thruster operation occurs low and forward during docking and maneuvering in port.",
-      "effect": "Loud grinding or humming noise during port arrival and departure, typically early morning and evening for a few minutes at a time.",
-      "mattersTo": "Light sleepers in forward cabins on port days will be awakened; deep sleepers and early risers unaffected.",
-      "severity": "moderate",
-      "confidence": "high"
-    },
-    {
-      "factor": "other",
-      "decks": [
-        11,
-        12
+        11
       ],
       "sections": [
         "forward",
         "mid",
         "aft"
       ],
-      "what": "Cloud 9 Spa cabins on Decks 11 and 12 include dedicated spa access and spa-themed amenities.",
-      "effect": "Premium pricing for spa proximity and amenities; these cabins cater to wellness-focused guests willing to pay extra for the spa experience.",
-      "mattersTo": "Only worthwhile for guests who will use the spa facilities extensively; unnecessary expense for others.",
+      "what": "Connecting ('family') cabins on Dream are located specifically on Decks 1, 2, 6, 7, 8, 9, 10, and 11, not on every deck.",
+      "effect": "Families/groups wanting adjoining doors need to target these decks specifically; Deck 12 (Cloud 9 Spa deck) has no connecting cabins.",
+      "mattersTo": "Multi-generational or larger family bookings; irrelevant to solo/couple travelers.",
       "severity": "minor",
+      "confidence": "high",
+      "source": "CruiseMapper: 'Connecting rooms (\"family cabins\") are located on decks 1, 2, 6, 7, 8, 9, 10, and 11.'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "9205, 9206",
+      "claim": "Junior Suite category with balcony view obstructed by a steel bulkhead plus an additional obstructed forward-facing window (tinted, with a navigation-safety curtain notice).",
+      "source": "help.goccl.com official Carnival obstructed-view page for Carnival Dream (DR)",
       "confidence": "high"
     },
     {
-      "factor": "other",
-      "decks": [
-        2
-      ],
-      "sections": [
-        "forward",
-        "mid",
-        "aft"
-      ],
-      "what": "Deck 2 features Cove Balcony cabins with balconies positioned lower and closer to the waterline than standard balconies.",
-      "effect": "Unique perspective closer to the water, but more wave spray potential in rough seas and less privacy as balconies are visible from public decks above.",
-      "mattersTo": "Appeals to those wanting a different view experience and typically lower pricing; rough-weather cruisers should note spray risk.",
-      "severity": "minor",
+      "cabins": "1201, 1202, 1203, 1204, 1205, 1206, 1207, 1208, 2211, 2212, 2216, 2217, 2220, 2221",
+      "claim": "These staterooms have two small round portholes instead of a standard window view.",
+      "source": "help.goccl.com official Carnival obstructed-view/porthole page for Carnival Dream (DR)",
       "confidence": "high"
+    },
+    {
+      "cabins": "6412 and aft on Deck 6 (e.g., near 6492)",
+      "claim": "Aft cabins/extended-balcony cabins above the Punchliner Comedy Club and nightlounges may hear late-night noise once the venue shifts from comedy to a livelier late-night use; a cruiser specifically asked about cabin 6492's aft wrap.",
+      "source": "Cruise Critic forum thread 'Carnival Dream aft cabin over the comedy club- noise?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8234–8267 (Deck 8)",
+      "claim": "A cruise-advice site claims these Deck 8 cabins sit 'directly above the disco,' but Carnival Dream's Caliente Dance Club/nightclub is actually located on Deck 5 aft, two decks below Deck 8 — this claim conflicts with the ship's actual venue layout and may be inaccurate or confused with a different ship/deck.",
+      "source": "cruisevoices.com 'Carnival Cabin Horror Stories' listicle (low editorial reliability, unverified against official deck plan)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Deck 1/2 near anchor/engine room (e.g., 1337, 1343, 1347, 1400, 1414, 1417, 1429, 2367, 2410); Deck 6 near theater/casino (6373, 6375, 6377, 6379, 6381, 6383, 6389, 6436, 6460, 6468, 6493, 6499); Deck 7 (7454, 7455) near elevator/stairwell",
+      "claim": "A cabin-guidance site lists these specific numbers as noise/vibration problem cabins on sister ship Carnival Magic, and explicitly states the same guidance 'usually shows up across all three vessels' of the Dream Class (Dream, Magic, Breeze) due to their shared layout — but the numbers themselves are sourced from Magic, not verified against Dream's own deck plan.",
+      "source": "cruisebooking.com 'Carnival Magic Rooms to Avoid'",
+      "confidence": "low"
     }
   ],
   "unknowns": [
-    "Hump configuration: whether Dream class has a hump (cantilevered balconies past the hull line), and if so, which specific decks and sections feature it",
-    "I95 crew corridor: precise location of crew corridor access points and which guest cabin sections experience the most service traffic",
-    "Anchor chain: exact cabins most affected by anchor deployment noise on Deck 1 forward",
-    "Connecting cabin distribution: specific decks and sections where connecting cabins are most concentrated",
-    "Accessible cabin concentration: which decks have the highest density of ADA-accessible cabins beyond proximity to elevators"
+    "Whether Carnival Dream's specific bow-thruster housing causes noticeable noise/vibration in particular forward Deck 1-2 cabin ranges (only generic bow-thruster specs found, no cabin-level reports).",
+    "Whether anchor-chain/windlass noise in port is reported by Dream passengers in specific forward cabins (no ship-specific first-person account found this session).",
+    "Whether the highest decks (11-12, Cloud 9 Spa) have a hull taper that hides the straight-down view from balconies there, as seen on some other classes — no Dream-specific evidence found.",
+    "Exact current locations of Deck 0/I-95 crew-corridor access doors relative to guest cabins on Dream specifically (only generic cross-fleet I-95 descriptions found).",
+    "Whether Dream's 2021/2026 drydock refits altered any of the noise/obstruction specifics documented in older forum and deckplan-site posts."
   ],
   "ship": "Carnival Dream",
   "shipSlug": "carnival-dream",
   "line": "Carnival Cruise Line",
   "totalCabins": 1807,
   "cabinsTouchedByAZone": 1807,
-  "model": "claude-sonnet-4-5-20250929",
-  "cost": 0.032376
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 18,
+    "maxAllowed": 25
+  },
+  "cost": 1.880805
 }
