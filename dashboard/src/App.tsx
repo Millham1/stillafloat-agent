@@ -9,6 +9,7 @@ import { TokenGate } from "@/components/token-gate";
 import Dashboard from "@/pages/dashboard";
 import EditorialQueue from "@/pages/queue";
 import ApprovedStories from "@/pages/approved";
+import StoryArchive from "@/pages/archive";
 import LiveFeeds from "@/pages/feeds";
 import OperationalAlerts from "@/pages/alerts";
 import AffiliateManager from "@/pages/affiliate";
@@ -40,6 +41,7 @@ function Router() {
         <Route path="/editorial" component={Dashboard} />
         <Route path="/queue" component={EditorialQueue} />
         <Route path="/approved" component={ApprovedStories} />
+        <Route path="/archive" component={StoryArchive} />
         <Route path="/feeds" component={LiveFeeds} />
         <Route path="/alerts" component={OperationalAlerts} />
         <Route path="/storm-alerts" component={StormAlerts} />

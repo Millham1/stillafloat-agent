@@ -25,6 +25,17 @@ import { resolvePublicDir } from "./public-dir";
 // the sitemap always reflects the current story set. Deploys `git reset --hard`
 // over the tracked listing pages; the next tick regenerates them.
 //
+// ARCHIVE MERGE (task 669ea94b): the newsagent's daily sweep now moves stories
+// older than 21 days out of story-details into `archive-stories`. The story
+// pages are gitignored and regenerated purely from platform_state, so if the
+// prerenderer only saw story-details, a redeploy would silently drop every
+// archived page — 404ing URLs Google has indexed (GSC news sitemap). To keep
+// that SEO asset intact, archived stories are merged back in here: their detail
+// pages keep regenerating, they stay in the sitemap, and they remain reachable
+// as "Earlier stories" links on the listing page. Only the full feed CARDS (the
+// newest FULL_CARDS) shrink to the live set — which they do naturally, because
+// live stories are always newer than archived ones.
+//
 // NOTE: storySlug() has a byte-for-byte twin in public/js/news.js (storySlug)
 // so client-rendered cards link to the same static URLs. Change them together.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -460,16 +471,45 @@ function sitemapXml(stories: NewsStory[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>\n`;
 }
 
+// ── archived-story normalization ─────────────────────────────────────────────
+// archive-stories holds the RAW approved story objects (the newsagent's
+// normalizeStory() shape): editorial reasoning lives in `reasoning` and there
+// is no `originalLink`. Map onto the publishing NewsStory shape so archived
+// pages render identically to when the story was live.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function archivedToNewsStory(raw: Record<string, any>): NewsStory {
+  return {
+    ...raw,
+    editorialReasoning: raw["editorialReasoning"] || raw["reasoning"] || "",
+    originalLink: raw["originalLink"] || raw["link"] || "",
+  } as NewsStory;
+}
+
 // ── main entry ───────────────────────────────────────────────────────────────
 export async function runNewsPrerender(): Promise<{ stories: number; pages: number }> {
   const data = await readJson<{ generatedAt?: string; stories?: NewsStory[] }>(
     PATHS.storyDetails,
     { generatedAt: undefined, stories: [] },
   );
+  // Archived stories (aged out of the live feed by the newsagent's 21-day
+  // sweep) — merged back in so their pages + sitemap entries persist.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const archiveData = await readJson<{ stories?: Record<string, any>[] }>(
+    PATHS.archive,
+    { stories: [] },
+  );
   // Per-story SEO title/description overrides (optional; keyed by story id).
   const seoOverrides = await readJson<SeoOverrideMap>(PATHS.seoOverrides, {});
   const seenSlugs = new Set<string>();
-  const stories = (data.stories ?? [])
+  // Live stories FIRST: when the same story exists in both collections (the
+  // archive is also an approval-time copy ledger), the slug dedup below keeps
+  // the live/publishing version. Array.sort is stable, so equal-date live
+  // entries stay ahead of their archived twins.
+  const combined: NewsStory[] = [
+    ...(data.stories ?? []),
+    ...(archiveData.stories ?? []).map(archivedToNewsStory),
+  ];
+  const stories = combined
     .filter((s) => s && s.id && s.title)
     .sort((a, b) =>
       String(b.approvedAt || b.generatedAt || "").localeCompare(
