@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink, RefreshCw, ShoppingBag, Heart, MessageSquare, Users, Mail, Wallet, CreditCard, Gauge, Sunrise, Menu, X, CloudLightning } from "lucide-react";
+import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink, RefreshCw, ShoppingBag, Heart, MessageSquare, Users, Mail, Wallet, CreditCard, Gauge, Sunrise, Menu, X, CloudLightning, Archive } from "lucide-react";
 import { useScanNews, getGetSystemStatusQueryKey, getGetEditorialQueueQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/editorial", label: "Editorial", icon: LayoutDashboard },
     { href: "/queue", label: "Editorial Queue", icon: ListTodo },
     { href: "/approved", label: "Approved Stories", icon: CheckCircle2 },
+    { href: "/archive", label: "Story Archive", icon: Archive },
     { href: "/feeds", label: "Live Feeds", icon: Rss },
     { href: "/alerts", label: "Operational Alerts", icon: AlertTriangle },
     { href: "/storm-alerts", label: "Storm Alerts", icon: CloudLightning },
