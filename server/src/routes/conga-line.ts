@@ -86,8 +86,11 @@ function normalizeSource(s: SourceInput | undefined): { norm: number; weight: nu
   const scale = Number(s.scale) || 5;
   if (!Number.isFinite(score) || !Number.isFinite(scale) || scale <= 0) return null;
   const norm = Math.max(0, Math.min(5, (score / scale) * 5));
+  // √count weighting (Mark, 2026-08-14): raw counts let the bigger-sample site
+  // drown the tougher one and every large ship blended to the same 4.5. Square
+  // root keeps sample size mattering without steamrolling the second source.
   const count = Number(s.count);
-  const weight = Number.isFinite(count) && count > 0 ? count : 1;
+  const weight = Number.isFinite(count) && count > 0 ? Math.sqrt(count) : 1;
   return { norm, weight };
 }
 
@@ -97,8 +100,12 @@ function blendRating(cruiseline?: SourceInput, cruisecritic?: SourceInput): { ra
   const totalWeight = parts.reduce((a, p) => a + p.weight, 0);
   let rating = parts.reduce((a, p) => a + p.norm * p.weight, 0) / totalWeight;
   rating = Math.max(1, Math.min(5, rating));       // clamp — 1 to 5 ONLY, never lower
-  rating = Math.round(rating * 2) / 2;              // nearest half point for a clean display
-  const display = `${Number.isInteger(rating) ? rating : rating.toFixed(1)}/5 Conga Line`;
+  // One-decimal score (Mark, 2026-08-14): half-point buckets erased the
+  // differentiation cruisers need to choose between similar ships. Display
+  // graphics round DOWN to the whole number so the conga characters align
+  // (4.3 → 4 dancers) — that floor lives in the display layer, never here.
+  rating = Math.round(rating * 10) / 10;
+  const display = `${rating.toFixed(1)}/5 Conga Line`;
   return { rating, display, sourceCount: parts.length };
 }
 
