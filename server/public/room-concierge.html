@@ -89,12 +89,20 @@ footer{text-align:center;padding:24px 16px;color:rgba(247,251,255,.6);font-size:
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more.</footer>
 
 <script>
-/* One quiet advisor line per stage — a reminder, never a pitch. */
+const DANCERS={1:'/assets/concierge/dancer-1_neutral_cruiser.jpg',2:'/assets/concierge/dancer-2_tourist.jpg',3:'/assets/concierge/dancer-3_cruiser.jpg',4:'/assets/concierge/dancer-4_party_animal.jpg',5:'/assets/concierge/dancer-5_conga_king_queen.jpg'};
+const SALTY_IMG='/assets/concierge/salty-mark.jpg';
+</script>
+<script>
+/* ─────────────────────────────────────────────────────────────────────────────
+   RoomConciergeFlow — the full journey, wired.
+   landing → fork → (ship picker | –) → 5 questions about you → expectations
+   (the finder's Mark-corrected tree) → reveal (published Conga score + Salty
+   Mark) → rooms (live-reasoned picks where advice exists) → the one CTA.
+   Design is LOCKED (Mark, 8/14) — stages render inside the frosted panel.
+──────────────────────────────────────────────────────────────────────────── */
 const QUIET = [
   "curated by Still Afloat Cruising, your independent travel advisor",
   "Questions? You can always talk to us.",
-  "Questions? You can always talk to us.",
-  "Questions? You can always talk to us."
 ];
 const PERSONALITY_QS = [
   { key:"energy", q:"It's 9pm on sea day two. Where are you?",
@@ -116,25 +124,44 @@ const PERSONALITY_QS = [
   { key:"crowds", q:"A packed pool deck in the Caribbean sun is…",
     opts:[["…the point. That energy is the vacation","loves-it"],
           ["…fine till noon, then I need an exit","tolerates"],
-          ["…my villain origin story","avoids"]] }
+          ["…my villain origin story","avoids"]] },
 ];
-const DEMO_REVEAL = [{
-  ship:"Wonder of the Seas", line:"Royal Caribbean", rating:4.2,
-  comment:"Wonder's big and busy with plenty to do, but expect elevator waits and book your shows early.",
-  salty:"Great if you like big and busy — the dining service won't be the sharpest part of your trip."
-}];
+/* The finder's expectation tree, ported verbatim (Mark-corrected copy). */
+const EXPECT_QS = [
+  { key:"party", q:"Who's going?", opts:[
+      ["Just the two of us","couple"],["Family with kids","family"],
+      ["Just me","solo"],["A group of us","group"]] },
+  { key:"room", q:"How do you picture using your room?", opts:[
+      ["Crash and recharge","inside"],["Wake up to daylight and water","oceanview"],
+      ["Coffee outside in my pajamas","balcony"],["The room is part of the vacation","suite"],
+      ["Honestly, no idea — pick for me","balcony"]] },
+  { key:"priority", q:"What matters most once you're aboard?", opts:[
+      ["Waking up to the ocean","ocean"],["Peace and quiet","quiet"],
+      ["Being near the action","action"],["Room to spread out","space"]] },
+  { key:"motion", q:"Does anyone get seasick?", opts:[
+      ["Yes — keep us steady","yes"],["No, we're fine","no"],
+      ["I can grin and bear it","no"]] },
+];
 
 class RoomConciergeFlow {
-  constructor() { this.path=null; this.personality={}; this.qIndex=0;
-    this.stageEl=document.getElementById("stage"); }
-  quiet(i) { return `<p class="quiet">${QUIET[i%QUIET.length]}</p>`; }
-  landing() {
+  constructor() {
+    this.path=null; this.personality={}; this.expect={}; this.qIndex=0; this.eIndex=0;
+    this.fleet=[]; this.chosen=null; this.suggestion=null; this.picked=new Set();
+    this.stageEl=document.getElementById("stage");
+    this.loadFleet();
+  }
+  quiet(i){ return `<p class="quiet">${QUIET[i===0?0:1]}</p>`; }
+  async loadFleet(){
+    try{ const r=await fetch("/api/cabins/fleet"); this.fleet=(await r.json()).ships||[]; }
+    catch{ this.fleet=[]; }
+  }
+  landing(){
     this.stageEl.innerHTML = `
       <p class="re-kick">Room Concierge</p>
       <h1>Let's find the room<br>you'll brag about.</h1>
       <p class="re-intro">A few quick <b>questions about you</b> — enough to figure out what you want
-      out of a trip. Then your <b>expectations</b>. Then <b>real rooms</b> — the exact cabins worth
-      booking, and the ones worth walking past. About two minutes.</p>
+      out of a trip. Then your <b>expectations</b>. Then <b>real rooms</b> — the exact cabins
+      worth booking, and the ones worth walking past. About two minutes.</p>
       <div class="re-fork">
         <h2 class="q">Do you already have a ship in mind?</h2>
         <div class="re-choices">
@@ -144,59 +171,166 @@ class RoomConciergeFlow {
       </div>
       ${this.quiet(0)}`;
   }
-  fork(path) { this.path=path; this.qIndex=0; this.personalityQ(); }
-  personalityQ() {
+  fork(path){ this.path=path; this.qIndex=0; this.eIndex=0;
+    path==="ship" ? this.shipPick() : this.personalityQ(); }
+  shipPick(filter=""){
+    const f=filter.trim().toLowerCase();
+    const matches=this.fleet.filter(s=>!f||s.ship.toLowerCase().includes(f)||s.line.toLowerCase().includes(f));
+    const byLine={};
+    for(const s of matches){ (byLine[s.line]=byLine[s.line]||[]).push(s); }
+    const list=Object.entries(byLine).map(([line,ships])=>
+      `<div style="margin:8px 0 2px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#33415c">${line}</div>`+
+      ships.map(s=>`<button class="re-opt" style="padding:9px 14px;font-size:15px" onclick="RC.chooseShip('${s.slug}')">${s.ship}</button>`).join("")
+    ).join("");
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Your ship</p>
+      <h2 class="q">Which ship?</h2>
+      <input id="shipSearch" placeholder="Start typing a ship or line…" value="${filter.replace(/"/g,"&quot;")}"
+        style="width:100%;padding:12px 16px;border-radius:14px;border:2px solid rgba(7,24,63,.3);font-family:'Baloo 2',sans-serif;font-size:16px;margin-bottom:10px"
+        oninput="RC.shipPick(this.value)">
+      <div class="re-opts" style="max-height:300px;overflow-y:auto">${list||'<p style="text-align:center;color:#33415c">No match — check the spelling, or go back and let me pick.</p>'}</div>
+      ${this.quiet(1)}`;
+    const inp=document.getElementById("shipSearch");
+    if(f){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
+  }
+  chooseShip(slug){ this.chosen=this.fleet.find(s=>s.slug===slug)||null; this.personalityQ(); }
+  personalityQ(){
     const i=this.qIndex;
-    if (i>=PERSONALITY_QS.length) return this.expectations();
+    if(i>=PERSONALITY_QS.length) return this.expectQ();
     const q=PERSONALITY_QS[i];
     this.stageEl.innerHTML = `
       <p class="re-progress">Getting to know you · ${i+1} of ${PERSONALITY_QS.length}</p>
       <h2 class="q">${q.q}</h2>
       <div class="re-opts">${q.opts.map(([label,val])=>
-        `<button class="re-opt" onclick="RC.answer('${q.key}','${val}')">${label}</button>`).join("")}</div>
-      ${this.quiet(1+i)}`;
+        `<button class="re-opt" onclick="RC.answerP('${q.key}','${val}')">${label}</button>`).join("")}</div>
+      ${this.quiet(1)}`;
   }
-  answer(key,val) { this.personality[key]=val; this.qIndex++; this.personalityQ(); }
-  expectations() {
+  answerP(key,val){ this.personality[key]=val; this.qIndex++; this.personalityQ(); }
+  expectQ(){
+    const i=this.eIndex;
+    if(i>=EXPECT_QS.length) return this.reveal();
+    const q=EXPECT_QS[i];
     this.stageEl.innerHTML = `
-      <p class="re-progress">Expectations</p>
-      <h2 class="q">Now the practical stuff — the question tree slots in here.</h2>
-      <p class="re-intro">Budget, party size, dealbreakers — the existing expectation tree, wired in next pass.</p>
-      <div class="re-fork"><button class="re-btn yes" onclick="RC.reveal()">See the reveal →</button></div>
-      ${this.quiet(2)}`;
+      <p class="re-progress">Your expectations · ${i+1} of ${EXPECT_QS.length}</p>
+      <h2 class="q">${q.q}</h2>
+      <div class="re-opts">${q.opts.map(([label,val])=>
+        `<button class="re-opt" onclick="RC.answerE('${q.key}','${val}')">${label}</button>`).join("")}</div>
+      ${this.quiet(1)}`;
   }
-  reveal() {
-    const cards = DEMO_REVEAL.map(s=>this.shipCard(s)).join("");
-    const heading = this.path==="ship" ? "Your ship, scored honestly." : "Two ships that fit you — here's the first.";
+  answerE(key,val){ this.expect[key]=val; this.eIndex++; this.expectQ(); }
+  async reveal(){
+    this.stageEl.innerHTML = `<p class="re-progress">The reveal</p><h2 class="q">Working on it…</h2>`;
+    let shipsToShow=[], reason="";
+    if(this.path==="ship" && this.chosen){ shipsToShow=[this.chosen]; }
+    else{
+      try{
+        const r=await fetch("/api/cabins/suggest-ships",{method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({personality:this.personality, party:this.expect.party})});
+        const d=await r.json(); shipsToShow=d.picks||[]; reason=d.reason||"";
+      }catch{ shipsToShow=[]; }
+    }
+    if(!shipsToShow.length){
+      this.stageEl.innerHTML = `<p class="re-progress">The reveal</p>
+        <h2 class="q">I'd rather get this right than guess.</h2>
+        <p class="re-intro">Something didn't line up on my end. Send over what you told me and a real
+        person will finish the job.</p>${this.cta()}`;
+      return;
+    }
+    const cards=await Promise.all(shipsToShow.map(s=>this.shipCard(s)));
+    const heading=this.path==="ship" ? "Your ship, scored honestly." :
+      (shipsToShow.length>1?"Two ships that fit you.":"The ship that fits you.");
     this.stageEl.innerHTML = `
       <p class="re-progress">The reveal</p>
       <h2 class="q">${heading}</h2>
-      ${cards}
-      <div class="re-cta">
-        <h3>Want a real person to sanity-check it?</h3>
-        <p>Pick the rooms you like and send them over — Mark will look at the pick, the price, and the
-        itinerary before you book a thing. No fee, no pressure.</p>
-        <button class="re-btn yes">Send my picks to Mark</button>
-      </div>`;
+      ${reason?`<p class="re-intro" style="font-size:15.5px">${reason}</p>`:""}
+      ${cards.join("")}
+      ${this.cta()}`;
   }
-  shipCard(s) {
-    const floored=Math.floor(s.rating);
-    const imgs=[1,2,3,4,5].map(n=>
-      `<img src="${DANCERS[n]}" style="${n<=floored?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("");
+  async shipCard(s){
+    let rating=null, comment=null, salty=null;
+    try{
+      const r=await fetch(`/api/ships/${encodeURIComponent(s.slug)}/rating`);
+      if(r.ok){ const d=await r.json(); if(d.ok){ rating=d.rating; comment=d.comment; salty=d.saltyMarkTake; } }
+    }catch{/* no rating shown */}
+    const scoreRow = rating!=null ? `
+      <div class="conga-score-wrap">
+        <span class="conga-mini">${[1,2,3,4,5].map(n=>
+          `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</span>
+        <span class="conga-num">${Number(rating).toFixed(1)}<small>/5 Conga Rating</small></span>
+      </div>` : "";
+    const roomsBtn = s.hasRooms
+      ? `<button class="re-btn no" onclick="RC.rooms('${s.repSlug}','${s.ship.replace(/'/g,"\\'")}')">Show me the rooms →</button>`
+      : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Room-by-room picks for this ship are coming — ask and we'll do it by hand.</span>`;
     return `<div class="reveal-ship">
       <div class="reveal-head"><h3>${s.ship}</h3><span class="line">${s.line}</span></div>
-      <div class="conga-score-wrap">
-        <span class="conga-mini">${imgs}</span>
-        <span class="conga-num">${s.rating.toFixed(1)}<small>/5 Conga Rating</small></span>
-      </div>
-      <p class="reveal-comment">&ldquo;${s.comment}&rdquo;</p>
-      <div class="salty"><img src="/assets/concierge/salty-mark.jpg" alt="Salty Mark">
-        <div><span class="sl">Salty Mark says</span><p>&ldquo;${s.salty}&rdquo;</p></div></div>
-      <div class="reveal-pick"><button class="re-btn no">Show me the rooms →</button></div>
+      ${scoreRow}
+      ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
+      ${salty?`<div class="salty"><img src="${SALTY_IMG}" alt="Salty Mark">
+        <div><span class="sl">Salty Mark says</span><p>&ldquo;${salty}&rdquo;</p></div></div>`:""}
+      <div class="reveal-pick">${roomsBtn}</div>
+    </div>`;
+  }
+  async rooms(repSlug, shipName){
+    this.stageEl.innerHTML = `<p class="re-progress">Your rooms</p><h2 class="q">Pulling the rooms I'd pick on ${shipName}…</h2>`;
+    let d=null;
+    try{
+      const r=await fetch("/api/cabins/recommend",{method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ship:repSlug, party:this.expect.party, room:this.expect.room,
+          priority:this.expect.priority, motion:this.expect.motion==="yes"})});
+      if(r.ok) d=await r.json();
+    }catch{/* handled below */}
+    if(!d||!d.picks?.length){
+      this.stageEl.innerHTML = `<p class="re-progress">Your rooms</p>
+        <h2 class="q">This one needs the human touch.</h2>
+        <p class="re-intro">I don't have room-level picks for ${shipName} loaded yet — send your answers
+        over and it gets done by hand.</p>${this.cta()}`;
+      return;
+    }
+    this.picked=new Set(); this.roomsData=d; this.roomsShip=shipName; this.roomsRep=repSlug;
+    this.drawRooms();
+  }
+  drawRooms(){
+    const d=this.roomsData;
+    const picks=d.picks.map(p=>{
+      const f=p.facts||{};
+      const on=this.picked.has(p.cabin);
+      return `<div class="reveal-ship" style="padding:14px 16px">
+        <div class="reveal-head"><h3 style="font-size:19px">Cabin ${p.cabin}</h3>
+          <span class="line">${f.deck?`Deck ${f.deck}`:""}${f.category?` · ${f.category}`:""}${f.view?` · ${f.view}`:""}</span></div>
+        ${p.hook?`<p class="reveal-comment" style="margin:7px 0 4px">${p.hook}</p>`:""}
+        ${p.reason?`<p style="font-size:14.5px;line-height:1.5;color:#33415c;margin:4px 0 8px">${p.reason}</p>`:""}
+        <div style="text-align:right"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
+          onclick="RC.togglePick('${p.cabin}')">${on?'✓ Picked':'Pick this room'}</button></div>
+      </div>`;}).join("");
+    const steer=(d.steerClear||[]).slice(0,3).map(s=>
+      `<li style="margin:0 0 6px">${s.cabin?`<b>Cabin ${s.cabin}</b> — `:s.area?`<b>${s.area}</b> — `:""}${s.reason||""}</li>`).join("");
+    const sendBar=this.picked.size?`
+      <div class="re-cta"><h3>${this.picked.size} room${this.picked.size>1?"s":""} picked</h3>
+        <p>Send them over and a real person checks the pick, the price, and the itinerary before you book.</p>
+        <a class="re-btn yes" style="text-decoration:none;display:inline-block"
+          href="/cabin-request.html?ship=${encodeURIComponent(this.roomsShip)}&cabins=${encodeURIComponent([...this.picked].join(","))}">Send my picks</a></div>`
+      : this.cta();
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Your rooms · ${this.roomsShip}</p>
+      <h2 class="q">Here's where I'd put you.</h2>
+      ${picks}
+      ${steer?`<div style="background:#fff;border:2px solid rgba(7,24,63,.16);border-radius:16px;padding:14px 18px;margin:0 0 14px">
+        <p style="margin:0 0 8px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#b45309">Worth walking past</p>
+        <ul style="margin:0;padding-left:18px;font-size:14.5px;color:#33415c">${steer}</ul></div>`:""}
+      ${sendBar}`;
+  }
+  togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
+  cta(){
+    return `<div class="re-cta">
+      <h3>Want a real person to sanity-check it?</h3>
+      <p>Send over what you told me — the pick, the price, and the itinerary get a human read
+      before you book a thing. No fee, no pressure.</p>
+      <a class="re-btn yes" style="text-decoration:none;display:inline-block" href="/cabin-request.html">Talk to us</a>
     </div>`;
   }
 }
-const DANCERS={1:'/assets/concierge/dancer-1_neutral_cruiser.jpg',2:'/assets/concierge/dancer-2_tourist.jpg',3:'/assets/concierge/dancer-3_cruiser.jpg',4:'/assets/concierge/dancer-4_party_animal.jpg',5:'/assets/concierge/dancer-5_conga_king_queen.jpg'};
 const RC=new RoomConciergeFlow(); RC.landing();
 </script>
 </body>

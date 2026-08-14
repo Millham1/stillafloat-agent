@@ -276,6 +276,165 @@ router.get("/cabins/ships", async (_req: Request, res: Response) => {
   }
 });
 
+
+// ── The real fleet: every sailing ship → its class → the geometry rep ─────────
+// fleet.json (cabin-advisor/, version-controlled, compiled July 2026) is the
+// canonical real-ship→class mapping: sister ships share a hull/cabin layout, so
+// each maps to the one class rep we harvested in cabin_ships. Ratings are
+// per-REAL-ship (sisters score differently with cruisers) and only surface here
+// once published+approved — internal ranking may use more (see suggest-ships).
+type FleetShip = {
+  ship: string; slug: string; line: string; shipClass: string;
+  repSlug: string | null; hasRooms: boolean; rating: number | null;
+};
+
+function kebab(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function loadFleetJson(): { lines: Record<string, { classes: Record<string, { ships: string[] }> }> } | null {
+  for (const p of [
+    join(process.cwd(), "..", "cabin-advisor", "fleet.json"),
+    join(process.cwd(), "cabin-advisor", "fleet.json"),
+  ]) {
+    try { return JSON.parse(readFileSync(p, "utf8")); } catch { /* next */ }
+  }
+  return null;
+}
+
+async function buildFleet(includeUnpublishedRatings: boolean): Promise<{ ships: FleetShip[]; internalRating: Map<string, number> }> {
+  const fleet = loadFleetJson();
+  const supabase = getSupabase();
+  const { data: reps } = await supabase.from("cabin_ships").select("slug,ship,line,class");
+  const { data: adviceRows } = await supabase.from("cabin_advice").select("ship_slug");
+  const adviceSlugs = new Set((adviceRows ?? []).map((r: { ship_slug: string }) => r.ship_slug));
+
+  // class name → rep slug (class names are unique enough across the harvest;
+  // where two lines reuse a name, the line check below disambiguates)
+  const repByClass = new Map<string, { slug: string; line: string }>();
+  for (const r of (reps ?? []) as { slug: string; line: string; class: string }[]) {
+    repByClass.set(r.class.toLowerCase(), { slug: r.slug, line: r.line });
+  }
+
+  const ratingQuery = supabase.from("conga_line_ratings").select("ship_slug,rating,status,comment_status");
+  const { data: ratingRows } = await ratingQuery;
+  const publicRating = new Map<string, number>();
+  const internalRating = new Map<string, number>();
+  for (const r of (ratingRows ?? []) as { ship_slug: string; rating: number | null; status: string; comment_status: string }[]) {
+    if (r.rating == null) continue;
+    if (r.comment_status === "approved") internalRating.set(r.ship_slug, Number(r.rating));
+    if (r.status === "published" && r.comment_status === "approved") publicRating.set(r.ship_slug, Number(r.rating));
+  }
+
+  const ships: FleetShip[] = [];
+  if (fleet?.lines) {
+    for (const [lineName, line] of Object.entries(fleet.lines)) {
+      for (const [className, klass] of Object.entries(line.classes ?? {})) {
+        const rep = repByClass.get(className.toLowerCase()) ?? null;
+        for (const raw of klass.ships ?? []) {
+          if (/\(on order\)/i.test(raw)) continue;      // not sailing yet
+          const ship = raw.replace(/\s*\((?:2026|on order)\)\s*/gi, "").trim();
+          const slug = kebab(ship);
+          ships.push({
+            ship, slug, line: lineName, shipClass: className,
+            repSlug: rep?.slug ?? null,
+            hasRooms: rep ? adviceSlugs.has(rep.slug) : false,
+            rating: publicRating.get(slug) ?? null,
+          });
+        }
+      }
+    }
+  }
+  return { ships, internalRating };
+}
+
+router.get("/cabins/fleet", async (_req: Request, res: Response) => {
+  res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
+  try {
+    const { ships } = await buildFleet(false);
+    res.json({ ships });
+  } catch (err) {
+    logger.error({ err }, "cabins/fleet failed");
+    res.status(500).json({ error: "Could not load the fleet" });
+  }
+});
+
+// ── Personality → ship suggestions ───────────────────────────────────────────
+// Deterministic and inspectable, same philosophy as pickArchetype: a wrong
+// suggestion must be debuggable. Internal ranking uses approved-but-unpublished
+// ratings (our own data, never exposed); the response carries only published
+// scores. Reasons are built from the visitor's own answers, never from
+// unpublished rating text.
+type Personality = { energy?: string; social?: string; structure?: string; splurge?: string; crowds?: string };
+
+const LINE_VIBE: Record<string, { energy: number; price: number; family: number }> = {
+  "Carnival Cruise Line":  { energy: 2, price: 0, family: 2 },
+  "Royal Caribbean":       { energy: 2, price: 1, family: 2 },
+  "Norwegian Cruise Line": { energy: 1, price: 1, family: 1 },
+  "MSC Cruises":           { energy: 1, price: 0, family: 1 },
+  "Princess Cruises":      { energy: 0, price: 1, family: 0 },
+  "Celebrity Cruises":     { energy: 0, price: 2, family: 0 },
+  "Margaritaville at Sea": { energy: 1, price: 0, family: 1 },
+};
+
+router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
+  try {
+    const { personality = {}, party } = (req.body ?? {}) as { personality?: Personality; party?: string };
+    const { ships, internalRating } = await buildFleet(true);
+
+    const userEnergy = personality.energy === "party" ? 2 : personality.energy === "social" ? 1 : 0;
+    const userPrice  = personality.splurge === "cabin" ? 2 : personality.splurge === "consumables" ? 1 : 0;
+    const bigOk      = personality.crowds === "loves-it" ? 2 : personality.crowds === "tolerates" ? 1 : 0;
+    const familyish  = party === "family" || party === "group";
+
+    const scored = ships
+      .filter((s) => s.repSlug)                       // only classes we can put rooms behind
+      .map((s) => {
+        const vibe = LINE_VIBE[s.line] ?? { energy: 1, price: 1, family: 1 };
+        let score = 0;
+        score -= Math.abs(vibe.energy - userEnergy) * 2.0;
+        score -= Math.abs(vibe.price - userPrice) * 1.5;
+        if (familyish) score += vibe.family * 0.8;
+        else if (personality.energy === "quiet") score -= vibe.family * 0.6;
+        // crowd tolerance vs mega-ship classes: the big-energy lines ARE the big ships
+        if (bigOk === 0 && vibe.energy === 2) score -= 1.5;
+        if (bigOk === 2 && vibe.energy === 2) score += 1.0;
+        const r = internalRating.get(s.slug);
+        if (r != null) score += (r - 3.5) * 1.6;      // crowd verdict, centered
+        if (s.hasRooms) score += 0.75;                 // journey can end in real rooms today
+        return { s, score };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    // one ship per line in the top picks — two sisters from one line is a thin answer
+    const picks: FleetShip[] = [];
+    const usedLines = new Set<string>();
+    for (const { s } of scored) {
+      if (usedLines.has(s.line)) continue;
+      usedLines.add(s.line);
+      picks.push(s);
+      if (picks.length === 2) break;
+    }
+
+    const reasonBits: string[] = [];
+    if (personality.energy === "party") reasonBits.push("you want the energy turned up");
+    if (personality.energy === "quiet") reasonBits.push("you want room to breathe");
+    if (personality.energy === "social") reasonBits.push("you like the middle gear — lively, not chaos");
+    if (personality.crowds === "avoids") reasonBits.push("crowds wear on you");
+    if (personality.crowds === "loves-it") reasonBits.push("a full deck doesn't scare you");
+    if (personality.splurge === "cabin") reasonBits.push("the room matters to you");
+    if (personality.splurge === "value") reasonBits.push("you want the fare to do the work");
+    const reason = reasonBits.length
+      ? `Picked because ${reasonBits.slice(0, 2).join(" and ")}.`
+      : "Picked to fit how you answered.";
+
+    res.json({ picks, reason });
+  } catch (err) {
+    logger.error({ err }, "cabins/suggest-ships failed");
+    res.status(500).json({ error: "Could not suggest ships" });
+  }
+});
+
 // ── The recommendation ───────────────────────────────────────────────────────
 router.post("/cabins/recommend", async (req: Request, res: Response) => {
   try {
