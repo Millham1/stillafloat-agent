@@ -376,6 +376,7 @@ type Matrix = {
   lines: Record<string, Record<string, number>>;
   classOverrides: Record<string, Record<string, number>>;
   enclaves: Record<string, { name: string; classes: string[]; note?: string }>;
+  shipAdjust?: Record<string, { adjust: number; why: string }>;
 };
 function loadMatrix(): Matrix | null {
   for (const p of [
@@ -453,6 +454,9 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
         const r = internalRating.get(sh.slug);
         if (r != null) score += (r - 3.5) * 1.6;
         if (sh.hasRooms) score += 0.75;
+        // The advisor's thumb: Mark's firsthand per-ship verdicts outrank any model.
+        const adj = matrix.shipAdjust?.[sh.slug];
+        if (adj && typeof adj.adjust === "number") score += adj.adjust;
         const nextLevel = enclave && wantsEnclave
           ? { name: enclave.name, why: "the quiet, looked-after version of this ship — private spaces, and the crowd stays outside" }
           : enclave ? { name: enclave.name, why: "worth knowing this ship has a next-level experience if you want it" } : null;

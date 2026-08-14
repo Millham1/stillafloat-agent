@@ -198,5 +198,16 @@
       ],
       "note": "Sphere-class Sanctuary Collection is closest to a real enclave; Reserve elsewhere is dining+location perks (lite)"
     }
+  },
+  "shipAdjust": {
+    "_note": "The advisor's thumb on the scale \u2014 Mark's FIRSTHAND ship verdicts, applied as flat score adjustments to the specific ship. This is where sailed-it-myself knowledge accumulates; always carry the why.",
+    "margaritaville-at-sea-islander": {
+      "adjust": 1.0,
+      "why": "Mark has sailed her \u2014 'I would recommend Islander all day long' (8/14)"
+    },
+    "margaritaville-at-sea-paradise": {
+      "adjust": -1.0,
+      "why": "Mark has sailed her \u2014 'not so much for Paradise' (8/14)"
+    }
   }
 }
