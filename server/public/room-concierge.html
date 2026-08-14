@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Concierge | Still Afloat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#07183f;--ocean:#0077b6;--seafoam:#5dff9a;--gold:#ffca4f;--cream:#faf6ee}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Baloo 2',sans-serif;background:#040a16;color:var(--navy)}
+/* Same canvas as affiliate.html — identical art, identical wash. */
+body::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(4,10,22,.55) 0%,rgba(4,10,22,.72) 100%),
+  url('/assets/images/cruising-gear-bg.png') center/cover fixed}
+.re-shell{max-width:960px;margin:0 auto;padding:70px 60px 84px;position:relative}
+
+/* ── The concierge card IS the cabin illustration — rounded, framed, characters on the corners ── */
+.re-frame{position:relative}
+.re-card{position:relative;border-radius:36px;border:3px solid var(--navy);overflow:hidden;
+  background:url('/assets/concierge/cabin-card.jpg') center/cover no-repeat;box-shadow:0 30px 80px rgba(0,0,0,.6);
+  padding:64px 60px 56px;aspect-ratio:1/0.92;display:flex;align-items:flex-end;justify-content:center}
+.panel-hold{position:relative;max-width:560px;width:100%}
+.corner{position:absolute;z-index:6;height:140px;width:auto;filter:drop-shadow(0 10px 18px rgba(0,0,0,.5))}
+.corner.tl{top:-52px;left:-44px;transform:rotate(-6deg)}
+.corner.tr{top:-52px;right:-44px;transform:rotate(6deg) scaleX(-1)}
+.corner.bl{bottom:-44px;left:-46px;transform:rotate(5deg)}
+.corner.br{bottom:-44px;right:-46px;transform:rotate(-5deg) scaleX(-1)}
+
+/* Soft cream panel floating on the cabin art — the writable surface. */
+.re-panel{position:relative;background:rgba(250,246,238,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:2px solid rgba(7,24,63,.5);
+  border-radius:26px;padding:26px 30px 22px;width:100%;
+  box-shadow:0 14px 40px rgba(7,24,63,.28)}
+.re-kick{text-align:center;font-weight:800;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--navy);margin:0 0 4px}
+h1{font-family:'Bree Serif',serif;text-align:center;font-size:clamp(28px,4.8vw,40px);margin:2px 0 14px;color:var(--navy);line-height:1.12}
+h2.q{font-family:'Bree Serif',serif;font-size:clamp(20px,3.4vw,25px);text-align:center;margin:14px 0 16px;color:var(--navy);line-height:1.3}
+.re-intro{font-size:18.5px;line-height:1.65;color:#22345c;margin:0 auto 4px;text-align:center}
+.re-intro b{color:var(--navy)}
+.re-fork{text-align:center;margin:20px 0 2px}
+.re-choices{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.re-btn{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:16px;border-radius:15px;padding:13px 24px;cursor:pointer;border:2.5px solid var(--navy);transition:transform .15s ease;background:#fff;color:var(--navy)}
+.re-btn:hover{transform:translateY(-2px)}
+.re-btn.yes{background:var(--navy);color:var(--gold)}
+.re-btn.no{background:var(--gold);color:var(--navy)}
+.re-opts{display:flex;flex-direction:column;gap:11px;margin:0 auto}
+.re-opt{text-align:left;font-family:'Baloo 2',sans-serif;font-size:15.5px;font-weight:600;line-height:1.45;background:#fff;border:2px solid rgba(7,24,63,.22);border-radius:15px;padding:13px 17px;cursor:pointer;transition:all .15s}
+.re-opt:hover{border-color:var(--ocean);transform:translateX(4px)}
+.re-progress{text-align:center;font-size:12px;font-weight:800;letter-spacing:.1em;color:#8896b0;text-transform:uppercase;margin:0 0 6px}
+/* The advisor reminder — one quiet line. No photo, no button, no pitch. */
+.quiet{margin:16px 0 0;text-align:center;font-size:13px;color:var(--navy);font-weight:600;font-style:italic}
+/* reveal card */
+.reveal-ship{background:#fff;border:2px solid rgba(7,24,63,.16);border-radius:18px;padding:18px 20px;margin:0 0 14px}
+.reveal-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.reveal-head h3{font-family:'Bree Serif',serif;font-size:22px;margin:0;color:var(--navy)}
+.reveal-head .line{color:#5a6b85;font-size:13px;font-weight:600}
+.conga-score-wrap{display:flex;align-items:center;gap:13px;margin:9px 0 4px;flex-wrap:wrap}
+.conga-mini{display:flex;align-items:flex-end;background:#fff;border-radius:10px;overflow:hidden}
+.conga-mini img{height:58px;width:auto;display:block}
+.conga-num{font-family:'Bree Serif',serif;font-size:27px;color:var(--ocean)}
+.conga-num small{font-size:14px;color:#8896b0;font-family:'Baloo 2',sans-serif;font-weight:800}
+.reveal-comment{font-size:15.5px;line-height:1.55;color:#22345c;margin:9px 0 11px;font-weight:600}
+.salty{display:flex;gap:11px;align-items:center;background:#f3edfb;border:1.5px solid #dccdf3;border-radius:13px;padding:9px 13px}
+.salty img{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid #fff}
+.salty .sl{font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#6b21a8;display:block;margin-bottom:2px}
+.salty p{margin:0;font-size:14px;line-height:1.5;color:#3b2a55}
+.reveal-pick{margin:12px 0 0;text-align:right}
+.re-cta{margin-top:16px;background:linear-gradient(135deg,rgba(0,119,182,.09),rgba(93,255,154,.12));border:2px solid rgba(0,119,182,.3);border-radius:18px;padding:20px;text-align:center}
+.re-cta h3{font-family:'Bree Serif',serif;margin:0 0 8px;font-size:20px}
+.re-cta p{margin:0 auto 13px;max-width:460px;font-size:15px;line-height:1.55;color:#33415c}
+footer{text-align:center;padding:24px 16px;color:rgba(247,251,255,.6);font-size:14px}
+@media(max-width:760px){.re-shell{padding:56px 18px 70px}.re-card{padding:40px 16px 34px;min-height:0}
+  .re-panel{padding:22px 18px 20px}
+  .corner{height:105px}.corner.tl{top:-38px;left:-12px}.corner.tr{top:-38px;right:-12px}
+  .corner.bl{bottom:-34px;left:-12px}.corner.br{bottom:-34px;right:-12px}}
+</style>
+</head>
+<body>
+<div class="re-shell">
+  <div class="re-frame">
+    <div class="re-card"><div class="panel-hold">
+    <img class="corner tl" src="/assets/concierge/corner-1_neutral_cruiser.png" alt="">
+    <img class="corner tr" src="/assets/concierge/corner-3_cruiser.png" alt="">
+    <img class="corner bl" src="/assets/concierge/corner-4_party_animal.png" alt="">
+    <img class="corner br" src="/assets/concierge/corner-5_conga_king_queen.png" alt="">
+    <div class="re-panel" id="stage"></div>
+    </div></div>
+  </div>
+</div>
+<footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more.</footer>
+
+<script>
+/* One quiet advisor line per stage — a reminder, never a pitch. */
+const QUIET = [
+  "curated by Still Afloat Cruising, your independent travel advisor",
+  "Questions? You can always talk to us.",
+  "Questions? You can always talk to us.",
+  "Questions? You can always talk to us."
+];
+const PERSONALITY_QS = [
+  { key:"energy", q:"It's 9pm on sea day two. Where are you?",
+    opts:[["Somewhere quiet with a drink and the wake behind the ship","quiet"],
+          ["Dinner ran long because the table got fun","social"],
+          ["Wherever the music is loudest — I'll sleep at home","party"]] },
+  { key:"social", q:"Strangers at your dinner table. Honest reaction?",
+    opts:[["Love it — that's five new friends by Thursday","extrovert"],
+          ["Fine once or twice, but I want my own table most nights","mixed"],
+          ["Hard pass. Vacation is for MY people","introvert"]] },
+  { key:"structure", q:"How planned is a good port day?",
+    opts:[["Spreadsheet. Timed. I've read three reviews of the taxi line","planner"],
+          ["One booked thing, then we wander","loose"],
+          ["I'll decide when I see the weather from the balcony","wing-it"]] },
+  { key:"splurge", q:"Where does the extra money go — if anywhere?",
+    opts:[["The room. I want a view I'll remember","cabin"],
+          ["Food and drinks. The room is for sleeping","consumables"],
+          ["Nowhere. The fare bought the whole ship; I intend to use it","value"]] },
+  { key:"crowds", q:"A packed pool deck in the Caribbean sun is…",
+    opts:[["…the point. That energy is the vacation","loves-it"],
+          ["…fine till noon, then I need an exit","tolerates"],
+          ["…my villain origin story","avoids"]] }
+];
+const DEMO_REVEAL = [{
+  ship:"Wonder of the Seas", line:"Royal Caribbean", rating:4.2,
+  comment:"Wonder's big and busy with plenty to do, but expect elevator waits and book your shows early.",
+  salty:"Great if you like big and busy — the dining service won't be the sharpest part of your trip."
+}];
+
+class RoomConciergeFlow {
+  constructor() { this.path=null; this.personality={}; this.qIndex=0;
+    this.stageEl=document.getElementById("stage"); }
+  quiet(i) { return `<p class="quiet">${QUIET[i%QUIET.length]}</p>`; }
+  landing() {
+    this.stageEl.innerHTML = `
+      <p class="re-kick">Room Concierge</p>
+      <h1>Let's find the room<br>you'll brag about.</h1>
+      <p class="re-intro">A few quick <b>questions about you</b> — enough to figure out what you want
+      out of a trip. Then your <b>expectations</b>. Then <b>real rooms</b> — the exact cabins worth
+      booking, and the ones worth walking past. About two minutes.</p>
+      <div class="re-fork">
+        <h2 class="q">Do you already have a ship in mind?</h2>
+        <div class="re-choices">
+          <button class="re-btn yes" onclick="RC.fork('ship')">Yes — I know my ship</button>
+          <button class="re-btn no" onclick="RC.fork('discover')">Not yet — help me pick</button>
+        </div>
+      </div>
+      ${this.quiet(0)}`;
+  }
+  fork(path) { this.path=path; this.qIndex=0; this.personalityQ(); }
+  personalityQ() {
+    const i=this.qIndex;
+    if (i>=PERSONALITY_QS.length) return this.expectations();
+    const q=PERSONALITY_QS[i];
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Getting to know you · ${i+1} of ${PERSONALITY_QS.length}</p>
+      <h2 class="q">${q.q}</h2>
+      <div class="re-opts">${q.opts.map(([label,val])=>
+        `<button class="re-opt" onclick="RC.answer('${q.key}','${val}')">${label}</button>`).join("")}</div>
+      ${this.quiet(1+i)}`;
+  }
+  answer(key,val) { this.personality[key]=val; this.qIndex++; this.personalityQ(); }
+  expectations() {
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Expectations</p>
+      <h2 class="q">Now the practical stuff — the question tree slots in here.</h2>
+      <p class="re-intro">Budget, party size, dealbreakers — the existing expectation tree, wired in next pass.</p>
+      <div class="re-fork"><button class="re-btn yes" onclick="RC.reveal()">See the reveal →</button></div>
+      ${this.quiet(2)}`;
+  }
+  reveal() {
+    const cards = DEMO_REVEAL.map(s=>this.shipCard(s)).join("");
+    const heading = this.path==="ship" ? "Your ship, scored honestly." : "Two ships that fit you — here's the first.";
+    this.stageEl.innerHTML = `
+      <p class="re-progress">The reveal</p>
+      <h2 class="q">${heading}</h2>
+      ${cards}
+      <div class="re-cta">
+        <h3>Want a real person to sanity-check it?</h3>
+        <p>Pick the rooms you like and send them over — Mark will look at the pick, the price, and the
+        itinerary before you book a thing. No fee, no pressure.</p>
+        <button class="re-btn yes">Send my picks to Mark</button>
+      </div>`;
+  }
+  shipCard(s) {
+    const floored=Math.floor(s.rating);
+    const imgs=[1,2,3,4,5].map(n=>
+      `<img src="${DANCERS[n]}" style="${n<=floored?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("");
+    return `<div class="reveal-ship">
+      <div class="reveal-head"><h3>${s.ship}</h3><span class="line">${s.line}</span></div>
+      <div class="conga-score-wrap">
+        <span class="conga-mini">${imgs}</span>
+        <span class="conga-num">${s.rating.toFixed(1)}<small>/5 Conga Rating</small></span>
+      </div>
+      <p class="reveal-comment">&ldquo;${s.comment}&rdquo;</p>
+      <div class="salty"><img src="/assets/concierge/salty-mark.jpg" alt="Salty Mark">
+        <div><span class="sl">Salty Mark says</span><p>&ldquo;${s.salty}&rdquo;</p></div></div>
+      <div class="reveal-pick"><button class="re-btn no">Show me the rooms →</button></div>
+    </div>`;
+  }
+}
+const DANCERS={1:'/assets/concierge/dancer-1_neutral_cruiser.jpg',2:'/assets/concierge/dancer-2_tourist.jpg',3:'/assets/concierge/dancer-3_cruiser.jpg',4:'/assets/concierge/dancer-4_party_animal.jpg',5:'/assets/concierge/dancer-5_conga_king_queen.jpg'};
+const RC=new RoomConciergeFlow(); RC.landing();
+</script>
+</body>
+</html>
