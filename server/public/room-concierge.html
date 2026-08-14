@@ -289,6 +289,12 @@ class RoomConciergeFlow {
           `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</span>
         <span class="conga-num">${Number(rating).toFixed(1)}<small>/5 Conga Rating</small></span>
       </div>` : "";
+    const nextLevel = s.nextLevel ? `
+      <div style="display:flex;gap:10px;align-items:center;background:#fff8e6;border:1.5px solid #ecd9a0;border-radius:13px;padding:9px 13px;margin:0 0 10px">
+        <span style="font-size:20px">✦</span>
+        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#8a6d1a;display:block;margin-bottom:2px">Next level: ${s.nextLevel.name}</span>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:#5c4a12">${s.nextLevel.why}</p></div>
+      </div>` : "";
     const roomsBtn = s.hasRooms
       ? `<button class="re-btn no" onclick="RC.rooms('${s.repSlug}','${s.ship.replace(/'/g,"\\'")}')">Show me the rooms →</button>`
       : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Room-by-room picks for this ship are coming — ask and we'll do it by hand.</span>`;
@@ -298,6 +304,7 @@ class RoomConciergeFlow {
       ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
       ${salty?`<div class="salty"><img src="${SALTY_IMG}" alt="Salty Mark">
         <div><span class="sl">Salty Mark says</span><p>&ldquo;${salty}&rdquo;</p></div></div>`:""}
+      ${nextLevel}
       <div class="reveal-pick">${roomsBtn}</div>
     </div>`;
   }

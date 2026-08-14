@@ -366,53 +366,103 @@ router.get("/cabins/fleet", async (_req: Request, res: Response) => {
 // scores. Reasons are built from the visitor's own answers, never from
 // unpublished rating text.
 type Personality = { energy?: string; social?: string; structure?: string; splurge?: string; crowds?: string };
+type Traits = Record<string, number>;
 
-const LINE_VIBE: Record<string, { energy: number; price: number; family: number }> = {
-  "Carnival Cruise Line":  { energy: 2, price: 0, family: 2 },
-  "Royal Caribbean":       { energy: 2, price: 1, family: 2 },
-  "Norwegian Cruise Line": { energy: 1, price: 1, family: 1 },
-  "MSC Cruises":           { energy: 1, price: 0, family: 1 },
-  "Princess Cruises":      { energy: 0, price: 1, family: 0 },
-  "Celebrity Cruises":     { energy: 0, price: 2, family: 0 },
-  "Margaritaville at Sea": { energy: 1, price: 0, family: 1 },
+// The virtue matrix (cabin-advisor/matrix.json): line-level virtues, class-level
+// overrides, and the premium enclaves (Yacht Club / Haven / Retreat / Star
+// Class...). Energy column approved by Mark 8/14; other values drafted for his
+// correction — tune the JSON, not this code.
+type Matrix = {
+  lines: Record<string, Record<string, number>>;
+  classOverrides: Record<string, Record<string, number>>;
+  enclaves: Record<string, { name: string; classes: string[]; note?: string }>;
 };
+function loadMatrix(): Matrix | null {
+  for (const p of [
+    join(process.cwd(), "..", "cabin-advisor", "matrix.json"),
+    join(process.cwd(), "cabin-advisor", "matrix.json"),
+  ]) {
+    try { return JSON.parse(readFileSync(p, "utf8")) as Matrix; } catch { /* next */ }
+  }
+  return null;
+}
+
+function virtuesFor(matrix: Matrix, line: string, shipClass: string): Record<string, number> {
+  const base = matrix.lines[line] ?? { energy: 1, price: 1, family: 1, dining: 1, activity: 1, structure: 1, scale: 1, warmth: 1 };
+  const override = matrix.classOverrides[`${line}|${shipClass}`] ?? {};
+  return { ...base, ...override };
+}
+
+function enclaveFor(matrix: Matrix, line: string, shipClass: string): { name: string; note?: string } | null {
+  const e = matrix.enclaves[line];
+  if (!e) return null;
+  return e.classes.includes(shipClass) ? { name: e.name, note: e.note } : null;
+}
 
 router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
   try {
-    const { personality = {}, party } = (req.body ?? {}) as { personality?: Personality; party?: string };
+    const { personality = {}, party, traits = {} } = (req.body ?? {}) as
+      { personality?: Personality; party?: string; traits?: Traits; raw?: Record<string, string> };
+    const matrix = loadMatrix();
+    if (!matrix) return res.status(500).json({ error: "matrix unavailable" });
     const { ships, internalRating } = await buildFleet(true);
 
-    const userEnergy = personality.energy === "party" ? 2 : personality.energy === "social" ? 1 : 0;
-    const userPrice  = personality.splurge === "cabin" ? 2 : personality.splurge === "consumables" ? 1 : 0;
-    const bigOk      = personality.crowds === "loves-it" ? 2 : personality.crowds === "tolerates" ? 1 : 0;
-    const familyish  = party === "family" || party === "group";
+    const t = (k: string) => Number(traits[k] ?? 0);
+    // What this visitor is reaching for, per virtue (same 0-2 space as the matrix).
+    const target = {
+      energy:  personality.energy === "party" ? 2 : personality.energy === "social" ? 1 : 0,
+      price:   personality.splurge === "cabin" ? 2 : personality.splurge === "value" ? 0 : 1,
+      family:  party === "family" ? 2 : party === "group" ? 1.5 : 0.5,
+      dining:  Math.min(2, t("food")),
+      activity: Math.min(2, t("active")),
+      structure: personality.structure === "planner" ? 0.5 : 1.5,
+      scale:   personality.crowds === "avoids" ? 0 : personality.crowds === "loves-it" ? 2 : 1,
+      warmth:  t("extrovert") >= 2 || t("social") >= 3 ? 2 : 1,
+    };
+    // How much each virtue matters to THIS visitor — a foodie's dining gap
+    // costs more than a grazer's.
+    const weight = {
+      energy: 2.0, price: 1.5,
+      family: party === "family" ? 1.5 : 0.75,
+      dining: 0.5 + Math.min(1.5, t("food") * 0.75),
+      activity: 0.5 + Math.min(1.5, t("active") * 0.75),
+      structure: personality.structure === "planner" ? 1.0 : 0.5,
+      scale: personality.crowds === "avoids" ? 2.0 : 1.0,
+      warmth: t("extrovert") >= 2 ? 1.25 : 0.5,
+    };
+    const wantsEnclave = personality.splurge === "cabin" ||
+      (personality.social === "introvert" && personality.crowds === "avoids");
 
     const scored = ships
-      .filter((s) => s.repSlug)                       // only classes we can put rooms behind
-      .map((s) => {
-        const vibe = LINE_VIBE[s.line] ?? { energy: 1, price: 1, family: 1 };
+      .filter((sh) => sh.repSlug)
+      .map((sh) => {
+        const v = virtuesFor(matrix, sh.line, sh.shipClass);
+        const enclave = enclaveFor(matrix, sh.line, sh.shipClass);
         let score = 0;
-        score -= Math.abs(vibe.energy - userEnergy) * 2.0;
-        score -= Math.abs(vibe.price - userPrice) * 1.5;
-        if (familyish) score += vibe.family * 0.8;
-        else if (personality.energy === "quiet") score -= vibe.family * 0.6;
-        // crowd tolerance vs mega-ship classes: the big-energy lines ARE the big ships
-        if (bigOk === 0 && vibe.energy === 2) score -= 1.5;
-        if (bigOk === 2 && vibe.energy === 2) score += 1.0;
-        const r = internalRating.get(s.slug);
-        if (r != null) score += (r - 3.5) * 1.6;      // crowd verdict, centered
-        if (s.hasRooms) score += 0.75;                 // journey can end in real rooms today
-        return { s, score };
+        for (const k of Object.keys(target) as (keyof typeof target)[]) {
+          let gap = Math.abs((v[k] ?? 1) - target[k]);
+          // The enclave rescue: a private complex neutralizes most of a big
+          // loud ship's scale/energy penalty for the splurge-capable quiet
+          // type — the advisor move behind "next level".
+          if (enclave && wantsEnclave && (k === "scale" || k === "energy")) gap *= 0.35;
+          score -= gap * weight[k];
+        }
+        const r = internalRating.get(sh.slug);
+        if (r != null) score += (r - 3.5) * 1.6;
+        if (sh.hasRooms) score += 0.75;
+        const nextLevel = enclave && wantsEnclave
+          ? { name: enclave.name, why: "the quiet, looked-after version of this ship — private spaces, and the crowd stays outside" }
+          : enclave ? { name: enclave.name, why: "worth knowing this ship has a next-level experience if you want it" } : null;
+        return { s: sh, score, nextLevel };
       })
       .sort((a, b) => b.score - a.score);
 
-    // one ship per line in the top picks — two sisters from one line is a thin answer
-    const picks: FleetShip[] = [];
+    const picks: (FleetShip & { nextLevel: { name: string; why: string } | null })[] = [];
     const usedLines = new Set<string>();
-    for (const { s } of scored) {
-      if (usedLines.has(s.line)) continue;
-      usedLines.add(s.line);
-      picks.push(s);
+    for (const { s: sh, nextLevel } of scored) {
+      if (usedLines.has(sh.line)) continue;
+      usedLines.add(sh.line);
+      picks.push({ ...sh, nextLevel });
       if (picks.length === 2) break;
     }
 
@@ -420,8 +470,9 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
     if (personality.energy === "party") reasonBits.push("you want the energy turned up");
     if (personality.energy === "quiet") reasonBits.push("you want room to breathe");
     if (personality.energy === "social") reasonBits.push("you like the middle gear — lively, not chaos");
+    if (t("food") >= 2) reasonBits.push("the food clearly matters to you");
+    if (t("active") >= 2) reasonBits.push("you came to do things, not watch them");
     if (personality.crowds === "avoids") reasonBits.push("crowds wear on you");
-    if (personality.crowds === "loves-it") reasonBits.push("a full deck doesn't scare you");
     if (personality.splurge === "cabin") reasonBits.push("the room matters to you");
     if (personality.splurge === "value") reasonBits.push("you want the fare to do the work");
     const reason = reasonBits.length
