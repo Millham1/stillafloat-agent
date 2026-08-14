@@ -8,7 +8,7 @@
 // checked, never live.
 //
 // Every rating carries TWO separate voices: `comment` (warm paraphrase of real
-// review themes, Mark's advisor voice) and `salty_grump_take` (a separate, always-
+// review themes, Mark's advisor voice) and `salty_mark_take` (a separate, always-
 // present dry/skeptical aside — the Rotten-Tomatoes critics-vs-audience split;
 // not a rating value, not on the 1-5 scale).
 //
@@ -36,7 +36,7 @@ type SourceRow = {
 };
 type RatingRow = {
   ship_slug: string; rating: number | null; rating_display: string | null;
-  comment: string | null; salty_grump_take: string | null;
+  comment: string | null; salty_mark_take: string | null;
   comment_status: "draft" | "approved"; status: "draft" | "published";
   source_count: number | null; computed_at: string | null; refresh_due_at: string | null;
 };
@@ -90,7 +90,7 @@ export default function Ratings() {
   const [publishing, setPublishing] = useState(false);
 
   // Candidate fields shown after "Draft" — editable before Save.
-  const [candidate, setCandidate] = useState<{ rating: number; ratingDisplay: string; sourceCount: number; comment: string; saltyGrumpTake: string } | null>(null);
+  const [candidate, setCandidate] = useState<{ rating: number; ratingDisplay: string; sourceCount: number; comment: string; saltyMarkTake: string } | null>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["conga-line-admin"] });
 
@@ -107,13 +107,13 @@ export default function Ratings() {
           themes,
         }),
       });
-      const body = (await r.json()) as { ok?: boolean; error?: string; rating?: number; ratingDisplay?: string; sourceCount?: number; comment?: string; saltyGrumpTake?: string };
+      const body = (await r.json()) as { ok?: boolean; error?: string; rating?: number; ratingDisplay?: string; sourceCount?: number; comment?: string; saltyMarkTake?: string };
       if (!body.ok) throw new Error(body.error || "Draft failed");
       setCandidate({
         rating: body.rating!, ratingDisplay: body.ratingDisplay!, sourceCount: body.sourceCount!,
-        comment: body.comment!, saltyGrumpTake: body.saltyGrumpTake!,
+        comment: body.comment!, saltyMarkTake: body.saltyMarkTake!,
       });
-      toast({ title: "Draft ready", description: "Review the rating, comment and Salty Grump take below before saving." });
+      toast({ title: "Draft ready", description: "Review the rating, comment and Salty Mark take below before saving." });
     } catch (err) {
       toast({ variant: "destructive", title: "Draft failed", description: (err as Error).message });
     } finally {
@@ -150,7 +150,7 @@ export default function Ratings() {
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({
           rating: candidate.rating, ratingDisplay: candidate.ratingDisplay, sourceCount: candidate.sourceCount,
-          comment: candidate.comment, saltyGrumpTake: candidate.saltyGrumpTake,
+          comment: candidate.comment, saltyMarkTake: candidate.saltyMarkTake,
         }),
       });
       const body = (await r.json()) as { ok?: boolean; error?: string };
@@ -199,7 +199,7 @@ export default function Ratings() {
         <h2 className="text-xl font-bold tracking-tight">Ratings — Conga Line</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
           Crowd score (1–5, never lower) from Cruiseline.com + CruiseCritic, read by hand each quarter — plus the
-          Salty Grump's separate dry take. Nothing goes live until you Publish.
+          Salty Mark's separate dry take. Nothing goes live until you Publish.
         </p>
       </div>
 
@@ -259,8 +259,8 @@ export default function Ratings() {
               <Textarea rows={3} value={candidate.comment} onChange={(e) => setCandidate({ ...candidate, comment: e.target.value })} />
             </div>
             <div>
-              <Label className="text-xs">Salty Grump take (dry aside — always shown alongside the score)</Label>
-              <Textarea rows={2} value={candidate.saltyGrumpTake} onChange={(e) => setCandidate({ ...candidate, saltyGrumpTake: e.target.value })} />
+              <Label className="text-xs">Salty Mark take (dry aside — always shown alongside the score)</Label>
+              <Textarea rows={2} value={candidate.saltyMarkTake} onChange={(e) => setCandidate({ ...candidate, saltyMarkTake: e.target.value })} />
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" onClick={save} disabled={saving}>
@@ -309,7 +309,7 @@ export default function Ratings() {
                   </div>
                 </div>
                 {r.comment && <p className="text-sm text-muted-foreground">{r.comment}</p>}
-                {r.salty_grump_take && <p className="text-xs italic text-muted-foreground">The Salty Grump says: {r.salty_grump_take}</p>}
+                {r.salty_mark_take && <p className="text-xs italic text-muted-foreground">The Salty Mark says: {r.salty_mark_take}</p>}
               </div>
             ))}
           </div>
