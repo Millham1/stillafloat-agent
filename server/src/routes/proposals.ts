@@ -7,11 +7,21 @@
 // clear the brief item. Token-gated exactly like the storm approve/dismiss buttons,
 // so they fire straight from the brief. See saf-ops-manager/agent/proposals.py for
 // the filing side, and lib/actions.ts for the queue.
+//
+// Approve→IMPLEMENT (SEO cockpit): a proposal whose `payload` column carries a
+// machine-actionable change (type "seo-override" — see lib/seo-executor.ts) is
+// APPLIED on approval: the per-story seo-overrides platform_state entry is
+// written, the task is closed as 'done' with an old→new audit note, and a
+// prerender is kicked so the pages republish immediately. Proposals without a
+// payload (or whose target can't be resolved) keep the promote-to-'open'
+// behavior, so nothing is ever silently lost.
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { resolveActionsForSource } from "../lib/actions";
+import { applySeoOverride, isSeoOverridePayload } from "../lib/seo-executor";
+import { runNewsPrerender } from "../lib/prerender-news";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -26,10 +36,59 @@ async function setProposalStatus(taskId: string, next: "open" | "dismissed"): Pr
   await resolveActionsForSource("site_proposal", taskId, next === "open" ? "done" : "dismissed");
 }
 
+/**
+ * Approve one proposal. If it carries an actionable seo-override payload, apply
+ * it and close the task 'done' with an audit note; otherwise (or if applying
+ * isn't possible) promote it to 'open' exactly as before.
+ * Returns what happened so the dashboard can toast it honestly.
+ */
+async function approveProposal(taskId: string): Promise<{ implemented: boolean; note?: string }> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("id, status, detail, payload")
+    .eq("id", taskId)
+    .single();
+  if (error || !data) {
+    // Unknown id — fall through to the status flip, which no-ops safely.
+    await setProposalStatus(taskId, "open");
+    return { implemented: false };
+  }
+  const row = data as { status?: string; detail?: string | null; payload?: unknown };
+  if (row.status !== "proposed") return { implemented: false }; // re-click → no-op
+
+  if (isSeoOverridePayload(row.payload)) {
+    const result = await applySeoOverride(row.payload);
+    if (result.applied && result.auditNote) {
+      const now = new Date().toISOString();
+      const detail = [row.detail?.trim(), `[auto-implemented ${now.slice(0, 10)}] ${result.auditNote}`]
+        .filter(Boolean)
+        .join("\n\n");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: upErr } = await (supabase.from("tasks") as any)
+        .update({ status: "done", done_at: now, updated_at: now, detail })
+        .eq("id", taskId)
+        .eq("status", "proposed"); // idempotent, same guard as setProposalStatus
+      if (upErr) throw new Error(upErr.message);
+      await resolveActionsForSource("site_proposal", taskId, "done");
+      // Republish the story pages now rather than waiting for the hourly tick.
+      // Fire-and-forget: a prerender hiccup must not fail the approval.
+      void runNewsPrerender().catch((err) =>
+        logger.error({ err }, "post-approval prerender failed (hourly tick will retry)"),
+      );
+      return { implemented: true, note: result.auditNote };
+    }
+    logger.warn({ taskId, reason: result.reason }, "seo-override not applicable — promoting to task");
+  }
+
+  await setProposalStatus(taskId, "open");
+  return { implemented: false };
+}
+
 router.post("/proposals/:id/approve", requireToken, async (req: Request, res: Response) => {
   try {
-    await setProposalStatus(req.params["id"] ?? "", "open");
-    res.json({ success: true });
+    const outcome = await approveProposal(req.params["id"] ?? "");
+    res.json({ success: true, ...outcome });
   } catch (err) {
     logger.error({ err }, "proposal approve failed");
     res.status(500).json({ success: false, error: "Approve failed" });

@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 import { PATHS, readJson, writeJson } from "./persistence";
-import { notifyTelegram, reviewUrl } from "./telegram";
+import { notifyMark, reviewUrl } from "./notify";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMMENTARY AGENT — Mark's-opinion-first pipeline (his design, 2026-07-08):
@@ -256,11 +256,11 @@ export async function stageWeeklyCommentary(options?: {
   logger.info({ lead: cluster[0]!.title, cluster: cluster.length }, "Commentary staged — awaiting Mark's take");
 
   if (options?.notify !== false) {
-    void notifyTelegram({
-      heading: "🗣️ <b>This week's commentary — your opinion needed</b>",
-      lines: [cluster[0]!.title, ...draft.questions.map((q) => `• ${q}`)],
+    void notifyMark({
+      title: "🗣️ This week's commentary — your opinion needed",
+      body: [cluster[0]!.title, ...draft.questions.map((q) => `• ${q}`)].join("\n"),
       url: reviewUrl("/api/commentary/review"),
-      buttonLabel: "Give your take →",
+      tag: "commentary-review",
     });
   }
   return draft;

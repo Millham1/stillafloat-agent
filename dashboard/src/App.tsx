@@ -9,6 +9,7 @@ import { TokenGate } from "@/components/token-gate";
 import Dashboard from "@/pages/dashboard";
 import EditorialQueue from "@/pages/queue";
 import ApprovedStories from "@/pages/approved";
+import StoryArchive from "@/pages/archive";
 import LiveFeeds from "@/pages/feeds";
 import OperationalAlerts from "@/pages/alerts";
 import AffiliateManager from "@/pages/affiliate";
@@ -21,6 +22,8 @@ import Subscriptions from "@/pages/subscriptions";
 import Overview from "@/pages/overview";
 import Today from "@/pages/today";
 import StormAlerts from "@/pages/storm-alerts";
+import Search from "@/pages/search";
+import Ratings from "@/pages/ratings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,9 +43,12 @@ function Router() {
         <Route path="/editorial" component={Dashboard} />
         <Route path="/queue" component={EditorialQueue} />
         <Route path="/approved" component={ApprovedStories} />
+        <Route path="/archive" component={StoryArchive} />
         <Route path="/feeds" component={LiveFeeds} />
         <Route path="/alerts" component={OperationalAlerts} />
         <Route path="/storm-alerts" component={StormAlerts} />
+        <Route path="/search" component={Search} />
+        <Route path="/ratings" component={Ratings} />
         <Route path="/affiliate"   component={AffiliateManager} />
         <Route path="/favorites"   component={FavoritesManager} />
         <Route path="/commentary"  component={CommentaryManager} />

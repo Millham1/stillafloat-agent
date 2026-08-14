@@ -9,7 +9,7 @@ import {
   gatherApprovedStories,
 } from "../lib/newsletter";
 import type { Lang } from "../lib/social-agent";
-import { notifyTelegram, reviewUrl } from "../lib/telegram";
+import { notifyMark, reviewUrl } from "../lib/notify";
 
 const router: IRouter = Router();
 const SITE = "https://stillafloatcruising.com";
@@ -27,11 +27,11 @@ router.post("/newsletter/draft", requireToken, async (req: Request, res: Respons
     const draft = await draftNewsletter(lang);
     await saveDraft(draft);
     res.json({ success: true, draft });
-    void notifyTelegram({
-      heading: `📨 <b>Newsletter draft ready (${lang.toUpperCase()})</b>`,
-      lines: [draft.subject, `${draft.storyIds.length} stories${draft.video ? " + video" : ""}${draft.affiliate ? " + affiliate" : ""}`],
+    void notifyMark({
+      title: `📨 Newsletter draft ready (${lang.toUpperCase()})`,
+      body: [draft.subject, `${draft.storyIds.length} stories${draft.video ? " + video" : ""}${draft.affiliate ? " + affiliate" : ""}`].join("\n"),
       url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
-      buttonLabel: "Review & send →",
+      tag: "newsletter-review",
     });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -172,7 +172,7 @@ router.post("/newsletter/send", requireToken, async (req: Request, res: Response
   }
 });
 
-// POST /api/newsletter/notify — Telegram nudge for the current draft (manual/test).
+// POST /api/newsletter/notify — review nudge for the current draft (manual/test).
 router.post("/newsletter/notify", requireToken, async (req: Request, res: Response) => {
   const lang = editionLang(req);
   const draft = await loadDraft(lang);
@@ -180,13 +180,13 @@ router.post("/newsletter/notify", requireToken, async (req: Request, res: Respon
     res.status(404).json({ success: false, error: "No draft to notify about" });
     return;
   }
-  const result = await notifyTelegram({
-    heading: `📨 <b>Newsletter draft awaiting review (${lang.toUpperCase()})</b>`,
-    lines: [draft.subject],
+  const channel = await notifyMark({
+    title: `📨 Newsletter draft awaiting review (${lang.toUpperCase()})`,
+    body: draft.subject,
     url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
-    buttonLabel: "Review & send →",
+    tag: "newsletter-review",
   });
-  res.json({ success: result.success, reason: result.reason });
+  res.json({ success: channel !== "none", channel });
 });
 
 // GET /api/newsletter/review?token=…&lang=en|es — review surface: live preview + actions.

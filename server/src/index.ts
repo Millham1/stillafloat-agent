@@ -6,7 +6,7 @@ import { runAndDeliverBrief } from "./lib/brief";
 import { runStormScan } from "./lib/storm-agent";
 import { scanAndQueue } from "./lib/social-agent";
 import { draftNewsletter, saveDraft } from "./lib/newsletter";
-import { notifyTelegram, reviewUrl } from "./lib/telegram";
+import { notifyMark, reviewUrl } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
 import { runGuidesPrerender } from "./lib/prerender-guides";
 import { stageWeeklyCommentary } from "./lib/commentary-agent";
@@ -59,7 +59,7 @@ app.listen(port, "0.0.0.0", () => {
   }
   // Weekly marketing cadence — Monday: scan recent uploads into grounded social
   // drafts; Thursday: assemble the newsletter draft. Both land in the review
-  // queue with a Telegram nudge; Mark's approval stays the only human gate.
+  // queue with a push nudge; Mark's approval stays the only human gate.
   // Disabled on the dev mirror so nudges/drafts aren't produced twice.
   if (process.env["DISABLE_WEEKLY_MARKETING"] === "1") {
     logger.info("Weekly marketing cadence DISABLED (DISABLE_WEEKLY_MARKETING=1)");
@@ -256,11 +256,11 @@ function scheduleDailyBrief() {
 // ── Weekly marketing scheduler ────────────────────────────────────────────────
 // The campaign's standing cadence (goal: $2k/mo, bookings are the KPI):
 //   • Monday 09:00 local — social scan: queue grounded draft batches for recent
-//     channel uploads (de-duped by videoId+track) + ONE Telegram review nudge.
+//     channel uploads (de-duped by videoId+track) + ONE push review nudge.
 //   • Tuesday 09:00 local — commentary draft from the week's featured story +
-//     Telegram nudge asking for Mark's take (weave → publish is his call).
+//     push nudge asking for Mark's take (weave → publish is his call).
 //   • Thursday 09:00 local — newsletter draft (EN; ES once that list exists) +
-//     Telegram nudge. Sending stays behind the review page's explicit Send.
+//     push nudge. Sending stays behind the review page's explicit Send.
 // Same timezone-gated polling pattern as the daily brief.
 function scheduleWeeklyMarketing() {
   const TZ = process.env["TIMEZONE"] || "America/New_York";
@@ -287,28 +287,28 @@ function scheduleWeeklyMarketing() {
     lastRunDate = date;
     try {
       if (weekday === "Tue") {
-        const draft = await stageWeeklyCommentary(); // notifies via Telegram itself
+        const draft = await stageWeeklyCommentary(); // sends its own push nudge
         logger.info({ lead: draft.stories[0]?.title }, "Weekly commentary staged — awaiting Mark's take");
       } else if (weekday === "Mon") {
         const created = await scanAndQueue(4);
         logger.info({ created: created.length }, "Weekly social scan complete");
         if (created.length > 0) {
-          void notifyTelegram({
-            heading: `📱 <b>${created.length} new social draft(s) ready</b> (weekly scan)`,
-            lines: created.map((b) => `Track ${b.track}: ${b.title}`),
+          void notifyMark({
+            title: `📱 ${created.length} new social draft(s) ready (weekly scan)`,
+            body: created.map((b) => `Track ${b.track}: ${b.title}`).join("\n"),
             url: reviewUrl("/api/social/review"),
-            buttonLabel: `Review ${created.length} →`,
+            tag: "social-review",
           });
         }
       } else {
         const draft = await draftNewsletter("en");
         await saveDraft(draft);
         logger.info({ subject: draft.subject }, "Weekly newsletter draft complete");
-        void notifyTelegram({
-          heading: "📨 <b>Newsletter draft ready (EN)</b> (weekly)",
-          lines: [draft.subject],
+        void notifyMark({
+          title: "📨 Newsletter draft ready (EN) (weekly)",
+          body: draft.subject,
           url: reviewUrl("/api/newsletter/review"),
-          buttonLabel: "Review & send →",
+          tag: "newsletter-review",
         });
       }
     } catch (err) {

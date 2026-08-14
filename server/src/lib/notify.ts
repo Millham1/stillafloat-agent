@@ -37,6 +37,18 @@ function apiBase(): string {
   return (process.env["PUBLIC_URL"] || "https://stillafloatcruising.com").replace(/\/$/, "");
 }
 
+/**
+ * Build a token-bearing review URL for a main-site API review page. Tapping the
+ * notification opens this page; the token rides only in the (private, on-device)
+ * notification. Moved here from lib/telegram.ts so review nudges depend only on
+ * THE notification channel.
+ */
+export function reviewUrl(path: string): string {
+  const tok = process.env["AGENT_APPROVAL_TOKEN"];
+  const sep = path.includes("?") ? "&" : "?";
+  return `${apiBase()}${path}${tok ? `${sep}token=${encodeURIComponent(tok)}` : ""}`;
+}
+
 /** Send Mark exactly one notification. Never throws. Returns the channel used. */
 export async function notifyMark(n: Notification): Promise<"ntfy" | "webpush" | "none"> {
   const ntfyUrl = process.env["NTFY_URL"];

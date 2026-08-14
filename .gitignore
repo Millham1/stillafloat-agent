@@ -50,11 +50,15 @@ Thumbs.db
 .github/instructions/nx.instructions.md
 
 # Generated news pages (written on the box by the news pre-renderer —
-# server/src/lib/prerender-news.ts; news.html + es/news.html stay tracked but
-# are overwritten in place on the box)
+# server/src/lib/prerender-news.ts). The listing pages news.html + es/news.html
+# are generated too: keeping them tracked meant every deploy's `git reset --hard`
+# briefly reverted /news.html to a legacy JS-rendered page until the on-boot
+# prerender rewrote it (the "quirky More News button" flip-flop).
 server/public/news/
 server/public/es/news/
 server/public/news-sitemap.xml
+server/public/news.html
+server/public/es/news.html
 
 # Replit (legacy — migrated off Replit to Hetzner; keep these out)
 .cache/
