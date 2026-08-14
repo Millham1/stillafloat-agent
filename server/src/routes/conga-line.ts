@@ -8,7 +8,7 @@
 // Two independent editorial voices live on every rating:
 //   comment      — warm paraphrase of real review themes, Mark's advisor voice
 //                  (cabin-advisor/voice-guide.md). NEVER a lifted quote.
-//   grinch_take  — a SEPARATE, always-present dry/skeptical aside (the
+//   salty_grump_take  — a SEPARATE, always-present dry/skeptical aside (the
 //                  Rotten-Tomatoes-critics-vs-audience split). Not a rating
 //                  value, not on the 1-5 scale — sits alongside the crowd
 //                  score regardless of what that score says. Humor targets the
@@ -60,24 +60,24 @@ const CONGA_SYSTEM = `${VOICE}
 
 You are now writing copy for a ship-level "Conga Line" audience rating — a crowd-sourced score from 1 to 5 built by aggregating real Cruiseline.com and CruiseCritic review scores. You will write TWO distinct pieces of copy, in two different registers.
 
-TWO FAILURES FROM EARLIER PASSES — do not repeat either: (1) a multi-sentence amenity list ("delivers on activity and variety... something for every age...") — brochure copy, too long. (2) "grinchTake" pointed out that the underlying sources disagree with each other (e.g. "the gap between the 4.6 and 3.4 tells you...") — THIS IS BANNED. The Conga Line score is presented as Still Afloat's OWN independent composite verdict. A customer must never be able to tell it was assembled from other sites' numbers, and grinchTake must NEVER reference sources, review counts, score gaps, "the data," or anything about where the number came from — that undermines the score's authority, which is the opposite of the point. Both fields must read as pure Mark's-own-opinion, full stop, with the compositing invisible.
+TWO FAILURES FROM EARLIER PASSES — do not repeat either: (1) a multi-sentence amenity list ("delivers on activity and variety... something for every age...") — brochure copy, too long. (2) "saltyGrumpTake" pointed out that the underlying sources disagree with each other (e.g. "the gap between the 4.6 and 3.4 tells you...") — THIS IS BANNED. The Conga Line score is presented as Still Afloat's OWN independent composite verdict. A customer must never be able to tell it was assembled from other sites' numbers, and saltyGrumpTake must NEVER reference sources, review counts, score gaps, "the data," or anything about where the number came from — that undermines the score's authority, which is the opposite of the point. Both fields must read as pure Mark's-own-opinion, full stop, with the compositing invisible.
 
 1. "comment" — your MAIN, warm advisor voice (above). EXACTLY ONE sentence, hard cap ~25 words. Pick the ONE real theme that matters most (not a list of three or four) and state it plainly — one honest upside and, in the same breath, what it costs you, cause then effect, the way you'd size up a cabin. Never stack adjectives or list amenities. NEVER quote or closely lift review text — paraphrase the theme, not the sentence.
 
-2. "grinchTake" — a SEPARATE one-liner, ONE sentence, in a DRYER, more skeptical register — the wry, well-traveled friend who's seen a hundred ships. This is NOT a rating and NOT part of the 1-5 scale; it sits ALONGSIDE the score as Mark's own independent aside. HARD RULES: (a) grinchTake must NOT repeat, rephrase, or reference the same specific fact used in "comment" — pick a genuinely different real theme from what you were given. (b) grinchTake must NEVER mention sources, review counts, ratings disagreeing, "the data," or anything that exposes how the score was built — it is Mark's own opinion, not a commentary on the composite. Good angles: a second real theme the comment didn't use, or WHO this ship actually suits vs. doesn't ("great if you like big and busy, skip it if you don't"). Humor always targets the ship's tradeoffs, never the traveler, never actually mean.
+2. "saltyGrumpTake" — a SEPARATE one-liner, ONE sentence, in a DRYER, more skeptical register — the wry, well-traveled friend who's seen a hundred ships. This is NOT a rating and NOT part of the 1-5 scale; it sits ALONGSIDE the score as Mark's own independent aside. HARD RULES: (a) saltyGrumpTake must NOT repeat, rephrase, or reference the same specific fact used in "comment" — pick a genuinely different real theme from what you were given. (b) saltyGrumpTake must NEVER mention sources, review counts, ratings disagreeing, "the data," or anything that exposes how the score was built — it is Mark's own opinion, not a commentary on the composite. Good angles: a second real theme the comment didn't use, or WHO this ship actually suits vs. doesn't ("great if you like big and busy, skip it if you don't"). Humor always targets the ship's tradeoffs, never the traveler, never actually mean.
 
 Target register (tone and length only — do not copy, write fresh from this ship's real themes):
 comment: "Wonder's got real variety and a crew that means it, but book your shows early or you'll miss the good ones."
-grinchTake: "Great if you like big and busy — if you're after quiet, this isn't your ship."
+saltyGrumpTake: "Great if you like big and busy — if you're after quiet, this isn't your ship."
 
 Ground both in the actual themes you're given. Do not invent a specific complaint or compliment that isn't implied by the supplied themes/scores. BANNED words/phrases in either field: "delivers", "boasts", "offers", "features", "something for everyone", "something for every age", "a real draw", "genuinely", "the crew is warm", any sentence that just lists three or more amenities in a row. Respond with ONLY a JSON object, no other text:
-{"comment":"...","grinchTake":"..."}`;
+{"comment":"...","saltyGrumpTake":"..."}`;
 
 // ── Blending sources into a 1-5 crowd score ──────────────────────────────────
 // Deliberately never below 1 or above 5 — a real ship is never branded with an
 // official worst-possible verdict (Mark works under a host agency and doesn't
 // want supplier relationships soured by an official negative number). Honesty
-// about a weak ship lives in grinch_take, never in this number.
+// about a weak ship lives in salty_grump_take, never in this number.
 type SourceInput = { score?: number | string; scale?: number | string; count?: number | string };
 
 function normalizeSource(s: SourceInput | undefined): { norm: number; weight: number } | null {
@@ -112,7 +112,7 @@ router.get("/ships/:slug/rating", async (req: Request, res: Response) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("conga_line_ratings")
-      .select("ship_slug, rating, rating_display, comment, grinch_take, source_count, computed_at, status, comment_status")
+      .select("ship_slug, rating, rating_display, comment, salty_grump_take, source_count, computed_at, status, comment_status")
       .eq("ship_slug", slug)
       .eq("status", "published")
       .eq("comment_status", "approved")
@@ -122,7 +122,7 @@ router.get("/ships/:slug/rating", async (req: Request, res: Response) => {
 
     const row = data as {
       ship_slug: string; rating: number; rating_display: string | null; comment: string | null;
-      grinch_take: string | null; source_count: number | null; computed_at: string | null;
+      salty_grump_take: string | null; source_count: number | null; computed_at: string | null;
     };
     return res.json({
       ok: true,
@@ -130,7 +130,7 @@ router.get("/ships/:slug/rating", async (req: Request, res: Response) => {
       rating: row.rating,
       ratingDisplay: row.rating_display,
       comment: row.comment,
-      grinchTake: row.grinch_take,
+      saltyGrumpTake: row.salty_grump_take,
       sourceCount: row.source_count,
       computedAt: row.computed_at,
     });
@@ -147,7 +147,7 @@ router.get("/ships/ratings", async (_req: Request, res: Response) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("conga_line_ratings")
-      .select("ship_slug, rating, rating_display, comment, grinch_take, source_count, computed_at")
+      .select("ship_slug, rating, rating_display, comment, salty_grump_take, source_count, computed_at")
       .eq("status", "published")
       .eq("comment_status", "approved")
       .order("ship_slug");
@@ -222,7 +222,7 @@ router.post("/admin/conga-line/:slug/sources", requireToken, async (req: Request
 });
 
 // POST /api/admin/conga-line/:slug/draft-comment — ONE Haiku call, both
-// registers, returns a candidate rating + comment + grinchTake. Does NOT save.
+// registers, returns a candidate rating + comment + saltyGrumpTake. Does NOT save.
 router.post("/admin/conga-line/:slug/draft-comment", requireToken, async (req: Request, res: Response) => {
   try {
     const slug = String(req.params["slug"] || "").trim();
@@ -259,7 +259,7 @@ ${sourceLines.join("\n") || "(none entered)"}
 Recurring themes noticed while reading the reviews (free notes, not verbatim quotes — paraphrase further, do not lift phrasing even from these notes):
 ${themes || "(no themes entered — write from the source scores alone, keep it general)"}
 
-Write the "comment" and "grinchTake" as specified.`;
+Write the "comment" and "saltyGrumpTake" as specified.`;
 
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -279,8 +279,8 @@ Write the "comment" and "grinchTake" as specified.`;
     const text = (j.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
     const m = text.match(/\{[\s\S]*\}/);
     if (!m) throw new Error("no JSON in draft response");
-    const out = JSON.parse(m[0]) as { comment?: string; grinchTake?: string };
-    if (!out.comment || !out.grinchTake) throw new Error("incomplete draft (missing comment or grinchTake)");
+    const out = JSON.parse(m[0]) as { comment?: string; saltyGrumpTake?: string };
+    if (!out.comment || !out.saltyGrumpTake) throw new Error("incomplete draft (missing comment or saltyGrumpTake)");
 
     const cost = (j.usage?.input_tokens ?? 0) * 1e-6 + (j.usage?.output_tokens ?? 0) * 5e-6;
     logger.info({ ship: slug, cost: cost.toFixed(4) }, "conga-line: draft generated");
@@ -291,7 +291,7 @@ Write the "comment" and "grinchTake" as specified.`;
       ratingDisplay: blended.display,
       sourceCount: blended.sourceCount,
       comment: out.comment,
-      grinchTake: out.grinchTake,
+      saltyGrumpTake: out.saltyGrumpTake,
     });
   } catch (err) {
     logger.error({ err }, "conga-line: draft-comment failed");
@@ -305,14 +305,14 @@ router.post("/admin/conga-line/:slug/save", requireToken, async (req: Request, r
     const slug = String(req.params["slug"] || "").trim();
     if (!slug) return res.status(400).json({ ok: false, error: "ship slug required" });
     const body = (req.body ?? {}) as {
-      rating?: number | string; ratingDisplay?: string; comment?: string; grinchTake?: string; sourceCount?: number | string;
+      rating?: number | string; ratingDisplay?: string; comment?: string; saltyGrumpTake?: string; sourceCount?: number | string;
     };
     const rating = Number(body.rating);
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
       return res.status(400).json({ ok: false, error: "rating must be between 1 and 5" });
     }
-    if (!body.comment || !body.grinchTake) {
-      return res.status(400).json({ ok: false, error: "comment and grinchTake are both required" });
+    if (!body.comment || !body.saltyGrumpTake) {
+      return res.status(400).json({ ok: false, error: "comment and saltyGrumpTake are both required" });
     }
 
     const supabase = getSupabase();
@@ -324,7 +324,7 @@ router.post("/admin/conga-line/:slug/save", requireToken, async (req: Request, r
       rating,
       rating_display: body.ratingDisplay || `${Number.isInteger(rating) ? rating : rating.toFixed(1)}/5 Conga Line`,
       comment: body.comment,
-      grinch_take: body.grinchTake,
+      salty_grump_take: body.saltyGrumpTake,
       comment_status: "draft",
       source_count: body.sourceCount === undefined ? null : Number(body.sourceCount),
       computed_at: now.toISOString(),
@@ -354,11 +354,11 @@ router.post("/admin/conga-line/:slug/publish", requireToken, async (req: Request
 
     const supabase = getSupabase();
     const { data: existing } = await supabase
-      .from("conga_line_ratings").select("ship_slug, comment, grinch_take").eq("ship_slug", slug).maybeSingle();
+      .from("conga_line_ratings").select("ship_slug, comment, salty_grump_take").eq("ship_slug", slug).maybeSingle();
     if (!existing) return res.status(404).json({ ok: false, error: "No draft saved for this ship yet" });
-    const row = existing as { comment: string | null; grinch_take: string | null };
-    if (!row.comment || !row.grinch_take) {
-      return res.status(400).json({ ok: false, error: "Draft is missing comment or grinchTake — cannot publish" });
+    const row = existing as { comment: string | null; salty_grump_take: string | null };
+    if (!row.comment || !row.salty_grump_take) {
+      return res.status(400).json({ ok: false, error: "Draft is missing comment or saltyGrumpTake — cannot publish" });
     }
 
     const { error } = await (supabase.from("conga_line_ratings") as ReturnType<typeof supabase.from>)
