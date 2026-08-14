@@ -104,28 +104,52 @@ const QUIET = [
   "curated by Still Afloat Cruising, your independent travel advisor",
   "Questions? You can always talk to us.",
 ];
+/* Behavioral interview (model approved by Mark 8/14): remembered behavior,
+   forced tradeoffs, projection — never self-description. Each option carries
+   hidden trait weights; the TYPE is inferred from the pattern. The visitor
+   never sees a label. */
 const PERSONALITY_QS = [
-  { key:"energy", q:"It's 9pm on sea day two. Where are you?",
-    opts:[["Somewhere quiet with a drink and the wake behind the ship","quiet"],
-          ["Dinner ran long because the table got fun","social"],
-          ["Wherever the music is loudest — I'll sleep at home","party"]] },
-  { key:"social", q:"Strangers at your dinner table. Honest reaction?",
-    opts:[["Love it — that's five new friends by Thursday","extrovert"],
-          ["Fine once or twice, but I want my own table most nights","mixed"],
-          ["Hard pass. Vacation is for MY people","introvert"]] },
-  { key:"structure", q:"How planned is a good port day?",
-    opts:[["Spreadsheet. Timed. I've read three reviews of the taxi line","planner"],
-          ["One booked thing, then we wander","loose"],
-          ["I'll decide when I see the weather from the balcony","wing-it"]] },
-  { key:"splurge", q:"Where does the extra money go — if anywhere?",
-    opts:[["The room. I want a view I'll remember","cabin"],
-          ["Food and drinks. The room is for sleeping","consumables"],
-          ["Nowhere. The fare bought the whole ship; I intend to use it","value"]] },
-  { key:"crowds", q:"A packed pool deck in the Caribbean sun is…",
-    opts:[["…the point. That energy is the vacation","loves-it"],
-          ["…fine till noon, then I need an exit","tolerates"],
-          ["…my villain origin story","avoids"]] },
+  { key:"retell", q:"Think about the best vacation you've ever had. What's the part you still tell people about?",
+    opts:[["The meal I'm still chasing", {food:2, splurgeConsume:1}],
+          ["The people we met — we still talk", {social:2, energy:1}],
+          ["The thing we did that nobody back home believes", {active:2, energy:1}],
+          ["That for one week, nobody could reach me", {quiet:2, introvert:1}]] },
+  { key:"photos", q:"Open your phone — your last trip's photos are mostly…",
+    opts:[["Scenery. Not a human in frame", {quiet:2, introvert:1}],
+          ["Us with people we'd just met", {social:2, extrovert:2}],
+          ["Food and drinks, honestly", {food:2, splurgeConsume:1}],
+          ["The kids having the time of their lives", {family:2}]] },
+  { key:"wedding", q:"A wedding reception, 11pm. Where are we finding you?",
+    opts:[["On the dance floor", {energy:2, extrovert:1}],
+          ["Deep in a conversation that started at dinner", {social:1, introvert:1}],
+          ["Gone. We said our goodbyes at 9:30", {quiet:2, introvert:1}],
+          ["At the bar, making the bartender laugh", {social:2, energy:1}]] },
+  { key:"annoy", q:"What's the FIRST thing that annoys you about other travelers?",
+    opts:[["They're loud everywhere they go", {quiet:2, crowdsAvoid:2}],
+          ["They wing everything and it shows", {planner:2}],
+          ["They wait in lines they didn't have to", {planner:1, active:1}],
+          ["They never leave the pool", {active:2}]] },
+  { key:"overpay", q:"Last trip — what did you happily overpay for, zero regrets?",
+    opts:[["The view from the room", {splurgeCabin:2}],
+          ["One unforgettable dinner", {splurgeConsume:2, food:1}],
+          ["The excursion everyone said was too expensive", {active:2, splurgeConsume:1}],
+          ["Nothing. Getting the deal WAS the trip", {value:2, planner:1}]] },
+  { key:"tradeoff", q:"You get one — the other's gone forever:",
+    opts:[["The quiet corner nobody else has found", {quiet:2, introvert:2, crowdsAvoid:1}],
+          ["The table where everybody knows your name", {social:2, extrovert:2, crowdsLove:1}]] },
 ];
+
+/* Pattern → the axes the matcher uses. Deterministic and inspectable. */
+function inferAxes(traits){
+  const t = k => traits[k]||0;
+  return {
+    energy:  t("energy")>=3 ? "party" : (t("quiet")>=3 ? "quiet" : "social"),
+    social:  t("extrovert")>t("introvert")+1 ? "extrovert" : (t("introvert")>t("extrovert")+1 ? "introvert" : "mixed"),
+    structure: t("planner")>=2 ? "planner" : "loose",
+    splurge: t("splurgeCabin")>=2 ? "cabin" : (t("value")>=2 ? "value" : "consumables"),
+    crowds:  t("crowdsAvoid")>=2 || t("quiet")>=4 ? "avoids" : (t("crowdsLove")>=1||t("energy")>=3 ? "loves-it" : "tolerates"),
+  };
+}
 /* The finder's expectation tree, ported verbatim (Mark-corrected copy). */
 const EXPECT_QS = [
   { key:"party", q:"Who's going?", opts:[
@@ -196,16 +220,22 @@ class RoomConciergeFlow {
   chooseShip(slug){ this.chosen=this.fleet.find(s=>s.slug===slug)||null; this.personalityQ(); }
   personalityQ(){
     const i=this.qIndex;
-    if(i>=PERSONALITY_QS.length) return this.expectQ();
+    if(i>=PERSONALITY_QS.length){ this.personality=inferAxes(this.traits); return this.expectQ(); }
     const q=PERSONALITY_QS[i];
     this.stageEl.innerHTML = `
       <p class="re-progress">Getting to know you · ${i+1} of ${PERSONALITY_QS.length}</p>
       <h2 class="q">${q.q}</h2>
-      <div class="re-opts">${q.opts.map(([label,val])=>
-        `<button class="re-opt" onclick="RC.answerP('${q.key}','${val}')">${label}</button>`).join("")}</div>
+      <div class="re-opts">${q.opts.map(([label],oi)=>
+        `<button class="re-opt" onclick="RC.answerP(${i},${oi})">${label}</button>`).join("")}</div>
       ${this.quiet(1)}`;
   }
-  answerP(key,val){ this.personality[key]=val; this.qIndex++; this.personalityQ(); }
+  answerP(qi,oi){
+    const q=PERSONALITY_QS[qi], weights=q.opts[oi][1];
+    this.raw=this.raw||{}; this.raw[q.key]=q.opts[oi][0];
+    this.traits=this.traits||{};
+    for(const [k,v] of Object.entries(weights)) this.traits[k]=(this.traits[k]||0)+v;
+    this.qIndex++; this.personalityQ();
+  }
   expectQ(){
     const i=this.eIndex;
     if(i>=EXPECT_QS.length) return this.reveal();
@@ -226,7 +256,7 @@ class RoomConciergeFlow {
       try{
         const r=await fetch("/api/cabins/suggest-ships",{method:"POST",
           headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({personality:this.personality, party:this.expect.party})});
+          body:JSON.stringify({personality:this.personality, party:this.expect.party, traits:this.traits, raw:this.raw})});
         const d=await r.json(); shipsToShow=d.picks||[]; reason=d.reason||"";
       }catch{ shipsToShow=[]; }
     }
