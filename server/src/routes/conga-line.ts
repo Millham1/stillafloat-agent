@@ -70,7 +70,7 @@ Target register (tone and length only — do not copy, write fresh from this shi
 comment: "Wonder's got real variety and a crew that means it, but book your shows early or you'll miss the good ones."
 saltyMarkTake: "Great if you like big and busy — if you're after quiet, this isn't your ship."
 
-Ground both in the actual themes you're given. Do not invent a specific complaint or compliment that isn't implied by the supplied themes/scores. BANNED words/phrases in either field: "delivers", "boasts", "offers", "features", "something for everyone", "something for every age", "a real draw", "genuinely", "the crew is warm", any sentence that just lists three or more amenities in a row. Respond with ONLY a JSON object, no other text:
+Ground both in the actual themes you're given. Do not invent a specific complaint or compliment that isn't implied by the supplied themes/scores. BANNED words/phrases in either field: "actually" (Mark: demeaning, banned site-wide), "delivers", "boasts", "offers", "features", "something for everyone", "something for every age", "a real draw", "genuinely", "the crew is warm", any sentence that just lists three or more amenities in a row. Respond with ONLY a JSON object, no other text:
 {"comment":"...","saltyMarkTake":"..."}`;
 
 // ── Blending sources into a 1-5 crowd score ──────────────────────────────────
