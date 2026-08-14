@@ -1,47 +1,202 @@
 {
-  "note": "Ship-matching virtue matrix. Line-level values, class-level overrides, and the premium enclaves. Scales 0-2 (halves allowed). DRAFT for Mark's correction — energy column approved 8/14, all other values are drafted-for-correction. Keyed to the traits the behavioral interview infers.",
+  "note": "Ship-matching virtue matrix. Line-level values, class-level overrides, and the premium enclaves. Scales 0-2 (halves allowed). DRAFT for Mark's correction \u2014 energy column approved 8/14, all other values are drafted-for-correction. Keyed to the traits the behavioral interview infers. 8/14 audit fixes: breadth column added (flat prior), NCL dining 1->1.5, structure weight rebalanced in matcher (both directions equal).",
   "virtues": {
-    "energy":    "0 calm ... 2 party (APPROVED by Mark 8/14)",
-    "price":     "0 value-first ... 2 premium",
-    "family":    "0 adult-lean ... 2 built for kids",
-    "dining":    "0 fuel ... 2 destination dining",
-    "activity":  "0 lounging ... 2 thrill-built",
+    "energy": "0 calm ... 2 party (APPROVED by Mark 8/14)",
+    "price": "0 value-first ... 2 premium",
+    "family": "0 adult-lean ... 2 built for kids",
+    "dining": "0 fuel ... 2 destination dining",
+    "activity": "0 lounging ... 2 thrill-built",
     "structure": "0 scheduled/traditional ... 2 freestyle",
-    "scale":     "0 mid-size ... 2 mega (line-typical; class overrides do the real work)",
-    "warmth":    "0 cool/efficient service ... 2 warm/chatty (from our ratings themes)"
+    "scale": "0 mid-size ... 2 mega (line-typical; class overrides do the real work)",
+    "warmth": "0 cool/efficient service ... 2 warm/chatty (from our ratings themes)",
+    "breadth": "0 two-ship short-runs ... 2 global fleet, goes everywhere (flat availability prior, not a gap)"
   },
   "lines": {
-    "Carnival Cruise Line":  { "energy": 2, "price": 0, "family": 2, "dining": 1,   "activity": 2,   "structure": 1,   "scale": 1.5, "warmth": 2 },
-    "Royal Caribbean":       { "energy": 2, "price": 1, "family": 2, "dining": 1,   "activity": 2,   "structure": 1,   "scale": 2,   "warmth": 1.5 },
-    "Norwegian Cruise Line": { "energy": 1, "price": 1, "family": 1, "dining": 1,   "activity": 1.5, "structure": 2,   "scale": 1.5, "warmth": 1.5 },
-    "MSC Cruises":           { "energy": 1, "price": 0, "family": 1, "dining": 1,   "activity": 1,   "structure": 1,   "scale": 2,   "warmth": 0.5 },
-    "Princess Cruises":      { "energy": 0, "price": 1, "family": 0, "dining": 1.5, "activity": 0.5, "structure": 0,   "scale": 1,   "warmth": 1.5 },
-    "Celebrity Cruises":     { "energy": 0, "price": 2, "family": 0, "dining": 2,   "activity": 0.5, "structure": 1,   "scale": 1,   "warmth": 1.5 },
-    "Margaritaville at Sea": { "energy": 1, "price": 0, "family": 1, "dining": 0,   "activity": 1,   "structure": 1.5, "scale": 0,   "warmth": 1.5 }
+    "Carnival Cruise Line": {
+      "energy": 2,
+      "price": 0,
+      "family": 2,
+      "dining": 1,
+      "activity": 2,
+      "structure": 1,
+      "scale": 1.5,
+      "warmth": 2,
+      "breadth": 1.5
+    },
+    "Royal Caribbean": {
+      "energy": 2,
+      "price": 1,
+      "family": 2,
+      "dining": 1,
+      "activity": 2,
+      "structure": 1,
+      "scale": 2,
+      "warmth": 1.5,
+      "breadth": 1.5
+    },
+    "Norwegian Cruise Line": {
+      "energy": 1,
+      "price": 1,
+      "family": 1,
+      "dining": 1.5,
+      "activity": 1.5,
+      "structure": 2,
+      "scale": 1.5,
+      "warmth": 1.5,
+      "breadth": 2
+    },
+    "MSC Cruises": {
+      "energy": 1,
+      "price": 0,
+      "family": 1,
+      "dining": 1,
+      "activity": 1,
+      "structure": 1,
+      "scale": 2,
+      "warmth": 0.5,
+      "breadth": 1.5
+    },
+    "Princess Cruises": {
+      "energy": 0,
+      "price": 1,
+      "family": 0,
+      "dining": 1.5,
+      "activity": 0.5,
+      "structure": 0,
+      "scale": 1,
+      "warmth": 1.5,
+      "breadth": 2
+    },
+    "Celebrity Cruises": {
+      "energy": 0,
+      "price": 2,
+      "family": 0,
+      "dining": 2,
+      "activity": 0.5,
+      "structure": 1,
+      "scale": 1,
+      "warmth": 1.5,
+      "breadth": 1.5
+    },
+    "Margaritaville at Sea": {
+      "energy": 1,
+      "price": 0,
+      "family": 1,
+      "dining": 0,
+      "activity": 1,
+      "structure": 1.5,
+      "scale": 0,
+      "warmth": 1.5,
+      "breadth": 0
+    }
   },
   "classOverrides": {
-    "Royal Caribbean|Vision":     { "scale": 0,   "energy": 1 },
-    "Royal Caribbean|Radiance":   { "scale": 0.5, "energy": 1 },
-    "Royal Caribbean|Voyager":    { "scale": 1 },
-    "Royal Caribbean|Freedom":    { "scale": 1.5 },
-    "Carnival Cruise Line|Fantasy": { "scale": 0.5 },
-    "Carnival Cruise Line|Spirit":  { "scale": 0.5 },
-    "Norwegian Cruise Line|Jewel":  { "scale": 0.5, "energy": 0.5 },
-    "Norwegian Cruise Line|Sun":    { "scale": 0,   "energy": 0.5 },
-    "Norwegian Cruise Line|Dawn":   { "scale": 0.5, "energy": 0.5 },
-    "Norwegian Cruise Line|Spirit": { "scale": 0.5, "energy": 0.5 },
-    "MSC Cruises|Lirica":           { "scale": 0,   "warmth": 0.5 },
-    "MSC Cruises|Musica":           { "scale": 0.5 },
-    "Princess Cruises|Grand":       { "scale": 0.5 },
-    "Princess Cruises|Coral":       { "scale": 0 },
-    "Princess Cruises|Sphere":      { "scale": 1.5 }
+    "Royal Caribbean|Vision": {
+      "scale": 0,
+      "energy": 1
+    },
+    "Royal Caribbean|Radiance": {
+      "scale": 0.5,
+      "energy": 1
+    },
+    "Royal Caribbean|Voyager": {
+      "scale": 1
+    },
+    "Royal Caribbean|Freedom": {
+      "scale": 1.5
+    },
+    "Carnival Cruise Line|Fantasy": {
+      "scale": 0.5
+    },
+    "Carnival Cruise Line|Spirit": {
+      "scale": 0.5
+    },
+    "Norwegian Cruise Line|Jewel": {
+      "scale": 0.5,
+      "energy": 0.5
+    },
+    "Norwegian Cruise Line|Sun": {
+      "scale": 0,
+      "energy": 0.5
+    },
+    "Norwegian Cruise Line|Dawn": {
+      "scale": 0.5,
+      "energy": 0.5
+    },
+    "Norwegian Cruise Line|Spirit": {
+      "scale": 0.5,
+      "energy": 0.5
+    },
+    "MSC Cruises|Lirica": {
+      "scale": 0,
+      "warmth": 0.5
+    },
+    "MSC Cruises|Musica": {
+      "scale": 0.5
+    },
+    "Princess Cruises|Grand": {
+      "scale": 0.5
+    },
+    "Princess Cruises|Coral": {
+      "scale": 0
+    },
+    "Princess Cruises|Sphere": {
+      "scale": 1.5
+    }
   },
   "enclaves": {
-    "MSC Cruises":           { "name": "Yacht Club",  "classes": ["Fantasia", "Meraviglia", "Seaside", "World"], "note": "true ship-within-a-ship: private deck, restaurant, butlers; rescues MSC's service coolness too" },
-    "Norwegian Cruise Line": { "name": "The Haven",   "classes": ["Epic", "Breakaway", "Breakaway Plus", "Prima", "Prima Plus"], "note": "private courtyard complex; Jewel-class has Haven-branded suites without the full enclave (limited)" },
-    "Celebrity Cruises":     { "name": "The Retreat", "classes": ["Edge", "Solstice", "Millennium"], "note": "Solstice/Millennium only on revolutionized ships (partial)" },
-    "Royal Caribbean":       { "name": "Star Class",  "classes": ["Oasis", "Icon", "Quantum"], "note": "suite PROGRAM more than a walled enclave; Icon/newer Oasis add the Suite Neighborhood" },
-    "Carnival Cruise Line":  { "name": "Excel Suites + Loft 19", "classes": ["Excel"], "note": "enclave-lite: retreat deck day passes, no full private complex" },
-    "Princess Cruises":      { "name": "Reserve / Sanctuary Collection", "classes": ["Sphere"], "note": "Sphere-class Sanctuary Collection is closest to a real enclave; Reserve elsewhere is dining+location perks (lite)" }
+    "MSC Cruises": {
+      "name": "Yacht Club",
+      "classes": [
+        "Fantasia",
+        "Meraviglia",
+        "Seaside",
+        "World"
+      ],
+      "note": "true ship-within-a-ship: private deck, restaurant, butlers; rescues MSC's service coolness too"
+    },
+    "Norwegian Cruise Line": {
+      "name": "The Haven",
+      "classes": [
+        "Epic",
+        "Breakaway",
+        "Breakaway Plus",
+        "Prima",
+        "Prima Plus"
+      ],
+      "note": "private courtyard complex; Jewel-class has Haven-branded suites without the full enclave (limited)"
+    },
+    "Celebrity Cruises": {
+      "name": "The Retreat",
+      "classes": [
+        "Edge",
+        "Solstice",
+        "Millennium"
+      ],
+      "note": "Solstice/Millennium only on revolutionized ships (partial)"
+    },
+    "Royal Caribbean": {
+      "name": "Star Class",
+      "classes": [
+        "Oasis",
+        "Icon",
+        "Quantum"
+      ],
+      "note": "suite PROGRAM more than a walled enclave; Icon/newer Oasis add the Suite Neighborhood"
+    },
+    "Carnival Cruise Line": {
+      "name": "Excel Suites + Loft 19",
+      "classes": [
+        "Excel"
+      ],
+      "note": "enclave-lite: retreat deck day passes, no full private complex"
+    },
+    "Princess Cruises": {
+      "name": "Reserve / Sanctuary Collection",
+      "classes": [
+        "Sphere"
+      ],
+      "note": "Sphere-class Sanctuary Collection is closest to a real enclave; Reserve elsewhere is dining+location perks (lite)"
+    }
   }
 }

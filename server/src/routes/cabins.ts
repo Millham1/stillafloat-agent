@@ -426,7 +426,7 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       family: party === "family" ? 1.5 : 0.75,
       dining: 0.5 + Math.min(1.5, t("food") * 0.75),
       activity: 0.5 + Math.min(1.5, t("active") * 0.75),
-      structure: personality.structure === "planner" ? 1.0 : 0.5,
+      structure: 1.25,   // freestyle IS the product answer for wing-its — equal pull both ways
       scale: personality.crowds === "avoids" ? 2.0 : 1.0,
       warmth: t("extrovert") >= 2 ? 1.25 : 0.5,
     };
@@ -447,6 +447,9 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
           if (enclave && wantsEnclave && (k === "scale" || k === "energy")) gap *= 0.35;
           score -= gap * weight[k];
         }
+        // availability prior: a two-ship short-run line can win a vibe contest
+        // but can't take you to Alaska — advisors carry this prior implicitly.
+        score += ((v["breadth"] ?? 1.5) - 1.5) * 1.5;
         const r = internalRating.get(sh.slug);
         if (r != null) score += (r - 3.5) * 1.6;
         if (sh.hasRooms) score += 0.75;
