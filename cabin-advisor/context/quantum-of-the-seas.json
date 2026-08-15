@@ -1,0 +1,311 @@
+{
+  "class": "Quantum-class (Royal Caribbean International)",
+  "sisterShips": [
+    "Anthem of the Seas",
+    "Ovation of the Seas",
+    "Spectrum of the Seas (Quantum Ultra sub-class)",
+    "Odyssey of the Seas (Quantum Ultra sub-class)"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats and their launch cranes sit on Deck 5, directly under most of Deck 6's indented (non-hump) balcony cabins, with a lighter version of the effect bleeding into parts of Deck 7.",
+      "effect": "Looking straight down over the rail shows the tops of boats and cranes; the horizon and open sea beyond the boats stay visible. One review estimated up to 75% of the straight-down sightline can be blocked.",
+      "mattersTo": "Photographers/view-focused guests who plan to look straight down should avoid; guests who mainly care about horizon views and want a cheaper obstructed-view balcony can be fine here, and savvy bookers can pick a cabin between two boats rather than directly behind one.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com: 'Most of the balcony cabins on Deck 6 are obstructed by the lifeboats and related equipment below on Deck 5...as much as 75% of your view may be obstructed'; corroborated by cruisedeckplans.com deck 6 page and multiple cabins-to-avoid guides citing 'Decks 6-7 lifeboat-obstructed balconies'."
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "At the widened midship 'hump' section of the hull, balconies are not set into an indented hull line, unlike the forward/aft sections on the same decks.",
+      "effect": "Hump cabins keep a clear, unobstructed straight-down and side-along view and are specifically exempted from the lifeboat/indentation obstruction that affects their non-hump neighbours on the same deck.",
+      "mattersTo": "View-focused guests should seek hump cabins where possible; this is the escape route from the lifeboat obstruction described above for guests who still want a mid-price balcony.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com deck-by-deck pages for Quantum decks 6, 8, 9, 10: 'The hump cabins (middle part of where deck is wide) have good clear views down to the sea from balcony;' cross-class corroboration (not ship-specific alone) via royalcaribbeanblog.com noting 'There are hump balcony rooms on Radiance Class, Voyager, Freedom, Oasis or Quantum.'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8,
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "On Decks 8 and 9, aft cabins from a specific point back (e.g. 8712-aft starboard/8312-aft port on Deck 8; 9710-aft starboard/9310-aft port on Deck 9) look down onto a metal roof structure belonging to the deck below rather than open water.",
+      "effect": "The straight-down view to the sea is replaced by a view of machinery/roof structure for about 6-8 feet out from the balcony base; side and horizon views are unaffected.",
+      "mattersTo": "Guests who want to see straight down at the waterline should avoid these specific aft ranges; those mainly wanting horizon/side views won't notice much difference.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com deck 8 page: 'Cabins 8712 to aft on the starboard side and cabins 8312 to aft on the port side have large metal roof that extends out from the base of the balcony...that will obstruct the view when looking down;' matching language on the Deck 9 page for cabins 9710/9310-aft."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward category 2E (formerly 'DO') obstructed-view balcony cabins on Decks 7 and 8 are enclosed by a steel frame that forms the porthole-style opening around the balcony, distinct from the lifeboat obstruction on Deck 6.",
+      "effect": "Part of the view is blocked by the structural steel frame itself rather than by lifeboats; the balcony can feel more enclosed/porthole-like.",
+      "mattersTo": "Guests sensitive to feeling boxed-in on a balcony should avoid; budget-focused guests who just want some outdoor access may be fine.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com balcony category and stateroom-details pages: 'Forward category 2E (was DO) on deck 7 and deck 8 is obstructed by steel frame that forms porthole opening.'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Deck 3 Oceanview cabins sit directly above/below the lower level of the Royal Theatre (and near the lower Music Hall).",
+      "effect": "Noise from stage production shows, rehearsals, and applause can carry into these cabins; Deck 3 is described as the only guest deck where loud public venues and staterooms directly clash.",
+      "mattersTo": "Light sleepers and early-to-bed guests should avoid forward Deck 3; guests who don't mind some show noise and want a lower-cost Oceanview can consider it.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck 3 page: 'Forward cabins on this deck are above or below the main theater and may have noise from stage production shows;' cruisecritic.com Editor's Review: 'Deck 3...catching...the lower floor of the Royal Theatre. It's the only deck where loud public attractions and staterooms potentially clash.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Deck 6 sits above public venues on Deck 5; specifically the forward cabins are above/near the theatre and the aft cabins are near Two70.",
+      "effect": "Most of Deck 6 has minimal noise from below, but forward and aft ends near these two venues are the exception.",
+      "mattersTo": "Guests wanting quiet should pick mid-Deck-6 cabins rather than the forward or aft ends.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck 6 page: 'All cabins on this deck are above public areas on the deck below, and except for the forward cabins near the theater and the aft cabins near Two70, noise from those areas should be minimal.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        13
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 13 balconies (particularly those under the Solarium/pool deck above) have a physical overhang extending from the deck above.",
+      "effect": "The overhang shades the balcony and can feel like a mild view obstruction, though it also gives rain protection; one guest noted it wasn't officially categorized as an 'obstructed view' cabin despite the overhang.",
+      "mattersTo": "Sun-worshippers who want full sky exposure on their balcony should be aware; guests who value rain shelter may see this as a plus.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com: 'Deck 13 balconies will have a overhang that will shade the balcony;' first-hand account at foreverkaren.com: cabin 13270 had 'the large overhang which we considered an obstruction, although it wasn't rated as an obstructed ocean view balcony cabin'; corroborated by a Cruise Critic forum poster assigned a forward Deck 13 cabin asking about being under the Solarium overhang."
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Quantum's size only supports two elevator banks (forward, and mid-ship-toward-aft) rather than three, so there is no elevator bank at the very aft of the ship.",
+      "effect": "Aft-facing cabins from Deck 8 upward, plus some inside cabins on Deck 7, require a noticeably longer walk to reach any elevator bank.",
+      "mattersTo": "Guests with mobility issues, strollers, or tired kids in tow should factor in the walk; guests who don't mind extra steps won't be bothered.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'She's not big enough to fit three sets, so instead, there are elevators near the front of the ship and then in a mid-ship location, slightly towards the aft. It means that any of the aft-facing rooms from Deck 8 upwards...are quite a long walk from the elevator.'"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The forward elevator bank on Deck 11 lets out directly next to the Adventure Ocean kids' club.",
+      "effect": "Heavy child and parent foot traffic and noise cluster around these cabins throughout the day, especially at pickup/drop-off times.",
+      "mattersTo": "Non-family travelers wanting quiet should avoid; families with kids in the club may find the location convenient.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'The staterooms and suites by the forward elevators on Deck 11 are adjacent to the Adventure Ocean kids' clubs...you're going to experience a higher level of traffic outside the room – and a lot more noise.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        12,
+        13
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Deck 12 and 13 are the highest guest decks on Quantum, and their far-forward and far-aft ends feel the most pitch/roll motion.",
+      "effect": "Motion-sensitive guests report more noticeable ship movement here than mid-ship or on lower decks.",
+      "mattersTo": "Motion-sensitive guests should pick mid-ship, lower-deck cabins instead; guests unaffected by motion can enjoy the higher, quieter decks.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'With Quantum of the Seas, height isn't a huge issue – there are no decks above Deck 13...However, I'd still steer clear of Deck 12 and Deck 13 rooms at the very front and very back if you know you suffer badly from motion sickness.'"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Propulsion is diesel-electric driving two ABB Azipod thrusters mounted low and aft under the hull.",
+      "effect": "Aft cabins on the lowest guest deck are physically closest to the propulsion units and may pick up more vibration/hum, especially at speed or during maneuvering.",
+      "mattersTo": "Light sleepers wanting a silent room should avoid far-aft low decks; guests who find low engine rumble soothing may not mind.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "en.wikipedia.org ship-technical specs: 'Propulsion: Diesel-electric; 2 × ABB Azipod XO thrusters;' general aft-vibration experience noted at elliestraveltips.com: 'Cabins at the very aft or forward, especially on lower decks, might experience more engine noise and vibrations.'"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Four Brunvoll bow thrusters are mounted low in the bow, and the anchor and its chain locker are also in the forward bow area.",
+      "effect": "Forward-lower cabins can pick up thruster noise during docking maneuvers and chain noise when the anchor is dropped/raised on port mornings.",
+      "mattersTo": "Guests on itineraries with frequent anchoring or tight-maneuvering ports and who are light sleepers should avoid far-forward low decks.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "en.wikipedia.org: '4 × 3,500 kW Brunvoll FU115 bow thrusters;' general docking/anchor noise pattern noted at elliestraveltips.com: 'cabins near the engines or anchor may suffer from vibrations or noise especially during docking.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Quantum offers a genuine three-way connecting configuration: an Interior Studio can connect to a Junior Suite with Large Balcony and a standard Balcony Ocean View, sharing a vestibule and shared balcony space.",
+      "effect": "Large or multi-generational groups can link three different cabin types together with a shared outdoor balcony space, which is unusual for the line.",
+      "mattersTo": "Families/groups wanting to spread across cabin tiers while staying connected should look for this configuration; solo/couple travelers wanting balcony privacy should avoid connecting balcony cabins.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisecritic.com Editor's Review: 'Options to connect rooms even includes connecting an Interior Studio with a Junior Suite with Large Balcony and a standard Balcony Ocean View, with a shared vestibule and shared balcony space.'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "6254, 6258, 6654, 6658, 7254, 7258, 7654, 7658",
+      "claim": "These have a chair instead of a sofa and a larger 82 sq ft balcony (177 sq ft total), a different layout from standard balcony cabins.",
+      "source": "cruisedeckplans.com balcony category page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6254, 6258, 6654, 6658",
+      "claim": "Listed as having obstructed views on top of the different chair/balcony layout above.",
+      "source": "cruisedeckplans.com balcony category page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6290-6300",
+      "claim": "First-hand forum poster reported the room was 'OK' with the expected lifeboat-obstructed view, but flagged a separate, disturbing noise issue tied to this specific range.",
+      "source": "Cruise Critic boards thread 'BEWARE-CABINS 6290-6300 on Quantum of the Seas'",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6304, 6306, 6704, 6706",
+      "claim": "Listed as having obstructed views due to lifeboats or other structural elements despite being sold as ocean view/balcony.",
+      "source": "elliestraveltips.com cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "3590-3610 (starboard)",
+      "claim": "Most likely Deck 3 noise hotspot, sitting underneath Sorrento's Pizza and its kitchen area.",
+      "source": "cruisedeckplans.com deck 3 page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "12100-12140",
+      "claim": "Claimed to 'wobble' and cause nausea in rough seas (e.g., South China Sea crossings), attributed to a 2024 Reddit review calling them 'a rollercoaster.'",
+      "source": "cruisebooking.com cabins-to-avoid article",
+      "confidence": "low"
+    },
+    {
+      "cabins": "6700-6750, 7700-7750, 8700-8750",
+      "claim": "Claimed to vibrate from engines, especially during docking, per an alleged passenger quote about 'constant hum like an earthquake.'",
+      "source": "cruisebooking.com cabins-to-avoid article",
+      "confidence": "low"
+    },
+    {
+      "cabins": "3170-3240, 4170-4240, 6170-6240, 8610-8640",
+      "claim": "Claimed to be adjacent to the Royal Theatre, Music Hall, or Two70 with bass/noise carrying in until late.",
+      "source": "cruisebooking.com and cruisesnooze.com cabins-to-avoid articles (overlapping numbers, same content-mill style)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "12900-13300, 13500-13800",
+      "claim": "Claimed to sit directly below the main pool/Solarium with early chair-scraping noise from 6am.",
+      "source": "cruisebooking.com cabins-to-avoid article",
+      "confidence": "low"
+    },
+    {
+      "cabins": "6270-6280, 7270-7280, 10270-10280",
+      "claim": "Claimed to be within 4-6 doors of elevator lobbies, suffering constant dinging, luggage-rolling and chatter noise.",
+      "source": "cruisebooking.com and cruisesnooze.com cabins-to-avoid articles (matching numbers across both)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "7230-7232, 8234-8236, 9240-9242",
+      "claim": "Claimed to be connecting cabins with thin shared doors that transmit sound easily.",
+      "source": "cruisebooking.com cabins-to-avoid article",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Whether Quantum has a genuine hull-taper effect on its highest decks (13 and above) that hides the straight-down view while keeping the horizon clear — no ship-specific source found describing this distinct from the Deck 13 pool/Solarium overhang.",
+    "Location and guest-facing impact of the I-95-style crew corridor on Quantum (which decks it runs on, where its access doors open near guest cabins) — no ship-specific source found; only vague, low-quality mentions of unspecified 'crew corridors.'",
+    "Whether the North Star observation capsule's mechanical arm creates a specific, verifiable 'fishbowl' or view-blocking effect for particular Deck 12/13 midship cabins — only a low-quality blog claim found, not corroborated by forums or aggregators.",
+    "Whether balconies on Quantum ever use solid steel (rather than glass) railings for privacy/heat reasons, as seen on some other Royal Caribbean classes (e.g., Voyager) — not confirmed for Quantum specifically beyond the forward Deck 7/8 steel-frame porthole obstruction.",
+    "Precise noise/traffic impact of being near the Music Hall or SeaPlex specifically (deck and cabin-range level) — only vague, unverified references found."
+  ],
+  "ship": "Quantum of the Seas",
+  "shipSlug": "quantum-of-the-seas",
+  "line": "Royal Caribbean International",
+  "totalCabins": 2098,
+  "cabinsTouchedByAZone": 2098,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 15,
+    "maxAllowed": 25
+  },
+  "cost": 1.419921
+}

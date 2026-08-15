@@ -1,0 +1,234 @@
+{
+  "class": "Breakaway Plus-class (Norwegian Cruise Line)",
+  "sisterShips": [
+    "Norwegian Joy",
+    "Norwegian Bliss",
+    "Norwegian Encore"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are mounted on Deck 7 (a non-guest deck), directly beneath the Deck 8 Balcony/Oceanview cabins.",
+      "effect": "Looking straight down from a Deck 8 balcony you see boat canopy/tackle instead of water; the horizon and side view remain open and unobstructed.",
+      "mattersTo": "Matters to guests who want to watch the water directly below or lean over the rail; does not matter to anyone focused on the horizon, sunbathing, or general balcony use.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "boards.cruisecritic.com (two independent threads confirm lifeboats sit on Deck 7 and block the straight-down view from Deck 8); cruisebooking.com lists Deck 8 as lifeboat-obstructed."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 8 Balcony/Oceanview cabins sit directly above the Escape Theater, Headliners comedy club and The Cavern Club, all housed in the Deck 6-7 entertainment complex.",
+      "effect": "Show music, bass, and rehearsal noise can carry up into these cabins, especially late evening and during matinee rehearsals; cruisedeckplans specifically flags the 'indented' balconies on this deck as sitting above the main theater.",
+      "mattersTo": "Light sleepers and early-to-bed guests should avoid; nightlife-oriented guests who don't mind ambient bass won't notice much.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisebooking.com (Deck 6-7 entertainment complex noise into Deck 8); cruisedeckplans.com Deck 8 page (indented balconies above main theater); boards.cruisecritic.com forum thread asking about Deck 8 cabins above the Escape Theater."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Some Deck 9 mid-ship cabins sit directly above The District Brew House (craft-beer hall) on Deck 8, and are also close to the central elevator bank.",
+      "effect": "A guest holding cabin 9184 specifically raised concern about combined elevator-lobby traffic noise and brewhouse activity below; this is a real, ship-specific worry rather than a generic aggregator claim, though no confirmed outcome was posted.",
+      "mattersTo": "Matters to guests sensitive to bar/crowd noise and elevator-lobby traffic; not a concern for cabins elsewhere on Deck 9 away from the brewhouse footprint.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com thread on cabin 9184, noting proximity to the elevator bank and to the District Brew House below."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Balcony cabins in categories BA/BB/BC on Deck 14 sit directly beneath the pool deck and the Garden Café buffet.",
+      "effect": "Early-morning deck-chair dragging and pool-party noise from above can be heard in these cabins.",
+      "mattersTo": "Matters to guests who sleep in or are noise-sensitive in the early morning; less relevant to guests who are up and out early anyway.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisebooking.com Norwegian Escape cabins-to-avoid guide, naming Deck 14 categories BA/BB/BC as being below the pool deck and Garden Café."
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Penthouse cabins 14106 and 14706 have only a small side balcony that is enclosed within the steel hull and shaded by the bridge structure directly above (the bridge sits on Deck 15 on this ship).",
+      "effect": "The balcony feels boxed-in and shaded rather than open; sightlines to the side/down are cut off by steel plating, though this is a structural recess rather than a lifeboat obstruction.",
+      "mattersTo": "Matters to guests expecting a full open-air balcony in a Penthouse category; less relevant to guests who value the forward Penthouse's other perks (space, Haven access) over balcony openness.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Norwegian Escape Deck 14 page, naming cabins 14106/14706 specifically and matching this ship's known bridge position on Deck 15 (distinct wording from sister-ship pages, so not simple boilerplate)."
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward balcony/spa-suite cabins on Deck 15 that sit close to the bridge have a large structural overhang from the deck above that shades part of the balcony.",
+      "effect": "A first-person review of a Spa Junior Suite balcony on this ship described a 'large steel canopy overhang above' the balcony; despite the overhang, the sea view itself stayed unobstructed by the glass balustrade.",
+      "mattersTo": "Matters to sun-seekers who want an uncovered balcony; doesn't matter to guests who value shade or an unobstructed horizon view.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "reasonstocruise.com first-person Norwegian Escape Spa Junior Suite review describing the steel canopy overhang and unspoilt view; corroborated generally by cruisedeckplans.com Deck 15 page noting an overhang shading balconies near the bridge."
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward-most cabins on Decks 14 through 16 are reported to carry the strongest motion in rough seas on this ship.",
+      "effect": "Guests prone to seasickness may feel more pitching/rolling in these high, forward cabins than midship or lower cabins.",
+      "mattersTo": "Matters to motion-sensitive travelers; less relevant to guests sailing calm itineraries or those unaffected by ship movement.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisebooking.com Norwegian Escape cabins-to-avoid guide identifying forward Decks 14-16 as the highest-motion cabins."
+    },
+    {
+      "factor": "connecting",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Norwegian Escape has connecting cabins (e.g., in the 8100s range) whose adjoining doors are less soundproofed than a standard cabin wall.",
+      "effect": "Noise and conversation from the connected neighboring cabin can carry through more easily than through a normal wall.",
+      "mattersTo": "Matters to guests not traveling as a connected group who get assigned next to noisy connecting-door neighbors; not an issue for families who want the connecting feature.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "elliestraveltips.com Norwegian Escape cabins-to-avoid guide noting connecting-door sound transfer; corroborated by a ship-specific forum question about connecting cabin 8122."
+    },
+    {
+      "factor": "accessible",
+      "decks": [
+        5,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Norwegian Escape's wheelchair-accessible staterooms (Inside/Oceanview on Deck 5; Balcony-category accessible rooms scattered across Decks 9-15, e.g., 9924, 10286, 10886, 11918, 12282/12286, 12882, 12912, 13912, 14278/14282, 14878/14882, 14906, 15886) are positioned close to the ship's elevators.",
+      "effect": "Wider doors and roll-in showers come with the trade-off of being near elevator-lobby foot traffic and noise.",
+      "mattersTo": "Matters to mobility-need guests weighing accessibility convenience against elevator-lobby noise; not relevant to guests without accessibility requirements.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemapper.com Norwegian Escape cabins page, listing specific accessible cabin numbers and stating they are located close to the ship's elevators."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Studio (solo-traveler) staterooms occupy three consecutive decks (10, 11, 12) with a single-story Studio Lounge on Deck 11, a layout unique among this ship's sisters (Joy has no Studios at all).",
+      "effect": "Studio guests get a self-contained, keycard-only vertical enclave with its own lounge one deck away rather than spread across many separate zones.",
+      "mattersTo": "Matters to solo travelers deciding on Studio bookings; not relevant to other cabin types.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "thiscruiselife.com Breakaway vs Breakaway Plus comparison, describing Studio staterooms spanning Decks 10-12 with the Studio Lounge on Deck 11."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "14708",
+      "claim": "Guest asked whether this forward-most Deck 14 balcony is obstructed, suspecting it may be one of the balconies enclosed in metal on all sides.",
+      "source": "boards.cruisecritic.com thread 'Escape: balcony 14708???obstructed???'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "13106, 13706",
+      "claim": "Forward Penthouse cabins on Deck 13 have only a small side balcony (similar constrained-balcony pattern to 14106/14706 one deck up).",
+      "source": "cruisedeckplans.com Norwegian Escape Deck 13 page",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8138, 8140, 8738, 8740",
+      "claim": "These Deck 8 balconies are partly angled, giving more space but sacrificing privacy since neighboring cabins can see onto the angled portion.",
+      "source": "cruisedeckplans.com Norwegian Escape Deck 8 page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8136 and forward (port), 8736 and forward (starboard)",
+      "claim": "These Deck 8 balconies (100 sq ft) are partly overlooked from cabins on the deck above.",
+      "source": "cruisedeckplans.com Norwegian Escape Deck 8 page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9184",
+      "claim": "Guest worried this cabin's noise level would suffer from proximity to the elevator bank and from sitting above The District Brew House.",
+      "source": "boards.cruisecritic.com thread on cabin 9184",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8122",
+      "claim": "Guest asked about noise levels through the connecting door in this cabin; no confirmed answer found.",
+      "source": "boards.cruisecritic.com thread on cabin 8122",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "No ship-specific confirmation found for I-95 crew-corridor access points or where they intersect guest cabin hallways on Norwegian Escape.",
+    "No ship-specific confirmation found for bow-thruster noise in far-forward Deck 5 cabins on Norwegian Escape (only generic claims for other NCL ships were found).",
+    "No ship-specific confirmation found for anchor-chain noise in forward cabins on Norwegian Escape (only generic claims for other ships/lines were found).",
+    "Aggregator claims describing 'aft cabins on lower Decks 5-6' with the most engine vibration do not match the real cabin inventory, since Deck 5 has no aft-section cabins and Deck 6 has no guest cabins at all; the true lowest aft-facing guest cabins are on Deck 9, and no source specifically confirms vibration levels there.",
+    "No evidence was found that this class has a true 'hump' (balconies cantilevered past the hull line); the only confirmed hull modification versus the Breakaway-class sisters is a uniform 5-foot hull widening that added about 40cm to all balcony widths, not a cantilevered hump on specific decks/sections.",
+    "Whether the Deck 8 lifeboat obstruction has any secondary, lesser effect on Deck 9 balconies immediately above was not confirmed by any source found this session.",
+    "Exact deck/location of the main pool deck relative to Deck 14 (used to support the 'below pool deck' noise claim) was not independently verified beyond a single aggregator source."
+  ],
+  "ship": "Norwegian Escape",
+  "shipSlug": "norwegian-escape",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 2180,
+  "cabinsTouchedByAZone": 2125,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 19,
+    "maxAllowed": 25
+  },
+  "cost": 1.938454
+}

@@ -1,0 +1,308 @@
+{
+  "class": "Millennium-class",
+  "sisterShips": [
+    "Celebrity Summit",
+    "Celebrity Infinity",
+    "Celebrity Constellation"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Service boats (14 lifeboats, 4 tender boats, 2 rescue boats) are stowed on Deck 5, and on Deck 6 cabins that are indented, located where the deck is not as wide, will look down on lifeboats and other ship structures, but the view forward is good; the same indented-cabin/lifeboat phrasing recurs for Deck 7.",
+      "effect": "Guests in the recessed midship sections of Deck 6 look straight down onto boat tops and davits rather than open water, though the forward sightline to the horizon stays open; Deck 7 sits one level further away so the effect is milder.",
+      "mattersTo": "Matters to photographers and anyone who wants to see straight down to the waterline; does not matter to guests who mainly use the horizon view or sit rather than lean over the rail.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisemapper.com (deck 5 boat stowage) + cruisedeckplans.com deck-by-deck pages for decks 6 and 7 (indented-cabin/lifeboat wording, consistent across all four sister ships)."
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Located forward on Deck 6 are 16 category 2C balcony cabins (8 portside and 8 starboard), nicknamed \"Sweet 16,\" offering larger verandas for this category, and a forum poster confirms if you look at the front of any of the M-Class ships at deck 6 level forward, those 8 rooms on each side stick out more than the others on the same deck.",
+      "effect": "These balconies are roughly double depth for the same fare as a standard balcony next door, and because they sit at the front of the deck rather than in the indented midship section, they are forward of the recessed area that looks down on lifeboats described above — an interaction where the cantilevered position buys both extra space and an escape from the lifeboat sightline. A first-person account notes the front half of the balcony and those of most of the remaining 6 cabins on each side are shaded by a deck overhang 4 stories above, while the back half is shaded by the 3 levels of balconies immediately above.",
+      "mattersTo": "Great for anyone wanting extra outdoor space at standard balcony pricing; less appealing to sun-worshippers who dislike the overhead shading.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemapper.com, cruisedeckplans.com deck 6 page, wanderwiles.com first-person review, and cruiseaddicts.com forum thread."
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "The overhang on this ship from the deck above is very large; if you want to avoid the overhang from the deck above, choose cabin 9012, 9028, 9015, or 9033. The sides of the balcony are solid steel and therefore the view is restricted when sitting down, and all cabins on this deck are below public areas on the deck above. This exact wording is identical across Millennium, Infinity, Summit, and Constellation, confirming it is a genuine shared architectural feature rather than a one-off note.",
+      "effect": "Because the hull steps inward above Deck 9 (toward the narrower Deck 10/11), most Deck 9 balconies sit under an overhang that blocks sun and shades the veranda, and solid steel side walls restrict the sitting-down side view — though the horizon view forward/outward stays open.",
+      "mattersTo": "Sun-seekers should avoid Deck 9 balconies generally, or specifically request 9012/9028/9015/9033; does not bother guests who value shade or privacy.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck 9 pages for all four Millennium-class ships (identical text confirms class-wide feature, not aggregator boilerplate); corroborated by a Cruise Critic first-person review of cabin 9121 noting the large overhang."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Several cabins on Deck 3 are under busy venues, such as the casino and the Rendezvous Lounge, that can produce noise late into the evening, and exterior staterooms 3019-3111 port side and 3032-3108 starboard, and interior staterooms 3029-3061, 3067-3108 and 3070-3110, are located beneath the night club and casino areas.",
+      "effect": "Cabins directly beneath these venues can pick up bass, applause, and late-evening chatter through the deck above.",
+      "mattersTo": "Matters to light sleepers on evening-focused itineraries; less of an issue for guests who are out late themselves.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruiseadvice.org Celebrity Millennium best-cabins guide (ship-specific, with cabin ranges)."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Most of the noise complaints come from the cabins in the aft underneath the terrace, cabins under the pool grill area and cabins forward underneath the fitness center.",
+      "effect": "Guests directly under these venues hear equipment noise, foot traffic and early-morning setup, one deck below the source.",
+      "mattersTo": "Matters to guests wanting a late sleep-in; less relevant to early risers already headed to the gym or grill.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Deck 9 (Sky) plan page for Celebrity Millennium."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Cabins next to crew area in the front and crew area in the back may hear noise from those areas; all other cabins are underneath a deck of cabins above and therefore should not experience noise issues from the public areas, while forward cabins on this deck tend to have more sea noise during rough seas.",
+      "effect": "Most of Deck 2 is insulated by cabins overhead, but the extreme forward and aft ends sit near crew work areas and hull noise.",
+      "mattersTo": "Matters to guests in the very forward/aft cabin runs on this deck; the large midship majority is unaffected.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Deck 2 (Continental) plan page for Celebrity Millennium."
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "A first-person cabin-review blog for the 10 inside cabins added in the 2019 refit (6901/6903/6905, 7901/7903/7905, 8901/8903, 9901/9903) states all 10 are located mid-ship, within steps of the mid-ship elevators and stairs, and if you have concerns about noise from the elevators or stairs, be reassured that isn't an issue — there is a wall separating the rooms from the elevator bank.",
+      "effect": "Proximity to the midship elevator bank gives fast access to venues without the noise bleed guests often fear, because a dedicated wall isolates the shaft/lobby from the cabin corridor.",
+      "mattersTo": "Good for mobility-limited or elevator-dependent guests; a generic (non-ship-specific) SEO guide claims AquaClass cabins near elevators face 'constant hallway traffic,' but this is not corroborated by the first-person source and should be weighed accordingly.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "profcruise.com first-person blog review of Millennium inside cabins near the midship elevator bank."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A Cruise Critic member reviewing Celebrity Millennium reported their original cabin 2014 suffered vibration and noise for hours, and after being moved to deck 4 (cabin 3005) there was no noise at night in the original cabin, only at different times during the day.",
+      "effect": "Machinery-driven vibration/noise can be felt in specific low-deck cabins during daytime operations (consistent with gas-turbine/azipod propulsion machinery running below).",
+      "mattersTo": "Matters to noise-sensitive guests booking low-deck cabins near machinery spaces; a single documented case, not a fleet-wide pattern.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "Cruise Critic member review of Celebrity Millennium (cabin 2014 vibration complaint)."
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        10,
+        11
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "The V2 Veranda staterooms at the very front of Deck 10 (cabins 1000 to 1024), and the Prime Inside and Prime AquaClass staterooms at the aft of Deck 11 (cabins 1100 to 1141), are the highest cabins on the ship, and that combination of forward/aft and high up is where the ship's motion is most noticeable. This is echoed on the deck-plan page itself: in rough seas you are more likely to feel the motion of the ocean from these balconies.",
+      "effect": "Being simultaneously at the extreme ends of the hull and highest above the waterline compounds pitch and roll motion.",
+      "mattersTo": "Seasickness-prone guests should avoid these ranges and pick midship, lower decks instead; unaffected guests can enjoy the extra light and fewer neighbors these ranges offer.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisemummy.co.uk Celebrity Millennium cabins-to-avoid guide, corroborated by cruisedeckplans.com Deck 11 page."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Celebrity's own cabin-category system labels certain forward Veranda cabins as obstructed: V3 staterooms are located towards the forward sections of Decks 7, 8, and 9, where views from the veranda may be partially obstructed by the ship's structure, and a UK agency's category page titles this product line 'Veranda (Partial View) – V3' specifically on Sky Deck 9.",
+      "effect": "These forward V3 cabins are openly sold as partial-view, so the obstruction is disclosed at booking time — a different situation from the unlabeled obstructions below.",
+      "mattersTo": "Budget-focused cruisers happy to trade a partial view for savings; view-focused cruisers should book V1/V2 or higher instead.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "rolcruise.co.uk Celebrity Millennium cabin guide and mykindofcruise.com Millennium V3 category page (ship-specific, not the generic cross-class aggregator boilerplate)."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "A cruiser guide notes that Celebrity has an internal obstruction list but a lot of those cabins aren't classified as being obstructed view according to the cabin categories — there are a lot of V3, sure, but also some A1 Prime AquaClass, C1 Prime Concierge Class, and DV Deluxe Veranda cabins with real obstructions that carry no 'obstructed' label.",
+      "effect": "Some lifeboat- or structure-blocked cabins in AquaClass, Concierge Class, and Deluxe Veranda categories are sold at full, unlabeled price even though the view is compromised.",
+      "mattersTo": "Matters greatly to guests paying premium-category prices expecting a clear view; does not affect guests who already expect and accept an obstruction (e.g., in V3).",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk Celebrity Millennium cabins-to-avoid guide, referencing Celebrity's own obstruction documentation."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "8094, 8096, 8111, 8115",
+      "claim": "Partially obstructed view caused by a window-cleaning platform.",
+      "source": "cruisedeckplans.com Celebrity Millennium overview page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8047, 8048, 8049, 8050",
+      "claim": "Listed as having partially obstructed views (a different cabin set than the window-cleaning-platform group above).",
+      "source": "planetcruise.com Celebrity Millennium cabin details page",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8181, 8166",
+      "claim": "A large part of the balcony can be viewed by cabins above and to the side; balcony sides are solid steel, restricting the seated view.",
+      "source": "cruisedeckplans.com Deck 8 plan (also appears identically for Infinity, confirming class-wide feature)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7199, 7202",
+      "claim": "A large part of the balcony can be viewed by cabins above and to the side; solid steel sides restrict the seated view.",
+      "source": "cruisedeckplans.com Deck 7 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7138, 7140",
+      "claim": "Small, irregular-shaped balconies.",
+      "source": "cruisedeckplans.com Deck 7 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6016",
+      "claim": "Has a solid wall on the left side of the balcony rather than the usual opaque privacy partition.",
+      "source": "wanderwiles.com first-person Sweet-16 review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6108, 7136, 7142",
+      "claim": "Smaller verandas that are semi-private (shared sightlines).",
+      "source": "cruisedeckplans.com Celebrity Millennium cabin listing page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9012, 9028, 9015, 9033",
+      "claim": "Recommended alternative cabins to avoid the large deck-above overhang on Deck 9.",
+      "source": "cruisedeckplans.com Deck 9 plan (identical across all four sister ships)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9094, 9100",
+      "claim": "Small, irregular-shaped balconies.",
+      "source": "cruisedeckplans.com Deck 9 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9197, 9156",
+      "claim": "Large part of balcony viewable from the terrace above and cabins to the side; solid steel sides.",
+      "source": "cruisedeckplans.com Deck 9 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "3021, 3018",
+      "claim": "Larger, wheelchair-accessible inside cabins located right next to the stairs; noise possible when lifts are busy.",
+      "source": "cruiseadvice.org Celebrity Millennium best-cabins guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "3019-3027 (port), 3140, 3142, 3144 (starboard)",
+      "claim": "Located beneath public bathrooms; water-pipe noise possible.",
+      "source": "cruiseadvice.org Celebrity Millennium best-cabins guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8046",
+      "claim": "Shows as obstructed view from the balcony; a forum poster asked whether the obstruction only blocks the forward-looking sightline.",
+      "source": "Cruise Critic Millennium cabins forum thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "V3 category, unspecified numbers",
+      "claim": "A guest booked a 'partial obstructed V3 balcony' and asked how bad the obstruction actually is; no confirmed answer found in this session.",
+      "source": "Cruise Critic 'V3 cabin Millenium' forum thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Cabin above/near the Crew Bar (deck/number unspecified)",
+      "claim": "A reviewer's biggest complaint was their cabin being above the Crew Bar, with constant noise issues.",
+      "source": "Cruise Critic expert/member review of Celebrity Millennium",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Corner cabins (unspecified numbers, veranda categories fleet-wide)",
+      "claim": "Corner cabins have mostly solid metal balcony walls rather than the usual open railings.",
+      "source": "cruisedeckplans.com Celebrity Millennium stateroom-features listing",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "No ship-specific source was found describing an 'I-95'-style crew corridor layout or its access points near guest cabins on Millennium-class ships; general write-ups on this topic explicitly cover Royal Caribbean/Carnival/NCL/MSC/Viking, not Celebrity, so it is omitted rather than assumed.",
+    "No source found on bow-thruster noise for specific forward cabins on this class.",
+    "No source found on anchor-chain noise for specific forward cabins on this class.",
+    "Exact deck/cabin location of the 'cabin above the Crew Bar' noise complaint was not identified.",
+    "Whether AquaClass cabins near elevators are genuinely noisier is disputed between a first-person blog (no issue, wall-isolated) and a generic guide (claims traffic issue); not resolved with ship-specific first-person confirmation."
+  ],
+  "ship": "Celebrity Millennium",
+  "shipSlug": "celebrity-millennium",
+  "line": "Celebrity Cruises",
+  "totalCabins": 1106,
+  "cabinsTouchedByAZone": 1106,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 16,
+    "maxAllowed": 25
+  },
+  "cost": 1.995799
+}

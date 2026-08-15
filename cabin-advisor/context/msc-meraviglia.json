@@ -1,0 +1,276 @@
+{
+  "class": "Meraviglia class (MSC Cruises)",
+  "sisterShips": [
+    "MSC Bellissima (2019, direct Meraviglia-class sister, same hull/deck layout)",
+    "MSC Grandiosa (2019, Meraviglia-Plus variant — stretched hull, same core layout)",
+    "MSC Virtuosa (2021, Meraviglia-Plus variant)",
+    "MSC Euribia (2023, Meraviglia-Plus variant)"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "MSC's own deck-plan legend assigns category BP (obstructed Deluxe Balcony) to Deck 8 and category OL2 (obstructed Oceanview) to bow cabins on Decks 9-11, both sitting over the lifeboat/tender line.",
+      "effect": "On Deck 8 the balcony rail looks straight down onto lifeboat davits and the walking deck; several forum posters and a cabin-tour blogger confirm you can still see the horizon and ocean clearly, just not straight down.",
+      "mattersTo": "People who want to people-watch on the pier or see straight down won't get that; people who just want sea view and horizon usually report it's 'not that bad.'",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "official MSC Meraviglia deck-plan PDF (msccruises.co.uk) legend showing OL2 on decks 9-11 and BP on deck 8; corroborated by cruisecritic.com editor review and multiple Cruise Critic forum threads (cabins 8099, deck-8 discussions) and a first-person blog (deestimes.com) confirming clear horizon view despite lifeboats below."
+    },
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 8 has the largest concentrated block of lifeboat-obstructed balcony cabins on the ship, cited by name ranges (approx. 8087-8127 and 8172-8231).",
+      "effect": "A cabin-review blog and an aggregator both independently list the same cabin-number ranges as obstructed by lifeboats, and Cruise Critic's own editorial review states plainly that Deck 8 balcony cabins have obstructed views.",
+      "mattersTo": "Budget-focused balcony shoppers who don't mind a bigger balcony with a lifeboat below; not for anyone who wants a completely open view.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com editor review ('balcony cabins on Deck 8 have obstructed views'); cruisewithleo.com and shinecruise.com list matching cabin ranges 8087-8127 and 8172-8231/8191-8223."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 14 balcony cabins sit directly beneath the Deck 15 pool/Yacht Club/public deck overhang.",
+      "effect": "The overhang shades and partly encloses the Deck 14 balconies (some are described as 'shaded' with only a forward view and no sky view), and multiple guests report early-morning and late-night noise — deck-chair dragging heard from midnight to 6:30am in one detailed complaint about cabin 14041.",
+      "mattersTo": "Sun-seekers should avoid; people who value shade/privacy or a quieter cave-like balcony may actually prefer it, but light sleepers should avoid entirely.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "msccruisefan.com ('Deck 14 balcony cabins sit below public areas on Deck 15... more shade... less sky view'); Cruise Critic forum thread on Deck 14 'partial' view; Tripadvisor review of cabin 14041 describing chair-dragging noise from midnight-6:30am."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 7-8 cabins near the casino and Broadway Theater entrances sit close to a high-traffic entertainment thoroughfare.",
+      "effect": "Cabins near these entrances can pick up nightlife noise (casino chimes, crowd noise) into the late hours.",
+      "mattersTo": "Light sleepers and non-gamblers should avoid; nightlife-focused cruisers may not mind the proximity.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisebooking.com ('cabins near the Casino and Sky Lounge entertainment areas on Deck 6... Also avoid cabins near the Broadway Theater on Decks 6 and 7')."
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "sections": [
+        "forward",
+        "aft",
+        "mid"
+      ],
+      "what": "The ship has two main elevator/stair banks (fore and aft) plus a single extra midship elevator on each side that does not cross from port to starboard on the cabin decks.",
+      "effect": "A first-person reviewer who stayed exactly midway between the two main banks found it very convenient for reaching anywhere on the ship, but warned that the standalone midship elevator requires walking to the main bank to cross sides.",
+      "mattersTo": "Cruisers who want fast access to venues should book near — but not directly beside — a stair/elevator bank; those wanting quiet should stay 10-20 cabins away per general MSC cabin-location advice.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "mycruisestories.com first-person account ('two sets of stairs and elevators... a lone elevator... you could not cross over from port to starboard... at those elevators'); cruisemapper.com noting midship panoramic elevators on Deck 8."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Meraviglia uses diesel-electric propulsion with ABB Azipods mounted outside the hull, and the diesel plant itself is placed aft of midship.",
+      "effect": "Bureau Veritas graded the ship at Comfort Class grade 1 for both noise and vibration, and the shipbuilder noted that having the motor outside the vessel produces less transferred vibration than a conventional shaft-and-propeller aft cabin — so aft vibration on this class is comparatively mild versus older ship designs, though aft cabins still sit closest to the machinery spaces.",
+      "mattersTo": "Vibration-sensitive guests get more protection here than on older MSC ships, but aft-cabin seekers should still expect some engine/thruster sound during docking manoeuvres.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "rivieramm.com engineering feature quoting STX France and Bureau Veritas: 'graded at the highest Comfort class level – grade one for both noise and vibration'; 'The motor is outside the vessel so there is less transferred vibration.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        15,
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The MSC Yacht Club suites on Decks 15-16 (and the higher YC decks 18-19 not in the guest-cabin inventory) sit at the highest, most-forward point of the ship.",
+      "effect": "A Cruise Critic member reviewer who stayed in the Yacht Club stated plainly that the whole YC complex is high and very forward, producing noticeably more motion than lower/midship cabins.",
+      "mattersTo": "Seasickness-prone guests should avoid the forward Yacht Club suites even though they're premium accommodations; motion-tolerant guests get the trade-off of the best forward views (Top Sail Lounge, private balconies).",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisecritic.com member review: 'Cabin along with whole YC is high, deck 15,16,18,19 and very forward so lots of motion. If you get sea sick stay away.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft-facing cabins on Decks 9-10 are repeatedly flagged by cabin-advice sites as experiencing more motion than midship cabins in rough seas.",
+      "effect": "Guests prone to seasickness are steered toward midship Decks 11-13 instead.",
+      "mattersTo": "Seasickness-prone travelers should prefer midship over aft on these decks; wake-view lovers may accept the trade-off.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisebooking.com ('aft-facing cabins on Decks 9 and 10... experience more motion in rough seas... midship balcony cabin on Decks 11, 12, or 13' recommended instead)."
+    },
+    {
+      "factor": "connecting",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Balcony categories BR1, BL1, BL2, BL3, BR2, BR3, BP and BA, plus Oceanview category OL2 on the bow of Decks 9-11, are sold with connecting doors between adjacent cabins.",
+      "effect": "The connecting door is thinner than a standard cabin wall, so noise passes more easily between the two units if strangers end up on each side.",
+      "mattersTo": "Groups/families traveling together benefit from the connecting option; solo bookers who get assigned one side of a connecting pair risk noise bleed from the other.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "shinecruise.com ('Balcony cabins in categories BR1, BL1, BL2, BL3, BR2, BR3, BP, and BA have connecting doors... found... on Deck 8, 9, 10, 11, 12, and 13')."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "A small number of Studio Solo Inside cabins on Meraviglia (identified as 10003, 10004 and 10074) have only a single sofa bed instead of a real bed, a quirk not repeated on sister ship Bellissima's equivalent deck plan.",
+      "effect": "Solo travelers booking these specific studio cabins should expect to sleep on a sofa bed rather than a proper mattress bed.",
+      "mattersTo": "Solo cruisers booking Studio Solo Inside should check the exact cabin number before assuming a standard bed.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'check the light pink rooms 10003 and 10004 at the front of the ship, and 10074... a particular design quirk of MSC Meraviglia only... even on Meraviglia's sister ship, the MSC Bellissima' it isn't repeated."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "8087-8127 (odd) / 8088-8126 (even) and 8191-8223 (odd) / 8192-8222 (even) — approx. also framed as 8087-8127 and 8172-8231 by another source",
+      "claim": "Category BP Deluxe Balcony cabins on Deck 8 have obstructed view from the ship's structure/lifeboats",
+      "source": "shinecruise.com and cruisewithleo.com (two independent cabin-range listings, close but not identical)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "14045-14089 & 14155-14185 (odd); 14034-14050, 14060-14086 & 14168-14198 (even)",
+      "claim": "Deluxe Balcony cabins on Deck 14 have shaded balconies limiting view to forward-only, no sky view",
+      "source": "shinecruise.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "14041",
+      "claim": "Guest reported nightly chair-dragging noise from above lasting midnight to 6:30am with no resolution offered until the last day",
+      "source": "Tripadvisor review of MSC Meraviglia",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8011, 8015, 8052, 8182 (Deck 8); 9021, 9025, 9060, 9068, 9132 (Deck 9); 10015, 10021, 10056, 10258, 10260 (Deck 10); 11054, 11142, 11262, 11264 (Deck 11)",
+      "claim": "Cabins located near stairwells, noisy from passenger stair traffic",
+      "source": "shinecruise.com",
+      "confidence": "low"
+    },
+    {
+      "cabins": "10085",
+      "claim": "Labeled accessible but has tight bed clearance and awkward fold-down bed / ramp access for wheelchair users",
+      "source": "shinecruise.com and cruisebooking.com (independent match)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "15022-15026 (even) and 15035-15039 (odd) on Deck 15, and cabins below on Deck 14",
+      "claim": "Cabins near the Yacht Club pool area subject to early-morning lounger noise",
+      "source": "shinecruise.com",
+      "confidence": "low"
+    },
+    {
+      "cabins": "10003, 10004, 10074",
+      "claim": "Studio Solo Inside cabins with sofa bed instead of a real bed — unique to Meraviglia, not replicated on Bellissima's equivalent deck",
+      "source": "cruisemummy.co.uk",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "13245, 13342, 14213, 14256",
+      "claim": "Cabins that have only a sofa bed (no proper bed) per official MSC deck-plan legend note",
+      "source": "cruisepanda.com (sourced from MSC's own deck-plan legend text)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Deck 12 cabins 12005-12008 (glass/half-metal) vs 12007, 12009, 12010, 12012, 12013, 12016, 12019, 12020, 12023, 12024, 12027, 12028 (full metal balustrade)",
+      "claim": "Specific cabin-by-cabin example of which balconies have solid metal balustrades vs half-glass, illustrating how to read the deck-plan color coding",
+      "source": "cruisewithleo.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "14015/14019, 14014/14016 (Deck 14); 15037/15039 (Deck 15); 16009/16011, 16024/16026 (Deck 16)",
+      "claim": "MSC Yacht Club Deluxe Suite pairs sold with connecting doors",
+      "source": "shinecruise.com",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "No ship-specific evidence found for an I-95-style crew corridor and where its access doors open onto guest cabin hallways on Meraviglia.",
+    "No ship-specific confirmation found for bow-thruster noise affecting specific forward cabin ranges (general cruise-advice articles mention thrusters at bow/stern in the abstract, but nothing Meraviglia-specific was found).",
+    "No ship-specific confirmation found for anchor-chain noise on forward-most Deck 5 cabins (OR1 category, bow) during anchoring mornings.",
+    "The claim that Deck 5 Oceanview cabins pick up noise from the Deck 6 shopping/promenade area above is only a raised forum question, not a confirmed first-hand report — needs verification.",
+    "A generic MSC-fan site mentions 'angled or hump-style sections' with deeper balconies on Meraviglia, but gives no specific deck, section or cabin numbers, and could not be verified against a boilerplate control-check — insufficient to record as a zone.",
+    "No hull-taper (inward step hiding the straight-down view) claim specific to Meraviglia's highest decks (15/16) was found in this research pass.",
+    "Whether the aft engine/vibration advantage claimed for Azipod propulsion is actually noticeable to guests in aft cabins on Decks 8-14 (vs. just an engineering spec) is not confirmed by passenger reviews in this pass."
+  ],
+  "ship": "MSC Meraviglia",
+  "shipSlug": "msc-meraviglia",
+  "line": "MSC Cruises",
+  "totalCabins": 2218,
+  "cabinsTouchedByAZone": 2108,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 15,
+    "maxAllowed": 25
+  },
+  "cost": 1.32591
+}

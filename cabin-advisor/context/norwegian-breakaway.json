@@ -1,0 +1,256 @@
+{
+  "class": "Breakaway-class (Norwegian Cruise Line)",
+  "sisterShips": [
+    "Norwegian Getaway"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 7 (a non-cabin deck) carries the lifeboat/tender walkway and boat stations, sitting directly beneath the Deck 8 'Promenade Deck' cabins.",
+      "effect": "Cabins on Deck 8 where the hull narrows look straight down onto the lifeboat/walkway deck rather than open water; the horizon view itself is not blocked, only the close-in downward view.",
+      "mattersTo": "Matters to guests who want to see the water directly below their balcony (e.g. for spotting marine life close to the hull); does not matter to anyone who mainly cares about the horizon/sunset view, which stays clear.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Breakaway Deck 8 notes: 'Indented balconies on this deck (where the deck isn't as wide) look down on the outside deck below,' plus the ship's own Outer Walkway page describing that walkway as being 'for the purpose of boarding lifeboats.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Deck 5 cabins sit directly beneath the Breakaway Theater and its backstage/storage area.",
+      "effect": "A first-person guest review of cabin 5706 reported set construction and breakdown noise 'from 11:30 p.m.-3:00 a.m.' during a production show run, describing it as 'like sleeping under a construction zone.'",
+      "mattersTo": "Matters greatly to light sleepers and anyone turning in early; irrelevant to guests who are out late or don't mind stage-set noise.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisecritic.com member review 'A Pretty Good Time (But Avoid Cabin 5706!)': first-hand account of forward Deck 5 noise under the theater."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Deck 8 cabins are described by the ship's own deck-plan annotator as sitting above or below the main theater.",
+      "effect": "These cabins may pick up noise from stage production shows or rehearsal/practice sessions, similar in kind to the Deck 5 theater-noise problem but one deck further from the stage floor.",
+      "mattersTo": "Light sleepers and early-to-bed guests should avoid; late-night guests or those attending the shows themselves are less affected.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Breakaway Deck 8 tips: 'Forward cabins on this deck are above or below the main theater and may have noise from stage production shows or practice shows.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        5,
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Cabins on Decks 5 and 9 sandwich the three-deck 678 Ocean Place entertainment/casino/nightlife hub.",
+      "effect": "Rooms on both the floor above and the floor below this lively venue are more prone to noise carrying through the floor/ceiling from bars, casino, and late-night activity.",
+      "mattersTo": "Light sleepers should avoid; nightlife-focused cruisers may actually prefer the convenience.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Breakaway Cabins editorial: 'Cabins on Decks 5 and 9 sandwich the popular, lively and often loud 678 Ocean Place... more prone to noise from above or below.'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 14 sits directly beneath the Deck 15 Mandara Spa/Pulse Fitness Center and main pool deck; specific cabins 14732-14742 (starboard) sit right under the free-weights/fitness area.",
+      "effect": "Cabin Critic's editorial notes Deck 14 'might receive sounds from the fitness center and main pool deck just above,' and cruisedeckplans separately flags cabins 14732-14742 as being below the fitness center with possible noise; a fleet-wide NCL forum thread reports crew are allowed to use the gym when closed to guests, often late at night or very early morning.",
+      "mattersTo": "Matters to anyone sensitive to early-morning weight-dropping/thumping noise or late-night crew gym use; irrelevant to guests who are up early anyway.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com Breakaway Cabins editorial and cruisedeckplans.com Breakaway Deck 14 notes (cabins 14732-14742 below fitness center); crew-gym-hours detail from cruisemummy.co.uk NCL cabins-to-avoid guide."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        11,
+        12,
+        13,
+        14
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The kids' clubs (Splash Academy / Guppies) sit mid-ship on Decks 12 and 13.",
+      "effect": "Cruise Critic's own editorial advises that cabins in this general mid-ship area across Decks 11-14 are 'best avoided if you don't have kids or don't want to deal with potential noise or children running up and down the hallways.'",
+      "mattersTo": "Matters to childless couples or anyone wanting quiet; irrelevant/beneficial to families who want to be close to the kids' program.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Breakaway Cabins editorial: 'kids clubs are located on Decks 12 and 13 mid; cabins in that general area on Decks 11-14 are best avoided...'"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Deck 8 balconies from roughly cabin 8734-and-forward (starboard) and 8134-and-forward (port) are enlarged to 100 sq ft, and a further set (8136, 8138, 8736, 8738) are angled/triangular for even more space.",
+      "effect": "These cabins get noticeably bigger outdoor space than the standard balcony, but the trade-off named by the source is privacy: 'a good portion of the balcony is open to view by cabins above,' and the angled ones let a neighbor's balcony partially see onto yours.",
+      "mattersTo": "Great for guests who want lounging room and don't mind being overlooked from above; a negative for anyone prioritizing balcony privacy.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Breakaway Deck 8 notes, citing specific cabin-number ranges and square footage for the extended/angled balconies."
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        13,
+        14
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft-facing balconies on Decks 13 and 14 are the smallest of all the ship's aft balconies, while aft balconies on Decks 9, 10 and 12 are the largest, per the ship's own deck-by-deck notes.",
+      "effect": "As the hull narrows toward the top of the stern, the aft balcony footprint shrinks on the two highest aft-cabin decks even though the cabin category name is unchanged.",
+      "mattersTo": "Matters to anyone booking an aft balcony expecting a big outdoor space on the highest decks; those decks trade balcony size for elevation and reduced wake/soot exposure.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Breakaway Deck 12/13 notes: 'Aft facing balconies on deck 13 and 14 are the smallest of all the aft cabins. Aft facing balconies on decks 9, 10 and 12 are the largest.'"
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        12,
+        13
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Penthouse cabins 12106/12706 and 13106/13706 have only a small side balcony; on Deck 13 that balcony is explicitly 'enclosed in a steel hull.'",
+      "effect": "Because the bow narrows and steps inward at these upper forward decks, the balcony sits recessed behind steel hull plating rather than open rail, hiding the straight-down view while the forward horizon over the bow stays visible through the cabin's round window.",
+      "mattersTo": "Matters to guests picturing a wide-open wraparound Haven-style balcony; less relevant to guests who mainly want the bow-view horizon, which is preserved.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Breakaway Deck 12 and Deck 13 notes naming cabins 12106/12706 and 13106/13706 and describing the steel-enclosed side balcony; identical wording confirmed on sister ship Norwegian Getaway's own deck pages, consistent with shared hull design."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Breakaway is propelled by two 17.5 MW ABB Azipod XO units mounted under the stern, with the ship's own drydock records noting azipod shaft-bearing and stabilizer maintenance work.",
+      "effect": "Low, aft cabins sit closest to the pod propulsion and stabilizer machinery, the classic location for engine hum/vibration on modern cruise ships.",
+      "mattersTo": "Matters to vibration-sensitive sleepers; a general NCL cabins-to-avoid guide specifically warns older/lower aft cabins are 'particularly bad for vibrations.'",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "new.abb.com Marine References page confirming two 17.5MW Azipod XO units on Norwegian Breakaway; cruisemummy.co.uk NCL cabins-to-avoid guide on lower-deck vibration."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Breakaway carries three Brunvoll bow thrusters (3 x 3 MW) housed low in the bow, used during docking maneuvers.",
+      "effect": "Cabins low and far forward are the closest to thruster noise/vibration during arrival and departure maneuvering, which a general NCL guide notes can happen as early as 5-6am even if disembarkation is scheduled later.",
+      "mattersTo": "Matters to guests wanting to sleep in on port mornings; irrelevant to early risers.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "Wikipedia Norwegian Breakaway infobox (three Brunvoll bow thrusters, 3x3MW); cruisemummy.co.uk NCL cabins-to-avoid guide on early-morning docking noise."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "5706",
+      "claim": "Smallest inside cabin the reviewer had experienced, and directly under theater set storage causing severe overnight noise from set construction/breakdown.",
+      "source": "cruisecritic.com member review 'A Pretty Good Time (But Avoid Cabin 5706!)'",
+      "confidence": "high"
+    },
+    {
+      "cabins": "8734-forward (starboard), 8134-forward (port)",
+      "claim": "Balconies enlarged to ~100 sq ft but visible from cabins directly above, reducing privacy.",
+      "source": "cruisedeckplans.com Breakaway Deck 8 deck-by-deck notes",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8136, 8138, 8736, 8738",
+      "claim": "Angled/triangular balconies offer extra space but part of the balcony is visible to/from the neighboring cabin's angled section.",
+      "source": "cruisedeckplans.com Breakaway Deck 8 deck-by-deck notes",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8776, 8778, 8780, 8176, 8178, 8180",
+      "claim": "Balconies can be viewed from the nearby Waterfront promenade below, reducing privacy.",
+      "source": "cruisedeckplans.com Breakaway Deck 8 deck-by-deck notes",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "14732-14742 (starboard)",
+      "claim": "Located below the fitness center/free-weights area; possible noise from dropped weights or early/late crew gym use.",
+      "source": "cruisedeckplans.com Breakaway Deck 14 deck-by-deck notes; crew-gym-hours detail corroborated by cruisemummy.co.uk",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "13106, 13706 (Forward Penthouse)",
+      "claim": "Small side balcony fully enclosed within steel hull plating rather than open rail.",
+      "source": "cruisedeckplans.com Breakaway Deck 13 notes; matching wording on sister ship Norwegian Getaway's cabin 13706/12706 pages",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "12106, 12706 (Forward Penthouse)",
+      "claim": "Small side balcony, narrower than standard forward penthouse balconies on lower decks.",
+      "source": "cruisedeckplans.com Breakaway Deck 12 deck-by-deck notes",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Aft port side, Deck 12 balcony cabins",
+      "claim": "Guest reported lifeboats positioned below (not directly under, but nearby) their aft Deck 12 balcony, sticking out rather than recessed, raising a question about view obstruction.",
+      "source": "boards.cruisecritic.com thread 'Life boats on the Breakaway?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Deck 9 aft cabins (near 678 Ocean Place / The Waterfront)",
+      "claim": "Guest raised concern about noise one floor above bars/restaurants/Waterfront nightlife; unresolved in thread.",
+      "source": "boards.cruisecritic.com thread 'Breakaway Aft Rooms - Noise?'",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Exact elevator/stair bank locations by deck and section for Breakaway specifically, and whether proximity noise is a reported problem (only generic NCL-fleet advice found, not Breakaway-specific).",
+    "I-95 crew corridor access points and whether they create service-traffic noise near specific guest cabins on Breakaway.",
+    "Ship-specific (not fleet-generic) forum reports of anchor-chain noise for forward Breakaway cabins.",
+    "Whether NCL formally labels any Deck 8 or other obstructed-view cabins as a distinct 'Obstructed View' category on Breakaway, versus only warning Guarantee-rate bookers of possible obstruction; standard purchasable categories found (BD, BB, MX, IC, IF, IX) did not show an explicit obstructed-view code.",
+    "Motion/seasickness reports specific to Norwegian Breakaway's far-forward or far-aft high decks (only found for the larger Breakaway-Plus ship Norwegian Escape, a different subclass, so not carried over).",
+    "Connecting-cabin noise bleed-through specifics (a forum question was found but never answered)."
+  ],
+  "ship": "Norwegian Breakaway",
+  "shipSlug": "norwegian-breakaway",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 2023,
+  "cabinsTouchedByAZone": 1711,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 15,
+    "maxAllowed": 25
+  },
+  "cost": 1.3377299999999999
+}

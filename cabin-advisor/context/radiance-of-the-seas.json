@@ -1,0 +1,345 @@
+{
+  "class": "Radiance-class (Royal Caribbean International)",
+  "sisterShips": [
+    "Radiance of the Seas",
+    "Brilliance of the Seas",
+    "Serenade of the Seas",
+    "Jewel of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats are stowed on Deck 6 (non-guest), and every indented balcony on Decks 7, 8 and 9 sits above a metal lifeboat-davit roof that projects out 6-10 feet from the hull at the base of the balcony.",
+      "effect": "You cannot see straight down onto the water or the boat itself, but the horizon and side-to-side sightlines stay open; crew occasionally walk out onto the roof, so there is a possibility of seeing crew below.",
+      "mattersTo": "Photographers who like to shoot straight down at the wake/embarkation activity will notice it; most cruisers who just want ocean and horizon views report it as a non-issue.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck-by-deck pages for Decks 7, 8, 9 (identical mechanism described independently for each deck: metal roof from Deck 6 covers lifeboats, blocking the straight-down view); corroborated by a Cruise Critic forum thread describing disappointment that the cabin and neighbors were 'above the lifeboats' and a TikTok cabin-tour saying the lifeboats visible below 'was not bad'."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 7 forward-facing outside cabins sit directly above a crew area (including the crew gym) on Deck 6, and are also above the multi-deck Aurora Theater which rises from Decks 4-6.",
+      "effect": "Guests in this pocket may pick up gym equipment noise from below and, because the theater is unusually tall, some low-frequency show noise as well.",
+      "mattersTo": "Light sleepers who book far-forward Deck 7 cabins; not a concern for midship or aft Deck 7 bookings.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisemapper.com Deck 7 plan ('All forward-facing oceanview rooms are located above a crew area (including a gym)...Forward-location cabins are above the ship's Theater') and cruisedeckplans.com Deck 7 page describing the same crew/gym area below."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "On Deck 10, balconies from roughly cabin 1024 (port) and 1524 (starboard) all the way aft sit under a large metal overhang extending from the Lido/pool deck (Deck 11) above.",
+      "effect": "The overhang blocks rain and sun but also means these cabins are directly beneath pool-deck foot traffic; multiple sources report lounger-dragging and setup noise starting around 5:30-6:00am on sea days.",
+      "mattersTo": "Anyone who wants to sleep past dawn; welcomed by guests who want a shaded, dry balcony.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisemapper.com Deck 10 plan ('Balconies on all rooms from 1024...to aft of the deck are shaded by a large metal roof extending from Lido deck 10 above'); cruisemummy.co.uk and cruiseoverload.com both independently describe early-morning chair-scraping noise under the pool deck on Deck 10."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3,
+        4
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Propulsion machinery/Azipod noise and vibration is concentrated in the lower aft decks.",
+      "effect": "A first-hand reviewer reported that engine noise could be blocked with earplugs but the vibration could not, and specifically called lower-aft cabins 'a big mistake.'",
+      "mattersTo": "Guests sensitive to constant low-frequency vibration (not just noise) should avoid low aft cabins; deal-seekers happy to trade comfort for price may not mind.",
+      "severity": "significant",
+      "confidence": "medium",
+      "source": "cruisecritic.com member review of Radiance of the Seas: 'noise from the engines has to be blocked out with ear plugs, however; the vibration cannot. Lower aft is a big mistake.'"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3,
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Bow thrusters and anchor-handling machinery sit low and forward and are used during docking/anchoring maneuvers.",
+      "effect": "Guests in low forward cabins may hear distinct thruster or anchor-chain noise, especially on early-morning port arrivals.",
+      "mattersTo": "Light sleepers on port-intensive itineraries; less relevant on long sea days.",
+      "severity": "minor",
+      "confidence": "low",
+      "source": "cruisesnooze.com ship guide: 'you might also hear the anchor machinery or bow thrusters more distinctly during docking maneuvers, especially early in the morning.'"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "A defined run of 'hump' cabins exists where the hull/deck widens outward past the normal hull line: cabins 7596-7606 on Deck 7, 8590-8600 on Deck 8, and 9580-9590 on Deck 9.",
+      "effect": "These balconies get noticeably wider sightlines, with good views both straight down and side-to-side, unlike the indented balconies elsewhere on the same deck that look down onto the lifeboat roof.",
+      "mattersTo": "View-focused cruisers who want to see the water below and along the hull; the interaction is that hump cabins escape the lifeboat-roof obstruction affecting their straight-hull neighbours on the same deck.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Deck 7/8/9 pages naming these exact ranges as 'hump cabins...have good views when looking down from the balcony and also looking side to side,' independently corroborated by Cruise Critic forum threads discussing specific hump cabins 9584, 1556 and 8088 by number."
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Separate from the widened 'hump' run, the balconies of cabins 7546+ (starboard, forward) / 7046+ (port, forward) and 7652+ (starboard, aft) / 7152+ (port, aft) extend about 2 feet longer than a normal balcony.",
+      "effect": "The extra length is real, but on the extended portion only a low railing separates it from the neighbouring balcony (visible to/from next door) and, on the forward set, it can also be seen from the cabin directly above.",
+      "mattersTo": "Privacy-focused guests should know the extra space costs some seclusion; sun-seekers get more usable balcony footprint.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Deck 7 page describing the extended-balcony sections and their shared, low-railing sightlines to neighbouring and overhead cabins."
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "On Deck 10, the ship's highest cabin deck, cabins 1598 and 1098 sit tucked further into the narrowing metal hull than their neighbours.",
+      "effect": "These cabins have less railing space and a partially blocked view because the balcony sits atop the inward hull step; the horizon is still visible, but the view straight down/along the hull is cut off.",
+      "mattersTo": "Guests who prize an open, unobstructed balcony rail should avoid these specific numbers; those who don't spend much time on the balcony won't notice.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Deck 10 page: '1598 and 1098 are more enclosed by metal hull of ship and will have view partially blocked.'"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Centrum is a nine-story glass atrium with outward-facing panoramic elevators running through the midship section of the cabin decks, hosting live bands, aerial shows and daily events at its base.",
+      "effect": "Cabins near the Centrum bank can pick up atrium noise (music, applause, elevator chime/foot traffic) that carries up the open shaft.",
+      "mattersTo": "Guests wanting quiet evenings should book a few cabins away from the Centrum core; those who enjoy the buzz of the atrium may not mind.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Deck 7/8/9 pages each flagging 'Cabins near the Centrum may hear noise from that area'; cruisecritic.com Editor's Review describing the Centrum as a 'nine-story open space with outside-facing elevators' hosting live entertainment."
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        3,
+        4,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Some interior and ocean-view cabins sit adjacent to crew corridors and utility/service spaces rather than a named single I-95 corridor.",
+      "effect": "Guests near these access points can experience irregular noise from carts and staff movement at off hours, though the exact corridor path is not documented in available sources.",
+      "mattersTo": "Very light sleepers booking interior/ocean-view categories; not deck-specific enough to name precise cabin ranges.",
+      "severity": "minor",
+      "confidence": "low",
+      "source": "cruisesnooze.com ship guide: 'some interior and ocean view rooms sit close to crew corridors or utility spaces, where carts and staff movement create irregular noise at off hours.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        2,
+        3,
+        4
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Low forward decks pick up both stronger pitching motion and deeper hull/engine sound in heavier seas.",
+      "effect": "On itineraries with open-water stretches (Alaska, repositioning, transits) motion is more noticeable here than on short Caribbean-only sailings.",
+      "mattersTo": "Motion-sensitive guests should avoid low forward cabins on open-ocean itineraries; itinerary matters as much as deck.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisesnooze.com ship guide: 'Low forward decks (2-4) can pick up both motion and deeper hull sounds, especially in heavier sea states.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Far-forward cabins on the higher cabin decks feel less hull/engine noise than their low-deck counterparts but more side-to-side swing and pitch because they are further from the ship's centre of motion.",
+      "effect": "A guest can trade vibration for a more pronounced rocking sensation by moving from a low forward cabin to a high forward one.",
+      "mattersTo": "Motion-sensitive cruisers weighing 'low and forward' vs 'high and forward' should know neither location is motion-neutral.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisesnooze.com ship guide: 'Cabins very far forward on upper decks feel less hull noise but more swing and pitch.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        3,
+        4,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Royal Caribbean's official Radiance of the Seas cabin list only names Interior Accessible and Junior Suite Accessible as wheelchair categories, but Ocean View and Balcony accessible cabins also exist and must be located manually on the deck plans.",
+      "effect": "Guests needing accessible Ocean View or Balcony rooms should not rely on the category filter alone; they exist but are not obviously labeled in the official category list.",
+      "mattersTo": "Wheelchair/mobility-device users booking non-Interior/non-Junior-Suite accessible rooms.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: notes the official cabin list is 'limited to just Interior Accessible or Junior Suite Accessible' but 'there are Ocean View and Balcony Staterooms that are accessible too.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        3,
+        4,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Royal Caribbean does not officially flag any Radiance of the Seas balcony cabins as 'obstructed view' in its own category system, even though an overhang covering the lifeboats partially blocks some balconies.",
+      "effect": "These cabins are sold at full balcony price despite the partial obstruction, unlike on sister ships Jewel of the Seas and Brilliance of the Seas, where comparable cabins are labeled obstructed and discounted.",
+      "mattersTo": "Value-focused shoppers comparing Radiance to its sisters should know the label (and price) differs ship-to-ship for the same physical obstruction.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemastery.com and cruisemummy.co.uk both independently state Radiance 'doesn't say it has any obstructed view cabins officially' while noting Jewel and Brilliance label equivalent cabins as obstructed."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "7064, 7066, 7142, 7564, 7506, 8058, 8060, 8558, 8560, 8162, 8164, 8662, 8664",
+      "claim": "Named by a deck-plan aggregator as having partially obstructed balcony views",
+      "source": "cruisedeckplans.com balcony category page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7050-7090, 7550-7590, 7110-7150, 7610-7650",
+      "claim": "Balcony cabins with view partially blocked by the lifeboat-covering overhang, not officially labeled obstructed",
+      "source": "cruisemummy.co.uk cabins-to-avoid guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7038-7050, 7538-7551, 7090-7110 (Deck 7); 8030-8038, 8530-8538, 8086-8104 (Deck 8); 9020-9032, 9520-9532, 9074-9096 (Deck 9)",
+      "claim": "Cabins near elevator banks flagged for foot-traffic/chatter noise",
+      "source": "cruiseoverload.com cabins-to-avoid guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "4054-4061, 4555-4560, 4580-4590",
+      "claim": "Deck 4 cabins near the dining hall flagged for early-morning noise and foot traffic",
+      "source": "cruiseoverload.com cabins-to-avoid guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "1054",
+      "claim": "Owner's Suite near the Centrum described as noisy at night, with bed against an elevator shaft",
+      "source": "cruisemastery.com cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "1002-1060, 1502-1560 (pattern, exact numbers vary by sailing)",
+      "claim": "Deck 10 cabins directly under the pool/buffet flagged as the noisiest zone",
+      "source": "cruisesnooze.com cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9002",
+      "claim": "Guest specifically asked about balcony obstruction from the Bridge and noise/motion in this far-forward Deck 9 cabin; unanswered in thread",
+      "source": "royalcaribbeanblog.com forum post",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9650, 9652, 9654 and 9250, 9252, 9254",
+      "claim": "View partially blocked by ship structure/cleaning equipment; 9654 and 9254 further enclosed by the hull with less railing space",
+      "source": "cruisedeckplans.com Deck 9 page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8662, 8664, 8666 and 8162, 8164, 8166",
+      "claim": "View partially blocked by structure/equipment; 8666 and 8166 more enclosed by the hull with less railing space",
+      "source": "cruisedeckplans.com Deck 8 page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7170, 7670",
+      "claim": "View partially blocked by ship structure, also reducing railing space",
+      "source": "cruisedeckplans.com Deck 7 page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9584, 1556, 8088",
+      "claim": "Specifically discussed by cruisers as desirable 'hump' balcony cabins",
+      "source": "boards.cruisecritic.com forum threads",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Exact deck location and full length of any dedicated crew-only 'I-95'-style corridor on this class (no source named it directly).",
+    "Whether hump-cabin ranges are identical, numerically, on the sister ships Jewel/Brilliance/Serenade (only Radiance-specific numbers were confirmed here).",
+    "Whether Royal Caribbean's booking engine applies any price discount at all to the lifeboat-obstructed balcony ranges on Radiance versus full price (sources agree no formal 'obstructed' label exists, but exact pricing behavior wasn't confirmed).",
+    "Whether Deck 2 (the lowest guest deck) has its own distinct lifeboat, engine, or taper effects; no deck-specific research surfaced for Deck 2 beyond generic low-deck engine/motion claims.",
+    "Precise section (forward/mid/aft) placement of the connecting-cabin noise complaints raised in a Cruise Critic thread; the thread ended without a substantive answer."
+  ],
+  "ship": "Radiance of the Seas",
+  "shipSlug": "radiance-of-the-seas",
+  "line": "Royal Caribbean International",
+  "totalCabins": 1071,
+  "cabinsTouchedByAZone": 1071,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 14,
+    "maxAllowed": 25
+  },
+  "cost": 1.6916090000000001
+}

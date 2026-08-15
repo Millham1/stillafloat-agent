@@ -1,0 +1,227 @@
+{
+  "class": "Fantasia-class",
+  "sisterShips": [
+    "MSC Splendida",
+    "MSC Divina",
+    "MSC Preziosa"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8,
+        9
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Deck 8 (Favola) is the lowest balcony deck and sits at the lifeboat/davit line; specific balcony cabins there (port 8071+, starboard 8070+, plus 8240/8244/8245/8249) have solid-metal balcony fronts up to railing height, and deck 9's indented balconies (port 9147-9161, starboard 9148-9162) look down onto the tops of the lifeboats.",
+      "effect": "On deck 8 the metal-fronted cabins can't see out at all while seated; on deck 9 you can't look straight down at the sea but the outward horizon view is unaffected.",
+      "mattersTo": "Matters to anyone who wants to watch the water from a lounger; doesn't matter to people who mainly care about the horizon view or who plan to stand at the rail.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisedeckplans.com deck-by-deck pages for MSC Fantasia decks 8 and 9, cross-checked against identical cabin numbering on sister ship MSC Splendida's deck 8/10 pages; MSC's own deck-plan PDF legend also codes 'Balcony with metal balustrade' and 'obstructed view' categories for this class"
+    },
+    {
+      "factor": "lifeboat",
+      "decks": [
+        15,
+        16
+      ],
+      "sections": [],
+      "what": "CruiseMapper notes that some MSC Yacht Club Deluxe Suites (YC1) on decks 15-16 have partially obstructed views due to lifeboat interference.",
+      "effect": "A subset of top-deck Yacht Club suites can have a lifeboat or related structure intrude on the view despite being far above the actual lifeboat deck.",
+      "mattersTo": "Matters to Yacht Club guests paying suite prices who expect an unobstructed view; MSC does not label which specific YC1 cabins are affected in public materials.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com MSC Fantasia cabins page: 'some YC1-Deluxe Suites have partially obstructed views (lifeboat interference)'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        13
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 13 (Arcobaleno, all guest cabins) sits directly beneath deck 14 (Miraggio), which holds the main Lido pool, Aqua Park, the Zanzibar and L'Africana buffet restaurants, and the Aurea Spa.",
+      "effect": "Deck 13 cabins can pick up noise from lounger-dragging, pool splash activity, and buffet service traffic directly overhead.",
+      "mattersTo": "Matters to light sleepers or anyone planning a lie-in; doesn't matter much to families who want to be one flight from the pool.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com MSC Fantasia deck 13 page: 'All cabins on this deck are below public areas on the deck above and may experience noise issues'; cruisemapper.com deck 14 plan confirms deck 14 is Lido-Pools-Spa with the two main buffets"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 12 (Incanto) is sandwiched between deck 11 and deck 13, both entirely guest-cabin decks with no public venues.",
+      "effect": "Cabins on deck 12 tend to have quieter neighbours above and below since there is no venue-generated noise from either direction.",
+      "mattersTo": "Good pick for noise-sensitive guests; irrelevant to guests who don't care about ambient noise.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com MSC Fantasia deck 12 page: 'The cabins on this deck are above and below decks with only cabins on them...less noise issues from public areas'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Decks 6 and 7 below deck 8 carry no cabins and are given over to public venues (theatre, dining, atrium-level spaces); deck 8 cabins sit directly above that public-venue stack.",
+      "effect": "Deck 8 guests can pick up structure-borne noise from theatre or restaurant activity on the deck below, on top of the lifeboat-line effects already noted for that deck.",
+      "mattersTo": "Matters to guests booking deck 8 for the lower balcony price point; less relevant to those on higher decks.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com MSC Splendida deck 8 page (identical hull/cabin numbering to Fantasia): 'All cabins on this deck are above public areas on the deck below'"
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        9,
+        12,
+        13
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "As the hull narrows on higher decks, balconies on decks 9 (cabins 9147-9161 port/9148-9162 starboard), 12 and 13 are indented/set back from the hull edge, so looking straight down shows the tops of lifeboats or ship structure several decks below (2 decks below on deck 9, 4 on deck 12, 5 on deck 13) rather than the sea.",
+      "effect": "You lose the straight-down view of the water and get a shaded, overhung balcony (especially on deck 13, where aft-facing balconies shrink to a narrow Juliet-style ledge), but the outward horizon view remains good.",
+      "mattersTo": "Matters to guests who like to watch the waterline directly below; doesn't matter to those who care mainly about the outward sea view or sunset.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com MSC Fantasia deck 9, 12 and 13 pages describing indented balconies viewing 'the top of lifeboats X decks below' and deck 13's 'large overhang' and 'very small Juliett style balcony' on aft-facing cabins"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft hull-design balcony cabins on deck 8 (e.g. 8249) sit low and near the stern machinery spaces.",
+      "effect": "A guest in cabin 8249 reported constant engine noise and tremors through most of the sailing.",
+      "mattersTo": "Matters to light sleepers or anyone sensitive to vibration; less relevant to guests who sleep through anything.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "seascanner.com guest review of MSC Fantasia cabin 8249: 'a lot of noise and tremors from the ship's engines most of the time of sailing'; corroborated by a Cruise Critic thread asking about vibration/motor noise on Fantasia-class deck 8 aft cabins"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        9,
+        11
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Elevator lobbies on this class draw heavy foot traffic; a first-person reviewer called the lifts 'a nightmare' at peak times, while another guest specifically chose a deck 11 cabin (11191) for its proximity to a lift bank.",
+      "effect": "Being near a lift bank cuts your walk but adds door-chime and hallway-traffic noise and lift-queue congestion at peak times (meal times, disembarkation).",
+      "mattersTo": "Convenience-focused guests and those with mobility needs benefit; noise-sensitive guests should ask for a cabin a few doors away from the lobby rather than adjacent to it.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "tripadvisor.com MSC Fantasia review: 'The lifts are a bit of a nightmare...really slow at peak times... Our balcony cabin was on deck 11 and ideally located for the lift, cabin number 11191'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [],
+      "what": "This class offers 'Super-Family' and cluster cabin categories that let 2-3 cabins be joined by a connecting door, and MSC's own deck-plan legend marks these connecting-cabin pairs throughout the balcony categories.",
+      "effect": "Great for families/groups wanting adjoining space, but the connecting door is a weaker sound barrier than a standard cabin wall, so if only one side is booked you'll hear more from next door than usual.",
+      "mattersTo": "Matters to groups wanting linked cabins (a plus) and to solo/couple bookers who end up next to an unrelated connecting pair (a minus).",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com MSC Fantasia cabins page on 'Super-Family' and interconnecting 'cluster cabins'; msc's official deck-plan PDF legend marks 'Connecting cabins'; cruisemummy.co.uk notes the connecting door 'does a worse job of soundproofing than a regular wall'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "8071 and forward (port), 8070 and forward (starboard), plus 8240, 8244, 8245, 8249",
+      "claim": "Balconies are in 'hull design' with a solid metal front up to railing height, restricting both cabin and balcony views",
+      "source": "cruisedeckplans.com MSC Fantasia deck 8 page",
+      "confidence": "high"
+    },
+    {
+      "cabins": "9081 and forward (port), 9084 and forward (starboard), plus 9237, 9236, 9240, 9241",
+      "claim": "Same solid-metal hull-design balcony fronts on deck 9",
+      "source": "cruisedeckplans.com MSC Fantasia deck 9 page",
+      "confidence": "high"
+    },
+    {
+      "cabins": "12015 and forward (port), 12016 and forward (starboard)",
+      "claim": "Same solid-metal hull-design balcony fronts on deck 12",
+      "source": "cruisedeckplans.com MSC Fantasia deck 12 page",
+      "confidence": "high"
+    },
+    {
+      "cabins": "8249",
+      "claim": "Guest reported constant engine noise and tremors throughout the sailing in this aft deck-8 cabin",
+      "source": "seascanner.com guest review of MSC Fantasia cabin 8249",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9244",
+      "claim": "Aft deck-9 cabin next to the exterior corner stairwell running the full height of the ship; guest asked whether stairwell traffic would be noisy (no confirmed answer found)",
+      "source": "boards.cruisecritic.com 'Fantasia Aft Cabins?' thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9164",
+      "claim": "Guest described this cabin as being 'stuck in a corner next to lifts'",
+      "source": "boards.cruisecritic.com 'cabin position on Fantasia' thread",
+      "confidence": "low"
+    },
+    {
+      "cabins": "12064, 12076, 12079, 12091 (named on sister ship MSC Preziosa's deck plan; blog states similar layouts recur on MSC Divina, MSC Splendida and MSC Fantasia)",
+      "claim": "These cabins run parallel to the corridor (long wall against the hallway rather than just the doorway), producing louder corridor noise bleed",
+      "source": "cruisemummy.co.uk 'MSC Cruise Cabins to Avoid'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8255 (Favola deck)",
+      "claim": "Forum poster asked about noise interference in this cabin after being told by a travel agent there would be none; no confirmed follow-up found",
+      "source": "boards.cruisecritic.com 'MSC Fantasia' thread (2009)",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Whether MSC Fantasia-class ships have any true 'hump' (cantilevered/widened) balcony cabins; the boilerplate 'hump cabin' language found in aggregator templates appears only on Royal Caribbean-class deck pages, not on any Fantasia-class page checked, so no hump zone could be confirmed for this class",
+    "Bow thruster noise and anchor chain noise for specific forward cabin ranges on this class — no ship-specific source found, only generic maritime/forum material unrelated to MSC Fantasia",
+    "Exact venue directly below/above deck 5 cabins (forward/mid sections) — no deck-4 venue detail was found",
+    "Whether the deck 8/9 'partially obstructed' balcony category (BL1) is formally flagged as obstructed by MSC in booking systems versus sold unlabeled — seascanner lists it as 'partially obstructed view' but this wasn't cross-checked against MSC's own booking-engine labeling",
+    "Specific cabin numbers for the Fantasia-class equivalent of the parallel-corridor noise cabins named only on sister ship MSC Preziosa's plan",
+    "General high-deck/far-forward motion complaints specific to Fantasia-class ships (only fleet-wide MSC advice was found, not ship- or class-specific first-person reports)"
+  ],
+  "ship": "MSC Fantasia",
+  "shipSlug": "msc-fantasia",
+  "line": "MSC Cruises",
+  "totalCabins": 1580,
+  "cabinsTouchedByAZone": 1486,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 17,
+    "maxAllowed": 25
+  },
+  "cost": 1.912739
+}

@@ -1,0 +1,287 @@
+{
+  "class": "Norwegian Prima Plus (Norwegian Aqua)",
+  "sisterShips": [
+    "Norwegian Luna (2026, Prima Plus, confirmed second-in-class sister)",
+    "Norwegian Prima (2022, Prima class - related but smaller/different-layout predecessor)",
+    "Norwegian Viva (2023, Prima class - related but smaller/different-layout predecessor)",
+    "Norwegian Aura (2027, 'Prima Plus Plus' - 20% larger subclass, related but not identical layout)",
+    "TBN6 (2028, unnamed sixth Project Leonardo ship, 'Prima Plus Plus' subclass)"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        5,
+        9
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats/tenders sit on Decks 6-7, which are non-cabin crew/public decks on this class, not on a deck directly below a full run of guest cabins.",
+      "effect": "Unlike ships where lifeboats obstruct the view from the deck immediately above, Aqua's lowest two cabin decks (5 and 9) are separated from the boats by non-cabin decks 6-8, so classic lifeboat-blocked-view complaints are largely absent for this class.",
+      "mattersTo": "Good news for anyone worried about a boat-blocked balcony; not a concern to plan around on this ship the way it would be on many other hulls.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'the usual lifeboat culprits are actually on Decks 6-7 where there are no staterooms'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        5,
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on Deck 9 sit directly above, and forward cabins on Deck 5 sit directly below, the Aqua Theater, which doubles as the ship's nightclub.",
+      "effect": "Bass and late-night show/club noise carries into these cabins; Deck 5 is reported as the more noticeable of the two, with the show usually running to about 11:30pm.",
+      "mattersTo": "Early sleepers and light sleepers should avoid; nightlife-focused guests may not mind or may prefer the location.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com: 'forward cabins on decks 9 and 5...directly above and below the Aqua Theater...last show usually goes to about 11:30 p.m.'; cruisemummy.co.uk corroborates Deck 5 as 'especially noticeable'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        16
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Midship cabins on Deck 16 sit directly under the Deck 17 pool deck, which hosts dance parties at night.",
+      "effect": "Late-night music and foot traffic from pool deck events can be heard through the ceiling.",
+      "mattersTo": "Anyone sensitive to bass/foot noise at night should avoid midship Deck 16; day-focused guests likely unaffected.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com: 'midship cabins on Deck 16...directly under the pool deck, which often hosts dance parties at night'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Balcony cabins on Decks 9 and 10 sit directly above the Ocean Boulevard-level Oceanwalk and Infinity Beach hangout areas on Deck 8.",
+      "effect": "Loss of privacy (people below can see up into the balcony) plus daytime crowd noise from sea-day socializing.",
+      "mattersTo": "Privacy-conscious guests should skip; those who don't mind being seen or want to be close to the action may like it. Cruise Critic's editors note Decks 12-14 as a preferred sweet spot, high enough to avoid this and low enough to avoid pool/slide noise above.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com: 'balcony cabins on Deck 9 and 10 could lack privacy and might be noisy because they are directly above the Oceanwalk and Infinity Beach...They also can see right into your balcony'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        9,
+        10,
+        12
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Drop, a 10-story free-fall dry slide running from Deck 18 to Deck 8 on the port side, comes close to or actually touches/cuts through a number of balconies as it passes.",
+      "effect": "Balconies along this path have partial structural obstruction and slide-passage noise (muffled per one first-hand account); one source lists decks 9, 10, and 12 as affected, another lists 9, 11, and 12 - the exact middle deck differs by source, so verify against the live deck plan for any specific cabin.",
+      "mattersTo": "View purists on the port side should check the deck plan carefully before booking; some guests report enjoying the novelty and find the noise minor.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com: 'slide even cuts through some balconies on decks 9, 10, and 12'; cruisemummy.co.uk: 'intersects with the balconies on Decks 9, 11 and 12...Screams are muffled'"
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Cabins at the very forward end of the ship (Club Balcony, Family Suite, Forward-Facing Suite categories) have solid metal bulwarks/railings rather than glass, described by NCL as being due to high wind speeds at the bow.",
+      "effect": "These forward balconies have a solid steel wall in place of a glass rail, part of the ship's superstructure; horizon view is generally preserved but the immediate view down/around is blocked by metal.",
+      "mattersTo": "Guests who prioritize an unobstructed view straight out or down should ask about this before booking a forward-facing cabin; those who mainly want a horizon view and don't mind a solid rail can ignore it.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "ncl.com stateroom pages: 'this cabin features solid metal bulwarks (railings) and/or glass windscreens'; cruisecritic.com: 'a few at the most forward part of the ship have solid steel walls - part of the ship's superstructure'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Forward and aft cabins on Decks 14 through 16 are the highest/most extreme-positioned guest cabins on the ship.",
+      "effect": "These locations feel the most roll and pitch in rough seas; midship lower decks are steadier.",
+      "mattersTo": "Motion-sensitive guests should avoid forward/aft on 14-16 and prefer midship, lower decks instead.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'forward and aft cabins on the higher decks - on Norwegian Aqua, that's decks 14 through 16 specifically'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        12,
+        13
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Solo Studio cabins are clustered forward on Decks 12 and 13.",
+      "effect": "A first-hand reviewer in a far-forward balcony cabin reported the position 'pretty far forward' and noted those prone to motion sickness may want something more midship, though they personally experienced no issues.",
+      "mattersTo": "Solo travelers picking a Studio, or anyone booking far-forward on these decks, should weigh motion sensitivity.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisecritic.com: Studios 'located forward on Decks 12 and 13'; eatsleepcruise.com first-hand review: 'this cabin is pretty far forward...those who are prone to motion sickness may want to consider something more midship'"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Haven suite complex has its own two dedicated, keycard-restricted elevators located aft, separate from the main passenger elevator banks.",
+      "effect": "Haven guests get private, less-trafficked elevator access; non-Haven guests near the main banks deal with regular elevator traffic/noise instead.",
+      "mattersTo": "Haven guests benefit from quieter, exclusive access; standard cabin guests near the main elevator banks should expect typical elevator-lobby traffic noise.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com: 'restricted-access public areas served by two aft-located Haven elevators'; cruisecritic.com: 'Haven complex is accessible via a special set of keycard-operated elevators'"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Propulsion is diesel-electric via Azipod units, a technology generally associated with lower vibration than traditional shaft-and-rudder systems, located low and aft in the hull.",
+      "effect": "Lowest guest deck (5), especially towards the aft end nearest the propulsion pods, is the location where any engine-related vibration would most likely be felt, though no specific guest vibration complaints for this ship were found this session.",
+      "mattersTo": "Vibration-sensitive guests on Deck 5 aft may want to ask; this is a lower-severity, technology-mitigated concern rather than a confirmed complaint.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseind.com: 'Propulsion is provided by a diesel-electric system...Azipod propulsion units'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Connecting cabins exist across multiple balcony categories on this ship.",
+      "effect": "The connecting door between two cabins is not as soundproof as a solid wall, so noise (TV, conversation) can pass through if only one side is booked.",
+      "mattersTo": "Families/groups booking both sides benefit from the flexibility; solo bookers of just one side of a connecting pair who want quiet should request a non-connecting cabin instead.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: 'that connecting door isn't as soundproof as a solid wall...listening to your neighbour's TV, conversation, or worse'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        5,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Wheelchair-accessible cabins are distributed in specific numbered clusters across nearly every guest deck rather than concentrated in one zone (e.g., Balcony BA/BB/BF at 9218, 9818, 10216, 10816, 11214, 11814, 12212, 12812, 13210, 13810, 14192, 14792, 15198, 15798, 16192, 16792; Oceanview O4 at 5216-5822; Inside IA/IB/IF at numbers on Decks 5, 9-15).",
+      "effect": "Accessible cabins are spread deck-by-deck rather than clustered, giving more location choice for accessibility-focused bookers, but each specific cabin still carries whatever above/below/lifeboat/motion factors apply to its deck and position.",
+      "mattersTo": "Guests needing an ADA cabin should cross-reference this list against the other zone factors (e.g., an accessible cabin on Deck 16 midship still sits under the pool deck).",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemapper.com: complete list of wheelchair-accessible balcony, oceanview, and inside cabin numbers by deck"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "16754 (and nearby SU-category cabins 16756-16800)",
+      "claim": "A cruiser-forum post title asks about noise concerns specifically for balcony room 16754 on Norwegian Aqua; underlying discussion content could not be retrieved (Facebook page blocked).",
+      "source": "facebook.com/groups/668620898197067 post titled 'Noise concerns in balcony room 16754 on Norwegian Aqua?'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Forward-facing Club Balcony / Family Suite / Forward-Facing Suite categories fleet-wide (exact numbers not listed in sources found)",
+      "claim": "These forward categories are called out by name as having solid metal balcony railings rather than glass due to wind at the bow.",
+      "source": "cruisedeckplans.com category pages for Norwegian Aqua Family Suite, Club Balcony, and Forward-Facing Suite: 'SOLID METAL BALCONY RAILING' / 'FORWARD FACING BALCONIES HAVE SOLID METAL RAILINGS'",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9102 and 9701",
+      "claim": "These two ADA suites are noted as not including a sofa bed, unlike other cabins in their category.",
+      "source": "ncl.com Norwegian Aqua staterooms page footnote",
+      "confidence": "high"
+    },
+    {
+      "cabins": "10286 and 10886",
+      "claim": "These two Haven suites on Deck 10 do not include the outdoor hot tub that is otherwise standard for their suite category.",
+      "source": "ncl.com Norwegian Aqua deck plans page footnote",
+      "confidence": "high"
+    },
+    {
+      "cabins": "12248 and 12852",
+      "claim": "These two suites do not have a separate bedroom, unlike others in their category.",
+      "source": "ncl.com Norwegian Aqua deck plans page footnote",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether this class has a 'hump' (cantilevered balconies extending past the hull line) - no source found describing this for Aqua or its Prima/Prima Plus sisters.",
+    "Whether the hull tapers inward on the topmost decks (16/17 Haven) in a way that hides the straight-down view from balconies - not addressed in any source found this session.",
+    "Bow thruster and anchor-chain noise for forward cabins on Decks 5, 9, and lower - no ship-specific guest reports found for Aqua (only generic patterns from other ships/lines).",
+    "i95-style crew corridor layout and specific service-door locations relative to guest cabins - not documented in any source found (one Haven suite review noted crew service doors across the hall with no experienced impact, but this is a single data point, not a mapped corridor).",
+    "Whether NCL formally labels any Aqua cabin ranges as 'obstructed' the way it does on sister ship Prima (which lists specific obstructed-view cabin numbers like 13300, 13900, etc. on NCL's own site) - no equivalent labeled list was found for Aqua specifically.",
+    "General elevator-noise and engine-vibration claims from lower-quality aggregator content (cruisebooking.com) were discarded after a boilerplate control-check revealed the same site reusing 'Brilliance of the Seas' cabin-avoidance text verbatim in its Aqua article."
+  ],
+  "ship": "Norwegian Aqua",
+  "shipSlug": "norwegian-aqua",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 1792,
+  "cabinsTouchedByAZone": 1792,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 15,
+    "maxAllowed": 25
+  },
+  "cost": 1.2963419999999999
+}

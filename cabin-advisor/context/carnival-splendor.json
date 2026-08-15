@@ -1,0 +1,247 @@
+{
+  "class": "Carnival Splendor (Concordia-class hull, marketed as \"Splendor-class\" since she is the only Carnival-flagged unit)",
+  "sisterShips": [
+    "Costa Concordia (same hull design, lost in the 2012 grounding/capsizing)",
+    "Costa Fascinosa",
+    "Costa Favolosa",
+    "Costa Pacifica",
+    "Costa Serena"
+  ],
+  "zones": [
+    {
+      "factor": "above",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 6 (Upper) sits directly on top of Deck 5 (Promenade), which holds the Red Carpet Disco/Nightclub, the Royal Flush Casino, Our House Sports Bar, and the atrium stage.",
+      "effect": "Guests booking Deck 6 have repeatedly asked whether cabins above the casino, the sports bar and the main lounge/atrium are noisy; one cruiser found a casino stage with live music was 'right below' the cabin and another pair specifically worried about cabins 6255/6308 sitting above Our House Sports Bar and the main lounge.",
+      "mattersTo": "Light sleepers and anyone planning an early night should avoid Deck 6 over the casino/nightclub/atrium footprint; late-night partiers or people who don't mind bass through the floor won't notice.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com member review ('right below our cabin' casino stage) and boards.cruisecritic.com Splendor-specific threads on 6255/6308 and 'cabin above the casino'; cruisemapper.com deck 5 plan listing the Red Carpet Disco, Royal Flush Casino and Our House Bar on that deck."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 9 (Lido) carries the Splendido midship pool and an aft pool with bars and a stage, while Deck 8 (Verandah) cabins sit one deck directly beneath that footprint.",
+      "effect": "Mid/aft Deck 8 cabins are one deck below the pool decking, lounge-chair traffic, and outdoor stage rather than two or three decks removed, so morning chair-dragging and pool-party noise carry more directly than on lower decks.",
+      "mattersTo": "Sea-day nappers and light sleepers should favor forward Deck 8 or drop to Deck 7/6 mid; pool-deck-adjacent convenience seekers may prefer this trade-off.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemapper.com Splendor Deck 9 plan describing the 'Splendido Pool area (midship)' with an outdoor stage and the aft pool, combined with the Deck 8 profile's midship/aft cabin weighting."
+    },
+    {
+      "factor": "lifeboat",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 6 cabins are the deck cruisers specifically ask about when it comes to lifeboats blocking the straight-down balcony view on Splendor.",
+      "effect": "A CruiseCritic thread asks directly about Splendor room 6362 and whether the lifeboat will be in the way when looking down; the general pattern on ships this size is that boats block the view straight down while the horizon view stays open.",
+      "mattersTo": "Photographers who want an unobstructed view of the waterline directly below should avoid Deck 6; anyone who just wants open-air and a sea-level horizon view is unaffected.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com thread 'Does Deck 6 Have an Obstructed View' naming Carnival Splendor room 6362; general obstructed-view mechanics corroborated by cruisecritic.com's obstructed-view explainer."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6,
+        7,
+        9,
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Splendor has 19 interior cabins with real windows that look onto outdoor walkways/observation decks rather than the sea, located forward on Decks 6, 7, 9 and 10 (Carnival's own help desk lists 4J cabins 6201-6206, 7201-7206 and 9201-9203 as having this walkway obstruction).",
+      "effect": "These 'Interior with Picture Window (Obstructed View)' cabins get natural light but anyone walking the outside promenade can be close to the tinted window; guests are told to keep curtains closed at night for navigation-light reasons.",
+      "mattersTo": "Budget cruisers wanting a window for light will like these; anyone wanting real privacy or an actual ocean view should skip them.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "help.goccl.com official Carnival Splendor obstructed-view/porthole page listing exact 4J cabin numbers; corroborated by cruisecritic.com Splendor cabin editorial describing 19 such windows forward on Decks 6, 7, 9 and 10."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A small set of forward interior cabins on Decks 1 and 2 (1201, 1202, 1205, 1206, 2211, 2212, 2216, 2217) are Category 1A cabins with two portholes instead of a picture window.",
+      "effect": "These give a genuinely different (smaller, double-porthole) view rather than a single obstructed window; not a lifeboat or machinery obstruction, just a smaller window format built into the ship at that point.",
+      "mattersTo": "Cruisers who specifically want a full window should note these are portholes; those who don't care about window size or want the character of a porthole cabin are fine.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "help.goccl.com official Carnival Splendor obstructed-view/porthole page listing these exact Category 1A cabin numbers."
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Splendor's Aft-View Extended Balcony (8M on Decks 6-7, 8N on Deck 8) and Premium Vista Balcony (9C) cabins wrap around the ship's aft corners with 50%-larger balconies rather than sitting flush with the straight hull line.",
+      "effect": "These aft-corner cabins buy a wider, wraparound wake view instead of the standard side-only balcony sightline; Carnival's own marketing highlights the panoramic sky-and-sea vantage this creates.",
+      "mattersTo": "Wake-view enthusiasts and photographers should target these; budget-focused inside/oceanview bookers won't be affected either way.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "carnival.com Splendor ship page describing Premium Vista Balcony staterooms as 'designed to wrap around the aft corners'; cruisemapper.com corroborating that these cabins 'are located at the ship's aft corners and offer suite-like amenities, including a wraparound balcony.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Reviewers and cabin guides for Splendor consistently identify forward balconies as windier and midship Decks 6-8 as the calmest, with higher/forward positions feeling the most motion.",
+      "effect": "A forward-facing balcony gets more wind buffeting and ship movement, especially on Pacific/open-ocean itineraries; a midship cabin on 6, 7 or 8 gives the steadiest ride.",
+      "mattersTo": "Motion-sensitive cruisers should book midship on 6-8; those chasing dramatic bow views and don't mind wind or movement can take forward higher decks.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisesnooze.com Splendor review noting forward balconies 'can feel windier' and midship balconies 'offer better stability'; coohom.com Splendor cabin guide identifying Decks 6, 7 and 8 midship as quietest with least motion."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        1,
+        2,
+        6,
+        7,
+        8,
+        11
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Connecting 'family cabins' on Splendor are concentrated on Decks 1, 2, 6, 7, 8 and 11, in categories PT/4E (2-bed), 6A/6B/6C/8B/8C/8D (2-3-4 bed) and 8S (4-bed).",
+      "effect": "Families/groups wanting an adjoining door have real options across most cabin decks, but anyone sensitive to noise from an adjoining party should ask specifically whether their category is a connecting one before booking.",
+      "mattersTo": "Families and groups benefit; solo/couple cruisers wanting maximum quiet should ask to avoid connecting-door categories.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemapper.com Splendor cabins page: 'Connecting rooms (\"family cabins\") are located on decks 1, 2, 6, 7, 8, and 11.'"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        1,
+        2,
+        6,
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Each Splendor cabin deck has small crew/service niches off the main corridor (e.g., an ironing room across from cabin 1425 on Deck 1, an ironing room across from cabin 6391 on Deck 6, and a launderette across from cabin 7339 on Deck 7) rather than a single obvious service block.",
+      "effect": "Cabins directly across from these niches can see more foot traffic and occasional cart/appliance noise than cabins further down the corridor, even though the space isn't marked as a full galley or crew corridor entrance.",
+      "mattersTo": "Light sleepers assigned next to one of these marked niches may want to request a different cabin a few doors down; most guests won't notice.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Splendor deck-by-deck pages flagging the ironing room across from 1425 and 6391, and the launderette across from 7339."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "2319, 2323",
+      "claim": "Named in a Facebook cruiser group as cabins to avoid on Carnival Splendor (no reason stated in the visible snippet).",
+      "source": "facebook.com/groups/241857358798436 post titled 'Avoid cabins 2319 and 2323 on Carnival Splendor'",
+      "confidence": "low"
+    },
+    {
+      "cabins": "6390",
+      "claim": "A cruiser asked whether cabin 6390 would be noisy due to its location.",
+      "source": "facebook.com/groups/241857358798436 post asking about cabin 6390 noise",
+      "confidence": "low"
+    },
+    {
+      "cabins": "6255, 6308",
+      "claim": "Concern that these Deck 6 cabins sit above Our House Sports Bar and the Main Lounge on the Promenade Deck and may be noisy.",
+      "source": "boards.cruisecritic.com thread 'Noise in Carnival Splendor cabins 6255 and 6308??'",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6360, 6387, 6416, 6451",
+      "claim": "Interior cabins right next to elevators on Deck 6, flagged as possibly noisier.",
+      "source": "cruiseadvice.org 'Carnival Splendor Best Cabins' page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "6450, 6485",
+      "claim": "Flagged as having the largest balconies on Deck 6 of the Splendor.",
+      "source": "cruiseadvice.org 'Carnival Splendor Best Cabins' page",
+      "confidence": "low"
+    },
+    {
+      "cabins": "7444 (aft, Deck 7, category 8M)",
+      "claim": "One reviewer reported balcony rust, unpainted hull, and an unfinished rail on this aft extended-balcony cabin; a separate reviewer complained about bad neighbors above/next to 7444.",
+      "source": "cruiseline.com Carnival Splendor cabin 8M reviews",
+      "confidence": "low"
+    },
+    {
+      "cabins": "7226 or 7228 (sources disagree on the number)",
+      "claim": "Modified wheelchair-accessible Ocean Suite with an unusually large ~110 sq ft balcony.",
+      "source": "cruisecritic.com Splendor cabins editorial (cites 7226) vs cruisedeckplans.com (cites 7228 as the modified handicap cabin)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9205, 9206",
+      "claim": "These Junior Suites on Deck 9 have only a standard-size balcony rather than the larger suite balcony guests might expect for the category.",
+      "source": "cruisedeckplans.com Splendor ship info page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "1425 (Deck 1), 6391 (Deck 6), 7339 (Deck 7)",
+      "claim": "Cabins located directly across the corridor from an ironing room or launderette niche.",
+      "source": "cruisedeckplans.com Splendor deck-by-deck pages",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Whether Deck 6 (or Deck 7) balconies are physically obstructed by lifeboats stowed at Deck 5 level has not been confirmed with a first-hand photo/video report specific to Splendor — only repeated cruiser questions were found.",
+    "Whether Splendor's hull tapers on the highest cabin decks (10-11) in a way that hides the straight-down view from balconies on those decks — no source addressed this directly.",
+    "Current, post-2010-fire engine room configuration and whether routine vibration complaints exist for specific low-deck cabins; only the 2010 casualty report (mentioning both a forward and an aft engine room) was found, not routine passenger vibration reports.",
+    "Anchor-chain noise for specific forward Deck 1/2 cabins on Splendor — only a generic, ship-non-specific Carnival-wide claim was found.",
+    "Bow-thruster noise for far-forward low-deck cabins — no ship-specific source found.",
+    "Exact deck-zero I-95 layout and which specific guest-deck stairwells/elevators it feeds into on Splendor specifically."
+  ],
+  "ship": "Carnival Splendor",
+  "shipSlug": "carnival-splendor",
+  "line": "Carnival Cruise Line",
+  "totalCabins": 1482,
+  "cabinsTouchedByAZone": 1482,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 17,
+    "maxAllowed": 25
+  },
+  "cost": 1.830959
+}
