@@ -8,6 +8,33 @@
 
 import { getSupabase } from "./persistence";
 
+/** Forward-looking deployments whose region overlaps the storm's grounds and
+ *  whose season contains any part of the forecast window. Complements the
+ *  AIS-derived current sailings — this is the "real itinerary feed" follow-up
+ *  (ship_deployments, migration 0015), populated from the lines' published
+ *  seasonal deployments. */
+export async function deploymentsForStorm(
+  grounds: string[], windowStart: string, windowEnd: string,
+): Promise<Sailing[]> {
+  if (!grounds.length) return [];
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("ship_deployments")
+    .select("ship_name, cruise_line, homeport, region, season_start, season_end")
+    .in("region", grounds)
+    .lte("season_start", windowEnd)
+    .gte("season_end", windowStart);
+  if (error) return [];
+  return (data ?? []).map((d: { ship_name: string; cruise_line: string | null; homeport: string | null; region: string; season_start: string; season_end: string }) => ({
+    ship_name: d.ship_name,
+    cruise_line: d.cruise_line ?? "",
+    depart_port: d.homeport,
+    start_date: d.season_start,
+    end_date: d.season_end,
+    regions: [d.region],
+  }));
+}
+
 export interface Sailing {
   ship_name: string;
   cruise_line: string;
