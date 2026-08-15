@@ -105,6 +105,8 @@ details.why p{font-size:14.5px;line-height:1.55;color:#33415c;margin:6px 0 0}
 details.cat-info{margin:2px 0 4px}
 details.cat-info summary{cursor:pointer;font-size:13px;font-weight:800;color:var(--ocean);list-style-position:inside}
 details.cat-info p{font-size:14px;line-height:1.55;color:#33415c;margin:6px 0 2px;background:rgba(0,119,182,.06);border-radius:10px;padding:10px 12px}
+
+.re-coverage{text-align:center;font-size:13px;line-height:1.6;color:#33415c;margin:14px auto 0;max-width:520px}
 </style>
 </head>
 <body>
@@ -229,6 +231,8 @@ function categoryInfo(cat){
 
 /* Scannable options: bold the lead thought, lighten the tail — the eye gets
    the gist without reading the sentence. */
+const LINE_DISPLAY = { "Royal Caribbean International": "Royal Caribbean" };
+function lineName(l){ return LINE_DISPLAY[l] || l; }
 function fmtOpt(label){
   const m = label.match(/^([^,—–.]{4,45})([,—–.].*)$/);
   return m ? `<b>${m[1]}</b><span style="color:#5a6b85;font-weight:500">${m[2]}</span>` : `<b>${label}</b>`;
@@ -279,7 +283,16 @@ class RoomConciergeFlow {
           <button class="re-btn no" onclick="RC.fork('discover')">Not yet — help me pick</button>
         </div>
       </div>
+      <p class="re-coverage" id="coverage"></p>
       ${this.quiet(0)}`;
+    this.drawCoverage();
+  }
+  drawCoverage(){
+    const el=document.getElementById("coverage");
+    if(!el) return;
+    if(!this.fleet.length){ setTimeout(()=>this.drawCoverage(), 400); return; }
+    const lines=[...new Set(this.fleet.map(s=>lineName(s.line)))].sort();
+    el.innerHTML = `Covering ${this.fleet.length} ships across ${lines.length} lines: ` + lines.join(" · ");
   }
   fork(path){ this.snapshot('landing'); this.path=path; this.qIndex=0; this.eIndex=0;
     path==="ship" ? this.shipPick() : this.personalityQ(); }
@@ -287,7 +300,7 @@ class RoomConciergeFlow {
     const f=filter.trim().toLowerCase();
     const matches=this.fleet.filter(s=>!f||s.ship.toLowerCase().includes(f)||s.line.toLowerCase().includes(f));
     const byLine={};
-    for(const s of matches){ (byLine[s.line]=byLine[s.line]||[]).push(s); }
+    for(const s of matches){ const ln=lineName(s.line); (byLine[ln]=byLine[ln]||[]).push(s); }
     const list=Object.entries(byLine).map(([line,ships])=>
       `<div style="margin:8px 0 2px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#33415c">${line}</div>`+
       ships.map(s=>`<button class="re-opt" style="padding:9px 14px;font-size:15px" onclick="RC.chooseShip('${s.slug}')">${s.ship}</button>`).join("")
@@ -385,7 +398,7 @@ class RoomConciergeFlow {
       : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Room-by-room picks for this ship are coming — ask and we'll do it by hand.</span>`;
     return `<div class="reveal-ship">
       <div class="gist">
-        <div><h3>${s.ship}</h3><span class="line">${s.line}</span></div>
+        <div><h3>${s.ship}</h3><span class="line">${lineName(s.line)}</span></div>
         ${rating!=null?`<div class="gist-score">${Number(rating).toFixed(1)}<small>/5</small></div>`:""}
       </div>
       ${rating!=null?`<div class="gist-dancers">${[1,2,3,4,5].map(n=>
