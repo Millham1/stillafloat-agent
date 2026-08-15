@@ -158,6 +158,14 @@ function answersAsSentences(a: Answers): string {
   return bits.join(" ");
 }
 
+// Banned-word scrub for LIVE-generated text — the model occasionally slips
+// "genuine(ly)"/"actually" despite the voice guide (caught on staging 8/14).
+// Surgical word removal, sentence untouched.
+function scrubBanned(t: string | undefined): string | undefined {
+  if (!t) return t;
+  return t.replace(/\s(?:genuinely|genuine|actually)\s/gi, " ").replace(/\s{2,}/g, " ");
+}
+
 async function reasonLive(
   shipName: string,
   answers: Answers,
@@ -561,10 +569,10 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
       const byCabin = new Map(live.recommendations.map((r) => [String(r.cabin), r]));
       picks = picks.map((p) => {
         const lr = byCabin.get(p.cabin);
-        return lr ? { ...p, hook: lr.hook, reason: lr.reason || p.reason } : p;
+        return lr ? { ...p, hook: scrubBanned(lr.hook), reason: scrubBanned(lr.reason) || p.reason } : p;
       });
       if (Array.isArray(live.steerClear) && live.steerClear.length) {
-        steerClear = live.steerClear;
+        steerClear = live.steerClear.map((sc) => ({ ...sc, reason: scrubBanned(sc.reason) }));
       }
     }
 
