@@ -100,6 +100,11 @@ footer{text-align:center;padding:24px 16px;color:rgba(247,251,255,.6);font-size:
 details.why{margin:4px 0 0}
 details.why summary{cursor:pointer;font-size:13.5px;font-weight:800;color:var(--ocean);list-style-position:inside}
 details.why p{font-size:14.5px;line-height:1.55;color:#33415c;margin:6px 0 0}
+
+.room-why{font-size:14.5px;line-height:1.6;color:#33415c;margin:6px 0 0}
+details.cat-info{margin:2px 0 4px}
+details.cat-info summary{cursor:pointer;font-size:13px;font-weight:800;color:var(--ocean);list-style-position:inside}
+details.cat-info p{font-size:14px;line-height:1.55;color:#33415c;margin:6px 0 2px;background:rgba(0,119,182,.06);border-radius:10px;padding:10px 12px}
 </style>
 </head>
 <body>
@@ -203,6 +208,24 @@ const EXPECT_QS = [
       ["Yes — keep us steady","yes"],["No, we're fine","no"],
       ["I can grin and bear it","no"]] },
 ];
+
+/* Room-category explainers — new cruisers don't know an Infinite Veranda from a
+   porthole. Text now; image slots come later (Mark, 8/14). Inside needs none. */
+const CATEGORY_INFO = [
+  { match:/infinite/i, name:"What's an Infinite Veranda?",
+    text:"Celebrity's twist on a balcony: the whole room IS the veranda. The window's top half slides down and your sitting area becomes open-air. You get more indoor space out of it — but there's no separate outdoor chair zone, and people either love that or miss a true balcony." },
+  { match:/balcony|veranda/i, name:"What's a balcony cabin?",
+    text:"Your own private outdoor space — a glass door, a couple of chairs, and the ocean. Morning coffee out there is the thing people can't give up once they've had it." },
+  { match:/ocean\s?view|oceanview|window/i, name:"What's an ocean view?",
+    text:"A real window to the sea — daylight and a view of where you are, without an outdoor space. You see the ocean; you just don't sit outside in it." },
+  { match:/suite/i, name:"What's a suite?",
+    text:"More space, and usually more perks — priority lines, better service, sometimes access to areas of the ship regular cabins don't get." },
+];
+function categoryInfo(cat){
+  if(!cat) return "";
+  const hit = CATEGORY_INFO.find(c=>c.match.test(cat));
+  return hit ? `<details class="cat-info"><summary>${hit.name}</summary><p>${hit.text}</p></details>` : "";
+}
 
 /* Scannable options: bold the lead thought, lighten the tail — the eye gets
    the gist without reading the sentence. */
@@ -405,7 +428,8 @@ class RoomConciergeFlow {
       return `<div class="reveal-ship" style="padding:15px 18px">
         ${p.hook?`<p class="room-hook">${p.hook}</p>`:`<p class="room-hook">Cabin ${p.cabin}</p>`}
         <div class="chips"><span class="chip chip-num">Cabin ${p.cabin}</span>${chips}</div>
-        ${p.reason?`<details class="why"><summary>Why this one</summary><p>${p.reason}</p></details>`:""}
+        ${categoryInfo(f.category)}
+        ${p.reason?`<p class="room-why">${p.reason}</p>`:""}
         <div style="text-align:right;margin-top:8px"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
           onclick="RC.togglePick('${p.cabin}')">${on?'✓ Picked':'Pick this room'}</button></div>
       </div>`;}).join("");
