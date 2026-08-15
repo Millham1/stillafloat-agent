@@ -163,7 +163,12 @@ function answersAsSentences(a: Answers): string {
 // Surgical word removal, sentence untouched.
 function scrubBanned(t: string | undefined): string | undefined {
   if (!t) return t;
-  return t.replace(/\s(?:genuinely|genuine|actually)\s/gi, " ").replace(/\s{2,}/g, " ");
+  return t
+    .replace(/sleep like the dead/gi, "sleep soundly")
+    .replace(/dead quiet/gi, "truly quiet")
+    .replace(/to die for/gi, "worth the trip alone")
+    .replace(/\s(?:genuinely|genuine|actually)\s/gi, " ")
+    .replace(/\s{2,}/g, " ");
 }
 
 async function reasonLive(
