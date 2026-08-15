@@ -185,7 +185,8 @@ function inferAxes(traits){
 const EXPECT_QS = [
   { key:"party", q:"Who's going?", opts:[
       ["Just the two of us","couple"],["Family with kids","family"],
-      ["Just me","solo"],["A group of us","group"]] },
+      ["Just me","solo"],["Solo, but traveling with a group","solo-group"],
+      ["A group of us","group"]] },
   { key:"room", q:"How do you picture using your room?", opts:[
       ["Crash and recharge","inside"],["Wake up to daylight and water","oceanview"],
       ["Coffee outside in my pajamas","balcony"],["The room is part of the vacation","suite"],
@@ -193,6 +194,11 @@ const EXPECT_QS = [
   { key:"priority", q:"What matters most once you're aboard?", opts:[
       ["Waking up to the ocean","ocean"],["Peace and quiet","quiet"],
       ["Being near the action","action"],["Room to spread out","space"]] },
+  { key:"budget", q:"How does the trip budget work, honestly?", opts:[
+      ["There's a number, and we respect it","lean"],
+      ["Comfortable, but every dollar should earn its spot","middle"],
+      ["For the right room, the budget moves","treat"],
+      ["The budget is whatever makes it perfect","sky"]] },
   { key:"motion", q:"Does anyone get seasick?", opts:[
       ["Yes — keep us steady","yes"],["No, we're fine","no"],
       ["I can grin and bear it","no"]] },
@@ -376,7 +382,7 @@ class RoomConciergeFlow {
       const r=await fetch("/api/cabins/recommend",{method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({ship:repSlug, party:this.expect.party, room:this.expect.room,
-          priority:this.expect.priority, motion:this.expect.motion==="yes"})});
+          priority:this.expect.priority, budget:this.expect.budget, motion:this.expect.motion==="yes"})});
       if(r.ok) d=await r.json();
     }catch{/* handled below */}
     if(!d||!d.picks?.length){
