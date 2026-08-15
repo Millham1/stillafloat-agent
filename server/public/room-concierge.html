@@ -84,6 +84,22 @@ footer{text-align:center;padding:24px 16px;color:rgba(247,251,255,.6);font-size:
 .reveal-ship{background:#fff;border:2px solid rgba(7,24,63,.22);border-radius:18px;padding:18px 20px;margin:0 0 16px;box-shadow:0 4px 14px rgba(7,24,63,.08)}
 .reveal-comment{font-size:16px;line-height:1.6}
 .salty p{font-size:14.5px}
+
+/* Gist-first cards */
+.gist{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.gist h3{font-family:'Bree Serif',serif;font-size:23px;margin:0;color:var(--navy)}
+.gist .line{color:#5a6b85;font-size:13px;font-weight:600}
+.gist-score{font-family:'Bree Serif',serif;font-size:34px;color:var(--ocean);line-height:1}
+.gist-score small{font-size:16px;color:#8896b0}
+.gist-dancers{display:flex;align-items:flex-end;margin:6px 0 2px}
+.gist-dancers img{height:52px;width:auto;display:block}
+.room-hook{font-family:'Bree Serif',serif;font-size:18px;line-height:1.35;color:var(--navy);margin:0 0 8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
+.chip{font-size:12.5px;font-weight:700;color:#33415c;background:rgba(7,24,63,.07);border-radius:999px;padding:3px 10px}
+.chip-num{background:var(--navy);color:var(--gold)}
+details.why{margin:4px 0 0}
+details.why summary{cursor:pointer;font-size:13.5px;font-weight:800;color:var(--ocean);list-style-position:inside}
+details.why p{font-size:14.5px;line-height:1.55;color:#33415c;margin:6px 0 0}
 </style>
 </head>
 <body>
@@ -182,12 +198,38 @@ const EXPECT_QS = [
       ["I can grin and bear it","no"]] },
 ];
 
+/* Scannable options: bold the lead thought, lighten the tail — the eye gets
+   the gist without reading the sentence. */
+function fmtOpt(label){
+  const m = label.match(/^([^,—–.]{4,45})([,—–.].*)$/);
+  return m ? `<b>${m[1]}</b><span style="color:#5a6b85;font-weight:500">${m[2]}</span>` : `<b>${label}</b>`;
+}
+
 class RoomConciergeFlow {
   constructor() {
     this.path=null; this.personality={}; this.expect={}; this.qIndex=0; this.eIndex=0;
     this.fleet=[]; this.chosen=null; this.suggestion=null; this.picked=new Set();
     this.stageEl=document.getElementById("stage");
+    this.history=[];
     this.loadFleet();
+  }
+  snapshot(renderName){
+    this.history.push({renderName,
+      state: JSON.parse(JSON.stringify({path:this.path,personality:this.personality,expect:this.expect,
+        qIndex:this.qIndex,eIndex:this.eIndex,traits:this.traits||{},raw:this.raw||{},
+        chosenSlug:this.chosen?this.chosen.slug:null}))});
+    document.getElementById("backBtn").classList.add("show");
+  }
+  back(){
+    const prev=this.history.pop();
+    if(!prev){ document.getElementById("backBtn").classList.remove("show"); return this.landing(); }
+    const st=prev.state;
+    this.path=st.path; this.personality=st.personality; this.expect=st.expect;
+    this.qIndex=st.qIndex; this.eIndex=st.eIndex; this.traits=st.traits; this.raw=st.raw;
+    this.chosen=st.chosenSlug?this.fleet.find(f=>f.slug===st.chosenSlug)||null:null;
+    if(!this.history.length) document.getElementById("backBtn").classList.remove("show");
+    this[prev.renderName]();
+    this.stageEl.scrollTop=0;
   }
   quiet(i){ return `<p class="quiet">${QUIET[i===0?0:1]}</p>`; }
   async loadFleet(){
@@ -241,7 +283,7 @@ class RoomConciergeFlow {
       <p class="re-progress">Getting to know you · ${i+1} of ${PERSONALITY_QS.length}</p>
       <h2 class="q">${q.q}</h2>
       <div class="re-opts">${q.opts.map(([label],oi)=>
-        `<button class="re-opt" onclick="RC.answerP(${i},${oi})">${label}</button>`).join("")}</div>
+        `<button class="re-opt" onclick="RC.answerP(${i},${oi})">${fmtOpt(label)}</button>`).join("")}</div>
       ${this.quiet(1)}`;
   }
   answerP(qi,oi){
@@ -260,7 +302,7 @@ class RoomConciergeFlow {
       <p class="re-progress">Your expectations · ${i+1} of ${EXPECT_QS.length}</p>
       <h2 class="q">${q.q}</h2>
       <div class="re-opts">${q.opts.map(([label,val])=>
-        `<button class="re-opt" onclick="RC.answerE('${q.key}','${val}')">${label}</button>`).join("")}</div>
+        `<button class="re-opt" onclick="RC.answerE('${q.key}','${val}')">${fmtOpt(label)}</button>`).join("")}</div>
       ${this.quiet(1)}`;
   }
   answerE(key,val){ this.snapshot('expectQ'); this.expect[key]=val; this.eIndex++; this.expectQ(); }
@@ -303,12 +345,6 @@ class RoomConciergeFlow {
       const r=await fetch(`/api/ships/${encodeURIComponent(s.slug)}/rating`);
       if(r.ok){ const d=await r.json(); if(d.ok){ rating=d.rating; comment=d.comment; salty=d.saltyMarkTake; } }
     }catch{/* no rating shown */}
-    const scoreRow = rating!=null ? `
-      <div class="conga-score-wrap">
-        <span class="conga-mini">${[1,2,3,4,5].map(n=>
-          `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</span>
-        <span class="conga-num">${Number(rating).toFixed(1)}<small>/5 Conga Rating</small></span>
-      </div>` : "";
     const nextLevel = s.nextLevel ? `
       <div style="display:flex;gap:10px;align-items:center;background:#fff8e6;border:1.5px solid #ecd9a0;border-radius:13px;padding:9px 13px;margin:0 0 10px">
         <span style="font-size:20px">✦</span>
@@ -319,8 +355,12 @@ class RoomConciergeFlow {
       ? `<button class="re-btn no" onclick="RC.rooms('${s.repSlug}','${s.ship.replace(/'/g,"\\'")}')">Show me the rooms →</button>`
       : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Room-by-room picks for this ship are coming — ask and we'll do it by hand.</span>`;
     return `<div class="reveal-ship">
-      <div class="reveal-head"><h3>${s.ship}</h3><span class="line">${s.line}</span></div>
-      ${scoreRow}
+      <div class="gist">
+        <div><h3>${s.ship}</h3><span class="line">${s.line}</span></div>
+        ${rating!=null?`<div class="gist-score">${Number(rating).toFixed(1)}<small>/5</small></div>`:""}
+      </div>
+      ${rating!=null?`<div class="gist-dancers">${[1,2,3,4,5].map(n=>
+        `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</div>`:""}
       ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
       ${salty?`<div class="salty"><img src="${SALTY_IMG}" alt="Salty Mark">
         <div><span class="sl">Salty Mark says</span><p>&ldquo;${salty}&rdquo;</p></div></div>`:""}
@@ -354,12 +394,13 @@ class RoomConciergeFlow {
     const picks=d.picks.map(p=>{
       const f=p.facts||{};
       const on=this.picked.has(p.cabin);
-      return `<div class="reveal-ship" style="padding:14px 16px">
-        <div class="reveal-head"><h3 style="font-size:19px">Cabin ${p.cabin}</h3>
-          <span class="line">${f.deck?`Deck ${f.deck}`:""}${f.category?` · ${f.category}`:""}${f.view?` · ${f.view}`:""}</span></div>
-        ${p.hook?`<p class="reveal-comment" style="margin:7px 0 4px">${p.hook}</p>`:""}
-        ${p.reason?`<p style="font-size:14.5px;line-height:1.5;color:#33415c;margin:4px 0 8px">${p.reason}</p>`:""}
-        <div style="text-align:right"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
+      const chips=[f.deck?`Deck ${f.deck}`:null,f.category||null,f.view||null].filter(Boolean)
+        .map(c=>`<span class="chip">${c}</span>`).join("");
+      return `<div class="reveal-ship" style="padding:15px 18px">
+        ${p.hook?`<p class="room-hook">${p.hook}</p>`:`<p class="room-hook">Cabin ${p.cabin}</p>`}
+        <div class="chips"><span class="chip chip-num">Cabin ${p.cabin}</span>${chips}</div>
+        ${p.reason?`<details class="why"><summary>Why this one</summary><p>${p.reason}</p></details>`:""}
+        <div style="text-align:right;margin-top:8px"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
           onclick="RC.togglePick('${p.cabin}')">${on?'✓ Picked':'Pick this room'}</button></div>
       </div>`;}).join("");
     const steer=(d.steerClear||[]).slice(0,3).map(s=>
@@ -374,9 +415,8 @@ class RoomConciergeFlow {
       <p class="re-progress">Your rooms · ${this.roomsShip}</p>
       <h2 class="q">Here's where I'd put you.</h2>
       ${picks}
-      ${steer?`<div style="background:#fff;border:2px solid rgba(7,24,63,.16);border-radius:16px;padding:14px 18px;margin:0 0 14px">
-        <p style="margin:0 0 8px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#b45309">Worth walking past</p>
-        <ul style="margin:0;padding-left:18px;font-size:14.5px;color:#33415c">${steer}</ul></div>`:""}
+      ${steer?`<details class="why" style="margin:0 0 14px"><summary style="color:#b45309;font-weight:800">Worth walking past — ${(d.steerClear||[]).length} rooms I'd skip</summary>
+        <ul style="margin:8px 0 0;padding-left:18px;font-size:14.5px;line-height:1.6;color:#33415c">${steer}</ul></details>`:""}
       ${sendBar}`;
   }
   togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
