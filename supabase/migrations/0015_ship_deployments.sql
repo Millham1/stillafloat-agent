@@ -9,7 +9,7 @@
 -- Region tags EXTEND the existing sailings vocabulary (snake_case):
 --   bahamas bermuda e_caribbean w_caribbean s_caribbean gulf mexican_riviera
 --   us_east_coast us_west_coast alaska hawaii mediterranean n_europe
---   canada_ne panama_canal transatlantic asia australia_nz s_america world
+--   canada_ne panama_canal transatlantic asia australia_nz s_america canary_islands world
 CREATE TABLE IF NOT EXISTS public.ship_deployments (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   ship_slug     text NOT NULL,
