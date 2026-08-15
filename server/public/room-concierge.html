@@ -189,7 +189,16 @@ function inferAxes(traits){
   };
 }
 /* The finder's expectation tree, ported verbatim (Mark-corrected copy). */
+const REGION_NAMES = {e_caribbean:"Eastern Caribbean",w_caribbean:"Western Caribbean",s_caribbean:"Southern Caribbean",
+  bahamas:"The Bahamas",alaska:"Alaska",mediterranean:"The Mediterranean",mexican_riviera:"Mexican Riviera",
+  n_europe:"Northern Europe",bermuda:"Bermuda",hawaii:"Hawaii",canada_ne:"Canada & New England"};
 const EXPECT_QS = [
+  { key:"destination", q:"Where are you dreaming of?", opts:[
+      ["Eastern Caribbean","e_caribbean"],["Western Caribbean","w_caribbean"],
+      ["Southern Caribbean","s_caribbean"],["The Bahamas","bahamas"],
+      ["Alaska","alaska"],["The Mediterranean","mediterranean"],
+      ["Mexican Riviera","mexican_riviera"],
+      ["Surprise me — anywhere the ship fits","surprise"]] },
   { key:"party", q:"Who's going?", opts:[
       ["Just the two of us","couple"],["Family with kids","family"],
       ["Just me","solo"],["Solo, but traveling with a group","solo-group"],
@@ -356,7 +365,7 @@ class RoomConciergeFlow {
       try{
         const r=await fetch("/api/cabins/suggest-ships",{method:"POST",
           headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({personality:this.personality, party:this.expect.party, traits:this.traits, raw:this.raw, budget:this.expect.budget})});
+          body:JSON.stringify({personality:this.personality, party:this.expect.party, traits:this.traits, raw:this.raw, budget:this.expect.budget, destination:this.expect.destination})});
         const d=await r.json(); shipsToShow=d.picks||[]; reason=d.reason||"";
       }catch{ shipsToShow=[]; }
     }
@@ -401,6 +410,7 @@ class RoomConciergeFlow {
         <div><h3>${s.ship}</h3><span class="line">${lineName(s.line)}</span></div>
         ${rating!=null?`<div class="gist-score">${Number(rating).toFixed(1)}<small>/5</small></div>`:""}
       </div>
+      ${(this.expect.destination && this.expect.destination!=="surprise" && (s.regions||[]).includes(this.expect.destination))?`<p style="margin:2px 0 6px;font-size:13px;font-weight:800;color:#2e8b46">⚓ Sails ${REGION_NAMES[this.expect.destination]||this.expect.destination}</p>`:""}
       ${rating!=null?`<div class="gist-dancers">${[1,2,3,4,5].map(n=>
         `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</div>`:""}
       ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}

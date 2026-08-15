@@ -18,7 +18,7 @@
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { createAction, resolveActionsForSource } from "./actions";
-import { sailingsForStorm, defaultWindow } from "./storm-sailings";
+import { sailingsForStorm, deploymentsForStorm, defaultWindow } from "./storm-sailings";
 import { severityRank } from "./storm-escalation";
 import { setStormShips, mmsiForShip, getPosition } from "./ship-tracker";
 import { labelGrounds } from "./storm-grounds";
@@ -126,7 +126,12 @@ async function syncTrackedShips(row: LifecycleRow): Promise<string[]> {
   const win = row.window_start && row.window_end
     ? { start: row.window_start, end: row.window_end }
     : defaultWindow();
-  const sailings = await sailingsForStorm(row.affected_grounds, win.start, win.end);
+  const derived = await sailingsForStorm(row.affected_grounds, win.start, win.end);
+  // Forward deployments fill in ships whose current AIS sailing isn't derived yet;
+  // AIS-derived rows win on conflict (they're date-precise, deployments are seasonal).
+  const deployed = await deploymentsForStorm(row.affected_grounds, win.start, win.end);
+  const seen = new Set(derived.map((x) => x.ship_name.toLowerCase()));
+  const sailings = derived.concat(deployed.filter((x) => !seen.has(x.ship_name.toLowerCase())));
 
   const { data: existingData, error: exErr } = await supabase
     .from("storm_tracked_ships")
