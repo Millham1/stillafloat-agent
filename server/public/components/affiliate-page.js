@@ -114,7 +114,7 @@
           </div>`;
         container.appendChild(card);
         // smartStrip (pasted HTML ad widget) wins if present; affiliateLink (plain
-        // tagged URL, what the dashboard's "Affiliate Link URL" field actually saves)
+        // tagged URL, what the dashboard's "Affiliate Link URL" field saves)
         // is the fallback. Without this fallback, any item added with only that field
         // filled in — the normal case — silently rendered with no buy button at all
         // (observed 2026-08-11: 4 new clothing items had real affiliateLink values but

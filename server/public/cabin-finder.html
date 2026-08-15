@@ -33,7 +33,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;
 .cf-hero h1{font-size:clamp(30px,4.8vw,46px);line-height:1.14;margin:14px 0 14px}
 .cf-hero p{color:rgba(247,251,255,.86);max-width:52ch;margin:0 auto;line-height:1.72;font-size:18px}
 
-/* what we can actually advise on — never promise a ship we can't reason about.
+/* what we can advise on — never promise a ship we can't reason about.
    One quiet line, not a boxed billboard: the coverage is a disclosure, not a feature. */
 .cf-cover{text-align:center;margin:18px 0 6px;color:rgba(247,251,255,.68);font-size:15.5px;line-height:1.6}
 .cf-cover b{color:var(--seafoam);font-weight:700}
@@ -183,12 +183,12 @@ const SHIP_STEP = { key:"ship", q:"Which ship?", sub:"Pick it and I'll talk you 
 // Every question has an escape, so nobody gets stuck on one they can't answer.
 // NO budget question — we don't show prices, so asking about money would promise
 // a price-shaped answer this tool can't give. Room type covers the same ground
-// the way an advisor would actually ask it.
+// the way an advisor would ask it.
 const CORE = [
   { key:"party", q:"Who's going?", sub:"This changes my answer more than anything else.", opts:[
       {v:"couple", i:"fa-heart",    t:"Just the two of us", e:"One cabin, two people, zero compromises on whose side gets the good pillow."},
       {v:"family", i:"fa-children", t:"Family with kids",   e:"Room to spread out, and neighbors who won't mind."},
-      {v:"solo",   i:"fa-user",     t:"Just me",            e:"I'll tell you where going solo actually works in your favor."},
+      {v:"solo",   i:"fa-user",     t:"Just me",            e:"I'll tell you where going solo works in your favor."},
       {v:"group",  i:"fa-users",    t:"A group of us",      e:"Several cabins — close enough to find each other, far enough to escape each other."} ]},
   // No room-CLASS names here — a first-timer doesn't know an oceanview from a
   // balcony grade, and they shouldn't have to (Mark, 2026-08-12). Ask how they
@@ -347,7 +347,7 @@ function show(d, wasNew){
     ${picks}${avoid}
     <div class="cf-cta">
       <h3>Like any of these?</h3>
-      <p>Send them over and I'll check what's actually open on your sailing, how they compare,
+      <p>Send them over and I'll check what's open on your sailing, how they compare,
          and whether one of them is a mistake for your dates. That part is my job, not yours —
          you go back to arguing about which excursion to book.</p>
       <a href="/cabin-request.html?${q.toString()}">Send my picks to Mark</a>
