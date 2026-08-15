@@ -1,0 +1,185 @@
+{
+  "class": "Sun class (Norwegian Cruise Line)",
+  "sisterShips": [
+    "Norwegian Sun",
+    "Costa Victoria (different operator, Costa Cruises, scrapped 2021 — same original hull design)"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The lifeboats sit on deck 7, so deck 8 balconies won't see straight down even though guests still asked whether they'd be decent. Deck 7's own guest cabins are forward-only (per the deck data), consistent with the lifeboat davits occupying the mid/aft exterior of deck 7 below.",
+      "effect": "Deck 8 mid and aft balcony/oceanview cabins lose the straight-down view to a suspended lifeboat, though the open horizon view remains intact.",
+      "mattersTo": "Matters to anyone who wants to see the water/pier directly below their balcony (e.g. for photos of departure); doesn't matter to guests who only care about the horizon/sunset view.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com forum thread on Norwegian Sky/sister ship discussing deck 8 balcony obstruction from deck 7 lifeboats."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The Stardust Lounge is a two-level theater that takes up the back of decks 6 and 7, meaning its ceiling forms the floor of aft deck 8.",
+      "effect": "Aft deck 8 cabins sit directly above the theater's upper tier, so evening show bass, applause and rehearsal sound can carry upward into these rooms.",
+      "mattersTo": "Light sleepers and anyone doing an early night should avoid aft deck 8; night owls attending shows won't mind.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Norwegian Sky Activities editorial review describing the Stardust Lounge's two-deck footprint."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "On sister ship Norwegian Sun, a guest weighing aft cabin #8079 (deck 8, under Stardust Lounge) versus #0267 (deck 10 aft) noted it appears that the Stardust Lounge is on the deck immediately below #8079 and the restaurants are on the deck immediately above #0267, i.e. deck 11's restaurant/buffet sits directly over aft deck 10.",
+      "effect": "Aft deck 10 cabins have a dining venue immediately overhead, risking chair-scrape and service noise around meal times rather than late-night bass.",
+      "mattersTo": "Guests sensitive to daytime clatter (chair legs, cart wheels) more than nightlife noise; not a concern for guests who are out during meal hours.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com Norwegian Sun forum thread (sister ship, identical hull/venue stacking) naming cabins 8079 and 0267 and the venues immediately below/above them."
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 6A has some cabins that are not accessible by elevator, a structural oddity of the ship confirmed by a guest in cabin 6002: this cabin is on Deck 6a (Oslo deck) and doesn't have elevator access... it could be an issue for others to descend/ascend the 13 steps to get to and from the cabin.",
+      "effect": "A pocket of forward cabins requires stair use only — no elevator convenience, but also no elevator ding/foot-traffic noise; luggage-heavy guests or those with mobility issues should avoid this pocket.",
+      "mattersTo": "Guests needing elevator access (mobility, heavy luggage) should avoid; guests wanting a quiet corner with no elevator lobby noise may prefer it.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Norwegian Sky editorial review plus a first-person cruiseline.com review of cabin 6002 confirming the no-elevator, stairs-only access."
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A cruisecritic member relocated to a forward cabin described as \"actually on the 7th deck- no guest elevator to these rooms so hauling luggage wasn't fun up the flight of stairs.\"",
+      "effect": "The same stairs-only condition documented for deck 6A appears to extend into the adjoining forward pocket that reads as deck 7 on some cabin numbering, reinforcing that this bow-area stair zone is a genuine structural feature of the class, not a one-off.",
+      "mattersTo": "Same as above — mobility-limited or luggage-heavy guests should double-check elevator access for any far-forward cabin quoted with a '6xxx' or low '7xxx' number near the bow.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com member review #74935 of Norwegian Sky describing a forward cabin relocation with no guest elevator access."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        6,
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The same reviewer's forward cabin swap traded engine hum for docking-morning clatter: \"Although there was NOISE, it was the noise of banging around when we ported each morning,\" consistent with bow thruster/anchor operation.",
+      "effect": "Far-forward cabins near the bow get woken by anchor/thruster noise on port mornings, often well before the announced disembarkation time.",
+      "mattersTo": "Matters to guests who want to sleep in on port days; irrelevant to early risers or all-sea-day sailings.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com member review #74935 of Norwegian Sky, and generalized by cruisemummy.co.uk: if you don't want to be woken up as the ship arrives in port each day, you should aim to avoid the rooms at the aft (rear) of the ship that are on lower decks. Those are the closest to the side thrusters."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Some of the older ships in the Norwegian Cruise Line fleet are particularly bad for vibrations if you're staying on the lower decks of the ship, and a Norwegian Sky guest in cabin 8151 (deck 8) still reported \"a little on the noisy side- engine noise for sleeping\" on the original itinerary.",
+      "effect": "Even a mid-height deck 8 cabin picked up engine hum on this older ship; the lowest guest deck (4), especially aft, should be assumed to carry the most vibration.",
+      "mattersTo": "Vibration-sensitive sleepers should skip deck 4 aft; some guests describe the hum as soothing rather than disruptive.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk general NCL-fleet vibration guidance plus a first-hand cruisecritic member review of Norwegian Sky cabin 8151 reporting engine noise."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Norwegian Sky sells PrivaSea (partially enclosed) balcony suites: forward category SA on Forward Location · Deck 08, 09 and aft category SD on Aft Location · Deck 08, 09, 10, and NCL's own site warns some balcony cabins may be enclosed (PrivaSea Balconies).",
+      "effect": "PrivaSea balconies trade some open-air view and breeze for a steel/glass-framed semi-enclosure, described by reviewers as \"a large open window, rather than an open-air veranda\" — cheaper than a true balcony but less airy.",
+      "mattersTo": "Budget-balcony shoppers who don't mind a windowed veranda; not for anyone who wants an unobstructed open-air balcony.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "ncl.com Norwegian Sky deck plans (forward SA on decks 8-9, aft SD on decks 8-10) and cruisemummy.co.uk's general description of NCL PrivaSea enclosed balconies."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "6002 (and other Deck 6A cabins)",
+      "claim": "No elevator access; reached by ~13 steps; quiet, forward location.",
+      "source": "cruiseline.com guest review of cabin 6002",
+      "confidence": "high"
+    },
+    {
+      "cabins": "~6314 (guest-reported, physically read as deck 7)",
+      "claim": "No guest elevator; luggage hauled up stairs; anchor/thruster banging noise on port mornings.",
+      "source": "cruisecritic.com member review #74935",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8151",
+      "claim": "Musty smell on arrival; engine noise for sleeping on first night.",
+      "source": "cruisecritic.com member review #74935",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8079 (Norwegian Sun, sister ship)",
+      "claim": "Aft cabin directly above the Stardust Lounge — noise concern from show/rehearsal below.",
+      "source": "boards.cruisecritic.com Norwegian Sun forum thread #2025083",
+      "confidence": "low"
+    },
+    {
+      "cabins": "0267 / 10267 (Norwegian Sun, sister ship)",
+      "claim": "Aft cabin directly below the deck-11 restaurants — noise concern from dining venue above.",
+      "source": "boards.cruisecritic.com Norwegian Sun forum thread #2025083",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Whether Norwegian Sky has any 'hump' (balcony cantilevered past the hull line) on any deck — no ship-specific or class-specific evidence found this session.",
+    "Whether the top guest decks (9-10) show a hull-taper effect that hides the straight-down view from aft/forward suites — not documented in sources found.",
+    "Location and guest-facing impact of the crew-only 'I-95' style corridor and its access points on Norwegian Sky — not covered in any source found.",
+    "Ship-specific (not generic NCL-fleet) forward/aft motion complaints for this 77,000 GT vessel — only generic cross-ship advice was found, not Sky-specific first-hand reports.",
+    "The full list of cabin numbers within 'Deck 6A' lacking elevator access — only cabin 6002 was confirmed by name.",
+    "Exactly which oceanview/balcony cabin ranges NCL currently flags as 'obstructed' on the live Norwegian Sky deck plan versus which are sold unlabeled — NCL's site only gives a blanket disclaimer, not per-cabin flags."
+  ],
+  "ship": "Norwegian Sky",
+  "shipSlug": "norwegian-sky",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 1010,
+  "cabinsTouchedByAZone": 982,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 18,
+    "maxAllowed": 25
+  },
+  "cost": 2.766087
+}

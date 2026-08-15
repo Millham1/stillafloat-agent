@@ -1,0 +1,226 @@
+{
+  "class": "Spirit-class (Costa Atlantica/Costa Mediterranea sub-line, built by Kvaerner Masa-Yards)",
+  "sisterShips": [
+    "Costa Mediterranea (direct Spirit-class sister, now sails for Adora Cruises)",
+    "Carnival Spirit",
+    "Carnival Pride",
+    "Carnival Legend",
+    "Carnival Miracle",
+    "Carnival Luminosa (ex Costa Luminosa, now marketed by Carnival as part of the Spirit class)"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Lifeboats/tenders are mounted on Deck 4 (Roma deck), the same deck data show carries 135 cabins; the balcony deck directly above (Deck 5, I Clowns) is sold as a distinct 'Partial View Balcony' category built specifically around this obstruction.",
+      "effect": "Deck 5 balcony cabins in the Partial View Balcony category look down onto the tops of the boats rather than the sea; the horizon and straight-out view remain open, only the vertical sightline is lost. Deck 6 oceanview (non-balcony) cabins sit two decks up and may retain a partial version of the same issue, but this is less certain.",
+      "mattersTo": "Photographers/anyone who wants to see the water below, or watch swimmers/tenders, should avoid; anyone who mainly cares about the open horizon and wants a lower price won't mind and can save money.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "margaritavilleatsea.com/cruisecritic.com: Partial View Balcony staterooms are described as having 'a partial or fully obstructed view located adjacent to the open promenade,' and Cruise Critic's cabin review states obstructed balconies on Islander 'often have their views blocked by onboard equipment, like lifeboats,' available on decks 4 through 9; corroborated by a YouTube cabin tour of the specifically named obstructed cabin 5189 on Deck 5."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "All 18 Deck 10 cabins sit forward, directly beneath Deck 11's forward 'Dis 'N Dat' sports zone (mini-golf, cornhole, pickleball court, running track).",
+      "effect": "A Tripadvisor reviewer specifically complained that the 'herd of elephants' sound of pickleball/mini-golf play carried into their Deck 10 room, including late-night unofficial dodgeball games organized by teens in the same activity zone.",
+      "mattersTo": "Light sleepers and anyone hoping for a quiet balcony during the day should avoid; families who don't mind daytime noise and want top-deck sun access may not care.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "Tripadvisor review titled 'AVOID A ROOM ON DECK 10' describing the pickleball/mini-golf noise above their cabin, cross-checked against eatsleepcruise.com and cruisemapper.com confirming the Dis 'N Dat sports deck sits forward on Deck 11, directly above Deck 10's forward cabin block."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        1
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 1 (the lowest guest deck, cabins 1101–1265+) shares its level with the lower tier of the two-story Hot Hot Hot Night Club.",
+      "effect": "Forward Deck 1 cabins are not just below a venue but adjacent to/on the same deck as a nightclub's lower level, which cruisemapper's own venue index places directly among that cabin run.",
+      "mattersTo": "Anyone sensitive to bass/late-night noise should avoid forward Deck 1; club-goers or those wanting cheap oceanview/interior fares near nightlife may prefer it.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemapper.com Deck 1 plan: 'Hot Hot Hot Night Club (lower level) is a two-story nightclub venue... Cruise cabins from 1101 to 1265, which are in categories Picturesque Ocean View and Cozy Interior Staterooms.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The ship's atrium is an open 14-story well that cruisecritic states runs from Deck 2 up through Deck 9, with the Flip Flop Bar and elevator bank at its base.",
+      "effect": "Cabins that border the atrium on any of those decks can pick up music from the Flip Flop Bar and the sound of elevators in transit, regardless of how far up they are.",
+      "mattersTo": "Noise-sensitive guests should skip any atrium-facing room on decks 2–9; guests who want to be in the center of the action will like it.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com: 'skip cabins that border the atrium, which starts at Deck 2 and stretches to Deck 9... you run the risk of music carrying from the Flip Flop Bar on Deck 2 or hearing the elevators running.'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 9 is itself the pool deck (5 O'Clock Somewhere Pool, buffet, and an aft adults-only Tiki pool/bar), while the ship's 30 Deck 9 cabins are pushed forward, away from the main pool footprint.",
+      "effect": "Deck 9 cabins avoid being directly under pool noise (they're forward on the same level, not underneath), but Deck 10 spa/sunning space sits above them, and the adjacent open pool deck across the same level still generates some traffic noise near midship/aft corridors.",
+      "mattersTo": "Guests wanting quick pool access without full above/below exposure may like Deck 9 forward suites; those craving total quiet should still look lower.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisecritic.com Islander review: 'Deck 9 is the pool deck... Deck 9 offers mostly suites' and 'Most rooms are located on decks 4 through 8'; cruisemapper.com/gangwaze.com deck-9 venue listings place the pools, buffet, and Tiki bar mid/aft with cabins forward."
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "The ship runs forward and midship elevator banks (a first-hand cabin review situates room 7175 'between the forward and midship elevators, somewhat closer to the forward bank'), and these banks open onto the atrium that spans Decks 2–9.",
+      "effect": "Cabins near either bank get short walks to venues but more door-chime and hallway-traffic noise; cabins bordering the atrium also hear the elevators' mechanical noise as described above.",
+      "mattersTo": "Mobility-limited guests benefit from being near a bank; noise-sensitive guests should ask for a cabin at least several doors away from either elevator lobby.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "eatsleepcruise.com first-hand review: cabin 7175 is 'located on the starboard side of the ship between the forward and midship elevators (but somewhat closer to the forward bank).'"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        1
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Large Carnival-built ships of this era run a crew-only corridor nicknamed the 'I-95' on Deck 0 or the lowest passenger deck, connecting crew cabins, provisioning, laundry, and engine spaces bow to stern.",
+      "effect": "Where this corridor's access points intersect the lowest guest deck (Deck 1 here), guests may notice crew foot traffic near stairwells/service doors, though it is designed to stay separated from passenger corridors.",
+      "mattersTo": "Not a major concern for most guests since the system is built to be invisible; deck stewards and turnaround-day-sensitive travelers might notice more activity near service doors on Deck 1.",
+      "severity": "minor",
+      "confidence": "low",
+      "source": "General reporting on Carnival-fleet ship architecture (thetravel.com, cruisehive.com) describing the I-95 crew corridor as typically on 'Deck 0 or Deck 1' on ships of this size; not confirmed with an Islander-specific citation."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        1,
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Spirit-class ships (this hull) use two ABB Azipod propulsion units aft, powered by six Wärtsilä diesels; sister-ship reports on Carnival Spirit describe some vibration in aft, lower-deck rooms near the engines.",
+      "effect": "Guests in the lowest aft cabins (very few exist on Islander itself — only 5 aft cabins on Deck 1) may feel more engine hum/vibration than midship guests, though other sister-ship reports note the Azipod design produces less vibration than shaft-driven ships and midship cabins report none at all even in rough seas.",
+      "mattersTo": "Motion- or vibration-sensitive guests should favor midship over aft on lower decks; most guests on the actual Islander aft footprint (which is mostly public venues, not cabins, on the low decks) are unlikely to be affected given how few aft-lower cabins exist.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "shinecruise.com (Carnival Spirit, same hull class): 'Rooms at the back of the ship on the lower deck can vibrate and be noisy because they're close to the engines'; contrasted by a cruiseaddicts.com forum post about a midship Spirit-class cabin reporting no vibration in 15-foot seas."
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Islander's own cabin guidance flags high decks and the extreme forward/aft ends of the ship as the spots where motion is most felt.",
+      "effect": "Guests prone to seasickness will feel more roll/pitch in the highest cabins (Decks 9–10) or in cabins at the far forward or far aft ends of any deck, versus a low, midship cabin.",
+      "mattersTo": "Seasickness-prone travelers should pick low-and-midship; guests who enjoy motion or want top-deck views/aft wake views can proceed knowingly.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Islander cabin guide: 'If you're prone to seasickness, don't book cabins high on the ship or very forward or aft.'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "5187, 5189",
+      "claim": "Named as the ship's 'Obstructed View Balcony' example cabins on Deck 5, with a lifeboat blocking the straight-down view; a YouTube cabin-tour reviewer did a dedicated honest walkthrough of 5189 specifically because of this obstruction.",
+      "source": "YouTube 'Obstructed View Balcony Cabin Tour | Margaritaville at Sea Islander Room 5189 Review!' and gangwaze.com listings for 5187",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "5119",
+      "claim": "A guest review for this forward Deck 5 Extended Balcony cabin describes the balcony as not spacious, 'enclosed above and below,' with very noisy neighbors on both sides and a warm room.",
+      "source": "gangwaze.com cabin-review aggregation for Cabin 5119 (Deck 5, forward, Extended Balcony)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "1136",
+      "claim": "A guest reported no air conditioning for four days and developed a sore throat/cough they attributed to the cabin, which cleared up after disembarking — a possible mold/HVAC maintenance flag for this specific forward Deck 1 oceanview cabin.",
+      "source": "gangwaze.com cabin-review aggregation for Cabin 1136 (Deck 1, forward, Picturesque Ocean View)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Deck 7 (general, unspecified cabin numbers)",
+      "claim": "Cruise Critic's own editor reported air conditioning trouble across cabins on Deck 7 during their sailing ('I was able to get the room cool but not really cool enough'), plus a non-flushing toilet.",
+      "source": "cruisecritic.com Islander cabin review, editor's first-hand account",
+      "confidence": "low"
+    },
+    {
+      "cabins": "10024",
+      "claim": "Called out by Cruise Critic as an unusually large interior cabin for its category (a 'secret' find, positive rather than a warning), accommodating only two guests.",
+      "source": "cruisecritic.com Islander cabin review",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "Whether Deck 6 oceanview ('Partial Ocean View') cabins — two decks above the Deck 4 lifeboat line — retain any residual downward obstruction, or whether the 'partial' label there refers to something unrelated to lifeboats (e.g., structural supports).",
+    "Whether any Islander decks have true cantilevered 'hump' balconies (extending past the hull line to escape the lifeboat sightline) — the only source found (a deck-plan aggregator claim about 'indented balconies') proved to be generic boilerplate repeated verbatim across unrelated ship classes and was discarded.",
+    "Whether the Extended Balcony/Premium Extended Balcony categories on Decks 6–9 sit atop a genuine hull taper that hides the straight-down view — suggested by the existence of enlarged balcony categories at those decks, but not confirmed by any ship-specific review or photo found this session.",
+    "Exact cabin-number ranges for the 8 accessible cabins and 56 connecting cabins on Islander (sources gave category/deck info but not specific numbers).",
+    "Whether bow-thruster or anchor-chain noise is a reported issue for forward Deck 1 cabins specifically on Islander — plausible given deck-1 forward cabin density and typical ship architecture, but no Islander-specific or Spirit-class-specific complaint was found this session."
+  ],
+  "ship": "Margaritaville at Sea Islander",
+  "shipSlug": "margaritaville-at-sea-islander",
+  "line": "Margaritaville at Sea",
+  "totalCabins": 1069,
+  "cabinsTouchedByAZone": 1069,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 20,
+    "maxAllowed": 25
+  },
+  "cost": 3.1084820000000004
+}

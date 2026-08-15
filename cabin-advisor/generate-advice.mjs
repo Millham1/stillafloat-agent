@@ -12,6 +12,7 @@
 // or the voice guide changes. See README.md.
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,14 +24,22 @@ const OKEY = process.env.OPENAI_API_KEY || process.env.REPLIT_OPENAI_API_KEY;
 const voice = await readFile(join(HERE, "voice-guide.md"), "utf8");
 // Use only the prompt body (after the '---' separator) as the system prompt.
 const VOICE = voice.includes("\n---\n") ? voice.split("\n---\n").slice(1).join("\n---\n").trim() : voice.trim();
-const shipData = JSON.parse(await readFile(join(HERE, `data/cabins/${ship}.json`), "utf8"));
+// Input: the curated fixture if one exists (the 23-cabin Wonder test case the engine was
+// built against), otherwise the REAL full grid. FULL_GRID=1 forces the real grid so the
+// engine can be tested at ship scale rather than fixture scale.
+const curatedPath = join(HERE, `data/cabins/${ship}.json`);
+const fullPath = join(HERE, `data/cabins/${ship}-full.json`);
+const useFull = process.env.FULL_GRID === "1" || !existsSync(curatedPath);
+const shipData = JSON.parse(await readFile(useFull ? fullPath : curatedPath, "utf8"));
+if (useFull) console.log(`(using the FULL grid: ${shipData.cabins.length} cabins)`);
 const { archetypes } = JSON.parse(await readFile(join(HERE, "data/archetypes.json"), "utf8"));
 
 // Trim cabin objects to what the model needs to reason (keep tokens down).
 const cabins = shipData.cabins.map((c) => ({
-  id: c.id, deck: c.deck, kind: c.category, view: c.view, realOcean: c.realOcean,
+  id: c.id ?? c.num, deck: c.deck, kind: c.category, view: c.view, realOcean: c.realOcean,
   hump: !!c.hump, steady: c.steady, obstruction: c.obstruction, flaggedByLine: c.flaggedByLine,
-  sleeps: c.sleeps, position: c.position, note: c.note,
+  sleeps: c.sleeps, position: c.position ?? c.section, side: c.side, note: c.note,
+  obstructedFlag: c.obstructed,
 }));
 
 function userPrompt(traveler) {
@@ -40,8 +49,16 @@ Candidate cabins (all real, with the quirks that matter):
 ${JSON.stringify(cabins)}
 
 Recommend the best 4-6 cabins for THIS traveler, ranked (rank 1 = book first). Each reason must be distinct and tied to what they told you; where two cabins are nearly identical, say so and give the honest tie-breaker. Then list 2-3 cabins you would steer them clear of, with the honest reason.
+
+For each recommendation also write "hook": a short headline (5-10 words) that names the room TYPE and ties it to what THIS traveler wants — the reason-to-care, not a spec. Like: "Boardwalk balcony to watch the action from your own roost" or "An ocean balcony for your quiet morning coffee". Never "Ocean View Balcony on Deck 8" — that is a brochure line, not you. Every hook must be different in wording AND structure from the others; no template reuse.
+
+Fidelity rules:
+- Speak ONLY to concerns this traveler actually told you. If they never mentioned seasickness, do not bring up motion, steadiness or stomachs. If they never mentioned noise, don't lead with quiet.
+- The voice example in your instructions is a TONE reference, not content — do not reuse its phrases ("tummy troubles", "the bonus is waking up") unless this traveler genuinely has that concern.
+- Vary your openings. Do not start every reason with "Cabin NNNN is..."
+
 Respond with ONLY a JSON object:
-{"recommendations":[{"cabin":<number>,"rank":<number>,"reason":"<2-4 sentences in your voice>"}],"steerClear":[{"cabin":<number>,"reason":"<1-2 sentences>"}]}`;
+{"recommendations":[{"cabin":<number>,"rank":<number>,"hook":"<5-10 words>","reason":"<2-4 sentences in your voice>"}],"steerClear":[{"cabin":<number>,"reason":"<1-2 sentences>"}]}`;
 }
 
 function parse(text) {
@@ -100,6 +117,7 @@ for (const a of archetypes) {
 
 const out = { ship: shipData.ship, class: shipData.class, model: modelUsed, archetypes: archetypes.length, generatedCount: Object.keys(byArchetype).length, byArchetype };
 await mkdir(join(HERE, "advice"), { recursive: true });
-await writeFile(join(HERE, `advice/${ship}.json`), JSON.stringify(out, null, 2));
+const outName = useFull && existsSync(curatedPath) ? `${ship}-fullgrid` : ship;
+await writeFile(join(HERE, `advice/${outName}.json`), JSON.stringify(out, null, 2));
 console.log(`\nDone. ${Object.keys(byArchetype).length}/${archetypes.length} archetypes, ${failures} failed. Total cost ≈ $${totalCost.toFixed(3)} (${modelUsed}).`);
-console.log(`Wrote advice/${ship}.json`);
+console.log(`Wrote advice/${outName}.json`);

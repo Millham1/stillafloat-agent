@@ -1,0 +1,270 @@
+{
+  "class": "Voyager-class (Royal Caribbean)",
+  "sisterShips": [
+    "Explorer of the Seas",
+    "Adventure of the Seas",
+    "Navigator of the Seas",
+    "Mariner of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 6 balcony cabins sit at the lifeboat line; the boats/davits are mounted on the non-cabin deck just below, so the straight-down view is blocked but the horizon is not.",
+      "effect": "A Points Guy reviewer in an aft Deck 6 balcony reported that I had prepared myself for a fully obstructed view, but I was pleasantly surprised. While our balcony overlooked one of the lifeboats below, we had a clear view of the open sea and beyond. A separate cruiser two cabins from the boats on Voyager-class Deck 6 asked whether they obstruct the view from the balcony as they appear to jut out.",
+      "mattersTo": "Photographers who want to shoot straight down at the water, or anyone who dislikes seeing machinery, will notice it; most balcony-sitters who look outward/forward will barely register it.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "thepointsguy.com first-person Deck 6 aft review; boards.cruisecritic.com Deck 6 lifeboat thread"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 10 mid/aft cabins sit directly under the Deck 11 Solarium/main pool complex.",
+      "effect": "Cruisedeckplans' own deck notes for Deck 10 warn guests: Don't be surprised by loud chair scraping noise above you. A 2026 guide adds that Deck 11 under the main pool can get loud early in the morning when crew members move chairs and clean the space. Cabins on Deck 10, right below this area, may hear scraping sounds.",
+      "mattersTo": "Late sleepers and anyone in bed past 6-7am; not an issue for early risers already headed to the pool deck.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Deck 10 plan notes; cruisebooking.com 2026 Voyager cabin guide"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Promenade View Interior cabins on Decks 6-8 have a bay window facing inward onto the multi-deck Royal Promenade rather than the sea.",
+      "effect": "Royal Caribbean Blog confirms Royal Promenade View cabins are available on Freedom Class, Voyager Class and Oasis Class ships and they have cabins that face inward towards the Royal Promenade. Each of these rooms has a large bay window that looks out to the Promenade, but this window is not soundproof. Reports are mixed: one Voyager cruiser said her Interior promenade view cabin was so noisy, music continued all night, while multiple Cruise Addicts forum posters on Voyager-class ships reported no problem with noise from the same category.",
+      "mattersTo": "Light sleepers who want an outside-feeling room without full ocean-view price should read reviews for their exact cabin; many guests report no issue, but the risk exists on nights with parades/live bands.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "royalcaribbeanblog.com class-wide description; cruisecritic.com member review; cruiseaddicts.com forum thread"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The Palace Theatre and Studio B ice rink occupy Decks 2-3 midship, with some guest cabins directly beside the theatre entrance/backstage wall.",
+      "effect": "A Voyager-specific cabin guide flags cabin 2240: This cabin is right next to the Palace Theatre, so you may expect some noise during performances and rehearsals. Another 2026 guide notes Deck 3 near the theater entrance often fills with crowds before and after shows. If your cabin sits close by, you may hear talking and footsteps.",
+      "mattersTo": "Anyone sensitive to bass/rehearsal noise or evening crowd surges near the theatre doors; cabins even a few doors away are reportedly fine.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk Voyager cabin guide (cabin 2240); cruisebooking.com 2026 Voyager guide (Deck 3 theatre crowd)"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The aft end of Deck 2 sits closest to the engine/propulsion machinery, one deck above the crew areas over the engine spaces.",
+      "effect": "A Voyager-specific guide names 2330 to 2358, 2630 to 2658: Cabins at the aft end of Deck 2 are the closest to the ship's engines, and so you may experience some engine noise and propeller vibrations in these cabins. and notes they are also beneath the main dining room.",
+      "mattersTo": "Light sleepers and anyone sensitive to low-frequency hum/vibration at cruising speed; not usually an issue in port.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisemummy.co.uk Voyager cabin guide, corroborated by shinecruise.com Voyager guide"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Decks 2-3 sit closest to the bow thruster compartments and the anchor chain locker/hawse pipe.",
+      "effect": "A Voyager-specific guide states One of the most common complaints from guests in forward cabins is early-morning anchor noise. On itineraries with tender ports or early dockings, Voyager deploys anchors and bow thrusters directly beneath the forward section. and describes forward Decks 2-3 as closer to the waterline and the ship's structural and mechanical spaces.",
+      "mattersTo": "Anyone booked on an itinerary with early tender/anchor mornings and a forward-lower cabin; midship or aft guests are unaffected.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisesnooze.com Voyager cabin guide"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Voyager-class ships widen (\"hump out\") in the mid-aft section on Decks 6 through roughly 10, giving the balconies there extra depth compared with the straight-hull sides.",
+      "effect": "A first-person Cruise Addicts forum thread on Voyager-class hump Junior Suites explains: Look at a diagram of the ship decks, you will see 'humps' on decks 6-10 on the Radiance class/Voyager Class ships, and posters who stayed in them say you have a full view from the front of the ship to the back. We will book another hump next time. However, within the hump, some specific Junior Suites have a large metal divider that partially blocks the view: most of the JS have \"normal\" balcony openings but 1612 has two smaller openings with a big metal wall in between that partly obstructs the view.",
+      "mattersTo": "Balcony/hump cabins are prized for panoramic side views and extra depth, but a handful of specific hump Junior Suites (not flagged by the line) have a mid-balcony metal wall that undoes that benefit.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruiseaddicts.com forum thread on Voyager-class hump Junior Suites (first-person, not aggregator boilerplate)"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        11,
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on the two highest guest decks (11-12) are farthest from the waterline and farthest forward, the classic high/forward motion combination.",
+      "effect": "Cruisedeckplans' own Deck 12 notes state plainly that these cabins will tend to feel more motion during rough seas. A 2026 guide adds On Deck 12 at the front of the ship, wind noise can be stronger during sea days. Guests who book cabins on higher forward decks sometimes feel more motion, too.",
+      "mattersTo": "Motion-sensitive cruisers should avoid forward Deck 11-12 on rougher itineraries (e.g., open ocean crossings); midship Decks 7-8 are the recommended alternative.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Deck 12 plan notes; cruisebooking.com 2026 Voyager guide"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The main elevator/stair banks sit midship on Decks 6-9, the same decks carrying the bulk of Interior/Balcony inventory.",
+      "effect": "A 2026 guide warns Cabins near the elevators on decks 6, 7, and 8 can get hallway noise late at night. You may hear people talking or kids running past your door. Conversely, a Voyager-specific room guide recommends midship Deck 7-9 cabins that are a short walk (not adjacent) to the banks: If you're looking for a nice, quiet room on Voyager of the Seas, you can't go wrong with Deck 7, Deck 8 or Deck 9. All cabins on these decks only have other cabins above and below them. This creates a buffer from the noise of the public areas.",
+      "mattersTo": "Trade-off is convenience (short walk to everything) versus door-slam/chatter noise; a few doors away from the bank resolves most of it.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisebooking.com 2026 Voyager guide; cruisemummy.co.uk Voyager room guide"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Below the lowest guest deck, Royal Caribbean ships run a bow-to-stern crew corridor nicknamed \"I-95\" linking crew cabins, galleys, and machinery spaces, with access doors reaching up toward Deck 2.",
+      "effect": "As described for Royal Caribbean ships generally: Crew members refer to a lower-deck corridor stretching from bow to stern as \"I-95,\" a nod to the famous East Coast highway. This passage serves as the ship's backbone, lined with crew cabins and walls, and These housekeeping routes ensure guest cabins are refreshed without staff ever appearing in passenger hallways. This is a fleet-wide RCI design description, not a Voyager-specific first-person account.",
+      "mattersTo": "Most guests never notice it; it explains why housekeeping/room-service carts appear and disappear quickly rather than any specific noise complaint tied to named Voyager cabins.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "thetravel.com features on Royal Caribbean's I-95 crew corridor (fleet-wide, not Voyager-specific)"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Connecting-door cabins exist across multiple balcony/interior categories on Voyager and share a thinner interior door rather than a full bulkhead.",
+      "effect": "A Voyager room guide advises: Tip: If you only want one cabin, avoid the cabins with interconnecting doors. A Cruise Addicts forum poster on a Voyager-class Promenade cabin confirms the mechanism: Only noise we ever heard was from the parade and of course the adjoinig cabin next to us (lol). Dont take a cabin that has a connector door.",
+      "mattersTo": "Solo travelers/couples who don't need the connecting pair should specifically avoid these cabins if privacy from neighbours matters; groups/families benefit from booking both sides.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemummy.co.uk Voyager room guide; cruiseaddicts.com forum thread"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "2330-2358, 2630-2658",
+      "claim": "Aft Deck 2 cabins closest to engine/propeller vibration and beneath the main dining room",
+      "source": "cruisemummy.co.uk",
+      "confidence": "high"
+    },
+    {
+      "cabins": "2240",
+      "claim": "Directly beside the Palace Theatre; noise during performances/rehearsals",
+      "source": "cruisemummy.co.uk",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "3540, 3240",
+      "claim": "Located right next to public restrooms",
+      "source": "cruisemummy.co.uk",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "3600-3616",
+      "claim": "Under the Tavern bar - noise transfer reported",
+      "source": "shinecruise.com",
+      "confidence": "low"
+    },
+    {
+      "cabins": "6575-6597 (odd numbers)",
+      "claim": "Above the R Bar - noise transfer reported",
+      "source": "shinecruise.com",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9465, 9467, 9469, 9471, 9473, 9475, 9477, 9479",
+      "claim": "Aft Deck 9 cabins requiring an ~500 ft round-trip walk to the nearest elevator bank because you must walk to the end and back",
+      "source": "cruisemummy.co.uk",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "1248-1305, 1548-1605 (Deck 10 numbering)",
+      "claim": "Sit under the Deck 11 pool/Solarium zone; early-morning chair-scraping noise",
+      "source": "shinecruise.com (cross-checked against Deck 10 hump/overhang numbering from cruisedeckplans.com)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Junior Suites ~1612 / 1312 (deck-10-style numbering; exact deck unconfirmed)",
+      "claim": "Hump Junior Suite balcony has a large metal wall splitting it into two smaller openings, partially obstructing the view, unlike neighboring hump suites",
+      "source": "cruiseaddicts.com forum thread (first-person report)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7388-7688 (Deck 7), 8390-8690 (Deck 8), 9390-9690 (Deck 9), 10388-10688 (Deck 10)",
+      "claim": "Aft hump Ocean View/Junior Suite balcony ranges with larger-than-standard balconies",
+      "source": "voyager-class.com fan-run cabin database",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Whether Deck 3 ocean view cabins are genuinely lifeboat/tender-obstructed - only generic aggregator claims found, no first-person or cabin-specific confirmation, and it is unclear which structure (lifeboat vs. tender platform) is being described.",
+    "Whether a hull taper exists on Deck 11 or 12 (inward step hiding the straight-down view while keeping the horizon clear) - no source specifically described this for Voyager-class; only generic 'more motion' notes for Deck 12 were found.",
+    "Exact cabin-number boundaries of the Deck 6-10 hump (which specific cabins are 'on the hump' vs. just outside it) beyond the two Junior Suites named in the forum lead.",
+    "Whether Royal Caribbean formally flags any Voyager balcony range as 'obstructed' in its booking system versus selling it unlabeled - none of the sources checked the official RC deck-plan labeling status per cabin range.",
+    "Specific Voyager-class I-95 crew-corridor access-point locations (which stairwells/doors) that could create service traffic near particular guest cabins - only fleet-wide generic descriptions were found, not ship-specific."
+  ],
+  "ship": "Voyager of the Seas",
+  "shipSlug": "voyager-of-the-seas",
+  "line": "Royal Caribbean",
+  "totalCabins": 1715,
+  "cabinsTouchedByAZone": 1715,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 17,
+    "maxAllowed": 25
+  },
+  "cost": 1.8794149999999998
+}

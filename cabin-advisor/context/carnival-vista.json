@@ -1,0 +1,265 @@
+{
+  "class": "Carnival Vista-class cruise ship (2016)",
+  "sisterShips": [
+    "Carnival Horizon",
+    "Carnival Panorama",
+    "Carnival Venezia (ex-Costa Venezia, modified Venice sub-class)",
+    "Carnival Firenze (ex-Costa Firenze, modified Venice sub-class)",
+    "Adora Magic City (Adora Cruises, China-built variant)",
+    "Adora Flora City (Adora Cruises, China-built variant, 2026)"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Lifeboats are stored/swung at the Mezzanine/Promenade deck level; Deck 3 Category 6B window cabins sit directly under this boat line, and Deck 2 Family/Cove balconies are built into the hull directly beneath the same boats.",
+      "effect": "On Deck 3 the lifeboat sits in the window frame and blocks part of the outward view; on Deck 2 the boats overhead act as a roof, giving cove balconies extra shade and privacy but less open sky.",
+      "mattersTo": "View-focused Oceanview bookers on Deck 3 (cabins 3219-3242) should skip these; sun-seekers on Deck 2 cove balconies should know they'll get shade, while privacy-seekers will like it.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "help.goccl.com (Carnival's own obstruction list, Category 6B deck3), cruisedeckplans.com deck3/deck2 pages, cruisemummy.co.uk on cove balconies being 'underneath the suspended lifeboats'"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 6 forward cabins sit directly above/below the Liquid Lounge main theatre (which spans the Mezzanine/Promenade decks below) and which doubles as a late-night venue.",
+      "effect": "Stage production shows, rehearsal noise, and (per a first-hand review) the theatre's use as a nightclub can be heard/felt in these cabins.",
+      "mattersTo": "Light sleepers wanting an early night should avoid forward Deck 6; night owls who like being near the action won't mind.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Vista Deck 6 page ('Forward cabins on this deck are above or below the main theater and may have noise from stage production shows'); mycruisestories.com on the Liquid Lounge doubling as a night club"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 6 aft-facing cabins look straight down onto the exclusive Havana Bar/Pool area on the Promenade deck below.",
+      "effect": "The Havana pool deck can stay busy and noisy into the night, which carries up to these aft cabins.",
+      "mattersTo": "Non-Havana guests wanting quiet evenings should be cautious with aft Deck 6; those who enjoy the Havana scene get a literal front-row seat.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Vista Deck 6 page ('Aft facing cabins look out directly over the Havana pool area... could be busy during night time hours')"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 9 aft cabins sit directly beneath the Deck 10 Lido aft Tides pool/whirlpool area; the overhang from Deck 10 also fully shades/covers the handful of aft Suite balconies on Deck 9 (port 9294+ and starboard 9293+).",
+      "effect": "Guests report scraping deck-chair and early-morning pool-deck cleanup noise from above; in exchange, the Deck 9 aft balconies are the only ones on the ship with a full roof rather than open sky.",
+      "mattersTo": "Noise-sensitive sleepers should avoid Deck 9 aft; sun-avoiders or those wanting weather-protected balcony space will like the full cover.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Vista Deck 9 page (overhang/noise note); cruisegalore.com ('worst culprits seem to be Deck 9 on Vista-class ships' for chair-dragging noise below Lido); Cruise Critic member review of aft balcony cabin 9074 describing it as 'fully covered unlike the aft balconies on the other decks'"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 2 midship cabins sit directly below the galley one deck up.",
+      "effect": "Kitchen operational noise (carts, prep, dish-return) can be audible from this location.",
+      "mattersTo": "Anyone sensitive to daytime clatter should ask about exact midship numbers; not a concern for most late sleepers since galley activity is mostly daytime/evening.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Vista Deck 2 page ('Midship cabins are below galley on deck above and may experience noise from that area')"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Deck 2 aft cabins sit lowest and furthest aft, directly above the crew area on the deck below and closest to the ship's Azipod propulsion pods.",
+      "effect": "These cabins are the most likely on the ship to pick up propulsion hum/vibration, especially noticeable during docking maneuvers.",
+      "mattersTo": "Vibration-sensitive sleepers should avoid aft Deck 2; budget-focused cruisers who don't mind a background hum can save here.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Vista Deck 2 page ('Aft cabins are above crew area on deck below. These cabins are also more likely to experience engine vibrations')"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "The crew-only 'I-95' corridor and crew quarters sit on the deck immediately below Deck 2 (the lowest guest cabin deck in Vista's inventory), with Deck 2 aft cabins sitting right above this crew zone.",
+      "effect": "Proximity to crew operational spaces compounds with engine vibration in the same aft/low location, though the corridor itself is not accessible to or directly heard by guests in normal circumstances.",
+      "mattersTo": "Mostly relevant to guests worried about vibration/utility noise rather than crew foot traffic, since I-95 is one deck further down and sealed off from guest areas.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Vista Deck 2 page ('Aft cabins are above crew area on deck below'); cruisehive.com and thetravel.com describing I-95 as typically the lowest deck, running bow to stern beneath guest cabins"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 2 cabins near elevator banks are flagged specifically for Carnival Vista as a noise hotspot from elevator foot traffic.",
+      "effect": "Door chimes, footsteps and passenger chatter around the elevator lobby carry into nearby Deck 2 cabins.",
+      "mattersTo": "Light sleepers should ask for distance from elevator lobbies on Deck 2; convenience-seekers who want a short walk to gangway/tender areas may prefer it anyway.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisegalore.com ('Deck 2 cabins on ships like Carnival Vista, Panorama, and Mardi Gras are among the worst for noise' from elevator foot traffic)"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Cruise Critic's own ship review and a first-hand blogger account both flag high decks and far-forward/far-aft cabins on Vista for exaggerated rocking, including a Deck 9 forward Junior Suite described as feeling like 'riding a roller coaster.'",
+      "effect": "The higher and further from midship a cabin sits, the more pitch/roll is felt in open water.",
+      "mattersTo": "Seasickness-prone travelers should favor low, midship cabins (Decks 2-8, mid-sections); those unaffected by motion can chase the higher-deck views without penalty.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Vista Editor's Review ('Rooms to avoid on Carnival Vista include those up high or at the very forward or aft of the ship... prone to motion'); cruise.blog first-hand account of a Deck 9 forward Junior Suite rocking 'like riding a roller coaster'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        6,
+        7,
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A public outdoor observation walkway forward blocks the forward-facing windows of several picture-window Interior/Oceanview categories (4J on Decks 6, 7, 9, 10; 6S Spa Oceanview on Deck 11), with tinted glass for daytime privacy and a curtain rule for night navigation safety.",
+      "effect": "Guests get a window but the direct forward view is filled with passersby on the walkway rather than open sea; window is tinted so it's not a two-way privacy problem in daylight.",
+      "mattersTo": "Photography/view-focused Oceanview or Interior-with-window bookers on these forward stacks should know they are not full sea views; those simply wanting natural light are unaffected.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "help.goccl.com official Carnival Vista obstructed/porthole view page (forward-facing window obstruction by 'outdoor walkway and observation deck', categories 4J and 6S)"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        7,
+        8,
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The Carnival Multiplex/IMAX auditorium structurally spans Decks 7 through 9 forward, with the box-office/entry on Deck 7 and the tall screen rising through 8 and 9.",
+      "effect": "Multiple separate Cruise Critic forum threads (2017-2023) show recurring, unresolved guest uncertainty about noise/vibration bleeding into nearby interior and balcony cabins on Decks 7-9 forward, though no thread found a definitive first-hand confirmation either way.",
+      "mattersTo": "Anyone booking forward interior/balcony cabins on Decks 7-9 near the Multiplex should ask specifically about the cabin's proximity to the auditorium wall; this is a recurring open question, not a settled complaint.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com threads on 'Noise from IMAX on Vista', 'Vista-Inside rooms by Imax', and 'Balcony Cabin close to the IMAX' (recurring, unresolved guest questions); cruisemapper.com/cruiseline.com on the Multiplex spanning Decks 7-9"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "9205, 9206 (Category JS Junior Suite, Deck 9)",
+      "claim": "Balconies are partially blocked by a structural steel bulkhead ('standard size balconies and views are obstructed').",
+      "source": "help.goccl.com (official Carnival Vista stateroom descriptions), cruisedeckplans.com, shinecruise.com",
+      "confidence": "high"
+    },
+    {
+      "cabins": "3219, 3221, 3222, 3225, 3226, 3229, 3230, 3233, 3234, 3237, 3238, 3242 (Category 6B Oceanview, Deck 3)",
+      "claim": "Obstructed view because lifeboats sit directly outside the window.",
+      "source": "cruisedeckplans.com Vista deck listing, shinecruise.com, help.goccl.com (Category 6B reference)",
+      "confidence": "high"
+    },
+    {
+      "cabins": "2478, 2480, 2482, 2484, 2486, 2488, 2493, 2495, 2497, 2499, 2501, 2503 (Category FE Family Harbor Oceanview, Deck 2)",
+      "claim": "Aft-facing window obstructed by a small open steel deck that guests cannot access.",
+      "source": "help.goccl.com (official), shinecruise.com",
+      "confidence": "high"
+    },
+    {
+      "cabins": "11201, 11202, 11203, 11204 (Category 6S Cloud 9 Spa Oceanview, Deck 11)",
+      "claim": "Forward-facing window obstructed by the public outdoor walkway/observation deck; window tinted for daytime privacy.",
+      "source": "help.goccl.com (official), shinecruise.com",
+      "confidence": "high"
+    },
+    {
+      "cabins": "2458, 2475 (Category FJ Family Harbor Deluxe Oceanview, Deck 2)",
+      "claim": "Obstructed view due to window-cleaning 'gondola' equipment parked outside the window.",
+      "source": "shinecruise.com",
+      "confidence": "low"
+    },
+    {
+      "cabins": "2207, 2211, 2212, 2216, 2217 (Category 1A) and 2220, 2221 (Category PT), Deck 2",
+      "claim": "Listed among Carnival's official porthole-window (not full window) staterooms; not confirmed as view-obstructed beyond being a porthole.",
+      "source": "help.goccl.com (official Carnival Vista porthole list)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7306 (balcony) and 8273 (near 2nd-level IMAX)",
+      "claim": "Guests specifically asked whether these cabins suffer IMAX/theatre noise or vibration; no confirmed first-hand answer was found in the thread.",
+      "source": "boards.cruisecritic.com 'Carnival Vista Cabin Noise from Imax' and 'Noise from IMAX on Vista' threads",
+      "confidence": "low"
+    },
+    {
+      "cabins": "14205, 14206 (Category SS Cloud 9 Spa Suite) and 14201-14204 (Category 6T Cloud 9 Spa Oceanview)",
+      "claim": "Solid-steel balcony railings (14205/14206) and forward-window walkway obstruction (14201-14204), per multiple sources — but these cabin numbers imply a 'Deck 14' that is NOT among the guest cabin decks (2,3,5-12) given for this ship's inventory; likely a deck-labeling or data-scope mismatch that needs reconciling before advising customers.",
+      "source": "help.carnival.com balcony stateroom info page, help.goccl.com, shinecruise.com",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Balcony cabins with connecting doors: Deck 6 (8A/8B), Deck 7 (8B/8C), Deck 8 (8C/8D), Deck 9 (8D/8E), Deck 10 (8E/8F), Deck 11 (8G)",
+      "claim": "These balcony subcategories include connecting-door units with thinner walls and more noise transfer from the adjoining cabin.",
+      "source": "shinecruise.com",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Whether Vista-class has a true 'hump' (balconies cantilevered past the hull line) — no ship-specific or credible claim found; only generic 'cantilevered Jacuzzis' (4 of them) were mentioned by CruiseMapper, which is a different feature from cabin balconies.",
+    "Whether any Vista-class top-deck cabins sit atop an inward hull taper that hides the straight-down view while keeping the horizon clear — no ship-specific citation found.",
+    "Exact deck-14 stateroom inventory (SS/6T categories) could not be reconciled against the provided guest-deck list (2,3,5-12); may indicate the provided profile groups/renames what other sources call 'Deck 14' into Deck 12, or an inventory gap — needs verification against Carnival's official current deck plan PDF.",
+    "Vista-specific, cabin-numbered confirmation of bow-thruster noise for forward-low cabins — only generic cruise-industry sourcing was found, not a Vista-specific report.",
+    "Vista-specific, cabin-numbered confirmation of anchor-chain noise for forward-low cabins — only generic sourcing found (e.g., cruise.blog's general anchor-noise advice), not tied to a specific Vista deck/cabin range.",
+    "Whether the generic Carnival 'Bermuda Triangle of Bad Cabins' (aft elevator bank above the main entertainment deck) is confirmed by name for Vista specifically, versus other Carnival classes — the only source found (ThePointsGuy) described it as a pattern across unspecified Carnival ships, not Vista by name."
+  ],
+  "ship": "Carnival Vista",
+  "shipSlug": "carnival-vista",
+  "line": "Carnival Cruise Line",
+  "totalCabins": 1725,
+  "cabinsTouchedByAZone": 1687,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 18,
+    "maxAllowed": 25
+  },
+  "cost": 2.403159
+}

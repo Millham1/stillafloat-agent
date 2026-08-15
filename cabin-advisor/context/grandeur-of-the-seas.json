@@ -1,0 +1,311 @@
+{
+  "class": "Vision-class (Royal Caribbean International)",
+  "sisterShips": [
+    "Legend of the Seas (now Marella Discovery 2)",
+    "Splendour of the Seas (now Marella Discovery)",
+    "Enchantment of the Seas",
+    "Rhapsody of the Seas",
+    "Vision of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 7 balcony cabins sit at the level where lifeboats project from the hull below; a Cruise Critic forum poster booking a GTY balcony noted the only likely obstruction on this ship is the lifeboats blocking the straight-down view.",
+      "effect": "The horizon and open-sea view are unaffected, but looking straight down at the water from the balcony is blocked by the boat hull/davit structure.",
+      "mattersTo": "Matters to guests who love watching the water directly below (snorkelers-at-heart, photographers); irrelevant to anyone who just wants an open horizon view or extra sun.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com forum thread: \"the only possible obstruction may be looking straight down as lifeboats stick out a bit\""
+    },
+    {
+      "factor": "lifeboat",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Royal Caribbean's own booking listings mark specific Deck 7 balcony categories as obstructed: category 1B cabin 7618 and category D2 (accessible) cabin 7020 are both flagged \"Stateroom has an obstructed view.\"",
+      "effect": "These particular categories/cabins are officially discounted and sold with the obstruction disclosed, unlike unlabeled neighbors on the same deck.",
+      "mattersTo": "Budget-focused view-seekers can use these labeled categories deliberately for savings; view purists should still avoid them.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruiseline.com cabin pages for 7618 (\"Stateroom has an obstructed view\") and 7020 (same wording, category D2 accessible)"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Deck 8 suites and Junior Suites sit directly beneath Deck 9's Windjammer Cafe (forward) and beneath the Vitality at Sea fitness center (aft), with the main pool deck also overhead.",
+      "effect": "Chair-scraping and cleaning noise from the buffet/fitness area can be heard in the cabin, especially during the day and at night during cleaning windows; far-aft-facing and far-forward rooms sit outside the worst of it.",
+      "mattersTo": "Light sleepers and nappers should aim for the far aft (especially aft-facing) or far-forward ends of Deck 8; guests who are out all day won't notice.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com editor review (\"Some rooms on Deck 8...may have noise issues from the pool decks overhead...chair scraping noises\") and cruisemapper.com deck 8 plan (\"noise issues are located aft (underneath...fitness center) and forward (underneath...Windjammer Cafe)\")"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Deck 7's most-forward staterooms sit above the Palladium Theatre (Deck 6), and aft-location balconies from cabin 7142/7642 back sit above the South Pacific Lounge show venue.",
+      "effect": "Rehearsals and evening stage shows can carry up into the forward cabins; the aft show lounge can do the same for aft cabins.",
+      "mattersTo": "Guests planning early nights or afternoon naps should avoid the extreme forward and extreme aft ends of Deck 7; theatre-goers won't mind being close.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemapper.com deck 7 plan (\"most-forward staterooms...are located above the ship's Theater...aft-location balconies...are located above the South Pacific Lounge\")"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Mid-ship Deck 7 cabins open onto the multi-deck Centrum atrium, which carries live music and daytime activity up through the open well.",
+      "effect": "Evening live music and daytime Centrum activity can be heard inside cabins that face or sit near the atrium opening.",
+      "mattersTo": "Nappers and light sleepers should ask to avoid Centrum-facing rooms; guests who enjoy the atrium buzz may prefer being close.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com editor review: \"Cabins on Deck 7 near the Centrum would be a definite concern...it's possible it could be heard inside those rooms\""
+    },
+    {
+      "factor": "above",
+      "decks": [
+        4
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "All Deck 4 cabins sit under the Centrum/public-space layer, with the forward end specifically underneath the Palladium Theatre.",
+      "effect": "Forward Deck 4 rooms get direct theatre noise; the rest of Deck 4 carries some general risk of noise transmission from the public decks above.",
+      "mattersTo": "Sensitive sleepers should avoid far-forward Deck 4; the effect is described as mild and hearing-dependent for the rest of the deck.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: \"All of the cabins on Deck 4 can be at risk of noise from above. At the front of the ship, you've got the theatre directly above you\""
+    },
+    {
+      "factor": "below",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward Deck 3 cabins (cited as roughly 3074-forward on port and 3574-forward on starboard) are sandwiched between other cabin decks above and below rather than public venues.",
+      "effect": "This \"cabin sandwich\" gives forward Deck 3 the quietest vertical noise profile on the ship.",
+      "mattersTo": "Best pick for guests prioritizing quiet over balcony/suite upgrades; irrelevant to those who want to be near amenities.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com deck 3 plan (\"cabins...are above and below decks of cabins and therefore should have less noise issues from public areas\") and luxury-cruising.com (\"forward part of Deck 3...tends to be the quietest location\")"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft Deck 2 cabins sit just above the engine spaces on this diesel-electric ship.",
+      "effect": "Guests may hear a hum and feel vibration from propulsion machinery, especially at higher speeds or maneuvering.",
+      "mattersTo": "Vibration-sensitive guests should avoid aft Deck 2; bargain hunters who don't mind a hum can save money here.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk: \"the cabins towards the aft of Deck 2. You're just above the engines here so you might hear the hum and feel the vibration\""
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Far-forward low-deck cabins sit near the anchor housing; a Cruise Critic reviewer in the very-forward Deck 3 room reported metal-on-metal clanking overnight, attributed to the anchor.",
+      "effect": "On port mornings/nights the anchor chain can produce clanking noise audible in nearby forward cabins.",
+      "mattersTo": "Light sleepers on multi-port itineraries should avoid the extreme forward end of Decks 2-3; itinerary with few port calls reduces the issue.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com member review: \"Our room was in the very front of the ship on 3rd deck. For 4 of the 7 nights we heard metal on metal clanking all night. We thought it was probably the anchor\""
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        2,
+        3
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Grandeur is one of Royal Caribbean's smallest ships, and its editorial review specifically flags forward cabins for motion, while a dedicated cabins-to-avoid guide singles out forward Decks 2-3 for seasickness risk; forward Deck 2 also gets more raw sea noise in rough weather.",
+      "effect": "Pitching motion is felt earliest and most strongly at the bow, compounded by being low in the ship; guests report disrupted sleep or seasickness on rougher crossings.",
+      "mattersTo": "Motion-sensitive travelers should avoid forward-low cabins, especially on itineraries with open-water crossings; unbothered cruisers can take advantage of the lower fares in this location.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisecritic.com editor review (\"Those with motion sensitivity should avoid forward cabins. The smaller size of the ship does tend toward more movement in moderate seas\") and cruisedeckplans.com deck 2 plan (\"Forward cabins on this deck tend to have more sea noise during rough seas\")"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "From Decks 4 through 8, all major venues branch off the central Centrum, where the main elevator banks and stairwells are clustered.",
+      "effect": "Centrum-adjacent elevator cabins are extremely convenient for reaching venues, but a member review specifically recommended booking near the Centrum elevators over the forward bank because most venues and port embarkation activity cluster aft/central.",
+      "mattersTo": "Guests who prioritize convenience over quiet should book near the Centrum elevators; those wanting quiet should look elsewhere, as elevator lobbies become informal gathering/waiting spots.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisecritic.com editor review (\"Elevator banks and stairwells located there make finding everything...easy\") and member review (\"I recommend booking a cabin near the Centrum elevators\")"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        2
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A guest in forward Deck 2 cabin 2043 reported an access door in their cabin corridor leading to \"some kind of crew space,\" with doors slamming and crew talking/singing audible at night, while the cabin directly across the hall (2038) was much quieter.",
+      "effect": "Cabins immediately beside crew access points can get irregular noise (door slams, voices) at hours that don't match guest schedules, even when an identical cabin a few feet away is unaffected.",
+      "mattersTo": "Light sleepers should ask to avoid cabins next to unmarked crew doors; this is a hyper-local effect rather than a whole-deck problem.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com member review: \"cabin 2043 which had an access door to some kind of crew space...doors were slamming...Dad's cabin was across the hall, 2038. His was much quieter\""
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "On Deck 8 (the topmost guest cabin deck), aft-facing cabins look down onto the balconies of the cabins below them and then onto ship structure and a crew area, rather than straight down to the sea; balconies on each side slightly wrap around, which is characteristic of a hull that narrows at this height.",
+      "effect": "The horizon view stays open and these balconies are rated as offering some of the best views on the ship, but the straight-down view is onto structure/crew space rather than open water.",
+      "mattersTo": "Not a real drawback for most — these are marketed as prime cabins — but photographers wanting a view straight down to the wake should note it's obstructed by structure rather than water.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com deck 8 plan: \"Aft facing cabins look down on balcony of cabins below them and then down upon the ship structure and crew area. Balconies on each side slightly wrap to the side of the cabin and offer the best views\""
+    },
+    {
+      "factor": "other",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Interaction: Deck 7 (the lower balcony deck) sits at/near the lifeboat line and gets the straight-down obstruction, while Deck 8 directly above escapes the lifeboat obstruction entirely — but its aft cabins instead look down onto Deck 7's structure/crew area due to the hull's taper at that height.",
+      "effect": "Moving up one deck (7 to 8) trades a lifeboat-blocked view for a structure-blocked view; neither obstructs the horizon, and Deck 8 is considered the more premium location despite this.",
+      "mattersTo": "Anyone choosing between a Deck 7 balcony and a Deck 8 suite for view reasons should know the straight-down view is compromised either way, just by different structures.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "Synthesis of boards.cruisecritic.com forum (Deck 7 lifeboat obstruction) and cruisedeckplans.com deck 8 plan (Deck 8 aft cabins look down on structure/crew area)"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "2043",
+      "claim": "Cabin has an access door to a crew space; guest reported door-slamming and crew noise at night with heavy vibration, while cabin 2038 directly across the hall was quiet.",
+      "source": "cruisecritic.com member review (\"One of the Best!\")",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "3004",
+      "claim": "Guest with a very-far-forward Deck 3 cabin asked about motion issues combined with a smaller ship's typical sea-day movement.",
+      "source": "boards.cruisecritic.com forum thread \"Forward cabin deck 3 Grandeur motion issues?\"",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8020, 8026, 8030, 8036, 8044, 8052, 8058, 8064, 8070, 8076 (port) and 8520, 8526, 8530, 8536, 8544, 8552, 8558, 8564, 8570, 8576 (starboard)",
+      "claim": "These specific Deck 8 cabins have a structural support pole inside the room helping support the deck above.",
+      "source": "cruisedeckplans.com deck 8 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8504, 8506, 8004, 8006",
+      "claim": "Balconies get extra shade from an overhang from the deck above.",
+      "source": "cruisedeckplans.com deck 8 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8512-8546 (starboard) / 8012-8046 (port); 8556-8562 (starboard) / 8056-8062 (port)",
+      "claim": "Additional balcony groups on Deck 8 also receive shade from overhangs from the deck above.",
+      "source": "cruisedeckplans.com deck 8 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7024, 7524 and forward",
+      "claim": "These Deck 7 forward cabins are above the main show lounge and may have noise issues during shows and rehearsals.",
+      "source": "cruisedeckplans.com deck 7 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "7142 (port) and 7642 (starboard) and aft",
+      "claim": "Aft-location Deck 7 balconies from these numbers back sit above the South Pacific Lounge show venue and may have noise issues; verandas are also open to view from Deck 8 above.",
+      "source": "cruisemapper.com deck 7 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "3074 and forward (port) / 3574 and forward (starboard)",
+      "claim": "These cabins are sandwiched above and below by other cabins only (no public venues), making them the quietest section of Deck 3.",
+      "source": "cruisedeckplans.com deck 3 plan",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8526",
+      "claim": "A guest specifically asked about noise from the pool/whirlpool area affecting Junior Suite 8526.",
+      "source": "boards.cruisecritic.com forum thread \"Noise in cabin 8526, grandeur?\"",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Whether Grandeur of the Seas (or the Vision class generally) has any 'hump' — balconies cantilevered past the hull line — was not confirmed by any ship-specific or first-person source found; no evidence either way.",
+    "Exact deck/frame location of the lifeboats/tenders (which deck they are mounted on) was not confirmed from a primary deck-plan source, only inferred from a forum comment about Deck 7 balconies.",
+    "Whether bow-thruster noise (distinct from anchor-chain noise) is a specifically reported issue on Grandeur of the Seas — only a sister ship (Vision of the Seas) forum report of bow-thruster 'whomp' noise on a forward Deck 2 cabin was found, not confirmed for Grandeur itself.",
+    "Full range of officially RCI-labeled 'obstructed view' cabins on Deck 7 beyond categories 1B (cabin 7618) and D2 (cabin 7020) is unknown.",
+    "Whether the crew-corridor ('I-95') on Grandeur specifically has access points creating documented guest-cabin traffic beyond the single cabin 2043 report is unconfirmed."
+  ],
+  "ship": "Grandeur of the Seas",
+  "shipSlug": "grandeur-of-the-seas",
+  "line": "Royal Caribbean",
+  "totalCabins": 996,
+  "cabinsTouchedByAZone": 996,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 14,
+    "maxAllowed": 25
+  },
+  "cost": 1.3109600000000001
+}

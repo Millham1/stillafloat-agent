@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Concierge | Still Afloat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#07183f;--ocean:#0077b6;--seafoam:#5dff9a;--gold:#ffca4f;--cream:#faf6ee}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Baloo 2',sans-serif;background:#040a16;color:var(--navy)}
+/* Same canvas as affiliate.html — identical art, identical wash. */
+body::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(4,10,22,.55) 0%,rgba(4,10,22,.72) 100%),
+  url('/assets/images/cruising-gear-bg.png') center/cover fixed}
+.re-shell{max-width:960px;margin:0 auto;padding:70px 60px 84px;position:relative}
+
+/* ── The concierge card IS the cabin illustration — rounded, framed, characters on the corners ── */
+.re-frame{position:relative}
+.re-card{position:relative;border-radius:36px;border:3px solid var(--navy);overflow:hidden;
+  background:url('/assets/concierge/cabin-card.jpg') center/cover no-repeat;box-shadow:0 30px 80px rgba(0,0,0,.6);
+  padding:64px 60px 56px;aspect-ratio:1/0.92;display:flex;align-items:flex-end;justify-content:center}
+.panel-hold{position:relative;max-width:560px;width:100%}
+.corner{position:absolute;z-index:6;height:140px;width:auto;filter:drop-shadow(0 10px 18px rgba(0,0,0,.5))}
+.corner.tl{top:-52px;left:-44px;transform:rotate(-6deg)}
+.corner.tr{top:-52px;right:-44px;transform:rotate(6deg) scaleX(-1)}
+.corner.bl{bottom:-44px;left:-46px;transform:rotate(5deg)}
+.corner.br{bottom:-44px;right:-46px;transform:rotate(-5deg) scaleX(-1)}
+
+/* Soft cream panel floating on the cabin art — the writable surface. */
+.re-panel{position:relative;background:rgba(250,246,238,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:2px solid rgba(7,24,63,.5);
+  border-radius:26px;padding:26px 30px 22px;width:100%;
+  box-shadow:0 14px 40px rgba(7,24,63,.28)}
+.re-kick{text-align:center;font-weight:800;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--navy);margin:0 0 4px}
+h1{font-family:'Bree Serif',serif;text-align:center;font-size:clamp(28px,4.8vw,40px);margin:2px 0 14px;color:var(--navy);line-height:1.12}
+h2.q{font-family:'Bree Serif',serif;font-size:clamp(20px,3.4vw,25px);text-align:center;margin:14px 0 16px;color:var(--navy);line-height:1.3}
+.re-intro{font-size:18.5px;line-height:1.65;color:#22345c;margin:0 auto 4px;text-align:center}
+.re-intro b{color:var(--navy)}
+.re-fork{text-align:center;margin:20px 0 2px}
+.re-choices{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.re-btn{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:16px;border-radius:15px;padding:13px 24px;cursor:pointer;border:2.5px solid var(--navy);transition:transform .15s ease;background:#fff;color:var(--navy)}
+.re-btn:hover{transform:translateY(-2px)}
+.re-btn.yes{background:var(--navy);color:var(--gold)}
+.re-btn.no{background:var(--gold);color:var(--navy)}
+.re-opts{display:flex;flex-direction:column;gap:11px;margin:0 auto}
+.re-opt{text-align:left;font-family:'Baloo 2',sans-serif;font-size:15.5px;font-weight:600;line-height:1.45;background:#fff;border:2px solid rgba(7,24,63,.22);border-radius:15px;padding:13px 17px;cursor:pointer;transition:all .15s}
+.re-opt:hover{border-color:var(--ocean);transform:translateX(4px)}
+.re-progress{text-align:center;font-size:12px;font-weight:800;letter-spacing:.1em;color:#8896b0;text-transform:uppercase;margin:0 0 6px}
+/* The advisor reminder — one quiet line. No photo, no button, no pitch. */
+.quiet{margin:16px 0 0;text-align:center;font-size:13px;color:var(--navy);font-weight:600;font-style:italic}
+/* reveal card */
+.reveal-ship{background:#fff;border:2px solid rgba(7,24,63,.16);border-radius:18px;padding:18px 20px;margin:0 0 14px}
+.reveal-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.reveal-head h3{font-family:'Bree Serif',serif;font-size:22px;margin:0;color:var(--navy)}
+.reveal-head .line{color:#5a6b85;font-size:13px;font-weight:600}
+.conga-score-wrap{display:flex;align-items:center;gap:13px;margin:9px 0 4px;flex-wrap:wrap}
+.conga-mini{display:flex;align-items:flex-end;background:#fff;border-radius:10px;overflow:hidden}
+.conga-mini img{height:58px;width:auto;display:block}
+.conga-num{font-family:'Bree Serif',serif;font-size:27px;color:var(--ocean)}
+.conga-num small{font-size:14px;color:#8896b0;font-family:'Baloo 2',sans-serif;font-weight:800}
+.reveal-comment{font-size:15.5px;line-height:1.55;color:#22345c;margin:9px 0 11px;font-weight:600}
+.salty{display:flex;gap:11px;align-items:center;background:#f3edfb;border:1.5px solid #dccdf3;border-radius:13px;padding:9px 13px}
+.salty img{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid #fff}
+.salty .sl{font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#6b21a8;display:block;margin-bottom:2px}
+.salty p{margin:0;font-size:14px;line-height:1.5;color:#3b2a55}
+.reveal-pick{margin:12px 0 0;text-align:right}
+.re-cta{margin-top:16px;background:linear-gradient(135deg,rgba(0,119,182,.09),rgba(93,255,154,.12));border:2px solid rgba(0,119,182,.3);border-radius:18px;padding:20px;text-align:center}
+.re-cta h3{font-family:'Bree Serif',serif;margin:0 0 8px;font-size:20px}
+.re-cta p{margin:0 auto 13px;max-width:460px;font-size:15px;line-height:1.55;color:#33415c}
+footer{text-align:center;padding:24px 16px;color:rgba(247,251,255,.6);font-size:14px}
+@media(max-width:760px){.re-shell{padding:56px 18px 70px}.re-card{padding:40px 16px 34px;min-height:0}
+  .re-panel{padding:22px 18px 20px}
+  .corner{height:105px}.corner.tl{top:-38px;left:-12px}.corner.tr{top:-38px;right:-12px}
+  .corner.bl{bottom:-34px;left:-12px}.corner.br{bottom:-34px;right:-12px}}
+</style>
+</head>
+<body>
+<div class="re-shell">
+  <div class="re-frame">
+    <div class="re-card"><div class="panel-hold">
+    <img class="corner tl" src="/assets/concierge/corner-1_neutral_cruiser.png" alt="">
+    <img class="corner tr" src="/assets/concierge/corner-3_cruiser.png" alt="">
+    <img class="corner bl" src="/assets/concierge/corner-4_party_animal.png" alt="">
+    <img class="corner br" src="/assets/concierge/corner-5_conga_king_queen.png" alt="">
+    <div class="re-panel" id="stage"></div>
+    </div></div>
+  </div>
+</div>
+<footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more.</footer>
+
+<script>
+const DANCERS={1:'/assets/concierge/dancer-1_neutral_cruiser.jpg',2:'/assets/concierge/dancer-2_tourist.jpg',3:'/assets/concierge/dancer-3_cruiser.jpg',4:'/assets/concierge/dancer-4_party_animal.jpg',5:'/assets/concierge/dancer-5_conga_king_queen.jpg'};
+const SALTY_IMG='/assets/concierge/salty-mark.jpg';
+</script>
+<script>
+/* ─────────────────────────────────────────────────────────────────────────────
+   RoomConciergeFlow — the full journey, wired.
+   landing → fork → (ship picker | –) → 5 questions about you → expectations
+   (the finder's Mark-corrected tree) → reveal (published Conga score + Salty
+   Mark) → rooms (live-reasoned picks where advice exists) → the one CTA.
+   Design is LOCKED (Mark, 8/14) — stages render inside the frosted panel.
+──────────────────────────────────────────────────────────────────────────── */
+const QUIET = [
+  "curated by Still Afloat Cruising, your independent travel advisor",
+  "Questions? You can always talk to us.",
+];
+/* Behavioral interview (model approved by Mark 8/14): remembered behavior,
+   forced tradeoffs, projection — never self-description. Each option carries
+   hidden trait weights; the TYPE is inferred from the pattern. The visitor
+   never sees a label. */
+const PERSONALITY_QS = [
+  { key:"retell", q:"Think about the best vacation you've ever had. What's the part you still tell people about?",
+    opts:[["The meal I'm still chasing", {food:2, splurgeConsume:1}],
+          ["The people we met — we still talk", {social:2, energy:1}],
+          ["The thing we did that nobody back home believes", {active:2, energy:1}],
+          ["That for one week, nobody could reach me", {quiet:2, introvert:1}]] },
+  { key:"photos", q:"Open your phone — your last trip's photos are mostly…",
+    opts:[["Scenery. Not a human in frame", {quiet:2, introvert:1}],
+          ["Us with people we'd just met", {social:2, extrovert:2}],
+          ["Food and drinks, honestly", {food:2, splurgeConsume:1}],
+          ["The kids having the time of their lives", {family:2}]] },
+  { key:"wedding", q:"A wedding reception, 11pm. Where are we finding you?",
+    opts:[["On the dance floor", {energy:2, extrovert:1}],
+          ["Deep in a conversation that started at dinner", {social:1, introvert:1}],
+          ["Gone. We said our goodbyes at 9:30", {quiet:2, introvert:1}],
+          ["At the bar, making the bartender laugh", {social:2, energy:1}]] },
+  { key:"annoy", q:"What's the FIRST thing that annoys you about other travelers?",
+    opts:[["They're loud everywhere they go", {quiet:2, crowdsAvoid:2}],
+          ["They wing everything and it shows", {planner:2}],
+          ["They wait in lines they didn't have to", {planner:1, active:1}],
+          ["They never leave the pool", {active:2}]] },
+  { key:"overpay", q:"Last trip — what did you happily overpay for, zero regrets?",
+    opts:[["The view from the room", {splurgeCabin:2}],
+          ["One unforgettable dinner", {splurgeConsume:2, food:1}],
+          ["The excursion everyone said was too expensive", {active:2, splurgeConsume:1}],
+          ["Nothing. Getting the deal WAS the trip", {value:2, planner:1}]] },
+  { key:"tradeoff", q:"You get one — the other's gone forever:",
+    opts:[["The quiet corner nobody else has found", {quiet:2, introvert:2, crowdsAvoid:1}],
+          ["The table where everybody knows your name", {social:2, extrovert:2, crowdsLove:1}]] },
+];
+
+/* Pattern → the axes the matcher uses. Deterministic and inspectable. */
+function inferAxes(traits){
+  const t = k => traits[k]||0;
+  return {
+    energy:  t("energy")>=3 ? "party" : (t("quiet")>=3 ? "quiet" : "social"),
+    social:  t("extrovert")>t("introvert")+1 ? "extrovert" : (t("introvert")>t("extrovert")+1 ? "introvert" : "mixed"),
+    structure: t("planner")>=2 ? "planner" : "loose",
+    splurge: t("splurgeCabin")>=2 ? "cabin" : (t("value")>=2 ? "value" : "consumables"),
+    crowds:  t("crowdsAvoid")>=2 || t("quiet")>=4 ? "avoids" : (t("crowdsLove")>=1||t("energy")>=3 ? "loves-it" : "tolerates"),
+  };
+}
+/* The finder's expectation tree, ported verbatim (Mark-corrected copy). */
+const EXPECT_QS = [
+  { key:"party", q:"Who's going?", opts:[
+      ["Just the two of us","couple"],["Family with kids","family"],
+      ["Just me","solo"],["A group of us","group"]] },
+  { key:"room", q:"How do you picture using your room?", opts:[
+      ["Crash and recharge","inside"],["Wake up to daylight and water","oceanview"],
+      ["Coffee outside in my pajamas","balcony"],["The room is part of the vacation","suite"],
+      ["Honestly, no idea — pick for me","balcony"]] },
+  { key:"priority", q:"What matters most once you're aboard?", opts:[
+      ["Waking up to the ocean","ocean"],["Peace and quiet","quiet"],
+      ["Being near the action","action"],["Room to spread out","space"]] },
+  { key:"motion", q:"Does anyone get seasick?", opts:[
+      ["Yes — keep us steady","yes"],["No, we're fine","no"],
+      ["I can grin and bear it","no"]] },
+];
+
+class RoomConciergeFlow {
+  constructor() {
+    this.path=null; this.personality={}; this.expect={}; this.qIndex=0; this.eIndex=0;
+    this.fleet=[]; this.chosen=null; this.suggestion=null; this.picked=new Set();
+    this.stageEl=document.getElementById("stage");
+    this.loadFleet();
+  }
+  quiet(i){ return `<p class="quiet">${QUIET[i===0?0:1]}</p>`; }
+  async loadFleet(){
+    try{ const r=await fetch("/api/cabins/fleet"); this.fleet=(await r.json()).ships||[]; }
+    catch{ this.fleet=[]; }
+  }
+  landing(){
+    this.stageEl.innerHTML = `
+      <p class="re-kick">Room Concierge</p>
+      <h1>Let's find the room<br>you'll brag about.</h1>
+      <p class="re-intro">A few quick <b>questions about you</b> — enough to figure out what you want
+      out of a trip. Then your <b>expectations</b>. Then <b>real rooms</b> — the exact cabins
+      worth booking, and the ones worth walking past. About two minutes.</p>
+      <div class="re-fork">
+        <h2 class="q">Do you already have a ship in mind?</h2>
+        <div class="re-choices">
+          <button class="re-btn yes" onclick="RC.fork('ship')">Yes — I know my ship</button>
+          <button class="re-btn no" onclick="RC.fork('discover')">Not yet — help me pick</button>
+        </div>
+      </div>
+      ${this.quiet(0)}`;
+  }
+  fork(path){ this.path=path; this.qIndex=0; this.eIndex=0;
+    path==="ship" ? this.shipPick() : this.personalityQ(); }
+  shipPick(filter=""){
+    const f=filter.trim().toLowerCase();
+    const matches=this.fleet.filter(s=>!f||s.ship.toLowerCase().includes(f)||s.line.toLowerCase().includes(f));
+    const byLine={};
+    for(const s of matches){ (byLine[s.line]=byLine[s.line]||[]).push(s); }
+    const list=Object.entries(byLine).map(([line,ships])=>
+      `<div style="margin:8px 0 2px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#33415c">${line}</div>`+
+      ships.map(s=>`<button class="re-opt" style="padding:9px 14px;font-size:15px" onclick="RC.chooseShip('${s.slug}')">${s.ship}</button>`).join("")
+    ).join("");
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Your ship</p>
+      <h2 class="q">Which ship?</h2>
+      <input id="shipSearch" placeholder="Start typing a ship or line…" value="${filter.replace(/"/g,"&quot;")}"
+        style="width:100%;padding:12px 16px;border-radius:14px;border:2px solid rgba(7,24,63,.3);font-family:'Baloo 2',sans-serif;font-size:16px;margin-bottom:10px"
+        oninput="RC.shipPick(this.value)">
+      <div class="re-opts" style="max-height:300px;overflow-y:auto">${list||'<p style="text-align:center;color:#33415c">No match — check the spelling, or go back and let me pick.</p>'}</div>
+      ${this.quiet(1)}`;
+    const inp=document.getElementById("shipSearch");
+    if(f){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
+  }
+  chooseShip(slug){ this.chosen=this.fleet.find(s=>s.slug===slug)||null; this.personalityQ(); }
+  personalityQ(){
+    const i=this.qIndex;
+    if(i>=PERSONALITY_QS.length){ this.personality=inferAxes(this.traits); return this.expectQ(); }
+    const q=PERSONALITY_QS[i];
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Getting to know you · ${i+1} of ${PERSONALITY_QS.length}</p>
+      <h2 class="q">${q.q}</h2>
+      <div class="re-opts">${q.opts.map(([label],oi)=>
+        `<button class="re-opt" onclick="RC.answerP(${i},${oi})">${label}</button>`).join("")}</div>
+      ${this.quiet(1)}`;
+  }
+  answerP(qi,oi){
+    const q=PERSONALITY_QS[qi], weights=q.opts[oi][1];
+    this.raw=this.raw||{}; this.raw[q.key]=q.opts[oi][0];
+    this.traits=this.traits||{};
+    for(const [k,v] of Object.entries(weights)) this.traits[k]=(this.traits[k]||0)+v;
+    this.qIndex++; this.personalityQ();
+  }
+  expectQ(){
+    const i=this.eIndex;
+    if(i>=EXPECT_QS.length) return this.reveal();
+    const q=EXPECT_QS[i];
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Your expectations · ${i+1} of ${EXPECT_QS.length}</p>
+      <h2 class="q">${q.q}</h2>
+      <div class="re-opts">${q.opts.map(([label,val])=>
+        `<button class="re-opt" onclick="RC.answerE('${q.key}','${val}')">${label}</button>`).join("")}</div>
+      ${this.quiet(1)}`;
+  }
+  answerE(key,val){ this.expect[key]=val; this.eIndex++; this.expectQ(); }
+  async reveal(){
+    this.stageEl.innerHTML = `<p class="re-progress">The reveal</p><h2 class="q">Working on it…</h2>`;
+    let shipsToShow=[], reason="";
+    if(this.path==="ship" && this.chosen){ shipsToShow=[this.chosen]; }
+    else{
+      try{
+        const r=await fetch("/api/cabins/suggest-ships",{method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({personality:this.personality, party:this.expect.party, traits:this.traits, raw:this.raw})});
+        const d=await r.json(); shipsToShow=d.picks||[]; reason=d.reason||"";
+      }catch{ shipsToShow=[]; }
+    }
+    if(!shipsToShow.length){
+      this.stageEl.innerHTML = `<p class="re-progress">The reveal</p>
+        <h2 class="q">I'd rather get this right than guess.</h2>
+        <p class="re-intro">Something didn't line up on my end. Send over what you told me and a real
+        person will finish the job.</p>${this.cta()}`;
+      return;
+    }
+    const cards=await Promise.all(shipsToShow.map(s=>this.shipCard(s)));
+    const heading=this.path==="ship" ? "Your ship, scored honestly." :
+      (shipsToShow.length>1?"Two ships that fit you.":"The ship that fits you.");
+    this.stageEl.innerHTML = `
+      <p class="re-progress">The reveal</p>
+      <h2 class="q">${heading}</h2>
+      ${reason?`<p class="re-intro" style="font-size:15.5px">${reason}</p>`:""}
+      ${cards.join("")}
+      ${this.cta()}`;
+  }
+  async shipCard(s){
+    let rating=null, comment=null, salty=null;
+    try{
+      const r=await fetch(`/api/ships/${encodeURIComponent(s.slug)}/rating`);
+      if(r.ok){ const d=await r.json(); if(d.ok){ rating=d.rating; comment=d.comment; salty=d.saltyMarkTake; } }
+    }catch{/* no rating shown */}
+    const scoreRow = rating!=null ? `
+      <div class="conga-score-wrap">
+        <span class="conga-mini">${[1,2,3,4,5].map(n=>
+          `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</span>
+        <span class="conga-num">${Number(rating).toFixed(1)}<small>/5 Conga Rating</small></span>
+      </div>` : "";
+    const nextLevel = s.nextLevel ? `
+      <div style="display:flex;gap:10px;align-items:center;background:#fff8e6;border:1.5px solid #ecd9a0;border-radius:13px;padding:9px 13px;margin:0 0 10px">
+        <span style="font-size:20px">✦</span>
+        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#8a6d1a;display:block;margin-bottom:2px">Next level: ${s.nextLevel.name}</span>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:#5c4a12">${s.nextLevel.why}</p></div>
+      </div>` : "";
+    const roomsBtn = s.hasRooms
+      ? `<button class="re-btn no" onclick="RC.rooms('${s.repSlug}','${s.ship.replace(/'/g,"\\'")}')">Show me the rooms →</button>`
+      : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Room-by-room picks for this ship are coming — ask and we'll do it by hand.</span>`;
+    return `<div class="reveal-ship">
+      <div class="reveal-head"><h3>${s.ship}</h3><span class="line">${s.line}</span></div>
+      ${scoreRow}
+      ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
+      ${salty?`<div class="salty"><img src="${SALTY_IMG}" alt="Salty Mark">
+        <div><span class="sl">Salty Mark says</span><p>&ldquo;${salty}&rdquo;</p></div></div>`:""}
+      ${nextLevel}
+      <div class="reveal-pick">${roomsBtn}</div>
+    </div>`;
+  }
+  async rooms(repSlug, shipName){
+    this.stageEl.innerHTML = `<p class="re-progress">Your rooms</p><h2 class="q">Pulling the rooms I'd pick on ${shipName}…</h2>`;
+    let d=null;
+    try{
+      const r=await fetch("/api/cabins/recommend",{method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ship:repSlug, party:this.expect.party, room:this.expect.room,
+          priority:this.expect.priority, motion:this.expect.motion==="yes"})});
+      if(r.ok) d=await r.json();
+    }catch{/* handled below */}
+    if(!d||!d.picks?.length){
+      this.stageEl.innerHTML = `<p class="re-progress">Your rooms</p>
+        <h2 class="q">This one needs the human touch.</h2>
+        <p class="re-intro">I don't have room-level picks for ${shipName} loaded yet — send your answers
+        over and it gets done by hand.</p>${this.cta()}`;
+      return;
+    }
+    this.picked=new Set(); this.roomsData=d; this.roomsShip=shipName; this.roomsRep=repSlug;
+    this.drawRooms();
+  }
+  drawRooms(){
+    const d=this.roomsData;
+    const picks=d.picks.map(p=>{
+      const f=p.facts||{};
+      const on=this.picked.has(p.cabin);
+      return `<div class="reveal-ship" style="padding:14px 16px">
+        <div class="reveal-head"><h3 style="font-size:19px">Cabin ${p.cabin}</h3>
+          <span class="line">${f.deck?`Deck ${f.deck}`:""}${f.category?` · ${f.category}`:""}${f.view?` · ${f.view}`:""}</span></div>
+        ${p.hook?`<p class="reveal-comment" style="margin:7px 0 4px">${p.hook}</p>`:""}
+        ${p.reason?`<p style="font-size:14.5px;line-height:1.5;color:#33415c;margin:4px 0 8px">${p.reason}</p>`:""}
+        <div style="text-align:right"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
+          onclick="RC.togglePick('${p.cabin}')">${on?'✓ Picked':'Pick this room'}</button></div>
+      </div>`;}).join("");
+    const steer=(d.steerClear||[]).slice(0,3).map(s=>
+      `<li style="margin:0 0 6px">${s.cabin?`<b>Cabin ${s.cabin}</b> — `:s.area?`<b>${s.area}</b> — `:""}${s.reason||""}</li>`).join("");
+    const sendBar=this.picked.size?`
+      <div class="re-cta"><h3>${this.picked.size} room${this.picked.size>1?"s":""} picked</h3>
+        <p>Send them over and a real person checks the pick, the price, and the itinerary before you book.</p>
+        <a class="re-btn yes" style="text-decoration:none;display:inline-block"
+          href="/cabin-request.html?ship=${encodeURIComponent(this.roomsShip)}&cabins=${encodeURIComponent([...this.picked].join(","))}">Send my picks</a></div>`
+      : this.cta();
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Your rooms · ${this.roomsShip}</p>
+      <h2 class="q">Here's where I'd put you.</h2>
+      ${picks}
+      ${steer?`<div style="background:#fff;border:2px solid rgba(7,24,63,.16);border-radius:16px;padding:14px 18px;margin:0 0 14px">
+        <p style="margin:0 0 8px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#b45309">Worth walking past</p>
+        <ul style="margin:0;padding-left:18px;font-size:14.5px;color:#33415c">${steer}</ul></div>`:""}
+      ${sendBar}`;
+  }
+  togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
+  cta(){
+    return `<div class="re-cta">
+      <h3>Want a real person to sanity-check it?</h3>
+      <p>Send over what you told me — the pick, the price, and the itinerary get a human read
+      before you book a thing. No fee, no pressure.</p>
+      <a class="re-btn yes" style="text-decoration:none;display:inline-block" href="/cabin-request.html">Talk to us</a>
+    </div>`;
+  }
+}
+const RC=new RoomConciergeFlow(); RC.landing();
+</script>
+</body>
+</html>

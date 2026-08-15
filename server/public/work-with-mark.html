@@ -572,5 +572,35 @@ document.getElementById('moreToggle').addEventListener('click', function () {
   this.innerHTML = open ? '&minus; Hide extra details' : '+ Add more details <span style="opacity:.6">(optional)</span>';
 });
 </script>
+<script>
+// Arriving from the Cabin Concierge: carry the ship and the cabins they liked
+// into the enquiry so Mark isn't asking them to repeat it, and so he can see what
+// the concierge actually recommended. Purely additive — never overwrite anything
+// the visitor has already typed.
+(function () {
+  var p = new URLSearchParams(location.search);
+  if (p.get('from') !== 'cabin-concierge') return;
+  var ship = (p.get('ship') || '').trim(), cabins = (p.get('cabins') || '').trim();
+  if (!ship && !cabins) return;
+
+  var notes = document.getElementById('notes');
+  if (notes && !notes.value.trim()) {
+    notes.value =
+      'Coming from the Cabin Concierge.' +
+      (ship ? '\nShip: ' + ship : '') +
+      (cabins ? '\nCabins it suggested: ' + cabins : '') +
+      '\n\nCould you check availability and what these would cost?';
+  }
+  var pref = document.getElementById('cruise_line_pref');
+  if (pref && !pref.value.trim() && ship) pref.value = ship;
+
+  var banner = document.getElementById('errorMsg');
+  if (banner) {
+    banner.className = 'msg-box';
+    banner.style.cssText = 'display:block;background:rgba(93,255,154,.1);border:1px solid rgba(93,255,154,.35);color:#dff7e6';
+    banner.textContent = 'Your cabins from the concierge are in the notes below — add your dates and send it over.';
+  }
+})();
+</script>
 </body>
 </html>

@@ -1,0 +1,278 @@
+{
+  "class": "MSC World Europa (MSC World Class)",
+  "sisterShips": [
+    "MSC World America",
+    "MSC World Asia",
+    "MSC World Atlantic",
+    "MSC World Class 5 (ordered, unnamed, planned 2029)",
+    "MSC World Class 6 (ordered, unnamed, planned 2030)"
+  ],
+  "zones": [
+    {
+      "factor": "i95",
+      "decks": [
+        10,
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Guests in far-forward deck 10/11 cabins report a crew service door near their cabin used through the night, alongside forward crew-only cabins that sit just ahead of the guest block on these decks.",
+      "effect": "A steady stream of night-time crew movement and door noise on top of the mooring/docking sounds described below; two independent guest reviews of the same cabin area both mention this.",
+      "mattersTo": "Light sleepers booking forward on decks 10-11 should care; those who are out late or heavy sleepers may not notice.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "tripadvisor.com forum review of cabin 10006: \"there was a crew door nearby which was used all night\"; cruisemapper.com deck plans note crew cabins forward of the Atrium on decks 9-12."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        10,
+        11
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Far-forward deck 10/11 cabins sit close to the bow thruster/mooring gear, and two independent guest reviews describe loud grinding/rumbling noise every time the ship docks or departs a port.",
+      "effect": "A recurring 5:50am-8am wake-up call of thruster and rope/winch noise lasting up to an hour on port-intensive itineraries; escaped only on sea days.",
+      "mattersTo": "Cruisers on multi-port itineraries who value sleep should avoid; those on mostly sea-day cruises or who don't mind early noise can ignore.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisecritic.com member review (deck 10 forward): \"The noise when the ship docks woke us every morning... sounded like somebody was in a room with an electric sander\"; tripadvisor.com forum thread on cabin 10006: \"the sounds of the bow thrusters and the ropes being released... went on for an hour each morning.\""
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        5
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "A guest review of MSC World Europa specifically warns not to book \"Level 5\" (deck 5) due to engine noise, consistent with its position low in the hull near propulsion machinery.",
+      "effect": "Persistent low-frequency engine hum/noise reported as worse than on higher decks.",
+      "mattersTo": "Noise-sensitive travelers on a budget looking at low-deck oceanview/studio cabins should weigh this; less relevant to those who sleep through mechanical hum.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "globaljourneys.com guest review: \"If staying on MSC Europa do not book Level 5, way too much engine noise.\""
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "A first-person review of an aft deck 14 cabin (14727) reports the ship visibly vibrating and juddering underway.",
+      "effect": "Constant low-level vibration/judder at the back of the ship, described as unsettling to some but preferred by the reviewer over side-to-side rolling.",
+      "mattersTo": "Motion- or vibration-sensitive guests should avoid far-aft cabins on mid-tier decks; those who prefer a stable, non-rolling ride may not mind.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "emmacruises.com first-person cabin review of aft cabin 14727: \"The ship definitely did vibrate and judder.\""
+    },
+    {
+      "factor": "lifeboat",
+      "decks": [
+        15,
+        16
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "MSC's own cabin-category description for the Deluxe Balcony with Partial View (category BP/PV) states these staterooms \"have views that may be obstructed by lifeboats or other ship structures.\"",
+      "effect": "The horizon stays visible but a straight-down or partial forward/side sightline can be blocked by lifeboat davits; a Cruise Critic poster on this exact category could not find photos of what the obstruction actually looks like, suggesting real variability cabin-to-cabin.",
+      "mattersTo": "View-focused cruisers paying for a Deluxe Balcony should ask for exact cabin photos before booking; those buying this category mainly for outdoor space and price won't be bothered.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "icruise.com cabin listings (16113, 16175) for category BP: \"views that may be obstructed by lifeboats or other ship structures\"; corroborated by boards.cruisecritic.com thread asking about the deck 15/16 Partial View obstruction."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        19
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A forward deck 19 Deluxe Interior cabin (19504) sat directly beneath Yacht Club service/kitchen areas tied to the Top Sail Lounge and MSC Yacht Club Restaurant one deck up.",
+      "effect": "Near-constant crew/kitchen prep noise into the night, even though the same cabin type on the identical spot one deck below (18) had no such problem because deck 18 there was cabins, not service space.",
+      "mattersTo": "Budget interior-cabin bookers on deck 19 forward should check what is directly overhead before booking; the same cabin type elsewhere on the ship was fine.",
+      "severity": "significant",
+      "confidence": "medium",
+      "source": "fraseratsea.com first-person review: \"I'd recommend that you avoid these cabins on deck 19... the noise level was ridiculous up there!\" and \"these 'blank spaces' directly above my cabin must have been Yacht club service areas/kitchen service areas.\""
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        14,
+        15,
+        16,
+        18
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "MSC World Europa's deck plan totals 13 outdoor Jacuzzis, of which 4 are cantilevered (extended past the hull line), concentrated in the Grand Suite/Whirlpool Bath Suite (aft) and MSC Yacht Club Duplex Whirlpool (forward) categories.",
+      "effect": "Guests in these specific whirlpool suites get an outdoor tub and balcony that project beyond the standard hull profile for a wider, less obstructed view than straight-hull neighbours.",
+      "mattersTo": "Whirlpool-suite bookers benefit from an unobstructed, elevated view; standard balcony cabins on the same decks do not get this feature.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com deck-plan summary: \"13 Jacuzzis (outdoor whirlpools/hot tubs, including 4 cantilevered).\""
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10,
+        11,
+        12,
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Promenade Balcony cabins on these decks face inward onto the ship's interior World Promenade rather than the sea, sitting above the Venom Drop dry slide and nightly light/fountain shows.",
+      "effect": "Guests get an up-close view of onboard entertainment and light shows, but multiple sources describe carrying noise from slide screams, music, and shows lasting into the evening.",
+      "mattersTo": "Cruisers who want to be part of the action or families with kids may love it; anyone wanting quiet or a sea view should skip Promenade Balcony categories.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com editorial: \"these inward-facing cabins have views of the ship's interior promenade... take in the amazing light shows performed here on most evenings\"; emmacruises.com first-person account wondering if slide screams \"would keep me awake at night\"; cruisesnooze.com listicle describing promenade-facing cabins as \"stunning but loud.\""
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        19,
+        20,
+        21
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A ship-specific review advises caution with far-forward cabins for motion sensitivity, noting they can feel less stable than midship cabins on rougher sea days.",
+      "effect": "More perceptible pitch/roll motion far forward and on the topmost decks compared with lower, midship cabins.",
+      "mattersTo": "Motion-sensitive cruisers should prioritize midship, lower-to-mid decks; those unaffected by motion can book forward or high decks freely for the views.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisesnooze.com World Europa review: \"If you are sensitive to motion, I would still be careful with far-forward cabins... midship is usually the safer play.\""
+    },
+    {
+      "factor": "other",
+      "decks": [
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "MSC World Europa offers modular \"family cabin\" clusters of 2-3 connecting balcony staterooms (categories FPB/FLA/FMB), concentrated midship-aft on several decks.",
+      "effect": "Connecting doors between linked cabins are a lighter partition than a standard cabin wall, so noise from an adjoining connected cabin carries more than from a normal neighbour.",
+      "mattersTo": "Families/groups booking connecting cabins on purpose benefit; solo bookers assigned next to an unrelated connecting pair may hear more through the shared door.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com cabins page: \"three types of 'family cabins,' consisting of 2 or 3 modular connecting rooms (and their balconies)... FPB... FLA... FMB.\""
+    },
+    {
+      "factor": "other",
+      "decks": [
+        5,
+        10,
+        11,
+        12,
+        14,
+        15,
+        16,
+        18,
+        19,
+        20,
+        21
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "A ship-specific guest review of MSC World Europa states cabin walls were not well soundproofed, leading to audible neighbours.",
+      "effect": "Baseline expectation of some neighbour noise through cabin walls fleet-wide on this ship, independent of specific deck or location factors above.",
+      "mattersTo": "Very light sleepers should pack earplugs regardless of cabin choice; most guests won't find it a dealbreaker.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "tripadvisor.com ship review: \"Cabin walls not soundproofed, noisy neighbours.\""
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        9,
+        10,
+        11,
+        12,
+        14,
+        15,
+        16
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "The ship's Panoramic glass-walled/glass-floored passenger lifts are clustered midship in the Atrium across most cabin decks, per the official deck-by-deck layout.",
+      "effect": "Midship cabins near the Atrium get short walks to lifts but are exposed to Atrium lobby/elevator-bank foot traffic and activity; cabins farther fore or aft have a longer walk but a quieter corridor.",
+      "mattersTo": "Guests prioritizing convenience over quiet should book near the Atrium; those wanting a calmer corridor should book away from midship.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemapper.com deck plans (decks 9-16, repeated per deck): \"The midship Panoramic Lifts are glass-wall and glass-floor elevators located in the Atrium.\""
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "10001-10020 (deck 10 forward) and 11001-11020 (deck 11 forward, directly above)",
+      "claim": "Named by a guest as the specific ranges to avoid due to horrendous docking/thruster noise and an all-night crew door.",
+      "source": "cruisecritic.com member review \"MSC World Europa beware\"",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "10006",
+      "claim": "Specific cabin reported as extremely noisy at every docking (6-8am), with bow thruster and rope noise plus a nearby crew door used all night.",
+      "source": "tripadvisor.com Cruises Forum thread",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "19504",
+      "claim": "Forward Deluxe Interior cabin directly beneath Yacht Club kitchen/service space; guest had to move cabins after a few nights due to near-constant noise.",
+      "source": "fraseratsea.com first-person cabin review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "14727",
+      "claim": "Aft deck 14 balcony cabin where the guest felt clear vibration/judder from propulsion underway.",
+      "source": "emmacruises.com first-person cabin review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "15108, 16110, 16113, 16175",
+      "claim": "Specific Deluxe Balcony with Partial View (category BP) cabins flagged by MSC/booking sites as having views obstructed by lifeboats or other ship structures.",
+      "source": "icruise.com and cruiseline.com individual cabin listing pages",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Whether MSC World Europa's deck 9 currently carries guest cabins in the real, sold inventory: multiple deck-plan aggregators (cruisemapper, cruisedeckplans, MSC's own PDF) show deck 9 cabins (9000-9278), but this conflicts with the task's stated guest-deck list (5,10,11,12,14,15,16,18,19,20,21) which omits deck 9 entirely — this discrepancy needs verification against a current official deck plan.",
+    "The exact deck on which lifeboats/tenders are mounted (deck 8 appears to be spa/dining rather than a boat deck per available plans) and therefore exactly which guest decks/sections are 'worst' vs 'lightly' obstructed.",
+    "Whether MSC World Europa's topmost Yacht Club decks (19-21) have a hull taper that hides the straight-down view from any balconies — no source found addressing this specifically for this ship.",
+    "Whether deck 16 (or any deck) sits directly beneath the deck 18 pool/buffet complex given the missing deck 17, and whether this produces the kind of overhead noise reported on other MSC ships — a widely-repeated 'Deck 18 Under the Buffet' claim exists in one listicle but conflicts with official deck-plan data showing deck 18 cabins are all fore-located (away from the midship/aft pool and buffet), so it was not included as a zone.",
+    "Any ship-specific accessible-cabin location quirks beyond the general ADA/wheelchair cabin counts and their proximity-to-elevators note."
+  ],
+  "ship": "MSC World Europa",
+  "shipSlug": "msc-world-europa",
+  "line": "MSC Cruises",
+  "totalCabins": 2320,
+  "cabinsTouchedByAZone": 2320,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 19,
+    "maxAllowed": 25
+  },
+  "cost": 3.386146
+}

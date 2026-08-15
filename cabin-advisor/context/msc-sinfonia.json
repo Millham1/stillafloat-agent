@@ -1,0 +1,198 @@
+{
+  "class": "Lirica-class (MSC Cruises)",
+  "sisterShips": [
+    "MSC Armonia",
+    "MSC Lirica",
+    "MSC Opera"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "MSC's own product listing carries a distinct category — 'Junior Ocean View with Obstructed View' — sized 129–140 ft2, located only on deck 7, separate from the unobstructed Junior Ocean View category that starts one deck up.",
+      "effect": "On deck 7 the lifeboats/tenders sit right outside the windows; a first-person cabin report on this ship confirms a window that simply faced a lifeboat, providing light but no usable sea view.",
+      "mattersTo": "View-focused guests and photographers should avoid deck 7 oceanview cabins; guests who only want a window for light/ventilation (and a lower fare) can book it deliberately.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "msccruisesusa.com official cabin page (labels deck 7 oceanview as obstructed) + everonboard.com first-person review ('The window faced a lifeboat')"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Deck 7 (Brahms) cabins sit directly one deck above Deck 6 (Mozart), which holds Il Covo Restaurant, Buddha Bar, San Remo Casino, and the San Carlo Theatre (theatre spans decks 5–6).",
+      "effect": "Guests over the casino, bars or theatre can pick up bass, applause, and late-closing bar noise through the floor, especially on nights with shows or DJ sets.",
+      "mattersTo": "Early sleepers and light sleepers booking deck 7 Bella/Fantastica cabins should ask for a location away from the theatre/casino footprint; unbothered night owls can ignore this.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruiseline.com deck-by-deck listing (Brahms/deck 7 cabins vs. Mozart/deck 6 venues)"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 10 (Sibelius) cabins and suites sit directly beneath Deck 11 (Debussy), which carries La Terrazza Buffet, Caffe Del Mare, the Le Piscine pool complex, Capri Bar, and the spa/gym.",
+      "effect": "Deck 10 guests are one deck below deck-chair dragging, pool-deck music, buffet service carts, and morning pool-cleaning — noise starts early and runs into the evening.",
+      "mattersTo": "Suite/balcony guests on deck 10 who value quiet mornings should request cabins away from the pool footprint (more aft or more forward of the pool itself); families who want to be near the pool benefit from the same proximity.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruiseline.com deck-by-deck listing (Debussy/deck 11 pool-buffet-spa vs. Sibelius/deck 10 cabins directly below)"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The forward Deluxe Suite Aurea block (1201–1229) on Deck 12 sits directly below Deck 13, which holds the Minigolf, Shuffleboard, Golf Simulator, Sport Center and the unmarked/obstructable Power Walking Track.",
+      "effect": "Suite guests can expect deck-game and jogging-track thumps and chair-dragging noise from directly overhead, particularly in the morning before pool activities move guests to deck 11.",
+      "mattersTo": "Suite bookers wanting quiet mornings should note this; sport-and-activity-focused guests may see it as a convenience instead.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "official MSC Sinfonia deck-plan PDF (msccruises.co.uk) showing Minigolf/Shuffleboard/Golf Simulator/Power Walking Track on Deck 13 directly above the Deck 12 (Bizet) suite block"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "The Pasha Club Disco & Nightclub is also on Deck 12 (Bizet) but at the stern, while the forward Deluxe Suite Aurea block (1201–1229) sits at the opposite end of the same deck; the disco itself doubles as a quiet daytime lounge with stern views.",
+      "effect": "Because the nightclub and the suites are on the same deck but at opposite ends of the ship, the fore-aft distance — not a deck separation — is what buys the forward suites relative quiet from the 11:30pm DJ sets; a straight-hull neighbor of the disco would get much more bleed than these suites do.",
+      "mattersTo": "Suite guests worried about nightclub noise can be reassured by the fore-aft distance, but should still avoid any suite advertised as 'near the disco' rather than 'forward.'",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "CruiseMapper deck-12 plan (disco location + suite range) and cruisedeckplans.com (disco described as quiet by day, DJ from ~11:30pm, stern-facing)"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        7,
+        8,
+        9,
+        10,
+        12
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "The ship has 9 elevators distributed through multiple banks across the superstructure, and MSC deliberately places its wheelchair-accessible cabins next to these elevator banks.",
+      "effect": "Elevator-adjacent cabins get the shortest walk to the lobby and fastest evacuation access, at the cost of hallway traffic noise and the mechanical hum/ding of the lift itself, especially at the forward and aft lobby clusters visible on the deck-7 plan.",
+      "mattersTo": "Mobility-limited guests benefit from requesting these cabins; light sleepers should ask to be moved a few cabins away from any marked 'Lift' icon on the deck plan.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "CruiseMapper deck-plan overview (9 elevators) and CruiseMapper cabins page ('All ADA cabins also feature a convenient location near the elevators')"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        7,
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "A ship-class-specific cabins-to-avoid guide reports that the aft sections of deck 7 and deck 8 on the Lirica-class ships (Armonia, Sinfonia, Lirica, Opera) experience noticeable shuddering when the ship runs at top speed.",
+      "effect": "Guests in aft cabins on these two decks can feel low-frequency vibration through the floor and furniture during faster transits, not just at all-stop maneuvering.",
+      "mattersTo": "Light sleepers and anyone sensitive to vibration should avoid the far-aft cabins on decks 7–8; guests who barely notice engine hum can safely book here for the lower fares these locations often carry.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisesnooze.com MSC cabins-to-avoid guide, naming the Lirica-class ships (Armonia, Sinfonia, Lirica, Opera) specifically for this aft deck 7/8 vibration"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A first-person Cruise Critic review of the deck-9 forward family suite (cabin 9003) reports hearing distinct noise during docking maneuvers because of the cabin's position at the very front of the ship.",
+      "effect": "Forward cabins pick up anchor-chain rattle, bow-thruster whine, and hull noise every time the ship arrives in port — typically an early-morning event on port-intensive itineraries.",
+      "mattersTo": "Light sleepers on port-heavy itineraries should avoid the extreme-forward family suites (9003/9006); guests who don't mind an early wake-up call and want the forward-facing view can book them for that reason.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "Cruise Critic member review of MSC Sinfonia cabin 9003 ('As this cabin is at the very front of the ship, you can hear noise when the ship is docking')"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        12
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "A ship-specific review guide for MSC Sinfonia advises against extreme forward or far-aft cabins for motion-sensitive guests, and general MSC guidance notes that higher decks amplify the felt motion of the waves.",
+      "effect": "Deck 12 — the highest deck with cabins, all forward-located suites — combines the two biggest motion multipliers (height and forward position) for this ship.",
+      "mattersTo": "Guests prone to seasickness should be cautious about the deck-12 forward suites and any far-aft cabin on lower decks; guests unaffected by motion can prioritize the suite upgrade without concern.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisesnooze.com MSC Sinfonia review ('Avoid extreme forward cabins if motion bothers you... Far aft cabins may have views, but they may not be the calmest choice')"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "9003 and 9006",
+      "claim": "Larger forward family suites with a porthole (not a full window), no balcony, and reported docking noise due to extreme-forward position.",
+      "source": "CruiseMapper cabins page + Cruise Critic member review of cabin 9003",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "8142, 9051, 9052, 9149",
+      "claim": "The ship's wheelchair-accessible (ADA) inside cabins, all placed near elevator banks for access convenience.",
+      "source": "CruiseMapper MSC Sinfonia cabins page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "Deck 7, category OO/Junior Ocean View with Obstructed View block",
+      "claim": "Entire deck-7 oceanview category is sold/labeled by MSC itself as obstructed view (lifeboats), at a discounted size/price versus deck 8-10 oceanview cabins.",
+      "source": "msccruisesusa.com official cabin descriptions",
+      "confidence": "high"
+    }
+  ],
+  "unknowns": [
+    "Whether the lifeboat/tender obstruction visible on deck 7 also partially affects deck 8 cabins directly above the boats (no MSC labeling or review found confirming or denying this for deck 8).",
+    "Whether this class has any hump-style cantilevered balconies that jut past the hull line — no aggregator or first-person source found any such claim for Lirica-class ships, so it cannot be confirmed either way.",
+    "Whether the forward Deck 12 Aurea suites experience a hull-taper effect that hides the straight-down view (no source discusses hull taper for this class's top deck).",
+    "Location and guest-facing noise impact of the crew-only I-95-style corridor and its access points near guest cabins — not documented in any source found.",
+    "First-person confirmation that Pasha Club Disco bass actually carries to the forward Deck 12 suites in practice (only distance/layout evidence found, no direct guest report).",
+    "Whether bow-thruster noise specifically (as distinct from anchor/docking noise) is reported by guests in forward cabins on decks 9-10."
+  ],
+  "ship": "MSC Sinfonia",
+  "shipSlug": "msc-sinfonia",
+  "line": "MSC Cruises",
+  "totalCabins": 897,
+  "cabinsTouchedByAZone": 897,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 19,
+    "maxAllowed": 25
+  },
+  "cost": 2.040172
+}

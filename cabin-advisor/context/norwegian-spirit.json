@@ -1,0 +1,217 @@
+{
+  "class": "Leo-class (Norwegian Spirit / ex-SuperStar Leo)",
+  "sisterShips": [
+    "Star Navigator (ex-SuperStar Virgo, ex-Explorer Dream, ex-Resorts World One) — operated by StarCruises/Genting, the only other Leo-class hull ever built"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Deck 8 is the guest deck sitting directly above the lifeboats, which are stowed on Deck 7 (a non-cabin deck on this ship).",
+      "effect": "Balconies/windows on Deck 8 look down onto lifeboat tops rather than open water directly below the rail, though the horizon view straight ahead stays clear.",
+      "mattersTo": "Photographers and anyone who wants to see the water immediately below their balcony should avoid Deck 8; sunbathers and horizon-view seekers won't notice much difference.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "boards.cruisecritic.com forum thread on Deck 8 balconies confirming lifeboats are stowed on Deck 7, one level below the guest deck 8 balconies."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Cabins 8025–8027, 8526–8527 and every cabin forward of them sit directly above the casino and nightclub venues.",
+      "effect": "Noise from the casino/nightclub carries upward, and the problem intensifies the further forward the cabin is.",
+      "mattersTo": "Light sleepers and early-to-bed guests should avoid the forward end of Deck 8; nightlife-focused cruisers won't mind.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Deck 8 page: forward cabins 8526, 8527, 8025, 8026 and all cabins forward of these are above the casino and night club and may have noise issues, worse the more forward."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Cabins aft of the rear staircase on Deck 8 sit directly above the two-tier Stardust Theatre (main show lounge).",
+      "effect": "Show music, applause, and rehearsal sound can be heard during evening performances (typically 7:15pm and 9:15pm) and daytime rehearsals.",
+      "mattersTo": "Guests planning early bedtimes or afternoon naps should avoid aft Deck 8; those who like being close to entertainment venues may not mind.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Deck 8 page: aft cabins (aft of rear staircase) are above the main show lounge and could have noise issues during shows or rehearsals."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        11
+      ],
+      "sections": [
+        "aft",
+        "mid"
+      ],
+      "what": "Deck 11 balcony cabins sit directly beneath the Raffles/Garden Cafe buffet restaurant on Deck 12.",
+      "effect": "A first-hand reviewer in cabin 11126 reported buffet staff noise (dropped items, setup activity) at roughly 2am, 4am and 6am while the venue was being prepped.",
+      "mattersTo": "Guests who need uninterrupted early-morning sleep should avoid Deck 11 cabins under the buffet footprint; those who rise early anyway won't be bothered.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisecritic.com member review of cabin 11126: 'the main buffet restaurant was directly above and at 2am and 4am and 6am you could hear noise from getting the buffet ready.'"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        9,
+        11
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Multiple independent reviewers report noticeable engine vibration and mechanical rumble in aft cabins on Decks 9 and 11, especially at full speed in open water.",
+      "effect": "Vibration can be strong enough to rattle cabin moldings and disturb sleep on the first night or two of a crossing; effects can ease and then return depending on speed and sea conditions.",
+      "mattersTo": "Light sleepers and those sensitive to low-frequency vibration should avoid aft cabins on these decks; guests wanting the largest aft balconies (Owner's/Penthouse suites) should be told this trade-off exists.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisecritic.com reviews: cabin 9210 'vibration and noise in the cabin when in open waters at full speed was unbearable'; cabin review 662361 'extreme shaking and vibrations from the engine' for rooms at the back; cabin review 601017 'Back seemed to have more vibration from the engine.'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        4,
+        5,
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward cabins on the lower guest decks report pronounced pitching, rocking, and loud wave-slap noise against the bow in rough seas.",
+      "effect": "Reviewers describe several sleepless nights from rocking and 'crashing waves on the bow' that 'sound like a train wreck' during heavier weather.",
+      "mattersTo": "Motion-sensitive travelers should avoid far-forward cabins on Decks 4–6; those unaffected by motion or seeking a lower fare may not mind.",
+      "severity": "significant",
+      "confidence": "medium",
+      "source": "cruiseline.com category RZ review: 'We were at the front of the ship and didn't sleep well for at least 3 nights because of the ship rocking and rolling'; cruisecritic.com review 78716: 'the rocking is prominent and the crashing waves on the bow sound like a train wreck at times.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "The forward Penthouse/Deluxe Penthouse balconies (cabins 10001, 10002, 10500, 10502) sit directly below the navigating bridge overhang, which is open to view from the bridge and offers no roof protection from wind or rain; only cabin 10000's balcony is partially shaded by the bridge above it.",
+      "effect": "These forward suite balconies can be unusable in wind or rain and lack the privacy overhang gives elsewhere, even though they carry premium suite pricing.",
+      "mattersTo": "Suite buyers who plan to spend a lot of time on the balcony in variable weather should ask specifically about 10000 vs. its forward neighbors; those who rarely use the balcony won't care.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Deck 10 page: balconies of cabins 10001, 10002, 10500 and 10502 are 'open to view by the bridge above' with 'no protection from wind and rain,' while cabin 10000's balcony 'is shaded by the bridge above and offers some protection from rain.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        9,
+        10,
+        11
+      ],
+      "sections": [
+        "mid",
+        "aft",
+        "forward"
+      ],
+      "what": "A large share of Norwegian Spirit's balcony cabins are built to connect to a neighboring cabin or suite, and some balcony categories carry partial obstructions.",
+      "effect": "Great for families/groups wanting adjoining rooms, but a solo couple booked into a connecting-door cabin may get more noise transfer through the connecting wall/door than a standard partition.",
+      "mattersTo": "Groups and families benefit; couples wanting maximum privacy should ask NOT to be assigned a connecting-configured cabin.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisecritic.com Cabins & Suites review: balcony cabins 'come in at 172 square feet... Many connect and some are obstructed (ask at time of booking).'"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "6093 / all of Deck 6",
+      "claim": "A 2012 first-hand review labeled all of Deck 6 unsafe, claiming only one of three elevator/stair banks reached that floor.",
+      "source": "cruisecritic.com member review 96665 (Jan 2012)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9702",
+      "claim": "Guest asked whether cabin 9702 (deck 9 aft) would be noisy sitting underneath the video arcade, disco and cinema; no confirmed answer found.",
+      "source": "boards.cruisecritic.com thread 'noisy room on the spirit' (2006)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9210",
+      "claim": "Reviewer reported 'unbearable' vibration/noise at full speed traced by ship's engineers to a rattling molding; NCL offered a second cabin as a workaround.",
+      "source": "cruisecritic.com review 561785 'Beware Vibration and Noise, Cabin 9210'",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "11126",
+      "claim": "Cabin directly below the Raffles/Garden Cafe buffet; noise from buffet prep at 2am, 4am and 6am.",
+      "source": "cruisecritic.com member review (EntryID 601017)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "5035, 6035, 6535",
+      "claim": "Cabin 5035 flagged by an aggregator as having 'slight vibration issues'; 6035/6535 are the same larger (200 sq ft) inside-cabin layout in the same vertical line.",
+      "source": "cruisedeckplans.com Norwegian Spirit ship page",
+      "confidence": "low"
+    },
+    {
+      "cabins": "9501, 9003",
+      "claim": "Forward-facing oceanview cabins have a structural support pole that comes down next to the bed inside the room.",
+      "source": "cruisedeckplans.com Deck 9 page",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9710 (and adjacent aft suites, e.g. 9708, 9212)",
+      "claim": "Aft suite guests have asked whether they can hear the theatre show from the space below or the aft kiddie-pool/rock formation from the deck above; one detailed 2010 review of neighboring suite 9212 found it very quiet, with the lighting control room below and a pool rock feature above.",
+      "source": "boards.cruisecritic.com thread 'Spirit Cabin 9710' (2005) and cruisecritic.com member review EntryID 68181 for cabin 9212 (2010)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "4580",
+      "claim": "Cabin sits in the corridor immediately adjacent to the port-side gangway used for embarkation/disembarkation and by harbor pilots, creating extra foot traffic and door noise.",
+      "source": "cruisecritic.com member review 110404",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "10506, 10006",
+      "claim": "These two balcony cabins are smaller than other Deck 10 balconies and lack a sofa or desk.",
+      "source": "cruisedeckplans.com Deck 10 page",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Category RZ balcony cabin, forward location (specific number not given)",
+      "claim": "Guest in a forward balcony cabin reported not sleeping well for 3+ nights due to rocking, plus squeaking/banging closet doors in rough seas.",
+      "source": "cruiseline.com Category RZ cabin review",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "No ship-specific evidence found for a 'hump' (cantilevered/extended balcony) feature on any deck of Norwegian Spirit — plausibly absent given the 1998 Meyer Werft hull design, but not confirmed either way.",
+    "No ship-specific evidence found for hull taper affecting top-deck suite balconies (view straight down blocked by an inward hull step) on Decks 10 or 11.",
+    "No ship-specific data located on bow thruster location/noise or anchor-chain noise for specific forward cabins on Deck 4/5/6.",
+    "No reliable, current confirmation of the internal crew corridor ('I-95' style) routing or where its access doors open onto guest hallways on this ship.",
+    "The 2012 claim that only one of three elevator/stair banks reaches Deck 6 is unverified and may be outdated after the 2020 refurbishment — needs on-ship or recent-review confirmation.",
+    "Whether NCL currently labels any specific Deck 8 or Deck 9 cabin ranges as 'obstructed view' in its own booking system (vs. guests discovering it only onboard) was not confirmed from official NCL category codes found in this research."
+  ],
+  "ship": "Norwegian Spirit",
+  "shipSlug": "norwegian-spirit",
+  "line": "Norwegian Cruise Line",
+  "totalCabins": 1012,
+  "cabinsTouchedByAZone": 1012,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 16,
+    "maxAllowed": 25
+  },
+  "cost": 2.65276
+}

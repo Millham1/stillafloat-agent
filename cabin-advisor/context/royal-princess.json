@@ -1,0 +1,256 @@
+{
+  "class": "Royal-class (Princess Cruises)",
+  "sisterShips": [
+    "Regal Princess",
+    "Majestic Princess",
+    "Sky Princess",
+    "Enchanted Princess",
+    "Discovery Princess",
+    "Britannia (P&O Cruises UK — same hull/yard design per CruiseMapper)"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "On Emerald Deck (8), lifeboats stowed on the deck below rise to the height of the balcony railing, and Princess sells the affected cabins under obstructed grades BW/DW.",
+      "effect": "The balcony's straight-down and much of the horizontal sea view is blocked by the boat hull sitting just outside the railing; sitting down in a chair often means looking at steel, not water.",
+      "mattersTo": "Matters to anyone who wants to lounge and look at the sea from a seated position; matters less to guests who just want fresh air, a cheaper balcony fare, or plan to stand at the rail.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisebooking.com (Royal Princess-specific: 'Emerald Deck (Deck 8) Grade BW and DW balconies with views obstructed by lifeboats'); cruisedeckplans.com Royal Princess III deck-8 page ('lifeboats from the deck below will go up to the height of the railing')."
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Cabins E101-E109 (starboard) and E102-E110 (port) on Deck 8 have extra-large balconies that project far enough to see straight down to the sea, escaping the lifeboat-line obstruction that affects their neighbours.",
+      "effect": "These specific cabins trade the lifeboat obstruction for two other costs: a solid metal wall up to railing height that blocks the view when seated, and total exposure to view/rain from the deck above since there is no overhang.",
+      "mattersTo": "Bargain-hunters chasing an unobstructed Deck-8 balcony should target this exact range; privacy-seekers and anyone wanting rain shelter should avoid it.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com — identical wording confirmed on three Royal-class sister pages (Royal Princess III, Regal Princess, Enchanted Princess deck-8 plans), indicating a genuine class-wide hull feature rather than aggregator boilerplate."
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        9,
+        12,
+        14,
+        15
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft balconies are staggered so each deck's balcony juts out slightly further than the deck above as you go down, and some Deck 9 Deluxe Balconies have unusually large balconies that project further than their neighbours.",
+      "effect": "Because the balcony below sticks out past the one above, guests at the railing on the deck above (especially the Horizon Terrace on Deck 16 looking at Deck 15 aft) can look straight down into the balcony below; Deck 9's oversized balconies are overlooked the same way.",
+      "mattersTo": "Privacy-focused aft-balcony bookers should check exactly what public space or deck sits directly above; sun-seekers benefit from the larger balcony space that comes with the jut-out.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk Royal Princess guide ('balconies that jut out further is Deck 9... overlooked from above'; 'because the back of the ship is staggered... a view right into the balconies of Deck 15 aft cabins')."
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        15,
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Forward-facing balconies L101-L108 (Deck 16) and M101-M108 (Deck 15) have metal hull plating running up to the railing instead of open air or glass.",
+      "effect": "The solid hull wall shields the balcony from wind but blocks any straight-down view, while the open horizon and forward view are unaffected — a classic taper trade rather than an obstruction.",
+      "mattersTo": "Wind-sensitive guests benefit; those who want to see the waterline directly below will be disappointed. In high wind these balconies may be closed off entirely.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisedeckplans.com Royal Princess III and Regal Princess deck-15/16 pages, identical wording across true Royal-class sisters ('metal hull up to the railing... during extreme windy days... might not be usable')."
+    },
+    {
+      "factor": "above",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "Marina Deck (15) sits directly beneath Lido Deck (16), home to the Horizon Court and Horizon Bistro buffet venues.",
+      "effect": "Pre-dawn buffet setup — trolleys, chair-dragging, and dish-clatter — is reported starting as early as 3:30 AM, transmitting through the ceiling into forward and mid-aft Marina Deck cabins; guests report the furthest-aft cabins (e.g., M627) are quieter, being away from the main kitchen/dishwashing stations.",
+      "mattersTo": "Light sleepers and anyone planning to sleep past dawn should avoid forward/mid Deck 15; late risers uninterested in early buffet noise can ignore this.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisebooking.com Royal Princess guide ('Guests report hearing heavy trolley movement starting as early as 3:30 AM... One traveler mentioned that the M627 was quiet')."
+    },
+    {
+      "factor": "below",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A cluster of forward inside cabins on Caribe Deck (10) sit directly over the Princess Theater stage, with a claimed void space between cabin floor and theater ceiling.",
+      "effect": "Rehearsal and technical-setup sound and loud stage music reportedly carries up past midnight; the void space is described as acting like an echo chamber that funnels stage sound upward.",
+      "mattersTo": "Anyone in this specific inside-cabin range who values a quiet night; not relevant to cabins elsewhere on Deck 10.",
+      "severity": "significant",
+      "confidence": "medium",
+      "source": "cruisebooking.com Royal Princess guide, naming specific cabins and describing a 'void space between the cabin floor and the theater ceiling' that 'funnels sound from the stage below.'"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14,
+        15
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "The SeaWalk — a glass-floored walkway cantilevered ~28 feet off Deck 16's starboard side — sits above a stack of balcony cabins on the decks below, most severely on 15, 14, and 12; it also casts a shadow.",
+      "effect": "People walking the SeaWalk have a full view down into these balconies (and vice versa), and the same cabins lose direct sun; the effect eases the further down the stack you go (Decks 11, 10, 9, 8 are described as 'not as bad').",
+      "mattersTo": "Privacy-focused sunbathers on balconies should avoid this stack, especially on Decks 12-15; not a concern for guests who don't use their balcony for sunbathing or who prioritize shade.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "cruisecritic.com Royal Princess Editor's Review ('Anyone walking through there has full views into these balconies - especially those on decks 15, 14, and 12... Cabins on decks 11, 10, 9, and 8 aren't as bad')."
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        9
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "Aft-facing suites on Dolphin Deck (9), including the Owner's Suites, are positioned where exhaust-system soot from the Royal-class funnel design settles on balcony surfaces.",
+      "effect": "Guests report black particulate build-up on balcony railings and furniture that can make the outdoor space unusable for parts of the cruise; described as a Royal-class-wide design issue, most commonly reported on Royal, Regal, and Sky Princess specifically.",
+      "mattersTo": "High-end aft-suite bookers who plan to use the balcony extensively should weigh this; guests who rarely use the balcony can disregard it.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisebooking.com Royal Princess guide ('Owners Suite D727... specifically named to have this soot problem'); cruisegalore.com ('most common complaints are on Royal Princess, Regal Princess, and Sky Princess ships')."
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        15
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Royal-class ships were built without central passenger staircases; the midship elevator bank was the only vertical connector there until crew stairs were later converted for passenger use.",
+      "effect": "Cabins clustered around the midship elevator lobby can face heavier elevator wait-and-chatter traffic than cabins near the forward or aft elevator/stair banks.",
+      "mattersTo": "Guests wanting minimal hallway traffic should pick cabins away from the midship lobby; guests who value convenience to elevators may prefer it.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Royal Princess III Deck 15 plan ('there are no central staircases for passengers. Cabins located around the midship elevators may find those elevators busy... UPDATE: MIDSHIP CREW STAIRS HAVE BEEN CONVERTED TO PASSENGER STAIRS')."
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        15,
+        16
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Royal Princess has only 16 forward-facing balconies total (8 each on Decks 15 and 16), positioned two decks above the bridge at the top-forward of the hull.",
+      "effect": "A first-person reviewer in L106 reported this location has more motion than anywhere else on the ship, with every wave felt in rough seas — more than midship at the same height.",
+      "mattersTo": "Motion-sensitive cruisers should avoid these forward suites despite their exclusivity and view; guests who enjoy feeling the ship move may seek them out.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "gourmetflyer.com first-person review of Royal Princess L106 ('this particular location has more motions than anywhere else on the ship... you can almost feel every wave hitting the hull')."
+    },
+    {
+      "factor": "other",
+      "decks": [
+        10
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "A run of inside cabins on Caribe Deck (10), roughly C316-C335, are laid out 'sideways' with the long wall running parallel to the corridor, and sit next to an air vent.",
+      "effect": "The sideways layout is reported to carry more corridor noise than standard perpendicular inside cabins, and the adjacent vent has been separately flagged by cruisers.",
+      "mattersTo": "Budget inside-cabin bookers should check the exact layout of this range if noise sensitivity or an awkward four-berth layout matters to them.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk Royal Princess guide ('There's an air vent situated between the sideways Inside cabins on Deck 10, from C316 to C335')."
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "C203, C204, C207, C208, C211, C212 (Caribe Deck 10, forward)",
+      "claim": "Located directly above/adjacent to the Princess Theater stage void space; rehearsal and show noise reported past midnight, occasionally requiring a guest relocation.",
+      "source": "cruisebooking.com Royal Princess cabins-to-avoid guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "D727 (Owner's Suite, Dolphin Deck 9, aft) and its port-side twin",
+      "claim": "Named specifically for exhaust soot accumulation making the balcony hard to use, tied to Royal-class exhaust design.",
+      "source": "cruisebooking.com Royal Princess cabins-to-avoid guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "B406 (Baja Deck 11)",
+      "claim": "Positioned adjacent to a crew hallway access point.",
+      "source": "cruisebooking.com Royal Princess cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "C316-C335 (Caribe Deck 10)",
+      "claim": "Sideways-oriented inside cabins next to an air vent, flagged by cruisers for noise/layout.",
+      "source": "cruisemummy.co.uk Royal Princess guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "M627 (Marina Deck 15, far aft)",
+      "claim": "Reported by a guest as quieter than the rest of Marina Deck, being furthest from the Horizon Court kitchen/dishwashing stations above.",
+      "source": "cruisebooking.com Royal Princess cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "Odd-numbered balcony positions ~409-433 (starboard), stacked on Decks 8, 9, 10, 11, 12, 14, 15",
+      "claim": "Sit beneath the Deck-16 SeaWalk; full overlook from walkway users plus shadow, worst on Decks 12/14/15, milder on 8-11.",
+      "source": "cruisecritic.com Royal Princess Editor's Review",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "E101-E109 / E102-E110 (Deck 8, forward)",
+      "claim": "Extra-large 'escape-the-lifeboat' balconies that see straight down to the sea but have a metal wall restricting the seated view and no overhead shelter.",
+      "source": "cruisedeckplans.com Royal Princess III deck-8 plan",
+      "confidence": "medium"
+    }
+  ],
+  "unknowns": [
+    "No Royal-Princess-specific evidence found for a named crew-only 'I-95'-style corridor or its guest-adjacent access points (the term is documented for Royal Caribbean ships, not confirmed for Princess Royal-class).",
+    "No ship-specific documentation found for bow-thruster noise in far-forward low-deck cabins on Royal Princess itself.",
+    "Anchor-chain noise on port mornings is well documented for sister/analog ships (Discovery Princess, Crown Princess) but no Royal-Princess-specific forum or review confirming it was found this session.",
+    "Propulsion/engine vibration in aft lower-deck cabins is documented for Regal Princess and Caribbean Princess but not specifically confirmed for Royal Princess itself.",
+    "Elevator-lobby-adjacent noisy cabin numbers (e.g., the C301-304/C425-431 pattern) are documented for Enchanted Princess but not verified against Royal Princess's own deck plan in this session.",
+    "Whether Reserve Collection Mini-Suites (Deck 15/16) carry any distinct context-zone issues (noise, view) was not established in this session."
+  ],
+  "ship": "Royal Princess",
+  "shipSlug": "royal-princess",
+  "line": "Princess Cruises",
+  "totalCabins": 1780,
+  "cabinsTouchedByAZone": 1780,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 14,
+    "maxAllowed": 25
+  },
+  "cost": 1.8022070000000001
+}

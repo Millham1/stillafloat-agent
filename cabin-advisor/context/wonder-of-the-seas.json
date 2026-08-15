@@ -1,0 +1,393 @@
+{
+  "class": "Oasis class",
+  "sisterShips": [
+    "Oasis of the Seas",
+    "Allure of the Seas",
+    "Harmony of the Seas",
+    "Symphony of the Seas",
+    "Utopia of the Seas"
+  ],
+  "zones": [
+    {
+      "factor": "lifeboat",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "Lifeboats extending out from deck 5 partially obstruct the view, but only when looking straight down from the cabin veranda, affecting staterooms from 6224 to 6136 (portside) and 6624 to 6536 (starboard), plus aft groups from 6282 to 6328 (portside) and 6682 to 6728 (starboard).",
+      "effect": "Balcony sightline straight down to the water is blocked by boat-tops/davits, but the outward horizon view is unaffected; cabins on the wider 'hump' sections are excepted per cruisedeckplans' Wonder deck-6 notes, which state the obstruction affects the noted ranges 'except for cabins on the hump - part of the deck that is wider'.",
+      "mattersTo": "Matters to guests who want to look straight down at the water/tenders from their balcony; irrelevant to anyone mainly wanting sun, air, and the open horizon.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruisemapper.com deck-6 plan (specific cabin ranges) + cruisedeckplans.com Wonder deck-6 plan (same ranges, hump exception)"
+    },
+    {
+      "factor": "hump",
+      "decks": [
+        6,
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Cabins on the hump - part of the deck that is wider - are excepted from the lifeboat-obstruction described above on deck 6, and on deck 8 hump balcony cabins (the two areas on each side of the ship where the deck is wider) are considered a prime location because they have larger balconies and good views looking side to side and down.",
+      "effect": "Wider hull sections let these balconies cantilever past the hull line, buying a clear look straight down to the sea and a larger balcony footprint that neighboring straight-hull cabins on the same deck don't get.",
+      "mattersTo": "View- and balcony-space-focused guests should seek these out; irrelevant to interior/no-balcony bookers.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Wonder deck-6 and deck-8 pages; corroborated by a Cruise Critic poster describing a 'deck 8 oceanview hump balcony' on an Oasis-class ship"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        3
+      ],
+      "sections": [
+        "forward",
+        "mid"
+      ],
+      "what": "The oceanview and inside rooms on deck 3 are all underneath either Studio B ice skating rink or Casino Royale.",
+      "effect": "Rink shows/rehearsals and casino floor activity can transmit noise and light footfall downward into deck 3 cabins beneath them.",
+      "mattersTo": "Early sleepers or noise-sensitive guests should avoid; night owls or budget bookers indifferent to noise may not care.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "royalcaribbeanblog.com Wonder of the Seas cabins-to-avoid guide"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        6
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "Newer Royal Caribbean cruise ships do a pretty good job with soundproofing, but if given the choice, avoid cabins on deck six that are directly above the Royal Theater; cruisemapper confirms forward staterooms are located above the ship's Theater (show lounge), so noise during rehearsals or the evening stage shows could be an issue.",
+      "effect": "One deck above a full-scale show lounge; bass, applause, and rehearsal noise can carry upward despite modern soundproofing.",
+      "mattersTo": "Matters to light sleepers who retire early or nap during matinee rehearsals; irrelevant to guests out at shows themselves.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "royalcaribbeanblog.com + cruisemapper.com deck-6 plan (independent agreement)"
+    },
+    {
+      "factor": "below",
+      "decks": [
+        14
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Deck 14, under the Pool Deck & Windjammer: crew members start moving heavy metal sun loungers and doing pool deck cleaning as early as 5:00 AM.",
+      "effect": "Chair-dragging and cleaning noise directly overhead can wake guests well before normal wake-up time, every sea day.",
+      "mattersTo": "Matters greatly to guests who sleep past 5am or take afternoon naps; less relevant to early risers already up for breakfast.",
+      "severity": "significant",
+      "confidence": "high",
+      "source": "cruisebooking.com Wonder cabins-to-avoid guide; corroborated generally by royalcaribbeanblog's chair-drag noise description"
+    },
+    {
+      "factor": "above",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Deck 7 cabins sit above the Royal Promenade; per cruisebooking's guide, if you are an early riser or you're traveling with kids, skip Deck 7 [because it is] situated right o[ver the Promenade].",
+      "effect": "Promenade parades, street performances, and morning foot traffic below can be heard through the deck.",
+      "mattersTo": "Matters to families wanting quiet mornings; less relevant to guests who enjoy watching promenade activity.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisebooking.com Wonder cabins-to-avoid guide"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A Royal Caribbean Blog writer staying in a forward cabin on Wonder of the Seas reported: 'On my first cruise on Wonder of the Seas, I stayed in a forward cabin at the bow of the ship...we were hearing the noise of the anchor chains running across the deck,' noting this only happens in tender ports, which are not very common for a Royal Caribbean ship.",
+      "effect": "Loud, sudden metallic anchor-chain noise on tender-port mornings only; non-issue on cruises with no tender stops.",
+      "mattersTo": "Matters to light/early sleepers on itineraries with tender ports (e.g., some Caribbean private-island stops); irrelevant on all-pier itineraries.",
+      "severity": "moderate",
+      "confidence": "high",
+      "source": "royalcaribbeanblog.com first-person Wonder of the Seas account"
+    },
+    {
+      "factor": "engine",
+      "decks": [
+        7
+      ],
+      "sections": [
+        "aft"
+      ],
+      "what": "A Wonder-specific guide notes for the aft of the ship: 'the hum and vibration of the engines can be a constant companion.'",
+      "effect": "Low-frequency hum/vibration is more noticeable on lower aft decks near propulsion machinery, less so higher up.",
+      "mattersTo": "Matters to guests sensitive to mechanical hum or light vibration; unnoticed by most casual cruisers.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "elliestraveltips.com Wonder of the Seas cabins-to-avoid guide"
+    },
+    {
+      "factor": "taper",
+      "decks": [
+        17
+      ],
+      "sections": [
+        "mid",
+        "aft"
+      ],
+      "what": "Royal Caribbean's own cabin note for Wonder's Grand Suites states 'Staterooms 1700 1750 1764 and 1780 have obstructed views,' and a cabin-guide explains balconies in this obstructed range 'enjoy expansive forward-facing views of the horizon, but you can't see directly downward from your balcony.'",
+      "effect": "The suite sits atop the inward hull step near the top of the ship, hiding the straight-down sightline while leaving the wide horizon view intact.",
+      "mattersTo": "Matters to guests who prize watching the waterline directly below; irrelevant to guests mainly wanting sun, horizon, and suite space.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "cruiseline.com official RC cabin note (specific numbers) + shinecruise.com mechanism description + YouTube cabin tour titled an 'Obstructed View Balcony'"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        11,
+        12,
+        14,
+        17,
+        18
+      ],
+      "sections": [
+        "forward",
+        "aft"
+      ],
+      "what": "A Wonder-focused guide advises that if you're particularly sensitive [to motion], you should avoid the cabins on a higher deck towards the bow (front) and aft (rear)...there are some on Decks 12 and 14 you might wish to steer clear of.",
+      "effect": "Higher decks amplify the ship's natural pitch/roll versus lower, midship decks; forward tends to feel it more sharply than aft.",
+      "mattersTo": "Matters to motion-sensitive travelers; largely unnoticed by others given the ship's size and stabilizers.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "cruisemummy.co.uk Wonder of the Seas cabins-to-avoid guide"
+    },
+    {
+      "factor": "motion",
+      "decks": [
+        3,
+        6,
+        7
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "A Royal Caribbean Blog writer recounted that on Wonder of the Seas, 'Calista went on Wonder of the Seas, she had an inside cabin at the very front of the ship and she felt more seasick there than elsewhere on the ship,' while noting everyone's tolerance for motion is different.",
+      "effect": "Bow cabins on lower/mid decks still pitch more than midship in rough seas, even though Oasis-class stabilization reduces overall roll.",
+      "mattersTo": "Matters to guests prone to seasickness booking any forward cabin, low or high deck; less relevant to seasoned cruisers.",
+      "severity": "moderate",
+      "confidence": "medium",
+      "source": "royalcaribbeanblog.com Wonder of the Seas cabins-to-avoid guide"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "mid"
+      ],
+      "what": "Central Park balcony cabins can hear the pool-deck movie screen: 'Royal Caribbean added a movie screen to the pool deck, but that screen is viewable from the Central Park balcony cabins below and...people on their balconies can hear the sound from the movie screen above them.'",
+      "effect": "Sound carries down the open multi-deck Central Park light-well from the pool-deck movie screen many decks above, an interaction unique to Wonder's redesigned pool deck.",
+      "mattersTo": "Matters to guests wanting a quiet garden-view balcony at night during movie screenings; movie-watchers might enjoy the bonus audio.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "royalcaribbeanblog.com Wonder of the Seas cabins-to-avoid guide"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "aft",
+        "mid"
+      ],
+      "what": "Neighborhood (Boardwalk/Central Park) balconies face inward: 'a drawback of Boardwalk balconies is the limited privacy...passengers walking by or relaxing on nearby balconies may be able to see into your cabin,' and per Royal Caribbean Blog's class-wide review, 'the ambient noise from Central Park or Boardwalk is negligible and does not bleed into the stateroom itself...though Boardwalk balcony rooms can have more noise when there are shows occurring in the AquaTheater.'",
+      "effect": "Privacy is the bigger issue on neighborhood balconies rather than baseline noise; AquaTheater showtimes are the exception that does carry.",
+      "mattersTo": "Matters to privacy-conscious guests and to anyone sleeping through evening AquaTheater performances; unimportant to guests who keep curtains closed or enjoy people-watching.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "royalcaribbeanblog.com Oasis-class neighborhood balcony guide (class-wide, includes Wonder) + thepointsguy/shinecruise on Wonder specifically"
+    },
+    {
+      "factor": "other",
+      "decks": [
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Connecting rooms...it's a bad idea if you aren't using that door...there are many complaints about noise bleed from people who book a connecting room when they don't know the person on the other side.",
+      "effect": "Connecting-door cabins transmit sound more than a solid wall would, regardless of deck.",
+      "mattersTo": "Matters to solo bookers assigned a connecting cabin by chance; irrelevant to families deliberately booking both sides.",
+      "severity": "minor",
+      "confidence": "high",
+      "source": "royalcaribbeanblog.com Wonder of the Seas cabins-to-avoid guide"
+    },
+    {
+      "factor": "i95",
+      "decks": [
+        8
+      ],
+      "sections": [
+        "forward"
+      ],
+      "what": "There is a service closet near cabin 8153 and 8553 that can be busy during morning and early evening hours.",
+      "effect": "A crew service-access point creates brief but predictable traffic and door/cart noise near these specific cabins at set times of day.",
+      "mattersTo": "Matters to light sleepers or guests wanting a quiet corridor; unnoticed by guests who are out during those hours.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisedeckplans.com Wonder of the Seas deck-8 plan notes"
+    },
+    {
+      "factor": "elevator",
+      "decks": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        14
+      ],
+      "sections": [
+        "forward",
+        "mid",
+        "aft"
+      ],
+      "what": "Aggregator guidance warns that 'rooms sit right by the elevator lobbies get constant movement, loud conversations, and repetitive 'ding' every time the doors open and close,' but first-hand Wonder guest reports are mixed: one guest 'had a cabin just next to the aft elevator lobby on the Wonder...heard NOTHING in the cabin itself,' while another in 6060 'midship elevators' reported 'right at the mid elevators. No noise and very convenient.'",
+      "effect": "Elevator-adjacent cabins buy walking convenience at a modest, inconsistently-reported noise cost; modern soundproofing appears to mute most of it for many guests.",
+      "mattersTo": "Matters most to guests who value silence over convenience; less important to mobility-limited guests prioritizing short walks.",
+      "severity": "minor",
+      "confidence": "medium",
+      "source": "cruisebooking.com aggregator warning + DISboards first-hand Wonder guest reports (mixed results)"
+    }
+  ],
+  "leads": [
+    {
+      "cabins": "9241, 9243, 9245, 9641, 9643, 9645",
+      "claim": "Obstructed-view balconies flagged by an aggregator guide as having views blocked",
+      "source": "cruisebooking.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "9329",
+      "claim": "Boardwalk view balcony, first cabin facing the rear of the ship; Royal Caribbean's own site notes an obstructed balcony view for it",
+      "source": "Cruise Critic forum thread (boards.cruisecritic.com topic 3004339)",
+      "confidence": "medium"
+    },
+    {
+      "cabins": "10608",
+      "claim": "Unresolved forum question whether this stateroom is obstructed by a neighboring cabin jutting out or by a structural element like a lifeboat",
+      "source": "Cruise Critic forum thread (boards.cruisecritic.com topic 2912092)",
+      "confidence": "low"
+    },
+    {
+      "cabins": "7100-7108, 7114-7126, 7500-7510, 7516-7528 (Deck 7); 8100-8108, 8500-8510, 8116-8124, 8516-8524 (Deck 8); 9100-9108, 9500-9510, 9118-9124, 9518-9524 (Deck 9); 10100-10108, 10500-10510, 10124, 10126, 10522-10526 (Deck 10); 11100-11106, 11500-11506, 11124-11130, 11134, 11524-11528, 11534 (Deck 11)",
+      "claim": "Even-numbered oceanview cabins with obstructed views due to lifeboats, machinery, or other equipment",
+      "source": "shinecruise.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "14250-14280, 14650-14680",
+      "claim": "Cabins directly under the pool deck and buffet areas, deck 14 midship/aft",
+      "source": "cruisesnooze.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "8202, 8204, 8206, 8208, 8210, 10202, 10204, 10206, 10208, 10210, 14531, 14533, 14535, 14537",
+      "claim": "Cabins to avoid for obstructed views (exact mechanism unspecified)",
+      "source": "cruisesnooze.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "12160-12170, 12560-12570, 12260-12270, 12660-12670",
+      "claim": "Cabins near elevators flagged for noise/traffic on Deck 12",
+      "source": "cruiseoverload.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "12271-12277, 12671-12677",
+      "claim": "Cabins near Wonderland restaurant flagged for noise",
+      "source": "cruiseoverload.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "14138-14160, 14538-14560",
+      "claim": "Cabins near Adventure Ocean kids' club flagged for daytime child noise",
+      "source": "cruiseoverload.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "14160-14170, 14560-14570, 14260-14270, 14660-14670",
+      "claim": "Cabins near elevators on Deck 14 flagged for noise/traffic",
+      "source": "cruiseoverload.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "7600-7620",
+      "claim": "Aft cabins far from dining/entertainment with possible engine vibration",
+      "source": "cruisesnooze.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "3100-3120",
+      "claim": "Forward cabins prone to worst ship movement and anchor noise on docking mornings",
+      "source": "cruisesnooze.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    },
+    {
+      "cabins": "6300-6320",
+      "claim": "Obstructed-view balconies blocked by lifeboats or slide structures",
+      "source": "cruisesnooze.com Wonder of the Seas cabins-to-avoid guide",
+      "confidence": "low"
+    }
+  ],
+  "unknowns": [
+    "Whether bow-thruster noise/vibration is specifically documented for Wonder of the Seas forward-low cabins (no ship-specific source found).",
+    "Whether the hump-balcony exception extends beyond decks 6 and 8 to decks 9-14 on this specific ship.",
+    "The precise structural cause (lifeboat vs. hull indentation vs. slide structure) behind the decks 7-11 obstructed-view cabin ranges named only by single aggregators.",
+    "Whether Deck 18 suites (Owners, Royal Loft, Ultimate Family Suite) share the same taper/obstruction issue documented for Deck 17 Grand Suites.",
+    "Whether the Deck 12/14 midship smoking-area proximity noted for sister ship Oasis of the Seas also applies identically on Wonder of the Seas, given Wonder's pool-deck redesign.",
+    "Independent second-source verification for most single-aggregator cabin-number leads (elevator-adjacent lists, Deck 12/14 Wonderland and Adventure Ocean proximity lists)."
+  ],
+  "ship": "Wonder of the Seas",
+  "shipSlug": "wonder-of-the-seas",
+  "line": "Royal Caribbean",
+  "totalCabins": 2886,
+  "cabinsTouchedByAZone": 2886,
+  "model": "claude-sonnet-5",
+  "grounded": {
+    "webSearches": 14,
+    "maxAllowed": 25
+  },
+  "cost": 1.881326
+}
