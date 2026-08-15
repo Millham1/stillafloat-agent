@@ -3,128 +3,99 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Room Concierge | Still Afloat</title>
+<meta name="description" content="A few questions about you, a few honest opinions, and the exact cabins worth booking — the Still Afloat Room Concierge.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#07183f;--ocean:#0077b6;--seafoam:#5dff9a;--gold:#ffca4f;--cream:#faf6ee}
-*{box-sizing:border-box}
-body{margin:0;font-family:'Baloo 2',sans-serif;background:#040a16;color:var(--navy)}
-/* Same canvas as affiliate.html — identical art, identical wash. */
-body::before{content:"";position:fixed;inset:0;z-index:-1;
-  background:linear-gradient(180deg,rgba(4,10,22,.55) 0%,rgba(4,10,22,.72) 100%),
-  url('/assets/images/cruising-gear-bg.png') center/cover fixed}
-.re-shell{max-width:960px;margin:0 auto;padding:70px 60px 84px;position:relative}
-
-/* ── The concierge card IS the cabin illustration — rounded, framed, characters on the corners ── */
-.re-frame{position:relative}
-.re-card{position:relative;border-radius:36px;border:3px solid var(--navy);overflow:hidden;
-  background:url('/assets/concierge/cabin-card.jpg') center/cover no-repeat;box-shadow:0 30px 80px rgba(0,0,0,.6);
-  padding:56px 56px 48px;height:min(86vh,860px);display:flex;align-items:stretch;justify-content:center}
-.panel-hold{position:relative;max-width:600px;width:100%;display:flex}
-.corner{position:absolute;z-index:6;height:140px;width:auto;filter:drop-shadow(0 10px 18px rgba(0,0,0,.5))}
-.corner.tl{top:-52px;left:-44px;transform:rotate(-6deg)}
-.corner.tr{top:-52px;right:-44px;transform:rotate(6deg) scaleX(-1)}
-.corner.bl{bottom:-44px;left:-46px;transform:rotate(5deg)}
-.corner.br{bottom:-44px;right:-46px;transform:rotate(-5deg) scaleX(-1)}
-
-/* Soft cream panel floating on the cabin art — the writable surface. */
-.re-panel{position:relative;background:rgba(250,246,238,.94);border:2px solid rgba(7,24,63,.5);
-  border-radius:26px;padding:20px 6px 18px 26px;width:100%;display:flex;flex-direction:column;
-  box-shadow:0 14px 40px rgba(7,24,63,.28)}
-.re-kick{text-align:center;font-weight:800;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--navy);margin:0 0 4px}
-h1{font-family:'Bree Serif',serif;text-align:center;font-size:clamp(28px,4.8vw,40px);margin:2px 0 14px;color:var(--navy);line-height:1.12}
-h2.q{font-family:'Bree Serif',serif;font-size:clamp(20px,3.4vw,25px);text-align:center;margin:14px 0 16px;color:var(--navy);line-height:1.3}
-.re-intro{font-size:18.5px;line-height:1.65;color:#22345c;margin:0 auto 4px;text-align:center}
-.re-intro b{color:var(--navy)}
-.re-fork{text-align:center;margin:20px 0 2px}
-.re-choices{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.re-btn{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:16px;border-radius:15px;padding:13px 24px;cursor:pointer;border:2.5px solid var(--navy);transition:transform .15s ease;background:#fff;color:var(--navy)}
-.re-btn:hover{transform:translateY(-2px)}
-.re-btn.yes{background:var(--navy);color:var(--gold)}
-.re-btn.no{background:var(--gold);color:var(--navy)}
-.re-opts{display:flex;flex-direction:column;gap:11px;margin:0 auto}
-.re-opt{text-align:left;font-family:'Baloo 2',sans-serif;font-size:15.5px;font-weight:600;line-height:1.45;background:#fff;border:2px solid rgba(7,24,63,.22);border-radius:15px;padding:13px 17px;cursor:pointer;transition:all .15s}
-.re-opt:hover{border-color:var(--ocean);transform:translateX(4px)}
-.re-progress{text-align:center;font-size:12px;font-weight:800;letter-spacing:.1em;color:#8896b0;text-transform:uppercase;margin:0 0 6px}
-/* The advisor reminder — one quiet line. No photo, no button, no pitch. */
-.quiet{margin:16px 0 0;text-align:center;font-size:13px;color:var(--navy);font-weight:600;font-style:italic}
-/* reveal card */
-.reveal-ship{background:#fff;border:2px solid rgba(7,24,63,.16);border-radius:18px;padding:18px 20px;margin:0 0 14px}
-.reveal-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.reveal-head h3{font-family:'Bree Serif',serif;font-size:22px;margin:0;color:var(--navy)}
-.reveal-head .line{color:#5a6b85;font-size:13px;font-weight:600}
-.conga-score-wrap{display:flex;align-items:center;gap:13px;margin:9px 0 4px;flex-wrap:wrap}
-.conga-mini{display:flex;align-items:flex-end;background:#fff;border-radius:10px;overflow:hidden}
-.conga-mini img{height:58px;width:auto;display:block}
-.conga-num{font-family:'Bree Serif',serif;font-size:27px;color:var(--ocean)}
-.conga-num small{font-size:14px;color:#8896b0;font-family:'Baloo 2',sans-serif;font-weight:800}
-.reveal-comment{font-size:15.5px;line-height:1.55;color:#22345c;margin:9px 0 11px;font-weight:600}
-.salty{display:flex;gap:11px;align-items:center;background:#f3edfb;border:1.5px solid #dccdf3;border-radius:13px;padding:9px 13px}
-.salty img{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid #fff}
-.salty .sl{font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#6b21a8;display:block;margin-bottom:2px}
-.salty p{margin:0;font-size:14px;line-height:1.5;color:#3b2a55}
-.reveal-pick{margin:12px 0 0;text-align:right}
-.re-cta{margin-top:16px;background:linear-gradient(135deg,rgba(0,119,182,.09),rgba(93,255,154,.12));border:2px solid rgba(0,119,182,.3);border-radius:18px;padding:20px;text-align:center}
-.re-cta h3{font-family:'Bree Serif',serif;margin:0 0 8px;font-size:20px}
-.re-cta p{margin:0 auto 13px;max-width:460px;font-size:15px;line-height:1.55;color:#33415c}
-footer{text-align:center;padding:24px 16px;color:rgba(247,251,255,.6);font-size:14px}
-@media(max-width:760px){.re-shell{padding:56px 18px 70px}.re-card{padding:40px 16px 34px;min-height:0}
-  .re-panel{padding:22px 18px 20px}
-  .corner{height:105px}.corner.tl{top:-38px;left:-12px}.corner.tr{top:-38px;right:-12px}
-  .corner.bl{bottom:-34px;left:-12px}.corner.br{bottom:-34px;right:-12px}}
-
-/* The card NEVER moves between stages — only this inner region scrolls. */
-.re-scroll{flex:1;overflow-y:auto;padding:6px 22px 8px 2px;scrollbar-width:thin}
-.re-topbar{display:flex;align-items:center;min-height:30px;padding:0 22px 0 56px}
-.re-back{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:14px;color:var(--ocean);
-  background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
+/* Still Afloat canon (Mark 8/15): the weather / wheres-my-ship pattern.
+   Hero art banner + plaque, seafoam rule, content in sections ON the ocean
+   gradient, dark translucent cards, seafoam accents. Flow logic unchanged. */
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:#fff}
+.banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;
+  background:linear-gradient(135deg,#07183f 0%,#0b2f52 60%,#0f4a6e 100%);
+  background-image:url('/assets/concierge/cabin-card.jpg');background-size:cover;background-position:center 55%;
+  height:clamp(440px,46vw,680px)}
+.plaque{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);background:rgba(4,14,28,.62);backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:13px 30px;color:#fff;font-weight:600;
+  font-size:clamp(15px,2.2vw,21px);letter-spacing:.22em;white-space:nowrap;text-transform:uppercase;z-index:4}
+.corner{position:absolute;bottom:-6px;height:clamp(120px,16vw,210px);width:auto;filter:drop-shadow(0 10px 18px rgba(0,0,0,.5));z-index:3}
+.corner.l{left:clamp(6px,3vw,40px)}
+.corner.r{right:clamp(6px,3vw,40px);transform:scaleX(-1)}
+.shell{max-width:900px;margin:auto;padding:38px 22px 90px}
+.re-topbar{display:flex;align-items:center;min-height:30px}
+.re-back{font-family:inherit;font-weight:800;font-size:15px;color:#5dff9a;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
 .re-back.show{display:inline-block}
 .re-back:hover{text-decoration:underline}
-/* Readability: content cards get real contrast and breathing room */
-.reveal-ship{background:#fff;border:2px solid rgba(7,24,63,.22);border-radius:18px;padding:18px 20px;margin:0 0 16px;box-shadow:0 4px 14px rgba(7,24,63,.08)}
-.reveal-comment{font-size:16px;line-height:1.6}
-.salty p{font-size:14.5px}
-
-/* Gist-first cards */
+h1{font-size:clamp(28px,4.4vw,38px);margin:6px 0 12px;font-weight:800;line-height:1.15}
+h2.q{font-size:clamp(21px,3.2vw,27px);margin:16px 0 16px;font-weight:800;line-height:1.3}
+.re-kick{display:none}
+.re-intro{color:rgba(255,255,255,.75);line-height:1.65;max-width:62ch;margin:0 0 8px;font-size:18px}
+.re-intro b{color:#fff}
+.re-fork{margin:22px 0 2px}
+.re-choices{display:flex;gap:12px;flex-wrap:wrap}
+.re-btn{display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;font-weight:800;font-size:16px;
+  padding:14px 26px;border-radius:14px;border:1px solid rgba(93,255,154,.25);cursor:pointer;text-decoration:none;
+  font-family:inherit;transition:transform .15s,box-shadow .15s}
+.re-btn:hover{transform:translateY(-2px)}
+.re-btn.yes{background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a}
+.re-btn.no{background:rgba(10,30,56,.9);color:#fff;border:1px solid rgba(255,255,255,.18)}
+.re-opts{display:flex;flex-direction:column;gap:11px;max-width:640px}
+.re-opt{text-align:left;font-family:inherit;font-size:16px;font-weight:600;line-height:1.5;color:#fff;
+  background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:14px 18px;cursor:pointer;transition:all .15s}
+.re-opt:hover{border-color:#5dff9a;transform:translateX(4px)}
+.re-opt b{color:#fff}
+.re-opt span{color:rgba(255,255,255,.6)!important}
+.re-progress{font-size:12px;font-weight:800;letter-spacing:.12em;color:rgba(93,255,154,.85);text-transform:uppercase;margin:0 0 4px}
+.quiet{color:rgba(255,255,255,.45);font-size:13px;font-style:italic;margin:22px 0 0}
+.re-coverage{color:rgba(255,255,255,.55);font-size:14px;line-height:1.6;margin:26px 0 0;max-width:70ch}
+/* ship & room cards — dark canon cards */
+.reveal-ship{background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:20px 22px;margin:0 0 16px}
 .gist{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.gist h3{font-family:'Bree Serif',serif;font-size:23px;margin:0;color:var(--navy)}
-.gist .line{color:#5a6b85;font-size:13px;font-weight:600}
-.gist-score{font-family:'Bree Serif',serif;font-size:34px;color:var(--ocean);line-height:1}
-.gist-score small{font-size:16px;color:#8896b0}
-.gist-dancers{display:flex;align-items:flex-end;margin:6px 0 2px}
+.gist h3{font-size:24px;margin:0;font-weight:800}
+.gist .line{color:rgba(255,255,255,.6);font-size:13px;font-weight:600}
+.gist-score{font-size:34px;color:#5dff9a;line-height:1;font-weight:800}
+.gist-score small{font-size:16px;color:rgba(255,255,255,.5)}
+.gist-dancers{display:flex;align-items:flex-end;margin:8px 0 4px;background:#fff;border-radius:12px;overflow:hidden;width:fit-content}
 .gist-dancers img{height:52px;width:auto;display:block}
-.room-hook{font-family:'Bree Serif',serif;font-size:18px;line-height:1.35;color:var(--navy);margin:0 0 8px}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
-.chip{font-size:12.5px;font-weight:700;color:#33415c;background:rgba(7,24,63,.07);border-radius:999px;padding:3px 10px}
-.chip-num{background:var(--navy);color:var(--gold)}
+.reveal-comment{font-size:16.5px;line-height:1.6;color:rgba(255,255,255,.92);margin:10px 0 12px;font-weight:600}
+.salty{display:flex;gap:12px;align-items:center;background:rgba(76,29,149,.28);border:1px solid rgba(167,139,250,.35);border-radius:14px;padding:10px 14px}
+.salty img{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid rgba(255,255,255,.7)}
+.salty .sl{font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#c4b5fd;display:block;margin-bottom:2px}
+.salty p{margin:0;font-size:14.5px;line-height:1.5;color:rgba(255,255,255,.9)}
+.reveal-pick{margin:14px 0 0;text-align:right}
+.room-hook{font-size:19px;line-height:1.35;font-weight:800;margin:0 0 8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+.chip{font-size:12.5px;font-weight:700;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);border-radius:999px;padding:3px 10px}
+.chip-num{background:#5dff9a;color:#07183f}
+.room-why{font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.78);margin:6px 0 0}
 details.why{margin:4px 0 0}
-details.why summary{cursor:pointer;font-size:13.5px;font-weight:800;color:var(--ocean);list-style-position:inside}
-details.why p{font-size:14.5px;line-height:1.55;color:#33415c;margin:6px 0 0}
-
-.room-why{font-size:14.5px;line-height:1.6;color:#33415c;margin:6px 0 0}
-details.cat-info{margin:2px 0 4px}
-details.cat-info summary{cursor:pointer;font-size:13px;font-weight:800;color:var(--ocean);list-style-position:inside}
-details.cat-info p{font-size:14px;line-height:1.55;color:#33415c;margin:6px 0 2px;background:rgba(0,119,182,.06);border-radius:10px;padding:10px 12px}
-
-.re-coverage{text-align:center;font-size:13px;line-height:1.6;color:#33415c;margin:14px auto 0;max-width:520px}
+details.why summary{cursor:pointer;font-size:13.5px;font-weight:800;color:#5dff9a;list-style-position:inside}
+details.why p{font-size:14.5px;line-height:1.55;color:rgba(255,255,255,.78);margin:6px 0 0}
+details.cat-info{margin:2px 0 6px}
+details.cat-info summary{cursor:pointer;font-size:13px;font-weight:800;color:#5dff9a;list-style-position:inside}
+details.cat-info p{font-size:14px;line-height:1.55;color:rgba(255,255,255,.85);margin:6px 0 2px;background:rgba(93,255,154,.08);border:1px solid rgba(93,255,154,.18);border-radius:10px;padding:10px 12px}
+.re-cta{margin-top:20px;background:rgba(10,30,56,.9);border:1px solid rgba(93,255,154,.3);border-radius:20px;padding:22px;text-align:center}
+.re-cta h3{margin:0 0 8px;font-size:22px;font-weight:800}
+.re-cta p{margin:0 auto 14px;max-width:520px;font-size:15.5px;line-height:1.6;color:rgba(255,255,255,.75)}
+footer{text-align:center;padding:24px 16px;color:rgba(255,255,255,.5);font-size:14px}
+input#shipSearch{width:100%;box-sizing:border-box;padding:14px 18px;background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:16px;color:#fff;font-size:16px;font-family:inherit;outline:none;margin-bottom:10px}
+input#shipSearch:focus{border-color:#5dff9a}
+@media(max-width:640px){.corner{height:90px}}
 </style>
 </head>
 <body>
-<div class="re-shell">
-  <div class="re-frame">
-    <div class="re-card"><div class="panel-hold">
-    <img class="corner tl" src="/assets/concierge/corner-1_neutral_cruiser.png" alt="">
-    <img class="corner tr" src="/assets/concierge/corner-3_cruiser.png" alt="">
-    <img class="corner bl" src="/assets/concierge/corner-4_party_animal.png" alt="">
-    <img class="corner br" src="/assets/concierge/corner-5_conga_king_queen.png" alt="">
-    <div class="re-panel">
-      <div class="re-topbar"><button class="re-back" id="backBtn" onclick="RC.back()">&larr; Back</button></div>
-      <div class="re-scroll" id="stage"></div>
-    </div>
-    </div></div>
-  </div>
+<div id="navbar-container"></div>
+<div class="banner">
+  <img class="corner l" src="/assets/concierge/corner-4_party_animal.png" alt="">
+  <img class="corner r" src="/assets/concierge/corner-5_conga_king_queen.png" alt="">
+  <div class="plaque">Room Concierge</div>
+</div>
+<div class="shell">
+  <div class="re-topbar"><button class="re-back" id="backBtn" onclick="RC.back()">&larr; Back</button></div>
+  <div id="stage"></div>
 </div>
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more.</footer>
+<script src="/components/navbar.js?v=20260626-live"></script>
 
 <script>
 const DANCERS={1:'/assets/concierge/dancer-1_neutral_cruiser.jpg',2:'/assets/concierge/dancer-2_tourist.jpg',3:'/assets/concierge/dancer-3_cruiser.jpg',4:'/assets/concierge/dancer-4_party_animal.jpg',5:'/assets/concierge/dancer-5_conga_king_queen.jpg'};
@@ -311,16 +282,16 @@ class RoomConciergeFlow {
     const byLine={};
     for(const s of matches){ const ln=lineName(s.line); (byLine[ln]=byLine[ln]||[]).push(s); }
     const list=Object.entries(byLine).map(([line,ships])=>
-      `<div style="margin:8px 0 2px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#33415c">${line}</div>`+
+      `<div style="margin:12px 0 4px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(93,255,154,.85)">${line}</div>`+
       ships.map(s=>`<button class="re-opt" style="padding:9px 14px;font-size:15px" onclick="RC.chooseShip('${s.slug}')">${s.ship}</button>`).join("")
     ).join("");
     this.stageEl.innerHTML = `
       <p class="re-progress">Your ship</p>
       <h2 class="q">Which ship?</h2>
       <input id="shipSearch" placeholder="Start typing a ship or line…" value="${filter.replace(/"/g,"&quot;")}"
-        style="width:100%;padding:12px 16px;border-radius:14px;border:2px solid rgba(7,24,63,.3);font-family:'Baloo 2',sans-serif;font-size:16px;margin-bottom:10px"
+        
         oninput="RC.shipPick(this.value)">
-      <div class="re-opts" style="max-height:300px;overflow-y:auto">${list||'<p style="text-align:center;color:#33415c">No match — check the spelling, or go back and let me pick.</p>'}</div>
+      <div class="re-opts" style="max-height:300px;overflow-y:auto">${list||'<p style="color:rgba(255,255,255,.7)">No match — check the spelling, or go back and let me pick.</p>'}</div>
       ${this.quiet(1)}`;
     const inp=document.getElementById("shipSearch");
     if(f){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
@@ -397,10 +368,10 @@ class RoomConciergeFlow {
       if(r.ok){ const d=await r.json(); if(d.ok){ rating=d.rating; comment=d.comment; salty=d.saltyMarkTake; } }
     }catch{/* no rating shown */}
     const nextLevel = s.nextLevel ? `
-      <div style="display:flex;gap:10px;align-items:center;background:#fff8e6;border:1.5px solid #ecd9a0;border-radius:13px;padding:9px 13px;margin:0 0 10px">
+      <div style="display:flex;gap:10px;align-items:center;background:rgba(255,202,79,.12);border:1px solid rgba(255,202,79,.35);border-radius:13px;padding:9px 13px;margin:10px 0 10px">
         <span style="font-size:20px">✦</span>
-        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#8a6d1a;display:block;margin-bottom:2px">Next level: ${s.nextLevel.name}</span>
-        <p style="margin:0;font-size:14px;line-height:1.5;color:#5c4a12">${s.nextLevel.why}</p></div>
+        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#ffca4f;display:block;margin-bottom:2px">Next level: ${s.nextLevel.name}</span>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.85)">${s.nextLevel.why}</p></div>
       </div>` : "";
     const roomsBtn = s.hasRooms
       ? `<button class="re-btn no" onclick="RC.rooms('${s.repSlug}','${s.ship.replace(/'/g,"\\'")}')">Show me the rooms →</button>`
@@ -410,7 +381,7 @@ class RoomConciergeFlow {
         <div><h3>${s.ship}</h3><span class="line">${lineName(s.line)}</span></div>
         ${rating!=null?`<div class="gist-score">${Number(rating).toFixed(1)}<small>/5</small></div>`:""}
       </div>
-      ${(this.expect.destination && this.expect.destination!=="surprise" && (s.regions||[]).includes(this.expect.destination))?`<p style="margin:2px 0 6px;font-size:13px;font-weight:800;color:#2e8b46">⚓ Sails ${REGION_NAMES[this.expect.destination]||this.expect.destination}</p>`:""}
+      ${(this.expect.destination && this.expect.destination!=="surprise" && (s.regions||[]).includes(this.expect.destination))?`<p style="margin:2px 0 6px;font-size:13px;font-weight:800;color:#5dff9a">⚓ Sails ${REGION_NAMES[this.expect.destination]||this.expect.destination}</p>`:""}
       ${rating!=null?`<div class="gist-dancers">${[1,2,3,4,5].map(n=>
         `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</div>`:""}
       ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
@@ -468,8 +439,8 @@ class RoomConciergeFlow {
       <p class="re-progress">Your rooms · ${this.roomsShip}</p>
       <h2 class="q">Here's where I'd put you.</h2>
       ${picks}
-      ${steer?`<details class="why" style="margin:0 0 14px"><summary style="color:#b45309;font-weight:800">Worth walking past — ${(d.steerClear||[]).length} rooms I'd skip</summary>
-        <ul style="margin:8px 0 0;padding-left:18px;font-size:14.5px;line-height:1.6;color:#33415c">${steer}</ul></details>`:""}
+      ${steer?`<details class="why" style="margin:0 0 14px"><summary style="color:#ffca4f;font-weight:800">Worth walking past — ${(d.steerClear||[]).length} rooms I'd skip</summary>
+        <ul style="margin:8px 0 0;padding-left:18px;font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.78)">${steer}</ul></details>`:""}
       ${sendBar}`;
   }
   togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
