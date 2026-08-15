@@ -248,10 +248,10 @@ router.get("/cabins/deckmap", async (req: Request, res: Response) => {
       .eq("deck", deck)
       .not("x", "is", null);
     if (error) throw new Error(error.message);
-    res.json({ deck, cabins: data ?? [] });
+    return res.json({ deck, cabins: data ?? [] });
   } catch (err) {
     logger.error({ err }, "cabins/deckmap failed");
-    res.status(500).json({ error: "Could not load the deck map" });
+    return res.status(500).json({ error: "Could not load the deck map" });
   }
 });
 
@@ -269,10 +269,10 @@ router.get("/cabins/ships", async (_req: Request, res: Response) => {
     const { data: ships, error: sErr } = await supabase
       .from("cabin_ships").select("slug,ship,line,class,total_cabins").in("slug", slugs);
     if (sErr) throw new Error(sErr.message);
-    res.json({ ships: ships ?? [] });
+    return res.json({ ships: ships ?? [] });
   } catch (err) {
     logger.error({ err }, "cabins/ships failed");
-    res.status(500).json({ error: "Could not load ships" });
+    return res.status(500).json({ error: "Could not load ships" });
   }
 });
 
@@ -352,10 +352,10 @@ router.get("/cabins/fleet", async (_req: Request, res: Response) => {
   res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
   try {
     const { ships } = await buildFleet(false);
-    res.json({ ships });
+    return res.json({ ships });
   } catch (err) {
     logger.error({ err }, "cabins/fleet failed");
-    res.status(500).json({ error: "Could not load the fleet" });
+    return res.status(500).json({ error: "Could not load the fleet" });
   }
 });
 
@@ -388,14 +388,26 @@ function loadMatrix(): Matrix | null {
   return null;
 }
 
+// fleet.json names some lines differently than the matrix ("Royal Caribbean
+// International" vs "Royal Caribbean") — without this, those ships silently
+// scored on a bland default profile and lost enclave eligibility (caught by
+// the 8/14 staging test run).
+const LINE_ALIASES: Record<string, string> = {
+  "Royal Caribbean International": "Royal Caribbean",
+  "Margaritaville at Sea Cruises": "Margaritaville at Sea",
+  "Norwegian": "Norwegian Cruise Line",
+};
+function canonLine(line: string): string { return LINE_ALIASES[line] ?? line; }
+
 function virtuesFor(matrix: Matrix, line: string, shipClass: string): Record<string, number> {
+  line = canonLine(line);
   const base = matrix.lines[line] ?? { energy: 1, price: 1, family: 1, dining: 1, activity: 1, structure: 1, scale: 1, warmth: 1 };
-  const override = matrix.classOverrides[`${line}|${shipClass}`] ?? {};
+  const override = matrix.classOverrides[`${line}|${shipClass}`] ?? {};   // line already canonical here
   return { ...base, ...override };
 }
 
 function enclaveFor(matrix: Matrix, line: string, shipClass: string): { name: string; note?: string } | null {
-  const e = matrix.enclaves[line];
+  const e = matrix.enclaves[canonLine(line)];
   if (!e) return null;
   return e.classes.includes(shipClass) ? { name: e.name, note: e.note } : null;
 }
@@ -486,10 +498,10 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       ? `Picked because ${reasonBits.slice(0, 2).join(" and ")}.`
       : "Picked to fit how you answered.";
 
-    res.json({ picks, reason });
+    return res.json({ picks, reason });
   } catch (err) {
     logger.error({ err }, "cabins/suggest-ships failed");
-    res.status(500).json({ error: "Could not suggest ships" });
+    return res.status(500).json({ error: "Could not suggest ships" });
   }
 });
 
@@ -500,12 +512,14 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     if (!ship) return res.status(400).json({ error: "ship is required" });
 
     const supabase = getSupabase();
-    const { data: rows, error } = await supabase
+    type AdviceRow = { archetype_id: string; label: string; recommendations: unknown; steer_clear: unknown };
+    const { data, error } = await supabase
       .from("cabin_advice")
       .select("archetype_id,label,recommendations,steer_clear")
       .eq("ship_slug", ship);
+    const rows = (data ?? []) as AdviceRow[];
     if (error) throw new Error(error.message);
-    if (!rows?.length) return res.status(404).json({ error: "No advice for that ship yet" });
+    if (!rows.length) return res.status(404).json({ error: "No advice for that ship yet" });
 
     const chosen = pickArchetype(rows, answers);
     const advice = rows.find((r) => r.archetype_id === chosen) ?? rows[0]!;
@@ -525,8 +539,9 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
       .sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99))
       .map((r) => ({ ...r, cabin: String(r.cabin), facts: factByNum.get(String(r.cabin)) ?? null }));
 
-    const { data: shipRow } = await supabase
+    const { data: shipRowData } = await supabase
       .from("cabin_ships").select("ship,line,class").eq("slug", ship).maybeSingle();
+    const shipRow = shipRowData as { ship: string; line: string; class: string } | null;
 
     // Whether this ship's grid carries geometry — gates the "show me where it
     // sits" deck view in the UI (only claim what we can actually draw).
@@ -551,7 +566,7 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
       }
     }
 
-    res.json({
+    return res.json({
       ship: { ...(shipRow ?? { ship }), slug: ship },
       archetype: { id: advice.archetype_id, label: advice.label },
       picks,
@@ -561,7 +576,7 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     });
   } catch (err) {
     logger.error({ err }, "cabins/recommend failed");
-    res.status(500).json({ error: "Could not build a recommendation" });
+    return res.status(500).json({ error: "Could not build a recommendation" });
   }
 });
 
