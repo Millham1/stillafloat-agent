@@ -414,8 +414,8 @@ function enclaveFor(matrix: Matrix, line: string, shipClass: string): { name: st
 
 router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
   try {
-    const { personality = {}, party, traits = {} } = (req.body ?? {}) as
-      { personality?: Personality; party?: string; traits?: Traits; raw?: Record<string, string> };
+    const { personality = {}, party, traits = {}, budget } = (req.body ?? {}) as
+      { personality?: Personality; party?: string; traits?: Traits; raw?: Record<string, string>; budget?: string };
     const matrix = loadMatrix();
     if (!matrix) return res.status(500).json({ error: "matrix unavailable" });
     const { ships, internalRating } = await buildFleet(true);
@@ -443,8 +443,10 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       scale: personality.crowds === "avoids" ? 2.0 : 1.0,
       warmth: t("extrovert") >= 2 ? 1.25 : 0.5,
     };
-    const wantsEnclave = personality.splurge === "cabin" ||
-      (personality.social === "introvert" && personality.crowds === "avoids");
+    // Never pitch the enclave to someone who just said they respect a number —
+    // the disposition gates the upsell, no pricing data needed (Mark, 8/14).
+    const wantsEnclave = budget !== "lean" && (personality.splurge === "cabin" ||
+      (personality.social === "introvert" && personality.crowds === "avoids"));
 
     const scored = ships
       .filter((sh) => sh.repSlug)

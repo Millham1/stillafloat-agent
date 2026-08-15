@@ -320,7 +320,7 @@ class RoomConciergeFlow {
       try{
         const r=await fetch("/api/cabins/suggest-ships",{method:"POST",
           headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({personality:this.personality, party:this.expect.party, traits:this.traits, raw:this.raw})});
+          body:JSON.stringify({personality:this.personality, party:this.expect.party, traits:this.traits, raw:this.raw, budget:this.expect.budget})});
         const d=await r.json(); shipsToShow=d.picks||[]; reason=d.reason||"";
       }catch{ shipsToShow=[]; }
     }
