@@ -299,6 +299,7 @@ router.get("/cabins/ships", async (_req: Request, res: Response) => {
 type FleetShip = {
   ship: string; slug: string; line: string; shipClass: string;
   repSlug: string | null; hasRooms: boolean; rating: number | null;
+  regions: string[];          // from ship_deployments (empty until captured)
 };
 
 function kebab(name: string): string {
@@ -329,6 +330,14 @@ async function buildFleet(includeUnpublishedRatings: boolean): Promise<{ ships: 
     repByClass.set(r.class.toLowerCase(), { slug: r.slug, line: r.line });
   }
 
+  const { data: depRows } = await supabase.from("ship_deployments").select("ship_slug,region");
+  const regionsBySlug = new Map<string, string[]>();
+  for (const d of (depRows ?? []) as { ship_slug: string; region: string }[]) {
+    const arr = regionsBySlug.get(d.ship_slug) ?? [];
+    if (!arr.includes(d.region)) arr.push(d.region);
+    regionsBySlug.set(d.ship_slug, arr);
+  }
+
   const ratingQuery = supabase.from("conga_line_ratings").select("ship_slug,rating,status,comment_status");
   const { data: ratingRows } = await ratingQuery;
   const publicRating = new Map<string, number>();
@@ -353,6 +362,7 @@ async function buildFleet(includeUnpublishedRatings: boolean): Promise<{ ships: 
             repSlug: rep?.slug ?? null,
             hasRooms: rep ? adviceSlugs.has(rep.slug) : false,
             rating: publicRating.get(slug) ?? null,
+            regions: regionsBySlug.get(slug) ?? [],
           });
         }
       }
@@ -427,8 +437,8 @@ function enclaveFor(matrix: Matrix, line: string, shipClass: string): { name: st
 
 router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
   try {
-    const { personality = {}, party, traits = {}, budget } = (req.body ?? {}) as
-      { personality?: Personality; party?: string; traits?: Traits; raw?: Record<string, string>; budget?: string };
+    const { personality = {}, party, traits = {}, budget, destination } = (req.body ?? {}) as
+      { personality?: Personality; party?: string; traits?: Traits; raw?: Record<string, string>; budget?: string; destination?: string };
     const matrix = loadMatrix();
     if (!matrix) return res.status(500).json({ error: "matrix unavailable" });
     const { ships, internalRating } = await buildFleet(true);
@@ -461,6 +471,11 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
     const wantsEnclave = budget !== "lean" && (personality.splurge === "cabin" ||
       (personality.social === "introvert" && personality.crowds === "avoids"));
 
+    // Destination: a strong prior, not a silent hard filter — until the
+    // deployment capture covers the fleet, an empty regions list means
+    // "unknown", which must not blank the suggestions. Ships KNOWN to sail
+    // the chosen waters get a real boost; ships known NOT to, a real penalty.
+    const anyDeployments = ships.some((sh) => sh.regions.length > 0);
     const scored = ships
       .filter((sh) => sh.repSlug)
       .map((sh) => {
@@ -484,6 +499,9 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
         // The advisor's thumb: Mark's firsthand per-ship verdicts outrank any model.
         const adj = matrix.shipAdjust?.[sh.slug];
         if (adj && typeof adj.adjust === "number") score += adj.adjust;
+        if (destination && destination !== "surprise" && anyDeployments && sh.regions.length) {
+          score += sh.regions.includes(destination) ? 3.0 : -3.0;
+        }
         const nextLevel = enclave && wantsEnclave
           ? { name: enclave.name, why: "the quiet, looked-after version of this ship — private spaces, and the crowd stays outside" }
           : enclave ? { name: enclave.name, why: "worth knowing this ship has a next-level experience if you want it" } : null;
@@ -509,6 +527,9 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
     if (personality.crowds === "avoids") reasonBits.push("crowds wear on you");
     if (personality.splurge === "cabin") reasonBits.push("the room matters to you");
     if (personality.splurge === "value") reasonBits.push("you want the fare to do the work");
+    if (destination && destination !== "surprise" && picks.some((p) => p.regions.includes(destination))) {
+      reasonBits.unshift("they sail where you're headed");
+    }
     const reason = reasonBits.length
       ? `Picked because ${reasonBits.slice(0, 2).join(" and ")}.`
       : "Picked to fit how you answered.";
