@@ -99,6 +99,14 @@
     <xhtml:link rel="alternate" hreflang="es" href="https://stillafloatcruising.com/es/wheres-my-ship.html"/>
   </url>
   <url>
+    <loc>https://stillafloatcruising.com/room-concierge.html</loc>
+    <lastmod>2026-07-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/room-concierge.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://stillafloatcruising.com/es/room-concierge.html"/>
+  </url>
+  <url>
     <loc>https://stillafloatcruising.com/favorites.html</loc>
     <lastmod>2026-06-30</lastmod>
     <changefreq>monthly</changefreq>

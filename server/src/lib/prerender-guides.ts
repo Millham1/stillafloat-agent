@@ -43,6 +43,13 @@ export interface Guide {
   bodyHtml?: string; // TRUSTED, ready-to-render HTML (our own curated content)
   bodyHtml_es?: string;
   image?: string;
+  // TOOL TILES: when set, the index tile links straight to this path instead of a
+  // prerendered /guides/<slug> page and no guide page is generated. Lets first-class
+  // tools (Room Concierge) sit in the guides grid without faking a bodyHtml.
+  toolHref?: string;
+  toolHref_es?: string;
+  toolCta?: string;   // tile CTA label override, e.g. "Open the tool →"
+  toolCta_es?: string;
   published?: boolean;
   sort?: number;
   updatedAt?: string;
@@ -66,8 +73,15 @@ function field(guide: Guide, base: "title" | "hook" | "category" | "seoTitle" | 
 }
 
 // A guide is available in a language when it has both a title and a body there.
+// A tool tile only needs a title — its destination is a real page already.
 function hasLang(guide: Guide, lang: Lang): boolean {
+  if (toolHrefFor(guide, lang)) return Boolean(field(guide, "title", lang));
   return Boolean(field(guide, "title", lang) && field(guide, "bodyHtml", lang));
+}
+
+function toolHrefFor(guide: Guide, lang: Lang): string {
+  const v = lang === "es" ? guide.toolHref_es || guide.toolHref : guide.toolHref;
+  return typeof v === "string" ? v.trim() : "";
 }
 
 function cleanSlug(guide: Guide): string {
@@ -205,7 +219,7 @@ ${category ? `<div class="g-badge">${category}</div>` : ""}
 ${ctaHtml(lang)}
 </div>
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
-<script src="/components/navbar.js?v=20260626-live"></script>
+<script src="/components/navbar.js?v=20260816-concierge"></script>
 </body>
 </html>`;
 }
@@ -217,11 +231,15 @@ function guidesIndexHtml(guides: Guide[], lang: Lang): string {
   const tiles = guides
     .map((guide) => {
       const slug = cleanSlug(guide);
-      const href = lang === "es" ? `/es/guides/${slug}.html` : `/guides/${slug}.html`;
+      const tool = toolHrefFor(guide, lang);
+      const href = tool || (lang === "es" ? `/es/guides/${slug}.html` : `/guides/${slug}.html`);
       const cat = escapeHtml(field(guide, "category", lang));
       const title = escapeHtml(field(guide, "title", lang));
       const hook = escapeHtml(field(guide, "hook", lang) || field(guide, "seoDesc", lang));
-      return `<a class="g-tile" href="${href}">${cat ? `<span class="cat">${cat}</span>` : ""}<h2>${title}</h2><p>${hook}</p><span class="more">${t.readGuide}</span></a>`;
+      const cta = tool
+        ? escapeHtml((lang === "es" ? guide.toolCta_es : guide.toolCta) || t.readGuide)
+        : t.readGuide;
+      return `<a class="g-tile" href="${href}">${cat ? `<span class="cat">${cat}</span>` : ""}<h2>${title}</h2><p>${hook}</p><span class="more">${cta}</span></a>`;
     })
     .join("\n");
 
@@ -256,7 +274,7 @@ function guidesIndexHtml(guides: Guide[], lang: Lang): string {
 ${tiles ? `<div class="g-grid">${tiles}</div>` : ""}
 ${ctaHtml(lang)}
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
-<script src="/components/navbar.js?v=20260626-live"></script>
+<script src="/components/navbar.js?v=20260816-concierge"></script>
 </body>
 </html>`;
 }
@@ -274,6 +292,8 @@ function sitemapXml(guides: Guide[]): string {
     const slug = cleanSlug(guide);
     const u = guideUrls(slug);
     const lastmod = day(guide.updatedAt);
+    // tool tiles have no /guides/<slug> page — their real page lives in the main sitemap
+    if (toolHrefFor(guide, "en") || toolHrefFor(guide, "es")) continue;
     if (hasLang(guide, "en")) entries.push(`<url><loc>${u.en}</loc><lastmod>${lastmod}</lastmod></url>`);
     if (hasLang(guide, "es")) entries.push(`<url><loc>${u.es}</loc><lastmod>${lastmod}</lastmod></url>`);
   }
@@ -302,6 +322,8 @@ export async function runGuidesPrerender(): Promise<{ guides: number; pages: num
   let pages = 0;
   for (const guide of guides) {
     const slug = cleanSlug(guide);
+    // tool tiles link out to a real page — never render a (bodyless) guide page for them
+    if (toolHrefFor(guide, "en") || toolHrefFor(guide, "es")) continue;
     if (hasLang(guide, "en")) {
       await writeFile(path.join(enDir, `${slug}.html`), guidePageHtml(guide, slug, "en"));
       pages += 1;

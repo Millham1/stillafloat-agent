@@ -9,7 +9,7 @@ import { draftNewsletter, saveDraft } from "./lib/newsletter";
 import { notifyMark, reviewUrl } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
 import { runGuidesPrerender } from "./lib/prerender-guides";
-import { stageWeeklyCommentary } from "./lib/commentary-agent";
+import { stageWeeklyCommentary, loadCommentaryDraft } from "./lib/commentary-agent";
 import { startShipTracker } from "./lib/ship-tracker";
 import { runWatchSweep } from "./lib/wms-alerts";
 import { sendPendingReminders, archiveStaleUnconfirmed } from "./lib/subscriber-hygiene";
@@ -280,9 +280,30 @@ function scheduleWeeklyMarketing() {
     };
   };
 
+  let lastNudgeDate: string | null = null;
+
   const tick = async () => {
     const { weekday, hour, date } = localNow();
     if (hour !== runHour || lastRunDate === date) return;
+    // Stale-draft re-nudge, ANY day at the run hour: a commentary draft still waiting
+    // on Mark gets one reminder per day until he acts. Born 8/11→8/16: the staging
+    // nudge fired while the VAPID keys were empty and the draft sat unseen for five
+    // days. One lost notification must never orphan a week's commentary.
+    if (lastNudgeDate !== date) {
+      lastNudgeDate = date;
+      try {
+        const stale = await loadCommentaryDraft();
+        if (stale && (stale.status === "awaiting_take" || stale.status === "drafted")
+            && Date.parse(stale.generatedAt) < Date.now() - 20 * 3600 * 1000) {
+          void notifyMark({
+            title: "⏳ Commentary still waiting on your take",
+            body: stale.stories[0]?.title ?? "Staged draft pending",
+            url: reviewUrl("/api/commentary/review"),
+            tag: "commentary-review",
+          });
+        }
+      } catch { /* reminder is best-effort; the weekly tick below must still run */ }
+    }
     if (weekday !== "Mon" && weekday !== "Tue" && weekday !== "Thu") return;
     lastRunDate = date;
     try {
