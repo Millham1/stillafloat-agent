@@ -14,7 +14,7 @@
   // Compute equivalent page URL in the other language
   // Handles /es, /es/, /es/index.html, /es/news.html correctly
   // Pages that have a Spanish (/es/) counterpart
-  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'webcams.html', 'wheres-my-ship.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html', 'work-with-mark.html']);
+  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'webcams.html', 'wheres-my-ship.html', 'room-concierge.html', 'cabin-request.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html', 'work-with-mark.html']);
   let langUrl;
   if (isSpanish) {
     let eng = path.replace(/^\/es(\/.*)?$/, (_m, rest) => rest || '/index.html');
@@ -37,6 +37,7 @@
     { href: '/es/weather.html',        label: 'Clima'        },
     { href: '/es/webcams.html',        label: 'Cámaras'      },
     { href: '/es/wheres-my-ship.html', label: 'Mi Barco'     },
+    { href: '/es/room-concierge.html', label: 'Concierge'    },
     { href: '/favorites.html',         label: 'Favoritos'    },
     { href: '/es/commentary.html',     label: 'Comentarios'  },
     { href: '/es/affiliate.html',      label: 'Equipo'       },
@@ -46,6 +47,7 @@
     { href: '/weather.html',       label: 'Weather'      },
     { href: '/webcams.html',       label: 'Live Streams' },
     { href: '/wheres-my-ship.html',label: "Where's My Ship?" },
+    { href: '/room-concierge.html',label: 'Room Concierge' },
     { href: '/favorites.html',     label: 'Favorites'    },
     { href: '/commentary.html',    label: 'Commentary'  },
     { href: '/affiliate.html',     label: 'Gear'        },
@@ -64,9 +66,10 @@
     </a>`}
     <nav class="sa-site-nav" id="saSiteNav">
       <div class="sa-nav-row">
-        ${mainLinks.map(l => `<a href="${l.href}" class="sa-nav-link">${l.label}</a>`).join('')}
+        ${mainLinks.slice(0, 6).map(l => `<a href="${l.href}" class="sa-nav-link">${l.label}</a>`).join('')}
       </div>
       <div class="sa-nav-row sa-secondary">
+        ${mainLinks.slice(6).map(l => `<a href="${l.href}" class="sa-nav-link">${l.label}</a>`).join('')}
         <a href="${bookUrl}" class="sa-nav-link">${bookLabel}</a>
         <a href="${subscribeUrl}" class="sa-nav-link sa-subscribe-link">${subscribeLabel}</a>
         <a href="${langUrl}" class="sa-nav-link sa-lang-link" title="${langLabel}">${langLabel}</a>
@@ -125,7 +128,8 @@
     .sa-site-nav {
       position: absolute;
       top: 22px;
-      right: 22px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 20;
       width: fit-content;
       display: flex;
@@ -155,7 +159,7 @@
       pointer-events: none;
     }
 
-    .sa-nav-row { display: flex; gap: 6px; justify-content: flex-end; }
+    .sa-nav-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
     .sa-nav-row.sa-secondary {
       border-top: 1px solid rgba(255,255,255,.14);
       padding-top: 5px;

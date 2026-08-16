@@ -127,8 +127,17 @@ export async function sendPush(payload: PushPayload): Promise<{ sent: number; pr
         sent += 1;
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode;
+        const body403 = String((err as { body?: string }).body || "");
         if (status === 404 || status === 410) {
           dead.push(sub.endpoint); // gone — drop it
+        } else if (status === 403 && /vapid|credentials/i.test(body403)) {
+          // Subscribed under a previous VAPID keypair — it can NEVER succeed under
+          // the current keys, only re-subscribing fixes it. Found 2026-08-16: a
+          // June subscription 403'd invisibly on every send for days while
+          // sent:1 made the channel look healthy. Prune it like a dead one.
+          dead.push(sub.endpoint);
+          logger.warn({ endpoint: sub.endpoint.slice(0, 60) },
+            "Pruning subscription from an older VAPID keypair (403)");
         } else {
           logger.warn({ err, status }, "Push send failed for one device");
         }
