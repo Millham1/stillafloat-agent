@@ -1,0 +1,31 @@
+/* Still Afloat design tokens — THE single source for brand values site-wide.
+   Source of truth: docs/BRAND_GUIDE.md ("tropical premium"). Every page loads
+   this before its own styles; page CSS should reference tokens, not raw hex.
+   Added 2026-08-16 (task 419e9a71). */
+:root {
+  /* palette (brand guide core colors) */
+  --sa-navy:        #07183f;   /* structure & authority */
+  --sa-navy-2:      #0a2350;   /* raised navy surface */
+  --sa-ocean:       #0077b6;   /* energy, ocean identity */
+  --sa-seafoam:     #5dff9a;   /* accents & highlights */
+  --sa-gold:        #ffca4f;   /* CTAs & warmth */
+  --sa-cloud:       #f7fbff;   /* text on dark, light surfaces */
+  --sa-teal-soft:   #5eead4;   /* link accent on navy (in live use site-wide) */
+
+  /* typography (max 3 families) */
+  --sa-font-head:   "Bree Serif", serif;
+  --sa-font-body:   "Baloo 2", system-ui, sans-serif;
+  --sa-font-accent: "Pacifico", cursive;      /* logo/accent only */
+
+  /* the ocean-gradient page ground (canon: sections sit ON the gradient) */
+  --sa-ocean-gradient: linear-gradient(180deg, #bfe8ff 0%, #7cc7ef 35%, #2b90c8 70%, #0b5e93 100%);
+
+  /* spacing & shape */
+  --sa-gap-s: 10px;  --sa-gap-m: 18px;  --sa-gap-l: 32px;
+  --sa-radius: 14px; --sa-radius-lg: 22px;
+  --sa-shadow: 0 12px 30px rgba(4, 24, 48, .25);
+
+  /* cards */
+  --sa-card-bg: rgba(7, 24, 63, .82);
+  --sa-card-border: rgba(123, 214, 255, .28);
+}

@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap');
+@import url("tokens.css");  /* brand token layer — single source of brand values */
 
 :root{
   --navy:#07183f;
@@ -125,6 +126,7 @@ a{text-decoration:none;color:inherit;}
 
 .hero-text{
   max-width:800px;
+  margin:0 auto;   /* centered under the centered nav (Mark, 8/16) */
   background:rgba(255,255,255,.72);
   backdrop-filter:blur(12px);
   padding:34px;
@@ -260,10 +262,13 @@ a{text-decoration:none;color:inherit;}
 
 .cards{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  grid-template-columns:repeat(2,1fr);   /* Variant A (Mark, 8/16): 2x2, centered */
+  max-width:1000px;
+  margin:0 auto;
   gap:24px;
   padding:16px 20px 24px;
 }
+@media (max-width:720px){ .cards{ grid-template-columns:1fr; } }
 
 .flavor-card{
   position:relative;
@@ -307,9 +312,10 @@ a{text-decoration:none;color:inherit;}
   box-shadow:0 24px 42px rgba(0,0,0,0.18);
 }
 
-.ship-card{background-image:url('https://images.unsplash.com/photo-1569263979104-865ab7cd8d13?q=80&w=1200&auto=format&fit=crop');}
+.ship-card{background-image:url('/assets/images/cards/card-ship.jpg');}      /* Star of the Seas — Mark's library */
+.cabin-card{background-image:url('/assets/images/cards/card-cabin.jpg');}    /* porthole cabin — Mark's footage */
 .gear-card{background-image:url('https://images.unsplash.com/photo-1527631746610-bca00a040d60?q=80&w=1200&auto=format&fit=crop');}
-.casino-card{background-image:url('https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1200&auto=format&fit=crop');}
+.casino-card{background-image:url('/assets/images/cards/card-casino.jpg');}  /* Islander slots — Mark's footage */
 
 .flavor-card h3{
   font-size:34px;
