@@ -47,6 +47,7 @@ export interface CommentaryDraft {
   draftHtml: string;
   tags: string[];
   status: "awaiting_take" | "drafted" | "published" | "discarded";
+  authoredBy?: "mark" | "agent";
   generatedAt: string;
   draftedAt?: string;
 }
@@ -228,6 +229,27 @@ and (3) MARK'S OPINION in his own rough words. Write the weekly COMMENTARY for t
 Respond ONLY with JSON:
 { "title": "...", "body_html": "<p>...</p>", "tags": ["...", "..."] }`;
 
+const AUTONOMOUS_PROMPT = `${VOICE}
+
+You have: (1) this week's featured story cluster and (2) additional backing coverage. Mark has
+delegated this one: write the weekly COMMENTARY yourself, WITHOUT his personal take.
+
+- Take a clear, consumer-first STANCE — the position Mark's brand always takes: the reader's
+  money, safety and trip come first; cruise lines get credit when they earn it and heat when
+  they deserve it. An opinion piece with no opinion is failure.
+- ABSOLUTE RULE — no invented experience: you are NOT Mark this week. No first-person
+  anecdotes, no "I was on that ship", no invented client stories. Write as Still Afloat
+  ("we", or plain declarative). Stance and humor are yours; personal history is not.
+- Facts (names, numbers, fines, places) come ONLY from the provided stories and research and
+  must match the source EXACTLY. Cite them naturally in the prose, no footnotes.
+- Stay on one topic, hook opening, memorable close, lightly funny per the voice.
+- Always land what this means for the reader planning their next sailing.
+- 300–500 words, simple HTML <p> paragraphs only. End with one practical takeaway or call to
+  action (following the site/newsletter is fair game).
+
+Respond ONLY with JSON:
+{ "title": "...", "body_html": "<p>...</p>", "tags": ["...", "..."] }`;
+
 // ── pipeline steps ───────────────────────────────────────────────────────────
 // Step 1 — stage the ask: pick the cluster, generate questions, nudge Mark.
 export async function stageWeeklyCommentary(options?: {
@@ -268,32 +290,40 @@ export async function stageWeeklyCommentary(options?: {
 
 // Step 2 — synthesize: Mark's take + cluster + research → the commentary.
 // Callable repeatedly (revise take → re-synthesize).
-export async function synthesizeCommentary(markTake: string): Promise<CommentaryDraft> {
+export async function synthesizeCommentary(markTake: string | null): Promise<CommentaryDraft> {
   const draft = await loadCommentaryDraft();
   if (!draft || (draft.status !== "awaiting_take" && draft.status !== "drafted")) {
     throw new Error("No staged commentary awaiting a take");
   }
 
+  // null take = Mark delegated ("write the commentary without my input", 8/16):
+  // the agent authors the stance itself — brand-voice opinion, zero invented
+  // personal experience (that guard lives in AUTONOMOUS_PROMPT).
+  const autonomous = !markTake || !markTake.trim();
   const out = await chatJson(
-    SYNTHESIZE_PROMPT,
+    autonomous ? AUTONOMOUS_PROMPT : SYNTHESIZE_PROMPT,
     JSON.stringify(
-      {
-        featured_stories: draft.stories,
-        backing_research: draft.research,
-        marks_opinion: markTake,
-      },
+      autonomous
+        ? { featured_stories: draft.stories, backing_research: draft.research }
+        : {
+            featured_stories: draft.stories,
+            backing_research: draft.research,
+            marks_opinion: markTake,
+          },
       null,
       2,
     ),
   );
 
-  draft.markTake = markTake;
+  draft.markTake = autonomous ? "" : (markTake as string);
+  draft.authoredBy = autonomous ? "agent" : "mark";
   draft.suggestedTitle = String(out["title"] ?? draft.stories[0]!.title);
   draft.draftHtml = String(out["body_html"] ?? "");
   draft.tags = Array.isArray(out["tags"]) ? out["tags"].map(String).slice(0, 5) : [];
   draft.status = "drafted";
   draft.draftedAt = new Date().toISOString();
   await saveCommentaryDraft(draft);
-  logger.info({ title: draft.suggestedTitle }, "Commentary synthesized from Mark's take");
+  logger.info({ title: draft.suggestedTitle, authoredBy: draft.authoredBy },
+    "Commentary synthesized");
   return draft;
 }

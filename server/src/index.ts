@@ -293,10 +293,35 @@ function scheduleWeeklyMarketing() {
       lastNudgeDate = date;
       try {
         const stale = await loadCommentaryDraft();
-        if (stale && (stale.status === "awaiting_take" || stale.status === "drafted")
-            && Date.parse(stale.generatedAt) < Date.now() - 20 * 3600 * 1000) {
+        const ageH = stale ? (Date.now() - Date.parse(stale.generatedAt)) / 3600e3 : 0;
+        // COMMENTARY_AUTOPILOT_HOURS > 0: if Mark hasn't responded after that many
+        // hours, the agent writes the piece itself (brand stance, no invented
+        // personal experience) and publishes — his 8/16 delegation, off by default.
+        const autopilotH = Number(process.env["COMMENTARY_AUTOPILOT_HOURS"] ?? "0");
+        if (stale && stale.status === "awaiting_take" && autopilotH > 0 && ageH > autopilotH) {
+          const { synthesizeCommentary } = await import("./lib/commentary-agent");
+          const drafted = await synthesizeCommentary(null);
+          // publish via the route (self-call) so the ES auto-translate + CMS write
+          // stay in exactly one place
+          const r = await fetch(`http://127.0.0.1:${port}/api/commentary/publish-draft`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-affiliate-token": process.env["AGENT_APPROVAL_TOKEN"] ?? "",
+            },
+          });
           void notifyMark({
-            title: "⏳ Commentary still waiting on your take",
+            title: r.ok
+              ? "🗣️ Commentary published (agent-written — no response in time)"
+              : "⚠️ Agent-written commentary drafted but publish FAILED",
+            body: drafted.suggestedTitle || "This week's commentary",
+            url: r.ok ? "/commentary.html" : reviewUrl("/api/commentary/review"),
+            tag: "commentary-review",
+          });
+        } else if (stale && (stale.status === "awaiting_take" || stale.status === "drafted")
+            && ageH > 20) {
+          void notifyMark({
+            title: "⏳ Commentary waiting — approve, give a take, or skip",
             body: stale.stories[0]?.title ?? "Staged draft pending",
             url: reviewUrl("/api/commentary/review"),
             tag: "commentary-review",

@@ -356,12 +356,13 @@ router.post("/commentary/synthesize", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const take = String((req.body as { take?: string } | undefined)?.take ?? "").trim();
-    if (!take) {
-      res.status(400).json({ success: false, error: "take is required" });
+    const b = req.body as { take?: string; autonomous?: boolean } | undefined;
+    const take = String(b?.take ?? "").trim();
+    if (!take && !b?.autonomous) {
+      res.status(400).json({ success: false, error: "take is required (or autonomous: true)" });
       return;
     }
-    const draft = await synthesizeCommentary(take);
+    const draft = await synthesizeCommentary(take || null);
     res.json({ success: true, draft });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -449,8 +450,18 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
   <div class="panel">
     <div class="label">This week's featured stories (${draft!.stories.length})</div>
     ${storiesHtml}
+    ${
+      draft!.status === "awaiting_take"
+        ? `<div class="row" style="margin-top:14px">
+      <button class="btn primary" onclick="auto(this)">✅ Approve — write it &amp; publish, no input from me</button>
+      <button class="btn" onclick="document.getElementById('takePanel').style.display='block';this.style.display='none'">✍️ I'll give my take</button>
+      <button class="btn danger" onclick="discard()">❌ Skip this week</button>
+    </div>
+    <p class="muted small" style="margin:8px 0 0">Approve = the agent takes the brand's stance itself (no invented personal stories), publishes EN + ES, and sends you the link.</p>`
+        : ""
+    }
   </div>
-  <div class="panel">
+  <div class="panel" id="takePanel" style="${draft!.status === "drafted" || draft!.markTake ? "" : "display:none"}">
     <div class="label">Your opinion — the agent asks:</div>
     <ul>${draft!.questions.map((q) => `<li>${esc(q)}</li>`).join("")}</ul>
     <textarea id="take" rows="8" placeholder="Give your raw take — opinions, experiences, what you'd tell a client. The agent weaves it for impact (not verbatim) and backs it with facts from the coverage.">${esc(draft!.markTake)}</textarea>
@@ -462,7 +473,7 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
   ${
     draft!.status === "drafted"
       ? `<div class="panel">
-    <div class="label">Synthesized commentary — review before publishing</div>
+    <div class="label">${draft!.authoredBy === "agent" ? "Agent-written commentary (no take given)" : "Synthesized commentary — review before publishing"}</div>
     <h2>${esc(draft!.suggestedTitle)}</h2>
     <div class="body">${draft!.draftHtml}</div>
     <div class="row">
@@ -507,6 +518,14 @@ async function synth(){
   if(!take){alert("Type your take first — that's the whole point!");return}
   const btn=event.target; btn.disabled=true; btn.textContent="Synthesizing…";
   if(await call("/api/commentary/synthesize",{take})) location.reload(); else {btn.disabled=false;}
+}
+async function auto(btn){
+  if(!confirm("The agent writes this week's commentary itself and publishes EN + ES. Go?"))return;
+  btn.disabled=true; btn.textContent="Writing & publishing…";
+  if(await call("/api/commentary/synthesize",{autonomous:true})
+     && await call("/api/commentary/publish-draft")){
+    alert("Published — link is on the commentary page."); location.reload();
+  } else { btn.disabled=false; btn.textContent="✅ Approve — write it & publish, no input from me"; }
 }
 async function publish(){
   if(!confirm("Publish this commentary to the website?"))return;
