@@ -281,6 +281,7 @@ function scheduleWeeklyMarketing() {
   };
 
   let lastNudgeDate: string | null = null;
+  let lastScanDate: string | null = null;
 
   const tick = async () => {
     const { weekday, hour, date } = localNow();
@@ -329,23 +330,32 @@ function scheduleWeeklyMarketing() {
         }
       } catch { /* reminder is best-effort; the weekly tick below must still run */ }
     }
-    if (weekday !== "Mon" && weekday !== "Tue" && weekday !== "Thu") return;
-    lastRunDate = date;
-    try {
-      if (weekday === "Tue") {
-        const draft = await stageWeeklyCommentary(); // sends its own push nudge
-        logger.info({ lead: draft.stories[0]?.title }, "Weekly commentary staged — awaiting Mark's take");
-      } else if (weekday === "Mon") {
+    // Social scan runs DAILY (Mark 2026-08-16 — the Monday-only scan left a big
+    // publish day invisible on Facebook for up to a week, ES worst of all).
+    // Cheap: dedups by videoId+track, so quiet days create nothing.
+    if (lastScanDate !== date) {
+      lastScanDate = date;
+      try {
         const created = await scanAndQueue(4);
-        logger.info({ created: created.length }, "Weekly social scan complete");
         if (created.length > 0) {
+          logger.info({ created: created.length }, "Daily social scan complete");
           void notifyMark({
-            title: `📱 ${created.length} new social draft(s) ready (weekly scan)`,
+            title: `📱 ${created.length} new social draft(s) ready (daily scan)`,
             body: created.map((b) => `Track ${b.track}: ${b.title}`).join("\n"),
             url: reviewUrl("/api/social/review"),
             tag: "social-review",
           });
         }
+      } catch (err) {
+        logger.error({ err }, "Daily social scan failed");
+      }
+    }
+    if (weekday !== "Tue" && weekday !== "Thu") return;
+    lastRunDate = date;
+    try {
+      if (weekday === "Tue") {
+        const draft = await stageWeeklyCommentary(); // sends its own push nudge
+        logger.info({ lead: draft.stories[0]?.title }, "Weekly commentary staged — awaiting Mark's take");
       } else {
         const draft = await draftNewsletter("en");
         await saveDraft(draft);
