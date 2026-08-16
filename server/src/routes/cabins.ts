@@ -167,7 +167,9 @@ function scrubBanned(t: string | undefined): string | undefined {
     .replace(/sleep like the dead/gi, "sleep soundly")
     .replace(/dead quiet/gi, "truly quiet")
     .replace(/to die for/gi, "worth the trip alone")
+    .replace(/dormir como (?:un )?muerto/gi, "dormir profundo")
     .replace(/\s(?:genuinely|genuine|actually)\s/gi, " ")
+    .replace(/\sde hecho[,]?\s/gi, " ")
     .replace(/\s{2,}/g, " ");
 }
 
@@ -176,11 +178,12 @@ async function reasonLive(
   answers: Answers,
   picks: { cabin: string; reason?: string; facts: Record<string, unknown> | null }[],
   steerClear: { cabin?: string; area?: string; reason?: string }[],
+  lang: "en" | "es" = "en",
 ): Promise<LiveOut | null> {
   const apiKey = process.env["ANTHROPIC_API_KEY"];
   if (!apiKey || !picks.length) return null;
 
-  const key = JSON.stringify([shipName, answers.party, answers.room, answers.priority, !!answers.motion]);
+  const key = JSON.stringify([shipName, answers.party, answers.room, answers.priority, !!answers.motion, lang]);
   const hit = liveCache.get(key);
   if (hit && Date.now() - hit.at < LIVE_CACHE_TTL_MS) return hit.out;
 
@@ -205,7 +208,9 @@ Write, for each shortlisted cabin, in rank order:
 - "reason": 2-4 sentences in your voice, reasoned for this traveler's answers specifically. Differentiate every cabin; where two are nearly the same, say so and give the honest tie-breaker. Vary your openings — don't start each one the same way.
 And rewrite each steer-clear reason for this traveler (1-2 sentences).
 
-Speak ONLY to concerns they actually told you. REQUIRED, not optional: at least one genuinely funny dry line across the set, in your register (situational — buffets, conga lines, pool-chair hogs, pajamas at sea — never at the traveler). Final check before answering: if any sentence contains "best match", "perfect for", "exactly what you're after", "boasts", "offers", "features", or could run in a cruise brochure unchanged, rewrite it first. Respond with ONLY a JSON object:
+Speak ONLY to concerns they actually told you. REQUIRED, not optional: at least one genuinely funny dry line across the set, in your register (situational — buffets, conga lines, pool-chair hogs, pajamas at sea — never at the traveler). Final check before answering: if any sentence contains "best match", "perfect for", "exactly what you're after", "boasts", "offers", "features", or could run in a cruise brochure unchanged, rewrite it first.${lang === "es" ? `
+
+Write EVERYTHING (hooks, reasons, steer-clear reasons) in neutral Latin American Spanish (es-419) — Mark's same warm, plain-spoken, slightly salty voice, never textbook Spanish, never brochure Spanish ("perfecto para", "ofrece", "cuenta con" banned; no "de hecho" as filler). Cabin numbers, deck numbers, ship names and enclave names stay exactly as-is.` : ""} Respond with ONLY a JSON object:
 {"recommendations":[{"cabin":"<number>","hook":"...","reason":"..."}],"steerClear":[{"cabin":"<number or area>","reason":"..."}]}`;
 
   try {
@@ -437,8 +442,9 @@ function enclaveFor(matrix: Matrix, line: string, shipClass: string): { name: st
 
 router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
   try {
-    const { personality = {}, party, traits = {}, budget, destination } = (req.body ?? {}) as
-      { personality?: Personality; party?: string; traits?: Traits; raw?: Record<string, string>; budget?: string; destination?: string };
+    const { personality = {}, party, traits = {}, budget, destination, lang: langRaw } = (req.body ?? {}) as
+      { personality?: Personality; party?: string; traits?: Traits; raw?: Record<string, string>; budget?: string; destination?: string; lang?: string };
+    const lang: "en" | "es" = langRaw === "es" || req.query["lang"] === "es" ? "es" : "en";
     const matrix = loadMatrix();
     if (!matrix) return res.status(500).json({ error: "matrix unavailable" });
     const { ships, internalRating } = await buildFleet(true);
@@ -503,8 +509,12 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
           score += sh.regions.includes(destination) ? 3.0 : -3.0;
         }
         const nextLevel = enclave && wantsEnclave
-          ? { name: enclave.name, why: "the quiet, looked-after version of this ship — private spaces, and the crowd stays outside" }
-          : enclave ? { name: enclave.name, why: "worth knowing this ship has a next-level experience if you want it" } : null;
+          ? { name: enclave.name, why: lang === "es"
+              ? "la versión tranquila y bien atendida de este barco — espacios privados, y la multitud se queda afuera"
+              : "the quiet, looked-after version of this ship — private spaces, and the crowd stays outside" }
+          : enclave ? { name: enclave.name, why: lang === "es"
+              ? "vale saber que este barco tiene una experiencia de siguiente nivel si la quieres"
+              : "worth knowing this ship has a next-level experience if you want it" } : null;
         return { s: sh, score, nextLevel };
       })
       .sort((a, b) => b.score - a.score);
@@ -518,21 +528,23 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       if (picks.length === 2) break;
     }
 
+    const es = lang === "es";
     const reasonBits: string[] = [];
-    if (personality.energy === "party") reasonBits.push("you want the energy turned up");
-    if (personality.energy === "quiet") reasonBits.push("you want room to breathe");
-    if (personality.energy === "social") reasonBits.push("you like the middle gear — lively, not chaos");
-    if (t("food") >= 2) reasonBits.push("the food clearly matters to you");
-    if (t("active") >= 2) reasonBits.push("you came to do things, not watch them");
-    if (personality.crowds === "avoids") reasonBits.push("crowds wear on you");
-    if (personality.splurge === "cabin") reasonBits.push("the room matters to you");
-    if (personality.splurge === "value") reasonBits.push("you want the fare to do the work");
+    if (personality.energy === "party") reasonBits.push(es ? "quieres la energía a tope" : "you want the energy turned up");
+    if (personality.energy === "quiet") reasonBits.push(es ? "quieres espacio para respirar" : "you want room to breathe");
+    if (personality.energy === "social") reasonBits.push(es ? "te gusta el punto medio — animado, sin caos" : "you like the middle gear — lively, not chaos");
+    if (t("food") >= 2) reasonBits.push(es ? "la comida claramente te importa" : "the food clearly matters to you");
+    if (t("active") >= 2) reasonBits.push(es ? "viniste a hacer cosas, no a mirarlas" : "you came to do things, not watch them");
+    if (personality.crowds === "avoids") reasonBits.push(es ? "las multitudes te desgastan" : "crowds wear on you");
+    if (personality.splurge === "cabin") reasonBits.push(es ? "la habitación te importa" : "the room matters to you");
+    if (personality.splurge === "value") reasonBits.push(es ? "quieres que la tarifa haga el trabajo" : "you want the fare to do the work");
     if (destination && destination !== "surprise" && picks.some((p) => p.regions.includes(destination))) {
-      reasonBits.unshift("they sail where you're headed");
+      reasonBits.unshift(es ? "navegan hacia donde tú vas" : "they sail where you're headed");
     }
+    const joiner = es ? " y " : " and ";
     const reason = reasonBits.length
-      ? `Picked because ${reasonBits.slice(0, 2).join(" and ")}.`
-      : "Picked to fit how you answered.";
+      ? (es ? `Elegidos porque ${reasonBits.slice(0, 2).join(joiner)}.` : `Picked because ${reasonBits.slice(0, 2).join(joiner)}.`)
+      : (es ? "Elegidos según cómo respondiste." : "Picked to fit how you answered.");
 
     return res.json({ picks, reason });
   } catch (err) {
@@ -544,16 +556,28 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
 // ── The recommendation ───────────────────────────────────────────────────────
 router.post("/cabins/recommend", async (req: Request, res: Response) => {
   try {
-    const { ship, ...answers } = (req.body ?? {}) as Answers & { ship?: string };
+    const { ship, lang: langRaw, ...answers } = (req.body ?? {}) as Answers & { ship?: string; lang?: string };
     if (!ship) return res.status(400).json({ error: "ship is required" });
+    const lang: "en" | "es" = langRaw === "es" || req.query["lang"] === "es" ? "es" : "en";
 
     const supabase = getSupabase();
-    type AdviceRow = { archetype_id: string; label: string; recommendations: unknown; steer_clear: unknown };
+    type AdviceRow = { archetype_id: string; label: string; recommendations: unknown; steer_clear: unknown;
+      label_es?: string | null; recommendations_es?: unknown; steer_clear_es?: unknown };
     const { data, error } = await supabase
       .from("cabin_advice")
-      .select("archetype_id,label,recommendations,steer_clear")
+      .select("archetype_id,label,recommendations,steer_clear,label_es,recommendations_es,steer_clear_es")
       .eq("ship_slug", ship);
-    const rows = (data ?? []) as AdviceRow[];
+    let rows = (data ?? []) as AdviceRow[];
+    // ES: the translated corpus becomes the stored base (grounding + fallback);
+    // rows missing a translation keep English rather than serving nothing.
+    if (lang === "es") {
+      rows = rows.map((r) => ({
+        ...r,
+        label: r.label_es || r.label,
+        recommendations: r.recommendations_es ?? r.recommendations,
+        steer_clear: r.steer_clear_es ?? r.steer_clear,
+      }));
+    }
     if (error) throw new Error(error.message);
     if (!rows.length) return res.status(404).json({ error: "No advice for that ship yet" });
 
@@ -590,7 +614,7 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     // Live pass: rewrite hook + reason for THIS visitor's answers. Stored text
     // is the grounding and the fallback — the response never blocks on failure.
     let steerClear = (advice.steer_clear ?? []) as { cabin?: string; area?: string; reason?: string }[];
-    const live = await reasonLive((shipRow?.ship as string) ?? ship, answers, picks, steerClear);
+    const live = await reasonLive((shipRow?.ship as string) ?? ship, answers, picks, steerClear, lang);
     if (live) {
       const byCabin = new Map(live.recommendations.map((r) => [String(r.cabin), r]));
       picks = picks.map((p) => {
