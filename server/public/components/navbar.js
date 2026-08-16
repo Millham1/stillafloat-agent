@@ -66,9 +66,10 @@
     </a>`}
     <nav class="sa-site-nav" id="saSiteNav">
       <div class="sa-nav-row">
-        ${mainLinks.map(l => `<a href="${l.href}" class="sa-nav-link">${l.label}</a>`).join('')}
+        ${mainLinks.slice(0, 6).map(l => `<a href="${l.href}" class="sa-nav-link">${l.label}</a>`).join('')}
       </div>
       <div class="sa-nav-row sa-secondary">
+        ${mainLinks.slice(6).map(l => `<a href="${l.href}" class="sa-nav-link">${l.label}</a>`).join('')}
         <a href="${bookUrl}" class="sa-nav-link">${bookLabel}</a>
         <a href="${subscribeUrl}" class="sa-nav-link sa-subscribe-link">${subscribeLabel}</a>
         <a href="${langUrl}" class="sa-nav-link sa-lang-link" title="${langLabel}">${langLabel}</a>
@@ -127,7 +128,8 @@
     .sa-site-nav {
       position: absolute;
       top: 22px;
-      right: 22px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 20;
       width: fit-content;
       display: flex;
@@ -157,7 +159,7 @@
       pointer-events: none;
     }
 
-    .sa-nav-row { display: flex; gap: 6px; justify-content: flex-end; }
+    .sa-nav-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
     .sa-nav-row.sa-secondary {
       border-top: 1px solid rgba(255,255,255,.14);
       padding-top: 5px;
