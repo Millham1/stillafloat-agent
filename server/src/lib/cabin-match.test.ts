@@ -39,8 +39,9 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import {
   normalizeAnswers, pickArchetype, selectCabins, selectionNote, classifyCategory,
-  shipTypeInventory, zonesForCabin, viewVerdict, ARCHETYPE_TAGS,
-  type CabinType, type PoolCabin, type Zone,
+  shipTypeInventory, zonesForCabin, viewVerdict, ARCHETYPE_TAGS, satisfies, cabinAttributes,
+  buildSteerClear, validateSteerProse, plainSteerLine, steerPromptFacts,
+  type CabinType, type PoolCabin, type Zone, type SteerCandidate, type SteerFacts,
 } from "./cabin-match";
 import {
   PERSONALITY_QS, EXPECT_QS, inferAxes, traitsFor, everyCombination, type Axes,
@@ -250,7 +251,9 @@ test("selection: a visitor is NEVER silently given a cabin type they did not ask
         // Every served cabin must BE the requested type. This is the assertion
         // that would have caught the balcony-asker being handed ocean-view rooms.
         for (const p of sel.picks) {
-          if (classifyCategory(p.category) !== sel.asked) {
+          // assert through the SAME contract selection uses — attribute-based,
+          // so a Grand Terrace Suite counts as the balcony it actually is
+          if (!satisfies(p.category, sel.asked!)) {
             failures.push(`${slug} asked=${sel.asked} served=${p.category} (${p.cabin})`);
           }
         }
@@ -386,4 +389,228 @@ test("the page's question pools match this module's", () => {
       `option count drifted for "${q.key}"`,
     );
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. THE STEER-CLEAR LIST — the third of the feature my sweep never asserted on.
+//
+// Mark, 2026-08-17: "the cabins to stay clear do not reflect the category the
+// engine returns as suggested." He was right, and the old sweep could not have
+// caught it because it only ever checked which cabins were RECOMMENDED. These
+// assertions exist so the skip-list can never drift again.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const Z = (over: Partial<Zone> = {}): Zone => ({
+  factor: "lifeboat", decks: [4], sections: ["mid"], sides: [],
+  what: "Lifeboats are stowed on the deck below.",
+  effect: "The downward sightline from the balcony is blocked.",
+  mattersTo: "People who want to look straight down.",
+  severity: "moderate", confidence: "high", source: "cruisedeckplans deck 4", ...over,
+});
+const cand = (cabin: string, category: string, deck = 4, section = "mid"): SteerCandidate =>
+  ({ cabin, archetypeId: "", rank: null, category, deck, section, side: "port" });
+
+test("steer-clear: only ever warns about the type the visitor asked for", () => {
+  const out = buildSteerClear({
+    candidates: [cand("4156", "Breezy Balcony"), cand("4001", "Interior"), cand("4090", "Ocean View")],
+    picked: [], answers: normalizeAnswers({ room: "balcony" }), zones: [Z()],
+  });
+  assert.deepEqual(out.map((e) => e.cabin), ["4156"],
+    "warned about a cabin type the visitor never asked about");
+});
+
+test("steer-clear: never warns about a cabin it just recommended", () => {
+  const out = buildSteerClear({
+    candidates: [cand("4156", "Breezy Balcony")], picked: ["4156"],
+    answers: normalizeAnswers({ room: "balcony" }), zones: [Z()],
+  });
+  assert.deepEqual(out, []);
+});
+
+test("steer-clear: no zone evidence means NO entry — silence beats invention", () => {
+  // The old corpus produced prose for cabins it had no facts about; 346 of 1,079
+  // positional claims contradicted the grid as a result.
+  const out = buildSteerClear({
+    candidates: [cand("9999", "Breezy Balcony", 12, "aft")],   // no zone touches deck 12
+    picked: [], answers: normalizeAnswers({ room: "balcony" }), zones: [Z()],
+  });
+  assert.deepEqual(out, []);
+});
+
+test("steer-clear: every positional claim matches the grid, not the prose", () => {
+  const out = buildSteerClear({
+    candidates: [cand("4156", "Breezy Balcony", 4, "mid")],
+    picked: [], answers: normalizeAnswers({ room: "balcony" }), zones: [Z()],
+  });
+  assert.equal(out.length, 1);
+  assert.match(out[0]!.reason, /Deck 4 mid/);
+  assert.equal(out[0]!.section, "mid");
+  // the sentence body is the zone's OWN sourced wording
+  assert.ok(out[0]!.reason.includes("downward sightline"));
+  assert.ok(out[0]!.source.length > 0, "every warning must carry a source");
+});
+
+test("steer-clear: a seasick visitor is warned about MOTION first", () => {
+  const zones = [Z({ factor: "elevator", severity: "significant", effect: "Lift noise carries." }),
+                 Z({ factor: "motion", severity: "minor", effect: "You feel the pitch here." })];
+  const out = buildSteerClear({
+    candidates: [cand("4156", "Breezy Balcony")], picked: [],
+    answers: normalizeAnswers({ room: "balcony", motion: true }), zones,
+  });
+  assert.equal(out[0]!.factor, "motion", "seasick visitor got the loud-lift warning instead");
+});
+
+test("steer-clear: never blames the line, never leaks confidence or source", () => {
+  const out = buildSteerClear({
+    candidates: [cand("4156", "Breezy Balcony")], picked: [],
+    answers: normalizeAnswers({ room: "balcony" }), zones: [Z()],
+  });
+  const prose = out.map((e) => e.reason).join(" ");
+  assert.doesNotMatch(prose, /undisclosed|didn'?t tell|mislabel|hid |they won'?t tell/i);
+  assert.doesNotMatch(prose, /\d+\s*%|confidence/i);
+});
+
+// ── the attribute fix Mark caught ────────────────────────────────────────────
+test("a Grand Terrace Suite is BOTH a suite and a balcony (Paradise's ten)", () => {
+  const a = cabinAttributes("Grand Terrace Suite");
+  assert.ok(a.has("suite") && a.has("balcony"));
+  assert.ok(satisfies("Grand Terrace Suite", "balcony"),
+    "the Paradise ten were invisible to a balcony request");
+});
+
+test("an unstated attribute is never inferred", () => {
+  // A bare "Suite" says nothing about a window or a balcony. Guessing is how the
+  // 8/16 failure happened; unknown is the honest answer.
+  const a = cabinAttributes("Junior Suite");
+  assert.ok(a.has("suite"));
+  assert.equal(a.has("balcony"), false);
+  assert.equal(a.has("oceanview"), false);
+});
+
+test("Paradise: a balcony request is now served, not refused", () => {
+  const f = SHIPS["margaritaville-at-sea-paradise"];
+  if (!f) return;
+  const inv = shipTypeInventory(f.categoryCounts);
+  assert.ok(inv.balcony >= 10, `Paradise should show at least 10 balconies, saw ${inv.balcony}`);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. THE STEER-CLEAR WRITER — the model gets the pen, not the facts.
+// Mark, 2026-08-17: "facts, mixed with a little fun."
+// ─────────────────────────────────────────────────────────────────────────────
+
+const F: SteerFacts = {
+  cabin: "4156", deck: 4, section: "mid", category: "Breezy Balcony",
+  factor: "above", severity: "moderate", what: "The pool deck sits directly above.",
+};
+
+test("writer: good copy in Mark's voice passes", () => {
+  const t = "Deck 4 midship sounds ideal until the pool deck overhead starts its daily conga line above your head.";
+  assert.equal(validateSteerProse(t, F), t);
+});
+
+test("writer: a cabin number we did not supply is rejected", () => {
+  // 4156 is ours; 5192 is the model reaching for a room it was never given.
+  assert.equal(validateSteerProse("Cabin 5192 sits under the pool deck.", F), null);
+  assert.ok(validateSteerProse("Cabin 4156 sits under the pool deck.", F));
+});
+
+test("writer: a deck we did not supply is rejected", () => {
+  // the exact failure in the raw research text: a Deck 4 cabin explained with a Deck 5 fact
+  assert.equal(validateSteerProse("Deck 5 balcony cabins look down onto the boats.", F), null);
+  assert.ok(validateSteerProse("Deck 4 puts the pool right over you.", F));
+});
+
+test("writer: research citations never reach a customer", () => {
+  assert.equal(validateSteerProse("A Tripadvisor reviewer called it a herd of elephants.", F), null);
+  assert.equal(validateSteerProse("Cruise Critic posters complain about the noise.", F), null);
+  assert.equal(validateSteerProse("Reddit threads mention footsteps overhead.", F), null);
+});
+
+test("writer: never blames the cruise line, never leaks confidence", () => {
+  assert.equal(validateSteerProse("The line didn't tell you about the pool deck.", F), null);
+  assert.equal(validateSteerProse("This cabin is mislabelled as quiet.", F), null);
+  assert.equal(validateSteerProse("We're 85% confident the noise carries.", F), null);
+});
+
+test("writer: brochure-speak is rejected, per the voice guide", () => {
+  assert.equal(validateSteerProse("Not your best match — look no further than midship.", F), null);
+});
+
+test("writer: overlong research prose is rejected", () => {
+  assert.equal(validateSteerProse("x".repeat(240), F), null);
+});
+
+test("writer: the fallback is always true and always available", () => {
+  const line = plainSteerLine(F);
+  assert.match(line, /Deck 4 mid/);
+  assert.ok(line.includes("The pool deck sits directly above."));
+  // and it survives its own validator, so the fallback can never be rejected
+  assert.ok(validateSteerProse(line, F), "the fallback line must itself be safe to show");
+});
+
+test("writer: the model is handed facts only — never free research text", () => {
+  const p = steerPromptFacts([F]);
+  assert.ok(p.includes("4156") && p.includes("Breezy Balcony"));
+  assert.ok(!/tripadvisor|reviewer|source/i.test(p), "raw sourcing must not be in the prompt");
+});
+
+test("fallback: research prose NEVER reaches a customer, whatever the zone says", () => {
+  // The real failure seen on Islander: the model's line was rejected, and the
+  // fallback passed the raw research text straight through — Tripadvisor and all.
+  const dirty: SteerFacts[] = [
+    { ...F, cabin: "10002", deck: 10, what: "A Tripadvisor reviewer complained the 'herd of elephants' sound carried into their Deck 10 room." },
+    { ...F, cabin: "4156", deck: 4, what: "Deck 5 balcony cabins look down onto the tops of the boats." },
+    { ...F, cabin: "7001", deck: 7, what: "x".repeat(400) },
+    { ...F, cabin: "8001", deck: 8, what: "" },
+  ];
+  for (const f of dirty) {
+    const line = plainSteerLine(f);
+    assert.ok(validateSteerProse(line, f),
+      `fallback for ${f.cabin} is not safe to show: "${line}"`);
+    assert.doesNotMatch(line, /tripadvisor|reviewer/i);
+  }
+});
+
+test("fallback: every factor in the research has customer-safe wording", () => {
+  for (const factor of ["lifeboat","above","below","engine","elevator","i95","motion","taper","hump","other"]) {
+    const f: SteerFacts = { ...F, factor, what: "A Reddit thread says it's loud." };
+    const line = plainSteerLine(f);
+    assert.ok(validateSteerProse(line, f), `${factor} produced unsafe copy: "${line}"`);
+    assert.ok(line.length > 40, `${factor} produced a stub: "${line}"`);
+  }
+  // Spanish too — the ES page shows the same list
+  const es = plainSteerLine({ ...F, factor: "engine", what: "Tripadvisor says loud." }, "es");
+  assert.doesNotMatch(es, /tripadvisor/i);
+  assert.match(es, /Cubierta/);
+});
+
+test("steer-clear: motion IS raised for everyone — it is where the room sits", () => {
+  // Mark, 2026-08-17: bow and stern movement is a real property of the cabin, not
+  // a seasickness topic. Everyone gets told; only the WORDING differs.
+  const zones: Zone[] = [{ factor: "motion", decks: [4], sections: ["mid"], sides: [],
+    what: "The bow works in a swell.", effect: "You feel the sea more at this end of the ship.",
+    mattersTo: "Anyone who notices movement.", severity: "significant", confidence: "high", source: "class research" }];
+  const candidates = [cand("4156", "Breezy Balcony")];
+  for (const motion of [true, false]) {
+    const out = buildSteerClear({ candidates, picked: [],
+      answers: normalizeAnswers({ room: "balcony", motion }), zones });
+    assert.equal(out.length, 1, `motion warning dropped for motion=${motion}`);
+  }
+  // and the neutral fallback wording must not talk about stomachs
+  const line = plainSteerLine({ ...F, factor: "motion", what: "" });
+  assert.doesNotMatch(line, /stomach|queasy|seasick|nausea/i);
+});
+
+test("writer: letter-prefixed cabin numbers are checked too (Elation uses E1/R102/M80)", () => {
+  const f: SteerFacts = { ...F, cabin: "E16", deck: 7 };
+  // an invented letter-prefixed cabin must be caught — a digits-only check missed these
+  assert.equal(validateSteerProse("Cabin R102 is the noisy one.", f), null);
+  assert.equal(validateSteerProse("It's like E99 but worse.", f), null);
+  // our own cabin is fine
+  assert.ok(validateSteerProse("E16 sits forward on Deck 7, where the bow does its work.", f));
+  // and naming another cabin FROM THE SAME LIST reads naturally and is allowed
+  assert.ok(validateSteerProse("Same section as E17, same story.", f, ["E17"]));
+  // "Deck 10" must never be mistaken for cabin 10
+  assert.ok(validateSteerProse("Deck 7 forward is where you feel it.", { ...f, deck: 7 }));
 });

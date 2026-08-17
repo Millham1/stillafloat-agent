@@ -81,30 +81,69 @@ function asCabinType(v: unknown): CabinType | null {
 // populated. Order matters: a "Grand Suite with Balcony" is a suite, not a
 // balcony, so suite is tested first.
 
-const TYPE_PATTERNS: readonly (readonly [CabinType, RegExp])[] = [
+// A cabin is not ONE type. It has ATTRIBUTES.
+//
+// Mark, 2026-08-17: "paradise has balcony cabins. They are suites and there are 10."
+// He is right and the old single-label classifier was wrong. It tested `suite`
+// first and returned on the first hit, so "Grand Terrace Suite" classified as a
+// suite and its terrace vanished — and a visitor asking for a balcony on
+// Margaritaville Paradise was told the ship has none, when it has ten. Fleet-wide
+// that hid 429 cabins across 24 ships whose own category name says both.
+//
+// So: a category maps to a SET. A balcony request is satisfied by anything with
+// private outdoor space, suite or not. `primaryType` is kept only for wording.
+const ATTR_PATTERNS: readonly (readonly [CabinType, RegExp])[] = [
   ["suite", /\b(suite|haven|yacht club|retreat|villa|penthouse|owner'?s)\b/i],
-  ["balcony", /(balcon|veranda|terrace)/i],
+  ["balcony", /(balcon|veranda|terrace|infinite)/i],
   ["inside", /(interior|inside)/i],
   ["oceanview", /(ocean ?view|sea ?view|outside|window|porthole)/i],
 ];
 
-// Line-specific names that carry no type word. Only the UNAMBIGUOUS ones are
-// mapped. The rest stay unknown on purpose: "Family Harbor", "Cloud 9 Spa" and
-// "Edge Single Stateroom" each exist in both interior AND balcony variants, so
-// guessing would reproduce exactly the failure that took this off production —
-// a confident answer built on nothing. Unknown is an honest answer; wrong isn't.
-const TYPE_ALIASES: Readonly<Record<string, CabinType>> = {
-  studio: "inside",       // NCL's solo cabin — interior, no window
-  aquaclass: "balcony",   // Celebrity — always a veranda category
+// Line-specific names carrying no type word. Only UNAMBIGUOUS ones are mapped;
+// "Family Harbor", "Cloud 9 Spa" and "Edge Single Stateroom" exist in both
+// interior AND balcony variants, so guessing there would repeat the failure that
+// took this off production. Unknown is honest; wrong is not.
+const ATTR_ALIASES: Readonly<Record<string, readonly CabinType[]>> = {
+  studio: ["inside"],                 // NCL solo cabin — interior, no window
+  aquaclass: ["balcony"],             // Celebrity — always a veranda category
+  "grand terrace suite": ["suite", "balcony"],   // Margaritaville — the Paradise ten
 };
 
-/** null means "we don't know what this cabin is", never "assume it's fine". */
-export function classifyCategory(category: string | null | undefined): CabinType | null {
+/**
+ * Every attribute this category satisfies. Empty set = we do not know.
+ *
+ * A suite whose NAME does not mention outdoor space (a plain "Junior Suite",
+ * "Owner's Suite") cannot be resolved from the string — it is left without the
+ * balcony attribute rather than guessed either way, and the caller must treat
+ * that as unknown, never as "no balcony".
+ */
+export function cabinAttributes(category: string | null | undefined): Set<CabinType> {
   const c = clean(category);
-  if (!c) return null;
-  const alias = TYPE_ALIASES[c.toLowerCase()];
-  if (alias) return alias;
-  for (const [type, re] of TYPE_PATTERNS) if (re.test(c)) return type;
+  const out = new Set<CabinType>();
+  if (!c) return out;
+  const alias = ATTR_ALIASES[c.toLowerCase()];
+  if (alias) { for (const a of alias) out.add(a); return out; }
+  for (const [type, re] of ATTR_PATTERNS) if (re.test(c)) out.add(type);
+  // Deliberately NO inference beyond what the name states. A bare "Suite" is not
+  // assumed to have an ocean view or a balcony: most do, but "most" is how the
+  // 8/16 failure happened. An unstated attribute stays unknown, which the caller
+  // reports honestly instead of serving a room the visitor did not ask for.
+  return out;
+}
+
+/** Does this cabin satisfy what the visitor asked for? */
+export function satisfies(category: string | null | undefined, want: CabinType): boolean {
+  return cabinAttributes(category).has(want);
+}
+
+/**
+ * The single label to USE IN WORDING (not for matching). Matching goes through
+ * `satisfies`, which is attribute-based.
+ */
+export function classifyCategory(category: string | null | undefined): CabinType | null {
+  const a = cabinAttributes(category);
+  if (!a.size) return null;
+  for (const t of ["suite", "balcony", "oceanview", "inside"] as CabinType[]) if (a.has(t)) return t;
   return null;
 }
 
@@ -114,10 +153,12 @@ export function shipTypeInventory(
 ): Record<CabinType, number> & { unknown: number } {
   const out = { inside: 0, oceanview: 0, balcony: 0, suite: 0, unknown: 0 };
   for (const [name, n] of Object.entries(categoryCounts ?? {})) {
-    const t = classifyCategory(name);
+    const attrs = cabinAttributes(name);
     const count = Number(n) || 0;
-    if (t) out[t] += count;
-    else out.unknown += count;
+    if (!attrs.size) { out.unknown += count; continue; }
+    // counted under EVERY attribute it satisfies — the Paradise ten are both a
+    // suite and a balcony, and "does this ship have balconies" must see them.
+    for (const t of attrs) out[t] += count;
   }
   return out;
 }
@@ -297,7 +338,7 @@ export function selectCabins(opts: {
 
   if (!asked) return { picks: rank(pool), asked: null, outcome: "no-request", dropped };
 
-  const survivors = pool.filter((c) => classifyCategory(c.category) === asked);
+  const survivors = pool.filter((c) => satisfies(c.category, asked));
   if (survivors.length) return { picks: rank(survivors), asked, outcome: "exact", dropped };
 
   // Nothing of the requested type survived. Three very different reasons, and
@@ -491,4 +532,239 @@ export function selectionNote(
     default:
       return null;
   }
+}
+
+// ── The rooms to walk past ───────────────────────────────────────────────────
+//
+// REBUILT 2026-08-17 after Mark checked it: "the cabins to stay clear do not
+// reflect the category the engine returns as suggested."
+//
+// The old list was model-authored prose generated per archetype, independently
+// of the picks and with no positional data to work from. Measured against the
+// grid it was wrong at scale:
+//   • 370 of 540 archetype sets warned about a DIFFERENT cabin type than they
+//     had just recommended — shown interiors, warned off balconies.
+//   • 346 of 1,079 positional claims (32%) contradicted the ship's own grid,
+//     including one cabin called "midship" by one archetype and "forward" by
+//     another.
+//
+// So the rules here are absolute:
+//   1. Same type the visitor asked for. A skip-list is only useful if it is
+//      about the room they are actually choosing between.
+//   2. Every fact — deck, section, side, category, what sits outside — is READ
+//      from the grid and the sourced research zones. Nothing is authored.
+//   3. No reason in the data means no entry. Silence beats invention.
+//   4. Never warn about a cabin we just recommended.
+
+export type SteerCandidate = PoolCabin & { category: string | null };
+
+export type SteerEntry = {
+  cabin: string;
+  deck: number | null;
+  section: string | null;
+  category: string | null;
+  /** Composed from the zone's own sourced text — never model-written. */
+  reason: string;
+  factor: string;
+  severity: "minor" | "moderate" | "significant";
+  /** INTERNAL: the source URL behind the claim. Never rendered (Mark, 8/16). */
+  source: string;
+};
+
+const SEVERITY_RANK = { significant: 0, moderate: 1, minor: 2 } as const;
+
+/**
+ * Cabins of the requested type that the research says have a real problem.
+ *
+ * `candidates` must already be cabins on THIS ship (read from the grid). The
+ * caller decides how to fetch them; this function decides which deserve a
+ * warning and what the warning may say.
+ */
+export function buildSteerClear(opts: {
+  candidates: readonly SteerCandidate[];
+  picked: readonly string[];
+  answers: Answers;
+  zones: readonly Zone[];
+  lang?: "en" | "es";
+  limit?: number;
+  /**
+   * The type actually SHOWN, when it differs from the one asked for.
+   *
+   * On a ship with no balconies we serve ocean-view substitutes — and a skip-list
+   * filtered on "balcony" then returns nothing at all, leaving the visitor with
+   * substitutes and no warnings. The list must describe the rooms on screen.
+   */
+  servedType?: CabinType | null;
+}): SteerEntry[] {
+  const { candidates, picked, answers, zones } = opts;
+  const lang = opts.lang ?? "en";
+  const limit = opts.limit ?? 3;
+  const asked = opts.servedType ?? answers.room;
+  const already = new Set(picked);
+  const out: SteerEntry[] = [];
+
+  for (const c of candidates) {
+    if (already.has(c.cabin)) continue;                       // rule 4
+    if (asked && !satisfies(c.category, asked)) continue;      // rule 1
+    const hits = zonesForCabin(
+      { deck: c.deck ?? null, section: c.section ?? null, side: c.side ?? null, category: c.category },
+      zones,
+    );
+    if (!hits.length) continue;                                // rule 3
+
+    // Motion is kept for EVERY visitor. Mark, 2026-08-17: "riding the bow and
+    // feeling every wave are not tied to seasickness. they are legitimate issues
+    // depending on where the room is. even if they do not get sick, they will
+    // still feel the motion in the bow and stern."
+    //
+    // Two different things were being conflated. WHERE THE ROOM SITS is a physical
+    // fact everyone experiences and deserves to know. SEASICKNESS is a medical
+    // concern that is only raised with someone who raised it — that is the rule
+    // the voice guide states, and it governs the WORDING, not whether the warning
+    // exists. Dropping these warnings (as I briefly did) hid a real downside.
+    const relevant = answers.seasick ? hits.find((z) => z.factor === "motion") ?? hits[0]! : hits[0]!;
+    // Rule 2: the sentence is assembled from the zone's own sourced wording plus
+    // the grid's own position. Nothing here is invented.
+    const where = [c.deck != null ? (lang === "es" ? `Cubierta ${c.deck}` : `Deck ${c.deck}`) : null,
+                   normSection(c.section)].filter(Boolean).join(" ");
+    const body = relevant.effect || relevant.what || "";
+    out.push({
+      cabin: c.cabin, deck: c.deck ?? null, section: normSection(c.section), category: c.category,
+      reason: where ? `${where}. ${body}` : body,
+      factor: relevant.factor, severity: relevant.severity, source: relevant.source,
+    });
+  }
+
+  return out
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || a.cabin.localeCompare(b.cabin))
+    .filter((e, i, arr) => arr.findIndex((o) => o.cabin === e.cabin) === i)
+    .slice(0, limit);
+}
+
+/** Decks a zone touches — lets the caller fetch a BOUNDED slice of the grid. */
+export function zoneDecks(zones: readonly Zone[]): number[] {
+  return [...new Set(zones.flatMap((z) => z.decks))].sort((a, b) => a - b);
+}
+
+// ── Letting the model write the warning, without letting it invent one ───────
+//
+// Mark, 2026-08-17: "use option one as long as it stays within the style and
+// voice of the site. facts, mixed with a little fun."
+//
+// So the model writes the SENTENCE from facts we hand it, and this gate decides
+// whether what came back is allowed near a customer. It exists because both
+// previous approaches failed in opposite directions: model-authored prose got
+// 32% of its positional claims wrong, and raw research text put "a Tripadvisor
+// reviewer complained about a herd of elephants" in front of a visitor, quoted a
+// deck the cabin isn't on, and ran to 220+ characters.
+
+/** Facts the model is given. It may rephrase these; it may not add to them. */
+export type SteerFacts = {
+  cabin: string;
+  deck: number | null;
+  section: string | null;
+  category: string | null;
+  factor: string;
+  severity: "minor" | "moderate" | "significant";
+  /** What is physically there, from the sourced research. */
+  what: string;
+};
+
+// Mark speaks as the advisor from his own knowledge. Naming a site is obviously
+// out, but so is hedged attribution ("cruisers consistently report…") — it reads
+// like a survey summary, not like him.
+const CITES_A_SOURCE = /(tripadvisor|cruise ?critic|reddit|a reviewer|reviewers|forum|poster|thread|blog|(cruisers|guests|passengers|travell?ers|people)\s+(consistently\s+|often\s+|frequently\s+)?(report|complain|say|mention))/i;
+const BLAMES_THE_LINE = /(undisclosed|did ?n['’]?t tell|do ?n['’]?t tell|mislabel|misclassif|hid |hiding|they wo ?n['’]?t tell|fails? to disclose)/i;
+const BROCHURE = /(best match|perfect for|boasts|nestled|ideally (positioned|situated)|look no further|exactly what you['’]re after)/i;
+
+/**
+ * Returns the text if it is safe to show, or null if the model wandered.
+ *
+ * Rejection is not a failure mode — the caller falls back to a plain composed
+ * line. A dull true sentence beats a lively wrong one.
+ */
+export function validateSteerProse(
+  text: string | null | undefined,
+  f: SteerFacts,
+  /** Other cabins in the same list — naming one of those is fine and reads well. */
+  alsoAllowed: readonly string[] = [],
+): string | null {
+  const t = (text ?? "").trim().replace(/\s+/g, " ");
+  if (!t) return null;
+  if (t.length > 220) return null;                       // too long for a card
+  if (CITES_A_SOURCE.test(t)) return null;               // research notes, not copy
+  if (BLAMES_THE_LINE.test(t)) return null;              // Mark's binding rule, 8/16
+  if (BROCHURE.test(t)) return null;                     // the voice guide's banned list
+  if (/\d+\s*%|confidence/i.test(t)) return null;        // confidence is internal
+
+  // It may name OUR deck and no other.
+  for (const m of t.matchAll(/\bdeck\s+(\d{1,2})\b/gi)) {
+    if (f.deck == null || Number(m[1]) !== f.deck) return null;
+  }
+  // It may name OUR cabin, or another cabin from the same list, and no other.
+  //
+  // Cabin numbers are not always bare digits: Carnival Elation uses E1/R102/M80,
+  // so a digits-only check let an invented letter-prefixed cabin straight through.
+  // Deck phrases are removed first so "Deck 10" is never read as cabin 10.
+  const allowed = new Set([f.cabin.toUpperCase(), ...alsoAllowed.map((c) => c.toUpperCase())]);
+  const withoutDecks = t.replace(/\bdeck\s+\d{1,2}\b/gi, " ");
+  for (const m of withoutDecks.matchAll(/\b[A-Z]{0,2}\d{2,5}[A-Z]?\b/gi)) {
+    if (!allowed.has(m[0].toUpperCase())) return null;
+  }
+  return t;
+}
+
+// Neutral, customer-safe wording per factor. Used when the research text itself
+// is not fit to show — which is often: of the 478 zones, 53 quote a review site,
+// 96 run past 220 characters, and 9 name a deck the cabin is not on. The research
+// is EVIDENCE; this is the plain way to say what it found.
+const FACTOR_LINE: Record<string, { en: string; es: string }> = {
+  lifeboat: { en: "A lifeboat sits in the sightline below this one, so the view down is blocked even though the horizon isn't.",
+              es: "Un bote salvavidas queda en la línea de visión, así que pierdes la vista hacia abajo aunque el horizonte siga ahí." },
+  above:    { en: "There's an activity deck directly overhead, and that noise carries down more than people expect.",
+              es: "Justo arriba hay una cubierta de actividades, y ese ruido baja más de lo que la gente espera." },
+  below:    { en: "There's a lounge or public room directly underneath, which tends to run later than you'd like.",
+              es: "Justo debajo hay un salón o área pública, y suele terminar más tarde de lo que te gustaría." },
+  engine:   { en: "You're near the engine spaces here, so expect a low hum and some vibration at night.",
+              es: "Estás cerca de la sala de máquinas, así que espera un zumbido bajo y algo de vibración de noche." },
+  elevator: { en: "This one sits close to the lifts, which means foot traffic and conversation at odd hours.",
+              es: "Queda cerca de los ascensores: paso de gente y conversación a horas raras." },
+  i95:      { en: "The crew corridor runs behind this stretch, and it's busiest when you're trying to sleep.",
+              es: "El pasillo de la tripulación corre por detrás, y es más activo justo cuando quieres dormir." },
+  // Placement, not stomachs — true for every traveller, phrased for the one who
+  // never mentioned seasickness.
+  motion:   { en: "This is one of the ends of the ship, so you feel the sea working more here than you would midship.",
+              es: "Estás en una punta del barco, así que sientes más el trabajo del mar que en el centro." },
+  taper:    { en: "The hull narrows here, so the balcony is a shallower slice than the same category elsewhere.",
+              es: "El casco se angosta aquí, así que el balcón es más estrecho que en la misma categoría en otra zona." },
+  hump:     { en: "The hull steps out along this stretch, which changes what you can actually see from the rail.",
+              es: "El casco sobresale en este tramo, lo que cambia lo que realmente se ve desde la baranda." },
+  other:    { en: "There's something about this stretch of the ship worth knowing before you commit to it.",
+              es: "Hay algo en este tramo del barco que conviene saber antes de decidirte." },
+};
+
+/**
+ * The plain fallback, used when the model is rejected or unavailable.
+ *
+ * It must ALWAYS be safe to show — it is the last line of defence, so it can
+ * never simply pass the raw research text through. If that text is fit for a
+ * customer it is used; otherwise the neutral per-factor sentence is.
+ */
+export function plainSteerLine(f: SteerFacts, lang: "en" | "es" = "en"): string {
+  const where = [f.deck != null ? (lang === "es" ? `Cubierta ${f.deck}` : `Deck ${f.deck}`) : null, f.section]
+    .filter(Boolean).join(" ");
+  const raw = (f.what ?? "").trim();
+  const rawOk = raw && raw.length <= 180 && !CITES_A_SOURCE.test(raw) && !BLAMES_THE_LINE.test(raw)
+    && ![...raw.matchAll(/\bdeck\s+(\d{1,2})\b/gi)].some((m) => f.deck == null || Number(m[1]) !== f.deck)
+    && ![...raw.matchAll(/\b\d{3,5}[A-Z]?\b/g)].some((m) => m[0] !== f.cabin);
+  const body = rawOk ? raw : (FACTOR_LINE[f.factor] ?? FACTOR_LINE["other"]!)[lang];
+  return where ? `${where}. ${body}` : body;
+}
+
+/** What the model is told it may work with — facts only, never free text. */
+export function steerPromptFacts(entries: readonly SteerFacts[]): string {
+  return JSON.stringify(entries.map((f) => ({
+    cabin: f.cabin, deck: f.deck, section: f.section, category: f.category,
+    whatIsThere: f.what, howBad: f.severity,
+  })));
 }
