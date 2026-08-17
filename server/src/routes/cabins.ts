@@ -28,11 +28,91 @@ import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import {
   normalizeAnswers, pickArchetype, selectCabins, selectionNote,
-  shipTypeInventory, zonesForCabin, classifyCategory,
-  type Answers, type PoolCabin, type Zone,
+  shipTypeInventory, zonesForCabin, classifyCategory, satisfies,
+  buildSteerClear, zoneDecks, validateSteerProse, plainSteerLine, steerPromptFacts,
+  type Answers, type PoolCabin, type Zone, type SteerCandidate, type SteerFacts,
 } from "../lib/cabin-match";
 
 const router: IRouter = Router();
+
+// Per-ship cabin grid cache. The grid is static between data loads, so a lookup
+// should not re-read thousands of rows every time someone types a cabin number.
+const gridCache = new Map<string, { at: number; rows: CabinRow[] }>();
+const GRID_TTL_MS = 10 * 60 * 1000;
+const GRID_CACHE_MAX = 40;
+
+// The hull's research zones, cached the same way and for the same reason: a few
+// dozen rows per class that change only when the research is reloaded, read on
+// every single cabin lookup otherwise.
+const zoneCache = new Map<string, { at: number; rep: string; zones: Zone[] }>();
+
+/** The whole grid for one ship, paged and cached. The ONLY way to read it. */
+async function shipGrid(ship: string): Promise<CabinRow[]> {
+  const hit = gridCache.get(ship);
+  if (hit && Date.now() - hit.at < GRID_TTL_MS) return hit.rows;
+  const supabase = getSupabase();
+  const rows = await readAll<CabinRow>((from, to) => supabase
+    .from("cabins")
+    .select("cabin_num,deck,category,section,side,view,sleeps,obstructed,obstruction,note,x,tour")
+    .eq("ship_slug", ship)
+    .order("cabin_num")
+    .range(from, to));
+  if (gridCache.size >= GRID_CACHE_MAX) {
+    const oldest = gridCache.keys().next().value;
+    if (oldest !== undefined) gridCache.delete(oldest);
+  }
+  gridCache.set(ship, { at: Date.now(), rows });
+  return rows;
+}
+
+async function zonesForShip(ship: string): Promise<{ rep: string; zones: Zone[] }> {
+  const hit = zoneCache.get(ship);
+  if (hit && Date.now() - hit.at < GRID_TTL_MS) return { rep: hit.rep, zones: hit.zones };
+  const supabase = getSupabase();
+  const { data: ctxShip } = await supabase
+    .from("cabin_context_ships").select("rep_slug").eq("ship_slug", ship).maybeSingle();
+  const rep = (ctxShip as { rep_slug: string } | null)?.rep_slug ?? ship;
+  const { data } = await supabase
+    .from("cabin_context_zones")
+    .select("factor,decks,sections,sides,what,effect,matters_to,severity,confidence,source")
+    .eq("rep_slug", rep);
+  const zones = ((data ?? []) as Record<string, unknown>[]).map((z) => ({
+    factor: String(z["factor"]), decks: (z["decks"] as number[]) ?? [],
+    sections: (z["sections"] as string[]) ?? [], sides: (z["sides"] as string[]) ?? [],
+    what: (z["what"] as string) ?? null, effect: (z["effect"] as string) ?? null,
+    mattersTo: (z["matters_to"] as string) ?? null,
+    severity: z["severity"], confidence: z["confidence"], source: String(z["source"]),
+  })) as Zone[];
+  if (zoneCache.size >= GRID_CACHE_MAX) {
+    const oldest = zoneCache.keys().next().value;
+    if (oldest !== undefined) zoneCache.delete(oldest);
+  }
+  zoneCache.set(ship, { at: Date.now(), rep, zones });
+  return { rep, zones };
+}
+
+/**
+ * Read every row of a query, 1000 at a time.
+ *
+ * PostgREST caps a response at 1000 rows and `.limit(n)` does NOT raise that cap.
+ * Wonder of the Seas has 2,886 cabins and 121 of 138 ships carry more than 1,000,
+ * so any unpaged whole-ship read silently returns a fraction. That produced two
+ * bugs found on 2026-08-17: the fleet list reporting "no rooms" for 137 of 138
+ * ships, and /cabins/check telling a booked cruiser their real cabin does not
+ * exist because it sat beyond row 1000.
+ */
+async function readAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await build(from, from + 999);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < 1000) return out;
+  }
+}
+
+
 
 interface CabinRow {
   cabin_num: string; deck: number | null; category: string | null; section: string | null;
@@ -231,6 +311,103 @@ Write EVERYTHING (hooks, reasons, steer-clear reasons) in neutral Latin American
   }
 }
 
+
+/**
+ * Let the model write the skip-list in Mark's voice — from facts, never from
+ * research text.
+ *
+ * Mark, 2026-08-17: "use option one as long as it stays within the style and
+ * voice of the site. facts, mixed with a little fun."
+ *
+ * It is handed structured facts only (cabin, deck, section, category, what is
+ * physically there, how bad). Everything it returns goes through
+ * validateSteerProse, which rejects any line that invents a cabin or deck,
+ * quotes a review site, blames the line, leaks confidence, or runs long. A
+ * rejected line falls back to the plain composed sentence — dull and true beats
+ * lively and wrong.
+ */
+async function writeSteerLines(
+  shipName: string, facts: SteerFacts[], answers: Answers, lang: "en" | "es",
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (const f of facts) out.set(f.cabin, plainSteerLine(f, lang));   // safe default
+  const apiKey = process.env["ANTHROPIC_API_KEY"];
+  if (!apiKey || !facts.length) return out;
+
+  const key = JSON.stringify(["steer", shipName, lang, answers.seasick, facts.map((f) => f.cabin + f.factor)]);
+  const hit = liveCache.get(key);
+  if (hit && Date.now() - hit.at < LIVE_CACHE_TTL_MS) {
+    for (const r of hit.out.recommendations) {
+      const f = facts.find((x) => x.cabin === String(r.cabin));
+      const ok = f && validateSteerProse(r.reason, f);
+      if (f && ok) out.set(f.cabin, ok);
+    }
+    return out;
+  }
+
+  // Same negation discipline as the room cards: someone who said motion is not a
+  // problem must never read about stomachs. The voice guide is explicit that this
+  // has to be an absolute instruction, not a hint — it leaked otherwise.
+  // Two different things, and conflating them cost a real warning (Mark, 8/17):
+  // WHERE the room sits is a physical fact every traveller feels and should hear
+  // about. SEASICKNESS is a medical concern raised only by someone who raised it.
+  const motionRule = answers.seasick
+    ? "This traveler DOES get seasick. You may connect the ship's movement to that directly."
+    : "This traveler said seasickness is NOT a problem for them. You SHOULD still tell them plainly when a room sits where the ship moves most — the bow and the stern genuinely move more, and that is useful to know. But describe it as the room's position and what it feels like, and do NOT mention seasickness, stomachs, queasiness or nausea at all.";
+  const prompt = `Ship: ${shipName}. These are rooms you would steer this traveler AWAY from.
+
+${motionRule}
+
+${steerPromptFacts(facts)}
+
+For each, write ONE sentence (max 200 characters) in your own voice explaining why you would walk past it.
+Rules that are not negotiable:
+- Use ONLY the facts given. Do not mention any cabin number except the one on that entry, and do not mention any deck except that entry's deck.
+- Never say or imply the cruise line hid, mislabelled or failed to disclose anything. Describe what is there and what it means.
+- Never cite a review site, a forum, or "a reviewer".
+- Facts with a little fun: one dry, warm line — the well-travelled friend at the bar, not a comedian and not a brochure.${lang === "es" ? "\n- Write in neutral Latin American Spanish (es-419), Mark's same plain, warm voice." : ""}
+
+Respond with ONLY JSON: {"lines":[{"cabin":"<number>","reason":"..."}]}`;
+
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: "claude-haiku-4-5", max_tokens: 700, system: VOICE,
+        messages: [{ role: "user", content: prompt }] }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const j = (await r.json()) as { content?: { type: string; text?: string }[]; stop_reason?: string };
+    if (!r.ok || j.stop_reason === "refusal") throw new Error(`anthropic ${r.status}`);
+    const text = (j.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error("no JSON");
+    const parsed = JSON.parse(m[0]) as { lines?: { cabin?: string; reason?: string }[] };
+    let kept = 0, rejected = 0;
+    const cacheable: LiveRec[] = [];
+    // "Differentiate every cabin… Never repeat yourself" is in the voice guide, and
+    // the model does repeat itself — two adjacent cabins came back with a
+    // byte-identical sentence. A duplicate is rejected so the second falls back to
+    // the plain line, which at least reads differently.
+    const seen = new Set<string>();
+    for (const line of parsed.lines ?? []) {
+      const f = facts.find((x) => x.cabin === String(line.cabin));
+      if (!f) { rejected++; continue; }
+      const safe = validateSteerProse(scrubBanned(line.reason), f, facts.map((x) => x.cabin));
+      const fingerprint = safe?.toLowerCase().replace(/\b\d{3,5}[a-z]?\b/g, "#").replace(/[^a-z# ]/g, "");
+      if (safe && fingerprint && !seen.has(fingerprint)) {
+        seen.add(fingerprint);
+        out.set(f.cabin, safe); cacheable.push({ cabin: f.cabin, reason: safe }); kept++;
+      } else rejected++;
+    }
+    if (rejected) logger.info({ ship: shipName, kept, rejected }, "steer-clear: lines rejected by the fact gate");
+    liveCache.set(key, { at: Date.now(), out: { recommendations: cacheable } });
+  } catch (err) {
+    logger.warn({ err }, "steer-clear: writer unavailable — serving the plain lines");
+  }
+  return out;
+}
+
 // ── Our own deck map ─────────────────────────────────────────────────────────
 // Mark, 2026-08-12: don't send visitors to the cruise line's site for deck
 // plans — "it's throwing the other company a bone." We extracted every cabin's
@@ -273,13 +450,17 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
     if (!ship || !raw) return res.status(400).json({ error: "ship and cabin are required" });
 
     const supabase = getSupabase();
-    const { data: rows, error } = await supabase
-      .from("cabins")
-      .select("cabin_num,deck,category,section,side,view,sleeps,obstructed,obstruction,note,x")
-      .eq("ship_slug", ship);
-    if (error) throw new Error(error.message);
-    const all = (rows ?? []) as CabinRow[];
+    const all = await shipGrid(ship);
     const hit = all.find((c) => String(c.cabin_num).toUpperCase().replace(/\s+/g, "") === raw);
+
+    // THE MOAT. Until 2026-08-17 this endpoint answered purely from the cruise
+    // line's own `obstructed` flag — present on 388 of 225,924 cabins (0.17%) —
+    // so it handed out 74,303 all-clears from the absence of a disclosure that
+    // barely exists, and never once consulted the 478 sourced research zones
+    // that are the entire reason this feature has an edge.
+    const { zones } = await zonesForShip(ship);
+    const research = hit ? zonesForCabin(
+      { deck: hit.deck, section: hit.section, side: hit.side, category: hit.category }, zones) : [];
 
     if (!hit) {
       // near matches so a typo does not dead-end the visitor
@@ -335,6 +516,19 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
         ? "Sigue siendo luz natural y aire — mucha gente lo reserva a propósito por el precio. Solo conviene saberlo antes de subir a bordo, no después."
         : "You still get natural light and air, and plenty of people book these on purpose for the price. It's just worth knowing before you board rather than after.");
     } else {
+      // Sourced research first — it is the thing we actually studied.
+      if (research.length) {
+        const worst = research[0]!;
+        confidence = worst.confidence === "high" ? 0.9 : worst.confidence === "medium" ? 0.6 : 0.35;
+        const viewish = research.find((z) => ["lifeboat", "hump", "taper"].includes(z.factor));
+        headline = viewish
+          ? (es ? "Algo puede aparecer en tu vista" : "Something may sit in your view")
+          : (es ? "Vale saber qué tienes cerca" : "Worth knowing what's near you");
+        if (viewish) lines.push(es
+          ? "Por lo que hay afuera de esa ventana, tu vista puede verse afectada:"
+          : "Based on what sits outside that window, your view may be affected:");
+        for (const z of research.slice(0, 2)) { const t = z.what || z.effect; if (t) lines.push(t); }
+      } else {
       // Soft signal: same deck, same side, close along the hull — neighbours flagged?
       const x = Number(hit.x);
       const neighbours = all.filter(
@@ -351,12 +545,22 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
           ? "Si la vista te importa, vale la pena confirmarlo antes de la fecha de pago final."
           : "If the view matters to you, it's worth confirming before your final payment date.");
       } else {
-        confidence = 0.75;
-        headline = es ? "Nada indica un problema de vista" : "Nothing here points to a view problem";
-        lines.push(es
-          ? "Con lo que tenemos de este barco, nada sugiere que algo bloquee tu ventana."
-          : "From what we have on this ship, nothing suggests anything is blocking your window.");
+        // Honest framing: we checked the research and it flags nothing HERE. That
+        // is not the same as promising a clear view, and it must not read like one.
+        const checked = zones.length > 0;
+        confidence = checked ? 0.75 : 0.35;
+        headline = checked
+          ? (es ? "Nada en nuestra investigación marca este camarote" : "Nothing in our research flags this one")
+          : (es ? "No tengo investigación de este barco" : "I don't have research on this ship yet");
+        lines.push(checked
+          ? (es
+            ? "Revisamos lo que hay alrededor de este camarote en este casco y no aparece nada que bloquee la ventana. No es una garantía de vista despejada, pero no hay señales."
+            : "We checked what sits around this cabin on this hull and nothing came up against it. That isn't a promise of a clear view, but there's nothing pointing the other way.")
+          : (es
+            ? "Todavía no tengo el estudio de este casco, así que no puedo decirte gran cosa sobre la vista. Prefiero decírtelo a inventarlo."
+            : "I don't have the hull study for this ship yet, so I can't tell you much about the view. I'd rather say that than make something up."));
       }
+    }
     }
 
     // Honest about our own limits when the ship's data is thin — Mark's rule: a wrong
@@ -726,37 +930,13 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
       }));
     }
 
-    // Every cabin number any archetype names for this ship, plus the ones it
-    // would steer people away from. This is what we look up — NOT the whole grid.
-    //
-    // Reading the full grid here is wrong twice over: PostgREST caps a response at
-    // 1000 rows (`.limit()` does not raise that cap), and 121 of 138 ships carry
-    // more than 1000 cabins — so `knownCabins` would be silently incomplete and
-    // the phantom guard would start discarding REAL cabins and logging them as
-    // invented. Caught in review 2026-08-17. Asking for the ~100 numbers we
-    // actually care about is both correct and a smaller query than the original.
-    const wanted = new Set<string>();
-    for (const r of rows) {
-      for (const rec of (r.recommendations ?? []) as { cabin: number | string }[]) wanted.add(String(rec.cabin));
-      for (const sc of (r.steer_clear ?? []) as { cabin?: string }[]) if (sc?.cabin) wanted.add(String(sc.cabin));
-    }
-    const nums = [...wanted];
-    const { data: gridData } = nums.length
-      ? await supabase
-          .from("cabins")
-          .select("cabin_num,deck,category,section,side,view,sleeps,obstructed,obstruction,tour")
-          .eq("ship_slug", ship)
-          .in("cabin_num", nums)
-      : { data: [] as unknown[] };
-    const grid = (gridData ?? []) as (Omit<CabinRow, "x"> & { tour?: string | null })[];
+    // One cached, paged read of this ship's grid serves everything below: the
+    // facts on each pick, the authority on which cabin numbers are real, and the
+    // steer-clear candidates. Reading it per-request (or unpaged) is what produced
+    // the 1000-row truncation bugs found on 2026-08-17.
+    const grid = await shipGrid(ship);
     const factByNum = new Map(grid.map((f) => [String(f.cabin_num), f]));
-    // A cabin is real for this ship if, and only if, the database returned it.
     const knownCabins = new Set(grid.map((f) => String(f.cabin_num)));
-    if (nums.length > 900) {
-      // Still under the 1000 cap today (largest pool is ~100), but if the advice
-      // corpus ever grows past it this read would truncate the same way.
-      logger.warn({ ship, wanted: nums.length }, "cabin concierge: pool approaching the PostgREST row cap");
-    }
 
     // The obstruction research for this hull class — the moat layer. Absent until
     // cabin_context_zones is loaded, in which case the tool simply says less.
@@ -809,11 +989,41 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
       facts: factByNum.get(p.cabin) ?? null,
     }));
 
-    // Steer-clear: cabin numbers come from the grid, never from a model. The live
-    // pass may rewrite the REASONS; it may not introduce or rename a cabin.
-    const storedSteer = ((advice?.steer_clear ?? []) as { cabin?: string; area?: string; reason?: string }[])
-      .filter((sc) => !sc.cabin || knownCabins.has(String(sc.cabin)));
-    let steerClear = storedSteer;
+    // ── Steer-clear, REBUILT from facts (2026-08-17) ──────────────────────────
+    // The stored corpus is deliberately NOT used. It was model-authored per
+    // archetype with no positional data: 370 of 540 sets warned about a
+    // different cabin type than they recommended, and 346 of 1,079 positional
+    // claims contradicted the grid. Instead we read the cabins the research
+    // actually flags, on the decks its zones touch, of the type this visitor
+    // asked for — so every fact in the warning is one we hold a source for.
+    let steerClear: { cabin?: string; area?: string; reason?: string }[] = [];
+    const decks = new Set(zoneDecks(zones));
+    if (decks.size) {
+      const candidates: SteerCandidate[] = grid
+        .filter((c) => c.deck != null && decks.has(c.deck))
+        .map((c) => ({
+        cabin: String(c.cabin_num), archetypeId: "", rank: null, category: c.category,
+        deck: c.deck, section: c.section, side: c.side,
+      }));
+      // Warn about the rooms actually on screen. When the requested type could not
+      // be served (a ship with no balconies), the picks are substitutes and the
+      // skip-list must describe THOSE, not the type that does not exist here.
+      const servedType = selection.outcome === "exact"
+        ? answers.room
+        : classifyCategory(selection.picks[0]?.category ?? null);
+      const entries = buildSteerClear({
+        candidates, picked: selection.picks.map((p) => p.cabin), answers, zones, lang, servedType,
+      });
+      // The facts are fixed here; the model only supplies the wording, and only
+      // if it clears the gate. severity/source stay internal (Mark, 8/16).
+      const facts: SteerFacts[] = entries.map((e) => ({
+        cabin: e.cabin, deck: e.deck, section: e.section, category: e.category,
+        factor: e.factor, severity: e.severity, what: e.reason.replace(/^[^.]*\.\s*/, ""),
+      }));
+      const written = await writeSteerLines(shipRow.ship ?? ship, facts, answers, lang);
+      steerClear = entries.map((e) => ({ cabin: e.cabin, reason: written.get(e.cabin) ?? e.reason }));
+    }
+    const storedSteer = steerClear;
 
     const live = picks.length
       ? await reasonLive(shipRow.ship ?? ship, answers, picks, steerClear, lang)
@@ -824,17 +1034,12 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
         const lr = byCabin.get(p.cabin);
         return lr ? { ...p, hook: scrubBanned(lr.hook), reason: scrubBanned(lr.reason) || p.reason } : p;
       });
-      if (Array.isArray(live.steerClear) && live.steerClear.length) {
-        // Match the model's rewritten reasons back onto OUR cabins by number. Anything
-        // it invented is discarded; anything it dropped keeps its stored reason. Before
-        // this the returned array replaced ours wholesale, so a hallucinated cabin number
-        // went straight to the visitor as "a room I'd skip".
-        const byNum = new Map(live.steerClear.filter((sc) => sc.cabin).map((sc) => [String(sc.cabin), sc]));
-        steerClear = storedSteer.map((sc) => {
-          const lr = sc.cabin ? byNum.get(String(sc.cabin)) : undefined;
-          return lr ? { ...sc, reason: scrubBanned(lr.reason) ?? sc.reason } : sc;
-        });
-      }
+      // The model does NOT touch the steer-clear list any more. Its reasons are
+      // now composed from the grid's own position and the research zone's own
+      // sourced wording, and letting the model restate them is exactly how the
+      // old list came to contradict the grid on a third of its positional claims
+      // (346 of 1,079, measured 2026-08-17). It writes the room cards; the
+      // warnings are facts we can point at a source for.
     }
 
     // What sits outside the window, per cabin — Mark's two rules are enforced in
