@@ -121,7 +121,11 @@ const ARCHETYPE_TAGS: Record<string, string[]> = {
 function pickArchetype(rows: { archetype_id: string }[], a: Answers): string | null {
   if (!rows.length) return null;
   const want = new Set<string>([
-    a.party || "", a.room || "", a.budget || "", a.priority || "", a.motion ? "steady" : "",
+    a.party || "", a.room || "", a.budget || "", a.priority || "",
+    // Only an actual YES means seasickness. Testing truthiness added "steady" for EVERY
+    // answer including "No, we're fine", so everyone was steered to the sensitive-stomach
+    // archetype (Mark, 8/16: "i chose no seasick problems so the logic is still flawed").
+    a.motion === "yes" ? "steady" : "",
   ].filter(Boolean));
   let best = rows[0]!.archetype_id, bestScore = -1;
   for (const r of rows) {
