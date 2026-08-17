@@ -322,6 +322,7 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
 
     const cat = String(hit.category || "").toLowerCase();
     const interior = /interior|inside/.test(cat);
+    const knownType = Boolean(cat) || Boolean(hit.view);
     const hasWindow = !interior;
 
     // INTERNAL confidence only — never returned to the client.
@@ -329,7 +330,19 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
     const lines: string[] = [];
     let headline: string;
 
-    if (interior) {
+    if (!knownType) {
+      // We do not even know if this cabin HAS a window. Saying "nothing is blocking your
+      // window" here would be a confident answer built on nothing — the one failure mode
+      // Mark ruled out. Say what we have and hand it to a human.
+      confidence = 0.2;
+      headline = es ? "Necesito confirmarlo" : "I'd want to confirm this one";
+      lines.push(es
+        ? "Tengo tu camarote en el plano del barco, pero no el detalle de categoría que necesito para hablarte de la vista con seguridad. Prefiero decírtelo a adivinar."
+        : "I have your cabin on the ship's plan, but not the category detail I'd need to talk about the view with any confidence. I'd rather tell you that than guess.");
+      lines.push(es
+        ? "Si me dices tu salida, lo reviso a mano y te confirmo qué esperar."
+        : "Tell me your sailing and I'll check it by hand and confirm what to expect.");
+    } else if (interior) {
       confidence = 0.95;
       headline = es ? "Sin ventana que preocuparte" : "No window to worry about";
       lines.push(es
