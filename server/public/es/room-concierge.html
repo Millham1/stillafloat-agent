@@ -462,10 +462,13 @@ class RoomConciergeFlow {
       if(r.ok) d=await r.json();
     }catch{/* handled below */}
     if(!d||!d.picks?.length){
+      /* La API ya manda su propia razón en español cuando la tiene (p. ej. outcome
+         "no-data": no tenemos nada de este barco y no vamos a prestarte los camarotes
+         de otro). La línea genérica queda solo para un fallo de la petición. */
       this.stageEl.innerHTML = `<p class="re-progress">Tus habitaciones</p>
         <h2 class="q">Este necesita el toque humano.</h2>
-        <p class="re-intro">Todavía no tengo cargadas recomendaciones habitación por habitación
-        para ${shipName} — mándanos tus respuestas y se hace a mano.</p>${this.cta()}`;
+        <p class="re-intro">${d?.note || `Todavía no tengo cargadas recomendaciones habitación por habitación
+        para ${shipName} — mándanos tus respuestas y se hace a mano.`}</p>${this.cta()}`;
       return;
     }
     this.picked=new Set(); this.roomsData=d; this.roomsShip=shipName; this.roomsRep=repSlug;
@@ -473,6 +476,19 @@ class RoomConciergeFlow {
   }
   drawRooms(){
     const d=this.roomsData;
+    /* Cuando no pudimos servir el TIPO de camarote que pidieron, la API lo dice en
+       `note` (ya en español). Mostrar las tarjetas sin eso es, desde el lado del
+       visitante, el mismo error del 16/8: camarotes del tipo equivocado y ninguna
+       explicación. Va arriba, porque cambia cómo se leen. */
+    const note = d.note
+      ? `<p class="re-intro" style="background:rgba(255,202,79,.12);border-left:3px solid #ffca4f;
+           border-radius:8px;padding:12px 14px;margin:0 0 16px">${d.note}</p>` : "";
+    /* 92 de los 138 barcos heredan la numeración de un barco gemelo. Coinciden entre
+       el 93% y el 99%, no al 100% — decirlo es más honesto que dar por verificado. */
+    const inherited = d.numberingVerified === false
+      ? `<p class="re-intro" style="font-size:14.5px;font-style:italic;margin:0 0 14px">
+           Los números de camarote de este barco vienen de su gemelo. Casi siempre coinciden,
+           pero confirma conmigo el camarote exacto antes de reservar.</p>` : "";
     const picks=d.picks.map(p=>{
       const f=p.facts||{};
       const on=this.picked.has(p.cabin);
@@ -496,7 +512,9 @@ class RoomConciergeFlow {
       : this.cta();
     this.stageEl.innerHTML = `
       <p class="re-progress">Tus habitaciones · ${this.roomsShip}</p>
-      <h2 class="q">Aquí es donde yo te pondría.</h2>
+      <h2 class="q">${d.outcome === "ship-has-none" || d.outcome === "none-researched"
+        ? "Esto es lo que haría en su lugar." : "Aquí es donde yo te pondría."}</h2>
+      ${note}${inherited}
       ${picks}
       ${steer?`<details class="why" style="margin:0 0 14px"><summary style="color:#ffca4f;font-weight:800">Mejor pasar de largo — ${(d.steerClear||[]).length} habitaciones que yo evitaría</summary>
         <ul style="margin:8px 0 0;padding-left:18px;font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.78)">${steer}</ul></details>`:""}

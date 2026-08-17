@@ -458,10 +458,13 @@ class RoomConciergeFlow {
       if(r.ok) d=await r.json();
     }catch{/* handled below */}
     if(!d||!d.picks?.length){
+      /* Prefer the API's own reason when it has one (e.g. outcome "no-data": we hold
+         nothing for this hull and will not borrow another ship's rooms). The generic
+         line is only for a request that failed outright. */
       this.stageEl.innerHTML = `<p class="re-progress">Your rooms</p>
         <h2 class="q">This one needs the human touch.</h2>
-        <p class="re-intro">I don't have room-level picks for ${shipName} loaded yet — send your answers
-        over and it gets done by hand.</p>${this.cta()}`;
+        <p class="re-intro">${d?.note || `I don't have room-level picks for ${shipName} loaded yet — send your answers
+        over and it gets done by hand.`}</p>${this.cta()}`;
       return;
     }
     this.picked=new Set(); this.roomsData=d; this.roomsShip=shipName; this.roomsRep=repSlug;
@@ -490,9 +493,25 @@ class RoomConciergeFlow {
         <a class="re-btn yes" style="text-decoration:none;display:inline-block"
           href="/cabin-request.html?ship=${encodeURIComponent(this.roomsShip)}&cabins=${encodeURIComponent([...this.picked].join(","))}">Send my picks</a></div>`
       : this.cta();
+    /* When we could not serve the room TYPE that was asked for, the API says so in
+       `note` — the ship genuinely has none, we have not researched that type there
+       yet, or we cannot read that ship's categories. Showing the cards without it
+       is the 8/16 bug from the visitor's seat: rooms of the wrong kind and no
+       explanation. It leads, above the picks, because it changes how they read them. */
+    const note = d.note
+      ? `<p class="re-intro" style="background:rgba(255,202,79,.12);border-left:3px solid #ffca4f;
+           border-radius:8px;padding:12px 14px;margin:0 0 16px">${d.note}</p>` : "";
+    /* 92 of the 138 hulls inherit their cabin numbering from a sister ship. Sisters
+       agree 93-99%, not 100%, so say so rather than implying we verified this hull. */
+    const inherited = d.numberingVerified === false
+      ? `<p class="re-intro" style="font-size:14.5px;font-style:italic;margin:0 0 14px">
+           Cabin numbers for this ship come from its sister. They line up almost always,
+           but I'd confirm the exact room with me before you book it.</p>` : "";
     this.stageEl.innerHTML = `
       <p class="re-progress">Your rooms · ${this.roomsShip}</p>
-      <h2 class="q">Here's where I'd put you.</h2>
+      <h2 class="q">${d.outcome === "ship-has-none" || d.outcome === "none-researched"
+        ? "Here's what I'd do instead." : "Here's where I'd put you."}</h2>
+      ${note}${inherited}
       ${picks}
       ${steer?`<details class="why" style="margin:0 0 14px"><summary style="color:#ffca4f;font-weight:800">Worth walking past — ${(d.steerClear||[]).length} rooms I'd skip</summary>
         <ul style="margin:8px 0 0;padding-left:18px;font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.78)">${steer}</ul></details>`:""}
