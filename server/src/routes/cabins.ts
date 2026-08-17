@@ -101,7 +101,10 @@ type Answers = {
 // never asked for (caught 2026-08-12 walking the UI). All 12 covered; the
 // id-split fallback below stays only as a net for archetypes added later.
 const ARCHETYPE_TAGS: Record<string, string[]> = {
-  "first-couple-ocean-steady":   ["couple", "middle", "ocean", "steady", "oceanview", "balcony"],
+  // NOT tagged "balcony": this archetype recommends Ocean View cabins, and carrying the
+  // balcony tag made it match balcony-seekers and then win the tie on ordering — a visitor
+  // who asked for coffee-on-the-balcony was handed ocean-view rooms (Mark, 8/16).
+  "first-couple-ocean-steady":   ["couple", "middle", "ocean", "steady", "oceanview"],
   "couple-ocean-balcony-treat":  ["couple", "treat", "ocean", "balcony"],
   "anniversary-suite-splurge":   ["couple", "sky", "treat", "space", "suite"],
   "family-action-boardwalk":     ["family", "middle", "action", "balcony"],
@@ -127,6 +130,9 @@ function pickArchetype(rows: { archetype_id: string }[], a: Answers): string | n
     for (const t of tags) if (want.has(t)) score += 1;
     // party is the strongest signal — a family must never get a couple's advice
     if (a.party && tags.includes(a.party)) score += 2;
+    // the ROOM answer is the cabin-type signal: if they said balcony, they meant balcony.
+    // Weighted like party so it cannot be lost to a tie-break.
+    if (a.room && tags.includes(a.room)) score += 2;
     if (score > bestScore) { bestScore = score; best = r.archetype_id; }
   }
   return best;
