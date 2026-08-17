@@ -3,7 +3,9 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    // the exhaustive matcher sweep loads its fleet fixture as JSON
+    "resolveJsonModule": true
   },
   "include": ["src"],
   "references": [

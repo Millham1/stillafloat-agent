@@ -43,9 +43,16 @@ await esbuild({
   },
 });
 
+// Pass the built files EXPLICITLY rather than the directory. `node --test <dir>`
+// does not scan for test files on every Node 22.x — on 22.11 it tries to load the
+// directory as a module and the whole suite fails before a single test runs, which
+// is what was happening on the Mac (2026-08-17). Naming the files works everywhere.
+const built = (await readdir(outDir)).filter((f) => f.endsWith(".mjs")).map((f) => path.join(outDir, f));
+if (!built.length) { console.error("build produced no test files"); process.exit(1); }
+
 // NODE_ENV=production keeps the logger on the plain pino path (no pino-pretty
 // worker transport, which does not resolve from a bundled test file).
-const result = spawnSync(process.execPath, ["--test", outDir], {
+const result = spawnSync(process.execPath, ["--test", ...built], {
   stdio: "inherit",
   env: { ...process.env, NODE_ENV: "production" },
 });

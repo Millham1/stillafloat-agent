@@ -26,6 +26,11 @@ import { join } from "node:path";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
+import {
+  normalizeAnswers, pickArchetype, selectCabins, selectionNote,
+  shipTypeInventory, zonesForCabin, classifyCategory,
+  type Answers, type PoolCabin, type Zone,
+} from "../lib/cabin-match";
 
 const router: IRouter = Router();
 
@@ -83,64 +88,17 @@ const VOICE = loadVoice();
 // the advice was written for. We score each on how well its tags match the
 // visitor's answers and take the best. Deliberately simple and inspectable —
 // a wrong match shows the wrong *reasoning*, so it must be debuggable.
-type Answers = {
-  party?: string;      // solo | couple | family | group | solo-group
-  room?: string;       // inside | oceanview | balcony | suite — what they're picturing.
-                       // Replaced the budget question (Mark, 2026-08-12): we show no
-                       // prices, so asking about money promised a price-shaped answer
-                       // this tool can't give. Room type is how an advisor asks it.
-  budget?: string;     // legacy: lean | middle | treat | sky (still honored if sent)
-  priority?: string;   // ocean | quiet | action | space | value
-  motion?: boolean;    // prone to seasickness
-};
-
-// Every archetype needs a row here. The fallback (splitting the id) produced a
-// real mis-match: "quiet-retirees-calm" split to [quiet, retirees, calm] — no
-// "couple" tag — so a quiet-seeking couple lost the party bonus against
-// "first-couple-ocean-steady" and was served sensitive-stomach reasoning they
-// never asked for (caught 2026-08-12 walking the UI). All 12 covered; the
-// id-split fallback below stays only as a net for archetypes added later.
-const ARCHETYPE_TAGS: Record<string, string[]> = {
-  // NOT tagged "balcony": this archetype recommends Ocean View cabins, and carrying the
-  // balcony tag made it match balcony-seekers and then win the tie on ordering — a visitor
-  // who asked for coffee-on-the-balcony was handed ocean-view rooms (Mark, 8/16).
-  "first-couple-ocean-steady":   ["couple", "middle", "ocean", "steady", "oceanview"],
-  "couple-ocean-balcony-treat":  ["couple", "treat", "ocean", "balcony"],
-  "anniversary-suite-splurge":   ["couple", "sky", "treat", "space", "suite"],
-  "family-action-boardwalk":     ["family", "middle", "action", "balcony"],
-  "family-value-space":          ["family", "lean", "space", "inside", "oceanview"],
-  "quiet-retirees-calm":         ["couple", "quiet", "middle", "balcony"],
-  "value-hunter-ocean":          ["lean", "ocean", "oceanview", "inside"],
-  "solo-first-value":            ["solo", "lean", "inside", "oceanview"],
-  "solo-with-group":             ["solo-group"],
-  "big-group-together":          ["group", "space"],
-  "experienced-ocean-midship":   ["couple", "ocean", "middle", "steady", "balcony"],
-  "seasick-priority-steady":     ["steady", "quiet"],
-};
-
-function pickArchetype(rows: { archetype_id: string }[], a: Answers): string | null {
-  if (!rows.length) return null;
-  const want = new Set<string>([
-    a.party || "", a.room || "", a.budget || "", a.priority || "",
-    // Only an actual YES means seasickness. Testing truthiness added "steady" for EVERY
-    // answer including "No, we're fine", so everyone was steered to the sensitive-stomach
-    // archetype (Mark, 8/16: "i chose no seasick problems so the logic is still flawed").
-    a.motion === "yes" ? "steady" : "",
-  ].filter(Boolean));
-  let best = rows[0]!.archetype_id, bestScore = -1;
-  for (const r of rows) {
-    const tags = ARCHETYPE_TAGS[r.archetype_id] ?? r.archetype_id.split("-");
-    let score = 0;
-    for (const t of tags) if (want.has(t)) score += 1;
-    // party is the strongest signal — a family must never get a couple's advice
-    if (a.party && tags.includes(a.party)) score += 2;
-    // the ROOM answer is the cabin-type signal: if they said balcony, they meant balcony.
-    // Weighted like party so it cannot be lost to a tie-break.
-    if (a.room && tags.includes(a.room)) score += 2;
-    if (score > bestScore) { bestScore = score; best = r.archetype_id; }
-  }
-  return best;
-}
+// The answer shape, the archetype table and the matcher all live in
+// lib/cabin-match.ts now. They were moved out on 2026-08-17 for one reason: in
+// here they are unreachable by a test (the route needs Supabase and a live LLM
+// call), so the whole answer space was never swept and the tool shipped with a
+// balcony request being answered with ocean-view rooms. lib/cabin-match.test.ts
+// now walks 1,315,200 selections — every answer to every question on all 138
+// ships — with no network at all.
+//
+// The local `motion?: boolean` type and its `a.motion === "yes"` compare are
+// deliberately gone: that line was a live `TS2367`, and it meant nobody who said
+// "yes, keep us steady" was treated as seasick. One normaliser owns that field.
 
 // ── Live presentation reasoning ──────────────────────────────────────────────
 // Writes the hook + reasoning fresh for THIS visitor from the selected cabins'
@@ -169,7 +127,7 @@ function answersAsSentences(a: Answers): string {
   else if (a.priority === "quiet") bits.push("What matters most to them: peace and quiet.");
   else if (a.priority === "action") bits.push("What matters most to them: being near the action.");
   else if (a.priority === "space") bits.push("What matters most to them: room to spread out.");
-  bits.push(a.motion
+  bits.push(a.seasick
     ? "Someone in the cabin gets seasick — steadiness genuinely matters to them."
     : "Nobody gets seasick. Do NOT mention motion, sway, steadiness, queasiness, stomachs or seasickness at all — not even to reassure them.");
   return bits.join(" ");
@@ -193,14 +151,22 @@ function scrubBanned(t: string | undefined): string | undefined {
 async function reasonLive(
   shipName: string,
   answers: Answers,
-  picks: { cabin: string; reason?: string; facts: Record<string, unknown> | null }[],
+  // `facts` is only JSON-stringified into the prompt, so the row shape is
+  // irrelevant here — and an interface is not assignable to Record<string, unknown>.
+  picks: { cabin: string; reason?: string; facts: unknown }[],
   steerClear: { cabin?: string; area?: string; reason?: string }[],
   lang: "en" | "es" = "en",
 ): Promise<LiveOut | null> {
   const apiKey = process.env["ANTHROPIC_API_KEY"];
   if (!apiKey || !picks.length) return null;
 
-  const key = JSON.stringify([shipName, answers.party, answers.room, answers.priority, !!answers.motion, lang]);
+  // Every field that changes the words must be in the key. This previously read
+  // the motion field a third way (`!!answers.motion`, different from both the type
+  // and the matcher) and left `budget` out, so two visitors who answered the budget
+  // question differently could be served each other's cached copy.
+  const key = JSON.stringify([
+    shipName, answers.party, answers.room, answers.priority, answers.budget, answers.seasick, lang,
+  ]);
   const hit = liveCache.get(key);
   if (hit && Date.now() - hit.at < LIVE_CACHE_TTL_MS) return hit.out;
 
@@ -459,33 +425,46 @@ type FleetShip = {
   regions: string[];          // from ship_deployments (empty until captured)
 };
 
-function kebab(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-function loadFleetJson(): { lines: Record<string, { classes: Record<string, { ships: string[] }> }> } | null {
-  for (const p of [
-    join(process.cwd(), "..", "cabin-advisor", "fleet.json"),
-    join(process.cwd(), "cabin-advisor", "fleet.json"),
-  ]) {
-    try { return JSON.parse(readFileSync(p, "utf8")); } catch { /* next */ }
-  }
-  return null;
-}
-
-async function buildFleet(includeUnpublishedRatings: boolean): Promise<{ ships: FleetShip[]; internalRating: Map<string, number> }> {
-  const fleet = loadFleetJson();
+// The fleet comes from the DATABASE, not from matching names at request time.
+//
+// This used to read cabin-advisor/fleet.json and resolve each ship to a hull grid
+// by CLASS NAME:
+//     repByClass.set(r.class.toLowerCase(), ...)   // last write wins
+//     const rep = repByClass.get(className.toLowerCase())
+// Class names are not unique across lines. Carnival and Norwegian both have a
+// "Spirit"; Carnival (ex-P&O) and Princess both have a "Grand". NCL loaded last,
+// so five Carnival ships resolved to Norwegian Spirit and two to Grand Princess —
+// and since those hulls share ZERO cabin numbers, every recommendation shown for
+// Carnival Spirit named a room that does not exist on it.
+//
+// Every ship now owns a row (migration 0017). `in_fleet` says whether to offer it,
+// `derived_from` says where its reasoning came from. fleet.json is now only an
+// input to the materialisation script, never a runtime lookup.
+// Both rating maps are always built; the caller decides which to use (/cabins/fleet
+// ignores internalRating, suggest-ships uses it). The old boolean parameter was
+// dead after the rewrite and implied a gate that did not exist.
+async function buildFleet(): Promise<{ ships: FleetShip[]; internalRating: Map<string, number> }> {
   const supabase = getSupabase();
-  const { data: reps } = await supabase.from("cabin_ships").select("slug,ship,line,class");
+  const { data: shipRows } = await supabase
+    .from("cabin_ships")
+    .select("slug,ship,line,class,fleet_class,derived_from,numbering_verified")
+    .eq("in_fleet", true);
+  const ships0 = (shipRows ?? []) as {
+    slug: string; ship: string; line: string; class: string; fleet_class: string | null;
+    derived_from: string | null; numbering_verified: boolean;
+  }[];
+
   const { data: adviceRows } = await supabase.from("cabin_advice").select("ship_slug");
   const adviceSlugs = new Set((adviceRows ?? []).map((r: { ship_slug: string }) => r.ship_slug));
 
-  // class name → rep slug (class names are unique enough across the harvest;
-  // where two lines reuse a name, the line check below disambiguates)
-  const repByClass = new Map<string, { slug: string; line: string }>();
-  for (const r of (reps ?? []) as { slug: string; line: string; class: string }[]) {
-    repByClass.set(r.class.toLowerCase(), { slug: r.slug, line: r.line });
-  }
+  // NOTE: do NOT try to learn "which ships hold cabins" by reading the cabins
+  // table here. PostgREST caps every response at 1000 rows and `.limit(100000)`
+  // does NOT raise that cap — the read comes back with 1000 rows covering a
+  // single ship, so the derived set is wrong for 137 of 138 ships and every one
+  // of them reports "no rooms available". (Caught in review 2026-08-17, before
+  // it shipped.) It is also unnecessary: advice only exists for hulls that had a
+  // grid to reason over, so `adviceSlugs` already excludes the two ships with no
+  // deck plan sourced (Carnival Adventure and Encounter have neither).
 
   const { data: depRows } = await supabase.from("ship_deployments").select("ship_slug,region");
   const regionsBySlug = new Map<string, string[]>();
@@ -495,43 +474,36 @@ async function buildFleet(includeUnpublishedRatings: boolean): Promise<{ ships: 
     regionsBySlug.set(d.ship_slug, arr);
   }
 
-  const ratingQuery = supabase.from("conga_line_ratings").select("ship_slug,rating,status,comment_status");
-  const { data: ratingRows } = await ratingQuery;
+  const { data: ratingRows } = await supabase
+    .from("conga_line_ratings").select("ship_slug,rating,status,comment_status");
   const publicRating = new Map<string, number>();
   const internalRating = new Map<string, number>();
-  for (const r of (ratingRows ?? []) as { ship_slug: string; rating: number | null; status: string; comment_status: string }[]) {
+  for (const r of (ratingRows ?? []) as
+       { ship_slug: string; rating: number | null; status: string; comment_status: string }[]) {
     if (r.rating == null) continue;
     if (r.comment_status === "approved") internalRating.set(r.ship_slug, Number(r.rating));
     if (r.status === "published" && r.comment_status === "approved") publicRating.set(r.ship_slug, Number(r.rating));
   }
 
-  const ships: FleetShip[] = [];
-  if (fleet?.lines) {
-    for (const [lineName, line] of Object.entries(fleet.lines)) {
-      for (const [className, klass] of Object.entries(line.classes ?? {})) {
-        const rep = repByClass.get(className.toLowerCase()) ?? null;
-        for (const raw of klass.ships ?? []) {
-          if (/\(on order\)/i.test(raw)) continue;      // not sailing yet
-          const ship = raw.replace(/\s*\((?:2026|on order)\)\s*/gi, "").trim();
-          const slug = kebab(ship);
-          ships.push({
-            ship, slug, line: lineName, shipClass: className,
-            repSlug: rep?.slug ?? null,
-            hasRooms: rep ? adviceSlugs.has(rep.slug) : false,
-            rating: publicRating.get(slug) ?? null,
-            regions: regionsBySlug.get(slug) ?? [],
-          });
-        }
-      }
-    }
-  }
+  const ships: FleetShip[] = ships0.map((s) => {
+    const adviceSlug = s.derived_from ?? s.slug;
+    return {
+      ship: s.ship, slug: s.slug, line: s.line,
+      shipClass: s.fleet_class ?? s.class,
+      repSlug: s.slug,                       // a ship reads its OWN rows now
+      hasRooms: adviceSlugs.has(adviceSlug),
+      rating: publicRating.get(s.slug) ?? null,
+      regions: regionsBySlug.get(s.slug) ?? [],
+    };
+  }).sort((a, b) => a.line.localeCompare(b.line) || a.ship.localeCompare(b.ship));
+
   return { ships, internalRating };
 }
 
 router.get("/cabins/fleet", async (_req: Request, res: Response) => {
   res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=3600");
   try {
-    const { ships } = await buildFleet(false);
+    const { ships } = await buildFleet();
     return res.json({ ships });
   } catch (err) {
     logger.error({ err }, "cabins/fleet failed");
@@ -599,7 +571,7 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
     const lang: "en" | "es" = langRaw === "es" || req.query["lang"] === "es" ? "es" : "en";
     const matrix = loadMatrix();
     if (!matrix) return res.status(500).json({ error: "matrix unavailable" });
-    const { ships, internalRating } = await buildFleet(true);
+    const { ships, internalRating } = await buildFleet();
 
     const t = (k: string) => Number(traits[k] ?? 0);
     // What this visitor is reaching for, per virtue (same 0-2 space as the matrix).
@@ -708,20 +680,43 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
 // ── The recommendation ───────────────────────────────────────────────────────
 router.post("/cabins/recommend", async (req: Request, res: Response) => {
   try {
-    const { ship, lang: langRaw, ...answers } = (req.body ?? {}) as Answers & { ship?: string; lang?: string };
+    const { ship, lang: langRaw, ...raw } = (req.body ?? {}) as Record<string, unknown> & { ship?: string; lang?: string };
     if (!ship) return res.status(400).json({ error: "ship is required" });
     const lang: "en" | "es" = langRaw === "es" || req.query["lang"] === "es" ? "es" : "en";
+    // ONE place decides what the answers mean. See lib/cabin-match.ts — the field
+    // that broke this twice in two days is normalised here and nowhere else.
+    const answers: Answers = normalizeAnswers(raw);
 
     const supabase = getSupabase();
+
+    // Which ship's rows do we read? The ship's OWN. Before 2026-08-17 this was a
+    // class-NAME lookup performed per request, and because class names are not
+    // unique across lines ("Spirit" is both Carnival and Norwegian) five Carnival
+    // ships were served Norwegian Spirit's cabins — zero of which exist on them.
+    // Now every ship in the fleet owns its rows; `derived_from` says where the
+    // reasoning came from, as data.
+    const { data: shipRowData } = await supabase
+      .from("cabin_ships")
+      .select("slug,ship,line,class,category_counts,derived_from,numbering_verified")
+      .eq("slug", ship).maybeSingle();
+    const shipRow = shipRowData as {
+      slug: string; ship: string; line: string; class: string;
+      category_counts: Record<string, number> | null;
+      derived_from: string | null; numbering_verified: boolean;
+    } | null;
+    if (!shipRow) return res.status(404).json({ error: "Unknown ship" });
+
+    // Advice is class-level reasoning, reached by an explicit column — never by
+    // matching a name at request time.
+    const adviceSlug = shipRow.derived_from ?? shipRow.slug;
     type AdviceRow = { archetype_id: string; label: string; recommendations: unknown; steer_clear: unknown;
       label_es?: string | null; recommendations_es?: unknown; steer_clear_es?: unknown };
     const { data, error } = await supabase
       .from("cabin_advice")
       .select("archetype_id,label,recommendations,steer_clear,label_es,recommendations_es,steer_clear_es")
-      .eq("ship_slug", ship);
+      .eq("ship_slug", adviceSlug);
+    if (error) throw new Error(error.message);
     let rows = (data ?? []) as AdviceRow[];
-    // ES: the translated corpus becomes the stored base (grounding + fallback);
-    // rows missing a translation keep English rather than serving nothing.
     if (lang === "es") {
       rows = rows.map((r) => ({
         ...r,
@@ -730,43 +725,99 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
         steer_clear: r.steer_clear_es ?? r.steer_clear,
       }));
     }
-    if (error) throw new Error(error.message);
-    if (!rows.length) return res.status(404).json({ error: "No advice for that ship yet" });
+
+    // Every cabin number any archetype names for this ship, plus the ones it
+    // would steer people away from. This is what we look up — NOT the whole grid.
+    //
+    // Reading the full grid here is wrong twice over: PostgREST caps a response at
+    // 1000 rows (`.limit()` does not raise that cap), and 121 of 138 ships carry
+    // more than 1000 cabins — so `knownCabins` would be silently incomplete and
+    // the phantom guard would start discarding REAL cabins and logging them as
+    // invented. Caught in review 2026-08-17. Asking for the ~100 numbers we
+    // actually care about is both correct and a smaller query than the original.
+    const wanted = new Set<string>();
+    for (const r of rows) {
+      for (const rec of (r.recommendations ?? []) as { cabin: number | string }[]) wanted.add(String(rec.cabin));
+      for (const sc of (r.steer_clear ?? []) as { cabin?: string }[]) if (sc?.cabin) wanted.add(String(sc.cabin));
+    }
+    const nums = [...wanted];
+    const { data: gridData } = nums.length
+      ? await supabase
+          .from("cabins")
+          .select("cabin_num,deck,category,section,side,view,sleeps,obstructed,obstruction,tour")
+          .eq("ship_slug", ship)
+          .in("cabin_num", nums)
+      : { data: [] as unknown[] };
+    const grid = (gridData ?? []) as (Omit<CabinRow, "x"> & { tour?: string | null })[];
+    const factByNum = new Map(grid.map((f) => [String(f.cabin_num), f]));
+    // A cabin is real for this ship if, and only if, the database returned it.
+    const knownCabins = new Set(grid.map((f) => String(f.cabin_num)));
+    if (nums.length > 900) {
+      // Still under the 1000 cap today (largest pool is ~100), but if the advice
+      // corpus ever grows past it this read would truncate the same way.
+      logger.warn({ ship, wanted: nums.length }, "cabin concierge: pool approaching the PostgREST row cap");
+    }
+
+    // The obstruction research for this hull class — the moat layer. Absent until
+    // cabin_context_zones is loaded, in which case the tool simply says less.
+    const { data: zoneData } = await supabase
+      .from("cabin_context_zones")
+      .select("factor,decks,sections,sides,what,effect,matters_to,severity,confidence,source")
+      .eq("rep_slug", adviceSlug);
+    const zones = ((zoneData ?? []) as Record<string, unknown>[]).map((z) => ({
+      factor: String(z["factor"]), decks: (z["decks"] as number[]) ?? [],
+      sections: (z["sections"] as string[]) ?? [], sides: (z["sides"] as string[]) ?? [],
+      what: (z["what"] as string) ?? null, effect: (z["effect"] as string) ?? null,
+      mattersTo: (z["matters_to"] as string) ?? null,
+      severity: z["severity"], confidence: z["confidence"], source: String(z["source"]),
+    })) as Zone[];
 
     const chosen = pickArchetype(rows, answers);
-    const advice = rows.find((r) => r.archetype_id === chosen) ?? rows[0]!;
+    const advice = rows.find((r) => r.archetype_id === chosen) ?? rows[0] ?? null;
 
-    // Join the reasoning to the real cabin facts so the page can show deck,
-    // category and view next to the why.
-    const recs = (advice.recommendations ?? []) as { cabin: number | string; rank?: number; reason?: string }[];
-    const nums = recs.map((r) => String(r.cabin));
-    const { data: facts } = await supabase
-      .from("cabins")
-      .select("cabin_num,deck,category,section,side,view,sleeps,obstruction,tour")
-      .eq("ship_slug", ship)
-      .in("cabin_num", nums);
+    // THE POOL IS EVERY ARCHETYPE'S PICKS, not just the winner's. The stored picks
+    // are themselves mixed-type — the balcony archetype recommends 208 balcony
+    // cabins and 50 ocean-view ones — so filtering only the winner's list could
+    // leave a balcony-asker with nothing of the right kind and no honest way to
+    // say so. Pooling first, filtering second, is what makes the type guarantee real.
+    const pool: PoolCabin[] = [];
+    for (const r of rows) {
+      for (const rec of (r.recommendations ?? []) as { cabin: number | string; rank?: number; reason?: string }[]) {
+        const num = String(rec.cabin);
+        const f = factByNum.get(num);
+        pool.push({
+          cabin: num, rank: rec.rank ?? null, reason: rec.reason ?? null,
+          archetypeId: r.archetype_id, category: f?.category ?? null,
+          deck: f?.deck ?? null, section: f?.section ?? null, side: f?.side ?? null,
+        });
+      }
+    }
 
-    const factByNum = new Map((facts ?? []).map((f: { cabin_num: string | number }) => [String(f.cabin_num), f]));
-    let picks = recs
-      .sort((x, y) => (x.rank ?? 99) - (y.rank ?? 99))
-      .map((r) => ({ ...r, cabin: String(r.cabin), facts: factByNum.get(String(r.cabin)) ?? null }));
+    const selection = selectCabins({
+      pool, chosenArchetypeId: chosen, answers, zones, knownCabins,
+      inventory: shipTypeInventory(shipRow.category_counts),
+    });
+    if (selection.dropped.length) {
+      // The advice corpus is model-written, so it names cabins that do not exist
+      // (19 of 9,211 fleet-wide). They are dropped, not shown — and logged, because
+      // a rising count means the corpus needs regenerating.
+      logger.warn({ ship, dropped: selection.dropped }, "cabin concierge: advice named cabins not on this ship");
+    }
 
-    const { data: shipRowData } = await supabase
-      .from("cabin_ships").select("ship,line,class").eq("slug", ship).maybeSingle();
-    const shipRow = shipRowData as { ship: string; line: string; class: string } | null;
+    let picks = selection.picks.map((p) => ({
+      cabin: p.cabin, rank: p.rank ?? undefined, reason: p.reason ?? undefined,
+      facts: factByNum.get(p.cabin) ?? null,
+    }));
 
-    // Whether this ship's grid carries geometry — gates the "show me where it
-    // sits" deck view in the UI (only claim what we can actually draw).
-    const { count: geomCount } = await supabase
-      .from("cabins")
-      .select("id", { count: "exact", head: true })
-      .eq("ship_slug", ship)
-      .not("x", "is", null);
+    // Steer-clear: cabin numbers come from the grid, never from a model. The live
+    // pass may rewrite the REASONS; it may not introduce or rename a cabin.
+    const storedSteer = ((advice?.steer_clear ?? []) as { cabin?: string; area?: string; reason?: string }[])
+      .filter((sc) => !sc.cabin || knownCabins.has(String(sc.cabin)));
+    let steerClear = storedSteer;
 
-    // Live pass: rewrite hook + reason for THIS visitor's answers. Stored text
-    // is the grounding and the fallback — the response never blocks on failure.
-    let steerClear = (advice.steer_clear ?? []) as { cabin?: string; area?: string; reason?: string }[];
-    const live = await reasonLive((shipRow?.ship as string) ?? ship, answers, picks, steerClear, lang);
+    const live = picks.length
+      ? await reasonLive(shipRow.ship ?? ship, answers, picks, steerClear, lang)
+      : null;
     if (live) {
       const byCabin = new Map(live.recommendations.map((r) => [String(r.cabin), r]));
       picks = picks.map((p) => {
@@ -774,15 +825,46 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
         return lr ? { ...p, hook: scrubBanned(lr.hook), reason: scrubBanned(lr.reason) || p.reason } : p;
       });
       if (Array.isArray(live.steerClear) && live.steerClear.length) {
-        steerClear = live.steerClear.map((sc) => ({ ...sc, reason: scrubBanned(sc.reason) }));
+        // Match the model's rewritten reasons back onto OUR cabins by number. Anything
+        // it invented is discarded; anything it dropped keeps its stored reason. Before
+        // this the returned array replaced ours wholesale, so a hallucinated cabin number
+        // went straight to the visitor as "a room I'd skip".
+        const byNum = new Map(live.steerClear.filter((sc) => sc.cabin).map((sc) => [String(sc.cabin), sc]));
+        steerClear = storedSteer.map((sc) => {
+          const lr = sc.cabin ? byNum.get(String(sc.cabin)) : undefined;
+          return lr ? { ...sc, reason: scrubBanned(lr.reason) ?? sc.reason } : sc;
+        });
       }
     }
 
+    // What sits outside the window, per cabin — Mark's two rules are enforced in
+    // lib/cabin-match.ts: never blame the line, never render confidence.
+    const withZones = picks.map((p) => {
+      const f = p.facts;
+      const hits = f ? zonesForCabin(
+        { deck: f.deck, section: f.section, side: f.side, category: f.category }, zones) : [];
+      return {
+        ...p,
+        heads_up: hits.slice(0, 2).map((z) => ({ what: z.what, effect: z.effect, severity: z.severity })),
+      };
+    });
+
+    const { count: geomCount } = await supabase
+      .from("cabins").select("cabin_num", { count: "exact", head: true })
+      .eq("ship_slug", ship).not("x", "is", null);
+
     return res.json({
-      ship: { ...(shipRow ?? { ship }), slug: ship },
-      archetype: { id: advice.archetype_id, label: advice.label },
-      picks,
+      ship: { ship: shipRow.ship, line: shipRow.line, class: shipRow.class, slug: ship },
+      archetype: advice ? { id: advice.archetype_id, label: advice.label } : null,
+      picks: withZones,
       steerClear,
+      // Never a silent substitution: when we could not serve the type asked for,
+      // the visitor is told why, in Mark's voice.
+      note: selectionNote(selection, shipRow.ship ?? ship, lang),
+      outcome: selection.outcome,
+      // An honest flag for copy: this hull's numbering was inherited from a sister
+      // and has not been confirmed. Never present a copy as verified.
+      numberingVerified: shipRow.numbering_verified,
       reasonedLive: !!live,
       hasDeckMap: (geomCount ?? 0) > 0,
     });
