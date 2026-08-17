@@ -29,6 +29,13 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
+interface CabinRow {
+  cabin_num: string; deck: number | null; category: string | null; section: string | null;
+  side: string | null; view: string | null; sleeps: number | null;
+  obstructed: boolean | null; obstruction: string | null; note: string | null;
+  x: string | number | null;
+}
+
 // The locked voice guide is the system prompt for live presentation reasoning —
 // the same asset the batch generator uses, read from the repo when present.
 // The deploy boxes don't always carry cabin-advisor/, so a full inline copy is
@@ -270,6 +277,128 @@ router.get("/cabins/deckmap", async (req: Request, res: Response) => {
   } catch (err) {
     logger.error({ err }, "cabins/deckmap failed");
     return res.status(500).json({ error: "Could not load the deck map" });
+  }
+});
+
+// ── "I'm already booked — is my view OK?" ────────────────────────────────────
+// The highest-intent question a booked cruiser has, and the one the booking engine
+// never answers. Two HARD rules from Mark (2026-08-16), both about tone and moat:
+//   1. NEVER position this against the cruise line. We do not say a cabin was
+//      mislabelled, undisclosed or hidden. We say what sits outside the window and
+//      what to expect. Mark works WITH the lines; this has to read as helpful.
+//   2. The confidence score is INTERNAL. It decides how firmly we speak (or whether
+//      we speak at all) — it is never rendered. Publishing it gives away the method.
+router.post("/cabins/check", async (req: Request, res: Response) => {
+  try {
+    const b = (req.body ?? {}) as { ship?: string; cabin?: string; lang?: string };
+    const ship = String(b.ship || "").trim();
+    const raw = String(b.cabin || "").trim().toUpperCase().replace(/\s+/g, "");
+    const es = b.lang === "es" || req.query["lang"] === "es";
+    if (!ship || !raw) return res.status(400).json({ error: "ship and cabin are required" });
+
+    const supabase = getSupabase();
+    const { data: rows, error } = await supabase
+      .from("cabins")
+      .select("cabin_num,deck,category,section,side,view,sleeps,obstructed,obstruction,note,x")
+      .eq("ship_slug", ship);
+    if (error) throw new Error(error.message);
+    const all = (rows ?? []) as CabinRow[];
+    const hit = all.find((c) => String(c.cabin_num).toUpperCase().replace(/\s+/g, "") === raw);
+
+    if (!hit) {
+      // near matches so a typo does not dead-end the visitor
+      const near = all
+        .filter((c) => String(c.cabin_num).toUpperCase().startsWith(raw.slice(0, 2)))
+        .slice(0, 8)
+        .map((c) => c.cabin_num);
+      return res.json({
+        found: false,
+        message: es
+          ? "No encuentro ese camarote en este barco. Revisa el número, o sigue y te ayudo a elegir uno."
+          : "I can't find that cabin on this ship. Check the number, or carry on and I'll help you choose one.",
+        near,
+      });
+    }
+
+    const cat = String(hit.category || "").toLowerCase();
+    const interior = /interior|inside/.test(cat);
+    const hasWindow = !interior;
+
+    // INTERNAL confidence only — never returned to the client.
+    let confidence = 0;
+    const lines: string[] = [];
+    let headline: string;
+
+    if (interior) {
+      confidence = 0.95;
+      headline = es ? "Sin ventana que preocuparte" : "No window to worry about";
+      lines.push(es
+        ? "Es un camarote interior, así que la vista no entra en la ecuación. Lo que importa aquí es la ubicación: qué tan lejos estás de los ascensores y qué tienes encima y debajo."
+        : "This is an interior cabin, so the view isn't part of the equation. What matters here is placement — how far you are from the elevators, and what sits above and below you.");
+    } else if (hit.obstructed) {
+      confidence = 0.9;
+      headline = es ? "Espera algo delante de la ventana" : "Expect something in front of the window";
+      lines.push(es
+        ? "Según lo que hay afuera de esa ventana, tu vista puede verse afectada. Suele ser un bote salvavidas, una estructura del casco o un saliente de la cubierta de arriba."
+        : "Based on what sits outside that window, your view may be affected. Usually that means a lifeboat, part of the ship's structure, or an overhang from the deck above.");
+      if (hit.obstruction) lines.push(String(hit.obstruction));
+      lines.push(es
+        ? "Sigue siendo luz natural y aire — mucha gente lo reserva a propósito por el precio. Solo conviene saberlo antes de subir a bordo, no después."
+        : "You still get natural light and air, and plenty of people book these on purpose for the price. It's just worth knowing before you board rather than after.");
+    } else {
+      // Soft signal: same deck, same side, close along the hull — neighbours flagged?
+      const x = Number(hit.x);
+      const neighbours = all.filter(
+        (c) => c.deck === hit.deck && c.side === hit.side && c.obstructed &&
+               Number.isFinite(x) && Number.isFinite(Number(c.x)) &&
+               Math.abs(Number(c.x) - x) < 40);
+      if (neighbours.length) {
+        confidence = 0.55;
+        headline = es ? "Vale la pena revisarlo" : "Worth a second look";
+        lines.push(es
+          ? "Tu camarote no aparece con la vista comprometida, pero algunos camarotes muy cerca del tuyo, en la misma cubierta y el mismo costado, sí. En esa zona la vista puede variar de un camarote a otro."
+          : "Your cabin doesn't come up as having a compromised view, but some cabins very close to yours — same deck, same side — do. Along that stretch the view can change from one cabin to the next.");
+        lines.push(es
+          ? "Si la vista te importa, vale la pena confirmarlo antes de la fecha de pago final."
+          : "If the view matters to you, it's worth confirming before your final payment date.");
+      } else {
+        confidence = 0.75;
+        headline = es ? "Nada indica un problema de vista" : "Nothing here points to a view problem";
+        lines.push(es
+          ? "Con lo que tenemos de este barco, nada sugiere que algo bloquee tu ventana."
+          : "From what we have on this ship, nothing suggests anything is blocking your window.");
+      }
+    }
+
+    // Honest about our own limits when the ship's data is thin — Mark's rule: a wrong
+    // "you're fine" is worse than no answer.
+    const coverage = all.filter((c) => c.x !== null && c.x !== undefined).length / Math.max(all.length, 1);
+    if (hasWindow && coverage < 0.5) {
+      confidence = Math.min(confidence, 0.4);
+      lines.push(es
+        ? "Dicho eso: nuestros datos de este barco son parciales, así que tómalo como una orientación y no como la última palabra."
+        : "That said — our data on this ship is partial, so treat this as a steer rather than the last word.");
+    }
+
+    const where: string[] = [];
+    if (hit.deck) where.push(es ? `Cubierta ${hit.deck}` : `Deck ${hit.deck}`);
+    if (hit.category) where.push(String(hit.category));
+    if (hit.section) where.push(String(hit.section));
+    if (hit.side) where.push(String(hit.side));
+
+    return res.json({
+      found: true,
+      cabin: hit.cabin_num,
+      where,
+      headline,
+      body: lines,          // confidence deliberately NOT included
+      cta: es
+        ? "¿Quieres que revise si hay un camarote mejor en esta misma salida?"
+        : "Want me to look at whether there's a better cabin on this same sailing?",
+    });
+  } catch (err) {
+    logger.error({ err }, "cabins/check failed");
+    return res.status(500).json({ error: "Could not check that cabin" });
   }
 });
 

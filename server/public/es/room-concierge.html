@@ -300,7 +300,62 @@ class RoomConciergeFlow {
     const inp=document.getElementById("shipSearch");
     if(f){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
   }
-  chooseShip(slug){ this.snapshot('shipPick'); this.chosen=this.fleet.find(s=>s.slug===slug)||null; this.personalityQ(); }
+  chooseShip(slug){ this.snapshot('shipPick'); this.chosen=this.fleet.find(s=>s.slug===slug)||null; this.cabinAsk(); }
+
+  // Already-booked path: the one question a booked cruiser actually wants answered.
+  cabinAsk(msg){
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Tu camarote</p>
+      <h2 class="q">¿Ya tienes camarote asignado?</h2>
+      <p class="re-intro" style="margin-top:-4px">Si ya reservaste, dime el número y te digo qué esperar de la vista.</p>
+      ${msg?`<p style="color:#ffca4f;margin:6px 0 0">${msg}</p>`:""}
+      <input id="cabinNum" placeholder="p. ej. 8234" autocomplete="off"
+        onkeydown="if(event.key==='Enter')RC.cabinCheck()">
+      <div class="re-choices" style="margin-top:14px">
+        <button class="re-btn yes" onclick="RC.cabinCheck()">Revisar mi camarote</button>
+        <button class="re-btn no" onclick="RC.personalityQ()">Todavía no tengo camarote</button>
+      </div>
+      ${this.quiet(1)}`;
+    const i=document.getElementById("cabinNum"); if(i) i.focus();
+  }
+  async cabinCheck(){
+    const el=document.getElementById("cabinNum");
+    const num=(el&&el.value||"").trim();
+    if(!num){ this.cabinAsk(); return; }
+    this.snapshot('cabinAsk');
+    this.stageEl.innerHTML = `<p class="re-progress">Tu camarote</p><h2 class="q">Revisando…</h2>`;
+    let d={};
+    try{
+      const r=await fetch("/api/cabins/check",{method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({ship:this.chosen&&this.chosen.slug,cabin:num,lang:LANG})});
+      d=await r.json();
+    }catch(e){ d={}; }
+    if(!d||d.found!==true){
+      const near=(d&&d.near||[]).map(n=>`<button class="re-opt" style="padding:7px 12px;font-size:14px"
+        onclick="document.getElementById('cabinNum').value='${n}';RC.cabinCheck()">${n}</button>`).join("");
+      this.cabinAsk((d&&d.message)||"");
+      if(near){
+        const box=document.createElement("div");
+        box.innerHTML=`<p style="margin:12px 0 4px;font-size:13px;color:rgba(255,255,255,.75)">¿Quisiste decir?</p>
+          <div class="re-opts">${near}</div>`;
+        this.stageEl.appendChild(box);
+      }
+      return;
+    }
+    const where=(d.where||[]).join(" · ");
+    const body=(d.body||[]).map(p=>`<p style="line-height:1.6;margin:0 0 10px">${p}</p>`).join("");
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Tu camarote ${d.cabin?("· "+d.cabin):""}</p>
+      <h2 class="q">${d.headline||""}</h2>
+      ${where?`<p style="font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:rgba(93,255,154,.9);margin:-2px 0 12px">${where}</p>`:""}
+      ${body}
+      <p style="line-height:1.6;margin:14px 0 0">${d.cta||""}</p>
+      <div class="re-choices" style="margin-top:14px">
+        <button class="re-btn yes" onclick="RC.personalityQ()">Sigue: ayúdame a elegir</button>
+        <button class="re-btn no" onclick="RC.cabinAsk()">Probar otro número</button>
+      </div>
+      ${this.quiet(2)}`;
+  }
   personalityQ(){
     const i=this.qIndex;
     if(i>=PERSONALITY_QS.length){ this.personality=inferAxes(this.traits); return this.expectQ(); }
@@ -457,6 +512,7 @@ class RoomConciergeFlow {
     </div>`;
   }
 }
+const LANG="es";
 const RC=new RoomConciergeFlow(); RC.landing();
 </script>
 </body>
