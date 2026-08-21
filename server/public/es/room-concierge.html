@@ -11,110 +11,100 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/styles.css?v=20260821-concierge">
 <style>
-/* Still Afloat canon (Mark 8/15): the weather / wheres-my-ship pattern.
-   Hero art banner + plaque, seafoam rule, content in sections ON the ocean
-   gradient, dark translucent cards, seafoam accents. Flow logic unchanged. */
-body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:19px;color:#fff}
-.banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;
-  background:linear-gradient(135deg,#07183f 0%,#0b2f52 60%,#0f4a6e 100%);
-  background-image:url('/assets/concierge/cabin-card.jpg');background-size:cover;background-position:center 55%;
-  min-height:clamp(440px,46vw,680px);padding:clamp(120px,19vw,240px) 0 46px}
-.banner::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,17,31,.95) 0%,rgba(6,17,31,.86) 45%,rgba(8,20,36,.93) 100%);z-index:1}
-.plaque{position:relative;display:table;margin:-2px auto 18px;background:rgba(4,14,28,.78);backdrop-filter:blur(6px);
-  border:1px solid rgba(93,255,154,.35);border-radius:14px;padding:13px 34px;color:#fff;font-weight:700;
-  font-size:clamp(17px,2.6vw,24px);letter-spacing:.22em;white-space:nowrap;text-transform:uppercase;z-index:4}
-.corner{position:absolute;bottom:-6px;height:clamp(120px,16vw,210px);width:auto;filter:drop-shadow(0 10px 18px rgba(0,0,0,.5));z-index:3}
-.corner.l{left:clamp(6px,3vw,40px)}
-.corner.r{right:clamp(6px,3vw,40px);transform:scaleX(-1)}
-.shell{position:relative;z-index:4;max-width:900px;margin:0 auto;padding:24px 26px 32px;
-  background:rgba(6,16,30,.93);backdrop-filter:blur(4px);border:1px solid rgba(93,255,154,.22);
-  border-radius:18px;width:calc(100% - 44px);box-sizing:border-box}
+/* Still Afloat canon — the wheres-my-ship template, verbatim tokens:
+   hero art banner + plaque with gold dashes, seafoam rule, content in
+   sections ON the ocean gradient (no page-wide card), navy .card panels,
+   Bree Serif headings (styles.css), gold CTAs. Flow logic unchanged. */
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:#fff}
+.rc-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;background:linear-gradient(135deg,#07183f 0%,#0b2f52 60%,#0f4a6e 100%);background-image:url('/assets/concierge/hero-deckplan.jpg');background-size:cover;background-position:center 45%;height:clamp(300px,34vw,500px)}
+.rc-banner::after{content:'';position:absolute;left:0;right:0;bottom:0;height:80px;background:linear-gradient(to bottom,transparent,#06111f);pointer-events:none}
+.rc-plaque{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);background:rgba(4,14,28,.62);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:13px 30px;color:#fff;font-weight:600;font-size:clamp(15px,2.2vw,21px);letter-spacing:.22em;white-space:nowrap;z-index:5;text-transform:uppercase}
+.rc-plaque .dash{color:#ffd95d;font-weight:700;margin:0 12px}
+.shell{max-width:1150px;margin:auto;padding:40px 22px 90px}
 .re-topbar{display:flex;align-items:center;min-height:30px}
-.re-back{font-family:inherit;font-weight:800;font-size:15px;color:#5dff9a;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
+.re-back{font-family:inherit;font-weight:800;font-size:16px;color:#5dff9a;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
 .re-back.show{display:inline-block}
 .re-back:hover{text-decoration:underline}
-h1{font-size:clamp(28px,4.4vw,38px);margin:6px 0 12px;font-weight:800;line-height:1.15}
-h2.q{font-size:clamp(21px,3.2vw,27px);margin:16px 0 16px;font-weight:800;line-height:1.3}
+h1{color:#fff;font-size:clamp(32px,4.6vw,44px);margin:6px 0 12px;font-weight:900;line-height:1.14}
+h2.q{color:#fff;font-size:clamp(26px,3.6vw,34px);margin:14px 0 14px;font-weight:900;line-height:1.2}
 .re-kick{display:none}
-.re-intro{color:rgba(255,255,255,.82);line-height:1.65;max-width:62ch;margin:0 0 8px;font-size:19px}
+.hint{color:rgba(93,255,154,.88);font-size:15px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin:14px 0 22px}
+.re-intro{color:rgba(255,255,255,.78);line-height:1.7;max-width:64ch;margin:0 0 8px;font-size:19px}
 .re-intro b{color:#fff}
 .land-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:26px;align-items:start}
 @media(max-width:820px){.land-grid{grid-template-columns:1fr}}
-.lines-card{background:rgba(93,255,154,.09);border:1px solid rgba(93,255,154,.45);border-radius:14px;padding:20px 22px}
-.lines-card h3{margin:0 0 12px;font-size:18px;line-height:1.35;color:#5dff9a;font-weight:800}
+.lines-card{background:rgba(7,24,63,.82);border:1px solid rgba(255,255,255,.10);border-radius:24px;padding:24px 26px;box-shadow:0 10px 24px rgba(0,0,0,.22)}
+.lines-card h3{color:#fff;margin:0 0 12px;font-size:21px;font-weight:800;line-height:1.35}
 .lines-card ul{list-style:none;margin:0;padding:0}
-.lines-card li{padding:9px 0 9px 26px;border-bottom:1px solid rgba(93,255,154,.18);font-size:19px;font-weight:700;position:relative}
+.lines-card li{padding:9px 0 9px 26px;border-bottom:1px solid rgba(255,255,255,.08);font-size:18px;font-weight:700;position:relative}
 .lines-card li::before{content:"⚓";position:absolute;left:0;color:#5dff9a;font-size:15px;top:12px}
 .lines-card li:last-child{border-bottom:none}
-.lines-card .ships-count{margin:14px 0 0;font-size:15px;color:rgba(255,255,255,.75);font-weight:600}
-.re-lbl{display:block;margin:14px 0 4px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(93,255,154,.85)}
-select{width:100%;max-width:460px;padding:14px 16px;border-radius:12px;border:1px solid rgba(93,255,154,.45);background:#0a1e38;color:#fff;font-size:18px;font-family:inherit}
-select:focus{outline:none;border-color:#5dff9a}
+.lines-card .ships-count{margin:14px 0 0;font-size:15px;color:rgba(93,255,154,.88);font-weight:700;letter-spacing:.04em}
+.re-lbl{display:block;margin:16px 0 6px;font-size:14px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:#5dff9a}
+select{width:100%;max-width:520px;padding:16px 18px;border-radius:20px;border:1px solid rgba(255,255,255,.14);background:rgba(10,30,56,.9);color:#fff;font-size:17px;font-family:inherit;outline:none;transition:border-color .2s}
+select:focus{border-color:rgba(93,255,154,.4)}
 select:disabled{opacity:.4}
-#cabinNum{width:100%;max-width:460px;box-sizing:border-box;padding:15px 18px;background:#0a1e38;border:1px solid rgba(93,255,154,.45);border-radius:12px;color:#5dff9a;font-size:21px;font-weight:800;letter-spacing:.06em;font-family:inherit;outline:none}
-#cabinNum:focus{border-color:#5dff9a}
+#cabinNum{width:100%;max-width:520px;box-sizing:border-box;padding:16px 18px;background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:20px;color:#fff;font-size:20px;font-weight:800;letter-spacing:.05em;font-family:inherit;outline:none;transition:border-color .2s}
+#cabinNum:focus{border-color:rgba(93,255,154,.4)}
 #cabinNum::placeholder{color:rgba(255,255,255,.35);font-weight:600}
 .re-fork{margin:22px 0 2px}
 .re-choices{display:flex;gap:12px;flex-wrap:wrap}
-.re-btn{display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;font-weight:800;font-size:16px;
-  padding:14px 26px;border-radius:14px;border:1px solid rgba(93,255,154,.25);cursor:pointer;text-decoration:none;
-  font-family:inherit;transition:transform .15s,box-shadow .15s}
-.re-btn:hover{transform:translateY(-2px)}
-.re-btn.yes{background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a}
-.re-btn.no{background:rgba(10,30,56,.9);color:#5dff9a;border:1px solid rgba(93,255,154,.4)}
-.re-opts{display:flex;flex-direction:column;gap:11px;max-width:640px}
-.re-opt{text-align:left;font-family:inherit;font-size:16px;font-weight:600;line-height:1.5;color:#fff;
-  background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:14px 18px;cursor:pointer;transition:all .15s}
-.re-opt:hover{border-color:#5dff9a;transform:translateX(4px)}
+.re-btn{display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;font-weight:800;font-size:18px;padding:15px 28px;border-radius:14px;border:1px solid rgba(93,255,154,.25);cursor:pointer;text-decoration:none;font-family:inherit;transition:transform .15s,box-shadow .15s}
+.re-btn:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(0,0,0,.35)}
+.re-btn.yes{background:#ffd95d;color:#07183f;border:none}
+.re-btn.yes:disabled{opacity:.4;cursor:default;transform:none;box-shadow:none}
+.re-btn.no{background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;border:1px solid rgba(93,255,154,.25)}
+.re-opts{display:flex;flex-direction:column;gap:11px;max-width:680px}
+.re-opt{text-align:left;font-family:inherit;font-size:17px;font-weight:600;line-height:1.55;color:#fff;background:rgba(7,24,63,.82);border:1px solid rgba(255,255,255,.10);border-radius:20px;padding:16px 20px;cursor:pointer;transition:all .15s;box-shadow:0 10px 24px rgba(0,0,0,.22)}
+.re-opt:hover{border-color:rgba(93,255,154,.45);transform:translateX(4px)}
 .re-opt b{color:#fff}
 .re-opt span{color:rgba(255,255,255,.6)!important}
-.re-progress{font-size:12px;font-weight:800;letter-spacing:.12em;color:rgba(93,255,154,.85);text-transform:uppercase;margin:0 0 4px}
-.quiet{color:rgba(255,255,255,.45);font-size:13px;font-style:italic;margin:22px 0 0}
-.re-coverage{color:rgba(255,255,255,.55);font-size:14px;line-height:1.6;margin:26px 0 0;max-width:70ch}
-/* ship & room cards — dark canon cards */
-.reveal-ship{background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:20px 22px;margin:0 0 16px}
+.re-progress{font-size:14px;font-weight:800;letter-spacing:.12em;color:rgba(93,255,154,.88);text-transform:uppercase;margin:0 0 4px}
+.quiet{color:rgba(255,255,255,.5);font-size:14px;font-style:italic;margin:24px 0 0}
+.re-coverage{color:rgba(255,255,255,.55);font-size:15px;line-height:1.6;margin:26px 0 0;max-width:70ch}
+/* ship & room cards — the canon navy .card */
+.reveal-ship{background:rgba(7,24,63,.82);border:1px solid rgba(255,255,255,.10);border-radius:24px;padding:22px 24px;margin:0 0 18px;box-shadow:0 10px 24px rgba(0,0,0,.22)}
 .gist{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.gist h3{font-size:24px;margin:0;font-weight:800}
-.gist .line{color:rgba(255,255,255,.6);font-size:13px;font-weight:600}
-.gist-score{font-size:34px;color:#5dff9a;line-height:1;font-weight:800}
+.gist h3{color:#fff;font-size:25px;margin:0;font-weight:800}
+.gist .line{color:rgba(255,255,255,.5);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.gist-score{font-size:36px;color:#5dff9a;line-height:1;font-weight:900}
 .gist-score small{font-size:16px;color:rgba(255,255,255,.5)}
 .gist-dancers{display:flex;align-items:flex-end;margin:8px 0 4px;background:#fff;border-radius:12px;overflow:hidden;width:fit-content}
 .gist-dancers img{height:52px;width:auto;display:block}
-.reveal-comment{font-size:16.5px;line-height:1.6;color:rgba(255,255,255,.92);margin:10px 0 12px;font-weight:600}
+.reveal-comment{font-size:17px;line-height:1.65;color:rgba(255,255,255,.92);margin:10px 0 12px;font-weight:600}
 .salty{display:flex;gap:12px;align-items:center;background:rgba(76,29,149,.28);border:1px solid rgba(167,139,250,.35);border-radius:14px;padding:10px 14px}
 .salty img{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid rgba(255,255,255,.7)}
-.salty .sl{font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#c4b5fd;display:block;margin-bottom:2px}
-.salty p{margin:0;font-size:14.5px;line-height:1.5;color:rgba(255,255,255,.9)}
+.salty .sl{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#c4b5fd;display:block;margin-bottom:2px}
+.salty p{margin:0;font-size:15px;line-height:1.55;color:rgba(255,255,255,.9)}
 .reveal-pick{margin:14px 0 0;text-align:right}
-.room-hook{font-size:19px;line-height:1.35;font-weight:800;margin:0 0 8px}
+.room-hook{font-size:20px;line-height:1.4;font-weight:800;margin:0 0 8px}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
-.chip{font-size:12.5px;font-weight:700;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);border-radius:999px;padding:3px 10px}
+.chip{font-size:13px;font-weight:700;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);border-radius:999px;padding:3px 10px}
 .chip-num{background:#5dff9a;color:#07183f}
-.room-why{font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.78);margin:6px 0 0}
+.room-why{font-size:15.5px;line-height:1.65;color:rgba(255,255,255,.78);margin:6px 0 0}
 details.why{margin:4px 0 0}
-details.why summary{cursor:pointer;font-size:13.5px;font-weight:800;color:#5dff9a;list-style-position:inside}
-details.why p{font-size:14.5px;line-height:1.55;color:rgba(255,255,255,.78);margin:6px 0 0}
+details.why summary{cursor:pointer;font-size:14.5px;font-weight:800;color:#5dff9a;list-style-position:inside}
+details.why p{font-size:15.5px;line-height:1.6;color:rgba(255,255,255,.78);margin:6px 0 0}
 details.cat-info{margin:2px 0 6px}
-details.cat-info summary{cursor:pointer;font-size:13px;font-weight:800;color:#5dff9a;list-style-position:inside}
-details.cat-info p{font-size:14px;line-height:1.55;color:rgba(255,255,255,.85);margin:6px 0 2px;background:rgba(93,255,154,.08);border:1px solid rgba(93,255,154,.18);border-radius:10px;padding:10px 12px}
-.re-cta{margin-top:20px;background:rgba(10,30,56,.9);border:1px solid rgba(93,255,154,.3);border-radius:20px;padding:22px;text-align:center}
-.re-cta h3{margin:0 0 8px;font-size:22px;font-weight:800}
-.re-cta p{margin:0 auto 14px;max-width:520px;font-size:15.5px;line-height:1.6;color:rgba(255,255,255,.75)}
-footer{text-align:center;padding:24px 16px;color:rgba(255,255,255,.5);font-size:14px}
-input#shipSearch{width:100%;box-sizing:border-box;padding:14px 18px;background:#0a1e38;border:1px solid rgba(93,255,154,.45);border-radius:12px;color:#fff;font-size:17px;font-family:inherit;outline:none;margin-bottom:10px}
-input#shipSearch:focus{border-color:#5dff9a}
-@media(max-width:640px){.corner{height:90px}}
+details.cat-info summary{cursor:pointer;font-size:14px;font-weight:800;color:#5dff9a;list-style-position:inside}
+details.cat-info p{font-size:15px;line-height:1.6;color:rgba(255,255,255,.85);margin:6px 0 2px;background:rgba(93,255,154,.08);border:1px solid rgba(93,255,154,.18);border-radius:10px;padding:10px 12px}
+.re-cta{margin-top:20px;background:rgba(7,24,63,.82);border:1px solid rgba(93,255,154,.3);border-radius:24px;padding:24px;text-align:center;box-shadow:0 10px 24px rgba(0,0,0,.22)}
+.re-cta h3{color:#fff;margin:0 0 8px;font-size:24px;font-weight:800}
+.re-cta p{margin:0 auto 14px;max-width:560px;font-size:16.5px;line-height:1.65;color:rgba(255,255,255,.75)}
+footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font-size:17px}
+input#shipSearch{width:100%;box-sizing:border-box;padding:16px 18px;background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:20px;color:#fff;font-size:17px;font-family:inherit;outline:none;margin-bottom:10px;transition:border-color .2s}
+input#shipSearch:focus{border-color:rgba(93,255,154,.4)}
 </style>
 </head>
 <body>
-<div id="navbar-container"></div>
-<div class="banner">
-  <div class="shell">
-    <div class="plaque">Concierge de Camarotes</div>
-    <div class="re-topbar"><button class="re-back" id="backBtn" onclick="RC.back()">&larr; Atrás</button></div>
-    <div id="stage"></div>
-  </div>
-</div>
+<header class="rc-banner" role="img" aria-label="Un camarote de crucero acogedor de noche — el Concierge de Camarotes de Still Afloat">
+  <div id="navbar-container"></div>
+  <div class="rc-plaque"><span class="dash">&mdash;</span>Concierge de Camarotes<span class="dash">&mdash;</span></div>
+</header>
+<main class="shell">
+  <div class="re-topbar"><button class="re-back" id="backBtn" onclick="RC.back()">&larr; Atrás</button></div>
+  <div id="stage"></div>
+</main>
 <footer>© 2026 Still Afloat LLC — Navega más inteligente. Ríe más.</footer>
 <script src="/components/navbar.js?v=20260816-concierge"></script>
 
@@ -280,13 +270,14 @@ class RoomConciergeFlow {
           <p class="re-intro">Cinco minutos aquí valen más que cinco horas en un grupo de Facebook.
           Unas <b>preguntas rápidas sobre ti</b>, después tus <b>expectativas</b> — y te nombro los
           <b>camarotes exactos</b> que vale la pena reservar, y los que mejor pasas de largo.</p>
+          <div class="hint">&#128719; Gratis &mdash; sin registro &middot; cada camarote investigado a mano</div>
           <div class="re-fork">
             <h2 class="q">¿Ya tienes un barco en mente?</h2>
             <div class="re-choices">
               <button class="re-btn yes" onclick="RC.fork('ship')">Sí — ya sé cuál es mi barco</button>
               <button class="re-btn no" onclick="RC.fork('discover')">Todavía no — encuéntrame el indicado</button>
             </div>
-            <p style="margin:14px 0 0"><button class="re-btn" style="font-size:16px" onclick="RC.checkStart()">Ya reservé — dime la verdad sobre mi camarote</button></p>
+            <p style="margin:14px 0 0"><button class="re-btn" onclick="RC.checkStart()">Ya reservé — dime la verdad sobre mi camarote</button></p>
           </div>
         </div>
         <aside class="lines-card">
