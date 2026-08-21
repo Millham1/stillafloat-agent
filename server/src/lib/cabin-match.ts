@@ -524,7 +524,7 @@ export function selectCabins(opts: {
     }));
     scored.sort((a, b) =>
       a.moves - b.moves || a.pen - b.pen || a.arch - b.arch || a.rk - b.rk ||
-      a.c.cabin.localeCompare(b.c.cabin));
+      cabinOrder(a.c.cabin, b.c.cabin));
     /**
      * Spread the shortlist. Mark, 2026-08-21, looking at Celebrity Ascent:
      * five picks came back 6170 / 6171 / 6163 / 6166 / 6168 — one deck, one
@@ -885,6 +885,28 @@ const SEVERITY_RANK = { significant: 0, moderate: 1, minor: 2 } as const;
  * caller decides how to fetch them; this function decides which deserve a
  * warning and what the warning may say.
  */
+/**
+ * Cabin numbers sort NUMERICALLY, not as strings.
+ *
+ * `"11114".localeCompare("6100")` puts deck 11 ahead of deck 6, so on a hull where every
+ * researched zone ties at "moderate" the string sort decided the whole list and decks 6-8
+ * were unreachable. That is half of why Mark's three skip-rooms were all on one deck
+ * (2026-08-21). Letters are preserved for the hulls that use them (Elation: E1, R102, M80).
+ */
+function cabinOrder(a: string, b: string): number {
+  const na = Number(a.replace(/\D/g, "")), nb = Number(b.replace(/\D/g, ""));
+  if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
+  return a.localeCompare(b);
+}
+
+/**
+ * Factors that describe WHO a room suits rather than a reason to walk past it: an
+ * accessible room is booked on purpose, connecting is what a family wants, and "other" is
+ * the corpus catch-all whose wording tells a visitor nothing they can act on. They never
+ * take a skip-list slot while a NAMED problem is still unshown.
+ */
+const WEAK_STEER_FACTORS = new Set(["other", "accessible", "connecting"]);
+
 export function buildSteerClear(opts: {
   candidates: readonly SteerCandidate[];
   picked: readonly string[];
@@ -958,16 +980,35 @@ export function buildSteerClear(opts: {
    * problem we return one line rather than padding to three near-identical ones.
    */
   const ranked = out
-    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || a.cabin.localeCompare(b.cabin))
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] ||
+      (WEAK_STEER_FACTORS.has(a.factor) ? 1 : 0) - (WEAK_STEER_FACTORS.has(b.factor) ? 1 : 0) ||
+      cabinOrder(a.cabin, b.cabin))
     .filter((e, i, arr) => arr.findIndex((o) => o.cabin === e.cabin) === i);
 
+  /**
+   * Pass 1 takes one room per DISTINCT FACTOR, so the three lines are three different
+   * kinds of problem (noise / motion / view), not the same problem restated in three
+   * places. Deduping on factor+deck+section alone was not enough: motion|11|forward,
+   * motion|11|aft and motion|12|forward are three "different" keys and three identical
+   * sentences, which is exactly what Mark objected to. Pass 2 only then fills any
+   * remaining slot with a different place, and if the hull has one real problem we
+   * return one honest line rather than padding.
+   */
   const picks: SteerEntry[] = [];
-  const usedProblem = new Set<string>();
+  const usedFactor = new Set<string>();
+  const usedBand = new Set<string>();
+  const band = (e: SteerEntry) => `${e.factor}|${e.deck ?? "?"}|${e.section ?? "?"}`;
   for (const e of ranked) {
     if (picks.length === limit) break;
-    const key = `${e.factor}|${e.deck ?? "?"}|${e.section ?? "?"}`;
-    if (usedProblem.has(key)) continue;
-    usedProblem.add(key);
+    if (usedFactor.has(e.factor)) continue;
+    usedFactor.add(e.factor); usedBand.add(band(e));
+    picks.push(e);
+  }
+  for (const e of ranked) {
+    if (picks.length === limit) break;
+    if (picks.some((x) => x.cabin === e.cabin)) continue;
+    if (usedBand.has(band(e))) continue;
+    usedBand.add(band(e));
     picks.push(e);
   }
   return picks;
