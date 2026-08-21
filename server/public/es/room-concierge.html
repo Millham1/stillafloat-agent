@@ -36,7 +36,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;
    edge. The only visible card edge is the painting's. */
 .panel{grid-area:1/1;position:relative;z-index:2;isolation:isolate;
   margin:7.9% 19.27% 11.0% 17.9%;
-  padding:clamp(24px,3vw,52px) clamp(26px,3.2vw,54px);
+  padding:clamp(30.2px,3.78vw,65.5px) clamp(32.8px,4.03vw,68.0px);
   color:#07183f}
 .panel::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(255,255,255,.60);
   -webkit-mask-image:linear-gradient(to right,transparent 0,#000 52px,#000 calc(100% - 52px),transparent 100%),
@@ -48,27 +48,27 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;
 
 /* ── type inside the panel (navy on frosted, homepage canon) ── */
 .re-topbar{display:flex;align-items:center;min-height:26px}
-.re-back{font-family:inherit;font-weight:800;font-size:clamp(13px,1.05vw,16px);color:#023e6e;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
+.re-back{font-family:inherit;font-weight:800;font-size:clamp(16.4px,1.32vw,20.2px);color:#023e6e;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
 .re-back.show{display:inline-block}
 .re-back:hover{text-decoration:underline}
 /* Mark 8/21: the title pill sits ABOVE the app, on the hero, and reads large. */
-.hero-title{position:absolute;top:clamp(10px,2.1vw,40px);left:50%;transform:translateX(-50%);z-index:5;
+.hero-title{position:absolute;top:clamp(12.6px,2.65vw,50.4px);left:50%;transform:translateX(-50%);z-index:5;
   background:linear-gradient(135deg,#023e6e,#07183f);color:#fff;border-radius:999px;white-space:nowrap;
-  padding:clamp(9px,1.15vw,20px) clamp(23px,3vw,53px);
-  font-size:clamp(16px,1.78vw,31px);font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+  padding:clamp(11.3px,1.45vw,25.2px) clamp(29.0px,3.78vw,66.8px);
+  font-size:clamp(20.2px,2.24vw,39.1px);font-weight:800;letter-spacing:.2em;text-transform:uppercase;
   box-shadow:0 14px 34px rgba(4,17,46,.5)}
 h1{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;
-  font-size:clamp(21px,2.35vw,37px);line-height:1.14;letter-spacing:-.5px;margin:0 0 10px}
+  font-size:clamp(26.5px,2.96vw,46.6px);line-height:1.14;letter-spacing:-.5px;margin:0 0 10px}
 h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing:-.5px;
-  font-size:clamp(18px,1.85vw,29px);line-height:1.2;margin:8px 0 12px}
+  font-size:clamp(22.7px,2.33vw,36.5px);line-height:1.2;margin:8px 0 12px}
 .re-kick{display:none}
-.re-intro{color:rgba(7,24,63,.92);line-height:1.6;max-width:60ch;margin:0 0 8px;font-size:clamp(13px,1.12vw,18px)}
+.re-intro{color:rgba(7,24,63,.92);line-height:1.6;max-width:60ch;margin:0 0 8px;font-size:clamp(16.4px,1.41vw,22.7px)}
 .re-intro b{color:#07183f;font-weight:800}
-.hint{color:#023e6e;font-size:clamp(10.5px,.88vw,14px);letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin:10px 0 0}
-.hero-brand{display:block;margin:clamp(6px,.9vw,14px) auto 0}
-.hero-brand img{display:block;margin:0 auto;height:auto;width:clamp(84px,8.6vw,138px)}
+.hint{color:#023e6e;font-size:clamp(13.2px,1.11vw,17.6px);letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin:10px 0 0}
+.hero-brand{display:block;margin:clamp(7.6px,1.13vw,17.6px) auto 0}
+.hero-brand img{display:block;margin:0 auto;height:auto;width:clamp(105.8px,10.84vw,173.9px)}
 .re-progress{display:inline-block;background:linear-gradient(135deg,#0077b6,#023e6e);color:#fff;border-radius:999px;padding:5px 15px;
-  font-size:clamp(10px,.84vw,13px);font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin:0 0 8px}
+  font-size:clamp(12.6px,1.06vw,16.4px);font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin:0 0 8px}
 
 .land-grid{display:block}
 @media(max-width:900px){.land-grid{grid-template-columns:1fr}}
@@ -78,15 +78,15 @@ h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing
    out of the app entirely, sitting in the fade where the deck goes dark. */
 .hero-lines{grid-area:1/1;align-self:end;z-index:4;width:100%;box-sizing:border-box;
   display:flex;flex-direction:column;align-items:center;
-  padding:clamp(26px,3vw,52px) clamp(14px,3vw,48px) clamp(10px,1.2vw,20px);
+  padding:clamp(32.8px,3.78vw,65.5px) clamp(17.6px,3.78vw,60.5px) clamp(12.6px,1.51vw,25.2px);
   background:linear-gradient(to top,rgba(7,24,63,.94) 0%,rgba(7,24,63,.88) 45%,rgba(7,24,63,0) 100%);
   text-shadow:0 2px 8px rgba(0,0,0,.6)}
-.hero-lines .lead{margin:0 0 clamp(5px,.6vw,10px);text-align:center;color:rgba(255,255,255,.78);
-  font-size:clamp(9.5px,.8vw,13.5px);font-weight:700;letter-spacing:.1em}
+.hero-lines .lead{margin:0 0 clamp(6.3px,0.76vw,12.6px);text-align:center;color:rgba(255,255,255,.78);
+  font-size:clamp(12.0px,1.01vw,17.0px);font-weight:700;letter-spacing:.1em}
 .hero-lines .names{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;
-  gap:clamp(6px,.8vw,14px);font-size:clamp(9px,.78vw,13px);font-weight:800;letter-spacing:.13em;
+  gap:clamp(7.6px,1.01vw,17.6px);font-size:clamp(11.3px,0.98vw,16.4px);font-weight:800;letter-spacing:.13em;
   text-transform:uppercase;color:rgba(255,255,255,.92)}
-.hero-lines i{color:rgba(93,255,154,.75);font-style:normal;font-weight:700}.re-fork h2.q{margin-bottom:clamp(20px,2.6vw,40px)}
+.hero-lines i{color:rgba(93,255,154,.75);font-style:normal;font-weight:700}.re-fork h2.q{margin-bottom:clamp(25.2px,3.28vw,50.4px)}
 
 /* Mark 8/21: the app's text sits centred in the glass. */
 .panel{text-align:center}
@@ -101,29 +101,29 @@ select,#cabinNum,input#shipSearch{margin-left:auto;margin-right:auto;display:blo
 
 
 /* ── form controls ── */
-.re-lbl{display:block;margin:clamp(10px,1.1vw,16px) 0 5px;font-size:clamp(10px,.82vw,13px);font-weight:800;
+.re-lbl{display:block;margin:clamp(12.6px,1.39vw,20.2px) 0 5px;font-size:clamp(12.6px,1.03vw,16.4px);font-weight:800;
   letter-spacing:.1em;text-transform:uppercase;color:#023e6e}
-select{width:100%;max-width:460px;padding:clamp(9px,.9vw,14px) clamp(11px,1.1vw,16px);border-radius:14px;
-  border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.68);color:#07183f;font-size:clamp(13px,1.05vw,17px);
+select{width:100%;max-width:460px;padding:clamp(11.3px,1.13vw,17.6px) clamp(13.9px,1.39vw,20.2px);border-radius:14px;
+  border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.68);color:#07183f;font-size:clamp(16.4px,1.32vw,21.4px);
   font-family:inherit;outline:none;transition:border-color .2s}
 select:focus{border-color:#023e6e}
 select:disabled{opacity:.45}
-#cabinNum{width:100%;max-width:460px;box-sizing:border-box;padding:clamp(10px,1vw,15px) clamp(12px,1.2vw,18px);
+#cabinNum{width:100%;max-width:460px;box-sizing:border-box;padding:clamp(12.6px,1.26vw,18.9px) clamp(15.1px,1.51vw,22.7px);
   background:rgba(255,255,255,.68);border:1px solid rgba(255,255,255,.7);border-radius:14px;color:#07183f;
-  font-size:clamp(15px,1.35vw,21px);font-weight:800;letter-spacing:.05em;font-family:inherit;outline:none;transition:border-color .2s}
+  font-size:clamp(18.9px,1.7vw,26.5px);font-weight:800;letter-spacing:.05em;font-family:inherit;outline:none;transition:border-color .2s}
 #cabinNum:focus{border-color:#023e6e}
 #cabinNum::placeholder{color:rgba(7,24,63,.5);font-weight:600}
-input#shipSearch{width:100%;box-sizing:border-box;padding:clamp(10px,1vw,15px) clamp(12px,1.2vw,18px);background:rgba(255,255,255,.68);
-  border:1px solid rgba(255,255,255,.7);border-radius:14px;color:#07183f;font-size:clamp(13px,1.05vw,17px);
+input#shipSearch{width:100%;box-sizing:border-box;padding:clamp(12.6px,1.26vw,18.9px) clamp(15.1px,1.51vw,22.7px);background:rgba(255,255,255,.68);
+  border:1px solid rgba(255,255,255,.7);border-radius:14px;color:#07183f;font-size:clamp(16.4px,1.32vw,21.4px);
   font-family:inherit;outline:none;margin-bottom:10px}
 input#shipSearch:focus{border-color:#023e6e}
 
 /* ── buttons: the site's pill language ── */
-.re-fork{margin:clamp(8px,1vw,16px) 0 2px}
+.re-fork{margin:clamp(10.1px,1.26vw,20.2px) 0 2px}
 .re-choices{display:flex;gap:10px;flex-wrap:wrap}
 .re-btn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,#0077b6,#023e6e);
-  color:#fff;font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(12.5px,1.06vw,18px);
-  padding:clamp(9px,.95vw,15px) clamp(15px,1.7vw,28px);border-radius:50px;border:none;cursor:pointer;
+  color:#fff;font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(15.8px,1.34vw,22.7px);
+  padding:clamp(11.3px,1.2vw,18.9px) clamp(18.9px,2.14vw,35.3px);border-radius:50px;border:none;cursor:pointer;
   text-decoration:none;box-shadow:0 8px 22px rgba(0,119,182,.32);transition:transform .2s,box-shadow .2s}
 .re-btn:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(0,119,182,.42)}
 .re-btn.yes,.re-btn.no{background:linear-gradient(135deg,#0077b6,#023e6e);color:#fff;
@@ -131,52 +131,71 @@ input#shipSearch:focus{border-color:#023e6e}
 .re-btn.yes:disabled{opacity:.45;cursor:default;transform:none;box-shadow:none}
 
 /* ── answer options ── */
-.re-opts{display:flex;flex-direction:column;gap:clamp(6px,.7vw,11px);max-width:680px}
-.re-opt{text-align:left;font-family:inherit;font-size:clamp(12.5px,1.05vw,17px);font-weight:600;line-height:1.45;
+.re-opts{display:flex;flex-direction:column;gap:clamp(7.6px,0.88vw,13.9px);max-width:680px}
+.re-opt{text-align:left;font-family:inherit;font-size:clamp(15.8px,1.32vw,21.4px);font-weight:600;line-height:1.45;
   color:#07183f;background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.7);border-radius:14px;
-  padding:clamp(9px,.95vw,15px) clamp(12px,1.2vw,19px);cursor:pointer;transition:all .15s;
+  padding:clamp(11.3px,1.2vw,18.9px) clamp(15.1px,1.51vw,23.9px);cursor:pointer;transition:all .15s;
   box-shadow:0 2px 8px rgba(4,17,46,.06)}
 .re-opt:hover{border-color:#023e6e;transform:translateX(4px);box-shadow:0 6px 16px rgba(4,17,46,.12)}
 .re-opt b{color:#07183f;font-weight:800}
 .re-opt span{color:rgba(7,24,63,.72)!important}
 
-.quiet{color:rgba(7,24,63,.82);font-size:clamp(10.5px,.86vw,14px);font-style:italic;margin:clamp(8px,1vw,15px) 0 0}
-.re-coverage{color:rgba(7,24,63,.72);font-size:clamp(11px,.9vw,15px);line-height:1.6;margin:20px 0 0;max-width:70ch}
+.quiet{color:rgba(7,24,63,.82);font-size:clamp(13.2px,1.08vw,17.6px);font-style:italic;margin:clamp(10.1px,1.26vw,18.9px) 0 0}
+.re-coverage{color:rgba(7,24,63,.72);font-size:clamp(13.9px,1.13vw,18.9px);line-height:1.6;margin:20px 0 0;max-width:70ch}
 
 /* ── ship + room cards ── */
 .reveal-ship{background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.7);border-radius:18px;
-  padding:clamp(12px,1.3vw,22px) clamp(13px,1.45vw,24px);margin:0 0 clamp(10px,1.1vw,18px);
+  padding:clamp(15.1px,1.64vw,27.7px) clamp(16.4px,1.83vw,30.2px);margin:0 0 clamp(12.6px,1.39vw,22.7px);
   box-shadow:0 6px 18px rgba(4,17,46,.10)}
 .gist{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.gist h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;font-size:clamp(15px,1.5vw,25px);margin:0;letter-spacing:-.4px}
-.gist .line{color:rgba(7,24,63,.68);font-size:clamp(9.5px,.8vw,13px);font-weight:800;text-transform:uppercase;letter-spacing:.08em}
-.gist-score{font-family:'Bree Serif',serif;font-size:clamp(21px,2.1vw,36px);color:#023e6e;line-height:1;font-weight:400}
+.gist h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;font-size:clamp(18.9px,1.89vw,31.5px);margin:0;letter-spacing:-.4px}
+.gist .line{color:rgba(7,24,63,.68);font-size:clamp(12.0px,1.01vw,16.4px);font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.gist-score{font-family:'Bree Serif',serif;font-size:clamp(26.5px,2.65vw,45.4px);color:#023e6e;line-height:1;font-weight:400}
 .gist-score small{font-size:.45em;color:rgba(7,24,63,.45)}
 .gist-dancers{display:flex;align-items:flex-end;margin:7px 0 4px;background:#fff;border:1px solid rgba(7,24,63,.10);border-radius:12px;overflow:hidden;width:fit-content}
-.gist-dancers img{height:clamp(32px,3.3vw,52px);width:auto;display:block}
-.reveal-comment{font-size:clamp(12.5px,1.05vw,17px);line-height:1.55;color:#07183f;margin:9px 0 11px;font-weight:600}
+.gist-dancers img{height:clamp(46.6px,4.66vw,76.9px);width:auto;display:block}
+.reveal-comment{font-size:clamp(15.8px,1.32vw,21.4px);line-height:1.55;color:#07183f;margin:9px 0 11px;font-weight:600}
 .salty{display:flex;gap:11px;align-items:center;background:rgba(76,29,149,.07);border:1px solid rgba(76,29,149,.2);border-radius:14px;padding:9px 13px}
-.salty img{width:clamp(34px,3.3vw,52px);height:clamp(34px,3.3vw,52px);border-radius:50%;object-fit:cover;object-position:top;border:2px solid #fff;box-shadow:0 2px 8px rgba(4,17,46,.18)}
-.salty .sl{font-size:clamp(8.5px,.7vw,11px);font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#46216f;display:block;margin-bottom:2px}
-.salty p{margin:0;font-size:clamp(11.5px,.95vw,15px);line-height:1.5;color:rgba(7,24,63,.88)}
+.salty img{width:clamp(42.8px,4.16vw,65.5px);height:clamp(42.8px,4.16vw,65.5px);border-radius:50%;object-fit:cover;object-position:top;border:2px solid #fff;box-shadow:0 2px 8px rgba(4,17,46,.18)}
+.salty .sl{font-size:clamp(10.7px,0.88vw,13.9px);font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#46216f;display:block;margin-bottom:2px}
+.salty p{margin:0;font-size:clamp(14.5px,1.2vw,18.9px);line-height:1.5;color:rgba(7,24,63,.88)}
 .reveal-pick{margin:12px 0 0;text-align:right}
-.room-hook{font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(13.5px,1.25vw,20px);line-height:1.3;margin:0 0 7px;color:#07183f;letter-spacing:-.3px}
+.room-hook{font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(17.0px,1.57vw,25.2px);line-height:1.3;margin:0 0 7px;color:#07183f;letter-spacing:-.3px}
 .chips{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 7px}
-.chip{font-size:clamp(9.5px,.8vw,13px);font-weight:700;color:rgba(7,24,63,.78);background:rgba(7,24,63,.07);border-radius:999px;padding:3px 10px}
+.chip{font-size:clamp(12.0px,1.01vw,16.4px);font-weight:700;color:rgba(7,24,63,.78);background:rgba(7,24,63,.07);border-radius:999px;padding:3px 10px}
 .chip-num{background:#5dff9a;color:#07183f;font-weight:800}
-.room-why{font-size:clamp(11.5px,.96vw,15.5px);line-height:1.55;color:rgba(7,24,63,.85);margin:5px 0 0}
+.room-why{font-size:clamp(14.5px,1.21vw,19.5px);line-height:1.55;color:rgba(7,24,63,.85);margin:5px 0 0}
 details.why{margin:4px 0 0}
-details.why summary{cursor:pointer;font-size:clamp(11px,.9vw,14.5px);font-weight:800;color:#023e6e;list-style-position:inside}
-details.why p{font-size:clamp(11.5px,.94vw,15.5px);line-height:1.55;color:rgba(7,24,63,.85);margin:6px 0 0}
+details.why summary{cursor:pointer;font-size:clamp(13.9px,1.13vw,18.3px);font-weight:800;color:#023e6e;list-style-position:inside}
+details.why p{font-size:clamp(14.5px,1.18vw,19.5px);line-height:1.55;color:rgba(7,24,63,.85);margin:6px 0 0}
 details.cat-info{margin:2px 0 6px}
-details.cat-info summary{cursor:pointer;font-size:clamp(10.5px,.86vw,14px);font-weight:800;color:#023e6e;list-style-position:inside}
-details.cat-info p{font-size:clamp(11px,.9vw,15px);line-height:1.55;color:rgba(7,24,63,.82);margin:6px 0 2px;
+details.cat-info summary{cursor:pointer;font-size:clamp(13.2px,1.08vw,17.6px);font-weight:800;color:#023e6e;list-style-position:inside}
+details.cat-info p{font-size:clamp(13.9px,1.13vw,18.9px);line-height:1.55;color:rgba(7,24,63,.82);margin:6px 0 2px;
   background:rgba(0,119,182,.07);border:1px solid rgba(0,119,182,.16);border-radius:10px;padding:9px 12px}
-.re-cta{margin-top:clamp(12px,1.3vw,20px);background:linear-gradient(135deg,rgba(93,255,154,.16),rgba(0,119,182,.13));
-  border:1px solid rgba(0,119,182,.26);border-radius:20px;padding:clamp(14px,1.5vw,24px) clamp(16px,1.8vw,28px);text-align:center}
-.re-cta h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;margin:0 0 7px;font-size:clamp(14px,1.35vw,23px);letter-spacing:-.4px}
-.re-cta p{margin:0 auto 12px;max-width:560px;font-size:clamp(11.5px,.98vw,16px);line-height:1.55;color:rgba(7,24,63,.85)}
+.re-cta{margin-top:clamp(15.1px,1.64vw,25.2px);background:linear-gradient(135deg,rgba(93,255,154,.16),rgba(0,119,182,.13));
+  border:1px solid rgba(0,119,182,.26);border-radius:20px;padding:clamp(17.6px,1.89vw,30.2px) clamp(20.2px,2.27vw,35.3px);text-align:center}
+.re-cta h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;margin:0 0 7px;font-size:clamp(17.6px,1.7vw,29.0px);letter-spacing:-.4px}
+.re-cta p{margin:0 auto 12px;max-width:560px;font-size:clamp(14.5px,1.23vw,20.2px);line-height:1.55;color:rgba(7,24,63,.85)}
 
+
+/* Mark 8/21: the rooms call reasons live, so say so — a spinner, not a dead headline. */
+.thinking{display:flex;flex-direction:column;align-items:center;gap:16px;padding:clamp(20px,3vw,44px) 0}
+.spinner{width:clamp(40px,3.6vw,58px);height:clamp(40px,3.6vw,58px);border-radius:50%;
+  border:4px solid rgba(2,62,110,.18);border-top-color:#023e6e;animation:spin 900ms linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spinner{animation-duration:2.4s}}
+/* Mark 8/21: the rooms to walk past are NOT a link — they sit right after the picks,
+   dark type on a light card. Never white type here. */
+.steer{margin:6px 0 18px;background:rgba(255,255,255,.62);border:1px solid rgba(2,62,110,.22);
+  border-left:5px solid #023e6e;border-radius:16px;padding:clamp(14px,1.5vw,24px) clamp(16px,1.7vw,28px);text-align:left}
+.steer h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;margin:0 0 10px;
+  font-size:clamp(16px,1.4vw,24px);letter-spacing:-.3px}
+.steer ul{list-style:none;margin:0;padding:0}
+.steer li{margin:0 0 10px;padding:0 0 0 20px;position:relative;color:rgba(7,24,63,.9);
+  font-size:clamp(14.5px,1.2vw,19px);line-height:1.55}
+.steer li:last-child{margin-bottom:0}
+.steer li::before{content:"\2715";position:absolute;left:0;top:1px;color:#8f3a00;font-weight:800;font-size:.85em}
+.steer li b{color:#07183f;font-weight:800}
 footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgba(255,255,255,.72);font-size:16px}
 
 /* ── narrow screens: art on top, panel below it ── */
@@ -330,7 +349,7 @@ const LINE_DISPLAY = { "Royal Caribbean International": "Royal Caribbean" };
 function lineName(l){ return LINE_DISPLAY[l] || l; }
 function fmtOpt(label){
   const m = label.match(/^([^,—–.]{4,45})([,—–.].*)$/);
-  return m ? `<b>${m[1]}</b><span style="color:#5a6b85;font-weight:500">${m[2]}</span>` : `<b>${label}</b>`;
+  return m ? `<b>${m[1]}</b><span style="color:rgba(7,24,63,.68);font-weight:500">${m[2]}</span>` : `<b>${label}</b>`;
 }
 
 class RoomConciergeFlow {
@@ -414,7 +433,7 @@ class RoomConciergeFlow {
       <input id="shipSearch" placeholder="Escribe el nombre del barco o la línea…" value="${filter.replace(/"/g,"&quot;")}"
 
         oninput="RC.shipPick(this.value)">
-      <div class="re-opts" style="max-height:300px;overflow-y:auto">${list||'<p style="color:rgba(255,255,255,.7)">Sin resultados — revisa la ortografía, o regresa y deja que yo elija.</p>'}</div>
+      <div class="re-opts" style="max-height:300px;overflow-y:auto">${list||'<p style="color:rgba(7,24,63,.8)">Sin resultados — revisa la ortografía, o regresa y deja que yo elija.</p>'}</div>
       ${this.quiet(1)}`;
     const inp=document.getElementById("shipSearch");
     if(f){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
@@ -496,7 +515,7 @@ class RoomConciergeFlow {
     const num=(el&&el.value||"").trim();
     if(!num){ this.cabinAsk(); return; }
     this.snapshot('cabinAsk');
-    this.stageEl.innerHTML = `<p class="re-progress">Tu camarote</p><h2 class="q">Sacando los planos de cubierta…</h2>`;
+    this.stageEl.innerHTML = `<p class="re-progress">Tu camarote</p><h2 class="q">Sacando los planos de cubierta…</h2><div class="thinking"><div class="spinner"></div></div>`;
     let d={};
     try{
       const r=await fetch("/api/cabins/check",{method:"POST",headers:{"content-type":"application/json"},
@@ -509,7 +528,7 @@ class RoomConciergeFlow {
       this.cabinAsk((d&&d.message)||"");
       if(near){
         const box=document.createElement("div");
-        box.innerHTML=`<p style="margin:12px 0 4px;font-size:13px;color:rgba(255,255,255,.75)">¿Será alguno de estos?</p>
+        box.innerHTML=`<p style="margin:12px 0 4px;font-size:15px;font-weight:700;color:rgba(7,24,63,.8)">¿Será alguno de estos?</p>
           <div class="re-opts">${near}</div>`;
         this.stageEl.appendChild(box);
       }
@@ -561,7 +580,7 @@ class RoomConciergeFlow {
   }
   answerE(key,val){ this.snapshot('expectQ'); this.expect[key]=val; this.eIndex++; this.expectQ(); }
   async reveal(){
-    this.stageEl.innerHTML = `<p class="re-progress">El veredicto</p><h2 class="q">Comparando mis notas con tus respuestas…</h2>`;
+    this.stageEl.innerHTML = `<p class="re-progress">El veredicto</p><h2 class="q">Comparando mis notas con tus respuestas…</h2><div class="thinking"><div class="spinner"></div></div>`;
     let shipsToShow=[], reason="";
     if(this.path==="ship" && this.chosen){ shipsToShow=[this.chosen]; }
     else{
@@ -614,18 +633,18 @@ class RoomConciergeFlow {
       <div style="display:flex;gap:10px;align-items:center;background:rgba(255,202,79,.12);border:1px solid rgba(255,202,79,.35);border-radius:13px;padding:9px 13px;margin:10px 0 10px">
         <span style="font-size:20px">✦</span>
         <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#023e6e;display:block;margin-bottom:2px">Un escalón arriba: ${s.nextLevel.name}</span>
-        <p style="margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.85)">${s.nextLevel.why}</p></div>
+        <p style="margin:0;font-size:16px;line-height:1.55;color:rgba(7,24,63,.88)">${s.nextLevel.why}</p></div>
       </div>` : "";
     const roomsBtn = s.hasRooms
       ? `<button class="re-btn no" onclick="RC.rooms('${s.repSlug}','${s.ship.replace(/'/g,"\\'")}')">Muéstrame las habitaciones →</button>`
-      : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Las recomendaciones habitación por habitación de este barco siguen en el taller — pídelas, y las tuyas las hago a mano.</span>`;
+      : `<span style="font-size:16px;color:rgba(7,24,63,.7);font-style:italic">Las recomendaciones habitación por habitación de este barco siguen en el taller — pídelas, y las tuyas las hago a mano.</span>`;
     return `<div class="reveal-ship">
       <div class="gist">
         <div><h3>${s.ship}</h3><span class="line">${lineName(s.line)}</span></div>
         ${rating!=null?`<div class="gist-score">${Number(rating).toFixed(1)}<small>/5</small></div>`:""}
       </div>
-      ${(this.expect.destination && this.expect.destination!=="surprise" && (s.regions||[]).includes(this.expect.destination))?`<p style="margin:2px 0 6px;font-size:13px;font-weight:800;color:#5dff9a">⚓ Navega por ${REGION_NAMES[this.expect.destination]||this.expect.destination}</p>`:""}
-      ${rating!=null?`<p style="margin:6px 0 2px;font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#5dff9a">Nuestra calificación Conga Line — cuántos se unen al baile</p>
+      ${(this.expect.destination && this.expect.destination!=="surprise" && (s.regions||[]).includes(this.expect.destination))?`<p style="margin:2px 0 6px;font-size:15px;font-weight:800;color:#023e6e">⚓ Navega por ${REGION_NAMES[this.expect.destination]||this.expect.destination}</p>`:""}
+      ${rating!=null?`<p style="margin:6px 0 2px;font-size:15.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#023e6e">Nuestra calificación Conga Line — cuántos se unen al baile</p>
       <div class="gist-dancers">${[1,2,3,4,5].map(n=>
         `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</div>`:""}
       ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
@@ -689,7 +708,7 @@ class RoomConciergeFlow {
           onclick="RC.togglePick('${p.cabin}')">${on?'✓ Elegida':'Elegir esta habitación'}</button></div>
       </div>`;}).join("");
     const steer=(d.steerClear||[]).slice(0,3).map(s=>
-      `<li style="margin:0 0 6px">${s.cabin?`<b>Camarote ${s.cabin}</b> — `:s.area?`<b>${s.area}</b> — `:""}${s.reason||""}</li>`).join("");
+      `<li>${s.cabin?`<b>Camarote ${s.cabin}</b> — `:s.area?`<b>${s.area}</b> — `:""}${s.reason||""}</li>`).join("");
     const sendBar=this.picked.size?`
       <div class="re-cta"><h3>${this.picked.size} ${this.picked.size>1?"habitaciones elegidas":"habitación elegida"}</h3>
         <p>Mándalas y yo mismo reviso la elección, el precio y el itinerario antes de que reserves nada.</p>
@@ -702,8 +721,7 @@ class RoomConciergeFlow {
         ? "Esto es lo que haría en su lugar." : "Aquí es donde yo te pondría."}</h2>
       ${note}${inherited}
       ${picks}
-      ${steer?`<details class="why" style="margin:0 0 14px"><summary style="color:#023e6e;font-weight:800">Mejor pasar de largo — ${(d.steerClear||[]).length} habitaciones que yo evitaría</summary>
-        <ul style="margin:8px 0 0;padding-left:18px;font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.78)">${steer}</ul></details>`:""}
+      ${steer?`<div class="steer"><h3>Mejor pasar de largo &mdash; ${(d.steerClear||[]).length} habitaciones que yo evitaría</h3><ul>${steer}</ul></div>`:""}
       ${sendBar}`;
   }
   togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
