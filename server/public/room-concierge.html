@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Room Concierge | Still Afloat</title>
-<meta name="description" content="A few questions about you, a few honest opinions, and the exact cabins worth booking — the Still Afloat Room Concierge.">
+<meta name="description" content="Tell Mark how you cruise and he'll name the cabins he'd book himself — and the ones he'd walk his family past. The Still Afloat Room Concierge.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/styles.css?v=20260821-concierge">
@@ -118,8 +118,8 @@ const SALTY_IMG='/assets/concierge/salty-mark.jpg';
    Design is LOCKED (Mark, 8/14) — stages render inside the frosted panel.
 ──────────────────────────────────────────────────────────────────────────── */
 const QUIET = [
-  "curated by Still Afloat Cruising, your independent travel advisor",
-  "Questions? You can always talk to us.",
+  "Still Afloat Cruising — your independent travel advisor",
+  "Questions? You can always talk to me.",
 ];
 /* Behavioral interview (model approved by Mark 8/14): remembered behavior,
    forced tradeoffs, projection — never self-description. Each option carries
@@ -205,7 +205,7 @@ const CATEGORY_INFO = [
   { match:/infinite/i, name:"What's an Infinite Veranda?",
     text:"Celebrity's twist on a balcony: the whole room IS the veranda. The window's top half slides down and your sitting area becomes open-air. You get more indoor space out of it — but there's no separate outdoor chair zone, and people either love that or miss a true balcony." },
   { match:/balcony|veranda/i, name:"What's a balcony cabin?",
-    text:"Your own private outdoor space — a glass door, a couple of chairs, and the ocean. Morning coffee out there is the thing people can't give up once they've had it." },
+    text:"Your own private outdoor space — a glass door, a couple of chairs, and the ocean. Morning coffee out there is the thing people can't give up once they've had it. And it's the one deck chair on the ship nobody can claim with a towel." },
   { match:/ocean\s?view|oceanview|window/i, name:"What's an ocean view?",
     text:"A real window to the sea — daylight and a view of where you are, without an outdoor space. You see the ocean; you just don't sit outside in it." },
   { match:/suite/i, name:"What's a suite?",
@@ -262,11 +262,14 @@ class RoomConciergeFlow {
       <div class="land-grid">
         <div>
           <p class="re-kick">Room Concierge</p>
-          <h1>Let's find the room<br>you'll brag about.</h1>
-          <p class="re-intro">Five minutes here beats five hours in a Facebook group. A few quick
+          <h1>Some cabins wake up to the ocean.<br>Some wake up to the anchor chain.</h1>
+          <p class="re-intro">The deck plan won't tell you which is which — it's a grid of numbers, and
+          I've spent more than twenty years learning what those numbers mean: which cabins sit under the
+          pool deck, which ones sleep soundly, which balcony faces a steel wall. A few quick
           <b>questions about you</b>, then your <b>expectations</b> — and I'll name the <b>exact cabins</b>
-          worth booking, and the ones worth walking right past.</p>
-          <div class="hint">&#128719; Free to use &mdash; no sign-up &middot; every cabin researched by hand</div>
+          I'd book myself, and the few I'd steer my own family past. That homework is already done.
+          The only studying left is the pool-bar menu.</p>
+          <div class="hint">&#128719; Free to look &mdash; no sign-up &middot; every cabin researched by hand</div>
           <div class="re-fork">
             <h2 class="q">Do you already have a ship in mind?</h2>
             <div class="re-choices">
@@ -277,7 +280,7 @@ class RoomConciergeFlow {
           </div>
         </div>
         <aside class="lines-card">
-          <h3>We currently provide the following cruise lines:</h3>
+          <h3>The cruise lines I know cabin by cabin:</h3>
           <ul id="linesList"></ul>
           <p class="ships-count" id="coverage"></p>
         </aside>
@@ -291,7 +294,7 @@ class RoomConciergeFlow {
     if(!this.fleet.length){ setTimeout(()=>this.drawCoverage(), 400); return; }
     const lines=[...new Set(this.fleet.map(s=>lineName(s.line)))].sort();
     ul.innerHTML = lines.map(l=>`<li>${l}</li>`).join("");
-    el.innerHTML = `${this.fleet.length} ships covered — and counting.`;
+    el.innerHTML = `${this.fleet.length} ships researched so far — and the shipyards keep building.`;
   }
   fork(path){ this.snapshot('landing'); this.path=path; this.qIndex=0; this.eIndex=0;
     path==="ship" ? this.shipSelect('flow') : this.personalityQ(); }
@@ -328,8 +331,8 @@ class RoomConciergeFlow {
     const lines=[...new Set(this.fleet.map(x=>x.line))].sort();
     const opOpts=lines.map(l=>`<option value="${l.replace(/"/g,'&quot;')}">${lineName(l)}</option>`).join("");
     const head = mode==='check'
-      ? {kick:"Cabin check", q:"You booked it. Let's see what you really got.",
-         sub:"Line, ship, cabin number — and I'll tell you what the research says about the view, the noise, and the motion. No sugarcoating."}
+      ? {kick:"Cabin check", q:"Already booked? Bring me the cabin number.",
+         sub:"Line, ship, and room number — I'll tell you what the research says about the view, the noise, and the motion. Most cabins come back just fine. And if yours has a surprise in it, better to hear it from me now than from the thrusters on night one."}
       : {kick:"Your ship", q:"Which ship are we talking about?",
          sub:"Pick the line, then the ship. I'll take it from there."};
     this.stageEl.innerHTML = `
@@ -347,7 +350,7 @@ class RoomConciergeFlow {
       <input id="cabinNum" placeholder="e.g. 8234" autocomplete="off" disabled
         onkeydown="if(event.key==='Enter')RC.cabinCheck()">
       <div class="re-choices" style="margin-top:16px">
-        <button class="re-btn yes" id="ckGo" disabled onclick="RC.cabinCheck()">Give it to me straight</button>
+        <button class="re-btn yes" id="ckGo" disabled onclick="RC.cabinCheck()">Check my cabin — I'll tell you what you're getting &rarr;</button>
       </div>`:`
       <div class="re-choices" style="margin-top:16px">
         <button class="re-btn yes" id="ckGo" disabled onclick="RC.cabinAsk()">That's the one →</button>
@@ -393,7 +396,7 @@ class RoomConciergeFlow {
     const num=(el&&el.value||"").trim();
     if(!num){ this.cabinAsk(); return; }
     this.snapshot('cabinAsk');
-    this.stageEl.innerHTML = `<p class="re-progress">Your cabin</p><h2 class="q">Checking…</h2>`;
+    this.stageEl.innerHTML = `<p class="re-progress">Your cabin</p><h2 class="q">Pulling the deck plans…</h2>`;
     let d={};
     try{
       const r=await fetch("/api/cabins/check",{method:"POST",headers:{"content-type":"application/json"},
@@ -406,7 +409,7 @@ class RoomConciergeFlow {
       this.cabinAsk((d&&d.message)||"");
       if(near){
         const box=document.createElement("div");
-        box.innerHTML=`<p style="margin:12px 0 4px;font-size:13px;color:rgba(255,255,255,.75)">Did you mean?</p>
+        box.innerHTML=`<p style="margin:12px 0 4px;font-size:13px;color:rgba(255,255,255,.75)">Did you mean one of these?</p>
           <div class="re-opts">${near}</div>`;
         this.stageEl.appendChild(box);
       }
@@ -458,7 +461,7 @@ class RoomConciergeFlow {
   }
   answerE(key,val){ this.snapshot('expectQ'); this.expect[key]=val; this.eIndex++; this.expectQ(); }
   async reveal(){
-    this.stageEl.innerHTML = `<p class="re-progress">The reveal</p><h2 class="q">Working on it…</h2>`;
+    this.stageEl.innerHTML = `<p class="re-progress">The reveal</p><h2 class="q">Checking my notes against your answers…</h2>`;
     let shipsToShow=[], reason="";
     if(this.path==="ship" && this.chosen){ shipsToShow=[this.chosen]; }
     else{
@@ -472,16 +475,16 @@ class RoomConciergeFlow {
     if(!shipsToShow.length){
       this.stageEl.innerHTML = `<p class="re-progress">The reveal</p>
         <h2 class="q">I'd rather get this right than guess.</h2>
-        <p class="re-intro">Something didn't line up on my end. Send over what you told me and a real
-        person will finish the job.</p>${this.cta()}`;
+        <p class="re-intro">Something didn't line up on my end — my fault, not yours. Send over
+        what you told me and I'll finish the job by hand.</p>${this.cta()}`;
       return;
     }
     const settled=await Promise.allSettled(shipsToShow.map(s=>this.shipCard(s)));
     const cards=settled.filter(r=>r.status==="fulfilled").map(r=>r.value);
     if(settled.some(r=>r.status==="rejected")) console.error("ship card failed", settled.find(r=>r.status==="rejected"));
-    const heading=this.path==="ship" ? "Your ship, scored honestly." :
-      (cards.length>1?"Two ships that fit you.":"The ship that fits you.");
-    const altOffer=this.path==="ship"?`<p style="text-align:center;margin:2px 0 12px"><button class="re-btn" style="font-size:14px;padding:9px 18px" onclick="RC.snapshot('reveal');RC.path='discover';RC.reveal()">Or show me what YOU'D pick for me &rarr;</button></p>`:"";
+    const heading=this.path==="ship" ? "Your ship, and how she fits you." :
+      (cards.length>1?"Two ships I'd put you on.":"The ship I'd put you on.");
+    const altOffer=this.path==="ship"?`<p style="text-align:center;margin:2px 0 12px"><button class="re-btn" style="font-size:14px;padding:9px 18px" onclick="RC.snapshot('reveal');RC.path='discover';RC.reveal()">Or show me what you'd pick for me &rarr;</button></p>`:"";
     this.stageEl.innerHTML = `
       <p class="re-progress">The reveal</p>
       <h2 class="q">${heading}</h2>
@@ -510,12 +513,12 @@ class RoomConciergeFlow {
     const nextLevel = s.nextLevel ? `
       <div style="display:flex;gap:10px;align-items:center;background:rgba(255,202,79,.12);border:1px solid rgba(255,202,79,.35);border-radius:13px;padding:9px 13px;margin:10px 0 10px">
         <span style="font-size:20px">✦</span>
-        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#ffca4f;display:block;margin-bottom:2px">Next level: ${s.nextLevel.name}</span>
+        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#ffca4f;display:block;margin-bottom:2px">A step up: ${s.nextLevel.name}</span>
         <p style="margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.85)">${s.nextLevel.why}</p></div>
       </div>` : "";
     const roomsBtn = s.hasRooms
       ? `<button class="re-btn no" onclick="RC.rooms('${s.repSlug}','${s.ship.replace(/'/g,"\\'")}')">Show me the rooms →</button>`
-      : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Room-by-room picks for this ship are coming — ask and we'll do it by hand.</span>`;
+      : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Room-by-room picks for this ship are still in the works — ask, and I'll do yours by hand.</span>`;
     return `<div class="reveal-ship">
       <div class="gist">
         <div><h3>${s.ship}</h3><span class="line">${lineName(s.line)}</span></div>
@@ -549,8 +552,8 @@ class RoomConciergeFlow {
          line is only for a request that failed outright. */
       this.stageEl.innerHTML = `<p class="re-progress">Your rooms</p>
         <h2 class="q">This one needs the human touch.</h2>
-        <p class="re-intro">${d?.note || `I don't have room-level picks for ${shipName} loaded yet — send your answers
-        over and it gets done by hand.`}</p>${this.cta()}`;
+        <p class="re-intro">${d?.note || `I don't have room-level picks for ${shipName} yet — send
+        over what you told me and I'll work yours up by hand.`}</p>${this.cta()}`;
       return;
     }
     this.picked=new Set(); this.roomsData=d; this.roomsShip=shipName; this.roomsRep=repSlug;
@@ -575,7 +578,7 @@ class RoomConciergeFlow {
       `<li style="margin:0 0 6px">${s.cabin?`<b>Cabin ${s.cabin}</b> — `:s.area?`<b>${s.area}</b> — `:""}${s.reason||""}</li>`).join("");
     const sendBar=this.picked.size?`
       <div class="re-cta"><h3>${this.picked.size} room${this.picked.size>1?"s":""} picked</h3>
-        <p>Send them over and a real person checks the pick, the price, and the itinerary before you book.</p>
+        <p>Send them over and I'll check the pick, the price, and the itinerary before you book a thing.</p>
         <a class="re-btn yes" style="text-decoration:none;display:inline-block"
           href="/cabin-request.html?ship=${encodeURIComponent(this.roomsShip)}&cabins=${encodeURIComponent([...this.picked].join(","))}">Send my picks</a></div>`
       : this.cta();
@@ -591,8 +594,8 @@ class RoomConciergeFlow {
        agree 93-99%, not 100%, so say so rather than implying we verified this hull. */
     const inherited = d.numberingVerified === false
       ? `<p class="re-intro" style="font-size:14.5px;font-style:italic;margin:0 0 14px">
-           Cabin numbers for this ship come from its sister. They line up almost always,
-           but I'd confirm the exact room with me before you book it.</p>` : "";
+           Cabin numbers here come from her sister ship, and the two match almost every time.
+           Still — confirm the exact room with me before you book it. Sisters have surprised me before.</p>` : "";
     this.stageEl.innerHTML = `
       <p class="re-progress">Your rooms · ${this.roomsShip}</p>
       <h2 class="q">${d.outcome === "ship-has-none" || d.outcome === "none-researched" || d.outcome === "type-not-mapped"
@@ -606,10 +609,10 @@ class RoomConciergeFlow {
   togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
   cta(){
     return `<div class="re-cta">
-      <h3>Want a real person to sanity-check it?</h3>
-      <p>Send over what you told me — the pick, the price, and the itinerary get a human read
-      before you book a thing. No fee, no pressure.</p>
-      <a class="re-btn yes" style="text-decoration:none;display:inline-block" href="/cabin-request.html">Talk to us</a>
+      <h3>Want a second set of eyes before you book?</h3>
+      <p>Send over what you told me and I'll give the pick, the price, and the itinerary a proper
+      read — before money, vacation time, and patience get wasted. No fee, no pressure.</p>
+      <a class="re-btn yes" style="text-decoration:none;display:inline-block" href="/cabin-request.html">Send it over — I'll take a look</a>
     </div>`;
   }
 }

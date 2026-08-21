@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Concierge de Camarotes | Still Afloat</title>
-<meta name="description" content="Unas preguntas sobre ti, unas opiniones honestas y los camarotes exactos que vale la pena reservar — el Concierge de Camarotes de Still Afloat.">
+<meta name="description" content="Cuéntale a Mark cómo cruceras y él te nombra los camarotes que reservaría para sí mismo — y los que no le daría ni a su familia. El Concierge de Camarotes de Still Afloat.">
 <link rel="canonical" href="https://stillafloatcruising.com/es/room-concierge.html">
 <link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/room-concierge.html">
 <link rel="alternate" hreflang="es-419" href="https://stillafloatcruising.com/es/room-concierge.html">
@@ -122,8 +122,8 @@ const SALTY_IMG='/assets/concierge/salty-mark.jpg';
    Design is LOCKED (Mark, 8/14) — stages render inside the frosted panel.
 ──────────────────────────────────────────────────────────────────────────── */
 const QUIET = [
-  "curado por Still Afloat Cruising, tu asesor de viajes independiente",
-  "¿Dudas? Siempre puedes hablar con nosotros.",
+  "Still Afloat Cruising — tu asesor de viajes independiente",
+  "¿Dudas? Siempre puedes hablar conmigo.",
 ];
 /* Behavioral interview (model approved by Mark 8/14): remembered behavior,
    forced tradeoffs, projection — never self-description. Each option carries
@@ -209,7 +209,7 @@ const CATEGORY_INFO = [
   { match:/infinite/i, name:"¿Qué es una Infinite Veranda?",
     text:"El giro de Celebrity al balcón: toda la habitación ES la veranda. La mitad de arriba de la ventana baja y tu sala se convierte en espacio al aire libre. Ganas más espacio interior — pero no hay zona aparte con sillas afuera, y eso o lo amas o extrañas un balcón de verdad." },
   { match:/balcony|veranda/i, name:"¿Qué es un camarote con balcón?",
-    text:"Tu propio espacio exterior privado — una puerta de vidrio, un par de sillas y el mar. El café ahí afuera por la mañana es eso que nadie suelta después de probarlo." },
+    text:"Tu propio espacio exterior privado — una puerta de vidrio, un par de sillas y el mar. El café ahí afuera por la mañana es eso que nadie suelta después de probarlo. Y es la única silla de cubierta del barco que nadie te puede apartar con una toalla." },
   { match:/ocean\s?view|oceanview|window/i, name:"¿Qué es un camarote con vista al mar?",
     text:"Una ventana de verdad hacia el mar — luz de día y una vista de dónde estás, sin espacio exterior. Ves el mar; solo que no te sientas afuera en él." },
   { match:/suite/i, name:"¿Qué es una suite?",
@@ -266,11 +266,14 @@ class RoomConciergeFlow {
       <div class="land-grid">
         <div>
           <p class="re-kick">Concierge de Camarotes</p>
-          <h1>Busquemos la habitación<br>que vas a presumir.</h1>
-          <p class="re-intro">Cinco minutos aquí valen más que cinco horas en un grupo de Facebook.
+          <h1>Hay camarotes que despiertan con el mar.<br>Y otros, con la cadena del ancla.</h1>
+          <p class="re-intro">El plano de cubiertas no te dice cuál es cuál — es una cuadrícula de números,
+          y llevo más de veinte años aprendiendo qué significan esos números: qué camarotes quedan bajo
+          la cubierta de la piscina, cuáles duermen tranquilos, qué balcón mira a una pared de acero.
           Unas <b>preguntas rápidas sobre ti</b>, después tus <b>expectativas</b> — y te nombro los
-          <b>camarotes exactos</b> que vale la pena reservar, y los que mejor pasas de largo.</p>
-          <div class="hint">&#128719; Gratis &mdash; sin registro &middot; cada camarote investigado a mano</div>
+          <b>camarotes exactos</b> que yo reservaría, y los pocos por los que no dejaría pasar ni a mi
+          familia. Esa tarea ya está hecha. Lo único que te queda por estudiar es el menú del bar de la piscina.</p>
+          <div class="hint">&#128719; Gratis, solo por mirar &mdash; sin registro &middot; cada camarote investigado a mano</div>
           <div class="re-fork">
             <h2 class="q">¿Ya tienes un barco en mente?</h2>
             <div class="re-choices">
@@ -281,7 +284,7 @@ class RoomConciergeFlow {
           </div>
         </div>
         <aside class="lines-card">
-          <h3>Actualmente cubrimos estas navieras:</h3>
+          <h3>Las navieras que conozco camarote por camarote:</h3>
           <ul id="linesList"></ul>
           <p class="ships-count" id="coverage"></p>
         </aside>
@@ -295,7 +298,7 @@ class RoomConciergeFlow {
     if(!this.fleet.length){ setTimeout(()=>this.drawCoverage(), 400); return; }
     const lines=[...new Set(this.fleet.map(s=>lineName(s.line)))].sort();
     ul.innerHTML = lines.map(l=>`<li>${l}</li>`).join("");
-    el.innerHTML = `${this.fleet.length} barcos cubiertos — y contando.`;
+    el.innerHTML = `${this.fleet.length} barcos investigados hasta hoy — y los astilleros siguen construyendo.`;
   }
   fork(path){ this.snapshot('landing'); this.path=path; this.qIndex=0; this.eIndex=0;
     path==="ship" ? this.shipSelect('flow') : this.personalityQ(); }
@@ -332,8 +335,8 @@ class RoomConciergeFlow {
     const lines=[...new Set(this.fleet.map(x=>x.line))].sort();
     const opOpts=lines.map(l=>`<option value="${l.replace(/"/g,'&quot;')}">${lineName(l)}</option>`).join("");
     const head = mode==='check'
-      ? {kick:"Revisión de camarote", q:"Ya lo reservaste. Veamos qué te tocó en realidad.",
-         sub:"Naviera, barco, número de camarote — y te digo qué dice la investigación sobre la vista, el ruido y el movimiento. Sin endulzarlo."}
+      ? {kick:"Revisión de camarote", q:"¿Ya reservaste? Tráeme el número de camarote.",
+         sub:"Naviera, barco y número — y te digo qué dice la investigación sobre la vista, el ruido y el movimiento. La mayoría de los camarotes salen bien parados. Y si el tuyo trae sorpresa, mejor que te la cuente yo ahora y no los propulsores la primera noche."}
       : {kick:"Tu barco", q:"¿De qué barco estamos hablando?",
          sub:"Elige la naviera, luego el barco. Del resto me encargo yo."};
     this.stageEl.innerHTML = `
@@ -351,7 +354,7 @@ class RoomConciergeFlow {
       <input id="cabinNum" placeholder="p. ej. 8234" autocomplete="off" disabled
         onkeydown="if(event.key==='Enter')RC.cabinCheck()">
       <div class="re-choices" style="margin-top:16px">
-        <button class="re-btn yes" id="ckGo" disabled onclick="RC.cabinCheck()">Dímelo sin rodeos</button>
+        <button class="re-btn yes" id="ckGo" disabled onclick="RC.cabinCheck()">Revisa mi camarote — te digo qué te va a tocar &rarr;</button>
       </div>`:`
       <div class="re-choices" style="margin-top:16px">
         <button class="re-btn yes" id="ckGo" disabled onclick="RC.cabinAsk()">Ese es →</button>
@@ -397,7 +400,7 @@ class RoomConciergeFlow {
     const num=(el&&el.value||"").trim();
     if(!num){ this.cabinAsk(); return; }
     this.snapshot('cabinAsk');
-    this.stageEl.innerHTML = `<p class="re-progress">Tu camarote</p><h2 class="q">Revisando…</h2>`;
+    this.stageEl.innerHTML = `<p class="re-progress">Tu camarote</p><h2 class="q">Sacando los planos de cubierta…</h2>`;
     let d={};
     try{
       const r=await fetch("/api/cabins/check",{method:"POST",headers:{"content-type":"application/json"},
@@ -410,7 +413,7 @@ class RoomConciergeFlow {
       this.cabinAsk((d&&d.message)||"");
       if(near){
         const box=document.createElement("div");
-        box.innerHTML=`<p style="margin:12px 0 4px;font-size:13px;color:rgba(255,255,255,.75)">¿Quisiste decir?</p>
+        box.innerHTML=`<p style="margin:12px 0 4px;font-size:13px;color:rgba(255,255,255,.75)">¿Será alguno de estos?</p>
           <div class="re-opts">${near}</div>`;
         this.stageEl.appendChild(box);
       }
@@ -462,7 +465,7 @@ class RoomConciergeFlow {
   }
   answerE(key,val){ this.snapshot('expectQ'); this.expect[key]=val; this.eIndex++; this.expectQ(); }
   async reveal(){
-    this.stageEl.innerHTML = `<p class="re-progress">El veredicto</p><h2 class="q">En eso estoy…</h2>`;
+    this.stageEl.innerHTML = `<p class="re-progress">El veredicto</p><h2 class="q">Comparando mis notas con tus respuestas…</h2>`;
     let shipsToShow=[], reason="";
     if(this.path==="ship" && this.chosen){ shipsToShow=[this.chosen]; }
     else{
@@ -476,16 +479,16 @@ class RoomConciergeFlow {
     if(!shipsToShow.length){
       this.stageEl.innerHTML = `<p class="re-progress">El veredicto</p>
         <h2 class="q">Prefiero hacerlo bien que adivinar.</h2>
-        <p class="re-intro">Algo no cuadró de mi lado. Mándanos lo que me contaste y una persona
-        de verdad termina el trabajo.</p>${this.cta()}`;
+        <p class="re-intro">Algo no cuadró de mi lado — culpa mía, no tuya. Mándame lo que me
+        contaste y yo termino el trabajo a mano.</p>${this.cta()}`;
       return;
     }
     const settled=await Promise.allSettled(shipsToShow.map(s=>this.shipCard(s)));
     const cards=settled.filter(r=>r.status==="fulfilled").map(r=>r.value);
     if(settled.some(r=>r.status==="rejected")) console.error("ship card failed", settled.find(r=>r.status==="rejected"));
-    const heading=this.path==="ship" ? "Tu barco, calificado con honestidad." :
-      (cards.length>1?"Dos barcos que van contigo.":"El barco que va contigo.");
-    const altOffer=this.path==="ship"?`<p style="text-align:center;margin:2px 0 12px"><button class="re-btn" style="font-size:14px;padding:9px 18px" onclick="RC.snapshot('reveal');RC.path='discover';RC.reveal()">O muéstrame lo que TÚ elegirías para mí &rarr;</button></p>`:"";
+    const heading=this.path==="ship" ? "Tu barco, y cómo te queda." :
+      (cards.length>1?"Dos barcos en los que yo te embarcaría.":"El barco en el que yo te embarcaría.");
+    const altOffer=this.path==="ship"?`<p style="text-align:center;margin:2px 0 12px"><button class="re-btn" style="font-size:14px;padding:9px 18px" onclick="RC.snapshot('reveal');RC.path='discover';RC.reveal()">O muéstrame lo que tú elegirías para mí &rarr;</button></p>`:"";
     this.stageEl.innerHTML = `
       <p class="re-progress">El veredicto</p>
       <h2 class="q">${heading}</h2>
@@ -514,12 +517,12 @@ class RoomConciergeFlow {
     const nextLevel = s.nextLevel ? `
       <div style="display:flex;gap:10px;align-items:center;background:rgba(255,202,79,.12);border:1px solid rgba(255,202,79,.35);border-radius:13px;padding:9px 13px;margin:10px 0 10px">
         <span style="font-size:20px">✦</span>
-        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#ffca4f;display:block;margin-bottom:2px">Siguiente nivel: ${s.nextLevel.name}</span>
+        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#ffca4f;display:block;margin-bottom:2px">Un escalón arriba: ${s.nextLevel.name}</span>
         <p style="margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.85)">${s.nextLevel.why}</p></div>
       </div>` : "";
     const roomsBtn = s.hasRooms
       ? `<button class="re-btn no" onclick="RC.rooms('${s.repSlug}','${s.ship.replace(/'/g,"\\'")}')">Muéstrame las habitaciones →</button>`
-      : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Las recomendaciones habitación por habitación de este barco vienen en camino — pídelas y las hacemos a mano.</span>`;
+      : `<span style="font-size:13.5px;color:#5a6b85;font-style:italic">Las recomendaciones habitación por habitación de este barco siguen en el taller — pídelas, y las tuyas las hago a mano.</span>`;
     return `<div class="reveal-ship">
       <div class="gist">
         <div><h3>${s.ship}</h3><span class="line">${lineName(s.line)}</span></div>
@@ -553,8 +556,8 @@ class RoomConciergeFlow {
          de otro). La línea genérica queda solo para un fallo de la petición. */
       this.stageEl.innerHTML = `<p class="re-progress">Tus habitaciones</p>
         <h2 class="q">Este necesita el toque humano.</h2>
-        <p class="re-intro">${d?.note || `Todavía no tengo cargadas recomendaciones habitación por habitación
-        para ${shipName} — mándanos tus respuestas y se hace a mano.`}</p>${this.cta()}`;
+        <p class="re-intro">${d?.note || `Todavía no tengo recomendaciones habitación por habitación
+        para ${shipName} — mándame lo que me contaste y las tuyas las trabajo a mano.`}</p>${this.cta()}`;
       return;
     }
     this.picked=new Set(); this.roomsData=d; this.roomsShip=shipName; this.roomsRep=repSlug;
@@ -573,8 +576,9 @@ class RoomConciergeFlow {
        el 93% y el 99%, no al 100% — decirlo es más honesto que dar por verificado. */
     const inherited = d.numberingVerified === false
       ? `<p class="re-intro" style="font-size:14.5px;font-style:italic;margin:0 0 14px">
-           Los números de camarote de este barco vienen de su gemelo. Casi siempre coinciden,
-           pero confirma conmigo el camarote exacto antes de reservar.</p>` : "";
+           Los números de camarote aquí vienen de su barco gemelo, y casi siempre coinciden.
+           Aun así — confirma conmigo el camarote exacto antes de reservar. Los gemelos ya me han
+           dado más de una sorpresa.</p>` : "";
     const picks=d.picks.map(p=>{
       const f=p.facts||{};
       const on=this.picked.has(p.cabin);
@@ -592,7 +596,7 @@ class RoomConciergeFlow {
       `<li style="margin:0 0 6px">${s.cabin?`<b>Camarote ${s.cabin}</b> — `:s.area?`<b>${s.area}</b> — `:""}${s.reason||""}</li>`).join("");
     const sendBar=this.picked.size?`
       <div class="re-cta"><h3>${this.picked.size} ${this.picked.size>1?"habitaciones elegidas":"habitación elegida"}</h3>
-        <p>Mándalas y una persona de verdad revisa la elección, el precio y el itinerario antes de que reserves.</p>
+        <p>Mándalas y yo mismo reviso la elección, el precio y el itinerario antes de que reserves nada.</p>
         <a class="re-btn yes" style="text-decoration:none;display:inline-block"
           href="/es/cabin-request.html?ship=${encodeURIComponent(this.roomsShip)}&cabins=${encodeURIComponent([...this.picked].join(","))}">Enviar mis elecciones</a></div>`
       : this.cta();
@@ -609,10 +613,10 @@ class RoomConciergeFlow {
   togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
   cta(){
     return `<div class="re-cta">
-      <h3>¿Quieres que una persona de verdad le dé una revisada?</h3>
-      <p>Mándanos lo que me contaste — la elección, el precio y el itinerario pasan por ojos humanos
-      antes de que reserves nada. Sin costo, sin presión.</p>
-      <a class="re-btn yes" style="text-decoration:none;display:inline-block" href="/es/cabin-request.html">Habla con nosotros</a>
+      <h3>¿Quieres un segundo par de ojos antes de reservar?</h3>
+      <p>Mándame lo que me contaste y le doy a la elección, el precio y el itinerario una revisada
+      como debe ser — antes de que se gasten el dinero, las vacaciones y la paciencia. Sin costo, sin presión.</p>
+      <a class="re-btn yes" style="text-decoration:none;display:inline-block" href="/es/cabin-request.html">Mándamelo — yo le echo un ojo</a>
     </div>`;
   }
 }

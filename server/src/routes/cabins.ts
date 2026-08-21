@@ -630,7 +630,7 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
       body: lines,          // confidence deliberately NOT included
       cta: es
         ? "¿Quieres que revise si hay un camarote mejor en esta misma salida?"
-        : "Want me to look at whether there's a better cabin on this same sailing?",
+        : "Want me to see if there's a better cabin on this same sailing?",
     });
   } catch (err) {
     logger.error({ err }, "cabins/check failed");
@@ -889,8 +889,8 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
               ? "la versión tranquila y bien atendida de este barco — espacios privados, y la multitud se queda afuera"
               : "the quiet, looked-after version of this ship — private spaces, and the crowd stays outside" }
           : enclave ? { name: enclave.name, why: lang === "es"
-              ? "vale saber que este barco tiene una experiencia de siguiente nivel si la quieres"
-              : "worth knowing this ship has a next-level experience if you want it" } : null;
+              ? "vale la pena saber que tiene un lado más tranquilo y bien atendido, por si algún día lo quieres"
+              : "worth knowing she has a quieter, looked-after side if you ever want it" } : null;
         return { s: sh, score, nextLevel };
       })
       .sort((a, b) => b.score - a.score);
@@ -924,9 +924,9 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       const esW = lang === "es";
       const ratingBit = sh.rating != null
         ? (esW ? `nuestra propia reseña Conga Line le da ${sh.rating}/5 — al nivel de las líneas grandes`
-               : `our own Conga Line review puts it at ${sh.rating}/5 — right alongside the big lines`)
+               : `our own Conga Line review puts her at ${sh.rating}/5 — right alongside the big lines`)
         : (esW ? "nuestra propia reseña la pone al nivel de las líneas grandes"
-               : "our own review puts it right alongside the big lines");
+               : "our own review puts her right alongside the big lines");
       // The fare clause must match the line's actual market position — "smaller
       // fare" is true of Margaritaville, false of Celebrity. The matrix's own
       // price virtue decides (0 = value line, 2 = premium).
@@ -934,11 +934,11 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       const fareBit = priceV <= 0.75
         ? (esW ? "con una tarifa más pequeña por la misma agua" : "at a smaller fare for the same water")
         : priceV >= 1.25
-          ? (esW ? "un escalón más de pulido — y nuestra reseña dice que lo vale" : "a step up in polish — and our review says it earns it")
+          ? (esW ? "un escalón más de pulido — y nuestra reseña dice que se lo gana" : "a step up in polish — and our review says she earns it")
           : (esW ? "y el valor se sostiene" : "and the value holds up");
       const why = esW
-        ? `Quizá no la tenías en el radar: ${ratingBit}, ${fareBit}. Encaja con lo que respondiste.`
-        : `Probably not on your radar: ${ratingBit}, ${fareBit}. And it fits what you told me.`;
+        ? `Quizá no la tenías en el radar: ${ratingBit}, ${fareBit}. Y encaja con lo que me contaste.`
+        : `Probably not on your radar: ${ratingBit}, ${fareBit}. And she fits what you told me.`;
       worthALook = { ...sh, nextLevel, why };
       break;
     }
@@ -953,13 +953,17 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
     if (personality.crowds === "avoids") reasonBits.push(es ? "las multitudes te desgastan" : "crowds wear on you");
     if (personality.splurge === "cabin") reasonBits.push(es ? "la habitación te importa" : "the room matters to you");
     if (personality.splurge === "value") reasonBits.push(es ? "quieres que la tarifa haga el trabajo" : "you want the fare to do the work");
+    const one = picks.length === 1;
     if (destination && destination !== "surprise" && picks.some((p) => p.regions.includes(destination))) {
-      reasonBits.unshift(es ? "navegan hacia donde tú vas" : "they sail where you're headed");
+      reasonBits.unshift(one
+        ? (es ? "navega hacia donde tú vas" : "she sails where you're headed")
+        : (es ? "navegan hacia donde tú vas" : "they sail where you're headed"));
     }
     const joiner = es ? " y " : " and ";
+    const iPicked = one ? (es ? "La elegí" : "I picked her") : (es ? "Las elegí" : "I picked them");
     const reason = reasonBits.length
-      ? (es ? `Elegidos porque ${reasonBits.slice(0, 2).join(joiner)}.` : `Picked because ${reasonBits.slice(0, 2).join(joiner)}.`)
-      : (es ? "Elegidos según cómo respondiste." : "Picked to fit how you answered.");
+      ? `${iPicked} ${es ? "porque" : "because"} ${reasonBits.slice(0, 2).join(joiner)}.`
+      : (es ? `${iPicked} para encajar con lo que me contaste.` : `${iPicked} to fit what you told me.`);
 
     return res.json({ picks, reason, worthALook });
   } catch (err) {
