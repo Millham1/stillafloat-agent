@@ -776,6 +776,11 @@ type Matrix = {
   classOverrides: Record<string, Record<string, number>>;
   enclaves: Record<string, { name: string; classes: string[]; note?: string }>;
   shipAdjust?: Record<string, { adjust: number; why: string }>;
+  /** Lines presented first-class in suggestions — excluded from the worth-a-look
+   *  slot. Mark's dial (matrix.json), not code. Margaritaville at Sea IS on it
+   *  (Mark, 2026-08-21: up-and-coming, rates well in our rankings — presented
+   *  alongside the majors, never as the wildcard). */
+  mainstream?: string[];
 };
 function loadMatrix(): Matrix | null {
   for (const p of [
@@ -905,12 +910,13 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
     // not be thinking about and then explain why." Surfaced ONLY when our own
     // internal verdict backs it (>= 4), never from vibes; the response carries the
     // published rating alone, per the rule at the top of this section.
-    const BIG_FOUR = new Set(["Royal Caribbean", "Carnival Cruise Line", "Norwegian Cruise Line", "MSC Cruises"]);
+    const mainstream = new Set((matrix.mainstream ??
+      ["Royal Caribbean", "Carnival Cruise Line", "Norwegian Cruise Line", "MSC Cruises"]).map(canonLine));
     let worthALook: (FleetShip & { nextLevel: { name: string; why: string } | null; why: string }) | null = null;
     const floor = picks.length ? (scored.find((x) => x.s.slug === picks[picks.length - 1]!.slug)?.score ?? 0) - 4 : -Infinity;
     for (const { s: sh, score, nextLevel } of scored) {
       if (usedLines.has(sh.line)) continue;
-      if (BIG_FOUR.has(canonLine(sh.line))) continue;   // an opportunity is off the beaten path
+      if (mainstream.has(canonLine(sh.line))) continue;  // an opportunity is off the beaten path
       const own = internalRating.get(sh.slug);
       if (own == null || own < 4) continue;              // only when our review backs it
       if (!sh.hasRooms) continue;                        // must be able to finish the job here
