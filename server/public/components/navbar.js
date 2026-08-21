@@ -131,7 +131,12 @@
       left: 50%;
       transform: translateX(-50%);
       z-index: 20;
-      width: fit-content;
+      /* fit-content under-resolved on this absolutely-centered wrap container and
+         orphaned one pill per row ("Room Concierge", "En Español" each alone —
+         Mark, 2026-08-21). max-content lays each row out whole; the cap still
+         lets narrow screens wrap before the hamburger takes over. */
+      width: max-content;
+      max-width: min(96vw, 1100px);
       display: flex;
       flex-direction: column;
       gap: 5px;

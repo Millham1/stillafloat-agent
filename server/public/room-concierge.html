@@ -6,6 +6,7 @@
 <meta name="description" content="A few questions about you, a few honest opinions, and the exact cabins worth booking — the Still Afloat Room Concierge.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css?v=20260821-concierge">
 <style>
 /* Still Afloat canon (Mark 8/15): the weather / wheres-my-ship pattern.
    Hero art banner + plaque, seafoam rule, content in sections ON the ocean
@@ -15,6 +16,7 @@ body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4
   background:linear-gradient(135deg,#07183f 0%,#0b2f52 60%,#0f4a6e 100%);
   background-image:url('/assets/concierge/cabin-card.jpg');background-size:cover;background-position:center 55%;
   min-height:clamp(440px,46vw,680px);padding:clamp(120px,19vw,240px) 0 46px}
+.banner::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,17,31,.9) 0%,rgba(6,17,31,.78) 45%,rgba(8,20,36,.86) 100%);z-index:1}
 .plaque{position:relative;display:table;margin:-2px auto 18px;background:rgba(4,14,28,.78);backdrop-filter:blur(6px);
   border:1px solid rgba(93,255,154,.35);border-radius:14px;padding:13px 34px;color:#fff;font-weight:700;
   font-size:clamp(17px,2.6vw,24px);letter-spacing:.22em;white-space:nowrap;text-transform:uppercase;z-index:4}
@@ -22,7 +24,7 @@ body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4
 .corner.l{left:clamp(6px,3vw,40px)}
 .corner.r{right:clamp(6px,3vw,40px);transform:scaleX(-1)}
 .shell{position:relative;z-index:4;max-width:900px;margin:0 auto;padding:24px 26px 32px;
-  background:rgba(4,14,28,.55);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.14);
+  background:rgba(4,14,28,.84);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.14);
   border-radius:18px;width:calc(100% - 44px);box-sizing:border-box}
 .re-topbar{display:flex;align-items:center;min-height:30px}
 .re-back{font-family:inherit;font-weight:800;font-size:15px;color:#5dff9a;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
@@ -33,6 +35,14 @@ h2.q{font-size:clamp(21px,3.2vw,27px);margin:16px 0 16px;font-weight:800;line-he
 .re-kick{display:none}
 .re-intro{color:rgba(255,255,255,.75);line-height:1.65;max-width:62ch;margin:0 0 8px;font-size:18px}
 .re-intro b{color:#fff}
+.land-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:26px;align-items:start}
+@media(max-width:820px){.land-grid{grid-template-columns:1fr}}
+.lines-card{background:rgba(93,255,154,.07);border:1px solid rgba(93,255,154,.35);border-radius:14px;padding:18px 20px}
+.lines-card h3{margin:0 0 10px;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:#5dff9a}
+.lines-card ul{list-style:none;margin:0;padding:0}
+.lines-card li{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.09);font-size:16.5px;font-weight:600}
+.lines-card li:last-child{border-bottom:none}
+.lines-card .ships-count{margin:12px 0 0;font-size:13.5px;color:rgba(255,255,255,.65)}
 .re-lbl{display:block;margin:14px 0 4px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(93,255,154,.85)}
 select{width:100%;max-width:420px;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:#0d2547;color:#fff;font-size:16px}
 select:disabled{opacity:.45}
@@ -91,8 +101,6 @@ input#shipSearch:focus{border-color:#5dff9a}
 <body>
 <div id="navbar-container"></div>
 <div class="banner">
-  <img class="corner l" src="/assets/concierge/corner-4_party_animal.png" alt="">
-  <img class="corner r" src="/assets/concierge/corner-5_conga_king_queen.png" alt="">
   <div class="shell">
     <div class="plaque">Room Concierge</div>
     <div class="re-topbar"><button class="re-back" id="backBtn" onclick="RC.back()">&larr; Back</button></div>
@@ -256,29 +264,38 @@ class RoomConciergeFlow {
   }
   landing(){
     this.stageEl.innerHTML = `
-      <p class="re-kick">Room Concierge</p>
-      <h1>Let's find the room<br>you'll brag about.</h1>
-      <p class="re-intro">A few quick <b>questions about you</b> — enough to figure out what you want
-      out of a trip. Then your <b>expectations</b>. Then <b>real rooms</b> — the exact cabins
-      worth booking, and the ones worth walking past. About two minutes.</p>
-      <div class="re-fork">
-        <h2 class="q">Do you already have a ship in mind?</h2>
-        <div class="re-choices">
-          <button class="re-btn yes" onclick="RC.fork('ship')">Yes — I know my ship</button>
-          <button class="re-btn no" onclick="RC.fork('discover')">Not yet — help me pick</button>
+      <div class="land-grid">
+        <div>
+          <p class="re-kick">Room Concierge</p>
+          <h1>Let's find the room<br>you'll brag about.</h1>
+          <p class="re-intro">A few quick <b>questions about you</b>, then your <b>expectations</b>,
+          then <b>real rooms</b> — the exact cabins worth booking, and the ones worth walking past.
+          About two minutes.</p>
+          <div class="re-fork">
+            <h2 class="q">Do you already have a ship in mind?</h2>
+            <div class="re-choices">
+              <button class="re-btn yes" onclick="RC.fork('ship')">Yes — I know my ship</button>
+              <button class="re-btn no" onclick="RC.fork('discover')">Not yet — help me pick</button>
+            </div>
+            <p style="margin:14px 0 0"><button class="re-btn" style="font-size:15px" onclick="RC.checkStart()">I'm already booked — check my cabin</button></p>
+          </div>
         </div>
-        <p style="margin:14px 0 0"><button class="re-btn" style="font-size:15px" onclick="RC.checkStart()">I'm already booked — check my cabin</button></p>
+        <aside class="lines-card">
+          <h3>We currently provide the following cruise lines:</h3>
+          <ul id="linesList"></ul>
+          <p class="ships-count" id="coverage"></p>
+        </aside>
       </div>
-      <p class="re-coverage" id="coverage"></p>
       ${this.quiet(0)}`;
     this.drawCoverage();
   }
   drawCoverage(){
-    const el=document.getElementById("coverage");
-    if(!el) return;
+    const el=document.getElementById("coverage"), ul=document.getElementById("linesList");
+    if(!el||!ul) return;
     if(!this.fleet.length){ setTimeout(()=>this.drawCoverage(), 400); return; }
     const lines=[...new Set(this.fleet.map(s=>lineName(s.line)))].sort();
-    el.innerHTML = `Covering ${this.fleet.length} ships across ${lines.length} lines: ` + lines.join(" · ");
+    ul.innerHTML = lines.map(l=>`<li>${l}</li>`).join("");
+    el.innerHTML = `${this.fleet.length} ships covered — and counting.`;
   }
   fork(path){ this.snapshot('landing'); this.path=path; this.qIndex=0; this.eIndex=0;
     path==="ship" ? this.shipPick() : this.personalityQ(); }
