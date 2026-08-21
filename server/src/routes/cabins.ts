@@ -899,6 +899,35 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       if (picks.length === 2) break;
     }
 
+    // The under-considered opportunity — the advisor's "have you thought about…".
+    // Mark, 2026-08-21: "our own rating is high and comparable to royal, carnival,
+    // ncl and msc. we need to fine tune to bring opportunities out that they might
+    // not be thinking about and then explain why." Surfaced ONLY when our own
+    // internal verdict backs it (>= 4), never from vibes; the response carries the
+    // published rating alone, per the rule at the top of this section.
+    const BIG_FOUR = new Set(["Royal Caribbean", "Carnival Cruise Line", "Norwegian Cruise Line", "MSC Cruises"]);
+    let worthALook: (FleetShip & { nextLevel: { name: string; why: string } | null; why: string }) | null = null;
+    const floor = picks.length ? (scored.find((x) => x.s.slug === picks[picks.length - 1]!.slug)?.score ?? 0) - 4 : -Infinity;
+    for (const { s: sh, score, nextLevel } of scored) {
+      if (usedLines.has(sh.line)) continue;
+      if (BIG_FOUR.has(canonLine(sh.line))) continue;   // an opportunity is off the beaten path
+      const own = internalRating.get(sh.slug);
+      if (own == null || own < 4) continue;              // only when our review backs it
+      if (!sh.hasRooms) continue;                        // must be able to finish the job here
+      if (score < floor) continue;                       // still has to genuinely fit
+      const esW = lang === "es";
+      const ratingBit = sh.rating != null
+        ? (esW ? `nuestra propia reseña Conga Line le da ${sh.rating}/5 — al nivel de las líneas grandes`
+               : `our own Conga Line review puts it at ${sh.rating}/5 — right alongside the big lines`)
+        : (esW ? "nuestra propia reseña la pone al nivel de las líneas grandes"
+               : "our own review puts it right alongside the big lines");
+      const why = esW
+        ? `Quizá no la tenías en el radar: ${ratingBit}, con una tarifa más pequeña por la misma agua. Encaja con lo que respondiste.`
+        : `Probably not on your radar: ${ratingBit}, at a smaller fare for the same water. And it fits what you told me.`;
+      worthALook = { ...sh, nextLevel, why };
+      break;
+    }
+
     const es = lang === "es";
     const reasonBits: string[] = [];
     if (personality.energy === "party") reasonBits.push(es ? "quieres la energía a tope" : "you want the energy turned up");
@@ -917,7 +946,7 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
       ? (es ? `Elegidos porque ${reasonBits.slice(0, 2).join(joiner)}.` : `Picked because ${reasonBits.slice(0, 2).join(joiner)}.`)
       : (es ? "Elegidos según cómo respondiste." : "Picked to fit how you answered.");
 
-    return res.json({ picks, reason });
+    return res.json({ picks, reason, worthALook });
   } catch (err) {
     logger.error({ err }, "cabins/suggest-ships failed");
     return res.status(500).json({ error: "Could not suggest ships" });

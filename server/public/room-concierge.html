@@ -31,6 +31,9 @@ h2.q{font-size:clamp(21px,3.2vw,27px);margin:16px 0 16px;font-weight:800;line-he
 .re-kick{display:none}
 .re-intro{color:rgba(255,255,255,.75);line-height:1.65;max-width:62ch;margin:0 0 8px;font-size:18px}
 .re-intro b{color:#fff}
+.re-lbl{display:block;margin:14px 0 4px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(93,255,154,.85)}
+select{width:100%;max-width:420px;padding:11px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:#0d2547;color:#fff;font-size:16px}
+select:disabled{opacity:.45}
 .re-fork{margin:22px 0 2px}
 .re-choices{display:flex;gap:12px;flex-wrap:wrap}
 .re-btn{display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;font-weight:800;font-size:16px;
@@ -262,6 +265,7 @@ class RoomConciergeFlow {
           <button class="re-btn yes" onclick="RC.fork('ship')">Yes — I know my ship</button>
           <button class="re-btn no" onclick="RC.fork('discover')">Not yet — help me pick</button>
         </div>
+        <p style="margin:14px 0 0"><button class="re-btn" style="font-size:15px" onclick="RC.checkStart()">I'm already booked — check my cabin</button></p>
       </div>
       <p class="re-coverage" id="coverage"></p>
       ${this.quiet(0)}`;
@@ -297,6 +301,49 @@ class RoomConciergeFlow {
     if(f){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
   }
   chooseShip(slug){ this.snapshot('shipPick'); this.chosen=this.fleet.find(s=>s.slug===slug)||null; this.cabinAsk(); }
+
+  // Booked-guest room check (Mark, 2026-08-21): the ask was vague as free text.
+  // Operator dropdown -> ship dropdown -> room number. Same moat verdict underneath.
+  checkStart(){
+    this.snapshot('landing');
+    const lines=[...new Set(this.fleet.map(x=>x.line))].sort();
+    const opOpts=lines.map(l=>`<option value="${l.replace(/"/g,'&quot;')}">${lineName(l)}</option>`).join("");
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Cabin check</p>
+      <h2 class="q">Let's look at the cabin you booked.</h2>
+      <p class="re-intro" style="margin-top:-4px">Pick your cruise line and ship, give me the cabin number,
+      and I'll tell you what our research says about it — the view, the noise, the motion, all of it.</p>
+      <label class="re-lbl" for="ckOp">Cruise line</label>
+      <select id="ckOp" onchange="RC.checkShipList(this.value)">
+        <option value="">Choose your cruise line…</option>${opOpts}</select>
+      <label class="re-lbl" for="ckShip">Ship</label>
+      <select id="ckShip" disabled onchange="RC.checkPickShip(this.value)">
+        <option value="">Choose the line first…</option></select>
+      <label class="re-lbl" for="cabinNum">Cabin number</label>
+      <input id="cabinNum" placeholder="e.g. 8234" autocomplete="off" disabled
+        onkeydown="if(event.key==='Enter')RC.cabinCheck()">
+      <div class="re-choices" style="margin-top:14px">
+        <button class="re-btn yes" id="ckGo" disabled onclick="RC.cabinCheck()">Check my cabin</button>
+      </div>
+      ${this.quiet(1)}`;
+  }
+  checkShipList(line){
+    const sel=document.getElementById("ckShip"); if(!sel) return;
+    this.chosen=null;
+    const ships=this.fleet.filter(x=>x.line===line).sort((a,b)=>a.ship.localeCompare(b.ship));
+    sel.innerHTML=`<option value="">Choose your ship…</option>`+
+      ships.map(x=>`<option value="${x.slug}">${x.ship}</option>`).join("");
+    sel.disabled=!ships.length;
+    const num=document.getElementById("cabinNum"), go=document.getElementById("ckGo");
+    if(num){ num.disabled=true; num.value=""; } if(go) go.disabled=true;
+  }
+  checkPickShip(slug){
+    this.chosen=this.fleet.find(x=>x.slug===slug)||null;
+    const num=document.getElementById("cabinNum"), go=document.getElementById("ckGo");
+    if(num) num.disabled=!this.chosen;
+    if(go) go.disabled=!this.chosen;
+    if(num&&this.chosen) num.focus();
+  }
 
   // Already-booked path: the one question a booked cruiser actually wants answered.
   cabinAsk(msg){
@@ -392,7 +439,7 @@ class RoomConciergeFlow {
         const r=await fetch("/api/cabins/suggest-ships",{method:"POST",
           headers:{"Content-Type":"application/json"},
           body:JSON.stringify({personality:this.personality, party:this.expect.party, traits:this.traits, raw:this.raw, budget:this.expect.budget, destination:this.expect.destination})});
-        const d=await r.json(); shipsToShow=d.picks||[]; reason=d.reason||"";
+        const d=await r.json(); shipsToShow=d.picks||[]; reason=d.reason||""; this.worthALook=d.worthALook||null;
       }catch{ shipsToShow=[]; }
     }
     if(!shipsToShow.length){
@@ -414,7 +461,18 @@ class RoomConciergeFlow {
       ${reason?`<p class="re-intro" style="font-size:15.5px">${reason}</p>`:""}
       ${altOffer}
       ${cards.join("")}
+      ${await this.worthALookCard()}
       ${this.cta()}`;
+  }
+  async worthALookCard(){
+    const w=this.path==="discover"?this.worthALook:null;
+    if(!w) return "";
+    let card="";
+    try{ card=await this.shipCard(w); }catch(e){ return ""; }
+    return `<div style="margin-top:18px;padding-top:6px;border-top:1px dashed rgba(93,255,154,.4)">
+      <p style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(93,255,154,.85);margin:10px 0 2px">Worth a look</p>
+      <p class="re-intro" style="font-size:15px;margin-bottom:8px">${w.why||""}</p>
+      ${card}</div>`;
   }
   async shipCard(s){
     let rating=null, comment=null, salty=null;
