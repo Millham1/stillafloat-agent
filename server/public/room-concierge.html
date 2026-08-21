@@ -21,23 +21,39 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;
 .hero-wrap{display:grid;max-width:1536px;margin:0 auto;position:relative}
 .hero-art{grid-area:1/1;align-self:start;position:relative;width:100%}
 .hero-img{width:100%;height:auto;display:block}
+/* Mark 8/21: the butler overlays the app — that's the charm. He reaches to x=1246 of
+   the 1536-wide art and the painted panel ends at 1262, so he already crosses it. Our
+   glass therefore stops at 1240 (right margin 19.27%) and the painting's own layering
+   shows through untouched — no cutout, no seam, butler in front. */
 .hero-art::after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;
   background:linear-gradient(to bottom,rgba(7,24,63,0),#07183f);pointer-events:none}
-.panel{grid-area:1/1;position:relative;z-index:2;
-  margin:7.9% 17.2% 11.0% 17.9%;
-  background:rgba(255,255,255,.62);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border:1px solid rgba(255,255,255,.55);border-radius:34px;
-  box-shadow:0 24px 60px rgba(4,17,46,.28);
-  padding:clamp(18px,2.2vw,34px) clamp(20px,2.6vw,40px);
-  overflow:hidden;color:#07183f}
+/* Mark 8/21: there must be ONE card — the one painted into the art. So the panel has
+   no border, no shadow and no edge of its own; it lays a feathered wash over the painted
+   glass purely so the type stays readable, and that wash dies out before it reaches any
+   edge. The only visible card edge is the painting's. */
+.panel{grid-area:1/1;position:relative;z-index:2;isolation:isolate;
+  margin:7.9% 19.27% 11.0% 17.9%;
+  padding:clamp(24px,3vw,52px) clamp(26px,3.2vw,54px);
+  color:#07183f}
+.panel::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(255,255,255,.60);
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 52px,#000 calc(100% - 52px),transparent 100%),
+                     linear-gradient(to bottom,transparent 0,#000 46px,#000 calc(100% - 46px),transparent 100%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to right,transparent 0,#000 52px,#000 calc(100% - 52px),transparent 100%),
+             linear-gradient(to bottom,transparent 0,#000 46px,#000 calc(100% - 46px),transparent 100%);
+  mask-composite:intersect}
 
 /* ── type inside the panel (navy on frosted, homepage canon) ── */
 .re-topbar{display:flex;align-items:center;min-height:26px}
 .re-back{font-family:inherit;font-weight:800;font-size:clamp(13px,1.05vw,16px);color:#023e6e;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
 .re-back.show{display:inline-block}
 .re-back:hover{text-decoration:underline}
-.eyebrow{display:inline-block;background:#ffca4f;color:#07183f;border-radius:999px;
-  padding:5px 15px;font-size:clamp(10.5px,.86vw,13px);font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px}
+/* Mark 8/21: the title pill sits ABOVE the app, on the hero, and reads large. */
+.hero-title{position:absolute;top:clamp(10px,2.1vw,40px);left:50%;transform:translateX(-50%);z-index:5;
+  background:linear-gradient(135deg,#023e6e,#07183f);color:#fff;border-radius:999px;white-space:nowrap;
+  padding:clamp(9px,1.15vw,20px) clamp(23px,3vw,53px);
+  font-size:clamp(16px,1.78vw,31px);font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+  box-shadow:0 14px 34px rgba(4,17,46,.5)}
 h1{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;
   font-size:clamp(21px,2.35vw,37px);line-height:1.14;letter-spacing:-.5px;margin:0 0 10px}
 h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing:-.5px;
@@ -46,26 +62,40 @@ h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing
 .re-intro{color:rgba(7,24,63,.92);line-height:1.6;max-width:60ch;margin:0 0 8px;font-size:clamp(13px,1.12vw,18px)}
 .re-intro b{color:#07183f;font-weight:800}
 .hint{color:#023e6e;font-size:clamp(10.5px,.88vw,14px);letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin:10px 0 0}
-.hero-brand{display:inline-flex;align-items:center;gap:7px;margin:12px 0 0;color:#053d29;font-weight:800;
-  font-size:clamp(9.5px,.76vw,12px);letter-spacing:.18em;text-transform:uppercase}
-.hero-brand img{height:15px;vertical-align:middle}
-.re-progress{display:inline-block;background:#ffca4f;color:#07183f;border-radius:999px;padding:5px 15px;
+.hero-brand{display:block;margin:clamp(6px,.9vw,14px) auto 0}
+.hero-brand img{display:block;margin:0 auto;height:auto;width:clamp(84px,8.6vw,138px)}
+.re-progress{display:inline-block;background:linear-gradient(135deg,#0077b6,#023e6e);color:#fff;border-radius:999px;padding:5px 15px;
   font-size:clamp(10px,.84vw,13px);font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin:0 0 8px}
 
-.land-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:clamp(16px,2vw,30px);align-items:start}
+.land-grid{display:block}
 @media(max-width:900px){.land-grid{grid-template-columns:1fr}}
 
 /* ── cards on the light panel ── */
-.lines-card{background:linear-gradient(150deg,rgba(255,255,255,.42),rgba(0,119,182,.10));
-  border:1px solid rgba(255,255,255,.55);border-radius:18px;padding:clamp(13px,1.3vw,20px) clamp(14px,1.5vw,22px)}
-.lines-card h3{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;margin:0 0 8px;
-  font-size:clamp(13.5px,1.15vw,19px);line-height:1.3}
-.lines-card ul{list-style:none;margin:0;padding:0}
-.lines-card li{padding:clamp(4px,.5vw,8px) 0 clamp(4px,.5vw,8px) 22px;border-bottom:1px solid rgba(7,24,63,.10);
-  font-size:clamp(12px,1.02vw,17px);font-weight:700;position:relative;color:#07183f}
-.lines-card li::before{content:"\2693";position:absolute;left:0;color:#023e6e;font-size:.85em;top:50%;transform:translateY(-50%)}
-.lines-card li:last-child{border-bottom:none}
-.lines-card .ships-count{margin:10px 0 0;font-size:clamp(10.5px,.9vw,14px);color:#023e6e;font-weight:800}
+/* Mark 8/21: the operators live on the HERO, spread horizontally across its bottom —
+   out of the app entirely, sitting in the fade where the deck goes dark. */
+.hero-lines{position:absolute;left:0;right:0;bottom:0;z-index:4;
+  display:flex;flex-direction:column;align-items:center;
+  padding:clamp(26px,3vw,52px) clamp(14px,3vw,48px) clamp(10px,1.2vw,20px);
+  background:linear-gradient(to top,rgba(7,24,63,.94) 0%,rgba(7,24,63,.88) 45%,rgba(7,24,63,0) 100%);
+  text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.hero-lines .lead{margin:0 0 clamp(5px,.6vw,10px);text-align:center;color:rgba(255,255,255,.78);
+  font-size:clamp(9.5px,.8vw,13.5px);font-weight:700;letter-spacing:.1em}
+.hero-lines .names{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;
+  gap:clamp(6px,.8vw,14px);font-size:clamp(9px,.78vw,13px);font-weight:800;letter-spacing:.13em;
+  text-transform:uppercase;color:rgba(255,255,255,.92)}
+.hero-lines i{color:rgba(93,255,154,.75);font-style:normal;font-weight:700}.re-fork h2.q{margin-bottom:clamp(20px,2.6vw,40px)}
+
+/* Mark 8/21: the app's text sits centred in the glass. */
+.panel{text-align:center}
+.re-intro{margin-left:auto;margin-right:auto}
+.re-choices{justify-content:center}
+.re-opts{margin-left:auto;margin-right:auto}
+.re-opt{text-align:left}
+select,#cabinNum,input#shipSearch{margin-left:auto;margin-right:auto;display:block}
+.reveal-ship{text-align:left}
+.re-topbar{justify-content:flex-start}
+.lines-card{display:none}
+
 
 /* ── form controls ── */
 .re-lbl{display:block;margin:clamp(10px,1.1vw,16px) 0 5px;font-size:clamp(10px,.82vw,13px);font-weight:800;
@@ -86,14 +116,14 @@ input#shipSearch{width:100%;box-sizing:border-box;padding:clamp(10px,1vw,15px) c
 input#shipSearch:focus{border-color:#023e6e}
 
 /* ── buttons: the site's pill language ── */
-.re-fork{margin:clamp(12px,1.5vw,22px) 0 2px}
+.re-fork{margin:clamp(8px,1vw,16px) 0 2px}
 .re-choices{display:flex;gap:10px;flex-wrap:wrap}
 .re-btn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,#0077b6,#023e6e);
-  color:#ffd21f;font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(12.5px,1.06vw,18px);
+  color:#fff;font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(12.5px,1.06vw,18px);
   padding:clamp(9px,.95vw,15px) clamp(15px,1.7vw,28px);border-radius:50px;border:none;cursor:pointer;
   text-decoration:none;box-shadow:0 8px 22px rgba(0,119,182,.32);transition:transform .2s,box-shadow .2s}
 .re-btn:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(0,119,182,.42)}
-.re-btn.yes,.re-btn.no{background:linear-gradient(135deg,#0077b6,#023e6e);color:#ffd21f;
+.re-btn.yes,.re-btn.no{background:linear-gradient(135deg,#0077b6,#023e6e);color:#fff;
   box-shadow:0 8px 22px rgba(0,119,182,.32)}
 .re-btn.yes:disabled{opacity:.45;cursor:default;transform:none;box-shadow:none}
 
@@ -107,7 +137,7 @@ input#shipSearch:focus{border-color:#023e6e}
 .re-opt b{color:#07183f;font-weight:800}
 .re-opt span{color:rgba(7,24,63,.72)!important}
 
-.quiet{color:rgba(7,24,63,.62);font-size:clamp(10.5px,.86vw,14px);font-style:italic;margin:clamp(10px,1.4vw,22px) 0 0}
+.quiet{color:rgba(7,24,63,.82);font-size:clamp(10.5px,.86vw,14px);font-style:italic;margin:clamp(8px,1vw,15px) 0 0}
 .re-coverage{color:rgba(7,24,63,.72);font-size:clamp(11px,.9vw,15px);line-height:1.6;margin:20px 0 0;max-width:70ch}
 
 /* ── ship + room cards ── */
@@ -144,10 +174,6 @@ details.cat-info p{font-size:clamp(11px,.9vw,15px);line-height:1.55;color:rgba(7
 .re-cta h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;margin:0 0 7px;font-size:clamp(14px,1.35vw,23px);letter-spacing:-.4px}
 .re-cta p{margin:0 auto 12px;max-width:560px;font-size:clamp(11.5px,.98vw,16px);line-height:1.55;color:rgba(7,24,63,.85)}
 
-.mobile-plaque{display:none;margin:22px auto 14px;background:rgba(4,14,28,.62);backdrop-filter:blur(6px);
-  border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:11px 24px;color:#fff;font-weight:600;
-  font-size:17px;letter-spacing:.2em;text-transform:uppercase;white-space:nowrap}
-.mobile-plaque .dash{color:#ffd95d;font-weight:700;margin:0 10px}
 footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgba(255,255,255,.72);font-size:16px}
 
 /* ── narrow screens: art on top, panel below it ── */
@@ -156,9 +182,10 @@ footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgb
      at phone width without showing an empty white box, so phones get the house
      plaque on the ocean ground and the full hero returns at tablet and up. */
   .hero-wrap{display:block}
-  .hero-art{display:none}
-  .mobile-plaque{display:table}
-  .eyebrow{display:none}   /* the plaque above already names the page */
+  .hero-art{display:block;position:static}
+  .hero-title{position:static;transform:none;display:table;margin:20px auto 14px;font-size:16px;padding:10px 26px}
+  .hero-img,.hero-art::after{display:none}
+  .hero-lines{position:static;padding:0 14px 14px;color:rgba(255,255,255,.85)}
   .panel{margin:0 12px;border-radius:22px;padding:20px 18px}
   h1{font-size:24px}
   .re-btn{font-size:15px;padding:12px 20px}
@@ -170,9 +197,8 @@ footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgb
 <header class="rc-banner" role="img" aria-label="A cozy cruise cabin at night — the Still Afloat Room Concierge">
   <div id="navbar-container"></div>
 <div class="hero-wrap">
-  <div class="mobile-plaque"><span class="dash">&mdash;</span>Room Concierge<span class="dash">&mdash;</span></div>
-  <div class="hero-art"><img class="hero-img" src="/assets/concierge/hero-balcony.jpg"
-       alt="A cruise ship balcony at sunset with a concierge waiting — the Still Afloat Room Concierge"></div>
+  <div class="hero-art"><div class="hero-title">Room Concierge</div><img class="hero-img" src="/assets/concierge/hero-balcony.jpg"
+       alt="A cruise ship balcony at sunset with a concierge waiting — the Still Afloat Room Concierge"><div class="hero-lines"><p class="lead">Currently searching the following cruise lines</p><div class="names" id="linesList"></div></div></div>
   <main class="panel">
     <div class="re-topbar"><button class="re-back" id="backBtn" onclick="RC.back()">&larr; Back</button></div>
     <div id="stage"></div>
@@ -337,7 +363,6 @@ class RoomConciergeFlow {
     this.stageEl.innerHTML = `
       <div class="land-grid">
         <div>
-          <div class="eyebrow">Room Concierge</div>
           <h1>Some cabins wake up to the ocean.<br>Some wake up to the anchor chain.</h1>
           <p class="re-intro">The deck plan won't tell you which is which — it's a grid of numbers, and
           I've spent more than twenty years learning what those numbers mean: which cabins sit under the
@@ -345,8 +370,7 @@ class RoomConciergeFlow {
           <b>questions about you</b>, then your <b>expectations</b> — and I'll name the <b>exact cabins</b>
           I'd book myself, and the few I'd steer my own family past. That homework is already done.
           The only studying left is the pool-bar menu.</p>
-          <div class="hero-brand"><img src="/assets/images/still-afloat-text.png" alt="Still Afloat"> &nbsp;&middot;&nbsp; Still Afloat Approved &middot; every cabin researched by hand</div>
-          <div class="hint">&#129517; Two minutes &mdash; and no email needed to see your picks</div>
+          <div class="hero-brand"><img src="/assets/concierge/still-afloat-cruise-smarter.png" alt="Still Afloat — Cruise Smarter"></div>
           <div class="re-fork">
             <h2 class="q">Do you already have a ship in mind?</h2>
             <div class="re-choices">
@@ -356,22 +380,16 @@ class RoomConciergeFlow {
             <p style="margin:14px 0 0"><button class="re-btn" onclick="RC.checkStart()">I'm booked — tell me the truth about my cabin</button></p>
           </div>
         </div>
-        <aside class="lines-card">
-          <h3>The cruise lines I know cabin by cabin:</h3>
-          <ul id="linesList"></ul>
-          <p class="ships-count" id="coverage"></p>
-        </aside>
       </div>
       ${this.quiet(0)}`;
     this.drawCoverage();
   }
   drawCoverage(){
-    const el=document.getElementById("coverage"), ul=document.getElementById("linesList");
-    if(!el||!ul) return;
+    const bar=document.getElementById("linesList");
+    if(!bar) return;
     if(!this.fleet.length){ setTimeout(()=>this.drawCoverage(), 400); return; }
     const lines=[...new Set(this.fleet.map(s=>lineName(s.line)))].sort();
-    ul.innerHTML = lines.map(l=>`<li>${l}</li>`).join("");
-    el.innerHTML = `${this.fleet.length} ships researched so far — and the shipyards keep building.`;
+    bar.innerHTML = lines.map(l=>`<span>${l}</span>`).join('<i>&middot;</i>');
   }
   fork(path){ this.snapshot('landing'); this.path=path; this.qIndex=0; this.eIndex=0;
     path==="ship" ? this.shipSelect('flow') : this.personalityQ(); }
