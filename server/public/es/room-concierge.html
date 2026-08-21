@@ -76,7 +76,7 @@ h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing
 /* ── cards on the light panel ── */
 /* Mark 8/21: the operators live on the HERO, spread horizontally across its bottom —
    out of the app entirely, sitting in the fade where the deck goes dark. */
-.hero-lines{position:absolute;left:0;right:0;bottom:0;z-index:4;
+.hero-lines{grid-area:1/1;align-self:end;z-index:4;width:100%;box-sizing:border-box;
   display:flex;flex-direction:column;align-items:center;
   padding:clamp(26px,3vw,52px) clamp(14px,3vw,48px) clamp(10px,1.2vw,20px);
   background:linear-gradient(to top,rgba(7,24,63,.94) 0%,rgba(7,24,63,.88) 45%,rgba(7,24,63,0) 100%);
@@ -188,7 +188,7 @@ footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgb
   .hero-art{display:block;position:static}
   .hero-title{position:static;transform:none;display:table;margin:20px auto 14px;font-size:16px;padding:10px 26px}
   .hero-img,.hero-art::after{display:none}
-  .hero-lines{position:static;padding:0 14px 14px;color:rgba(255,255,255,.85)}
+  .hero-lines{padding:0 14px 14px}
   .panel{margin:0 12px;border-radius:22px;padding:20px 18px}
   h1{font-size:24px}
   .re-btn{font-size:15px;padding:12px 20px}
@@ -201,7 +201,8 @@ footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgb
   <div id="navbar-container"></div>
 <div class="hero-wrap">
   <div class="hero-art"><div class="hero-title">Concierge de Camarotes</div><img class="hero-img" src="/assets/concierge/hero-balcony.jpg"
-       alt="Un balcón de crucero al atardecer con un concierge esperando — el Concierge de Camarotes de Still Afloat"><div class="hero-lines"><p class="lead">Actualmente buscamos en las siguientes navieras</p><div class="names" id="linesList"></div></div></div>
+       alt="Un balcón de crucero al atardecer con un concierge esperando — el Concierge de Camarotes de Still Afloat"></div>
+  <div class="hero-lines"><p class="lead">Actualmente buscamos en las siguientes navieras</p><div class="names" id="linesList"></div></div>
   <main class="panel">
     <div class="re-topbar"><button class="re-back" id="backBtn" onclick="RC.back()">&larr; Back</button></div>
     <div id="stage"></div>
@@ -480,7 +481,7 @@ class RoomConciergeFlow {
       <p class="re-progress">Tu camarote</p>
       <h2 class="q">¿Ya tienes camarote asignado?</h2>
       <p class="re-intro" style="margin-top:-4px">Dime el número y te digo qué esperar — lo bueno, y lo que el folleto no cuenta.</p>
-      ${msg?`<p style="color:#ffca4f;margin:6px 0 0">${msg}</p>`:""}
+      ${msg?`<p style="color:#8f3a00;font-weight:700;margin:6px 0 0">${msg}</p>`:""}
       <input id="cabinNum" placeholder="p. ej. 8234" autocomplete="off"
         onkeydown="if(event.key==='Enter')RC.cabinCheck()">
       <div class="re-choices" style="margin-top:14px">
@@ -612,7 +613,7 @@ class RoomConciergeFlow {
     const nextLevel = s.nextLevel ? `
       <div style="display:flex;gap:10px;align-items:center;background:rgba(255,202,79,.12);border:1px solid rgba(255,202,79,.35);border-radius:13px;padding:9px 13px;margin:10px 0 10px">
         <span style="font-size:20px">✦</span>
-        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#ffca4f;display:block;margin-bottom:2px">Un escalón arriba: ${s.nextLevel.name}</span>
+        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#023e6e;display:block;margin-bottom:2px">Un escalón arriba: ${s.nextLevel.name}</span>
         <p style="margin:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,.85)">${s.nextLevel.why}</p></div>
       </div>` : "";
     const roomsBtn = s.hasRooms
@@ -665,7 +666,7 @@ class RoomConciergeFlow {
        visitante, el mismo error del 16/8: camarotes del tipo equivocado y ninguna
        explicación. Va arriba, porque cambia cómo se leen. */
     const note = d.note
-      ? `<p class="re-intro" style="background:rgba(255,202,79,.12);border-left:3px solid #ffca4f;
+      ? `<p class="re-intro" style="background:rgba(0,119,182,.10);border-left:3px solid #023e6e;
            border-radius:8px;padding:12px 14px;margin:0 0 16px">${d.note}</p>` : "";
     /* 92 de los 138 barcos heredan la numeración de un barco gemelo. Coinciden entre
        el 93% y el 99%, no al 100% — decirlo es más honesto que dar por verificado. */
@@ -701,7 +702,7 @@ class RoomConciergeFlow {
         ? "Esto es lo que haría en su lugar." : "Aquí es donde yo te pondría."}</h2>
       ${note}${inherited}
       ${picks}
-      ${steer?`<details class="why" style="margin:0 0 14px"><summary style="color:#ffca4f;font-weight:800">Mejor pasar de largo — ${(d.steerClear||[]).length} habitaciones que yo evitaría</summary>
+      ${steer?`<details class="why" style="margin:0 0 14px"><summary style="color:#023e6e;font-weight:800">Mejor pasar de largo — ${(d.steerClear||[]).length} habitaciones que yo evitaría</summary>
         <ul style="margin:8px 0 0;padding-left:18px;font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.78)">${steer}</ul></details>`:""}
       ${sendBar}`;
   }
