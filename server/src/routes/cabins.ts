@@ -921,9 +921,18 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
                : `our own Conga Line review puts it at ${sh.rating}/5 — right alongside the big lines`)
         : (esW ? "nuestra propia reseña la pone al nivel de las líneas grandes"
                : "our own review puts it right alongside the big lines");
+      // The fare clause must match the line's actual market position — "smaller
+      // fare" is true of Margaritaville, false of Celebrity. The matrix's own
+      // price virtue decides (0 = value line, 2 = premium).
+      const priceV = virtuesFor(matrix, sh.line, sh.shipClass)["price"] ?? 1;
+      const fareBit = priceV <= 0.75
+        ? (esW ? "con una tarifa más pequeña por la misma agua" : "at a smaller fare for the same water")
+        : priceV >= 1.25
+          ? (esW ? "un escalón más de pulido — y nuestra reseña dice que lo vale" : "a step up in polish — and our review says it earns it")
+          : (esW ? "y el valor se sostiene" : "and the value holds up");
       const why = esW
-        ? `Quizá no la tenías en el radar: ${ratingBit}, con una tarifa más pequeña por la misma agua. Encaja con lo que respondiste.`
-        : `Probably not on your radar: ${ratingBit}, at a smaller fare for the same water. And it fits what you told me.`;
+        ? `Quizá no la tenías en el radar: ${ratingBit}, ${fareBit}. Encaja con lo que respondiste.`
+        : `Probably not on your radar: ${ratingBit}, ${fareBit}. And it fits what you told me.`;
       worthALook = { ...sh, nextLevel, why };
       break;
     }
