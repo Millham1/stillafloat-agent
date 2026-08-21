@@ -1091,8 +1091,17 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
       };
     });
 
+    /**
+     * "Show me More Options" (Mark, 2026-08-21). The visitor gets the same
+     * reasoning over the same pool, just a longer shortlist — this is not a
+     * different algorithm, so a second screen can never contradict the first.
+     * The diversity pass in rank() still applies, so a long list stays a list of
+     * genuinely different rooms rather than one deck enumerated.
+     */
+    const more = raw["more"] === true || raw["more"] === "1" || req.query["more"] === "1";
     const selection = selectCabins({
       pool, chosenArchetypeId: chosen, answers, zones, knownCabins,
+      limit: more ? 24 : 5,
       inventory: shipTypeInventory(shipRow.category_counts),
       // Only the line's own account of what it sells lets us speak for a ship in
       // the negative. Everywhere else an absence is ours, not the ship's — see

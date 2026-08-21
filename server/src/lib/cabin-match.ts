@@ -525,12 +525,31 @@ export function selectCabins(opts: {
     scored.sort((a, b) =>
       a.moves - b.moves || a.pen - b.pen || a.arch - b.arch || a.rk - b.rk ||
       a.c.cabin.localeCompare(b.c.cabin));
+    /**
+     * Spread the shortlist. Mark, 2026-08-21, looking at Celebrity Ascent:
+     * five picks came back 6170 / 6171 / 6163 / 6166 / 6168 — one deck, one
+     * category, near-consecutive numbers. That is not five options, it is one
+     * option with five numbers, because neighbours score identically on motion
+     * and placement and the sort then falls through to cabin number.
+     *
+     * So take the best of each distinct (deck, category) first, in score order,
+     * and only then backfill with runners-up. Ordering is untouched — the best
+     * room is still first; we just stop showing it to the visitor five times.
+     */
     const out: PoolCabin[] = [];
     const seen = new Set<string>();
-    for (const s of scored) {
-      if (seen.has(s.c.cabin)) continue;
-      seen.add(s.c.cabin);
-      out.push(s.c);
+    const usedGroup = new Set<string>();
+    const groupOf = (c: PoolCabin) => `${c.deck ?? "?"}|${classifyCategory(c.category) ?? c.category ?? "?"}`;
+    for (const pass of [0, 1]) {
+      for (const s of scored) {
+        if (out.length === limit) break;
+        if (seen.has(s.c.cabin)) continue;
+        const g = groupOf(s.c);
+        if (pass === 0 && usedGroup.has(g)) continue;   // first pass: one per deck+type
+        seen.add(s.c.cabin);
+        usedGroup.add(g);
+        out.push(s.c);
+      }
       if (out.length === limit) break;
     }
     return out;
@@ -926,10 +945,32 @@ export function buildSteerClear(opts: {
     });
   }
 
-  return out
+  /**
+   * Three DIFFERENT problems, or one honest one. Mark, 2026-08-21: "all 3 rooms
+   * you said to stay clear of are all on the same deck and all are listed for
+   * exactly the same reason." They were: sorting by severity then cabin number
+   * hands back the neighbours either side of the worst room, and neighbours share
+   * a zone, so all three sentences restate that single zone.
+   *
+   * A skip-list earns its space by naming distinct things to avoid. So we take
+   * the worst room per (factor, deck, section) — a different problem, or the same
+   * problem in a different part of the ship — and if the hull only has one real
+   * problem we return one line rather than padding to three near-identical ones.
+   */
+  const ranked = out
     .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || a.cabin.localeCompare(b.cabin))
-    .filter((e, i, arr) => arr.findIndex((o) => o.cabin === e.cabin) === i)
-    .slice(0, limit);
+    .filter((e, i, arr) => arr.findIndex((o) => o.cabin === e.cabin) === i);
+
+  const picks: SteerEntry[] = [];
+  const usedProblem = new Set<string>();
+  for (const e of ranked) {
+    if (picks.length === limit) break;
+    const key = `${e.factor}|${e.deck ?? "?"}|${e.section ?? "?"}`;
+    if (usedProblem.has(key)) continue;
+    usedProblem.add(key);
+    picks.push(e);
+  }
+  return picks;
 }
 
 /** Decks a zone touches — lets the caller fetch a BOUNDED slice of the grid. */
