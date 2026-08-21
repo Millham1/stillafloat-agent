@@ -509,7 +509,7 @@ class RoomConciergeFlow {
            but I'd confirm the exact room with me before you book it.</p>` : "";
     this.stageEl.innerHTML = `
       <p class="re-progress">Your rooms · ${this.roomsShip}</p>
-      <h2 class="q">${d.outcome === "ship-has-none" || d.outcome === "none-researched"
+      <h2 class="q">${d.outcome === "ship-has-none" || d.outcome === "none-researched" || d.outcome === "type-not-mapped"
         ? "Here's what I'd do instead." : "Here's where I'd put you."}</h2>
       ${note}${inherited}
       ${picks}

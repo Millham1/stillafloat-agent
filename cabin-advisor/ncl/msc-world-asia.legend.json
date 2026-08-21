@@ -1,0 +1,22 @@
+{
+ "12305D": ["VLA (Infinite Ocean View Aurea 12-14; PDF p2 printed legend)", "Infinite Ocean View"],
+ "003991": ["VL1 (Infinite Ocean View 10-11)", "Infinite Ocean View"],
+ "417DBF": ["OR1/OR2 (Deluxe Ocean View 5-9/10-12; 57 unanimous deck-5 anchors; DB IOV labels on 10001-4/11001-4 = zone-match junk, Europa curation says Ocean View)", "Ocean View"],
+ "C4E6FA": ["OS (Studio Ocean View 5-14; NO ship DB studio name - SKIP; Europa calls these 'Studio'; sole DB anchor 9001='Balcony' is import junk)", "SKIP-Studio"],
+ "49A670": ["BR1-BR4 (Deluxe Balcony, deck-banded; 939 anchors Balcony; ignore junk YC-on-green 9026-9055 + deck-12 pair-swaps 12100-12116)", "Balcony"],
+ "00443E": ["BA (Deluxe Balcony Aurea 12-16)", "Balcony"],
+ "002800": ["BGA (Premium Balcony Aurea, deck 9 only; 42 anchors)", "Balcony"],
+ "98C899": ["BP/PV/PR1-3 (Balcony partial-view/promenade family; = 'Promenade Balcony' ON DECK 10 ONLY (PR1, 30 anchors), 'Balcony' on 9/11-16 (unanimous per-deck anchors))", "Balcony"],
+ "EEA8C4": ["IR1/IR2 (Deluxe Interior 5-21)", "Interior"],
+ "F7E3F0": ["IS (Studio Interior 11-19; NO ship DB studio name - SKIP; Europa calls these 'Studio')", "SKIP-Studio"],
+ "EB8227": ["SX/SXT/SXJ (Grand Suite Aurea family)", "Family Suite"],
+ "F19E41": ["SL1/SLP (Premium Suite Aurea)", "Family Suite"],
+ "F8C76D": ["SRP (Grand Suite Aurea Terrace+Whirlpool, deck 16)", "Family Suite"],
+ "C9C8B9": ["YC1 (MSC Yacht Club Deluxe Suite 15-21; 98 unanimous enclave anchors on 16/18-21)", "MSC Yacht Club Deluxe"],
+ "D5D5D2": ["YIN (MSC Yacht Club Interior Suite 15-16; NO ship DB name - SKIP; Europa: 'MSC Yacht Club Interior'; sole anchor 16014='Interior' is the suspect import)", "SKIP-YC-Interior"],
+ "4A3F38": ["YC4 (YC Owner's Suite w/ Whirlpool 16-18; DB 'Interior' on 18001/16002 = junk)", "SKIP-YC-suite-tier"],
+ "61574B": ["YC3 (YC Royal Suite w/ Whirlpool 16-18)", "SKIP-YC-suite-tier"],
+ "786D5D": ["YJD (YC Duplex Suite, deck 16 + upper level on 18)", "SKIP-YC-suite-tier"],
+ "8C8170": ["YCD (YC Duplex Suite w/ Whirlpool Bath, deck 16)", "SKIP-YC-suite-tier"],
+ "6F5946": ["YD3 (YC Royal Duplex Suite 16024/26/28/30, upper level on 18; in ship.json grade_codes but MISSING from printed legend)", "SKIP-YC-suite-tier"]
+}

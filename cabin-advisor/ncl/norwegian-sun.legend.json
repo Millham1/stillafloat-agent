@@ -1,0 +1,18 @@
+{
+ "2C444C": [
+  "AFT-SLATE (aft-rounding stack; anchors 8278/9077=Inside)",
+  "Inside"
+ ],
+ "DC047C": [
+  "AFT-MAGENTA (anchors 8074-8076 x2 sides=Oceanview)",
+  "Oceanview"
+ ],
+ "DC8CBC": [
+  "INT-PINK (interior blocks)",
+  "Inside"
+ ],
+ "ACACAC": [
+  "INT-GREY (interior blocks)",
+  "Inside"
+ ]
+}

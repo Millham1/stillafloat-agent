@@ -25,7 +25,7 @@ import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import {
   normalizeAnswers, pickArchetype, selectCabins, selectionNote,
-  shipTypeInventory, classifyCategory, zonesForCabin,
+  shipTypeInventory, classifyCategory, zonesForCabin, satisfies,
 } from "./cabin-match.mjs";
 
 if (!globalThis.WebSocket) globalThis.WebSocket = ws;
@@ -41,12 +41,28 @@ const BUDGET = ["lean", "middle", "treat", "sky"];
 const MOTION = [true, false, false];                                   // 3 options, 2 meanings
 const DESTINATIONS = 8;   // does not affect cabin selection; multiplies the case count
 
-async function pageAll(table, select, filter) {
+// `order` is REQUIRED. Paging with .range() and no ORDER BY gives no stable row
+// order, so pages drop and repeat rows — it cost the unit fixture 85,306 of
+// 225,924 cabins on 2026-08-18. This sweep is meant to corroborate that fixture
+// against live rows, so the same bug here would have made the two agree while
+// both were wrong.
+async function pageAll(table, select, order, filter) {
   const out = [];
   for (let from = 0; ; from += 1000) {
-    let q = db.from(table).select(select).range(from, from + 999);
-    if (filter) q = filter(q);
-    const { data, error } = await q;
+    // Paging 226k rows trips Supabase's statement timeout now and then — twice on
+    // 2026-08-19, which killed a 20-minute sweep both times. A harness that dies at random
+    // teaches you to re-run until it is green, which is how a false green gets believed.
+    let data, error;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      let q = db.from(table).select(select).range(from, from + 999);
+      for (const col of order ?? []) q = q.order(col);
+      if (filter) q = filter(q);
+      ({ data, error } = await q);
+      if (!error) break;
+      if (attempt === 3) break;
+      console.log(`  ${table} rows ${from}-${from + 999}: ${error.message} — retry ${attempt + 1}/3`);
+      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+    }
     if (error) throw new Error(`${table}: ${error.message}`);
     out.push(...(data ?? []));
     if (!data || data.length < 1000) break;
@@ -56,12 +72,14 @@ async function pageAll(table, select, filter) {
 
 console.log("loading the fleet from Supabase...");
 const ships = await pageAll("cabin_ships", "slug,ship,line,category_counts,derived_from,numbering_verified",
-  (q) => q.eq("in_fleet", true));
-const advice = await pageAll("cabin_advice", "ship_slug,archetype_id,recommendations");
+  ["slug"], (q) => q.eq("in_fleet", true));
+const advice = await pageAll("cabin_advice", "ship_slug,archetype_id,recommendations", ["ship_slug","archetype_id"]);
 const zonesAll = await pageAll("cabin_context_zones",
-  "rep_slug,factor,decks,sections,sides,what,effect,matters_to,severity,confidence,source");
-const ctxShips = await pageAll("cabin_context_ships", "ship_slug,rep_slug");
-const cabins = await pageAll("cabins", "ship_slug,cabin_num,deck,category,section,side");
+  "rep_slug,factor,decks,sections,sides,what,effect,matters_to,severity,sign,confidence,source", ["rep_slug","factor"]);
+const ctxShips = await pageAll("cabin_context_ships", "ship_slug,rep_slug", ["ship_slug"]);
+const cabins = await pageAll("cabins",
+  "ship_slug,cabin_num,deck,category,section,side,above_kind,below_kind,noise_nearby,real_ocean,obstruction",
+  ["ship_slug","cabin_num"]);
 
 console.log(`  ${ships.length} ships, ${cabins.length.toLocaleString()} cabins, ${advice.length} advice rows, ${zonesAll.length} zones`);
 
@@ -83,13 +101,14 @@ for (const z of zonesAll) {
   const arr = zonesByRep.get(z.rep_slug) ?? [];
   arr.push({ factor: z.factor, decks: z.decks ?? [], sections: z.sections ?? [], sides: z.sides ?? [],
     what: z.what, effect: z.effect, mattersTo: z.matters_to,
-    severity: z.severity, confidence: z.confidence, source: z.source });
+    severity: z.severity, sign: z.sign ?? "penalty", confidence: z.confidence, source: z.source });
   zonesByRep.set(z.rep_slug, arr);
 }
 
 const ARCHETYPE_ROWS = [...new Set(advice.map((a) => a.archetype_id))].map((archetype_id) => ({ archetype_id }));
 
 let cases = 0;
+let upgrades = 0;   // room satisfies the ask but its primary label is a pricier type
 const outcomes = {};
 const failures = [];
 const note = (m) => { if (failures.length < 40) failures.push(m); };
@@ -103,14 +122,34 @@ for (const s of ships) {
   const zones = zonesByRep.get(repByShip.get(s.slug)) ?? [];
   const rows = adviceBySlug.get(s.derived_from ?? s.slug) ?? [];
 
-  const pool = [];
+  // THE POOL IS THE WHOLE SHIP — the same as routes/cabins.ts. Until 2026-08-19 this sweep
+  // built its pool from the stored recommendation lists, which production stopped doing when
+  // Mark said "no preset lists for the advisor". So the sweep went green against a candidate
+  // set the live endpoint never sees: it could not exercise an uncurated cabin winning, and
+  // it never loaded noise_nearby / above_kind / below_kind at all.
+  const storedByCabin = new Map();
   for (const r of rows) {
     for (const rec of r.recommendations ?? []) {
       const num = String(rec.cabin);
-      const f = grid.get(num);
-      pool.push({ cabin: num, rank: rec.rank ?? null, archetypeId: r.archetype_id,
-        category: f?.category ?? null, deck: f?.deck ?? null, section: f?.section ?? null, side: f?.side ?? null });
+      if (!storedByCabin.has(num)) {
+        storedByCabin.set(num, { archetypeId: r.archetype_id, rank: rec.rank ?? null });
+      }
     }
+  }
+  const pool = [];
+  for (const [num, f] of grid) {
+    const stored = storedByCabin.get(num);
+    pool.push({
+      cabin: num, rank: stored?.rank ?? null, archetypeId: stored?.archetypeId ?? null,
+      category: f.category ?? null, deck: f.deck ?? null, section: f.section ?? null,
+      side: f.side ?? null,
+      aboveKind: f.above_kind ?? null, belowKind: f.below_kind ?? null,
+      noiseNearby: f.noise_nearby ?? null,
+      // Added 2026-08-19 with the columns themselves. A sweep whose pool is missing a field
+      // the live endpoint passes is testing a different program — the exact reason this
+      // script's pool was rebuilt from the whole grid earlier the same day.
+      realOcean: f.real_ocean ?? null, obstruction: f.obstruction ?? null,
+    });
   }
 
   for (const party of PARTY)
@@ -132,7 +171,13 @@ for (const s of ships) {
     if (sel.outcome === "exact") {
       for (const p of sel.picks) {
         const dbCat = grid.get(p.cabin)?.category ?? null;
-        if (classifyCategory(dbCat) !== sel.asked) {
+        // Judge by the rule the CODE uses — satisfies(), which is attribute-based — not by
+        // classifyCategory(), which returns one best label for wording. "Ocean View Balcony"
+        // has BOTH attributes, so serving it to an ocean-view asker is correct: the room does
+        // have an ocean view. Asserting on the single label instead flagged thousands of those
+        // and would have buried any real failure underneath them.
+        if (satisfies(dbCat, sel.asked) && classifyCategory(dbCat) !== sel.asked) upgrades++;
+        if (!satisfies(dbCat, sel.asked)) {
           note(`${s.slug}: asked ${sel.asked}, served ${p.cabin} which the DB calls "${dbCat}"`);
         }
       }
@@ -142,9 +187,13 @@ for (const s of ships) {
     }
     // 4. seasickness is answered by placement, not by archetype
     if (answers.seasick && sel.picks.length > 1 && zones.length) {
+      // `factor` is the TOPIC; `sign` is the verdict (migration 0025). Six motion zones read
+      // "midship cabins feel the least motion" / "less motion than higher decks, recommended
+      // pick" — checking the factor alone marked the advisor wrong for leading with exactly the
+      // room the research recommends (msc-magnifica 5063). Only a PENALTY zone is an indictment.
       const moves = (p) => zonesForCabin(
         { deck: p.deck, section: p.section, side: p.side, category: p.category }, zones)
-        .some((z) => z.factor === "motion");
+        .some((z) => z.factor === "motion" && (z.sign ?? "penalty") === "penalty");
       if (moves(sel.picks[0]) && sel.picks.some((p) => !moves(p))) {
         note(`${s.slug}: seasick visitor led with ${sel.picks[0].cabin}, which sits in a motion zone`);
       }
@@ -158,6 +207,9 @@ console.log(`\nswept ${cases.toLocaleString()} cases across ${ships.length} ship
 console.log("outcomes:", outcomes);
 const exact = outcomes.exact ?? 0;
 console.log(`exact: ${(100 * exact / cases).toFixed(2)}%`);
+console.log(`served a room that satisfies the ask but is labelled a pricier type: ${upgrades.toLocaleString()}` +
+            ` (${(100 * upgrades / Math.max(exact, 1)).toFixed(1)}% of exact answers)` +
+            ` — correct per satisfies(), but worth Mark seeing: an ocean-view asker shown a balcony room`);
 if (failures.length) {
   console.log(`\n${failures.length}+ FAILURES:`);
   for (const f of failures) console.log("  " + f);

@@ -1,10 +1,17 @@
 // cabins.ts — the Cabin Concierge API (Room Engine).
 //
-// Cost architecture, revised (Mark, 2026-08-12): TWO layers.
-//   1. SELECTION stays pre-computed (2026-07-26 cliffnotes pattern): which cabins
-//      suit which traveller archetype was reasoned ONCE over the full grid and
-//      stored in public.cabin_advice. That full-grid reasoning is the expensive
-//      part and never runs at request time.
+// Architecture (Mark, 2026-08-18): THE ADVISOR HOLDS NO CABIN LISTS.
+//   1. SELECTION reads the ROOM DATA, which is the fact layer: every room on the
+//      hull is a candidate, ranked on the researched obstruction zones plus each
+//      room's own derived facts (what sits above and below it — migrations
+//      0019/0020). Until today candidates were the pre-written picks in
+//      cabin_advice, so ~45 of a ship's 2,000 rooms could ever be shown; Norwegian
+//      Aqua had 140 ocean-view cabins with 11 reachable, and a mislabelled room
+//      could hide for months behind a list that never mentioned it. Mark: "no
+//      preset lists for the advisor — every cabin needs to be accurate, if nothing
+//      else because the user can ask about it by entering the room number."
+//      cabin_advice survives ONLY as pre-written wording and a tie-break between
+//      rooms the facts cannot separate. It can never gate what is offered.
 //   2. PRESENTATION is reasoned LIVE per search (Mark's direction: "the agent
 //      should REASON a description, not regurgitate something stored in the
 //      table"). A scoped Haiku call sees ONLY the selected cabins' saved facts +
@@ -25,12 +32,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
+import { obstructionLine, placementLines } from "../lib/cabin-placement.js";
 import { logger } from "../lib/logger";
 import {
   normalizeAnswers, pickArchetype, selectCabins, selectionNote,
-  shipTypeInventory, zonesForCabin, classifyCategory, satisfies,
+  shipTypeInventory, zonesForCabin, zoneSign, classifyCategory, satisfies,
   buildSteerClear, zoneDecks, validateSteerProse, plainSteerLine, steerPromptFacts,
   type Answers, type PoolCabin, type Zone, type SteerCandidate, type SteerFacts,
+  type CabinType,
 } from "../lib/cabin-match";
 
 const router: IRouter = Router();
@@ -53,7 +62,7 @@ async function shipGrid(ship: string): Promise<CabinRow[]> {
   const supabase = getSupabase();
   const rows = await readAll<CabinRow>((from, to) => supabase
     .from("cabins")
-    .select("cabin_num,deck,category,section,side,view,sleeps,obstructed,obstruction,note,x,tour")
+    .select("cabin_num,deck,category,section,side,view,real_ocean,sleeps,obstructed,obstruction,view_blocked,note,x,tour,above_kind,below_kind,noise_nearby,noise_kind")
     .eq("ship_slug", ship)
     .order("cabin_num")
     .range(from, to));
@@ -72,15 +81,21 @@ async function zonesForShip(ship: string): Promise<{ rep: string; zones: Zone[] 
   const { data: ctxShip } = await supabase
     .from("cabin_context_ships").select("rep_slug").eq("ship_slug", ship).maybeSingle();
   const rep = (ctxShip as { rep_slug: string } | null)?.rep_slug ?? ship;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("cabin_context_zones")
-    .select("factor,decks,sections,sides,what,effect,matters_to,severity,confidence,source")
+    .select("factor,decks,sections,sides,what,effect,what_es,effect_es,matters_to,severity,sign,confidence,source")
     .eq("rep_slug", rep);
+  // A schema mismatch (e.g. a box whose DB missed migration 0025/0026) must not
+  // silently disable the whole moat layer as an empty zone list.
+  if (error) console.error(`zonesForShip ${ship}: zone select failed - ${error.message}`);
   const zones = ((data ?? []) as Record<string, unknown>[]).map((z) => ({
     factor: String(z["factor"]), decks: (z["decks"] as number[]) ?? [],
     sections: (z["sections"] as string[]) ?? [], sides: (z["sides"] as string[]) ?? [],
     what: (z["what"] as string) ?? null, effect: (z["effect"] as string) ?? null,
+    whatEs: (z["what_es"] as string) ?? null, effectEs: (z["effect_es"] as string) ?? null,
     mattersTo: (z["matters_to"] as string) ?? null,
+    // missing => "penalty", so an un-reviewed zone behaves exactly as it did before 0025.
+    sign: (z["sign"] as "penalty" | "benefit" | "neutral") ?? "penalty",
     severity: z["severity"], confidence: z["confidence"], source: String(z["source"]),
   })) as Zone[];
   if (zoneCache.size >= GRID_CACHE_MAX) {
@@ -117,8 +132,18 @@ async function readAll<T>(build: (from: number, to: number) => PromiseLike<{ dat
 interface CabinRow {
   cabin_num: string; deck: number | null; category: string | null; section: string | null;
   side: string | null; view: string | null; sleeps: number | null;
+  /** Does it actually face open sea? Filled fleet-wide 2026-08-19; null = category unreadable. */
+  real_ocean: boolean | null;
   obstructed: boolean | null; obstruction: string | null; note: string | null;
+  /** Structured obstruction kind when known ("lifeboat" | "taper") — drives the guest wording. */
+  view_blocked: string | null;
   x: string | number | null;
+  /** Derived per room (migrations 0019/0020): what is on the deck above/below AT THIS SPOT. */
+  above_kind: "cabins" | "open" | "unknown" | null;
+  below_kind: "cabins" | "open" | "unknown" | null;
+  /** A lift lobby or stairwell within four rooms, read off the deck plan (0021). */
+  noise_nearby: string | null;
+  noise_kind: "lift" | "stairs" | "venue" | null;
 }
 
 // The locked voice guide is the system prompt for live presentation reasoning —
@@ -460,7 +485,11 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
     // that are the entire reason this feature has an edge.
     const { zones } = await zonesForShip(ship);
     const research = hit ? zonesForCabin(
-      { deck: hit.deck, section: hit.section, side: hit.side, category: hit.category }, zones) : [];
+      { deck: hit.deck, section: hit.section, side: hit.side, category: hit.category }, zones)
+      // Only penalty zones may WARN. Without this, the 83 benefit-signed zones ("the horizon
+      // view is unaffected", the hump) headline as problems on this page — the same inversion
+      // fixed in viewVerdict, living on in this hand-rolled third copy of the verdict logic.
+      .filter((z) => zoneSign(z) === "penalty") : [];
 
     if (!hit) {
       // near matches so a typo does not dead-end the visitor
@@ -511,7 +540,10 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
       lines.push(es
         ? "Según lo que hay afuera de esa ventana, tu vista puede verse afectada. Suele ser un bote salvavidas, una estructura del casco o un saliente de la cubierta de arriba."
         : "Based on what sits outside that window, your view may be affected. Usually that means a lifeboat, part of the ship's structure, or an overhang from the deck above.");
-      if (hit.obstruction) lines.push(String(hit.obstruction));
+      // Rendered, never raw: the column stores research ("heavy: lifeboat", prose that cites
+      // its sources); the guest line is built from the structured parts in the guest's language.
+      const ob = obstructionLine(hit.obstruction, hit.view_blocked, es);
+      if (ob) lines.push(ob);
       lines.push(es
         ? "Sigue siendo luz natural y aire — mucha gente lo reserva a propósito por el precio. Solo conviene saberlo antes de subir a bordo, no después."
         : "You still get natural light and air, and plenty of people book these on purpose for the price. It's just worth knowing before you board rather than after.");
@@ -520,14 +552,19 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
       if (research.length) {
         const worst = research[0]!;
         confidence = worst.confidence === "high" ? 0.9 : worst.confidence === "medium" ? 0.6 : 0.35;
-        const viewish = research.find((z) => ["lifeboat", "hump", "taper"].includes(z.factor));
+        // "hump" deliberately absent: the hull steps OUT there and the balcony is better for
+        // it, so it must never lead with "something may sit in your view".
+        const viewish = research.find((z) => ["lifeboat", "taper", "obstruction"].includes(z.factor));
         headline = viewish
           ? (es ? "Algo puede aparecer en tu vista" : "Something may sit in your view")
           : (es ? "Vale saber qué tienes cerca" : "Worth knowing what's near you");
         if (viewish) lines.push(es
           ? "Por lo que hay afuera de esa ventana, tu vista puede verse afectada:"
           : "Based on what sits outside that window, your view may be affected:");
-        for (const z of research.slice(0, 2)) { const t = z.what || z.effect; if (t) lines.push(t); }
+        for (const z of research.slice(0, 2)) {
+          const t = es ? (z.whatEs ?? z.effectEs ?? z.what ?? z.effect) : (z.what || z.effect);
+          if (t) lines.push(t);
+        }
       } else {
       // Soft signal: same deck, same side, close along the hull — neighbours flagged?
       const x = Number(hit.x);
@@ -562,6 +599,12 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
       }
     }
     }
+
+    // WHAT IS AROUND YOU. Everything above answers the window. Mark's reason for wanting
+    // every room right was the other half — "the user can ask about it by entering the room
+    // number" — and until 2026-08-19 this endpoint told interior guests that placement is
+    // what matters here and then said nothing whatever about it.
+    lines.push(...placementLines(hit, es));
 
     // Honest about our own limits when the ship's data is thin — Mark's rule: a wrong
     // "you're fine" is worse than no answer.
@@ -901,12 +944,13 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     // reasoning came from, as data.
     const { data: shipRowData } = await supabase
       .from("cabin_ships")
-      .select("slug,ship,line,class,category_counts,derived_from,numbering_verified")
+      .select("slug,ship,line,class,category_counts,derived_from,numbering_verified,line_types")
       .eq("slug", ship).maybeSingle();
     const shipRow = shipRowData as {
       slug: string; ship: string; line: string; class: string;
       category_counts: Record<string, number> | null;
       derived_from: string | null; numbering_verified: boolean;
+      line_types: string[] | null;
     } | null;
     if (!shipRow) return res.status(404).json({ error: "Unknown ship" });
 
@@ -942,40 +986,70 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     // cabin_context_zones is loaded, in which case the tool simply says less.
     const { data: zoneData } = await supabase
       .from("cabin_context_zones")
-      .select("factor,decks,sections,sides,what,effect,matters_to,severity,confidence,source")
+      .select("factor,decks,sections,sides,what,effect,what_es,effect_es,matters_to,severity,sign,confidence,source")
       .eq("rep_slug", adviceSlug);
     const zones = ((zoneData ?? []) as Record<string, unknown>[]).map((z) => ({
       factor: String(z["factor"]), decks: (z["decks"] as number[]) ?? [],
       sections: (z["sections"] as string[]) ?? [], sides: (z["sides"] as string[]) ?? [],
       what: (z["what"] as string) ?? null, effect: (z["effect"] as string) ?? null,
+      whatEs: (z["what_es"] as string) ?? null, effectEs: (z["effect_es"] as string) ?? null,
       mattersTo: (z["matters_to"] as string) ?? null,
+      // missing => "penalty", so an un-reviewed zone behaves exactly as it did before 0025.
+      sign: (z["sign"] as "penalty" | "benefit" | "neutral") ?? "penalty",
       severity: z["severity"], confidence: z["confidence"], source: String(z["source"]),
     })) as Zone[];
 
     const chosen = pickArchetype(rows, answers);
     const advice = rows.find((r) => r.archetype_id === chosen) ?? rows[0] ?? null;
 
-    // THE POOL IS EVERY ARCHETYPE'S PICKS, not just the winner's. The stored picks
-    // are themselves mixed-type — the balcony archetype recommends 208 balcony
-    // cabins and 50 ocean-view ones — so filtering only the winner's list could
-    // leave a balcony-asker with nothing of the right kind and no honest way to
-    // say so. Pooling first, filtering second, is what makes the type guarantee real.
-    const pool: PoolCabin[] = [];
+    // THE CANDIDATES ARE THE WHOLE SHIP.
+    //
+    // Until 2026-08-18 they were the union of the twelve archetypes' pre-written
+    // picks — roughly 45 cabins out of 2,000. That made the stored corpus a
+    // gate on what a visitor could ever be shown: Norwegian Aqua has 140 ocean-view
+    // cabins and exactly 11 were reachable, and a room could be mislabelled for
+    // months without the recommendations revealing it. Mark's call: "no preset
+    // lists for the advisor — every cabin needs to be accurate, if nothing else
+    // because the user can ask about it by entering the room number."
+    //
+    // So every room on the hull competes, ranked on the obstruction research
+    // (selectCabins), and the pre-written reasoning is attached where it happens
+    // to exist — as wording and a tie-break, never as eligibility. Wording for
+    // everything else comes from reasonLive, which already writes from cabin
+    // facts rather than reciting a stored line.
+    const storedByCabin = new Map<string, { archetypeId: string; rank: number | null; reason: string | null }>();
     for (const r of rows) {
       for (const rec of (r.recommendations ?? []) as { cabin: number | string; rank?: number; reason?: string }[]) {
         const num = String(rec.cabin);
-        const f = factByNum.get(num);
-        pool.push({
-          cabin: num, rank: rec.rank ?? null, reason: rec.reason ?? null,
-          archetypeId: r.archetype_id, category: f?.category ?? null,
-          deck: f?.deck ?? null, section: f?.section ?? null, side: f?.side ?? null,
-        });
+        // The winner's own reasoning wins the slot; otherwise first writer keeps it.
+        if (!storedByCabin.has(num) || r.archetype_id === chosen) {
+          storedByCabin.set(num, { archetypeId: r.archetype_id, rank: rec.rank ?? null, reason: rec.reason ?? null });
+        }
       }
     }
+    const pool: PoolCabin[] = grid.map((f) => {
+      const num = String(f.cabin_num);
+      const stored = storedByCabin.get(num);
+      return {
+        cabin: num,
+        archetypeId: stored?.archetypeId ?? null,
+        rank: stored?.rank ?? null,
+        reason: stored?.reason ?? null,
+        category: f.category ?? null,
+        deck: f.deck ?? null, section: f.section ?? null, side: f.side ?? null,
+        aboveKind: f.above_kind ?? null, belowKind: f.below_kind ?? null,
+        noiseNearby: f.noise_nearby ?? null,
+        realOcean: f.real_ocean ?? null, obstruction: f.obstruction ?? null,
+      };
+    });
 
     const selection = selectCabins({
       pool, chosenArchetypeId: chosen, answers, zones, knownCabins,
       inventory: shipTypeInventory(shipRow.category_counts),
+      // Only the line's own account of what it sells lets us speak for a ship in
+      // the negative. Everywhere else an absence is ours, not the ship's — see
+      // the outcome block in cabin-match.ts.
+      lineTypes: (shipRow.line_types as CabinType[] | null) ?? null,
     });
     if (selection.dropped.length) {
       // The advice corpus is model-written, so it names cabins that do not exist
@@ -1023,7 +1097,6 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
       const written = await writeSteerLines(shipRow.ship ?? ship, facts, answers, lang);
       steerClear = entries.map((e) => ({ cabin: e.cabin, reason: written.get(e.cabin) ?? e.reason }));
     }
-    const storedSteer = steerClear;
 
     const live = picks.length
       ? await reasonLive(shipRow.ship ?? ship, answers, picks, steerClear, lang)

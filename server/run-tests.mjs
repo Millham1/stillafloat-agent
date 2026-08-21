@@ -3,7 +3,7 @@
 // pure modules (keep heavy I/O out of test dependency graphs).
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readdir, rm } from "node:fs/promises";
+import { readdir, rm, cp } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { build as esbuild } from "esbuild";
 
@@ -42,6 +42,12 @@ await esbuild({
     js: `import { createRequire as __trCrReq } from 'node:module';\nglobalThis.require = __trCrReq(import.meta.url);`,
   },
 });
+
+// Fixtures are READ at runtime, not bundled: the cabin-pool fixture is a gzipped
+// 12MB dump of every room on all 138 hulls, so esbuild cannot inline it the way it
+// did when the fixture was small enough to `import`. Copy it next to the bundle so
+// the relative path resolves from dist-test/.
+await cp(path.join(srcDir, "lib", "__fixtures__"), path.join(outDir, "__fixtures__"), { recursive: true });
 
 // Pass the built files EXPLICITLY rather than the directory. `node --test <dir>`
 // does not scan for test files on every Node 22.x — on 22.11 it tries to load the

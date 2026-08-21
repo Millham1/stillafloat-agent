@@ -46,7 +46,16 @@ import {
 import {
   PERSONALITY_QS, EXPECT_QS, inferAxes, traitsFor, everyCombination, type Axes,
 } from "./concierge-interview";
-import fixture from "./__fixtures__/cabin-pool.fixture.json";
+// Gzipped, because the candidate set is now every room on all 138 hulls rather
+// than the ~45 pre-written picks per ship: 12MB of JSON, 800KB on disk, ~150ms to
+// load. Shrinking the fixture instead would mean testing a smaller ship than the
+// one production serves.
+import { gunzipSync } from "node:zlib";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+const fixture = JSON.parse(
+  gunzipSync(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "__fixtures__/cabin-pool.fixture.json.gz"))).toString("utf8"),
+) as { ships: Record<string, unknown> };
 
 // EVERY ship the visitor can pick — 138, not the 45 class reps.
 //
@@ -63,9 +72,17 @@ type ShipFixture = {
   derivedFrom: string | null;
   categoryCounts: Record<string, number>;
   gridSize: number;
-  pool: [string, string, number | null, string | null, boolean][];
+  /**
+   * EVERY room on the hull — the same candidate set routes/cabins.ts builds.
+   * [cabin, archetypeId|null, rank|null, category, deck, section, side, isOnShip,
+   *  aboveKind, belowKind]
+   * archetypeId is the pre-written reasoning where any exists; most rooms have none.
+   * aboveKind/belowKind are the per-room derived facts (migrations 0019/0020) —
+   * without them here the sweep could not exercise the ranking production runs.
+   */
+  pool: [string, string | null, number | null, string | null, number | null, string | null, string | null, 0 | 1,
+         ('cabins'|'open'|'unknown'|null)?, ('cabins'|'open'|'unknown'|null)?, (string|null)?][];
   steer: [string, string, boolean][];
-  placement: Record<string, [number | null, string | null, string | null]>;
 };
 const SHIPS = fixture.ships as unknown as Record<string, ShipFixture>;
 const SHIP_SLUGS = Object.keys(SHIPS);
@@ -126,12 +143,59 @@ test("motion: a seasick visitor is never LED with a cabin the research says move
   });
   assert.equal(seasick.picks[0]?.cabin, "8100", "a seasick visitor was led with the pitching cabin");
 
-  // Someone who is fine gets the archetype's own order back — no silent penalty.
+  // Someone who is fine is ALSO led with the steadier room, and this is deliberate.
+  // Mark, correcting me on 8/17: "riding the bow and feeling every wave are not
+  // tied to seasickness… even if they do not get sick, they will still feel the
+  // motion in the bow and stern." The pitch is a fact about the room, so it orders
+  // the list for everyone; only the WORDING changes for someone who raised it.
+  // The pitching cabin is still offered — demoted, never hidden.
   const fine = selectCabins({
     pool, chosenArchetypeId: "chosen", zones, knownCabins: known, inventory,
     answers: normalizeAnswers({ room: "balcony", motion: false }),
   });
-  assert.equal(fine.picks[0]?.cabin, "17001");
+  assert.equal(fine.picks[0]?.cabin, "8100");
+  assert.ok(fine.picks.some((p) => p.cabin === "17001"), "the pitching cabin must still be shown, just not led with");
+});
+
+test("selection: a cabin no archetype ever wrote about can still be recommended", () => {
+  // The point of dropping the preset list (Mark, 8/18: "no preset lists for the
+  // advisor"). Until then candidates WERE the pre-written picks, so ~45 of a
+  // ship's 2,000 rooms could ever be shown and a mislabelled room could hide for
+  // months. An uncurated room that is a better placement must now win.
+  const zones: Zone[] = [
+    { factor: "lifeboat", decks: [8], sections: ["mid"], sides: [], what: "Lifeboats sit right outside.",
+      effect: "The water is behind hardware from this row.", mattersTo: "Anyone who booked for the view.",
+      severity: "significant", confidence: "high", source: "class research" },
+  ];
+  const pool: PoolCabin[] = [
+    // pre-written, top-ranked — but the research says a lifeboat is outside it
+    { cabin: "8100", archetypeId: "chosen", rank: 1, category: "Balcony", deck: 8, section: "mid", side: "port" },
+    // never written about by anyone; nothing against it
+    { cabin: "9100", archetypeId: null, rank: null, category: "Balcony", deck: 9, section: "mid", side: "port" },
+  ];
+  const sel = selectCabins({
+    pool, chosenArchetypeId: "chosen", zones, knownCabins: new Set(["8100", "9100"]),
+    inventory: shipTypeInventory({ Balcony: 100 }),
+    answers: normalizeAnswers({ room: "balcony", priority: "ocean", motion: false }),
+  });
+  assert.equal(sel.outcome, "exact");
+  assert.equal(sel.picks[0]?.cabin, "9100", "an uncurated but better-placed cabin must be able to lead");
+});
+
+test("selection: pre-written reasoning still breaks ties between equal rooms", () => {
+  // Dropping the gate must not throw away real advisor judgment — with nothing
+  // in the research to separate two rooms, the one an advisor already reasoned
+  // about leads.
+  const pool: PoolCabin[] = [
+    { cabin: "9200", archetypeId: null, rank: null, category: "Balcony", deck: 9, section: "mid", side: "port" },
+    { cabin: "9300", archetypeId: "chosen", rank: 1, category: "Balcony", deck: 9, section: "mid", side: "port" },
+  ];
+  const sel = selectCabins({
+    pool, chosenArchetypeId: "chosen", zones: [], knownCabins: new Set(["9200", "9300"]),
+    inventory: shipTypeInventory({ Balcony: 100 }),
+    answers: normalizeAnswers({ room: "balcony", motion: false }),
+  });
+  assert.equal(sel.picks[0]?.cabin, "9300");
 });
 
 test("motion: someone who says they get seasick can actually reach the steady archetype", () => {
@@ -218,10 +282,14 @@ test("expectations: all 9,600 combinations normalise to a usable request", () =>
 // ─────────────────────────────────────────────────────────────────────────────
 
 function poolFor(f: ShipFixture): PoolCabin[] {
-  return f.pool.map(([cabin, archetypeId, rank, category]) => ({ cabin, archetypeId, rank, category }));
+  // Placement travels with the candidate: without deck/section/side the sweep
+  // could not exercise the zone ranking that now orders the whole ship.
+  return f.pool.map(([cabin, archetypeId, rank, category, deck, section, side, , aboveKind, belowKind, noiseNearby]) =>
+    ({ cabin, archetypeId, rank, category, deck, section, side,
+       aboveKind: aboveKind ?? null, belowKind: belowKind ?? null, noiseNearby: noiseNearby ?? null }));
 }
 function knownFor(f: ShipFixture): Set<string> {
-  return new Set(f.pool.filter((p) => p[4]).map((p) => p[0]));
+  return new Set(f.pool.filter((p) => p[7] === 1).map((p) => p[0]));
 }
 
 test("selection: a visitor is NEVER silently given a cabin type they did not ask for", () => {
@@ -275,23 +343,75 @@ test("selection: a visitor is NEVER silently given a cabin type they did not ask
   console.log(`    swept ${cases.toLocaleString()} selections:`, outcomes);
 });
 
-test("selection: the honest outcomes are distinguishable, not one catch-all", () => {
-  // Carnival Elation genuinely has no balconies — that is a fact about the ship,
-  // and the visitor must be told THAT, not handed ocean-view rooms in silence.
+test("selection: we never say a ship LACKS a cabin type without evidence", () => {
+  // This test used to assert the opposite, and that is how the bug survived: it
+  // declared "Carnival Elation genuinely has no balconies" and locked in
+  // "ship-has-none". But Elation's stored inventory is Interior / Ocean View /
+  // Scenic Ocean View — it lists no suites either, and Fantasy-class ships carry
+  // Ocean Suites with balconies. The zero was our extraction's gap, not the
+  // ship's. Fleet-wide the same assumption denied ocean-view cabins on six
+  // Royal-class Princess hulls and suites on nine Carnival and MSC ships.
+  //
+  // The rule now: an absence in OUR data is never spoken as a fact about the ship.
   const f = SHIPS["carnival-elation"];
   if (f) {
     const inventory = shipTypeInventory(f.categoryCounts);
-    assert.equal(inventory.balcony, 0, "fixture drift: Elation should have no balconies");
+    assert.equal(inventory.balcony, 0, "fixture drift: Elation's grid should hold no balconies");
+    const a = normalizeAnswers({ party: "couple", room: "balcony", priority: "ocean", budget: "middle", motion: false });
+    const base = {
+      pool: poolFor(f), chosenArchetypeId: pickArchetype(ARCHETYPE_ROWS, a),
+      answers: a, inventory, knownCabins: knownFor(f),
+    };
+
+    // Default — no evidence about what the line sells on this hull.
+    const unsure = selectCabins(base);
+    assert.equal(unsure.outcome, "type-not-mapped");
+    const unsureNote = String(selectionNote(unsure, f.ship, "en"));
+    // Says what WE are missing...
+    assert.match(unsureNote, /haven't got any balcony cabins mapped/i);
+    // ...and must NOT assert the ship is without them. Guard the affirmative
+    // construction specifically: the note legitimately contains "I'm not going to
+    // tell you the ship hasn't got them", which is a REFUSAL to make the claim,
+    // and a looser regex cannot tell the two apart.
+    assert.doesNotMatch(unsureNote, new RegExp(`${f.ship}\\s+(doesn't|does not)\\s+have`, "i"));
+    assert.doesNotMatch(unsureNote, /that's not something we missed|how the ship was built/i);
+    assert.doesNotMatch(unsureNote, /undisclosed|didn't tell|mislabel|hid/i);
+    assert.ok(unsure.picks.length, "still offers what we can vouch for");
+
+    // The line's own deck plan lists no balcony anywhere on this hull — now, and
+    // only now, absence is assertable as a fact about the ship.
+    const sure = selectCabins({ ...base, lineTypes: ["inside", "oceanview"] });
+    assert.equal(sure.outcome, "ship-has-none");
+    const sureNote = String(selectionNote(sure, f.ship, "en"));
+    assert.match(sureNote, /doesn't have balcony cabins/);
+    assert.doesNotMatch(sureNote, /undisclosed|didn't tell|mislabel|hid/i);
+
+    // And when the line DOES list the type we failed to map, the honest answer is
+    // that we haven't done the work — never that the ship is without it.
+    const ours = selectCabins({ ...base, lineTypes: ["inside", "oceanview", "balcony"] });
+    assert.equal(ours.outcome, "none-researched");
+    const oursNote = String(selectionNote(ours, f.ship, "en"));
+    assert.match(oursNote, /haven't done the room-by-room work/i);
+    assert.doesNotMatch(oursNote, new RegExp(`${f.ship}\\s+(doesn't|does not)\\s+have`, "i"));
+  }
+});
+
+test("selection: both Spanish and English explain a type we could not map", () => {
+  // ES is a first-class surface, not a copy — a missing note there is a dead end
+  // for the site's predominantly Spanish following.
+  const f = SHIPS["carnival-elation"];
+  if (f) {
     const a = normalizeAnswers({ party: "couple", room: "balcony", priority: "ocean", budget: "middle", motion: false });
     const sel = selectCabins({
       pool: poolFor(f), chosenArchetypeId: pickArchetype(ARCHETYPE_ROWS, a),
-      answers: a, inventory, knownCabins: knownFor(f),
+      answers: a, inventory: shipTypeInventory(f.categoryCounts), knownCabins: knownFor(f),
     });
-    assert.equal(sel.outcome, "ship-has-none");
-    const note = selectionNote(sel, f.ship, "en");
-    assert.match(String(note), /doesn't have balcony cabins/);
-    // Mark's rule: never blame the line.
-    assert.doesNotMatch(String(note), /undisclosed|didn't tell|mislabel|hid/i);
+    assert.equal(sel.outcome, "type-not-mapped");
+    for (const lang of ["en", "es"] as const) {
+      const note = String(selectionNote(sel, f.ship, lang) ?? "");
+      assert.ok(note.length > 20, `${lang}: no explanation for type-not-mapped`);
+      assert.ok(note.includes(f.ship), `${lang}: the note should name the ship`);
+    }
   }
 });
 
@@ -329,6 +449,107 @@ test("zones: a view factor never applies to a cabin with no window", () => {
   const inside = { deck: 6, section: "forward", side: "port", category: "Interior" };
   assert.equal(zonesForCabin(balcony, zones).length, 1);
   assert.equal(zonesForCabin(inside, zones).length, 0, "a lifeboat cannot block an interior cabin's view");
+});
+
+test("seasick: low and midship leads, even with NO motion research", () => {
+  // Mark, 2026-08-19: "when the user picks they get seasick the room selection needs to be low
+  // and mid-ship." This used to be gated on a researched motion zone covering the room, so on
+  // the five hull classes with no motion zone it did nothing at all — Norwegian Escape served a
+  // seasick couple deck 12 aft, then deck 10 forward. Low and midship is physics, not research.
+  const mk = (cabin: string, deck: number, section: string) => ({ cabin, deck, section, side: "port", category: "Balcony" });
+  const pool = [
+    mk("12001", 12, "forward"), mk("12002", 12, "aft"), mk("12003", 12, "midship"),
+    mk("8001", 8, "forward"),   mk("8002", 8, "aft"),   mk("8003", 8, "midship"),
+    mk("5001", 5, "forward"),   mk("5002", 5, "aft"),   mk("5003", 5, "midship"),
+  ];
+  const common = {
+    pool, chosenArchetypeId: null, zones: [],           // <- NO research at all
+    knownCabins: new Set(pool.map((c) => c.cabin)),
+    inventory: { balcony: 9, inside: 0, oceanview: 0, suite: 0, unknown: 0 },
+    lineTypes: ["balcony" as const],
+  };
+  const seasick = selectCabins({ ...common, answers: normalizeAnswers({ room: "balcony", motion: "yes" }) });
+  assert.equal(seasick.picks[0]?.cabin, "5003",
+    `a seasick visitor must be led low and midship, got ${seasick.picks[0]?.cabin}`);
+  const led = seasick.picks.slice(0, 3).map((p) => p.cabin);
+  for (const bad of ["12001", "12002"]) {
+    assert.ok(!led.includes(bad), `${bad} is high and at an end — it must not be in the first three`);
+  }
+  // and it must only apply when they said so: nobody else gets steered by motion
+  const fine = selectCabins({ ...common, answers: normalizeAnswers({ room: "balcony", motion: "no" }) });
+  assert.notEqual(fine.picks.map((p) => p.cabin).join(), seasick.picks.map((p) => p.cabin).join(),
+    "the seasick ordering must differ from the ordinary one");
+});
+
+test("seasick: researched motion still counts on top of the physics", () => {
+  const mk = (cabin: string, deck: number, section: string) => ({ cabin, deck, section, side: "port", category: "Balcony" });
+  const pool = [mk("5003", 5, "midship"), mk("5004", 5, "midship")];
+  // a zone that indicts 5003's whole section — the other midship room should now lead
+  // "mid", not "midship": cabin_context_zones stores the NORMALISED section (checked
+  // 2026-08-19 — 210 mid / 259 forward / 244 aft, no "midship" row exists). A zone written
+  // with "midship" matches nothing, which is a test that proves itself rather than the code.
+  const zone = ZONE({ factor: "motion", decks: [5], sections: ["mid"], sides: ["port"],
+                      severity: "significant" });
+  const sel = selectCabins({
+    pool: [pool[0], { ...pool[1], side: "starboard" }], chosenArchetypeId: null, zones: [zone],
+    knownCabins: new Set(["5003", "5004"]), lineTypes: ["balcony" as const],
+    inventory: { balcony: 2, inside: 0, oceanview: 0, suite: 0, unknown: 0 },
+    answers: normalizeAnswers({ room: "balcony", motion: "yes" }),
+  });
+  assert.equal(sel.picks[0]?.cabin, "5004", "the room the research indicts must not lead");
+});
+
+test("the hump is never spoken as an obstruction", () => {
+  // Live defect found 2026-08-19: VIEW_FACTORS listed "hump" beside "lifeboat" and "taper", so
+  // 13,644 rooms on 64 ships were told something may sit in their view — while the research
+  // printed underneath said the opposite. The hull steps OUT at the hump; those balconies see
+  // past the lifeboat line. Mark: "drop the hump ... favor the hump".
+  const hump = ZONE({ factor: "hump", sign: "benefit", what: "The hull steps out here.",
+                      effect: "The balcony is deeper and sees straight down to the water." });
+  const cabin = { deck: 6, section: "forward", side: "port", category: "Balcony" };
+  // it is still a fact about the room and still returned…
+  assert.equal(zonesForCabin(cabin, [hump]).length, 1);
+  // …but the verdict must not frame it as something in the way
+  const v = viewVerdict(cabin, [hump]);
+  assert.doesNotMatch(String(v.headline ?? ""), /sit in your view|blocked|obstruct/i,
+    "the hump must never headline as an obstruction");
+});
+
+test("a hump cabin ranks ABOVE an identical cabin without one", () => {
+  // `hump` is no longer a hardcoded bonus factor — it is a zone whose SIGN is "benefit"
+  // (migration 0025 set every hump zone in the fleet to it), the same as the 59 lifeboat /
+  // motion / elevator zones whose text turned out to praise their area.
+  const hump = ZONE({ factor: "hump", decks: [6], sections: ["forward"], sign: "benefit" });
+  const pool = [
+    { cabin: "6001", category: "Balcony", deck: 6, section: "forward", side: "port" },
+    { cabin: "6002", category: "Balcony", deck: 6, section: "aft", side: "port" },
+  ];
+  const known = new Set(["6001", "6002"]);
+  const inv = { balcony: 2, inside: 0, oceanview: 0, suite: 0, unknown: 0 };
+  for (const priority of ["ocean", "quiet"]) {
+    const sel = selectCabins({
+      pool, chosenArchetypeId: null, zones: [hump], knownCabins: known, inventory: inv,
+      answers: normalizeAnswers({ room: "balcony", priority }),
+      lineTypes: ["balcony" as const],
+    });
+    assert.equal(sel.picks[0]?.cabin, "6001",
+      `the hump cabin should lead for priority "${priority}", got ${sel.picks[0]?.cabin}`);
+  }
+});
+
+test("a lifeboat still outranks nothing — the bonus did not invert the penalty", () => {
+  const boat = ZONE({ factor: "lifeboat", decks: [6], sections: ["forward"] });
+  const pool = [
+    { cabin: "6001", category: "Balcony", deck: 6, section: "forward", side: "port" },
+    { cabin: "6002", category: "Balcony", deck: 6, section: "aft", side: "port" },
+  ];
+  const sel = selectCabins({
+    pool, chosenArchetypeId: null, zones: [boat], knownCabins: new Set(["6001", "6002"]),
+    inventory: { balcony: 2, inside: 0, oceanview: 0, suite: 0, unknown: 0 },
+    answers: normalizeAnswers({ room: "balcony", priority: "ocean" }),
+    lineTypes: ["balcony" as const],
+  });
+  assert.equal(sel.picks[0]?.cabin, "6002", "the cabin with a boat outside it must not lead");
 });
 
 test("zones: an unknown section does not inherit a sectioned zone", () => {
@@ -425,6 +646,37 @@ test("steer-clear: never warns about a cabin it just recommended", () => {
     answers: normalizeAnswers({ room: "balcony" }), zones: [Z()],
   });
   assert.deepEqual(out, []);
+});
+
+test("steer-clear: a benefit-signed zone must never become a warning", () => {
+  // The fourth copy of the sign bug: buildSteerClear served a hump zone's PRAISE
+  // ("the balcony sees straight down to the water") as the reason to skip a room.
+  const praise = ZONE({
+    factor: "hump", decks: [4], sections: ["mid"], sides: [], sign: "benefit",
+    what: "The hull bows outward here.",
+    effect: "The balcony is deeper and sees straight down to the water.",
+    severity: "minor", confidence: "high", source: "operator plan",
+  });
+  const out = buildSteerClear({
+    candidates: [cand("4156", "Breezy Balcony", 4, "mid")],
+    picked: [], answers: normalizeAnswers({ room: "balcony" }), zones: [praise],
+  });
+  assert.deepEqual(out, [], "praise served as a steer-clear reason");
+});
+
+test("seasick physics: 'fwd' spelling gets the same pitch penalty as 'forward'", () => {
+  // 240 Excel-class rooms write section "fwd"; the raw comparison exempted them
+  // from pitch, so a seasick visitor was LED to the bow.
+  const mk = (cabin: string, deck: number, section: string) => ({ cabin, deck, section, side: "port", category: "Balcony" });
+  const pool = [mk("5001", 5, "fwd"), mk("5003", 5, "midship")];
+  const sel = selectCabins({
+    pool, chosenArchetypeId: null, zones: [],
+    knownCabins: new Set(["5001", "5003"]), lineTypes: ["balcony" as const],
+    inventory: { balcony: 2, inside: 0, oceanview: 0, suite: 0, unknown: 0 },
+    answers: normalizeAnswers({ room: "balcony", motion: "yes" }),
+  });
+  assert.equal(sel.picks[0]?.cabin, "5003",
+    `the fwd bow room must not lead for a seasick visitor, got ${sel.picks[0]?.cabin}`);
 });
 
 test("steer-clear: no zone evidence means NO entry — silence beats invention", () => {
@@ -613,4 +865,131 @@ test("writer: letter-prefixed cabin numbers are checked too (Elation uses E1/R10
   assert.ok(validateSteerProse("Same section as E17, same story.", f, ["E17"]));
   // "Deck 10" must never be mistaken for cabin 10
   assert.ok(validateSteerProse("Deck 7 forward is where you feel it.", { ...f, deck: 7 }));
+});
+
+test("an inward-facing balcony must not lead for someone who came for the ocean", () => {
+  // Live gap found 2026-08-19: `real_ocean` was filled on 213,837 rooms and read by NOTHING.
+  // A Central Park balcony satisfies a balcony request — correctly, it IS one — so it stayed
+  // eligible and could lead for a visitor whose stated priority was the sea, with nothing said.
+  const mk = (cabin: string, realOcean: boolean | null) => ({
+    cabin, deck: 10, section: "mid", side: "port",
+    category: realOcean === false ? "Central Park Balcony" : "Ocean View Balcony", realOcean,
+  });
+  const pool = [mk("10205", false), mk("10280", true)];
+  const sel = selectCabins({
+    pool, chosenArchetypeId: null, zones: [], knownCabins: new Set(["10205", "10280"]),
+    lineTypes: ["balcony" as const], inventory: { balcony: 2, inside: 0, oceanview: 0, suite: 0, unknown: 0 },
+    answers: normalizeAnswers({ room: "balcony", priority: "ocean" }),
+  });
+  assert.equal(sel.picks[0]?.cabin, "10280", "the room that actually faces the sea must lead");
+  // ...and it stays ELIGIBLE — an inward balcony is still a balcony, not a disqualification.
+  assert.ok(sel.picks.some((p) => p.cabin === "10205"), "the inward balcony must not be dropped");
+});
+
+test("real_ocean null is never held against a room", () => {
+  // Only an explicit false is a fact. 12,188 rooms have an unreadable category; treating that
+  // as "no ocean" would silently demote every one of them.
+  const mk = (cabin: string, realOcean: boolean | null) => ({
+    cabin, deck: 10, section: "mid", side: "port", category: "Balcony", realOcean,
+  });
+  const sel = selectCabins({
+    pool: [mk("10300", null), mk("10302", false)], chosenArchetypeId: null, zones: [],
+    knownCabins: new Set(["10300", "10302"]), lineTypes: ["balcony" as const],
+    inventory: { balcony: 2, inside: 0, oceanview: 0, suite: 0, unknown: 0 },
+    answers: normalizeAnswers({ room: "balcony", priority: "ocean" }),
+  });
+  assert.equal(sel.picks[0]?.cabin, "10300", "an unknown must outrank a known-inward room");
+});
+
+test("a room our own research says is blocked ranks below an identical clear one", () => {
+  const mk = (cabin: string, obstruction: string | null) => ({
+    cabin, deck: 8, section: "mid", side: "port", category: "Ocean View Balcony",
+    realOcean: true, obstruction,
+  });
+  const sel = selectCabins({
+    pool: [mk("8100", "heavy: a lifeboat fills the window"), mk("8102", null)],
+    chosenArchetypeId: null, zones: [], knownCabins: new Set(["8100", "8102"]),
+    lineTypes: ["balcony" as const], inventory: { balcony: 2, inside: 0, oceanview: 0, suite: 0, unknown: 0 },
+    answers: normalizeAnswers({ room: "balcony", priority: "ocean" }),
+  });
+  assert.equal(sel.picks[0]?.cabin, "8102", "the clear room must lead");
+});
+
+// ── zone SIGN: the topic is not the verdict (migration 0025) ─────────────────
+// 79 of 367 downside-filed zones say the OPPOSITE of their factor. Until 2026-08-19 the
+// advisor penalised every one of them, so it argued with its own research.
+
+test("a benefit-signed motion zone makes a room STEADIER, not rougher", () => {
+  // The live failure: msc-magnifica 5063, deck 5 midship — the steadiest room on the hull —
+  // was indicted by a motion zone reading "Deck 5 is a low, mostly-midship deck close to the
+  // waterline". The sweep flagged the advisor for leading with it; the zone was the fault.
+  const mk = (cabin: string, deck: number) =>
+    ({ cabin, deck, section: "mid", side: "port", category: "Interior" });
+  const good = ZONE({ factor: "motion", decks: [5], sections: ["mid"], severity: "minor",
+                      confidence: "high", sign: "benefit" });
+  const sel = selectCabins({
+    pool: [mk("5063", 5), mk("8063", 8)], chosenArchetypeId: null, zones: [good],
+    knownCabins: new Set(["5063", "8063"]), lineTypes: ["inside" as const],
+    inventory: { inside: 2, balcony: 0, oceanview: 0, suite: 0, unknown: 0 },
+    answers: normalizeAnswers({ room: "inside", motion: "yes" }),
+  });
+  assert.equal(sel.picks[0]?.cabin, "5063", "the room the research RECOMMENDS must lead");
+});
+
+test("a benefit-signed zone is never spoken as a warning", () => {
+  // The hump bug, generalised: the headline said "something may sit in your view" while the
+  // evidence printed underneath said the balcony sees past the lifeboats.
+  const cabin = { deck: 6, section: "forward", side: "port", category: "Ocean View Balcony" };
+  const clear = ZONE({ factor: "lifeboat", decks: [6], sections: ["forward"],
+                       what: "The horizon and open-sea view are unaffected.", sign: "benefit" });
+  assert.equal(zonesForCabin(cabin, [clear]).length, 1, "the zone still APPLIES to the room");
+  assert.equal(viewVerdict(cabin, [clear]).headline, null,
+    "a zone whose text praises the view must never headline as an obstruction");
+});
+
+test("a neutral zone moves the room in neither direction", () => {
+  const mk = (cabin: string) =>
+    ({ cabin, deck: 8, section: "mid", side: "port", category: "Balcony" });
+  const neutral = ZONE({ factor: "elevator", decks: [8], severity: "significant",
+                         confidence: "high", sign: "neutral" });
+  const withZone = selectCabins({
+    pool: [mk("8001")], chosenArchetypeId: null, zones: [neutral], knownCabins: new Set(["8001"]),
+    lineTypes: ["balcony" as const], inventory: { balcony: 1, inside: 0, oceanview: 0, suite: 0, unknown: 0 },
+    answers: normalizeAnswers({ room: "balcony", priority: "quiet" }),
+  });
+  assert.equal(withZone.picks[0]?.cabin, "8001");
+  assert.equal(viewVerdict({ deck: 8, section: "mid", side: "port", category: "Balcony" },
+    [neutral]).headline, null, "a neutral zone has nothing to say");
+});
+
+test("an un-reviewed zone still behaves exactly as a penalty", () => {
+  // 0025 defaults `sign` to 'penalty'; a Zone object built without the field must not silently
+  // become a bonus, or every zone loaded by older code would flip meaning.
+  const noSign = ZONE({ factor: "lifeboat", decks: [6], sections: ["forward"],
+                        what: "A lifeboat hangs outside the window." });
+  delete (noSign as { sign?: unknown }).sign;
+  const cabin = { deck: 6, section: "forward", side: "port", category: "Ocean View Balcony" };
+  assert.ok(viewVerdict(cabin, [noSign]).headline, "a zone with no sign must still warn");
+});
+
+test("Concierge Class resolves to a veranda", () => {
+  // 3,250 rooms on 14 ships — all Celebrity, where Concierge Class is always a veranda tier.
+  // Before the alias they sat in the 12,188 no-view rooms and could never satisfy a balcony ask.
+  assert.ok(satisfies("Concierge Class", "balcony"));
+  assert.ok(!cabinAttributes("Concierge Class").has("inside"));
+});
+
+test("the Spanish page gets the Spanish zone prose, and falls back honestly", () => {
+  const cabin = { deck: 6, section: "forward", side: "port", category: "Ocean View Balcony" };
+  const translated = ZONE({ what: "Lifeboats sit on the deck below.",
+                            whatEs: "Los botes salvavidas están en la cubierta de abajo." });
+  assert.ok(viewVerdict(cabin, [translated], "es").detail
+    .includes("Los botes salvavidas están en la cubierta de abajo."), "ES must be served the ES prose");
+  assert.ok(viewVerdict(cabin, [translated], "en").detail
+    .includes("Lifeboats sit on the deck below."), "EN keeps the EN prose");
+  // A zone not yet translated warns in English rather than staying silent —
+  // a warning in the wrong language beats no warning.
+  const untranslated = ZONE({ what: "Lifeboats sit on the deck below.", whatEs: null });
+  assert.ok(viewVerdict(cabin, [untranslated], "es").detail
+    .includes("Lifeboats sit on the deck below."), "missing ES must fall back to EN, not to silence");
 });

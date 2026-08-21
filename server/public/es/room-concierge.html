@@ -512,7 +512,7 @@ class RoomConciergeFlow {
       : this.cta();
     this.stageEl.innerHTML = `
       <p class="re-progress">Tus habitaciones · ${this.roomsShip}</p>
-      <h2 class="q">${d.outcome === "ship-has-none" || d.outcome === "none-researched"
+      <h2 class="q">${d.outcome === "ship-has-none" || d.outcome === "none-researched" || d.outcome === "type-not-mapped"
         ? "Esto es lo que haría en su lugar." : "Aquí es donde yo te pondría."}</h2>
       ${note}${inherited}
       ${picks}
