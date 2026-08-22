@@ -253,6 +253,36 @@ function scrubBanned(t: string | undefined): string | undefined {
     .replace(/\s{2,}/g, " ");
 }
 
+/**
+ * A recommendation may not argue against itself.
+ *
+ * Mark, 2026-08-21: "in this cabin we are telling the user we are suggesting this cabin,
+ * then in the write up we're telling them to skip it." Measured on the deployed API:
+ * 9 of 40 probes returned a PICK whose prose ended in a verdict against booking it —
+ * Carnival Horizon 5215 led with "A cove balcony with a corridor-noise problem you'll
+ * notice" and closed "I'd pass and book one of the quieter options."
+ *
+ * Trade-offs are the product and stay: "you trade the view for a steadier ride" is Mark
+ * talking. A VERDICT against the room is not, because the room is on screen as a
+ * suggestion. When the model renders one we keep the researched text instead — the same
+ * fallback used when the model is unavailable.
+ */
+const PICK_VERDICT_AGAINST = [
+  /\bI'?d (?:pass|skip|avoid|steer clear|walk past|book (?:something|one of the other|elsewhere))/i,
+  /\b(?:skip|avoid|pass on|walk past) (?:this|that) (?:one|cabin|room)\b/i,
+  /\bwouldn'?t (?:book|pick|choose|put you in) (?:this|it|that)\b/i,
+  /\bnot the (?:one|cabin|room) (?:for you|I'?d)\b/i,
+  /\bbook (?:one of )?the (?:quieter|other|steadier) (?:ones|options|cabins)\b/i,
+  /\bthis (?:one|cabin) (?:stumbles|falls down|is the one to skip)\b/i,
+  /\b(?:yo )?(?:la|lo) (?:evitaría|saltaría|dejaría pasar)\b/i,
+  /\bno (?:la|lo) reservaría\b/i,
+  /\bmejor (?:otra|otro|una de las otras)\b/i,
+];
+function arguesAgainstItself(t: string | undefined): boolean {
+  if (!t) return false;
+  return PICK_VERDICT_AGAINST.some((re) => re.test(t));
+}
+
 async function reasonLive(
   shipName: string,
   answers: Answers,
@@ -300,6 +330,8 @@ Write, for each shortlisted cabin, in rank order:
 - "hook": a 5-10 word headline naming the room type and tying it to what THIS traveler told you they want. Like "Boardwalk balcony to watch the action from your own roost" or "An ocean balcony for your quiet morning coffee". Never a spec line like "Ocean View Balcony on Deck 8". Every hook different in wording AND structure — no template reuse.
 - "reason": 2-4 sentences in your voice, reasoned for this traveler's answers specifically. Differentiate every cabin; where two are nearly the same, say so and give the honest tie-breaker. Vary your openings — don't start each one the same way.
 And rewrite each steer-clear reason for this traveler (1-2 sentences).
+
+Every cabin in that list is one you are RECOMMENDING. Name its trade-offs honestly — "you trade the view for a steadier ride" is exactly right — but never end on a verdict against it: no "I'd pass", no "skip this one", no "book one of the quieter options". If a room is worth avoiding it belongs on the skip-list, not here.
 
 Speak ONLY to concerns they actually told you. REQUIRED, not optional: at least one genuinely funny dry line across the set, in your register (situational — buffets, conga lines, pool-chair hogs, pajamas at sea — never at the traveler). Final check before answering: if any sentence contains "best match", "perfect for", "exactly what you're after", "boasts", "offers", "features", or could run in a cruise brochure unchanged, rewrite it first.${lang === "es" ? `
 
@@ -888,6 +920,24 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
         // The advisor's thumb: Mark's firsthand per-ship verdicts outrank any model.
         const adj = matrix.shipAdjust?.[sh.slug];
         if (adj && typeof adj.adjust === "number") score += adj.adjust;
+        /**
+         * What they said about money has to change the ships.
+         *
+         * Mark, 2026-08-21: "we chose money is no object and the result was MAS paradise
+         * as one of the ships. not one i would consider luxury." He was right about the
+         * cause even though the ship varies: `budget` was read in exactly ONE place in
+         * this handler — wantsEnclave — and never scored. Answering "the budget is
+         * whatever makes it perfect" changed nothing about who you were offered.
+         *
+         * The matrix's own price virtue decides (0 = value line, 2 = premium). A visitor
+         * who said money is no object is steered away from value lines and toward polish;
+         * a lean visitor the other way. It is a prior, not a filter — a value line that
+         * fits everything else can still surface, it just cannot lead on price alone.
+         */
+        const priceV = v["price"] ?? 1;
+        if (budget === "sky") score += (priceV - 1) * 2.2;
+        else if (budget === "treat") score += (priceV - 1) * 1.1;
+        else if (budget === "lean") score += (1 - priceV) * 2.2;
         if (destination && destination !== "surprise" && anyDeployments && sh.regions.length) {
           score += sh.regions.includes(destination) ? 3.0 : -3.0;
         }
@@ -917,13 +967,18 @@ router.post("/cabins/suggest-ships", async (req: Request, res: Response) => {
     // not be thinking about and then explain why." Surfaced ONLY when our own
     // internal verdict backs it (>= 4), never from vibes; the response carries the
     // published rating alone, per the rule at the top of this section.
-    const mainstream = new Set((matrix.mainstream ??
-      ["Royal Caribbean", "Carnival Cruise Line", "Norwegian Cruise Line", "MSC Cruises"]).map(canonLine));
     let worthALook: (FleetShip & { nextLevel: { name: string; why: string } | null; why: string }) | null = null;
     const floor = picks.length ? (scored.find((x) => x.s.slug === picks[picks.length - 1]!.slug)?.score ?? 0) - 4 : -Infinity;
     for (const { s: sh, score, nextLevel } of scored) {
       if (usedLines.has(sh.line)) continue;
-      if (mainstream.has(canonLine(sh.line))) continue;  // an opportunity is off the beaten path
+      /**
+       * The old test here was "not in matrix.mainstream". Every one of the seven lines
+       * we carry is in that list (Mark added Margaritaville himself on 8/21), so the
+       * slot could never fire — measured: zero worthALook across ~120 probes. An
+       * opportunity is a line THIS visitor is not already being shown, not a line
+       * outside the mainstream. usedLines above already enforces that.
+       */
+      if (budget === "sky" && (virtuesFor(matrix, sh.line, sh.shipClass)["price"] ?? 1) <= 0.75) continue;
       const own = internalRating.get(sh.slug);
       if (own == null || own < 4) continue;              // only when our review backs it
       if (!sh.hasRooms) continue;                        // must be able to finish the job here
@@ -1188,7 +1243,16 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
       const byCabin = new Map(live.recommendations.map((r) => [String(r.cabin), r]));
       picks = picks.map((p) => {
         const lr = byCabin.get(p.cabin);
-        return lr ? { ...p, hook: scrubBanned(lr.hook), reason: scrubBanned(lr.reason) || p.reason } : p;
+        if (!lr) return p;
+        const hook = scrubBanned(lr.hook);
+        const reason = scrubBanned(lr.reason);
+        // A pick that talks the reader out of itself keeps the researched text instead.
+        if (arguesAgainstItself(hook) || arguesAgainstItself(reason)) {
+          logger.warn({ ship: shipRow.ship ?? ship, cabin: p.cabin },
+            "cabin concierge: model argued against its own pick — serving stored text");
+          return p;
+        }
+        return { ...p, hook, reason: reason || p.reason };
       });
       // The model does NOT touch the steer-clear list any more. Its reasons are
       // now composed from the grid's own position and the research zone's own
