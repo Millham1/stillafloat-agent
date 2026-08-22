@@ -269,8 +269,13 @@ async function reasonLive(
   // the motion field a third way (`!!answers.motion`, different from both the type
   // and the matcher) and left `budget` out, so two visitors who answered the budget
   // question differently could be served each other's cached copy.
+  // The SHORTLIST SIZE belongs in the key. Without it the 5-room call and the
+  // 24-room "Show me More Options" call shared one entry, so whichever ran first
+  // won: the long list was served reasoning for five cabins and the other nineteen
+  // rendered as bare numbers (Mark saw this on Wonder of the Seas, 2026-08-21).
   const key = JSON.stringify([
     shipName, answers.party, answers.room, answers.priority, answers.budget, answers.seasick, lang,
+    picks.length,
   ]);
   const hit = liveCache.get(key);
   if (hit && Date.now() - hit.at < LIVE_CACHE_TTL_MS) return hit.out;
@@ -306,7 +311,9 @@ Write EVERYTHING (hooks, reasons, steer-clear reasons) in neutral Latin American
       method: "POST",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
-        model: "claude-haiku-4-5", max_tokens: 1800, system: VOICE,
+        // A hook plus 2-4 sentences per cabin: 1800 truncates well before 24 rooms,
+        // which is the other half of why the long list came back unwritten.
+        model: "claude-haiku-4-5", max_tokens: picks.length > 8 ? 6000 : 1800, system: VOICE,
         messages: [{ role: "user", content: prompt }],
       }),
       signal: AbortSignal.timeout(25000),
