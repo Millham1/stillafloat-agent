@@ -215,7 +215,13 @@ details.cat-info p{font-size:clamp(13.9px,1.13vw,18.9px);line-height:1.55;color:
 .more-scroll .reveal-ship:last-child{margin-bottom:0}
 .more-wrap::after{content:"";position:absolute;left:1px;right:15px;bottom:1px;height:46px;pointer-events:none;
   border-radius:0 0 17px 17px;background:linear-gradient(to top,rgba(247,250,253,.97),rgba(247,250,253,0))}
-.more-scroll .room-why{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+/* Mark 8/21: a long-list row shows the short line and offers a way in to the full
+   detail; a skip row carries the same facts a pick does. */
+.more-scroll .room-why.clamped{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row-more{background:none;border:none;padding:4px 0 0;margin:0;cursor:pointer;font-family:inherit;
+  font-weight:800;color:#023e6e;font-size:clamp(12.5px,1vw,16px);text-decoration:underline;text-underline-offset:3px}
+.steer li .chips{margin:6px 0 0}
+.steer li .chip{background:rgba(7,24,63,.09)}
 .more-hint{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 6px;
   color:#023e6e;font-weight:800;font-size:clamp(12px,1vw,16px);letter-spacing:.04em}
 .more-count{color:rgba(7,24,63,.72);font-weight:700;margin:0 0 10px}
@@ -731,8 +737,11 @@ class RoomConciergeFlow {
           onclick="RC.togglePick('${p.cabin}')">${on?'✓ Elegida':'Elegir esta habitación'}</button></div>
       </div>`;}).join("");
     const moreBtn=`<p style="margin:2px 0 16px"><button class="re-btn no" onclick="RC.moreOptions()">Muéstrame más opciones &rarr;</button></p>`;
-    const steer=(d.steerClear||[]).slice(0,3).map(s=>
-      `<li>${s.cabin?`<b>Camarote ${s.cabin}</b> — `:s.area?`<b>${s.area}</b> — `:""}${s.reason||""}</li>`).join("");
+    const steer=(d.steerClear||[]).slice(0,3).map(s=>{
+      const sf=s.facts||{};
+      const sc=[sf.deck?`Cubierta ${sf.deck}`:null, sf.section||null, sf.category||null, sf.view||null]
+        .filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join("");
+      return `<li>${s.cabin?`<b>Camarote ${s.cabin}</b> — `:s.area?`<b>${s.area}</b> — `:""}${s.reason||""}${sc?`<div class="chips">${sc}</div>`:""}</li>`;}).join("");
     const sendBar=this.picked.size?`
       <div class="re-cta"><h3>${this.picked.size} ${this.picked.size>1?"habitaciones elegidas":"habitación elegida"}</h3>
         <p>Mándalas y yo mismo reviso la elección, el precio y el itinerario antes de que reserves nada.</p>
@@ -775,10 +784,12 @@ class RoomConciergeFlow {
       const on=this.picked.has(p.cabin);
       const chips=[f.deck?`Cubierta ${f.deck}`:null,f.category||null,f.view||null].filter(Boolean)
         .map(c=>`<span class="chip">${c}</span>`).join("");
+      const open=this.openRows&&this.openRows.has(p.cabin);
       return `<div class="reveal-ship" style="padding:14px 17px">
         ${p.hook?`<p class="room-hook">${p.hook}</p>`:`<p class="room-hook">Camarote ${p.cabin}</p>`}
         <div class="chips"><span class="chip chip-num">Camarote ${p.cabin}</span>${chips}</div>
-        ${p.reason?`<p class="room-why">${p.reason}</p>`:""}
+        ${p.reason?`<p class="room-why${open?'':' clamped'}">${p.reason}</p>
+          <button class="row-more" onclick="RC.toggleRow('${p.cabin}')">${open?'Ver menos':'Ver el detalle completo'}</button>`:""}
         <div style="text-align:right;margin-top:8px"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
           onclick="RC.togglePickMore('${p.cabin}')">${on?'&#10003; Elegida':'Elegir esta habitación'}</button></div>
       </div>`;}).join("");
@@ -791,6 +802,8 @@ class RoomConciergeFlow {
       <p style="margin:0 0 8px"><button class="re-btn no" onclick="RC.back()">&larr; Volver a mis mejores opciones</button></p>
       ${this.picked.size?"":this.cta()}`;
   }
+  toggleRow(cabin){ this.openRows=this.openRows||new Set();
+    this.openRows.has(cabin)?this.openRows.delete(cabin):this.openRows.add(cabin); this.drawMore(); }
   togglePickMore(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawMore(); }
   togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
   cta(){

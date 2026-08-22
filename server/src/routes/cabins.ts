@@ -1134,7 +1134,10 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     // claims contradicted the grid. Instead we read the cabins the research
     // actually flags, on the decks its zones touch, of the type this visitor
     // asked for — so every fact in the warning is one we hold a source for.
-    let steerClear: { cabin?: string; area?: string; reason?: string }[] = [];
+    let steerClear: {
+      cabin?: string; area?: string; reason?: string;
+      facts?: { deck: string | null; section: string | null; category: string | null; view: string | null };
+    }[] = [];
     const decks = new Set(zoneDecks(zones));
     if (decks.size) {
       const candidates: SteerCandidate[] = grid
@@ -1159,7 +1162,23 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
         factor: e.factor, severity: e.severity, what: e.reason.replace(/^[^.]*\.\s*/, ""),
       }));
       const written = await writeSteerLines(shipRow.ship ?? ship, facts, answers, lang);
-      steerClear = entries.map((e) => ({ cabin: e.cabin, reason: written.get(e.cabin) ?? e.reason }));
+      // Mark, 2026-08-21: "on the rooms to skip you do not give the deck category or
+      // view". A warning you cannot place on the ship is not actionable, so each skip
+      // row now carries the same facts its pick counterpart does — read from the grid,
+      // never inferred.
+      steerClear = entries.map((e) => {
+        const f = factByNum.get(e.cabin);
+        return {
+          cabin: e.cabin,
+          reason: written.get(e.cabin) ?? e.reason,
+          facts: {
+            deck: f?.deck != null ? String(f.deck) : e.deck != null ? String(e.deck) : null,
+            section: f?.section ?? e.section ?? null,
+            category: f?.category ?? e.category ?? null,
+            view: f?.view ?? null,
+          },
+        };
+      });
     }
 
     const live = picks.length
