@@ -44,13 +44,20 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;
 /* overflow-y:scroll (not auto) + no `scrollbar-width` — the standard property makes
    Chrome fall back to the macOS OVERLAY bar, which hides itself and reserves no width,
    so Mark saw no scrollbar at all. This forces the classic always-visible bar. */
-#stage{flex:1 1 auto;min-height:0;overflow-y:scroll;overflow-x:hidden;padding-right:14px;
-  scrollbar-gutter:stable;overscroll-behavior:contain}
-#stage::-webkit-scrollbar{width:14px}
-#stage::-webkit-scrollbar-track{background:rgba(7,24,63,.16);border-radius:999px;margin:2px 0}
-#stage::-webkit-scrollbar-thumb{background:#023e6e;border-radius:999px;
+/* Mark 8/21: "the top of the selection should stay static and the rooms scroll below
+   it" — and the landing must not scroll at all. The stage is a column: .stage-head is
+   pinned, .stage-body scrolls under it, and a screen with neither (landing, questions)
+   just fits and shows no bar. */
+#stage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.stage-head{flex:0 0 auto}
+.stage-foot{flex:0 0 auto;padding-top:10px}
+.stage-body{flex:1 1 auto;min-height:0;overflow-y:scroll;scrollbar-gutter:stable;padding-right:12px}
+.stage-body::-webkit-scrollbar{width:14px}
+.stage-body::-webkit-scrollbar-track{background:rgba(7,24,63,.16);border-radius:999px;margin:2px 0}
+.stage-body::-webkit-scrollbar-thumb{background:#023e6e;border-radius:999px;
   border:3px solid transparent;background-clip:content-box}
-#stage::-webkit-scrollbar-thumb:hover{background:#07183f;background-clip:content-box}
+.stage-body::-webkit-scrollbar-thumb:hover{background:#07183f;background-clip:content-box}
 .panel::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(255,255,255,.60);
   -webkit-mask-image:linear-gradient(to right,transparent 0,#000 52px,#000 calc(100% - 52px),transparent 100%),
                      linear-gradient(to bottom,transparent 0,#000 46px,#000 calc(100% - 46px),transparent 100%);
@@ -78,8 +85,8 @@ h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing
 .re-intro{color:rgba(7,24,63,.92);line-height:1.6;max-width:60ch;margin:0 0 8px;font-size:clamp(16.4px,1.41vw,22.7px)}
 .re-intro b{color:#07183f;font-weight:800}
 .hint{color:#023e6e;font-size:clamp(13.2px,1.11vw,17.6px);letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin:10px 0 0}
-.hero-brand{display:block;margin:clamp(7.6px,1.13vw,17.6px) auto 0}
-.hero-brand img{display:block;margin:0 auto;height:auto;width:clamp(105.8px,10.84vw,173.9px)}
+.hero-brand{display:block;margin:clamp(4px,.5vw,9px) auto 0}
+.hero-brand img{display:block;margin:0 auto;height:auto;width:clamp(58px,5.2vw,82px)}
 .re-progress{display:inline-block;background:linear-gradient(135deg,#0077b6,#023e6e);color:#fff;border-radius:999px;padding:5px 15px;
   font-size:clamp(12.6px,1.06vw,16.4px);font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin:0 0 8px}
 
@@ -99,7 +106,7 @@ h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing
 .hero-lines .names{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;
   gap:clamp(7.6px,1.01vw,17.6px);font-size:clamp(11.3px,0.98vw,16.4px);font-weight:800;letter-spacing:.13em;
   text-transform:uppercase;color:rgba(255,255,255,.92)}
-.hero-lines i{color:rgba(93,255,154,.75);font-style:normal;font-weight:700}.re-fork h2.q{margin-bottom:clamp(25.2px,3.28vw,50.4px)}
+.hero-lines i{color:rgba(93,255,154,.75);font-style:normal;font-weight:700}.re-fork h2.q{margin-bottom:clamp(14px,1.7vw,27px)}
 
 /* Mark 8/21: the app's text sits centred in the glass. */
 .panel{text-align:center}
@@ -132,7 +139,7 @@ input#shipSearch{width:100%;box-sizing:border-box;padding:clamp(12.6px,1.26vw,18
 input#shipSearch:focus{border-color:#023e6e}
 
 /* ── buttons: the site's pill language ── */
-.re-fork{margin:clamp(10.1px,1.26vw,20.2px) 0 2px}
+.re-fork{margin:clamp(5px,.6vw,11px) 0 2px}
 .re-choices{display:flex;gap:10px;flex-wrap:wrap}
 .re-btn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,#0077b6,#023e6e);
   color:#fff;font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(15.8px,1.34vw,22.7px);
@@ -153,7 +160,7 @@ input#shipSearch:focus{border-color:#023e6e}
 .re-opt b{color:#07183f;font-weight:800}
 .re-opt span{color:rgba(7,24,63,.72)!important}
 
-.quiet{color:rgba(7,24,63,.82);font-size:clamp(13.2px,1.08vw,17.6px);font-style:italic;margin:clamp(10.1px,1.26vw,18.9px) 0 0}
+.quiet{color:rgba(7,24,63,.82);font-size:clamp(13.2px,1.08vw,17.6px);font-style:italic;margin:clamp(5px,.6vw,10px) 0 0}
 .re-coverage{color:rgba(7,24,63,.72);font-size:clamp(13.9px,1.13vw,18.9px);line-height:1.6;margin:20px 0 0;max-width:70ch}
 
 /* ── ship + room cards ── */
@@ -176,7 +183,8 @@ input#shipSearch:focus{border-color:#023e6e}
 .room-hook{font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(17.0px,1.57vw,25.2px);line-height:1.3;margin:0 0 7px;color:#07183f;letter-spacing:-.3px}
 .chips{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 7px}
 .chip{font-size:clamp(12.0px,1.01vw,16.4px);font-weight:700;color:rgba(7,24,63,.78);background:rgba(7,24,63,.07);border-radius:999px;padding:3px 10px}
-.chip-num{background:#5dff9a;color:#07183f;font-weight:800}
+.chip-num{background:#5dff9a;color:#07183f;font-weight:800;
+  font-size:clamp(13.2px,1.109vw,18px);padding:4px 13px}   /* 10% over .chip (Mark 8/21) */
 .room-why{font-size:clamp(14.5px,1.21vw,19.5px);line-height:1.55;color:rgba(7,24,63,.85);margin:5px 0 0}
 details.why{margin:4px 0 0}
 details.why summary{cursor:pointer;font-size:clamp(13.9px,1.13vw,18.3px);font-weight:800;color:#023e6e;list-style-position:inside}
@@ -234,6 +242,15 @@ details.cat-info p{font-size:clamp(13.9px,1.13vw,18.9px);line-height:1.55;color:
   color:#023e6e;font-weight:800;font-size:clamp(12px,1vw,16px);letter-spacing:.04em}
 .more-count{color:rgba(7,24,63,.72);font-weight:700;margin:0 0 10px}
 .disclaimer{max-width:70ch;margin:12px auto 0;font-size:15px;line-height:1.6;color:rgba(255,255,255,.62)}
+
+/* Mark 8/21: "everything on the landing page should fit nicely in the space provided."
+   The card is capped at 718px but the vw type keeps growing on wide screens, so the
+   landing's own maxima are capped to match. Scoped to .land-grid — the question and
+   room screens keep the larger scale he asked for. */
+.land-grid h1{font-size:clamp(25px,2.75vw,36px);margin-bottom:4px}
+.land-grid .re-intro{font-size:clamp(15.5px,1.28vw,19px);margin-bottom:4px}
+.land-grid .re-btn{font-size:clamp(14px,1.15vw,17px);padding:clamp(9px,.95vw,14px) clamp(16px,1.8vw,30px)}
+.land-grid h2.q{font-size:clamp(19px,1.95vw,27px);margin:6px 0 10px}
 footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgba(255,255,255,.72);font-size:16px}
 
 /* ── narrow screens: art on top, panel below it ── */
@@ -428,12 +445,10 @@ class RoomConciergeFlow {
       <div class="land-grid">
         <div>
           <h1>Some cabins wake up to the ocean.<br>Some wake up to the anchor chain.</h1>
-          <p class="re-intro">The deck plan won't tell you which is which — it's a grid of numbers, and
-          I've spent more than twenty years learning what those numbers mean: which cabins sit under the
-          pool deck, which ones sleep soundly, which balcony faces a steel wall. A few quick
-          <b>questions about you</b>, then your <b>expectations</b> — and I'll name the <b>exact cabins</b>
-          I'd book myself, and the few I'd steer my own family past. That homework is already done.
-          The only studying left is the pool-bar menu.</p>
+          <p class="re-intro">The deck plan won't tell you which is which. I've spent more than twenty years
+          learning what those numbers mean — answer a few <b>questions about you</b> and your
+          <b>expectations</b>, and I'll name the <b>exact cabins</b> I'd book myself, and the few I'd
+          steer my own family past. The only studying left is the pool-bar menu.</p>
           <div class="hero-brand"><img src="/assets/concierge/still-afloat-cruise-smarter.png" alt="Still Afloat — Cruise Smarter"></div>
           <div class="re-fork">
             <h2 class="q">Do you already have a ship in mind?</h2>
@@ -579,7 +594,7 @@ class RoomConciergeFlow {
     this.stageEl.innerHTML = `
       <p class="re-progress">Your cabin ${d.cabin?("· "+d.cabin):""}</p>
       <h2 class="q">${d.headline||""}</h2>
-      ${where?`<p style="font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:rgba(93,255,154,.9);margin:-2px 0 12px">${where}</p>`:""}
+      ${where?`<p style="font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#023e6e;font-weight:800;margin:-2px 0 12px">${where}</p>`:""}
       ${body}
       <p style="line-height:1.6;margin:14px 0 0">${d.cta||""}</p>
       <div class="re-choices" style="margin-top:14px">
@@ -759,14 +774,16 @@ class RoomConciergeFlow {
        language. remove it." */
     const inherited = "";
     this.stageEl.innerHTML = `
-      <p class="re-progress">Your rooms · ${this.roomsShip}</p>
+      <div class="stage-head"><p class="re-progress">Your rooms · ${this.roomsShip}</p>
       <h2 class="q">${d.outcome === "ship-has-none" || d.outcome === "none-researched" || d.outcome === "type-not-mapped"
-        ? "Here's what I'd do instead." : "Here's where I'd put you."}</h2>
+        ? "Here's what I'd do instead." : "Here's where I'd put you."}</h2></div>
+      <div class="stage-body">
       ${note}${inherited}
       ${picks}
       ${moreBtn}
       ${steer?`<div class="steer"><h3>Rooms I'd Skip</h3><ul>${steer}</ul></div>`:""}
-      ${sendBar}`;
+      ${sendBar}
+      </div>`;
   }
   /* The full shortlist on its own screen (Mark, 8/21). Same endpoint, same
      reasoning, more=1 — a second screen must never contradict the first. */
@@ -804,13 +821,15 @@ class RoomConciergeFlow {
           onclick="RC.togglePickMore('${p.cabin}')">${on?'&#10003; Picked':'Pick this room'}</button></div>
       </div>`;}).join("");
     this.stageEl.innerHTML = `
-      <p class="re-progress">All the options</p>
+      <div class="stage-head"><p class="re-progress">All the options</p>
       <h2 class="q">Every room I'd put in front of you.</h2>
       <p class="more-count">The same reasoning, the whole shortlist — best first. ${(d.picks||[]).length} rooms on ${ship}.</p>
       <p class="more-hint">&#8595; Scroll the list &mdash; ${(d.picks||[]).length} rooms in here</p>
-      <div class="more-wrap"><div class="more-scroll">${rows}</div></div>
+      </div>
+      <div class="stage-body"><div class="more-wrap"><div class="more-scroll">${rows}</div></div></div>
+      <div class="stage-foot">
       <p style="margin:0 0 8px"><button class="re-btn no" onclick="RC.back()">&larr; Back to my top picks</button></p>
-      ${this.picked.size?"":this.cta()}`;
+      ${this.picked.size?"":this.cta()}</div>`;
   }
   toggleRow(cabin){ this.openRows=this.openRows||new Set();
     this.openRows.has(cabin)?this.openRows.delete(cabin):this.openRows.add(cabin); this.drawMore(); }
