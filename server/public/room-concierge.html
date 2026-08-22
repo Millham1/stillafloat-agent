@@ -52,7 +52,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;
   overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 .stage-head{flex:0 0 auto}
 .stage-foot{flex:0 0 auto;padding-top:10px}
-.stage-body{flex:1 1 auto;min-height:0;overflow-y:scroll;scrollbar-gutter:stable;padding-right:12px}
+.stage-body{flex:1 1 auto;min-height:170px;overflow-y:scroll;scrollbar-gutter:stable;padding-right:12px}
 .stage-body::-webkit-scrollbar{width:14px}
 .stage-body::-webkit-scrollbar-track{background:rgba(7,24,63,.16);border-radius:999px;margin:2px 0}
 .stage-body::-webkit-scrollbar-thumb{background:#023e6e;border-radius:999px;
@@ -826,10 +826,10 @@ class RoomConciergeFlow {
       <p class="more-count">The same reasoning, the whole shortlist — best first. ${(d.picks||[]).length} rooms on ${ship}.</p>
       <p class="more-hint">&#8595; Scroll the list &mdash; ${(d.picks||[]).length} rooms in here</p>
       </div>
-      <div class="stage-body"><div class="more-wrap"><div class="more-scroll">${rows}</div></div></div>
+      <div class="stage-body"><div class="more-wrap"><div class="more-scroll">${rows}</div></div>
+      ${this.picked.size?"":this.cta()}</div>
       <div class="stage-foot">
-      <p style="margin:0 0 8px"><button class="re-btn no" onclick="RC.back()">&larr; Back to my top picks</button></p>
-      ${this.picked.size?"":this.cta()}</div>`;
+      <p style="margin:0"><button class="re-btn no" onclick="RC.back()">&larr; Back to my top picks</button></p></div>`;
   }
   toggleRow(cabin){ this.openRows=this.openRows||new Set();
     this.openRows.has(cabin)?this.openRows.delete(cabin):this.openRows.add(cabin); this.drawMore(); }
