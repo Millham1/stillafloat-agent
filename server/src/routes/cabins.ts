@@ -283,6 +283,29 @@ function arguesAgainstItself(t: string | undefined): boolean {
   return PICK_VERDICT_AGAINST.some((re) => re.test(t));
 }
 
+/**
+ * Mark's ES-first-class rule (8/15): an English surface on the Spanish page makes it read as
+ * "just a copy". The cabin-check line was returning ['Cubierta 14','Ocean View Balcony','mid',
+ * 'port'] — three of those four are OUR words and had never been translated. Section, side and
+ * view are written in Spanish here; the CATEGORY is left exactly as the line publishes it,
+ * because "Edge Infinite Veranda" is a product name and translating it would invent a product.
+ */
+const ES_SECTION: Record<string, string> = {
+  forward: "proa", fwd: "proa", mid: "central", midship: "central", middle: "central",
+  aft: "popa", stern: "popa", bow: "proa",
+};
+const ES_SIDE: Record<string, string> = {
+  port: "babor", starboard: "estribor", both: "ambos lados", center: "centro", centre: "centro",
+};
+const ES_VIEW: Record<string, string> = {
+  ocean: "vista al mar", none: "sin vista", inward: "vista interior", garden: "vista al jardín",
+  boardwalk: "vista al Boardwalk", promenade: "vista al Promenade",
+};
+const esWord = (map: Record<string, string>, v: unknown): string => {
+  const k = String(v ?? "").trim().toLowerCase();
+  return map[k] ?? String(v ?? "");
+};
+
 async function reasonLive(
   shipName: string,
   answers: Answers,
@@ -657,9 +680,9 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
 
     const where: string[] = [];
     if (hit.deck) where.push(es ? `Cubierta ${hit.deck}` : `Deck ${hit.deck}`);
-    if (hit.category) where.push(String(hit.category));
-    if (hit.section) where.push(String(hit.section));
-    if (hit.side) where.push(String(hit.side));
+    if (hit.category) where.push(String(hit.category));   // the line's own product name — never translated
+    if (hit.section) where.push(es ? esWord(ES_SECTION, hit.section) : String(hit.section));
+    if (hit.side) where.push(es ? esWord(ES_SIDE, hit.side) : String(hit.side));
 
     return res.json({
       found: true,
@@ -1228,9 +1251,9 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
           reason: written.get(e.cabin) ?? e.reason,
           facts: {
             deck: f?.deck != null ? String(f.deck) : e.deck != null ? String(e.deck) : null,
-            section: f?.section ?? e.section ?? null,
+            section: lang === "es" ? esWord(ES_SECTION, f?.section ?? e.section) : (f?.section ?? e.section ?? null),
             category: f?.category ?? e.category ?? null,
-            view: f?.view ?? null,
+            view: lang === "es" ? esWord(ES_VIEW, f?.view) : (f?.view ?? null),
           },
         };
       });
