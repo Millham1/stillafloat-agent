@@ -1,5 +1,5 @@
 {
-  "note": "Ship-matching virtue matrix. Line-level values, class-level overrides, and the premium enclaves. Scales 0-2 (halves allowed). DRAFT for Mark's correction \u2014 energy column approved 8/14, all other values are drafted-for-correction. Keyed to the traits the behavioral interview infers. 8/14 audit fixes: breadth column added (flat prior), NCL dining 1->1.5, structure weight rebalanced in matcher (both directions equal).",
+  "note": "Ship-matching virtue matrix. Line-level values, class-level overrides, and the premium enclaves. Scales 0-2 (halves allowed). DRAFT for Mark's correction — energy column approved 8/14, all other values are drafted-for-correction. Keyed to the traits the behavioral interview infers. 8/14 audit fixes: breadth column added (flat prior), NCL dining 1->1.5, structure weight rebalanced in matcher (both directions equal). | mainstream[]: lines presented first-class in suggestions and excluded from the worth-a-look slot. Margaritaville at Sea IS on this list (Mark 8/21: up-and-coming, rates well in our rankings — present it alongside the majors, not as a wildcard).",
   "virtues": {
     "energy": "0 calm ... 2 party (APPROVED by Mark 8/14)",
     "price": "0 value-first ... 2 premium",
@@ -200,14 +200,23 @@
     }
   },
   "shipAdjust": {
-    "_note": "The advisor's thumb on the scale \u2014 Mark's FIRSTHAND ship verdicts, applied as flat score adjustments to the specific ship. This is where sailed-it-myself knowledge accumulates; always carry the why.",
+    "_note": "The advisor's thumb on the scale — Mark's FIRSTHAND ship verdicts, applied as flat score adjustments to the specific ship. This is where sailed-it-myself knowledge accumulates; always carry the why.",
     "margaritaville-at-sea-islander": {
       "adjust": 1.0,
-      "why": "Mark has sailed her \u2014 'I would recommend Islander all day long' (8/14)"
+      "why": "Mark has sailed her — 'I would recommend Islander all day long' (8/14)"
     },
     "margaritaville-at-sea-paradise": {
       "adjust": -1.0,
-      "why": "Mark has sailed her \u2014 'not so much for Paradise' (8/14)"
+      "why": "Mark has sailed her — 'not so much for Paradise' (8/14)"
     }
-  }
+  },
+  "mainstream": [
+    "Royal Caribbean",
+    "Carnival Cruise Line",
+    "Norwegian Cruise Line",
+    "MSC Cruises",
+    "Princess Cruises",
+    "Celebrity Cruises",
+    "Margaritaville at Sea"
+  ]
 }

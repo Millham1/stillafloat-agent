@@ -73,3 +73,17 @@ server/ecosystem.config.cjs
 # cabin-advisor: per-ship intermediate chunks that combine into *-full.json.
 # Derived output — regenerate rather than version ~4MB of them.
 cabin-advisor/data/cabins/parts/
+
+# cabin-advisor working artifacts (2026-08-21 hygiene review)
+.claude/
+Icon?
+cabin-advisor/logs/
+cabin-advisor/noise/
+cabin-advisor/widgety-cache/
+cabin-advisor/widgety-reads.json
+cabin-advisor/carnival/*.rooms.json
+cabin-advisor/carnival/missing_resolved.json
+cabin-advisor/geometry/work/
+cabin-advisor/geometry/*-src/
+cabin-advisor/geometry/results_*.jsonl
+cabin-advisor/geometry/state.json

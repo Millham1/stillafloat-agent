@@ -37,6 +37,7 @@
     { href: '/es/weather.html',        label: 'Clima'        },
     { href: '/es/webcams.html',        label: 'Cámaras'      },
     { href: '/es/wheres-my-ship.html', label: 'Mi Barco'     },
+    { href: '/es/room-concierge.html', label: 'Concierge'    },
     { href: '/favorites.html',         label: 'Favoritos'    },
     { href: '/es/commentary.html',     label: 'Comentarios'  },
     { href: '/es/affiliate.html',      label: 'Equipo'       },
@@ -46,6 +47,7 @@
     { href: '/weather.html',       label: 'Weather'      },
     { href: '/webcams.html',       label: 'Live Streams' },
     { href: '/wheres-my-ship.html',label: "Where's My Ship?" },
+    { href: '/room-concierge.html',label: 'Room Concierge' },
     { href: '/favorites.html',     label: 'Favorites'    },
     { href: '/commentary.html',    label: 'Commentary'  },
     { href: '/affiliate.html',     label: 'Gear'        },
@@ -129,7 +131,12 @@
       left: 50%;
       transform: translateX(-50%);
       z-index: 20;
-      width: fit-content;
+      /* fit-content under-resolved on this absolutely-centered wrap container and
+         orphaned one pill per row ("Room Concierge", "En Español" each alone —
+         Mark, 2026-08-21). max-content lays each row out whole; the cap still
+         lets narrow screens wrap before the hamburger takes over. */
+      width: max-content;
+      max-width: min(96vw, 1100px);
       display: flex;
       flex-direction: column;
       gap: 5px;

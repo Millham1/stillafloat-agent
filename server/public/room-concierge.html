@@ -3,98 +3,849 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Room Concierge | Still Afloat</title>
-<meta name="description" content="A few questions about you, a few honest opinions, and the exact cabins worth booking — the Still Afloat Room Concierge.">
+<meta name="description" content="Tell Mark how you cruise and he'll name the cabins he'd book himself — and the ones he'd walk his family past. The Still Afloat Room Concierge.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/styles.css?v=20260821-concierge">
 <style>
-/* Still Afloat canon (Mark 8/15): the weather / wheres-my-ship pattern.
-   Hero art banner + plaque, seafoam rule, content in sections ON the ocean
-   gradient, dark translucent cards, seafoam accents. Flow logic unchanged. */
-body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:#fff}
-.banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;
-  background:linear-gradient(135deg,#07183f 0%,#0b2f52 60%,#0f4a6e 100%);
-  background-image:url('/assets/concierge/cabin-card.jpg');background-size:cover;background-position:center 55%;
-  height:clamp(440px,46vw,680px)}
-.plaque{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);background:rgba(4,14,28,.62);backdrop-filter:blur(6px);
-  border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:13px 30px;color:#fff;font-weight:600;
-  font-size:clamp(15px,2.2vw,21px);letter-spacing:.22em;white-space:nowrap;text-transform:uppercase;z-index:4}
-.corner{position:absolute;bottom:-6px;height:clamp(120px,16vw,210px);width:auto;filter:drop-shadow(0 10px 18px rgba(0,0,0,.5));z-index:3}
-.corner.l{left:clamp(6px,3vw,40px)}
-.corner.r{right:clamp(6px,3vw,40px);transform:scaleX(-1)}
-.shell{max-width:900px;margin:auto;padding:38px 22px 90px}
-.re-topbar{display:flex;align-items:center;min-height:30px}
-.re-back{font-family:inherit;font-weight:800;font-size:15px;color:#5dff9a;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
+/* Room Concierge — Mark's balcony hero (supplied 8/21). The art carries a painted
+   frosted panel; the whole app renders INSIDE it. Grid overlay so the panel can grow
+   past the art on long screens without breaking the composition. Light panel =>
+   navy text, exactly like the homepage frosted hero card. */
+html{background:#07183f}
+body{margin:0;background:transparent;min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:#07183f;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(7,24,63,.72) 0%,rgba(7,24,63,.92) 46%,#07183f 100%),
+             url('/assets/images/Tropical beach with palm trees and ship.png') center top/cover no-repeat}
+
+.hero-wrap{display:grid;max-width:1536px;margin:0 auto;position:relative}
+.hero-art{grid-area:1/1;align-self:start;position:relative;width:100%}
+.hero-img{width:100%;height:auto;display:block}
+/* Mark 8/21: the butler overlays the app — that's the charm. He reaches to x=1246 of
+   the 1536-wide art and the painted panel ends at 1262, so he already crosses it. Our
+   glass therefore stops at 1240 (right margin 19.27%) and the painting's own layering
+   shows through untouched — no cutout, no seam, butler in front. */
+.hero-art::after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;
+  background:linear-gradient(to bottom,rgba(7,24,63,0),#07183f);pointer-events:none}
+/* Mark 8/21: there must be ONE card — the one painted into the art. So the panel has
+   no border, no shadow and no edge of its own; it lays a feathered wash over the painted
+   glass purely so the type stays readable, and that wash dies out before it reaches any
+   edge. The only visible card edge is the painting's. */
+/* Mark 8/21: "the rooms should not bleed past the card and there should be a scroll bar
+   to the right to scroll down the choices." The painted panel is a FIXED box in the art
+   (718 of a 1536-wide frame = 46.74vw), so the card is now exactly that height and the
+   stage scrolls inside it. Nothing can run past the glass. */
+.panel{grid-area:1/1;position:relative;z-index:2;isolation:isolate;
+  margin:7.9% 19.27% 11.0% 17.9%;
+  padding:clamp(30.2px,3.78vw,65.5px) clamp(32.8px,4.03vw,68.0px);
+  color:#07183f;display:flex;flex-direction:column;box-sizing:border-box;
+  height:min(46.74vw,718px)}
+.re-topbar{flex:0 0 auto}
+/* overflow-y:scroll (not auto) + no `scrollbar-width` — the standard property makes
+   Chrome fall back to the macOS OVERLAY bar, which hides itself and reserves no width,
+   so Mark saw no scrollbar at all. This forces the classic always-visible bar. */
+/* Mark 8/21: "the top of the selection should stay static and the rooms scroll below
+   it" — and the landing must not scroll at all. The stage is a column: .stage-head is
+   pinned, .stage-body scrolls under it, and a screen with neither (landing, questions)
+   just fits and shows no bar. */
+#stage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.stage-head{flex:0 0 auto}
+.stage-foot{flex:0 0 auto;padding-top:10px}
+.stage-body{flex:1 1 auto;min-height:170px;overflow-y:scroll;scrollbar-gutter:stable;padding-right:12px}
+.stage-body::-webkit-scrollbar{width:14px}
+.stage-body::-webkit-scrollbar-track{background:rgba(7,24,63,.16);border-radius:999px;margin:2px 0}
+.stage-body::-webkit-scrollbar-thumb{background:#023e6e;border-radius:999px;
+  border:3px solid transparent;background-clip:content-box}
+.stage-body::-webkit-scrollbar-thumb:hover{background:#07183f;background-clip:content-box}
+.panel::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(255,255,255,.60);
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 52px,#000 calc(100% - 52px),transparent 100%),
+                     linear-gradient(to bottom,transparent 0,#000 46px,#000 calc(100% - 46px),transparent 100%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to right,transparent 0,#000 52px,#000 calc(100% - 52px),transparent 100%),
+             linear-gradient(to bottom,transparent 0,#000 46px,#000 calc(100% - 46px),transparent 100%);
+  mask-composite:intersect}
+
+/* ── type inside the panel (navy on frosted, homepage canon) ── */
+.re-topbar{display:flex;align-items:center;min-height:26px}
+.re-back{font-family:inherit;font-weight:800;font-size:clamp(16.4px,1.32vw,20.2px);color:#023e6e;background:none;border:none;cursor:pointer;padding:2px 8px 2px 0;display:none}
 .re-back.show{display:inline-block}
 .re-back:hover{text-decoration:underline}
-h1{font-size:clamp(28px,4.4vw,38px);margin:6px 0 12px;font-weight:800;line-height:1.15}
-h2.q{font-size:clamp(21px,3.2vw,27px);margin:16px 0 16px;font-weight:800;line-height:1.3}
+/* Mark 8/21: the title pill sits ABOVE the app, on the hero, and reads large. */
+.hero-title{position:absolute;top:clamp(12.6px,2.65vw,50.4px);left:50%;transform:translateX(-50%);z-index:5;
+  background:linear-gradient(135deg,#023e6e,#07183f);color:#fff;border-radius:999px;white-space:nowrap;
+  padding:clamp(11.3px,1.45vw,25.2px) clamp(29.0px,3.78vw,66.8px);
+  font-size:clamp(20.2px,2.24vw,39.1px);font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+  box-shadow:0 14px 34px rgba(4,17,46,.5)}
+h1{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;
+  font-size:clamp(26.5px,2.96vw,46.6px);line-height:1.14;letter-spacing:-.5px;margin:0 0 10px}
+h2.q{font-family:'Bree Serif',serif;color:#07183f;font-weight:400;letter-spacing:-.5px;
+  font-size:clamp(22.7px,2.33vw,36.5px);line-height:1.2;margin:8px 0 12px}
 .re-kick{display:none}
-.re-intro{color:rgba(255,255,255,.75);line-height:1.65;max-width:62ch;margin:0 0 8px;font-size:18px}
-.re-intro b{color:#fff}
-.re-fork{margin:22px 0 2px}
-.re-choices{display:flex;gap:12px;flex-wrap:wrap}
-.re-btn{display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;font-weight:800;font-size:16px;
-  padding:14px 26px;border-radius:14px;border:1px solid rgba(93,255,154,.25);cursor:pointer;text-decoration:none;
-  font-family:inherit;transition:transform .15s,box-shadow .15s}
-.re-btn:hover{transform:translateY(-2px)}
-.re-btn.yes{background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a}
-.re-btn.no{background:rgba(10,30,56,.9);color:#fff;border:1px solid rgba(255,255,255,.18)}
-.re-opts{display:flex;flex-direction:column;gap:11px;max-width:640px}
-.re-opt{text-align:left;font-family:inherit;font-size:16px;font-weight:600;line-height:1.5;color:#fff;
-  background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:14px 18px;cursor:pointer;transition:all .15s}
-.re-opt:hover{border-color:#5dff9a;transform:translateX(4px)}
-.re-opt b{color:#fff}
-.re-opt span{color:rgba(255,255,255,.6)!important}
-.re-progress{font-size:12px;font-weight:800;letter-spacing:.12em;color:rgba(93,255,154,.85);text-transform:uppercase;margin:0 0 4px}
-.quiet{color:rgba(255,255,255,.45);font-size:13px;font-style:italic;margin:22px 0 0}
-.re-coverage{color:rgba(255,255,255,.55);font-size:14px;line-height:1.6;margin:26px 0 0;max-width:70ch}
-/* ship & room cards — dark canon cards */
-.reveal-ship{background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:20px 22px;margin:0 0 16px}
+.re-intro{color:rgba(7,24,63,.92);line-height:1.6;max-width:60ch;margin:0 0 8px;font-size:clamp(16.4px,1.41vw,22.7px)}
+.re-intro b{color:#07183f;font-weight:800}
+.hint{color:#023e6e;font-size:clamp(13.2px,1.11vw,17.6px);letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin:10px 0 0}
+.hero-brand{display:block;margin:clamp(4px,.5vw,9px) auto 0}
+.hero-brand img{display:block;margin:0 auto;height:auto;width:clamp(58px,5.2vw,82px)}
+.re-progress{display:inline-block;background:linear-gradient(135deg,#0077b6,#023e6e);color:#fff;border-radius:999px;padding:5px 15px;
+  font-size:clamp(12.6px,1.06vw,16.4px);font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin:0 0 8px}
+
+.land-grid{display:block}
+@media(max-width:900px){.land-grid{grid-template-columns:1fr}}
+
+/* ── cards on the light panel ── */
+/* Mark 8/21: the operators live on the HERO, spread horizontally across its bottom —
+   out of the app entirely, sitting in the fade where the deck goes dark. */
+.hero-lines{grid-area:1/1;align-self:end;z-index:4;width:100%;box-sizing:border-box;
+  display:flex;flex-direction:column;align-items:center;
+  padding:clamp(32.8px,3.78vw,65.5px) clamp(17.6px,3.78vw,60.5px) clamp(12.6px,1.51vw,25.2px);
+  background:linear-gradient(to top,rgba(7,24,63,.94) 0%,rgba(7,24,63,.88) 45%,rgba(7,24,63,0) 100%);
+  text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.hero-lines .lead{margin:0 0 clamp(6.3px,0.76vw,12.6px);text-align:center;color:rgba(255,255,255,.78);
+  font-size:clamp(12.0px,1.01vw,17.0px);font-weight:700;letter-spacing:.1em}
+.hero-lines .names{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;
+  gap:clamp(7.6px,1.01vw,17.6px);font-size:clamp(11.3px,0.98vw,16.4px);font-weight:800;letter-spacing:.13em;
+  text-transform:uppercase;color:rgba(255,255,255,.92)}
+.hero-lines i{color:rgba(93,255,154,.75);font-style:normal;font-weight:700}.re-fork h2.q{margin-bottom:clamp(14px,1.7vw,27px)}
+
+/* Mark 8/21: the app's text sits centred in the glass. */
+.panel{text-align:center}
+.re-intro{margin-left:auto;margin-right:auto}
+.re-choices{justify-content:center}
+.re-opts{margin-left:auto;margin-right:auto}
+.re-opt{text-align:left}
+select,#cabinNum,input#shipSearch{margin-left:auto;margin-right:auto;display:block}
+.reveal-ship{text-align:left}
+.re-topbar{justify-content:flex-start}
+.lines-card{display:none}
+
+
+/* ── form controls ── */
+.re-lbl{display:block;margin:clamp(12.6px,1.39vw,20.2px) 0 5px;font-size:clamp(12.6px,1.03vw,16.4px);font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;color:#023e6e}
+select{width:100%;max-width:460px;padding:clamp(11.3px,1.13vw,17.6px) clamp(13.9px,1.39vw,20.2px);border-radius:14px;
+  border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.68);color:#07183f;font-size:clamp(16.4px,1.32vw,21.4px);
+  font-family:inherit;outline:none;transition:border-color .2s}
+select:focus{border-color:#023e6e}
+select:disabled{opacity:.45}
+#cabinNum{width:100%;max-width:460px;box-sizing:border-box;padding:clamp(12.6px,1.26vw,18.9px) clamp(15.1px,1.51vw,22.7px);
+  background:rgba(255,255,255,.68);border:1px solid rgba(255,255,255,.7);border-radius:14px;color:#07183f;
+  font-size:clamp(18.9px,1.7vw,26.5px);font-weight:800;letter-spacing:.05em;font-family:inherit;outline:none;transition:border-color .2s}
+#cabinNum:focus{border-color:#023e6e}
+#cabinNum::placeholder{color:rgba(7,24,63,.5);font-weight:600}
+input#shipSearch{width:100%;box-sizing:border-box;padding:clamp(12.6px,1.26vw,18.9px) clamp(15.1px,1.51vw,22.7px);background:rgba(255,255,255,.68);
+  border:1px solid rgba(255,255,255,.7);border-radius:14px;color:#07183f;font-size:clamp(16.4px,1.32vw,21.4px);
+  font-family:inherit;outline:none;margin-bottom:10px}
+input#shipSearch:focus{border-color:#023e6e}
+
+/* ── buttons: the site's pill language ── */
+.re-fork{margin:clamp(5px,.6vw,11px) 0 2px}
+.re-choices{display:flex;gap:10px;flex-wrap:wrap}
+.re-btn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,#0077b6,#023e6e);
+  color:#fff;font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(15.8px,1.34vw,22.7px);
+  padding:clamp(11.3px,1.2vw,18.9px) clamp(18.9px,2.14vw,35.3px);border-radius:50px;border:none;cursor:pointer;
+  text-decoration:none;box-shadow:0 8px 22px rgba(0,119,182,.32);transition:transform .2s,box-shadow .2s}
+.re-btn:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(0,119,182,.42)}
+.re-btn.yes,.re-btn.no{background:linear-gradient(135deg,#0077b6,#023e6e);color:#fff;
+  box-shadow:0 8px 22px rgba(0,119,182,.32)}
+.re-btn.yes:disabled{opacity:.45;cursor:default;transform:none;box-shadow:none}
+
+/* ── answer options ── */
+.re-opts{display:flex;flex-direction:column;gap:clamp(7.6px,0.88vw,13.9px);max-width:680px}
+.re-opt{text-align:left;font-family:inherit;font-size:clamp(15.8px,1.32vw,21.4px);font-weight:600;line-height:1.45;
+  color:#07183f;background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.7);border-radius:14px;
+  padding:clamp(11.3px,1.2vw,18.9px) clamp(15.1px,1.51vw,23.9px);cursor:pointer;transition:all .15s;
+  box-shadow:0 2px 8px rgba(4,17,46,.06)}
+.re-opt:hover{border-color:#023e6e;transform:translateX(4px);box-shadow:0 6px 16px rgba(4,17,46,.12)}
+.re-opt b{color:#07183f;font-weight:800}
+.re-opt span{color:rgba(7,24,63,.72)!important}
+
+.quiet{color:rgba(7,24,63,.82);font-size:clamp(13.2px,1.08vw,17.6px);font-style:italic;margin:clamp(5px,.6vw,10px) 0 0}
+.re-coverage{color:rgba(7,24,63,.72);font-size:clamp(13.9px,1.13vw,18.9px);line-height:1.6;margin:20px 0 0;max-width:70ch}
+
+/* ── ship + room cards ── */
+.reveal-ship{background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.7);border-radius:18px;
+  padding:clamp(15.1px,1.64vw,27.7px) clamp(16.4px,1.83vw,30.2px);margin:0 0 clamp(12.6px,1.39vw,22.7px);
+  box-shadow:0 6px 18px rgba(4,17,46,.10)}
 .gist{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.gist h3{font-size:24px;margin:0;font-weight:800}
-.gist .line{color:rgba(255,255,255,.6);font-size:13px;font-weight:600}
-.gist-score{font-size:34px;color:#5dff9a;line-height:1;font-weight:800}
-.gist-score small{font-size:16px;color:rgba(255,255,255,.5)}
-.gist-dancers{display:flex;align-items:flex-end;margin:8px 0 4px;background:#fff;border-radius:12px;overflow:hidden;width:fit-content}
-.gist-dancers img{height:52px;width:auto;display:block}
-.reveal-comment{font-size:16.5px;line-height:1.6;color:rgba(255,255,255,.92);margin:10px 0 12px;font-weight:600}
-.salty{display:flex;gap:12px;align-items:center;background:rgba(76,29,149,.28);border:1px solid rgba(167,139,250,.35);border-radius:14px;padding:10px 14px}
-.salty img{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid rgba(255,255,255,.7)}
-.salty .sl{font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#c4b5fd;display:block;margin-bottom:2px}
-.salty p{margin:0;font-size:14.5px;line-height:1.5;color:rgba(255,255,255,.9)}
-.reveal-pick{margin:14px 0 0;text-align:right}
-.room-hook{font-size:19px;line-height:1.35;font-weight:800;margin:0 0 8px}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
-.chip{font-size:12.5px;font-weight:700;color:rgba(255,255,255,.85);background:rgba(255,255,255,.1);border-radius:999px;padding:3px 10px}
-.chip-num{background:#5dff9a;color:#07183f}
-.room-why{font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.78);margin:6px 0 0}
+.gist h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;font-size:clamp(18.9px,1.89vw,31.5px);margin:0;letter-spacing:-.4px}
+.gist .line{color:rgba(7,24,63,.68);font-size:clamp(12.0px,1.01vw,16.4px);font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.gist-score{font-family:'Bree Serif',serif;font-size:clamp(26.5px,2.65vw,45.4px);color:#023e6e;line-height:1;font-weight:400}
+.gist-score small{font-size:.45em;color:rgba(7,24,63,.45)}
+.gist-dancers{display:flex;align-items:flex-end;margin:7px 0 4px;background:#fff;border:1px solid rgba(7,24,63,.10);border-radius:12px;overflow:hidden;width:fit-content}
+.gist-dancers img{height:clamp(46.6px,4.66vw,76.9px);width:auto;display:block}
+.reveal-comment{font-size:clamp(15.8px,1.32vw,21.4px);line-height:1.55;color:#07183f;margin:9px 0 11px;font-weight:600}
+.salty{display:flex;gap:11px;align-items:center;background:rgba(76,29,149,.07);border:1px solid rgba(76,29,149,.2);border-radius:14px;padding:9px 13px}
+.salty img{width:clamp(42.8px,4.16vw,65.5px);height:clamp(42.8px,4.16vw,65.5px);border-radius:50%;object-fit:cover;object-position:top;border:2px solid #fff;box-shadow:0 2px 8px rgba(4,17,46,.18)}
+.salty .sl{font-size:clamp(10.7px,0.88vw,13.9px);font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#46216f;display:block;margin-bottom:2px}
+.salty p{margin:0;font-size:clamp(14.5px,1.2vw,18.9px);line-height:1.5;color:rgba(7,24,63,.88)}
+.reveal-pick{margin:12px 0 0;text-align:right}
+.room-hook{font-family:'Bree Serif',serif;font-weight:400;font-size:clamp(17.0px,1.57vw,25.2px);line-height:1.3;margin:0 0 7px;color:#07183f;letter-spacing:-.3px}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 7px}
+.chip{font-size:clamp(12.0px,1.01vw,16.4px);font-weight:700;color:rgba(7,24,63,.78);background:rgba(7,24,63,.07);border-radius:999px;padding:3px 10px}
+.chip-num{background:#5dff9a;color:#07183f;font-weight:800;
+  font-size:clamp(13.2px,1.109vw,18px);padding:4px 13px}   /* 10% over .chip (Mark 8/21) */
+.room-why{font-size:clamp(14.5px,1.21vw,19.5px);line-height:1.55;color:rgba(7,24,63,.85);margin:5px 0 0}
 details.why{margin:4px 0 0}
-details.why summary{cursor:pointer;font-size:13.5px;font-weight:800;color:#5dff9a;list-style-position:inside}
-details.why p{font-size:14.5px;line-height:1.55;color:rgba(255,255,255,.78);margin:6px 0 0}
+details.why summary{cursor:pointer;font-size:clamp(13.9px,1.13vw,18.3px);font-weight:800;color:#023e6e;list-style-position:inside}
+details.why p{font-size:clamp(14.5px,1.18vw,19.5px);line-height:1.55;color:rgba(7,24,63,.85);margin:6px 0 0}
 details.cat-info{margin:2px 0 6px}
-details.cat-info summary{cursor:pointer;font-size:13px;font-weight:800;color:#5dff9a;list-style-position:inside}
-details.cat-info p{font-size:14px;line-height:1.55;color:rgba(255,255,255,.85);margin:6px 0 2px;background:rgba(93,255,154,.08);border:1px solid rgba(93,255,154,.18);border-radius:10px;padding:10px 12px}
-.re-cta{margin-top:20px;background:rgba(10,30,56,.9);border:1px solid rgba(93,255,154,.3);border-radius:20px;padding:22px;text-align:center}
-.re-cta h3{margin:0 0 8px;font-size:22px;font-weight:800}
-.re-cta p{margin:0 auto 14px;max-width:520px;font-size:15.5px;line-height:1.6;color:rgba(255,255,255,.75)}
-footer{text-align:center;padding:24px 16px;color:rgba(255,255,255,.5);font-size:14px}
-input#shipSearch{width:100%;box-sizing:border-box;padding:14px 18px;background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:16px;color:#fff;font-size:16px;font-family:inherit;outline:none;margin-bottom:10px}
-input#shipSearch:focus{border-color:#5dff9a}
-@media(max-width:640px){.corner{height:90px}}
+details.cat-info summary{cursor:pointer;font-size:clamp(13.2px,1.08vw,17.6px);font-weight:800;color:#023e6e;list-style-position:inside}
+details.cat-info p{font-size:clamp(13.9px,1.13vw,18.9px);line-height:1.55;color:rgba(7,24,63,.82);margin:6px 0 2px;
+  background:rgba(0,119,182,.07);border:1px solid rgba(0,119,182,.16);border-radius:10px;padding:9px 12px}
+.re-cta{margin-top:clamp(15.1px,1.64vw,25.2px);background:linear-gradient(135deg,rgba(93,255,154,.16),rgba(0,119,182,.13));
+  border:1px solid rgba(0,119,182,.26);border-radius:20px;padding:clamp(17.6px,1.89vw,30.2px) clamp(20.2px,2.27vw,35.3px);text-align:center}
+.re-cta h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;margin:0 0 7px;font-size:clamp(17.6px,1.7vw,29.0px);letter-spacing:-.4px}
+.re-cta p{margin:0 auto 12px;max-width:560px;font-size:clamp(14.5px,1.23vw,20.2px);line-height:1.55;color:rgba(7,24,63,.85)}
+
+
+/* Mark 8/21: the rooms call reasons live, so say so — a spinner, not a dead headline. */
+.thinking{display:flex;flex-direction:column;align-items:center;gap:16px;padding:clamp(20px,3vw,44px) 0}
+.spinner{width:clamp(40px,3.6vw,58px);height:clamp(40px,3.6vw,58px);border-radius:50%;
+  border:4px solid rgba(2,62,110,.18);border-top-color:#023e6e;animation:spin 900ms linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spinner{animation-duration:2.4s}}
+/* Mark 8/21: the rooms to walk past are NOT a link — they sit right after the picks,
+   dark type on a light card. Never white type here. */
+.steer{margin:6px 0 18px;background:rgba(255,255,255,.62);border:1px solid rgba(2,62,110,.22);
+  border-left:5px solid #023e6e;border-radius:16px;padding:clamp(14px,1.5vw,24px) clamp(16px,1.7vw,28px);text-align:left}
+.steer h3{font-family:'Bree Serif',serif;font-weight:400;color:#07183f;margin:0 0 10px;
+  font-size:clamp(16px,1.4vw,24px);letter-spacing:-.3px}
+.steer ul{list-style:none;margin:0;padding:0}
+.steer li{margin:0 0 10px;padding:0 0 0 20px;position:relative;color:rgba(7,24,63,.9);
+  font-size:clamp(14.5px,1.2vw,19px);line-height:1.55}
+.steer li:last-child{margin-bottom:0}
+.steer li::before{content:"\2715";position:absolute;left:0;top:1px;color:#8f3a00;font-weight:800;font-size:.85em}
+.steer li b{color:#07183f;font-weight:800}
+
+/* Mark 8/21: "Show me More Options" — the full shortlist on its own screen, in a
+   scroller, so the rooms page stays a short list of the best few. */
+/* Mark 8/21: "the room choices are running on past the card" — the list was clipped
+   flush against the glass with nothing saying it scrolls. It now sits in its own
+   inset well, with a permanent scrollbar and a fade at the foot so the cut edge
+   reads as "more below" instead of broken layout. */
+.more-wrap{position:relative;margin:6px 0 18px}
+.more-scroll{padding:14px 14px 18px;border-radius:18px;
+  background:rgba(255,255,255,.34);border:1px solid rgba(2,62,110,.2)}
+.more-scroll .reveal-ship:last-child{margin-bottom:0}
+/* Mark 8/21: a long-list row shows the short line and offers a way in to the full
+   detail; a skip row carries the same facts a pick does. */
+.more-scroll .room-why.clamped{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row-more{background:none;border:none;padding:4px 0 0;margin:0;cursor:pointer;font-family:inherit;
+  font-weight:800;color:#023e6e;font-size:clamp(12.5px,1vw,16px);text-decoration:underline;text-underline-offset:3px}
+.steer li .chips{margin:0 0 6px}
+.steer li .chip{background:rgba(7,24,63,.09)}
+.steer li{padding-left:0}
+.steer li::before{display:none}
+.skip-why{margin:0;font-size:clamp(14.5px,1.2vw,19px);line-height:1.55;color:rgba(7,24,63,.9)}
+.more-hint{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 6px;
+  color:#023e6e;font-weight:800;font-size:clamp(12px,1vw,16px);letter-spacing:.04em}
+.more-count{color:rgba(7,24,63,.72);font-weight:700;margin:0 0 10px}
+.disclaimer{max-width:70ch;margin:12px auto 0;font-size:15px;line-height:1.6;color:rgba(255,255,255,.62)}
+
+/* Mark 8/21: "everything on the landing page should fit nicely in the space provided."
+   The card is capped at 718px but the vw type keeps growing on wide screens, so the
+   landing's own maxima are capped to match. Scoped to .land-grid — the question and
+   room screens keep the larger scale he asked for. */
+.land-grid h1{font-size:clamp(25px,2.75vw,36px);margin-bottom:4px}
+.land-grid .re-intro{font-size:clamp(15.5px,1.28vw,19px);margin-bottom:4px}
+.land-grid .re-btn{font-size:clamp(14px,1.15vw,17px);padding:clamp(9px,.95vw,14px) clamp(16px,1.8vw,30px)}
+.land-grid h2.q{font-size:clamp(19px,1.95vw,27px);margin:6px 0 10px}
+footer{text-align:center;padding:30px 20px 46px;background:transparent;color:rgba(255,255,255,.72);font-size:16px}
+
+/* ── narrow screens: art on top, panel below it ── */
+@media(max-width:820px){
+  /* The art is one composition built around the painted panel — it can't be cropped
+     at phone width without showing an empty white box, so phones get the house
+     plaque on the ocean ground and the full hero returns at tablet and up. */
+  .hero-wrap{display:block}
+  .hero-art{display:block;position:static}
+  .hero-title{position:static;transform:none;display:table;margin:20px auto 14px;font-size:16px;padding:10px 26px}
+  .hero-img,.hero-art::after{display:none}
+  .hero-lines{padding:0 14px 14px}
+  .panel{margin:0 12px;border-radius:22px;padding:20px 18px;height:auto;display:block}
+  #stage{overflow:visible;padding-right:0}
+  h1{font-size:24px}
+  .re-btn{font-size:15px;padding:12px 20px}
+  .re-intro{font-size:15px}
+}
 </style>
-<meta name="robots" content="noindex">
 </head>
-<body style="margin:0;background:linear-gradient(180deg,#0a2350,#07183f)">
-<header class="g-header"><div id="navbar-container"></div></header>
-<main style="max-width:760px;margin:0 auto;padding:90px 22px 120px;font-family:system-ui,sans-serif;color:#f7fbff">
-  <p style="font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#5dff9a;margin:0 0 10px">Room Concierge</p>
-  <h1 style="font-family:Georgia,serif;font-size:44px;line-height:1.15;margin:0 0 18px">Back shortly.</h1>
-  <p style="font-size:18px;line-height:1.65;color:rgba(247,251,255,.9);margin:0 0 14px">I'm tuning the engine behind this so its picks are exact before I leave it open again. I'd rather hold it back than hand you an answer that isn't right.</p>
-  <p style="font-size:18px;line-height:1.65;color:rgba(247,251,255,.9);margin:0 0 26px">In the meantime, if you want a cabin recommendation for your sailing, just ask me directly and I'll work it out myself — no fee, no pressure.</p>
-  <a href="/cabin-request.html" style="display:inline-block;background:#ffca4f;color:#07183f;font-weight:800;
-     padding:14px 26px;border-radius:999px;text-decoration:none">Ask Mark about your cabin</a>
-  <p style="margin:26px 0 0"><a href="/index.html" style="color:#5eead4">Back to Still Afloat</a></p>
-</main>
+<body>
+<header class="rc-banner" role="img" aria-label="A cozy cruise cabin at night — the Still Afloat Room Concierge">
+  <div id="navbar-container"></div>
+<div class="hero-wrap">
+  <div class="hero-art"><div class="hero-title">Room Concierge</div><img class="hero-img" src="/assets/concierge/hero-balcony.jpg"
+       alt="A cruise ship balcony at sunset with a concierge waiting — the Still Afloat Room Concierge"></div>
+  <div class="hero-lines"><p class="lead">Currently searching the following cruise lines</p><div class="names" id="linesList"></div></div>
+  <main class="panel">
+    <div class="re-topbar"><button class="re-back" id="backBtn" onclick="RC.back()">&larr; Back</button></div>
+    <div id="stage"></div>
+  </main>
+</div>
+<footer>&copy; 2026 Still Afloat LLC &mdash; Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" style="height:20px;vertical-align:middle;margin-left:4px;opacity:.75">
+<p class="disclaimer">Many sources were pulled to create this list. There is always a possibility we got it wrong. Check with your Travel Advisor before booking.</p>
+</footer>
 <script src="/components/navbar.js?v=20260816-concierge"></script>
+
+<script>
+const DANCERS={1:'/assets/concierge/dancer-1_neutral_cruiser.jpg',2:'/assets/concierge/dancer-2_tourist.jpg',3:'/assets/concierge/dancer-3_cruiser.jpg',4:'/assets/concierge/dancer-4_party_animal.jpg',5:'/assets/concierge/dancer-5_conga_king_queen.jpg'};
+const SALTY_IMG='/assets/concierge/salty-mark.jpg';
+</script>
+<script>
+/* ─────────────────────────────────────────────────────────────────────────────
+   RoomConciergeFlow — the full journey, wired.
+   landing → fork → (ship picker | –) → 5 questions about you → expectations
+   (the finder's Mark-corrected tree) → reveal (published Conga score + Salty
+   Mark) → rooms (live-reasoned picks where advice exists) → the one CTA.
+   Design is LOCKED (Mark, 8/14) — stages render inside the frosted panel.
+──────────────────────────────────────────────────────────────────────────── */
+const QUIET = [
+  "Still Afloat Cruising — your independent travel advisor",
+  "Questions? You can always talk to me.",
+];
+/* Behavioral interview (model approved by Mark 8/14): remembered behavior,
+   forced tradeoffs, projection — never self-description. Each option carries
+   hidden trait weights; the TYPE is inferred from the pattern. The visitor
+   never sees a label. */
+const PERSONALITY_QS = [
+  { key:"retell", q:"Think about the best vacation you've ever had. What's the part you still tell people about?",
+    opts:[["The meal I'm still chasing", {food:2, splurgeConsume:1}],
+          ["The people we met — we still talk", {social:2, energy:1}],
+          ["The thing we did that nobody back home believes", {active:2, energy:1}],
+          ["That for one week, nobody could reach me", {quiet:2, introvert:1}]] },
+  { key:"photos", q:"Open your phone — your last trip's photos are mostly…",
+    opts:[["Scenery. Not a human in frame", {quiet:2, introvert:1}],
+          ["Us with people we'd just met", {social:2, extrovert:2}],
+          ["Food and drinks, honestly", {food:2, splurgeConsume:1}],
+          ["The kids having the time of their lives", {family:2}]] },
+  { key:"wedding", q:"A wedding reception, 11pm. Where are we finding you?",
+    opts:[["On the dance floor", {energy:2, extrovert:1}],
+          ["Deep in a conversation that started at dinner", {social:1, introvert:1}],
+          ["Gone. We said our goodbyes at 9:30", {quiet:2, introvert:1}],
+          ["At the bar, making the bartender laugh", {social:2, energy:1}]] },
+  { key:"annoy", q:"What's the FIRST thing that annoys you about other travelers?",
+    opts:[["They're loud everywhere they go", {quiet:2, crowdsAvoid:2}],
+          ["They wing everything and it shows", {planner:2}],
+          ["They wait in lines they didn't have to", {planner:1, active:1}],
+          ["They never leave the pool", {active:2}]] },
+  { key:"overpay", q:"Last trip — what did you happily overpay for, zero regrets?",
+    opts:[["The view from the room", {splurgeCabin:2}],
+          ["One unforgettable dinner", {splurgeConsume:2, food:1}],
+          ["The excursion everyone said was too expensive", {active:2, splurgeConsume:1}],
+          ["Nothing. Getting the deal WAS the trip", {value:2, planner:1}]] },
+  { key:"tradeoff", q:"You get one — the other's gone forever:",
+    opts:[["The quiet corner nobody else has found", {quiet:2, introvert:2, crowdsAvoid:1}],
+          ["The table where everybody knows your name", {social:2, extrovert:2, crowdsLove:1}]] },
+];
+
+/* Pattern → the axes the matcher uses. Deterministic and inspectable. */
+function inferAxes(traits){
+  const t = k => traits[k]||0;
+  return {
+    energy:  t("energy")>=3 ? "party" : (t("quiet")>=3 ? "quiet" : "social"),
+    social:  t("extrovert")>t("introvert")+1 ? "extrovert" : (t("introvert")>t("extrovert")+1 ? "introvert" : "mixed"),
+    structure: t("planner")>=2 ? "planner" : "loose",
+    splurge: t("splurgeCabin")>=2 ? "cabin" : (t("value")>=2 ? "value" : "consumables"),
+    crowds:  t("crowdsAvoid")>=2 || t("quiet")>=4 ? "avoids" : (t("crowdsLove")>=1||t("energy")>=3 ? "loves-it" : "tolerates"),
+  };
+}
+/* The finder's expectation tree, ported verbatim (Mark-corrected copy). */
+const REGION_NAMES = {e_caribbean:"Eastern Caribbean",w_caribbean:"Western Caribbean",s_caribbean:"Southern Caribbean",
+  bahamas:"The Bahamas",alaska:"Alaska",mediterranean:"The Mediterranean",mexican_riviera:"Mexican Riviera",
+  n_europe:"Northern Europe",bermuda:"Bermuda",hawaii:"Hawaii",canada_ne:"Canada & New England"};
+const EXPECT_QS = [
+  { key:"destination", q:"Where are you dreaming of?", opts:[
+      ["Eastern Caribbean","e_caribbean"],["Western Caribbean","w_caribbean"],
+      ["Southern Caribbean","s_caribbean"],["The Bahamas","bahamas"],
+      ["Alaska","alaska"],["The Mediterranean","mediterranean"],
+      ["Mexican Riviera","mexican_riviera"],
+      ["Surprise me — anywhere the ship fits","surprise"]] },
+  { key:"party", q:"Who's going?", opts:[
+      ["Just the two of us","couple"],["Family with kids","family"],
+      ["Just me","solo"],["Solo, but traveling with a group","solo-group"],
+      ["A group of us","group"]] },
+  { key:"room", q:"How do you picture using your room?", opts:[
+      ["Crash and recharge","inside"],["Wake up to daylight and water","oceanview"],
+      ["Coffee outside in my pajamas","balcony"],["The room is part of the vacation","suite"],
+      ["Honestly, no idea — pick for me","balcony"]] },
+  { key:"priority", q:"What matters most once you're aboard?", opts:[
+      ["Waking up to the ocean","ocean"],["Peace and quiet","quiet"],
+      ["Being near the action","action"],["Room to spread out","space"]] },
+  { key:"budget", q:"How does the trip budget work, honestly?", opts:[
+      ["There's a number, and we respect it","lean"],
+      ["Comfortable, but every dollar should earn its spot","middle"],
+      ["For the right room, the budget moves","treat"],
+      ["The budget is whatever makes it perfect","sky"]] },
+  { key:"motion", q:"Does anyone get seasick?", opts:[
+      ["Yes — keep us steady","yes"],["No, we're fine","no"],
+      ["I can grin and bear it","no"]] },
+];
+
+/* Room-category explainers — new cruisers don't know an Infinite Veranda from a
+   porthole. Text now; image slots come later (Mark, 8/14). Inside needs none. */
+const CATEGORY_INFO = [
+  { match:/infinite/i, name:"What's an Infinite Veranda?",
+    text:"Celebrity's twist on a balcony: the whole room IS the veranda. The window's top half slides down and your sitting area becomes open-air. You get more indoor space out of it — but there's no separate outdoor chair zone, and people either love that or miss a true balcony." },
+  { match:/balcony|veranda/i, name:"What's a balcony cabin?",
+    text:"Your own private outdoor space — a glass door, a couple of chairs, and the ocean. Morning coffee out there is the thing people can't give up once they've had it. And it's the one deck chair on the ship nobody can claim with a towel." },
+  { match:/ocean\s?view|oceanview|window/i, name:"What's an ocean view?",
+    text:"A real window to the sea — daylight and a view of where you are, without an outdoor space. You see the ocean; you just don't sit outside in it." },
+  { match:/suite/i, name:"What's a suite?",
+    text:"More space, and usually more perks — priority lines, better service, sometimes access to areas of the ship regular cabins don't get." },
+];
+function categoryInfo(cat){
+  if(!cat) return "";
+  const hit = CATEGORY_INFO.find(c=>c.match.test(cat));
+  return hit ? `<details class="cat-info"><summary>${hit.name}</summary><p>${hit.text}</p></details>` : "";
+}
+
+/* Scannable options: bold the lead thought, lighten the tail — the eye gets
+   the gist without reading the sentence. */
+const LINE_DISPLAY = { "Royal Caribbean International": "Royal Caribbean" };
+function lineName(l){ return LINE_DISPLAY[l] || l; }
+function fmtOpt(label){
+  const m = label.match(/^([^,—–.]{4,45})([,—–.].*)$/);
+  return m ? `<b>${m[1]}</b><span style="color:rgba(7,24,63,.68);font-weight:500">${m[2]}</span>` : `<b>${label}</b>`;
+}
+
+class RoomConciergeFlow {
+  constructor() {
+    this.path=null; this.personality={}; this.expect={}; this.qIndex=0; this.eIndex=0;
+    this.fleet=[]; this.chosen=null; this.suggestion=null; this.picked=new Set();
+    this.stageEl=document.getElementById("stage");
+    this.history=[];
+    this.loadFleet();
+  }
+  snapshot(renderName){
+    this.history.push({renderName,
+      state: JSON.parse(JSON.stringify({path:this.path,personality:this.personality,expect:this.expect,
+        qIndex:this.qIndex,eIndex:this.eIndex,traits:this.traits||{},raw:this.raw||{},
+        chosenSlug:this.chosen?this.chosen.slug:null}))});
+    document.getElementById("backBtn").classList.add("show");
+  }
+  back(){
+    const prev=this.history.pop();
+    if(!prev){ document.getElementById("backBtn").classList.remove("show"); return this.landing(); }
+    const st=prev.state;
+    this.path=st.path; this.personality=st.personality; this.expect=st.expect;
+    this.qIndex=st.qIndex; this.eIndex=st.eIndex; this.traits=st.traits; this.raw=st.raw;
+    this.chosen=st.chosenSlug?this.fleet.find(f=>f.slug===st.chosenSlug)||null:null;
+    if(!this.history.length) document.getElementById("backBtn").classList.remove("show");
+    this[prev.renderName]();
+    this.stageEl.scrollTop=0;
+  }
+  quiet(i){ return `<p class="quiet">${QUIET[i===0?0:1]}</p>`; }
+  async loadFleet(){
+    try{ const r=await fetch("/api/cabins/fleet"); this.fleet=(await r.json()).ships||[]; }
+    catch{ this.fleet=[]; }
+  }
+  landing(){
+    this.stageEl.innerHTML = `
+      <div class="land-grid">
+        <div>
+          <h1>Some cabins wake up to the ocean.<br>Some wake up to the anchor chain.</h1>
+          <p class="re-intro">The deck plan won't tell you which is which. I've spent more than twenty years
+          learning what those numbers mean — answer a few <b>questions about you</b> and your
+          <b>expectations</b>, and I'll name the <b>exact cabins</b> I'd book myself, and the few I'd
+          steer my own family past. The only studying left is the pool-bar menu.</p>
+          <div class="hero-brand"><img src="/assets/concierge/still-afloat-cruise-smarter.png" alt="Still Afloat — Cruise Smarter"></div>
+          <div class="re-fork">
+            <h2 class="q">Do you already have a ship in mind?</h2>
+            <div class="re-choices">
+              <button class="re-btn yes" onclick="RC.fork('ship')">Yes — I know my ship</button>
+              <button class="re-btn no" onclick="RC.fork('discover')">Not yet — find me the right one</button>
+            </div>
+            <p style="margin:14px 0 0"><button class="re-btn" onclick="RC.checkStart()">I'm booked — tell me the truth about my cabin</button></p>
+          </div>
+        </div>
+      </div>
+      ${this.quiet(0)}`;
+    this.drawCoverage();
+  }
+  drawCoverage(){
+    const bar=document.getElementById("linesList");
+    if(!bar) return;
+    if(!this.fleet.length){ setTimeout(()=>this.drawCoverage(), 400); return; }
+    const lines=[...new Set(this.fleet.map(s=>lineName(s.line)))].sort();
+    bar.innerHTML = lines.map(l=>`<span>${l}</span>`).join('<i>&middot;</i>');
+  }
+  fork(path){ this.snapshot('landing'); this.path=path; this.qIndex=0; this.eIndex=0;
+    path==="ship" ? this.shipSelect('flow') : this.personalityQ(); }
+  shipPick(){ this.shipSelect('flow'); }
+  _shipPickRetired(filter=""){
+    const f=filter.trim().toLowerCase();
+    const matches=this.fleet.filter(s=>!f||s.ship.toLowerCase().includes(f)||s.line.toLowerCase().includes(f));
+    const byLine={};
+    for(const s of matches){ const ln=lineName(s.line); (byLine[ln]=byLine[ln]||[]).push(s); }
+    const list=Object.entries(byLine).map(([line,ships])=>
+      `<div style="margin:12px 0 4px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(93,255,154,.85)">${line}</div>`+
+      ships.map(s=>`<button class="re-opt" style="padding:9px 14px;font-size:15px" onclick="RC.chooseShip('${s.slug}')">${s.ship}</button>`).join("")
+    ).join("");
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Your ship</p>
+      <h2 class="q">Which ship?</h2>
+      <input id="shipSearch" placeholder="Start typing a ship or line…" value="${filter.replace(/"/g,"&quot;")}"
+        
+        oninput="RC.shipPick(this.value)">
+      <div class="re-opts" style="max-height:300px;overflow-y:auto">${list||'<p style="color:rgba(7,24,63,.8)">No match — check the spelling, or go back and let me pick.</p>'}</div>
+      ${this.quiet(1)}`;
+    const inp=document.getElementById("shipSearch");
+    if(f){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
+  }
+  chooseShip(slug){ this.snapshot('shipPick'); this.chosen=this.fleet.find(s=>s.slug===slug)||null; this.cabinAsk(); }
+
+  // ONE ship selector, two jobs (Mark, 2026-08-21: the two entries were showing
+  // the same info in different formats). mode 'flow' = choosing; mode 'check' =
+  // already booked, adds the cabin-number field.
+  checkStart(){ this.shipSelect('check'); }
+  shipSelect(mode){
+    this.snapshot('landing');
+    this._selMode = mode;
+    const lines=[...new Set(this.fleet.map(x=>x.line))].sort();
+    const opOpts=lines.map(l=>`<option value="${l.replace(/"/g,'&quot;')}">${lineName(l)}</option>`).join("");
+    const head = mode==='check'
+      ? {kick:"Cabin check", q:"Already booked? Bring me the cabin number.",
+         sub:"Line, ship, and room number — I'll tell you what the research says about the view, the noise, and the motion. Most cabins come back just fine. And if yours has a surprise in it, better to hear it from me now than from the thrusters on night one."}
+      : {kick:"Your ship", q:"Which ship are we talking about?",
+         sub:"Pick the line, then the ship. I'll take it from there."};
+    this.stageEl.innerHTML = `
+      <p class="re-progress">${head.kick}</p>
+      <h2 class="q">${head.q}</h2>
+      <p class="re-intro" style="margin-top:-4px">${head.sub}</p>
+      <label class="re-lbl" for="ckOp">Cruise line</label>
+      <select id="ckOp" onchange="RC.checkShipList(this.value)">
+        <option value="">Choose your cruise line…</option>${opOpts}</select>
+      <label class="re-lbl" for="ckShip">Ship</label>
+      <select id="ckShip" disabled onchange="RC.checkPickShip(this.value)">
+        <option value="">Choose the line first…</option></select>
+      ${mode==='check'?`
+      <label class="re-lbl" for="cabinNum">Cabin number</label>
+      <input id="cabinNum" placeholder="e.g. 8234" autocomplete="off" disabled
+        onkeydown="if(event.key==='Enter')RC.cabinCheck()">
+      <div class="re-choices" style="margin-top:16px">
+        <button class="re-btn yes" id="ckGo" disabled onclick="RC.cabinCheck()">Check my cabin — I'll tell you what you're getting &rarr;</button>
+      </div>`:`
+      <div class="re-choices" style="margin-top:16px">
+        <button class="re-btn yes" id="ckGo" disabled onclick="RC.cabinAsk()">That's the one →</button>
+      </div>`}
+      ${this.quiet(1)}`;
+  }
+  checkShipList(line){
+    const sel=document.getElementById("ckShip"); if(!sel) return;
+    this.chosen=null;
+    const ships=this.fleet.filter(x=>x.line===line).sort((a,b)=>a.ship.localeCompare(b.ship));
+    sel.innerHTML=`<option value="">Choose your ship…</option>`+
+      ships.map(x=>`<option value="${x.slug}">${x.ship}</option>`).join("");
+    sel.disabled=!ships.length;
+    const num=document.getElementById("cabinNum"), go=document.getElementById("ckGo");
+    if(num){ num.disabled=true; num.value=""; } if(go) go.disabled=true;
+  }
+  checkPickShip(slug){
+    this.chosen=this.fleet.find(x=>x.slug===slug)||null;
+    const num=document.getElementById("cabinNum"), go=document.getElementById("ckGo");
+    if(num) num.disabled=!this.chosen;
+    if(go) go.disabled=!this.chosen;
+    if(this.chosen){ (num||go).focus&&(num?num.focus():go.focus()); }
+  }
+
+  // Already-booked path: the one question a booked cruiser actually wants answered.
+  cabinAsk(msg){
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Your cabin</p>
+      <h2 class="q">Do you already have a cabin number?</h2>
+      <p class="re-intro" style="margin-top:-4px">Give me the number and I'll tell you what to expect — the good, and the parts the brochure skips.</p>
+      ${msg?`<p style="color:#8f3a00;font-weight:700;margin:6px 0 0">${msg}</p>`:""}
+      <input id="cabinNum" placeholder="e.g. 8234" autocomplete="off"
+        onkeydown="if(event.key==='Enter')RC.cabinCheck()">
+      <div class="re-choices" style="margin-top:14px">
+        <button class="re-btn yes" onclick="RC.cabinCheck()">Check my cabin</button>
+        <button class="re-btn no" onclick="RC.personalityQ()">No cabin yet — help me choose</button>
+      </div>
+      ${this.quiet(1)}`;
+    const i=document.getElementById("cabinNum"); if(i) i.focus();
+  }
+  async cabinCheck(){
+    const el=document.getElementById("cabinNum");
+    const num=(el&&el.value||"").trim();
+    if(!num){ this.cabinAsk(); return; }
+    this.snapshot('cabinAsk');
+    this.stageEl.innerHTML = `<p class="re-progress">Your cabin</p><h2 class="q">Pulling the deck plans…</h2><div class="thinking"><div class="spinner"></div></div>`;
+    let d={};
+    try{
+      const r=await fetch("/api/cabins/check",{method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({ship:this.chosen&&this.chosen.slug,cabin:num,lang:LANG})});
+      d=await r.json();
+    }catch(e){ d={}; }
+    if(!d||d.found!==true){
+      const near=(d&&d.near||[]).map(n=>`<button class="re-opt" style="padding:7px 12px;font-size:14px"
+        onclick="document.getElementById('cabinNum').value='${n}';RC.cabinCheck()">${n}</button>`).join("");
+      this.cabinAsk((d&&d.message)||"");
+      if(near){
+        const box=document.createElement("div");
+        box.innerHTML=`<p style="margin:12px 0 4px;font-size:15px;font-weight:700;color:rgba(7,24,63,.8)">Did you mean one of these?</p>
+          <div class="re-opts">${near}</div>`;
+        this.stageEl.appendChild(box);
+      }
+      return;
+    }
+    const where=(d.where||[]).join(" · ");
+    const body=(d.body||[]).map(p=>`<p style="line-height:1.6;margin:0 0 10px">${p}</p>`).join("");
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Your cabin ${d.cabin?("· "+d.cabin):""}</p>
+      <h2 class="q">${d.headline||""}</h2>
+      ${where?`<p style="font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#023e6e;font-weight:800;margin:-2px 0 12px">${where}</p>`:""}
+      ${body}
+      <p style="line-height:1.6;margin:14px 0 0">${d.cta||""}</p>
+      <div class="re-choices" style="margin-top:14px">
+        <button class="re-btn yes" onclick="RC.personalityQ()">Carry on — help me choose</button>
+        <button class="re-btn no" onclick="RC.cabinAsk()">Try another number</button>
+      </div>
+      ${this.quiet(2)}`;
+  }
+  personalityQ(){
+    const i=this.qIndex;
+    if(i>=PERSONALITY_QS.length){ this.personality=inferAxes(this.traits); return this.expectQ(); }
+    const q=PERSONALITY_QS[i];
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Getting to know you · ${i+1} of ${PERSONALITY_QS.length}</p>
+      <h2 class="q">${q.q}</h2>
+      <div class="re-opts">${q.opts.map(([label],oi)=>
+        `<button class="re-opt" onclick="RC.answerP(${i},${oi})">${fmtOpt(label)}</button>`).join("")}</div>
+      ${this.quiet(1)}`;
+  }
+  answerP(qi,oi){
+    this.snapshot('personalityQ');
+    const q=PERSONALITY_QS[qi], weights=q.opts[oi][1];
+    this.raw=this.raw||{}; this.raw[q.key]=q.opts[oi][0];
+    this.traits=this.traits||{};
+    for(const [k,v] of Object.entries(weights)) this.traits[k]=(this.traits[k]||0)+v;
+    this.qIndex++; this.personalityQ();
+  }
+  expectQ(){
+    const i=this.eIndex;
+    if(i>=EXPECT_QS.length) return this.reveal();
+    const q=EXPECT_QS[i];
+    this.stageEl.innerHTML = `
+      <p class="re-progress">Your expectations · ${i+1} of ${EXPECT_QS.length}</p>
+      <h2 class="q">${q.q}</h2>
+      <div class="re-opts">${q.opts.map(([label,val])=>
+        `<button class="re-opt" onclick="RC.answerE('${q.key}','${val}')">${fmtOpt(label)}</button>`).join("")}</div>
+      ${this.quiet(1)}`;
+  }
+  answerE(key,val){ this.snapshot('expectQ'); this.expect[key]=val; this.eIndex++; this.expectQ(); }
+  async reveal(){
+    this.stageEl.innerHTML = `<p class="re-progress">The reveal</p><h2 class="q">Checking my notes against your answers…</h2><div class="thinking"><div class="spinner"></div></div>`;
+    let shipsToShow=[], reason="";
+    if(this.path==="ship" && this.chosen){ shipsToShow=[this.chosen]; }
+    else{
+      try{
+        const r=await fetch("/api/cabins/suggest-ships",{method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({personality:this.personality, party:this.expect.party, traits:this.traits, raw:this.raw, budget:this.expect.budget, destination:this.expect.destination})});
+        const d=await r.json(); shipsToShow=d.picks||[]; reason=d.reason||""; this.worthALook=d.worthALook||null;
+      }catch{ shipsToShow=[]; }
+    }
+    if(!shipsToShow.length){
+      this.stageEl.innerHTML = `<p class="re-progress">The reveal</p>
+        <h2 class="q">I'd rather get this right than guess.</h2>
+        <p class="re-intro">Something didn't line up on my end — my fault, not yours. Send over
+        what you told me and I'll finish the job by hand.</p>${this.cta()}`;
+      return;
+    }
+    const settled=await Promise.allSettled(shipsToShow.map(s=>this.shipCard(s)));
+    const cards=settled.filter(r=>r.status==="fulfilled").map(r=>r.value);
+    if(settled.some(r=>r.status==="rejected")) console.error("ship card failed", settled.find(r=>r.status==="rejected"));
+    const heading=this.path==="ship" ? "Your ship, and how she fits you." :
+      (cards.length>1?"Two ships I'd put you on.":"The ship I'd put you on.");
+    const altOffer=this.path==="ship"?`<p style="text-align:center;margin:2px 0 12px"><button class="re-btn" style="font-size:14px;padding:9px 18px" onclick="RC.snapshot('reveal');RC.path='discover';RC.reveal()">Or show me what you'd pick for me &rarr;</button></p>`:"";
+    this.stageEl.innerHTML = `
+      <p class="re-progress">The reveal</p>
+      <h2 class="q">${heading}</h2>
+      ${reason?`<p class="re-intro" style="font-size:15.5px">${reason}</p>`:""}
+      ${altOffer}
+      ${cards.join("")}
+      ${await this.worthALookCard()}
+      ${this.cta()}`;
+  }
+  async worthALookCard(){
+    const w=this.path==="discover"?this.worthALook:null;
+    if(!w) return "";
+    let card="";
+    try{ card=await this.shipCard(w); }catch(e){ return ""; }
+    return `<div style="margin-top:18px;padding-top:6px;border-top:1px dashed rgba(93,255,154,.4)">
+      <p style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(93,255,154,.85);margin:10px 0 2px">Worth a look</p>
+      <p class="re-intro" style="font-size:15px;margin-bottom:8px">${w.why||""}</p>
+      ${card}</div>`;
+  }
+  async shipCard(s){
+    let rating=null, comment=null, salty=null;
+    try{
+      const r=await fetch(`/api/ships/${encodeURIComponent(s.slug)}/rating`);
+      if(r.ok){ const d=await r.json(); if(d.ok){ rating=d.rating; comment=d.comment; salty=d.saltyMarkTake; } }
+    }catch{/* no rating shown */}
+    const nextLevel = s.nextLevel ? `
+      <div style="display:flex;gap:10px;align-items:center;background:rgba(255,202,79,.12);border:1px solid rgba(255,202,79,.35);border-radius:13px;padding:9px 13px;margin:10px 0 10px">
+        <span style="font-size:20px">✦</span>
+        <div><span style="font-size:10.5px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#023e6e;display:block;margin-bottom:2px">A step up: ${s.nextLevel.name}</span>
+        <p style="margin:0;font-size:16px;line-height:1.55;color:rgba(7,24,63,.88)">${s.nextLevel.why}</p></div>
+      </div>` : "";
+    const roomsBtn = s.hasRooms
+      ? `<button class="re-btn no" onclick="RC.rooms('${s.repSlug}','${s.ship.replace(/'/g,"\\'")}')">Show me the rooms →</button>`
+      : `<span style="font-size:16px;color:rgba(7,24,63,.7);font-style:italic">Room-by-room picks for this ship are still in the works — ask, and I'll do yours by hand.</span>`;
+    return `<div class="reveal-ship">
+      <div class="gist">
+        <div><h3>${s.ship}</h3><span class="line">${lineName(s.line)}</span></div>
+        ${rating!=null?`<div class="gist-score">${Number(rating).toFixed(1)}<small>/5</small></div>`:""}
+      </div>
+      ${(this.expect.destination && this.expect.destination!=="surprise" && (s.regions||[]).includes(this.expect.destination))?`<p style="margin:2px 0 6px;font-size:15px;font-weight:800;color:#023e6e">⚓ Sails ${REGION_NAMES[this.expect.destination]||this.expect.destination}</p>`:""}
+      ${rating!=null?`<p style="margin:6px 0 2px;font-size:15.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#023e6e">Our Conga Line rating — how many join the dance</p>
+      <div class="gist-dancers">${[1,2,3,4,5].map(n=>
+        `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</div>`:""}
+      ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
+      ${salty?`<div class="salty"><img src="${SALTY_IMG}" alt="Salty Mark">
+        <div><span class="sl">Salty Mark says</span><p>&ldquo;${salty}&rdquo;</p></div></div>`:""}
+      ${nextLevel}
+      <div class="reveal-pick">${roomsBtn}</div>
+    </div>`;
+  }
+  async rooms(repSlug, shipName){
+    this.snapshot('reveal');
+    this.stageEl.innerHTML = `<p class="re-progress">Your rooms</p><h2 class="q">Reading the deck plans for ${shipName}…</h2><div class="thinking"><div class="spinner"></div><p class="re-intro" style="margin:0">Checking every cabin on that hull against what you told me.</p></div>`;
+    let d=null;
+    try{
+      const r=await fetch("/api/cabins/recommend",{method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ship:repSlug, party:this.expect.party, room:this.expect.room,
+          priority:this.expect.priority, budget:this.expect.budget, motion:this.expect.motion==="yes"})});
+      if(r.ok) d=await r.json();
+    }catch{/* handled below */}
+    if(!d||!d.picks?.length){
+      /* Prefer the API's own reason when it has one (e.g. outcome "no-data": we hold
+         nothing for this hull and will not borrow another ship's rooms). The generic
+         line is only for a request that failed outright. */
+      this.stageEl.innerHTML = `<p class="re-progress">Your rooms</p>
+        <h2 class="q">This one needs the human touch.</h2>
+        <p class="re-intro">${d?.note || `I don't have room-level picks for ${shipName} yet — send
+        over what you told me and I'll work yours up by hand.`}</p>${this.cta()}`;
+      return;
+    }
+    this.picked=new Set(); this.roomsData=d; this.roomsShip=shipName; this.roomsRep=repSlug; this.moreData=null;
+    this.drawRooms();
+  }
+  drawRooms(){
+    const d=this.roomsData;
+    const picks=d.picks.map(p=>{
+      const f=p.facts||{};
+      const on=this.picked.has(p.cabin);
+      const chips=[f.deck?`Deck ${f.deck}`:null,f.category||null,f.view||null].filter(Boolean)
+        .map(c=>`<span class="chip">${c}</span>`).join("");
+      return `<div class="reveal-ship" style="padding:15px 18px">
+        ${p.hook?`<p class="room-hook">${p.hook}</p>`:`<p class="room-hook">Cabin ${p.cabin}</p>`}
+        <div class="chips"><span class="chip chip-num">Cabin ${p.cabin}</span>${chips}</div>
+        ${categoryInfo(f.category)}
+        ${p.reason?`<p class="room-why">${p.reason}</p>`:""}
+        <div style="text-align:right;margin-top:8px"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
+          onclick="RC.togglePick('${p.cabin}')">${on?'✓ Picked':'Pick this room'}</button></div>
+      </div>`;}).join("");
+    const moreBtn=`<p style="margin:2px 0 16px"><button class="re-btn no" onclick="RC.moreOptions()">Show me More Options &rarr;</button></p>`;
+    const steer=(d.steerClear||[]).slice(0,3).map(s=>{
+      const sf=s.facts||{};
+      const sc=[sf.deck?`Deck ${sf.deck}`:null, sf.section||null, sf.category||null, sf.view||null]
+        .filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join("");
+      return `<li>
+        <div class="chips"><span class="chip chip-num">Cabin ${s.cabin||s.area||""}</span>${sc}</div>
+        <p class="skip-why">${s.reason||""}</p></li>`;}).join("");
+    const sendBar=this.picked.size?`
+      <div class="re-cta"><h3>${this.picked.size} room${this.picked.size>1?"s":""} picked</h3>
+        <p>Send them over and I'll check the pick, the price, and the itinerary before you book a thing.</p>
+        <a class="re-btn yes" style="text-decoration:none;display:inline-block"
+          href="/cabin-request.html?ship=${encodeURIComponent(this.roomsShip)}&cabins=${encodeURIComponent([...this.picked].join(","))}">Send my picks</a></div>`
+      : this.cta();
+    /* When we could not serve the room TYPE that was asked for, the API says so in
+       `note` — the ship genuinely has none, we have not researched that type there
+       yet, or we cannot read that ship's categories. Showing the cards without it
+       is the 8/16 bug from the visitor's seat: rooms of the wrong kind and no
+       explanation. It leads, above the picks, because it changes how they read them. */
+    const note = d.note
+      ? `<p class="re-intro" style="background:rgba(0,119,182,.10);border-left:3px solid #023e6e;
+           border-radius:8px;padding:12px 14px;margin:0 0 16px">${d.note}</p>` : "";
+    /* Removed 2026-08-21 — Mark: "NEver once did I agree or ask for the sister ship
+       language. remove it." */
+    const inherited = "";
+    this.stageEl.innerHTML = `
+      <div class="stage-head"><p class="re-progress">Your rooms · ${this.roomsShip}</p>
+      <h2 class="q">${d.outcome === "ship-has-none" || d.outcome === "none-researched" || d.outcome === "type-not-mapped"
+        ? "Here's what I'd do instead." : "Here's where I'd put you."}</h2></div>
+      <div class="stage-body">
+      ${note}${inherited}
+      ${picks}
+      ${moreBtn}
+      ${steer?`<div class="steer"><h3>Rooms I'd Skip</h3><ul>${steer}</ul></div>`:""}
+      ${sendBar}
+      </div>`;
+  }
+  /* The full shortlist on its own screen (Mark, 8/21). Same endpoint, same
+     reasoning, more=1 — a second screen must never contradict the first. */
+  async moreOptions(){
+    this.snapshot('drawRooms');
+    this.stageEl.innerHTML = `<p class="re-progress">All the options</p><h2 class="q">Pulling the full list…</h2>`
+      + `<div class="thinking"><div class="spinner"></div></div>`;
+    let d=this.moreData;
+    if(!d){
+      try{
+        const r=await fetch("/api/cabins/recommend?more=1",{method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({ship:this.roomsRep, party:this.expect.party, room:this.expect.room,
+            priority:this.expect.priority, budget:this.expect.budget, motion:this.expect.motion==="yes", more:true})});
+        if(r.ok) d=await r.json();
+      }catch{/* fall back to what we already have */}
+      this.moreData = d || this.roomsData;
+    }
+    this.drawMore();
+  }
+  drawMore(){
+    const d=this.moreData||this.roomsData, ship=this.roomsShip;
+    const rows=(d.picks||[]).map(p=>{
+      const f=p.facts||{};
+      const on=this.picked.has(p.cabin);
+      const chips=[f.deck?`Deck ${f.deck}`:null,f.category||null,f.view||null].filter(Boolean)
+        .map(c=>`<span class="chip">${c}</span>`).join("");
+      const open=this.openRows&&this.openRows.has(p.cabin);
+      return `<div class="reveal-ship" style="padding:14px 17px">
+        ${p.hook?`<p class="room-hook">${p.hook}</p>`:`<p class="room-hook">Cabin ${p.cabin}</p>`}
+        <div class="chips"><span class="chip chip-num">Cabin ${p.cabin}</span>${chips}</div>
+        ${p.reason?`<p class="room-why${open?'':' clamped'}">${p.reason}</p>
+          <button class="row-more" onclick="RC.toggleRow('${p.cabin}')">${open?'Show less':'Read the full detail'}</button>`:""}
+        <div style="text-align:right;margin-top:8px"><button class="re-btn ${on?'yes':'no'}" style="font-size:14px;padding:9px 16px"
+          onclick="RC.togglePickMore('${p.cabin}')">${on?'&#10003; Picked':'Pick this room'}</button></div>
+      </div>`;}).join("");
+    this.stageEl.innerHTML = `
+      <div class="stage-head"><p class="re-progress">All the options</p>
+      <h2 class="q">Every room I'd put in front of you.</h2>
+      <p class="more-count">The same reasoning, the whole shortlist — best first. ${(d.picks||[]).length} rooms on ${ship}.</p>
+      <p class="more-hint">&#8595; Scroll the list &mdash; ${(d.picks||[]).length} rooms in here</p>
+      </div>
+      <div class="stage-body"><div class="more-wrap"><div class="more-scroll">${rows}</div></div>
+      ${this.picked.size?"":this.cta()}</div>
+      <div class="stage-foot">
+      <p style="margin:0"><button class="re-btn no" onclick="RC.back()">&larr; Back to my top picks</button></p></div>`;
+  }
+  toggleRow(cabin){ this.openRows=this.openRows||new Set();
+    this.openRows.has(cabin)?this.openRows.delete(cabin):this.openRows.add(cabin); this.drawMore(); }
+  togglePickMore(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawMore(); }
+  togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
+  cta(){
+    return `<div class="re-cta">
+      <h3>Want a second set of eyes before you book?</h3>
+      <p>Send over what you told me and I'll give the pick, the price, and the itinerary a proper
+      read — before money, vacation time, and patience get wasted. No fee, no pressure.</p>
+      <a class="re-btn yes" style="text-decoration:none;display:inline-block" href="/cabin-request.html">Send it over — I'll take a look</a>
+    </div>`;
+  }
+}
+const LANG="en";
+const RC=new RoomConciergeFlow(); RC.landing();
+</script>
 </body>
 </html>

@@ -1,0 +1,698 @@
+{
+ "reviewed_on": "2026-08-19",
+ "what": "Zones whose own text describes a BENEFIT while being filed under a factor that the scorer treats as a downside. Found by cabin-advisor/zone-polarity.mjs after the e2e sweep flagged msc-magnifica 5063 \u2014 a deck-5 midship room, the steadiest on the hull, indicted by a motion zone reading 'Deck 5 is a low, mostly-midship deck close to the waterline'. Each entry keeps the words that decided it.",
+ "entries": [
+  {
+   "id": 6,
+   "rep": "carnival-conquest",
+   "factor": "below",
+   "decks": [
+    7
+   ],
+   "rooms_per_hull": 247,
+   "why": "structurally the quietest cabin deck on the class"
+  },
+  {
+   "id": 15,
+   "rep": "carnival-dream",
+   "factor": "lifeboat",
+   "decks": [
+    2
+   ],
+   "rooms_per_hull": 287,
+   "why": "shade the cove balcony rather than blocking the horizon view"
+  },
+  {
+   "id": 33,
+   "rep": "carnival-elation",
+   "factor": "lifeboat",
+   "decks": [
+    11
+   ],
+   "rooms_per_hull": 0,
+   "why": "lifeboats actually offer more privacy"
+  },
+  {
+   "id": 56,
+   "rep": "carnival-spirit",
+   "factor": "below",
+   "decks": [
+    6
+   ],
+   "rooms_per_hull": 197,
+   "why": "'experiences less noise bleed... than decks adjacent'"
+  },
+  {
+   "id": 68,
+   "rep": "carnival-splendor",
+   "factor": "motion",
+   "decks": [
+    9,
+    10,
+    11
+   ],
+   "rooms_per_hull": 201,
+   "why": "midship cabin on 6,7,8 gives the steadiest ride"
+  },
+  {
+   "id": 92,
+   "rep": "carnival-vista",
+   "factor": "i95",
+   "decks": [
+    2
+   ],
+   "rooms_per_hull": 296,
+   "why": "not accessible to or directly heard by guests"
+  },
+  {
+   "id": 97,
+   "rep": "celebrity-edge",
+   "factor": "lifeboat",
+   "decks": [
+    6
+   ],
+   "rooms_per_hull": 188,
+   "why": "the horizon view outward is still open"
+  },
+  {
+   "id": 102,
+   "rep": "celebrity-edge",
+   "factor": "elevator",
+   "decks": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "rooms_per_hull": 1353,
+   "why": "\"short walks to elevators...without excess noise\""
+  },
+  {
+   "id": 108,
+   "rep": "celebrity-millennium",
+   "factor": "lifeboat",
+   "decks": [
+    6,
+    7
+   ],
+   "rooms_per_hull": 358,
+   "why": "\"view forward is good\"; \"sightline...stays open\""
+  },
+  {
+   "id": 113,
+   "rep": "celebrity-millennium",
+   "factor": "below",
+   "decks": [
+    2
+   ],
+   "rooms_per_hull": 192,
+   "why": "\"should not experience noise issues from the public areas\""
+  },
+  {
+   "id": 114,
+   "rep": "celebrity-millennium",
+   "factor": "elevator",
+   "decks": [
+    6,
+    7,
+    8,
+    9
+   ],
+   "rooms_per_hull": 723,
+   "why": "\"without the noise bleed guests often fear\""
+  },
+  {
+   "id": 155,
+   "rep": "grand-princess",
+   "factor": "lifeboat",
+   "decks": [
+    8
+   ],
+   "rooms_per_hull": 184,
+   "why": "some cabins between boats keep a partial view"
+  },
+  {
+   "id": 171,
+   "rep": "grandeur-of-the-seas",
+   "factor": "lifeboat",
+   "decks": [
+    7
+   ],
+   "rooms_per_hull": 189,
+   "why": "horizon and open-sea view are unaffected"
+  },
+  {
+   "id": 177,
+   "rep": "grandeur-of-the-seas",
+   "factor": "below",
+   "decks": [
+    3
+   ],
+   "rooms_per_hull": 285,
+   "why": "quietest vertical noise profile on the ship"
+  },
+  {
+   "id": 181,
+   "rep": "grandeur-of-the-seas",
+   "factor": "elevator",
+   "decks": [
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "rooms_per_hull": 484,
+   "why": "recommended booking near the Centrum elevators over the forward bank"
+  },
+  {
+   "id": 183,
+   "rep": "grandeur-of-the-seas",
+   "factor": "taper",
+   "decks": [
+    8
+   ],
+   "rooms_per_hull": 142,
+   "why": "rated as offering some of the best views on the ship"
+  },
+  {
+   "id": 189,
+   "rep": "icon-of-the-seas",
+   "factor": "above",
+   "decks": [
+    12,
+    14
+   ],
+   "rooms_per_hull": 668,
+   "why": "shows run only a handful of times per cruise, not constant"
+  },
+  {
+   "id": 191,
+   "rep": "icon-of-the-seas",
+   "factor": "elevator",
+   "decks": [
+    3,
+    4,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    14
+   ],
+   "rooms_per_hull": 2760,
+   "why": "cabins between them are quieter"
+  },
+  {
+   "id": 196,
+   "rep": "icon-of-the-seas",
+   "factor": "motion",
+   "decks": [
+    3,
+    4,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "rooms_per_hull": 2441,
+   "why": "midship cabins... feel the least motion"
+  },
+  {
+   "id": 212,
+   "rep": "margaritaville-at-sea-beachcomber",
+   "factor": "lifeboat",
+   "decks": [
+    6,
+    7
+   ],
+   "rooms_per_hull": 479,
+   "why": "\"open horizon and sea ahead remain visible\""
+  },
+  {
+   "id": 216,
+   "rep": "margaritaville-at-sea-beachcomber",
+   "factor": "above",
+   "decks": [
+    9
+   ],
+   "rooms_per_hull": 93,
+   "why": "\"very stable, quiet forward position\""
+  },
+  {
+   "id": 217,
+   "rep": "margaritaville-at-sea-beachcomber",
+   "factor": "elevator",
+   "decks": [
+    1,
+    2,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ],
+   "rooms_per_hull": 1357,
+   "why": "\"quiet through-route rather than a noisy shortcut\""
+  },
+  {
+   "id": 224,
+   "rep": "margaritaville-at-sea-islander",
+   "factor": "lifeboat",
+   "decks": [
+    4,
+    5,
+    6
+   ],
+   "rooms_per_hull": 516,
+   "why": "\"horizon and straight-out view remain open\""
+  },
+  {
+   "id": 228,
+   "rep": "margaritaville-at-sea-islander",
+   "factor": "above",
+   "decks": [
+    9
+   ],
+   "rooms_per_hull": 30,
+   "why": "Deck 9 cabins avoid being directly under pool noise"
+  },
+  {
+   "id": 233,
+   "rep": "margaritaville-at-sea-paradise",
+   "factor": "lifeboat",
+   "decks": [
+    10
+   ],
+   "rooms_per_hull": 10,
+   "why": "Grand Terrace Suites... not described as obstructed in any... review"
+  },
+  {
+   "id": 238,
+   "rep": "margaritaville-at-sea-paradise",
+   "factor": "motion",
+   "decks": [
+    10
+   ],
+   "rooms_per_hull": 10,
+   "why": "midship... most stable point on the ship at sea"
+  },
+  {
+   "id": 244,
+   "rep": "msc-fantasia",
+   "factor": "below",
+   "decks": [
+    12
+   ],
+   "rooms_per_hull": 237,
+   "why": "tend to have quieter neighbours above and below"
+  },
+  {
+   "id": 246,
+   "rep": "msc-fantasia",
+   "factor": "taper",
+   "decks": [
+    9,
+    12,
+    13
+   ],
+   "rooms_per_hull": 690,
+   "why": "the outward horizon view remains good"
+  },
+  {
+   "id": 250,
+   "rep": "msc-meraviglia",
+   "factor": "lifeboat",
+   "decks": [
+    8,
+    9,
+    10,
+    11
+   ],
+   "rooms_per_hull": 1187,
+   "why": "you can still see the horizon and ocean clearly"
+  },
+  {
+   "id": 254,
+   "rep": "msc-meraviglia",
+   "factor": "elevator",
+   "decks": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+   ],
+   "rooms_per_hull": 2056,
+   "why": "found it very convenient for reaching anywhere on the ship"
+  },
+  {
+   "id": 255,
+   "rep": "msc-meraviglia",
+   "factor": "engine",
+   "decks": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+   ],
+   "rooms_per_hull": 2056,
+   "why": "produces less transferred vibration... comparatively mild"
+  },
+  {
+   "id": 261,
+   "rep": "msc-poesia",
+   "factor": "lifeboat",
+   "decks": [
+    8
+   ],
+   "rooms_per_hull": 208,
+   "why": "should have mostly clear views despite being on the 'lifeboat deck'"
+  },
+  {
+   "id": 265,
+   "rep": "msc-poesia",
+   "factor": "above",
+   "decks": [
+    9
+   ],
+   "rooms_per_hull": 188,
+   "why": "tend to have quieter neighbours above and below"
+  },
+  {
+   "id": 269,
+   "rep": "msc-poesia",
+   "factor": "motion",
+   "decks": [
+    5
+   ],
+   "rooms_per_hull": 63,
+   "why": "less motion than higher decks, recommended pick"
+  },
+  {
+   "id": 274,
+   "rep": "msc-seascape",
+   "factor": "above",
+   "decks": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "rooms_per_hull": 1664,
+   "why": "higher decks...much less pool noise"
+  },
+  {
+   "id": 275,
+   "rep": "msc-seascape",
+   "factor": "above",
+   "decks": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "rooms_per_hull": 1664,
+   "why": "milder noise profile than a true above-nightclub cabin"
+  },
+  {
+   "id": 299,
+   "rep": "msc-world-europa",
+   "factor": "engine",
+   "decks": [
+    14
+   ],
+   "rooms_per_hull": 376,
+   "why": "preferred by the reviewer over side-to-side rolling"
+  },
+  {
+   "id": 308,
+   "rep": "norwegian-aqua",
+   "factor": "lifeboat",
+   "decks": [
+    5,
+    9
+   ],
+   "rooms_per_hull": 390,
+   "why": "lifeboat-blocked-view complaints are largely absent"
+  },
+  {
+   "id": 316,
+   "rep": "norwegian-aqua",
+   "factor": "elevator",
+   "decks": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+   ],
+   "rooms_per_hull": 1386,
+   "why": "Haven guests get private, less-trafficked elevator access"
+  },
+  {
+   "id": 320,
+   "rep": "norwegian-breakaway",
+   "factor": "lifeboat",
+   "decks": [
+    8
+   ],
+   "rooms_per_hull": 90,
+   "why": "horizon view itself is not blocked"
+  },
+  {
+   "id": 328,
+   "rep": "norwegian-breakaway",
+   "factor": "taper",
+   "decks": [
+    12,
+    13
+   ],
+   "rooms_per_hull": 576,
+   "why": "forward horizon over the bow stays visible"
+  },
+  {
+   "id": 331,
+   "rep": "norwegian-dawn",
+   "factor": "lifeboat",
+   "decks": [
+    8
+   ],
+   "rooms_per_hull": 194,
+   "why": "can typically still see a strip of open horizon"
+  },
+  {
+   "id": 334,
+   "rep": "norwegian-dawn",
+   "factor": "below",
+   "decks": [
+    10
+   ],
+   "rooms_per_hull": 256,
+   "why": "specifically flagged as not a noise problem"
+  },
+  {
+   "id": 337,
+   "rep": "norwegian-dawn",
+   "factor": "taper",
+   "decks": [
+    9,
+    10
+   ],
+   "rooms_per_hull": 526,
+   "why": "forward horizon view remains open"
+  },
+  {
+   "id": 347,
+   "rep": "norwegian-escape",
+   "factor": "lifeboat",
+   "decks": [
+    8
+   ],
+   "rooms_per_hull": 64,
+   "why": "horizon and side view remain open and unobstructed"
+  },
+  {
+   "id": 352,
+   "rep": "norwegian-escape",
+   "factor": "taper",
+   "decks": [
+    15
+   ],
+   "rooms_per_hull": 195,
+   "why": "sea view itself stayed unobstructed by the glass balustrade"
+  },
+  {
+   "id": 365,
+   "rep": "norwegian-prima",
+   "factor": "lifeboat",
+   "decks": [
+    9
+   ],
+   "rooms_per_hull": 189,
+   "why": "largely avoid the classic 'lifeboat blocks the view' problem"
+  },
+  {
+   "id": 375,
+   "rep": "norwegian-prima",
+   "factor": "motion",
+   "decks": [
+    5,
+    16
+   ],
+   "rooms_per_hull": 242,
+   "why": "guests are steered toward midship, mid-height cabins"
+  },
+  {
+   "id": 379,
+   "rep": "norwegian-sky",
+   "factor": "elevator",
+   "decks": [
+    6
+   ],
+   "rooms_per_hull": 49,
+   "why": "no elevator ding/foot-traffic noise"
+  },
+  {
+   "id": 395,
+   "rep": "pride-of-america",
+   "factor": "elevator",
+   "decks": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+   ],
+   "rooms_per_hull": 947,
+   "why": "shortest walk to dining/theater, noise only a minor cost"
+  },
+  {
+   "id": 430,
+   "rep": "royal-princess",
+   "factor": "taper",
+   "decks": [
+    15,
+    16
+   ],
+   "rooms_per_hull": 296,
+   "why": "'horizon and forward view are unaffected' \u2014 trade not obstruction"
+  },
+  {
+   "id": 438,
+   "rep": "sun-princess",
+   "factor": "lifeboat",
+   "decks": [
+    5,
+    6
+   ],
+   "rooms_per_hull": 319,
+   "why": "no designated obstructed-view balcony category... unlikely to be blocked"
+  },
+  {
+   "id": 442,
+   "rep": "sun-princess",
+   "factor": "below",
+   "decks": [
+    16
+   ],
+   "rooms_per_hull": 248,
+   "why": "quieter than their forward counterparts... shielded"
+  },
+  {
+   "id": 449,
+   "rep": "sun-princess",
+   "factor": "motion",
+   "decks": [
+    9,
+    10,
+    11,
+    12
+   ],
+   "rooms_per_hull": 967,
+   "why": "most stable ride on the ship"
+  },
+  {
+   "id": 452,
+   "rep": "voyager-of-the-seas",
+   "factor": "lifeboat",
+   "decks": [
+    6
+   ],
+   "rooms_per_hull": 337,
+   "why": "\u201cpleasantly surprised\u2026 clear view of the open sea\u201d"
+  },
+  {
+   "id": 460,
+   "rep": "voyager-of-the-seas",
+   "factor": "elevator",
+   "decks": [
+    6,
+    7,
+    8,
+    9
+   ],
+   "rooms_per_hull": 1270,
+   "why": "\u201ccreates a buffer from the noise of the public areas\u201d"
+  },
+  {
+   "id": 463,
+   "rep": "wonder-of-the-seas",
+   "factor": "lifeboat",
+   "decks": [
+    6
+   ],
+   "rooms_per_hull": 225,
+   "why": "\u201cexcept for cabins on the hump\u2026 wider\u201d exception"
+  },
+  {
+   "id": 471,
+   "rep": "wonder-of-the-seas",
+   "factor": "taper",
+   "decks": [
+    17
+   ],
+   "rooms_per_hull": 28,
+   "why": "enjoy expansive forward-facing views of the horizon"
+  },
+  {
+   "id": 478,
+   "rep": "wonder-of-the-seas",
+   "factor": "elevator",
+   "decks": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    14
+   ],
+   "rooms_per_hull": 2760,
+   "why": "heard NOTHING in the cabin itself; No noise"
+  }
+ ]
+}

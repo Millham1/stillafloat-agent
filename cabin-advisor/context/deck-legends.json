@@ -1,0 +1,3988 @@
+{
+  "msc-armonia": {
+    "ship": "MSC Armonia",
+    "decks": {
+      "7": [
+        "Junior Interior",
+        "Junior Ocean View with Obstructed View",
+        "Junior Ocean View"
+      ],
+      "8": [
+        "Junior Interior",
+        "Junior Ocean View"
+      ],
+      "9": [
+        "Junior Interior",
+        "Junior Balcony",
+        "Premium Ocean View",
+        "Junior Ocean View"
+      ],
+      "10": [
+        "Junior Suite Aurea",
+        "Junior Balcony",
+        "Junior Interior",
+        "Junior Ocean View"
+      ],
+      "11": [
+        "Thermal Suite"
+      ],
+      "12": [
+        "Junior Suite Aurea"
+      ]
+    }
+  },
+  "msc-bellissima": {
+    "ship": "MSC Bellissima",
+    "decks": {
+      "5": [
+        "Deluxe Interior",
+        "Studio Interior",
+        "Deluxe Ocean View"
+      ],
+      "8": [
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Junior Ocean View with Obstructed View",
+        "Deluxe Interior",
+        "Junior Ocean View"
+      ],
+      "9": [
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Premium Suite Aurea",
+        "Premium Ocean View"
+      ],
+      "10": [
+        "Premium Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Studio Interior",
+        "Premium Ocean View Cabins",
+        "MSC Yacht Club Royal Suite"
+      ],
+      "11": [
+        "Deluxe Balcony Aurea",
+        "Deluxe Interior",
+        "Deluxe Balcony",
+        "Premium Suite Aurea",
+        "Premium Ocean View"
+      ],
+      "12": [
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Studio Interior",
+        "Premium Suite Aurea"
+      ],
+      "13": [
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Studio Interior",
+        "Studio Balcony",
+        "Premium Suite Aurea",
+        "MSC Yacht Club Royal Suite"
+      ],
+      "14": [
+        "Studio Balcony",
+        "Deluxe Interior",
+        "Studio Interior",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Premium Suite Aurea",
+        "MSC Yacht Club Interior Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "15": [
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite"
+      ],
+      "16": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite"
+      ],
+      "18": [
+        "Doremi Studio",
+        "MSC Yacht Club",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "19": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Solarium"
+      ]
+    }
+  },
+  "msc-divina": {
+    "ship": "MSC Divina",
+    "decks": {
+      "5": [
+        "Deluxe Interior",
+        "Premium Ocean View"
+      ],
+      "8": [
+        "Premium Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Ocean View",
+        "Junior Ocean View",
+        "Deluxe Interior",
+        "Junior Interior"
+      ],
+      "9": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea with Sealed Window",
+        "Junior Suite Aurea with Sealed Window",
+        "Premium Balcony",
+        "Junior Balcony",
+        "Deluxe Balcony Aurea",
+        "Junior Interior",
+        "Deluxe Interior"
+      ],
+      "10": [
+        "Premium Suite Aurea",
+        "Junior Suite Aurea with sealed window",
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Junior Balcony",
+        "Deluxe Interior",
+        "Junior Interior"
+      ],
+      "11": [
+        "Grand Suite Aurea",
+        "Junior Suite Aurea with Sealed Window",
+        "Premium Suite Aurea with Sealed Window",
+        "Premium Balcony",
+        "Deluxe Balcony Aurea",
+        "Deluxe Interior",
+        "Junior Interior",
+        "Junior Balcony"
+      ],
+      "12": [
+        "MSC Yacht Club Executive & Family Suite",
+        "Deluxe Interior",
+        "Junior Interior",
+        "Premium Balcony",
+        "Deluxe Balcony Aurea",
+        "Junior Balcony"
+      ],
+      "13": [
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony with Partial View",
+        "Junior Balcony",
+        "Premium Balcony",
+        "Deluxe Ocean View"
+      ],
+      "15": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Grand Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "16": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Executive and Family Suite with Balcony",
+        "MSC Yacht Club Grand Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "18": [
+        "MSC Yacht Club Area"
+      ]
+    }
+  },
+  "msc-euribia": {
+    "ship": "MSC Euribia",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View",
+        "Deluxe Interior",
+        "Studio Interior"
+      ],
+      "7": [
+        "Carousel Terrace"
+      ],
+      "8": [
+        "Deluxe Balcony",
+        "Deluxe Balcony with partial view",
+        "Junior Ocean View°°",
+        "Junior Ocean View with obstructed view°°",
+        "Deluxe Interior"
+      ],
+      "9": [
+        "Premium Ocean View",
+        "Premium Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "10": [
+        "Premium Ocean View",
+        "Premium Suite Aurea",
+        "Deluxe Balcony",
+        "Studio Interior°",
+        "Deluxe Interior"
+      ],
+      "11": [
+        "Premium Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Studio Interior"
+      ],
+      "12": [
+        "Premium Suite Aurea",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Studio Interior°",
+        "Deluxe Interior"
+      ],
+      "13": [
+        "MSC Yacht Club Royal Suite",
+        "Premium Suite Aurea",
+        "Deluxe Balcony with partial view",
+        "Deluxe Balcony",
+        "Deluxe Balcony Aurea",
+        "Deluxe Interior",
+        "Studio Interior"
+      ],
+      "14": [
+        "MSC Yacht Club Interior Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Balcony with partial view",
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Premium Suite Aurea"
+      ],
+      "15": [
+        "MSC Yacht Club Interior Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "16": [
+        "MSC Yacht Club Interior Suites",
+        "MSC Yacht Club Deluxe Suites"
+      ],
+      "18": [
+        "MSC Yacht Club Deluxe Suites"
+      ]
+    }
+  },
+  "msc-fantasia": {
+    "ship": "MSC Fantasia",
+    "decks": {
+      "5": [
+        "Premium Ocean View",
+        "Deluxe Interior Cabin"
+      ],
+      "8": [
+        "Premium Balcony",
+        "Deluxe Balcony with Partial View",
+        "Premium Ocean View",
+        "Deluxe Interior"
+      ],
+      "9": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Interior",
+        "Premium Balcony"
+      ],
+      "10": [
+        "Premium Suite Aurea",
+        "Junior Suite Aurea with Sealed Window",
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Deluxe Interior"
+      ],
+      "11": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Junior Suite Aurea with Sealed Window",
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Deluxe Interior"
+      ],
+      "12": [
+        "MSC Yacht Club Executive & Family Suite",
+        "Premium Balcony",
+        "Deluxe Balcony Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Interior"
+      ],
+      "13": [
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Deluxe Balcony with Partial View",
+        "Premium Ocean View",
+        "Deluxe Interior"
+      ],
+      "15": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Grand Suite"
+      ],
+      "16": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Grand Suite",
+        "MSC Yacht Club Executive and Family Suite with Balcony"
+      ],
+      "18": [
+        "MSC Yacht Club Area"
+      ]
+    }
+  },
+  "msc-grandiosa": {
+    "ship": "MSC Grandiosa",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View",
+        "Deluxe Interior",
+        "Interior Studio"
+      ],
+      "8": [
+        "Deluxe Balcony",
+        "Junior Ocean View",
+        "Junior Ocean View Cabin with Obstructed View",
+        "Studio Balcony",
+        "Deluxe Ocean View Cabin"
+      ],
+      "9": [
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Premium Suite Aurea",
+        "Premium Ocean View"
+      ],
+      "10": [
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Studio Interior",
+        "Premium Suite Aurea",
+        "Premium Ocean View",
+        "MSC Yacht Club Royal Suite"
+      ],
+      "11": [
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Premium Suite Aurea",
+        "Deluxe Balcony Aurea",
+        "Studio Interior",
+        "Premium Ocean View"
+      ],
+      "12": [
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Studio Interior",
+        "Premium Suite Aurea",
+        "Deluxe Balcony Aurea"
+      ],
+      "13": [
+        "Deluxe Balcony",
+        "Deluxe Balcony Aurea",
+        "Deluxe Interior",
+        "Studio Interior",
+        "Premium Suite Aurea"
+      ],
+      "14": [
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Interior",
+        "Premium Suite Aurea",
+        "Studio Interior",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite"
+      ],
+      "15": [
+        "MSC Yacht Club Interior Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Royal Suite"
+      ],
+      "16": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Interior Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "18": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "19": [
+        "MSC Yacht Club"
+      ]
+    }
+  },
+  "msc-lirica": {
+    "ship": "MSC Lirica",
+    "decks": {
+      "7": [
+        "Junior Ocean View",
+        "Junior Ocean View with Obstructed View",
+        "Junior Interior"
+      ],
+      "8": [
+        "Junior Interior",
+        "Junior Ocean View with Obstructed View"
+      ],
+      "9": [
+        "Premium Ocean View",
+        "Junior Ocean View with Obstructed View Cabin",
+        "Junior Balcony",
+        "Junior Interior"
+      ],
+      "10": [
+        "Deluxe Suite Aurea",
+        "Junior Balcony",
+        "Junior Interior",
+        "Junior Ocean View with Obstructed View Cabin"
+      ],
+      "11": [
+        "Thermal Suite"
+      ],
+      "12": [
+        "Deluxe Suite Aurea"
+      ]
+    }
+  },
+  "msc-magnifica": {
+    "ship": "MSC Magnifica",
+    "decks": {
+      "5": [
+        "Junior Interior",
+        "Deluxe Ocean View Stateroom"
+      ],
+      "8": [
+        "Premium Balcony with Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Ocean View",
+        "Deluxe Ocean View with Obstructed View",
+        "Junior Interior"
+      ],
+      "9": [
+        "Deluxe Suite Aurea",
+        "Junior Interior",
+        "Junior Balcony Stateroom",
+        "Premium Balcony",
+        "Deluxe Balcony Stateroom"
+      ],
+      "10": [
+        "Junior Balcony",
+        "Deluxe Balcony",
+        "Junior Suite Aurea",
+        "Junior Interior",
+        "Balcony Aurea"
+      ],
+      "11": [
+        "Junior Interior",
+        "Deluxe Balcony Stateroom",
+        "Junior Suite Aurea",
+        "Deluxe Balcony Aurea",
+        "Balcony Aurea",
+        "Junior Balcony"
+      ],
+      "12": [
+        "MSC Yacht Club Two-Room Grand Suite",
+        "MSC Yacht Club Interior Suite",
+        "Junior Suite Aurea",
+        "Deluxe Balcony",
+        "Junior Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Ocean View",
+        "Junior Interior"
+      ],
+      "14": [
+        "MSC Yacht Club Executive and Family Suite with Balcony",
+        "MSC Yacht Club Two-Room Grand Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "15": [
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ]
+    }
+  },
+  "msc-meraviglia": {
+    "ship": "MSC Meraviglia",
+    "decks": {
+      "5": [
+        "Studio Interior",
+        "Deluxe Interior",
+        "Deluxe Ocean View"
+      ],
+      "8": [
+        "Deluxe Interior",
+        "Junior Ocean View with Obstructed View",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Balcony",
+        "Junior Ocean View"
+      ],
+      "9": [
+        "Studio Interior",
+        "Deluxe Interior",
+        "Deluxe Balcony",
+        "Premium Balcony",
+        "Premium Ocean View"
+      ],
+      "10": [
+        "Studio Interior",
+        "Deluxe Interior",
+        "Deluxe Balcony",
+        "Premium Balcony",
+        "Deluxe Balcony Aurea",
+        "Premium Ocean Suite"
+      ],
+      "11": [
+        "Deluxe Balcony",
+        "Premium Balcony",
+        "Studio Interior",
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea",
+        "Premium Ocean View"
+      ],
+      "12": [
+        "Deluxe Balcony",
+        "Premium Balcony",
+        "Studio Interior",
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea"
+      ],
+      "13": [
+        "Studio Balcony",
+        "Deluxe Balcony",
+        "Premium Balcony",
+        "Deluxe Balcony Aurea",
+        "Studio Interior",
+        "Deluxe Interior",
+        "MSC Yacht Club Royal Suites"
+      ],
+      "14": [
+        "Studio Interior",
+        "Deluxe Interior",
+        "Studio Balcony",
+        "Deluxe Balcony",
+        "Premium Balcony",
+        "Deluxe Balcony with Partial View",
+        "MSC Yacht Club Interior Suites",
+        "MSC Yacht Club Deluxe Suites"
+      ],
+      "15": [
+        "MSC Yacht Club Interior Suites",
+        "MSC Yacht Club Royal Suites",
+        "MSC Yacht Club Deluxe Suites"
+      ],
+      "16": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Interior Suites",
+        "MSC Yacht Club Deluxe Suites"
+      ],
+      "18": [
+        "Doremi Studio",
+        "MSC Yacht Club",
+        "MSC Yacht Club Deluxe Suites"
+      ],
+      "19": [
+        "MSC Yacht Club"
+      ]
+    }
+  },
+  "msc-musica": {
+    "ship": "MSC Musica",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View",
+        "Deluxe Interior"
+      ],
+      "6": [
+        "Deluxe Ocean View",
+        "Deluxe Interior"
+      ],
+      "8": [
+        "Premium Balcony",
+        "Deluxe Balcony",
+        "Deluxe Ocean View with Obstructed View",
+        "Deluxe Ocean View",
+        "Deluxe Interior"
+      ],
+      "9": [
+        "Deluxe Interior",
+        "Deluxe Balcony",
+        "Deluxe Balcony Aurea",
+        "Premium Balcony"
+      ],
+      "10": [
+        "Deluxe Interior",
+        "Premium Balcony",
+        "Deluxe Balcony Aurea"
+      ],
+      "11": [
+        "Deluxe Interior",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Balcony",
+        "Premium Balcony",
+        "Deluxe Balcony Aurea"
+      ],
+      "12": [
+        "Deluxe Interior",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Balcony",
+        "Premium Balcony"
+      ],
+      "14": [
+        "Premium Balcony",
+        "Deluxe Interior"
+      ],
+      "15": [
+        "Premium Suite Aurea",
+        "Premium Balcony",
+        "Deluxe Interior"
+      ]
+    }
+  },
+  "msc-opera": {
+    "ship": "MSC Opera",
+    "decks": {
+      "7": [
+        "Junior Ocean View with Obstructed View",
+        "Junior Ocean View",
+        "Junior Interior"
+      ],
+      "8": [
+        "Junior Interior",
+        "Junior Ocean View"
+      ],
+      "9": [
+        "Premium Ocean View",
+        "Deluxe Balcony Aurea",
+        "Junior Balcony",
+        "Junior Ocean View",
+        "Junior Interior"
+      ],
+      "10": [
+        "Deluxe Balcony Aurea",
+        "Junior Balcony",
+        "Junior Interior",
+        "Junior Ocean View"
+      ],
+      "11": [
+        "Thermal Suite"
+      ],
+      "12": [
+        "Junior Suite Aurea"
+      ]
+    }
+  },
+  "msc-orchestra": {
+    "ship": "MSC Orchestra",
+    "decks": {
+      "5": [
+        "Villa Borghese Ristorante",
+        "Deluxe Ocean View",
+        "Deluxe Interior"
+      ],
+      "8": [
+        "Deluxe Ocean View",
+        "Premium Balcony",
+        "Deluxe Interior",
+        "Junior Ocean View with Obstructed View"
+      ],
+      "9": [
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "10": [
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "11": [
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "12": [
+        "Deluxe Balcony",
+        "Premium Balcony",
+        "Deluxe Interior",
+        "Deluxe Balcony with Partial View"
+      ],
+      "14": [
+        "Premium Balcony",
+        "Deluxe Interior"
+      ],
+      "15": [
+        "Premium Suite Aurea",
+        "Premium Balcony",
+        "Deluxe Interior"
+      ]
+    }
+  },
+  "msc-poesia": {
+    "ship": "MSC Poesia",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View Cabins",
+        "Deluxe Interior Cabins"
+      ],
+      "8": [
+        "Deluxe Ocean View with Obstructed View Cabin",
+        "Deluxe Ocean View Cabin",
+        "Deluxe Balcony Cabin",
+        "Deluxe Interior Cabin"
+      ],
+      "9": [
+        "Balcony Aurea Cabin",
+        "Premium Balcony Cabin",
+        "Deluxe Balcony Cabin",
+        "Deluxe Interior Cabin"
+      ],
+      "10": [
+        "Balcony Aurea Cabin",
+        "Premium Balcony Cabin",
+        "Deluxe Balcony Cabin",
+        "Deluxe Interior Cabin"
+      ],
+      "11": [
+        "MSC Yacht Club Two-Room Grand Suite",
+        "Deluxe Balcony Aurea",
+        "Premium Balcony Cabin",
+        "Deluxe Balcony Cabin",
+        "Deluxe Interior Cabin",
+        "Balcony Aurea Cabin"
+      ],
+      "12": [
+        "MSC Yacht Club Two-Room Grand Suite",
+        "Deluxe Interior Cabin",
+        "Premium Balcony Cabin",
+        "Deluxe Balcony with Partial View"
+      ],
+      "13": [
+        "Villa Pomitiana Buffet",
+        "MSC Yacht Club"
+      ],
+      "14": [
+        "MSC Yacht Club Two-Room Grand Suite",
+        "MSC Yacht Club Interior Suite",
+        "Deluxe Interior Cabin"
+      ],
+      "15": [
+        "MSC Yacht Club Two-Room Grand Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ]
+    }
+  },
+  "msc-preziosa": {
+    "ship": "MSC Preziosa",
+    "decks": {
+      "5": [
+        "Premium Ocean View",
+        "Deluxe Interior"
+      ],
+      "8": [
+        "Premium Balcony",
+        "Deluxe Balcony with Partial View",
+        "Premium Ocean View",
+        "Junior Balcony",
+        "Deluxe Ocean View",
+        "Junior Ocean View",
+        "Deluxe Interior",
+        "Junior Interior"
+      ],
+      "9": [
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Junior Balcony",
+        "Deluxe Interior",
+        "Junior Interior",
+        "Grand Suite Aurea",
+        "Junior Suite Aurea with sealed window",
+        "Premium Suite Aurea with sealed window"
+      ],
+      "10": [
+        "Premium Balcony",
+        "Junior Balcony",
+        "Deluxe Balcony Aurea",
+        "Junior Interior",
+        "Deluxe Interior",
+        "Premium Suite Aurea with sealed window",
+        "Junior Suite Aurea with sealed window"
+      ],
+      "11": [
+        "Premium Balcony",
+        "Junior Interior",
+        "Deluxe Interior",
+        "Junior Balcony",
+        "Deluxe Balcony Aurea",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea with sealed window",
+        "Junior Suite Aurea with sealed window"
+      ],
+      "12": [
+        "MSC Yacht Club Executive & Family Suite",
+        "Premium Balcony",
+        "Junior Balcony",
+        "Deluxe Balcony Aurea",
+        "Deluxe Interior",
+        "Junior Interior"
+      ],
+      "13": [
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Junior Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Ocean View",
+        "Deluxe Interior",
+        "Junior Interior"
+      ],
+      "15": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Grand Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "16": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Executive and Family Suite with Balcony",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Grand Suite"
+      ],
+      "18": [
+        "MSC Yacht Club Area"
+      ]
+    }
+  },
+  "msc-seascape": {
+    "ship": "MSC Seascape",
+    "decks": {}
+  },
+  "msc-seashore": {
+    "ship": "MSC Seashore",
+    "decks": {
+      "5": [
+        "Deluxe Interior",
+        "Deluxe Ocean View"
+      ],
+      "9": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony Aurea",
+        "Deluxe Interior",
+        "Junior Suite Aurea"
+      ],
+      "10": [
+        "Premium Interior",
+        "Grand Suite Aurea",
+        "Deluxe Balcony",
+        "Premium Suite Aurea"
+      ],
+      "11": [
+        "Two-Bedroom Grand Suite Aurea",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Balcony",
+        "Premium Balcony",
+        "Deluxe Interior"
+      ],
+      "12": [
+        "Two-Bedroom Grand Suite Aurea",
+        "Grand Suite Aurea",
+        "Deluxe Balcony",
+        "Premium Suite Aurea",
+        "Deluxe Interior"
+      ],
+      "13": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "14": [
+        "Two-Bedroom Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "15": [
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Premium Suite Aurea",
+        "Deluxe Balcony Aurea"
+      ],
+      "16": [
+        "MSC Yacht Club Grand Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite"
+      ],
+      "18": [
+        "MSC Yacht Club Grand Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "The Studio"
+      ],
+      "19": [
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite"
+      ]
+    }
+  },
+  "msc-seaside": {
+    "ship": "MSC Seaside",
+    "decks": {
+      "5": [
+        "Deluxe Interior",
+        "Deluxe Ocean View"
+      ],
+      "9": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "10": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "11": [
+        "Two-Bedroom Grand Suite Aurea",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "12": [
+        "Two-Bedroom Grand Suite Aurea",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "13": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "14": [
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Interior",
+        "Deluxe Balcony",
+        "Two-Bedroom Grand Suite Aurea"
+      ],
+      "15": [
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Interior",
+        "Deluxe Balcony"
+      ],
+      "16": [
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Interior Suite"
+      ],
+      "18": [
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "Doremi Studio"
+      ]
+    }
+  },
+  "msc-seaview": {
+    "ship": "MSC Seaview",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View",
+        "Deluxe Interior"
+      ],
+      "9": [
+        "Premium Suite Aurea",
+        "Balcony Cabin",
+        "Deluxe Suite Aurea",
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea",
+        "Grand Suite Aurea"
+      ],
+      "10": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Premium Interior"
+      ],
+      "11": [
+        "Two Bedroom Grand Suite Aurea",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Balcony",
+        "Deluxe Interior"
+      ],
+      "12": [
+        "Deluxe Balcony",
+        "Premium Suite Aurea",
+        "Two-Bedroom Grand Suite Aurea",
+        "Grand Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Deluxe Interior"
+      ],
+      "13": [
+        "Deluxe Balcony",
+        "Deluxe Suite Aurea",
+        "Premium Suite Aurea",
+        "Grand Suite Aurea",
+        "Deluxe Interior"
+      ],
+      "14": [
+        "Deluxe Balcony",
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Two-Bedroom Grand Suite Aurea",
+        "Deluxe Interior"
+      ],
+      "15": [
+        "Deluxe Balcony",
+        "Premium Suite Aurea",
+        "Deluxe Suite Aurea",
+        "Grand Suite Aurea",
+        "Deluxe Interior"
+      ],
+      "16": [
+        "MSC Yacht Club Interior Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "18": [
+        "Doremi Studio",
+        "MSC Yacht Club Interior Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ]
+    }
+  },
+  "msc-sinfonia": {
+    "ship": "MSC Sinfonia",
+    "decks": {
+      "7": [
+        "Junior Ocean View Cabin",
+        "Ocean View Cabin",
+        "Junior Interior Cabin"
+      ],
+      "8": [
+        "Ocean View Cabin",
+        "Junior Interior Cabin"
+      ],
+      "9": [
+        "Premium Ocean View Cabin",
+        "Ocean View Cabin",
+        "Junior Interior Cabin",
+        "Junior Balcony Cabin"
+      ],
+      "10": [
+        "Junior Interior Cabin",
+        "Ocean View Cabin",
+        "Junior Suite Aurea",
+        "Junior Balcony Cabins"
+      ],
+      "11": [
+        "Thermal Suite"
+      ],
+      "12": [
+        "Junior Suite Aurea"
+      ]
+    }
+  },
+  "msc-splendida": {
+    "ship": "MSC Splendida",
+    "decks": {
+      "5": [
+        "Deluxe Interior",
+        "Premium Ocean View"
+      ],
+      "8": [
+        "Premium Balcony",
+        "Deluxe Interior",
+        "Deluxe Balcony with Partial View",
+        "Premium Ocean View"
+      ],
+      "9": [
+        "Deluxe Interior",
+        "Premium Balcony",
+        "Premium Suite Aurea with sealed window"
+      ],
+      "10": [
+        "Premium Suite Aurea",
+        "Junior Suite Aurea with Sealed Window",
+        "Premium Balcony",
+        "Deluxe Interior"
+      ],
+      "11": [
+        "Grand Suite Aurea",
+        "Premium Suite Aurea with Sealed Window",
+        "Junior Suite Aurea with Sealed Window",
+        "Deluxe Balcony Aurea",
+        "Premium Balcony",
+        "Deluxe Interior"
+      ],
+      "12": [
+        "Premium Suite Aurea with sealed window",
+        "Deluxe Interior",
+        "Premium Balcony",
+        "Deluxe Balcony Aurea",
+        "MSC Yacht Club Executive & Family Suite"
+      ],
+      "13": [
+        "Premium Ocean View",
+        "Premium Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Balcony Aurea",
+        "Deluxe Interior"
+      ],
+      "15": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Grand Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "16": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Executive and Family Suite with Balcony",
+        "MSC Yacht Club Executive & Family Suite",
+        "MSC Yacht Club Deluxe Grand Suite"
+      ],
+      "18": [
+        "MSC Yacht Club"
+      ]
+    }
+  },
+  "msc-virtuosa": {
+    "ship": "MSC Virtuosa",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View Cabin",
+        "Deluxe Interior Cabin",
+        "Studio Interior Cabin"
+      ],
+      "14": [
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "Deluxe Balcony",
+        "Deluxe Balcony with partial view",
+        "Premium Suite Aurea",
+        "Deluxe Interior"
+      ],
+      "15": [
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite"
+      ],
+      "16": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Interior Suite",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "18": [
+        "MSC Yacht Club",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "19": [
+        "MSC Yacht Club"
+      ]
+    }
+  },
+  "msc-world-america": {
+    "ship": "MSC World America",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View",
+        "Studio Ocean View",
+        "Deluxe Interior"
+      ],
+      "7": [
+        "Panorama Terrace"
+      ],
+      "9": [
+        "Deluxe Ocean View",
+        "Studio Ocean View",
+        "Deluxe Balcony",
+        "Junior Suite Aurea",
+        "Deluxe Balcony with Partial View",
+        "Grand Suite Aurea",
+        "Deluxe Interior"
+      ],
+      "10": [
+        "Infinite Ocean View",
+        "Deluxe Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Grand Suite Aurea"
+      ],
+      "11": [
+        "Infinite Ocean View Aurea",
+        "Deluxe Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Interior",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea"
+      ],
+      "12": [
+        "Infinite Ocean View Aurea",
+        "Deluxe Ocean View",
+        "Studio Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony with Partial View",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea"
+      ],
+      "14": [
+        "Infinite Ocean View Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with partial view",
+        "Studio Ocean View",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Interior",
+        "Studio Interior"
+      ],
+      "15": [
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with partial view",
+        "Deluxe Interior"
+      ],
+      "16": [
+        "MSC Yacht Club Owner's Suite",
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Duplex Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with partial view",
+        "Deluxe Suite Aurea with Promenade & Ocean View"
+      ],
+      "18": [
+        "MSC Yacht Club Owner's Suite",
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Duplex Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ],
+      "19": [
+        "The Studio",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior",
+        "Studio Interior"
+      ],
+      "20": [
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ],
+      "21": [
+        "MSC Yacht Club Lanai",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ]
+    }
+  },
+  "msc-world-asia": {
+    "ship": "MSC World Asia",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View",
+        "Studio Ocean View",
+        "Deluxe Interior"
+      ],
+      "7": [
+        "Panorama Terrace"
+      ],
+      "9": [
+        "Premium Balcony Aurea",
+        "Deluxe Ocean View",
+        "Studio Ocean View",
+        "Deluxe Balcony",
+        "Grand Suite Aurea",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Interior"
+      ],
+      "10": [
+        "Infinite Ocean View",
+        "Deluxe Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Interior",
+        "Grand Suite Aurea"
+      ],
+      "11": [
+        "Infinite Ocean View",
+        "Deluxe Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Interior",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea"
+      ],
+      "12": [
+        "Infinite Ocean View Aurea",
+        "Deluxe Ocean View",
+        "Studio Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony with Partial View",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea"
+      ],
+      "14": [
+        "Infinite Ocean View Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Studio Ocean View",
+        "Grand Suite Aurea with Terrace",
+        "Premium Suite Aurea",
+        "Deluxe Interior",
+        "Studio Interior"
+      ],
+      "15": [
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Interior"
+      ],
+      "16": [
+        "MSC Yacht Club Duplex Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Junior Suite Aurea with Promenade & Ocean View"
+      ],
+      "18": [
+        "MSC Yacht Club Duplex Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ],
+      "19": [
+        "The Studio",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior",
+        "Studio Interior"
+      ],
+      "20": [
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ],
+      "21": [
+        "MSC Yacht Club Lanai",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ]
+    }
+  },
+  "msc-world-atlantic": {
+    "ship": "MSC World Atlantic",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View",
+        "Studio Ocean View",
+        "Deluxe Interior"
+      ],
+      "7": [
+        "Panorama Terrace"
+      ],
+      "9": [
+        "Deluxe Ocean View",
+        "Studio Ocean View",
+        "Deluxe Balcony",
+        "Junior Suite Aurea",
+        "Deluxe Balcony with Partial View",
+        "Grand Suite Aurea",
+        "Deluxe Interior"
+      ],
+      "10": [
+        "Infinite Ocean View",
+        "Deluxe Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Grand Suite Aurea"
+      ],
+      "11": [
+        "Infinite Ocean View Aurea",
+        "Deluxe Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Interior",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea"
+      ],
+      "12": [
+        "Infinite Ocean View Aurea",
+        "Deluxe Ocean View",
+        "Studio Ocean View",
+        "Deluxe Balcony",
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony with Partial View",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea"
+      ],
+      "14": [
+        "Infinite Ocean View Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with partial view",
+        "Studio Ocean View",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Deluxe Interior",
+        "Studio Interior"
+      ],
+      "15": [
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with partial view",
+        "Deluxe Interior"
+      ],
+      "16": [
+        "MSC Yacht Club Owner's Suite",
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Duplex Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "Deluxe Interior",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with partial view",
+        "Deluxe Suite Aurea with Promenade & Ocean View"
+      ],
+      "18": [
+        "MSC Yacht Club Owner's Suite",
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Duplex Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ],
+      "19": [
+        "The Studio",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior",
+        "Studio Interior"
+      ],
+      "20": [
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ],
+      "21": [
+        "MSC Yacht Club Lanai",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ]
+    }
+  },
+  "msc-world-europa": {
+    "ship": "MSC World Europa",
+    "decks": {
+      "5": [
+        "Deluxe Ocean View Cabin",
+        "Deluxe Interior Cabin",
+        "Studio Ocean View Cabin"
+      ],
+      "7": [
+        "Panorama Terrace"
+      ],
+      "9": [
+        "Studio Ocean View Cabin",
+        "Deluxe Ocean View Cabin",
+        "Deluxe Balcony Cabin",
+        "Deluxe Interior Cabin",
+        "Junior Suite Aurea",
+        "Deluxe Balcony with partial view",
+        "Grand Suite Aurea"
+      ],
+      "10": [
+        "Deluxe Ocean View Cabin",
+        "Infinite Ocean View Aurea",
+        "Deluxe Interior Cabin",
+        "Deluxe Balcony Cabin",
+        "Deluxe Balcony Cabin with partial view",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea"
+      ],
+      "11": [
+        "Deluxe Ocean View Cabin",
+        "Infinite Ocean View Aurea",
+        "Deluxe Interior Cabin",
+        "Deluxe Balcony Cabin",
+        "Deluxe Balcony Cabin with partial view",
+        "Grand Suite Aurea",
+        "Premium Suite Aurea",
+        "Studio Interior Cabin"
+      ],
+      "12": [
+        "Studio Ocean View Cabin",
+        "Deluxe Ocean View Cabin",
+        "Infinite Ocean View Aurea",
+        "Deluxe Interior Cabin",
+        "Deluxe Balcony Cabin",
+        "Juniour Suite Aurea with Promenade & Ocean View",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony Cabin with partial view",
+        "Grand Suite Aurea",
+        "Infinite Ocean View Cabin"
+      ],
+      "14": [
+        "Studio Interior",
+        "Deluxe Interior",
+        "Deluxe Balcony",
+        "Infinite Ocean View Aurea",
+        "Studio Ocean View",
+        "Junior Suite Aurea with Promenade & Ocean View",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony with partial view",
+        "Grand Suite Aurea"
+      ],
+      "15": [
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite",
+        "Deluxe Interior",
+        "Grand Suite Aurea",
+        "Deluxe Suite Aurea with Promenade & Ocean View",
+        "Deluxe Balcony Aurea",
+        "Deluxe Balcony",
+        "Deluxe Balcony with Partial View"
+      ],
+      "16": [
+        "Junior Suite Aurea with Promenade & Ocean View",
+        "Grand Suite Aurea",
+        "Deluxe Balcony with Partial View",
+        "Deluxe Balcony",
+        "Deluxe Balcony Aurea",
+        "Studio Interior",
+        "Deluxe Interior",
+        "MSC Yacht Club Owner's Suite",
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Duplex Suite",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Interior Suite"
+      ],
+      "18": [
+        "Deluxe Interior Cabin",
+        "MSC Yacht Club Deluxe Suite",
+        "MSC Yacht Club Royal Suite",
+        "MSC Yacht Club Owner's Suite"
+      ],
+      "19": [
+        "The Studio",
+        "Deluxe Interior Cabin",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "20": [
+        "Deluxe Interior Cabin",
+        "MSC Yacht Club Deluxe Suite"
+      ],
+      "21": [
+        "MSC Yacht Club Lanai",
+        "MSC Yacht Club Deluxe Suite",
+        "Deluxe Interior"
+      ]
+    }
+  },
+  "norwegian-aqua": {
+    "ship": "Norwegian Aqua",
+    "decks": {
+      "5": [
+        "Family Oceanview",
+        "Large Oceanview with Round Window",
+        "Oceanview with Round Window",
+        "Solo Oceanview",
+        "Sailaway Oceanview",
+        "Inside",
+        "Sailaway Inside"
+      ],
+      "8": [
+        "Perspectives Studio"
+      ],
+      "9": [
+        "Aft-Facing Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Owner's Suite with Master Bedroom & Large Balcony 4 90-92 48-49",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Sailaway Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "12": [
+        "The Haven Aft-Facing Owner's Suite with Master Bedroom & Large Balcony",
+        "The Haven Owner’s Suite with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside",
+        "Solo Studio"
+      ],
+      "13": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Studio"
+      ],
+      "14": [
+        "The Haven Premier Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ],
+      "15": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 3-Bedroom Duplex Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "16": [
+        "The Haven 3-Bedroom Duplex Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ]
+    }
+  },
+  "norwegian-aura": {
+    "ship": "Norwegian Aura",
+    "decks": {
+      "5": [
+        "Family Oceanview",
+        "Large Oceanview with Round Window",
+        "Oceanview with Round Window",
+        "Solo Oceanview",
+        "Sailaway Oceanview",
+        "Inside",
+        "Sailaway Inside"
+      ],
+      "9": [
+        "Aft-Facing Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Owner's Suite with Master Bedroom & Large Balcony 4 90-92 48-49",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Sailaway Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "12": [
+        "The Haven Aft-Facing Owner's Suite with Master Bedroom & Large Balcony",
+        "The Haven Owner’s Suite with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside",
+        "Solo Studio"
+      ],
+      "13": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Studio"
+      ],
+      "14": [
+        "The Haven Premier Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ],
+      "15": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 3-Bedroom Duplex Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "16": [
+        "The Haven 3-Bedroom Duplex Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ]
+    }
+  },
+  "norwegian-bliss": {
+    "ship": "Norwegian Bliss",
+    "decks": {
+      "5": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "6": [
+        "Perspectives Studio"
+      ],
+      "9": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite with Larger Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Family Inside",
+        "Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite with Larger Balcony",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Family Inside",
+        "Inside",
+        "Solo Studio"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Family Inside",
+        "Inside",
+        "Solo Studio"
+      ],
+      "12": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Family Inside",
+        "Inside",
+        "Solo Studio"
+      ],
+      "13": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Family Inside",
+        "Inside"
+      ],
+      "14": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "15": [
+        "Haven Penthouse Suite with Balcony",
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "17": [
+        "The Haven Courtyard",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Courtyard Penthouse with Large Balcony"
+      ],
+      "18": [
+        "The Haven Courtyard",
+        "The Haven Premier Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Large Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "19": [
+        "The Haven Courtyard Sun Deck"
+      ]
+    }
+  },
+  "norwegian-breakaway": {
+    "ship": "Norwegian Breakaway",
+    "decks": {
+      "5": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "6": [
+        "Perspectives Studio"
+      ],
+      "8": [
+        "Club Balcony Suite with Larger Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Balcony",
+        "Sail Away Balcony",
+        "Inside"
+      ],
+      "9": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Oceanview with Picture Window",
+        "Inside",
+        "Solo Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom and Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Oceanview with Picture Window",
+        "Inside",
+        "Solo Studio"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom and Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Oceanview with Picture Window",
+        "Inside",
+        "Solo Studio"
+      ],
+      "12": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Oceanview with Picture Window",
+        "Family Inside",
+        "Inside"
+      ],
+      "13": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom and Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Oceanview with Picture Window",
+        "Family Inside",
+        "Inside"
+      ],
+      "14": [
+        "Thermal Suite Pass",
+        "The Haven Aft-Facing Penthouse with Master Bedroom and Balcony",
+        "The Haven Penthouse Suite with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "15": [
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "16": [
+        "The Haven Courtyard",
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven Deluxe Owner's Suite with Balcony",
+        "The Haven Courtyard Penthouse with Balcony",
+        "The Haven 2-Bedroom Family Villa with Balcony"
+      ],
+      "17": [
+        "The Haven Private Sun Deck"
+      ]
+    }
+  },
+  "norwegian-dawn": {
+    "ship": "Norwegian Dawn",
+    "decks": {
+      "4": [
+        "Oceanview",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "5": [
+        "Oceanview with Picture Window",
+        "Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "6": [
+        "Sail Away Oceanview",
+        "Oceanview with Picture Window"
+      ],
+      "8": [
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Obstructed Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "9": [
+        "Owner's Suite with Two Balconies",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "Deluxe Owner's Suite with Two Balconies",
+        "Forward-Facing Deluxe Penthouse with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Large Balcony",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "11": [
+        "Thermal Suite Pass",
+        "2-Bedroom Deluxe Family Suite with Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Sail Away Inside"
+      ],
+      "12": [
+        "Deluxe Owner's Suite",
+        "Family Suite with Balcony",
+        "Family Suite"
+      ],
+      "14": [
+        "3-Bedroom Garden Villa"
+      ]
+    }
+  },
+  "norwegian-encore": {
+    "ship": "Norwegian Encore",
+    "decks": {
+      "5": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "6": [
+        "Perspectives Studio",
+        "Photo Studio"
+      ],
+      "8": [
+        "Club Balcony Suite with Larger Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Large Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "9": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite with Larger Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside",
+        "Solo Studio"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside",
+        "Solo Studio"
+      ],
+      "12": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside",
+        "Solo Studio"
+      ],
+      "13": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "14": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "15": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "17": [
+        "The Haven Courtyard",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Courtyard Penthouse with Large Balcony"
+      ],
+      "18": [
+        "The Haven Courtyard",
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Large Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "19": [
+        "The Haven Courtyard Sun Deck"
+      ]
+    }
+  },
+  "norwegian-epic": {
+    "ship": "Norwegian Epic",
+    "decks": {
+      "5": [
+        "Perspectives Photography Studio"
+      ],
+      "8": [
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "9": [
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Sail Away Inside",
+        "Solo Studio"
+      ],
+      "12": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Family Balcony",
+        "Large Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Sail Away Inside",
+        "Solo Studio",
+        "Balcony",
+        "Aft-Facing Balcony"
+      ],
+      "13": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "14": [
+        "Thermal Suite Pass",
+        "The Haven Penthouse Suite with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "16": [
+        "The Haven Courtyard and Sun Deck",
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "17": [
+        "The Haven",
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "18": [
+        "Haven Sun Deck"
+      ]
+    }
+  },
+  "norwegian-escape": {
+    "ship": "Norwegian Escape",
+    "decks": {
+      "5": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "6": [
+        "Perspectives Studio"
+      ],
+      "8": [
+        "Club Balcony Suite with Larger Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "9": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside",
+        "Solo Studio"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside",
+        "Solo Studio"
+      ],
+      "12": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside",
+        "Solo Studio"
+      ],
+      "13": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "14": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "15": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "16": [
+        "The Haven Deluxe Suite with Balcony",
+        "The Haven Penthouse Suite with Balcony"
+      ],
+      "17": [
+        "The Haven Courtyard",
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven Deluxe Owner's Suite with Balcony",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "18": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven Deluxe Owner's Suite with Balcony",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "19": [
+        "The Haven Courtyard Sun Deck"
+      ]
+    }
+  },
+  "norwegian-gem": {
+    "ship": "Norwegian Gem",
+    "decks": {
+      "4": [
+        "Oceanview",
+        "Solo Oceanview",
+        "Guarantee Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Guarantee Inside"
+      ],
+      "5": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Oceanview",
+        "Guarantee Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Guarantee Inside"
+      ],
+      "8": [
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Guarantee Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Obstructed Oceanview",
+        "Guarantee Oceanview",
+        "Family Inside",
+        "Inside",
+        "Guarantee Inside"
+      ],
+      "9": [
+        "The Haven Owner's Suite with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Guarantee Balcony",
+        "Family Inside",
+        "Inside",
+        "Guarantee Inside"
+      ],
+      "10": [
+        "The Haven Deluxe Owner's Suite with Balcony",
+        "Forward-Facing Deluxe Penthouse with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Large Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Guarantee Balcony",
+        "Family Inside",
+        "Inside",
+        "Guarantee Inside"
+      ],
+      "11": [
+        "2-Bedroom Deluxe Family Suite with Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Club Balcony Suite",
+        "Guarantee Club Balcony Suite",
+        "Family Inside",
+        "Inside",
+        "Guarantee Inside"
+      ],
+      "12": [
+        "Balcony"
+      ],
+      "14": [
+        "The Haven 3-Bedroom Garden Villa",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "15": [
+        "The Haven Sun Deck",
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "Garden Villa Private Sun Deck"
+      ]
+    }
+  },
+  "norwegian-getaway": {
+    "ship": "Norwegian Getaway",
+    "decks": {
+      "5": [
+        "Family Oceanview Stateroom",
+        "Oceanview with Picture Window Stateroom",
+        "Solo Oceanview Stateroom",
+        "Sail Away Oceanview Stateroom",
+        "Inside Stateroom",
+        "Solo Inside Stateroom",
+        "Sail Away Inside Stateroom"
+      ],
+      "6": [
+        "Perspectives Photo Studio",
+        "Perpectives Studio"
+      ],
+      "8": [
+        "Club Balcony Suite with Larger Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Balcony Stateroom",
+        "Sail Away Balcony Stateroom",
+        "Inside Stateroom",
+        "Sail Away Inside Stateroom"
+      ],
+      "9": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony Staterooms",
+        "Balcony Staterooms",
+        "Solo Balcony Staterooms",
+        "Oceanview with Picture Window Staterooms",
+        "Sail Away Oceanview Staterooms",
+        "Inside Staterooms",
+        "Sail Away Inside Staterooms",
+        "Solo Studio Staterooms"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony Stateroom",
+        "Balcony Stateroom",
+        "Oceanview with Picture Window Stateroom",
+        "Sail Away Oceanview Stateroom",
+        "Inside Stateroom",
+        "Sail Away Inside Stateroom",
+        "Solo Studio Stateroom"
+      ],
+      "12": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony Staterooms",
+        "Balcony Staterooms",
+        "Solo Balcony Staterooms",
+        "Oceanview with Picture Window Staterooms",
+        "Sail Away Oceanview Staterooms",
+        "Family Inside Staterooms",
+        "Inside Staterooms",
+        "Sail Away Inside Staterooms"
+      ],
+      "13": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony Staterooms",
+        "Family Balcony Staterooms",
+        "Balcony Staterooms",
+        "Oceanview with Picture Window Staterooms",
+        "Sail Away Oceanview Staterooms",
+        "Family Inside Staterooms",
+        "Inside Staterooms",
+        "Sail Away Inside Staterooms"
+      ],
+      "14": [
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Balcony",
+        "The Haven Penthouse Suite with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony Staterooms",
+        "Family Balcony Staterooms",
+        "Balcony Staterooms",
+        "Family Inside Staterooms",
+        "Inside Staterooms",
+        "Sail Away Inside Staterooms"
+      ],
+      "15": [
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "16": [
+        "The Haven Courtyard",
+        "The Haven's Deluxe Owner's Suite with Large Balcony",
+        "The Haven's Deluxe Owner's Suite with Balcony",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "17": [
+        "The Haven Private Sun Deck"
+      ]
+    }
+  },
+  "norwegian-jade": {
+    "ship": "Norwegian Jade",
+    "decks": {
+      "4": [
+        "Oceanview",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "5": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "8": [
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Obstructed Oceanview",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "9": [
+        "The Haven Owner's Suite with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "The Haven Deluxe Owner's Suite with Balcony",
+        "Forward-Facing Deluxe Penthouse with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Large Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "11": [
+        "2-Bedroom Deluxe Family Suite with Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "12": [
+        "Oceanview with Picture Window",
+        "Perspectives Studio"
+      ],
+      "14": [
+        "The Haven Courtyard",
+        "Garden Villa Hot Tubs",
+        "The Haven 3-Bedroom Garden Villa",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "15": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven Sun Deck",
+        "Garden Villa Private Sun Deck"
+      ]
+    }
+  },
+  "norwegian-jewel": {
+    "ship": "Norwegian Jewel",
+    "decks": {
+      "4": [
+        "Oceanview",
+        "Obstructed Oceanview",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "5": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "6": [
+        "Oceanview with Picture Window"
+      ],
+      "8": [
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Obstructed Oceanview",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "9": [
+        "The Haven Owner's Suite with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "The Haven Deluxe Owner's Suite with Balcony",
+        "Forward-Facing Deluxe Penthouse with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Large Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "11": [
+        "2-Bedroom Deluxe Family Suite with Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "13": [
+        "Perspectives Studio"
+      ],
+      "14": [
+        "Garden Villa Hot Tubs",
+        "The Haven Courtyard",
+        "The Haven 3-Bedroom Garden Villa",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "15": [
+        "The Haven Sun Deck",
+        "Garden Villa Private Sun Deck",
+        "Courtyard Villas Private Sun Deck",
+        "The Haven Deluxe Owner's Suite with Large Balcony"
+      ]
+    }
+  },
+  "norwegian-joy": {
+    "ship": "Norwegian Joy",
+    "decks": {
+      "5": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "6": [
+        "Perspectives Studio"
+      ],
+      "8": [
+        "Club Balcony Suite with Larger Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Large Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "9": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft Facing Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Suite",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite with Larger Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Suite",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "12": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Suite",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "13": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Forward-Facing Penthouse with Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "14": [
+        "The Haven Aft-Facing Penthouse with Balcony",
+        "The Haven Penthouse Suite with Balcony",
+        "The Haven Suite with Balcony",
+        "Penthouse Suite with Balcony",
+        "Family Suite",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "15": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Family Villa Suite with Balcony",
+        "The Haven Penthouse Suite with Balcony",
+        "Family Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "16": [
+        "Thermal Suite Pass"
+      ],
+      "17": [
+        "The Haven Courtyard",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Large Balcony"
+      ],
+      "18": [
+        "The Haven Courtyard",
+        "The Haven Premier Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Large Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "19": [
+        "The Haven Courtyard Sun Deck"
+      ]
+    }
+  },
+  "norwegian-luna": {
+    "ship": "Norwegian Luna",
+    "decks": {
+      "5": [
+        "Sail Away Inside Stateroom",
+        "Inside Stateroom",
+        "Family Inside Stateroom",
+        "Sail Away Oceanview Stateroom",
+        "Solo Oceanview Stateroom",
+        "Oceanview Stateroom with Round Window",
+        "Large Oceanview Stateroom with Round Window",
+        "Family Oceanview Stateroom"
+      ],
+      "9": [
+        "Sail Away Inside Stateroom",
+        "Inside Stateroom",
+        "Family Inside Stateroom",
+        "Sail Away Balcony Stateroom",
+        "Balcony Stateroom",
+        "Family Balcony Stateroom",
+        "Aft-Facing Balcony Stateroom",
+        "Forward-Facing Club Balcony Suite",
+        "Club Balcony Suite",
+        "Family Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward Facing Suite with Master Bedroom & Large Balcony",
+        "Aft-Facing Suite with Large Balcony"
+      ],
+      "10": [
+        "Inside Stateroom",
+        "Family Inside Stateroom",
+        "Balcony Stateroom",
+        "Family Balcony Stateroom",
+        "Forward-Facing Club Balcony Suite",
+        "Club Balcony Suite",
+        "Family Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward Facing Suite with Master Bedroom & Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Aft-Facing Owner’s Suite with Master Bedroom & Large Balcony"
+      ],
+      "11": [
+        "Inside Stateroom",
+        "Family Inside Stateroom",
+        "Balcony Stateroom",
+        "Family Balcony Stateroom",
+        "Sail Away Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Club Balcony Suite",
+        "Family Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward Facing Suite with Master Bedroom & Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Aft-Facing Penthouse with Large Balcony"
+      ],
+      "12": [
+        "Studio Stateroom",
+        "Solo Inside Stateroom",
+        "Inside Stateroom",
+        "Family Inside Stateroom",
+        "Solo Balcony Stateroom",
+        "Balcony Stateroom",
+        "Family Balcony Stateroom",
+        "Forward-Facing Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward Facing Suite with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Owner’s Suite with Large Balcony",
+        "The Haven Aft-Facing Owner’s Suite with Master Bedroom & Large Balcony"
+      ],
+      "13": [
+        "Studio Stateroom",
+        "Inside Stateroom",
+        "Family Inside Stateroom",
+        "Balcony Stateroom",
+        "Family Balcony Stateroom",
+        "Forward-Facing Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward Facing Suite with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Deluxe Owner’s Suite with Large Balcony"
+      ],
+      "14": [
+        "Solo Inside Stateroom",
+        "Inside Stateroom",
+        "Family Inside Stateroom",
+        "Balcony Stateroom",
+        "Family Balcony Stateroom",
+        "Family Suite with Master Bedroom & Balcony",
+        "The Haven Penthouse with Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Premier Owner’s Suite with Large Balcony"
+      ],
+      "15": [
+        "Inside Stateroom",
+        "Family Inside Stateroom",
+        "Balcony Stateroom",
+        "Family Balcony Stateroom",
+        "Family Suite with Master Bedroom & Balcony",
+        "The Haven Penthouse with Balcony",
+        "The Haven 3-Bedroom Duplex Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Deluxe Owner’s Suite with Large Balcony"
+      ],
+      "16": [
+        "Solo Inside Stateroom",
+        "Inside Stateroom",
+        "Family Inside Stateroom",
+        "Balcony Stateroom",
+        "Family Balcony Stateroom",
+        "Family Suite with Master Bedroom & Balcony",
+        "The Haven 3-Bedroom Duplex Suite with Large Balcony"
+      ]
+    }
+  },
+  "norwegian-pearl": {
+    "ship": "Norwegian Pearl",
+    "decks": {
+      "4": [
+        "Oceanview",
+        "Solo Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "5": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Oceanview",
+        "Inside",
+        "Solo Inside"
+      ],
+      "8": [
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Obstructed Oceanview",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside"
+      ],
+      "9": [
+        "The Haven Owner's Suite with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "10": [
+        "The Haven Deluxe Owner's Suite with Balcony",
+        "Forward-Facing Deluxe Penthouse with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Large Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "11": [
+        "2-Bedroom Deluxe Family Suite with Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Family Inside",
+        "Inside"
+      ],
+      "12": [
+        "Oceanview with Picture Window"
+      ],
+      "13": [
+        "Perspectives Photography Studio"
+      ],
+      "14": [
+        "Garden Villa Hot Tubs",
+        "The Haven 3-Bedroom Garden Villa",
+        "The Haven 2-Bedroom Family Villa with Balcony",
+        "The Haven Courtyard Penthouse with Balcony"
+      ],
+      "15": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven Sun Deck",
+        "Garden Villa Private Sun Deck"
+      ]
+    }
+  },
+  "norwegian-prima": {
+    "ship": "Norwegian Prima",
+    "decks": {
+      "5": [
+        "Family Oceanview",
+        "Large Oceanview with Round Window",
+        "Oceanview with Round Window",
+        "Solo Oceanview",
+        "Sailaway Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sailaway Inside"
+      ],
+      "8": [
+        "Perspectives Studio"
+      ],
+      "9": [
+        "Aft-Facing Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Owner's Suite with Master Bedroom & Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Sailaway Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Oceanview",
+        "Family Inside",
+        "Inside"
+      ],
+      "12": [
+        "The Haven Aft-Facing Owner's Suite with Master Bedroom & Large Balcony",
+        "The Haven Owner’s Suite with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside",
+        "Solo Studio"
+      ],
+      "13": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Studio"
+      ],
+      "14": [
+        "Accommodates Total Approx. Size Balcony Size",
+        "The Haven Premier Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Oceanview",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ],
+      "15": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "16": [
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ]
+    }
+  },
+  "norwegian-sky": {
+    "ship": "Norwegian Sky",
+    "decks": {
+      "4": [
+        "Oceanview with Large Porthole",
+        "Oceanview",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "5": [
+        "Oceanview with Large Porthole",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "6": [
+        "Oceanview with Picture Window",
+        "Oceanview with Large Porthole",
+        "Sail Away Oceanview",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "7": [
+        "Oceanview with Picture Window",
+        "Oceanview with Large Porthole",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "8": [
+        "Owner's Suite with Large Balcony",
+        "Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Large Porthole",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "9": [
+        "Owner's Suite with Large Balcony",
+        "Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "Penthouse with Balcony",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sail Away Inside"
+      ]
+    }
+  },
+  "norwegian-spirit": {
+    "ship": "Norwegian Spirit",
+    "decks": {
+      "4": [
+        "Family Oceanview",
+        "Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside"
+      ],
+      "5": [
+        "Oceanview with Picture Window Staterooms",
+        "Oceanview Staterooms",
+        "Solo Oceanview Staterooms",
+        "Inside Staterooms",
+        "Solo Inside Staterooms",
+        "Sail Away Staterooms"
+      ],
+      "6": [
+        "Family Oceanview Staterooms",
+        "Oceanview with Picture Window Staterooms",
+        "Oceanview Staterooms",
+        "Inside Staterooms",
+        "Solo Inside Staterooms",
+        "Sail Away Inside Staterooms"
+      ],
+      "8": [
+        "Thermal Suite Pass",
+        "Deluxe Oceanview",
+        "Oceanview with Picture Window",
+        "Inside"
+      ],
+      "9": [
+        "Aft-Facing Owner's Suite with Master Bedroom & Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse Suite with Large Balcony",
+        "Balcony Staterooms",
+        "Solo Balcony Staterooms",
+        "Sail Away Balcony Staterooms",
+        "Family Oceanview Staterooms",
+        "Oceanview with Picture Window Staterooms",
+        "Inside Staterooms"
+      ],
+      "10": [
+        "Forward-Facing Deluxe Penthouse with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Penthouse with Large Balcony",
+        "Balcony Staterooms",
+        "Family Inside Staterooms",
+        "Inside Staterooms"
+      ],
+      "11": [
+        "Balcony Staterooms",
+        "Family Inside Staterooms",
+        "Inside Staterooms"
+      ],
+      "12": [
+        "Thermal Suite Pass"
+      ]
+    }
+  },
+  "norwegian-star": {
+    "ship": "Norwegian Star",
+    "decks": {
+      "4": [
+        "Oceanview",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "5": [
+        "Oceanview with Picture Window",
+        "Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "8": [
+        "Aft-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony Stateroom",
+        "Balcony Stateroom",
+        "Solo Balcony Stateroom",
+        "Sail Away Balcony Stateroom",
+        "Family Oceanview Stateroom",
+        "Obstructed Oceanview Stateroom",
+        "Sail Away Oceanview Stateroom",
+        "Inside Stateroom",
+        "Sail Away Inside Stateroom"
+      ],
+      "9": [
+        "Owner's Suite with Two Balconies",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Balcony",
+        "Aft-Facing Balcony Stateroom",
+        "Balcony Stateroom",
+        "Solo Balcony Stateroom",
+        "Sail Away Balcony Stateroom",
+        "Inside Stateroom",
+        "Sail Away Inside Stateroom"
+      ],
+      "10": [
+        "Deluxe Owner's Suite with Two Balconies",
+        "Forward-Facing Deluxe Penthouse with Large Balcony",
+        "Forward-Facing Penthouse with Large Balcony",
+        "Aft-Facing Penthouse with Large Balcony",
+        "Aft-Facing Balcony Stateroom",
+        "Balcony Stateroom",
+        "Sail Away Balcony Stateroom",
+        "Inside Stateroom",
+        "Sail Away Inside Stateroom"
+      ],
+      "11": [
+        "Thermal Suite Pass",
+        "2-Bedroom Deluxe Family Suite with Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Balcony Stateroom",
+        "Family Inside Stateroom",
+        "Inside Stateroom",
+        "Sail Away Inside Stateroom"
+      ],
+      "12": [
+        "Perspectives Studios",
+        "Deluxe Owner’s Suite",
+        "Penthouse with Balcony",
+        "Family Suite",
+        "Family Inside",
+        "Sail Away Inside"
+      ],
+      "14": [
+        "3-Bedroom Garden Villa"
+      ]
+    }
+  },
+  "norwegian-sun": {
+    "ship": "Norwegian Sun",
+    "decks": {
+      "4": [
+        "Oceanview with Large Porthole",
+        "Solo Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "5": [
+        "Oceanview with Picture Window",
+        "Solo Oceanview",
+        "Inside"
+      ],
+      "6": [
+        "Perspectives Studio",
+        "Oceanview with Picture Window",
+        "Obstructed Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside"
+      ],
+      "7": [
+        "Oceanview with Picture Window",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside"
+      ],
+      "8": [
+        "Aft-Facing Penthouse with Large Balcony",
+        "Forward-Facing Penthouse with Balcony",
+        "Penthouse with Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ],
+      "9": [
+        "Aft-Facing Penthouse with Large Balcony",
+        "Penthouse with Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ],
+      "10": [
+        "Aft-Facing Penthouse with Large Balcony",
+        "Aft-Facing Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ],
+      "11": [
+        "Owner's Suite with Large Balcony",
+        "Club Balcony Suite",
+        "Sail Away Club Balcony Suite",
+        "Family Balcony"
+      ]
+    }
+  },
+  "norwegian-viva": {
+    "ship": "Norwegian Viva",
+    "decks": {
+      "5": [
+        "Family Oceanview",
+        "Large Oceanview with Round Window",
+        "Oceanview with Round Window",
+        "Solo Oceanview",
+        "Sailaway Oceanview",
+        "Family Inside",
+        "Inside",
+        "Sailaway Inside"
+      ],
+      "8": [
+        "Perspectives Studio"
+      ],
+      "9": [
+        "Aft-Facing Suite with Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Sailaway Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "10": [
+        "The Haven Aft-Facing Owner's Suite with Master Bedroom & Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "11": [
+        "The Haven Aft-Facing Penthouse with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Family Club Balcony Suite",
+        "Club Balcony Suite",
+        "Forward-Facing Club Balcony Suite",
+        "Sailaway Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Oceanview",
+        "Family Inside",
+        "Inside"
+      ],
+      "12": [
+        "The Haven Aft-Facing Owner's Suite with Master Bedroom & Large Balcony",
+        "The Haven Owner's Suite with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside",
+        "Solo Studio"
+      ],
+      "13": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Forward-Facing Suite with Master Bedroom & Large Balcony",
+        "Forward-Facing Club Balcony Suite with Large Balcony",
+        "Forward-Facing Club Balcony Suite",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Studio"
+      ],
+      "14": [
+        "The Haven Premier Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Aft-Facing Penthouse with Master Bedroom & Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Oceanview",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ],
+      "15": [
+        "The Haven Deluxe Owner's Suite with Large Balcony",
+        "The Haven 2-Bedroom Family Villa with Large Balcony",
+        "The Haven Penthouse with Balcony",
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside"
+      ],
+      "16": [
+        "Family Suite with Master Bedroom & Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside"
+      ]
+    }
+  },
+  "pride-of-america": {
+    "ship": "Pride of America",
+    "decks": {
+      "4": [
+        "Family Oceanview",
+        "Oceanview with Picture Window",
+        "Solo Oceanview",
+        "Sail Away Oceanview",
+        "Family Inside",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "5": [
+        "Perspectives Studio"
+      ],
+      "7": [
+        "2-Bedroom Aft-Facing Family Suite with Balcony",
+        "1-Bedroom Obstructed View Family Suite",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Solo Balcony",
+        "Sail Away Balcony",
+        "Oceanview with Picture Window",
+        "Obstructed Oceanview",
+        "Sail Away Oceanview",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "8": [
+        "Owner's Suite with Large Balcony",
+        "2-Bedroom Aft-Facing Family Suite with Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "9": [
+        "2-Bedroom Deluxe Family Suite with Balcony",
+        "2-Bedroom Aft-Facing Family Suite with Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Family Inside",
+        "Inside",
+        "Solo Inside",
+        "Sail Away Inside"
+      ],
+      "10": [
+        "Owner's Suite with Large Balcony",
+        "2-Bedroom Aft-Facing Family Suite with Balcony",
+        "Penthouse with Large Balcony",
+        "Aft-Facing Balcony",
+        "Family Balcony",
+        "Balcony",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "11": [
+        "Owner's Suite with Large Balcony",
+        "Penthouse with Large Balcony",
+        "Large Balcony",
+        "Balcony",
+        "Inside",
+        "Sail Away Inside"
+      ],
+      "12": [
+        "Deluxe Owner's Suite with Large Balcony",
+        "Owner's Suite with Large Balcony",
+        "Penthouse with Large Balcony",
+        "Large Balcony"
+      ],
+      "13": [
+        "Owner's Suite with Large Balcony",
+        "Deluxe Penthouse with Large Balcony",
+        "Penthouse with Large Balcony",
+        "Family Inside",
+        "Sail Away Inside",
+        "Solo Studio"
+      ]
+    }
+  }
+}

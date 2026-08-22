@@ -1,0 +1,2562 @@
+{
+ "generated": "2026-08-13T20:51:32.521Z",
+ "db_url": "https://vmbysqjvwfzmsrwgubib.supabase.co",
+ "ships": {
+  "carnival-breeze": {
+   "geometry_slug": "carnival-breeze",
+   "db_slug": "carnival-breeze",
+   "in_db": false,
+   "geometry_cabins": 1845,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    11,
+    12,
+    6,
+    7,
+    8,
+    9,
+    10
+   ]
+  },
+  "carnival-celebration": {
+   "geometry_slug": "carnival-celebration",
+   "db_slug": "carnival-celebration",
+   "in_db": false,
+   "geometry_cabins": 2634,
+   "sym_stripped": 38,
+   "dup_dropped": 6,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    4,
+    5,
+    15,
+    16,
+    17,
+    8,
+    9,
+    10,
+    11,
+    12,
+    14
+   ]
+  },
+  "carnival-conquest-4": {
+   "geometry_slug": "carnival-conquest-4",
+   "db_slug": "carnival-conquest",
+   "in_db": true,
+   "geometry_cabins": 1490,
+   "sym_stripped": 189,
+   "dup_dropped": 5,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    6,
+    7,
+    8,
+    9
+   ],
+   "db_cabins": 1468,
+   "matched": 1464,
+   "match_rate_db": 99.7,
+   "match_rate_geom": 98.3,
+   "geom_only": 26,
+   "db_only": 4,
+   "deck_agree": 1398,
+   "deck_disagree": 66,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1285,
+   "color_category": {
+    "teal": {
+     "top": "Ocean View",
+     "n": 76,
+     "tot": 90,
+     "conf": 84.4
+    },
+    "yellow": {
+     "top": "Ocean View",
+     "n": 232,
+     "tot": 264,
+     "conf": 87.9
+    },
+    "mauve": {
+     "top": "Suite",
+     "n": 18,
+     "tot": 44,
+     "conf": 40.9
+    },
+    "orange": {
+     "top": "Ocean View",
+     "n": 113,
+     "tot": 151,
+     "conf": 74.8
+    },
+    "purple": {
+     "top": "Interior",
+     "n": 202,
+     "tot": 204,
+     "conf": 99
+    },
+    "pink": {
+     "top": "Interior",
+     "n": 116,
+     "tot": 130,
+     "conf": 89.2
+    },
+    "gold": {
+     "top": "Ocean View",
+     "n": 11,
+     "tot": 22,
+     "conf": 50
+    },
+    "maroon": {
+     "top": "Ocean View",
+     "n": 6,
+     "tot": 6,
+     "conf": 100
+    },
+    "salmon": {
+     "top": "Balcony",
+     "n": 24,
+     "tot": 35,
+     "conf": 68.6
+    },
+    "green": {
+     "top": "Ocean View",
+     "n": 158,
+     "tot": 233,
+     "conf": 67.8
+    },
+    "white": {
+     "top": "Interior",
+     "n": 1,
+     "tot": 1,
+     "conf": 100
+    },
+    "red": {
+     "top": "Balcony",
+     "n": 70,
+     "tot": 86,
+     "conf": 81.4
+    },
+    "blue": {
+     "top": "Interior",
+     "n": 121,
+     "tot": 126,
+     "conf": 96
+    },
+    "gray": {
+     "top": "Interior",
+     "n": 62,
+     "tot": 66,
+     "conf": 93.9
+    },
+    "brown": {
+     "top": "Balcony",
+     "n": 6,
+     "tot": 6,
+     "conf": 100
+    }
+   }
+  },
+  "carnival-dream": {
+   "geometry_slug": "carnival-dream",
+   "db_slug": "carnival-dream",
+   "in_db": true,
+   "geometry_cabins": 1822,
+   "sym_stripped": 42,
+   "dup_dropped": 5,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    11,
+    12,
+    6,
+    7,
+    8,
+    9,
+    10
+   ],
+   "db_cabins": 1807,
+   "matched": 1797,
+   "match_rate_db": 99.4,
+   "match_rate_geom": 98.6,
+   "geom_only": 25,
+   "db_only": 10,
+   "deck_agree": 1797,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1758,
+   "color_category": {
+    "yellow": {
+     "top": "Interior",
+     "n": 90,
+     "tot": 166,
+     "conf": 54.2
+    },
+    "mauve": {
+     "top": "Balcony",
+     "n": 194,
+     "tot": 297,
+     "conf": 65.3
+    },
+    "red": {
+     "top": "Balcony",
+     "n": 62,
+     "tot": 88,
+     "conf": 70.5
+    },
+    "salmon": {
+     "top": "Balcony",
+     "n": 44,
+     "tot": 106,
+     "conf": 41.5
+    },
+    "gold": {
+     "top": "Interior",
+     "n": 59,
+     "tot": 81,
+     "conf": 72.8
+    },
+    "pink": {
+     "top": "Interior",
+     "n": 110,
+     "tot": 146,
+     "conf": 75.3
+    },
+    "orange": {
+     "top": "Interior",
+     "n": 121,
+     "tot": 213,
+     "conf": 56.8
+    },
+    "tan": {
+     "top": "Interior",
+     "n": 3,
+     "tot": 3,
+     "conf": 100
+    },
+    "brown": {
+     "top": "Ocean View",
+     "n": 32,
+     "tot": 32,
+     "conf": 100
+    },
+    "teal": {
+     "top": "Interior",
+     "n": 58,
+     "tot": 98,
+     "conf": 59.2
+    },
+    "purple": {
+     "top": "Cove Balcony",
+     "n": 18,
+     "tot": 18,
+     "conf": 100
+    },
+    "white": {
+     "top": "Cove Balcony",
+     "n": 14,
+     "tot": 14,
+     "conf": 100
+    },
+    "blue": {
+     "top": "Interior",
+     "n": 72,
+     "tot": 160,
+     "conf": 45
+    },
+    "green": {
+     "top": "Balcony",
+     "n": 168,
+     "tot": 320,
+     "conf": 52.5
+    },
+    "gray": {
+     "top": "Balcony",
+     "n": 30,
+     "tot": 44,
+     "conf": 68.2
+    },
+    "lightblue": {
+     "top": "Interior",
+     "n": 4,
+     "tot": 4,
+     "conf": 100
+    },
+    "magenta": {
+     "top": "Ocean View",
+     "n": 4,
+     "tot": 4,
+     "conf": 100
+    },
+    "maroon": {
+     "top": "Balcony",
+     "n": 3,
+     "tot": 3,
+     "conf": 100
+    }
+   }
+  },
+  "carnival-elation": {
+   "geometry_slug": "carnival-elation",
+   "db_slug": "carnival-elation",
+   "in_db": true,
+   "geometry_cabins": 1095,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 1095,
+   "combo": null,
+   "decks": [
+    null
+   ],
+   "db_cabins": 1044,
+   "matched": 1042,
+   "match_rate_db": 99.8,
+   "match_rate_geom": 95.2,
+   "geom_only": 53,
+   "db_only": 2,
+   "deck_agree": 0,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1042,
+   "color_category": {
+    "mauve": {
+     "top": "Interior",
+     "n": 57,
+     "tot": 57,
+     "conf": 100
+    },
+    "teal": {
+     "top": "Interior",
+     "n": 47,
+     "tot": 47,
+     "conf": 100
+    },
+    "orange": {
+     "top": "Interior",
+     "n": 105,
+     "tot": 173,
+     "conf": 60.7
+    },
+    "purple": {
+     "top": "Ocean View",
+     "n": 119,
+     "tot": 119,
+     "conf": 100
+    },
+    "pink": {
+     "top": "Interior",
+     "n": 191,
+     "tot": 191,
+     "conf": 100
+    },
+    "gold": {
+     "top": "Interior",
+     "n": 4,
+     "tot": 4,
+     "conf": 100
+    },
+    "yellow": {
+     "top": "Ocean View",
+     "n": 112,
+     "tot": 119,
+     "conf": 94.1
+    },
+    "salmon": {
+     "top": "Ocean View",
+     "n": 63,
+     "tot": 96,
+     "conf": 65.6
+    },
+    "magenta": {
+     "top": "Ocean View",
+     "n": 20,
+     "tot": 20,
+     "conf": 100
+    },
+    "green": {
+     "top": "Ocean View",
+     "n": 101,
+     "tot": 157,
+     "conf": 64.3
+    },
+    "gray": {
+     "top": "Ocean View",
+     "n": 16,
+     "tot": 26,
+     "conf": 61.5
+    },
+    "darkgreen": {
+     "top": "Ocean View",
+     "n": 12,
+     "tot": 12,
+     "conf": 100
+    },
+    "red": {
+     "top": "Ocean View",
+     "n": 21,
+     "tot": 21,
+     "conf": 100
+    }
+   }
+  },
+  "carnival-firenze": {
+   "geometry_slug": "carnival-firenze",
+   "db_slug": "carnival-firenze",
+   "in_db": false,
+   "geometry_cabins": 2063,
+   "sym_stripped": 20,
+   "dup_dropped": 1,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    12,
+    14,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  "carnival-freedom": {
+   "geometry_slug": "carnival-freedom",
+   "db_slug": "carnival-freedom",
+   "in_db": false,
+   "geometry_cabins": 1487,
+   "sym_stripped": 39,
+   "dup_dropped": 2,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    6,
+    7,
+    8,
+    9
+   ]
+  },
+  "carnival-glory": {
+   "geometry_slug": "carnival-glory",
+   "db_slug": "carnival-glory",
+   "in_db": false,
+   "geometry_cabins": 1490,
+   "sym_stripped": 43,
+   "dup_dropped": 12,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    6,
+    7,
+    8,
+    9
+   ]
+  },
+  "carnival-horizon": {
+   "geometry_slug": "carnival-horizon",
+   "db_slug": "carnival-horizon",
+   "in_db": false,
+   "geometry_cabins": 1976,
+   "sym_stripped": 46,
+   "dup_dropped": 16,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    11,
+    12,
+    14,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+   ]
+  },
+  "carnival-jubilee": {
+   "geometry_slug": "carnival-jubilee",
+   "db_slug": "carnival-jubilee",
+   "in_db": false,
+   "geometry_cabins": 2621,
+   "sym_stripped": 25,
+   "dup_dropped": 10,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    4,
+    5,
+    15,
+    16,
+    17,
+    8,
+    9,
+    10,
+    11,
+    12,
+    14
+   ]
+  },
+  "carnival-legend-us": {
+   "geometry_slug": "carnival-legend-us",
+   "db_slug": "carnival-legend",
+   "in_db": false,
+   "geometry_cabins": 1067,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8
+   ]
+  },
+  "carnival-liberty": {
+   "geometry_slug": "carnival-liberty",
+   "db_slug": "carnival-liberty",
+   "in_db": false,
+   "geometry_cabins": 1487,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    6,
+    7,
+    8,
+    9
+   ]
+  },
+  "carnival-luminosa-1": {
+   "geometry_slug": "carnival-luminosa-1",
+   "db_slug": "carnival-luminosa",
+   "in_db": false,
+   "geometry_cabins": 1129,
+   "sym_stripped": 41,
+   "dup_dropped": 2,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8
+   ]
+  },
+  "carnival-magic": {
+   "geometry_slug": "carnival-magic",
+   "db_slug": "carnival-magic",
+   "in_db": false,
+   "geometry_cabins": 1842,
+   "sym_stripped": 31,
+   "dup_dropped": 3,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    11,
+    12,
+    6,
+    7,
+    8,
+    9,
+    10
+   ]
+  },
+  "carnival-miracle": {
+   "geometry_slug": "carnival-miracle",
+   "db_slug": "carnival-miracle",
+   "in_db": false,
+   "geometry_cabins": 1066,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8
+   ]
+  },
+  "carnival-panorama": {
+   "geometry_slug": "carnival-panorama",
+   "db_slug": "carnival-panorama",
+   "in_db": false,
+   "geometry_cabins": 2000,
+   "sym_stripped": 81,
+   "dup_dropped": 16,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    11,
+    12,
+    14,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+   ]
+  },
+  "carnival-paradise": {
+   "geometry_slug": "carnival-paradise",
+   "db_slug": "carnival-paradise",
+   "in_db": false,
+   "geometry_cabins": 1054,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 568,
+   "combo": null,
+   "decks": [
+    "R",
+    null,
+    "E"
+   ]
+  },
+  "carnival-pride": {
+   "geometry_slug": "carnival-pride",
+   "db_slug": "carnival-pride",
+   "in_db": false,
+   "geometry_cabins": 1064,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8
+   ]
+  },
+  "carnival-radiance": {
+   "geometry_slug": "carnival-radiance",
+   "db_slug": "carnival-radiance",
+   "in_db": false,
+   "geometry_cabins": 1492,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9
+   ]
+  },
+  "carnival-spirit-master-combo": {
+   "geometry_slug": "carnival-spirit-master-combo",
+   "db_slug": "carnival-spirit",
+   "in_db": true,
+   "geometry_cabins": 1068,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": {
+    "variantA": {
+     "cabins": 1068,
+     "matchedDb": 1067
+    },
+    "variantB": {
+     "cabins": 1067,
+     "matchedDb": 1067
+    },
+    "chosen": "A (first run)"
+   },
+   "decks": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "db_cabins": 1068,
+   "matched": 1067,
+   "match_rate_db": 99.9,
+   "match_rate_geom": 99.9,
+   "geom_only": 1,
+   "db_only": 1,
+   "deck_agree": 1067,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1067,
+   "color_category": {
+    "white": {
+     "top": "Interior",
+     "n": 820,
+     "tot": 961,
+     "conf": 85.3
+    },
+    "pink": {
+     "top": "Ocean View",
+     "n": 19,
+     "tot": 21,
+     "conf": 90.5
+    },
+    "yellow": {
+     "top": "Suite",
+     "n": 6,
+     "tot": 6,
+     "conf": 100
+    },
+    "green": {
+     "top": "Balcony",
+     "n": 4,
+     "tot": 5,
+     "conf": 80
+    },
+    "gray": {
+     "top": "Interior",
+     "n": 74,
+     "tot": 74,
+     "conf": 100
+    }
+   }
+  },
+  "carnival-splendor-master": {
+   "geometry_slug": "carnival-splendor-master",
+   "db_slug": "carnival-splendor",
+   "in_db": true,
+   "geometry_cabins": 1505,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    6,
+    7,
+    8,
+    9
+   ],
+   "db_cabins": 1482,
+   "matched": 1477,
+   "match_rate_db": 99.7,
+   "match_rate_geom": 98.1,
+   "geom_only": 28,
+   "db_only": 5,
+   "deck_agree": 1377,
+   "deck_disagree": 100,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1477,
+   "color_category": {
+    "yellow": {
+     "top": "Ocean View",
+     "n": 151,
+     "tot": 252,
+     "conf": 59.9
+    },
+    "teal": {
+     "top": "Ocean View",
+     "n": 90,
+     "tot": 92,
+     "conf": 97.8
+    },
+    "mauve": {
+     "top": "Interior",
+     "n": 84,
+     "tot": 190,
+     "conf": 44.2
+    },
+    "orange": {
+     "top": "Ocean View",
+     "n": 147,
+     "tot": 147,
+     "conf": 100
+    },
+    "purple": {
+     "top": "Interior",
+     "n": 102,
+     "tot": 102,
+     "conf": 100
+    },
+    "pink": {
+     "top": "Interior",
+     "n": 128,
+     "tot": 128,
+     "conf": 100
+    },
+    "gold": {
+     "top": "Interior",
+     "n": 32,
+     "tot": 46,
+     "conf": 69.6
+    },
+    "salmon": {
+     "top": "Balcony",
+     "n": 40,
+     "tot": 63,
+     "conf": 63.5
+    },
+    "blue": {
+     "top": "Interior",
+     "n": 96,
+     "tot": 134,
+     "conf": 71.6
+    },
+    "green": {
+     "top": "Interior",
+     "n": 122,
+     "tot": 256,
+     "conf": 47.7
+    },
+    "olive": {
+     "top": "Interior",
+     "n": 3,
+     "tot": 3,
+     "conf": 100
+    },
+    "red": {
+     "top": "Balcony",
+     "n": 57,
+     "tot": 62,
+     "conf": 91.9
+    },
+    "tan": {
+     "top": "Interior",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    }
+   }
+  },
+  "carnival-sunrise": {
+   "geometry_slug": "carnival-sunrise",
+   "db_slug": "carnival-sunrise",
+   "in_db": false,
+   "geometry_cabins": 1492,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9
+   ]
+  },
+  "carnival-sunshine-1": {
+   "geometry_slug": "carnival-sunshine-1",
+   "db_slug": "carnival-sunshine",
+   "in_db": true,
+   "geometry_cabins": 1501,
+   "sym_stripped": 24,
+   "dup_dropped": 3,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    12,
+    1,
+    10,
+    11,
+    2,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "db_cabins": 1439,
+   "matched": 1438,
+   "match_rate_db": 99.9,
+   "match_rate_geom": 95.8,
+   "geom_only": 63,
+   "db_only": 1,
+   "deck_agree": 1438,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1417,
+   "color_category": {
+    "yellow": {
+     "top": "Ocean View",
+     "n": 186,
+     "tot": 283,
+     "conf": 65.7
+    },
+    "teal": {
+     "top": "Ocean View",
+     "n": 59,
+     "tot": 60,
+     "conf": 98.3
+    },
+    "mauve": {
+     "top": "Interior",
+     "n": 48,
+     "tot": 82,
+     "conf": 58.5
+    },
+    "orange": {
+     "top": "Ocean View",
+     "n": 87,
+     "tot": 135,
+     "conf": 64.4
+    },
+    "purple": {
+     "top": "Interior",
+     "n": 152,
+     "tot": 152,
+     "conf": 100
+    },
+    "pink": {
+     "top": "Interior",
+     "n": 136,
+     "tot": 140,
+     "conf": 97.1
+    },
+    "gold": {
+     "top": "Ocean View",
+     "n": 15,
+     "tot": 15,
+     "conf": 100
+    },
+    "blue": {
+     "top": "Interior",
+     "n": 53,
+     "tot": 146,
+     "conf": 36.3
+    },
+    "green": {
+     "top": "Balcony",
+     "n": 118,
+     "tot": 252,
+     "conf": 46.8
+    },
+    "salmon": {
+     "top": "Balcony",
+     "n": 32,
+     "tot": 56,
+     "conf": 57.1
+    },
+    "gray": {
+     "top": "Interior",
+     "n": 30,
+     "tot": 46,
+     "conf": 65.2
+    },
+    "red": {
+     "top": "Ocean View",
+     "n": 45,
+     "tot": 63,
+     "conf": 71.4
+    },
+    "magenta": {
+     "top": "Ocean View",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    },
+    "brown": {
+     "top": "Suite",
+     "n": 6,
+     "tot": 6,
+     "conf": 100
+    }
+   }
+  },
+  "carnival-valor": {
+   "geometry_slug": "carnival-valor",
+   "db_slug": "carnival-valor",
+   "in_db": false,
+   "geometry_cabins": 1489,
+   "sym_stripped": 24,
+   "dup_dropped": 7,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    6,
+    7,
+    8,
+    9
+   ]
+  },
+  "carnival-venezia": {
+   "geometry_slug": "carnival-venezia",
+   "db_slug": "carnival-venezia",
+   "in_db": false,
+   "geometry_cabins": 2045,
+   "sym_stripped": 27,
+   "dup_dropped": 3,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    12,
+    14,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  "carnival-vista": {
+   "geometry_slug": "carnival-vista",
+   "db_slug": "carnival-vista",
+   "in_db": true,
+   "geometry_cabins": 1962,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    1,
+    2,
+    11,
+    12,
+    14,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+   ],
+   "db_cabins": 1725,
+   "matched": 1552,
+   "match_rate_db": 90,
+   "match_rate_geom": 79.1,
+   "geom_only": 410,
+   "db_only": 173,
+   "deck_agree": 1552,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1552,
+   "color_category": {
+    "yellow": {
+     "top": "Balcony",
+     "n": 98,
+     "tot": 227,
+     "conf": 43.2
+    },
+    "pink": {
+     "top": "Ocean View",
+     "n": 33,
+     "tot": 71,
+     "conf": 46.5
+    },
+    "mauve": {
+     "top": "Balcony",
+     "n": 100,
+     "tot": 239,
+     "conf": 41.8
+    },
+    "red": {
+     "top": "Balcony",
+     "n": 52,
+     "tot": 84,
+     "conf": 61.9
+    },
+    "gold": {
+     "top": "Ocean View",
+     "n": 54,
+     "tot": 57,
+     "conf": 94.7
+    },
+    "purple": {
+     "top": "Ocean View",
+     "n": 36,
+     "tot": 36,
+     "conf": 100
+    },
+    "orange": {
+     "top": "Interior",
+     "n": 38,
+     "tot": 74,
+     "conf": 51.4
+    },
+    "tan": {
+     "top": "Ocean View",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    },
+    "blue": {
+     "top": "Interior",
+     "n": 93,
+     "tot": 202,
+     "conf": 46
+    },
+    "teal": {
+     "top": "Interior",
+     "n": 53,
+     "tot": 109,
+     "conf": 48.6
+    },
+    "green": {
+     "top": "Interior",
+     "n": 142,
+     "tot": 283,
+     "conf": 50.2
+    },
+    "gray": {
+     "top": "Interior",
+     "n": 101,
+     "tot": 129,
+     "conf": 78.3
+    },
+    "salmon": {
+     "top": "Cove Balcony",
+     "n": 18,
+     "tot": 36,
+     "conf": 50
+    },
+    "white": {
+     "top": "Balcony",
+     "n": 1,
+     "tot": 1,
+     "conf": 100
+    },
+    "brown": {
+     "top": "Balcony",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    }
+   }
+  },
+  "mardi-gras": {
+   "geometry_slug": "mardi-gras",
+   "db_slug": "mardi-gras",
+   "in_db": true,
+   "geometry_cabins": 2628,
+   "sym_stripped": 0,
+   "dup_dropped": 0,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    4,
+    5,
+    15,
+    16,
+    17,
+    8,
+    9,
+    10,
+    11,
+    12,
+    14
+   ],
+   "db_cabins": 1555,
+   "matched": 1535,
+   "match_rate_db": 98.7,
+   "match_rate_geom": 58.4,
+   "geom_only": 1093,
+   "db_only": 20,
+   "deck_agree": 1535,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1535,
+   "color_category": {
+    "green": {
+     "top": "Ocean View",
+     "n": 242,
+     "tot": 278,
+     "conf": 87.1
+    },
+    "blue": {
+     "top": "Interior",
+     "n": 162,
+     "tot": 169,
+     "conf": 95.9
+    },
+    "orange": {
+     "top": "Cove Balcony",
+     "n": 23,
+     "tot": 55,
+     "conf": 41.8
+    },
+    "teal": {
+     "top": "Interior",
+     "n": 65,
+     "tot": 106,
+     "conf": 61.3
+    },
+    "red": {
+     "top": "Balcony",
+     "n": 285,
+     "tot": 298,
+     "conf": 95.6
+    },
+    "yellow": {
+     "top": "Balcony",
+     "n": 69,
+     "tot": 93,
+     "conf": 74.2
+    },
+    "pink": {
+     "top": "Balcony",
+     "n": 51,
+     "tot": 69,
+     "conf": 73.9
+    },
+    "gray": {
+     "top": "Interior",
+     "n": 74,
+     "tot": 108,
+     "conf": 68.5
+    },
+    "mauve": {
+     "top": "Balcony",
+     "n": 169,
+     "tot": 201,
+     "conf": 84.1
+    },
+    "white": {
+     "top": "Family Harbor",
+     "n": 19,
+     "tot": 19,
+     "conf": 100
+    },
+    "purple": {
+     "top": "Interior",
+     "n": 12,
+     "tot": 16,
+     "conf": 75
+    },
+    "olive": {
+     "top": "Family Harbor",
+     "n": 10,
+     "tot": 13,
+     "conf": 76.9
+    },
+    "gold": {
+     "top": "Ocean View",
+     "n": 20,
+     "tot": 34,
+     "conf": 58.8
+    },
+    "brown": {
+     "top": "Interior",
+     "n": 6,
+     "tot": 14,
+     "conf": 42.9
+    },
+    "salmon": {
+     "top": "Balcony",
+     "n": 31,
+     "tot": 31,
+     "conf": 100
+    },
+    "tan": {
+     "top": "Interior",
+     "n": 26,
+     "tot": 31,
+     "conf": 83.9
+    }
+   }
+  },
+  "msc-world-america": {
+   "geometry_slug": "msc-world-america",
+   "db_slug": "msc-world-america",
+   "in_db": false,
+   "geometry_cabins": 2457,
+   "sym_stripped": 0,
+   "dup_dropped": 9,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    18,
+    5,
+    16,
+    11,
+    12,
+    14,
+    19,
+    20,
+    10,
+    15,
+    21,
+    9
+   ]
+  },
+  "msc-world-asia": {
+   "geometry_slug": "msc-world-asia",
+   "db_slug": "msc-world-asia",
+   "in_db": false,
+   "geometry_cabins": 2581,
+   "sym_stripped": 0,
+   "dup_dropped": 13,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    12,
+    14,
+    15,
+    16,
+    18,
+    19,
+    20,
+    21,
+    5,
+    9
+   ]
+  },
+  "msc-world-atlantic": {
+   "geometry_slug": "msc-world-atlantic",
+   "db_slug": "msc-world-atlantic",
+   "in_db": false,
+   "geometry_cabins": 2384,
+   "sym_stripped": 0,
+   "dup_dropped": 9,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    18,
+    5,
+    16,
+    11,
+    12,
+    14,
+    19,
+    20,
+    10,
+    15,
+    21,
+    9
+   ]
+  },
+  "norwegian-aqua": {
+   "geometry_slug": "norwegian-aqua",
+   "db_slug": "norwegian-aqua",
+   "in_db": false,
+   "geometry_cabins": 1776,
+   "sym_stripped": 534,
+   "dup_dropped": 16,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    5,
+    9
+   ]
+  },
+  "norwegian-breakaway": {
+   "geometry_slug": "norwegian-breakaway",
+   "db_slug": "norwegian-breakaway",
+   "in_db": true,
+   "geometry_cabins": 1732,
+   "sym_stripped": 378,
+   "dup_dropped": 320,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    12,
+    14,
+    15,
+    16,
+    5,
+    8,
+    9
+   ],
+   "db_cabins": 2023,
+   "matched": 1725,
+   "match_rate_db": 85.3,
+   "match_rate_geom": 99.6,
+   "geom_only": 7,
+   "db_only": 298,
+   "deck_agree": 1725,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1442,
+   "color_category": {
+    "teal": {
+     "top": "Balcony",
+     "n": 269,
+     "tot": 275,
+     "conf": 97.8
+    },
+    "green": {
+     "top": "Balcony",
+     "n": 148,
+     "tot": 148,
+     "conf": 100
+    },
+    "lightgreen": {
+     "top": "Balcony",
+     "n": 6,
+     "tot": 6,
+     "conf": 100
+    },
+    "pink": {
+     "top": "Oceanview",
+     "n": 46,
+     "tot": 151,
+     "conf": 30.5
+    },
+    "blue": {
+     "top": "Balcony",
+     "n": 470,
+     "tot": 470,
+     "conf": 100
+    },
+    "lightblue": {
+     "top": "Balcony",
+     "n": 36,
+     "tot": 36,
+     "conf": 100
+    },
+    "navy": {
+     "top": "Balcony",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    },
+    "red": {
+     "top": "Oceanview",
+     "n": 14,
+     "tot": 32,
+     "conf": 43.8
+    },
+    "gray": {
+     "top": "Inside",
+     "n": 313,
+     "tot": 397,
+     "conf": 78.8
+    },
+    "yellow": {
+     "top": "Balcony",
+     "n": 72,
+     "tot": 76,
+     "conf": 94.7
+    },
+    "brown": {
+     "top": "Spa",
+     "n": 8,
+     "tot": 18,
+     "conf": 44.4
+    },
+    "mauve": {
+     "top": "Oceanview",
+     "n": 8,
+     "tot": 11,
+     "conf": 72.7
+    },
+    "black": {
+     "top": "Inside",
+     "n": 21,
+     "tot": 21,
+     "conf": 100
+    },
+    "gold": {
+     "top": "The Haven",
+     "n": 11,
+     "tot": 11,
+     "conf": 100
+    },
+    "salmon": {
+     "top": "Oceanview",
+     "n": 38,
+     "tot": 41,
+     "conf": 92.7
+    },
+    "orange": {
+     "top": "Oceanview",
+     "n": 26,
+     "tot": 26,
+     "conf": 100
+    },
+    "maroon": {
+     "top": "Oceanview",
+     "n": 4,
+     "tot": 4,
+     "conf": 100
+    }
+   }
+  },
+  "norwegian-dawn": {
+   "geometry_slug": "norwegian-dawn",
+   "db_slug": "norwegian-dawn",
+   "in_db": true,
+   "geometry_cabins": 1166,
+   "sym_stripped": 503,
+   "dup_dropped": 8,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    115,
+    12,
+    14,
+    45,
+    50,
+    65,
+    8,
+    9
+   ],
+   "db_cabins": 1177,
+   "matched": 1153,
+   "match_rate_db": 98,
+   "match_rate_geom": 98.9,
+   "geom_only": 13,
+   "db_only": 24,
+   "deck_agree": 749,
+   "deck_disagree": 404,
+   "db_xy_already": 0,
+   "matched_raw_exact": 657,
+   "color_category": {
+    "blue": {
+     "top": "Balcony",
+     "n": 308,
+     "tot": 337,
+     "conf": 91.4
+    },
+    "teal": {
+     "top": "Suite",
+     "n": 8,
+     "tot": 15,
+     "conf": 53.3
+    },
+    "gray": {
+     "top": "Inside",
+     "n": 300,
+     "tot": 311,
+     "conf": 96.5
+    },
+    "red": {
+     "top": "Oceanview",
+     "n": 104,
+     "tot": 138,
+     "conf": 75.4
+    },
+    "navy": {
+     "top": "Suite",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    },
+    "yellow": {
+     "top": "Balcony",
+     "n": 102,
+     "tot": 102,
+     "conf": 100
+    },
+    "purple": {
+     "top": "Mini-Suite",
+     "n": 1,
+     "tot": 1,
+     "conf": 100
+    },
+    "mauve": {
+     "top": "Mini-Suite",
+     "n": 9,
+     "tot": 11,
+     "conf": 81.8
+    },
+    "green": {
+     "top": "Suite",
+     "n": 12,
+     "tot": 26,
+     "conf": 46.2
+    },
+    "darkgreen": {
+     "top": "Suite",
+     "n": 1,
+     "tot": 1,
+     "conf": 100
+    },
+    "darkgray": {
+     "top": "Inside",
+     "n": 8,
+     "tot": 8,
+     "conf": 100
+    },
+    "salmon": {
+     "top": "Oceanview",
+     "n": 31,
+     "tot": 45,
+     "conf": 68.9
+    },
+    "pink": {
+     "top": "Oceanview",
+     "n": 21,
+     "tot": 49,
+     "conf": 42.9
+    },
+    "brown": {
+     "top": "Oceanview",
+     "n": 10,
+     "tot": 10,
+     "conf": 100
+    },
+    "white": {
+     "top": "Inside",
+     "n": 1,
+     "tot": 1,
+     "conf": 100
+    },
+    "maroon": {
+     "top": "Balcony",
+     "n": 45,
+     "tot": 45,
+     "conf": 100
+    }
+   }
+  },
+  "norwegian-epic": {
+   "geometry_slug": "norwegian-epic",
+   "db_slug": "norwegian-epic",
+   "in_db": true,
+   "geometry_cabins": 2122,
+   "sym_stripped": 186,
+   "dup_dropped": 25,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    16,
+    17,
+    8,
+    9
+   ],
+   "db_cabins": 2114,
+   "matched": 2103,
+   "match_rate_db": 99.5,
+   "match_rate_geom": 99.1,
+   "geom_only": 19,
+   "db_only": 11,
+   "deck_agree": 2103,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1929,
+   "color_category": {
+    "green": {
+     "top": "Balcony",
+     "n": 171,
+     "tot": 171,
+     "conf": 100
+    },
+    "teal": {
+     "top": "Balcony",
+     "n": 541,
+     "tot": 572,
+     "conf": 94.6
+    },
+    "blue": {
+     "top": "Balcony",
+     "n": 326,
+     "tot": 395,
+     "conf": 82.5
+    },
+    "gray": {
+     "top": "Balcony",
+     "n": 502,
+     "tot": 603,
+     "conf": 83.3
+    },
+    "pink": {
+     "top": "Inside",
+     "n": 123,
+     "tot": 152,
+     "conf": 80.9
+    },
+    "navy": {
+     "top": "Balcony",
+     "n": 8,
+     "tot": 10,
+     "conf": 80
+    },
+    "brown": {
+     "top": "The Haven",
+     "n": 47,
+     "tot": 49,
+     "conf": 95.9
+    },
+    "magenta": {
+     "top": "Suite",
+     "n": 1,
+     "tot": 1,
+     "conf": 100
+    },
+    "yellow": {
+     "top": "Balcony",
+     "n": 94,
+     "tot": 94,
+     "conf": 100
+    },
+    "lightblue": {
+     "top": "Balcony",
+     "n": 18,
+     "tot": 18,
+     "conf": 100
+    },
+    "mauve": {
+     "top": "Inside",
+     "n": 3,
+     "tot": 3,
+     "conf": 100
+    },
+    "black": {
+     "top": "Balcony",
+     "n": 29,
+     "tot": 29,
+     "conf": 100
+    },
+    "salmon": {
+     "top": "The Haven",
+     "n": 6,
+     "tot": 6,
+     "conf": 100
+    }
+   }
+  },
+  "norwegian-escape": {
+   "geometry_slug": "norwegian-escape",
+   "db_slug": "norwegian-escape",
+   "in_db": true,
+   "geometry_cabins": 2171,
+   "sym_stripped": 375,
+   "dup_dropped": 48,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    5,
+    8,
+    9
+   ],
+   "db_cabins": 2180,
+   "matched": 2162,
+   "match_rate_db": 99.2,
+   "match_rate_geom": 99.6,
+   "geom_only": 9,
+   "db_only": 18,
+   "deck_agree": 2162,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1804,
+   "color_category": {
+    "teal": {
+     "top": "Balcony",
+     "n": 545,
+     "tot": 546,
+     "conf": 99.8
+    },
+    "green": {
+     "top": "Balcony",
+     "n": 114,
+     "tot": 116,
+     "conf": 98.3
+    },
+    "yellow": {
+     "top": "Balcony",
+     "n": 190,
+     "tot": 190,
+     "conf": 100
+    },
+    "blue": {
+     "top": "Balcony",
+     "n": 571,
+     "tot": 572,
+     "conf": 99.8
+    },
+    "navy": {
+     "top": "Balcony",
+     "n": 19,
+     "tot": 31,
+     "conf": 61.3
+    },
+    "pink": {
+     "top": "Inside",
+     "n": 81,
+     "tot": 150,
+     "conf": 54
+    },
+    "gray": {
+     "top": "Inside",
+     "n": 361,
+     "tot": 394,
+     "conf": 91.6
+    },
+    "olive": {
+     "top": "Balcony",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    },
+    "magenta": {
+     "top": "Spa",
+     "n": 7,
+     "tot": 10,
+     "conf": 70
+    },
+    "maroon": {
+     "top": "Spa",
+     "n": 6,
+     "tot": 6,
+     "conf": 100
+    },
+    "red": {
+     "top": "Balcony",
+     "n": 16,
+     "tot": 23,
+     "conf": 69.6
+    },
+    "black": {
+     "top": "Inside",
+     "n": 18,
+     "tot": 18,
+     "conf": 100
+    },
+    "mauve": {
+     "top": "Balcony",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    },
+    "white": {
+     "top": "The Haven",
+     "n": 13,
+     "tot": 13,
+     "conf": 100
+    },
+    "tan": {
+     "top": "The Haven",
+     "n": 8,
+     "tot": 8,
+     "conf": 100
+    },
+    "salmon": {
+     "top": "The Haven",
+     "n": 4,
+     "tot": 4,
+     "conf": 100
+    },
+    "brown": {
+     "top": "The Haven",
+     "n": 9,
+     "tot": 9,
+     "conf": 100
+    },
+    "gold": {
+     "top": "The Haven",
+     "n": 10,
+     "tot": 10,
+     "conf": 100
+    },
+    "orange": {
+     "top": "Balcony",
+     "n": 22,
+     "tot": 22,
+     "conf": 100
+    }
+   }
+  },
+  "norwegian-jewel": {
+   "geometry_slug": "norwegian-jewel",
+   "db_slug": "norwegian-jewel",
+   "in_db": true,
+   "geometry_cabins": 1206,
+   "sym_stripped": 225,
+   "dup_dropped": 13,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    12,
+    14,
+    4,
+    5,
+    6,
+    8,
+    9
+   ],
+   "db_cabins": 1198,
+   "matched": 1188,
+   "match_rate_db": 99.2,
+   "match_rate_geom": 98.5,
+   "geom_only": 18,
+   "db_only": 10,
+   "deck_agree": 1186,
+   "deck_disagree": 2,
+   "db_xy_already": 0,
+   "matched_raw_exact": 971,
+   "color_category": {
+    "blue": {
+     "top": "Balcony",
+     "n": 253,
+     "tot": 253,
+     "conf": 100
+    },
+    "teal": {
+     "top": "Balcony",
+     "n": 56,
+     "tot": 62,
+     "conf": 90.3
+    },
+    "lightblue": {
+     "top": "Balcony",
+     "n": 6,
+     "tot": 10,
+     "conf": 60
+    },
+    "brown": {
+     "top": "Balcony",
+     "n": 20,
+     "tot": 32,
+     "conf": 62.5
+    },
+    "black": {
+     "top": "Inside",
+     "n": 50,
+     "tot": 64,
+     "conf": 78.1
+    },
+    "green": {
+     "top": "Suite",
+     "n": 19,
+     "tot": 20,
+     "conf": 95
+    },
+    "red": {
+     "top": "Balcony",
+     "n": 64,
+     "tot": 124,
+     "conf": 51.6
+    },
+    "gray": {
+     "top": "Inside",
+     "n": 284,
+     "tot": 287,
+     "conf": 99
+    },
+    "dark_gray": {
+     "top": "Inside",
+     "n": 10,
+     "tot": 10,
+     "conf": 100
+    },
+    "pink": {
+     "top": "Oceanview",
+     "n": 36,
+     "tot": 73,
+     "conf": 49.3
+    },
+    "yellow": {
+     "top": "Balcony",
+     "n": 121,
+     "tot": 121,
+     "conf": 100
+    },
+    "purple": {
+     "top": "Balcony",
+     "n": 4,
+     "tot": 4,
+     "conf": 100
+    },
+    "lightgreen": {
+     "top": "Balcony",
+     "n": 5,
+     "tot": 5,
+     "conf": 100
+    },
+    "mauve": {
+     "top": "Balcony",
+     "n": 6,
+     "tot": 7,
+     "conf": 85.7
+    },
+    "dark": {
+     "top": "Inside",
+     "n": 5,
+     "tot": 5,
+     "conf": 100
+    },
+    "tan": {
+     "top": "The Haven",
+     "n": 4,
+     "tot": 4,
+     "conf": 100
+    },
+    "white": {
+     "top": "Balcony",
+     "n": 10,
+     "tot": 19,
+     "conf": 52.6
+    },
+    "salmon": {
+     "top": "Oceanview",
+     "n": 43,
+     "tot": 45,
+     "conf": 95.6
+    },
+    "orange": {
+     "top": "Oceanview",
+     "n": 34,
+     "tot": 36,
+     "conf": 94.4
+    },
+    "maroon": {
+     "top": "Balcony",
+     "n": 4,
+     "tot": 4,
+     "conf": 100
+    },
+    "darkgray": {
+     "top": "Inside",
+     "n": 3,
+     "tot": 3,
+     "conf": 100
+    }
+   }
+  },
+  "norwegian-luna-ship": {
+   "geometry_slug": "norwegian-luna-ship",
+   "db_slug": "norwegian-luna",
+   "in_db": false,
+   "geometry_cabins": 1808,
+   "sym_stripped": 526,
+   "dup_dropped": 11,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    5,
+    9
+   ]
+  },
+  "norwegian-prima": {
+   "geometry_slug": "norwegian-prima",
+   "db_slug": "norwegian-prima",
+   "in_db": true,
+   "geometry_cabins": 1613,
+   "sym_stripped": 484,
+   "dup_dropped": 2,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    5,
+    9
+   ],
+   "db_cabins": 1606,
+   "matched": 1536,
+   "match_rate_db": 95.6,
+   "match_rate_geom": 95.2,
+   "geom_only": 77,
+   "db_only": 70,
+   "deck_agree": 1536,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1062,
+   "color_category": {
+    "green": {
+     "top": "Balcony",
+     "n": 53,
+     "tot": 53,
+     "conf": 100
+    },
+    "mint": {
+     "top": "Balcony",
+     "n": 46,
+     "tot": 46,
+     "conf": 100
+    },
+    "teal": {
+     "top": "Balcony",
+     "n": 193,
+     "tot": 193,
+     "conf": 100
+    },
+    "white": {
+     "top": "Balcony",
+     "n": 65,
+     "tot": 119,
+     "conf": 54.6
+    },
+    "yellow": {
+     "top": "Balcony",
+     "n": 22,
+     "tot": 33,
+     "conf": 66.7
+    },
+    "blue": {
+     "top": "Balcony",
+     "n": 570,
+     "tot": 604,
+     "conf": 94.4
+    },
+    "gray": {
+     "top": "Inside",
+     "n": 175,
+     "tot": 272,
+     "conf": 64.3
+    },
+    "orange": {
+     "top": "The Haven",
+     "n": 3,
+     "tot": 6,
+     "conf": 50
+    },
+    "brown": {
+     "top": "The Haven",
+     "n": 4,
+     "tot": 6,
+     "conf": 66.7
+    },
+    "black": {
+     "top": "Inside",
+     "n": 5,
+     "tot": 5,
+     "conf": 100
+    },
+    "navy": {
+     "top": "Balcony",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    },
+    "pink": {
+     "top": "Studio",
+     "n": 74,
+     "tot": 93,
+     "conf": 79.6
+    },
+    "gold": {
+     "top": "The Haven",
+     "n": 8,
+     "tot": 8,
+     "conf": 100
+    },
+    "tan": {
+     "top": "The Haven",
+     "n": 24,
+     "tot": 24,
+     "conf": 100
+    },
+    "maroon": {
+     "top": "Balcony",
+     "n": 8,
+     "tot": 9,
+     "conf": 88.9
+    },
+    "red": {
+     "top": "Club Balcony Suite",
+     "n": 34,
+     "tot": 52,
+     "conf": 65.4
+    },
+    "salmon": {
+     "top": "Balcony",
+     "n": 6,
+     "tot": 6,
+     "conf": 100
+    },
+    "darkgray": {
+     "top": "Inside",
+     "n": 5,
+     "tot": 5,
+     "conf": 100
+    }
+   }
+  },
+  "norwegian-sky": {
+   "geometry_slug": "norwegian-sky",
+   "db_slug": "norwegian-sky",
+   "in_db": true,
+   "geometry_cabins": 995,
+   "sym_stripped": 26,
+   "dup_dropped": 2,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    5,
+    4,
+    9,
+    7,
+    0,
+    6,
+    8
+   ],
+   "db_cabins": 1010,
+   "matched": 755,
+   "match_rate_db": 74.8,
+   "match_rate_geom": 75.9,
+   "geom_only": 240,
+   "db_only": 255,
+   "deck_agree": 755,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 742,
+   "color_category": {
+    "maroon": {
+     "top": "Oceanview",
+     "n": 19,
+     "tot": 19,
+     "conf": 100
+    },
+    "pink": {
+     "top": "Inside",
+     "n": 29,
+     "tot": 48,
+     "conf": 60.4
+    },
+    "gray": {
+     "top": "Inside",
+     "n": 268,
+     "tot": 271,
+     "conf": 98.9
+    },
+    "salmon": {
+     "top": "Oceanview",
+     "n": 79,
+     "tot": 81,
+     "conf": 97.5
+    },
+    "red": {
+     "top": "Oceanview",
+     "n": 37,
+     "tot": 69,
+     "conf": 53.6
+    },
+    "blue": {
+     "top": "Balcony",
+     "n": 97,
+     "tot": 97,
+     "conf": 100
+    },
+    "lightblue": {
+     "top": "Balcony",
+     "n": 16,
+     "tot": 16,
+     "conf": 100
+    },
+    "mauve": {
+     "top": "Suite",
+     "n": 2,
+     "tot": 4,
+     "conf": 50
+    },
+    "darkgray": {
+     "top": "Inside",
+     "n": 15,
+     "tot": 15,
+     "conf": 100
+    },
+    "teal": {
+     "top": "Balcony",
+     "n": 1,
+     "tot": 1,
+     "conf": 100
+    },
+    "black": {
+     "top": "Inside",
+     "n": 9,
+     "tot": 9,
+     "conf": 100
+    },
+    "orange": {
+     "top": "Oceanview",
+     "n": 118,
+     "tot": 118,
+     "conf": 100
+    }
+   }
+  },
+  "norwegian-spirit": {
+   "geometry_slug": "norwegian-spirit",
+   "db_slug": "norwegian-spirit",
+   "in_db": true,
+   "geometry_cabins": 1025,
+   "sym_stripped": 174,
+   "dup_dropped": 12,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    4,
+    5,
+    6,
+    8,
+    9
+   ],
+   "db_cabins": 1012,
+   "matched": 445,
+   "match_rate_db": 44,
+   "match_rate_geom": 43.4,
+   "geom_only": 580,
+   "db_only": 567,
+   "deck_agree": 445,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 281,
+   "color_category": {
+    "salmon": {
+     "top": "Oceanview",
+     "n": 6,
+     "tot": 8,
+     "conf": 75
+    },
+    "pink": {
+     "top": "Oceanview",
+     "n": 38,
+     "tot": 56,
+     "conf": 67.9
+    },
+    "gray": {
+     "top": "Inside",
+     "n": 313,
+     "tot": 314,
+     "conf": 99.7
+    },
+    "charcoal": {
+     "top": "Inside",
+     "n": 31,
+     "tot": 31,
+     "conf": 100
+    },
+    "black": {
+     "top": "Inside",
+     "n": 6,
+     "tot": 6,
+     "conf": 100
+    },
+    "mint": {
+     "top": "Mini-Suite",
+     "n": 1,
+     "tot": 1,
+     "conf": 100
+    },
+    "red": {
+     "top": "Oceanview",
+     "n": 8,
+     "tot": 15,
+     "conf": 53.3
+    },
+    "mauve": {
+     "top": "Oceanview",
+     "n": 7,
+     "tot": 7,
+     "conf": 100
+    },
+    "maroon": {
+     "top": "Oceanview",
+     "n": 3,
+     "tot": 3,
+     "conf": 100
+    },
+    "teal": {
+     "top": "Mini-Suite",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    }
+   }
+  },
+  "pride-of-america": {
+   "geometry_slug": "pride-of-america",
+   "db_slug": "pride-of-america",
+   "in_db": true,
+   "geometry_cabins": 1106,
+   "sym_stripped": 8,
+   "dup_dropped": 1,
+   "null_deck_cabins": 0,
+   "combo": null,
+   "decks": [
+    10,
+    11,
+    12,
+    13,
+    4,
+    7,
+    8,
+    9
+   ],
+   "db_cabins": 1095,
+   "matched": 1069,
+   "match_rate_db": 97.6,
+   "match_rate_geom": 96.7,
+   "geom_only": 37,
+   "db_only": 26,
+   "deck_agree": 1069,
+   "deck_disagree": 0,
+   "db_xy_already": 0,
+   "matched_raw_exact": 1064,
+   "color_category": {
+    "blue": {
+     "top": "Balcony",
+     "n": 247,
+     "tot": 253,
+     "conf": 97.6
+    },
+    "gray": {
+     "top": "Inside",
+     "n": 162,
+     "tot": 295,
+     "conf": 54.9
+    },
+    "green": {
+     "top": "Mini-Suite",
+     "n": 30,
+     "tot": 62,
+     "conf": 48.4
+    },
+    "mauve": {
+     "top": "Balcony",
+     "n": 28,
+     "tot": 37,
+     "conf": 75.7
+    },
+    "pink": {
+     "top": "Mini-Suite",
+     "n": 21,
+     "tot": 40,
+     "conf": 52.5
+    },
+    "teal": {
+     "top": "Balcony",
+     "n": 133,
+     "tot": 157,
+     "conf": 84.7
+    },
+    "navy": {
+     "top": "Suite",
+     "n": 3,
+     "tot": 3,
+     "conf": 100
+    },
+    "white": {
+     "top": "Balcony",
+     "n": 35,
+     "tot": 42,
+     "conf": 83.3
+    },
+    "black": {
+     "top": "Balcony",
+     "n": 1,
+     "tot": 1,
+     "conf": 100
+    },
+    "red": {
+     "top": "Oceanview",
+     "n": 78,
+     "tot": 111,
+     "conf": 70.3
+    },
+    "darkgreen": {
+     "top": "Suite",
+     "n": 2,
+     "tot": 2,
+     "conf": 100
+    },
+    "maroon": {
+     "top": "Balcony",
+     "n": 16,
+     "tot": 16,
+     "conf": 100
+    },
+    "salmon": {
+     "top": "Balcony",
+     "n": 8,
+     "tot": 14,
+     "conf": 57.1
+    },
+    "lightteal": {
+     "top": "Balcony",
+     "n": 20,
+     "tot": 20,
+     "conf": 100
+    },
+    "darkgray": {
+     "top": "Inside",
+     "n": 16,
+     "tot": 16,
+     "conf": 100
+    }
+   }
+  }
+ }
+}

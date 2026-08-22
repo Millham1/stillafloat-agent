@@ -26,15 +26,51 @@ const file = path.join(dir, `${slug}.json`);
 if (!fs.existsSync(file)) { console.error(`no advice file: ${file}`); process.exit(1); }
 const doc = JSON.parse(fs.readFileSync(file));
 
+// The Spanish half, if it has been translated (translate-advice.mjs).
+//
+// This MUST travel with the English. The route serves Spanish visitors
+// `recommendations_es ?? recommendations` — the ES rows wholesale, cabin numbers
+// included — so loading regenerated English on top of an older Spanish set sends
+// Spanish visitors to rooms nobody picked for them. Loading one without the other
+// is a silent ES regression, which is why it lives in the same script rather than
+// a second one somebody can forget to run.
+const esFile = path.join(dir, `${slug}.es.json`);
+const esByArchetype = fs.existsSync(esFile)
+  ? (JSON.parse(fs.readFileSync(esFile)).byArchetype || {})
+  : null;
+if (!esByArchetype) {
+  console.warn(
+    `${slug}: no ${slug}.es.json — the Spanish columns will be CLEARED so the ES site\n` +
+    `  falls back to this English text rather than serving the previous set's cabins.\n` +
+    `  Run: node translate-advice.mjs ${slug}`,
+  );
+}
+
 const byArchetype = doc.byArchetype || {};
-const rows = Object.entries(byArchetype).map(([archetype_id, v]) => ({
-  ship_slug: slug,
-  archetype_id,
-  label: v.label || null,
-  recommendations: v.recommendations || [],
-  steer_clear: v.steerClear || v.steer_clear || [],
-  model: doc.model || null,
-}));
+const rows = Object.entries(byArchetype).map(([archetype_id, v]) => {
+  const es = esByArchetype?.[archetype_id];
+  return {
+    ship_slug: slug,
+    archetype_id,
+    label: v.label || null,
+    recommendations: v.recommendations || [],
+    steer_clear: v.steerClear || v.steer_clear || [],
+    model: doc.model || null,
+    // Explicit nulls, not omission: an upsert that omits these would leave the
+    // stale translation in place, which is the failure this guards against.
+    label_es: es?.label_es ?? null,
+    recommendations_es: es?.recommendations_es ?? null,
+    steer_clear_es: es?.steer_clear_es ?? null,
+  };
+});
+
+// A translation may never move anyone to a different room.
+for (const r of rows) {
+  if (!r.recommendations_es) continue;
+  const en = r.recommendations.map((x) => String(x.cabin)).join(",");
+  const es = r.recommendations_es.map((x) => String(x.cabin)).join(",");
+  if (en !== es) { console.error(`${slug}/${r.archetype_id}: ES cabins differ from EN — refusing to load`); process.exit(1); }
+}
 
 if (!rows.length) { console.log(`${slug}: no archetypes in ${file} — nothing to load`); process.exit(0); }
 

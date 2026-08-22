@@ -1,0 +1,15 @@
+{
+  "379C67": ["BR", "Balcony"],
+  "8AC190": ["PR", "Promenade Balcony"],
+  "003C36": ["PV", "Balcony — hump/promenade-corner grade; anchors: same-ship 12148/12150 (DB Balcony) + 19 Europa same-number twins; NOT a suite"],
+  "EF9EBC": ["IR", "Interior"],
+  "F39541": ["FS", "Family Suite — MWA DB port-hump run 14159-14177-odd says Balcony but plan+Europa+glyphs say FS (DB zone-swap artifact)"],
+  "BAE2F8": ["OS", "Studio — Studio Ocean View; anchors 5001-5008 (8, deck 5)"],
+  "F7DFED": ["IS", "Studio — Studio Interior; anchors Europa 11040/11041/14001/14002"],
+  "3570B4": ["OR", "Ocean View — ONE meaning everywhere incl. bow tips decks 9-12; MWA DB rows 10001/10003/10004/10006/11002/11003/11004 'Infinite Ocean View' are zone artifacts (Europa same-position twins = Ocean View; deck-5 x52 same-hex anchors)"],
+  "003084": ["VL", "Infinite Ocean View — royal-blue forward runs decks 10/11 (VL1/VL2), diamond glyph, no balcony sliver"],
+  "112A51": ["VLA", "Infinite Ocean View — navy forward runs decks 12/14 (Aurea), diamond glyph; anchors: 36 deck-14 DB rows"],
+  "C2C1B1": ["YCD", "MSC Yacht Club Deluxe"],
+  "817666": ["YCX", "MSC Yacht Club Duplex — 16011/16013/16015; MWA DB labels them YC Deluxe (artifact, Europa twins = Duplex); stair icon, upper level drawn on deck 18"],
+  "6D6253": ["YCW", "MSC Yacht Club Whirlpool Duplex — 16001-16008 minus 16002/16007; stair+whirlpool glyphs, upper levels on deck 18"]
+}
