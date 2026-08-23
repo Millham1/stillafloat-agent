@@ -1322,4 +1322,241 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CAPTURE — what the visitor actually chose.
+//
+// Mark, 2026-08-18: "we should be capturing what the users are choosing and
+// learning from that to make better recommendations."
+//
+// This is step 1 of that and ONLY step 1. It records; it does not learn. No
+// selection code reads this table, no ranking changes because of it, and a
+// visitor sees nothing different. The point is that the signal stops being
+// thrown away while the question of what to do with it is still open.
+//
+// WHY IT IS FIRE-AND-FORGET: capture is worth strictly less than the tool
+// working. This handler must never be able to slow, break or block a search, so
+// it validates hard, writes small, swallows its own errors, and answers 204 to
+// everything a caller can do wrong. The page sends beacons and ignores the
+// reply. Nothing downstream waits on it.
+//
+// PATCH SEMANTICS: one visit writes several times (rooms shown, picks changed,
+// full list opened, picks sent). Fields present overwrite; fields absent are
+// left as they are; `more_opened` and `sent` are monotonic and can only ever go
+// false -> true, so a late or out-of-order beacon can never un-convert a
+// session.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Writes per IP per hour.
+ *
+ * Sized for SHARED addresses, not for one person. A visit is 5-8 beacons, so 120
+ * (the first value here) allowed only ~15-20 visits an hour from a single IP —
+ * fine for a home connection, but a mobile carrier's CGNAT, a hotel or a cruise
+ * line's own office all present many real visitors as one address, and clipping
+ * them would silently lose exactly the traffic this table exists to record. The
+ * load being defended against is trivial either way: one small upsert, already
+ * behind a valid-uuid check.
+ */
+const SESSION_RL_MAX = 600;
+const SESSION_RL_WINDOW_MS = 60 * 60 * 1000;
+/** Bound the map instead of leaking one counter per IP forever (contact.ts does). */
+const SESSION_RL_KEYS_MAX = 5000;
+const sessionRateLimit = new Map<string, { count: number; resetAt: number }>();
+
+function sessionRateLimited(ip: string): boolean {
+  const now = Date.now();
+  if (sessionRateLimit.size > SESSION_RL_KEYS_MAX) sessionRateLimit.clear();
+  const entry = sessionRateLimit.get(ip);
+  if (!entry || now > entry.resetAt) {
+    sessionRateLimit.set(ip, { count: 1, resetAt: now + SESSION_RL_WINDOW_MS });
+    return false;
+  }
+  if (entry.count >= SESSION_RL_MAX) return true;
+  entry.count++;
+  return false;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CABIN_RE = /^[A-Za-z0-9]{1,8}$/;
+const SLUG_RE = /^[a-z0-9-]{1,60}$/;
+
+/**
+ * The only answer fields that may be stored, named one by one.
+ *
+ * A whitelist and not a filter: the raw body never reaches the database, so a
+ * field nobody here anticipated cannot arrive in it. That is what keeps this an
+ * anonymous preference log rather than somewhere personal data can turn up by
+ * accident later.
+ */
+const ANSWER_KEYS = ["party", "room", "priority", "budget", "destination", "motion"] as const;
+
+/**
+ * Keep the value's own type. The first end-to-end run stored trait scores as
+ * "3.5" and a boolean as "yes", which reads fine and sorts and sums like
+ * nonsense — and this table exists to be analysed later, by someone who will
+ * not know to cast it back.
+ */
+function cleanScalar(v: unknown): string | number | boolean | null {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v !== "string") return null;
+  const s = v.trim().slice(0, 40);
+  return s.length ? s : null;
+}
+
+/** Cabin numbers and slugs must still be text, whatever arrived. */
+function cleanText(v: unknown): string | null {
+  const c = cleanScalar(v);
+  return c === null ? null : String(c).slice(0, 40);
+}
+
+/** A bounded map of short keys to short values — personality axes and trait scores. */
+function cleanMap(v: unknown): Record<string, string | number | boolean> | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const out: Record<string, string | number | boolean> = {};
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    if (Object.keys(out).length >= 24) break;
+    if (!/^[A-Za-z0-9_-]{1,32}$/.test(k)) continue;
+    const s = cleanScalar(val);
+    if (s !== null) out[k] = s;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function cleanAnswers(v: unknown): Record<string, unknown> | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const src = v as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of ANSWER_KEYS) {
+    const s = cleanScalar(src[k]);
+    if (s !== null) out[k] = s;
+  }
+  const personality = cleanMap(src["personality"]);
+  if (personality) out["personality"] = personality;
+  const traits = cleanMap(src["traits"]);
+  if (traits) out["traits"] = traits;
+  return Object.keys(out).length ? out : null;
+}
+
+/** Cabin numbers only, de-duplicated, capped at the most the API can ever show. */
+function cleanCabins(v: unknown, cap: number): string[] | null {
+  if (!Array.isArray(v)) return null;
+  const out: string[] = [];
+  for (const c of v) {
+    if (out.length >= cap) break;
+    const s = typeof c === "string" ? c.trim() : typeof c === "number" ? String(c) : "";
+    if (CABIN_RE.test(s) && !out.includes(s)) out.push(s);
+  }
+  return out;
+}
+
+/**
+ * The choice set, as displayed. Rank is kept deliberately: "picked the first
+ * one" and "picked the ninth" say different things about our ordering, and
+ * without the set a pick cannot be read at all — you never learn what it beat.
+ */
+function cleanShown(v: unknown): Array<Record<string, unknown>> | null {
+  if (!Array.isArray(v)) return null;
+  const out: Array<Record<string, unknown>> = [];
+  for (const item of v) {
+    if (out.length >= 40) break;
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const cabin = typeof o["cabin"] === "string" ? o["cabin"].trim() : String(o["cabin"] ?? "");
+    if (!CABIN_RE.test(cabin)) continue;
+    const deck = typeof o["deck"] === "number" && Number.isFinite(o["deck"]) ? o["deck"] : null;
+    out.push({
+      cabin,
+      deck,
+      category: cleanText(o["category"]),
+      view: cleanText(o["view"]),
+      rank: out.length + 1,
+    });
+  }
+  return out;
+}
+
+router.post("/cabins/session", async (req: Request, res: Response) => {
+  // Answered before anything else and regardless of outcome. A caller learns
+  // nothing from the reply — not whether the id existed, not whether the write
+  // landed — because there is nothing here worth probing for.
+  res.status(204).end();
+  try {
+    const ip =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+      req.socket?.remoteAddress ||
+      "unknown";
+    if (sessionRateLimited(ip)) return;
+
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const sessionId = typeof body["sessionId"] === "string" ? body["sessionId"] : "";
+    if (!UUID_RE.test(sessionId)) return;
+
+    // Only what is present in THIS beacon is written; everything else keeps the
+    // value the earlier beacons of this visit left behind.
+    // Collected first, then handed to the merge function as parameters.
+    const patch: Record<string, unknown> = {};
+    const lang = body["lang"];
+    if (lang === "en" || lang === "es") patch["lang"] = lang;
+    // 'ship' and 'discover' are the landing screen's two forks, spelled exactly
+    // as the page spells them. Anything else is dropped rather than stored — the
+    // column's CHECK constraint allows only these two, and a value that fails it
+    // would take the whole beacon down with it.
+    const path = body["path"];
+    if (path === "ship" || path === "discover") patch["path"] = path;
+
+    const answers = cleanAnswers(body["answers"]);
+    if (answers) patch["answers"] = answers;
+
+    const suggested = body["suggestedShips"];
+    if (Array.isArray(suggested)) {
+      patch["suggested_ships"] = suggested
+        .filter((s): s is string => typeof s === "string" && SLUG_RE.test(s))
+        .slice(0, 6);
+    }
+    const ship = body["ship"];
+    if (typeof ship === "string" && SLUG_RE.test(ship)) patch["ship_slug"] = ship;
+
+    const shown = cleanShown(body["shown"]);
+    if (shown) patch["shown"] = shown;
+    const picked = cleanCabins(body["picked"], 24);
+    if (picked) patch["picked"] = picked;
+
+    // ONE atomic statement, in the database, deliberately — see the note above
+    // concierge_capture in migration 0027. These beacons race (the handler
+    // answers before it writes, and the page never awaits), so merging here in
+    // JavaScript loses: the first end-to-end run produced a row with `path`
+    // null and a converted session recorded as sent=false, because each handler
+    // read a row the others had not written yet. ON CONFLICT settles it under a
+    // row lock instead, so absent fields are left alone and the two flags can
+    // only ever go false -> true.
+    const supabase = getSupabase();
+    // Same reason as the cast in conga-line.ts: the generated types are not
+    // wired up, so an untyped rpc() sees its own arguments as `undefined`.
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
+      fn: string, args: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>;
+    const { error } = await rpc("concierge_capture", {
+      p_session: sessionId,
+      p_lang: (patch["lang"] as string) ?? null,
+      p_path: (patch["path"] as string) ?? null,
+      p_answers: patch["answers"] ?? null,
+      p_suggested: patch["suggested_ships"] ?? null,
+      p_ship: (patch["ship_slug"] as string) ?? null,
+      p_shown: patch["shown"] ?? null,
+      p_picked: patch["picked"] ?? null,
+      // The client's own beacon counter, so an out-of-order write cannot
+      // resurrect a stale pick list. Absent or junk counts as 0.
+      p_seq: typeof body["seq"] === "number" && Number.isFinite(body["seq"])
+        ? Math.max(0, Math.min(100000, Math.trunc(body["seq"]))) : 0,
+      p_more: body["moreOpened"] === true,
+      p_sent: body["sent"] === true,
+    });
+    if (error) throw new Error(error.message);
+  } catch (err) {
+    // Capture failing is not the visitor's problem and must never look like one.
+    logger.warn({ err }, "cabins/session capture failed");
+  }
+});
+
 export default router;
