@@ -417,6 +417,9 @@ class RoomConciergeFlow {
   constructor() {
     this.path=null; this.personality={}; this.expect={}; this.qIndex=0; this.eIndex=0;
     this.fleet=[]; this.chosen=null; this.suggestion=null; this.picked=new Set();
+    /* Per page load, never stored: groups this visit's beacons, identifies nobody. */
+    this.sessionId=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():null;
+    this._seq=0;
     this.stageEl=document.getElementById("stage");
     this.history=[];
     this.loadFleet();
@@ -650,6 +653,9 @@ class RoomConciergeFlow {
         const d=await r.json(); shipsToShow=d.picks||[]; reason=d.reason||""; this.worthALook=d.worthALook||null;
       }catch{ shipsToShow=[]; }
     }
+    /* What we offered, before we know what they do with it. */
+    this.capture({path:this.path,answers:this.answerSnapshot(),
+      suggestedShips:shipsToShow.map(s=>s&&s.slug).filter(Boolean)});
     if(!shipsToShow.length){
       this.stageEl.innerHTML = `<p class="re-progress">El veredicto</p>
         <h2 class="q">Prefiero hacerlo bien que adivinar.</h2>
@@ -735,6 +741,10 @@ class RoomConciergeFlow {
       return;
     }
     this.picked=new Set(); this.roomsData=d; this.roomsShip=shipName; this.roomsRep=repSlug; this.moreData=null;
+    /* The choice set. A pick with no record of what it beat teaches nothing. */
+    this.capture({ship:repSlug,path:this.path,answers:this.answerSnapshot(),
+      shown:(d.picks||[]).map(p=>({cabin:p.cabin,deck:(p.facts||{}).deck,
+        category:(p.facts||{}).category,view:(p.facts||{}).view}))});
     this.drawRooms();
   }
   drawRooms(){
@@ -774,6 +784,7 @@ class RoomConciergeFlow {
       <div class="re-cta"><h3>${this.picked.size} ${this.picked.size>1?"habitaciones elegidas":"habitación elegida"}</h3>
         <p>Mándalas y yo mismo reviso la elección, el precio y el itinerario antes de que reserves nada.</p>
         <a class="re-btn yes" style="text-decoration:none;display:inline-block"
+          onclick="RC.captureSent()"
           href="/es/cabin-request.html?ship=${encodeURIComponent(this.roomsShip)}&cabins=${encodeURIComponent([...this.picked].join(","))}">Enviar mis elecciones</a></div>`
       : this.cta();
     this.stageEl.innerHTML = `
@@ -792,6 +803,8 @@ class RoomConciergeFlow {
      reasoning, more=1 — a second screen must never contradict the first. */
   async moreOptions(){
     this.snapshot('drawRooms');
+    /* A verdict on the first screen: our top picks did not settle it. */
+    this.capture({moreOpened:true});
     this.stageEl.innerHTML = `<p class="re-progress">Todas las opciones</p><h2 class="q">Trayendo la lista completa…</h2>`
       + `<div class="thinking"><div class="spinner"></div></div>`;
     let d=this.moreData;
@@ -836,8 +849,47 @@ class RoomConciergeFlow {
   }
   toggleRow(cabin){ this.openRows=this.openRows||new Set();
     this.openRows.has(cabin)?this.openRows.delete(cabin):this.openRows.add(cabin); this.drawMore(); }
-  togglePickMore(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawMore(); }
-  togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.drawRooms(); }
+  /* ── CAPTURE (task 13a1f629, step 1) ──────────────────────────────────────
+     Records what we showed and what the visitor chose instead, so the concierge
+     can one day learn from real choices rather than starting from zero every
+     visit. Before this, picks lived only in `this.picked` and died with the tab;
+     the only ones that ever reached us were from the few who clicked send.
+
+     IT RECORDS, IT DOES NOT LEARN. Nothing here changes a recommendation, and
+     the visitor sees nothing different. Step 2 is a separate decision, to be
+     made once there is data to make it from.
+
+     FIRE-AND-FORGET ON PURPOSE: capture is worth far less than the tool working,
+     so every call is unawaited and every failure is swallowed. It can never
+     delay, block or break a search.
+
+     ANONYMOUS BY CONSTRUCTION: the id is minted per page load, never stored in
+     the browser, and so cannot join one visit to another or to a person. */
+  capture(patch){
+    if(!this.sessionId) return;
+    try{
+      fetch("/api/cabins/session",{method:"POST",headers:{"Content-Type":"application/json"},
+        /* keepalive so the "sent" beacon survives the page being left */
+        keepalive:true,
+        /* seq is counted per visit: the merge ignores a pick list that arrives
+           after a newer one, which sequential beacons alone do NOT guarantee. */
+        body:JSON.stringify(Object.assign({sessionId:this.sessionId,lang:LANG,seq:++this._seq},patch))}).catch(()=>{});
+    }catch(e){/* never the visitor's problem */}
+  }
+  /* Only the fixed answer set — the server whitelists these again by name. */
+  answerSnapshot(){
+    return Object.assign({}, this.expect||{}, {personality:this.personality||{}, traits:this.traits||{}});
+  }
+  /* Ticking runs hot (pick, unpick, pick again), so the picks settle before they
+     are sent. One row per visit, not one per click. */
+  capturePicks(){
+    clearTimeout(this._capTimer);
+    this._capTimer=setTimeout(()=>this.capture({picked:[...this.picked]}),700);
+  }
+  /* The one moment this touches the funnel: they took their picks to the form. */
+  captureSent(){ clearTimeout(this._capTimer); this.capture({picked:[...this.picked],sent:true}); }
+  togglePickMore(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.capturePicks(); this.drawMore(); }
+  togglePick(cabin){ this.picked.has(cabin)?this.picked.delete(cabin):this.picked.add(cabin); this.capturePicks(); this.drawRooms(); }
   cta(){
     return `<div class="re-cta">
       <h3>¿Quieres un segundo par de ojos antes de reservar?</h3>
