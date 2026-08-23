@@ -684,7 +684,7 @@ class RoomConciergeFlow {
     let card="";
     try{ card=await this.shipCard(w); }catch(e){ return ""; }
     return `<div style="margin-top:18px;padding-top:6px;border-top:1px dashed rgba(93,255,154,.4)">
-      <p style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(93,255,154,.85);margin:10px 0 2px">Una que quizá no considerabas</p>
+      <p style="font-size:18px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#023e6e;margin:10px 0 2px">Una que quizá no considerabas</p>
       <p class="re-intro" style="font-size:15px;margin-bottom:8px">${w.why||""}</p>
       ${card}</div>`;
   }
