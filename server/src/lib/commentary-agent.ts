@@ -570,6 +570,36 @@ export async function stageWeeklyCommentary(options?: {
 
 // Step 2 — synthesize: Mark's take + cluster + research → the commentary.
 // Callable repeatedly (revise take → re-synthesize).
+/**
+ * The one-peg-story rule, as a pure function so it is testable and cannot drift.
+ *
+ * Handing the writer a LIST of stories is what produced "it's just repeating news
+ * stories": no single proposition spans four unrelated items, so the model
+ * summarises each in turn. Exactly one story is the subject; the rest may only
+ * appear as supporting evidence.
+ */
+export function autonomousWriterPayload(
+  draft: Pick<CommentaryDraft, "stories" | "research">,
+  agentTake: NonNullable<CommentaryDraft["agentTake"]>,
+): Record<string, unknown> {
+  const peg =
+    draft.stories.find((x) => x.title === agentTake.peg_story_title) ?? draft.stories[0];
+  return {
+    editorial_position: agentTake,
+    peg_story: peg,
+    other_stories_as_evidence_only: draft.stories.filter((x) => x.title !== peg?.title),
+    backing_research: draft.research,
+  };
+}
+
+/**
+ * Whether a fact-check repair may replace the draft. A truncated or gutted
+ * response must never silently overwrite a good piece.
+ */
+export function acceptRepair(original: string, corrected: string): boolean {
+  return corrected.includes("<p>") && corrected.length > original.length * 0.6;
+}
+
 export async function synthesizeCommentary(markTake: string | null): Promise<CommentaryDraft> {
   const draft = await loadCommentaryDraft();
   if (!draft || (draft.status !== "awaiting_take" && draft.status !== "drafted")) {
@@ -615,15 +645,7 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
     autonomous ? AUTONOMOUS_PROMPT : SYNTHESIZE_PROMPT,
     JSON.stringify(
       autonomous
-        ? {
-            editorial_position: agentTake,
-            peg_story: draft.stories.find((x) => x.title === agentTake!.peg_story_title) ??
-              draft.stories[0],
-            other_stories_as_evidence_only: draft.stories.filter(
-              (x) => x.title !== agentTake!.peg_story_title,
-            ),
-            backing_research: draft.research,
-          }
+        ? autonomousWriterPayload(draft, agentTake!)
         : {
             featured_stories: draft.stories,
             backing_research: draft.research,
@@ -666,7 +688,7 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
         .filter((f) => f.quote);
       // Only accept the repair if it came back a real piece — a truncated or gutted
       // response must never silently replace a good draft.
-      if (corrected.includes("<p>") && corrected.length > bodyHtml.length * 0.6) {
+      if (acceptRepair(bodyHtml, corrected)) {
         bodyHtml = corrected;
         title = String(checked["corrected_title"] ?? title) || title;
       } else if (findings.length > 0) {
