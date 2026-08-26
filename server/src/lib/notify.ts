@@ -6,11 +6,16 @@
 // dev keeps working before the ntfy server exists. Swapping channels later means
 // editing THIS file only.
 //
+// Third tier: email via the ops-manager Gmail sender. This is the ONE channel
+// proven to reach Mark (storm alerts arrive this way), so it is the floor —
+// notifyMark must never again return "none" while a working channel exists.
+//
 // Env: NTFY_URL (e.g. https://ntfy.stillafloatcruising.com), NTFY_TOPIC,
-//      NTFY_TOKEN (optional bearer auth), DASHBOARD_URL.
+//      NTFY_TOKEN (optional bearer auth), DASHBOARD_URL, OWNER_EMAIL.
 
 import { logger } from "./logger";
 import { sendPush } from "./push";
+import { sendMail } from "./mailer";
 
 export interface NotifyButton {
   label: string;
@@ -33,6 +38,10 @@ function briefUrl(): string {
   return `${(process.env["DASHBOARD_URL"] || "https://dashboard.stillafloatcruising.com").replace(/\/$/, "")}/brief.html`;
 }
 
+function ownerEmail(): string {
+  return process.env["OWNER_EMAIL"] || "millham57@outlook.com";
+}
+
 function apiBase(): string {
   return (process.env["PUBLIC_URL"] || "https://stillafloatcruising.com").replace(/\/$/, "");
 }
@@ -50,7 +59,9 @@ export function reviewUrl(path: string): string {
 }
 
 /** Send Mark exactly one notification. Never throws. Returns the channel used. */
-export async function notifyMark(n: Notification): Promise<"ntfy" | "webpush" | "none"> {
+export async function notifyMark(
+  n: Notification,
+): Promise<"ntfy" | "webpush" | "email" | "none"> {
   const ntfyUrl = process.env["NTFY_URL"];
   const topic = process.env["NTFY_TOPIC"];
 
@@ -89,9 +100,27 @@ export async function notifyMark(n: Notification): Promise<"ntfy" | "webpush" | 
 
   try {
     const res = await sendPush({ title: n.title, body: n.body, url: n.url ?? briefUrl(), ...(n.tag ? { tag: n.tag } : {}) });
-    return res.sent > 0 ? "webpush" : "none";
+    if (res.sent > 0) return "webpush";
+    logger.warn("notify: web push has no subscribed devices — falling back to email");
   } catch (err) {
-    logger.warn({ err }, "notify: web push failed");
-    return "none";
+    logger.warn({ err }, "notify: web push failed — falling back to email");
   }
+
+  try {
+    const ok = await sendMail({
+      to: ownerEmail(),
+      subject: n.title,
+      text: `${n.body}\n\n${n.url ?? briefUrl()}`,
+      fromName: "Still Afloat Ops",
+    });
+    if (ok) return "email";
+  } catch (err) {
+    logger.error({ err }, "notify: email fallback failed");
+  }
+
+  // Every tier failed. This is the state the system sat in for months — ntfy
+  // unconfigured, zero push subscriptions — while returning a value nobody read.
+  // Log at ERROR so it shows up as a fault rather than a shrug.
+  logger.error({ title: n.title }, "notify: NO channel delivered — Mark was not told");
+  return "none";
 }
