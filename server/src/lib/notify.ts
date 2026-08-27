@@ -7,8 +7,10 @@
 // editing THIS file only.
 //
 // Third tier: email via the ops-manager Gmail sender. This is the ONE channel
-// proven to reach Mark (storm alerts arrive this way), so it is the floor —
-// notifyMark must never again return "none" while a working channel exists.
+// proven to reach Mark (storm alerts arrive this way), so it is the floor for
+// FAULTS — notifications marked priority:"high". Routine review nudges stop at
+// web push on purpose: they already sit in the dashboard queue, and fanning all
+// 14 call sites out to email would rebuild the noise Telegram was retired for.
 //
 // Env: NTFY_URL (e.g. https://ntfy.stillafloatcruising.com), NTFY_TOPIC,
 //      NTFY_TOKEN (optional bearer auth), DASHBOARD_URL, OWNER_EMAIL.
@@ -32,6 +34,15 @@ export interface Notification {
   tag?: string;
   /** Inline buttons (rendered as ntfy HTTP actions; max 2 used). */
   buttons?: NotifyButton[];
+  /**
+   * "high" unlocks the email floor when push/ntfy deliver nothing. Reserve it
+   * for FAULTS — a dead step, a broken channel — not for "a draft is ready".
+   * Every routine review nudge is "normal" (the default): it already sits in
+   * the dashboard queue, so emailing it adds noise, not information. Telegram
+   * was retired for exactly that noise; a 14-call-site email fan-out would
+   * rebuild it under a new name.
+   */
+  priority?: "high" | "normal";
 }
 
 function briefUrl(): string {
@@ -58,10 +69,23 @@ export function reviewUrl(path: string): string {
   return `${apiBase()}${path}${tok ? `${sep}token=${encodeURIComponent(tok)}` : ""}`;
 }
 
+/**
+ * Seams for tests. Production passes nothing. Lets a test assert the real
+ * fallback chain — in particular that a NORMAL notification which reaches no
+ * device never touches email.
+ */
+export interface NotifyDeps {
+  push?: typeof sendPush;
+  mail?: typeof sendMail;
+}
+
 /** Send Mark exactly one notification. Never throws. Returns the channel used. */
 export async function notifyMark(
   n: Notification,
+  deps: NotifyDeps = {},
 ): Promise<"ntfy" | "webpush" | "email" | "none"> {
+  const push = deps.push ?? sendPush;
+  const mail = deps.mail ?? sendMail;
   const ntfyUrl = process.env["NTFY_URL"];
   const topic = process.env["NTFY_TOPIC"];
 
@@ -99,28 +123,37 @@ export async function notifyMark(
   }
 
   try {
-    const res = await sendPush({ title: n.title, body: n.body, url: n.url ?? briefUrl(), ...(n.tag ? { tag: n.tag } : {}) });
+    const res = await push({ title: n.title, body: n.body, url: n.url ?? briefUrl(), ...(n.tag ? { tag: n.tag } : {}) });
     if (res.sent > 0) return "webpush";
-    logger.warn("notify: web push has no subscribed devices — falling back to email");
+    logger.warn("notify: web push reached no devices");
   } catch (err) {
-    logger.warn({ err }, "notify: web push failed — falling back to email");
+    logger.warn({ err }, "notify: web push failed");
   }
 
-  try {
-    const ok = await sendMail({
-      to: ownerEmail(),
-      subject: n.title,
-      text: `${n.body}\n\n${n.url ?? briefUrl()}`,
-      fromName: "Still Afloat Ops",
-    });
-    if (ok) return "email";
-  } catch (err) {
-    logger.error({ err }, "notify: email fallback failed");
+  // Email is a FLOOR FOR FAULTS, not a fallback for everything. Gating it here
+  // is what keeps "never silently fail" from turning into "email me 14 times a
+  // day". A normal nudge that lands nowhere is still a real fault — it is just
+  // one to fix at the channel, which the push-health check raises separately.
+  if (n.priority === "high") {
+    try {
+      const ok = await mail({
+        to: ownerEmail(),
+        subject: n.title,
+        text: `${n.body}\n\n${n.url ?? briefUrl()}`,
+        fromName: "Still Afloat Ops",
+      });
+      if (ok) return "email";
+    } catch (err) {
+      logger.error({ err }, "notify: email floor failed");
+    }
   }
 
-  // Every tier failed. This is the state the system sat in for months — ntfy
-  // unconfigured, zero push subscriptions — while returning a value nobody read.
-  // Log at ERROR so it shows up as a fault rather than a shrug.
-  logger.error({ title: n.title }, "notify: NO channel delivered — Mark was not told");
+  // Every eligible tier failed. This is the state the system sat in for months —
+  // ntfy unconfigured, zero push subscriptions — while returning a value nobody
+  // read. Log at ERROR so it shows up as a fault rather than a shrug.
+  logger.error(
+    { title: n.title, priority: n.priority ?? "normal" },
+    "notify: NO channel delivered — Mark was not told",
+  );
   return "none";
 }
