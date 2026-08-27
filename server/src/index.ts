@@ -180,7 +180,12 @@ function scheduleNewsPrerender() {
 function scheduleGuidesPrerender() {
   const tick = async () => {
     try {
-      await runGuidesPrerender();
+      const r = await runGuidesPrerender();
+      // Report the SLUG COUNT, not just "complete". A guide written to
+      // platform_state is a 404 until this runs, and for the hour in between
+      // nothing said which state the site was in — the log line read
+      // "guides:5 pages:10" whether or not a sixth guide was waiting.
+      logger.info(r, "Guides prerender tick");
     } catch (err) {
       logger.error({ err }, "Guides prerender tick failed");
     }
