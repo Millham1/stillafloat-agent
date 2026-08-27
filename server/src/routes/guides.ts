@@ -13,64 +13,60 @@
 //
 // So: a trigger to publish now, and a status endpoint that answers "is the site
 // actually showing what the database says?" — the question that had no answer.
+//
+// The expected-page rules come from expectedGuidePages() in the renderer itself
+// rather than being re-derived here. The first cut of this file assumed every
+// published guide gets an English page, and immediately raised a false alarm on
+// a Spanish-only guide. A drift check that drifts from the thing it checks is
+// worse than no check, because the first false alarm teaches you to ignore it.
 
 import { Router, type IRouter } from "express";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { requireToken } from "../lib/http-auth";
-import { runGuidesPrerender } from "../lib/prerender-guides";
-import { readJson, PATHS } from "../lib/persistence";
+import { runGuidesPrerender, expectedGuidePages } from "../lib/prerender-guides";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
-
-interface Guide {
-  slug?: string;
-  published?: boolean;
-  title?: string;
-}
 
 function publicDir(): string {
   return path.resolve(process.cwd(), "public");
 }
 
-/** Slugs the data says should be live. */
-async function expectedSlugs(): Promise<string[]> {
-  const data = await readJson<{ guides?: Guide[] }>(PATHS.guides, { guides: [] });
-  return (data.guides ?? [])
-    .filter((g) => g && g.published !== false && g.slug)
-    .map((g) => String(g.slug));
+/** Slugs that actually have a rendered page on disk, per language. */
+async function renderedSlugs(): Promise<{ en: string[]; es: string[] }> {
+  const read = async (...seg: string[]) => {
+    try {
+      const files = await readdir(path.join(publicDir(), ...seg));
+      return files.filter((f) => f.endsWith(".html")).map((f) => f.replace(/\.html$/, ""));
+    } catch {
+      return [];
+    }
+  };
+  return { en: await read("guides"), es: await read("es", "guides") };
 }
 
-/** Slugs that actually have a rendered page on disk. */
-async function renderedSlugs(): Promise<string[]> {
-  try {
-    const files = await readdir(path.join(publicDir(), "guides"));
-    return files.filter((f) => f.endsWith(".html")).map((f) => f.replace(/\.html$/, ""));
-  } catch {
-    return [];
-  }
+async function drift() {
+  const [expected, rendered] = await Promise.all([expectedGuidePages(), renderedSlugs()]);
+  const missingEn = expected.en.filter((s) => !rendered.en.includes(s));
+  const missingEs = expected.es.filter((s) => !rendered.es.includes(s));
+  return {
+    ok: missingEn.length === 0 && missingEs.length === 0,
+    expected: { en: expected.en.length, es: expected.es.length },
+    rendered: { en: rendered.en.length, es: rendered.es.length },
+    missing: { en: missingEn, es: missingEs },
+  };
 }
 
 /**
  * Is the published site in step with the data?
  *
- * Deliberately unauthenticated-safe in what it returns: slugs only, no bodies.
- * `missing` is the number that matters — anything in it is a guide Mark believes
- * he published which is currently a 404.
+ * Returns slugs only, never bodies. Anything under `missing` is a guide Mark
+ * believes he published which is currently a 404.
  */
 router.get("/guides/status", async (_req, res) => {
   try {
-    const [expected, rendered] = await Promise.all([expectedSlugs(), renderedSlugs()]);
-    const missing = expected.filter((s) => !rendered.includes(s));
-    const orphaned = rendered.filter((s) => !expected.includes(s));
-    res.json({
-      ok: missing.length === 0,
-      expected: expected.length,
-      rendered: rendered.length,
-      missing,
-      orphaned,
-    });
+    res.json(await drift());
   } catch (err) {
     logger.error({ err }, "guides status check failed");
     res.status(500).json({ ok: false, error: (err as Error).message });
@@ -80,17 +76,16 @@ router.get("/guides/status", async (_req, res) => {
 /**
  * Re-render the guide pages now instead of waiting up to an hour for the tick.
  *
- * Gated: it writes files into the public directory. Returns the counts AND the
- * post-run status, so the caller learns whether the publish actually took rather
- * than just that a job was started.
+ * Gated: it writes files into the public directory. Returns the render counts
+ * AND the post-run drift, so the caller learns whether the publish actually took
+ * rather than merely that a job was started.
  */
 router.post("/guides/prerender", requireToken, async (_req, res) => {
   try {
     const result = await runGuidesPrerender();
-    const [expected, rendered] = await Promise.all([expectedSlugs(), renderedSlugs()]);
-    const missing = expected.filter((s) => !rendered.includes(s));
-    logger.info({ ...result, missing }, "Guides prerender forced");
-    res.json({ ok: missing.length === 0, ...result, missing });
+    const after = await drift();
+    logger.info({ ...result, ...after }, "Guides prerender forced");
+    res.json({ ...after, ...result });
   } catch (err) {
     logger.error({ err }, "forced guides prerender failed");
     res.status(500).json({ ok: false, error: (err as Error).message });
