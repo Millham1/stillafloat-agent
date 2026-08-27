@@ -12,7 +12,7 @@ import { runGuidesPrerender } from "./lib/prerender-guides";
 import { stageWeeklyCommentary, loadCommentaryDraft } from "./lib/commentary-agent";
 import { startShipTracker } from "./lib/ship-tracker";
 import { runWatchSweep } from "./lib/wms-alerts";
-import { sendPendingReminders, archiveStaleUnconfirmed } from "./lib/subscriber-hygiene";
+import { sendPendingReminders, archiveStaleUnconfirmed, purgeBounced } from "./lib/subscriber-hygiene";
 import { checkPushHealth } from "./lib/push-health";
 
 const rawPort = process.env["PORT"] ?? "8080";
@@ -144,14 +144,17 @@ function scheduleSubscriberHygiene() {
     try {
       const { reminded, failed } = await sendPendingReminders();
       const { archived } = await archiveStaleUnconfirmed();
-      logger.info({ reminded, failed, archived }, "Subscriber hygiene tick complete");
+      // Bounced rows are addresses that do not exist. Nothing cleared them until
+      // 2026-08-26, so they accumulated in the table indefinitely.
+      const { purged } = await purgeBounced();
+      logger.info({ reminded, failed, archived, purged }, "Subscriber hygiene tick complete");
     } catch (err) {
       logger.error({ err }, "Subscriber hygiene tick failed");
     }
   };
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
-  logger.info({ runHour, tz: TZ }, "Subscriber hygiene scheduler active — daily reminder + archive sweep");
+  logger.info({ runHour, tz: TZ }, "Subscriber hygiene scheduler active — daily reminder + archive + purge sweep");
 }
 
 // ── News pre-render scheduler ─────────────────────────────────────────────────
