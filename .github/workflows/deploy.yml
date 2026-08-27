@@ -3,6 +3,13 @@ name: Deploy Still Afloat (monorepo)
 on:
   push:
     branches: [ main, dev ]
+  # Run the build/test gate on PRs too. Without this the ONLY time this workflow
+  # ran was AFTER a merge to dev/main — so "test before merging" was impossible
+  # and the loop was push-and-find-out. Both deploy jobs below are gated on
+  # github.ref being a branch ref, which a pull_request event never is, so a PR
+  # runs the gate and deploys nothing.
+  pull_request:
+    branches: [ main, dev ]
 
 jobs:
   # CI gate: compile + bundle in GitHub Actions BEFORE any deploy. Both deploy

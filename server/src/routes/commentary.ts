@@ -474,6 +474,28 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
     draft!.status === "drafted"
       ? `<div class="panel">
     <div class="label">${draft!.authoredBy === "agent" ? "Agent-written commentary (no take given)" : "Synthesized commentary — review before publishing"}</div>
+    ${
+      draft!.agentTake
+        ? `<div class="storyline" style="border-left:3px solid #0d3b66;padding-left:10px;margin-bottom:14px">
+      <div class="label" style="margin:0 0 6px">The position it argued — judge this first</div>
+      <b>${esc(draft!.agentTake.position)}</b>
+      <div class="muted small" style="margin-top:6px">
+        <b>Peg:</b> ${esc(draft!.agentTake.peg_story_title)}<br>
+        <b>Who's wrong:</b> ${esc(draft!.agentTake.whos_wrong)}<br>
+        <b>What should change:</b> ${esc(draft!.agentTake.what_should_change)}
+      </div>
+    </div>`
+        : ""
+    }
+    ${
+      draft!.factCheck && draft!.factCheck.length > 0
+        ? `<p class="muted small" style="margin:0 0 10px">🔍 Fact-check pass repaired ${draft!.factCheck.length} unsupported claim(s) before this draft was stored: ${draft!.factCheck
+            .map((f) => esc(f.problem))
+            .join(" · ")}</p>`
+        : draft!.authoredBy === "agent"
+          ? `<p class="muted small" style="margin:0 0 10px">🔍 Fact-check pass found nothing to repair.</p>`
+          : ""
+    }
     <h2>${esc(draft!.suggestedTitle)}</h2>
     <div class="body">${draft!.draftHtml}</div>
     <div class="row">

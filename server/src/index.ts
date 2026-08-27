@@ -13,6 +13,7 @@ import { stageWeeklyCommentary, loadCommentaryDraft } from "./lib/commentary-age
 import { startShipTracker } from "./lib/ship-tracker";
 import { runWatchSweep } from "./lib/wms-alerts";
 import { sendPendingReminders, archiveStaleUnconfirmed } from "./lib/subscriber-hygiene";
+import { checkPushHealth } from "./lib/push-health";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -65,6 +66,13 @@ app.listen(port, "0.0.0.0", () => {
     logger.info("Weekly marketing cadence DISABLED (DISABLE_WEEKLY_MARKETING=1)");
   } else {
     scheduleWeeklyMarketing();
+  }
+  // Push-channel health. Prod only: the dev mirror shares Mark's inbox, and a
+  // dev box with no subscribers is normal, not a fault.
+  if (process.env["DISABLE_PUSH_HEALTH"] === "1") {
+    logger.info("Push-health check DISABLED (DISABLE_PUSH_HEALTH=1)");
+  } else {
+    schedulePushHealth();
   }
   // News pre-renderer — writes static, crawlable news pages (SEO). Local file
   // writes only, so it runs on BOTH boxes (dev gets testable pages).
@@ -380,6 +388,23 @@ function scheduleWeeklyMarketing() {
 // Pull NHC (active systems + Tropical Weather Outlook) on boot and hourly, draft
 // alerts for anything threatening cruising grounds, and nudge Mark to review.
 // Approval-gated: this never emails subscribers on its own.
+// Push-channel health — the notification channel is the one component whose
+// failure hides every other failure, so it gets checked rather than assumed.
+// Boot + every 6h. Raises a deduped high-priority action (which reaches email)
+// when no device can receive a push.
+function schedulePushHealth() {
+  const tick = async () => {
+    try {
+      await checkPushHealth();
+    } catch (err) {
+      logger.error({ err }, "Push health tick failed");
+    }
+  };
+  setTimeout(() => { tick().catch(() => {}); }, 60_000);
+  setInterval(() => { tick().catch(() => {}); }, 6 * 60 * 60 * 1000);
+  logger.info("Push-health scheduler active — on boot + every 6h");
+}
+
 function scheduleStormScan() {
   const tick = async () => {
     try {
