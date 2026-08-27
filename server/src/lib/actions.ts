@@ -29,6 +29,11 @@ export async function createAction(a: {
   source_ref?: string;
   /** Extra notification tag (defaults to type+source_ref). */
   tag?: string;
+  /**
+   * "high" lets the notification fall through to email when push delivers
+   * nothing. For FAULTS only — a review queue filling up is not a fault.
+   */
+  priority?: "high" | "normal";
 }): Promise<{ created: boolean; id?: string }> {
   const supabase = getSupabase();
 
@@ -63,6 +68,7 @@ export async function createAction(a: {
     body: a.body ?? "Open the brief to act.",
     tag: a.tag ?? `${a.type}-${a.source_ref ?? id}`,
     buttons: a.buttons ?? [],
+    priority: a.priority ?? "normal",
   });
   return { created: true, id };
 }
