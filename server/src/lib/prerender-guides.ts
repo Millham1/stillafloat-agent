@@ -74,17 +74,17 @@ function field(guide: Guide, base: "title" | "hook" | "category" | "seoTitle" | 
 
 // A guide is available in a language when it has both a title and a body there.
 // A tool tile only needs a title — its destination is a real page already.
-function hasLang(guide: Guide, lang: Lang): boolean {
+export function hasLang(guide: Guide, lang: Lang): boolean {
   if (toolHrefFor(guide, lang)) return Boolean(field(guide, "title", lang));
   return Boolean(field(guide, "title", lang) && field(guide, "bodyHtml", lang));
 }
 
-function toolHrefFor(guide: Guide, lang: Lang): string {
+export function toolHrefFor(guide: Guide, lang: Lang): string {
   const v = lang === "es" ? guide.toolHref_es || guide.toolHref : guide.toolHref;
   return typeof v === "string" ? v.trim() : "";
 }
 
-function cleanSlug(guide: Guide): string {
+export function cleanSlug(guide: Guide): string {
   return String(guide.slug || "")
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
@@ -298,6 +298,31 @@ function sitemapXml(guides: Guide[]): string {
     if (hasLang(guide, "es")) entries.push(`<url><loc>${u.es}</loc><lastmod>${lastmod}</lastmod></url>`);
   }
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>\n`;
+}
+
+/**
+ * The pages this data SHOULD produce, per language — the renderer's own rules,
+ * exported so a drift check can compare against reality without re-implementing
+ * (and mis-implementing) them. The first version of routes/guides.ts assumed
+ * every published guide gets an English page and reported a false alarm on the
+ * Spanish-only "como-elegir-tu-primer-crucero"; a status endpoint that cries
+ * wolf gets ignored, which is worse than not having one.
+ */
+export async function expectedGuidePages(): Promise<{ en: string[]; es: string[] }> {
+  const data = await readJson<{ guides?: Guide[] }>(PATHS.guides, { guides: [] });
+  const all = (data.guides ?? []).filter((g) => g && g.published !== false && g.slug);
+  const en: string[] = [];
+  const es: string[] = [];
+  const seen = new Set<string>();
+  for (const g of all) {
+    const slug = cleanSlug(g);
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    if (toolHrefFor(g, "en") || toolHrefFor(g, "es")) continue;  // tool tiles link out
+    if (hasLang(g, "en")) en.push(slug);
+    if (hasLang(g, "es")) es.push(slug);
+  }
+  return { en, es };
 }
 
 export async function runGuidesPrerender(): Promise<{ guides: number; pages: number }> {
