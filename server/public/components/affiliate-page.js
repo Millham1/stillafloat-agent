@@ -1,11 +1,19 @@
 // Still Afloat — Shared Affiliate Page Logic
 // Set window.SAF_AFFILIATE_CONFIG before loading this script.
-// Config: { category, emptyIcon, emptyMsg }
+// Config: { category, emptyIcon, emptyMsg, lang }   lang:'es' renders Spanish chrome
+// and prefers item.descriptionEs (ES-mirror standing order: the ES site is never
+// an English page with a Spanish URL).
 (function () {
   const cfg = window.SAF_AFFILIATE_CONFIG || {};
   const CATEGORY   = cfg.category   || '';
   const EMPTY_ICON = cfg.emptyIcon  || 'fa-box-open';
-  const EMPTY_MSG  = cfg.emptyMsg   || 'Picks for this category are being curated — check back soon.';
+  const ES         = cfg.lang === 'es';
+  const EMPTY_MSG  = cfg.emptyMsg   || (ES
+    ? 'Las selecciones de esta categoría están en curaduría — vuelve pronto.'
+    : 'Picks for this category are being curated — check back soon.');
+  const T = ES
+    ? { soon:'Muy pronto', buy:'Comprar en Amazon', err:'No se pudo cargar', retry:'Inténtalo de nuevo en un momento.' }
+    : { soon:'Coming soon', buy:'Buy on Amazon', err:'Could not load', retry:'Please try again in a moment.' };
 
   // Inject card + buy-button styles
   const style = document.createElement('style');
@@ -58,7 +66,7 @@
       btn.target = '_blank';
       btn.rel = 'noopener noreferrer sponsored';
       btn.className = 'buy-btn';
-      btn.innerHTML = 'Buy on Amazon <i class="fa-solid fa-arrow-up-right-from-square"></i>';
+      btn.innerHTML = T.buy + ' <i class="fa-solid fa-arrow-up-right-from-square"></i>';
       wrap.appendChild(btn);
       return;
     }
@@ -86,7 +94,7 @@
         container.innerHTML = `
           <div class="empty-state">
             <i class="fa-solid ${esc(EMPTY_ICON)}"></i>
-            <h2>Coming soon</h2>
+            <h2>${T.soon}</h2>
             <p>${esc(EMPTY_MSG)}</p>
           </div>`;
         return;
@@ -109,7 +117,7 @@
           ${imgHtml}
           <div class="item-body">
             <div class="item-title">${esc(item.title)}</div>
-            ${item.description ? `<p class="item-desc">${esc(item.description)}</p>` : ''}
+            ${(ES && item.descriptionEs) || item.description ? `<p class="item-desc">${esc((ES && item.descriptionEs) || item.description)}</p>` : ''}
             <div class="strip-wrap" id="${stripId}"></div>
           </div>`;
         container.appendChild(card);
@@ -129,8 +137,8 @@
       container.innerHTML = `
         <div class="empty-state">
           <i class="fa-solid fa-circle-exclamation"></i>
-          <h2>Could not load</h2>
-          <p>Please try again in a moment.</p>
+          <h2>${T.err}</h2>
+          <p>${T.retry}</p>
         </div>`;
     }
   }

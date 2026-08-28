@@ -1,10 +1,32 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { setStoredToken } from "@/lib/auth-token";
 
 export function TokenGate({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState(() => {
     try { return localStorage.getItem("sa_agent_token") || ""; } catch { return ""; }
   });
+
+  // One-tap device enrolment: accept #token= from the URL FRAGMENT, validate it
+  // server-side, store it, and scrub it from the address bar. A fragment — unlike a
+  // ?query — is never sent to the server, so the token cannot land in nginx access
+  // logs or referer headers. Typing a 64-char machine token on a phone is not a real
+  // workflow — this is how the second gate stops locking Mark's new devices out
+  // (found 2026-08-28: desktop only worked because localStorage had held the token
+  // for months).
+  useEffect(() => {
+    if (token) return;
+    const m = window.location.hash.match(/[#&]token=([^&]+)/);
+    const t = m ? decodeURIComponent(m[1]).trim() : "";
+    if (!t) return;
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    (async () => {
+      try {
+        const res = await fetch("/api/auth-check", { headers: { "x-affiliate-token": t } });
+        if (res.ok) { setStoredToken(t); setToken(t); }
+      } catch { /* fall through to the manual form */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);

@@ -8,6 +8,7 @@ export interface AffiliateItem {
   id: string;
   title: string;
   description: string;
+  descriptionEs?: string;   // ES-mirror: Spanish blurb rendered on /es/affiliate pages
   category: string;
   smartStrip: string;
   affiliateLink: string;
@@ -59,7 +60,7 @@ router.post("/affiliate-items", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const { title, description, category, smartStrip, affiliateLink, imageUrl, featured, sortOrder } = req.body;
+    const { title, description, descriptionEs, category, smartStrip, affiliateLink, imageUrl, featured, sortOrder } = req.body;
     if (!title || !category) {
       res.status(400).json({ success: false, error: "title and category are required" });
       return;
@@ -69,6 +70,7 @@ router.post("/affiliate-items", async (req: Request, res: Response) => {
       id: crypto.randomUUID(),
       title: String(title),
       description: String(description || ""),
+      descriptionEs: descriptionEs ? String(descriptionEs) : "",
       category: String(category),
       smartStrip: String(smartStrip || ""),
       affiliateLink: String(affiliateLink || ""),
@@ -97,11 +99,12 @@ router.patch("/affiliate-items/:id", async (req: Request, res: Response) => {
       res.status(404).json({ success: false, error: "Item not found" });
       return;
     }
-    const { title, description, category, smartStrip, affiliateLink, imageUrl, featured, sortOrder } = req.body;
+    const { title, description, descriptionEs, category, smartStrip, affiliateLink, imageUrl, featured, sortOrder } = req.body;
     const item = store.items[idx];
     if (item) {
       if (title !== undefined) item.title = String(title);
       if (description !== undefined) item.description = String(description);
+      if (descriptionEs !== undefined) item.descriptionEs = String(descriptionEs);
       if (category !== undefined) item.category = String(category);
       if (smartStrip !== undefined) item.smartStrip = String(smartStrip);
       if (affiliateLink !== undefined) item.affiliateLink = String(affiliateLink);
