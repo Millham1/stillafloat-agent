@@ -2,7 +2,7 @@
 // heuristically-cached app shell (index.html had no Cache-Control header),
 // stale runtime entries could pin an old bundle — and old dashboard numbers
 // (e.g. the YouTube subscriber count) — on an installed PWA for days.
-const CACHE_NAME = 'still-afloat-editorial-v6';
+const CACHE_NAME = 'still-afloat-editorial-v7';
 
 // App shell to cache on install. MUST only contain basic-auth-EXEMPT paths:
 // caching '/' + '/index.html' (behind the dashboard basic-auth) made every SW
@@ -37,18 +37,20 @@ self.addEventListener('fetch', (event) => {
   // Never intercept API calls — always go to network
   if (url.pathname.startsWith('/api/')) return;
 
-  // Network-first for navigation requests (so fresh content always loads).
-  // cache: 'no-store' bypasses the HTTP cache: nginx served index.html with no
-  // Cache-Control, so Safari's heuristic caching could hand back a days-old app
-  // shell that references (SW-cached) stale bundles — the stale-dashboard gotcha.
-  // Fetch by URL because a mode:'navigate' Request cannot be re-constructed
-  // with init options.
+  // v7: only intercept navigations to the basic-auth-EXEMPT brief page (for its
+  // offline fallback + freshness). Auth-gated pages must navigate NATIVELY: a
+  // 401 on a SW-mediated fetch never triggers the browser's sign-in dialog, so
+  // an expired basic-auth session left the whole dashboard stuck on nginx's raw
+  // 401 page with no way to log in. index.html freshness is now handled
+  // server-side (nginx sends Cache-Control: no-cache on the app shell).
   if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request.url, { cache: 'no-store', credentials: 'include' }).catch(() =>
-        caches.match('/brief.html')
-      )
-    );
+    if (url.pathname === '/brief.html') {
+      event.respondWith(
+        fetch(event.request.url, { cache: 'no-store', credentials: 'include' }).catch(() =>
+          caches.match('/brief.html')
+        )
+      );
+    }
     return;
   }
 
