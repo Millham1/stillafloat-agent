@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, MailCheck, Clock, UserX, Search, Download } from "lucide-react";
@@ -10,6 +10,7 @@ type Subscriber = {
   email: string;
   name: string;
   status: "pending" | "confirmed" | "unsubscribed" | "bounced" | "archived";
+  lang: "en" | "es";
   created_at: string;
   confirmed_at: string | null;
 };
@@ -44,6 +45,21 @@ export default function Subscribers() {
     (window as unknown as { _st?: ReturnType<typeof setTimeout> })._st = setTimeout(() => setDebounced(v), 300);
   };
 
+  const queryClient = useQueryClient();
+  // Click-to-flip newsletter language. The row updates in place on success.
+  const setLang = useMutation({
+    mutationFn: ({ id, lang }: { id: string; lang: "en" | "es" }) =>
+      fetch(`/api/subscribers/${encodeURIComponent(id)}/lang`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ lang }),
+      }).then((r) => {
+        if (!r.ok) throw new Error("Language update failed");
+        return r.json();
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["subscribers"] }),
+  });
+
   const { data, isLoading, error } = useQuery<SubscribersResponse>({
     queryKey: ["subscribers", statusFilter, debouncedSearch],
     queryFn: () =>
@@ -67,9 +83,9 @@ export default function Subscribers() {
   function exportCsv() {
     const confirmed = subscribers.filter((s) => s.status === "confirmed");
     const rows = [
-      ["Name", "Email", "Status", "Joined", "Confirmed"],
+      ["Name", "Email", "Status", "Newsletter", "Joined", "Confirmed"],
       ...confirmed.map((s) => [
-        s.name, s.email, s.status, fmt(s.created_at), fmt(s.confirmed_at),
+        s.name, s.email, s.status, s.lang, fmt(s.created_at), fmt(s.confirmed_at),
       ]),
     ];
     const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
@@ -157,19 +173,20 @@ export default function Subscribers() {
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Name</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Email</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Newsletter</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Joined</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Confirmed</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
               )}
               {error && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-destructive">Failed to load subscribers.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-destructive">Failed to load subscribers.</td></tr>
               )}
               {!isLoading && !error && subscribers.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No subscribers found.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No subscribers found.</td></tr>
               )}
               {subscribers.map((s) => (
                 <tr key={s.id} className="hover:bg-muted/20 transition-colors">
@@ -179,6 +196,20 @@ export default function Subscribers() {
                     <Badge variant="outline" className={STATUS_COLORS[s.status] ?? ""}>
                       {s.status}
                     </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => setLang.mutate({ id: s.id, lang: s.lang === "es" ? "en" : "es" })}
+                      disabled={setLang.isPending}
+                      title="Click to switch this subscriber's newsletter language"
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors disabled:opacity-50 ${
+                        s.lang === "es"
+                          ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800"
+                          : "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
+                      }`}
+                    >
+                      {s.lang === "es" ? "🌎 ES" : "🇺🇸 EN"}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{fmt(s.created_at)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{fmt(s.confirmed_at)}</td>
