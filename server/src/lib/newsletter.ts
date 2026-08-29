@@ -137,9 +137,19 @@ function utm(base: string, content: string): string {
   return buildUtm(base, { source: "newsletter", medium: "email", campaign: "weekly", content });
 }
 
+// Only offer stories fresh enough to still be news at send time (Mark,
+// 2026-08-29: "it's useless to send a storm story if the storm has already
+// dissipated" — the pool held 119 approved stories, 3 of them under 48h).
+// A story with no parseable timestamp is treated as stale, never grandfathered.
+const STORY_MAX_AGE_HOURS = Number(process.env["NEWSLETTER_STORY_MAX_AGE_HOURS"] ?? "48");
+
 async function gatherApprovedStories(lang: Lang = "en"): Promise<Story[]> {
   const data = await readJson<{ stories?: Record<string, unknown>[] }>(PATHS.approved, { stories: [] });
-  return (data.stories ?? []).map((s) => ({
+  const cutoff = Date.now() - STORY_MAX_AGE_HOURS * 3_600_000;
+  return (data.stories ?? []).filter((s) => {
+    const ts = Date.parse(String(s["publishedAt"] ?? s["approvedAt"] ?? ""));
+    return Number.isFinite(ts) && ts >= cutoff;
+  }).map((s) => ({
     id: String(s.id ?? ""),
     // ES uses the Spanish cliffnote/title when present, else falls back to EN.
     title: String((lang === "es" && s["title_es"]) || s.title || ""),
@@ -296,7 +306,7 @@ You will receive this week's stories, possibly Mark's latest commentary, a featu
 - subject: <= 60 chars, sounds like a text from a friend — specific, human, a little fun. (Good shape: "A 50% sale, a $26 water bottle, and my two cents".)
 - letter_title: HARVEST the headline from the commentary itself — find its sharpest line or funniest image and escalate it into the marquee. Worked example: the commentary lands the line "some folks seem bound and determined to prove Darwin was right" → Mark's title: "And the winner of the Darwin Award for Cruisers is……" (his own punchline, promoted to an award ceremony — a callback that assumes the reader is in on the joke). Never a summary, never a fresh joke unrelated to the piece, never a scary line.
 - letter: Mark's opening letter, 3–5 sentences, paraphrasing his commentary TRUE TO ITS INTENT. PARAPHRASE MEANS RE-TELL: write fresh, compressed sentences in his voice — never stitch sentences copied from the commentary. At most ONE short phrase may survive verbatim, and it must be one of his vivid, funny, or personal lines (a first-person aside beats an advisory sentence every time) — never generic filler. ORDER: open with his TAKE — the lesson, the point, the wry observation — and touch the triggering news in one light clause; NEVER open with incident detail. Graphic or criminal specifics are banned from the letter entirely: point at the story ("the ugly story out of Alaska"), don't describe it. STANCE GUARD: the letter must NEVER contradict a position the commentary takes — if he argues for lifetime bans, the letter is for lifetime bans; when compressing, drop an argument rather than reverse it. STAY IN YOUR LANE: no deals, sales, or booking angles inside the letter — the booking section handles those. Do NOT begin with a greeting — the email inserts "Hey <first name>," automatically. Do NOT write a news-roundup frame. End with one easy, low-key sentence that turns the reader toward planning. No commentary provided → write about the season, warm and wry, without inventing personal stories. EMOTIONAL CONCLUSION: identify the note the commentary lands on (reassure, mock, celebrate, warn) and make the letter land on the SAME note — compression tends to keep the warnings and kill the mood; protect the mood. The reader should leave feeling what the commentary's reader feels, not just knowing what they know. Final test: read it aloud — if it doesn't sound like Mark summarizing his own piece to a friend, rewrite it.
-- quick_hits: 2–4 items from the provided stories, each { "text": one-liner <= 22 words, plain and useful, no hype, "story_id": the id of the story it came from }. The text becomes a link to that story on Mark's site, so it must match its story.
+- quick_hits: 2–4 items from the provided stories, each { "text": one-liner <= 22 words, plain and useful, no hype, "story_id": the id of the story it came from }. The text becomes a link to that story on Mark's site, so it must match its story. If NO stories are provided (a quiet news week), return an empty array — NEVER invent news or reach for anything not in the provided stories.
 - booking_headline: <= 8 words naming this week's most bookable angle from the stories (a sale, a season, a destination) — or, if nothing qualifies, an evergreen angle (e.g. off-season pricing). Plain and specific, sentence case, no exclamation marks.
 - booking_body: 2–3 sentences the way a friend passes along a tip over a beer — why it's worth a look, no sales-speak, no exclamation points — ending with the low-key offer: Mark can check it against the reader's dates (reply or hit the button).
 - sunny_side: 2–4 sentences for "The Sunny Side" — the LAUGH MORE spirit: life, fun, the small pleasures of cruising. Anchor it in the most enjoyable thing in this week's material (a feel-good story, a season, the simple joy of a sea day). Written warm and a little playful — the humor lives IN the writing, never as a stand-alone joke. You may fold in ONE real, widely documented fun fact if it fits naturally (never invent numbers or records). No invented Mark anecdotes.
@@ -350,7 +360,9 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
     gatherLatestCommentary(lang),
     fetchCruisePhoto(),
   ]);
-  if (stories.length === 0) throw new Error("No approved stories to build a newsletter from");
+  // A quiet news week is not a blocker: the letter, commentary, video, and gear
+  // sections still make a full issue — quick hits simply drop out. Padding the
+  // email with stale stories is worse than a shorter email (Mark, 2026-08-29).
 
   const userContent = JSON.stringify(
     {
@@ -656,6 +668,20 @@ export function renderEnrichedNewsletter(
 // at the current list size; past the cap below, deliverability and the ~500/day
 // Gmail ceiling both say: move to a real ESP before sending.
 const GMAIL_LIST_CAP = 200;
+
+// How many confirmed subscribers an edition has — the weekly scheduler drafts
+// an edition only when someone will actually receive it (ES self-activates on
+// its first confirmed subscriber; Mark 2026-08-29: ES is first-class).
+export async function confirmedSubscriberCount(lang: Lang): Promise<number> {
+  const supabase = getSupabase();
+  const { count, error } = await supabase
+    .from("subscribers")
+    .select("email", { count: "exact", head: true })
+    .eq("status", "confirmed")
+    .eq("lang", lang);
+  if (error) throw new Error("Failed to count subscribers");
+  return count ?? 0;
+}
 
 // ── Send (explicit, approve-first) ───────────────────────────────────────────
 export async function sendNewsletterDraft(
