@@ -260,6 +260,16 @@
       border-bottom: 1px solid rgba(123,214,255,.22);
       border-radius: 0 0 28px 28px;
       padding: 72px 20px 28px;
+      /* The menu can be taller than a phone screen (12 links) and body scroll is
+         locked while it's open — the menu itself must scroll or the bottom links
+         (Gear, ES) are unreachable. dvh keeps the cap honest under mobile
+         browser chrome; vh is the fallback for older WebKit. */
+      box-sizing: border-box; /* padding must count toward the cap or it pokes below the fold */
+      max-height: 100vh;
+      max-height: 100dvh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       box-shadow: 0 28px 60px rgba(0,0,0,.60);
       transform: translateY(-110%);
       transition: transform 0.34s cubic-bezier(.22,1,.36,1);
