@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ship = process.argv[2] || "wonder-of-the-seas";
 const AKEY = process.env.ANTHROPIC_API_KEY;
-const OKEY = process.env.OPENAI_API_KEY || process.env.REPLIT_OPENAI_API_KEY;
+const OKEY = process.env.OPENAI_API_KEY;
 
 const voice = await readFile(join(HERE, "voice-guide.md"), "utf8");
 // Use only the prompt body (after the '---' separator) as the system prompt.

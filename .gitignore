@@ -1,8 +1,14 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# Export zip — too large for GitHub (451MB), download from Replit Files panel instead
+# Export zips — too large for GitHub
 stillafloat-export.zip
 *.export.zip
+
+# Legacy local-only junk untracked 2026-08-29 (Replit-era chat uploads + a stale
+# committed build artifact — nothing references them; runtime builds to server/dist)
+attached_assets/
+ep1-video/attached_assets/
+server/bundle/
 
 # compiled output
 dist
@@ -60,12 +66,9 @@ server/public/news-sitemap.xml
 server/public/news.html
 server/public/es/news.html
 
-# Replit (legacy — migrated off Replit to Hetzner; keep these out)
+# local caches + box-local runtime files (keep out of git)
 .cache/
 .local/
-.replit
-.replitignore
-**/.replit-artifact/
 server/.env
 server/start.sh
 server/ecosystem.config.cjs

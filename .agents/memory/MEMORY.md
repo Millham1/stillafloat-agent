@@ -1,2 +1,2 @@
-- [.replitignore deploy bloat](replitignore-deploy-bloat.md) — use **/attached_assets (not attached_assets) or nested dirs sneak in; ep1-video/ is 2.5GB, exclude it always.
-- [Cloud Run node_modules required](cloud-run-node-modules.md) — removing **/node_modules from .replitignore broke Cloud Run deploys; working builds needed node_modules in container.
+(Replit-era memories removed 2026-08-29 — the project deploys to Hetzner boxes
+via .github/workflows/deploy.yml; see docs/ARCHITECTURE.md.)
