@@ -41,9 +41,13 @@
   function rememberLang(lang) {
     try { localStorage.setItem(LANG_PREF_KEY, lang); } catch { /* best-effort */ }
   }
-  if (!langPref && !isSpanish) {
+  if (!isSpanish && langPref !== 'en') {
+    // Route to ES when the reader has chosen ES (stored pref) OR has no stored
+    // choice and their browser prefers Spanish. This keeps working on EVERY
+    // EN-page landing (bookmarks, search results, shared links) — only an
+    // explicit English choice ('en' pref, via the switcher) turns it off.
     const browserLangs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
-    const prefersEs = browserLangs.some(l => String(l).toLowerCase().startsWith('es'));
+    const prefersEs = langPref === 'es' || browserLangs.some(l => String(l).toLowerCase().startsWith('es'));
     const file = (path.split('/').pop()) || 'index.html';
     const esTwin = ES_PAGES.has(file) ? file : (path === '/' || path === '' ? 'index.html' : null);
     if (prefersEs && esTwin) {
