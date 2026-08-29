@@ -339,7 +339,7 @@ router.get("/subscribers", async (req, res) => {
 
     let query = supabase
       .from("subscribers")
-      .select("id, email, name, status, created_at, confirmed_at", { count: "exact" })
+      .select("id, email, name, status, lang, created_at, confirmed_at", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(from, from + limitNum - 1);
 
@@ -353,6 +353,31 @@ router.get("/subscribers", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Subscribers list error");
     return res.status(500).json({ error: "Failed to load subscribers" });
+  }
+});
+
+// ── PATCH /api/subscribers/:id/lang ──────────────────────────────
+// Admin fix for subscribers captured before language tagging (or tagged
+// wrong): sets which newsletter edition (en|es) this person receives.
+router.patch("/subscribers/:id/lang", async (req, res) => {
+  if (!tokenOk(req)) return res.status(401).json({ error: "Unauthorized" });
+  try {
+    const lang = String((req.body as { lang?: string })?.lang ?? "");
+    if (lang !== "en" && lang !== "es") return res.status(400).json({ error: "lang must be 'en' or 'es'" });
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from("subscribers")
+      .update({ lang })
+      .eq("id", String(req.params["id"]))
+      .select("id, email, lang")
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!data) return res.status(404).json({ error: "Subscriber not found" });
+    logger.info({ id: data.id, lang }, "Subscriber language updated");
+    return res.json({ success: true, subscriber: data });
+  } catch (err) {
+    logger.error({ err }, "Subscriber lang update error");
+    return res.status(500).json({ error: "Failed to update language" });
   }
 });
 

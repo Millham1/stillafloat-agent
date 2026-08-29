@@ -5,7 +5,7 @@ import { runDuePosts } from "./lib/social-schedule";
 import { runAndDeliverBrief } from "./lib/brief";
 import { runStormScan } from "./lib/storm-agent";
 import { scanAndQueue } from "./lib/social-agent";
-import { draftNewsletter, saveDraft } from "./lib/newsletter";
+import { draftNewsletter, saveDraft, loadDraft, sendNewsletterDraft, confirmedSubscriberCount } from "./lib/newsletter";
 import { notifyMark, reviewUrl } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
 import { runGuidesPrerender } from "./lib/prerender-guides";
@@ -276,7 +276,9 @@ function scheduleDailyBrief() {
 //   • Tuesday 09:00 local — commentary draft from the week's featured story +
 //     push nudge asking for Mark's take (weave → publish is his call).
 //   • Thursday 09:00 local — newsletter draft (EN; ES once that list exists) +
-//     push nudge. Sending stays behind the review page's explicit Send.
+//     push nudge. Mark can review/edit/send from the review page all Thursday.
+//   • Friday 09:00 local — if the draft is still pending, AUTO-SEND it as saved
+//     (Mark's 2026-08-29 delegation; NEWSLETTER_AUTOSEND=0 disables).
 // Same timezone-gated polling pattern as the daily brief.
 function scheduleWeeklyMarketing() {
   const TZ = process.env["TIMEZONE"] || "America/New_York";
@@ -366,22 +368,52 @@ function scheduleWeeklyMarketing() {
         logger.error({ err }, "Daily social scan failed");
       }
     }
-    if (weekday !== "Tue" && weekday !== "Thu") return;
+    if (weekday !== "Tue" && weekday !== "Thu" && weekday !== "Fri") return;
     lastRunDate = date;
     try {
       if (weekday === "Tue") {
         const draft = await stageWeeklyCommentary(); // sends its own push nudge
         logger.info({ lead: draft.stories[0]?.title }, "Weekly commentary staged — awaiting Mark's take");
+      } else if (weekday === "Fri") {
+        // Auto-send (Mark, 2026-08-29): Thursday drafts + nudges; if the draft is
+        // still pending by Friday's run hour, send it AS SAVED — including any
+        // edits Mark made on the review page (never regenerate here: the
+        // cron-clobbers-edits hazard). Already sent → no-op. Disable with
+        // NEWSLETTER_AUTOSEND=0.
+        if (process.env["NEWSLETTER_AUTOSEND"] !== "0") {
+          for (const lang of ["en", "es"] as const) {
+            const draft = await loadDraft(lang);
+            const freshEnough = draft && Date.now() - Date.parse(draft.generatedAt) < 8 * 86_400_000;
+            if (draft && draft.status === "pending" && freshEnough) {
+              const result = await sendNewsletterDraft(draft, "https://stillafloatcruising.com");
+              draft.status = "sent";
+              draft.sentAt = new Date().toISOString();
+              await saveDraft(draft);
+              logger.info({ subject: draft.subject, lang, ...result }, "Weekly newsletter AUTO-SENT (Friday fallback)");
+              void notifyMark({
+                title: `📬 Newsletter auto-sent ${lang.toUpperCase()} (${result.sent}/${result.total})`,
+                body: draft.subject,
+                url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
+                tag: "newsletter-review",
+              });
+            }
+          }
+        }
       } else {
-        const draft = await draftNewsletter("en");
-        await saveDraft(draft);
-        logger.info({ subject: draft.subject }, "Weekly newsletter draft complete");
-        void notifyMark({
-          title: "📨 Newsletter draft ready (EN) (weekly)",
-          body: draft.subject,
-          url: reviewUrl("/api/newsletter/review"),
-          tag: "newsletter-review",
-        });
+        // Draft each edition someone will actually receive. EN always (the
+        // founding list); ES self-activates on its first confirmed subscriber.
+        for (const lang of ["en", "es"] as const) {
+          if (lang === "es" && (await confirmedSubscriberCount("es")) === 0) continue;
+          const draft = await draftNewsletter(lang);
+          await saveDraft(draft);
+          logger.info({ subject: draft.subject, lang }, "Weekly newsletter draft complete");
+          void notifyMark({
+            title: `📨 Newsletter draft ready (${lang.toUpperCase()}) (weekly)`,
+            body: draft.subject,
+            url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
+            tag: "newsletter-review",
+          });
+        }
       }
     } catch (err) {
       logger.error({ err }, "Weekly marketing tick failed");

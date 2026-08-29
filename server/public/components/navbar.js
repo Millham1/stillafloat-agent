@@ -30,6 +30,32 @@
   langUrl = langUrl + window.location.search;
   const langLabel = isSpanish ? '🇺🇸 English' : '🌎 En Español';
 
+  // ── Language auto-routing (Mark, 2026-08-29) ──
+  // A Spanish-preference browser landing on an EN page gets the ES twin
+  // automatically — but only once: the redirect stores a preference, and using
+  // the language switcher stores an explicit one, so a deliberate choice of
+  // either language always sticks. Pages without an ES twin never redirect.
+  const LANG_PREF_KEY = 'sa_lang_pref';
+  let langPref = null;
+  try { langPref = localStorage.getItem(LANG_PREF_KEY); } catch { /* storage blocked → detect-only */ }
+  function rememberLang(lang) {
+    try { localStorage.setItem(LANG_PREF_KEY, lang); } catch { /* best-effort */ }
+  }
+  if (!isSpanish && langPref !== 'en') {
+    // Route to ES when the reader has chosen ES (stored pref) OR has no stored
+    // choice and their browser prefers Spanish. This keeps working on EVERY
+    // EN-page landing (bookmarks, search results, shared links) — only an
+    // explicit English choice ('en' pref, via the switcher) turns it off.
+    const browserLangs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+    const prefersEs = langPref === 'es' || browserLangs.some(l => String(l).toLowerCase().startsWith('es'));
+    const file = (path.split('/').pop()) || 'index.html';
+    const esTwin = ES_PAGES.has(file) ? file : (path === '/' || path === '' ? 'index.html' : null);
+    if (prefersEs && esTwin) {
+      rememberLang('es');
+      window.location.replace('/es/' + esTwin + window.location.search);
+    }
+  }
+
   // ── Nav links (absolute paths) ──
   const mainLinks = isSpanish ? [
     { href: '/es/index.html',          label: 'Inicio'       },
@@ -437,6 +463,12 @@
     if (overlay)   overlay.addEventListener('click', closeMenu);
     document.querySelectorAll('.sa-mobile-link').forEach(l =>
       l.addEventListener('click', closeMenu)
+    );
+
+    // Using the switcher is an explicit language choice — it overrides the
+    // browser-language auto-redirect from then on, in both directions.
+    document.querySelectorAll('.sa-lang-link, .sa-mobile-lang').forEach(l =>
+      l.addEventListener('click', () => rememberLang(isSpanish ? 'en' : 'es'))
     );
 
     // Scroll reveal
