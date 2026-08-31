@@ -1,0 +1,639 @@
+{
+  "ship": "Carnival Splendor",
+  "class": "Splendor",
+  "model": "claude-haiku-4-5-20251001",
+  "archetypes": 12,
+  "generatedCount": 12,
+  "byArchetype": {
+    "first-couple-ocean-steady": {
+      "label": "First-time couple, wants the ocean, sensitive stomach",
+      "recommendations": [
+        {
+          "cabin": "1203",
+          "rank": 1,
+          "hook": "Forward ocean view, smooth sailing for sensitive stomachs",
+          "reason": "Cabin 1203 sits at the bow on Deck 1, forward and low — the sweet spot for minimal motion. One of you gets queasy, and this position keeps the pitch and roll gentler than anywhere else on the ship. You'll wake to the ocean, and the early position means you're away from the late-night foot traffic that would disturb light sleepers."
+        },
+        {
+          "cabin": "1207",
+          "rank": 2,
+          "hook": "Starboard forward ocean view, direct sunrise over the water",
+          "reason": "Cabin 1207 is two doors down from 1203, offering the same stability benefit and ocean view with morning light from the starboard side. The reason to pick this second is simpler: 1203 gives you the absolute forward sweet spot. If 1203 books, 1207 delivers nearly the same calm plus the bonus of that direct sunrise angle."
+        },
+        {
+          "cabin": "2276",
+          "rank": 3,
+          "hook": "Ocean view midship—quieter than forward, still smooth motion",
+          "reason": "If forward cabins aren't available, Deck 2 midship ocean views trade a tiny bit of motion stability for genuine quiet. You're away from elevators and foot traffic corridors, so your light sleeping gets real protection. The midship position is the ship's fulcrum—motion here is noticeably calmer than aft, and you still wake to the sea."
+        },
+        {
+          "cabin": "8280",
+          "rank": 4,
+          "hook": "Ocean view midship on higher deck, ocean and peaceful mornings",
+          "reason": "Deck 8 midship ocean view keeps you steady and quiet while placing you higher up for that morning ocean view feeling. It's not as stable as Deck 1 forward, but for a couple on their second cruise with a comfortable budget, the trade-off—a quieter, less-crowded deck area—can be worth it if forward lower cabins fill."
+        },
+        {
+          "cabin": "6270",
+          "rank": 5,
+          "hook": "Port midship ocean view on Deck 6, peaceful light and stillness",
+          "reason": "Deck 6 midship ocean view on the port side gives you calm water in the morning without the premium of forward positioning. The midship placement keeps motion gentle, and this deck tends to be quieter than lower passenger decks. You trade some motion stability for a more restful deck experience and unobstructed sea view."
+        },
+        {
+          "cabin": "1204",
+          "rank": 6,
+          "hook": "Port forward ocean view, steady and serene on the bow",
+          "reason": "Cabin 1204 mirrors 1203 across the corridor—same forward Deck 1 stability, same ocean view, same distance from noise. The only honest reason to rank it below 1203 is that some travelers prefer starboard light in the morning. If you prefer port-side morning light or starboard simply isn't available, 1204 delivers everything 1203 does."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1209",
+          "reason": "The forward ocean view on Deck 1 is obstructed—you'll pay for a view you won't get. With ocean views being central to your priorities, this cabin breaks that promise."
+        },
+        {
+          "cabin": "2290",
+          "reason": "This midship ocean view on Deck 2 is obstructed. You'll lose the sunrise and morning sea you came for, defeating the main reason to upgrade from interior."
+        },
+        {
+          "cabin": "7288",
+          "reason": "Deck 7 midship ocean view, obstructed. Higher up sounds appealing, but the obstruction means no real view, and you gain little quiet advantage over unobstructed midship cabins lower down."
+        }
+      ]
+    },
+    "couple-ocean-balcony-treat": {
+      "label": "Couple treating themselves to a great balcony",
+      "recommendations": [
+        {
+          "cabin": "8280",
+          "rank": 1,
+          "hook": "Midship balcony away from foot traffic and commotion",
+          "reason": "You're on Deck 8 midship, which puts you in the dead center of the ship and away from the elevators, stairs, and the social hubs that gather forward and aft. You get a real ocean-view balcony—your own quiet pocket of space where you can actually enjoy being outside without the constant hum of activity nearby. It's peace and prettiness in one room."
+        },
+        {
+          "cabin": "8281",
+          "rank": 2,
+          "hook": "Starboard balcony with the same calm midship location",
+          "reason": "This is nearly identical to 8280—same deck, same midship position, same quiet advantage—but on the opposite side of the ship. If you prefer starboard light or have a sun preference for your mornings on the balcony, this gives you that choice without any compromise on the peace and seclusion you're after. Same excellent setup, other side of the boat."
+        },
+        {
+          "cabin": "7380",
+          "rank": 3,
+          "hook": "Aft balcony for couples who want their own retreat",
+          "reason": "Deck 7 aft puts you well away from the forward crowds and the midship bustle. You're on a balcony in a quieter corner of the ship, and the aft position means you're not near elevators or major walkways. It's a real balcony for two people to enjoy together without the ship's churn happening all around you."
+        },
+        {
+          "cabin": "8344",
+          "rank": 4,
+          "hook": "Aft balcony on a higher deck, removed from the action",
+          "reason": "This is Deck 8 aft—higher than 7380, same quiet aft positioning. You get the balcony and the peace, plus you're elevated enough that the aft position feels even more tucked away. If you want to treat yourselves to a nicer feeling of seclusion while still being midship-forward in your access to the ship, this works."
+        },
+        {
+          "cabin": "6420",
+          "rank": 5,
+          "hook": "Ocean view on a lower, quieter deck for real peace",
+          "reason": "Deck 6 aft gives you an ocean view without a balcony, but the aft position on this lower deck means you're genuinely out of the main flow of the ship. It's not as fancy as a balcony cabin, but it's honest—you get the view, the quiet location, and the ship's activity is nowhere near you. Good for a couple who value calm over extras."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1203",
+          "reason": "Deck 1 forward puts you at the bow where you'll feel the ship's movement most, and forward cabins near the crew areas tend to have early-morning noise from work. Not the peace and quiet you're looking for."
+        },
+        {
+          "cabin": "2276",
+          "reason": "Deck 2 midship ocean view sounds good, but Deck 2 is low and right above engine spaces. The vibration and rumble carry up into the cabin at night, which will wreck the quiet you're after."
+        },
+        {
+          "cabin": "7288",
+          "reason": "This cabin is marked obstructed on Deck 7, meaning your ocean view is partially or fully blocked by ship structure. You wanted a nice view; this one doesn't deliver it."
+        }
+      ]
+    },
+    "anniversary-suite-splurge": {
+      "label": "Anniversary splurge, no ceiling",
+      "recommendations": [
+        {
+          "cabin": "7438",
+          "rank": 1,
+          "hook": "Suite with private balcony, all the extras included",
+          "reason": "This is a genuine suite aft on Deck 7, which means you get real suite perks—priority dining, concierge access, and other goodies baked into your booking. The private balcony gives you that ocean view without compromise, and being aft means you have a quieter stretch of the ship to yourself. For an anniversary trip with no budget ceiling, a suite is the whole point."
+        },
+        {
+          "cabin": "7447",
+          "rank": 2,
+          "hook": "Suite starboard with private ocean balcony and full service",
+          "reason": "This starboard suite on Deck 7 aft pairs suite amenities with a great ocean balcony that catches afternoon and evening light. Starboard tends to catch the sun differently than port, and at the aft end you're away from the bustle. If 7438 sells out or you prefer the starboard side's light, this is your equal alternative with the same suite status and perks."
+        },
+        {
+          "cabin": "8344",
+          "rank": 3,
+          "hook": "Balcony aft with suite-like space and real ocean view",
+          "reason": "While not a suite, this balcony cabin on Deck 8 aft offers genuine ocean access and sits in a quieter part of the ship. The aft position keeps you away from the main thoroughfares, and a balcony gives you that outdoor space with unobstructed views. It's a step down from suite amenities but delivers the core of what you're after—privacy, a balcony, and room to breathe."
+        },
+        {
+          "cabin": "8446",
+          "rank": 4,
+          "hook": "Port balcony aft with ocean and peace from the crowds",
+          "reason": "This aft balcony on Deck 8 port side puts you in the quieter end of the ship with a private outdoor space. You'll get genuine ocean views without fighting through midship crowds, and the port side's afternoon light pairs well with anniversary moments. The trade-off is it's not a suite, but you're still getting real space and unobstructed ocean time."
+        },
+        {
+          "cabin": "8344",
+          "rank": 5,
+          "hook": "Balcony cabin with starboard light and aft seclusion",
+          "reason": "Deck 8 forward balconies would give you more cabins, but staying aft keeps you in the quieter section of the ship. This cabin skews toward the couple who values peace and their own balcony over being near the action. The starboard orientation means consistent daylight and warmth—good for a celebration."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1203",
+          "reason": "This is an ocean view on Deck 1 forward, which means it's low, forward-facing, and prone to vibration from the engines and bow movement. You want the best room on the ship; this puts you in the noisiest, choppiest part, and there's no balcony or suite service to make up for it."
+        },
+        {
+          "cabin": "2290",
+          "reason": "This ocean view on Deck 2 midship is marked obstructed—your view is partially blocked by ship infrastructure. For an anniversary and unlimited budget, an obstructed view is a step backward; the suite and balcony options give you unobstructed ocean instead."
+        },
+        {
+          "cabin": "7288",
+          "reason": "This ocean view on Deck 7 midship is also obstructed. Even though Deck 7 has many excellent balconies nearby, this cabin gives you neither the balcony space nor the clear view, and it lacks suite perks. The balcony cabins on this same deck are objectively better for what you want."
+        }
+      ]
+    },
+    "family-action-boardwalk": {
+      "label": "Family, kids, wants the action",
+      "recommendations": [
+        {
+          "cabin": "2276",
+          "rank": 1,
+          "hook": "Ocean view midship where the pool action never stops",
+          "reason": "You're on Deck 2, right in the thick of things—the pools and main action are steps away, so the kids can splash around while you're never far off. Forward midship keeps you close to the shows and restaurants without the rowdiest cabin-to-cabin noise that forward-forward cabins on lower decks pick up from foot traffic and the anchor."
+        },
+        {
+          "cabin": "2277",
+          "rank": 2,
+          "hook": "Starboard ocean view at the heart of the ship's buzz",
+          "reason": "Same prime location as 2276, just across the walkway—ocean view, midship, close to all the entertainment and pools. The starboard side doesn't buy you anything different here, so book this if 2276 is taken; the real win is the position, not which side you're on."
+        },
+        {
+          "cabin": "6270",
+          "rank": 3,
+          "hook": "Ocean view midship on a higher deck for the scene without the screaming",
+          "reason": "Deck 6 gets you higher up and still right in the middle of the ship's energy—you'll see the pools and activity from your window without the constant foot traffic noise of the lower decks. Your kids can get to the action, but you'll sleep better at night because there's less commotion directly outside your door."
+        },
+        {
+          "cabin": "1204",
+          "rank": 4,
+          "hook": "Forward ocean view, front-row seats to every arrival",
+          "reason": "You're at the bow where the action literally starts—pulling in and out of port, the energy of the sea, all visible from your window. Forward lower decks are fine for families who don't mind the early-morning anchor noise and bow movement; you get the theater of it, and the kids will find it cool."
+        },
+        {
+          "cabin": "8258",
+          "rank": 5,
+          "hook": "Midship ocean view on Deck 8, action close but higher up",
+          "reason": "Higher still, Deck 8 midship keeps you connected to the pools and entertainment while lifting you away from the worst of the hallway noise. Ocean view without a balcony means you're saving money compared to balcony cabins and can spend it on activities the kids will love."
+        },
+        {
+          "cabin": "1203",
+          "rank": 6,
+          "hook": "Forward-facing ocean view for watchers who want to be in the thick",
+          "reason": "Forward ocean view on Deck 1 gives you the full arrival-and-departure show. It's unobstructed and close to the main action, though the forward-lower-deck vibration is real; if your family is active and outdoorsy, the trade-off is worth it."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1209",
+          "reason": "Obstructed view—the window doesn't give you the ocean or clear sightlines you're paying for, and on a lower forward deck you still get all the motion and noise without the payoff."
+        },
+        {
+          "cabin": "1258",
+          "reason": "Interior cabin on Deck 1 midship. You said you want to be near the action; an interior gives you zero connection to what's happening, and being low and inside defeats the whole point of your cruise energy."
+        },
+        {
+          "cabin": "7288",
+          "reason": "Obstructed ocean view on Deck 7. You're paying for an ocean view and getting a blocked one, and while Deck 7 is higher, the obstruction pulls all the appeal out—not worth the compromise."
+        }
+      ]
+    },
+    "family-value-space": {
+      "label": "Budget family that needs room",
+      "recommendations": [
+        {
+          "cabin": "1259",
+          "rank": 1,
+          "hook": "Interior midship—space and savings for a family of four",
+          "reason": "You get a full interior cabin in the heart of the ship where four people can actually move around without stepping on each other. Midship position keeps motion minimal, which matters when you're managing kids and a budget at the same time. This is the sweet spot between cost and room."
+        },
+        {
+          "cabin": "1261",
+          "rank": 2,
+          "hook": "Midship interior, starboard side—easy access, no premium price",
+          "reason": "Nearly identical to 1259, also midship and interior with plenty of space. Starboard position gives you slightly easier flow in and out of the cabin if the kids are shuttling to activities. Both save you the ocean view premium, which adds up when you're outfitting a family."
+        },
+        {
+          "cabin": "2201",
+          "rank": 3,
+          "hook": "Forward interior on Deck 2—affordable room with practical location",
+          "reason": "Deck 2 forward interior gives you good access to kids' activities and dining without the price tag of an ocean view. Forward cabins on lower decks tend to be quieter than aft areas where you hear engine noise. Four people fit comfortably, and your budget stays intact for the trip itself."
+        },
+        {
+          "cabin": "1204",
+          "rank": 4,
+          "hook": "Ocean view forward on Deck 1—a little view without big money",
+          "reason": "If you want to stretch slightly for an actual window and can skip the premium price of a midship ocean view, this forward cabin on the lowest passenger deck delivers both. You get natural light and a glimpse of ocean, and you're still spending less than a balcony cabin. Space is decent for a family on a budget."
+        },
+        {
+          "cabin": "2203",
+          "rank": 5,
+          "hook": "Interior forward Deck 2—solid space, good for keeping costs down",
+          "reason": "Another strong interior option on Deck 2 that gives you room for all four without the ocean view markup. Forward position keeps you near the action without being so close to elevators that you hear constant traffic. It's a straightforward cabin that solves the problem without frills."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1209",
+          "reason": "Obstructed ocean view forward on Deck 1—you're paying for a window but won't see much because of the hull structure in front. Defeats the point of spending extra for a view, and you're better off with a full interior at the same price level."
+        },
+        {
+          "cabin": "7288",
+          "reason": "Obstructed ocean view midship on Deck 7—looks good on paper but the obstruction kills the whole reason to book it. For the same money, grab an interior cabin with real space instead."
+        },
+        {
+          "cabin": "1201",
+          "reason": "Interior forward on Deck 1—while it's affordable, forward lower-deck interiors are smaller and noisier near the bow compared to midship options like 1259. You get less space for the same price if you book here instead of amidship."
+        }
+      ]
+    },
+    "quiet-retirees-calm": {
+      "label": "Quiet-seeking retirees",
+      "recommendations": [
+        {
+          "cabin": "1270",
+          "rank": 1,
+          "hook": "Interior midship—the quietest sleeping spot on the ship",
+          "reason": "You're in the dead center of the ship on a low deck, surrounded by other cabins instead of corridors or public spaces. That means zero foot traffic overhead, no elevator dings nearby, and no bar noise seeping in. Light sleepers thrive here because the ship's motion is also minimal at midship."
+        },
+        {
+          "cabin": "1280",
+          "rank": 2,
+          "hook": "Interior midship pair—book together if you want your own peace",
+          "reason": "Same location as 1270, just port side. If you want two cabins or one roomier feel, this sits in that quiet midship pocket. The layout means you're flanked by other sleeping cabins, not activity, so you'll get the rest you're after without any surprises at 3 a.m."
+        },
+        {
+          "cabin": "2276",
+          "rank": 3,
+          "hook": "Ocean view midship—calm scenery without the restless nights",
+          "reason": "This ocean view sits midship on Deck 2, giving you that view you wanted while keeping you in the quietest part of the ship. Unobstructed, so you're waking to water and sky, not steel, and the position means traffic and noise stay far away. The trade-off: you lose the extra insulation of an interior, but midship balances it."
+        },
+        {
+          "cabin": "6280",
+          "rank": 4,
+          "hook": "Midship ocean view on a higher deck—calmer than forward or aft",
+          "reason": "Deck 6 gives you a little more distance from the engine hum, and midship keeps you away from foot traffic. It's an unobstructed ocean view in the quietest zone of the ship. Higher decks suit light sleepers well as long as you're not forward or aft, where you'll hear people moving around the promenade."
+        },
+        {
+          "cabin": "8280",
+          "rank": 5,
+          "hook": "Midship ocean view on Deck 8—peace with a clear horizon",
+          "reason": "Same quiet midship logic, just higher up. The ocean view is clean, and you're positioned where the ship's motion and ambient noise are lowest. Deck 8 is busy during the day, but at night—when you actually sleep—this location keeps the peace because it's not near the pools, theaters, or cabins in heavy-traffic zones."
+        },
+        {
+          "cabin": "1290",
+          "rank": 6,
+          "hook": "Interior midship backup—another solid sleeping sanctuary",
+          "reason": "If 1270 or 1280 sell out, this is your next best bet. Same midship position, same quiet, same isolation from noise. Deck 1 is low enough that you won't feel vibration from above, and the interior means you're not bothered by light or outside activity."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1203",
+          "reason": "It's forward on Deck 1 with an ocean view, but forward cabins catch foot traffic from guests heading to breakfast and the atrium. Light sleepers will hear people and carts all morning long. The view isn't worth losing your rest."
+        },
+        {
+          "cabin": "7334",
+          "reason": "This aft balcony cabin puts you near the pool area and bars above and beside you. Aft decks are louder at night, especially during sea days. You'll hear people, music from nearby lounges, and activity that won't stop when you want to sleep."
+        },
+        {
+          "cabin": "2280",
+          "reason": "Forward-midship on Deck 2 with an unobstructed view, but it's still caught between the forward crowd and midship foot traffic. For light sleepers, the proximity to the public spaces forward and the elevators nearby means noise bleeds through more than you'd want."
+        }
+      ]
+    },
+    "value-hunter-ocean": {
+      "label": "Value hunter who still wants the sea",
+      "recommendations": [
+        {
+          "cabin": "2276",
+          "rank": 1,
+          "hook": "Ocean view on a budget—midship, Deck 2",
+          "reason": "Cabin 2276 gives you a real ocean view without the premium price tag. It sits midship on Deck 2, a sweet spot where you get the water view you want and a savings you can actually feel in your wallet."
+        },
+        {
+          "cabin": "2277",
+          "rank": 2,
+          "hook": "Matching ocean view on the opposite side",
+          "reason": "This is basically the same cabin as 2276—same deck, same midship position, same unobstructed view—just across the ship on starboard instead of port. Pick whichever side you prefer; the value and the view are identical."
+        },
+        {
+          "cabin": "6270",
+          "rank": 3,
+          "hook": "Ocean view higher up, still miles from balcony prices",
+          "reason": "Jump to Deck 6 and you're still saving a bundle compared to a balcony cabin. You get the ocean framed in your window, a better vantage point from higher on the ship, and your budget stays intact."
+        },
+        {
+          "cabin": "2280",
+          "rank": 4,
+          "hook": "One more unobstructed ocean view, midship",
+          "reason": "Another solid midship ocean view on Deck 2, same savings as 2276 and 2277. If those are taken, this lands you in exactly the same position—you're not trading anything away."
+        },
+        {
+          "cabin": "1203",
+          "rank": 5,
+          "hook": "Ocean view forward—lowest deck, sharpest price",
+          "reason": "Deck 1 forward ocean view means you're getting the deepest discount on an ocean cabin. Yes, you're lower and further forward than midship, but the savings let you spend on experiences instead."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1209",
+          "reason": "This ocean view on Deck 1 forward has an obstruction you'll notice—a steel structure or fixture blocks part of your sight line to the water. Not worth the compromise, especially when unobstructed options exist at the same price."
+        },
+        {
+          "cabin": "2290",
+          "reason": "Listed as an ocean view, but it's obstructed—likely by a lifeboat or structural element. You came for the view; this cabin makes you work around it."
+        },
+        {
+          "cabin": "1414",
+          "reason": "Obstructed ocean view on Deck 1 aft means you're paying for a window on the water that you won't fully enjoy. The obstruction defeats the whole reason you wanted ocean view over interior."
+        }
+      ]
+    },
+    "solo-first-value": {
+      "label": "Solo first-timer, budget-minded",
+      "recommendations": [
+        {
+          "cabin": "1258",
+          "rank": 1,
+          "hook": "Interior midship: lowest single supplement, best value",
+          "reason": "You're in the heart of the ship where the motion is steadiest, and you're paying the least. Midship interiors are the sweet spot for a solo traveler on a budget—no window means the rate stays down, and the location means fewer surprises with noise or movement."
+        },
+        {
+          "cabin": "2202",
+          "rank": 2,
+          "hook": "Forward interior on Deck 2: quiet, budget-friendly, stable",
+          "reason": "Another interior cabin, but on a higher deck and forward, so you'll catch different foot traffic patterns than the midship crowds. It's still an affordable cabin, and the forward position keeps you away from the louder engine areas aft."
+        },
+        {
+          "cabin": "2276",
+          "rank": 3,
+          "hook": "Ocean view midship: window without breaking the budget",
+          "reason": "This is where your budget stretches to include a real ocean view. Sitting midship on Deck 2 means you get the light and fresh air without paying the premium that a balcony would cost, and the location is as stable as it gets on the ship."
+        },
+        {
+          "cabin": "1203",
+          "rank": 4,
+          "hook": "Forward ocean view: see where you're going, light budget",
+          "reason": "Forward-facing means you'll see the ocean ahead, and forward ocean views on lower decks typically carry a lighter single supplement than aft or midship windows. You get a window on a budget, though the forward position does mean a bit more pitch when the ship moves."
+        },
+        {
+          "cabin": "1420",
+          "rank": 5,
+          "hook": "Aft interior: quieter zone, rock-bottom single supplement",
+          "reason": "Aft interiors are often overlooked and priced accordingly, which works in your favor. The aft area is quieter than forward during daytime cruising, and without a window, the rate stays low. This cabin gets you the best price per night on the whole ship."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1209",
+          "reason": "Obstructed ocean view on Deck 1 forward—you're paying for a window but equipment or structures block most of what you'd see. Not worth the upgrade cost."
+        },
+        {
+          "cabin": "2290",
+          "reason": "Obstructed ocean view midship on Deck 2—same problem as 1209. You'll spend more for a view that doesn't actually deliver. Stick with an interior midship at that price point instead."
+        },
+        {
+          "cabin": "8280",
+          "reason": "Ocean view on Deck 8 is pricey for a solo traveler watching costs, and it's higher up where you'll feel more motion. The budget hit doesn't match what you said you're after."
+        }
+      ]
+    },
+    "solo-with-group": {
+      "label": "Solo traveling with a group",
+      "recommendations": [
+        {
+          "cabin": "8280",
+          "rank": 1,
+          "hook": "Ocean view midship where group and action meet",
+          "reason": "8280 sits midship on Deck 8, right in the thick of things where the main pools, bars, and shows are clustered. You're close enough to find your group between events without having to trek, but far enough forward that you won't hear the constant rumble of the engines. The ocean view means you wake up to something better than a steel wall."
+        },
+        {
+          "cabin": "8281",
+          "rank": 2,
+          "hook": "Ocean view across from the action, midship starboard",
+          "reason": "Nearly identical to 8280 in location and feel—same midship, same deck, same distance to the pool and entertainment. The only real difference is it's starboard instead of port, so your morning light comes from a different angle. Pick this one if the group has cabins on the starboard side and you want to be directly across the hallway."
+        },
+        {
+          "cabin": "2389",
+          "rank": 3,
+          "hook": "Midship ocean view two decks closer to the action",
+          "reason": "Deck 2 puts you low and central, which means shorter walks to find the group no matter where they're hanging out on the ship. The ocean view keeps things from feeling claustrophobic, and you're forward enough in the midship block that the foot traffic heading to shows and dining won't keep you up at night."
+        },
+        {
+          "cabin": "2390",
+          "rank": 4,
+          "hook": "Port ocean view midship, nestled with the crowd",
+          "reason": "Another solid midship, low-deck option that keeps you in the hub. Being on the lower decks means less elevator time to reach the main action zones, and port placement tends to be quieter than starboard when the ship is anchored in typical cruise ports. Ocean views on Deck 2 midship are rare and worth grabbing."
+        },
+        {
+          "cabin": "7202",
+          "rank": 5,
+          "hook": "Forward ocean view for early pool and bar access",
+          "reason": "Deck 7, forward position means you're steps away from the forward pools and forward-facing venues before the crowds pile on. You're still close to the main action, but with a slight head start on seating and pool loungers. Ocean view on a higher deck gives you better sight lines if you like to watch the sea while mingling."
+        },
+        {
+          "cabin": "6389",
+          "rank": 6,
+          "hook": "Midship interior—close to action, budget-friendly trade",
+          "reason": "If budget is the tighter concern, 6389 sits midship on Deck 6 right where the energy is, and you lose the view but keep the convenience. You're still central to finding your group, and the savings might mean money for drinks and activities instead of a window."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1203",
+          "reason": "Deck 1 forward is far from the main action—pools, shows, and bars are all much higher up. Long walks between hangouts with your group defeat the purpose of booking for proximity."
+        },
+        {
+          "cabin": "7288",
+          "reason": "This one sits midship on Deck 7 but the obstructed view flag means something is blocking it—likely a lifeboat or structure. An obstructed view at this price point is a bad trade when you've got clear ocean-view alternatives nearby."
+        },
+        {
+          "cabin": "2428",
+          "reason": "Deck 2 aft interior puts you at the quiet end of the ship, far from the pools and main venues where your group will likely be hanging. You'll spend your cruise commuting rather than enjoying proximity."
+        }
+      ]
+    },
+    "big-group-together": {
+      "label": "Group that wants to stay together",
+      "recommendations": [
+        {
+          "cabin": "2276",
+          "rank": 1,
+          "hook": "Ocean view midship—your crew's home base on deck 2",
+          "reason": "This ocean view sits in the heart of the ship on Deck 2, right where the elevators and main flow of people keep you close to everything that matters. Your group can cluster nearby without being scattered across different decks, and you'll have a real window without the premium price. Steps from the dining rooms, the main theater, and the pool—nowhere on this ship is more convenient."
+        },
+        {
+          "cabin": "2277",
+          "rank": 2,
+          "hook": "Matching ocean view starboard—book both sides, stay together",
+          "reason": "Right across the corridor from 2276, so your group gets continuity without cramming into adjacent inside cabins. Two ocean views, midship on Deck 2, same proximity to everything. You'll see each other in the hallway, coordinate meals and activities without a hunting expedition, and still have your own space when you need it."
+        },
+        {
+          "cabin": "2280",
+          "rank": 3,
+          "hook": "Ocean view cluster deeper midship—maximum togetherness",
+          "reason": "A few cabins down from 2276/2277 in the same midship run, still unobstructed ocean views and the same central location. Your group can book a string of these and have everyone within shouting distance. The placement keeps you equidistant from the elevators and main passageways, so coordinating group moves is frictionless."
+        },
+        {
+          "cabin": "1270",
+          "rank": 4,
+          "hook": "Interior midship deck 1—budget anchor near the heart",
+          "reason": "If your group wants to stretch the budget, an interior cabin here puts you midship on Deck 1 with the same central access to elevators, restaurants, and entertainment. You lose the window but keep the location and the ability to stay clustered. Practical when comfort matters more than the view."
+        },
+        {
+          "cabin": "2281",
+          "rank": 5,
+          "hook": "Ocean view starboard cluster—your second forward anchor",
+          "reason": "Stays in the midship ocean view chain and gives you a third solid option if your full group is larger. Same deck, same convenience, same unobstructed sight lines. Booking 2276, 2277, and 2281 creates a tight, functional base that's hard to beat for a group that wants to be near each other and near everything."
+        },
+        {
+          "cabin": "2278",
+          "rank": 6,
+          "hook": "Ocean view port midship—complete your group's square",
+          "reason": "If you're building a quartet of cabins, this port-side counterpart to 2277 fills the last slot in a tight cluster on Deck 2 midship. You'll have options on both sides of the corridor and maximum flexibility for group hangouts or solo time. All four cabins are steps from the same elevators and venues."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1209",
+          "reason": "The obstructed view flag means you're paying for a window that doesn't work—the view is blocked by the ship's structure. You're better off going full interior and saving money, or booking an unobstructed ocean view one deck up."
+        },
+        {
+          "cabin": "6201",
+          "reason": "Deck 6 forward puts you far from the main elevators and central activity you said matters most. Your group will be scattered and spending time walking to reach each other and the venues. Midship on Deck 2 keeps everyone closer together and walking distance from everything at once."
+        },
+        {
+          "cabin": "7288",
+          "reason": "Even though this is a midship ocean view, it's obstructed and stuck on Deck 7, which adds stairs and distance from the hub of dining and shows. An unobstructed view on a lower, more central deck serves your group's real priorities better."
+        }
+      ]
+    },
+    "experienced-ocean-midship": {
+      "label": "Experienced cruisers, know they want a real ocean balcony",
+      "recommendations": [
+        {
+          "cabin": "2280",
+          "rank": 1,
+          "hook": "Midship balcony, real water view, steady platform",
+          "reason": "Cabin 2280 is an ocean view balcony dead center on Deck 2, which puts you in the most stable part of the ship. You get the unobstructed ocean you want with zero gimmicks—just a real balcony where you can sit with a drink and watch the sea roll by. No surprises, no tricks, exactly what experienced cruisers know to book."
+        },
+        {
+          "cabin": "2277",
+          "rank": 2,
+          "hook": "Starboard balcony, midship stability, morning light",
+          "reason": "This one mirrors 2280 on the opposite side—same midship, same unobstructed ocean view, same rock-solid stability. Starboard side means you'll catch the sunrise if you're an early riser. The only reason to rank it second is pure preference: if you favor port, stick with 2280."
+        },
+        {
+          "cabin": "8280",
+          "rank": 3,
+          "hook": "Ocean view midship, Deck 8 placement, peaceful waters",
+          "reason": "Deck 8 sits higher than Deck 2 but still midship where motion is minimal. You lose the balcony here—it's an ocean view instead—but the location is bulletproof for steadiness and the view is genuine. If you're willing to trade a balcony door for extra height and a quieter position away from the main pool deck chaos, this works."
+        },
+        {
+          "cabin": "8281",
+          "rank": 4,
+          "hook": "Starboard ocean view, midship Deck 8, clear sightline",
+          "reason": "Same Deck 8 midship position as 8280, starboard side. You get the same view quality and stability without the balcony. The only honest difference is side preference—pick the one that matches your sun habits."
+        },
+        {
+          "cabin": "1054",
+          "rank": 5,
+          "hook": "Balcony on Deck 10, midship perch, higher vantage",
+          "reason": "If you want elevation and a real balcony, Deck 10 midship delivers both. The motion is still very manageable at center ship, and being higher means fewer people walking past, fewer sounds from above. You trade some of Deck 2's absolute rock-solid feel for privacy and a better view horizon—fair trade for experienced cruisers who know the ship's physics."
+        },
+        {
+          "cabin": "1055",
+          "rank": 6,
+          "hook": "Starboard balcony Deck 10, elevated and tucked",
+          "reason": "Same Deck 10 midship logic as 1054, opposite side. By Deck 10 you're above the main action, the motion is solid, and you've got your own door to the ocean. Not quite as low and locked-in as Deck 2, but for cruisers who like a little height without losing the center-ship sweet spot, this earns the booking."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1203",
+          "reason": "Forward ocean view on Deck 1 sounds appealing until you remember the bow pitches in any swell. You wanted midship and steady—forward is the opposite. The view changes constantly and motion is measurably worse."
+        },
+        {
+          "cabin": "2290",
+          "reason": "This one is flagged obstructed on Deck 2 midship. You were clear: real ocean balcony, no gimmicks. An obstructed view defeats the whole point."
+        },
+        {
+          "cabin": "7334",
+          "reason": "Aft balcony on Deck 7 looks tempting but the stern is where the ship moves most—pitching and yawing are worse back there. For someone who wants a steady midship spot with no tricks, going aft is walking backward into motion."
+        }
+      ]
+    },
+    "seasick-priority-steady": {
+      "label": "Motion is the whole concern",
+      "recommendations": [
+        {
+          "cabin": "1280",
+          "rank": 1,
+          "hook": "Interior midship—the steadiest hull location on the ship",
+          "reason": "Cabin 1280 sits dead center of the ship, low on Deck 1, which is the absolute best place to minimize motion. Being midship means you're at the ship's pivot point, so you feel far less of the rocking that passengers forward or aft experience. Combined with the low deck placement, this gives you maximum stability—perfect when seasickness is your main worry."
+        },
+        {
+          "cabin": "2280",
+          "rank": 2,
+          "hook": "Ocean view midship—calm waters with morning light",
+          "reason": "This Deck 2 midship ocean view gives you the same motion advantage as 1280 but adds an unobstructed sea view without costing you stability. You're still centered on the ship where the ride is smoothest. The view won't trigger any tummy issues—you're getting the best of both without compromise."
+        },
+        {
+          "cabin": "2276",
+          "rank": 3,
+          "hook": "Port-side midship view—steady ride, ocean at sunrise",
+          "reason": "Another Deck 2 midship cabin with the same excellent stability as 2280, positioned to catch morning light. These two are nearly identical in motion benefit; 2280 is a hair better for sunset views if you're a morning-coffee person, but 2276 is equally solid if you prefer to face the sunrise."
+        },
+        {
+          "cabin": "1285",
+          "rank": 4,
+          "hook": "Interior midship—the most motion-resistant cabin type",
+          "reason": "Like 1280, this is an interior room at the ship's center on Deck 1. You lose the ocean view, but you gain absolute steadiness and save money. If seasickness is your only real concern and the view is a bonus-not-essential, this cabin is where the steadiness matters most."
+        },
+        {
+          "cabin": "6280",
+          "rank": 5,
+          "hook": "Ocean view midship, higher deck—steady enough, real daylight",
+          "reason": "Deck 6 midship ocean view, unobstructed. You're still well-centered for stability, though Deck 6 will rock slightly more than Decks 1–2. But the trade-off is real natural light and a view without obstruction. Pick this if you can handle a gentle motion and the view matters as much as steadiness does."
+        },
+        {
+          "cabin": "2282",
+          "rank": 6,
+          "hook": "Starboard midship view—same steady center, opposite side",
+          "reason": "Identical in stability to 2276 and 2280—Deck 2, midship, ocean view. This cabin faces starboard; the three midship ocean views (2276, 2280, 2282) are functionally the same for motion. Pick based on which side you prefer for your view, or light preference at different times of day."
+        }
+      ],
+      "steerClear": [
+        {
+          "cabin": "1203",
+          "reason": "Forward ocean view on Deck 1 will pitch more noticeably than midship cabins when the ship moves. If seasickness is your top concern, forward placement amplifies motion—you'll feel the bow rise and fall more than you would at center."
+        },
+        {
+          "cabin": "7288",
+          "reason": "This midship ocean view on Deck 7 has an obstructed view and sits much higher on the ship, where motion is magnified. You lose both the view and the stability benefit you're paying for."
+        },
+        {
+          "cabin": "1451",
+          "reason": "Aft ocean view means you'll feel the ship's stern swing and lift more than midship cabins. Combined with the height of being aft, the motion here is notably worse than your best options, and an aft cabin won't help with your seasickness concern."
+        }
+      ]
+    }
+  }
+}
