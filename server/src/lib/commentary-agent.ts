@@ -369,7 +369,7 @@ yet, and you are not summarising the news. You are picking a fight worth having.
 From this week's story cluster:
 1. Pick ONE story as the peg — the one with a real argument inside it. The rest exist only as
    evidence. A story that does not serve the argument gets dropped, not covered.
-2. Find the question that story actually raises — one reasonable people disagree about.
+2. Find the question that story raises — one reasonable people disagree about.
 3. ANSWER IT. Pick a side. "It depends", "both sides have a point" and "there are no easy
    answers" are failures. If nobody could reasonably disagree with your position, it is not one.
 4. Name who is getting it wrong: the passengers, a named line, the industry, the ports, the
