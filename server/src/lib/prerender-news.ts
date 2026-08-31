@@ -252,6 +252,32 @@ const L = {
   },
 } as const;
 
+// Contextual affiliate link (task be5a6de7, 2026-08-31): every story page
+// carries ONE gear link into the affiliate sub-page matching its category --
+// internal links from the news surface into the affiliate funnel. Quieter
+// than the Work-with-Mark button by design: advisor voice, no second pitch.
+function gearLinkFor(story: NewsStory, lang: Lang): { href: string; label: string } {
+  const page = ((): string => {
+    switch (story.category) {
+      case "Aviation": return "air-travel";
+      case "Health & Safety": return "health-at-sea";
+      case "Weather & Disruption": return "cabin-essentials";
+      case "Tourism": return "cruise-fun";
+      default: return "great-ideas";
+    }
+  })();
+  const labels: Record<string, { en: string; es: string }> = {
+    "air-travel": { en: "Smarter air-travel gear for the flights either side →", es: "Equipo inteligente para los vuelos de ida y vuelta →" },
+    "health-at-sea": { en: "The health-at-sea gear worth packing →", es: "El equipo de salud en el mar que vale la pena empacar →" },
+    "cabin-essentials": { en: "Cabin essentials for when plans change at sea →", es: "Esenciales de camarote para cuando los planes cambian en el mar →" },
+    "cruise-fun": { en: "Gear that makes port days better →", es: "Equipo que mejora los días en puerto →" },
+    "great-ideas": { en: "Gear worth its suitcase space →", es: "Equipo que se gana su lugar en la maleta →" },
+  };
+  const l = labels[page] ?? labels["great-ideas"];
+  const href = (lang === "es" ? "/es/affiliate/" : "/affiliate/") + page + ".html";
+  return { href, label: lang === "es" ? l.es : l.en };
+}
+
 function jsonLd(story: NewsStory, slug: string, lang: Lang, ov?: SeoOverride): string {
   const u = urls(slug);
   const data: Record<string, unknown> = {
@@ -305,6 +331,7 @@ function storyPageHtml(
   const original = escapeHtml(story.originalLink || story.link || "");
   const b = badge(story, lang);
   const date = fmtDate(story.approvedAt || story.generatedAt, lang);
+  const gear = gearLinkFor(story, lang);
   const metaLine = [escapeHtml(sourceName(story)), date, escapeHtml(story.impactLevel || "")]
     .filter(Boolean)
     .join(" · ");
@@ -366,6 +393,7 @@ ${original ? `<a href="${original}" target="_blank" rel="noopener noreferrer">${
 <h2 style="margin:0 0 8px;font-size:24px;font-weight:900;color:#fff">${t.ctaTitle}</h2>
 <p style="margin:0 auto 18px;max-width:560px;color:rgba(255,255,255,.84);line-height:1.65">${t.ctaBody}</p>
 <a href="${t.ctaHref}" style="display:inline-block;padding:14px 30px;border-radius:16px;background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;font-weight:800;text-decoration:none;box-shadow:0 10px 28px rgba(0,0,0,.30)">${t.ctaButton}</a>
+<p style="margin:16px 0 0;font-size:16px"><a href="${gear.href}" style="color:#7de3ff;font-weight:700;text-decoration:none">🧳 ${gear.label}</a></p>
 </section>
 ${relatedHtml}
 </div>
