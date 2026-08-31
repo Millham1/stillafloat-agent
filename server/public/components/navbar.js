@@ -85,7 +85,28 @@
   const subscribeLabel     = isSpanish ? '✉ Suscríbete'       : '✉ Subscribe';
   const subscribeLabelFull = isSpanish ? '✉ Suscríbete gratis' : '✉ Subscribe Free';
 
+  // ── Homepage quick-action pills (Mark, 2026-08-31) ──
+  // Two standout pills flanking the nav block, HOME ONLY: Room Concierge left,
+  // Cruise Gear right. Home is the only page without the corner logo, so the
+  // left slot is free there and nowhere else — hence the isHome gate.
+  const conciergePill = isSpanish
+    ? { href: '/es/room-concierge.html', label: 'Concierge de Camarotes', cta: 'Encuentra tu camarote →', title: 'Concierge de Camarotes — gratis' }
+    : { href: '/room-concierge.html', label: 'Room Concierge', cta: 'Find my cabin →', title: 'Room Concierge — free cabin match' };
+  const gearPill = isSpanish
+    ? { href: '/es/affiliate.html', label: 'Equipo de Crucero', cta: 'Ver el equipo →', title: 'Equipo probado en el mar' }
+    : { href: '/affiliate.html', label: 'Cruise Gear', cta: 'See the gear →', title: 'Gear tested at sea' };
+  const homePillsHTML = isHome ? `
+    <a class="sa-quick-pill sa-quick-left" href="${conciergePill.href}" title="${conciergePill.title}">
+      <span class="sa-quick-title"><i class="fa-solid fa-bed"></i>${conciergePill.label}</span>
+      <span class="sa-quick-cta">${conciergePill.cta}</span>
+    </a>
+    <a class="sa-quick-pill sa-quick-right" href="${gearPill.href}" title="${gearPill.title}">
+      <span class="sa-quick-title"><i class="fa-solid fa-suitcase-rolling"></i>${gearPill.label}</span>
+      <span class="sa-quick-cta">${gearPill.cta}</span>
+    </a>` : '';
+
   const navHTML = `
+    ${homePillsHTML}
     ${isHome ? '' : `
     <a class="sa-logo-home" href="${homeUrl}" title="Still Afloat Home">
       <img src="/assets/images/still_afloat_logo.png" alt="Still Afloat" class="sa-logo-img">
@@ -249,6 +270,65 @@
       background: rgba(93,255,154,.22) !important;
       border-color: rgba(93,255,154,.60) !important;
       color: #5dff9a !important;
+    }
+
+    /* ── Homepage quick-action pills (flank the nav block; home only) ── */
+    .sa-quick-pill {
+      position: absolute;
+      top: 30px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding: 16px 22px 15px;
+      border-radius: 22px;
+      white-space: nowrap;
+      text-decoration: none;
+      background: linear-gradient(180deg, rgba(9,72,117,.96), rgba(4,33,66,.96));
+      border: 1px solid rgba(93,255,154,.45);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 12px 28px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.16);
+      transition: all .22s ease;
+    }
+    .sa-quick-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: .02em;
+      text-shadow: 0 1px 6px rgba(0,0,0,.35);
+    }
+    .sa-quick-title i { font-size: 18px; color: #5dff9a; filter: drop-shadow(0 0 8px rgba(93,255,154,.35)); }
+    .sa-quick-cta {
+      color: #5dff9a;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-shadow: 0 0 10px rgba(93,255,154,.30);
+    }
+    .sa-quick-pill:hover {
+      transform: translateY(-2px);
+      border-color: #5dff9a;
+      background: linear-gradient(180deg, rgba(0,119,182,.96), rgba(4,33,66,.96));
+      box-shadow: 0 16px 34px rgba(0,0,0,.44), 0 0 18px rgba(93,255,154,.28);
+    }
+    .sa-quick-left  { left: 2.5vw; }
+    .sa-quick-right { right: 2.5vw; }
+    /* Mid widths: the centered nav block leaves no safe flanking room — the same
+       links live inside the nav, so the pills bow out rather than overlap. */
+    @media (max-width: 991px) { .sa-quick-pill { display: none; } }
+    /* Mobile: nav collapses to the hamburger (top-right), which frees the left
+       side of the reserved strip — the pills stack there, compact. */
+    @media (max-width: 768px) {
+      .sa-quick-pill { display: flex; padding: 11px 16px 10px; gap: 3px; }
+      .sa-quick-title { font-size: 14px; }
+      .sa-quick-title i { font-size: 15px; }
+      .sa-quick-cta { font-size: 12.5px; }
+      .sa-quick-left  { left: 14px; top: 12px; }
+      .sa-quick-right { left: 14px; right: auto; top: 76px; }
     }
 
     /* ── Hamburger button ── */
