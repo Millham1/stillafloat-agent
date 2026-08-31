@@ -85,7 +85,35 @@
   const subscribeLabel     = isSpanish ? '✉ Suscríbete'       : '✉ Subscribe';
   const subscribeLabelFull = isSpanish ? '✉ Suscríbete gratis' : '✉ Subscribe Free';
 
+  // ── Homepage quick-action pills (Mark, 2026-08-31) ──
+  // Two standout pills flanking the nav block, HOME ONLY: Room Concierge left,
+  // Cruise Gear right. Home is the only page without the corner logo, so the
+  // left slot is free there and nowhere else — hence the isHome gate.
+  // Hierarchy per Mark's 2026-08-31 review: recognition (title) → benefit
+  // (pale descriptive line) → action (brand-yellow button, navy text). The
+  // whole pill is one <a>, so the button is a visual cue, not the only target.
+  const conciergePill = isSpanish
+    ? { href: '/es/room-concierge.html', label: 'Concierge de Camarotes', desc: '¿Qué camarote me conviene más?', btn: 'ENCUENTRA MI CAMAROTE →', title: 'Concierge de Camarotes — gratis' }
+    : { href: '/room-concierge.html', label: 'Room Concierge', desc: 'Which cabin works best for me?', btn: 'FIND MY CABIN →', title: 'Room Concierge — free cabin match' };
+  const gearPill = isSpanish
+    ? { href: '/es/affiliate.html', label: 'Equipo de Crucero', desc: 'Empaca más inteligente. Lleva lo que funciona.', btn: 'VER EL EQUIPO →', title: 'Equipo probado en el mar' }
+    : { href: '/affiliate.html', label: 'Cruise Gear', desc: 'Pack smarter. Bring what works.', btn: 'SEE THE GEAR →', title: 'Gear tested at sea' };
+  const homePillsHTML = isHome ? `
+    <div class="sa-quick-row">
+      <a class="sa-quick-pill" href="${conciergePill.href}" title="${conciergePill.title}">
+        <span class="sa-quick-title"><i class="fa-solid fa-bed"></i>${conciergePill.label}</span>
+        <span class="sa-quick-desc">${conciergePill.desc}</span>
+        <span class="sa-quick-btn">${conciergePill.btn}</span>
+      </a>
+      <a class="sa-quick-pill" href="${gearPill.href}" title="${gearPill.title}">
+        <span class="sa-quick-title"><i class="fa-solid fa-suitcase-rolling"></i>${gearPill.label}</span>
+        <span class="sa-quick-desc">${gearPill.desc}</span>
+        <span class="sa-quick-btn">${gearPill.btn}</span>
+      </a>
+    </div>` : '';
+
   const navHTML = `
+    ${homePillsHTML}
     ${isHome ? '' : `
     <a class="sa-logo-home" href="${homeUrl}" title="Still Afloat Home">
       <img src="/assets/images/still_afloat_logo.png" alt="Still Afloat" class="sa-logo-img">
@@ -249,6 +277,96 @@
       background: rgba(93,255,154,.22) !important;
       border-color: rgba(93,255,154,.60) !important;
       color: #5dff9a !important;
+    }
+
+    /* ── Homepage quick-action pills (flank the nav block; home only) ── */
+    .sa-quick-row {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      gap: 22px;
+      justify-content: center;
+      width: max-content;
+      max-width: 96vw;
+    }
+    /* Cards above the nav (Mark, 2026-08-31): the pair is the FIRST thing in
+       the strip; the nav drops below them (see .sa-has-quick overrides). */
+    .sa-quick-pill {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding: 16px 22px 16px;
+      border-radius: 22px;
+      max-width: 260px;
+      text-decoration: none;
+      cursor: pointer;
+      background: linear-gradient(180deg, rgba(9,72,117,.96), rgba(4,33,66,.96));
+      border: 2px solid rgba(125,215,255,.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 16px 36px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.16);
+      transition: all .22s ease;
+    }
+    .sa-quick-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap;
+      color: #ffffff;
+      font-size: 19px;
+      font-weight: 900;
+      letter-spacing: .02em;
+      text-shadow: 0 1px 6px rgba(0,0,0,.35);
+    }
+    .sa-quick-title i { font-size: 22px; color: #5dff9a; filter: drop-shadow(0 0 8px rgba(93,255,154,.35)); }
+    .sa-quick-desc {
+      color: rgba(222,240,255,.92);
+      line-height: 1.35;
+      font-size: 14.5px;
+      font-weight: 600;
+      letter-spacing: .01em;
+    }
+    .sa-quick-btn {
+      align-self: flex-start;
+      margin-top: 2px;
+      padding: 9px 16px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #ffca4f, #ffb703);
+      color: #07183f;
+      font-size: 13.5px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.45);
+      transition: all .22s ease;
+    }
+    .sa-quick-pill:hover {
+      transform: translateY(-4px);
+      border-color: rgba(160,230,255,.85);
+      background: linear-gradient(180deg, rgba(0,119,182,.96), rgba(4,33,66,.96));
+      box-shadow: 0 22px 44px rgba(0,0,0,.52), 0 0 18px rgba(125,215,255,.22);
+    }
+    .sa-quick-pill:hover .sa-quick-btn {
+      background: linear-gradient(180deg, #ffd97a, #ffca4f);
+      box-shadow: 0 8px 20px rgba(0,0,0,.36), 0 0 14px rgba(255,202,79,.35), inset 0 1px 0 rgba(255,255,255,.5);
+    }
+    /* When the quick cards are present (home), the nav slides down below them
+       and the host reserves the extra height. */
+    #navbar-container.sa-has-quick .sa-site-nav { top: 188px; }
+    .sa-navbar-host.sa-host-quick { padding-top: 312px; }
+    /* Mobile: the pair stacks, centered; the nav is a hamburger (top-right)
+       so only the host height changes. */
+    @media (max-width: 768px) {
+      .sa-quick-row { flex-direction: column; gap: 12px; top: 12px; align-items: center; }
+      .sa-quick-pill { padding: 12px 18px 12px; gap: 4px; max-width: 250px; }
+      .sa-quick-title { font-size: 16px; }
+      .sa-quick-title i { font-size: 18px; }
+      .sa-quick-desc { font-size: 13px; }
+      .sa-quick-btn { font-size: 12px; padding: 7px 13px; }
+      .sa-navbar-host.sa-host-quick { padding-top: 300px; }
     }
 
     /* ── Hamburger button ── */
@@ -426,6 +544,10 @@
     const container = document.getElementById('navbar-container');
     if (!container) return;
     if (container.parentElement) container.parentElement.classList.add('sa-navbar-host');
+    if (isHome) {
+      container.classList.add('sa-has-quick');
+      if (container.parentElement) container.parentElement.classList.add('sa-host-quick');
+    }
     container.innerHTML = navHTML;
 
     // Active page highlight — normalize both sides so /index.html, /, and '' all match
