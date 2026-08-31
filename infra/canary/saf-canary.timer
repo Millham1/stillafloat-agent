@@ -1,0 +1,15 @@
+[Unit]
+Description=Run the Still Afloat alert canary every 10 minutes
+
+[Timer]
+# Start soon after boot so a reboot does not create a silent window.
+OnBootSec=3min
+OnUnitActiveSec=10min
+# Spread the load off the exact minute boundary shared with every other cron.
+RandomizedDelaySec=45
+AccuracySec=30s
+Persistent=true
+Unit=saf-canary.service
+
+[Install]
+WantedBy=timers.target

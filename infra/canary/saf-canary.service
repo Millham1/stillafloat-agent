@@ -1,0 +1,19 @@
+[Unit]
+Description=Still Afloat alert canary — watches PROD from the dev box
+Documentation=https://github.com/Millham1/stillafloat-agent/blob/main/infra/canary/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/stillafloat/alert-canary.py
+# The canary must never be the reason the box is unhealthy.
+Nice=10
+TimeoutStartSec=120
+# It reads /opt/stillafloat/shared.env and writes only its own state file.
+ReadWritePaths=/var/lib/saf-canary
+StateDirectory=saf-canary
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
