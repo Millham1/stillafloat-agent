@@ -89,21 +89,25 @@
   // Two standout pills flanking the nav block, HOME ONLY: Room Concierge left,
   // Cruise Gear right. Home is the only page without the corner logo, so the
   // left slot is free there and nowhere else — hence the isHome gate.
-  // CTA copy is Mark's, verbatim (2026-08-31).
+  // Hierarchy per Mark's 2026-08-31 review: recognition (title) → benefit
+  // (pale descriptive line) → action (brand-yellow button, navy text). The
+  // whole pill is one <a>, so the button is a visual cue, not the only target.
   const conciergePill = isSpanish
-    ? { href: '/es/room-concierge.html', label: 'Concierge de Camarotes', cta: '¿Qué camarote me conviene más?', title: 'Concierge de Camarotes — gratis' }
-    : { href: '/room-concierge.html', label: 'Room Concierge', cta: 'Which cabin works best for me?', title: 'Room Concierge — free cabin match' };
+    ? { href: '/es/room-concierge.html', label: 'Concierge de Camarotes', desc: '¿Qué camarote me conviene más?', btn: 'ENCUENTRA MI CAMAROTE →', title: 'Concierge de Camarotes — gratis' }
+    : { href: '/room-concierge.html', label: 'Room Concierge', desc: 'Which cabin works best for me?', btn: 'FIND MY CABIN →', title: 'Room Concierge — free cabin match' };
   const gearPill = isSpanish
-    ? { href: '/es/affiliate.html', label: 'Equipo de Crucero', cta: 'Empaca más inteligente — mira el equipo que vale la pena llevar.', title: 'Equipo probado en el mar' }
-    : { href: '/affiliate.html', label: 'Cruise Gear', cta: 'Pack smarter—see the cruise gear worth bringing.', title: 'Gear tested at sea' };
+    ? { href: '/es/affiliate.html', label: 'Equipo de Crucero', desc: 'Empaca más inteligente. Lleva lo que funciona.', btn: 'VER EL EQUIPO →', title: 'Equipo probado en el mar' }
+    : { href: '/affiliate.html', label: 'Cruise Gear', desc: 'Pack smarter. Bring what works.', btn: 'SEE THE GEAR →', title: 'Gear tested at sea' };
   const homePillsHTML = isHome ? `
     <a class="sa-quick-pill sa-quick-left" href="${conciergePill.href}" title="${conciergePill.title}">
       <span class="sa-quick-title"><i class="fa-solid fa-bed"></i>${conciergePill.label}</span>
-      <span class="sa-quick-cta">${conciergePill.cta}</span>
+      <span class="sa-quick-desc">${conciergePill.desc}</span>
+      <span class="sa-quick-btn">${conciergePill.btn}</span>
     </a>
     <a class="sa-quick-pill sa-quick-right" href="${gearPill.href}" title="${gearPill.title}">
       <span class="sa-quick-title"><i class="fa-solid fa-suitcase-rolling"></i>${gearPill.label}</span>
-      <span class="sa-quick-cta">${gearPill.cta}</span>
+      <span class="sa-quick-desc">${gearPill.desc}</span>
+      <span class="sa-quick-btn">${gearPill.btn}</span>
     </a>` : '';
 
   const navHTML = `
@@ -280,16 +284,17 @@
       z-index: 20;
       display: flex;
       flex-direction: column;
-      gap: 5px;
-      padding: 16px 22px 15px;
+      gap: 7px;
+      padding: 16px 22px 16px;
       border-radius: 22px;
-      max-width: 250px;
+      max-width: 260px;
       text-decoration: none;
+      cursor: pointer;
       background: linear-gradient(180deg, rgba(9,72,117,.96), rgba(4,33,66,.96));
-      border: 1px solid rgba(93,255,154,.45);
+      border: 2px solid rgba(125,215,255,.55);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      box-shadow: 0 12px 28px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.16);
+      box-shadow: 0 16px 36px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.16);
       transition: all .22s ease;
     }
     .sa-quick-title {
@@ -298,25 +303,42 @@
       gap: 10px;
       white-space: nowrap;
       color: #ffffff;
-      font-size: 17px;
+      font-size: 19px;
       font-weight: 900;
       letter-spacing: .02em;
       text-shadow: 0 1px 6px rgba(0,0,0,.35);
     }
-    .sa-quick-title i { font-size: 18px; color: #5dff9a; filter: drop-shadow(0 0 8px rgba(93,255,154,.35)); }
-    .sa-quick-cta {
-      color: #5dff9a;
+    .sa-quick-title i { font-size: 22px; color: #5dff9a; filter: drop-shadow(0 0 8px rgba(93,255,154,.35)); }
+    .sa-quick-desc {
+      color: rgba(222,240,255,.92);
       line-height: 1.35;
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: .02em;
-      text-shadow: 0 0 10px rgba(93,255,154,.30);
+      font-size: 14.5px;
+      font-weight: 600;
+      letter-spacing: .01em;
+    }
+    .sa-quick-btn {
+      align-self: flex-start;
+      margin-top: 2px;
+      padding: 9px 16px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #ffca4f, #ffb703);
+      color: #07183f;
+      font-size: 13.5px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.45);
+      transition: all .22s ease;
     }
     .sa-quick-pill:hover {
-      transform: translateY(-2px);
-      border-color: #5dff9a;
+      transform: translateY(-4px);
+      border-color: rgba(160,230,255,.85);
       background: linear-gradient(180deg, rgba(0,119,182,.96), rgba(4,33,66,.96));
-      box-shadow: 0 16px 34px rgba(0,0,0,.44), 0 0 18px rgba(93,255,154,.28);
+      box-shadow: 0 22px 44px rgba(0,0,0,.52), 0 0 18px rgba(125,215,255,.22);
+    }
+    .sa-quick-pill:hover .sa-quick-btn {
+      background: linear-gradient(180deg, #ffd97a, #ffca4f);
+      box-shadow: 0 8px 20px rgba(0,0,0,.36), 0 0 14px rgba(255,202,79,.35), inset 0 1px 0 rgba(255,255,255,.5);
     }
     .sa-quick-left  { left: 2.5vw; }
     .sa-quick-right { right: 2.5vw; }
@@ -326,12 +348,13 @@
     /* Mobile: nav collapses to the hamburger (top-right), which frees the left
        side of the reserved strip — the pills stack there, compact. */
     @media (max-width: 768px) {
-      .sa-quick-pill { display: flex; padding: 11px 16px 10px; gap: 3px; }
-      .sa-quick-title { font-size: 14px; }
-      .sa-quick-title i { font-size: 15px; }
-      .sa-quick-cta { font-size: 12.5px; }
-      .sa-quick-left  { left: 14px; top: 12px; }
-      .sa-quick-right { left: 14px; right: auto; top: 76px; }
+      .sa-quick-pill { display: flex; padding: 11px 16px 11px; gap: 4px; max-width: 215px; }
+      .sa-quick-title { font-size: 15px; }
+      .sa-quick-title i { font-size: 17px; }
+      .sa-quick-desc { font-size: 12.5px; }
+      .sa-quick-btn { font-size: 11.5px; padding: 7px 12px; }
+      .sa-quick-left  { left: 14px; top: 10px; }
+      .sa-quick-right { left: 14px; right: auto; top: 128px; }
     }
 
     /* ── Hamburger button ── */
