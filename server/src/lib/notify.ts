@@ -45,8 +45,12 @@ export interface Notification {
   priority?: "high" | "normal";
 }
 
+function dashboardBase(): string {
+  return (process.env["DASHBOARD_URL"] || "https://dashboard.stillafloatcruising.com").replace(/\/$/, "");
+}
+
 function briefUrl(): string {
-  return `${(process.env["DASHBOARD_URL"] || "https://dashboard.stillafloatcruising.com").replace(/\/$/, "")}/brief.html`;
+  return `${dashboardBase()}/brief.html`;
 }
 
 function ownerEmail(): string {
@@ -91,12 +95,18 @@ export async function notifyMark(
 
   if (ntfyUrl && topic) {
     try {
-      const token = process.env["AGENT_APPROVAL_TOKEN"] || "";
-      // ntfy HTTP actions: buttons that fire our API straight from the notification.
+      // NO CREDENTIALS IN A NOTIFICATION. The earlier version embedded
+      // AGENT_APPROVAL_TOKEN in each action URL, which put full dashboard write
+      // access inside every message relayed by (and retained on) the ntfy server —
+      // a topic anyone holding the name can subscribe to. One-tap approve is not
+      // worth handing out the key to the dashboard.
+      //
+      // Actions are therefore "view" links: they open the dashboard, where the
+      // browser's own session authorises the approve/reject. One extra tap, no
+      // secret in flight.
       const actions = (n.buttons ?? []).slice(0, 2).map((b) => {
-        const sep = b.path.includes("?") ? "&" : "?";
-        const url = `${apiBase()}${b.path}${token ? `${sep}token=${encodeURIComponent(token)}` : ""}`;
-        return `http, ${b.label.replace(/,/g, "")}, ${url}, method=${b.method}, clear=true`;
+        const url = `${dashboardBase()}${b.path.startsWith("/") ? b.path : `/${b.path}`}`;
+        return `view, ${b.label.replace(/,/g, "")}, ${url}, clear=true`;
       });
       const headers: Record<string, string> = {
         Title: n.title.slice(0, 120),
