@@ -148,6 +148,9 @@ export async function applySeoOverride(payload: SeoOverridePayload): Promise<App
     return { applied: false, reason: "no effective change (already matches)", storyId: story.id };
   }
 
+  // Freshness signal: the prerender emits this as JSON-LD dateModified and
+  // sitemap <lastmod>. Without it a copy rewrite was invisible to crawlers.
+  next.updatedAt = new Date().toISOString();
   overrides[story.id] = next;
   await writeJson(PATHS.seoOverrides, overrides);
   logger.info({ storyId: story.id, changes }, "SEO override applied from approved proposal");

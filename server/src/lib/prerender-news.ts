@@ -135,6 +135,10 @@ export interface SeoOverride {
   desc_es?: string; // ES meta description
   bodyHtml?: string; // optional long-form HTML appended below the cliffnote (deep-dive stories)
   bodyHtml_es?: string;
+  // Stamped by applySeoOverride on every effective change. Feeds dateModified in
+  // the NewsArticle JSON-LD and <lastmod> in the sitemap — before 2026-08-31 a
+  // copy rewrite emitted ZERO freshness signal (the Juneau SERP task, 384740f1).
+  updatedAt?: string;
 }
 export type SeoOverrideMap = Record<string, SeoOverride>;
 
@@ -248,14 +252,44 @@ const L = {
   },
 } as const;
 
+// Contextual affiliate link (task be5a6de7, 2026-08-31): every story page
+// carries ONE gear link into the affiliate sub-page matching its category --
+// internal links from the news surface into the affiliate funnel. Quieter
+// than the Work-with-Mark button by design: advisor voice, no second pitch.
+function gearLinkFor(story: NewsStory, lang: Lang): { href: string; label: string } {
+  const page = ((): string => {
+    switch (story.category) {
+      case "Aviation": return "air-travel";
+      case "Health & Safety": return "health-at-sea";
+      case "Weather & Disruption": return "cabin-essentials";
+      case "Tourism": return "cruise-fun";
+      default: return "great-ideas";
+    }
+  })();
+  const labels: Record<string, { en: string; es: string }> = {
+    "air-travel": { en: "Smarter air-travel gear for the flights either side →", es: "Equipo inteligente para los vuelos de ida y vuelta →" },
+    "health-at-sea": { en: "The health-at-sea gear worth packing →", es: "El equipo de salud en el mar que vale la pena empacar →" },
+    "cabin-essentials": { en: "Cabin essentials for when plans change at sea →", es: "Esenciales de camarote para cuando los planes cambian en el mar →" },
+    "cruise-fun": { en: "Gear that makes port days better →", es: "Equipo que mejora los días en puerto →" },
+    "great-ideas": { en: "Gear worth its suitcase space →", es: "Equipo que se gana su lugar en la maleta →" },
+  };
+  const l = labels[page] ?? labels["great-ideas"];
+  const href = (lang === "es" ? "/es/affiliate/" : "/affiliate/") + page + ".html";
+  return { href, label: lang === "es" ? l.es : l.en };
+}
+
 function jsonLd(story: NewsStory, slug: string, lang: Lang, ov?: SeoOverride): string {
   const u = urls(slug);
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
-    headline: pick(story, "title", lang),
+    // The override IS the search-facing headline. Before 2026-08-31 the
+    // <title> carried the override while this headline kept the raw story
+    // title, so Google read two disagreeing signals on rewritten pages.
+    headline: seoTitleFor(story, lang, ov),
     description: seoDescFor(story, lang, ov),
     datePublished: story.approvedAt || story.generatedAt || undefined,
+    ...(ov?.updatedAt ? { dateModified: ov.updatedAt } : {}),
     inLanguage: lang === "es" ? "es-419" : "en-US",
     mainEntityOfPage: lang === "es" ? u.es : u.en,
     isBasedOn: story.originalLink || story.link || undefined,
@@ -297,6 +331,7 @@ function storyPageHtml(
   const original = escapeHtml(story.originalLink || story.link || "");
   const b = badge(story, lang);
   const date = fmtDate(story.approvedAt || story.generatedAt, lang);
+  const gear = gearLinkFor(story, lang);
   const metaLine = [escapeHtml(sourceName(story)), date, escapeHtml(story.impactLevel || "")]
     .filter(Boolean)
     .join(" · ");
@@ -358,6 +393,7 @@ ${original ? `<a href="${original}" target="_blank" rel="noopener noreferrer">${
 <h2 style="margin:0 0 8px;font-size:24px;font-weight:900;color:#fff">${t.ctaTitle}</h2>
 <p style="margin:0 auto 18px;max-width:560px;color:rgba(255,255,255,.84);line-height:1.65">${t.ctaBody}</p>
 <a href="${t.ctaHref}" style="display:inline-block;padding:14px 30px;border-radius:16px;background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;font-weight:800;text-decoration:none;box-shadow:0 10px 28px rgba(0,0,0,.30)">${t.ctaButton}</a>
+<p style="margin:16px 0 0;font-size:16px"><a href="${gear.href}" style="color:#7de3ff;font-weight:700;text-decoration:none">🧳 ${gear.label}</a></p>
 </section>
 ${relatedHtml}
 </div>
@@ -449,7 +485,7 @@ ${archive}
 }
 
 // ── sitemap ──────────────────────────────────────────────────────────────────
-function sitemapXml(stories: NewsStory[]): string {
+function sitemapXml(stories: NewsStory[], seoOverrides: SeoOverrideMap = {}): string {
   const entries: string[] = [];
   const day = (iso?: string): string => {
     const d = iso ? new Date(iso) : new Date();
@@ -460,15 +496,36 @@ function sitemapXml(stories: NewsStory[]): string {
     `<url><loc>${SITE}/news.html</loc><lastmod>${day(newest)}</lastmod><changefreq>daily</changefreq></url>`,
     `<url><loc>${SITE}/es/news.html</loc><lastmod>${day(newest)}</lastmod><changefreq>daily</changefreq></url>`,
   );
+  // Google News eligibility window: <news:news> only on articles published in
+  // the last 48h (per the News sitemap spec — older entries stay plain URLs).
+  // Before 2026-08-31 this file carried no news namespace at all, so the site
+  // could not compete for Top Stories / News-carousel slots it may be losing
+  // clicks to (the Juneau SERP task, 384740f1).
+  const NEWS_WINDOW_MS = 48 * 60 * 60 * 1000;
+  const xmlEsc = (t: string): string =>
+    t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const newsBlock = (story: NewsStory, lang: Lang): string => {
+    const pub = story.approvedAt || story.generatedAt;
+    if (!pub || Date.now() - new Date(pub).getTime() > NEWS_WINDOW_MS) return "";
+    const title = xmlEsc(pick(story, "title", lang));
+    return (
+      `<news:news><news:publication><news:name>Still Afloat Cruising</news:name>` +
+      `<news:language>${lang}</news:language></news:publication>` +
+      `<news:publication_date>${pub}</news:publication_date>` +
+      `<news:title>${title}</news:title></news:news>`
+    );
+  };
   for (const story of stories) {
     const u = urls(storySlug(story));
-    const lastmod = day(story.approvedAt || story.generatedAt);
+    const ov = story.id ? seoOverrides[story.id] : undefined;
+    // An SEO-override rewrite is a real modification — surface it as freshness.
+    const lastmod = day(ov?.updatedAt || story.approvedAt || story.generatedAt);
     entries.push(
-      `<url><loc>${u.en}</loc><lastmod>${lastmod}</lastmod></url>`,
-      `<url><loc>${u.es}</loc><lastmod>${lastmod}</lastmod></url>`,
+      `<url><loc>${u.en}</loc><lastmod>${lastmod}</lastmod>${newsBlock(story, "en")}</url>`,
+      `<url><loc>${u.es}</loc><lastmod>${lastmod}</lastmod>${newsBlock(story, "es")}</url>`,
     );
   }
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">\n${entries.join("\n")}\n</urlset>\n`;
 }
 
 // ── archived-story normalization ─────────────────────────────────────────────
@@ -550,7 +607,7 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
 
   await writeFile(path.join(publicDir, "news.html"), feedPageHtml(stories, "en"));
   await writeFile(path.join(publicDir, "es", "news.html"), feedPageHtml(stories, "es"));
-  await writeFile(path.join(publicDir, "news-sitemap.xml"), sitemapXml(stories));
+  await writeFile(path.join(publicDir, "news-sitemap.xml"), sitemapXml(stories, seoOverrides));
   pages += 3;
 
   logger.info({ stories: stories.length, pages }, "News prerender complete");
