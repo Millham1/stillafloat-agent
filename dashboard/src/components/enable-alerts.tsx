@@ -63,11 +63,39 @@ export function EnableAlerts() {
     }
   };
 
+  // Turning alerts off is a two-tap action, and this is not politeness — it is the
+  // fix for a real outage. On 2026-08-26 a single stray tap on "Turn off" (it sits
+  // millimetres from "Send test" on a phone) removed the last subscribed device and
+  // silenced EVERY agent nudge for five days. Nothing in the code unsubscribes on
+  // its own, so the only way this channel dies is a mis-tap — so the mis-tap is what
+  // we guard. The armed state self-disarms, so an accidental first tap decays to
+  // nothing rather than waiting to catch a second one.
+  const disarmTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [armedOff, setArmedOff] = React.useState(false);
+
+  React.useEffect(() => () => { if (disarmTimer.current) clearTimeout(disarmTimer.current); }, []);
+
+  const disarm = () => {
+    if (disarmTimer.current) clearTimeout(disarmTimer.current);
+    disarmTimer.current = null;
+    setArmedOff(false);
+  };
+
   const onDisable = async () => {
+    if (!armedOff) {
+      setArmedOff(true);
+      disarmTimer.current = setTimeout(() => setArmedOff(false), 5000);
+      return;
+    }
+    disarm();
     setBusy(true);
     try {
       await disableAlerts();
-      toast({ title: "Alerts off", description: "This device will no longer receive alerts." });
+      toast({
+        variant: "destructive",
+        title: "Alerts OFF for this device",
+        description: "You will get no briefs, approvals or storm alerts here until you turn them back on.",
+      });
       refresh();
     } catch (err) {
       toast({ variant: "destructive", title: "Couldn't turn off", description: (err as Error).message });
@@ -104,16 +132,25 @@ export function EnableAlerts() {
             <button
               onClick={onTest}
               disabled={busy}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border hover:bg-accent disabled:opacity-60 transition-colors"
+              className="flex items-center gap-1.5 text-sm px-4 py-2.5 rounded-md border hover:bg-accent disabled:opacity-60 transition-colors"
             >
-              <BellRing className="w-3.5 h-3.5" /> Send test
+              <BellRing className="w-4 h-4" /> Send test
             </button>
+            {/* Held well clear of "Send test" (ml-6) and never the default action: the
+                two sat side by side at tap-target size when the 8/26 mis-tap happened. */}
             <button
               onClick={onDisable}
+              onBlur={disarm}
               disabled={busy}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border hover:bg-accent disabled:opacity-60 transition-colors text-muted-foreground"
+              aria-label={armedOff ? "Confirm turning alerts off" : "Turn alerts off for this device"}
+              className={
+                armedOff
+                  ? "ml-6 flex items-center gap-1.5 text-sm px-4 py-2.5 rounded-md border border-destructive bg-destructive text-destructive-foreground font-semibold disabled:opacity-60 transition-colors"
+                  : "ml-6 flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md text-muted-foreground/70 hover:text-foreground hover:bg-accent disabled:opacity-60 transition-colors"
+              }
             >
-              <BellOff className="w-3.5 h-3.5" /> Turn off
+              <BellOff className={armedOff ? "w-4 h-4" : "w-3.5 h-3.5"} />
+              {armedOff ? "Tap again to silence alerts" : "Turn off"}
             </button>
           </>
         )}

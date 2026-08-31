@@ -96,7 +96,7 @@ test("zero devices is not a fault when ntfy is configured", async () => {
   assert.equal(raise.calls.length, 0, "ntfy is an independent path — not an outage");
 });
 
-test("a deduped (already pending) action reports raised:false", async () => {
+test("a same-day repeat check dedups and reports raised:false", async () => {
   const raise = raiseSpy(false); // createAction dedups on (type, source_ref)
   const out = await checkPushHealth({
     count: async () => 0,
@@ -105,8 +105,30 @@ test("a deduped (already pending) action reports raised:false", async () => {
     raise: raise.fn,
   });
 
-  assert.equal(out.raised, false, "one open fault, not a daily drip");
+  // The 6-hourly checks within one day collapse to a single alert. Across days
+  // they must NOT — see the source_ref test below.
+  assert.equal(out.raised, false);
   assert.equal(raise.calls.length, 1);
+});
+
+test("source_ref carries the day, so a dead channel re-alerts daily", async () => {
+  const raise = raiseSpy();
+  await checkPushHealth({
+    count: async () => 0,
+    vapid: VAPID_SET,
+    ntfyLive: NO_NTFY,
+    raise: raise.fn,
+  });
+
+  const ref = raise.calls[0]!.source_ref!;
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Regression pin for the 2026-08-26 outage: the ref was a fixed string, so the
+  // first alert stayed "pending" and every later check deduped against it. The
+  // channel was dead for FIVE DAYS while the check ran 20 times and told nobody.
+  // A date in the ref is what makes tomorrow's check a NEW row, and a new alert.
+  assert.ok(ref.includes(today), `source_ref must carry today's date, got ${ref}`);
+  assert.notEqual(ref, "push-channel-empty", "a fixed ref can only ever alert once");
 });
 
 test("the check never throws when its dependencies do", async () => {

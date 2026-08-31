@@ -21,8 +21,21 @@ import { subscriptionCount, getVapidPublicKey } from "./push";
 import { createAction } from "./actions";
 import { logger } from "./logger";
 
-/** Stable source_ref so a pending "channel is dead" row never duplicates. */
-const SOURCE_REF = "push-channel-empty";
+/**
+ * source_ref carries the DAY, so a dead channel re-alerts once every day it stays
+ * dead instead of once ever.
+ *
+ * The original stable ref deduped against any pending row, which read as "one
+ * email, not a drip" — but the 2026-08-26 outage proved that is the wrong trade.
+ * The check ran every 6h for FIVE DAYS, logged "ZERO subscribed devices" each
+ * time, and raised nothing after the first: `raised:false` forever, because the
+ * first row was still pending. One notification that can be missed is the same as
+ * no notification. A daily re-raise is quiet when healthy (zero rows) and
+ * impossible to ignore when broken, which is the only asymmetry that matters here.
+ */
+function sourceRefForToday(now: Date = new Date()): string {
+  return `push-channel-empty-${now.toISOString().slice(0, 10)}`;
+}
 
 export interface PushHealth {
   devices: number;
@@ -80,7 +93,7 @@ export async function checkPushHealth(deps: PushHealthDeps = {}): Promise<PushHe
       type: "system-fault",
       title: "🔕 Push notifications are reaching nobody",
       body,
-      source_ref: SOURCE_REF,
+      source_ref: sourceRefForToday(),
       priority: "high",
     });
     out.raised = r.created;

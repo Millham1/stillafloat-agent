@@ -213,6 +213,9 @@
     }).catch(function(e){ msg.textContent="Couldn’t enable: "+e.message; });
   }
   function turnOff(){
+    // Two-step, for the same reason as the dashboard control: one stray tap here on
+    // 2026-08-26 removed the last device and silenced every alert for five days.
+    if(!window.confirm("Turn OFF all alerts on this device?\n\nYou will stop receiving briefs, story approvals and storm alerts here until you turn them back on.")) return;
     navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){
       if(!sub) return; var ep=sub.endpoint;
       return sub.unsubscribe().then(function(){ return fetch(API+"/api/push/unsubscribe",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({endpoint:ep})}); });
