@@ -99,16 +99,18 @@
     ? { href: '/es/affiliate.html', label: 'Equipo de Crucero', desc: 'Empaca más inteligente. Lleva lo que funciona.', btn: 'VER EL EQUIPO →', title: 'Equipo probado en el mar' }
     : { href: '/affiliate.html', label: 'Cruise Gear', desc: 'Pack smarter. Bring what works.', btn: 'SEE THE GEAR →', title: 'Gear tested at sea' };
   const homePillsHTML = isHome ? `
-    <a class="sa-quick-pill sa-quick-left" href="${conciergePill.href}" title="${conciergePill.title}">
-      <span class="sa-quick-title"><i class="fa-solid fa-bed"></i>${conciergePill.label}</span>
-      <span class="sa-quick-desc">${conciergePill.desc}</span>
-      <span class="sa-quick-btn">${conciergePill.btn}</span>
-    </a>
-    <a class="sa-quick-pill sa-quick-right" href="${gearPill.href}" title="${gearPill.title}">
-      <span class="sa-quick-title"><i class="fa-solid fa-suitcase-rolling"></i>${gearPill.label}</span>
-      <span class="sa-quick-desc">${gearPill.desc}</span>
-      <span class="sa-quick-btn">${gearPill.btn}</span>
-    </a>` : '';
+    <div class="sa-quick-row">
+      <a class="sa-quick-pill" href="${conciergePill.href}" title="${conciergePill.title}">
+        <span class="sa-quick-title"><i class="fa-solid fa-bed"></i>${conciergePill.label}</span>
+        <span class="sa-quick-desc">${conciergePill.desc}</span>
+        <span class="sa-quick-btn">${conciergePill.btn}</span>
+      </a>
+      <a class="sa-quick-pill" href="${gearPill.href}" title="${gearPill.title}">
+        <span class="sa-quick-title"><i class="fa-solid fa-suitcase-rolling"></i>${gearPill.label}</span>
+        <span class="sa-quick-desc">${gearPill.desc}</span>
+        <span class="sa-quick-btn">${gearPill.btn}</span>
+      </a>
+    </div>` : '';
 
   const navHTML = `
     ${homePillsHTML}
@@ -278,10 +280,21 @@
     }
 
     /* ── Homepage quick-action pills (flank the nav block; home only) ── */
-    .sa-quick-pill {
+    .sa-quick-row {
       position: absolute;
-      top: 30px;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 20;
+      display: flex;
+      gap: 22px;
+      justify-content: center;
+      width: max-content;
+      max-width: 96vw;
+    }
+    /* Cards above the nav (Mark, 2026-08-31): the pair is the FIRST thing in
+       the strip; the nav drops below them (see .sa-has-quick overrides). */
+    .sa-quick-pill {
       display: flex;
       flex-direction: column;
       gap: 7px;
@@ -340,21 +353,20 @@
       background: linear-gradient(180deg, #ffd97a, #ffca4f);
       box-shadow: 0 8px 20px rgba(0,0,0,.36), 0 0 14px rgba(255,202,79,.35), inset 0 1px 0 rgba(255,255,255,.5);
     }
-    .sa-quick-left  { left: 2.5vw; }
-    .sa-quick-right { right: 2.5vw; }
-    /* Mid widths: the centered nav block leaves no safe flanking room — the same
-       links live inside the nav, so the pills bow out rather than overlap. */
-    @media (max-width: 991px) { .sa-quick-pill { display: none; } }
-    /* Mobile: nav collapses to the hamburger (top-right), which frees the left
-       side of the reserved strip — the pills stack there, compact. */
+    /* When the quick cards are present (home), the nav slides down below them
+       and the host reserves the extra height. */
+    #navbar-container.sa-has-quick .sa-site-nav { top: 188px; }
+    .sa-navbar-host.sa-host-quick { padding-top: 312px; }
+    /* Mobile: the pair stacks, centered; the nav is a hamburger (top-right)
+       so only the host height changes. */
     @media (max-width: 768px) {
-      .sa-quick-pill { display: flex; padding: 11px 16px 11px; gap: 4px; max-width: 215px; }
-      .sa-quick-title { font-size: 15px; }
-      .sa-quick-title i { font-size: 17px; }
-      .sa-quick-desc { font-size: 12.5px; }
-      .sa-quick-btn { font-size: 11.5px; padding: 7px 12px; }
-      .sa-quick-left  { left: 14px; top: 10px; }
-      .sa-quick-right { left: 14px; right: auto; top: 128px; }
+      .sa-quick-row { flex-direction: column; gap: 12px; top: 12px; align-items: center; }
+      .sa-quick-pill { padding: 12px 18px 12px; gap: 4px; max-width: 250px; }
+      .sa-quick-title { font-size: 16px; }
+      .sa-quick-title i { font-size: 18px; }
+      .sa-quick-desc { font-size: 13px; }
+      .sa-quick-btn { font-size: 12px; padding: 7px 13px; }
+      .sa-navbar-host.sa-host-quick { padding-top: 300px; }
     }
 
     /* ── Hamburger button ── */
@@ -532,6 +544,10 @@
     const container = document.getElementById('navbar-container');
     if (!container) return;
     if (container.parentElement) container.parentElement.classList.add('sa-navbar-host');
+    if (isHome) {
+      container.classList.add('sa-has-quick');
+      if (container.parentElement) container.parentElement.classList.add('sa-host-quick');
+    }
     container.innerHTML = navHTML;
 
     // Active page highlight — normalize both sides so /index.html, /, and '' all match
