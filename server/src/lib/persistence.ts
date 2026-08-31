@@ -74,18 +74,23 @@ export async function readJson<T = Record<string, unknown>>(
   key: string,
   fallback: T
 ): Promise<T> {
-  try {
-    const client = getSupabase();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (client.from("platform_state") as any)
-      .select("payload")
-      .eq("id", key)
-      .single();
+  const client = getSupabase();
+  // maybeSingle: a genuinely-absent row is data=null with NO error, so the
+  // fallback below only ever stands in for "this collection was never created".
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client.from("platform_state") as any)
+    .select("payload")
+    .eq("id", key)
+    .maybeSingle();
 
-    if (error || !data) return fallback;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return ((data as any).payload as T) || fallback;
-  } catch {
-    return fallback;
+  if (error) {
+    // A FAILED read must throw, never return the fallback: read-modify-write
+    // callers would rebuild the collection from the empty default and persist
+    // it, silently erasing the stored history (archive-stories, 2026-08-27).
+    logger.error({ err: error, key }, "Supabase read error");
+    throw error;
   }
+  if (!data) return fallback;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data as any).payload as T) || fallback;
 }

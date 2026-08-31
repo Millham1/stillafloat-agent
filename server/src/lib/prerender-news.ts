@@ -220,7 +220,7 @@ const L = {
     feedPath: "/news.html",
     ctaTitle: "Planning a cruise?",
     ctaBody:
-      "Talk to Mark — a real cruise advisor who's actually sailed it, not a call center. Honest picks, no pressure, and no booking fees to you.",
+      "Talk to Mark — a real cruise advisor who's sailed it himself, not a call center. Honest picks, no pressure, and no booking fees to you.",
     ctaButton: "Work with Mark →",
     ctaHref: "/work-with-mark.html",
   },

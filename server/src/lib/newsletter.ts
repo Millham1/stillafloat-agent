@@ -300,7 +300,7 @@ TIME AWARENESS: you are given today's date. Never pitch a deal, sale, or event w
 
 THE POINT OF THIS EMAIL: the reader should finish it feeling like cruising is fun and smart people book through Mark. It exists to drive BOOKINGS (replies and clicks to his booking page) — NOT to drive clicks to news stories.
 
-TONE ON NEWS: the reader gets doom headlines everywhere else. Pick what a traveler can USE (deals, changes that affect planning, good news). At most ONE cautionary item, and only if travelers genuinely need it — deliver it in one calm line, never as a scare.
+TONE ON NEWS: the reader gets doom headlines everywhere else. Pick what a traveler can USE (deals, changes that affect planning, good news). At most ONE cautionary item, and only if travelers truly need it — deliver it in one calm line, never as a scare.
 
 You will receive this week's stories, possibly Mark's latest commentary, a featured video, one affiliate product, and a description of this week's photo. Produce:
 - subject: <= 60 chars, sounds like a text from a friend — specific, human, a little fun. (Good shape: "A 50% sale, a $26 water bottle, and my two cents".)
