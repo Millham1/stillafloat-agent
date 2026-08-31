@@ -89,12 +89,13 @@
   // Two standout pills flanking the nav block, HOME ONLY: Room Concierge left,
   // Cruise Gear right. Home is the only page without the corner logo, so the
   // left slot is free there and nowhere else — hence the isHome gate.
+  // CTA copy is Mark's, verbatim (2026-08-31).
   const conciergePill = isSpanish
-    ? { href: '/es/room-concierge.html', label: 'Concierge de Camarotes', cta: 'Encuentra tu camarote →', title: 'Concierge de Camarotes — gratis' }
-    : { href: '/room-concierge.html', label: 'Room Concierge', cta: 'Find my cabin →', title: 'Room Concierge — free cabin match' };
+    ? { href: '/es/room-concierge.html', label: 'Concierge de Camarotes', cta: '¿Qué camarote me conviene más?', title: 'Concierge de Camarotes — gratis' }
+    : { href: '/room-concierge.html', label: 'Room Concierge', cta: 'Which cabin works best for me?', title: 'Room Concierge — free cabin match' };
   const gearPill = isSpanish
-    ? { href: '/es/affiliate.html', label: 'Equipo de Crucero', cta: 'Ver el equipo →', title: 'Equipo probado en el mar' }
-    : { href: '/affiliate.html', label: 'Cruise Gear', cta: 'See the gear →', title: 'Gear tested at sea' };
+    ? { href: '/es/affiliate.html', label: 'Equipo de Crucero', cta: 'Empaca más inteligente — mira el equipo que vale la pena llevar.', title: 'Equipo probado en el mar' }
+    : { href: '/affiliate.html', label: 'Cruise Gear', cta: 'Pack smarter—see the cruise gear worth bringing.', title: 'Gear tested at sea' };
   const homePillsHTML = isHome ? `
     <a class="sa-quick-pill sa-quick-left" href="${conciergePill.href}" title="${conciergePill.title}">
       <span class="sa-quick-title"><i class="fa-solid fa-bed"></i>${conciergePill.label}</span>
@@ -282,7 +283,7 @@
       gap: 5px;
       padding: 16px 22px 15px;
       border-radius: 22px;
-      white-space: nowrap;
+      max-width: 250px;
       text-decoration: none;
       background: linear-gradient(180deg, rgba(9,72,117,.96), rgba(4,33,66,.96));
       border: 1px solid rgba(93,255,154,.45);
@@ -295,6 +296,7 @@
       display: inline-flex;
       align-items: center;
       gap: 10px;
+      white-space: nowrap;
       color: #ffffff;
       font-size: 17px;
       font-weight: 900;
@@ -304,6 +306,7 @@
     .sa-quick-title i { font-size: 18px; color: #5dff9a; filter: drop-shadow(0 0 8px rgba(93,255,154,.35)); }
     .sa-quick-cta {
       color: #5dff9a;
+      line-height: 1.35;
       font-size: 15px;
       font-weight: 800;
       letter-spacing: .02em;
