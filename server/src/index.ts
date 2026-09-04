@@ -273,7 +273,7 @@ function scheduleDailyBrief() {
 // The campaign's standing cadence (goal: $2k/mo, bookings are the KPI):
 //   • Monday 09:00 local — social scan: queue grounded draft batches for recent
 //     channel uploads (de-duped by videoId+track) + ONE push review nudge.
-//   • Tuesday 09:00 local — commentary draft from the week's featured story +
+//   • Tuesday 09:00 local — commentary written from the week's highest-traction story +
 //     push nudge asking for Mark's take (weave → publish is his call).
 //   • Thursday 09:00 local — newsletter draft (EN; ES once that list exists) +
 //     push nudge. Mark can review/edit/send from the review page all Thursday.
@@ -313,13 +313,23 @@ function scheduleWeeklyMarketing() {
       try {
         const stale = await loadCommentaryDraft();
         const ageH = stale ? (Date.now() - Date.parse(stale.generatedAt)) / 3600e3 : 0;
-        // COMMENTARY_AUTOPILOT_HOURS > 0: if Mark hasn't responded after that many
-        // hours, the agent writes the piece itself (brand stance, no invented
-        // personal experience) and publishes — his 8/16 delegation, off by default.
+        // COMMENTARY_AUTOPILOT_HOURS > 0: the piece is already written and waiting,
+        // so autopilot just publishes it unchanged after that many hours — his 8/16
+        // delegation, off by default. Never re-writes here: the draft on screen is
+        // the draft that goes out, including any rewrite Mark asked for.
         const autopilotH = Number(process.env["COMMENTARY_AUTOPILOT_HOURS"] ?? "0");
-        if (stale && stale.status === "awaiting_take" && autopilotH > 0 && ageH > autopilotH) {
-          const { synthesizeCommentary } = await import("./lib/commentary-agent");
-          const drafted = await synthesizeCommentary(null);
+        // A sensitive subject never publishes unread, whatever the autopilot setting:
+        // traction is exactly the signal that surfaces crimes-against-children and
+        // fatality stories, and a humour-forward brand must not ship one unseen.
+        if (stale && stale.status === "drafted" && stale.sensitive && autopilotH > 0 && ageH > autopilotH) {
+          void notifyMark({
+            title: "🛑 Commentary held — sensitive subject needs your eyes",
+            body: `${stale.suggestedTitle || stale.stories[0]?.title || ""}\nAutopilot will not publish this one.`,
+            url: reviewUrl("/api/commentary/review"),
+            tag: "commentary-review",
+          });
+        } else if (stale && stale.status === "drafted" && autopilotH > 0 && ageH > autopilotH) {
+          const drafted = stale;
           // publish via the route (self-call) so the ES auto-translate + CMS write
           // stay in exactly one place
           const r = await fetch(`http://127.0.0.1:${port}/api/commentary/publish-draft`, {
@@ -331,8 +341,8 @@ function scheduleWeeklyMarketing() {
           });
           void notifyMark({
             title: r.ok
-              ? "🗣️ Commentary published (agent-written — no response in time)"
-              : "⚠️ Agent-written commentary drafted but publish FAILED",
+              ? "🗣️ Commentary published (no response in time)"
+              : "⚠️ Commentary publish FAILED",
             body: drafted.suggestedTitle || "This week's commentary",
             url: r.ok ? "/commentary.html" : reviewUrl("/api/commentary/review"),
             tag: "commentary-review",
@@ -340,7 +350,7 @@ function scheduleWeeklyMarketing() {
         } else if (stale && (stale.status === "awaiting_take" || stale.status === "drafted")
             && ageH > 20) {
           void notifyMark({
-            title: "⏳ Commentary waiting — approve, give a take, or skip",
+            title: "⏳ Commentary waiting — approve, add your thoughts, or reject",
             body: stale.stories[0]?.title ?? "Staged draft pending",
             url: reviewUrl("/api/commentary/review"),
             tag: "commentary-review",
@@ -372,8 +382,11 @@ function scheduleWeeklyMarketing() {
     lastRunDate = date;
     try {
       if (weekday === "Tue") {
-        const draft = await stageWeeklyCommentary(); // sends its own push nudge
-        logger.info({ lead: draft.stories[0]?.title }, "Weekly commentary staged — awaiting Mark's take");
+        const draft = await stageWeeklyCommentary(); // picks the topic, writes it, nudges
+        logger.info(
+          { subject: draft.stories[0]?.title, title: draft.suggestedTitle },
+          "Weekly commentary written — awaiting Mark's approve / thoughts / reject",
+        );
       } else if (weekday === "Fri") {
         // Auto-send (Mark, 2026-08-29): Thursday drafts + nudges; if the draft is
         // still pending by Friday's run hour, send it AS SAVED — including any
