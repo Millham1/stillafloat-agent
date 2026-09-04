@@ -106,6 +106,59 @@ export interface CommentaryDraft {
   draftedAt?: string;
 }
 
+// ── run state ────────────────────────────────────────────────────────────────
+// A staged run now takes 2-6 minutes (nearly all of it verification), and nginx in
+// front of the app closes idle proxied connections at 120s. So the HTTP request
+// that starts a run CANNOT be the request that waits for it: prod returned 504
+// while the work carried on and finished correctly two minutes later. The button
+// looked broken, the piece was fine, and a second tap would have started a second
+// run over the top of the first.
+//
+// The routes therefore start the work and return immediately; the review page
+// polls. This is also why the whole thing was invisible on dev — I tested there by
+// hitting the app's port directly, bypassing the proxy that enforces the timeout.
+let inFlight: { kind: string; startedAt: number } | null = null;
+let lastRunError: string | null = null;
+
+export function commentaryRunState(): {
+  busy: boolean;
+  kind?: string;
+  runningSeconds?: number;
+  lastError?: string;
+} {
+  if (!inFlight) return { busy: false, ...(lastRunError ? { lastError: lastRunError } : {}) };
+  return {
+    busy: true,
+    kind: inFlight.kind,
+    runningSeconds: Math.round((Date.now() - inFlight.startedAt) / 1000),
+    ...(lastRunError ? { lastError: lastRunError } : {}),
+  };
+}
+
+/**
+ * Start a commentary run in the background. Returns false if one is already going,
+ * so a double-tap cannot start a second run over the top of the first.
+ */
+export function startCommentaryRun(kind: string, work: () => Promise<unknown>): boolean {
+  // A run that somehow never settles must not wedge the button forever.
+  if (inFlight && Date.now() - inFlight.startedAt > 20 * 60_000) inFlight = null;
+  if (inFlight) return false;
+
+  inFlight = { kind, startedAt: Date.now() };
+  lastRunError = null;
+  void (async () => {
+    try {
+      await work();
+    } catch (error) {
+      lastRunError = (error as Error).message;
+      logger.error({ err: lastRunError, kind }, "Commentary background run failed");
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return true;
+}
+
 export async function loadCommentaryDraft(): Promise<CommentaryDraft | null> {
   const d = await readJson<CommentaryDraft | Record<string, never>>(DRAFT_KEY, {});
   return d && Array.isArray((d as CommentaryDraft).stories) ? (d as CommentaryDraft) : null;
