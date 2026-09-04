@@ -1,7 +1,12 @@
 import { logger } from "./logger";
 import { PATHS, getSupabase, readJson, writeJson } from "./persistence";
 import { notifyMark, reviewUrl } from "./notify";
-import { scoreCandidate, distinctiveWords, type TractionSignals } from "./commentary-traction";
+import {
+  scoreCandidate,
+  distinctiveWords,
+  isTopicallyEmpty,
+  type TractionSignals,
+} from "./commentary-traction";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMMENTARY AGENT — Mark's loop, as he specified it on 2026-09-04:
@@ -294,12 +299,18 @@ export function alreadyCovered(
 
   for (const item of covered) {
     const haystack = item.text.toLowerCase();
-    let hits = 0;
+    const hits: string[] = [];
     for (const w of distinctive) {
       // Stem-tolerant: "cancellation" should match "cancellations".
-      if (haystack.includes(w) || haystack.includes(w.replace(/s$/, ""))) hits++;
+      if (haystack.includes(w) || haystack.includes(w.replace(/s$/, ""))) hits.push(w);
     }
-    if (hits >= 2) return item;
+    // At least one hit must carry topic signal. Brand names alone are not a
+    // collision: Mark's credibility line inside a published commentary reads
+    // "... Royal Caribbean Platinum · decades at sea", so matching on brands binned
+    // EVERY Royal Caribbean story as already-argued — four of one week's topics,
+    // including an Alaska cancellation and a Labadee closure that share nothing
+    // with a piece about loyalty tiers. Same trap with "Norwegian" and "port".
+    if (hits.length >= 2 && hits.some((w) => !isTopicallyEmpty(w))) return item;
   }
   return null;
 }

@@ -112,6 +112,13 @@ function keptTokens(title: string, pool: Array<Record<string, unknown>>): string
   return kept.length >= 2 ? kept : tokens;
 }
 
+/** True when a word carries no topic signal on its own — a line name or a word
+ *  that appears in every cruise story ("cruise", "ship", "port"). */
+export function isTopicallyEmpty(word: string): boolean {
+  const w = normalize(word.toLowerCase());
+  return BRANDS.has(w) || GENERIC_DOMAIN.has(w);
+}
+
 /**
  * EVERY distinctive word in the headline, normalised for comparison.
  *

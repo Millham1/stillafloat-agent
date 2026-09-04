@@ -472,3 +472,57 @@ test("verification covers Mark's own take, exempting only lived experience", () 
   assert.match(FACTCHECK_PROMPT, /His FACTUAL claims are not exempt/);
   assert.match(FACTCHECK_PROMPT, /Never "correct" his opinion/);
 });
+
+// ── a brand name alone is not a collision ────────────────────────────────────
+// Found on the first real prod run. Mark's credibility line inside a published
+// commentary reads "MBA · M.S. Organizational Management · Royal Caribbean
+// Platinum · decades at sea" — so matching on brand words binned EVERY Royal
+// Caribbean story as already-argued: an Alaska cancellation, a Labadee closure and
+// an Ovation redeployment, none of which share anything with a piece about loyalty
+// tiers. His own bio was eating four of the week's topics.
+
+const LOYALTY_PIECE = [
+  {
+    label: 'commentary "The Ladder Nobody Climbs"',
+    text:
+      "The Ladder Nobody Climbs loyalty programs carnival rewards industry analysis " +
+      "Mark Millham, Still Afloat Cruising MBA M.S. Organizational Management " +
+      "Royal Caribbean Platinum decades at sea. Carnival kills lifetime loyalty status " +
+      "on Monday. The new Carnival Rewards counts your dollars instead. Lifetime status, gone.",
+  },
+];
+
+test("a story sharing only brand words with a published piece stays eligible", () => {
+  for (const title of [
+    "Royal Caribbean Cancels Serenade of the Seas Alaska Cruise Due to Repairs",
+    "Royal Caribbean Confirms Labadee Cancellations Extended Through June 2027",
+    "Ovation of the Seas Cruises Cancelled as Royal Caribbean Shifts Ship",
+  ]) {
+    assert.equal(alreadyCovered({ title }, LOYALTY_PIECE), null, `wrongly skipped: ${title}`);
+  }
+});
+
+test("the real repeat is still caught — brand PLUS a topic word", () => {
+  const hit = alreadyCovered(
+    { title: "The Biggest Shakeup in Carnival's Loyalty History Starts Tomorrow" },
+    LOYALTY_PIECE,
+  );
+  assert.ok(hit, "the loyalty overhaul must still be recognised as already argued");
+});
+
+test("generic cruise words carry no topic signal either", () => {
+  // "Norwegian Spirit Cuts Ports in Hawaii" was binned against a piece about
+  // planning a first cruise, on "norwegian" (brand) + "port" (generic).
+  const planning = [
+    {
+      label: 'commentary "Planning for Two When Only One Is Planning"',
+      text:
+        "Planning for Two When Only One Is Planning. I knew the Norwegian Getaway deck plan " +
+        "the way some people know their own apartment. I cross-referenced port reviews.",
+    },
+  ];
+  assert.equal(
+    alreadyCovered({ title: "Norwegian Spirit Cuts Ports in Hawaii as Tropical Storm Closes In" }, planning),
+    null,
+  );
+});
