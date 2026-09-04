@@ -150,9 +150,19 @@ test("the score is bounded even on absurd inputs", () => {
 
 // ── the line Mark reads ──────────────────────────────────────────────────────
 
-test("the basis line names only the signals that answered", () => {
+test("an unmeasurable YouTube signal is stated, not silently omitted", () => {
+  // A low score with YouTube missing must not read as "nobody cares" — that and
+  // "we could not measure it" lead to opposite editorial calls. Seen for real on
+  // dev, which had no YOUTUBE_API_KEY: every topic scored ~0.
   const line = describeSignals({ youtubeViews: null, youtubeVideos: null, outletPickup: 3 });
-  assert.equal(line, "3 cruise outlets ran it");
+  assert.match(line, /UNAVAILABLE/);
+  assert.match(line, /3 cruise outlets ran it/);
+});
+
+test("no recent coverage is reported differently from no measurement", () => {
+  const measured = describeSignals({ youtubeViews: 0, youtubeVideos: 0, outletPickup: 2 });
+  assert.match(measured, /no recent YouTube coverage/);
+  assert.ok(!measured.includes("UNAVAILABLE"), measured);
 });
 
 test("the basis line reports real numbers when they exist", () => {

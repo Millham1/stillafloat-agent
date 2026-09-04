@@ -318,6 +318,11 @@ export function describeSignals(s: Omit<TractionSignals, "score" | "basis">): st
         ? `${s.youtubeViews.toLocaleString()} YouTube views across ${s.youtubeVideos} recent videos`
         : "no recent YouTube coverage",
     );
+  } else {
+    // Say so, loudly. A silent omission leaves a low score reading as "nobody cares
+    // about this story" when the truth is "the main signal could not be measured" —
+    // and those two lead to opposite editorial decisions.
+    bits.push("⚠️ YouTube signal UNAVAILABLE (score is outlet pickup only)");
   }
   bits.push(
     s.outletPickup > 1 ? `${s.outletPickup} cruise outlets ran it` : "one outlet so far",
