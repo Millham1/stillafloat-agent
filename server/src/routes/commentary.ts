@@ -6,6 +6,8 @@ import {
   saveCommentaryDraft,
   stageWeeklyCommentary,
   rejectAndRestage,
+  startCommentaryRun,
+  commentaryRunState,
   synthesizeCommentary,
 } from "../lib/commentary-agent";
 
@@ -332,15 +334,19 @@ router.post("/commentary/draft", async (req: Request, res: Response) => {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
-  try {
-    const body = req.body as { notify?: boolean; subjectId?: string } | undefined;
-    const notify = body?.notify !== false;
-    const subjectId = body?.subjectId ? String(body.subjectId) : undefined;
-    const draft = await stageWeeklyCommentary({ notify, subjectId });
-    res.json({ success: true, draft });
-  } catch (error) {
-    res.status(500).json({ success: false, error: (error as Error).message });
+  const body = req.body as { notify?: boolean; subjectId?: string } | undefined;
+  const notify = body?.notify !== false;
+  const subjectId = body?.subjectId ? String(body.subjectId) : undefined;
+  // Starts the run and returns at once — the work outlives this request (see
+  // startCommentaryRun). The page polls GET /api/commentary/draft.
+  const started = startCommentaryRun("stage", () =>
+    stageWeeklyCommentary({ notify, subjectId }),
+  );
+  if (!started) {
+    res.status(409).json({ success: false, error: "A commentary run is already in progress." });
+    return;
   }
+  res.status(202).json({ success: true, started: true });
 });
 
 // POST /api/commentary/reject — Mark threw the topic back. Bench it, record why,
@@ -353,8 +359,12 @@ router.post("/commentary/reject", async (req: Request, res: Response) => {
   }
   try {
     const reason = String((req.body as { reason?: string } | undefined)?.reason ?? "").slice(0, 500);
-    const draft = await rejectAndRestage(reason);
-    res.json({ success: true, draft });
+    const started = startCommentaryRun("reject", () => rejectAndRestage(reason));
+    if (!started) {
+      res.status(409).json({ success: false, error: "A commentary run is already in progress." });
+      return;
+    }
+    res.status(202).json({ success: true, started: true });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -366,7 +376,7 @@ router.get("/commentary/draft", async (req: Request, res: Response) => {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
-  res.json({ success: true, draft: await loadCommentaryDraft() });
+  res.json({ success: true, draft: await loadCommentaryDraft(), ...commentaryRunState() });
 });
 
 // POST /api/commentary/synthesize — { take } → write the commentary from
@@ -383,8 +393,14 @@ router.post("/commentary/synthesize", async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: "take is required (or autonomous: true)" });
       return;
     }
-    const draft = await synthesizeCommentary(take || null);
-    res.json({ success: true, draft });
+    const started = startCommentaryRun(take ? "rewrite" : "write", () =>
+      synthesizeCommentary(take || null),
+    );
+    if (!started) {
+      res.status(409).json({ success: false, error: "A commentary run is already in progress." });
+      return;
+    }
+    res.status(202).json({ success: true, started: true });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -610,31 +626,62 @@ a{color:#7de3ff}
 ${body}
 <script>
 const TOKEN=${JSON.stringify(token)};
+// A run takes 2-6 minutes and nginx closes proxied connections at 120s, so the
+// POST only STARTS the work and we poll for the result. Waiting on the POST here
+// is what produced a 504 on prod while the piece was written correctly anyway.
 async function call(path, payload){
   const r=await fetch(path,{method:"POST",headers:{"content-type":"application/json","x-affiliate-token":TOKEN},body:JSON.stringify(payload||{})});
   const d=await r.json().catch(()=>({}));
   if(!r.ok||d.success===false){alert(d.error||("HTTP "+r.status));return false}
   return true;
 }
-async function gen(){ if(await call("/api/commentary/draft",{notify:false})) location.reload(); }
+function note(msg){
+  let el=document.getElementById("workNote");
+  if(!el){el=document.createElement("div");el.id="workNote";el.className="panel";
+    el.style.cssText="border-color:#17a457;background:rgba(23,164,87,.12)";
+    document.body.insertBefore(el,document.body.children[1]||null);}
+  el.innerHTML=msg;
+}
+// Polls until the server reports it is no longer busy, then reloads. Survives the
+// page being closed and reopened — the work is server-side, not in this tab.
+async function waitForRun(label){
+  const started=Date.now();
+  note("<b>"+label+"</b><br><span class=\"muted small\">Working… this takes 2-6 minutes (the fact-check searches the web). Safe to leave this page open; the run continues on the server either way.</span>");
+  for(;;){
+    await new Promise(r=>setTimeout(r,5000));
+    let d;
+    try{
+      const r=await fetch("/api/commentary/draft",{headers:{"x-affiliate-token":TOKEN}});
+      d=await r.json();
+    }catch(e){ continue; }           // transient network blip — keep waiting
+    const secs=Math.round((Date.now()-started)/1000);
+    if(d.busy){
+      note("<b>"+label+"</b><br><span class=\"muted small\">Working… "+secs+"s elapsed. The fact-check searches the web, so 2-6 minutes is normal.</span>");
+      continue;
+    }
+    if(d.lastError){ alert("The run failed: "+d.lastError); location.reload(); return; }
+    location.reload(); return;
+  }
+}
+async function gen(){ if(await call("/api/commentary/draft",{notify:false})) waitForRun("Finding this week's topic and writing it"); }
 async function write(btn){ btn.disabled=true; btn.textContent="Writing…";
-  if(await call("/api/commentary/synthesize",{autonomous:true})) location.reload(); else btn.disabled=false; }
+  if(await call("/api/commentary/synthesize",{autonomous:true})) waitForRun("Writing the commentary"); else btn.disabled=false; }
 async function reSubject(id){
   if(!confirm("Write this week's commentary on that story instead?"))return;
-  if(await call("/api/commentary/draft",{notify:false,subjectId:id})) location.reload();
+  if(await call("/api/commentary/draft",{notify:false,subjectId:id})) waitForRun("Rewriting on the story you picked");
 }
 async function reject(btn){
   const reason=prompt("Reject this topic — why? (helps the picker learn)","");
   if(reason===null)return;
   btn.disabled=true; btn.textContent="Finding another topic…";
-  if(await call("/api/commentary/reject",{reason})) location.reload();
+  if(await call("/api/commentary/reject",{reason})) waitForRun("Rejected — finding another topic and writing it");
   else { btn.disabled=false; btn.textContent="❌ Reject — find another topic"; }
 }
 async function synth(){
   const take=document.getElementById("take").value.trim();
   if(!take){alert("Add your thoughts first, or just approve the piece as-is.");return}
   const btn=event.target; btn.disabled=true; btn.textContent="Rewriting…";
-  if(await call("/api/commentary/synthesize",{take})) location.reload(); else {btn.disabled=false;}
+  if(await call("/api/commentary/synthesize",{take})) waitForRun("Rewriting around your thoughts"); else {btn.disabled=false;}
 }
 async function publish(){
   if(!confirm("Publish this commentary to the website (EN + ES)?"))return;
