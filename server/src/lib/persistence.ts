@@ -47,6 +47,9 @@ export const PATHS = {
   favorites: "favorites",
   // Mark's personal commentary posts (vlog transcripts)
   commentary: "commentary-posts",
+  // Mark's own published YouTube videos — read by the commentary picker so it
+  // does not argue a topic he has already made a video about.
+  youtubeChannel: "youtube-channel",
   // AI-learned editorial preferences (built from approve/reject history)
   learnedPrefs: "editorial-learned-prefs",
   // Per-story SEO title/description overrides for the news prerenderer, keyed by

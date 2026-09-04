@@ -5,6 +5,7 @@ import {
   loadCommentaryDraft,
   saveCommentaryDraft,
   stageWeeklyCommentary,
+  rejectAndRestage,
   synthesizeCommentary,
 } from "../lib/commentary-agent";
 
@@ -324,15 +325,35 @@ router.post("/transcribe", expressJson({ limit: "25mb" }), async (req: Request, 
 // Mark's button press.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// POST /api/commentary/draft — stage this week's ask (cluster + questions)
+// POST /api/commentary/draft — stage this week's ask (one subject story + questions).
+// `subjectId` restages on a story Mark picked himself from the runners-up.
 router.post("/commentary/draft", async (req: Request, res: Response) => {
   if (!checkToken(req)) {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
   try {
-    const notify = (req.body as { notify?: boolean } | undefined)?.notify !== false;
-    const draft = await stageWeeklyCommentary({ notify });
+    const body = req.body as { notify?: boolean; subjectId?: string } | undefined;
+    const notify = body?.notify !== false;
+    const subjectId = body?.subjectId ? String(body.subjectId) : undefined;
+    const draft = await stageWeeklyCommentary({ notify, subjectId });
+    res.json({ success: true, draft });
+  } catch (error) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
+// POST /api/commentary/reject — Mark threw the topic back. Bench it, record why,
+// and write a fresh piece on the next-best topic ("a reject sends the agent back
+// to step one", 9/4).
+router.post("/commentary/reject", async (req: Request, res: Response) => {
+  if (!checkToken(req)) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
+  try {
+    const reason = String((req.body as { reason?: string } | undefined)?.reason ?? "").slice(0, 500);
+    const draft = await rejectAndRestage(reason);
     res.json({ success: true, draft });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
@@ -433,54 +454,105 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
   const active = draft && (draft.status === "awaiting_take" || draft.status === "drafted");
-  const storiesHtml = active
-    ? draft!.stories
-        .map(
-          (s) => `<div class="storyline"><b>${esc(s.title)}</b><br><span class="muted">${esc(
-            s.summary,
-          )}</span>${s.link ? ` <a href="${esc(s.link)}" target="_blank" rel="noopener">source →</a>` : ""}</div>`,
-        )
-        .join("")
-    : "";
+  const storyLine = (s: { title: string; summary: string; link: string }): string =>
+    `<div class="storyline"><b>${esc(s.title)}</b><br><span class="muted">${esc(
+      s.summary,
+    )}</span>${s.link ? ` <a href="${esc(s.link)}" target="_blank" rel="noopener">source →</a>` : ""}</div>`;
 
+  // ONE story is the subject. Anything else on this page is labelled as background the
+  // piece may cite — never as a second thing the commentary is also about (Mark, 9/4:
+  // "it's not a commentary if it is synthesizing multiple ideas, that is a newsletter").
+  const subject = active ? draft!.stories[0] : undefined;
+  const legacyExtras = active ? draft!.stories.slice(1) : [];
+  const background = active ? [...legacyExtras, ...draft!.research] : [];
+  const storiesHtml = subject ? storyLine(subject) : "";
+
+  const backgroundHtml =
+    background.length > 0
+      ? `<details style="margin-top:12px"><summary class="muted small" style="cursor:pointer">Background coverage the piece may cite (${background.length}) — not what it's about</summary>
+         <div style="margin-top:8px">${background.map(storyLine).join("")}</div></details>`
+      : "";
+
+  const alternatesHtml =
+    active && draft!.status === "awaiting_take" && (draft!.alternates ?? []).length > 0
+      ? `<details style="margin-top:12px"><summary class="muted small" style="cursor:pointer">Rather argue a different story?</summary>
+         <div style="margin-top:8px">${draft!
+           .alternates!.map(
+             (s) =>
+               `<div class="storyline"><b>${esc(s.title)}</b><br><span class="muted">${esc(
+                 s.summary,
+               )}</span><br><button class="btn" style="margin-top:8px;padding:7px 14px;font-size:13px" onclick="reSubject(${JSON.stringify(
+                 esc(s.id),
+               )})">Use this story instead</button></div>`,
+           )
+           .join("")}</div></details>`
+      : "";
+
+  // The finished piece leads. Mark's three doors are Approve / Add my thoughts /
+  // Reject (9/4) — his input is an option on a written piece, not a precondition.
+  const traction = subject?.traction;
   const body = !active
-    ? `<p class="muted">No commentary in progress. Stage this week's ask below.</p>
-       <button class="btn" onclick="gen()">Pick this week's stories &amp; ask me</button>`
-    : `
-  <div class="panel">
-    <div class="label">This week's featured stories (${draft!.stories.length})</div>
+    ? `<p class="muted">No commentary in progress.</p>
+       <button class="btn" onclick="gen()">Find this week's topic &amp; write it</button>`
+    : draft!.status !== "drafted"
+      ? `<div class="panel">
+    <div class="label">This week's story</div>
     ${storiesHtml}
-    ${
-      draft!.status === "awaiting_take"
-        ? `<div class="row" style="margin-top:14px">
-      <button class="btn primary" onclick="auto(this)">✅ Approve — write it &amp; publish, no input from me</button>
-      <button class="btn" onclick="document.getElementById('takePanel').style.display='block';this.style.display='none'">✍️ I'll give my take</button>
-      <button class="btn danger" onclick="discard()">❌ Skip this week</button>
-    </div>
-    <p class="muted small" style="margin:8px 0 0">Approve = the agent takes the brand's stance itself (no invented personal stories), publishes EN + ES, and sends you the link.</p>`
-        : ""
-    }
-  </div>
-  <div class="panel" id="takePanel" style="${draft!.status === "drafted" || draft!.markTake ? "" : "display:none"}">
-    <div class="label">Your opinion — the agent asks:</div>
-    <ul>${draft!.questions.map((q) => `<li>${esc(q)}</li>`).join("")}</ul>
-    <textarea id="take" rows="8" placeholder="Give your raw take — opinions, experiences, what you'd tell a client. The agent weaves it for impact (not verbatim) and backs it with facts from the coverage.">${esc(draft!.markTake)}</textarea>
+    <p class="muted small">Staged but not yet written.</p>
     <div class="row">
-      <button class="btn primary" onclick="synth()">${draft!.status === "drafted" ? "Revise take &amp; re-synthesize" : "Write the commentary from my take"}</button>
+      <button class="btn primary" onclick="write(this)">Write it now</button>
       <button class="btn danger" onclick="discard()">Skip this week</button>
     </div>
-  </div>
+  </div>`
+      : `
   ${
-    draft!.status === "drafted"
-      ? `<div class="panel">
-    <div class="label">${draft!.authoredBy === "agent" ? "Agent-written commentary (no take given)" : "Synthesized commentary — review before publishing"}</div>
+    draft!.sensitive
+      ? `<div class="panel" style="border-color:rgba(255,180,80,.55);background:rgba(255,180,80,.10)">
+    <div class="label" style="color:#ffcc80">⚠️ Sensitive subject — read before publishing</div>
+    <p class="muted small" style="margin:0">${esc(draft!.sensitiveWhy || "This topic can hurt a reader personally.")} Autopilot will not publish this one; it needs your call.</p>
+  </div>`
+      : ""
+  }
+  ${
+    (draft!.bannedWords ?? []).length > 0
+      ? `<div class="panel" style="border-color:rgba(255,180,80,.55)">
+    <div class="label" style="color:#ffcc80">Banned word in the draft</div>
+    <p class="muted small" style="margin:0">Found: ${draft!.bannedWords!.map((w) => esc(w)).join(", ")}. Fix the sentence with “Add my thoughts”, or edit after publishing.</p>
+  </div>`
+      : ""
+  }
+  <div class="panel">
+    <div class="label">${draft!.authoredBy === "agent" ? "This week's commentary — written for you" : "Rewritten with your thoughts"}</div>
+    <h2>${esc(draft!.suggestedTitle)}</h2>
+    <div class="body">${draft!.draftHtml}</div>
+    <div class="row">
+      <button class="btn primary" onclick="publish()">✅ Approve as-is — publish EN + ES</button>
+      <button class="btn" onclick="document.getElementById('takePanel').style.display='block';this.scrollIntoView()">✍️ Add my thoughts</button>
+      <button class="btn danger" onclick="reject(this)">❌ Reject — find another topic</button>
+    </div>
+    <p class="muted small">Approve publishes to the Commentary section, Spanish auto-translated, and the piece then feeds the Short. Reject benches this topic for 30 days, records why, and writes a fresh one on the next-best topic.</p>
+  </div>
+
+  <div class="panel">
+    <div class="label">Why this topic</div>
+    ${storiesHtml}
+    ${draft!.subjectReason ? `<p class="muted small" style="margin:10px 0 0"><b>The pick:</b> ${esc(draft!.subjectReason)}</p>` : ""}
+    ${
+      traction
+        ? `<p class="muted small" style="margin:6px 0 0"><b>Traction ${traction.score}/100:</b> ${esc(traction.basis)}</p>`
+        : `<p class="muted small" style="margin:6px 0 0">Traction signals unavailable this run — picked on editorial rank.</p>`
+    }
+    ${
+      (draft!.rejectedThisCycle ?? 0) > 0
+        ? `<p class="muted small" style="margin:6px 0 0">↩︎ ${draft!.rejectedThisCycle} topic(s) rejected this cycle.</p>`
+        : ""
+    }
     ${
       draft!.agentTake
-        ? `<div class="storyline" style="border-left:3px solid #0d3b66;padding-left:10px;margin-bottom:14px">
+        ? `<div class="storyline" style="border-left:3px solid #17a457;padding-left:10px;margin-top:12px">
       <div class="label" style="margin:0 0 6px">The position it argued — judge this first</div>
       <b>${esc(draft!.agentTake.position)}</b>
       <div class="muted small" style="margin-top:6px">
-        <b>Peg:</b> ${esc(draft!.agentTake.peg_story_title)}<br>
         <b>Who's wrong:</b> ${esc(draft!.agentTake.whos_wrong)}<br>
         <b>What should change:</b> ${esc(draft!.agentTake.what_should_change)}
       </div>
@@ -489,22 +561,25 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
     }
     ${
       draft!.factCheck && draft!.factCheck.length > 0
-        ? `<p class="muted small" style="margin:0 0 10px">🔍 Fact-check pass repaired ${draft!.factCheck.length} unsupported claim(s) before this draft was stored: ${draft!.factCheck
+        ? `<p class="muted small" style="margin:10px 0 0">🔍 Fact-check repaired ${draft!.factCheck.length} unsupported claim(s) before you saw this: ${draft!.factCheck
             .map((f) => esc(f.problem))
             .join(" · ")}</p>`
         : draft!.authoredBy === "agent"
-          ? `<p class="muted small" style="margin:0 0 10px">🔍 Fact-check pass found nothing to repair.</p>`
+          ? `<p class="muted small" style="margin:10px 0 0">🔍 Fact-check found nothing to repair.</p>`
           : ""
     }
-    <h2>${esc(draft!.suggestedTitle)}</h2>
-    <div class="body">${draft!.draftHtml}</div>
+    ${backgroundHtml}
+    ${alternatesHtml}
+  </div>
+
+  <div class="panel" id="takePanel" style="${draft!.markTake ? "" : "display:none"}">
+    <div class="label">Your thoughts — they become the spine, the piece gets rewritten around them</div>
+    ${draft!.questions.length > 0 ? `<p class="muted small" style="margin:0 0 8px">If it helps: ${draft!.questions.map((q) => esc(q)).join(" · ")}</p>` : ""}
+    <textarea id="take" rows="8" placeholder="Your raw take — opinions, experiences, what you'd tell a client. Rough is fine; it gets woven for impact, not quoted verbatim.">${esc(draft!.markTake)}</textarea>
     <div class="row">
-      <button class="btn primary" onclick="publish()">Publish to site</button>
+      <button class="btn primary" onclick="synth()">Rewrite with my thoughts</button>
     </div>
-    <p class="muted small">Publish posts to the Commentary section (Spanish auto-translated). Nothing posts without this button. The published piece then feeds the Short.</p>
-  </div>`
-      : ""
-  }`;
+  </div>`;
 
   res.setHeader("content-type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
@@ -535,22 +610,27 @@ async function call(path, payload){
   return true;
 }
 async function gen(){ if(await call("/api/commentary/draft",{notify:false})) location.reload(); }
+async function write(btn){ btn.disabled=true; btn.textContent="Writing…";
+  if(await call("/api/commentary/synthesize",{autonomous:true})) location.reload(); else btn.disabled=false; }
+async function reSubject(id){
+  if(!confirm("Write this week's commentary on that story instead?"))return;
+  if(await call("/api/commentary/draft",{notify:false,subjectId:id})) location.reload();
+}
+async function reject(btn){
+  const reason=prompt("Reject this topic — why? (helps the picker learn)","");
+  if(reason===null)return;
+  btn.disabled=true; btn.textContent="Finding another topic…";
+  if(await call("/api/commentary/reject",{reason})) location.reload();
+  else { btn.disabled=false; btn.textContent="❌ Reject — find another topic"; }
+}
 async function synth(){
   const take=document.getElementById("take").value.trim();
-  if(!take){alert("Type your take first — that's the whole point!");return}
-  const btn=event.target; btn.disabled=true; btn.textContent="Synthesizing…";
+  if(!take){alert("Add your thoughts first, or just approve the piece as-is.");return}
+  const btn=event.target; btn.disabled=true; btn.textContent="Rewriting…";
   if(await call("/api/commentary/synthesize",{take})) location.reload(); else {btn.disabled=false;}
 }
-async function auto(btn){
-  if(!confirm("The agent writes this week's commentary itself and publishes EN + ES. Go?"))return;
-  btn.disabled=true; btn.textContent="Writing & publishing…";
-  if(await call("/api/commentary/synthesize",{autonomous:true})
-     && await call("/api/commentary/publish-draft")){
-    alert("Published — link is on the commentary page."); location.reload();
-  } else { btn.disabled=false; btn.textContent="✅ Approve — write it & publish, no input from me"; }
-}
 async function publish(){
-  if(!confirm("Publish this commentary to the website?"))return;
+  if(!confirm("Publish this commentary to the website (EN + ES)?"))return;
   if(await call("/api/commentary/publish-draft")) { alert("Published!"); location.reload(); }
 }
 async function discard(){ if(confirm("Skip this week?") && await call("/api/commentary/draft/discard")) location.reload(); }
