@@ -516,8 +516,8 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
   ${
     (draft!.bannedWords ?? []).length > 0
       ? `<div class="panel" style="border-color:rgba(255,180,80,.55)">
-    <div class="label" style="color:#ffcc80">Banned word in the draft</div>
-    <p class="muted small" style="margin:0">Found: ${draft!.bannedWords!.map((w) => esc(w)).join(", ")}. Fix the sentence with “Add my thoughts”, or edit after publishing.</p>
+    <div class="label" style="color:#ffcc80">Banned words scrubbed</div>
+    <p class="muted small" style="margin:0">Removed before you saw this: ${draft!.bannedWords!.map((w) => esc(w)).join(", ")}. Worth a glance that the sentence still reads right.</p>
   </div>`
       : ""
   }

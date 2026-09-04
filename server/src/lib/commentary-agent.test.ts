@@ -20,6 +20,7 @@ import {
   acceptRepair,
   isRealRepair,
   findBannedWords,
+  scrubBannedWords,
   rankCommentaryCandidates,
   relatedCoverage,
   alreadyCovered,
@@ -402,4 +403,72 @@ test("attribution is exempted from the leave-opinions-alone guard", () => {
   assert.match(FACTCHECK_PROMPT, /ATTRIBUTION IS ALWAYS A FACT,\s+NEVER\s+FRAMING/);
   assert.match(FACTCHECK_PROMPT, /rhetorical question/);
   assert.match(FACTCHECK_PROMPT, /would be\s+running anyway/);
+});
+
+// ── banned words are removed, not just reported ──────────────────────────────
+// Mark, 2026-09-04: "the banned words should be scrubbed." Flagging was not
+// enough — the writer reached for "actually" in 3 of 5 real runs despite an
+// explicit prompt ban. Prompt rules decay; this pass does not.
+
+test("the word is removed and the sentence still reads", () => {
+  const { text, removed } = scrubBannedWords("<p>until somebody actually publishes something</p>");
+  assert.equal(text, "<p>until somebody publishes something</p>");
+  assert.deepEqual(removed, ["actually"]);
+});
+
+test("a sentence that opened with the word is re-capitalised", () => {
+  const { text } = scrubBannedWords("<p>Actually, the ban is theater. Genuinely nobody checks.</p>");
+  assert.equal(text, "<p>The ban is theater. Nobody checks.</p>");
+});
+
+test("a mid-sentence parenthetical collapses to a single comma", () => {
+  const { text } = scrubBannedWords("<p>The score, actually, tells you nothing.</p>");
+  assert.equal(text, "<p>The score, tells you nothing.</p>");
+});
+
+test("a tag splitting a sentence does not get capitalised mid-flow", () => {
+  // Regression: capitalising every text node turned "The real issue" into
+  // "The real Issue" whenever markup interrupted the sentence.
+  const original = "<p>The <em>real</em> issue is the ban.</p>";
+  assert.equal(scrubBannedWords(original).text, original);
+});
+
+test("markup is never touched", () => {
+  const { text } = scrubBannedWords('<p class="actually">actually fine</p>');
+  assert.match(text, /class="actually"/, "attribute must survive");
+  assert.match(text, />Fine</, "text must be scrubbed and re-capitalised");
+});
+
+test("a word merely containing a banned word survives", () => {
+  const { text, removed } = scrubBannedWords("<p>The factuality held up.</p>");
+  assert.equal(text, "<p>The factuality held up.</p>");
+  assert.deepEqual(removed, []);
+});
+
+test("clean copy is returned byte-identical", () => {
+  const original = "<p>Eleven arrests in one day is a pattern.</p>";
+  const { text, removed } = scrubBannedWords(original);
+  assert.equal(text, original);
+  assert.deepEqual(removed, []);
+});
+
+test("a bare title with no markup is scrubbed too", () => {
+  const { text } = scrubBannedWords("Actually a Good Title");
+  assert.equal(text, "A Good Title");
+});
+
+test("scrubbed output no longer trips the detector", () => {
+  const { text } = scrubBannedWords("<p>It is actually genuinely wrong.</p>");
+  assert.deepEqual(findBannedWords(text), []);
+});
+
+test("verification covers Mark's own take, exempting only lived experience", () => {
+  // The take path used to skip verification entirely, on the reasoning that his
+  // experience is unsourced. But a take also carries checkable claims — a real one
+  // asserted themed sailings are "chartered by outside promoters, not the line",
+  // which search shows is only sometimes true. Exempt the memory, check the facts.
+  assert.match(FACTCHECK_PROMPT, /marks_own_take/);
+  assert.match(FACTCHECK_PROMPT, /LIVED\s+EXPERIENCE is not checkable and is exempt/);
+  assert.match(FACTCHECK_PROMPT, /His FACTUAL claims are not exempt/);
+  assert.match(FACTCHECK_PROMPT, /Never "correct" his opinion/);
 });

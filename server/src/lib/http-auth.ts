@@ -8,8 +8,19 @@ import type { Request, Response, NextFunction } from "express";
 //   • editorial approval EMAIL links → `?token=<token>` query param
 //
 // All three are accepted. The expected value is AGENT_APPROVAL_TOKEN from the
-// shared env. If that env var is unset (e.g. local dev), auth is open so the
-// dashboard still works without a configured secret.
+// shared env.
+//
+// FAILS CLOSED (2026-09-04). This used to `return true` when AGENT_APPROVAL_TOKEN
+// was unset, "so local dev works without a secret" — which meant a single missing
+// env var silently opened every admin and PII endpoint on an internet-facing box:
+// 103 call sites across 17 route files, no error, no alert. The hazard is not
+// theoretical — `pm2 restart --update-env` replaces the process env from the
+// calling shell and can drop variables, which is exactly why that flag is banned
+// in the secret-rotation runbook, and the dev deploy still uses it.
+//
+// A missing secret now denies instead of admitting. To run locally without one,
+// set AGENT_APPROVAL_TOKEN to any value — an explicit dev token is a one-line
+// export, an accidentally-open production box is not recoverable.
 
 export function extractToken(req: Request): string {
   const header = req.headers["x-affiliate-token"];
@@ -24,9 +35,22 @@ export function extractToken(req: Request): string {
   return "";
 }
 
+let warnedMissingToken = false;
+
 export function tokenOk(req: Request): boolean {
   const expected = process.env["AGENT_APPROVAL_TOKEN"];
-  if (!expected) return true; // no token configured → open (dev)
+  if (!expected) {
+    // Loud once, not per request — a flood would bury it in the same logs someone
+    // would be reading to work out why everything is 401ing.
+    if (!warnedMissingToken) {
+      warnedMissingToken = true;
+      console.error(
+        "[auth] AGENT_APPROVAL_TOKEN is not set — DENYING all token-gated requests. " +
+          "Set it in /opt/stillafloat/shared.env and restart.",
+      );
+    }
+    return false;
+  }
   return extractToken(req) === expected;
 }
 
