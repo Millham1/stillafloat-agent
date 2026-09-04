@@ -669,7 +669,10 @@ export async function claudeJsonSearch(
   user: string,
   schema: Record<string, unknown>,
   maxTokens = 4000,
-  maxSearches = 8,
+  // Each search is a round trip AND more context to reason over, so this is the
+  // main driver of wall-clock. Five is enough to check the load-bearing claims in
+  // a 500-word piece; eight pushed a real run past five minutes.
+  maxSearches = 5,
 ): Promise<Record<string, unknown>> {
   const apiKey = process.env["ANTHROPIC_API_KEY"] || "";
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
@@ -693,7 +696,13 @@ export async function claudeJsonSearch(
         output_config: { format: { type: "json_schema", schema } },
         messages,
       }),
-      signal: AbortSignal.timeout(300_000),
+      // Twelve minutes. This one call does the searching AND rewrites the whole
+      // body, so it is nothing like the other model calls: a real run took 5m44s
+      // and was killed by a 5-minute abort, which then read as "verification
+      // unavailable" rather than "we did not wait long enough". Nothing waits on
+      // this interactively except the review page's own spinner, and the weekly
+      // cron does not care.
+      signal: AbortSignal.timeout(720_000),
     });
 
     const payload = (await response.json()) as {
@@ -1520,8 +1529,17 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
         );
         draft.verifiedBy = "search";
       } catch (error) {
+        const why = (error as Error).message;
         logger.warn(
-          { err: (error as Error).message },
+          {
+            err: why,
+            // Name the likely lever so the next person does not re-diagnose it.
+            hint: /timeout|aborted/i.test(why)
+              ? "raise the claudeJsonSearch timeout or lower maxSearches"
+              : /max_tokens/i.test(why)
+                ? "raise maxTokens for the verify call"
+                : undefined,
+          },
           "Commentary: search-backed verification failed — falling back to sources-only check",
         );
         checked = await opinionJson(
