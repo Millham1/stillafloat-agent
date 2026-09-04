@@ -97,6 +97,11 @@ export interface CommentaryDraft {
   // What the verifier actually looked up. Shown to Mark so "fact-checked" is a
   // claim he can audit rather than one he has to take on faith.
   searched?: string[];
+  // WHICH verifier ran. Without this, a silent fallback to the sources-only check
+  // looks identical to a search that found nothing — and Mark reads both as
+  // "fact-checked". Same failure the YouTube signal had: unmeasured must never
+  // render as measured-zero.
+  verifiedBy?: "search" | "sources-only" | "failed";
   generatedAt: string;
   draftedAt?: string;
 }
@@ -700,6 +705,13 @@ export async function claudeJsonSearch(
       throw new Error(`Anthropic HTTP ${response.status} ${payload.error?.message ?? ""}`);
     }
     if (payload.stop_reason === "refusal") throw new Error("Anthropic refused the verification");
+    // Searching eats output tokens alongside the JSON body, so this is the
+    // realistic failure — and it surfaced as a bare "no content" until named.
+    if (payload.stop_reason === "max_tokens") {
+      throw new Error(
+        `Verification hit max_tokens (${maxTokens}) — searches plus the rewritten body did not fit`,
+      );
+    }
 
     if (payload.stop_reason === "pause_turn") {
       // Resume: re-send the exchange. No "continue" message — the API sees the
@@ -712,7 +724,12 @@ export async function claudeJsonSearch(
       .filter((b) => b.type === "text")
       .map((b) => b.text ?? "")
       .join("");
-    if (!text.trim()) throw new Error("Verification returned no content");
+    if (!text.trim()) {
+      throw new Error(
+        `Verification returned no text (stop_reason=${payload.stop_reason ?? "none"}, ` +
+          `blocks=${(payload.content ?? []).map((b) => b.type).join("/") || "none"})`,
+      );
+    }
     return JSON.parse(text) as Record<string, unknown>;
   }
   throw new Error(`Verification did not finish within ${MAX_CONTINUATIONS} continuations`);
@@ -1493,12 +1510,15 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
       // degraded check still beats none, and the draft records which one ran.
       let checked: Record<string, unknown>;
       try {
+        // Generous ceiling: the reply carries the searches AND a fully rewritten
+        // 400-550 word body. At 4000 it ran out mid-answer and returned nothing.
         checked = await claudeJsonSearch(
           FACTCHECK_PROMPT,
           verifyInput,
           FACTCHECK_SEARCH_SCHEMA as unknown as Record<string, unknown>,
-          4000,
+          12000,
         );
+        draft.verifiedBy = "search";
       } catch (error) {
         logger.warn(
           { err: (error as Error).message },
@@ -1510,6 +1530,7 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
           FACTCHECK_SCHEMA as unknown as Record<string, unknown>,
           3000,
         );
+        draft.verifiedBy = "sources-only";
       }
       const corrected = String(checked["corrected_body_html"] ?? "");
       const rawFindings = Array.isArray(checked["findings"]) ? checked["findings"] : [];
@@ -1536,11 +1557,16 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
         );
       }
       logger.info(
-        { repaired: findings.length, searched: draft.searched?.length ?? 0 },
+        {
+          verifiedBy: draft.verifiedBy,
+          repaired: findings.length,
+          searched: draft.searched?.length ?? 0,
+        },
         "Commentary verification complete",
       );
     } catch (error) {
       // A failed check must not silently pass an unverified piece through to autopilot.
+      draft.verifiedBy = "failed";
       throw new Error(`Commentary fact-check failed: ${(error as Error).message}`);
     }
   }

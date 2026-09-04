@@ -560,6 +560,13 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
         : ""
     }
     ${
+      draft!.verifiedBy === "sources-only"
+        ? `<p class="muted small" style="margin:10px 0 0;color:#ffcc80">⚠️ Verified against the source articles ONLY — the live web-search check failed on this run. Treat outside-world claims (who runs it, who owns it, industry practice) as unchecked.</p>`
+        : draft!.verifiedBy === "search"
+          ? `<p class="muted small" style="margin:10px 0 0">🔎 Verified against live web search${(draft!.searched ?? []).length > 0 ? ` — ${draft!.searched!.length} lookup(s): ${draft!.searched!.map((q) => esc(q)).join(" · ")}` : ""}</p>`
+          : ""
+    }
+    ${
       draft!.factCheck && draft!.factCheck.length > 0
         ? `<p class="muted small" style="margin:10px 0 0">🔍 Fact-check repaired ${draft!.factCheck.length} unsupported claim(s) before you saw this: ${draft!.factCheck
             .map((f) => esc(f.problem))
