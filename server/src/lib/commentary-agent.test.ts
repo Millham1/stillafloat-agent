@@ -267,3 +267,49 @@ test("Mark's own videos count as covered ground", () => {
 test("an empty archive blocks nothing", () => {
   assert.equal(alreadyCovered({ title: "Carnival Loyalty Overhaul Starts Tomorrow" }, []), null);
 });
+
+// Regression: the covered-topics matcher read the wrong body field.
+//
+// loadCoveredTopics() guessed body_html/bodyHtml/body; prod stores `body_en`. Every
+// post therefore contributed an EMPTY body and matching fell back to title + tags.
+// It passed review because the test fixture had been hand-built from title + tags,
+// so nothing ever exercised the body path — the fixture encoded the same wrong
+// assumption as the code. These use the real shape from prod.
+
+const REAL_POST = {
+  id: "19029f2e",
+  title: "Cruising: A Good Time Gone Wrong",
+  tags: ["Cruise Safety", "Cruising Etiquette"],
+  body_en:
+    "<p>Six passengers were fined in Nassau after a brawl on the pier, and sixteen more were " +
+    "banned by the line. A lifetime ban decided by one officer is not accountability.</p>",
+};
+
+test("the body of a published commentary is actually read", () => {
+  // Title and tags share nothing distinctive with this headline — only the body does.
+  const covered = [
+    {
+      label: `commentary "${REAL_POST.title}"`,
+      text: `${REAL_POST.title} ${REAL_POST.tags.join(" ")} ${REAL_POST.body_en.replace(/<[^>]+>/g, " ")}`,
+    },
+  ];
+  const hit = alreadyCovered(
+    { title: "Nassau Brawl Fines Climb as Lines Weigh Lifetime Bans" },
+    covered,
+  );
+  assert.ok(hit, "a topic already argued in the body must be caught");
+});
+
+test("title-and-tags-only matching would have missed it", () => {
+  // Pins WHY the field name matters: with an empty body this returns null.
+  const titleAndTagsOnly = [
+    {
+      label: `commentary "${REAL_POST.title}"`,
+      text: `${REAL_POST.title} ${REAL_POST.tags.join(" ")}`,
+    },
+  ];
+  assert.equal(
+    alreadyCovered({ title: "Nassau Brawl Fines Climb as Lines Weigh Lifetime Bans" }, titleAndTagsOnly),
+    null,
+  );
+});

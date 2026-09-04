@@ -180,10 +180,14 @@ export async function loadCoveredTopics(): Promise<CoveredTopic[]> {
   });
   for (const post of posts.posts ?? []) {
     const tags = Array.isArray(post["tags"]) ? post["tags"].map(String).join(" ") : "";
-    const body = String(post["body_html"] ?? post["bodyHtml"] ?? post["body"] ?? "").replace(
-      /<[^>]+>/g,
-      " ",
-    );
+    // The stored field is `body_en` (verified against prod's commentary-posts,
+    // 2026-09-04). An earlier guess at body_html/bodyHtml/body read undefined on
+    // every post, so this matched on title + tags alone — and the bug survived its
+    // own test because the fixture had been built from title + tags too. The
+    // alternatives stay as a fallback, but body_en is the real one.
+    const body = String(
+      post["body_en"] ?? post["body_html"] ?? post["bodyHtml"] ?? post["body"] ?? "",
+    ).replace(/<[^>]+>/g, " ");
     covered.push({
       label: `commentary “${String(post["title"] ?? "")}”`,
       // The body is long; its opening carries the subject and the rest adds noise.
