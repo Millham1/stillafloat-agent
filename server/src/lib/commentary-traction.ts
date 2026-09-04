@@ -86,35 +86,64 @@ const normalize = (w: string): string => w.toLowerCase().replace(/s$/, "");
  *
  * Without a pool to compare against, falls back to proper nouns.
  */
-export function topicPhrase(title: string, pool: Array<Record<string, unknown>> = []): string {
+/**
+ * The headline's content words with the week's hyper-common ones removed, in
+ * headline order and original casing. Brands are always kept.
+ */
+function keptTokens(title: string, pool: Array<Record<string, unknown>>): string[] {
   const tokens = contentTokens(title);
-  if (tokens.length === 0) return "";
+  if (tokens.length === 0 || pool.length === 0) return tokens;
 
-  if (pool.length > 0) {
-    const df = new Map<string, number>();
-    for (const s of pool) {
-      // Same tokenizer as the phrase, so every word the phrase can pick has a
-      // frequency. Set semantics: a word repeated in one headline counts once.
-      for (const w of new Set(contentTokens(String(s["title"] ?? "")).map(normalize))) {
-        df.set(w, (df.get(w) ?? 0) + 1);
-      }
+  const df = new Map<string, number>();
+  for (const s of pool) {
+    for (const w of new Set(contentTokens(String(s["title"] ?? "")).map(normalize))) {
+      df.set(w, (df.get(w) ?? 0) + 1);
     }
-    // Drop only the words that say nothing because they are everywhere this week
-    // ("cruise", "ship", and whichever line is dominating the news), then keep
-    // headline order. Ranking purely by rarity over-corrects — it discards the
-    // brand, and "Carnival Loyalty" is the query a viewer would actually type
-    // while "Shakeup History Tomorrow" is not.
-    const common = Math.max(3, Math.ceil(pool.length * 0.2));
-    const kept = tokens.filter(
-      (w) => BRANDS.has(normalize(w)) || (df.get(normalize(w)) ?? 1) <= common,
-    );
-    // If a headline is nothing but common words, rarity is all we have left.
-    const usable = kept.length >= 2 ? kept : tokens;
-    return usable.slice(0, 3).join(" ");
   }
+  // Drop only the words that say nothing because they are everywhere this week
+  // ("cruise", "ship"). Ranking purely by rarity over-corrects — it discards the
+  // brand, and "Carnival Loyalty" is the query a viewer would type while
+  // "Shakeup History Tomorrow" is not.
+  const common = Math.max(3, Math.ceil(pool.length * 0.2));
+  const kept = tokens.filter(
+    (w) => BRANDS.has(normalize(w)) || (df.get(normalize(w)) ?? 1) <= common,
+  );
+  // A headline of nothing but common words still has to yield something.
+  return kept.length >= 2 ? kept : tokens;
+}
 
-  const proper = tokens.filter((w) => /^[A-Z]/.test(w));
-  return (proper.length >= 2 ? proper : tokens).slice(0, 3).join(" ");
+/**
+ * EVERY distinctive word in the headline, normalised for comparison.
+ *
+ * Distinct from topicPhrase, and the distinction matters: a search QUERY wants
+ * three words or it returns nothing, while TOPIC MATCHING wants all of them.
+ * Reusing the 3-word phrase for the already-covered check made it miss "Should
+ * Cruise Lines Share Banned-For-Life Lists" against a commentary whose body says
+ * "a growing debate about whether cruise lines should share banned lists" — the
+ * phrase had been trimmed to "Fights Become Common", throwing away every word
+ * that identified the topic.
+ */
+export function distinctiveWords(
+  title: string,
+  pool: Array<Record<string, unknown>> = [],
+): string[] {
+  return [...new Set(keptTokens(title, pool).map(normalize))].filter((w) => w.length > 3);
+}
+
+/**
+ * A short, searchable phrase for the story: its three most distinctive words, in
+ * headline order.
+ *
+ * Picking the first few capitalised words does not work — cruise headlines are
+ * Title Case, so "Royal Caribbean Confirms Labadee Cancellations" yields "Royal
+ * Caribbean Confirms", which searches the verb and misses the subject.
+ */
+export function topicPhrase(title: string, pool: Array<Record<string, unknown>> = []): string {
+  const kept = keptTokens(title, pool);
+  if (kept.length === 0) return "";
+  if (pool.length > 0) return kept.slice(0, 3).join(" ");
+  const proper = kept.filter((w) => /^[A-Z]/.test(w));
+  return (proper.length >= 2 ? proper : kept).slice(0, 3).join(" ");
 }
 
 // Words that place a query inside cruising. Without one of these the search

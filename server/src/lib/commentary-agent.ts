@@ -1,7 +1,7 @@
 import { logger } from "./logger";
 import { PATHS, getSupabase, readJson, writeJson } from "./persistence";
 import { notifyMark, reviewUrl } from "./notify";
-import { scoreCandidate, topicPhrase, type TractionSignals } from "./commentary-traction";
+import { scoreCandidate, distinctiveWords, type TractionSignals } from "./commentary-traction";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMMENTARY AGENT — Mark's loop, as he specified it on 2026-09-04:
@@ -222,13 +222,10 @@ export function alreadyCovered(
   covered: CoveredTopic[],
   pool: Array<Record<string, unknown>> = [],
 ): CoveredTopic | null {
-  const distinctive = new Set(
-    topicPhrase(String(story["title"] ?? ""), pool)
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((w) => w.length > 3),
-  );
-  // Fall back to the headline's own content words when no phrase could be built.
+  // ALL the headline's distinctive words, not the 3-word search phrase — the
+  // phrase is trimmed for querying and throws away the words that identify the
+  // topic (see distinctiveWords).
+  const distinctive = new Set(distinctiveWords(String(story["title"] ?? ""), pool));
   if (distinctive.size < 2) {
     for (const w of keywords(String(story["title"] ?? ""))) distinctive.add(w);
   }

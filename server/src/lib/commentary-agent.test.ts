@@ -313,3 +313,44 @@ test("title-and-tags-only matching would have missed it", () => {
     null,
   );
 });
+
+// Regression: matching used the 3-word SEARCH phrase instead of every distinctive
+// word, so it missed the exact repeat it exists to prevent. Caught on dev
+// (2026-09-04): the picker chose "Should Cruise Lines Share Banned-For-Life Lists"
+// while "Cruising: A Good Time Gone Wrong" already argued that debate — the phrase
+// had been trimmed to "Fights Become Common", discarding banned/life/lists/share.
+
+const FIGHTS_COMMENTARY = [
+  {
+    label: 'commentary "Cruising: A Good Time Gone Wrong"',
+    text:
+      "Cruising: A Good Time Gone Wrong Cruise Safety Cruising Etiquette " +
+      "the recent brawl in Nassau where six American passengers racked up over $52,000 in fines. " +
+      "look at the 16 Carnival cruisers who found themselves banned for life after a brawl in the " +
+      "customs line. There has been a growing debate about whether cruise lines should share banned lists.",
+  },
+];
+
+test("the ban-list debate is caught even though the query phrase would miss it", () => {
+  const hit = alreadyCovered(
+    { title: "As Fights Become More Common, Should Cruise Lines Share Banned-For-Life Lists" },
+    FIGHTS_COMMENTARY,
+  );
+  assert.ok(hit, "already-argued ban-list debate must be skipped");
+});
+
+test("widening to all distinctive words did not make it match everything", () => {
+  // Still must NOT collide: different subject, only generic cruise words in common.
+  assert.equal(
+    alreadyCovered({ title: "Norwegian Prima Probes Legionnaires Cases After CDC Score" }, FIGHTS_COMMENTARY),
+    null,
+  );
+  assert.equal(
+    alreadyCovered({ title: "Greenland Urges Ships to Avoid Certain Fjords" }, FIGHTS_COMMENTARY),
+    null,
+  );
+  assert.equal(
+    alreadyCovered({ title: "MSC World Europa Pulled From Middle East Deployment" }, FIGHTS_COMMENTARY),
+    null,
+  );
+});
