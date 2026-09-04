@@ -112,12 +112,13 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         with:
           host: 178.156.154.144
           username: root
           key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
           command_timeout: 20m
-          envs: DEV_DATABASE_URL
+          envs: DEV_DATABASE_URL,YOUTUBE_API_KEY
           script: |
             set -e
             export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -153,6 +154,17 @@ jobs:
               cp /root/stillafloat-newsagent/.env "$SHARED" 2>/dev/null || true
             fi
             chmod 600 "$SHARED" 2>/dev/null || true
+            # Mirror prod: publish the YouTube Data API key into the shared env.
+            # Dev was missing it entirely (2026-09-04), so anything reading YouTube
+            # silently degraded on dev only — the commentary agent's traction signal
+            # would have scored every topic on outlet pickup alone and dev would not
+            # have been testing what prod runs. Upsert; no-op if the secret is unset.
+            if [ -n "${YOUTUBE_API_KEY}" ]; then
+              grep -vE '^YOUTUBE_API_KEY=' "$SHARED" > "$SHARED.tmp" 2>/dev/null || true
+              echo "YOUTUBE_API_KEY=${YOUTUBE_API_KEY}" >> "$SHARED.tmp"
+              mv "$SHARED.tmp" "$SHARED"
+              chmod 600 "$SHARED"
+            fi
             while IFS= read -r line; do
               case "$line" in ''|\#*) continue;; esac
               export "${line%%=*}=${line#*=}"
