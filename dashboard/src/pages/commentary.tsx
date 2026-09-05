@@ -4,9 +4,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   MessageSquare, Plus, Pencil, Trash2, EyeOff, Eye,
   Mic, Languages, Loader2, X, Tag, Youtube, Image,
+  ExternalLink, Sparkles,
 } from "lucide-react";
 
-import { authHeaders } from "@/lib/auth-token";
+import { authHeaders, getStoredToken } from "@/lib/auth-token";
 
 const API = "";
 
@@ -22,6 +23,50 @@ interface CommentaryPost {
   updated_at: string;
   videoUrl?: string;
   imageUrl?: string;
+}
+
+// The weekly agent's draft lives on its own token-gated review page, not in this
+// CMS list — so before this banner existed the only way to reach it was the push
+// notification or a saved link. Mark, 2026-09-04: "it doesn't do me any good if I
+// can't reach it regularly, i need a button on the commentary page."
+interface WeeklyDraft {
+  status?: "awaiting_take" | "drafted" | "published" | "discarded";
+  suggestedTitle?: string;
+  stories?: { title: string; traction?: { score?: number; basis?: string } }[];
+  verifiedBy?: "search" | "sources-only" | "failed";
+  skippedAsCovered?: unknown[];
+  generatedAt?: string;
+}
+interface DraftState {
+  draft: WeeklyDraft | null;
+  busy?: boolean;
+  kind?: string;
+  runningSeconds?: number;
+  lastError?: string;
+}
+
+async function fetchWeeklyDraft(): Promise<DraftState> {
+  const res = await fetch(`${API}/api/commentary/draft`, { headers: { ...authHeaders() } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as DraftState;
+}
+
+/** Plain-text preview. Slicing body_en raw showed tag soup in the list — any post
+ *  whose body opens with a styled tag rendered as `<p style="font-weight:700;color…`
+ *  instead of its first sentence. */
+function excerpt(html: string | undefined, max: number): string {
+  const text = (html || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&middot;/g, "·")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
 // ── API helpers ────────────────────────────────────────────────────────────
@@ -254,6 +299,21 @@ export default function CommentaryManager() {
   const saving = createMutation.isPending || updateMutation.isPending;
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  // Poll while a run is in flight so the banner reflects reality without a refresh;
+  // idle it back to a minute otherwise.
+  const { data: weekly } = useQuery<DraftState>({
+    queryKey: ["commentary-weekly-draft"],
+    queryFn: fetchWeeklyDraft,
+    refetchInterval: (q) => (q.state.data?.busy ? 5000 : 60000),
+    retry: false,
+  });
+
+  const reviewUrl = `/api/commentary/review?token=${encodeURIComponent(getStoredToken())}`;
+  const wd = weekly?.draft;
+  const hasDraft = !!wd && (wd.status === "awaiting_take" || wd.status === "drafted");
+  const subject = wd?.stories?.[0];
+  const traction = subject?.traction?.score;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -272,6 +332,73 @@ export default function CommentaryManager() {
           New Post
         </button>
       </div>
+
+      {/* This week's agent draft — the CMS list below only shows PUBLISHED posts, so
+          without this the pending draft is invisible from the dashboard. */}
+      {weekly?.busy ? (
+        <div className="mb-6 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 flex items-center gap-3">
+          <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
+          <div className="text-sm">
+            <div className="font-semibold">The commentary agent is working…</div>
+            <div className="text-muted-foreground">
+              {weekly.kind === "reject" ? "Finding another topic and writing it" :
+               weekly.kind === "rewrite" ? "Rewriting around your thoughts" :
+               "Picking this week's topic and writing it"}
+              {typeof weekly.runningSeconds === "number" ? ` — ${weekly.runningSeconds}s elapsed` : ""}.
+              {" "}Takes 2–6 minutes; it keeps running if you leave this page.
+            </div>
+          </div>
+        </div>
+      ) : hasDraft ? (
+        <div className="mb-6 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 flex items-start gap-3">
+          <Sparkles className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm">
+              {wd?.status === "drafted"
+                ? "This week's commentary is written and waiting for you"
+                : "This week's topic is picked — not written yet"}
+            </div>
+            <div className="text-sm text-muted-foreground truncate">
+              {wd?.suggestedTitle || subject?.title || "Untitled"}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3">
+              {typeof traction === "number" && <span>Traction {traction}/100</span>}
+              {wd?.verifiedBy === "search" && <span>🔎 verified against live search</span>}
+              {wd?.verifiedBy === "sources-only" && <span className="text-amber-400">⚠️ sources-only — web check failed</span>}
+              {!!wd?.skippedAsCovered?.length && <span>{wd.skippedAsCovered.length} already-argued topic(s) skipped</span>}
+            </div>
+          </div>
+          <a
+            href={reviewUrl}
+            target="_blank"
+            rel="noopener"
+            className="flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors shrink-0"
+          >
+            Review &amp; publish
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        </div>
+      ) : weekly?.lastError ? (
+        <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm">
+          <div className="font-semibold">The last commentary run failed</div>
+          <div className="text-muted-foreground">{weekly.lastError}</div>
+        </div>
+      ) : (
+        <div className="mb-6 rounded-lg border border-border bg-muted/30 px-4 py-3 flex items-center justify-between gap-3">
+          <div className="text-sm text-muted-foreground">
+            No commentary draft waiting. The agent picks a topic and writes it every <strong>Tuesday at 9am ET</strong>.
+          </div>
+          <a
+            href={reviewUrl}
+            target="_blank"
+            rel="noopener"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border hover:bg-muted text-sm shrink-0"
+          >
+            Open review page
+            <ExternalLink className="w-4 h-4" />
+          </a>
+        </div>
+      )}
 
       {/* Posts list */}
       {isLoading ? (
@@ -303,7 +430,7 @@ export default function CommentaryManager() {
                   <td className="px-4 py-3 font-medium max-w-[260px]">
                     <div className="truncate">{post.title}</div>
                     <div className="text-xs text-muted-foreground truncate mt-0.5">
-                      {post.body_en?.slice(0, 80)}{post.body_en?.length > 80 ? "…" : ""}
+                      {excerpt(post.body_en, 80)}
                     </div>
                   </td>
                   <td className="px-4 py-3">
