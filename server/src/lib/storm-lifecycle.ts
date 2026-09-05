@@ -1,14 +1,20 @@
 // storm-lifecycle.ts — the storm's life after the first alert (Mark's design
-// 2026-07-22, task 3c349235 follow-on):
+// 2026-07-22, task 3c349235 follow-on; course-change detection rebuilt 2026-09-05):
 //
 //   • impacted ships (date+itinerary matched) are pinned to the alert and
 //     AIS-tracked for the storm's lifetime — even ships outside the normal
 //     tracked set (ship-tracker rank-0 storm priority);
-//   • AIS destination changes on those ships raise an action on the alert —
-//     cruise-line behavior is an update trigger, like NHC upgrades;
+//   • REAL course changes on those ships — a mid-leg re-route, a port the ship
+//     never calls at, or a swapped port order during a named storm — raise ONE
+//     event per ship movement (not one per storm: a ship sits in several
+//     storms' grounds at once), with operator/news intel attached and a
+//     three-way nudge: Publish / Open storm dashboard / Ignore. Scheduled port
+//     rotation is NOT a course change — storm-diversion.ts carries the
+//     22-for-22 false-positive history that forced this rebuild;
 //   • when the storm is dead (gone from a HEALTHY feed for 3 consecutive
-//     scans) the alert ends: it drops off the website automatically, ship
-//     tracking releases, and — for alerts that were approved/sent — an
+//     scans) the alert ends on its own: it drops off the website, its ship
+//     pins are released (other live storms keep theirs), its open course-change
+//     nudges are dismissed, and — for alerts that were approved/sent — an
 //     all-clear email is drafted for Mark's one-click approval. Nothing is
 //     ever sent to subscribers without his approval.
 //
@@ -17,15 +23,18 @@
 
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
-import { createAction, resolveActionsForSource } from "./actions";
-import { sailingsForStorm, deploymentsForStorm, defaultWindow } from "./storm-sailings";
+import { resolveActionsForSource, createAction } from "./actions";
+import { sailingsForStorm, deploymentsForStorm, defaultWindow, type Sailing } from "./storm-sailings";
 import { severityRank } from "./storm-escalation";
-import { setStormShips, mmsiForShip, getPosition } from "./ship-tracker";
+import { setStormShips, mmsiForShip, getPosition, trackerObservedSince } from "./ship-tracker";
 import { labelGrounds } from "./storm-grounds";
-import { portBySlug } from "./ports";
+import { portBySlug, CRUISE_LOCATIONS } from "./ports";
+import { classifyDestinationChange, EVENT_KINDS, type ChangeKind } from "./storm-diversion";
+import { recordDiversionEvents, releaseAlertDiversions, type PendingDiversion } from "./storm-diversion-events";
 import type { SystemsSnapshot } from "./storm-source";
 
 export const MISSING_SCANS_TO_END = 3;
+const MAX_CHANGES_KEPT = 60;
 
 // ── Pure decision helpers ────────────────────────────────────────────────────
 
@@ -54,21 +63,6 @@ export function judgeDeath(a: LifecycleAlertState, seenNow: boolean, sourceHealt
   return { kind: "end", allClear: a.approved_at !== null };
 }
 
-export interface DiversionPlan {
-  newBaseline: string | null;
-  change: { from: string; to: string } | null;
-}
-
-/** Baseline semantics match the WMS watch checks: first sighting sets the
- *  baseline (not a change); a different declared destination after that is a
- *  diversion. */
-export function planDiversion(baseline: string | null, currentSlug: string | null): DiversionPlan {
-  if (!currentSlug) return { newBaseline: baseline, change: null };
-  if (!baseline) return { newBaseline: currentSlug, change: null };
-  if (baseline === currentSlug) return { newBaseline: currentSlug, change: null };
-  return { newBaseline: currentSlug, change: { from: baseline, to: currentSlug } };
-}
-
 /** Deterministic all-clear draft — Mark edits surgically before approving,
  *  so this is a plain honest template, not an AI roll. */
 export function draftAllClear(a: { name: string | null; classification: string | null; affected_grounds: string[] }): { headline: string; body_md: string } {
@@ -82,6 +76,14 @@ export function draftAllClear(a: { name: string | null; classification: string |
       `your cruise line has the final word on any remaining changes, so keep an eye on their app for your specific sailing.\n\n` +
       `Thanks for riding it out with us. We watch the tropics year-round, and if anything new spins up, you'll hear from us. Until then — smooth sailing.`,
   };
+}
+
+/** Slug for a port named the way `sailings.depart_port` / deployments name it. */
+export function portSlugByName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const n = name.trim().toLowerCase();
+  const hit = CRUISE_LOCATIONS.find((p) => p.name.toLowerCase() === n || p.slug === n);
+  return hit?.slug ?? null;
 }
 
 // ── I/O runner ───────────────────────────────────────────────────────────────
@@ -103,8 +105,11 @@ interface LifecycleRow {
 interface TrackedShipRow {
   id: string;
   ship_name: string;
+  cruise_line: string | null;
+  mmsi: string | null;
   baseline_destination: string | null;
-  changes: { at: string; from: string | null; to: string; raw: string | null }[];
+  baseline_declared_at: string | null;
+  changes: { at: string; from: string | null; to: string; raw: string | null; kind?: ChangeKind; reason?: string }[];
 }
 
 function feedHealthyFor(row: LifecycleRow, snap: SystemsSnapshot): boolean {
@@ -119,9 +124,9 @@ function portName(slug: string): string {
   return portBySlug(slug)?.name ?? slug;
 }
 
-/** Pin impacted ships to the alert and flag AIS diversions. Returns the MMSIs
- *  this alert wants tracked. */
-async function syncTrackedShips(row: LifecycleRow): Promise<string[]> {
+/** Pin impacted ships to the alert and classify AIS destination changes.
+ *  Returns the MMSIs this alert wants tracked plus any REAL course changes. */
+async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; detections: PendingDiversion[] }> {
   const supabase = getSupabase();
   const win = row.window_start && row.window_end
     ? { start: row.window_start, end: row.window_end }
@@ -131,15 +136,16 @@ async function syncTrackedShips(row: LifecycleRow): Promise<string[]> {
   // AIS-derived rows win on conflict (they're date-precise, deployments are seasonal).
   const deployed = await deploymentsForStorm(row.affected_grounds, win.start, win.end);
   const seen = new Set(derived.map((x) => x.ship_name.toLowerCase()));
-  const sailings = derived.concat(deployed.filter((x) => !seen.has(x.ship_name.toLowerCase())));
+  const sailings: Sailing[] = derived.concat(deployed.filter((x) => !seen.has(x.ship_name.toLowerCase())));
 
   const { data: existingData, error: exErr } = await supabase
     .from("storm_tracked_ships")
-    .select("id, ship_name, baseline_destination, changes")
-    .eq("alert_id", row.id);
+    .select("id, ship_name, cruise_line, mmsi, baseline_destination, baseline_declared_at, changes")
+    .eq("alert_id", row.id)
+    .is("released_at", null);
   if (exErr) {
     logger.warn({ err: exErr, alert: row.nhc_id }, "storm-lifecycle: tracked-ships load failed");
-    return [];
+    return { mmsis: [], detections: [] };
   }
   const existing = new Map(
     ((existingData ?? []) as unknown as TrackedShipRow[]).map((s) => [s.ship_name.toLowerCase(), s]),
@@ -159,43 +165,80 @@ async function syncTrackedShips(row: LifecycleRow): Promise<string[]> {
       mmsi: mmsiForShip(sail.ship_name),
     });
     if (error) logger.warn({ err: error, ship: sail.ship_name }, "storm-lifecycle: pin failed");
-    else existing.set(key, { id: "", ship_name: sail.ship_name, baseline_destination: null, changes: [] });
+    else existing.set(key, {
+      id: "", ship_name: sail.ship_name, cruise_line: sail.cruise_line, mmsi: mmsiForShip(sail.ship_name),
+      baseline_destination: null, baseline_declared_at: null, changes: [],
+    });
   }
 
-  // Diversion check on everything pinned to this alert.
-  const diversions: string[] = [];
+  // Course-change check on everything pinned to this alert.
+  const detections: PendingDiversion[] = [];
+  const now = new Date().toISOString();
+  const observedSince = trackerObservedSince();
   for (const ship of existing.values()) {
     const pos = getPosition(ship.ship_name);
-    const plan = planDiversion(ship.baseline_destination, pos?.destinationSlug ?? null);
-    if (plan.newBaseline === ship.baseline_destination && !plan.change) continue;
-    const changes = plan.change
-      ? [...(ship.changes ?? []), { at: new Date().toISOString(), from: plan.change.from, to: plan.change.to, raw: pos?.destinationRaw ?? null }]
+    const key = ship.ship_name.toLowerCase();
+    const knownExtra = sailings
+      .filter((s) => s.ship_name.toLowerCase() === key)
+      .map((s) => portSlugByName(s.depart_port))
+      .filter((s): s is string => Boolean(s));
+    const verdict = classifyDestinationChange({
+      baseline: ship.baseline_destination,
+      baselineDeclaredAt: ship.baseline_declared_at,
+      current: pos?.destinationSlug ?? null,
+      now,
+      inPortSlug: pos?.inPortSlug ?? null,
+      lastPortSlug: pos?.lastPortSlug ?? null,
+      lastPortDepartedAt: pos?.lastPortDepartedAt ?? null,
+      lastPosAt: pos?.lastPosAt ?? null,
+      portCalls: pos?.portCalls ?? [],
+      knownExtra,
+      observedSince,
+    });
+    const baselineMoved = verdict.newBaseline !== ship.baseline_destination;
+    if (!baselineMoved && !verdict.change) continue;
+
+    const changes = verdict.change
+      ? [...(ship.changes ?? []), {
+          at: now, from: verdict.change.from, to: verdict.change.to,
+          raw: pos?.destinationRaw ?? null, kind: verdict.kind, reason: verdict.reason,
+        }].slice(-MAX_CHANGES_KEPT)
       : ship.changes ?? [];
     if (ship.id) {
       const { error } = await supabase.from("storm_tracked_ships")
-        .update({ baseline_destination: plan.newBaseline, changes, updated_at: new Date().toISOString() })
+        .update({
+          baseline_destination: verdict.newBaseline,
+          baseline_declared_at: verdict.newBaselineDeclaredAt,
+          changes,
+          updated_at: now,
+        })
         .eq("id", ship.id);
       if (error) logger.warn({ err: error, ship: ship.ship_name }, "storm-lifecycle: baseline update failed");
     }
-    if (plan.change) diversions.push(`${ship.ship_name}: ${portName(plan.change.from)} → ${portName(plan.change.to)}`);
+    if (verdict.change && EVENT_KINDS.has(verdict.kind)) {
+      detections.push({
+        shipName: ship.ship_name,
+        cruiseLine: ship.cruise_line,
+        mmsi: ship.mmsi ?? mmsiForShip(ship.ship_name),
+        kind: verdict.kind,
+        from: verdict.change.from,
+        to: verdict.change.to,
+        raw: pos?.destinationRaw ?? null,
+        at: now,
+        reason: verdict.reason,
+        alertId: row.id,
+        stormName: row.name ?? row.nhc_id,
+      });
+    } else if (verdict.change) {
+      logger.debug({ alert: row.nhc_id, ship: ship.ship_name, kind: verdict.kind, from: portName(verdict.change.from), to: portName(verdict.change.to) },
+        "storm-lifecycle: destination change, no event");
+    }
   }
 
-  if (diversions.length) {
-    // One pending intel action per alert (createAction dedups on source_ref);
-    // every diversion is also in storm_tracked_ships.changes for the record.
-    await createAction({
-      type: "storm_alert",
-      source_ref: row.id,
-      title: `⚓ Course changes during ${row.name ?? row.nhc_id}`,
-      body: `${diversions.join("\n")}\nAIS-declared destinations changed for ships in this storm's grounds — worth a look at the alert.`,
-      tag: `storm-ships-${row.nhc_id}`,
-    }).catch((err) => logger.warn({ err }, "storm-lifecycle: diversion action failed"));
-    logger.info({ alert: row.nhc_id, diversions }, "storm-lifecycle: diversions flagged");
-  }
-
-  return [...existing.values()]
-    .map((s) => mmsiForShip(s.ship_name))
+  const mmsis = [...existing.values()]
+    .map((s) => s.mmsi ?? mmsiForShip(s.ship_name))
     .filter((m): m is string => Boolean(m));
+  return { mmsis, detections };
 }
 
 async function endAlert(row: LifecycleRow): Promise<void> {
@@ -214,8 +257,10 @@ async function endAlert(row: LifecycleRow): Promise<void> {
     return;
   }
 
-  // Stale review nudges are moot now.
+  // Stale review nudges are moot now; this storm's ship pins and open
+  // course-change nudges release for THIS storm only (Mark 2026-09-05).
   await resolveActionsForSource("storm_alert", row.id, "dismissed");
+  const released = await releaseAlertDiversions(row.id);
 
   if (draft) {
     await createAction({
@@ -230,15 +275,15 @@ async function endAlert(row: LifecycleRow): Promise<void> {
       tag: `storm-allclear-${row.nhc_id}`,
     }).catch((err) => logger.warn({ err }, "storm-lifecycle: all-clear action failed"));
   }
-  logger.info({ alert: row.nhc_id, allClear }, "storm-lifecycle: storm ended");
+  logger.info({ alert: row.nhc_id, allClear, ...released }, "storm-lifecycle: storm ended");
 }
 
-export interface LifecycleResult { tracked: number; ended: number; }
+export interface LifecycleResult { tracked: number; ended: number; diversions: number; }
 
 /** One lifecycle pass, run right after each storm scan. */
 export async function runStormLifecycle(snap: SystemsSnapshot): Promise<LifecycleResult> {
   const supabase = getSupabase();
-  const result: LifecycleResult = { tracked: 0, ended: 0 };
+  const result: LifecycleResult = { tracked: 0, ended: 0, diversions: 0 };
 
   const { data, error } = await supabase
     .from("storm_alerts")
@@ -251,6 +296,7 @@ export async function runStormLifecycle(snap: SystemsSnapshot): Promise<Lifecycl
 
   const seenIds = new Set(snap.systems.map((s) => s.nhcId));
   const stormMmsis: string[] = [];
+  const detections: PendingDiversion[] = [];
 
   for (const row of (data ?? []) as unknown as LifecycleRow[]) {
     try {
@@ -259,11 +305,12 @@ export async function runStormLifecycle(snap: SystemsSnapshot): Promise<Lifecycl
         if (row.missing_scans > 0) {
           await supabase.from("storm_alerts").update({ missing_scans: 0 }).eq("id", row.id);
         }
-        // Live named threats get their impacted ships pinned + diversion-checked.
+        // Live named threats get their impacted ships pinned + course-change-checked.
         if (row.is_threat && severityRank(row.classification) >= 2) {
-          const mmsis = await syncTrackedShips(row);
-          stormMmsis.push(...mmsis);
-          result.tracked += mmsis.length;
+          const synced = await syncTrackedShips(row);
+          stormMmsis.push(...synced.mmsis);
+          detections.push(...synced.detections);
+          result.tracked += synced.mmsis.length;
         }
       } else if (verdict.kind === "count") {
         await supabase.from("storm_alerts").update({ missing_scans: verdict.missing }).eq("id", row.id);
@@ -273,6 +320,15 @@ export async function runStormLifecycle(snap: SystemsSnapshot): Promise<Lifecycl
       } // hold → nothing
     } catch (err) {
       logger.error({ err, alert: row.nhc_id }, "storm-lifecycle: alert pass failed");
+    }
+  }
+
+  // One event per ship movement across every storm it sits in.
+  if (detections.length) {
+    try {
+      result.diversions = await recordDiversionEvents(detections);
+    } catch (err) {
+      logger.error({ err }, "storm-lifecycle: diversion recording failed");
     }
   }
 

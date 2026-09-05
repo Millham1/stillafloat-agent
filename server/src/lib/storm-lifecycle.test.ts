@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
 import {
-  judgeDeath, planDiversion, draftAllClear, MISSING_SCANS_TO_END,
+  judgeDeath, draftAllClear, portSlugByName, MISSING_SCANS_TO_END,
   type LifecycleAlertState,
 } from "./storm-lifecycle";
 import { newsItemMatchesStorm, extractWindow, parseRssItems } from "./storm-intel";
@@ -35,20 +35,13 @@ test("an alert never approved/sent ends quietly — no all-clear draft", () => {
   assert.deepEqual(verdict, { kind: "end", allClear: false });
 });
 
-// ── Diversion baselines ──────────────────────────────────────────────────────
+// ── Port name → slug (knownExtra for the classifier) ────────────────────────
 
-test("first AIS sighting sets the baseline without flagging a change", () => {
-  assert.deepEqual(planDiversion(null, "cozumel"), { newBaseline: "cozumel", change: null });
-});
-
-test("a changed declared destination is a diversion", () => {
-  assert.deepEqual(planDiversion("cozumel", "progreso"),
-    { newBaseline: "progreso", change: { from: "cozumel", to: "progreso" } });
-});
-
-test("no position / unchanged destination → no change", () => {
-  assert.deepEqual(planDiversion("cozumel", null), { newBaseline: "cozumel", change: null });
-  assert.deepEqual(planDiversion("cozumel", "cozumel"), { newBaseline: "cozumel", change: null });
+test("portSlugByName resolves gazetteer names and passes slugs through", () => {
+  assert.equal(portSlugByName("Los Angeles / San Pedro, CA"), "los-angeles");
+  assert.equal(portSlugByName("los-angeles"), "los-angeles");
+  assert.equal(portSlugByName("Nowhere Harbour"), null);
+  assert.equal(portSlugByName(null), null);
 });
 
 // ── All-clear draft ──────────────────────────────────────────────────────────

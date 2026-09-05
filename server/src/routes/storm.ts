@@ -12,6 +12,9 @@ import { emailSubscribers, emailAllClear, type AlertRow, type AllClearRow } from
 import { labelGrounds, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
 import { sailingsForStorm, deploymentsForStorm, defaultWindow, type Sailing } from "../lib/storm-sailings";
 import { resolveActionsForSource } from "../lib/actions";
+import {
+  publishDiversion, ignoreDiversion, releaseAlertDiversions, listPendingDiversions, simulateDiversion,
+} from "../lib/storm-diversion-events";
 
 const router: IRouter = Router();
 
@@ -46,10 +49,13 @@ router.get("/storm-alerts", requireToken, async (_req: Request, res: Response) =
       .order("last_updated", { ascending: false });
     if (error) throw error;
     const alerts = (data ?? []) as unknown as DbAlert[];
+    // Open course changes ride along so the dashboard shows them BEFORE publish.
+    const pendingDiversions = await listPendingDiversions(alerts.map((a) => a.id));
     const withShips = await Promise.all(alerts.map(async (a) => ({
       ...a,
       grounds_label: labelGrounds(a.affected_grounds),
       sailings: await impactedSailings(a),
+      diversions: pendingDiversions.filter((d) => d.alert_ids.includes(a.id)),
     })));
     res.json({ success: true, alerts: withShips });
   } catch (err) {
@@ -112,6 +118,7 @@ router.post("/storm-alerts/:id/dismiss", requireToken, async (req: Request, res:
     const { error } = await supabase.from("storm_alerts").update({ status: "dismissed" }).eq("id", (req.params["id"] ?? ""));
     if (error) throw error;
     await resolveActionsForSource("storm_alert", req.params["id"] ?? "", "dismissed");
+    await releaseAlertDiversions(req.params["id"] ?? ""); // this storm's pins + open nudges only
     res.json({ success: true });
   } catch (err) {
     logger.error({ err }, "dismiss failed");
@@ -262,6 +269,60 @@ router.get("/storm-watch/:id", async (req: Request, res: Response) => {
   } catch (err) {
     logger.error({ err }, "GET /storm-watch/:id failed");
     res.status(500).json({ success: false, error: "Failed to load storm detail" });
+  }
+});
+
+// ── Course changes (storm-diversion-events): Publish / Ignore / dev simulate ──
+// Mark's three-way nudge (2026-09-05). Publish appends the change to every
+// affected alert's advisories card (public detail page + dashboard); it never
+// emails anyone. Both endpoints resolve the brief action themselves.
+
+router.post("/storm-diversions/:id/publish", requireToken, async (req: Request, res: Response) => {
+  try {
+    const r = await publishDiversion(req.params["id"] ?? "");
+    if (!r.published) { res.status(r.reason === "not found" ? 404 : 409).json({ success: false, error: r.reason }); return; }
+    res.json({ success: true, alerts: r.alerts });
+  } catch (err) {
+    logger.error({ err }, "diversion publish failed");
+    res.status(500).json({ success: false, error: "Publish failed" });
+  }
+});
+
+router.post("/storm-diversions/:id/ignore", requireToken, async (req: Request, res: Response) => {
+  try {
+    await ignoreDiversion(req.params["id"] ?? "");
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "diversion ignore failed");
+    res.status(500).json({ success: false, error: "Ignore failed" });
+  }
+});
+
+// Dev-box only (STORM_DIVERSION_SIM=1): fabricate one course change for a live
+// alert so the nudge → buttons → publish → public page path can be exercised
+// end to end without waiting for a ship to actually divert.
+router.post("/storm-diversions/simulate", requireToken, async (req: Request, res: Response) => {
+  if (process.env["STORM_DIVERSION_SIM"] !== "1") { res.status(404).json({ success: false, error: "not enabled" }); return; }
+  try {
+    const body = (req.body ?? {}) as { shipName?: string; cruiseLine?: string; kind?: "reroute" | "new_port" | "order_change"; from?: string; to?: string; alertId?: string };
+    if (!body.alertId) { res.status(400).json({ success: false, error: "alertId required" }); return; }
+    const supabase = getSupabase();
+    const { data } = await supabase.from("storm_alerts").select("id, name, nhc_id").eq("id", body.alertId).maybeSingle();
+    const alert = data as { id: string; name: string | null; nhc_id: string } | null;
+    if (!alert) { res.status(404).json({ success: false, error: "alert not found" }); return; }
+    const created = await simulateDiversion({
+      shipName: body.shipName ?? "Navigator of the Seas",
+      ...(body.cruiseLine ? { cruiseLine: body.cruiseLine } : {}),
+      ...(body.kind ? { kind: body.kind } : {}),
+      ...(body.from ? { from: body.from } : {}),
+      ...(body.to ? { to: body.to } : {}),
+      alertId: alert.id,
+      stormName: alert.name ?? alert.nhc_id,
+    });
+    res.json({ success: true, created });
+  } catch (err) {
+    logger.error({ err }, "diversion simulate failed");
+    res.status(500).json({ success: false, error: "Simulate failed" });
   }
 });
 

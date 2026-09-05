@@ -111,13 +111,20 @@
   }
 
   // ── Unified action queue: the buttons DO the thing, then the row clears. ──
-  window.__act = function(actionId, method, path, btn){
+  // Dashboard root for link-style buttons (an "Open …" that just navigates).
+  // Prod: the SPA lives at the dashboard subdomain root; the brief is ALSO served
+  // on the main site, where the SPA is not — send those taps to the subdomain.
+  // Dev box: same origin, SPA under /dashboard/ (nginx).
+  var DASH = /(^|\.)stillafloatcruising\.com$/.test(location.hostname)
+    ? (location.hostname.indexOf("dashboard.")===0 ? location.origin : "https://dashboard.stillafloatcruising.com")
+    : location.origin + "/dashboard";
+  window.__act = function(actionId, method, path, btn, finalStatus){
     var btns=btn.closest(".aitem").querySelectorAll("button");
     btns.forEach(function(b){b.disabled=true;}); btn.textContent="…";
     fetch(API+path,{method:method||"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders())})
       .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json().catch(function(){return{};}); })
       .then(function(){ // endpoint succeeded → make sure the row is closed, then reload live
-        return fetch(API+"/api/actions/"+actionId+"/resolve",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({status:"done"})}).catch(function(){});
+        return fetch(API+"/api/actions/"+actionId+"/resolve",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({status:finalStatus||"done"})}).catch(function(){});
       })
       .then(function(){ load(); })
       .catch(function(e){ alert("Failed: "+e.message); btns.forEach(function(b){b.disabled=false;}); });
@@ -140,10 +147,20 @@
   function renderActions(actions){
     if(!actions || !actions.length) return "";
     return section("Waiting on you", actions.length, actions.map(function(a){
+      // Three button shapes: API (method+path → do it, then resolve), link (href →
+      // just open), and dismiss (an explicit "Ignore" that resolves as dismissed and
+      // replaces the generic Clear).
+      var hasDismiss = (a.buttons||[]).some(function(b){ return !!b.dismiss; });
       var btns = (a.buttons||[]).map(function(b,i){
-        return '<button class="'+(i===0?"b1":"")+'" onclick="__act(\''+esc(a.id)+'\',\''+esc(b.method||"POST")+'\',\''+esc(b.path)+'\',this)">'+esc(b.label)+'</button>';
+        if(b.href){
+          var h = /^https?:/i.test(b.href) ? b.href : (DASH + b.href);
+          return '<a class="btn-link" href="'+esc(h)+'" target="_blank" rel="noopener">'+esc(b.label)+'</a>';
+        }
+        var cls = b.dismiss ? "ghost" : (i===0 ? "b1" : "");
+        var fin = b.dismiss ? "dismissed" : "done";
+        return '<button class="'+cls+'" onclick="__act(\''+esc(a.id)+'\',\''+esc(b.method||"POST")+'\',\''+esc(b.path||"")+'\',this,\''+fin+'\')">'+esc(b.label)+'</button>';
       }).join("");
-      btns += '<button class="ghost" onclick="__clearAction(\''+esc(a.id)+'\',this)">Clear</button>';
+      if(!hasDismiss) btns += '<button class="ghost" onclick="__clearAction(\''+esc(a.id)+'\',this)">Clear</button>';
       return '<div class="aitem"><div><b>'+esc(a.title)+'</b></div>'+
         (a.body?'<div class="sub">'+esc(a.body)+'</div>':"")+
         '<div class="btns">'+btns+'</div></div>';

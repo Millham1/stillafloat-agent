@@ -94,6 +94,15 @@ export function newsItemMatchesStorm(item: { title: string; description: string 
   return /\b(hurricane|tropical storm|tropical depression|storm|cruise|itinerar)/i.test(text);
 }
 
+/** Does this item name the SHIP in a storm / itinerary context? (Mark 2026-09-05:
+ *  operators and the press announce itinerary changes by ship, often without
+ *  naming the storm.) */
+export function newsItemMatchesShip(item: { title: string; description: string }, shipName: string): boolean {
+  const text = `${item.title} ${item.description}`.toLowerCase();
+  if (!text.includes(shipName.toLowerCase())) return false;
+  return /\b(hurricane|tropical|storm|itinerar|divert|re-?rout|skip|cancel|port|weather|advisor)/i.test(text);
+}
+
 // ── Fetching ─────────────────────────────────────────────────────────────────
 
 async function fetchText(url: string, timeoutMs = 15_000): Promise<string | null> {
@@ -140,10 +149,10 @@ async function summarizeAdvisory(line: string, storm: string, window: string): P
 
 interface GnewsArticle { title: string; url: string; publishedAt: string; source?: { name?: string } }
 
-async function fetchGnews(stormName: string): Promise<GnewsArticle[]> {
+async function fetchGnewsQuery(query: string): Promise<GnewsArticle[]> {
   const key = process.env["GNEWS_API_KEY"];
   if (!key) return [];
-  const q = encodeURIComponent(`"${stormName}" cruise`);
+  const q = encodeURIComponent(query);
   const txt = await fetchText(`https://gnews.io/api/v4/search?q=${q}&lang=en&max=10&apikey=${key}`);
   if (!txt) return [];
   try {
@@ -152,6 +161,70 @@ async function fetchGnews(stormName: string): Promise<GnewsArticle[]> {
   } catch {
     return [];
   }
+}
+
+async function fetchGnews(stormName: string): Promise<GnewsArticle[]> {
+  return fetchGnewsQuery(`"${stormName}" cruise`);
+}
+
+/** The RSS backbone (Cruise Hive + Cruise Radio), fresh items only. Shared by
+ *  the intel pass and by course-change detection. */
+export async function fetchNewsBackbone(): Promise<Array<RssItem & { label: string }>> {
+  const newsItems: Array<RssItem & { label: string }> = [];
+  for (const feed of NEWS_FEEDS) {
+    const xml = await fetchText(feed.url);
+    if (!xml) continue;
+    for (const item of parseRssItems(xml)) {
+      const ts = Date.parse(item.pubDate);
+      if (Number.isFinite(ts) && Date.now() - ts > NEWS_MAX_AGE_MS) continue;
+      newsItems.push({ ...item, label: feed.label });
+    }
+  }
+  return newsItems;
+}
+
+/**
+ * What the operator / the press has said about ONE ship, for a course-change
+ * nudge: existing advisories on the affected alerts that name the ship, fresh
+ * backbone news naming it, and a GNews search on the ship's name.
+ */
+export async function diversionIntel(
+  shipName: string, cruiseLine: string | null, stormNames: string[], alertIds: string[],
+): Promise<IntelEntry[]> {
+  const out: IntelEntry[] = [];
+  const seenKeys = new Set<string>();
+  const push = (e: IntelEntry) => {
+    const k = (e.url || e.note).toLowerCase();
+    if (seenKeys.has(k)) return;
+    seenKeys.add(k);
+    out.push(e);
+  };
+  const ship = shipName.toLowerCase();
+
+  if (alertIds.length) {
+    const supabase = getSupabase();
+    const { data } = await supabase.from("storm_alerts").select("cruise_line_info").in("id", alertIds);
+    for (const a of (data ?? []) as Array<{ cruise_line_info?: IntelEntry[] | null }>) {
+      for (const e of a.cruise_line_info ?? []) {
+        if (`${e.line} ${e.note}`.toLowerCase().includes(ship)) push(e);
+      }
+    }
+  }
+
+  for (const item of await fetchNewsBackbone()) {
+    if (newsItemMatchesShip(item, shipName)) push({ line: item.label, note: item.title.slice(0, 220), url: item.link });
+  }
+
+  const storm = stormNames[0];
+  for (const art of await fetchGnewsQuery(storm ? `"${shipName}" ${storm}` : `"${shipName}" cruise`)) {
+    const ts = Date.parse(art.publishedAt);
+    if (Number.isFinite(ts) && Date.now() - ts > NEWS_MAX_AGE_MS) continue;
+    if (!newsItemMatchesShip({ title: art.title, description: "" }, shipName)) continue;
+    push({ line: art.source?.name || "News", note: art.title.slice(0, 220), url: art.url });
+  }
+
+  void cruiseLine; // line-level advisories already reach the card through the pass
+  return out.slice(0, 5);
 }
 
 // ── The pass ─────────────────────────────────────────────────────────────────
@@ -204,16 +277,7 @@ export async function runStormIntel(): Promise<{ alertsChecked: number; newEntri
     const html = await fetchText(src.url);
     officialPages.set(src.key, html ? stripHtml(html) : null);
   }
-  const newsItems: Array<RssItem & { label: string }> = [];
-  for (const feed of NEWS_FEEDS) {
-    const xml = await fetchText(feed.url);
-    if (!xml) continue;
-    for (const item of parseRssItems(xml)) {
-      const ts = Date.parse(item.pubDate);
-      if (Number.isFinite(ts) && Date.now() - ts > NEWS_MAX_AGE_MS) continue;
-      newsItems.push({ ...item, label: feed.label });
-    }
-  }
+  const newsItems = await fetchNewsBackbone();
 
   for (const alert of alerts) {
     try {
@@ -235,6 +299,35 @@ export async function runStormIntel(): Promise<{ alertsChecked: number; newEntri
         if (seen.has(hash)) continue;
         const note = await summarizeAdvisory(src.line, stormName, window);
         fresh.push({ hash, entry: { line: src.line, note, url: src.url } });
+      }
+
+      // Pinned ships: operator pages + news that name the SHIP, even when they
+      // don't name the storm (Mark 2026-09-05 — "scan the operators' sites and
+      // news releases for itinerary changes related to storms").
+      const { data: pinnedRows } = await supabase.from("storm_tracked_ships")
+        .select("ship_name").eq("alert_id", alert.id).is("released_at", null);
+      const pinned = [...new Set(((pinnedRows ?? []) as Array<{ ship_name: string }>).map((p) => p.ship_name))];
+      for (const src of OFFICIAL_SOURCES) {
+        const text = officialPages.get(src.key) ?? null;
+        if (!text) continue;
+        for (const shipName of pinned) {
+          const window = extractWindow(text, shipName);
+          if (!window) continue;
+          const hash = intelHash(["official-ship", src.key, shipName, window]);
+          if (seen.has(hash)) continue;
+          seen.add(hash);
+          const note = await summarizeAdvisory(src.line, `${stormName} (${shipName})`, window);
+          fresh.push({ hash, entry: { line: `${src.line} — ${shipName}`, note, url: src.url } });
+        }
+      }
+      for (const item of newsItems) {
+        for (const shipName of pinned) {
+          if (!newsItemMatchesShip(item, shipName)) continue;
+          const hash = intelHash(["news", item.link || item.title]);
+          if (seen.has(hash)) continue;
+          seen.add(hash);
+          fresh.push({ hash, entry: { line: item.label, note: `${shipName}: ${item.title}`.slice(0, 220), url: item.link } });
+        }
       }
 
       // News backbone.
