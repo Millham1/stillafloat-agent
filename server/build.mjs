@@ -11,7 +11,10 @@ globalThis.require = createRequire(import.meta.url);
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildAll() {
-  const distDir = path.resolve(artifactDir, "dist");
+  // SAF_SERVER_DIST lets the deploy build into a side directory (dist.next) and
+  // swap it in atomically, so the running app keeps its files until the new
+  // build is complete. Default stays "dist" for local builds.
+  const distDir = path.resolve(artifactDir, process.env["SAF_SERVER_DIST"] || "dist");
   await rm(distDir, { recursive: true, force: true });
 
   await esbuild({

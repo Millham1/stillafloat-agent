@@ -40,7 +40,10 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    // SAF_DASH_DIST lets the deploy build into dist.next and swap it in atomically.
+    // nginx serves dashboard/dist/public directly (dashboard + brief), and
+    // emptyOutDir wiped it for the whole build — a 404 window on every deploy.
+    outDir: path.resolve(import.meta.dirname, `${process.env.SAF_DASH_DIST || "dist"}/public`),
     emptyOutDir: true,
   },
   server: {

@@ -90,3 +90,7 @@ cabin-advisor/geometry/work/
 cabin-advisor/geometry/*-src/
 cabin-advisor/geometry/results_*.jsonl
 cabin-advisor/geometry/state.json
+
+# deploy-time side builds (atomic swap in deploy.yml)
+**/dist.next/
+**/dist.prev/
