@@ -398,7 +398,7 @@ ${original ? `<a href="${original}" target="_blank" rel="noopener noreferrer">${
 ${relatedHtml}
 </div>
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
-<script src="/components/navbar.js?v=20260626-live"></script>
+<script src="/components/navbar.js?v=20260905-homeonly"></script>
 </body>
 </html>`;
 }
@@ -479,7 +479,7 @@ ${cards}
 ${archive}
 </main>
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
-<script src="/components/navbar.js?v=20260626-live"></script>
+<script src="/components/navbar.js?v=20260905-homeonly"></script>
 </body>
 </html>`;
 }

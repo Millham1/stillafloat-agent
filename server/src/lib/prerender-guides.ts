@@ -219,7 +219,7 @@ ${category ? `<div class="g-badge">${category}</div>` : ""}
 ${ctaHtml(lang)}
 </div>
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
-<script src="/components/navbar.js?v=20260816-concierge"></script>
+<script src="/components/navbar.js?v=20260905-homeonly"></script>
 </body>
 </html>`;
 }
@@ -274,7 +274,7 @@ function guidesIndexHtml(guides: Guide[], lang: Lang): string {
 ${tiles ? `<div class="g-grid">${tiles}</div>` : ""}
 ${ctaHtml(lang)}
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
-<script src="/components/navbar.js?v=20260816-concierge"></script>
+<script src="/components/navbar.js?v=20260905-homeonly"></script>
 </body>
 </html>`;
 }
