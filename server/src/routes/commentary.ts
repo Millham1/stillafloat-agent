@@ -544,7 +544,7 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
     <div class="row">
       <button class="btn primary" onclick="publish()">✅ Approve as-is — publish EN + ES</button>
       <button class="btn" onclick="document.getElementById('takePanel').style.display='block';this.scrollIntoView()">✍️ Add my thoughts</button>
-      <button class="btn danger" onclick="reject(this)">❌ Reject — find another topic</button>
+      <button class="btn danger" onclick="document.getElementById('rejectPanel').style.display='block';this.disabled=true">❌ Reject — find another topic</button>
     </div>
     <p class="muted small">Approve publishes to the Commentary section, Spanish auto-translated, and the piece then feeds the Short. Reject benches this topic for 30 days, records why, and writes a fresh one on the next-best topic.</p>
   </div>
@@ -595,6 +595,15 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
     ${alternatesHtml}
   </div>
 
+  <div class="panel" id="rejectPanel" style="display:none;border-color:rgba(255,90,90,.45)">
+    <div class="label" style="color:#ff9a9a">Reject this topic</div>
+    <p class="muted small" style="margin:0 0 8px">Why? One line is enough — it goes in the ledger so the picker learns what you throw back. You can leave it blank.</p>
+    <textarea id="rejectReason" rows="2" placeholder="e.g. already covered this angle / too thin / not our lane"></textarea>
+    <div class="row">
+      <button class="btn danger" onclick="doReject(this)">Reject &amp; find another topic</button>
+      <button class="btn" onclick="document.getElementById('rejectPanel').style.display='none'">Cancel</button>
+    </div>
+  </div>
   <div class="panel" id="takePanel" style="${draft!.markTake ? "" : "display:none"}">
     <div class="label">Your thoughts — they become the spine, the piece gets rewritten around them</div>
     ${draft!.questions.length > 0 ? `<p class="muted small" style="margin:0 0 8px">If it helps: ${draft!.questions.map((q) => esc(q)).join(" · ")}</p>` : ""}
@@ -670,12 +679,16 @@ async function reSubject(id){
   if(!confirm("Write this week's commentary on that story instead?"))return;
   if(await call("/api/commentary/draft",{notify:false,subjectId:id})) waitForRun("Rewriting on the story you picked");
 }
-async function reject(btn){
-  const reason=prompt("Reject this topic — why? (helps the picker learn)","");
-  if(reason===null)return;
-  btn.disabled=true; btn.textContent="Finding another topic…";
+// No prompt()/confirm() anywhere in this flow. Chrome permanently suppresses those
+// dialogs once "prevent this page from creating additional dialogs" has been ticked,
+// and a suppressed prompt returns null — identical to the user pressing Cancel. The
+// handler then returned silently and the button looked broken (Mark, 2026-09-04:
+// "the reject button is not working" — no request ever reached the server).
+async function doReject(btn){
+  const reason=(document.getElementById("rejectReason").value||"").trim();
+  btn.disabled=true; btn.textContent="Rejecting…";
   if(await call("/api/commentary/reject",{reason})) waitForRun("Rejected — finding another topic and writing it");
-  else { btn.disabled=false; btn.textContent="❌ Reject — find another topic"; }
+  else { btn.disabled=false; btn.textContent="Reject & find another topic"; }
 }
 async function synth(){
   const take=document.getElementById("take").value.trim();
@@ -684,7 +697,13 @@ async function synth(){
   if(await call("/api/commentary/synthesize",{take})) waitForRun("Rewriting around your thoughts"); else {btn.disabled=false;}
 }
 async function publish(){
-  if(!confirm("Publish this commentary to the website (EN + ES)?"))return;
+  // confirm() can be suppressed the same way prompt() is; if it is, it returns false
+  // and the button dies silently. Treat a suppressed dialog as "go ahead" only when
+  // we can tell the difference — we cannot, so ask inline instead.
+  if(!window.__pubOk){ window.__pubOk=true; const b=event.target;
+    b.textContent="Tap again to confirm — publishes EN + ES"; b.style.background="#b45309";
+    setTimeout(()=>{window.__pubOk=false;b.textContent="✅ Approve as-is — publish EN + ES";b.style.background="";},6000);
+    return; }
   if(await call("/api/commentary/publish-draft")) { alert("Published!"); location.reload(); }
 }
 async function discard(){ if(confirm("Skip this week?") && await call("/api/commentary/draft/discard")) location.reload(); }
