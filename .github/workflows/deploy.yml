@@ -11,6 +11,13 @@ on:
   pull_request:
     branches: [ main, dev ]
 
+# One deploy per branch at a time. Two pushes minutes apart used to start two SSH
+# sessions on the same box, each doing git reset → install → build → restart
+# concurrently. Queue them instead (never cancel a deploy already in progress).
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # CI gate: compile + bundle in GitHub Actions BEFORE any deploy. Both deploy
   # jobs `needs: build`, so broken code can never reach a server. Mirrors the
