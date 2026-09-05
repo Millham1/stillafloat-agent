@@ -91,6 +91,8 @@ cabin-advisor/geometry/*-src/
 cabin-advisor/geometry/results_*.jsonl
 cabin-advisor/geometry/state.json
 
-# deploy-time side builds (atomic swap in deploy.yml)
-**/dist.next/
+# deploy-time versioned builds + swap artefacts (deploy.yml): dist is a symlink on the boxes
+**/dist.v*/
 **/dist.prev/
+**/dist.tmp
+**/dist.next/

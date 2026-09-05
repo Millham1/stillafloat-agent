@@ -96,19 +96,27 @@ jobs:
             pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
             # Dashboard is a standalone app at dashboard.stillafloatcruising.com (served
             # static at root by nginx); base must be "/" and it calls the live API origin.
-            SAF_SERVER_DIST=dist.next SAF_DASH_DIST=dist.next PORT=5000 BASE_PATH=/ VITE_API_BASE_URL=https://stillafloatcruising.com pnpm --filter @workspace/api-server run build:all
-            # Atomic swap: nginx (dashboard + brief static files) and the running app
-            # keep serving the previous build until the new one is complete. The old
-            # flow emptied dashboard/dist/public for the whole vite build, so the
-            # dashboard and the brief 404'd for a window on every deploy.
+            STAMP=$(date -u +%Y%m%d%H%M%S)
+            SAF_SERVER_DIST=dist.v$STAMP SAF_DASH_DIST=dist.v$STAMP PORT=5000 BASE_PATH=/ VITE_API_BASE_URL=https://stillafloatcruising.com pnpm --filter @workspace/api-server run build:all
+            # Atomic swap via symlink: nginx (dashboard + brief static files) and the
+            # running app keep serving the previous build until the new one is
+            # complete. The build directory KEEPS its name — the pino esbuild plugin
+            # bakes absolute worker paths into the bundle, so renaming the directory
+            # after the build crash-loops the app (dev, 2026-09-05). `dist` is a
+            # symlink that flips to the new versioned directory in one rename.
             for d in server dashboard; do
-              rm -rf "$d/dist.prev"
-              if [ -d "$d/dist" ]; then mv "$d/dist" "$d/dist.prev"; fi
-              mv "$d/dist.next" "$d/dist"
+              if [ -d "$d/dist" ] && [ ! -L "$d/dist" ]; then mv "$d/dist" "$d/dist.prev"; fi
+              ln -sfn "dist.v$STAMP" "$d/dist.tmp" && mv -T "$d/dist.tmp" "$d/dist"
             done
             pm2 restart saf-full-server
             pm2 save
-            rm -rf server/dist.prev dashboard/dist.prev
+            # Keep only the live build (the previous one is gone once the new process is up).
+            for d in server dashboard; do
+              rm -rf "$d/dist.prev"
+              ls -d "$d"/dist.v* 2>/dev/null | while read -r old; do
+                [ "$(basename "$old")" = "dist.v$STAMP" ] || rm -rf "$old"
+              done
+            done
             # Version-controlled dashboard subdomain nginx (no-op if no dashboard cert)
             bash infra/deploy-nginx.sh
             echo "monorepo deployment complete"
@@ -154,7 +162,8 @@ jobs:
             pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
             # Dev build mirrors prod (base "/"); API stays relative so the dev mirror
             # never points at the prod API.
-            SAF_SERVER_DIST=dist.next SAF_DASH_DIST=dist.next PORT=5000 BASE_PATH=/ pnpm --filter @workspace/api-server run build:all
+            STAMP=$(date -u +%Y%m%d%H%M%S)
+            SAF_SERVER_DIST=dist.v$STAMP SAF_DASH_DIST=dist.v$STAMP PORT=5000 BASE_PATH=/ pnpm --filter @workspace/api-server run build:all
             # ---- runtime env ----
             # Canonical shared env (matches prod: env.ts reads /opt/stillafloat/shared.env).
             # One-time seed from the legacy newsagent .env if the shared file is absent.
@@ -194,18 +203,25 @@ jobs:
             # empty, so "db push --force" DROPPED every table on the dev DB and wiped
             # it. Removed — do NOT reinstate. See supabase/migrations/README.md.
             # start/restart with the full env injected (CI always has DATABASE_URL now)
-            # Atomic swap: nginx (dashboard + brief static files) and the running app
-            # keep serving the previous build until the new one is complete. The old
-            # flow emptied dashboard/dist/public for the whole vite build, so the
-            # dashboard and the brief 404'd for a window on every deploy.
+            # Atomic swap via symlink: nginx (dashboard + brief static files) and the
+            # running app keep serving the previous build until the new one is
+            # complete. The build directory KEEPS its name — the pino esbuild plugin
+            # bakes absolute worker paths into the bundle, so renaming the directory
+            # after the build crash-loops the app (dev, 2026-09-05). `dist` is a
+            # symlink that flips to the new versioned directory in one rename.
             for d in server dashboard; do
-              rm -rf "$d/dist.prev"
-              if [ -d "$d/dist" ]; then mv "$d/dist" "$d/dist.prev"; fi
-              mv "$d/dist.next" "$d/dist"
+              if [ -d "$d/dist" ] && [ ! -L "$d/dist" ]; then mv "$d/dist" "$d/dist.prev"; fi
+              ln -sfn "dist.v$STAMP" "$d/dist.tmp" && mv -T "$d/dist.tmp" "$d/dist"
             done
             pm2 restart saf-full-server --update-env || pm2 start node --name saf-full-server --cwd /root/saf-full/server --update-env -- --enable-source-maps ./dist/index.mjs
             pm2 save
-            rm -rf server/dist.prev dashboard/dist.prev
+            # Keep only the live build (the previous one is gone once the new process is up).
+            for d in server dashboard; do
+              rm -rf "$d/dist.prev"
+              ls -d "$d"/dist.v* 2>/dev/null | while read -r old; do
+                [ "$(basename "$old")" = "dist.v$STAMP" ] || rm -rf "$old"
+              done
+            done
             # Version-controlled dashboard subdomain nginx (no-op on dev — no dashboard cert)
             bash infra/deploy-nginx.sh
             echo "monorepo dev deployment complete"
