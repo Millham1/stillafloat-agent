@@ -82,8 +82,9 @@ export interface AllClearRow {
   all_clear_headline: string | null; all_clear_body_md: string | null;
 }
 
-/** Send the approved all-clear to the same opted-in subscriber base the storm
- *  alert went to. Only called from the approval endpoint — never automatic. */
+/** Send the all-clear to the same opted-in subscriber base the storm alert went
+ *  to. Called autonomously by the lifecycle when a sent alert's storm dies
+ *  (Mark 2026-09-05), and by the /all-clear endpoint as the manual/retry path. */
 export async function emailAllClear(a: AllClearRow): Promise<{ sent: number; failed: number; total: number }> {
   const supabase = getSupabase();
   const { data, error } = await supabase
