@@ -32,6 +32,7 @@ import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
 } from "./ports";
 import { groundsForPoint } from "./storm-grounds";
+import type { PortCall } from "./storm-diversion";
 
 const STATE_KEY = "wms-positions";
 const AIS_URL = "wss://stream.aisstream.io/v0/stream";
@@ -41,6 +42,8 @@ const DEPART_MIN_KN = 2.0;     // above this (or out of radius) = departed
 const PERSIST_EVERY_MS = 5 * 60 * 1000;
 const REFRESH_SET_EVERY_MS = 5 * 60 * 1000;
 const SAILINGS_EVERY_MS = 6 * 60 * 60 * 1000;
+const PORT_CALL_LOG_MAX = 40;                 // per ship — enough for weeks of a weekly loop
+const SNAPSHOT_CONTINUITY_MS = 15 * 60 * 1000; // a restart inside this gap keeps the observation window open
 
 export interface RegistryShip {
   mmsi: string;
@@ -71,6 +74,10 @@ export interface ShipPosition {
   currentDepartPort: string | null;
   regionsSeen: string[];
   inPortSlug: string | null;
+  // Observed port calls, oldest first (capped): the ship's OWN itinerary
+  // pattern, which is what lets the storm feature tell a scheduled port change
+  // from a course change (storm-diversion.ts).
+  portCalls: PortCall[];
 }
 
 const positions = new Map<string, ShipPosition>();   // by MMSI (tracked now or previously)
@@ -79,6 +86,10 @@ let activeMmsis = new Set<string>();                  // currently subscribed
 let stormMmsis = new Set<string>();                   // storm-impacted ships — always tracked while a storm is live
 const nameFlagged = new Set<string>();                // reported-name mismatches already persisted
 let started = false;
+// When CONTINUOUS observation began — chained through the snapshot across quick
+// restarts. The storm course-change classifier only claims a mid-leg re-route
+// for a leg it watched from the start; a gap could have swallowed a port call.
+let observedSince: string | null = null;
 let lastMessageAt = 0;
 
 interface Conn {
@@ -107,7 +118,7 @@ function blankPosition(ship: RegistryShip): ShipPosition {
     destinationRaw: null, destinationSlug: null, etaUtc: null,
     lastPortSlug: null, lastPortDepartedAt: null, lastPosAt: null,
     currentSailingStart: null, currentDepartPort: null, regionsSeen: [],
-    inPortSlug: null,
+    inPortSlug: null, portCalls: [],
   };
 }
 
@@ -157,6 +168,11 @@ export async function setStormShips(mmsis: string[]): Promise<void> {
   await refreshActiveSet().catch((err) => {
     logger.warn({ err }, "wms: storm-ship refresh failed");
   });
+}
+
+/** Start of the current continuous-observation window (null = not tracking). */
+export function trackerObservedSince(): string | null {
+  return observedSince;
 }
 
 export function inRegistry(shipName: string): boolean {
@@ -339,6 +355,24 @@ function handleStaticData(pos: ShipPosition, msg: Record<string, unknown>) {
   }
 }
 
+// ── Port-call log (the ship's own itinerary pattern) ─────────────────────────
+
+function logPortArrival(pos: ShipPosition, slug: string) {
+  if (!Array.isArray(pos.portCalls)) pos.portCalls = [];
+  const last = pos.portCalls[pos.portCalls.length - 1];
+  if (last && last.slug === slug && !last.departedAt) return; // call already open
+  pos.portCalls.push({ slug, arrivedAt: new Date().toISOString(), departedAt: null });
+  if (pos.portCalls.length > PORT_CALL_LOG_MAX) pos.portCalls.splice(0, pos.portCalls.length - PORT_CALL_LOG_MAX);
+}
+
+function logPortDeparture(pos: ShipPosition, slug: string) {
+  if (!Array.isArray(pos.portCalls)) pos.portCalls = [];
+  const now = new Date().toISOString();
+  const open = [...pos.portCalls].reverse().find((c) => c.slug === slug && !c.departedAt);
+  if (open) open.departedAt = now;
+  else pos.portCalls.push({ slug, arrivedAt: now, departedAt: now });
+}
+
 /**
  * Port-call detection: slow + within a few km of a known cruise port = a call.
  * Leaving an embarkation port starts a new derived sailing; arriving back at
@@ -351,6 +385,7 @@ function detectPortCall(pos: ShipPosition) {
 
   if (near && slow && pos.inPortSlug !== near.slug) {
     pos.inPortSlug = near.slug;
+    logPortArrival(pos, near.slug);
     if (near.type === "embarkation") {
       pos.currentSailingStart = null;
       pos.currentDepartPort = near.slug;
@@ -365,6 +400,7 @@ function detectPortCall(pos: ShipPosition) {
       !near || near.slug !== pos.inPortSlug);
   if (departed && pos.inPortSlug) {
     const leftPort = portBySlug(pos.inPortSlug);
+    logPortDeparture(pos, pos.inPortSlug);
     pos.lastPortSlug = pos.inPortSlug;
     pos.lastPortDepartedAt = new Date().toISOString();
     if (leftPort?.type === "embarkation") {
@@ -439,18 +475,30 @@ export async function syncDerivedSailings(): Promise<number> {
 
 async function persistSnapshot() {
   try {
-    await writeJson(STATE_KEY, { updatedAt: new Date().toISOString(), ships: allPositions() });
+    await writeJson(STATE_KEY, { updatedAt: new Date().toISOString(), observedSince, ships: allPositions() });
   } catch (err) {
     logger.warn({ err }, "wms: snapshot persist failed");
   }
 }
 
 async function warmFromSnapshot() {
-  const snap = await readJson<{ ships?: ShipPosition[] }>(STATE_KEY, {});
+  const snap = await readJson<{ updatedAt?: string; observedSince?: string | null; ships?: ShipPosition[] }>(STATE_KEY, {});
   for (const s of snap.ships ?? []) {
     const reg = s?.mmsi ? registryByMmsi.get(s.mmsi) : undefined;
-    if (reg) positions.set(s.mmsi, { ...blankPosition(reg), ...s, name: reg.name, cruiseLine: reg.cruiseLine });
+    if (reg) {
+      positions.set(s.mmsi, {
+        ...blankPosition(reg), ...s, name: reg.name, cruiseLine: reg.cruiseLine,
+        portCalls: Array.isArray(s.portCalls) ? s.portCalls : [],
+      });
+    }
   }
+  // Observation continuity: a quick restart (snapshot younger than the
+  // continuity window) keeps the window open; a longer gap could have swallowed
+  // a port call, so the window reopens now and the classifier stays conservative.
+  const age = Date.now() - Date.parse(snap.updatedAt ?? "");
+  observedSince = Number.isFinite(age) && age < SNAPSHOT_CONTINUITY_MS && snap.observedSince
+    ? snap.observedSince
+    : new Date().toISOString();
 }
 
 // ── Websocket lifecycle (one per key, shard per connection) ──────────────────

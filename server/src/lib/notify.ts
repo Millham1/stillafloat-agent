@@ -21,8 +21,12 @@ import { sendMail } from "./mailer";
 
 export interface NotifyButton {
   label: string;
-  method: string; // GET | POST
-  path: string;   // main-site API path, e.g. /api/storm-alerts/<id>/approve
+  method?: string; // GET | POST — API buttons
+  path?: string;   // main-site API path, e.g. /api/storm-alerts/<id>/approve
+  /** Link-only button: a dashboard path (/storm-alerts) or absolute URL. Opens; no API call. */
+  href?: string;
+  /** An explicit "Ignore": resolves the action as dismissed instead of done. */
+  dismiss?: boolean;
 }
 
 export interface Notification {
@@ -104,8 +108,9 @@ export async function notifyMark(
       // Actions are therefore "view" links: they open the dashboard, where the
       // browser's own session authorises the approve/reject. One extra tap, no
       // secret in flight.
-      const actions = (n.buttons ?? []).slice(0, 2).map((b) => {
-        const url = `${dashboardBase()}${b.path.startsWith("/") ? b.path : `/${b.path}`}`;
+      const actions = (n.buttons ?? []).filter((b) => !b.dismiss).slice(0, 2).map((b) => {
+        const target = b.href ?? b.path ?? "/";
+        const url = /^https?:/i.test(target) ? target : `${dashboardBase()}${target.startsWith("/") ? target : `/${target}`}`;
         return `view, ${b.label.replace(/,/g, "")}, ${url}, clear=true`;
       });
       const headers: Record<string, string> = {

@@ -11,6 +11,11 @@ import { authHeaders } from "@/lib/auth-token";
 
 type Sailing = { ship_name: string; cruise_line: string; depart_port: string | null; start_date: string; end_date: string };
 type CruiseInfo = { line: string; note: string; url?: string };
+type Diversion = {
+  id: string; ship_name: string; cruise_line: string | null; kind: string;
+  from_slug: string | null; to_slug: string; from_name: string; to_name: string;
+  raw: string | null; reason: string | null; detected_at: string; storm_names: string[]; intel: CruiseInfo[];
+};
 type Alert = {
   id: string;
   name: string;
@@ -24,6 +29,7 @@ type Alert = {
   detail_md: string | null;
   cruise_line_info: CruiseInfo[];
   sailings: Sailing[];
+  diversions: Diversion[];
   sent_count: number;
   sent_at: string | null;
   ended_at: string | null;
@@ -40,6 +46,12 @@ const STATUS_COLORS: Record<string, string> = {
   approved: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
   sent:     "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300",
   ended:    "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300",
+};
+
+const KIND_LABEL: Record<string, string> = {
+  reroute: "re-routed mid-leg",
+  new_port: "heading to a port it doesn’t normally call at",
+  order_change: "changed its port order",
 };
 
 function formatCruiseInfo(arr: CruiseInfo[]): string {
@@ -151,6 +163,18 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
     toast({ title: "Saved" });
     onChanged();
   }
+  async function diversion(id: string, verb: "publish" | "ignore") {
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/storm-diversions/${id}/${verb}`, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() } }).then((x) => x.json());
+      if (r?.success) toast({ title: verb === "publish" ? `Published to ${r.alerts ?? 0} alert(s)` : "Ignored" });
+      else toast({ title: "Failed", description: String(r?.error ?? "") });
+    } finally {
+      setBusy(false);
+    }
+    onChanged();
+  }
+
   async function approve() {
     if (dirty) await call("", "PATCH", editPayload());
     const r = await call("/approve", "POST");
@@ -227,6 +251,33 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
             )
           )}
         </div>
+
+        {(alert.diversions ?? []).length > 0 && (
+          <div className="border border-amber-300 dark:border-amber-800 rounded-md p-3 space-y-2 bg-amber-50/50 dark:bg-amber-900/10">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">⚓ Course changes waiting on you</p>
+            {alert.diversions.map((d) => (
+              <div key={d.id} className="text-sm space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    <b>{d.ship_name}</b> {KIND_LABEL[d.kind] ?? d.kind}: {d.from_name} → {d.to_name}
+                    {d.raw ? <span className="text-muted-foreground"> · AIS “{d.raw}”</span> : null}
+                    {d.storm_names.length > 1 ? <span className="text-muted-foreground"> · also in {d.storm_names.filter((n) => n !== alert.name).join(", ")}</span> : null}
+                  </span>
+                  <span className="flex gap-1">
+                    <Button size="sm" onClick={() => diversion(d.id, "publish")} disabled={busy}>Publish</Button>
+                    <Button variant="ghost" size="sm" onClick={() => diversion(d.id, "ignore")} disabled={busy}>Ignore</Button>
+                  </span>
+                </div>
+                {d.reason ? <p className="text-xs text-muted-foreground">{d.reason}</p> : null}
+                {d.intel?.length ? (
+                  <ul className="text-xs text-muted-foreground list-disc pl-4">
+                    {d.intel.slice(0, 3).map((it, i) => <li key={i}>{it.line}: {it.url ? <a className="underline" href={it.url} target="_blank" rel="noopener noreferrer">{it.note}</a> : it.note}</li>)}
+                  </ul>
+                ) : <p className="text-xs text-muted-foreground">No operator advisory or news item names this ship yet.</p>}
+              </div>
+            ))}
+          </div>
+        )}
 
         {allClearPending && (
           <div className="border border-emerald-300 dark:border-emerald-800 rounded-md p-3 space-y-2 bg-emerald-50/50 dark:bg-emerald-900/10">
