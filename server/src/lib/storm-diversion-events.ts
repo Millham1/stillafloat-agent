@@ -10,8 +10,8 @@
 //   • a three-way nudge on Mark's phone/brief: Publish to the alert / Open the
 //     storm dashboard / Ignore;
 //   • Publish appends the change to every affected alert's cruise-line
-//     advisories card (public detail page + dashboard) — it does NOT email
-//     subscribers; external sends stay approval-gated as everywhere else;
+//     advisories card (public detail page + dashboard) AND emails anyone
+//     actively watching that ship (Mark 2026-09-05) — Publish IS the approval;
 //   • when a storm ends, its ship pins and its open nudges are released for
 //     THAT storm only — a ship still inside another live storm keeps that pin.
 
@@ -22,6 +22,7 @@ import type { NotifyButton } from "./notify";
 import { portBySlug } from "./ports";
 import { dedupKey, kindLabel, kindConfidence, type ChangeKind } from "./storm-diversion";
 import { diversionIntel, type IntelEntry } from "./storm-intel";
+import { emailWatchersForShip } from "./wms-alerts";
 
 export const ACTION_TYPE = "storm_diversion";
 const MAX_CARD_ENTRIES = 30;
@@ -188,10 +189,10 @@ async function loadEvent(id: string): Promise<DiversionEventRow | null> {
 }
 
 /** Publish: append the change to each affected alert's advisories card. */
-export async function publishDiversion(id: string): Promise<{ published: boolean; alerts: number; reason?: string }> {
+export async function publishDiversion(id: string): Promise<{ published: boolean; alerts: number; watchersEmailed: number; reason?: string }> {
   const e = await loadEvent(id);
-  if (!e) return { published: false, alerts: 0, reason: "not found" };
-  if (e.status !== "pending") return { published: false, alerts: 0, reason: `already ${e.status}` };
+  if (!e) return { published: false, alerts: 0, watchersEmailed: 0, reason: "not found" };
+  if (e.status !== "pending") return { published: false, alerts: 0, watchersEmailed: 0, reason: `already ${e.status}` };
   const supabase = getSupabase();
   const when = new Date(e.detected_at);
   const stamp = `${when.toUTCString().slice(5, 16).trim()} ${when.toISOString().slice(11, 16)} UTC`;
@@ -225,8 +226,26 @@ export async function publishDiversion(id: string): Promise<{ published: boolean
     .update({ status: "published", published_at: new Date().toISOString() })
     .eq("id", id);
   await resolveActionsForSource(ACTION_TYPE, id, "done");
-  logger.info({ id, ship: e.ship_name, alerts: touched }, "storm-diversion: published");
-  return { published: true, alerts: touched };
+
+  // Watchers of this ship get the same news, with the operator/press line.
+  let watchers = { watches: 0, emailed: 0 };
+  try {
+    const storms = e.storm_names.join(" and ");
+    watchers = await emailWatchersForShip(e.ship_name, {
+      key: e.id,
+      title: `⚓ ${e.ship_name} ${kindLabel(e.kind)} — now headed to ${portName(e.to_slug)}`,
+      body:
+        `${e.ship_name} was headed to ${portName(e.from_slug)} and now declares ${portName(e.to_slug)} ` +
+        `(AIS, ${stamp}) while ${storms} ${e.storm_names.length === 1 ? "is" : "are"} active in its cruising area.` +
+        (lead ? `\n\n${lead.line}: ${lead.note}${lead.url ? ` — ${lead.url}` : ""}` : "") +
+        `\n\nThe official word comes from your cruise line — check its app or advisories. ` +
+        `Storm details: https://stillafloatcruising.com/`,
+    });
+  } catch (err) {
+    logger.warn({ err, ship: e.ship_name }, "storm-diversion: watcher email failed");
+  }
+  logger.info({ id, ship: e.ship_name, alerts: touched, ...watchers }, "storm-diversion: published");
+  return { published: true, alerts: touched, watchersEmailed: watchers.emailed };
 }
 
 export async function ignoreDiversion(id: string): Promise<{ ignored: boolean }> {
