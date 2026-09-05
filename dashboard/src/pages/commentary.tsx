@@ -308,7 +308,16 @@ export default function CommentaryManager() {
     retry: false,
   });
 
-  const reviewUrl = `/api/commentary/review?token=${encodeURIComponent(getStoredToken())}`;
+  // MUST be absolute against the API origin. main.tsx patches window.fetch to
+  // rewrite "/api/…" onto VITE_API_BASE_URL, but an <a href> is a NAVIGATION, not a
+  // fetch — the patch never runs. A relative href therefore resolves against THIS
+  // host, and the dashboard vhost is static-only behind nginx basic auth with no
+  // /api proxy, so the review link returned 401 Authorization Required instead of
+  // the page. Verified: dashboard.../api/commentary/review -> 401,
+  // stillafloatcruising.com/api/commentary/review -> 200.
+  // In dev VITE_API_BASE_URL is unset, so this stays relative and the Vite proxy handles it.
+  const apiOrigin = ((import.meta.env.VITE_API_BASE_URL as string | undefined) || "").replace(/\/+$/, "");
+  const reviewUrl = `${apiOrigin}/api/commentary/review?token=${encodeURIComponent(getStoredToken())}`;
   const wd = weekly?.draft;
   const hasDraft = !!wd && (wd.status === "awaiting_take" || wd.status === "drafted");
   const subject = wd?.stories?.[0];
