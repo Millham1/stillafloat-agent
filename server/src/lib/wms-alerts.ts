@@ -3,8 +3,13 @@
 // Subscribers save a (ship, sailing dates) watch from the WMS page. An hourly
 // sweep checks each active watch for three event kinds and emails the watcher
 // (via the ops-manager Gmail sender):
-//   1. itinerary change — the ship's AIS-declared destination changed vs. the
-//      watch's recorded baseline (this is the "scrubbed but not displayed" leg)
+//   1. course change — a REAL one: a mid-leg re-route, a port the ship never
+//      calls at, or a swapped port order, judged by the same classifier the
+//      storm feature uses (storm-diversion.ts, Mark 2026-09-05). Scheduled port
+//      rotation is recorded on the watch (itinerary_flags) but never emailed —
+//      the old "any destination change" rule would have mailed every port day.
+//      When Mark PUBLISHES a storm course change, watchers of that ship are
+//      emailed too, with the operator/news intel (emailWatchersForShip).
 //   2. weather threat — severe forecast at the declared destination port, or an
 //      approved storm alert whose grounds overlap the ship's position/destination
 //   3. cruise-line news — an approved story mentioning the ship's line
@@ -19,8 +24,9 @@ import crypto from "node:crypto";
 import { getSupabase, readJson, PATHS } from "./persistence";
 import { logger } from "./logger";
 import { sendMail } from "./mailer";
-import { getPosition, type ShipPosition } from "./ship-tracker";
+import { getPosition, trackerObservedSince, type ShipPosition } from "./ship-tracker";
 import { portBySlug } from "./ports";
+import { classifyDestinationChange, EVENT_KINDS, kindLabel, type ChangeKind } from "./storm-diversion";
 import { groundsForPoint, labelGrounds } from "./storm-grounds";
 import { storySlug, type NewsStory } from "./prerender-news";
 
@@ -35,7 +41,8 @@ export interface ShipWatch {
   sailing_end: string;
   status: string;
   last_destination: string | null;
-  itinerary_flags: { at: string; from: string | null; to: string; raw: string | null }[];
+  last_destination_at: string | null;
+  itinerary_flags: { at: string; from: string | null; to: string; raw: string | null; kind?: string; reason?: string }[];
   alerted: string[];
   subscribers?: { email: string; name: string; lang: string; status: string } | null;
 }
@@ -54,24 +61,51 @@ function eventHash(kind: string, key: string): string {
 
 interface WatchEvent { kind: "itinerary" | "weather" | "news"; hash: string; title: string; body: string }
 
-function checkItinerary(watch: ShipWatch, pos: ShipPosition): { event: WatchEvent | null; newBaseline: string | null } {
-  const current = pos.destinationSlug;
-  if (!current) return { event: null, newBaseline: watch.last_destination };
-  if (!watch.last_destination) return { event: null, newBaseline: current }; // first sighting = baseline, not a change
-  if (watch.last_destination === current) return { event: null, newBaseline: current };
-  const fromName = portBySlug(watch.last_destination)?.name ?? watch.last_destination;
-  const toName = portBySlug(current)?.name ?? current;
+/** Subscriber-facing wording for a REAL course change. Pure; tested. */
+export function buildWatchItineraryEvent(
+  shipName: string, kind: ChangeKind, change: { from: string; to: string }, watchId: string, nowIso: string,
+): WatchEvent {
+  const fromName = portBySlug(change.from)?.name ?? change.from;
+  const toName = portBySlug(change.to)?.name ?? change.to;
   return {
-    newBaseline: current,
-    event: {
-      kind: "itinerary",
-      hash: eventHash("itin", `${watch.id}|${watch.last_destination}->${current}`),
-      title: `Course update: ${pos.name} is now headed to ${toName}`,
-      body: `${pos.name} changed its declared destination from ${fromName} to ${toName}. ` +
-        `Itinerary adjustments like this are usually operational or weather-related — ` +
-        `check your cruise line's app or advisories for the official word.`,
-    },
+    kind: "itinerary",
+    hash: eventHash("itin", `${watchId}|${change.from}->${change.to}|${nowIso.slice(0, 10)}`),
+    title: `⚓ ${shipName} ${kindLabel(kind)} — now headed to ${toName}`,
+    body: `${shipName} was headed to ${fromName} and now declares ${toName}. ` +
+      `Course changes like this are usually operational or weather-related — ` +
+      `check your cruise line's app or advisories for the official word.`,
   };
+}
+
+interface ItineraryCheck {
+  event: WatchEvent | null;
+  newBaseline: string | null;
+  newBaselineAt: string | null;
+  kind: ChangeKind | null;
+  reason: string | null;
+}
+
+function checkItinerary(watch: ShipWatch, pos: ShipPosition): ItineraryCheck {
+  const now = new Date().toISOString();
+  const v = classifyDestinationChange({
+    baseline: watch.last_destination,
+    baselineDeclaredAt: watch.last_destination_at,
+    current: pos.destinationSlug,
+    now,
+    inPortSlug: pos.inPortSlug,
+    lastPortSlug: pos.lastPortSlug,
+    lastPortDepartedAt: pos.lastPortDepartedAt,
+    lastPosAt: pos.lastPosAt,
+    portCalls: pos.portCalls ?? [],
+    knownExtra: [],
+    observedSince: trackerObservedSince(),
+  });
+  const base = {
+    newBaseline: v.newBaseline, newBaselineAt: v.newBaselineDeclaredAt,
+    kind: v.change ? v.kind : null, reason: v.change ? v.reason : null,
+  };
+  if (!v.change || !EVENT_KINDS.has(v.kind)) return { event: null, ...base };
+  return { event: buildWatchItineraryEvent(pos.name, v.kind, v.change, watch.id, now), ...base };
 }
 
 async function checkWeather(watch: ShipWatch, pos: ShipPosition): Promise<WatchEvent[]> {
@@ -252,7 +286,7 @@ export async function runWatchSweep(): Promise<{ checked: number; emailed: numbe
   // Active watches in (or within 5 days of) their sailing window.
   const { data, error } = await supabase
     .from("ship_watches")
-    .select("id, subscriber_id, ship_name, sailing_start, sailing_end, status, last_destination, itinerary_flags, alerted, subscribers ( email, name, lang, status )")
+    .select("id, subscriber_id, ship_name, sailing_start, sailing_end, status, last_destination, last_destination_at, itinerary_flags, alerted, subscribers ( email, name, lang, status )")
     .eq("status", "active")
     .lte("sailing_start", soon)
     .gte("sailing_end", today);
@@ -266,7 +300,7 @@ export async function runWatchSweep(): Promise<{ checked: number; emailed: numbe
     const pos = getPosition(watch.ship_name);
     if (!pos || pos.lat === null) continue; // nothing observed yet
 
-    const { event: itinEvent, newBaseline } = checkItinerary(watch, pos);
+    const { event: itinEvent, newBaseline, newBaselineAt, kind: itinKind, reason: itinReason } = checkItinerary(watch, pos);
     const events = [
       ...(itinEvent ? [itinEvent] : []),
       ...(await checkWeather(watch, pos)),
@@ -276,8 +310,13 @@ export async function runWatchSweep(): Promise<{ checked: number; emailed: numbe
     const alreadySent = new Set(watch.alerted ?? []);
     const fresh = events.filter((e) => !alreadySent.has(e.hash));
 
-    const flags = itinEvent
-      ? [...(watch.itinerary_flags ?? []), { at: new Date().toISOString(), from: watch.last_destination, to: newBaseline!, raw: pos.destinationRaw }]
+    // Every destination change is recorded (audit); only REAL ones become events.
+    const changed = itinKind !== null && newBaseline !== null && newBaseline !== watch.last_destination;
+    const flags = changed
+      ? [...(watch.itinerary_flags ?? []), {
+          at: new Date().toISOString(), from: watch.last_destination, to: newBaseline, raw: pos.destinationRaw,
+          kind: itinKind ?? undefined, reason: itinReason ?? undefined,
+        }].slice(-MAX_ALERT_HASHES)
       : watch.itinerary_flags;
 
     if (fresh.length) {
@@ -294,10 +333,11 @@ export async function runWatchSweep(): Promise<{ checked: number; emailed: numbe
     }
 
     // Persist baseline/flags/dedup even when nothing was emailed (baseline set).
-    if (fresh.length || newBaseline !== watch.last_destination || itinEvent) {
+    if (fresh.length || newBaseline !== watch.last_destination || newBaselineAt !== watch.last_destination_at || changed) {
       const { error: upErr } = await (supabase.from("ship_watches") as ReturnType<typeof supabase.from>)
         .update({
           last_destination: newBaseline,
+          last_destination_at: newBaselineAt,
           itinerary_flags: flags,
           alerted: [...alreadySent].slice(-MAX_ALERT_HASHES),
           updated_at: new Date().toISOString(),
@@ -309,4 +349,51 @@ export async function runWatchSweep(): Promise<{ checked: number; emailed: numbe
 
   if (watches.length) logger.info({ checked: watches.length, emailed }, "wms-alerts: sweep complete");
   return { checked: watches.length, emailed };
+}
+
+// ── Publish → watchers ───────────────────────────────────────────────────────
+
+export interface WatcherNotice { key: string; title: string; body: string }
+
+/**
+ * Email everyone actively watching `shipName` (confirmed subscribers, sailing
+ * within the sweep's window) about a course change Mark PUBLISHED on a storm
+ * alert. Deduped per watch on `key`; respects DISABLE_WMS_ALERTS (dev mirror).
+ */
+export async function emailWatchersForShip(shipName: string, notice: WatcherNotice): Promise<{ watches: number; emailed: number }> {
+  if (process.env["DISABLE_WMS_ALERTS"] === "1") return { watches: 0, emailed: 0 };
+  const supabase = getSupabase();
+  const today = new Date().toISOString().slice(0, 10);
+  const soon = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("ship_watches")
+    .select("id, subscriber_id, ship_name, sailing_start, sailing_end, status, last_destination, last_destination_at, itinerary_flags, alerted, subscribers ( email, name, lang, status )")
+    .eq("status", "active")
+    .ilike("ship_name", shipName)
+    .lte("sailing_start", soon)
+    .gte("sailing_end", today);
+  if (error) { logger.warn({ err: error, ship: shipName }, "wms-alerts: watcher lookup failed"); return { watches: 0, emailed: 0 }; }
+  const watches = (data ?? []) as unknown as ShipWatch[];
+  let emailed = 0;
+  for (const watch of watches) {
+    const sub = watch.subscribers;
+    if (!sub || sub.status !== "confirmed") continue;
+    const hash = eventHash("publish", `${watch.id}|${notice.key}`);
+    const alreadySent = new Set(watch.alerted ?? []);
+    if (alreadySent.has(hash)) continue;
+    const stopUrl = `https://stillafloatcruising.com/api/wms/watch/stop?id=${watch.id}&sig=${makeWatchSig(watch.id)}`;
+    const { subject, html } = renderAlertEmail(
+      sub.name, watch.ship_name, [{ kind: "itinerary", hash, title: notice.title, body: notice.body }], stopUrl, sub.lang ?? "en",
+    );
+    const ok = await sendMail({ to: sub.email, subject, html, fromName: "Still Afloat Ship Watch" });
+    if (!ok) { logger.warn({ watch: watch.id }, "wms-alerts: publish email failed"); continue; }
+    emailed++;
+    alreadySent.add(hash);
+    await (supabase.from("ship_watches") as ReturnType<typeof supabase.from>)
+      .update({ alerted: [...alreadySent].slice(-MAX_ALERT_HASHES), updated_at: new Date().toISOString() })
+      .eq("id", watch.id);
+    await new Promise((r) => setTimeout(r, 1200)); // pace the Gmail API
+  }
+  if (watches.length) logger.info({ ship: shipName, watches: watches.length, emailed }, "wms-alerts: publish notice sent");
+  return { watches: watches.length, emailed };
 }

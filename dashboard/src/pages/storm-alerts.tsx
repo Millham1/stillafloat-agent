@@ -167,7 +167,7 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
     setBusy(true);
     try {
       const r = await fetch(`/api/storm-diversions/${id}/${verb}`, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() } }).then((x) => x.json());
-      if (r?.success) toast({ title: verb === "publish" ? `Published to ${r.alerts ?? 0} alert(s)` : "Ignored" });
+      if (r?.success) toast({ title: verb === "publish" ? `Published to ${r.alerts ?? 0} alert(s)${r.watchersEmailed ? `, ${r.watchersEmailed} watcher(s) emailed` : ""}` : "Ignored" });
       else toast({ title: "Failed", description: String(r?.error ?? "") });
     } finally {
       setBusy(false);

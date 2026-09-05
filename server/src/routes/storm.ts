@@ -281,7 +281,7 @@ router.post("/storm-diversions/:id/publish", requireToken, async (req: Request, 
   try {
     const r = await publishDiversion(req.params["id"] ?? "");
     if (!r.published) { res.status(r.reason === "not found" ? 404 : 409).json({ success: false, error: r.reason }); return; }
-    res.json({ success: true, alerts: r.alerts });
+    res.json({ success: true, alerts: r.alerts, watchersEmailed: r.watchersEmailed });
   } catch (err) {
     logger.error({ err }, "diversion publish failed");
     res.status(500).json({ success: false, error: "Publish failed" });

@@ -14,9 +14,11 @@
 //   • when the storm is dead (gone from a HEALTHY feed for 3 consecutive
 //     scans) the alert ends on its own: it drops off the website, its ship
 //     pins are released (other live storms keep theirs), its open course-change
-//     nudges are dismissed, and — for alerts that were approved/sent — an
-//     all-clear email is drafted for Mark's one-click approval. Nothing is
-//     ever sent to subscribers without his approval.
+//     nudges are dismissed, and — for alerts that were approved/sent — the
+//     all-clear email goes to subscribers AUTONOMOUSLY (Mark, 2026-09-05: "the
+//     all clear should be autonomous"). Mark gets a push saying it went out.
+//     DISABLE_STORM_ALLCLEAR_AUTOSEND=1 (set on the DEV box, whose database
+//     mirrors prod's subscriber list) falls back to the one-click gated draft.
 //
 // Pure decision helpers are at the top (unit-tested in storm-lifecycle.test.ts);
 // the I/O runner is below.
@@ -24,6 +26,8 @@
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { resolveActionsForSource, createAction } from "./actions";
+import { notifyMark } from "./notify";
+import { emailAllClear } from "./storm-send";
 import { sailingsForStorm, deploymentsForStorm, defaultWindow, type Sailing } from "./storm-sailings";
 import { severityRank } from "./storm-escalation";
 import { setStormShips, mmsiForShip, getPosition, trackerObservedSince } from "./ship-tracker";
@@ -76,6 +80,11 @@ export function draftAllClear(a: { name: string | null; classification: string |
       `your cruise line has the final word on any remaining changes, so keep an eye on their app for your specific sailing.\n\n` +
       `Thanks for riding it out with us. We watch the tropics year-round, and if anything new spins up, you'll hear from us. Until then — smooth sailing.`,
   };
+}
+
+/** Autonomous all-clear unless explicitly disabled (dev box). Pure; tested. */
+export function allClearMode(env: Record<string, string | undefined> = process.env): "auto" | "gated" {
+  return env["DISABLE_STORM_ALLCLEAR_AUTOSEND"] === "1" ? "gated" : "auto";
 }
 
 /** Slug for a port named the way `sailings.depart_port` / deployments name it. */
@@ -261,6 +270,34 @@ async function endAlert(row: LifecycleRow): Promise<void> {
   // course-change nudges release for THIS storm only (Mark 2026-09-05).
   await resolveActionsForSource("storm_alert", row.id, "dismissed");
   const released = await releaseAlertDiversions(row.id);
+
+  if (draft && allClearMode() === "auto") {
+    // Autonomous: email the all-clear to the same opted-in base the alert went
+    // to, stamp the alert, and tell Mark it happened (a push, not a queue row —
+    // there is nothing for him to decide). A send failure falls back to the
+    // gated draft below so he can retry with one tap.
+    try {
+      const counts = await emailAllClear({
+        id: row.id, name: row.name ?? row.nhc_id, affected_grounds: row.affected_grounds,
+        all_clear_headline: draft.headline, all_clear_body_md: draft.body_md,
+      });
+      await supabase.from("storm_alerts").update({
+        all_clear_sent_at: new Date().toISOString(),
+        all_clear_sent_count: counts.sent,
+        last_updated: new Date().toISOString(),
+      }).eq("id", row.id);
+      await notifyMark({
+        title: `🟢 All-clear sent: ${row.name ?? row.nhc_id} → ${counts.sent} subscriber${counts.sent === 1 ? "" : "s"}`,
+        body: `${draft.headline}\nSent automatically when NHC dropped the system` +
+          (counts.failed ? ` (${counts.failed} failed — see the dashboard).` : ". Nothing to do."),
+        tag: `storm-allclear-${row.nhc_id}`,
+      }).catch((err) => logger.warn({ err }, "storm-lifecycle: all-clear notify failed"));
+      logger.info({ alert: row.nhc_id, ...counts, ...released }, "storm-lifecycle: storm ended, all-clear sent");
+      return;
+    } catch (err) {
+      logger.error({ err, alert: row.nhc_id }, "storm-lifecycle: autonomous all-clear failed — falling back to the gated draft");
+    }
+  }
 
   if (draft) {
     await createAction({

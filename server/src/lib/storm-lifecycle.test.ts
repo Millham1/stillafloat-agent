@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
 import {
-  judgeDeath, draftAllClear, portSlugByName, MISSING_SCANS_TO_END,
+  judgeDeath, draftAllClear, portSlugByName, allClearMode, MISSING_SCANS_TO_END,
   type LifecycleAlertState,
 } from "./storm-lifecycle";
 import { newsItemMatchesStorm, extractWindow, parseRssItems } from "./storm-intel";
@@ -42,6 +42,14 @@ test("portSlugByName resolves gazetteer names and passes slugs through", () => {
   assert.equal(portSlugByName("los-angeles"), "los-angeles");
   assert.equal(portSlugByName("Nowhere Harbour"), null);
   assert.equal(portSlugByName(null), null);
+});
+
+// ── All-clear mode (Mark 2026-09-05: autonomous unless the dev box says no) ──
+
+test("all-clear is autonomous by default and gated only when explicitly disabled", () => {
+  assert.equal(allClearMode({}), "auto");
+  assert.equal(allClearMode({ DISABLE_STORM_ALLCLEAR_AUTOSEND: "1" }), "gated");
+  assert.equal(allClearMode({ DISABLE_STORM_ALLCLEAR_AUTOSEND: "0" }), "auto");
 });
 
 // ── All-clear draft ──────────────────────────────────────────────────────────

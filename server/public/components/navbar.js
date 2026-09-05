@@ -6,9 +6,13 @@
   const path     = window.location.pathname;
   const isSpanish = path.startsWith('/es/') || path === '/es';
 
+  // Strict equality on purpose. The previous test used
+  // ['', '/', ...].some(s => path.endsWith(s)) — and every string ends with '',
+  // so isHome was TRUE on every English page: the home-only quick pills showed
+  // site-wide and the corner logo vanished everywhere (Mark, 2026-09-05).
   const isHome = isSpanish
-    ? (path === '/es/' || path === '/es' || path.endsWith('/es/index.html'))
-    : (['', '/', '/index.html', 'index.html'].some(s => path.endsWith(s) || path === s));
+    ? (path === '/es/' || path === '/es' || path === '/es/index.html')
+    : (path === '/' || path === '' || path === '/index.html');
 
   const homeUrl  = isSpanish ? '/es/index.html' : '/index.html';
   // Compute equivalent page URL in the other language

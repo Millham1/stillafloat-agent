@@ -10,6 +10,7 @@ import {
 } from "./storm-diversion";
 import { mergeDetections, describeDiversion, diversionButtons, type PendingDiversion } from "./storm-diversion-events";
 import { newsItemMatchesShip } from "./storm-intel";
+import { buildWatchItineraryEvent } from "./wms-alerts";
 
 const T0 = Date.parse("2026-09-04T12:00:00Z");
 const iso = (hoursFromT0: number) => new Date(T0 + hoursFromT0 * 3_600_000).toISOString();
@@ -206,4 +207,16 @@ test("newsItemMatchesShip needs the ship name plus a storm/itinerary signal", ()
   assert.equal(newsItemMatchesShip({ title: "Navigator of the Seas skips Cabo as Tropical Storm Karina nears", description: "" }, "Navigator of the Seas"), true);
   assert.equal(newsItemMatchesShip({ title: "Navigator of the Seas adds a new pizza venue", description: "food news" }, "Navigator of the Seas"), false);
   assert.equal(newsItemMatchesShip({ title: "Carnival Panorama reroutes for weather", description: "" }, "Navigator of the Seas"), false);
+});
+
+
+test("watchers are told about a REAL course change in plain words, deduped per day", () => {
+  const ev = buildWatchItineraryEvent("Navigator of the Seas", "reroute", { from: "cabo-san-lucas", to: "los-angeles" }, "w1", iso(0));
+  assert.match(ev.title, /re-routed mid-leg/);
+  assert.match(ev.title, /Los Angeles/);
+  assert.match(ev.body, /was headed to Cabo San Lucas/);
+  assert.match(ev.body, /cruise line/);
+  const again = buildWatchItineraryEvent("Navigator of the Seas", "reroute", { from: "cabo-san-lucas", to: "los-angeles" }, "w1", iso(5));
+  assert.equal(ev.hash, again.hash); // same day → same hash → one email
+  assert.notEqual(ev.hash, buildWatchItineraryEvent("Navigator of the Seas", "reroute", { from: "cabo-san-lucas", to: "los-angeles" }, "w2", iso(0)).hash);
 });
