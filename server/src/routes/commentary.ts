@@ -655,7 +655,7 @@ function note(msg){
 // page being closed and reopened — the work is server-side, not in this tab.
 async function waitForRun(label){
   const started=Date.now();
-  note("<b>"+label+"</b><br><span class=\"muted small\">Working… this takes 2-6 minutes (the fact-check searches the web). Safe to leave this page open; the run continues on the server either way.</span>");
+  note("<b>"+label+"</b><br><span class='muted small'>Working… this takes 2-6 minutes (the fact-check searches the web). Safe to leave this page open; the run continues on the server either way.</span>");
   for(;;){
     await new Promise(r=>setTimeout(r,5000));
     let d;
@@ -665,7 +665,7 @@ async function waitForRun(label){
     }catch(e){ continue; }           // transient network blip — keep waiting
     const secs=Math.round((Date.now()-started)/1000);
     if(d.busy){
-      note("<b>"+label+"</b><br><span class=\"muted small\">Working… "+secs+"s elapsed. The fact-check searches the web, so 2-6 minutes is normal.</span>");
+      note("<b>"+label+"</b><br><span class='muted small'>Working… "+secs+"s elapsed. The fact-check searches the web, so 2-6 minutes is normal.</span>");
       continue;
     }
     if(d.lastError){ alert("The run failed: "+d.lastError); location.reload(); return; }
