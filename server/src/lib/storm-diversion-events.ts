@@ -132,7 +132,13 @@ export async function recordDiversionEvents(detections: PendingDiversion[]): Pro
       continue;
     }
     const row = ((data ?? []) as unknown as DiversionEventRow[])[0];
-    if (!row) continue; // same movement already recorded today → already nudged
+    if (!row) {
+      // Same movement already recorded today → already nudged. A storm that
+      // pinned this ship in a LATER pass still belongs on the event (Publish
+      // must reach its card too), so attach it — without a second nudge.
+      await attachStormsToPending(key, m.alertIds, m.stormNames);
+      continue;
+    }
 
     let intel: IntelEntry[] = [];
     try {
@@ -157,6 +163,21 @@ export async function recordDiversionEvents(detections: PendingDiversion[]): Pro
     created++;
   }
   return created;
+}
+
+async function attachStormsToPending(dedup: string, alertIds: string[], stormNames: string[]): Promise<void> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("storm_diversion_events")
+    .select("id, alert_ids, storm_names").eq("dedup_key", dedup).eq("status", "pending").maybeSingle();
+  if (error || !data) return;
+  const ev = data as unknown as { id: string; alert_ids: string[]; storm_names: string[] };
+  const mergedAlerts = [...new Set([...(ev.alert_ids ?? []), ...alertIds])];
+  const mergedStorms = [...new Set([...(ev.storm_names ?? []), ...stormNames])];
+  if (mergedAlerts.length === (ev.alert_ids ?? []).length && mergedStorms.length === (ev.storm_names ?? []).length) return;
+  const { error: upErr } = await supabase.from("storm_diversion_events")
+    .update({ alert_ids: mergedAlerts, storm_names: mergedStorms }).eq("id", ev.id);
+  if (upErr) logger.warn({ err: upErr, dedup }, "storm-diversion: attach storms failed");
+  else logger.info({ id: ev.id, storms: mergedStorms }, "storm-diversion: later storm attached to open event");
 }
 
 async function loadEvent(id: string): Promise<DiversionEventRow | null> {

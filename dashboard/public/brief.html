@@ -111,8 +111,13 @@
   }
 
   // ── Unified action queue: the buttons DO the thing, then the row clears. ──
-  // Dashboard origin for link-style buttons (an "Open …" that just navigates).
-  var DASH = (location.hostname.indexOf("dashboard.")===0) ? location.origin : "https://dashboard.stillafloatcruising.com";
+  // Dashboard root for link-style buttons (an "Open …" that just navigates).
+  // Prod: the SPA lives at the dashboard subdomain root; the brief is ALSO served
+  // on the main site, where the SPA is not — send those taps to the subdomain.
+  // Dev box: same origin, SPA under /dashboard/ (nginx).
+  var DASH = /(^|\.)stillafloatcruising\.com$/.test(location.hostname)
+    ? (location.hostname.indexOf("dashboard.")===0 ? location.origin : "https://dashboard.stillafloatcruising.com")
+    : location.origin + "/dashboard";
   window.__act = function(actionId, method, path, btn, finalStatus){
     var btns=btn.closest(".aitem").querySelectorAll("button");
     btns.forEach(function(b){b.disabled=true;}); btn.textContent="…";
