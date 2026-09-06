@@ -159,6 +159,31 @@ export function isStale(scheduledFor: string | undefined, nowMs: number, days: n
 // Terminal "not for this pipe" reasons — resolve as skipped, never retried.
 const SKIP_REASONS = new Set(["personal-manual", "ig-lang-off"]);
 
+// What the poster does with ONE publish result. Pure and tested directly —
+// dev runs with DISABLE_SOCIAL_POSTER=1 and an empty queue, so this branch can
+// only be proven here, not by watching a box.
+export type PostOutcome =
+  | { kind: "posted" }
+  | { kind: "retry" }
+  | { kind: "skipped"; error: string }
+  | { kind: "failed"; error: string };
+
+export function decideOutcome(
+  res: { ok: boolean; reason: string },
+  scheduledFor: string | undefined,
+  nowMs: number,
+  staleAfterDays: number,
+): PostOutcome {
+  if (res.ok) return { kind: "posted" };
+  if (RETRY_REASONS.has(res.reason)) {
+    return isStale(scheduledFor, nowMs, staleAfterDays)
+      ? { kind: "skipped", error: `stale:${res.reason}` }
+      : { kind: "retry" };
+  }
+  if (SKIP_REASONS.has(res.reason)) return { kind: "skipped", error: res.reason };
+  return { kind: "failed", error: res.reason };
+}
+
 // Post everything that's due. Throttled per tick. Returns count posted.
 export async function runDuePosts(maxPerTick = 5): Promise<number> {
   const queue = await loadQueue();
@@ -174,30 +199,23 @@ export async function runDuePosts(maxPerTick = 5): Promise<number> {
       if (!post.scheduledFor || new Date(post.scheduledFor).getTime() > now) continue;
 
       const res = await publishOnePost(post);
-      if (res.ok) {
+      const out = decideOutcome(res, post.scheduledFor, now, staleDays());
+      if (out.kind === "posted") {
         post.postedAt = new Date().toISOString();
         post.postState = "posted";
         posted++;
         changed = true;
-      } else if (RETRY_REASONS.has(res.reason)) {
-        // not configured / no clip yet — leave scheduled, retry next tick, unless
-        // it has been waiting longer than SOCIAL_STALE_DAYS.
-        if (isStale(post.scheduledFor, now, staleDays())) {
-          post.postState = "skipped";
-          post.postError = `stale:${res.reason}`;
-          changed = true;
+      } else if (out.kind === "retry") {
+        // not configured / no clip yet — leave scheduled, try again next tick
+        continue;
+      } else {
+        // skipped (manual-only, language off, or stale) / failed
+        post.postState = out.kind;
+        post.postError = out.error;
+        changed = true;
+        if (out.error.startsWith("stale:")) {
           logger.warn({ videoId: post.videoId, surface: post.surface, reason: res.reason }, "social poster: stale item skipped");
         }
-        continue;
-      } else if (SKIP_REASONS.has(res.reason)) {
-        // manual-only surface, or a language this pipe is switched off for.
-        post.postState = "skipped";
-        post.postError = res.reason;
-        changed = true;
-      } else {
-        post.postState = "failed";
-        post.postError = res.reason;
-        changed = true;
       }
     }
     // A batch is done when every schedulable post is resolved (posted/failed).
