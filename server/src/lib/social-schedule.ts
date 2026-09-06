@@ -139,8 +139,25 @@ export async function scheduleApprovedBatch(batch: QueuedBatch): Promise<QueuedB
   return batch;
 }
 
-// "retry later" reasons — leave the post scheduled, try again next tick.
+// "retry later" reasons — leave the post scheduled, try again next tick…
 const RETRY_REASONS = new Set(["fb-not-configured", "ig-not-configured", "ig-no-clip"]);
+// …but not forever. Before 2026-09-06 an Instagram item with no clip sat
+// "scheduled" indefinitely (every IG item since 8/29 did), so the calendar
+// promised posts that could never go out and nothing surfaced the gap. A retry
+// reason older than SOCIAL_STALE_DAYS (default 7) resolves as skipped, tagged
+// with the reason, so the calendar tells the truth.
+export const STALE_DAYS_DEFAULT = 7;
+export function staleDays(env: string | undefined = process.env["SOCIAL_STALE_DAYS"]): number {
+  const n = Number(env);
+  return Number.isFinite(n) && n > 0 ? n : STALE_DAYS_DEFAULT;
+}
+export function isStale(scheduledFor: string | undefined, nowMs: number, days: number): boolean {
+  if (!scheduledFor) return false;
+  const t = new Date(scheduledFor).getTime();
+  return Number.isFinite(t) && nowMs - t > days * 86_400_000;
+}
+// Terminal "not for this pipe" reasons — resolve as skipped, never retried.
+const SKIP_REASONS = new Set(["personal-manual", "ig-lang-off"]);
 
 // Post everything that's due. Throttled per tick. Returns count posted.
 export async function runDuePosts(maxPerTick = 5): Promise<number> {
@@ -163,11 +180,19 @@ export async function runDuePosts(maxPerTick = 5): Promise<number> {
         posted++;
         changed = true;
       } else if (RETRY_REASONS.has(res.reason)) {
-        // not configured / no clip yet — leave scheduled, retry next tick
+        // not configured / no clip yet — leave scheduled, retry next tick, unless
+        // it has been waiting longer than SOCIAL_STALE_DAYS.
+        if (isStale(post.scheduledFor, now, staleDays())) {
+          post.postState = "skipped";
+          post.postError = `stale:${res.reason}`;
+          changed = true;
+          logger.warn({ videoId: post.videoId, surface: post.surface, reason: res.reason }, "social poster: stale item skipped");
+        }
         continue;
-      } else if (res.reason === "personal-manual") {
-        // Legacy scheduled personal-surface post — manual-only, resolve as skipped.
+      } else if (SKIP_REASONS.has(res.reason)) {
+        // manual-only surface, or a language this pipe is switched off for.
         post.postState = "skipped";
+        post.postError = res.reason;
         changed = true;
       } else {
         post.postState = "failed";
@@ -177,9 +202,10 @@ export async function runDuePosts(maxPerTick = 5): Promise<number> {
     }
     // A batch is done when every schedulable post is resolved (posted/failed).
     const open = batch.posts.some(
-      (p) => schedulable(p) && !p.postedAt && p.postState !== "failed",
+      (p) => schedulable(p) && !p.postedAt && p.postState !== "failed" && p.postState !== "skipped",
     );
-    if (!open && batch.status !== "posted") {
+    // (status is already narrowed to "scheduled" by the guard at the top of the loop)
+    if (!open) {
       batch.status = "posted";
       changed = true;
     }
