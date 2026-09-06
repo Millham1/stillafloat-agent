@@ -6,8 +6,14 @@ import type { QueuedBatch, SocialPost } from "./social-agent";
 // platform via Make.
 //   • Facebook → "Still Afloat Social Post" webhook (MAKE_FB_WEBHOOK):
 //       {image_url, caption} → FB photo. v1 uses the YouTube thumbnail + link.
-//   • Instagram Reel → MAKE_IG_WEBHOOK: {video_url, caption}. Needs a hosted
-//       clip URL (Cloudinary) registered in the media map for that video.
+//   • Instagram Reel → MAKE_IG_WEBHOOK: {video_url, caption}. Needs a PUBLIC clip
+//       URL registered in the media map for that video — since 2026-09-06 that is
+//       OUR Supabase Storage bucket `social-clips` (see social-clips.ts), filled by
+//       the Mac publisher right after the YouTube upload. No Cloudinary. Instagram's
+//       API only fetches from a URL, it never accepts bytes, so a host is unavoidable;
+//       Mark chose to own it ("as much as possible should reside on the server").
+//     IG posting is language-gated by IG_POST_LANGS (comma list; unset = all) —
+//       the 30-day Instagram test (Mark 2026-09-06) runs Spanish only.
 //   • YouTube → skipped (it's the source).
 // Fully gated: missing webhook/clip = skip, never throws.
 
@@ -16,6 +22,11 @@ const MEDIA_KEY = "social-media-map";
 export interface MediaEntry {
   videoUrl: string;
   addedAt: string;
+  lang?: string;
+  path?: string; // object path inside the social-clips bucket
+  sha256?: string;
+  bytes?: number;
+  source?: "supabase" | "cloudinary" | "manual";
 }
 interface MediaMap {
   items: Record<string, MediaEntry>;
@@ -24,9 +35,13 @@ interface MediaMap {
 export async function loadMediaMap(): Promise<MediaMap> {
   return readJson<MediaMap>(MEDIA_KEY, { items: {} });
 }
-export async function setMedia(videoId: string, videoUrl: string): Promise<void> {
+export async function setMedia(
+  videoId: string,
+  videoUrl: string,
+  meta: Omit<Partial<MediaEntry>, "videoUrl" | "addedAt"> = {},
+): Promise<void> {
   const map = await loadMediaMap();
-  map.items[videoId] = { videoUrl, addedAt: new Date().toISOString() };
+  map.items[videoId] = { videoUrl, addedAt: new Date().toISOString(), ...meta };
   await writeJson(MEDIA_KEY, map);
 }
 
@@ -46,7 +61,17 @@ export const isPersonalSurface = (post: SocialPost): boolean => /personal/i.test
 // social poster cron (scheduled drip). Special reasons the caller may want to
 // treat as "retry later" rather than a hard failure: "youtube-source",
 // "fb-not-configured", "ig-not-configured", "ig-no-clip". "personal-manual"
-// is terminal: the post is manual-only, resolve it as skipped.
+// and "ig-lang-off" are terminal: resolve the post as skipped.
+
+// IG_POST_LANGS: comma-separated languages Instagram may post in. Unset/empty =
+// every language. "es" during the Spanish-only Instagram test (Mark 2026-09-06).
+export function igLangAllowed(lang: string, env: string | undefined = process.env["IG_POST_LANGS"]): boolean {
+  const allowed = (env ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.length === 0 || allowed.includes(String(lang).toLowerCase());
+}
 export async function publishOnePost(post: SocialPost): Promise<PublishResult> {
   const fbWebhook = process.env["MAKE_FB_WEBHOOK"];
   const igWebhook = process.env["MAKE_IG_WEBHOOK"];
@@ -60,6 +85,9 @@ export async function publishOnePost(post: SocialPost): Promise<PublishResult> {
   }
 
   if (post.platform === "instagram") {
+    if (!igLangAllowed(post.lang)) {
+      return { surface: post.surface, platform: "instagram", ok: false, reason: "ig-lang-off" };
+    }
     const media = await loadMediaMap();
     const clip = media.items[post.videoId]?.videoUrl;
     if (!clip) return { surface: post.surface, platform: "instagram", ok: false, reason: "ig-no-clip" };

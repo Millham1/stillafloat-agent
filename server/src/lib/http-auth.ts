@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { timingSafeEqual } from "node:crypto";
 
 // Single source of truth for admin/PII endpoint authentication.
 //
@@ -60,4 +61,45 @@ export function requireToken(req: Request, res: Response, next: NextFunction): v
     return;
   }
   res.status(401).json({ success: false, error: "Unauthorized" });
+}
+
+// ── Scoped machine tokens (2026-09-06) ────────────────────────────────────────
+// Narrow credentials for single-purpose callers — the Mac video publisher
+// registering a Reel clip (SOCIAL_CLIP_TOKEN / x-social-clip-token) and Make
+// posting follower/reach stats (SOCIAL_STATS_TOKEN / x-social-stats-token) — so
+// the god token never leaves the boxes. The standard token is also accepted, so
+// the dashboard and Mark can hit the same routes. Fails CLOSED when the env var
+// is unset, for the same reason tokenOk does.
+const warnedScoped = new Set<string>();
+
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
+
+export function scopedTokenOk(req: Request, envName: string, headerName: string): boolean {
+  if (tokenOk(req)) return true;
+  const expected = process.env[envName];
+  if (!expected) {
+    if (!warnedScoped.has(envName)) {
+      warnedScoped.add(envName);
+      console.error(
+        `[auth] ${envName} is not set — DENYING ${headerName} requests. Set it in /opt/stillafloat/shared.env and restart.`,
+      );
+    }
+    return false;
+  }
+  const got = req.headers[headerName.toLowerCase()];
+  return typeof got === "string" && got.length > 0 && safeEqual(got, expected);
+}
+
+export function requireScopedToken(envName: string, headerName: string) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (scopedTokenOk(req, envName, headerName)) {
+      next();
+      return;
+    }
+    res.status(401).json({ success: false, error: "Unauthorized" });
+  };
 }

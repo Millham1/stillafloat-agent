@@ -139,8 +139,50 @@ export async function scheduleApprovedBatch(batch: QueuedBatch): Promise<QueuedB
   return batch;
 }
 
-// "retry later" reasons — leave the post scheduled, try again next tick.
+// "retry later" reasons — leave the post scheduled, try again next tick…
 const RETRY_REASONS = new Set(["fb-not-configured", "ig-not-configured", "ig-no-clip"]);
+// …but not forever. Before 2026-09-06 an Instagram item with no clip sat
+// "scheduled" indefinitely (every IG item since 8/29 did), so the calendar
+// promised posts that could never go out and nothing surfaced the gap. A retry
+// reason older than SOCIAL_STALE_DAYS (default 7) resolves as skipped, tagged
+// with the reason, so the calendar tells the truth.
+export const STALE_DAYS_DEFAULT = 7;
+export function staleDays(env: string | undefined = process.env["SOCIAL_STALE_DAYS"]): number {
+  const n = Number(env);
+  return Number.isFinite(n) && n > 0 ? n : STALE_DAYS_DEFAULT;
+}
+export function isStale(scheduledFor: string | undefined, nowMs: number, days: number): boolean {
+  if (!scheduledFor) return false;
+  const t = new Date(scheduledFor).getTime();
+  return Number.isFinite(t) && nowMs - t > days * 86_400_000;
+}
+// Terminal "not for this pipe" reasons — resolve as skipped, never retried.
+const SKIP_REASONS = new Set(["personal-manual", "ig-lang-off"]);
+
+// What the poster does with ONE publish result. Pure and tested directly —
+// dev runs with DISABLE_SOCIAL_POSTER=1 and an empty queue, so this branch can
+// only be proven here, not by watching a box.
+export type PostOutcome =
+  | { kind: "posted" }
+  | { kind: "retry" }
+  | { kind: "skipped"; error: string }
+  | { kind: "failed"; error: string };
+
+export function decideOutcome(
+  res: { ok: boolean; reason: string },
+  scheduledFor: string | undefined,
+  nowMs: number,
+  staleAfterDays: number,
+): PostOutcome {
+  if (res.ok) return { kind: "posted" };
+  if (RETRY_REASONS.has(res.reason)) {
+    return isStale(scheduledFor, nowMs, staleAfterDays)
+      ? { kind: "skipped", error: `stale:${res.reason}` }
+      : { kind: "retry" };
+  }
+  if (SKIP_REASONS.has(res.reason)) return { kind: "skipped", error: res.reason };
+  return { kind: "failed", error: res.reason };
+}
 
 // Post everything that's due. Throttled per tick. Returns count posted.
 export async function runDuePosts(maxPerTick = 5): Promise<number> {
@@ -157,29 +199,31 @@ export async function runDuePosts(maxPerTick = 5): Promise<number> {
       if (!post.scheduledFor || new Date(post.scheduledFor).getTime() > now) continue;
 
       const res = await publishOnePost(post);
-      if (res.ok) {
+      const out = decideOutcome(res, post.scheduledFor, now, staleDays());
+      if (out.kind === "posted") {
         post.postedAt = new Date().toISOString();
         post.postState = "posted";
         posted++;
         changed = true;
-      } else if (RETRY_REASONS.has(res.reason)) {
-        // not configured / no clip yet — leave scheduled, retry next tick
+      } else if (out.kind === "retry") {
+        // not configured / no clip yet — leave scheduled, try again next tick
         continue;
-      } else if (res.reason === "personal-manual") {
-        // Legacy scheduled personal-surface post — manual-only, resolve as skipped.
-        post.postState = "skipped";
-        changed = true;
       } else {
-        post.postState = "failed";
-        post.postError = res.reason;
+        // skipped (manual-only, language off, or stale) / failed
+        post.postState = out.kind;
+        post.postError = out.error;
         changed = true;
+        if (out.error.startsWith("stale:")) {
+          logger.warn({ videoId: post.videoId, surface: post.surface, reason: res.reason }, "social poster: stale item skipped");
+        }
       }
     }
     // A batch is done when every schedulable post is resolved (posted/failed).
     const open = batch.posts.some(
-      (p) => schedulable(p) && !p.postedAt && p.postState !== "failed",
+      (p) => schedulable(p) && !p.postedAt && p.postState !== "failed" && p.postState !== "skipped",
     );
-    if (!open && batch.status !== "posted") {
+    // (status is already narrowed to "scheduled" by the guard at the top of the loop)
+    if (!open) {
       batch.status = "posted";
       changed = true;
     }

@@ -1,5 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { requireToken, extractToken } from "../lib/http-auth";
+import { requireToken, extractToken, requireScopedToken } from "../lib/http-auth";
+import { signClipUpload, registerClip, isValidVideoId, isClipLang } from "../lib/social-clips";
+import { readJson, writeJson } from "../lib/persistence";
+import { summarizeStats, appendSnapshot, STATS_KEY, type StatsSnapshot } from "../lib/social-stats";
 import {
   generateSocialBatch,
   enqueueBatch,
@@ -179,7 +182,70 @@ router.post("/social/media", requireToken, async (req: Request, res: Response) =
   res.json({ success: true, videoId, videoUrl });
 });
 
-// GET /api/social/config — Cloudinary upload config for the uploader page.
+// ── Reel clips → our Supabase bucket (2026-09-06) ─────────────────────────────
+// Scoped token: the Mac publisher holds SOCIAL_CLIP_TOKEN only (x-social-clip-token).
+const requireClipToken = requireScopedToken("SOCIAL_CLIP_TOKEN", "x-social-clip-token");
+
+// POST /api/social/clip/sign — { videoId, lang } → one-time signed upload URL.
+router.post("/social/clip/sign", requireClipToken, async (req: Request, res: Response) => {
+  const { videoId, lang } = req.body as { videoId?: unknown; lang?: unknown };
+  if (!isValidVideoId(videoId) || !isClipLang(lang)) {
+    res.status(400).json({ success: false, error: "videoId (YouTube id) and lang (en|es) are required" });
+    return;
+  }
+  try {
+    const signed = await signClipUpload(videoId, lang);
+    res.json({ success: true, ...signed });
+  } catch (err) {
+    logger.error({ err, videoId }, "clip sign failed");
+    res.status(500).json({ success: false, error: (err as Error).message });
+  }
+});
+
+// POST /api/social/clip/register — { videoId, lang, sha256?, bytes? } after the PUT.
+router.post("/social/clip/register", requireClipToken, async (req: Request, res: Response) => {
+  const { videoId, lang, sha256, bytes } = req.body as { videoId?: unknown; lang?: unknown; sha256?: unknown; bytes?: unknown };
+  if (!isValidVideoId(videoId) || !isClipLang(lang)) {
+    res.status(400).json({ success: false, error: "videoId (YouTube id) and lang (en|es) are required" });
+    return;
+  }
+  try {
+    const clip = await registerClip(videoId, lang, {
+      sha256: typeof sha256 === "string" ? sha256 : undefined,
+      bytes: typeof bytes === "number" ? bytes : undefined,
+    });
+    res.json({ success: true, ...clip });
+  } catch (err) {
+    logger.error({ err, videoId }, "clip register failed");
+    res.status(500).json({ success: false, error: (err as Error).message });
+  }
+});
+
+// ── Social stats (Make "Still Afloat Social Stats" → here, every 12h) ─────────
+const requireStatsToken = requireScopedToken("SOCIAL_STATS_TOKEN", "x-social-stats-token");
+
+// POST /api/social/ingest — any JSON object; stored as a timestamped snapshot.
+router.post("/social/ingest", requireStatsToken, async (req: Request, res: Response) => {
+  const body = req.body as unknown;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    res.status(400).json({ success: false, error: "JSON object body required" });
+    return;
+  }
+  const store = await readJson<{ items: StatsSnapshot[] }>(STATS_KEY, { items: [] });
+  store.items = appendSnapshot(store.items ?? [], body as Record<string, unknown>, new Date().toISOString());
+  await writeJson(STATS_KEY, store);
+  res.json({ success: true, count: store.items.length });
+});
+
+// GET /api/social/stats — the series + first/latest followers per platform.
+router.get("/social/stats", requireToken, async (_req: Request, res: Response) => {
+  const store = await readJson<{ items: StatsSnapshot[] }>(STATS_KEY, { items: [] });
+  const items = store.items ?? [];
+  res.json({ success: true, summary: summarizeStats(items), items });
+});
+
+// GET /api/social/config — Cloudinary upload config for the uploader page (legacy;
+// clips now go to our own bucket via /social/clip/*).
 router.get("/social/config", requireToken, (_req: Request, res: Response) => {
   res.json({
     success: true,
