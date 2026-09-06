@@ -213,12 +213,15 @@ const L = {
     backToFeed: "Return to Feed",
     related: "More cruise news",
     note: "Still Afloat curates and summarizes cruise industry developments, travel disruptions, weather impacts and destination intelligence while crediting and linking directly to original publishers.",
-    feedTitle: "Cruise News & Travel Pulse | Still Afloat",
+    // <title>/meta name what searchers type ("cruise news", "carnival cruise news",
+    // port changes, weather) — the old "Travel Pulse" phrasing matched nothing
+    // (GSC 28d: pos 49-96, 0.8% CTR). H1 keeps the brand line. Agent task 2026-09-06.
+    feedTitle: "Cruise News Today: Ship Delays, Port Changes & Weather Alerts | Still Afloat",
     feedH1: "Cruise News & Travel Pulse",
     feedIntro:
       "Real-time cruise operations, weather impacts, destination changes, passenger disruptions and curated travel intelligence.",
     feedDesc:
-      "Real-time cruise operations, weather impacts, destination changes, passenger disruptions, and curated travel intelligence — updated daily by Still Afloat.",
+      "Cruise news for passengers, updated daily: ship delays, port changes, weather impacts and disruptions across Carnival, Royal Caribbean, Norwegian, Princess and more — curated by Still Afloat.",
     archive: "Earlier stories",
     openDetail: "Open Story Detail →",
     feedPath: "/news.html",
@@ -235,12 +238,12 @@ const L = {
     backToFeed: "Volver a noticias",
     related: "Más noticias de cruceros",
     note: "Still Afloat cura y resume novedades de la industria de cruceros, interrupciones de viaje, impactos del clima e inteligencia de destinos, siempre acreditando y enlazando directamente a los editores originales.",
-    feedTitle: "Noticias de Cruceros y Viajes | Still Afloat",
+    feedTitle: "Noticias de Cruceros Hoy: Retrasos, Cambios de Puerto y Alertas de Clima | Still Afloat",
     feedH1: "Noticias de Cruceros y Viajes",
     feedIntro:
       "Operaciones de cruceros en tiempo real, impactos del clima, cambios de destino, interrupciones para pasajeros e inteligencia de viajes curada.",
     feedDesc:
-      "Operaciones de cruceros en tiempo real, impactos del clima, cambios de destino e inteligencia de viajes curada — actualizado a diario por Still Afloat.",
+      "Noticias de cruceros para pasajeros, actualizadas a diario: retrasos de barcos, cambios de puerto, impactos del clima e interrupciones en Carnival, Royal Caribbean, Norwegian, Princess y más — curadas por Still Afloat.",
     archive: "Historias anteriores",
     openDetail: "Ver detalle →",
     feedPath: "/es/news.html",
