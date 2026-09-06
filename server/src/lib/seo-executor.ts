@@ -108,7 +108,25 @@ export interface ApplyResult {
  * old→new audit note. Never throws for "target not found" — that comes back as
  * {applied:false, reason} so the caller can fall back to promote-to-task.
  */
-export async function applySeoOverride(payload: SeoOverridePayload): Promise<ApplyResult> {
+/**
+ * A proposal aimed at a Spanish page (/es/news/…) that carries its copy under the
+ * English keys must land on the ES fields — otherwise the Spanish title would be
+ * written over the English page (seen 2026-09-06 on the ES typhoon proposal, whose
+ * `title` was "Tifón Bavi Obliga a Royal Caribbean…"). Explicit *_es keys win.
+ */
+export function normalizeForPageLanguage(payload: SeoOverridePayload): SeoOverridePayload {
+  const isEs = /\/es\/news\//i.test(payload.page ?? "");
+  if (!isEs) return payload;
+  const out: SeoOverridePayload = { ...payload };
+  if (!out.title_es?.trim() && out.title?.trim()) out.title_es = out.title;
+  if (!out.metaDescription_es?.trim() && out.metaDescription?.trim()) out.metaDescription_es = out.metaDescription;
+  delete out.title;
+  delete out.metaDescription;
+  return out;
+}
+
+export async function applySeoOverride(rawPayload: SeoOverridePayload): Promise<ApplyResult> {
+  const payload = normalizeForPageLanguage(rawPayload);
   const story = await resolveStory(payload);
   if (!story || !story.id) {
     return {
