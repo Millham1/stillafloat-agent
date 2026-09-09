@@ -34,6 +34,17 @@ service boundary.
    then the shared file fills secrets; an already-set var is never overwritten).
    All three services now read it, including the monorepo backend (`server/src/env.ts`).
    No service imports another's code.
+
+   *LLM keys and models (2026-09-09).* The backend talks to exactly one model
+   provider, Anthropic, through one module: `server/src/lib/llm.ts`. It reads
+   `ANTHROPIC_API_KEY` from the shared file. Two optional overrides, also shared:
+   `LLM_MODEL` (default `claude-sonnet-5`) for the workhorse calls and
+   `LLM_CHEAP_MODEL` (default `claude-haiku-4-5`) for captions, categorisation
+   and mechanical translation. `COMMENTARY_MODEL` still pins the commentary
+   agent specifically. `OPENAI_API_KEY` is no longer read by anything — the
+   service dropped OpenAI on 2026-09-09 after its key had been rejected since
+   09-05 (four days of silent social-planner failure); the variable can be
+   deleted from the shared file whenever Mark rotates secrets next.
 5. **Git is the source of truth. The box only receives deploys.** Code flows
    git -> deploy. Nothing is edited directly on the server, ever. (This rule
    exists because direct-on-server edits caused the live code to drift onto a

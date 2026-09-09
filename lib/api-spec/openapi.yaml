@@ -421,7 +421,7 @@ components:
         systems:
           type: object
           properties:
-            openaiConfigured:
+            anthropicConfigured:
               type: boolean
             resendConfigured:
               type: boolean

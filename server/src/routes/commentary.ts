@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response, json as expressJson } from "express";
 import crypto from "crypto";
+import { anthropicConfigured, llmText } from "../lib/llm";
 import { PATHS, readJson, writeJson } from "../lib/persistence";
 import {
   loadCommentaryDraft,
@@ -95,35 +96,23 @@ router.get("/commentary", async (req: Request, res: Response) => {
 });
 
 async function autoTranslate(text: string): Promise<string> {
-  const apiKey = process.env["OPENAI_API_KEY"];
-  if (!apiKey || !text.trim()) return "";
+  if (!anthropicConfigured() || !text.trim()) return "";
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a professional translator. Translate the following English text to Latin American Spanish (es-419). Preserve ALL HTML tags exactly as-is — only translate the visible text content between tags. Preserve the tone, personality, paragraph structure, and formatting. Return only the translated HTML — no explanations, no preamble.",
-          },
-          { role: "user", content: text },
-        ],
-        temperature: 0.3,
-      }),
+    return await llmText({
+      system:
+        "You are a professional translator. Translate the following English text to Latin American Spanish (es-419). Preserve ALL HTML tags exactly as-is — only translate the visible text content between tags. Preserve the tone, personality, paragraph structure, and formatting. Return only the translated HTML — no explanations, no preamble.",
+      user: text,
+      cheap: true,
+      // A commentary body is long-form HTML; it must not be clipped mid-tag.
+      maxTokens: 8000,
     });
-    if (!response.ok) return "";
-    const data = (await response.json()) as { choices: { message: { content: string } }[] };
-    return data.choices[0]?.message?.content?.trim() ?? "";
   } catch {
     return "";
   }
 }
 
 // POST /api/commentary — create and immediately publish a post
-// If body_es is omitted or empty, it is auto-translated from body_en via OpenAI.
+// If body_es is omitted or empty, it is auto-translated from body_en via Claude.
 router.post("/commentary", async (req: Request, res: Response) => {
   if (!checkToken(req)) {
     res.status(401).json({ success: false, error: "Unauthorized" });
@@ -232,91 +221,61 @@ router.post("/translate-commentary", async (req: Request, res: Response) => {
       res.status(400).json({ success: false, error: "text is required" });
       return;
     }
-    const apiKey = process.env["OPENAI_API_KEY"];
-    if (!apiKey) {
-      res.status(503).json({ success: false, error: "OpenAI not configured" });
+    if (!anthropicConfigured()) {
+      res.status(503).json({ success: false, error: "Anthropic not configured" });
       return;
     }
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a professional translator. Translate the following English text to Latin American Spanish (es-419). Preserve the tone, personality, paragraph structure, and formatting. Return only the translated text — no explanations, no preamble.",
-          },
-          { role: "user", content: String(text) },
-        ],
-        temperature: 0.3,
-      }),
-    });
-    if (!response.ok) {
-      const err = await response.text();
-      res.status(502).json({ success: false, error: `OpenAI error: ${err}` });
+    let translation: string;
+    try {
+      translation = await llmText({
+        system:
+          "You are a professional translator. Translate the following English text to Latin American Spanish (es-419). Preserve the tone, personality, paragraph structure, and formatting. Return only the translated text — no explanations, no preamble.",
+        user: String(text),
+        cheap: true,
+        maxTokens: 8000,
+      });
+    } catch (err) {
+      // Upstream model failure stays a 502, as it was — the caller retries.
+      res.status(502).json({ success: false, error: `Anthropic error: ${(err as Error).message}` });
       return;
     }
-    const data = (await response.json()) as { choices: { message: { content: string } }[] };
-    const translation = data.choices[0]?.message?.content?.trim() ?? "";
     res.json({ success: true, translation });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
 });
 
-// POST /api/transcribe — OpenAI Whisper audio transcription
+// POST /api/transcribe — speech-to-text for the dashboard's "record your take"
+// button (dashboard/src/pages/commentary.tsx → transcribeAudio()). Mark records
+// a voice note of his opinion and it lands in the commentary editor as text.
+//
+// ⚠️ NOT CONFIGURED since 2026-09-09. This was the one OpenAI endpoint with no
+// Anthropic equivalent — Whisper is speech-to-text and the Messages API does not
+// accept audio. Dropping OpenAI (Mark, 2026-09-09; the key had been rejected
+// since 09-05, so this button had in fact been broken for days already) leaves
+// this route with no provider.
+//
+// The route is KEPT and answers 501 so the failure is legible instead of a 404
+// or a silent hang: the dashboard shows the message below, and typing the take
+// by hand still works. Re-enabling it needs a transcription provider decision
+// from Mark — options are a self-hosted whisper.cpp on one of the boxes (fits
+// [[mark-minimize-third-party-services]]: our server, no new SaaS) or a
+// dedicated STT API. Wire the chosen one in here; the request/response contract
+// ({audioBase64} → {transcript}) and the dashboard caller do not need to change.
 // Body (JSON): { audioBase64: string, fileName?: string, mimeType?: string }
 // Uses a 25 MB body limit to accommodate base64-encoded audio files
-router.post("/transcribe", expressJson({ limit: "25mb" }), async (req: Request, res: Response) => {
+router.post("/transcribe", expressJson({ limit: "25mb" }), (req: Request, res: Response) => {
   if (!checkToken(req)) {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
-  try {
-    const { audioBase64, fileName, mimeType } = req.body as {
-      audioBase64?: string;
-      fileName?: string;
-      mimeType?: string;
-    };
-    if (!audioBase64) {
-      res.status(400).json({ success: false, error: "audioBase64 is required" });
-      return;
-    }
-    const apiKey = process.env["OPENAI_API_KEY"];
-    if (!apiKey) {
-      res.status(503).json({ success: false, error: "OpenAI not configured" });
-      return;
-    }
-    const buffer = Buffer.from(audioBase64, "base64");
-    const mime = mimeType || "audio/webm";
-    const name = fileName || "audio.webm";
-    const blob = new Blob([buffer], { type: mime });
-    const file = new File([blob], name, { type: mime });
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("model", "whisper-1");
-
-    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: formData,
-    });
-    if (!response.ok) {
-      const err = await response.text();
-      res.status(502).json({ success: false, error: `OpenAI Whisper error: ${err}` });
-      return;
-    }
-    const data = (await response.json()) as { text: string };
-    res.json({ success: true, transcript: data.text });
-  } catch (error) {
-    res.status(500).json({ success: false, error: (error as Error).message });
-  }
+  res.status(501).json({
+    success: false,
+    error:
+      "Audio transcription is not configured. The service moved off OpenAI on 2026-09-09 and " +
+      "Anthropic has no speech-to-text endpoint, so voice notes cannot be transcribed until a " +
+      "transcription provider is chosen. Type or paste the take instead.",
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

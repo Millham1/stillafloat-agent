@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { anthropicConfigured } from "../lib/llm";
 import { PATHS, readJson } from "../lib/persistence";
 
 const router: IRouter = Router();
@@ -181,7 +182,7 @@ router.get("/system-status", async (req: Request, res: Response) => {
       generatedAt: new Date().toISOString(),
       environment: process.env["NODE_ENV"] || "unknown",
       systems: {
-        openaiConfigured: Boolean(process.env["OPENAI_API_KEY"]),
+        anthropicConfigured: anthropicConfigured(),
         resendConfigured: Boolean(process.env["RESEND_API_KEY"]),
         gnewsConfigured: Boolean(process.env["GNEWS_API_KEY"]),
         weatherConfigured: true, // Open-Meteo — no API key required

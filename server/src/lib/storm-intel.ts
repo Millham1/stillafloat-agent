@@ -17,6 +17,7 @@
 // Mark's manual edits to the card are never fought over.
 
 import * as crypto from "node:crypto";
+import { anthropicConfigured, llmText } from "./llm";
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { createAction } from "./actions";
@@ -120,27 +121,17 @@ async function fetchText(url: string, timeoutMs = 15_000): Promise<string | null
 }
 
 async function summarizeAdvisory(line: string, storm: string, window: string): Promise<string> {
-  const apiKey = process.env["OPENAI_API_KEY"];
   const fallback = window.slice(0, 220);
-  if (!apiKey) return fallback;
+  if (!anthropicConfigured()) return fallback;
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: "Summarize the cruise line's storm advisory in ONE plain factual sentence (max 180 chars) for a cruise-news card. No hype, no advice, just what the line announced." },
-          { role: "user", content: `Cruise line: ${line}\nStorm: ${storm}\nAdvisory page excerpt:\n${window}` },
-        ],
-      }),
-      signal: AbortSignal.timeout(30_000),
+    const note = await llmText({
+      system:
+        "Summarize the cruise line's storm advisory in ONE plain factual sentence (max 180 chars) for a cruise-news card. No hype, no advice, just what the line announced.",
+      user: `Cruise line: ${line}\nStorm: ${storm}\nAdvisory page excerpt:\n${window}`,
+      cheap: true, // one factual sentence off a supplied excerpt
+      maxTokens: 200,
+      timeoutMs: 30_000,
     });
-    if (!res.ok) return fallback;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload = (await res.json()) as any;
-    const note = String(payload?.choices?.[0]?.message?.content ?? "").trim();
     return note ? note.slice(0, 220) : fallback;
   } catch {
     return fallback;
