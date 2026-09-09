@@ -11,9 +11,12 @@ import { labelGrounds } from "./storm-grounds";
 import { unsubscribeUrl } from "../routes/subscribe";
 import { sendMail } from "./mailer";
 
-function siteBase(): string {
-  return (process.env["PUBLIC_URL"] || process.env["DASHBOARD_URL"] || "https://stillafloatcruising.com")
-    .replace(/\/$/, "");
+// Subscriber-facing links use the PUBLIC site, never the dashboard host. DASHBOARD_URL
+// is the private admin origin (a bare IP:8080 on the dev box) and a 2026-09-05 alert
+// went out with "Unsubscribe" pointing at http://178.156.154.144:8080/... — a link a
+// reader cannot use. Mark 2026-09-09: "the emails we do send need an unsubscribe link".
+export function siteBase(): string {
+  return (process.env["PUBLIC_URL"] || "https://stillafloatcruising.com").replace(/\/$/, "");
 }
 
 function markToHtml(md: string): string {
