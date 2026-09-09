@@ -224,9 +224,10 @@ router.post("/subscribe", async (req, res) => {
       return res.status(500).json({ error: "Could not save subscription. Please try again." });
     }
 
-    const proto   = req.headers["x-forwarded-proto"] || req.protocol || "https";
-    const host    = req.headers["host"] || "stillafloatcruising.com";
-    const baseUrl = `${proto}://${host}`;
+    // Links in a subscriber's inbox must always be the public site. Deriving them from
+    // the request host was correct behind nginx on prod but wrong anywhere else
+    // (dev sends carried the box address). Pinned 2026-09-09 alongside the storm-alert fix.
+    const baseUrl = process.env["PUBLIC_URL"]?.replace(/\/$/, "") || "https://stillafloatcruising.com";
 
     const emailResult = await sendVerificationEmail(cleanName, cleanEmail, token, baseUrl, subLang);
     logger.info({ email: cleanEmail, emailResult }, "Subscriber added — verification email sent");
@@ -311,9 +312,10 @@ router.post("/resend-verification", async (req, res) => {
       return res.status(500).json({ error: "Could not regenerate your confirmation link." });
     }
 
-    const proto   = req.headers["x-forwarded-proto"] || req.protocol || "https";
-    const host    = req.headers["host"] || "stillafloatcruising.com";
-    const baseUrl = `${proto}://${host}`;
+    // Links in a subscriber's inbox must always be the public site. Deriving them from
+    // the request host was correct behind nginx on prod but wrong anywhere else
+    // (dev sends carried the box address). Pinned 2026-09-09 alongside the storm-alert fix.
+    const baseUrl = process.env["PUBLIC_URL"]?.replace(/\/$/, "") || "https://stillafloatcruising.com";
 
     const emailResult = await sendVerificationEmail(
       subscriber.name, cleanEmail, newToken, baseUrl,
@@ -496,9 +498,10 @@ router.post("/send-newsletter", async (req, res) => {
       return res.status(400).json({ error: "No confirmed subscribers to send to." });
     }
 
-    const proto   = req.headers["x-forwarded-proto"] || req.protocol || "https";
-    const host    = req.headers["host"] || "stillafloatcruising.com";
-    const baseUrl = `${proto}://${host}`;
+    // Links in a subscriber's inbox must always be the public site. Deriving them from
+    // the request host was correct behind nginx on prod but wrong anywhere else
+    // (dev sends carried the box address). Pinned 2026-09-09 alongside the storm-alert fix.
+    const baseUrl = process.env["PUBLIC_URL"]?.replace(/\/$/, "") || "https://stillafloatcruising.com";
 
     // Via the ops-manager Gmail sender (Resend was retired 2026-07-01). Fine at
     // this list size; past ~200 recipients, move to a real ESP.
