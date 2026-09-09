@@ -14,8 +14,9 @@
 
 import { test, beforeEach, afterEach } from "node:test";
 import * as assert from "node:assert/strict";
-import { reasonLive, writeSteerLines } from "./cabins";
+import { reasonLive, writeSteerLines, resolvePickReasons } from "./cabins";
 import { normalizeAnswers, plainSteerLine, type SteerFacts } from "../lib/cabin-match";
+import { factsSentence } from "../lib/cabin-facts-sentence";
 
 const FAKE_KEY = "sk-ant-test-DEADBEEF-not-a-real-key";
 const realFetch = globalThis.fetch;
@@ -140,6 +141,114 @@ test("reasonLive makes no request at all without ANTHROPIC_API_KEY", async () =>
   stubFetch([]);
   assert.equal(await reasonLive(ship(), answers, picks(2), [], "en"), null);
   assert.equal(calls.length, 0);
+});
+
+// ── reasonLive: the 25s→15s timeout retry (2026-09-09, Mark's "no description
+// for these rooms" report — 4 timeouts logged since 9/5 at the old single-shot
+// 25s budget) ─────────────────────────────────────────────────────────────────
+
+/** A fetch mock that raises exactly what Node's real AbortSignal.timeout raises. */
+function timeoutError(): DOMException {
+  return new DOMException("The operation was aborted due to timeout", "TimeoutError");
+}
+
+test("reasonLive retries once at a shorter timeout after a TimeoutError, then serves the retried result", async () => {
+  const reply = toolReply({ recommendations: [{ cabin: "8000", hook: "h", reason: "r" }] });
+  let n = 0;
+  globalThis.fetch = (async (_url: string, init: RequestInit) => {
+    n++;
+    calls.push({ headers: (init.headers ?? {}) as Record<string, string>, body: JSON.parse(String(init.body)) as Record<string, unknown> });
+    if (n === 1) throw timeoutError();
+    return { ok: true, status: 200, text: async () => JSON.stringify(reply) } as Response;
+  }) as unknown as typeof fetch;
+
+  const out = await reasonLive(ship(), answers, picks(2), [], "en");
+  assert.equal(calls.length, 2, "the 25s attempt, then exactly one 15s retry");
+  assert.equal(out?.recommendations[0]?.cabin, "8000");
+  // The retry is a second chance at the SAME (already-cheap) model, not an
+  // escalation to something more expensive.
+  assert.equal(calls[0]!.body["model"], "claude-haiku-4-5");
+  assert.equal(calls[1]!.body["model"], "claude-haiku-4-5");
+});
+
+test("reasonLive falls back to null when BOTH the 25s attempt and its 15s retry time out — never more than one retry", async () => {
+  globalThis.fetch = (async (_url: string, init: RequestInit) => {
+    calls.push({ headers: (init.headers ?? {}) as Record<string, string>, body: JSON.parse(String(init.body)) as Record<string, unknown> });
+    throw timeoutError();
+  }) as unknown as typeof fetch;
+
+  assert.equal(await reasonLive(ship(), answers, picks(2), [], "en"), null);
+  assert.equal(calls.length, 2);
+});
+
+test("reasonLive does NOT retry a non-timeout failure — a 400 stays a single call", async () => {
+  stubFetch([[400, { error: { message: "bad request" } }]]);
+  assert.equal(await reasonLive(ship(), answers, picks(2), [], "en"), null);
+  assert.equal(calls.length, 1);
+});
+
+// ── resolvePickReasons: the never-empty-card ladder (live → research → facts) ─
+
+test("resolvePickReasons: live text wins when present and clean", () => {
+  const p = [{ cabin: "8000", reason: "stored", facts: { deck: 8, category: "Interior" } }];
+  const live = { recommendations: [{ cabin: "8000", hook: "A quiet corner", reason: "Fresh live prose." }] };
+  const { picks, counts } = resolvePickReasons("Test Ship", p, live, "en");
+  assert.equal(picks[0]!.reason, "Fresh live prose.");
+  assert.equal(picks[0]!.hook, "A quiet corner");
+  assert.equal(picks[0]!.reasonSource, "live");
+  assert.deepEqual(counts, { live: 1, research: 0, facts: 0 });
+});
+
+test("resolvePickReasons: no live text falls back to the stored archetype text", () => {
+  const p = [{ cabin: "8000", reason: "stored archetype text", facts: { deck: 8 } }];
+  const { picks, counts } = resolvePickReasons("Test Ship", p, null, "en");
+  assert.equal(picks[0]!.reason, "stored archetype text");
+  assert.equal(picks[0]!.reasonSource, "research");
+  assert.deepEqual(counts, { live: 0, research: 1, facts: 0 });
+});
+
+test("resolvePickReasons: no live text AND no stored text — the exact gap that shipped blank cards — falls to factsSentence and is never empty", () => {
+  const p = [{ cabin: "8000", reason: undefined, facts: { deck: 8, section: "midship", side: "starboard", real_ocean: true, above_kind: "cabins" as const, below_kind: "cabins" as const } }];
+  const { picks, counts } = resolvePickReasons("Test Ship", p, null, "en");
+  assert.equal(picks[0]!.reason, factsSentence(p[0]!.facts, "en"));
+  assert.ok(picks[0]!.reason.length > 0);
+  assert.equal(picks[0]!.reasonSource, "facts");
+  assert.deepEqual(counts, { live: 0, research: 0, facts: 1 });
+});
+
+test("resolvePickReasons: a pick with no facts at all AND no stored text still never returns an empty reason", () => {
+  const p = [{ cabin: "9999", reason: undefined, facts: null }];
+  const { picks } = resolvePickReasons("Test Ship", p, null, "en");
+  assert.equal(picks[0]!.reason, factsSentence(null, "en"));
+  assert.ok(picks[0]!.reason.length > 0);
+  assert.equal(picks[0]!.reasonSource, "facts");
+});
+
+test("resolvePickReasons: a live rewrite that argues against its own pick is discarded, falling through to research then facts", () => {
+  const argues = { cabin: "8000", hook: "h", reason: "Honestly, I'd pass and book one of the quieter options." };
+  const withStored = [{ cabin: "8000", reason: "stored text", facts: { deck: 8 } }];
+  const r1 = resolvePickReasons("Test Ship", withStored, { recommendations: [argues] }, "en");
+  assert.equal(r1.picks[0]!.reasonSource, "research");
+  assert.equal(r1.picks[0]!.reason, "stored text");
+
+  const withoutStored = [{ cabin: "8000", reason: undefined, facts: { deck: 8 } }];
+  const r2 = resolvePickReasons("Test Ship", withoutStored, { recommendations: [argues] }, "en");
+  assert.equal(r2.picks[0]!.reasonSource, "facts");
+  assert.equal(r2.picks[0]!.reason, factsSentence({ deck: 8 }, "en"));
+});
+
+test("resolvePickReasons: a cabin the model dropped from its reply falls through the same ladder", () => {
+  const p = [{ cabin: "8000", reason: "stored", facts: { deck: 8 } }];
+  const live = { recommendations: [{ cabin: "9999", hook: "h", reason: "about a different cabin" }] };
+  const { picks } = resolvePickReasons("Test Ship", p, live, "en");
+  assert.equal(picks[0]!.reasonSource, "research");
+  assert.equal(picks[0]!.reason, "stored");
+});
+
+test("resolvePickReasons: es-419 facts fallback reads in Spanish, not English", () => {
+  const p = [{ cabin: "8000", reason: undefined, facts: { deck: 8, side: "starboard" } }];
+  const { picks } = resolvePickReasons("Test Ship", p, null, "es");
+  assert.equal(picks[0]!.reason, "Cubierta 8, por estribor.");
 });
 
 // ── writeSteerLines: the skip-list ───────────────────────────────────────────
