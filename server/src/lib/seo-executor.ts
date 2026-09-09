@@ -8,7 +8,8 @@
 //     "storyId"?: "<story id>",            // direct key into seo-overrides, OR
 //     "page"?: "https://…/news/<slug>.html", // resolved to a story id here
 //     "title"?: "…", "metaDescription"?: "…",
-//     "title_es"?: "…", "metaDescription_es"?: "…" }
+//     "title_es"?: "…", "metaDescription_es"?: "…",
+//     "bodyHtml"?: "<p>…</p>", "bodyHtml_es"?: "<p>…</p>" }
 //
 // When Mark approves such a proposal (routes/proposals.ts), applySeoOverride()
 // merges the change into the per-story `seo-overrides` platform_state entry —
@@ -39,6 +40,8 @@ export interface SeoOverridePayload {
   metaDescription?: string;
   title_es?: string;
   metaDescription_es?: string;
+  bodyHtml?: string;
+  bodyHtml_es?: string;
 }
 
 export function isSeoOverridePayload(p: unknown): p is SeoOverridePayload {
@@ -48,9 +51,14 @@ export function isSeoOverridePayload(p: unknown): p is SeoOverridePayload {
   const hasTarget =
     (typeof o["storyId"] === "string" && o["storyId"].trim() !== "") ||
     (typeof o["page"] === "string" && o["page"].trim() !== "");
-  const hasChange = ["title", "metaDescription", "title_es", "metaDescription_es"].some(
-    (k) => typeof o[k] === "string" && (o[k] as string).trim() !== "",
-  );
+  const hasChange = [
+    "title",
+    "metaDescription",
+    "title_es",
+    "metaDescription_es",
+    "bodyHtml",
+    "bodyHtml_es",
+  ].some((k) => typeof o[k] === "string" && (o[k] as string).trim() !== "");
   return hasTarget && hasChange;
 }
 
@@ -120,28 +128,35 @@ export function normalizeForPageLanguage(payload: SeoOverridePayload): SeoOverri
   const out: SeoOverridePayload = { ...payload };
   if (!out.title_es?.trim() && out.title?.trim()) out.title_es = out.title;
   if (!out.metaDescription_es?.trim() && out.metaDescription?.trim()) out.metaDescription_es = out.metaDescription;
+  if (!out.bodyHtml_es?.trim() && out.bodyHtml?.trim()) out.bodyHtml_es = out.bodyHtml;
   delete out.title;
   delete out.metaDescription;
+  delete out.bodyHtml;
   return out;
 }
 
-export async function applySeoOverride(rawPayload: SeoOverridePayload): Promise<ApplyResult> {
-  const payload = normalizeForPageLanguage(rawPayload);
-  const story = await resolveStory(payload);
-  if (!story || !story.id) {
-    return {
-      applied: false,
-      reason: `story not found for ${payload.storyId ?? payload.page ?? "(no target)"}`,
-    };
-  }
+export interface OverridePatch {
+  next: SeoOverride;
+  changes: string[];
+}
 
-  const overrides = await readJson<SeoOverrideMap>(PATHS.seoOverrides, {});
-  const existing: SeoOverride = overrides[story.id] ?? {};
+/**
+ * Pure merge: given the existing override, the target story, and an already
+ * language-normalized payload, compute the new SeoOverride plus a human-
+ * readable old→new audit trail. Deliberately free of I/O (readJson/writeJson
+ * hit Supabase) so the part of applySeoOverride every new field touches is
+ * testable without a persistence layer — this repo's tests import pure
+ * modules and keep heavy I/O out of the test dependency graph.
+ */
+export function buildOverridePatch(
+  existing: SeoOverride,
+  story: NewsStory,
+  payload: SeoOverridePayload,
+): OverridePatch {
   const next: SeoOverride = { ...existing };
-
   const changes: string[] = [];
   const set = (
-    field: "title" | "desc" | "title_es" | "desc_es",
+    field: "title" | "desc" | "title_es" | "desc_es" | "bodyHtml" | "bodyHtml_es",
     value: string | undefined,
     oldEffective: string,
     label: string,
@@ -161,6 +176,25 @@ export async function applySeoOverride(rawPayload: SeoOverridePayload): Promise<
     existing.desc_es ?? "",
     "ES meta description",
   );
+  set("bodyHtml", payload.bodyHtml, existing.bodyHtml ?? "", "body HTML");
+  set("bodyHtml_es", payload.bodyHtml_es, existing.bodyHtml_es ?? "", "ES body HTML");
+
+  return { next, changes };
+}
+
+export async function applySeoOverride(rawPayload: SeoOverridePayload): Promise<ApplyResult> {
+  const payload = normalizeForPageLanguage(rawPayload);
+  const story = await resolveStory(payload);
+  if (!story || !story.id) {
+    return {
+      applied: false,
+      reason: `story not found for ${payload.storyId ?? payload.page ?? "(no target)"}`,
+    };
+  }
+
+  const overrides = await readJson<SeoOverrideMap>(PATHS.seoOverrides, {});
+  const existing: SeoOverride = overrides[story.id] ?? {};
+  const { next, changes } = buildOverridePatch(existing, story, payload);
 
   if (changes.length === 0) {
     return { applied: false, reason: "no effective change (already matches)", storyId: story.id };
