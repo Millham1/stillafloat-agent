@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { anthropicConfigured, llmText } from "../lib/llm";
 import { notifyMark } from "../lib/notify";
 import { logger } from "../lib/logger";
+import { transcribe } from "../lib/transcriber";
 import { PATHS, readJson, writeJson } from "../lib/persistence";
 import {
   loadCommentaryDraft,
@@ -274,32 +275,52 @@ router.post("/translate-commentary", async (req: Request, res: Response) => {
 // button (dashboard/src/pages/commentary.tsx → transcribeAudio()). Mark records
 // a voice note of his opinion and it lands in the commentary editor as text.
 //
-// ⚠️ NOT CONFIGURED since 2026-09-09. This was the one OpenAI endpoint with no
-// Anthropic equivalent — Whisper is speech-to-text and the Messages API does not
-// accept audio. Dropping OpenAI (Mark, 2026-09-09; the key had been rejected
-// since 09-05, so this button had in fact been broken for days already) leaves
-// this route with no provider.
+// Whisper runs on OUR box, not a vendor's: this route is a thin proxy to the
+// ops-manager's POST /transcribe (saf-ops-manager, agent/transcribe.py), the
+// same one-hop pattern lib/mailer.ts uses for transactional mail. That replaces
+// the OpenAI Whisper API dropped on 2026-09-09, which had left this button
+// answering 501 — and, because the key had been rejected since 09-05, broken for
+// days before that.
 //
-// The route is KEPT and answers 501 so the failure is legible instead of a 404
-// or a silent hang: the dashboard shows the message below, and typing the take
-// by hand still works. Re-enabling it needs a transcription provider decision
-// from Mark — options are a self-hosted whisper.cpp on one of the boxes (fits
-// [[mark-minimize-third-party-services]]: our server, no new SaaS) or a
-// dedicated STT API. Wire the chosen one in here; the request/response contract
-// ({audioBase64} → {transcript}) and the dashboard caller do not need to change.
-// Body (JSON): { audioBase64: string, fileName?: string, mimeType?: string }
-// Uses a 25 MB body limit to accommodate base64-encoded audio files
-router.post("/transcribe", expressJson({ limit: "25mb" }), (req: Request, res: Response) => {
+// The contract is unchanged on both sides: {audioBase64} in, {transcript} out.
+// Errors come back as one plain sentence in `error`, which the dashboard renders
+// straight into a toast — so they are written for Mark, not for a log.
+//
+// Body (JSON): { audioBase64: string, fileName?: string, mimeType?: string, lang?: string }
+// 25 MB body limit to accommodate base64-encoded audio (base64 is 4/3 of the
+// bytes it carries, so this is ~18 MB of actual recording).
+router.post("/transcribe", expressJson({ limit: "25mb" }), async (req: Request, res: Response) => {
   if (!checkToken(req)) {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
-  res.status(501).json({
-    success: false,
-    error:
-      "Audio transcription is not configured. The service moved off OpenAI on 2026-09-09 and " +
-      "Anthropic has no speech-to-text endpoint, so voice notes cannot be transcribed until a " +
-      "transcription provider is chosen. Type or paste the take instead.",
+  const body = req.body as
+    | { audioBase64?: unknown; mimeType?: unknown; mime?: unknown; lang?: unknown }
+    | undefined;
+  const audioBase64 = typeof body?.audioBase64 === "string" ? body.audioBase64 : "";
+  const mime =
+    typeof body?.mimeType === "string"
+      ? body.mimeType
+      : typeof body?.mime === "string"
+        ? body.mime
+        : undefined;
+  const lang = typeof body?.lang === "string" ? body.lang : undefined;
+
+  const result = await transcribe({ audioBase64, mime, lang });
+  if (!result.ok) {
+    res.status(result.status).json({ success: false, error: result.error });
+    return;
+  }
+  logger.info(
+    { durationS: result.durationS, wallS: result.wallS, model: result.model, language: result.language },
+    "transcribe: voice note transcribed",
+  );
+  res.json({
+    success: true,
+    transcript: result.transcript,
+    language: result.language,
+    durationS: result.durationS,
+    model: result.model,
   });
 });
 
