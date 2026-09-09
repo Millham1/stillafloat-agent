@@ -18,7 +18,9 @@ test("prompt carries Mark's voice rules and the forecast table, and the result i
   assert.equal(calls.length, 1, "second call must hit the cache");
   assert.match(calls[0]!.system, /AS Mark Millham/);
   assert.match(calls[0]!.system, /Do NOT recite the daily highs and lows/);
-  assert.match(calls[0]!.user, /Day 1 \(2026-09-10\): high 88°F, low 78°F, light showers/);
+  assert.match(calls[0]!.system, /Never open with the month/);
+  assert.match(calls[0]!.user, /Thu, Sep 10: high 88°F, low 78°F, light showers/);
+  assert.doesNotMatch(calls[0]!.user, /Day 1/);
   assert.match(calls[0]!.user, /port of call/);
   await weatherSynopsis(loc, rows, "es", gen);
   assert.equal(calls.length, 2, "Spanish is its own cache entry");
