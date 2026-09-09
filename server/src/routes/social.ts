@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { requireToken, extractToken, requireScopedToken } from "../lib/http-auth";
 import { signClipUpload, registerClip, isValidVideoId, isClipLang } from "../lib/social-clips";
 import { readJson, writeJson } from "../lib/persistence";
+import { hashtagLine } from "../lib/hashtags";
 import { summarizeStats, appendSnapshot, STATS_KEY, type StatsSnapshot } from "../lib/social-stats";
 import {
   generateSocialBatch,
@@ -472,7 +473,7 @@ function renderReviewPage(batches: any[], token: string): string {
           <div class="meta"><span class="pill">${esc(p.surface)}</span><span class="pill cta">${esc(p.ctaType)}</span>${p.linkInBio ? '<span class="pill bio">link in bio</span>' : ""}</div>
           <p class="cap">${esc(p.caption)}</p>
           ${p.gloss ? `<p class="gloss">🇬🇧 ${esc(p.gloss)}</p>` : ""}
-          ${p.hashtags?.length ? `<p class="tags">${esc(p.hashtags.join(" "))}</p>` : ""}
+          ${hashtagLine(p.hashtags) ? `<p class="tags">${esc(hashtagLine(p.hashtags))}</p>` : ""}
           <p class="link">${esc(p.link)}</p>
         </div>`,
         )
@@ -614,7 +615,7 @@ function renderSharePage(batches: any[]): string {
     const post = (b.posts || [])[0] || {};
     const videoUrl = post.videoUrl || `https://youtu.be/${b.videoId}`;
     const thumb = `https://i.ytimg.com/vi/${esc(b.videoId)}/hqdefault.jpg`;
-    const tags = Array.isArray(post.hashtags) && post.hashtags.length ? post.hashtags.join(" ") : "";
+    const tags = hashtagLine(post.hashtags); // normalized on read: queued batches predate the "#" rule
     // What gets forwarded: caption + hashtags + the video link (drives views → subscribers).
     const shareText = [post.caption || "", tags, videoUrl].filter(Boolean).join("\n\n");
     const enc = encodeURIComponent(shareText);
