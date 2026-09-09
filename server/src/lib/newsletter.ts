@@ -201,18 +201,26 @@ async function gatherFeaturedVideo(lang: Lang): Promise<{ id: string; title: str
   return null;
 }
 
-async function gatherFeaturedAffiliate(): Promise<{ id: string; title: string; description: string; imageUrl: string; affiliateLink: string } | null> {
+async function gatherFeaturedAffiliate(): Promise<{ id: string; title: string; description: string; imageUrl: string; affiliateLink: string; hasClickableLink: boolean } | null> {
   const store = await readJson<{ items?: Array<Record<string, unknown>> }>(PATHS.affiliateItems, { items: [] });
   const items = store.items ?? [];
   if (items.length === 0) return null;
   const pick = items.find((i) => Boolean(i["featured"])) ?? items[0];
   if (!pick) return null;
+  const smartStrip = String(pick["smartStrip"] ?? "");
+  const affiliateLink = String(pick["affiliateLink"] ?? "");
+  // Route through /api/go/<id> whenever the item actually resolves to a real
+  // Amazon URL (smartStrip a plain link, or affiliateLink set) — that's the
+  // click we want counted. A widget-only item with neither falls back to the
+  // generic gear page so the newsletter never mails a dead link.
+  const hasClickableLink = /^https?:\/\//i.test(smartStrip) || Boolean(affiliateLink);
   return {
     id: String(pick["id"] ?? ""),
     title: String(pick["title"] ?? ""),
     description: String(pick["description"] ?? ""),
     imageUrl: String(pick["imageUrl"] ?? ""),
-    affiliateLink: String(pick["affiliateLink"] ?? `${SITE}/affiliate.html`),
+    affiliateLink: affiliateLink || `${SITE}/affiliate.html`,
+    hasClickableLink,
   };
 }
 
@@ -488,12 +496,18 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
     };
   }
   if (affiliate) {
+    // First-party click tracking (Mark, 2026-09-09): route through our own
+    // /api/go/<id> redirect so the click is logged, then 302s to the exact
+    // tagged Amazon URL — commission unchanged, no third-party script.
+    const clickThrough = affiliate.id && affiliate.hasClickableLink
+      ? `${SITE}/api/go/${affiliate.id}?p=newsletter&l=${lang}`
+      : affiliate.affiliateLink;
     draft.affiliate = {
       id: affiliate.id,
       title: affiliate.title,
       blurb: (parsed.affiliate_blurb ?? "").trim(),
       imageUrl: affiliate.imageUrl,
-      link: utm(affiliate.affiliateLink, "affiliate"),
+      link: utm(clickThrough, "affiliate"),
     };
   }
   if (commentary) {

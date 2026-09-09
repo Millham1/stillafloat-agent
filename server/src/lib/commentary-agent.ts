@@ -1448,6 +1448,25 @@ export function acceptRepair(original: string, corrected: string): boolean {
   return corrected.includes("<p>") && corrected.length > original.length * 0.6;
 }
 
+
+/**
+ * URLs Mark pastes into his take are sources the writer legitimately had (task
+ * 32b31bab: the loyalty follow-up carried six verified facts with links and the
+ * verifier stripped them as unsourced). Pure; one seed per distinct URL.
+ */
+export function takeSources(markTake: string): CommentaryStorySeed[] {
+  const urls = Array.from(new Set((markTake.match(/https?:\/\/[^\s<>"')\]]+/g) ?? []).map((u) => u.replace(/[.,;:]+$/, ""))));
+  return urls.map((link, i) => ({
+    id: `take-source-${i + 1}`,
+    title: `Source cited in Mark's take: ${link.replace(/^https?:\/\//, "").split("/")[0]}`,
+    summary: "Mark supplied this link with his take; treat it as a source the writer had, and verify its claims like any other.",
+    link,
+    impact: "",
+    category: "take-source",
+    source: "Mark",
+  }));
+}
+
 export async function synthesizeCommentary(markTake: string | null): Promise<CommentaryDraft> {
   const draft = await loadCommentaryDraft();
   if (!draft || (draft.status !== "awaiting_take" && draft.status !== "drafted")) {
@@ -1523,7 +1542,7 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
     try {
       const verifyInput = JSON.stringify(
         {
-          the_sources_the_writer_had: [...draft.stories, ...draft.research],
+          the_sources_the_writer_had: [...draft.stories, ...draft.research, ...takeSources(autonomous ? "" : (markTake as string))],
           // Present only on the take path, so the checker can tell Mark's lived
           // experience (exempt) from the factual claims inside it (not exempt).
           marks_own_take: autonomous ? null : markTake,
@@ -1569,6 +1588,15 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
           3000,
         );
         draft.verifiedBy = "sources-only";
+        // Loud, not a log line (task 32b31bab): a sources-only pass means dates and
+        // attributions were NOT checked against the live web — Mark must know before
+        // he approves. 2026-09-06 this failed silently and stale terms shipped.
+        void notifyMark({
+          title: "Commentary verification DEGRADED — web search failed",
+          body: `"${title}" was checked against its source articles only (${why.slice(0, 120)}). Dates, deadlines and attributions are unverified until a search-backed pass runs.`,
+          url: reviewUrl("/api/commentary/review"),
+          tag: "commentary-verify-degraded",
+        }).catch(() => {});
       }
       const corrected = String(checked["corrected_body_html"] ?? "");
       const rawFindings = Array.isArray(checked["findings"]) ? checked["findings"] : [];

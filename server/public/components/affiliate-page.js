@@ -57,12 +57,18 @@
     return url.replace(/\._[A-Z]{2}_[A-Z0-9,_]+_\./g, '._AC_SL500_.');
   }
 
-  // smartStrip: plain URL → Buy button. HTML string → inject as widget.
-  function renderStrip(wrap, val) {
+  // smartStrip: plain URL → Buy button, routed through our own first-party
+  // click redirect (/api/go/<id>) so the click is logged before the shopper
+  // lands on the exact tagged Amazon URL — commission unchanged, no
+  // third-party analytics script involved (Mark's decision 2026-09-09).
+  // HTML string (pasted ad widget) → inject as-is; a widget carries its own
+  // click destination we can't safely rewrite.
+  function renderStrip(wrap, val, itemId) {
     if (!val || !val.trim()) return;
     if (/^https?:\/\//i.test(val.trim())) {
       const btn = document.createElement('a');
-      btn.href = val.trim();
+      const qs = new URLSearchParams({ p: CATEGORY || '', l: ES ? 'es' : 'en' });
+      btn.href = '/api/go/' + encodeURIComponent(itemId) + '?' + qs.toString();
       btn.target = '_blank';
       btn.rel = 'noopener noreferrer sponsored';
       btn.className = 'buy-btn';
@@ -130,7 +136,7 @@
         const stripValue = item.smartStrip || item.affiliateLink;
         if (stripValue) {
           const sw = document.getElementById(stripId);
-          if (sw) renderStrip(sw, stripValue);
+          if (sw) renderStrip(sw, stripValue, item.id);
         }
       });
     } catch (err) {

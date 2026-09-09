@@ -1,6 +1,8 @@
 import { Router, type IRouter, type Request, type Response, json as expressJson } from "express";
 import crypto from "crypto";
 import { anthropicConfigured, llmText } from "../lib/llm";
+import { notifyMark } from "../lib/notify";
+import { logger } from "../lib/logger";
 import { PATHS, readJson, writeJson } from "../lib/persistence";
 import {
   loadCommentaryDraft,
@@ -95,7 +97,11 @@ router.get("/commentary", async (req: Request, res: Response) => {
   }
 });
 
-async function autoTranslate(text: string): Promise<string> {
+// Translation failures used to vanish: an empty string came back, body_es was stored
+// empty, and nobody was told (2026-09-06: the loyalty follow-up published with no
+// Spanish twin while the OpenAI key was dead). Now: one retry, an error log, and the
+// publish paths tell Mark when the twin is missing.
+async function autoTranslate(text: string, attempt = 0): Promise<string> {
   if (!anthropicConfigured() || !text.trim()) return "";
   try {
     return await llmText({
@@ -106,9 +112,25 @@ async function autoTranslate(text: string): Promise<string> {
       // A commentary body is long-form HTML; it must not be clipped mid-tag.
       maxTokens: 8000,
     });
-  } catch {
+  } catch (err) {
+    if (attempt === 0) return autoTranslate(text, 1);
+    logger.error({ err }, "commentary: auto-translation failed twice — Spanish twin will be missing");
     return "";
   }
+}
+
+/** After a publish, shout if the Spanish twin is missing (ES is first-class, Mark). */
+async function warnIfEsMissing(post: { id: string; title: string; body_en: string; body_es?: string; title_es?: string }): Promise<boolean> {
+  const missing = Boolean(post.body_en?.trim()) && !(post.body_es || "").trim();
+  if (!missing && post.title_es) return false;
+  logger.error({ id: post.id, missingBody: missing, missingTitle: !post.title_es }, "commentary: published without a complete Spanish twin");
+  void notifyMark({
+    title: "Commentary published WITHOUT its Spanish twin",
+    body: `"${post.title}" has ${missing ? "no Spanish body" : "a Spanish body"}${post.title_es ? "" : " and no Spanish title"}. Translate and PATCH body_es/title_es.`,
+    url: `${process.env["PUBLIC_URL"] || "https://stillafloatcruising.com"}/commentary.html?id=${post.id}`,
+    tag: "commentary-es-missing",
+  }).catch(() => {});
+  return true;
 }
 
 // POST /api/commentary — create and immediately publish a post
@@ -172,8 +194,11 @@ router.patch("/commentary/:id", async (req: Request, res: Response) => {
       return;
     }
     const post = store.posts[idx]!;
-    const { title, body_en, body_es, tags, status, videoUrl, imageUrl } = req.body as Partial<CommentaryPost>;
+    const { title, title_es, body_en, body_es, tags, status, videoUrl, imageUrl } = req.body as Partial<CommentaryPost>;
     if (title !== undefined) post.title = stripHtml(String(title));
+    // title_es was the one field PATCH could not set (found 2026-09-06 when the ES twin
+    // had to be written by hand); the site routes Spanish readers by it, so it must be editable.
+    if (title_es !== undefined) post.title_es = stripHtml(String(title_es));
     if (body_en !== undefined) post.body_en = String(body_en);
     if (body_es !== undefined) post.body_es = String(body_es);
     if (tags !== undefined) post.tags = Array.isArray(tags) ? tags.map(String) : [];
@@ -394,6 +419,7 @@ router.post("/commentary/publish-draft", async (req: Request, res: Response) => 
     };
     store.posts.unshift(post);
     await saveStore(store);
+    const esMissing = await warnIfEsMissing(post);
     draft.status = "published";
     await saveCommentaryDraft(draft);
     res.json({ success: true, post });
