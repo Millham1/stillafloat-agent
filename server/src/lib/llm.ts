@@ -148,10 +148,14 @@ async function post(body: Record<string, unknown>, timeoutMs: number): Promise<A
 
     const retryable = response.status === 429 || response.status >= 500;
     if (!retryable) break;
-    logger.warn(
-      { status: response.status, model: body["model"] },
-      "Anthropic call failed, retrying once",
-    );
+    // Only the first attempt has a retry left; saying "retrying" on the second
+    // would put a line in the log for something that never happens.
+    if (attempt === 0) {
+      logger.warn(
+        { status: response.status, model: body["model"] },
+        "Anthropic call failed, retrying once",
+      );
+    }
   }
 
   throw new Error(redact(`Anthropic HTTP ${lastStatus}: ${lastDetail}`, key));
