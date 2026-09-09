@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { llmJson } from "./llm";
 import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
+import { normalizeHashtags } from "./hashtags";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Still Afloat social content engine.
@@ -159,7 +160,7 @@ Caption rules:
   - agency → soft, personal ("I book cruises professionally now — planning one? reply/DM")
 - For Instagram (link_in_bio = true), do NOT put a URL in the caption — say "link in bio" (or "enlace en la bio" for Spanish).
 - For Facebook/YouTube, do NOT write the URL yourself; the system appends it. Just write the CTA sentence.
-- hashtags: 3–6 relevant, lowercase, no spaces (Spanish hashtags for Track A). Empty array for Personal Facebook posts.
+- hashtags: 3–6 relevant tags, each written WITH its leading "#" (e.g. "#crucero"), lowercase, no spaces (Spanish hashtags for Track A). Empty array for Personal Facebook posts.
 
 When the caption is in Spanish, ALSO include "en_gloss": a faithful, natural English translation of that caption (so a non-Spanish speaker can review exactly what it says). For English captions, omit en_gloss.
 
@@ -289,7 +290,9 @@ export async function generateSocialBatch(
       campaign,
       content: slot.ctaType,
     });
-    const hashtags = gen && Array.isArray(gen.hashtags) ? gen.hashtags.slice(0, 6) : [];
+    // Canonical "#tag" shape regardless of what the model returned — stored
+    // batches carried both shapes for months and the bare ones posted as words.
+    const hashtags = normalizeHashtags(gen?.hashtags).slice(0, 6);
     const glossText = lang === "es" ? (gen?.en_gloss?.trim() ?? "") : "";
     return {
       ...slot,

@@ -34,6 +34,8 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { obstructionLine, placementLines } from "../lib/cabin-placement.js";
 import { logger } from "../lib/logger";
+import { llmJson, anthropicConfigured } from "../lib/llm";
+import { factsSentence, type CabinFacts } from "../lib/cabin-facts-sentence";
 import {
   normalizeAnswers, pickArchetype, selectCabins, selectionNote,
   shipTypeInventory, zonesForCabin, zoneSign, classifyCategory, satisfies,
@@ -217,6 +219,55 @@ const liveCache = new Map<string, { at: number; out: LiveOut }>();
 const LIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // regenerating daily is plenty
 const LIVE_CACHE_MAX = 500;
 
+// The shapes the two prompts below ask for, as JSON Schema. llmJson makes each
+// one the input_schema of a forced tool call, so the API guarantees the object
+// that comes back. Until 2026-09-09 both sites did `text.match(/\{[\s\S]*\}/)`
+// and JSON.parse'd the hit — the exact pattern that failed 2 of 3 real
+// commentary runs on a raw newline or an unescaped quote inside a sentence, and
+// here every sentence is prose in Mark's voice. steerClear stays optional to
+// match what the consumer tolerated; the prompt still asks for it.
+const LIVE_OUT_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    recommendations: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          cabin: { type: "string" },
+          hook: { type: "string" },
+          reason: { type: "string" },
+        },
+        required: ["cabin", "hook", "reason"],
+      },
+    },
+    steerClear: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { cabin: { type: "string" }, reason: { type: "string" } },
+        required: ["cabin", "reason"],
+      },
+    },
+  },
+  required: ["recommendations"],
+};
+
+const STEER_LINES_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    lines: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { cabin: { type: "string" }, reason: { type: "string" } },
+        required: ["cabin", "reason"],
+      },
+    },
+  },
+  required: ["lines"],
+};
+
 function answersAsSentences(a: Answers): string {
   const bits: string[] = [];
   if (a.party === "couple") bits.push("They are a couple — one cabin, two people.");
@@ -284,6 +335,66 @@ function arguesAgainstItself(t: string | undefined): boolean {
 }
 
 /**
+ * The never-empty-card fix for Mark's 2026-09-08 report ("no description for
+ * these rooms"). Every pick reaches this in exactly one of three states, and
+ * it must leave with a `reason` and know which rung it came from:
+ *
+ *   1. "live" — reasonLive wrote fresh prose for THIS cabin, and it isn't a
+ *      verdict against its own pick.
+ *   2. "research" — no usable live text (the whole call timed out and its
+ *      one retry also failed, or this cabin's rewrite argued against
+ *      itself), but the stored per-archetype text exists.
+ *   3. "facts" — neither of the above. This is the gap that shipped blank
+ *      cards: since 2026-08-18 every room on the hull is a candidate, not
+ *      just the ~45 the archetype corpus ever wrote about, so a pick can
+ *      have no stored reason at all. factsSentence() is pure and
+ *      deterministic — it cannot time out and cannot come back empty — so
+ *      this rung is the floor, not another chance to fail.
+ *
+ * Exported (like reasonLive/writeSteerLines above) only so cabins.test.ts can
+ * drive it without a live model call or a Supabase connection.
+ */
+export type ReasonSource = "live" | "research" | "facts";
+
+export function resolvePickReasons<
+  T extends { cabin: string; hook?: string; reason?: string; facts: CabinFacts | null },
+>(
+  shipName: string,
+  picks: T[],
+  live: LiveOut | null,
+  lang: "en" | "es",
+): { picks: (T & { reasonSource: ReasonSource })[]; counts: Record<ReasonSource, number> } {
+  const byCabin = live ? new Map(live.recommendations.map((r) => [String(r.cabin), r])) : null;
+  const counts: Record<ReasonSource, number> = { live: 0, research: 0, facts: 0 };
+
+  const resolved = picks.map((p) => {
+    const lr = byCabin?.get(p.cabin);
+    if (lr) {
+      const hook = scrubBanned(lr.hook);
+      const reason = scrubBanned(lr.reason);
+      // A pick that talks the reader out of itself keeps the researched (or
+      // facts) text instead — same rule as before, just now falling through
+      // the same ladder rather than stopping at "researched or nothing".
+      if (arguesAgainstItself(hook) || arguesAgainstItself(reason)) {
+        logger.warn({ ship: shipName, cabin: p.cabin },
+          "cabin concierge: model argued against its own pick — serving stored text");
+      } else if (reason) {
+        counts.live++;
+        return { ...p, hook, reason, reasonSource: "live" as const };
+      }
+    }
+    if (p.reason) {
+      counts.research++;
+      return { ...p, reasonSource: "research" as const };
+    }
+    counts.facts++;
+    return { ...p, reason: factsSentence(p.facts, lang), reasonSource: "facts" as const };
+  });
+
+  return { picks: resolved, counts };
+}
+
+/**
  * Mark's ES-first-class rule (8/15): an English surface on the Spanish page makes it read as
  * "just a copy". The cabin-check line was returning ['Cubierta 14','Ocean View Balcony','mid',
  * 'port'] — three of those four are OUR words and had never been translated. Section, side and
@@ -306,7 +417,8 @@ const esWord = (map: Record<string, string>, v: unknown): string => {
   return map[k] ?? String(v ?? "");
 };
 
-async function reasonLive(
+// Exported for cabins.test.ts only; nothing else imports it.
+export async function reasonLive(
   shipName: string,
   answers: Answers,
   // `facts` is only JSON-stringified into the prompt, so the row shape is
@@ -315,8 +427,7 @@ async function reasonLive(
   steerClear: { cabin?: string; area?: string; reason?: string }[],
   lang: "en" | "es" = "en",
 ): Promise<LiveOut | null> {
-  const apiKey = process.env["ANTHROPIC_API_KEY"];
-  if (!apiKey || !picks.length) return null;
+  if (!anthropicConfigured() || !picks.length) return null;
 
   // Every field that changes the words must be in the key. This previously read
   // the motion field a third way (`!!answers.motion`, different from both the type
@@ -361,41 +472,52 @@ Speak ONLY to concerns they actually told you. REQUIRED, not optional: at least 
 Write EVERYTHING (hooks, reasons, steer-clear reasons) in neutral Latin American Spanish (es-419) — Mark's same warm, plain-spoken, slightly salty voice, never textbook Spanish, never brochure Spanish ("perfecto para", "ofrece", "cuenta con" banned; no "de hecho" as filler). Cabin numbers, deck numbers, ship names and enclave names stay exactly as-is.` : ""} Respond with ONLY a JSON object:
 {"recommendations":[{"cabin":"<number>","hook":"...","reason":"..."}],"steerClear":[{"cabin":"<number or area>","reason":"..."}]}`;
 
+  // 4 timeouts logged since 2026-09-05 at the 25s budget below, each one a
+  // request that fell all the way back to stored text. `AbortSignal.timeout`
+  // rejects fetch with a DOMException named "TimeoutError" (verified against
+  // this repo's Node 22 runtime) — that name is the ONLY thing that earns a
+  // retry. A 400 (bad schema), a 5xx (already retried once inside llmJson) or
+  // an empty-recommendations reply are different failures with different
+  // causes; retrying those just doubles the wait before the same fallback.
+  const attempt = (timeoutMs: number) => llmJson<LiveOut>({
+    system: VOICE,
+    user: prompt,
+    schema: LIVE_OUT_SCHEMA,
+    cheap: true, // the scoped Haiku call: ≈ a penny per search, and cached for a day
+    // A hook plus 2-4 sentences per cabin: 1800 truncates well before 24 rooms,
+    // which is the other half of why the long list came back unwritten.
+    maxTokens: picks.length > 8 ? 6000 : 1800,
+    timeoutMs,
+  });
+
+  let out: LiveOut;
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        // A hook plus 2-4 sentences per cabin: 1800 truncates well before 24 rooms,
-        // which is the other half of why the long list came back unwritten.
-        model: "claude-haiku-4-5", max_tokens: picks.length > 8 ? 6000 : 1800, system: VOICE,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
-    const j = (await r.json()) as {
-      content?: { type: string; text?: string }[];
-      usage?: { input_tokens?: number; output_tokens?: number };
-      stop_reason?: string;
-    };
-    if (!r.ok || j.stop_reason === "refusal") throw new Error(`anthropic ${r.status} ${j.stop_reason ?? ""}`);
-    const text = (j.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
-    const m = text.match(/\{[\s\S]*\}/);
-    if (!m) throw new Error("no JSON in live reasoning response");
-    const out = JSON.parse(m[0]) as LiveOut;
-    if (!Array.isArray(out.recommendations) || !out.recommendations.length) throw new Error("empty recommendations");
-    const cost = (j.usage?.input_tokens ?? 0) * 1e-6 + (j.usage?.output_tokens ?? 0) * 5e-6;
-    logger.info({ ship: shipName, cost: cost.toFixed(4) }, "cabin concierge: live reasoning generated");
-    if (liveCache.size >= LIVE_CACHE_MAX) {
-      const oldest = liveCache.keys().next().value;
-      if (oldest !== undefined) liveCache.delete(oldest);
-    }
-    liveCache.set(key, { at: Date.now(), out });
-    return out;
+    out = await attempt(25_000);
   } catch (err) {
-    logger.warn({ err }, "cabin concierge: live reasoning failed — serving stored archetype text");
+    if (!(err instanceof Error) || err.name !== "TimeoutError") {
+      logger.warn({ err }, "cabin concierge: live reasoning failed — serving stored archetype text");
+      return null;
+    }
+    logger.warn({ ship: shipName }, "cabin concierge: live reasoning timed out at 25s — retrying once at 15s before falling back");
+    try {
+      out = await attempt(15_000);
+    } catch (retryErr) {
+      logger.warn({ err: retryErr }, "cabin concierge: live reasoning retry also failed — serving stored archetype text");
+      return null;
+    }
+  }
+
+  if (!Array.isArray(out.recommendations) || !out.recommendations.length) {
+    logger.warn({ ship: shipName }, "cabin concierge: live reasoning returned no recommendations — serving stored archetype text");
     return null;
   }
+  logger.info({ ship: shipName, cabins: out.recommendations.length }, "cabin concierge: live reasoning generated");
+  if (liveCache.size >= LIVE_CACHE_MAX) {
+    const oldest = liveCache.keys().next().value;
+    if (oldest !== undefined) liveCache.delete(oldest);
+  }
+  liveCache.set(key, { at: Date.now(), out });
+  return out;
 }
 
 
@@ -413,13 +535,13 @@ Write EVERYTHING (hooks, reasons, steer-clear reasons) in neutral Latin American
  * rejected line falls back to the plain composed sentence — dull and true beats
  * lively and wrong.
  */
-async function writeSteerLines(
+// Exported for cabins.test.ts only; nothing else imports it.
+export async function writeSteerLines(
   shipName: string, facts: SteerFacts[], answers: Answers, lang: "en" | "es",
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   for (const f of facts) out.set(f.cabin, plainSteerLine(f, lang));   // safe default
-  const apiKey = process.env["ANTHROPIC_API_KEY"];
-  if (!apiKey || !facts.length) return out;
+  if (!anthropicConfigured() || !facts.length) return out;
 
   const key = JSON.stringify(["steer", shipName, lang, answers.seasick, facts.map((f) => f.cabin + f.factor)]);
   const hit = liveCache.get(key);
@@ -457,19 +579,14 @@ Rules that are not negotiable:
 Respond with ONLY JSON: {"lines":[{"cabin":"<number>","reason":"..."}]}`;
 
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: "claude-haiku-4-5", max_tokens: 700, system: VOICE,
-        messages: [{ role: "user", content: prompt }] }),
-      signal: AbortSignal.timeout(20000),
+    const parsed = await llmJson<{ lines?: { cabin?: string; reason?: string }[] }>({
+      system: VOICE,
+      user: prompt,
+      schema: STEER_LINES_SCHEMA,
+      cheap: true,
+      maxTokens: 700,
+      timeoutMs: 20_000,
     });
-    const j = (await r.json()) as { content?: { type: string; text?: string }[]; stop_reason?: string };
-    if (!r.ok || j.stop_reason === "refusal") throw new Error(`anthropic ${r.status}`);
-    const text = (j.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
-    const m = text.match(/\{[\s\S]*\}/);
-    if (!m) throw new Error("no JSON");
-    const parsed = JSON.parse(m[0]) as { lines?: { cabin?: string; reason?: string }[] };
     let kept = 0, rejected = 0;
     const cacheable: LiveRec[] = [];
     // "Differentiate every cabin… Never repeat yourself" is in the voice guide, and
@@ -1248,7 +1365,12 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
         const f = factByNum.get(e.cabin);
         return {
           cabin: e.cabin,
-          reason: written.get(e.cabin) ?? e.reason,
+          // written.get always carries at least plainSteerLine's default and
+          // e.reason is itself fact-derived, so this third link is belt-and-
+          // braces — but a skip-list line is exactly the same "card with
+          // nothing on it" failure mode as a pick's reason, so it gets the
+          // same never-empty guarantee.
+          reason: written.get(e.cabin) || e.reason || factsSentence(f ?? null, lang),
           facts: {
             deck: f?.deck != null ? String(f.deck) : e.deck != null ? String(e.deck) : null,
             section: lang === "es" ? esWord(ES_SECTION, f?.section ?? e.section) : (f?.section ?? e.section ?? null),
@@ -1262,28 +1384,23 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     const live = picks.length
       ? await reasonLive(shipRow.ship ?? ship, answers, picks, steerClear, lang)
       : null;
-    if (live) {
-      const byCabin = new Map(live.recommendations.map((r) => [String(r.cabin), r]));
-      picks = picks.map((p) => {
-        const lr = byCabin.get(p.cabin);
-        if (!lr) return p;
-        const hook = scrubBanned(lr.hook);
-        const reason = scrubBanned(lr.reason);
-        // A pick that talks the reader out of itself keeps the researched text instead.
-        if (arguesAgainstItself(hook) || arguesAgainstItself(reason)) {
-          logger.warn({ ship: shipRow.ship ?? ship, cabin: p.cabin },
-            "cabin concierge: model argued against its own pick — serving stored text");
-          return p;
-        }
-        return { ...p, hook, reason: reason || p.reason };
-      });
-      // The model does NOT touch the steer-clear list any more. Its reasons are
-      // now composed from the grid's own position and the research zone's own
-      // sourced wording, and letting the model restate them is exactly how the
-      // old list came to contradict the grid on a third of its positional claims
-      // (346 of 1,079, measured 2026-08-17). It writes the room cards; the
-      // warnings are facts we can point at a source for.
-    }
+    // The model does NOT touch the steer-clear list any more. Its reasons are
+    // now composed from the grid's own position and the research zone's own
+    // sourced wording, and letting the model restate them is exactly how the
+    // old list came to contradict the grid on a third of its positional claims
+    // (346 of 1,079, measured 2026-08-17). It writes the room cards; the
+    // warnings are facts we can point at a source for.
+    const { picks: withReasons, counts: reasonCounts } = resolvePickReasons(
+      shipRow.ship ?? ship, picks, live, lang,
+    );
+    picks = withReasons;
+    // Mark's 2026-09-08 report ("no description for these rooms"): a pick can
+    // reach here with no live text (timeout, argued against itself) AND no
+    // stored archetype text (the candidate pool is the whole hull, not the
+    // ~45 cabins the archetype corpus ever wrote about). This is the ONE line
+    // that says how often that happened, so a rising `facts` count is visible
+    // without anyone having to click through and find a blank card.
+    logger.info({ ship: shipRow.ship ?? ship, ...reasonCounts }, "cabin concierge: reason sources for this request");
 
     // What sits outside the window, per cabin — Mark's two rules are enforced in
     // lib/cabin-match.ts: never blame the line, never render confidence.
