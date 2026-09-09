@@ -381,6 +381,9 @@ test("the block names claims to check, and does not assert the answer", () => {
   // The failure mode being pinned: an earlier version stated "the line does not
   // run it" as fact. Search disproved it. It must present the ownership as mixed.
   assert.match(FACTCHECK_PROMPT, /ownership is\s+genuinely\s+mixed/);
+  // 2026-09-09: stale transition dates shipped from a 2025 release after the launch slipped.
+  assert.match(FACTCHECK_PROMPT, /DATES, DEADLINES AND PROGRAM TERMS EXPIRE/);
+  assert.match(FACTCHECK_PROMPT, /search for anything\s+NEWER than its source/);
   assert.match(FACTCHECK_PROMPT, /owned by\s+Norwegian\s+Cruise\s+Line/);
   assert.match(FACTCHECK_PROMPT, /Name them only if the\s+search\s+establishes it/);
 });
