@@ -27,6 +27,7 @@ import {
   AUTONOMOUS_PROMPT,
   SYNTHESIZE_PROMPT,
   FACTCHECK_PROMPT,
+  takeSources,
 } from "./commentary-agent";
 
 const STORIES = [
@@ -528,4 +529,14 @@ test("generic cruise words carry no topic signal either", () => {
     alreadyCovered({ title: "Norwegian Spirit Cuts Ports in Hawaii as Tropical Storm Closes In" }, planning),
     null,
   );
+});
+
+test("takeSources: URLs pasted into Mark's take become sources the writer had", () => {
+  const take = "Carnival says so here https://www.carnival.com/carnival-rewards/terms-and-conditions. and Cruise Hive https://www.cruisehive.com/x-y-z/ (twice: https://www.cruisehive.com/x-y-z/).";
+  const s = takeSources(take);
+  assert.equal(s.length, 2);
+  assert.equal(s[0]!.link, "https://www.carnival.com/carnival-rewards/terms-and-conditions");
+  assert.equal(s[1]!.link, "https://www.cruisehive.com/x-y-z/");
+  assert.match(s[0]!.title, /carnival\.com/);
+  assert.deepEqual(takeSources(""), []);
 });
