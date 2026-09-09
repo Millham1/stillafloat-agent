@@ -1,5 +1,4 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { llmText } from "../lib/llm";
 import { CRUISE_LOCATIONS, type CruiseLocation } from "../lib/ports";
 
 const router: IRouter = Router();
@@ -18,35 +17,6 @@ const WEATHER_DESC: Record<number, string> = {
 
 function weatherCodeDesc(code: number): string {
   return WEATHER_DESC[code] ?? "partly cloudy";
-}
-
-async function generateSynopsis(
-  locationName: string,
-  forecast: { day: string; high: number; low: number; emoji: string; weatherCode: number }[]
-): Promise<string> {
-  const lines = forecast.map((d, i) =>
-    `Day ${i + 1} (${d.day}): high ${d.high}°F, low ${d.low}°F, ${weatherCodeDesc(d.weatherCode)}`
-  );
-  const prompt =
-    `Location: ${locationName}\n10-day forecast:\n${lines.join("\n")}\n\n` +
-    `Write a 2–3 sentence weather synopsis for cruise travelers. ` +
-    `Mention the temperature range (highs and lows), general sky conditions, and any precipitation patterns. ` +
-    `Be specific and practical. Do not start with "The weather" — start with the city/location name.`;
-
-  // Two or three sentences off a table of numbers — the cheap model's job.
-  // Any failure degrades to no synopsis, exactly as the HTTP-error path did.
-  try {
-    return await llmText({
-      system:
-        "You write concise, practical weather summaries for cruise travelers. Plain prose, no bullet points, no markdown.",
-      user: prompt,
-      cheap: true,
-      maxTokens: 200,
-      timeoutMs: 15000,
-    });
-  } catch {
-    return "";
-  }
 }
 
 function weatherEmoji(code: number): string {
@@ -128,8 +98,9 @@ router.get("/weather", async (req: Request, res: Response) => {
       const loc = CRUISE_LOCATIONS.find((l) => l.slug === place);
       if (!loc) { res.status(404).json({ ok: false, error: "Destination not found" }); return; }
       const forecast = await fetchForecast(loc);
-      const synopsis = await generateSynopsis(loc.name, forecast.forecast).catch(() => "");
-      res.json({ ok: true, forecast: { ...forecast, synopsis } });
+      // Mark 2026-09-08: no model-written synopsis on port selection. forecast.html never
+      // rendered the field, so every visit was paying for prose nobody saw.
+      res.json({ ok: true, forecast });
       return;
     }
 

@@ -177,6 +177,11 @@ input#shipSearch:focus{border-color:#023e6e}
 .gist-score small{font-size:.45em;color:rgba(7,24,63,.45)}
 .gist-dancers{display:flex;align-items:flex-end;margin:7px 0 4px;background:#fff;border:1px solid rgba(7,24,63,.10);border-radius:12px;overflow:hidden;width:fit-content}
 .gist-dancers img{height:clamp(46.6px,4.66vw,76.9px);width:auto;display:block}
+/* Half steps (Mark 2026-09-08): the score is one-decimal, the dance line rounds to the nearest
+   half so a 4.3 and a 3.6 no longer draw the same picture. A half dancer = left half in full
+   colour over the dimmed one. */
+.gist-dancers .dancer{position:relative;display:block}
+.gist-dancers .dancer img.half{position:absolute;left:0;top:0;clip-path:inset(0 50% 0 0)}
 .reveal-comment{font-size:clamp(15.8px,1.32vw,21.4px);line-height:1.55;color:#07183f;margin:9px 0 11px;font-weight:600}
 .salty{display:flex;gap:11px;align-items:center;background:rgba(76,29,149,.07);border:1px solid rgba(76,29,149,.2);border-radius:14px;padding:9px 13px}
 .salty img{width:clamp(42.8px,4.16vw,65.5px);height:clamp(42.8px,4.16vw,65.5px);border-radius:50%;object-fit:cover;object-position:top;border:2px solid #fff;box-shadow:0 2px 8px rgba(4,17,46,.18)}
@@ -710,8 +715,10 @@ class RoomConciergeFlow {
       </div>
       ${(this.expect.destination && this.expect.destination!=="surprise" && (s.regions||[]).includes(this.expect.destination))?`<p style="margin:2px 0 6px;font-size:15px;font-weight:800;color:#023e6e">⚓ Navega por ${REGION_NAMES[this.expect.destination]||this.expect.destination}</p>`:""}
       ${rating!=null?`<p style="margin:6px 0 2px;font-size:15.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#023e6e">Nuestra calificación Conga Line — cuántos se unen al baile</p>
-      <div class="gist-dancers">${[1,2,3,4,5].map(n=>
-        `<img src="${DANCERS[n]}" style="${n<=Math.floor(rating)?'':'opacity:.22;filter:grayscale(80%)'}" alt="">`).join("")}</div>`:""}
+      <div class="gist-dancers">${(()=>{const half=Math.round(Number(rating)*2)/2;const full=Math.floor(half);const dim='opacity:.22;filter:grayscale(80%)';
+        return [1,2,3,4,5].map(n=>n<=full?`<span class="dancer"><img src="${DANCERS[n]}" alt=""></span>`
+          :(n===full+1&&half>full)?`<span class="dancer"><img src="${DANCERS[n]}" style="${dim}" alt=""><img class="half" src="${DANCERS[n]}" alt=""></span>`
+          :`<span class="dancer"><img src="${DANCERS[n]}" style="${dim}" alt=""></span>`).join("");})()}</div>`:""}
       ${comment?`<p class="reveal-comment">&ldquo;${comment}&rdquo;</p>`:""}
       ${salty?`<div class="salty"><img src="${SALTY_IMG}" alt="Salty Mark">
         <div><span class="sl">Salty Mark dice</span><p>&ldquo;${salty}&rdquo;</p></div></div>`:""}
