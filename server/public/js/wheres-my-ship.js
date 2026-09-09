@@ -160,7 +160,7 @@
     const cacheKey = `${dest.slug}|${etaDate}`;
     if (cacheKey === lastWeatherSlug) return; // already rendered
     try {
-      const r = await fetch(`/api/weather?place=${dest.slug}`);
+      const r = await fetch(`/api/weather?place=${dest.slug}${LANG === 'es' ? '&lang=es' : ''}`);
       const d = await r.json();
       if (!d.ok || !d.forecast) { card.style.display = 'none'; return; }
       const days = d.forecast.forecast || [];
