@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { CRUISE_LOCATIONS, type CruiseLocation } from "../lib/ports";
+import { weatherSynopsis, type Lang } from "../lib/weather-voice";
 
 const router: IRouter = Router();
 
@@ -98,9 +99,11 @@ router.get("/weather", async (req: Request, res: Response) => {
       const loc = CRUISE_LOCATIONS.find((l) => l.slug === place);
       if (!loc) { res.status(404).json({ ok: false, error: "Destination not found" }); return; }
       const forecast = await fetchForecast(loc);
-      // Mark 2026-09-08: no model-written synopsis on port selection. forecast.html never
-      // rendered the field, so every visit was paying for prose nobody saw.
-      res.json({ ok: true, forecast });
+      // The synopsis is Mark's read of the week (lib/weather-voice.ts): written in his voice,
+      // cached per place+language for six hours, never a restatement of the table.
+      const lang: Lang = String(req.query.lang || "").toLowerCase() === "es" ? "es" : "en";
+      const synopsis = await weatherSynopsis(loc, forecast.forecast, lang);
+      res.json({ ok: true, forecast: { ...forecast, synopsis } });
       return;
     }
 
