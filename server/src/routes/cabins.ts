@@ -34,6 +34,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { obstructionLine, placementLines } from "../lib/cabin-placement.js";
 import { logger } from "../lib/logger";
+import { llmJson, anthropicConfigured } from "../lib/llm";
 import {
   normalizeAnswers, pickArchetype, selectCabins, selectionNote,
   shipTypeInventory, zonesForCabin, zoneSign, classifyCategory, satisfies,
@@ -217,6 +218,55 @@ const liveCache = new Map<string, { at: number; out: LiveOut }>();
 const LIVE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // regenerating daily is plenty
 const LIVE_CACHE_MAX = 500;
 
+// The shapes the two prompts below ask for, as JSON Schema. llmJson makes each
+// one the input_schema of a forced tool call, so the API guarantees the object
+// that comes back. Until 2026-09-09 both sites did `text.match(/\{[\s\S]*\}/)`
+// and JSON.parse'd the hit — the exact pattern that failed 2 of 3 real
+// commentary runs on a raw newline or an unescaped quote inside a sentence, and
+// here every sentence is prose in Mark's voice. steerClear stays optional to
+// match what the consumer tolerated; the prompt still asks for it.
+const LIVE_OUT_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    recommendations: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          cabin: { type: "string" },
+          hook: { type: "string" },
+          reason: { type: "string" },
+        },
+        required: ["cabin", "hook", "reason"],
+      },
+    },
+    steerClear: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { cabin: { type: "string" }, reason: { type: "string" } },
+        required: ["cabin", "reason"],
+      },
+    },
+  },
+  required: ["recommendations"],
+};
+
+const STEER_LINES_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    lines: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { cabin: { type: "string" }, reason: { type: "string" } },
+        required: ["cabin", "reason"],
+      },
+    },
+  },
+  required: ["lines"],
+};
+
 function answersAsSentences(a: Answers): string {
   const bits: string[] = [];
   if (a.party === "couple") bits.push("They are a couple — one cabin, two people.");
@@ -306,7 +356,8 @@ const esWord = (map: Record<string, string>, v: unknown): string => {
   return map[k] ?? String(v ?? "");
 };
 
-async function reasonLive(
+// Exported for cabins.test.ts only; nothing else imports it.
+export async function reasonLive(
   shipName: string,
   answers: Answers,
   // `facts` is only JSON-stringified into the prompt, so the row shape is
@@ -315,8 +366,7 @@ async function reasonLive(
   steerClear: { cabin?: string; area?: string; reason?: string }[],
   lang: "en" | "es" = "en",
 ): Promise<LiveOut | null> {
-  const apiKey = process.env["ANTHROPIC_API_KEY"];
-  if (!apiKey || !picks.length) return null;
+  if (!anthropicConfigured() || !picks.length) return null;
 
   // Every field that changes the words must be in the key. This previously read
   // the motion field a third way (`!!answers.motion`, different from both the type
@@ -362,30 +412,18 @@ Write EVERYTHING (hooks, reasons, steer-clear reasons) in neutral Latin American
 {"recommendations":[{"cabin":"<number>","hook":"...","reason":"..."}],"steerClear":[{"cabin":"<number or area>","reason":"..."}]}`;
 
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        // A hook plus 2-4 sentences per cabin: 1800 truncates well before 24 rooms,
-        // which is the other half of why the long list came back unwritten.
-        model: "claude-haiku-4-5", max_tokens: picks.length > 8 ? 6000 : 1800, system: VOICE,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(25000),
+    const out = await llmJson<LiveOut>({
+      system: VOICE,
+      user: prompt,
+      schema: LIVE_OUT_SCHEMA,
+      cheap: true, // the scoped Haiku call: ≈ a penny per search, and cached for a day
+      // A hook plus 2-4 sentences per cabin: 1800 truncates well before 24 rooms,
+      // which is the other half of why the long list came back unwritten.
+      maxTokens: picks.length > 8 ? 6000 : 1800,
+      timeoutMs: 25_000,
     });
-    const j = (await r.json()) as {
-      content?: { type: string; text?: string }[];
-      usage?: { input_tokens?: number; output_tokens?: number };
-      stop_reason?: string;
-    };
-    if (!r.ok || j.stop_reason === "refusal") throw new Error(`anthropic ${r.status} ${j.stop_reason ?? ""}`);
-    const text = (j.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
-    const m = text.match(/\{[\s\S]*\}/);
-    if (!m) throw new Error("no JSON in live reasoning response");
-    const out = JSON.parse(m[0]) as LiveOut;
     if (!Array.isArray(out.recommendations) || !out.recommendations.length) throw new Error("empty recommendations");
-    const cost = (j.usage?.input_tokens ?? 0) * 1e-6 + (j.usage?.output_tokens ?? 0) * 5e-6;
-    logger.info({ ship: shipName, cost: cost.toFixed(4) }, "cabin concierge: live reasoning generated");
+    logger.info({ ship: shipName, cabins: out.recommendations.length }, "cabin concierge: live reasoning generated");
     if (liveCache.size >= LIVE_CACHE_MAX) {
       const oldest = liveCache.keys().next().value;
       if (oldest !== undefined) liveCache.delete(oldest);
@@ -413,13 +451,13 @@ Write EVERYTHING (hooks, reasons, steer-clear reasons) in neutral Latin American
  * rejected line falls back to the plain composed sentence — dull and true beats
  * lively and wrong.
  */
-async function writeSteerLines(
+// Exported for cabins.test.ts only; nothing else imports it.
+export async function writeSteerLines(
   shipName: string, facts: SteerFacts[], answers: Answers, lang: "en" | "es",
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   for (const f of facts) out.set(f.cabin, plainSteerLine(f, lang));   // safe default
-  const apiKey = process.env["ANTHROPIC_API_KEY"];
-  if (!apiKey || !facts.length) return out;
+  if (!anthropicConfigured() || !facts.length) return out;
 
   const key = JSON.stringify(["steer", shipName, lang, answers.seasick, facts.map((f) => f.cabin + f.factor)]);
   const hit = liveCache.get(key);
@@ -457,19 +495,14 @@ Rules that are not negotiable:
 Respond with ONLY JSON: {"lines":[{"cabin":"<number>","reason":"..."}]}`;
 
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: "claude-haiku-4-5", max_tokens: 700, system: VOICE,
-        messages: [{ role: "user", content: prompt }] }),
-      signal: AbortSignal.timeout(20000),
+    const parsed = await llmJson<{ lines?: { cabin?: string; reason?: string }[] }>({
+      system: VOICE,
+      user: prompt,
+      schema: STEER_LINES_SCHEMA,
+      cheap: true,
+      maxTokens: 700,
+      timeoutMs: 20_000,
     });
-    const j = (await r.json()) as { content?: { type: string; text?: string }[]; stop_reason?: string };
-    if (!r.ok || j.stop_reason === "refusal") throw new Error(`anthropic ${r.status}`);
-    const text = (j.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
-    const m = text.match(/\{[\s\S]*\}/);
-    if (!m) throw new Error("no JSON");
-    const parsed = JSON.parse(m[0]) as { lines?: { cabin?: string; reason?: string }[] };
     let kept = 0, rejected = 0;
     const cacheable: LiveRec[] = [];
     // "Differentiate every cabin… Never repeat yourself" is in the voice guide, and
