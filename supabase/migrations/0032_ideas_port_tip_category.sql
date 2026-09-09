@@ -4,6 +4,7 @@
 -- idea as triaged/port_tip violated ideas_triage_category_check, so every 15-minute
 -- triage pass re-ran the two Bermuda notes and logged
 -- "new row for relation ideas violates check constraint" (found 2026-09-09).
+-- 'not_actionable' is the classifier's fourth action and dev already held such a row.
 alter table public.ideas drop constraint if exists ideas_triage_category_check;
 alter table public.ideas add constraint ideas_triage_category_check
-  check (triage_category = any (array['existing_thread','new_task','content_idea','reference','port_tip']));
+  check (triage_category = any (array['existing_thread','new_task','content_idea','reference','port_tip','not_actionable']));
