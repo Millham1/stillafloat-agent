@@ -7,7 +7,7 @@
  */
 
 export type SystemStatusSystems = {
-  openaiConfigured?: boolean;
+  anthropicConfigured?: boolean;
   resendConfigured?: boolean;
   gnewsConfigured?: boolean;
   weatherConfigured?: boolean;

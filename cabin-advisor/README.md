@@ -23,7 +23,7 @@ once, on a cheap model, store it, and serve it free.**
 
 - Generate the full ranked recommendation set **per traveler archetype** (so the
   model sees all cabins together and keeps the differentiation / tie-breakers).
-- One-time cost: **~7¢ per ship on Haiku** (~1¢ on gpt-4o-mini). A whole fleet is
+- One-time cost: **~7¢ per ship on Haiku**. A whole fleet is
   a one-time dollar or two. Half that on the Batch API.
 - Runtime = deterministic cabin selection from the customer's answers + serve the
   matched archetype's pre-written reasoning. A traffic spike costs the same as a
@@ -51,11 +51,10 @@ cabin-advisor/
 ```
 ANTHROPIC_API_KEY=... node cabin-advisor/generate-advice.mjs wonder-of-the-seas
 ```
-Crash-proof ladder: Haiku → OpenAI (gpt-4o-mini) → skip. Writes `advice/<ship>.json`.
+Crash-proof: a failed archetype is skipped, never thrown. Writes `advice/<ship>.json`.
 
 ## Model & voice
-- Model: **Claude Haiku 4.5** (near-Opus quality for this, pennies). gpt-4o-mini
-  works but is flatter and mis-ranked once in testing.
+- Model: **Claude Haiku 4.5** (near-Opus quality for this, pennies).
 - Voice: `voice-guide.md`, developed with Mark and anchored to his own rewrite of a
   cabin blurb. Advisory, not salesy; plain words; teaches by contrast; honest.
 

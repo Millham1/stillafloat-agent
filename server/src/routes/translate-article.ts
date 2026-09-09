@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { llmText } from "../lib/llm";
 import { logger } from "../lib/logger";
 import { readJson, writeJson, PATHS } from "../lib/persistence";
 
@@ -88,33 +89,19 @@ router.get("/translate-article", async (req, res) => {
     const inputText =
       `TÍTULO: ${title}\n\n` + paragraphs.map((p, i) => `P${i + 1}: ${p}`).join("\n\n");
 
-    const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env["OPENAI_API_KEY"]}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Traduce el siguiente artículo de noticias de cruceros del inglés al español latinoamericano. " +
-              "Devuelve exactamente el mismo formato: primero una línea 'TÍTULO: ...' y luego párrafos 'P1: ...', 'P2: ...' etc. " +
-              "Traduce naturalmente para lectores hispanohablantes de viajes y cruceros. No agregues comentarios.",
-          },
-          { role: "user", content: inputText },
-        ],
-        temperature: 0.2,
-        max_tokens: 3000,
-      }),
-      signal: AbortSignal.timeout(60000),
+    // Structured by an agreed TEXT contract (TÍTULO:/P1:/P2:…) that the regexes
+    // below read back, so this stays a text call — there is no JSON here to
+    // guarantee. Cheap model: literal translation of supplied prose.
+    const translated = await llmText({
+      system:
+        "Traduce el siguiente artículo de noticias de cruceros del inglés al español latinoamericano. " +
+        "Devuelve exactamente el mismo formato: primero una línea 'TÍTULO: ...' y luego párrafos 'P1: ...', 'P2: ...' etc. " +
+        "Traduce naturalmente para lectores hispanohablantes de viajes y cruceros. No agregues comentarios.",
+      user: inputText,
+      cheap: true,
+      maxTokens: 4000,
+      timeoutMs: 60000,
     });
-
-    if (!oaiRes.ok) throw new Error(`OpenAI error ${oaiRes.status}`);
-    const oaiData = (await oaiRes.json()) as { choices: { message: { content: string } }[] };
-    const translated = oaiData.choices[0]?.message?.content ?? "";
 
     const titleMatch = translated.match(/^TÍTULO:\s*(.+)/m);
     const translatedTitle = titleMatch ? titleMatch[1].trim() : title;
@@ -193,7 +180,7 @@ h1{font-family:'Bree Serif',serif;font-size:clamp(24px,5vw,44px);line-height:1.1
 });
 
 // Translates _es fields for an already-approved story and patches them back into
-// persistence so future page loads are instant (no repeat OpenAI calls).
+// persistence so future page loads are instant (no repeat model calls).
 router.get("/translate-story", async (req, res) => {
   const id = (req.query.id as string) ?? "";
   if (!id) {
@@ -236,34 +223,18 @@ router.get("/translate-story", async (req, res) => {
     if (editorialReasoning) lines.push(`EDITORIALREASONING: ${editorialReasoning}`);
     const inputText = lines.join("\n\n");
 
-    const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env["OPENAI_API_KEY"]}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Translate the following cruise-travel news fields from English to Latin American Spanish. " +
-              "Return exactly the same field names in uppercase followed by a colon, one field per paragraph. " +
-              "Example: TITLE: ...\n\nSUMMARY: ...\n\nTRAVELERIMPACT: ...\n\nEDITORIALREASONING: ...\n" +
-              "Translate naturally for a Spanish-speaking cruise travel audience. No extra commentary.",
-          },
-          { role: "user", content: inputText },
-        ],
-        temperature: 0.2,
-        max_tokens: 1200,
-      }),
-      signal: AbortSignal.timeout(30000),
+    // Same TEXT contract as above (FIELDNAME: …), read back by extractField().
+    const translated = await llmText({
+      system:
+        "Translate the following cruise-travel news fields from English to Latin American Spanish. " +
+        "Return exactly the same field names in uppercase followed by a colon, one field per paragraph. " +
+        "Example: TITLE: ...\n\nSUMMARY: ...\n\nTRAVELERIMPACT: ...\n\nEDITORIALREASONING: ...\n" +
+        "Translate naturally for a Spanish-speaking cruise travel audience. No extra commentary.",
+      user: inputText,
+      cheap: true,
+      maxTokens: 2000,
+      timeoutMs: 30000,
     });
-
-    if (!oaiRes.ok) throw new Error(`OpenAI error ${oaiRes.status}`);
-    const oaiData = (await oaiRes.json()) as { choices: { message: { content: string } }[] };
-    const translated = oaiData.choices[0]?.message?.content ?? "";
 
     function extractField(text: string, field: string): string {
       const m = text.match(new RegExp(`${field}:\\s*([\\s\\S]*?)(?=\\n\\n[A-Z]+:|$)`, "i"));

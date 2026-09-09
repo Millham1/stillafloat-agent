@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { llmJson } from "./llm";
 import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
 
@@ -171,6 +172,38 @@ interface LlmPost {
   en_gloss?: string;
 }
 
+// The shape the copy call must return. Previously this lived only as a sentence
+// at the end of SYSTEM_PROMPT and was enforced by nothing; now the API enforces
+// it, and a malformed batch is impossible rather than merely unlikely.
+const POSTS_SCHEMA = {
+  type: "object",
+  properties: {
+    posts: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          idx: { type: "integer" },
+          caption: { type: "string" },
+          hashtags: { type: "array", items: { type: "string" } },
+          en_gloss: {
+            type: "string",
+            description: "Faithful English translation. Spanish captions only; omit for English.",
+          },
+        },
+        required: ["idx", "caption", "hashtags"],
+      },
+    },
+  },
+  required: ["posts"],
+} as const;
+
+const TRANSLATIONS_SCHEMA = {
+  type: "object",
+  properties: { translations: { type: "array", items: { type: "string" } } },
+  required: ["translations"],
+} as const;
+
 // Best-effort fetch of a video's transcript (captions) so hooks are grounded in
 // the actual content, not just the title. Returns "" on any failure (then hooks
 // fall back to the title). A caller may also pass a transcript directly.
@@ -213,9 +246,6 @@ export async function generateSocialBatch(
   track: Track,
   providedTranscript?: string,
 ): Promise<SocialBatch> {
-  const apiKey = process.env["OPENAI_API_KEY"] || "";
-  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
-
   const transcript = (providedTranscript ?? "").trim() || (await fetchTranscript(video.id));
   const lang: Lang = track === "A" ? "es" : "en";
   const slots = planSlots(track);
@@ -239,32 +269,15 @@ export async function generateSocialBatch(
     `\nWrite one post per slot below. Return JSON {"posts":[{idx,caption,hashtags}]}.\n\n` +
     JSON.stringify(slotPrompt, null, 2);
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.85,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userContent },
-      ],
-    }),
-    signal: AbortSignal.timeout(120_000),
+  // Brand-voice copy Mark reviews by hand — this one keeps the full model, not
+  // the cheap one. It is also the exact call that produced nothing for four days
+  // while the OpenAI key was being rejected.
+  const parsed = await llmJson<{ posts?: LlmPost[] }>({
+    system: SYSTEM_PROMPT,
+    user: userContent,
+    schema: POSTS_SCHEMA as unknown as Record<string, unknown>,
+    maxTokens: 2000,
   });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`OpenAI HTTP ${response.status}: ${text.slice(0, 200)}`);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const payload = (await response.json()) as any;
-  const content: string = payload?.choices?.[0]?.message?.content ?? "";
-  if (!content) throw new Error("Empty response from OpenAI");
-
-  const parsed = JSON.parse(content) as { posts?: LlmPost[] };
   const llmPosts = Array.isArray(parsed.posts) ? parsed.posts : [];
 
   const posts: SocialPost[] = slots.map((slot, i) => {
@@ -300,10 +313,7 @@ export async function generateSocialBatch(
       .map((p, i) => ({ i, caption: p.caption }))
       .filter((x) => x.caption && !posts[x.i]?.gloss);
     if (need.length > 0) {
-      const glosses = await translateCaptions(
-        need.map((x) => x.caption),
-        apiKey,
-      );
+      const glosses = await translateCaptions(need.map((x) => x.caption));
       need.forEach((x, k) => {
         const g = glosses[k]?.trim();
         if (g) posts[x.i]!.gloss = g;
@@ -331,32 +341,18 @@ export async function generateSocialBatch(
 // for the whole set; returns an array aligned to the input order. Graceful: on
 // any failure returns []. Kept separate from generation so gloss coverage is
 // reliable regardless of how the copy model formats its JSON.
-async function translateCaptions(captions: string[], apiKey: string): Promise<string[]> {
+async function translateCaptions(captions: string[]): Promise<string[]> {
   if (captions.length === 0) return [];
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              'Translate each Spanish social-media caption into natural, faithful English (keep the meaning, tone, and emoji). Respond ONLY with JSON: {"translations":["...", ...]} in the same order as the input.',
-          },
-          { role: "user", content: JSON.stringify({ captions }) },
-        ],
-      }),
-      signal: AbortSignal.timeout(60_000),
+    const parsed = await llmJson<{ translations?: string[] }>({
+      system:
+        'Translate each Spanish social-media caption into natural, faithful English (keep the meaning, tone, and emoji). Respond ONLY with JSON: {"translations":["...", ...]} in the same order as the input.',
+      user: JSON.stringify({ captions }),
+      schema: TRANSLATIONS_SCHEMA as unknown as Record<string, unknown>,
+      cheap: true, // mechanical translation for a review gloss — thin judgement
+      maxTokens: 1500,
+      timeoutMs: 60_000,
     });
-    if (!response.ok) return [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload = (await response.json()) as any;
-    const content: string = payload?.choices?.[0]?.message?.content ?? "";
-    const parsed = JSON.parse(content) as { translations?: string[] };
     return Array.isArray(parsed.translations) ? parsed.translations : [];
   } catch (err) {
     logger.warn({ err }, "translateCaptions failed");

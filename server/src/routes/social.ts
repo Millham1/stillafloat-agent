@@ -89,7 +89,7 @@ router.post("/social/scan", requireToken, async (req: Request, res: Response) =>
 
 // POST /api/social/regenerate — pull every hook in the current campaign back to
 // pending and regenerate the copy with the latest logic (transcript grounding).
-// Runs in the background (many sequential OpenAI calls) so the request returns
+// Runs in the background (many sequential model calls) so the request returns
 // immediately; a single Telegram fires when the fresh batches are ready.
 router.post("/social/regenerate", requireToken, async (_req: Request, res: Response) => {
   const queue = await loadQueue();

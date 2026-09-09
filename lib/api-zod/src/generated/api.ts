@@ -27,7 +27,7 @@ export const GetSystemStatusResponse = zod.object({
   "generatedAt": zod.string(),
   "environment": zod.string().optional(),
   "systems": zod.object({
-  "openaiConfigured": zod.boolean().optional(),
+  "anthropicConfigured": zod.boolean().optional(),
   "resendConfigured": zod.boolean().optional(),
   "gnewsConfigured": zod.boolean().optional(),
   "weatherConfigured": zod.boolean().optional(),

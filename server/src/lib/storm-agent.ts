@@ -1,11 +1,12 @@
 // storm-agent.ts — the storm-alert brain.
 //
 // Scan NHC → map each system to cruising grounds → dedup against storm_alerts →
-// draft the "what this means for you" copy (OpenAI) → upsert as a review draft →
+// draft the "what this means for you" copy (Claude) → upsert as a review draft →
 // nudge Mark (Web Push + email approve links). Nothing is sent to subscribers
 // here — that only happens on explicit approval (see routes/storm.ts + storm-send).
 
 import * as crypto from "crypto";
+import { anthropicConfigured, llmJson } from "./llm";
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { createAction, resolveActionsForSource } from "./actions";
@@ -45,8 +46,18 @@ Return JSON: {"headline": string, "body_md": string}.
   rerouted/rescheduled; the cruise line decides; we'll keep you posted). Do NOT invent specific ship names,
   exact dates, or wind numbers beyond what you are given. If it's only a disturbance/low chance, say so plainly.`;
 
+// Schema the alert copy must satisfy — was a sentence in SYSTEM_PROMPT
+// ("Return JSON: {...}") enforced by nothing; now enforced by the API.
+const DRAFT_SCHEMA = {
+  type: "object",
+  properties: {
+    headline: { type: "string", description: "<= 80 chars, plain and specific" },
+    body_md: { type: "string", description: "2-4 short markdown paragraphs" },
+  },
+  required: ["headline", "body_md"],
+} as const;
+
 async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
-  const apiKey = process.env["OPENAI_API_KEY"];
   const groundsLabel = labelGrounds(grounds) || "open water (no cruising grounds directly in the path yet)";
   const facts = [
     `Name/label: ${sys.name}`,
@@ -61,7 +72,7 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
   ].filter(Boolean).join("\n");
 
   // Graceful fallback if no AI key is configured — a plain, honest draft.
-  if (!apiKey) {
+  if (!anthropicConfigured()) {
     return {
       headline: `${sys.name}: watching ${labelGrounds(grounds) || sys.basin}`,
       body_md: `**${sys.name}** (${sys.classification}) is being monitored in the ${sys.basin.replace(/_/g, " ")} basin.\n\n` +
@@ -70,25 +81,13 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
     };
   }
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.5,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: facts },
-      ],
-    }),
-    signal: AbortSignal.timeout(60_000),
+  const parsed = await llmJson<Partial<DraftContent>>({
+    system: SYSTEM_PROMPT,
+    user: facts,
+    schema: DRAFT_SCHEMA as unknown as Record<string, unknown>,
+    maxTokens: 1500,
+    timeoutMs: 60_000,
   });
-  if (!res.ok) throw new Error(`OpenAI HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const payload = (await res.json()) as any;
-  const content: string = payload?.choices?.[0]?.message?.content ?? "";
-  const parsed = JSON.parse(content) as Partial<DraftContent>;
   return {
     headline: (parsed.headline ?? `${sys.name}: ${labelGrounds(grounds)}`).slice(0, 120),
     body_md: parsed.body_md ?? "",

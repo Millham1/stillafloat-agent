@@ -6,7 +6,8 @@
 // pre-generated write-ups for free — no LLM call when a customer searches.
 //
 // Run: node generate-advice.mjs [ship-slug]     (default: wonder-of-the-seas)
-// Env: ANTHROPIC_API_KEY (preferred, Haiku) and/or OPENAI_API_KEY (fallback).
+// Env: ANTHROPIC_API_KEY (Haiku). The OpenAI fallback was removed 2026-09-09 when
+// the service dropped OpenAI entirely (its key had been rejected since 09-05).
 //
 // Cost model: ~a dollar for a whole fleet, ONE TIME. Re-run only when cabin data
 // or the voice guide changes. See README.md.
@@ -19,7 +20,6 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ship = process.argv[2] || "wonder-of-the-seas";
 const AKEY = process.env.ANTHROPIC_API_KEY;
-const OKEY = process.env.OPENAI_API_KEY;
 
 const voice = await readFile(join(HERE, "voice-guide.md"), "utf8");
 // Use only the prompt body (after the '---' separator) as the system prompt.
@@ -80,28 +80,13 @@ async function viaClaude(prompt) {
   const text = (j.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
   return { out: parse(text), model: j.model, cost: j.usage.input_tokens * 1e-6 + j.usage.output_tokens * 5e-6 };
 }
-async function viaOpenAI(prompt) {
-  const r = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { authorization: `Bearer ${OKEY}`, "content-type": "application/json" },
-    body: JSON.stringify({ model: "gpt-4o-mini", temperature: 0.4, response_format: { type: "json_object" },
-      messages: [{ role: "system", content: VOICE }, { role: "user", content: prompt }] }),
-    signal: AbortSignal.timeout(40000),
-  });
-  const j = await r.json();
-  if (!r.ok) throw new Error(`OpenAI ${r.status}: ${JSON.stringify(j).slice(0, 160)}`);
-  const text = j.choices?.[0]?.message?.content ?? "";
-  return { out: parse(text), model: "gpt-4o-mini", cost: j.usage.prompt_tokens * 0.15e-6 + j.usage.completion_tokens * 0.6e-6 };
-}
-
 async function generateOne(prompt) {
-  // Crash-proof ladder: Haiku -> OpenAI. Never throws up the stack.
+  // Never throws up the stack: a failed archetype is skipped and counted.
   if (AKEY) { try { return await viaClaude(prompt); } catch (e) { console.warn("  Haiku failed:", e.message); } }
-  if (OKEY) { try { return await viaOpenAI(prompt); } catch (e) { console.warn("  OpenAI failed:", e.message); } }
   return null;
 }
 
-if (!AKEY && !OKEY) { console.error("No ANTHROPIC_API_KEY or OPENAI_API_KEY in env."); process.exit(1); }
+if (!AKEY) { console.error("No ANTHROPIC_API_KEY in env."); process.exit(1); }
 
 console.log(`Generating advice for ${shipData.ship} across ${archetypes.length} archetypes...`);
 const byArchetype = {};

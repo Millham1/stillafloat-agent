@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { llmText } from "../lib/llm";
 import { CRUISE_LOCATIONS, type CruiseLocation } from "../lib/ports";
 
 const router: IRouter = Router();
@@ -32,26 +33,20 @@ async function generateSynopsis(
     `Mention the temperature range (highs and lows), general sky conditions, and any precipitation patterns. ` +
     `Be specific and practical. Do not start with "The weather" — start with the city/location name.`;
 
-  const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env["OPENAI_API_KEY"]}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "You write concise, practical weather summaries for cruise travelers. Plain prose, no bullet points, no markdown." },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.4,
-      max_tokens: 120,
-    }),
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!oaiRes.ok) return "";
-  const oaiData = (await oaiRes.json()) as { choices: { message: { content: string } }[] };
-  return oaiData.choices[0]?.message?.content?.trim() ?? "";
+  // Two or three sentences off a table of numbers — the cheap model's job.
+  // Any failure degrades to no synopsis, exactly as the HTTP-error path did.
+  try {
+    return await llmText({
+      system:
+        "You write concise, practical weather summaries for cruise travelers. Plain prose, no bullet points, no markdown.",
+      user: prompt,
+      cheap: true,
+      maxTokens: 200,
+      timeoutMs: 15000,
+    });
+  } catch {
+    return "";
+  }
 }
 
 function weatherEmoji(code: number): string {

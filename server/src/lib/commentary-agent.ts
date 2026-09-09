@@ -1,3 +1,4 @@
+import { llmJson } from "./llm";
 import { logger } from "./logger";
 import { PATHS, getSupabase, readJson, writeJson } from "./persistence";
 import { notifyMark, reviewUrl } from "./notify";
@@ -528,39 +529,13 @@ function recordCommentaryRejection(story: CommentaryStorySeed, reason: string): 
 }
 
 // ── LLM plumbing ─────────────────────────────────────────────────────────────
-async function chatJson(system: string, user: string): Promise<Record<string, unknown>> {
-  const apiKey = process.env["OPENAI_API_KEY"] || "";
-  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-    signal: AbortSignal.timeout(120_000),
-  });
-  if (!response.ok) {
-    throw new Error(`OpenAI HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const payload = (await response.json()) as any;
-  return JSON.parse(String(payload?.choices?.[0]?.message?.content ?? "{}")) as Record<
-    string,
-    unknown
-  >;
-}
-
-// Editorial prose is the one place gpt-4o-mini genuinely cannot do the job. Handed a
-// stance (Mark's take) it writes fine; asked to FORM one it retreats to summarising the
-// cluster a paragraph at a time — which is exactly what "it's just regurgitating news"
-// was. Opinion work runs on Claude; OpenAI stays as the crash-proof fallback so a bad
-// key never kills the weekly run.
+// Editorial prose is the one place a small commodity model genuinely could not do
+// the job. Handed a stance (Mark's take) it wrote fine; asked to FORM one it
+// retreated to summarising the cluster a paragraph at a time — which is exactly
+// what "it's just regurgitating news" was. Opinion work has always run on Claude;
+// the OpenAI fallback that used to sit behind it was removed on 2026-09-09 when
+// the whole service dropped OpenAI (its key had been rejected since 09-05, so the
+// "crash-proof fallback" was in fact a guaranteed second failure).
 const COMMENTARY_MODEL = process.env["COMMENTARY_MODEL"] || "claude-sonnet-5";
 
 // JSON SCHEMAS — the model fills these via a forced tool call, so the API guarantees
@@ -670,45 +645,22 @@ export const COMMENTARY_SCHEMA = {
   required: ["title", "body_html", "tags"],
 } as const;
 
+// This function used to hand-roll the Anthropic request; llm.ts now owns that
+// wire format for the whole service (plus a timeout and one retry on 429/5xx).
+// The behaviour here is unchanged — same model, same forced `emit` tool call.
 async function claudeJson(
   system: string,
   user: string,
   schema: Record<string, unknown>,
   maxTokens = 2000,
 ): Promise<Record<string, unknown>> {
-  const apiKey = process.env["ANTHROPIC_API_KEY"] || "";
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: COMMENTARY_MODEL,
-      max_tokens: maxTokens,
-      // No `temperature` — deprecated on the Claude 5 models and a hard 400 if sent.
-      system,
-      tools: [{ name: "emit", description: "Return the finished result.", input_schema: schema }],
-      tool_choice: { type: "tool", name: "emit" },
-      messages: [{ role: "user", content: user }],
-    }),
-    signal: AbortSignal.timeout(120_000),
+  return llmJson<Record<string, unknown>>({
+    system,
+    user,
+    schema,
+    model: COMMENTARY_MODEL,
+    maxTokens,
   });
-  const payload = (await response.json()) as {
-    content?: { type: string; name?: string; input?: Record<string, unknown> }[];
-    stop_reason?: string;
-    error?: { message?: string };
-  };
-  if (!response.ok || payload.stop_reason === "refusal") {
-    throw new Error(
-      `Anthropic HTTP ${response.status} ${payload.error?.message ?? payload.stop_reason ?? ""}`,
-    );
-  }
-  const block = (payload.content ?? []).find((b) => b.type === "tool_use" && b.name === "emit");
-  if (!block?.input) throw new Error("Anthropic returned no structured result");
-  return block.input;
 }
 
 /**
@@ -808,22 +760,18 @@ export async function claudeJsonSearch(
   throw new Error(`Verification did not finish within ${MAX_CONTINUATIONS} continuations`);
 }
 
-// All voice/opinion calls go through here: Claude first, OpenAI if Claude is unavailable.
+// All voice/opinion calls go through here. There is no second provider behind it
+// any more: the OpenAI fallback was removed on 2026-09-09 (its key had been dead
+// since 09-05, so the "fallback" only ever turned one error into two, with the
+// second one blaming the wrong service). llm.ts retries a 429/5xx once; anything
+// past that is a real outage and the caller should see it.
 export async function opinionJson(
   system: string,
   user: string,
   schema: Record<string, unknown>,
   maxTokens = 2000,
 ): Promise<Record<string, unknown>> {
-  try {
-    return await claudeJson(system, user, schema, maxTokens);
-  } catch (error) {
-    logger.warn(
-      { err: (error as Error).message },
-      "Commentary: Claude unavailable, falling back to OpenAI",
-    );
-    return chatJson(system, user);
-  }
+  return claudeJson(system, user, schema, maxTokens);
 }
 
 const VOICE = `You write for Still Afloat Cruising in Mark's voice: "the experienced friend who

@@ -210,7 +210,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatusIndicator label="OpenAI Curation" active={!!status.systems?.openaiConfigured} />
+            <StatusIndicator label="Claude Curation" active={!!status.systems?.anthropicConfigured} />
             <StatusIndicator label="GNews Ingestion" active={!!status.systems?.gnewsConfigured} />
             <StatusIndicator label="Weather Alerts" active={!!status.systems?.weatherConfigured} />
             <StatusIndicator label="Agent Approval" active={!!status.systems?.approvalConfigured} />

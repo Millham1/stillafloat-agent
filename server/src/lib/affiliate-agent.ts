@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { anthropicConfigured, llmJson } from "./llm";
 import { logger } from "./logger";
 import { readJson, writeJson, PATHS } from "./persistence";
 
@@ -96,29 +97,38 @@ interface LlmItem {
   category?: string;
 }
 
-async function describeAndCategorize(products: RawProduct[], apiKey: string): Promise<Map<number, { description: string; category: Category }>> {
+const ITEMS_SCHEMA = {
+  type: "object",
+  properties: {
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          idx: { type: "integer" },
+          description: { type: "string" },
+          category: { type: "string", enum: [...CATEGORIES] },
+        },
+        required: ["idx", "description", "category"],
+      },
+    },
+  },
+  required: ["items"],
+} as const;
+
+async function describeAndCategorize(products: RawProduct[]): Promise<Map<number, { description: string; category: Category }>> {
   const out = new Map<number, { description: string; category: Category }>();
-  if (!products.length || !apiKey) return out;
+  if (!products.length || !anthropicConfigured()) return out;
 
   const userContent = JSON.stringify(products.map((p, idx) => ({ idx, title: p.title })), null, 2);
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.6,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Write a blurb + category for each product:\n\n${userContent}` },
-      ],
-    }),
-    signal: AbortSignal.timeout(120_000),
+  // A blurb plus a bucket from a product title — high volume, thin judgement.
+  const parsed = await llmJson<{ items?: LlmItem[] }>({
+    system: SYSTEM_PROMPT,
+    user: `Write a blurb + category for each product:\n\n${userContent}`,
+    schema: ITEMS_SCHEMA as unknown as Record<string, unknown>,
+    cheap: true,
+    maxTokens: 4000,
   });
-  if (!response.ok) throw new Error(`OpenAI HTTP ${response.status}`);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const payload = (await response.json()) as any;
-  const parsed = JSON.parse(payload?.choices?.[0]?.message?.content ?? "{}") as { items?: LlmItem[] };
   for (const it of parsed.items ?? []) {
     if (typeof it.idx !== "number") continue;
     const category = (CATEGORIES as readonly string[]).includes(it.category ?? "")
@@ -134,7 +144,6 @@ async function describeAndCategorize(products: RawProduct[], apiKey: string): Pr
 export async function ingestProducts(
   raw: RawProduct[],
 ): Promise<{ added: PendingItem[]; skipped: { asin: string; reason: string }[] }> {
-  const apiKey = process.env["OPENAI_API_KEY"] || "";
   const [published, pending] = await Promise.all([loadAffiliateStore(), loadPending()]);
 
   // Existing items may store the ASIN in either field (older items put the
@@ -153,7 +162,7 @@ export async function ingestProducts(
     fresh.push(p);
   }
 
-  const meta = await describeAndCategorize(fresh, apiKey);
+  const meta = await describeAndCategorize(fresh);
   const added: PendingItem[] = fresh.map((p, idx) => {
     const m = meta.get(idx);
     return {

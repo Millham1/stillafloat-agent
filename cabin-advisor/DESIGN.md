@@ -96,8 +96,8 @@ This does NOT reopen the original "never call the LLM live" fear — that fear w
 reasoning over the whole grid (or an Opus-class model) per visitor. The full-grid pass stays
 pre-computed; the live call is small, capped, cached and fallback-protected.
 
-Models: **Claude Haiku 4.5** both layers. gpt-4o-mini is the batch fallback — flatter, and
-mis-ranked once in testing. Regenerate Layer A only when cabin data or the voice guide changes.
+Models: **Claude Haiku 4.5** both layers. Regenerate Layer A only when cabin data or the
+voice guide changes.
 
 > **REVISIT if this takes off.** If real volume justifies it, consider a stronger model for the
 > live layer — claude-opus-5 produced truly bespoke output in testing. Flagged by Mark 2026-07-26.

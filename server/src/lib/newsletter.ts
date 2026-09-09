@@ -1,3 +1,4 @@
+import { llmJson } from "./llm";
 import { logger } from "./logger";
 import { sendMail } from "./mailer";
 import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
@@ -349,10 +350,49 @@ Recibirás las noticias de la semana, posiblemente el commentary más reciente d
 
 Responde SOLO con JSON: { "subject", "letter_title", "letter", "quick_hits":[{"text","story_id"}], "booking_headline", "booking_body", "sunny_side", "photo_caption", "pps", "video_blurb", "affiliate_blurb", "agency_ps" }.`;
 
-export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraft> {
-  const apiKey = process.env["OPENAI_API_KEY"] || "";
-  if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
+// Every field the letter is assembled from. Previously the last line of the
+// prompt asked for this shape and a JSON.parse hoped for it; now the API
+// guarantees it, which matters here because the letter is long-form HTML-ish
+// prose — exactly the content that used to break naive prose-JSON parsing.
+const NEWSLETTER_SCHEMA = {
+  type: "object",
+  properties: {
+    subject: { type: "string" },
+    letter_title: { type: "string" },
+    letter: { type: "string" },
+    quick_hits: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { text: { type: "string" }, story_id: { type: "string" } },
+        required: ["text", "story_id"],
+      },
+    },
+    booking_headline: { type: "string" },
+    booking_body: { type: "string" },
+    sunny_side: { type: "string" },
+    photo_caption: { type: "string" },
+    pps: { type: "string" },
+    video_blurb: { type: "string" },
+    affiliate_blurb: { type: "string" },
+    agency_ps: { type: "string" },
+  },
+  required: [
+    "subject",
+    "letter_title",
+    "letter",
+    "quick_hits",
+    "booking_headline",
+    "booking_body",
+    "sunny_side",
+    "photo_caption",
+    "video_blurb",
+    "affiliate_blurb",
+    "agency_ps",
+  ],
+} as const;
 
+export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraft> {
   const [stories, video, affiliate, commentary, photo] = await Promise.all([
     gatherApprovedStories(lang),
     gatherFeaturedVideo(lang),
@@ -377,26 +417,8 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
     2,
   );
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: lang === "es" ? SYSTEM_PROMPT_ES : SYSTEM_PROMPT },
-        { role: "user", content: `Build this week's newsletter from:\n\n${userContent}` },
-      ],
-    }),
-    signal: AbortSignal.timeout(120_000),
-  });
-  if (!response.ok) throw new Error(`OpenAI HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const payload = (await response.json()) as any;
-  const content: string = payload?.choices?.[0]?.message?.content ?? "";
-  const parsed = JSON.parse(content) as {
+  // The whole weekly letter in Mark's voice — full model, not the cheap one.
+  const parsed = await llmJson<{
     subject?: string;
     letter_title?: string;
     letter?: string;
@@ -409,7 +431,12 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
     video_blurb?: string;
     affiliate_blurb?: string;
     agency_ps?: string;
-  };
+  }>({
+    system: lang === "es" ? SYSTEM_PROMPT_ES : SYSTEM_PROMPT,
+    user: `Build this week's newsletter from:\n\n${userContent}`,
+    schema: NEWSLETTER_SCHEMA as unknown as Record<string, unknown>,
+    maxTokens: 4000,
+  });
 
   // Each hit links to the story's pre-rendered page on the site (Mark: a
   // related headline should hyperlink to the story). Unknown ids → no link.
