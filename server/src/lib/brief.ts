@@ -2,6 +2,7 @@ import { readJson, writeJson } from "./persistence";
 import { loadQueue } from "./social-agent";
 import { sendPush } from "./push";
 import { logger } from "./logger";
+import { recentClickTotal } from "./affiliate-clicks";
 
 // ── Daily brief assembler + delivery ───────────────────────────────────────────
 // One readable, actionable brief, assembled on our own box. Ops data (calendar,
@@ -71,7 +72,7 @@ export interface Brief {
     pulse: Pulse;
     social: SocialBlock;
   };
-  counts: { actions: number; tasks: number; ideasNew: number; socialPending: number; events: number };
+  counts: { actions: number; tasks: number; ideasNew: number; socialPending: number; events: number; affiliateClicks28d: number };
 }
 
 interface OpsFeed {
@@ -114,9 +115,10 @@ function localDateLabel(): string {
 
 /** Assemble the brief from all sources and persist it. */
 export async function assembleBrief(): Promise<Brief> {
-  const [ops, queue] = await Promise.all([
+  const [ops, queue, affiliateClicks28d] = await Promise.all([
     fetchOpsFeed(),
     loadQueue().catch(() => ({ batches: [] as Array<{ status: string; title: string; track: string }> })),
+    recentClickTotal(28), // never throws — 0 on any failure
   ]);
 
   const pending = queue.batches.filter((b) => b.status === "pending");
@@ -157,6 +159,7 @@ export async function assembleBrief(): Promise<Brief> {
       ideasNew: ideas.count,
       socialPending: social.pending,
       events: calendar.length,
+      affiliateClicks28d,
     },
   };
 
@@ -232,6 +235,7 @@ export function renderBriefEmail(brief: Brief): string {
   if (p.youtube) pulseRows.push(li(`<b>YouTube ${arrow(p.youtube.trend)} ${esc(p.youtube.trend)}</b> <span style="color:#6b7794">${esc(p.youtube.tip)}</span>`));
   if (p.facebook) pulseRows.push(li(`<b>Facebook ${arrow(p.facebook.trend)} ${esc(p.facebook.trend)}</b> <span style="color:#6b7794">${esc(p.facebook.tip)}</span>`));
   if (p.instagram) pulseRows.push(li(`<b>Instagram ${arrow(p.instagram.trend)} ${esc(p.instagram.trend)}</b> <span style="color:#6b7794">${esc(p.instagram.tip)}</span>`));
+  if (brief.counts.affiliateClicks28d) pulseRows.push(li(`<b>Affiliate clicks (28d)</b> <span style="color:#6b7794">${brief.counts.affiliateClicks28d}</span>`));
   const pulseHtml = pulseRows.join("");
 
   const lead = brief.nothingToDo
@@ -360,6 +364,10 @@ export function renderBriefPage(brief: Brief, conflicts: ConflictItem[], token: 
         (m.recent_receipts?.length ? `<div class="row sub">Recent: ${m.recent_receipts.slice(0, 3).map((r) => `${esc(r.vendor)} ${money(r.amount, r.currency || "USD")}`).join(" · ")}</div>` : ""))
     : "";
 
+  const affiliateClicksHtml = brief.counts.affiliateClicks28d
+    ? card(h("Affiliate clicks (28d)") + `<div class="row">${brief.counts.affiliateClicks28d}</div>`)
+    : "";
+
   const nothing = brief.nothingToDo && conflicts.length === 0;
   const lead = nothing
     ? `<div class="clear">✓ Nothing needs you today. Inbox, calendar, tasks and posts are all clear. ⚓</div>`
@@ -420,6 +428,7 @@ export function renderBriefPage(brief: Brief, conflicts: ConflictItem[], token: 
   ${tasksHtml}
   ${ideasHtml}
   ${moneyHtml}
+  ${affiliateClicksHtml}
   <script>
     var TOKEN=${JSON.stringify(token)};
     function resolve(key,choice,btn){
