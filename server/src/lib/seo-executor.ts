@@ -42,6 +42,8 @@ export interface SeoOverridePayload {
   metaDescription_es?: string;
   bodyHtml?: string;
   bodyHtml_es?: string;
+  /** Pin the page in (false) or out (true) of the index; see isNoindex in prerender-news. */
+  noindex?: boolean;
 }
 
 export function isSeoOverridePayload(p: unknown): p is SeoOverridePayload {
@@ -58,7 +60,8 @@ export function isSeoOverridePayload(p: unknown): p is SeoOverridePayload {
     "metaDescription_es",
     "bodyHtml",
     "bodyHtml_es",
-  ].some((k) => typeof o[k] === "string" && (o[k] as string).trim() !== "");
+  ].some((k) => typeof o[k] === "string" && (o[k] as string).trim() !== "") ||
+    typeof o["noindex"] === "boolean";
   return hasTarget && hasChange;
 }
 
@@ -178,6 +181,10 @@ export function buildOverridePatch(
   );
   set("bodyHtml", payload.bodyHtml, existing.bodyHtml ?? "", "body HTML");
   set("bodyHtml_es", payload.bodyHtml_es, existing.bodyHtml_es ?? "", "ES body HTML");
+  if (typeof payload.noindex === "boolean" && payload.noindex !== existing.noindex) {
+    next.noindex = payload.noindex;
+    changes.push(`index: "${existing.noindex === undefined ? "(rule)" : existing.noindex ? "noindex" : "index"}" → "${payload.noindex ? "noindex" : "index"}"`);
+  }
 
   return { next, changes };
 }
