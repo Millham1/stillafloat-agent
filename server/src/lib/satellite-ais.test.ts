@@ -1,7 +1,7 @@
 // satellite-ais.test.ts — the spend gate and the provider parsing, no network.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { lookupDecision, parsePositionReceived, parseDetail, blankLedger, monthKey, LOOKUP_AFTER_MIN, VIEW_WINDOW_MIN, STANDING_WINDOW_MIN } from "./satellite-ais-core";
+import { lookupDecision, parsePositionReceived, parseDetail, blankLedger, monthKey, LOOKUP_AFTER_MIN, REQUEST_GUARD_MIN, STANDING_WINDOW_MIN } from "./satellite-ais-core";
 import { allowlisted, sweepEnabled } from "./satellite-ais-core";
 
 const NOW = new Date("2026-09-10T18:00:00.000Z");
@@ -9,36 +9,37 @@ const iso = (minAgo: number) => new Date(NOW.getTime() - minAgo * 60_000).toISOS
 
 describe("lookupDecision", () => {
   it("does not spend on a ship with a fresh free fix", () => {
-    const r = lookupDecision({ lastFixAt: iso(LOOKUP_AFTER_MIN - 1), ledger: blankLedger(NOW), mmsi: "1", cap: 100, now: NOW, reason: "view" });
+    const r = lookupDecision({ lastFixAt: iso(LOOKUP_AFTER_MIN - 1), ledger: blankLedger(NOW), mmsi: "1", cap: 100, now: NOW, reason: "request" });
     assert.deepEqual(r, { ok: false, why: "fresh" });
   });
-  it("spends once the fix is stale, then not again for the same ship inside the window", () => {
+  it("a page request spends once the fix is stale; a second click inside the 5-min guard buys nothing new", () => {
     const ledger = blankLedger(NOW);
-    assert.deepEqual(lookupDecision({ lastFixAt: iso(45), ledger, mmsi: "1", cap: 100, now: NOW, reason: "view" }), { ok: true });
-    ledger.lastByMmsi["1"] = iso(VIEW_WINDOW_MIN - 5); ledger.used = 1;
-    assert.deepEqual(lookupDecision({ lastFixAt: iso(45), ledger, mmsi: "1", cap: 100, now: NOW, reason: "view" }), { ok: false, why: "recent-lookup" });
-    assert.deepEqual(lookupDecision({ lastFixAt: iso(45), ledger, mmsi: "2", cap: 100, now: NOW, reason: "view" }), { ok: true }, "another ship is fine");
+    assert.deepEqual(lookupDecision({ lastFixAt: iso(45), ledger, mmsi: "1", cap: 100, now: NOW, reason: "request" }), { ok: true });
+    ledger.lastByMmsi["1"] = iso(REQUEST_GUARD_MIN - 1); ledger.used = 1;
+    assert.deepEqual(lookupDecision({ lastFixAt: iso(45), ledger, mmsi: "1", cap: 100, now: NOW, reason: "request" }), { ok: false, why: "recent-lookup" });
+    assert.deepEqual(lookupDecision({ lastFixAt: iso(45), ledger, mmsi: "2", cap: 100, now: NOW, reason: "request" }), { ok: true }, "another ship is fine");
   });
-  it("every reason waits three hours between lookups for the same ship", () => {
+  it("storm and watch wait six hours between lookups; a page request past the 5-min guard is new", () => {
+    assert.equal(STANDING_WINDOW_MIN, 360);
     const ledger = blankLedger(NOW); ledger.lastByMmsi["1"] = iso(STANDING_WINDOW_MIN - 10); ledger.used = 1;
     assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "watch" }), { ok: false, why: "recent-lookup" });
     assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "storm" }), { ok: false, why: "recent-lookup" });
-    assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "view" }), { ok: false, why: "recent-lookup" }, "a viewer waits the same three hours");
+    assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "request" }), { ok: true }, "a request is a new request");
     ledger.lastByMmsi["1"] = iso(STANDING_WINDOW_MIN + 1);
     assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "watch" }), { ok: true });
   });
   it("a ship that has never reported counts as stale", () => {
-    assert.deepEqual(lookupDecision({ lastFixAt: null, ledger: blankLedger(NOW), mmsi: "1", cap: 100, now: NOW, reason: "view" }), { ok: true });
+    assert.deepEqual(lookupDecision({ lastFixAt: null, ledger: blankLedger(NOW), mmsi: "1", cap: 100, now: NOW, reason: "request" }), { ok: true });
   });
   it("the monthly cap is a hard stop, and a new month resets it", () => {
     const ledger = { ...blankLedger(NOW), used: 100 };
-    assert.deepEqual(lookupDecision({ lastFixAt: null, ledger, mmsi: "1", cap: 100, now: NOW, reason: "view" }), { ok: false, why: "cap" });
+    assert.deepEqual(lookupDecision({ lastFixAt: null, ledger, mmsi: "1", cap: 100, now: NOW, reason: "request" }), { ok: false, why: "cap" });
     const lastMonth = { ...ledger, month: "2026-08" };
-    assert.deepEqual(lookupDecision({ lastFixAt: null, ledger: lastMonth, mmsi: "1", cap: 100, now: NOW, reason: "view" }), { ok: true });
+    assert.deepEqual(lookupDecision({ lastFixAt: null, ledger: lastMonth, mmsi: "1", cap: 100, now: NOW, reason: "request" }), { ok: true });
     assert.equal(monthKey(NOW), "2026-09");
   });
   it("a cap of zero (the free trial after its credits) never spends", () => {
-    assert.deepEqual(lookupDecision({ lastFixAt: null, ledger: blankLedger(NOW), mmsi: "1", cap: 0, now: NOW, reason: "view" }), { ok: false, why: "cap" });
+    assert.deepEqual(lookupDecision({ lastFixAt: null, ledger: blankLedger(NOW), mmsi: "1", cap: 0, now: NOW, reason: "request" }), { ok: false, why: "cap" });
   });
 });
 
@@ -84,11 +85,11 @@ describe("test-mode switches", () => {
       assert.equal(allowlisted("9", "a ship"), true, "per-entry quotes are stripped too");
     } finally { if (prev === undefined) delete process.env["SATELLITE_ALLOWLIST"]; else process.env["SATELLITE_ALLOWLIST"] = prev; }
   });
-  it("the sweep is opt-in", () => {
+  it("the six-hour sweep runs unless held off", () => {
     const prev = process.env["SATELLITE_SWEEP"];
     try {
-      delete process.env["SATELLITE_SWEEP"]; assert.equal(sweepEnabled(), false);
-      process.env["SATELLITE_SWEEP"] = "on"; assert.equal(sweepEnabled(), true);
+      delete process.env["SATELLITE_SWEEP"]; assert.equal(sweepEnabled(), true, "on by default: storm + watch every 6 h");
+      process.env["SATELLITE_SWEEP"] = "off"; assert.equal(sweepEnabled(), false);
     } finally { if (prev === undefined) delete process.env["SATELLITE_SWEEP"]; else process.env["SATELLITE_SWEEP"] = prev; }
   });
 });

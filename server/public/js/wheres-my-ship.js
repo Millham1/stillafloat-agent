@@ -295,14 +295,20 @@
     $('tracker').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function selectShip(shipName) {
+  async function selectShip(shipName) {
     // Wake the ship's tracking (stamps the request; retained in the scheduler).
-    // Fire-and-forget: the position poll below reports the current state.
-    fetch('/api/wms/request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ship: shipName }),
-    }).catch(() => {});
+    // AWAITED: the request is also the one moment the server may ask a satellite
+    // for a quiet ship (a second or two), so the first poll shows the answer.
+    currentShip = shipName;
+    $('tracker').style.display = 'block';
+    $('i-ship').textContent = shipName;
+    try {
+      await fetch('/api/wms/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ship: shipName }),
+      });
+    } catch { /* the poll below reports whatever the tracker holds */ }
     startTracking(shipName);
   }
 

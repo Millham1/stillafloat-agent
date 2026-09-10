@@ -413,9 +413,11 @@ export async function fillFromSatellite(mmsi: string, reason: LookupReason): Pro
 }
 
 /**
- * Every 30 min: ships with a live reason to be known (subscriber watch, storm
- * cone) that have gone quiet on the free feed get one satellite lookup each.
- * Viewers are handled per request in routes/wms.ts.
+ * Every six hours (Mark's model, 2026-09-10): ships identified as potentially
+ * impacted by a live storm alert, and ships someone is following, get one
+ * satellite lookup each if the free feed has gone quiet — so a course change
+ * is caught and the change email can go out. Page requests are handled in
+ * routes/wms.ts (POST /wms/request). Nothing else spends.
  */
 export async function satelliteSweep(): Promise<{ checked: number; filled: number }> {
   if (!satelliteEnabled() || !sweepEnabled()) return { checked: 0, filled: 0 };
@@ -673,7 +675,8 @@ export async function startShipTracker() {
     for (const conn of conns) connect(conn);
     setInterval(() => { refreshActiveSet().catch((err) => logger.warn({ err }, "wms: set refresh failed")); }, REFRESH_SET_EVERY_MS);
     setInterval(() => { persistSnapshot().catch(() => {}); }, PERSIST_EVERY_MS);
-  setInterval(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 30 * 60 * 1000);
+  setTimeout(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 5 * 60 * 1000);
+  setInterval(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 6 * 60 * 60 * 1000);
     setInterval(() => { syncDerivedSailings().catch((err) => logger.warn({ err }, "wms: sailings sync failed")); }, SAILINGS_EVERY_MS);
     setTimeout(() => { syncDerivedSailings().catch(() => {}); }, 10 * 60 * 1000);
   } catch (err) {

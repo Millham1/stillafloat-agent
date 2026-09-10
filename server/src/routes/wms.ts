@@ -13,7 +13,7 @@ import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import {
   getPosition, allPositions, trackerEnabled, trackerHealthy,
-  requestShip, isSubscribed, inRegistry, subscribedNames, capacity, fillFromSatellite,
+  requestShip, isSubscribed, inRegistry, subscribedNames, capacity, fillFromSatellite, mmsiForShip,
 } from "../lib/ship-tracker";
 import { satelliteUsage, testModeShip } from "../lib/satellite-ais";
 import { makeWatchSig } from "../lib/wms-alerts";
@@ -103,7 +103,21 @@ router.post("/wms/request", async (req: Request, res: Response) => {
   try {
     const state = await requestShip(ship);
     if (state === "unknown") return res.status(404).json({ ok: false, error: "Unknown ship" });
-    return res.json({ ok: true, state }); // live | waking
+    // A Where's-My-Ship request is the one on-demand trigger for a paid satellite
+    // lookup (Mark's model, 2026-09-10): if the free feed has gone quiet on her,
+    // ask the provider once, AWAITED (capped at 6 s) so the page's first poll
+    // already shows the answer. The 60 s poll itself never spends.
+    let satellite = false;
+    const mmsi = mmsiForShip(ship);
+    const pos = mmsi ? getPosition(ship) : null;
+    const staleMin = pos?.lastPosAt ? (Date.now() - Date.parse(pos.lastPosAt)) / 60000 : Infinity;
+    if (mmsi && staleMin >= 20) {
+      satellite = await Promise.race([
+        fillFromSatellite(mmsi, "request").catch(() => false),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
+      ]);
+    }
+    return res.json({ ok: true, state, satellite }); // live | waking
   } catch (err) {
     logger.error({ err }, "wms: request failed");
     return res.status(500).json({ ok: false, error: "Request failed" });
@@ -128,19 +142,9 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       return res.json({ ok: true, tracking: false, reason });
     }
 
-    // Someone is looking at her and the free feed has gone quiet: one satellite
-    // lookup (gated + capped in satellite-ais.ts), AWAITED so this very response
-    // carries the fresh fix — the provider answers in about a second, and a
-    // fire-and-forget would have made the viewer wait for the next 60 s poll
-    // (Mark, 2026-09-10: "why is it taking more than a minute"). Capped at 6 s;
-    // slower than that and the stale data goes out now, the fix lands next poll.
-    const staleMin = (Date.now() - Date.parse(pos.lastPosAt)) / 60000;
-    if (staleMin >= 20) {
-      await Promise.race([
-        fillFromSatellite(pos.mmsi, "view").catch(() => false),
-        new Promise<void>((resolve) => setTimeout(resolve, 6000)),
-      ]);
-    }
+    // The 60 s poll NEVER calls the paid provider: it reads what the tracker
+    // holds. A satellite lookup happens on the explicit request (POST /wms/request)
+    // and on the three-hour storm/watch sweep — Mark's model, 2026-09-10.
     const now = new Date();
     const ageMin = Math.round((now.getTime() - Date.parse(pos.lastPosAt)) / 60000);
     const destination = pos.destinationSlug ? portBySlug(pos.destinationSlug) : null;

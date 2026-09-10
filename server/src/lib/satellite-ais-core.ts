@@ -20,21 +20,31 @@
 // parsing functions are unit-tested; the I/O is thin.
 
 
-export type LookupReason = "view" | "watch" | "storm" | "diversion";
+/**
+ * Why a credit may be spent (Mark, 2026-09-10 — "the data does not need to update
+ * every three hours unless there is a specific reason"):
+ *   request — someone asked for a ship on Where's My Ship: treated as a NEW
+ *             request each time and projected onto the map/route;
+ *   storm   — a ship identified as potentially impacted by a live storm alert,
+ *             pinged every six hours so course changes are caught and the
+ *             change email goes out;
+ *   watch   — someone is following a sailing, same six-hour cadence.
+ * Nothing else calls the provider.
+ */
+export type LookupReason = "request" | "storm" | "watch";
 
 export const LOOKUP_AFTER_MIN = 20;
 /**
- * Someone on the page right now. Was 30 min; Mark, 2026-09-10, after the trial
- * spent 5 credits on 3 ships in one round: "this is going to be very
- * expensive" — a viewer re-polling a quiet ship every half hour is the cost
- * driver, and a moored ship or an overnight run does not change in 3 h.
+ * A page request is a new request every time (Mark). The only guard is a short
+ * one against the same ship being clicked twice in a row: the provider's
+ * position does not change inside five minutes, so the second click would buy
+ * the same answer. Judgment call — say so if it should be zero.
  */
-export const VIEW_WINDOW_MIN = 180;
-/** Standing needs (a watch, a storm cone, a diversion check): Mark, 2026-09-10 —
- *  "the position doesn't need to be updated more than every 3 hours". */
-export const STANDING_WINDOW_MIN = 180;
+export const REQUEST_GUARD_MIN = 5;
+/** Standing needs (storm cone, a followed sailing): every SIX hours — Mark, 2026-09-10, "to save credits". */
+export const STANDING_WINDOW_MIN = 360;
 export function perShipWindowMin(reason: LookupReason): number {
-  return reason === "view" ? VIEW_WINDOW_MIN : STANDING_WINDOW_MIN;
+  return reason === "request" ? REQUEST_GUARD_MIN : STANDING_WINDOW_MIN;
 }
 export const DEFAULT_MONTHLY_CAP = 5000; // Deckhand tier is 6,000; leave headroom
 
@@ -99,9 +109,9 @@ export function testModeShip(mmsi: string, name: string): boolean {
   return Boolean(set) && satelliteEnabled() && allowlisted(mmsi, name);
 }
 
-/** The periodic sweep (watched + storm ships) spends without anyone asking; it is opt-in. */
+/** The six-hour sweep over storm-impacted and followed ships. SATELLITE_SWEEP=off holds it (trial/test). */
 export function sweepEnabled(): boolean {
-  return process.env["SATELLITE_SWEEP"] === "on";
+  return process.env["SATELLITE_SWEEP"] !== "off";
 }
 
 export function blankLedger(now = new Date()): Ledger {
