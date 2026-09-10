@@ -23,8 +23,13 @@
 export type LookupReason = "view" | "watch" | "storm" | "diversion";
 
 export const LOOKUP_AFTER_MIN = 20;
-/** Someone on the page right now: at most one lookup per 30 min for that ship. */
-export const VIEW_WINDOW_MIN = 30;
+/**
+ * Someone on the page right now. Was 30 min; Mark, 2026-09-10, after the trial
+ * spent 5 credits on 3 ships in one round: "this is going to be very
+ * expensive" — a viewer re-polling a quiet ship every half hour is the cost
+ * driver, and a moored ship or an overnight run does not change in 3 h.
+ */
+export const VIEW_WINDOW_MIN = 180;
 /** Standing needs (a watch, a storm cone, a diversion check): Mark, 2026-09-10 —
  *  "the position doesn't need to be updated more than every 3 hours". */
 export const STANDING_WINDOW_MIN = 180;

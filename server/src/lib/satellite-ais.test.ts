@@ -19,11 +19,11 @@ describe("lookupDecision", () => {
     assert.deepEqual(lookupDecision({ lastFixAt: iso(45), ledger, mmsi: "1", cap: 100, now: NOW, reason: "view" }), { ok: false, why: "recent-lookup" });
     assert.deepEqual(lookupDecision({ lastFixAt: iso(45), ledger, mmsi: "2", cap: 100, now: NOW, reason: "view" }), { ok: true }, "another ship is fine");
   });
-  it("a standing need (watch, storm) waits three hours between lookups; a viewer waits thirty minutes", () => {
+  it("every reason waits three hours between lookups for the same ship", () => {
     const ledger = blankLedger(NOW); ledger.lastByMmsi["1"] = iso(STANDING_WINDOW_MIN - 10); ledger.used = 1;
     assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "watch" }), { ok: false, why: "recent-lookup" });
     assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "storm" }), { ok: false, why: "recent-lookup" });
-    assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "view" }), { ok: true }, "170 min is past the viewer window");
+    assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "view" }), { ok: false, why: "recent-lookup" }, "a viewer waits the same three hours");
     ledger.lastByMmsi["1"] = iso(STANDING_WINDOW_MIN + 1);
     assert.deepEqual(lookupDecision({ lastFixAt: iso(400), ledger, mmsi: "1", cap: 100, now: NOW, reason: "watch" }), { ok: true });
   });
