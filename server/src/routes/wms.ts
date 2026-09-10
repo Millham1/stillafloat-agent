@@ -15,7 +15,7 @@ import {
   getPosition, allPositions, trackerEnabled, trackerHealthy,
   requestShip, isSubscribed, inRegistry, subscribedNames, capacity, fillFromSatellite,
 } from "../lib/ship-tracker";
-import { satelliteUsage } from "../lib/satellite-ais";
+import { satelliteUsage, testModeShip } from "../lib/satellite-ais";
 import { makeWatchSig } from "../lib/wms-alerts";
 import { portBySlug } from "../lib/ports";
 import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../lib/dead-reckoning";
@@ -154,7 +154,9 @@ router.get("/wms/position", async (req: Request, res: Response) => {
     // Every line and every estimate rides a WATER path from the lane network
     // (lib/sea-route.ts); a great circle crosses land. No path → no line.
     const toDest = destPort ? await seaRoute({ lat: pos.lat, lon: pos.lon }, destPort) : null;
-    const estimate = estimatePosition(fix, now, destPort, pos.etaUtc, toDest?.points ?? null);
+    // Test mode (Mark, 2026-09-10): "we are not using estimates for this test. all
+    // of the data will come from the API." Allowlisted ships show the API fix as-is.
+    const estimate = testModeShip(pos.mmsi, pos.name) ? null : estimatePosition(fix, now, destPort, pos.etaUtc, toDest?.points ?? null);
     const here = estimate && estimate.basis !== "hold" ? { lat: estimate.lat, lon: estimate.lon } : { lat: pos.lat, lon: pos.lon };
     const track = pos.track ?? [];
     const behind = track.length < 2 && fromPort ? await seaRoute(fromPort, { lat: pos.lat, lon: pos.lon }) : null;

@@ -72,11 +72,26 @@ export function satelliteEnabled(): boolean {
  * 2026-09-10: "you shouldn't be filling the DB. pick 3 cruise ships to test the
  * API." Unset = every ship qualifies (still gated by reason, window and cap).
  */
+export function allowlistSet(raw: string | undefined): Set<string> | null {
+  if (!raw) return null;
+  // The value reaches the process with its quotes intact on some paths (2026-09-10:
+  // pm2 showed "\"Carnival Celebration,…\"" — only the middle ship matched), so
+  // strip surrounding quotes from the whole value and from every entry.
+  const unq = (x: string) => x.trim().replace(/^["']+|["']+$/g, "").trim();
+  const entries = unq(raw).split(",").map((x) => unq(x).toLowerCase()).filter(Boolean);
+  return entries.length ? new Set(entries) : null;
+}
+
 export function allowlisted(mmsi: string, name: string): boolean {
-  const raw = process.env["SATELLITE_ALLOWLIST"];
-  if (!raw || !raw.trim()) return true;
-  const set = new Set(raw.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean));
+  const set = allowlistSet(process.env["SATELLITE_ALLOWLIST"]);
+  if (!set) return true;
   return set.has(mmsi.toLowerCase()) || set.has(name.toLowerCase());
+}
+
+/** Test mode = an allowlist is set: those ships show API data only, never an estimate. */
+export function testModeShip(mmsi: string, name: string): boolean {
+  const set = allowlistSet(process.env["SATELLITE_ALLOWLIST"]);
+  return Boolean(set) && satelliteEnabled() && allowlisted(mmsi, name);
 }
 
 /** The periodic sweep (watched + storm ships) spends without anyone asking; it is opt-in. */

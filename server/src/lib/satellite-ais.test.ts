@@ -76,10 +76,12 @@ describe("test-mode switches", () => {
     try {
       delete process.env["SATELLITE_ALLOWLIST"];
       assert.equal(allowlisted("1", "Any Ship"), true);
-      process.env["SATELLITE_ALLOWLIST"] = "Carnival Celebration, 311001223";
+      process.env["SATELLITE_ALLOWLIST"] = "\"Carnival Celebration, 311001223\""; // quotes intact, as pm2 showed them
       assert.equal(allowlisted("999", "carnival celebration"), true);
       assert.equal(allowlisted("311001223", "Whatever"), true);
       assert.equal(allowlisted("2", "Carnival Spirit"), false);
+      process.env["SATELLITE_ALLOWLIST"] = "'A Ship','B Ship'";
+      assert.equal(allowlisted("9", "a ship"), true, "per-entry quotes are stripped too");
     } finally { if (prev === undefined) delete process.env["SATELLITE_ALLOWLIST"]; else process.env["SATELLITE_ALLOWLIST"] = prev; }
   });
   it("the sweep is opt-in", () => {
