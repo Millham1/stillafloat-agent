@@ -27,6 +27,7 @@
 // key the tracker no-ops and the WMS page reports tracking offline.
 
 import { getSupabase, readJson, writeJson } from "./persistence";
+import { appendTrack, type TrackPoint } from "./dead-reckoning";
 import { logger } from "./logger";
 import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
@@ -78,6 +79,10 @@ export interface ShipPosition {
   // pattern, which is what lets the storm feature tell a scheduled port change
   // from a course change (storm-diversion.ts).
   portCalls: PortCall[];
+  // Real fixes this sailing, oldest first (capped; see appendTrack): the line
+  // the tracker draws BEHIND the ship. A computed path is only a stand-in until
+  // this exists — Mark, 2026-09-10: a ship cannot go through an island.
+  track: TrackPoint[];
 }
 
 const positions = new Map<string, ShipPosition>();   // by MMSI (tracked now or previously)
@@ -118,7 +123,7 @@ function blankPosition(ship: RegistryShip): ShipPosition {
     destinationRaw: null, destinationSlug: null, etaUtc: null,
     lastPortSlug: null, lastPortDepartedAt: null, lastPosAt: null,
     currentSailingStart: null, currentDepartPort: null, regionsSeen: [],
-    inPortSlug: null, portCalls: [],
+    inPortSlug: null, portCalls: [], track: [],
   };
 }
 
@@ -322,6 +327,7 @@ function handlePositionReport(pos: ShipPosition, msg: Record<string, unknown>) {
   const hdg = Number(msg["TrueHeading"]);
   pos.headingDeg = isFinite(hdg) && hdg >= 0 && hdg < 360 ? hdg : null; // 511 = unavailable
   pos.lastPosAt = new Date().toISOString();
+  pos.track = appendTrack(pos.track ?? [], lat, lon, pos.lastPosAt);
 
   for (const g of groundsForPoint(lat, lon)) {
     if (!pos.regionsSeen.includes(g)) pos.regionsSeen.push(g);
@@ -406,6 +412,8 @@ function detectPortCall(pos: ShipPosition) {
     if (leftPort?.type === "embarkation") {
       pos.currentSailingStart = new Date().toISOString().slice(0, 10);
       pos.currentDepartPort = leftPort.slug;
+      // new sailing: the line behind her starts at this pier
+      pos.track = pos.lat !== null && pos.lon !== null && pos.lastPosAt ? [[pos.lat, pos.lon, pos.lastPosAt]] : [];
       pos.regionsSeen = pos.lat !== null && pos.lon !== null
         ? [...groundsForPoint(pos.lat, pos.lon)]
         : [];
@@ -489,6 +497,7 @@ async function warmFromSnapshot() {
       positions.set(s.mmsi, {
         ...blankPosition(reg), ...s, name: reg.name, cruiseLine: reg.cruiseLine,
         portCalls: Array.isArray(s.portCalls) ? s.portCalls : [],
+        track: Array.isArray(s.track) ? s.track : [],
       });
     }
   }
