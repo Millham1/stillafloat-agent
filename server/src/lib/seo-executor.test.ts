@@ -121,3 +121,20 @@ describe("seo-executor: buildOverridePatch", () => {
     assert.deepEqual(next, existing);
   });
 });
+
+describe("seo-executor: noindex pin (2026-09-09)", () => {
+  it("a boolean noindex is a change on its own", () => {
+    assert.equal(isSeoOverridePayload({ type: "seo-override", storyId: "s", noindex: true }), true);
+    assert.equal(isSeoOverridePayload({ type: "seo-override", storyId: "s" }), false);
+  });
+  it("buildOverridePatch records the pin with an audit line and leaves it alone when unchanged", () => {
+    const story: NewsStory = { id: "s", title: "T", impactLevel: "Low" };
+    const a = buildOverridePatch({}, story, { type: "seo-override", storyId: "s", noindex: false });
+    assert.equal(a.next.noindex, false);
+    assert.deepEqual(a.changes, ['index: "(rule)" → "index"']);
+    const b = buildOverridePatch({ noindex: false }, story, { type: "seo-override", storyId: "s", noindex: false });
+    assert.deepEqual(b.changes, []);
+    const c = buildOverridePatch({ noindex: false }, story, { type: "seo-override", storyId: "s", noindex: true });
+    assert.deepEqual(c.changes, ['index: "index" → "noindex"']);
+  });
+});

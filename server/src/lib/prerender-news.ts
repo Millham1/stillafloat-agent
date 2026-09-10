@@ -63,6 +63,9 @@ export interface NewsStory {
   sourceAttribution?: string[];
   approvedAt?: string;
   generatedAt?: string;
+  /** Stamped by the newsagent's deepen-stories backfill when the body was rewritten. */
+  contentUpdatedAt?: string;
+  deepenedAt?: string;
 }
 
 type Lang = "en" | "es";
@@ -135,6 +138,9 @@ export interface SeoOverride {
   desc_es?: string; // ES meta description
   bodyHtml?: string; // optional long-form HTML appended below the cliffnote (deep-dive stories)
   bodyHtml_es?: string;
+  // Pin a story in or out of the index regardless of the impact rule below
+  // (isNoindex). Set by the GSC loop / SEO executor; absent = rule decides.
+  noindex?: boolean;
   // Stamped by applySeoOverride on every effective change. Feeds dateModified in
   // the NewsArticle JSON-LD and <lastmod> in the sitemap — before 2026-08-31 a
   // copy rewrite emitted ZERO freshness signal (the Juneau SERP task, 384740f1).
@@ -152,6 +158,44 @@ function seoDescFor(story: NewsStory, lang: Lang, ov?: SeoOverride): string {
   const v = ov && (lang === "es" ? ov.desc_es : ov.desc);
   if (typeof v === "string" && v.trim()) return v.trim();
   return metaDescription(story, lang);
+}
+
+// ── index policy ─────────────────────────────────────────────────────────────
+// 2026-09-09: Search Console showed the site-wide collapse (1,534 → 2 weekly
+// impressions, July → September) tracked Google refusing story pages outright —
+// "Crawled - currently not indexed" on everything published since mid-August. The
+// refused and the indexed pages had the same shape; the grading changed. Low-impact
+// stories are the thinnest of the set (press-release news with no traveller
+// decision in it) and every refused page in the first sample was one. They stay on
+// the feed and in the archive for readers and stop asking Google to grade them.
+// An explicit seo-override `noindex` wins either way.
+export function isNoindex(story: NewsStory, slug: string, lang: Lang, ov?: SeoOverride): boolean {
+  if (typeof ov?.noindex === "boolean") return ov.noindex;
+  if (String(story.impactLevel || "").trim().toLowerCase() === "low") return true;
+  // Zero-intent Carnival-outage ES article — it ranks pos ~36 for "is carnival
+  // down", never converts, and only spends crawl budget. Task 2fa90ac7.
+  return lang === "es" && slug.startsWith("carnival-s-website-is-down-for-18-hours");
+}
+
+/** The freshest "this page's body changed" signal for <lastmod> / dateModified. */
+function modifiedAt(story: NewsStory, ov?: SeoOverride): string | undefined {
+  const c = story.contentUpdatedAt ? Date.parse(story.contentUpdatedAt) : NaN;
+  const o = ov?.updatedAt ? Date.parse(ov.updatedAt) : NaN;
+  if (Number.isNaN(c) && Number.isNaN(o)) return undefined;
+  if (Number.isNaN(o) || c >= o) return story.contentUpdatedAt;
+  return ov?.updatedAt;
+}
+
+// The two original sections are paragraphs now (grounding.ts writes 3-4 and 5-7
+// sentences; the backfill may carry a blank line between thoughts). Escaped first,
+// then split — story text can never open a tag.
+export function renderParagraphs(text: string): string {
+  return escapeHtml(text)
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${p.replace(/\n/g, " ")}</p>`)
+    .join("");
 }
 
 function fmtDate(iso: string | undefined, lang: Lang): string {
@@ -292,7 +336,7 @@ function jsonLd(story: NewsStory, slug: string, lang: Lang, ov?: SeoOverride): s
     headline: seoTitleFor(story, lang, ov),
     description: seoDescFor(story, lang, ov),
     datePublished: story.approvedAt || story.generatedAt || undefined,
-    ...(ov?.updatedAt ? { dateModified: ov.updatedAt } : {}),
+    ...(modifiedAt(story, ov) ? { dateModified: modifiedAt(story, ov) } : {}),
     inLanguage: lang === "es" ? "es-419" : "en-US",
     mainEntityOfPage: lang === "es" ? u.es : u.en,
     isBasedOn: story.originalLink || story.link || undefined,
@@ -309,7 +353,7 @@ function jsonLd(story: NewsStory, slug: string, lang: Lang, ov?: SeoOverride): s
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
-function storyPageHtml(
+export function storyPageHtml(
   story: NewsStory,
   slug: string,
   lang: Lang,
@@ -319,17 +363,15 @@ function storyPageHtml(
   const t = L[lang];
   const u = urls(slug);
   const self = lang === "es" ? u.es : u.en;
-  // Zero-intent Carnival-outage ES article — keep it out of the index to preserve
-  // crawl equity (it ranks pos ~36 for "is carnival down", never converts). Task 2fa90ac7.
-  const noindex = lang === "es" && slug.startsWith("carnival-s-website-is-down-for-18-hours");
+  const noindex = isNoindex(story, slug, lang, ov);
   // `title` is the on-page <h1> headline (unchanged); `seoTitle` is what search
   // engines see in <title>/OG — the two differ only when an SEO override is set.
   const title = escapeHtml(pick(story, "title", lang));
   const seoTitle = escapeHtml(seoTitleFor(story, lang, ov));
   const desc = escapeHtml(seoDescFor(story, lang, ov));
   const summary = escapeHtml(pick(story, "summary", lang));
-  const impact = escapeHtml(pick(story, "travelerImpact", lang));
-  const editorial = escapeHtml(pick(story, "editorialReasoning", lang));
+  const impact = renderParagraphs(pick(story, "travelerImpact", lang));
+  const editorial = renderParagraphs(pick(story, "editorialReasoning", lang));
   const longform = (ov && (lang === "es" ? ov.bodyHtml_es : ov.bodyHtml)) || ""; // trusted HTML — deep-dive body
   const original = escapeHtml(story.originalLink || story.link || "");
   const b = badge(story, lang);
@@ -382,8 +424,8 @@ ${story.image ? `<img class="story-image" src="${escapeHtml(story.image)}" alt="
 <h1 class="story-title">${title}</h1>
 <div class="story-meta">${metaLine}</div>
 <div class="story-summary">${summary}</div>
-${impact ? `<div class="traveler-impact-panel"><div class="tip-label">${t.impactLabel}</div><p>${impact}</p></div>` : ""}
-${editorial ? `<div class="editorial-panel"><div class="tip-label">${t.editorialLabel}</div><p>${editorial}</p></div>` : ""}
+${impact ? `<div class="traveler-impact-panel"><div class="tip-label">${t.impactLabel}</div>${impact}</div>` : ""}
+${editorial ? `<div class="editorial-panel"><div class="tip-label">${t.editorialLabel}</div>${editorial}</div>` : ""}
 ${longform ? `<div class="story-longform">${longform}</div>` : ""}
 <div class="actions">
 ${original ? `<a href="${original}" target="_blank" rel="noopener noreferrer">${t.readOriginal}</a>` : ""}
@@ -488,7 +530,7 @@ ${archive}
 }
 
 // ── sitemap ──────────────────────────────────────────────────────────────────
-function sitemapXml(stories: NewsStory[], seoOverrides: SeoOverrideMap = {}): string {
+export function sitemapXml(stories: NewsStory[], seoOverrides: SeoOverrideMap = {}): string {
   const entries: string[] = [];
   const day = (iso?: string): string => {
     const d = iso ? new Date(iso) : new Date();
@@ -519,14 +561,20 @@ function sitemapXml(stories: NewsStory[], seoOverrides: SeoOverrideMap = {}): st
     );
   };
   for (const story of stories) {
-    const u = urls(storySlug(story));
+    const slug = storySlug(story);
+    const u = urls(slug);
     const ov = story.id ? seoOverrides[story.id] : undefined;
-    // An SEO-override rewrite is a real modification — surface it as freshness.
-    const lastmod = day(ov?.updatedAt || story.approvedAt || story.generatedAt);
-    entries.push(
-      `<url><loc>${u.en}</loc><lastmod>${lastmod}</lastmod>${newsBlock(story, "en")}</url>`,
-      `<url><loc>${u.es}</loc><lastmod>${lastmod}</lastmod>${newsBlock(story, "es")}</url>`,
-    );
+    // A body rewrite or an SEO-override rewrite is a real modification — surface
+    // it as freshness so the page is re-read.
+    const lastmod = day(modifiedAt(story, ov) || story.approvedAt || story.generatedAt);
+    // A noindex page listed in the sitemap is a contradiction Google reports as an
+    // error ("Submitted URL marked noindex"); it is simply not submitted.
+    if (!isNoindex(story, slug, "en", ov)) {
+      entries.push(`<url><loc>${u.en}</loc><lastmod>${lastmod}</lastmod>${newsBlock(story, "en")}</url>`);
+    }
+    if (!isNoindex(story, slug, "es", ov)) {
+      entries.push(`<url><loc>${u.es}</loc><lastmod>${lastmod}</lastmod>${newsBlock(story, "es")}</url>`);
+    }
   }
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">\n${entries.join("\n")}\n</urlset>\n`;
 }
