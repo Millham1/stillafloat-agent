@@ -48,6 +48,9 @@ export interface SatelliteFix {
   headingDeg: number | null;
   at: string;               // ISO
   source: "satellite" | "terrestrial" | "unknown";
+  /** Crew-typed destination text and ETA as the provider saw them (may decode a port we could not). */
+  destination: string | null;
+  etaUtc: string | null;
 }
 
 export function monthKey(now = new Date()): string {
@@ -96,10 +99,16 @@ export function parsePositionReceived(s: unknown): string | null {
   return Number.isFinite(t) ? new Date(t).toISOString() : null;
 }
 
-/** Map a Datadocked `detail` object to a fix. null when it carries no usable position. */
-export function parseDetail(detail: unknown): SatelliteFix | null {
-  if (!detail || typeof detail !== "object") return null;
-  const d = detail as Record<string, unknown>;
+/**
+ * Map a Datadocked response to a fix. The docs show `{ detail: {...} }`; the
+ * live API (2026-09-10) returns the flat object — both are accepted. null when
+ * it carries no usable position.
+ */
+export function parseDetail(body: unknown): SatelliteFix | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as Record<string, unknown>;
+  const inner = b["detail"];
+  const d = (inner && typeof inner === "object" ? inner : b) as Record<string, unknown>;
   const lat = Number(d["latitude"]);
   const lon = Number(d["longitude"]);
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return null;
@@ -116,6 +125,8 @@ export function parseDetail(detail: unknown): SatelliteFix | null {
     headingDeg: num(d["heading"], 360),
     at,
     source: src.includes("sat") ? "satellite" : src.includes("terr") ? "terrestrial" : "unknown",
+    destination: typeof d["destination"] === "string" && d["destination"].trim() && d["destination"] !== "None" ? d["destination"].trim() : null,
+    etaUtc: parsePositionReceived(d["etaUtc"]),
   };
 }
 

@@ -370,10 +370,22 @@ function handleStaticData(pos: ShipPosition, msg: Record<string, unknown>) {
  * when it is newer than what we already hold; goes through the same track and
  * port-call logic as a live report so the storm/diversion features see it.
  */
-export function applyExternalFix(mmsi: string, fix: { lat: number; lon: number; courseDeg: number | null; speedKn: number | null; headingDeg: number | null; at: string }, source: "satellite"): boolean {
+export function applyExternalFix(
+  mmsi: string,
+  fix: { lat: number; lon: number; courseDeg: number | null; speedKn: number | null; headingDeg: number | null; at: string; destination?: string | null; etaUtc?: string | null },
+  source: "satellite" | "ais",
+): boolean {
   const pos = positions.get(mmsi);
   if (!pos) return false;
   if (pos.lastPosAt && Date.parse(fix.at) <= Date.parse(pos.lastPosAt)) return false;
+  // The provider often carries a destination our feed never decoded ("BSGBI>HNRTM"
+  // vs "Mahogany bay Honduras"); take it when ours is empty or unmatched.
+  if (fix.destination && (!pos.destinationSlug || !pos.destinationRaw)) {
+    const matched = matchDestination(fix.destination);
+    if (matched) { pos.destinationRaw = fix.destination; pos.destinationSlug = matched.slug; }
+    else if (!pos.destinationRaw) pos.destinationRaw = fix.destination;
+  }
+  if (fix.etaUtc && !pos.etaUtc) pos.etaUtc = fix.etaUtc;
   pos.lat = fix.lat; pos.lon = fix.lon;
   if (fix.courseDeg !== null) pos.cogDeg = fix.courseDeg;
   if (fix.speedKn !== null) pos.sogKn = fix.speedKn;
@@ -395,7 +407,9 @@ export async function fillFromSatellite(mmsi: string, reason: LookupReason): Pro
   const pos = positions.get(mmsi);
   if (!pos || !satelliteEnabled()) return false;
   const fix = await satelliteLookup(mmsi, pos.lastPosAt, reason);
-  return fix ? applyExternalFix(mmsi, fix, "satellite") : false;
+  // Datadocked also has terrestrial receivers we do not: a terrestrial fix from
+  // them is still AIS, so the pill says "satellite" only when it was.
+  return fix ? applyExternalFix(mmsi, fix, fix.source === "satellite" ? "satellite" : "ais") : false;
 }
 
 /**

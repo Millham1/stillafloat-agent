@@ -67,8 +67,8 @@ export async function satelliteLookup(
       await saveLedger();
       return null;
     }
-    const body = (await res.json()) as { detail?: unknown };
-    const fix = parseDetail(body?.detail);
+    const body = (await res.json()) as unknown;
+    const fix = parseDetail(body);
     l.lastError = null;
     await saveLedger();
     logger.info({ mmsi, reason, source: fix?.source ?? "none", at: fix?.at ?? null, used: l.used }, "satellite-ais: lookup");

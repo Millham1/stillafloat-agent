@@ -49,9 +49,13 @@ describe("Datadocked parsing", () => {
     assert.equal(parsePositionReceived("yesterday-ish"), null);
     assert.equal(parsePositionReceived(undefined), null);
   });
-  it("maps a detail object to a fix and tags the source", () => {
-    const fix = parseDetail({ name: "CARNIVAL JUBILEE", latitude: "20.51", longitude: "-86.95", speed: "0.2", course: "91", heading: "89", positionReceived: "Sep 10, 2026 17:03 UTC", dataSource: "Satellite" });
-    assert.deepEqual(fix, { lat: 20.51, lon: -86.95, courseDeg: 91, speedKn: 0.2, headingDeg: 89, at: "2026-09-10T17:03:00.000Z", source: "satellite" });
+  it("maps the documented { detail } shape AND the live flat shape to a fix, tagging the source", () => {
+    const flat = { name: "CARNIVAL_CELEBRATION", mmsi: "311001223", latitude: "16.324308", longitude: "-86.498749", speed: "0.0", course: "336", heading: "191", destination: "Mahogany bay Honduras", etaUtc: "Sep 10, 2026 11:06 UTC", positionReceived: "Sep 10, 2026 18:04 UTC", updateTime: "Sep 10, 2026 18:08 UTC", dataSource: "Terrestrial" };
+    const expected = { lat: 16.324308, lon: -86.498749, courseDeg: 336, speedKn: 0, headingDeg: 191, at: "2026-09-10T18:04:00.000Z", source: "terrestrial", destination: "Mahogany bay Honduras", etaUtc: "2026-09-10T11:06:00.000Z" };
+    assert.deepEqual(parseDetail(flat), expected);
+    assert.deepEqual(parseDetail({ detail: flat }), expected);
+    assert.equal(parseDetail({ ...flat, dataSource: "Satellite", destination: "None" })!.source, "satellite");
+    assert.equal(parseDetail({ ...flat, destination: "None" })!.destination, null);
   });
   it("refuses a detail with no position, a 0/0 position, or no time", () => {
     assert.equal(parseDetail({ name: "X" }), null);
