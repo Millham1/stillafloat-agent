@@ -52,6 +52,12 @@ describe("estimatePosition", () => {
     const e = estimatePosition(underway, at(1), NASSAU, "2026-09-10T12:20:00.000Z")!;
     assert.equal(e.basis, "arrived");
   });
+  it("an ETA that passed days ago means the destination is last leg's — hold, do not park her there", () => {
+    const e = estimatePosition(underway, at(6), NASSAU, "2026-09-07T12:00:00.000Z")!;
+    assert.equal(e.basis, "hold");
+    assert.equal(e.confidence, "low");
+    assert.deepEqual([e.lat, e.lon], [MIAMI.lat, MIAMI.lon]);
+  });
   it("a stopped ship is held where she was, not drifted along a course", () => {
     const e = estimatePosition({ ...underway, speedKn: 0.3 }, at(5), NASSAU, null)!;
     assert.equal(e.basis, "hold");
