@@ -17,6 +17,7 @@ import {
 } from "../lib/ship-tracker";
 import { makeWatchSig } from "../lib/wms-alerts";
 import { portBySlug } from "../lib/ports";
+import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../lib/dead-reckoning";
 
 const router: IRouter = Router();
 
@@ -117,7 +118,7 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       return res.json({ ok: true, tracking: false, reason: "tracker_offline" });
     }
     const pos = getPosition(shipName);
-    if (!pos || pos.lat === null || !pos.lastPosAt) {
+    if (!pos || pos.lat === null || pos.lon === null || !pos.lastPosAt) {
       // Distinguish "subscribed, just hasn't reported" from "not yet in the
       // active set" so the page can show the wake-up message vs the coverage one.
       const reason = !inRegistry(shipName) ? "unknown_ship"
@@ -125,9 +126,20 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       return res.json({ ok: true, tracking: false, reason });
     }
 
-    const ageMin = Math.round((Date.now() - Date.parse(pos.lastPosAt)) / 60000);
+    const now = new Date();
+    const ageMin = Math.round((now.getTime() - Date.parse(pos.lastPosAt)) / 60000);
     const destination = pos.destinationSlug ? portBySlug(pos.destinationSlug) : null;
     const lastPort = pos.lastPortSlug ? portBySlug(pos.lastPortSlug) : null;
+    // Between AIS fixes (terrestrial coverage fades a few dozen miles offshore)
+    // the page shows an ESTIMATED position, the route as a thin line, and any
+    // other tracked ship within 10 nm — see lib/dead-reckoning.ts.
+    const fix = { lat: pos.lat, lon: pos.lon, courseDeg: pos.cogDeg, speedKn: pos.sogKn, at: pos.lastPosAt };
+    const destPort = destination ? { slug: destination.slug, name: destination.name, lat: destination.lat, lon: destination.lon } : null;
+    const fromPort = lastPort ? { slug: lastPort.slug, name: lastPort.name, lat: lastPort.lat, lon: lastPort.lon } : null;
+    const estimate = estimatePosition(fix, now, destPort, pos.etaUtc);
+    const route = routeLine(fix, estimate, fromPort, destPort);
+    const centre = estimate ?? { lat: pos.lat, lon: pos.lon };
+    const nearby = nearbyShips(allPositions(), centre, pos.name, now);
     return res.json({
       ok: true,
       tracking: true,
@@ -148,6 +160,10 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       lastReportedAt: pos.lastPosAt,
       lastReportedMinAgo: ageMin,
       stale: ageMin > 90, // out of terrestrial AIS coverage — page shows the caveat
+      estimate,          // null while the fix is fresh
+      route,             // { travelled: [[lat,lon]...], ahead: [[lat,lon]...] }
+      nearby,            // other tracked ships within NEARBY_RADIUS_NM with a recent fix
+      nearbyRadiusNm: NEARBY_RADIUS_NM,
     });
   } catch (err) {
     logger.error({ err }, "wms: position failed");

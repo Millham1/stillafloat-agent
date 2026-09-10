@@ -55,6 +55,7 @@ body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4
 .map-wrap{position:relative}
 .live-pill{position:absolute;top:14px;right:14px;z-index:1100;background:rgba(4,14,28,.78);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:6px 14px;color:#fff;font-weight:800;font-size:13px;letter-spacing:.08em;display:none;text-transform:uppercase}
 .live-pill .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#5dff9a;margin-right:7px;animation:wmspulse 1.6s ease-in-out infinite}
+.map-legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:10px 0 0;color:rgba(255,255,255,.72);font-size:14px;font-weight:600}.map-legend span{display:inline-flex;align-items:center;gap:7px}.map-legend i{display:inline-block;width:11px;height:11px;border-radius:50%}.map-legend b{display:inline-block;width:26px;height:0;border-top:2px solid #5dff9a}#nearby-note{color:rgba(93,255,154,.9)}
 .live-pill.stale .dot{background:#ffd95d;animation:none}
 @keyframes wmspulse{0%,100%{opacity:1}50%{opacity:.35}}
 .leaflet-container{font-family:'Baloo 2',system-ui,sans-serif}
@@ -126,6 +127,7 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
           <div class="live-pill" id="live-pill"><span class="dot"></span><span id="live-pill-text">En vivo</span></div>
         </div>
         <div class="updated" id="updated"></div>
+        <div class="map-legend" id="map-legend"><span><i style="background:#5dff9a"></i>Posición en vivo</span><span><i style="background:#ffd95d"></i>Estimada entre reportes</span><span><b></b>Ruta: sólida detrás, punteada adelante</span><span id="nearby-note"></span></div>
       </div>
       <div>
         <div class="card" id="info-card">
@@ -216,12 +218,17 @@ const T = {
   stale: (ship, ago) => `${ship} reportó por última vez <strong>${ago}</strong>. Probablemente está en mar abierto entre zonas de cobertura — el mapa muestra su última posición conocida y el rastreo se reanuda automáticamente cuando vuelva al área de servicio.`,
   stopped: 'Listo — esa vigilancia quedó detenida. ¡Buen viento!',
   livePill: 'En vivo', stalePill: 'Última posición', arrivalDay: 'Llegada prevista',
+  estimatedPill: 'Estimada', nm: 'mn',
+  estimated: (ship, ago, basis) => `${ship} reportó por última vez <strong>${ago}</strong> — está entre receptores de la costa, algo que pasa a unas decenas de millas mar adentro. El marcador muestra su posición <strong>estimada</strong> (${basis}); el anillo ámbar es su última posición real. El mapa vuelve a la posición en vivo en cuanto el barco reporte de nuevo.`,
+  basis: { route: 'proyectada por su ruta al próximo puerto a su última velocidad', course: 'proyectada por su último rumbo y velocidad', arrived: 'ya debería haber llegado a su próximo puerto', hold: 'estaba detenido en su último reporte' },
+  lastFix: (ago) => `Último reporte real · ${ago}`,
+  nearby: (n, r) => n ? `${n} barco${n > 1 ? 's' : ''} rastreado${n > 1 ? 's' : ''} más a menos de ${r} millas — toca uno para seguirlo` : `No hay otros barcos rastreados a menos de ${r} millas ahora mismo`,
   statusSea: 'En el mar — día de navegación', statusArriving: 'En el mar — llega hoy', statusInPort: 'En puerto',
   ago: (min) => min < 2 ? 'hace un momento' : min < 60 ? `hace ${min} min` : `hace ${Math.round(min/60*10)/10} h`,
   compass: ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'],
 };
 </script>
-<script src="/js/wheres-my-ship.js?v=20260712"></script>
+<script src="/js/wheres-my-ship.js?v=20260910"></script>
 <script src="/components/navbar.js?v=20260905-homeonly"></script>
 </body>
 </html>
