@@ -47,6 +47,8 @@ export const MAX_COURSE_HOURS = 8;
 /** Below this speed at the last report the ship is treated as stopped (moored/anchored). */
 export const UNDERWAY_KN = 2;
 export const NEARBY_RADIUS_NM = 10;
+/** A declared ETA older than this is a previous leg's — the destination is stale. */
+export const STALE_DESTINATION_H = 48;
 export const NEARBY_MAX_AGE_MIN = 60;
 
 const R_NM = 3440.065; // earth radius in nautical miles
@@ -125,7 +127,14 @@ export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc:
     const total = distanceNm(fix.lat, fix.lon, dest.lat, dest.lon);
     const travelled = speed * hours;
     const eta = etaUtc ? Date.parse(etaUtc) : NaN;
-    const etaPassed = isFinite(eta) && now.getTime() > eta + 30 * 60_000;
+    const etaAgeH = isFinite(eta) ? (now.getTime() - eta) / 3_600_000 : NaN;
+    // A declared ETA that passed days ago means the crew never retyped the
+    // destination after that call — the "next port" is last leg's port. Do not
+    // park her there; hold the last fix and say so (low confidence).
+    if (isFinite(etaAgeH) && etaAgeH > STALE_DESTINATION_H) {
+      return { lat: fix.lat, lon: fix.lon, basis: "hold", confidence: "low", hoursSinceFix };
+    }
+    const etaPassed = isFinite(etaAgeH) && etaAgeH > 0.5;
     if (travelled >= total || etaPassed) {
       return { lat: dest.lat, lon: dest.lon, basis: "arrived", confidence: "medium", hoursSinceFix };
     }
