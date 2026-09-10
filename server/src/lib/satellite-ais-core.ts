@@ -66,6 +66,24 @@ export function satelliteEnabled(): boolean {
   return Boolean(process.env["DATADOCKED_API_KEY"]) && process.env["SATELLITE_AIS"] !== "off";
 }
 
+/**
+ * SATELLITE_ALLOWLIST="Carnival Celebration,Carnival Spirit" (names or MMSIs,
+ * comma-separated): when set, ONLY these ships may be looked up. Mark,
+ * 2026-09-10: "you shouldn't be filling the DB. pick 3 cruise ships to test the
+ * API." Unset = every ship qualifies (still gated by reason, window and cap).
+ */
+export function allowlisted(mmsi: string, name: string): boolean {
+  const raw = process.env["SATELLITE_ALLOWLIST"];
+  if (!raw || !raw.trim()) return true;
+  const set = new Set(raw.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean));
+  return set.has(mmsi.toLowerCase()) || set.has(name.toLowerCase());
+}
+
+/** The periodic sweep (watched + storm ships) spends without anyone asking; it is opt-in. */
+export function sweepEnabled(): boolean {
+  return process.env["SATELLITE_SWEEP"] === "on";
+}
+
 export function blankLedger(now = new Date()): Ledger {
   return { month: monthKey(now), used: 0, lastByMmsi: {}, lastError: null };
 }

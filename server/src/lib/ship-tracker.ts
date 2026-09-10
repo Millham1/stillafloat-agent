@@ -28,7 +28,7 @@
 
 import { getSupabase, readJson, writeJson } from "./persistence";
 import { appendTrack, type TrackPoint } from "./dead-reckoning";
-import { satelliteLookup, satelliteEnabled, LOOKUP_AFTER_MIN, type LookupReason } from "./satellite-ais";
+import { satelliteLookup, satelliteEnabled, allowlisted, sweepEnabled, LOOKUP_AFTER_MIN, type LookupReason } from "./satellite-ais";
 import { logger } from "./logger";
 import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
@@ -405,7 +405,7 @@ export function applyExternalFix(
  */
 export async function fillFromSatellite(mmsi: string, reason: LookupReason): Promise<boolean> {
   const pos = positions.get(mmsi);
-  if (!pos || !satelliteEnabled()) return false;
+  if (!pos || !satelliteEnabled() || !allowlisted(mmsi, pos.name)) return false;
   const fix = await satelliteLookup(mmsi, pos.lastPosAt, reason);
   // Datadocked also has terrestrial receivers we do not: a terrestrial fix from
   // them is still AIS, so the pill says "satellite" only when it was.
@@ -418,7 +418,7 @@ export async function fillFromSatellite(mmsi: string, reason: LookupReason): Pro
  * Viewers are handled per request in routes/wms.ts.
  */
 export async function satelliteSweep(): Promise<{ checked: number; filled: number }> {
-  if (!satelliteEnabled()) return { checked: 0, filled: 0 };
+  if (!satelliteEnabled() || !sweepEnabled()) return { checked: 0, filled: 0 };
   let checked = 0, filled = 0;
   for (const [mmsi, pos] of positions) {
     const reg = registryByMmsi.get(mmsi);

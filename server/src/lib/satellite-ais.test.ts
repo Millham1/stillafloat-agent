@@ -2,6 +2,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { lookupDecision, parsePositionReceived, parseDetail, blankLedger, monthKey, LOOKUP_AFTER_MIN, VIEW_WINDOW_MIN, STANDING_WINDOW_MIN } from "./satellite-ais-core";
+import { allowlisted, sweepEnabled } from "./satellite-ais-core";
 
 const NOW = new Date("2026-09-10T18:00:00.000Z");
 const iso = (minAgo: number) => new Date(NOW.getTime() - minAgo * 60_000).toISOString();
@@ -66,5 +67,26 @@ describe("Datadocked parsing", () => {
   it("treats AIS 'not available' sentinels as unknown, not as values", () => {
     const fix = parseDetail({ latitude: "20", longitude: "-86", speed: "102.3", course: "360", heading: "511", positionReceived: "Sep 10, 2026 17:03 UTC", dataSource: "Terrestrial" })!;
     assert.equal(fix.speedKn, null); assert.equal(fix.courseDeg, null); assert.equal(fix.headingDeg, null); assert.equal(fix.source, "terrestrial");
+  });
+});
+
+describe("test-mode switches", () => {
+  it("an allowlist restricts lookups to the named ships (by name or MMSI); unset allows all", () => {
+    const prev = process.env["SATELLITE_ALLOWLIST"];
+    try {
+      delete process.env["SATELLITE_ALLOWLIST"];
+      assert.equal(allowlisted("1", "Any Ship"), true);
+      process.env["SATELLITE_ALLOWLIST"] = "Carnival Celebration, 311001223";
+      assert.equal(allowlisted("999", "carnival celebration"), true);
+      assert.equal(allowlisted("311001223", "Whatever"), true);
+      assert.equal(allowlisted("2", "Carnival Spirit"), false);
+    } finally { if (prev === undefined) delete process.env["SATELLITE_ALLOWLIST"]; else process.env["SATELLITE_ALLOWLIST"] = prev; }
+  });
+  it("the sweep is opt-in", () => {
+    const prev = process.env["SATELLITE_SWEEP"];
+    try {
+      delete process.env["SATELLITE_SWEEP"]; assert.equal(sweepEnabled(), false);
+      process.env["SATELLITE_SWEEP"] = "on"; assert.equal(sweepEnabled(), true);
+    } finally { if (prev === undefined) delete process.env["SATELLITE_SWEEP"]; else process.env["SATELLITE_SWEEP"] = prev; }
   });
 });
