@@ -2,8 +2,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  distanceNm, bearingDeg, destinationPoint, greatCirclePoints,
-  estimatePosition, routeLine, nearbyShips, ESTIMATE_AFTER_MIN, MAX_COURSE_HOURS,
+  distanceNm, bearingDeg, destinationPoint, greatCirclePoints, pathLengthNm, pointAlongPath, appendTrack,
+  estimatePosition, routeLine, nearbyShips, ESTIMATE_AFTER_MIN, MAX_COURSE_HOURS, TRACK_MAX_POINTS,
 } from "./dead-reckoning";
 
 const MIAMI = { slug: "miami", name: "Miami, Florida", lat: 25.7617, lon: -80.1918 };
@@ -76,25 +76,68 @@ describe("estimatePosition", () => {
   });
 });
 
+describe("paths and tracks", () => {
+  const path: [number, number][] = [[25.76, -80.19], [25.60, -79.60], [25.30, -78.40], [25.04, -77.35]];
+  it("pointAlongPath walks the polyline and clamps at both ends", () => {
+    const total = pathLengthNm(path);
+    assert.deepEqual(pointAlongPath(path, -5), { lat: 25.76, lon: -80.19 });
+    assert.deepEqual(pointAlongPath(path, total + 50), { lat: 25.04, lon: -77.35 });
+    const mid = pointAlongPath(path, total / 2);
+    const d = distanceNm(path[0]![0], path[0]![1], mid.lat, mid.lon);
+    assert.ok(d > 0 && d < total, "somewhere along the way");
+  });
+  it("appendTrack skips fixes under half a mile apart, caps points and drops fixes older than ten days", () => {
+    const now = new Date("2026-09-10T12:00:00Z");
+    let tr = appendTrack([], 25.0, -80.0, "2026-09-10T11:00:00Z", now);
+    tr = appendTrack(tr, 25.001, -80.0, "2026-09-10T11:05:00Z", now);   // ~0.06 nm: skipped
+    assert.equal(tr.length, 1);
+    tr = appendTrack(tr, 25.02, -80.0, "2026-09-10T11:10:00Z", now);     // ~1.2 nm: kept
+    assert.equal(tr.length, 2);
+    const old = appendTrack([[24.0, -81.0, "2026-08-20T00:00:00Z"]], 25.0, -80.0, "2026-09-10T11:00:00Z", now);
+    assert.equal(old.length, 1, "the three-week-old point is gone");
+    let big: [number, number, string][] = [];
+    for (let i = 0; i < TRACK_MAX_POINTS + 50; i++) big = appendTrack(big, 20 + i * 0.02, -80, "2026-09-10T11:00:00Z", now);
+    assert.equal(big.length, TRACK_MAX_POINTS);
+  });
+});
+
 describe("routeLine", () => {
   const fix = { lat: 25.6, lon: -79.6, courseDeg: 105, speedKn: 16, at: T0 };
-  it("draws departed port → fix → estimate, then estimate → destination", () => {
+  const behind: [number, number][] = [[MIAMI.lat, MIAMI.lon], [25.70, -80.05], [fix.lat, fix.lon]];
+  it("uses the water path behind her and the water path ahead, ending on the ports", () => {
     const est = estimatePosition(fix, at(2), NASSAU, null)!;
-    const r = routeLine(fix, est, MIAMI, NASSAU);
+    const ahead: [number, number][] = [[est.lat, est.lon], [25.3, -78.4], [NASSAU.lat, NASSAU.lon]];
+    const r = routeLine(fix, est, MIAMI, NASSAU, { behindPath: behind, aheadPath: ahead });
     assert.deepEqual(r.travelled[0], [MIAMI.lat, MIAMI.lon]);
     assert.deepEqual(r.travelled[r.travelled.length - 1], [est.lat, est.lon]);
-    assert.deepEqual(r.ahead[0], [est.lat, est.lon]);
-    assert.deepEqual(r.ahead[r.ahead.length - 1], [NASSAU.lat, NASSAU.lon]);
+    assert.deepEqual(r.ahead, ahead);
+  });
+  it("prefers her REAL track over any computed path behind her", () => {
+    const track: [number, number, string][] = [[25.75, -80.15, T0], [25.68, -79.9, T0], [fix.lat, fix.lon, T0]];
+    const r = routeLine(fix, null, MIAMI, NASSAU, { track, behindPath: behind });
+    assert.deepEqual(r.travelled, track.map(([a, b]) => [a, b]));
+  });
+  it("draws NOTHING for a leg it has no water path for — never a straight line", () => {
+    const r = routeLine(fix, null, MIAMI, NASSAU, {});
+    assert.deepEqual(r.travelled, [[fix.lat, fix.lon]]);
+    assert.deepEqual(r.ahead, []);
   });
   it("a departed port from a previous sailing (far away) is not drawn", () => {
     const seattle = { slug: "seattle", name: "Seattle", lat: 47.6, lon: -122.3 };
-    const r = routeLine(fix, null, seattle, NASSAU);
+    const r = routeLine(fix, null, seattle, NASSAU, { behindPath: [[seattle.lat, seattle.lon], [fix.lat, fix.lon]] });
     assert.deepEqual(r.travelled, [[fix.lat, fix.lon]]);
   });
   it("nothing ahead once she has arrived", () => {
     const est = estimatePosition(fix, at(30), NASSAU, null)!;
     assert.equal(est.basis, "arrived");
-    assert.deepEqual(routeLine(fix, est, MIAMI, NASSAU).ahead, []);
+    assert.deepEqual(routeLine(fix, est, MIAMI, NASSAU, { aheadPath: [[fix.lat, fix.lon], [NASSAU.lat, NASSAU.lon]] }).ahead, []);
+  });
+  it("with a water path the estimate slides along it, not the great circle", () => {
+    const water: [number, number][] = [[fix.lat, fix.lon], [25.55, -79.0], [25.2, -78.0], [NASSAU.lat, NASSAU.lon]];
+    const e = estimatePosition(fix, at(2), NASSAU, null, water)!;
+    assert.equal(e.basis, "route");
+    const along = distanceNm(fix.lat, fix.lon, e.lat, e.lon);
+    assert.ok(along > 20 && along < 40, `travelled ${along} nm along the path`);
   });
 });
 

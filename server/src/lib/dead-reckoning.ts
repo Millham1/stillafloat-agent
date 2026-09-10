@@ -100,6 +100,55 @@ export function greatCirclePoints(a: { lat: number; lon: number }, b: { lat: num
   return out;
 }
 
+export type Path = [number, number][]; // [lat, lon] points
+
+/** Total length of a polyline in nautical miles. */
+export function pathLengthNm(path: Path): number {
+  let d = 0;
+  for (let i = 1; i < path.length; i++) d += distanceNm(path[i - 1]![0], path[i - 1]![1], path[i]![0], path[i]![1]);
+  return d;
+}
+
+/** The point `distNm` along a polyline (clamped to its ends). */
+export function pointAlongPath(path: Path, distNm: number): { lat: number; lon: number } {
+  if (!path.length) throw new Error("empty path");
+  if (distNm <= 0) return { lat: path[0]![0], lon: path[0]![1] };
+  let left = distNm;
+  for (let i = 1; i < path.length; i++) {
+    const [la1, lo1] = path[i - 1]!; const [la2, lo2] = path[i]!;
+    const seg = distanceNm(la1, lo1, la2, lo2);
+    if (left <= seg && seg > 0) {
+      const f = left / seg;
+      return { lat: la1 + (la2 - la1) * f, lon: lo1 + (lo2 - lo1) * f };
+    }
+    left -= seg;
+  }
+  return { lat: path[path.length - 1]![0], lon: path[path.length - 1]![1] };
+}
+
+/** Real breadcrumb: [lat, lon, isoTime]. */
+export type TrackPoint = [number, number, string];
+export const TRACK_MIN_SPACING_NM = 0.5;
+export const TRACK_MAX_POINTS = 400;
+export const TRACK_MAX_AGE_DAYS = 10;
+
+/**
+ * Append a real fix to a ship's track: skipped if she has not moved half a
+ * mile since the last point; the track is capped in points and in age so a
+ * ship docked for a week does not carry a ten-day tail. Pure — returns a new array.
+ */
+export function appendTrack(track: TrackPoint[], lat: number, lon: number, at: string, now = new Date()): TrackPoint[] {
+  const cutoff = now.getTime() - TRACK_MAX_AGE_DAYS * 86_400_000;
+  let out = track.filter((p) => Date.parse(p[2]) >= cutoff);
+  const last = out[out.length - 1];
+  if (!last || distanceNm(last[0], last[1], lat, lon) >= TRACK_MIN_SPACING_NM) out = [...out, [lat, lon, at]];
+  if (out.length > TRACK_MAX_POINTS) out = out.slice(out.length - TRACK_MAX_POINTS);
+  return out;
+}
+
+/** A sea path from the lane network can run long offshore; trust at most this much over the great circle. */
+export const PATH_TRUST_OVER_GC = 1.25;
+
 /**
  * Where the ship probably is now. null = the fix is fresh enough to show as-is.
  *
@@ -111,7 +160,7 @@ export function greatCirclePoints(a: { lat: number; lon: number }, b: { lat: num
  *  - no destination → dead-reckon along the last course, at most
  *    MAX_COURSE_HOURS, then hold. Beyond that a guess is a fabrication.
  */
-export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc: string | null): Estimate | null {
+export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc: string | null, pathToDest: Path | null = null): Estimate | null {
   const fixAt = Date.parse(fix.at);
   if (!isFinite(fixAt)) return null;
   const hours = Math.max(0, (now.getTime() - fixAt) / 3_600_000);
@@ -138,6 +187,17 @@ export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc:
     if (travelled >= total || etaPassed) {
       return { lat: dest.lat, lon: dest.lon, basis: "arrived", confidence: "medium", hoursSinceFix };
     }
+    // Slide her along the WATER path when we have one (a great circle crosses
+    // land — Galveston to Cozumel runs straight over the Yucatán). The lane
+    // network is coarse offshore, so the length we trust is capped relative to
+    // the great circle; beyond that she is placed proportionally along the path.
+    if (pathToDest && pathToDest.length >= 2) {
+      const pathLen = pathLengthNm(pathToDest);
+      const trusted = Math.min(pathLen, total * PATH_TRUST_OVER_GC);
+      const along = Math.min(pathLen, (travelled / trusted) * pathLen);
+      const p = pointAlongPath(pathToDest, along);
+      return { ...p, basis: "route", confidence: hours < 3 ? "high" : hours < 12 ? "medium" : "low", hoursSinceFix };
+    }
     const pts = greatCirclePoints(fix, dest, 200);
     const [lat, lon] = pts[Math.round((travelled / total) * 200)]!;
     return { lat, lon, basis: "route", confidence: hours < 3 ? "high" : hours < 12 ? "medium" : "low", hoursSinceFix };
@@ -156,21 +216,37 @@ export interface RouteLine {
   ahead: [number, number][];
 }
 
-/** The thin green line: where she came from, where she is, where she is going. */
-export function routeLine(fix: Fix, estimate: Estimate | null, departed: Port | null, dest: Port | null): RouteLine {
+export interface RouteInputs {
+  /** Real breadcrumb of fixes this sailing (newest last). */
+  track?: TrackPoint[];
+  /** Water path departed port → fix, when there is no usable track. */
+  behindPath?: Path | null;
+  /** Water path (estimate or fix) → destination. */
+  aheadPath?: Path | null;
+}
+
+/**
+ * The thin green line: where she came from, where she is, where she is going.
+ * Behind her: her REAL track when we have one, else the water path from the
+ * departed port. Ahead: the water path to the destination. No path = no line;
+ * a straight line across land is worse than nothing.
+ */
+export function routeLine(fix: Fix, estimate: Estimate | null, departed: Port | null, dest: Port | null, inputs: RouteInputs = {}): RouteLine {
   const here = estimate && estimate.basis !== "hold" ? { lat: estimate.lat, lon: estimate.lon } : { lat: fix.lat, lon: fix.lon };
   const travelled: [number, number][] = [];
-  if (departed) {
-    // only when it is plausibly the current leg — a port a thousand miles back
-    // is last week's sailing, not this one's line
-    if (distanceNm(departed.lat, departed.lon, fix.lat, fix.lon) <= 1500) {
-      travelled.push(...greatCirclePoints(departed, fix, 16));
-    }
+  const track = (inputs.track ?? []).map(([la, lo]) => [la, lo] as [number, number]);
+  if (track.length >= 2) {
+    travelled.push(...track);
+  } else if (departed && inputs.behindPath && inputs.behindPath.length >= 2
+    && distanceNm(departed.lat, departed.lon, fix.lat, fix.lon) <= 1500) {
+    // a port a thousand miles back is last week's sailing, not this leg
+    travelled.push(...inputs.behindPath);
   }
-  if (!travelled.length) travelled.push([fix.lat, fix.lon]);
+  const lastT = travelled[travelled.length - 1];
+  if (!lastT || lastT[0] !== fix.lat || lastT[1] !== fix.lon) travelled.push([fix.lat, fix.lon]);
   if (here.lat !== fix.lat || here.lon !== fix.lon) travelled.push([here.lat, here.lon]);
-  const ahead: [number, number][] = dest && (estimate?.basis !== "arrived")
-    ? greatCirclePoints(here, dest, 24)
+  const ahead: [number, number][] = dest && estimate?.basis !== "arrived" && inputs.aheadPath && inputs.aheadPath.length >= 2
+    ? inputs.aheadPath
     : [];
   return { travelled, ahead };
 }

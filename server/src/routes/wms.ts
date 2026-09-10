@@ -13,11 +13,13 @@ import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import {
   getPosition, allPositions, trackerEnabled, trackerHealthy,
-  requestShip, isSubscribed, inRegistry, subscribedNames, capacity,
+  requestShip, isSubscribed, inRegistry, subscribedNames, capacity, fillFromSatellite,
 } from "../lib/ship-tracker";
+import { satelliteUsage } from "../lib/satellite-ais";
 import { makeWatchSig } from "../lib/wms-alerts";
 import { portBySlug } from "../lib/ports";
 import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../lib/dead-reckoning";
+import { seaRoute } from "../lib/sea-route";
 
 const router: IRouter = Router();
 
@@ -128,6 +130,9 @@ router.get("/wms/position", async (req: Request, res: Response) => {
 
     const now = new Date();
     const ageMin = Math.round((now.getTime() - Date.parse(pos.lastPosAt)) / 60000);
+    // Someone is looking at her and the free feed has gone quiet: one satellite
+    // lookup (gated + capped in satellite-ais.ts). The NEXT poll shows the result.
+    if (ageMin >= 20) void fillFromSatellite(pos.mmsi, "view").catch(() => {});
     const destination = pos.destinationSlug ? portBySlug(pos.destinationSlug) : null;
     const lastPort = pos.lastPortSlug ? portBySlug(pos.lastPortSlug) : null;
     // Between AIS fixes (terrestrial coverage fades a few dozen miles offshore)
@@ -136,8 +141,15 @@ router.get("/wms/position", async (req: Request, res: Response) => {
     const fix = { lat: pos.lat, lon: pos.lon, courseDeg: pos.cogDeg, speedKn: pos.sogKn, at: pos.lastPosAt };
     const destPort = destination ? { slug: destination.slug, name: destination.name, lat: destination.lat, lon: destination.lon } : null;
     const fromPort = lastPort ? { slug: lastPort.slug, name: lastPort.name, lat: lastPort.lat, lon: lastPort.lon } : null;
-    const estimate = estimatePosition(fix, now, destPort, pos.etaUtc);
-    const route = routeLine(fix, estimate, fromPort, destPort);
+    // Every line and every estimate rides a WATER path from the lane network
+    // (lib/sea-route.ts); a great circle crosses land. No path → no line.
+    const toDest = destPort ? await seaRoute({ lat: pos.lat, lon: pos.lon }, destPort) : null;
+    const estimate = estimatePosition(fix, now, destPort, pos.etaUtc, toDest?.points ?? null);
+    const here = estimate && estimate.basis !== "hold" ? { lat: estimate.lat, lon: estimate.lon } : { lat: pos.lat, lon: pos.lon };
+    const track = pos.track ?? [];
+    const behind = track.length < 2 && fromPort ? await seaRoute(fromPort, { lat: pos.lat, lon: pos.lon }) : null;
+    const ahead = destPort && estimate?.basis !== "arrived" ? await seaRoute(here, destPort) : null;
+    const route = routeLine(fix, estimate, fromPort, destPort, { track, behindPath: behind?.points ?? null, aheadPath: ahead?.points ?? null });
     const centre = estimate ?? { lat: pos.lat, lon: pos.lon };
     const nearby = nearbyShips(allPositions(), centre, pos.name, now);
     return res.json({
@@ -160,6 +172,7 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       lastReportedAt: pos.lastPosAt,
       lastReportedMinAgo: ageMin,
       stale: ageMin > 90, // out of terrestrial AIS coverage — page shows the caveat
+      source: pos.lastSource ?? "ais",
       estimate,          // null while the fix is fresh
       route,             // { travelled: [[lat,lon]...], ahead: [[lat,lon]...] }
       nearby,            // other tracked ships within NEARBY_RADIUS_NM with a recent fix

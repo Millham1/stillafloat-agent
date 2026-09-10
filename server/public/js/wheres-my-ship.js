@@ -196,7 +196,7 @@
     const pill = $('live-pill');
     pill.style.display = 'block';
     pill.classList.toggle('stale', Boolean(d.stale || d.estimate));
-    $('live-pill-text').textContent = d.estimate ? T.estimatedPill : d.stale ? T.stalePill : T.livePill;
+    $('live-pill-text').textContent = d.estimate ? T.estimatedPill : d.stale ? T.stalePill : (d.source === 'satellite' ? T.satPill : T.livePill);
     const near = $('nearby-note');
     if (near) near.textContent = T.nearby((d.nearby || []).length, d.nearbyRadiusNm || 10);
   }

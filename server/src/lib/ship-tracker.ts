@@ -27,6 +27,8 @@
 // key the tracker no-ops and the WMS page reports tracking offline.
 
 import { getSupabase, readJson, writeJson } from "./persistence";
+import { appendTrack, type TrackPoint } from "./dead-reckoning";
+import { satelliteLookup, satelliteEnabled, LOOKUP_AFTER_MIN, type LookupReason } from "./satellite-ais";
 import { logger } from "./logger";
 import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
@@ -78,6 +80,12 @@ export interface ShipPosition {
   // pattern, which is what lets the storm feature tell a scheduled port change
   // from a course change (storm-diversion.ts).
   portCalls: PortCall[];
+  // Real fixes this sailing, oldest first (capped; see appendTrack): the line
+  // the tracker draws BEHIND the ship. A computed path is only a stand-in until
+  // this exists — Mark, 2026-09-10: a ship cannot go through an island.
+  track: TrackPoint[];
+  /** "ais" (free terrestrial feed) or "satellite" — what produced the last fix. */
+  lastSource?: "ais" | "satellite";
 }
 
 const positions = new Map<string, ShipPosition>();   // by MMSI (tracked now or previously)
@@ -118,7 +126,7 @@ function blankPosition(ship: RegistryShip): ShipPosition {
     destinationRaw: null, destinationSlug: null, etaUtc: null,
     lastPortSlug: null, lastPortDepartedAt: null, lastPosAt: null,
     currentSailingStart: null, currentDepartPort: null, regionsSeen: [],
-    inPortSlug: null, portCalls: [],
+    inPortSlug: null, portCalls: [], track: [],
   };
 }
 
@@ -322,6 +330,8 @@ function handlePositionReport(pos: ShipPosition, msg: Record<string, unknown>) {
   const hdg = Number(msg["TrueHeading"]);
   pos.headingDeg = isFinite(hdg) && hdg >= 0 && hdg < 360 ? hdg : null; // 511 = unavailable
   pos.lastPosAt = new Date().toISOString();
+  pos.lastSource = "ais";
+  pos.track = appendTrack(pos.track ?? [], lat, lon, pos.lastPosAt);
 
   for (const g of groundsForPoint(lat, lon)) {
     if (!pos.regionsSeen.includes(g)) pos.regionsSeen.push(g);
@@ -353,6 +363,60 @@ function handleStaticData(pos: ShipPosition, msg: Record<string, unknown>) {
         .eq("mmsi", pos.mmsi);
     }
   }
+}
+
+/**
+ * A fix from somewhere other than the free feed (satellite AIS). Applied only
+ * when it is newer than what we already hold; goes through the same track and
+ * port-call logic as a live report so the storm/diversion features see it.
+ */
+export function applyExternalFix(mmsi: string, fix: { lat: number; lon: number; courseDeg: number | null; speedKn: number | null; headingDeg: number | null; at: string }, source: "satellite"): boolean {
+  const pos = positions.get(mmsi);
+  if (!pos) return false;
+  if (pos.lastPosAt && Date.parse(fix.at) <= Date.parse(pos.lastPosAt)) return false;
+  pos.lat = fix.lat; pos.lon = fix.lon;
+  if (fix.courseDeg !== null) pos.cogDeg = fix.courseDeg;
+  if (fix.speedKn !== null) pos.sogKn = fix.speedKn;
+  pos.headingDeg = fix.headingDeg;
+  pos.lastPosAt = fix.at;
+  pos.lastSource = source;
+  pos.track = appendTrack(pos.track ?? [], fix.lat, fix.lon, fix.at);
+  for (const g of groundsForPoint(fix.lat, fix.lon)) if (!pos.regionsSeen.includes(g)) pos.regionsSeen.push(g);
+  detectPortCall(pos);
+  return true;
+}
+
+/**
+ * On-demand satellite fill for ONE ship: only when the free feed is stale and
+ * there is a reason (see satellite-ais.ts for the gate). Fire-and-forget from
+ * the position route; awaited by the periodic sweep.
+ */
+export async function fillFromSatellite(mmsi: string, reason: LookupReason): Promise<boolean> {
+  const pos = positions.get(mmsi);
+  if (!pos || !satelliteEnabled()) return false;
+  const fix = await satelliteLookup(mmsi, pos.lastPosAt, reason);
+  return fix ? applyExternalFix(mmsi, fix, "satellite") : false;
+}
+
+/**
+ * Every 30 min: ships with a live reason to be known (subscriber watch, storm
+ * cone) that have gone quiet on the free feed get one satellite lookup each.
+ * Viewers are handled per request in routes/wms.ts.
+ */
+export async function satelliteSweep(): Promise<{ checked: number; filled: number }> {
+  if (!satelliteEnabled()) return { checked: 0, filled: 0 };
+  let checked = 0, filled = 0;
+  for (const [mmsi, pos] of positions) {
+    const reg = registryByMmsi.get(mmsi);
+    const reason: LookupReason | null = stormMmsis.has(mmsi) ? "storm" : reg?.hasWatch ? "watch" : null;
+    if (!reason) continue;
+    const ageMin = pos.lastPosAt ? (Date.now() - Date.parse(pos.lastPosAt)) / 60_000 : Infinity;
+    if (ageMin < LOOKUP_AFTER_MIN) continue;
+    checked += 1;
+    if (await fillFromSatellite(mmsi, reason)) filled += 1;
+  }
+  if (checked) logger.info({ checked, filled }, "wms: satellite sweep");
+  return { checked, filled };
 }
 
 // ── Port-call log (the ship's own itinerary pattern) ─────────────────────────
@@ -406,6 +470,8 @@ function detectPortCall(pos: ShipPosition) {
     if (leftPort?.type === "embarkation") {
       pos.currentSailingStart = new Date().toISOString().slice(0, 10);
       pos.currentDepartPort = leftPort.slug;
+      // new sailing: the line behind her starts at this pier
+      pos.track = pos.lat !== null && pos.lon !== null && pos.lastPosAt ? [[pos.lat, pos.lon, pos.lastPosAt]] : [];
       pos.regionsSeen = pos.lat !== null && pos.lon !== null
         ? [...groundsForPoint(pos.lat, pos.lon)]
         : [];
@@ -489,6 +555,7 @@ async function warmFromSnapshot() {
       positions.set(s.mmsi, {
         ...blankPosition(reg), ...s, name: reg.name, cruiseLine: reg.cruiseLine,
         portCalls: Array.isArray(s.portCalls) ? s.portCalls : [],
+        track: Array.isArray(s.track) ? s.track : [],
       });
     }
   }
@@ -592,6 +659,7 @@ export async function startShipTracker() {
     for (const conn of conns) connect(conn);
     setInterval(() => { refreshActiveSet().catch((err) => logger.warn({ err }, "wms: set refresh failed")); }, REFRESH_SET_EVERY_MS);
     setInterval(() => { persistSnapshot().catch(() => {}); }, PERSIST_EVERY_MS);
+  setInterval(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 30 * 60 * 1000);
     setInterval(() => { syncDerivedSailings().catch((err) => logger.warn({ err }, "wms: sailings sync failed")); }, SAILINGS_EVERY_MS);
     setTimeout(() => { syncDerivedSailings().catch(() => {}); }, 10 * 60 * 1000);
   } catch (err) {
