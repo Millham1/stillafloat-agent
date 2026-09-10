@@ -128,11 +128,21 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       return res.json({ ok: true, tracking: false, reason });
     }
 
+    // Someone is looking at her and the free feed has gone quiet: one satellite
+    // lookup (gated + capped in satellite-ais.ts), AWAITED so this very response
+    // carries the fresh fix — the provider answers in about a second, and a
+    // fire-and-forget would have made the viewer wait for the next 60 s poll
+    // (Mark, 2026-09-10: "why is it taking more than a minute"). Capped at 6 s;
+    // slower than that and the stale data goes out now, the fix lands next poll.
+    const staleMin = (Date.now() - Date.parse(pos.lastPosAt)) / 60000;
+    if (staleMin >= 20) {
+      await Promise.race([
+        fillFromSatellite(pos.mmsi, "view").catch(() => false),
+        new Promise<void>((resolve) => setTimeout(resolve, 6000)),
+      ]);
+    }
     const now = new Date();
     const ageMin = Math.round((now.getTime() - Date.parse(pos.lastPosAt)) / 60000);
-    // Someone is looking at her and the free feed has gone quiet: one satellite
-    // lookup (gated + capped in satellite-ais.ts). The NEXT poll shows the result.
-    if (ageMin >= 20) void fillFromSatellite(pos.mmsi, "view").catch(() => {});
     const destination = pos.destinationSlug ? portBySlug(pos.destinationSlug) : null;
     const lastPort = pos.lastPortSlug ? portBySlug(pos.lastPortSlug) : null;
     // Between AIS fixes (terrestrial coverage fades a few dozen miles offshore)
