@@ -8,7 +8,6 @@ import { scanAndQueue } from "./lib/social-agent";
 import { draftNewsletter, saveDraft, loadDraft, sendNewsletterDraft, confirmedSubscriberCount } from "./lib/newsletter";
 import { notifyMark, reviewUrl } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
-import { setSeaRouteLogger } from "./lib/sea-route";
 import { runGuidesPrerender } from "./lib/prerender-guides";
 import { stageWeeklyCommentary, loadCommentaryDraft } from "./lib/commentary-agent";
 import { startShipTracker } from "./lib/ship-tracker";
@@ -162,8 +161,6 @@ function scheduleSubscriberHygiene() {
 // Regenerates the static news listing + story pages from platform_state on boot
 // (deploys reset the tracked listing pages) and hourly (the newsagent updates
 // once a day, so hourly is generous).
-setSeaRouteLogger((meta, msg) => logger.warn(meta, msg));
-
 function scheduleNewsPrerender() {
   const tick = async () => {
     try {

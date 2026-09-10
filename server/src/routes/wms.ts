@@ -13,13 +13,10 @@ import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import {
   getPosition, allPositions, trackerEnabled, trackerHealthy,
-  requestShip, isSubscribed, inRegistry, subscribedNames, capacity, fillFromSatellite, mmsiForShip,
+  requestShip, isSubscribed, inRegistry, subscribedNames, capacity,
 } from "../lib/ship-tracker";
-import { satelliteUsage, testModeShip } from "../lib/satellite-ais";
 import { makeWatchSig } from "../lib/wms-alerts";
 import { portBySlug } from "../lib/ports";
-import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../lib/dead-reckoning";
-import { seaRoute } from "../lib/sea-route";
 
 const router: IRouter = Router();
 
@@ -103,21 +100,7 @@ router.post("/wms/request", async (req: Request, res: Response) => {
   try {
     const state = await requestShip(ship);
     if (state === "unknown") return res.status(404).json({ ok: false, error: "Unknown ship" });
-    // A Where's-My-Ship request is the one on-demand trigger for a paid satellite
-    // lookup (Mark's model, 2026-09-10): if the free feed has gone quiet on her,
-    // ask the provider once, AWAITED (capped at 6 s) so the page's first poll
-    // already shows the answer. The 60 s poll itself never spends.
-    let satellite = false;
-    const mmsi = mmsiForShip(ship);
-    const pos = mmsi ? getPosition(ship) : null;
-    const staleMin = pos?.lastPosAt ? (Date.now() - Date.parse(pos.lastPosAt)) / 60000 : Infinity;
-    if (mmsi && staleMin >= 20) {
-      satellite = await Promise.race([
-        fillFromSatellite(mmsi, "request").catch(() => false),
-        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
-      ]);
-    }
-    return res.json({ ok: true, state, satellite }); // live | waking
+    return res.json({ ok: true, state }); // live | waking
   } catch (err) {
     logger.error({ err }, "wms: request failed");
     return res.status(500).json({ ok: false, error: "Request failed" });
@@ -134,7 +117,7 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       return res.json({ ok: true, tracking: false, reason: "tracker_offline" });
     }
     const pos = getPosition(shipName);
-    if (!pos || pos.lat === null || pos.lon === null || !pos.lastPosAt) {
+    if (!pos || pos.lat === null || !pos.lastPosAt) {
       // Distinguish "subscribed, just hasn't reported" from "not yet in the
       // active set" so the page can show the wake-up message vs the coverage one.
       const reason = !inRegistry(shipName) ? "unknown_ship"
@@ -142,32 +125,9 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       return res.json({ ok: true, tracking: false, reason });
     }
 
-    // The 60 s poll NEVER calls the paid provider: it reads what the tracker
-    // holds. A satellite lookup happens on the explicit request (POST /wms/request)
-    // and on the three-hour storm/watch sweep — Mark's model, 2026-09-10.
-    const now = new Date();
-    const ageMin = Math.round((now.getTime() - Date.parse(pos.lastPosAt)) / 60000);
+    const ageMin = Math.round((Date.now() - Date.parse(pos.lastPosAt)) / 60000);
     const destination = pos.destinationSlug ? portBySlug(pos.destinationSlug) : null;
     const lastPort = pos.lastPortSlug ? portBySlug(pos.lastPortSlug) : null;
-    // Between AIS fixes (terrestrial coverage fades a few dozen miles offshore)
-    // the page shows an ESTIMATED position, the route as a thin line, and any
-    // other tracked ship within 10 nm — see lib/dead-reckoning.ts.
-    const fix = { lat: pos.lat, lon: pos.lon, courseDeg: pos.cogDeg, speedKn: pos.sogKn, at: pos.lastPosAt };
-    const destPort = destination ? { slug: destination.slug, name: destination.name, lat: destination.lat, lon: destination.lon } : null;
-    const fromPort = lastPort ? { slug: lastPort.slug, name: lastPort.name, lat: lastPort.lat, lon: lastPort.lon } : null;
-    // Every line and every estimate rides a WATER path from the lane network
-    // (lib/sea-route.ts); a great circle crosses land. No path → no line.
-    const toDest = destPort ? await seaRoute({ lat: pos.lat, lon: pos.lon }, destPort) : null;
-    // Test mode (Mark, 2026-09-10): "we are not using estimates for this test. all
-    // of the data will come from the API." Allowlisted ships show the API fix as-is.
-    const estimate = testModeShip(pos.mmsi, pos.name) ? null : estimatePosition(fix, now, destPort, pos.etaUtc, toDest?.points ?? null);
-    const here = estimate && estimate.basis !== "hold" ? { lat: estimate.lat, lon: estimate.lon } : { lat: pos.lat, lon: pos.lon };
-    const track = pos.track ?? [];
-    const behind = track.length < 2 && fromPort ? await seaRoute(fromPort, { lat: pos.lat, lon: pos.lon }) : null;
-    const ahead = destPort && estimate?.basis !== "arrived" ? await seaRoute(here, destPort) : null;
-    const route = routeLine(fix, estimate, fromPort, destPort, { track, behindPath: behind?.points ?? null, aheadPath: ahead?.points ?? null });
-    const centre = estimate ?? { lat: pos.lat, lon: pos.lon };
-    const nearby = nearbyShips(allPositions(), centre, pos.name, now);
     return res.json({
       ok: true,
       tracking: true,
@@ -188,11 +148,6 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       lastReportedAt: pos.lastPosAt,
       lastReportedMinAgo: ageMin,
       stale: ageMin > 90, // out of terrestrial AIS coverage — page shows the caveat
-      source: pos.lastSource ?? "ais",
-      estimate,          // null while the fix is fresh
-      route,             // { travelled: [[lat,lon]...], ahead: [[lat,lon]...] }
-      nearby,            // other tracked ships within NEARBY_RADIUS_NM with a recent fix
-      nearbyRadiusNm: NEARBY_RADIUS_NM,
     });
   } catch (err) {
     logger.error({ err }, "wms: position failed");

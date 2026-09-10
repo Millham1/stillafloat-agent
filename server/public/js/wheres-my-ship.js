@@ -13,7 +13,6 @@
   let ships = [];
   let currentShip = null;
   let map = null, marker = null;
-  let lastFixMarker = null, routeLayer = null, nearbyLayer = null;
   let pollTimer = null;
   let lastWeatherSlug = null;
 
@@ -79,17 +78,15 @@
     map.setView([24.5, -80.5], 5);
   }
 
-  function shipIcon(courseDeg, estimated) {
+  function shipIcon(courseDeg) {
     // A small bright-green cruise ship (side profile) with a soft glow. Bow
     // faces the direction of travel: eastbound faces right, westbound flips.
-    // An ESTIMATED position (between AIS fixes) glows amber instead of green.
     const westbound = Number.isFinite(courseDeg) && courseDeg > 180 && courseDeg < 360;
-    const glow = estimated ? 'rgba(255,217,93,.95)' : 'rgba(93,255,154,.95)';
     return L.divIcon({
       className: '',
       iconSize: [52, 36],
       iconAnchor: [26, 22],
-      html: `<div style="width:52px;height:36px;${westbound ? 'transform:scaleX(-1);' : ''}${estimated ? 'opacity:.88;' : ''}filter:drop-shadow(0 0 6px ${glow})">
+      html: `<div style="width:52px;height:36px;${westbound ? 'transform:scaleX(-1);' : ''}filter:drop-shadow(0 0 6px rgba(93,255,154,.95))">
         <svg viewBox="0 0 52 36" width="52" height="36">
           <g fill="#5dff9a" stroke="#04310f" stroke-width="1.2" stroke-linejoin="round">
             <path d="M3 24 L49 24 L43 33 L10 33 Z"/>
@@ -106,47 +103,6 @@
           </g>
         </svg></div>`,
     });
-  }
-
-  // Other tracked ships inside the nearby radius: a small white hull with the
-  // name beside it. Click one to track it instead.
-  function nearbyIcon(name) {
-    return L.divIcon({
-      className: '',
-      iconSize: [22, 14],
-      iconAnchor: [11, 9],
-      html: `<div style="display:flex;align-items:center;gap:5px;white-space:nowrap;filter:drop-shadow(0 1px 3px rgba(0,0,0,.9))">
-        <svg viewBox="0 0 22 14" width="22" height="14"><g fill="#ffffff" stroke="#07183f" stroke-width="1">
-          <path d="M1 9 L21 9 L18 13 L4 13 Z"/><path d="M5 5 L16 5 L16 9 L5 9 Z"/><path d="M8 2 L13 2 L13 5 L8 5 Z"/></g></svg>
-        <span style="color:#fff;font:700 12px/1 'Baloo 2',system-ui,sans-serif;text-shadow:0 1px 3px #000">${name}</span></div>`,
-    });
-  }
-
-  function drawRoute(route) {
-    if (routeLayer) { routeLayer.remove(); routeLayer = null; }
-    if (!route) return;
-    routeLayer = L.layerGroup();
-    // Thin green line: solid where she has been, dashed for the leg still ahead.
-    if (route.travelled && route.travelled.length > 1) {
-      L.polyline(route.travelled, { color: '#5dff9a', weight: 2, opacity: .9 }).addTo(routeLayer);
-    }
-    if (route.ahead && route.ahead.length > 1) {
-      L.polyline(route.ahead, { color: '#5dff9a', weight: 2, opacity: .75, dashArray: '6 7' }).addTo(routeLayer);
-    }
-    routeLayer.addTo(map);
-  }
-
-  function drawNearby(list) {
-    if (nearbyLayer) { nearbyLayer.remove(); nearbyLayer = null; }
-    if (!list || !list.length) return;
-    nearbyLayer = L.layerGroup();
-    list.forEach((n) => {
-      const m = L.marker([n.lat, n.lon], { icon: nearbyIcon(n.name), zIndexOffset: -100 });
-      m.bindTooltip(`${n.name} · ${n.cruiseLine} · ${n.distanceNm} ${T.nm}${Number.isFinite(n.speedKn) ? ` · ${n.speedKn.toFixed(1)} ${T.kn}` : ''}`, { direction: 'top', offset: [0, -8] });
-      m.on('click', () => { $('ship-input').value = n.name; selectShip(n.name); });
-      m.addTo(nearbyLayer);
-    });
-    nearbyLayer.addTo(map);
   }
 
   // ── Info card ──────────────────────────────────────────────────────────────
@@ -183,10 +139,7 @@
     $('i-age').textContent = T.ago(d.lastReportedMinAgo);
 
     const banner = $('stale-banner');
-    if (d.estimate) {
-      banner.innerHTML = T.estimated(d.ship, T.ago(d.lastReportedMinAgo), T.basis[d.estimate.basis] || '');
-      banner.style.display = 'block';
-    } else if (d.stale) {
+    if (d.stale) {
       banner.innerHTML = T.stale(d.ship, T.ago(d.lastReportedMinAgo));
       banner.style.display = 'block';
     } else {
@@ -195,10 +148,8 @@
 
     const pill = $('live-pill');
     pill.style.display = 'block';
-    pill.classList.toggle('stale', Boolean(d.stale || d.estimate));
-    $('live-pill-text').textContent = d.estimate ? T.estimatedPill : d.stale ? T.stalePill : (d.source === 'satellite' ? T.satPill : T.livePill);
-    const near = $('nearby-note');
-    if (near) near.textContent = T.nearby((d.nearby || []).length, d.nearbyRadiusNm || 10);
+    pill.classList.toggle('stale', Boolean(d.stale));
+    $('live-pill-text').textContent = d.stale ? T.stalePill : T.livePill;
   }
 
   // ── Weather card: the destination port on the day the ship is expected ─────
@@ -262,27 +213,16 @@
 
     renderInfo(d);
     ensureMap();
-    const fixPos = [d.position.lat, d.position.lon];
-    const est = d.estimate;
-    const pos = est ? [est.lat, est.lon] : fixPos;
+    const pos = [d.position.lat, d.position.lon];
     if (!marker) {
-      marker = L.marker(pos, { icon: shipIcon(d.courseDeg, Boolean(est)) }).addTo(map);
+      marker = L.marker(pos, { icon: shipIcon(d.courseDeg) }).addTo(map);
       map.setView(pos, 8);
     } else {
       marker.setLatLng(pos);
-      marker.setIcon(shipIcon(d.courseDeg, Boolean(est)));
+      marker.setIcon(shipIcon(d.courseDeg));
       if (!map.getBounds().contains(pos)) map.setView(pos, map.getZoom());
     }
-    marker.bindTooltip(est ? `${d.ship} · ${T.estimatedPill}` : d.ship, { direction: 'top', offset: [0, -20] });
-    // The last REAL fix stays on the map as a small amber ring while we estimate.
-    if (lastFixMarker) { lastFixMarker.remove(); lastFixMarker = null; }
-    if (est && (est.lat !== d.position.lat || est.lon !== d.position.lon)) {
-      lastFixMarker = L.circleMarker(fixPos, { radius: 6, color: '#ffd95d', weight: 2, fillColor: '#ffd95d', fillOpacity: .25 })
-        .bindTooltip(T.lastFix(T.ago(d.lastReportedMinAgo)), { direction: 'top', offset: [0, -6] })
-        .addTo(map);
-    }
-    drawRoute(d.route);
-    drawNearby(d.nearby);
+    marker.bindTooltip(d.ship, { direction: 'top', offset: [0, -20] });
     $('updated').textContent = new Date().toLocaleTimeString(LANG === 'es' ? 'es-419' : 'en-US');
     renderWeather(d.destination, d.etaUtc);
   }
@@ -295,20 +235,14 @@
     $('tracker').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  async function selectShip(shipName) {
+  function selectShip(shipName) {
     // Wake the ship's tracking (stamps the request; retained in the scheduler).
-    // AWAITED: the request is also the one moment the server may ask a satellite
-    // for a quiet ship (a second or two), so the first poll shows the answer.
-    currentShip = shipName;
-    $('tracker').style.display = 'block';
-    $('i-ship').textContent = shipName;
-    try {
-      await fetch('/api/wms/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ship: shipName }),
-      });
-    } catch { /* the poll below reports whatever the tracker holds */ }
+    // Fire-and-forget: the position poll below reports the current state.
+    fetch('/api/wms/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ship: shipName }),
+    }).catch(() => {});
     startTracking(shipName);
   }
 

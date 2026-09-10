@@ -55,8 +55,6 @@ export const PATHS = {
   // Per-story SEO title/description overrides for the news prerenderer, keyed by
   // story id. Lets us tune search snippets without changing the on-page headline.
   seoOverrides: "seo-overrides",
-  // Satellite AIS spend ledger (month, credits used, last lookup per ship) — lib/satellite-ais.ts
-  satelliteLedger: "satellite-ais-ledger",
   // Evergreen "Cruising Guides" — curated long-form advisory articles (Track A/B).
   // Prerendered to static /guides/<slug>.html pages, EN + ES.
   guides: "guides",
