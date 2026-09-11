@@ -4,7 +4,7 @@
 import { PATHS, readJson, writeJson } from "./persistence";
 import { logger } from "./logger";
 import { type Ledger, type SatelliteFix, type LookupReason, monthKey, blankLedger, lookupDecision } from "./satellite-ais-core";
-import { SHIPFINDER_URL, shipfinderEnabled, shipfinderCap, parseShipfinder } from "./shipfinder-core";
+import { shipfinderUrl, shipfinderEnabled, shipfinderCap, parseShipfinder } from "./shipfinder-core";
 export * from "./shipfinder-core";
 
 let ledger: Ledger | null = null;
@@ -47,7 +47,7 @@ export async function shipfinderLookup(
   l.used += 1; // counted BEFORE the call
   ledgerDirty = true;
   const key = (process.env["SHIPFINDER_API_KEY"] ?? "").replace(/^["']+|["']+$/g, "");
-  const url = `${SHIPFINDER_URL}?v=2&k=${encodeURIComponent(key)}&enc=1&id=${encodeURIComponent(mmsi)}&idtype=0`;
+  const url = `${shipfinderUrl()}?key=${encodeURIComponent(key)}&mmsi=${encodeURIComponent(mmsi)}`;
   try {
     const res = await fetchImpl(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
     if (!res.ok) {
@@ -57,11 +57,11 @@ export async function shipfinderLookup(
       return null;
     }
     const body = (await res.json()) as unknown;
-    const fix = parseShipfinder(body, now);
-    const status = body && typeof body === "object" ? (body as Record<string, unknown>)["status"] : undefined;
-    l.lastError = fix ? null : { at: now.toISOString(), status: `status ${String(status)}` };
+    const fix = parseShipfinder(body);
+    const b = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+    l.lastError = fix ? null : { at: now.toISOString(), status: `status ${String(b["status"])} ${String(b["msg"] ?? "")}`.trim() };
     await saveLedger();
-    logger.info({ mmsi, reason, source: fix?.source ?? "none", at: fix?.at ?? null, used: l.used, status }, "shipfinder: lookup");
+    logger.info({ mmsi, reason, source: fix?.source ?? "none", at: fix?.at ?? null, used: l.used, status: b["status"], msg: b["msg"] }, "shipfinder: lookup");
     return fix;
   } catch (err) {
     l.lastError = { at: now.toISOString(), status: (err as Error)?.name ?? "error" };
