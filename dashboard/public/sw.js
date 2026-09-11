@@ -3,7 +3,8 @@
 // stale runtime entries could pin an old bundle — and old dashboard numbers
 // (e.g. the YouTube subscriber count) — on an installed PWA for days.
 // v9: brief.html link buttons resolve the dashboard root per host (prod subdomain / dev box).
-const CACHE_NAME = 'still-afloat-editorial-v9';
+// v10: brief.html validates a token before saving it, keeps it on a 401, and accepts #token= links.
+const CACHE_NAME = 'still-afloat-editorial-v10';
 
 // App shell to cache on install. MUST only contain basic-auth-EXEMPT paths:
 // caching '/' + '/index.html' (behind the dashboard basic-auth) made every SW

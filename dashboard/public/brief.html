@@ -86,21 +86,52 @@
 
   function token(){ return localStorage.getItem(TOKEN_KEY) || ""; }
   function authHeaders(){ var t=token(); return t ? {"Authorization":"Bearer "+t} : {}; }
+
+  // A token handed over as a link (brief.html#token=…) is stored once and
+  // scrubbed from the address bar; the fragment never reaches a server log.
+  // Mark, 2026-09-11: "it keeps resetting itself" — typing 64 hex characters
+  // on a phone is where the wrong tokens came from.
+  (function(){
+    var m = /(?:^#|[#&])token=([^&]+)/.exec(location.hash || "");
+    if (m) {
+      try { localStorage.setItem(TOKEN_KEY, decodeURIComponent(m[1]).trim()); } catch (e) {}
+      try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    }
+  })();
+
+  // Ask the API whether a token is good before trusting it.
+  function checkToken(t){
+    return fetch(API+"/api/auth-check",{headers:{"Authorization":"Bearer "+t}})
+      .then(function(r){ return r.status===401 ? false : (r.ok ? true : null); }) // null = could not tell (server down)
+      .catch(function(){ return null; });
+  }
   function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
   var content = document.getElementById("content");
   var dateEl = document.getElementById("date");
   var stampEl = document.getElementById("stamp");
 
-  function needToken(){
+  function needToken(msg){
     content.innerHTML =
-      '<div class="card"><div class="h">One-time setup</div>'+
-      '<div class="sub">Enter your dashboard access token (the same one the dashboard uses). It is saved on this device only.</div>'+
-      '<div class="tokwrap"><input id="tok" type="password" placeholder="access token" autocomplete="off">'+
-      '<button class="pill" id="saveTok">Save</button></div></div>';
-    document.getElementById("saveTok").onclick=function(){
+      '<div class="card"><div class="h">'+(msg?'Token not accepted':'One-time setup')+'</div>'+
+      '<div class="sub">'+(msg?esc(msg)+' ':'')+'Enter your dashboard access token (the same one the dashboard uses). It is saved on this device only.</div>'+
+      '<div class="tokwrap"><input id="tok" type="password" placeholder="access token" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">'+
+      '<button class="pill" id="saveTok">Save</button></div>'+
+      '<div class="sub" id="tokMsg"></div></div>';
+    var btn=document.getElementById("saveTok");
+    btn.onclick=function(){
       var v=document.getElementById("tok").value.trim();
-      if(v){ localStorage.setItem(TOKEN_KEY,v); load(); }
+      if(!v) return;
+      btn.disabled=true; document.getElementById("tokMsg").textContent="Checking…";
+      // Validate BEFORE saving: a mistyped token used to be stored, rejected on
+      // the next load, wiped, and asked for again — the "keeps resetting" loop.
+      checkToken(v).then(function(ok){
+        btn.disabled=false;
+        if(ok===false){ document.getElementById("tokMsg").textContent="That token was not accepted. Check it and try again."; return; }
+        localStorage.setItem(TOKEN_KEY,v);
+        if(ok===null) document.getElementById("tokMsg").textContent="Saved (could not reach the server to confirm).";
+        load();
+      });
     };
   }
 
@@ -340,7 +371,9 @@
     ]).then(function(res){
       render(res[0].brief, (res[1]&&res[1].conflicts)||[], (res[2]&&res[2].actions)||[]);
     }).catch(function(e){
-      if(String(e.message)==="401"){ localStorage.removeItem(TOKEN_KEY); needToken(); }
+      // A rejected token is reported, not deleted: the saved one stays until a
+      // new one is accepted, so a bad day at the server never forces re-entry.
+      if(String(e.message)==="401"){ needToken("The saved token was rejected by the server."); }
       else content.innerHTML='<div class="warn">Couldn’t load the brief: '+esc(e.message)+'</div>';
     });
   }
