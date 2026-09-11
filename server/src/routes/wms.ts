@@ -144,7 +144,7 @@ router.get("/wms/position", async (req: Request, res: Response) => {
     const here = estimate && estimate.basis !== "hold" && estimate.basis !== "stale" ? { lat: estimate.lat, lon: estimate.lon } : { lat: pos.lat, lon: pos.lon };
     const track = pos.track ?? [];
     const behind = track.length < 2 && fromPort ? await seaRoute(fromPort, { lat: pos.lat, lon: pos.lon }) : null;
-    const ahead = destPort && estimate?.basis !== "arrived" ? await seaRoute(here, destPort) : null;
+    const ahead = destPort && estimate?.basis !== "arrived" && estimate?.basis !== "stale" ? await seaRoute(here, destPort) : null;
     const route = routeLine(fix, estimate, fromPort, destPort, { track, behindPath: behind?.points ?? null, aheadPath: ahead?.points ?? null });
     const centre = estimate ?? { lat: pos.lat, lon: pos.lon };
     const nearby = nearbyShips(allPositions(), centre, pos.name, now);

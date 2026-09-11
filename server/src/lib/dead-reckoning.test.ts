@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   distanceNm, bearingDeg, destinationPoint, greatCirclePoints, pathLengthNm, pointAlongPath, appendTrack,
-  estimatePosition, routeLine, nearbyShips, ESTIMATE_AFTER_MIN, MAX_COURSE_HOURS, TRACK_MAX_POINTS,
+  estimatePosition, routeLine, nearbyShips, ESTIMATE_AFTER_MIN, MAX_COURSE_HOURS, TRACK_MAX_POINTS, STALE_FIX_H,
 } from "./dead-reckoning";
 
 const MIAMI = { slug: "miami", name: "Miami, Florida", lat: 25.7617, lon: -80.1918 };
@@ -52,11 +52,22 @@ describe("estimatePosition", () => {
     const e = estimatePosition(underway, at(1), NASSAU, "2026-09-10T12:20:00.000Z")!;
     assert.equal(e.basis, "arrived");
   });
-  it("an ETA that passed days ago means the destination is last leg's — hold, do not park her there", () => {
-    const e = estimatePosition(underway, at(6), NASSAU, "2026-09-07T12:00:00.000Z")!;
-    assert.equal(e.basis, "hold");
-    assert.equal(e.confidence, "low");
-    assert.deepEqual([e.lat, e.lon], [MIAMI.lat, MIAMI.lon]);
+  it("an ETA that passed days ago means the destination is last leg's — it is ignored, never parked at", () => {
+    const e6 = estimatePosition(underway, at(6), NASSAU, "2026-09-07T12:00:00.000Z")!;
+    assert.equal(e6.basis, "course", "underway with an unusable destination = dead-reckon on her course");
+    assert.ok(Math.abs(distanceNm(MIAMI.lat, MIAMI.lon, e6.lat, e6.lon) - 96) < 0.5);
+    const e10 = estimatePosition(underway, at(10), NASSAU, "2026-09-07T12:00:00.000Z")!;
+    assert.equal(e10.basis, "stale");
+    assert.deepEqual([e10.lat, e10.lon], [MIAMI.lat, MIAMI.lon]);
+  });
+  it("a fix older than STALE_FIX_H is stale no matter what else we know (Carnival Horizon, 97 h, 'stopped' with a destination)", () => {
+    const moored = estimatePosition({ ...underway, speedKn: 0.2 }, at(STALE_FIX_H + 1), NASSAU, null)!;
+    assert.equal(moored.basis, "stale");
+    assert.deepEqual([moored.lat, moored.lon], [MIAMI.lat, MIAMI.lon]);
+    const sailing = estimatePosition(underway, at(STALE_FIX_H + 1), NASSAU, "2026-09-20T12:00:00.000Z")!;
+    assert.equal(sailing.basis, "stale", "even a future ETA cannot rescue a two-day-old fix");
+    const justUnder = estimatePosition({ ...underway, speedKn: 0.2 }, at(STALE_FIX_H - 1), NASSAU, null)!;
+    assert.equal(justUnder.basis, "hold");
   });
   it("a stopped ship is held where she was, not drifted along a course", () => {
     const e = estimatePosition({ ...underway, speedKn: 0.3 }, at(5), NASSAU, null)!;
@@ -127,6 +138,14 @@ describe("routeLine", () => {
     const seattle = { slug: "seattle", name: "Seattle", lat: 47.6, lon: -122.3 };
     const r = routeLine(fix, null, seattle, NASSAU, { behindPath: [[seattle.lat, seattle.lon], [fix.lat, fix.lon]] });
     assert.deepEqual(r.travelled, [[fix.lat, fix.lon]]);
+  });
+  it("nothing ahead when the fix is stale, even with a destination and a water path", () => {
+    const fix = { lat: MIAMI.lat, lon: MIAMI.lon, courseDeg: 105, speedKn: 0.2, at: T0 };
+    const est = estimatePosition(fix, at(STALE_FIX_H + 1), NASSAU, null)!;
+    assert.equal(est.basis, "stale");
+    const r = routeLine(fix, est, MIAMI, NASSAU, { aheadPath: [[fix.lat, fix.lon], [NASSAU.lat, NASSAU.lon]] });
+    assert.deepEqual(r.ahead, []);
+    assert.deepEqual(r.travelled[r.travelled.length - 1], [fix.lat, fix.lon], "the line ends at the last real fix");
   });
   it("nothing ahead once she has arrived", () => {
     const est = estimatePosition(fix, at(30), NASSAU, null)!;
