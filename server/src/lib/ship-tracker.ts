@@ -498,6 +498,10 @@ async function warmFromSnapshot() {
         ...blankPosition(reg), ...s, name: reg.name, cruiseLine: reg.cruiseLine,
         portCalls: Array.isArray(s.portCalls) ? s.portCalls : [],
         track: Array.isArray(s.track) ? s.track : [],
+        // The slug is decoded when the static message arrives, so a decode
+        // table that learns a new code ("GSC") would not help a ship until her
+        // next static report — hours to days. Re-read the raw string on boot.
+        destinationSlug: s.destinationSlug ?? (s.destinationRaw ? (matchDestination(s.destinationRaw)?.slug ?? null) : null),
       });
     }
   }
