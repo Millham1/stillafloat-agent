@@ -13,8 +13,9 @@ import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import {
   getPosition, allPositions, trackerEnabled, trackerHealthy,
-  requestShip, isSubscribed, inRegistry, subscribedNames, capacity,
+  requestShip, isSubscribed, inRegistry, subscribedNames, capacity, fillFromSatellite, mmsiForShip,
 } from "../lib/ship-tracker";
+import { LOOKUP_AFTER_MIN } from "../lib/satellite-ais";
 import { makeWatchSig } from "../lib/wms-alerts";
 import { portBySlug } from "../lib/ports";
 import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../lib/dead-reckoning";
@@ -102,7 +103,22 @@ router.post("/wms/request", async (req: Request, res: Response) => {
   try {
     const state = await requestShip(ship);
     if (state === "unknown") return res.status(404).json({ ok: false, error: "Unknown ship" });
-    return res.json({ ok: true, state }); // live | waking
+    // A Where's-My-Ship request is the one on-demand trigger for a paid satellite
+    // lookup (Mark's model, 2026-09-10/11: "the api data you ping at the request
+    // gives lat and long"): if the free feed has nothing fresher than
+    // LOOKUP_AFTER_MIN on her, ask the provider once, AWAITED (capped at 6 s) so
+    // the page's first poll already shows the answer. The poll itself never spends.
+    let satellite = false;
+    const mmsi = mmsiForShip(ship);
+    const pos = mmsi ? getPosition(ship) : null;
+    const staleMin = pos?.lastPosAt ? (Date.now() - Date.parse(pos.lastPosAt)) / 60000 : Infinity;
+    if (mmsi && staleMin >= LOOKUP_AFTER_MIN) {
+      satellite = await Promise.race([
+        fillFromSatellite(mmsi, "request").catch(() => false),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
+      ]);
+    }
+    return res.json({ ok: true, state, satellite }); // live | waking; satellite = a newer fix was just applied
   } catch (err) {
     logger.error({ err }, "wms: request failed");
     return res.status(500).json({ ok: false, error: "Request failed" });
@@ -168,6 +184,7 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       lastReportedAt: pos.lastPosAt,
       lastReportedMinAgo: ageMin,
       stale: ageMin > 90, // out of terrestrial AIS coverage — page shows the caveat
+      source: pos.lastSource ?? "ais",
       estimate,          // null while the fix is fresh
       route,             // { travelled: [[lat,lon]...], ahead: [[lat,lon]...] }
       nearby,            // other tracked ships within NEARBY_RADIUS_NM with a recent fix

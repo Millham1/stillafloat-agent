@@ -1,13 +1,17 @@
 // ship-tracker.ts — live cruise-ship positions for "Where's My Ship?" (WMS).
 //
 // v2 (Mark's design): the `ships` table is the FULL cruise-ship registry —
-// search covers every ship in it. Live AIS tracking activates on request and
-// is then RETAINED: the active set = ships with active watches, the seeded
-// US-coast fleet (seed_active), and everything ever requested, newest first,
-// up to capacity. Capacity = (number of API keys) × WMS_MAX_PER_CONN (the
-// aisstream per-connection MMSI-filter allowance; default 50 — verify
-// empirically). Under capacity pressure the least-recently-requested
-// non-seeded ships rotate out; a new request instantly rotates a ship back in.
+// search covers every ship in it. The active set is ranked: ships with active
+// watches or under a storm alert, then the seeded US-coast fleet (seed_active),
+// then everything ever requested (newest first), then the rest of the registry
+// — filled up to capacity. Capacity = (number of API keys) × WMS_MAX_PER_CONN.
+// aisstream's published allowance (docs read 2026-09-11) is 200 MMSIs per
+// subscription and 3 subscriptions per account, so 3 keys carry the whole
+// 315-ship registry; before 2026-09-11 the default was 50 and never-requested
+// ships stayed registry-only, which left 228 ships "never heard" (Mark: "it's
+// ridiculous to have a where's my ship that can't tell the user where it is").
+// Under capacity pressure the lowest-ranked ships rotate out; a new request
+// instantly rotates a ship back in.
 //
 // One websocket PER KEY to the free aisstream.io feed (aisstream allows one
 // connection per key), the active MMSI list sharded across them. Terrestrial
@@ -28,6 +32,8 @@
 
 import { getSupabase, readJson, writeJson } from "./persistence";
 import { appendTrack, type TrackPoint } from "./dead-reckoning";
+import { selectActiveSet, AISSTREAM_MMSIS_PER_SUBSCRIPTION } from "./active-set";
+import { satelliteLookup, satelliteEnabled, allowlisted, sweepEnabled, LOOKUP_AFTER_MIN, type LookupReason } from "./satellite-ais";
 import { logger } from "./logger";
 import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
@@ -83,6 +89,8 @@ export interface ShipPosition {
   // the tracker draws BEHIND the ship. A computed path is only a stand-in until
   // this exists — Mark, 2026-09-10: a ship cannot go through an island.
   track: TrackPoint[];
+  /** "ais" (free terrestrial feed) or "satellite" — what produced the last fix. */
+  lastSource?: "ais" | "satellite";
 }
 
 const positions = new Map<string, ShipPosition>();   // by MMSI (tracked now or previously)
@@ -113,7 +121,7 @@ function apiKeys(): string[] {
 }
 
 function maxPerConn(): number {
-  return Number(process.env["WMS_MAX_PER_CONN"] ?? "50");
+  return Number(process.env["WMS_MAX_PER_CONN"] ?? String(AISSTREAM_MMSIS_PER_SUBSCRIPTION));
 }
 
 function blankPosition(ship: RegistryShip): ShipPosition {
@@ -264,17 +272,7 @@ async function loadRegistry(): Promise<void> {
  *  (Mark's lifecycle design 2026-07-22) — they claim slots even if they were
  *  never seeded or requested. */
 function buildActiveSet(): Set<string> {
-  const ships = [...registryByMmsi.values()];
-  const rank = (s: RegistryShip): number =>
-    (stormMmsis.has(s.mmsi) || s.hasWatch ? 0 : s.seedActive ? 1 : s.lastRequestedAt ? 2 : 3);
-  ships.sort((a, b) =>
-    rank(a) - rank(b) ||
-    (b.lastRequestedAt ?? "").localeCompare(a.lastRequestedAt ?? "") ||
-    a.name.localeCompare(b.name));
-  const cap = apiKeys().length * maxPerConn();
-  // Rank 3 (never requested, not seeded, no storm) ships stay registry-only
-  // until asked for — EXCEPT storm ships, which qualify via rank 0 above.
-  return new Set(ships.filter((s) => rank(s) < 3).slice(0, cap).map((s) => s.mmsi));
+  return new Set(selectActiveSet([...registryByMmsi.values()], stormMmsis, apiKeys().length * maxPerConn()).map((s) => s.mmsi));
 }
 
 /** Re-shard the active set across connections; resubscribe the ones that changed. */
@@ -327,6 +325,7 @@ function handlePositionReport(pos: ShipPosition, msg: Record<string, unknown>) {
   const hdg = Number(msg["TrueHeading"]);
   pos.headingDeg = isFinite(hdg) && hdg >= 0 && hdg < 360 ? hdg : null; // 511 = unavailable
   pos.lastPosAt = new Date().toISOString();
+  pos.lastSource = "ais";
   pos.track = appendTrack(pos.track ?? [], lat, lon, pos.lastPosAt);
 
   for (const g of groundsForPoint(lat, lon)) {
@@ -359,6 +358,83 @@ function handleStaticData(pos: ShipPosition, msg: Record<string, unknown>) {
         .eq("mmsi", pos.mmsi);
     }
   }
+}
+
+/**
+ * A fix from somewhere other than the free feed (satellite AIS). Applied only
+ * when it is newer than what we already hold; goes through the same track and
+ * port-call logic as a live report so the storm/diversion features see it.
+ */
+export function applyExternalFix(
+  mmsi: string,
+  fix: { lat: number; lon: number; courseDeg: number | null; speedKn: number | null; headingDeg: number | null; at: string; destination?: string | null; etaUtc?: string | null },
+  source: "satellite" | "ais",
+): boolean {
+  let pos = positions.get(mmsi);
+  if (!pos) {
+    // A requested ship that did not fit the free-feed capacity still gets a
+    // slot: the whole point of the lookup is to have something to draw.
+    const reg = registryByMmsi.get(mmsi);
+    if (!reg) return false;
+    pos = blankPosition(reg);
+    positions.set(mmsi, pos);
+  }
+  if (pos.lastPosAt && Date.parse(fix.at) <= Date.parse(pos.lastPosAt)) return false;
+  // The provider often carries a destination our feed never decoded ("BSGBI>HNRTM"
+  // vs "Mahogany bay Honduras"); take it when ours is empty or unmatched.
+  if (fix.destination && (!pos.destinationSlug || !pos.destinationRaw)) {
+    const matched = matchDestination(fix.destination);
+    if (matched) { pos.destinationRaw = fix.destination; pos.destinationSlug = matched.slug; }
+    else if (!pos.destinationRaw) pos.destinationRaw = fix.destination;
+  }
+  if (fix.etaUtc && !pos.etaUtc) pos.etaUtc = fix.etaUtc;
+  pos.lat = fix.lat; pos.lon = fix.lon;
+  if (fix.courseDeg !== null) pos.cogDeg = fix.courseDeg;
+  if (fix.speedKn !== null) pos.sogKn = fix.speedKn;
+  pos.headingDeg = fix.headingDeg;
+  pos.lastPosAt = fix.at;
+  pos.lastSource = source;
+  pos.track = appendTrack(pos.track ?? [], fix.lat, fix.lon, fix.at);
+  for (const g of groundsForPoint(fix.lat, fix.lon)) if (!pos.regionsSeen.includes(g)) pos.regionsSeen.push(g);
+  detectPortCall(pos);
+  return true;
+}
+
+/**
+ * On-demand satellite fill for ONE ship: only when the free feed is stale and
+ * there is a reason (see satellite-ais.ts for the gate). Awaited by the
+ * request route (capped there) and by the periodic sweep.
+ */
+export async function fillFromSatellite(mmsi: string, reason: LookupReason): Promise<boolean> {
+  const reg = registryByMmsi.get(mmsi);
+  if (!reg || !satelliteEnabled() || !allowlisted(mmsi, reg.name)) return false;
+  const fix = await satelliteLookup(mmsi, positions.get(mmsi)?.lastPosAt ?? null, reason);
+  // Datadocked also has terrestrial receivers we do not: a terrestrial fix from
+  // them is still AIS, so the pill says "satellite" only when it was.
+  return fix ? applyExternalFix(mmsi, fix, fix.source === "satellite" ? "satellite" : "ais") : false;
+}
+
+/**
+ * Every six hours (Mark's model, 2026-09-10): ships identified as potentially
+ * impacted by a live storm alert, and ships someone is following, get one
+ * satellite lookup each if the free feed has gone quiet — so a course change
+ * is caught and the change email can go out. Page requests are handled in
+ * routes/wms.ts (POST /wms/request). Nothing else spends. SATELLITE_SWEEP=off holds it.
+ */
+export async function satelliteSweep(): Promise<{ checked: number; filled: number }> {
+  if (!satelliteEnabled() || !sweepEnabled()) return { checked: 0, filled: 0 };
+  let checked = 0, filled = 0;
+  for (const [mmsi, pos] of positions) {
+    const reg = registryByMmsi.get(mmsi);
+    const reason: LookupReason | null = stormMmsis.has(mmsi) ? "storm" : reg?.hasWatch ? "watch" : null;
+    if (!reason) continue;
+    const ageMin = pos.lastPosAt ? (Date.now() - Date.parse(pos.lastPosAt)) / 60_000 : Infinity;
+    if (ageMin < LOOKUP_AFTER_MIN) continue;
+    checked += 1;
+    if (await fillFromSatellite(mmsi, reason)) filled += 1;
+  }
+  if (checked) logger.info({ checked, filled }, "wms: satellite sweep");
+  return { checked, filled };
 }
 
 // ── Port-call log (the ship's own itinerary pattern) ─────────────────────────
@@ -534,7 +610,9 @@ function subscribe(conn: Conn) {
 function connect(conn: Conn) {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const WebSocket = require("ws");
-  const ws = new WebSocket(AIS_URL);
+  // permessage-deflate is the ws client default; stated because aisstream
+  // rate-limits uncompressed connections from September 2026.
+  const ws = new WebSocket(AIS_URL, { perMessageDeflate: true });
   conn.ws = ws;
   let closed = false;
 
@@ -605,6 +683,8 @@ export async function startShipTracker() {
     for (const conn of conns) connect(conn);
     setInterval(() => { refreshActiveSet().catch((err) => logger.warn({ err }, "wms: set refresh failed")); }, REFRESH_SET_EVERY_MS);
     setInterval(() => { persistSnapshot().catch(() => {}); }, PERSIST_EVERY_MS);
+    setTimeout(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 5 * 60 * 1000);
+    setInterval(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 6 * 60 * 60 * 1000);
     setInterval(() => { syncDerivedSailings().catch((err) => logger.warn({ err }, "wms: sailings sync failed")); }, SAILINGS_EVERY_MS);
     setTimeout(() => { syncDerivedSailings().catch(() => {}); }, 10 * 60 * 1000);
   } catch (err) {

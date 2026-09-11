@@ -15,6 +15,14 @@
   let map = null, marker = null;
   let lastFixMarker = null, routeLayer = null, nearbyLayer = null;
   let pollTimer = null;
+  let pollEvery = 60_000;   // current poll interval
+  let selectedAt = 0;       // when the viewer picked the ship (fast polling window)
+  function pollAt(shipName, every) {
+    if (pollEvery === every && pollTimer) return;
+    clearInterval(pollTimer);
+    pollEvery = every;
+    pollTimer = setInterval(() => refresh(shipName).catch(() => {}), every);
+  }
   let lastWeatherSlug = null;
 
   const emailKey = 'wms_email';
@@ -196,7 +204,7 @@
     const pill = $('live-pill');
     pill.style.display = 'block';
     pill.classList.toggle('stale', Boolean(d.stale || d.estimate));
-    $('live-pill-text').textContent = d.estimate ? T.estimatedPill : d.stale ? T.stalePill : T.livePill;
+    $('live-pill-text').textContent = d.estimate ? T.estimatedPill : d.stale ? T.stalePill : (d.source === 'satellite' ? T.satPill : T.livePill);
     const near = $('nearby-note');
     if (near) near.textContent = T.nearby((d.nearby || []).length, d.nearbyRadiusNm || 10);
   }
@@ -251,14 +259,13 @@
       $('wx-card').style.display = 'none';
       ensureMap();
       $('updated').textContent = '';
-      // A waking ship reports within moments of the subscription update —
-      // poll faster until she does.
-      if (d.reason === 'waking') {
-        clearInterval(pollTimer);
-        pollTimer = setInterval(() => refresh(shipName).catch(() => {}), 20_000);
-      }
+      // No fix yet. The subscription and any satellite answer land within
+      // seconds of the request, so poll every 5 s for the first two minutes
+      // after selection, then every 20 s. Polling never spends a credit.
+      pollAt(shipName, Date.now() - selectedAt < 120_000 ? 5_000 : 20_000);
       return;
     }
+    pollAt(shipName, 60_000);
 
     renderInfo(d);
     ensureMap();
@@ -289,20 +296,30 @@
 
   function startTracking(shipName) {
     currentShip = shipName;
-    clearInterval(pollTimer);
+    clearInterval(pollTimer); pollTimer = null;
     refresh(shipName).catch(() => {});
-    pollTimer = setInterval(() => refresh(shipName).catch(() => {}), 60_000);
+    pollAt(shipName, 60_000);
     $('tracker').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function selectShip(shipName) {
+  async function selectShip(shipName) {
     // Wake the ship's tracking (stamps the request; retained in the scheduler).
-    // Fire-and-forget: the position poll below reports the current state.
-    fetch('/api/wms/request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ship: shipName }),
-    }).catch(() => {});
+    // AWAITED: the request is also the one moment the server may ask a satellite
+    // for a quiet ship (a second or two), so the first poll shows the answer.
+    currentShip = shipName;
+    selectedAt = Date.now();
+    $('tracker').style.display = 'block';
+    $('i-ship').textContent = shipName;
+    $('stale-banner').innerHTML = T.checking(shipName);
+    $('stale-banner').style.display = 'block';
+    try {
+      await fetch('/api/wms/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ship: shipName }),
+      });
+    } catch { /* the poll below reports whatever the tracker holds */ }
+    if (currentShip !== shipName) return; // the viewer moved on
     startTracking(shipName);
   }
 
