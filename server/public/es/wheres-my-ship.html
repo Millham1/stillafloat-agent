@@ -220,7 +220,7 @@ const T = {
   livePill: 'En vivo', stalePill: 'Última posición', arrivalDay: 'Llegada prevista',
   estimatedPill: 'Estimada', nm: 'mn',
   estimated: (ship, ago, basis) => `${ship} reportó por última vez <strong>${ago}</strong> — está entre receptores de la costa, algo que pasa a unas decenas de millas mar adentro. El marcador muestra su posición <strong>estimada</strong> (${basis}); el anillo ámbar es su última posición real. El mapa vuelve a la posición en vivo en cuanto el barco reporte de nuevo.`,
-  basis: { route: 'proyectada por su ruta al próximo puerto a su última velocidad', course: 'proyectada por su último rumbo y velocidad', arrived: 'ya debería haber llegado a su próximo puerto', hold: 'estaba detenido en su último reporte' },
+  basis: { route: 'proyectada por su ruta al próximo puerto a su última velocidad', course: 'proyectada por su último rumbo y velocidad', arrived: 'ya debería haber llegado a su próximo puerto', hold: 'estaba detenido en su último reporte', stale: 'pasó demasiado tiempo desde su último reporte para proyectar — aquí fue donde se escuchó por última vez' },
   lastFix: (ago) => `Último reporte real · ${ago}`,
   nearby: (n, r) => n ? `${n} barco${n > 1 ? 's' : ''} rastreado${n > 1 ? 's' : ''} más a menos de ${r} millas — toca uno para seguirlo` : `No hay otros barcos rastreados a menos de ${r} millas ahora mismo`,
   statusSea: 'En el mar — día de navegación', statusArriving: 'En el mar — llega hoy', statusInPort: 'En puerto',

@@ -19,7 +19,7 @@ export interface Fix {
 
 export interface Port { slug: string; name: string; lat: number; lon: number }
 
-export type EstimateBasis = "route" | "course" | "hold" | "arrived";
+export type EstimateBasis = "route" | "course" | "hold" | "arrived" | "stale";
 
 export interface Estimate {
   lat: number;
@@ -204,8 +204,13 @@ export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc:
   }
 
   if (fix.courseDeg === null) return null;
-  const h = Math.min(hours, MAX_COURSE_HOURS);
-  const p = destinationPoint(fix.lat, fix.lon, fix.courseDeg, speed * h);
+  // No destination and too long since the fix: a point eight hours down her
+  // last course is a fabrication (a 3-day-old Norwegian Getaway fix off
+  // Fort Lauderdale, 2026-09-10). Hold the last real fix and say so.
+  if (hours > MAX_COURSE_HOURS) {
+    return { lat: fix.lat, lon: fix.lon, basis: "stale", confidence: "low", hoursSinceFix };
+  }
+  const p = destinationPoint(fix.lat, fix.lon, fix.courseDeg, speed * hours);
   return { ...p, basis: "course", confidence: hours <= 2 ? "medium" : "low", hoursSinceFix };
 }
 
@@ -232,7 +237,7 @@ export interface RouteInputs {
  * a straight line across land is worse than nothing.
  */
 export function routeLine(fix: Fix, estimate: Estimate | null, departed: Port | null, dest: Port | null, inputs: RouteInputs = {}): RouteLine {
-  const here = estimate && estimate.basis !== "hold" ? { lat: estimate.lat, lon: estimate.lon } : { lat: fix.lat, lon: fix.lon };
+  const here = estimate && estimate.basis !== "hold" && estimate.basis !== "stale" ? { lat: estimate.lat, lon: estimate.lon } : { lat: fix.lat, lon: fix.lon };
   const travelled: [number, number][] = [];
   const track = (inputs.track ?? []).map(([la, lo]) => [la, lo] as [number, number]);
   if (track.length >= 2) {

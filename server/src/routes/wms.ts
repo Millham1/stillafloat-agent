@@ -141,7 +141,7 @@ router.get("/wms/position", async (req: Request, res: Response) => {
     // (lib/sea-route.ts); a great circle crosses land. No path → no line.
     const toDest = destPort ? await seaRoute({ lat: pos.lat, lon: pos.lon }, destPort) : null;
     const estimate = estimatePosition(fix, now, destPort, pos.etaUtc, toDest?.points ?? null);
-    const here = estimate && estimate.basis !== "hold" ? { lat: estimate.lat, lon: estimate.lon } : { lat: pos.lat, lon: pos.lon };
+    const here = estimate && estimate.basis !== "hold" && estimate.basis !== "stale" ? { lat: estimate.lat, lon: estimate.lon } : { lat: pos.lat, lon: pos.lon };
     const track = pos.track ?? [];
     const behind = track.length < 2 && fromPort ? await seaRoute(fromPort, { lat: pos.lat, lon: pos.lon }) : null;
     const ahead = destPort && estimate?.basis !== "arrived" ? await seaRoute(here, destPort) : null;
