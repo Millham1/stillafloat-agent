@@ -13,7 +13,7 @@
   let ships = [];
   let currentShip = null;
   let map = null, marker = null;
-  let lastFixMarker = null, routeLayer = null, nearbyLayer = null;
+  let lastFixMarker = null, routeLayer = null, nearbyLayer = null, plannedLayer = null;
   let pollTimer = null;
   let pollEvery = 60_000;   // current poll interval
   let selectedAt = 0;       // when the viewer picked the ship (fast polling window)
@@ -128,6 +128,24 @@
           <path d="M1 9 L21 9 L18 13 L4 13 Z"/><path d="M5 5 L16 5 L16 9 L5 9 Z"/><path d="M8 2 L13 2 L13 5 L8 5 Z"/></g></svg>
         <span style="color:#fff;font:700 12px/1 'Baloo 2',system-ui,sans-serif;text-shadow:0 1px 3px #000">${name}</span></div>`,
     });
+  }
+
+  // The operator's planned itinerary: a thin green line through the scheduled
+  // ports with small port dots, drawn beneath everything else, fix or no fix.
+  function drawPlanned(p) {
+    if (plannedLayer) { plannedLayer.remove(); plannedLayer = null; }
+    var note = $('planned-note');
+    if (!p || !p.segments || !p.segments.length) { if (note) note.textContent = ''; return null; }
+    plannedLayer = L.layerGroup();
+    p.segments.forEach(function (seg) { L.polyline(seg, { color: '#5dff9a', weight: 1.5, opacity: .55 }).addTo(plannedLayer); });
+    (p.ports || []).forEach(function (pt) {
+      if (pt.lat === null || pt.lon === null) return;
+      L.circleMarker([pt.lat, pt.lon], { radius: 3, color: '#5dff9a', weight: 1, fillColor: '#07183f', fillOpacity: 1 })
+        .bindTooltip(pt.name, { direction: 'top', offset: [0, -4] }).addTo(plannedLayer);
+    });
+    plannedLayer.addTo(map);
+    if (note) note.textContent = T.planned(p);
+    return L.featureGroup(plannedLayer.getLayers()).getBounds();
   }
 
   function drawRoute(route) {
@@ -259,6 +277,9 @@
       $('wx-card').style.display = 'none';
       ensureMap();
       $('updated').textContent = '';
+      // Still draw the plan: the route exists before the first fix does.
+      var pb = drawPlanned(d.planned);
+      if (pb && pb.isValid()) map.fitBounds(pb, { padding: [30, 30] });
       // No fix yet. The subscription and any satellite answer land within
       // seconds of the request, so poll every 5 s for the first two minutes
       // after selection, then every 20 s. Polling never spends a credit.
@@ -288,6 +309,7 @@
         .bindTooltip(T.lastFix(T.ago(d.lastReportedMinAgo)), { direction: 'top', offset: [0, -6] })
         .addTo(map);
     }
+    drawPlanned(d.planned);
     drawRoute(d.route);
     drawNearby(d.nearby);
     $('updated').textContent = new Date().toLocaleTimeString(LANG === 'es' ? 'es-419' : 'en-US');
