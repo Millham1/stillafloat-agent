@@ -101,23 +101,26 @@ router.post("/wms/request", async (req: Request, res: Response) => {
   const ship = String((req.body as Record<string, string>)?.ship ?? "").trim();
   if (!ship) return res.status(400).json({ ok: false, error: "ship required" });
   try {
-    const state = await requestShip(ship);
-    if (state === "unknown") return res.status(404).json({ ok: false, error: "Unknown ship" });
-    // A Where's-My-Ship request is the one on-demand trigger for a paid satellite
+    if (!inRegistry(ship)) return res.status(404).json({ ok: false, error: "Unknown ship" });
+    // A Where's-My-Ship request is the one on-demand trigger for a paid position
     // lookup (Mark's model, 2026-09-10/11: "the api data you ping at the request
     // gives lat and long"): if the free feed has nothing fresher than
     // LOOKUP_AFTER_MIN on her, ask the provider once, AWAITED (capped at 6 s) so
     // the page's first poll already shows the answer. The poll itself never spends.
-    let satellite = false;
+    // The lookup runs IN PARALLEL with the subscribe step (which can take a few
+    // seconds of its own): on 2026-09-11 Norwegian Epic's satellite fix landed a
+    // moment after the reply because the budget only started after subscribing.
     const mmsi = mmsiForShip(ship);
     const pos = mmsi ? getPosition(ship) : null;
     const staleMin = pos?.lastPosAt ? (Date.now() - Date.parse(pos.lastPosAt)) / 60000 : Infinity;
-    if (mmsi && staleMin >= LOOKUP_AFTER_MIN) {
-      satellite = await Promise.race([
-        fillFromSatellite(mmsi, "request").catch(() => false),
-        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
-      ]);
-    }
+    const lookup = mmsi && staleMin >= LOOKUP_AFTER_MIN
+      ? Promise.race([
+          fillFromSatellite(mmsi, "request").catch(() => false),
+          new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
+        ])
+      : Promise.resolve(false);
+    const [state, satellite] = await Promise.all([requestShip(ship), lookup]);
+    if (state === "unknown") return res.status(404).json({ ok: false, error: "Unknown ship" });
     return res.json({ ok: true, state, satellite }); // live | waking; satellite = a newer fix was just applied
   } catch (err) {
     logger.error({ err }, "wms: request failed");
