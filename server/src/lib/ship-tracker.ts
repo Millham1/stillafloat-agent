@@ -30,11 +30,12 @@
 // Env: AISSTREAM_API_KEYS (comma-separated) or AISSTREAM_API_KEY. Without a
 // key the tracker no-ops and the WMS page reports tracking offline.
 
-import { getSupabase, readJson, writeJson } from "./persistence";
+import { getSupabase, readJson, writeJson, PATHS } from "./persistence";
 import { appendTrack, type TrackPoint } from "./dead-reckoning";
 import { selectActiveSet, AISSTREAM_MMSIS_PER_SUBSCRIPTION } from "./active-set";
 import { satelliteLookup, satelliteEnabled, allowlisted, sweepEnabled, LOOKUP_AFTER_MIN, type LookupReason, type SatelliteFix } from "./satellite-ais";
-import { shipfinderLookup, shipfinderEnabled } from "./shipfinder-ais";
+import { shipfinderLookup, shipfinderEnabled, shipfinderNearby, shipfinderSearch, shipfinderTrack, verifyRegistryEntry, type RegistryVerdict } from "./shipfinder-ais";
+import { portCallsFromTrack, mergePortCalls } from "./port-calls-from-track";
 import { logger } from "./logger";
 import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
@@ -57,6 +58,7 @@ export interface RegistryShip {
   mmsi: string;
   name: string;
   cruiseLine: string;
+  imo: string | null;
   seedActive: boolean;
   hasWatch: boolean;
   lastRequestedAt: string | null;
@@ -242,7 +244,7 @@ async function loadRegistry(): Promise<void> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("ships")
-    .select("name, cruise_line, mmsi, seed_active, last_requested_at")
+    .select("name, cruise_line, mmsi, imo, seed_active, last_requested_at")
     .eq("active", true)
     .not("mmsi", "is", null);
   if (error) throw new Error(`loadRegistry: ${error.message}`);
@@ -256,11 +258,12 @@ async function loadRegistry(): Promise<void> {
   const watched = new Set(((watches ?? []) as { ship_name: string }[]).map((w) => w.ship_name.toLowerCase()));
 
   registryByMmsi = new Map(
-    ((data ?? []) as { name: string; cruise_line: string; mmsi: string; seed_active: boolean | null; last_requested_at: string | null }[])
+    ((data ?? []) as { name: string; cruise_line: string; mmsi: string; imo: string | number | null; seed_active: boolean | null; last_requested_at: string | null }[])
       .map((r) => [String(r.mmsi), {
         mmsi: String(r.mmsi),
         name: r.name,
         cruiseLine: r.cruise_line,
+        imo: r.imo ? String(r.imo) : null,
         seedActive: Boolean(r.seed_active),
         hasWatch: watched.has(r.name.toLowerCase()),
         lastRequestedAt: r.last_requested_at,
@@ -432,11 +435,127 @@ export async function fillFromSatellite(mmsi: string, reason: LookupReason): Pro
     // A provider's terrestrial fix is still AIS, so the pill says "satellite"
     // only when a satellite heard her.
     const applied = applyExternalFix(mmsi, fix, fix.source === "satellite" ? "satellite" : "ais");
+    if (provider === "shipfinder") {
+      // Two free follow-ups (unmetered / once per ship): everyone sharing her
+      // pier, and the last day of her own track on the first request.
+      await refreshClusterFrom(mmsi).catch((err) => logger.warn({ err, mmsi }, "wms: cluster refresh failed"));
+      await seedTrackFromHistory(mmsi).catch((err) => logger.warn({ err, mmsi }, "wms: history seed failed"));
+    }
     // Whether or not it was newer than ours, the provider answered: paying a
     // second provider for the same moment would buy the same answer.
     return applied;
   }
   return false;
+}
+
+/**
+ * FREE cluster refresh (ShipFinder Vessels Nearby is unmetered): after a paid
+ * lookup on one ship, every registry ship within 10 nm of her gets the same
+ * quality of fix at no cost. Cruise ships bunch at piers and anchorages, so one
+ * paid call at Miami refreshed four ships on 2026-09-11.
+ */
+export async function refreshClusterFrom(mmsi: string): Promise<{ vessels: number; updated: string[] }> {
+  const list = await shipfinderNearby(mmsi);
+  const updated: string[] = [];
+  for (const v of list) {
+    if (v.mmsi === mmsi || !registryByMmsi.has(v.mmsi)) continue;
+    if (applyExternalFix(v.mmsi, v.fix, v.fix.source === "satellite" ? "satellite" : "ais")) updated.push(registryByMmsi.get(v.mmsi)!.name);
+  }
+  if (list.length) logger.info({ mmsi, vessels: list.length, updated }, "wms: cluster refresh");
+  return { vessels: list.length, updated };
+}
+
+const HISTORY_SEED_MIN_TRACK = 10;   // a ship with fewer real points than this gets her last day from the provider
+const HISTORY_SEED_HOURS = 24;
+
+/**
+ * First-request seed (metered, once per ship): the provider's last 24 h of
+ * track becomes the line behind her, and the port calls read off it become her
+ * recent itinerary, so the card is complete on the first look.
+ */
+export async function seedTrackFromHistory(mmsi: string): Promise<boolean> {
+  const pos = positions.get(mmsi);
+  if (!pos || (pos.track?.length ?? 0) >= HISTORY_SEED_MIN_TRACK) return false;
+  const samples = await shipfinderTrack(mmsi, HISTORY_SEED_HOURS);
+  if (!samples || samples.length < 2) return false;
+  let track: TrackPoint[] = [];
+  for (const s of samples) track = appendTrack(track, s.lat, s.lon, s.at);
+  // Keep any real points we already had that are newer than the history.
+  const lastHistory = Date.parse(samples[samples.length - 1]!.at);
+  for (const p of pos.track ?? []) if (Date.parse(p[2]) > lastHistory) track = appendTrack(track, p[0], p[1], p[2]);
+  pos.track = track;
+  const derived = portCallsFromTrack(samples);
+  pos.portCalls = mergePortCalls(pos.portCalls ?? [], derived, PORT_CALL_LOG_MAX);
+  const lastCall = derived[derived.length - 1];
+  if (lastCall && lastCall.departedAt && !pos.lastPortDepartedAt) {
+    const port = portBySlug(lastCall.slug);
+    pos.lastPortSlug = lastCall.slug;
+    pos.lastPortDepartedAt = lastCall.departedAt;
+    if (port?.type === "embarkation" && !pos.currentDepartPort) { pos.currentDepartPort = port.slug; pos.currentSailingStart = lastCall.departedAt.slice(0, 10); }
+  }
+  logger.info({ mmsi, ship: pos.name, points: track.length, portCalls: derived.map((c) => c.slug) }, "wms: track seeded from history");
+  return true;
+}
+
+/**
+ * Nightly registry verification (ShipFinder Vessel Search, unmetered): does each
+ * MMSI still answer to our ship's name? Reflagged ships change MMSI and a stale
+ * one tracks the wrong hull. Safe corrections (tied by IMO, or our MMSI unknown
+ * and exactly one hull of our name) are applied; the rest are flagged
+ * mmsi_suspect with the reported name for a human. Report in platform_state.
+ */
+export async function verifyRegistry(opts: { delayMs?: number; apply?: boolean } = {}): Promise<{ checked: number; ok: number; suspects: number; corrected: number; unknown: number }> {
+  const delayMs = opts.delayMs ?? 150;
+  const apply = opts.apply ?? true;
+  const supabase = getSupabase();
+  const report: Array<{ name: string; mmsi: string } & RegistryVerdict & { applied: boolean }> = [];
+  const counts = { checked: 0, ok: 0, suspects: 0, corrected: 0, unknown: 0 };
+  for (const ship of [...registryByMmsi.values()]) {
+    const byMmsi = await shipfinderSearch(ship.mmsi, 3);
+    let verdict = verifyRegistryEntry({ name: ship.name, mmsi: ship.mmsi, imo: ship.imo }, byMmsi, []);
+    if (verdict.status !== "ok") {
+      const byName = await shipfinderSearch(ship.name, 5);
+      verdict = verifyRegistryEntry({ name: ship.name, mmsi: ship.mmsi, imo: ship.imo }, byMmsi, byName);
+    }
+    counts.checked += 1;
+    let applied = false;
+    try {
+      if (verdict.status === "ok") {
+        counts.ok += 1;
+        if (apply && verdict.proposedImo) await (supabase.from("ships") as ReturnType<typeof supabase.from>).update({ imo: verdict.proposedImo }).eq("mmsi", ship.mmsi);
+      } else if (verdict.status === "corrected" && verdict.proposedMmsi) {
+        counts.corrected += 1;
+        if (apply) {
+          const patch: Record<string, unknown> = { mmsi: verdict.proposedMmsi, mmsi_suspect: false, reported_name: verdict.reportedName };
+          if (verdict.proposedImo) patch["imo"] = verdict.proposedImo;
+          await (supabase.from("ships") as ReturnType<typeof supabase.from>).update(patch).eq("mmsi", ship.mmsi);
+          applied = true;
+        }
+      } else if (verdict.status === "suspect") {
+        counts.suspects += 1;
+        if (apply) await (supabase.from("ships") as ReturnType<typeof supabase.from>).update({ mmsi_suspect: true, reported_name: verdict.reportedName }).eq("mmsi", ship.mmsi);
+      } else {
+        counts.unknown += 1;
+      }
+    } catch (err) {
+      logger.warn({ err, ship: ship.name }, "wms: registry verification write failed");
+    }
+    if (verdict.status !== "ok") report.push({ name: ship.name, mmsi: ship.mmsi, ...verdict, applied });
+    if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+  }
+  try { await writeJson(PATHS.registryVerification, { ranAt: new Date().toISOString(), ...counts, findings: report }); }
+  catch (err) { logger.warn({ err }, "wms: registry verification report persist failed"); }
+  logger.info(counts, "wms: registry verification");
+  if (counts.corrected && apply) await refreshActiveSet().catch(() => {});
+  return counts;
+}
+
+function registryCheckEnabled(): boolean {
+  return shipfinderEnabled() && process.env["SHIPFINDER_REGISTRY_CHECK"] !== "off";
+}
+function registryCheckDelayMs(): number {
+  const n = Number(process.env["SHIPFINDER_REGISTRY_CHECK_DELAY_MIN"]);
+  return (Number.isFinite(n) && n >= 0 ? n : 15) * 60 * 1000;
 }
 
 /**
@@ -710,6 +829,10 @@ export async function startShipTracker() {
     setInterval(() => { persistSnapshot().catch(() => {}); }, PERSIST_EVERY_MS);
     setTimeout(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 5 * 60 * 1000);
     setInterval(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 6 * 60 * 60 * 1000);
+    if (registryCheckEnabled()) {
+      setTimeout(() => { verifyRegistry().catch((err) => logger.warn({ err }, "wms: registry verification failed")); }, registryCheckDelayMs());
+      setInterval(() => { verifyRegistry().catch((err) => logger.warn({ err }, "wms: registry verification failed")); }, 24 * 60 * 60 * 1000);
+    }
     setInterval(() => { syncDerivedSailings().catch((err) => logger.warn({ err }, "wms: sailings sync failed")); }, SAILINGS_EVERY_MS);
     setTimeout(() => { syncDerivedSailings().catch(() => {}); }, 10 * 60 * 1000);
   } catch (err) {

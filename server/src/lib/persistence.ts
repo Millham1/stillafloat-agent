@@ -59,6 +59,8 @@ export const PATHS = {
   satelliteLedger: "satellite-ais-ledger",
   // ShipFinder call ledger (same shape) — lib/shipfinder-ais.ts
   shipfinderLedger: "shipfinder-ledger",
+  // Nightly registry verification report (ShipFinder Vessel Search) — ship-tracker.ts verifyRegistry
+  registryVerification: "registry-verification",
   // Evergreen "Cruising Guides" — curated long-form advisory articles (Track A/B).
   // Prerendered to static /guides/<slug>.html pages, EN + ES.
   guides: "guides",
