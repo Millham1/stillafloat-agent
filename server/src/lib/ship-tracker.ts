@@ -32,10 +32,12 @@
 
 import { getSupabase, readJson, writeJson, PATHS } from "./persistence";
 import { appendTrack, type TrackPoint } from "./dead-reckoning";
-import { selectActiveSet, AISSTREAM_MMSIS_PER_SUBSCRIPTION } from "./active-set";
+import { selectActiveSet, trackingRank, AISSTREAM_MMSIS_PER_SUBSCRIPTION } from "./active-set";
 import { satelliteLookup, satelliteEnabled, allowlisted, sweepEnabled, LOOKUP_AFTER_MIN, type LookupReason, type SatelliteFix } from "./satellite-ais";
 import { shipfinderLookup, shipfinderEnabled, shipfinderNearby, shipfinderSearch, shipfinderTrack, verifyRegistryEntry, isThrottle, type RegistryVerdict } from "./shipfinder-ais";
 import { portCallsFromTrack, mergePortCalls } from "./port-calls-from-track";
+import { refreshPlannedSailings, type RefreshShip } from "./planned-sailings-refresh";
+import { cruiseApiEnabled } from "./cruise-api";
 import { logger } from "./logger";
 import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
@@ -575,6 +577,18 @@ export async function verifyRegistry(opts: { delayMs?: number; apply?: boolean; 
   return counts;
 }
 
+/** Registry ships in the tracker's priority order for the Cruise API refresh. */
+export function refreshShipList(): RefreshShip[] {
+  return [...registryByMmsi.values()].map((s) => ({ name: s.name, mmsi: s.mmsi, cruiseLine: s.cruiseLine, priority: trackingRank(s, stormMmsis) }));
+}
+function plannedRefreshEnabled(): boolean {
+  return cruiseApiEnabled() && process.env["CRUISE_API_REFRESH"] !== "off";
+}
+function plannedRefreshDelayMs(): number {
+  const n = Number(process.env["CRUISE_API_REFRESH_DELAY_MIN"]);
+  return (Number.isFinite(n) && n >= 0 ? n : 20) * 60 * 1000;
+}
+
 function registryCheckEnabled(): boolean {
   return shipfinderEnabled() && process.env["SHIPFINDER_REGISTRY_CHECK"] !== "off";
 }
@@ -854,6 +868,11 @@ export async function startShipTracker() {
     setInterval(() => { persistSnapshot().catch(() => {}); }, PERSIST_EVERY_MS);
     setTimeout(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 5 * 60 * 1000);
     setInterval(() => { satelliteSweep().catch((err) => logger.warn({ err }, "wms: satellite sweep failed")); }, 6 * 60 * 60 * 1000);
+    if (plannedRefreshEnabled()) {
+      const run = () => refreshPlannedSailings(refreshShipList()).catch((err) => logger.warn({ err }, "wms: planned refresh failed"));
+      setTimeout(run, plannedRefreshDelayMs());
+      setInterval(run, 7 * 24 * 60 * 60 * 1000);
+    }
     if (registryCheckEnabled()) {
       setTimeout(() => { verifyRegistry().catch((err) => logger.warn({ err }, "wms: registry verification failed")); }, registryCheckDelayMs());
       setInterval(() => { verifyRegistry().catch((err) => logger.warn({ err }, "wms: registry verification failed")); }, 24 * 60 * 60 * 1000);

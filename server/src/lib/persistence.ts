@@ -61,6 +61,10 @@ export const PATHS = {
   shipfinderLedger: "shipfinder-ledger",
   // Nightly registry verification report (ShipFinder Vessel Search) — ship-tracker.ts verifyRegistry
   registryVerification: "registry-verification",
+  // RapidAPI Cruise API: monthly call ledger, cached ship codes, refresh cursor — lib/cruise-api.ts, planned-sailings-refresh.ts
+  cruiseApiLedger: "cruise-api-ledger",
+  cruiseApiShips: "cruise-api-ships",
+  plannedRefresh: "planned-sailings-refresh",
   // Evergreen "Cruising Guides" — curated long-form advisory articles (Track A/B).
   // Prerendered to static /guides/<slug>.html pages, EN + ES.
   guides: "guides",

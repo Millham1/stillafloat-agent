@@ -79,7 +79,7 @@ async function main() {
     const [from, to] = key.split(">");
     const r = await seaRoute(a, b).catch(() => null);
     if (!r || !r.points || r.points.length < 2) { failed += 1; continue; }
-    batch.push({ from_slug: from, to_slug: to, points: r.points, nm: Math.round(r.nm * 10) / 10, source: "searoute-js", computed_at: new Date().toISOString() });
+    batch.push({ from_slug: from, to_slug: to, points: r.points, nm: Math.round((r.lengthNm ?? 0) * 10) / 10, source: "searoute-js", computed_at: new Date().toISOString() });
     done += 1;
     if (batch.length >= 100) { await flush(); process.stdout.write(`routes ${done} computed, ${failed} no path, ${skipped} existing\r`); }
   }
