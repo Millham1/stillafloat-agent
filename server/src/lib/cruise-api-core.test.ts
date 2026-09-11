@@ -1,7 +1,7 @@
 // cruise-api-core.test.ts — a live Cruise API search record becomes a dated, routable sailing.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseCruiseApiItems, cruiseApiRef, resolveCruiseApiPort } from "./cruise-api-core";
+import { parseCruiseApiItems, cruiseApiRef, resolveCruiseApiPort, shipNameKeys } from "./cruise-api-core";
 
 // Verbatim item from POST /cruises/search on 2026-09-11 (Royal Caribbean, basic tier)
 const ITEM = { cruiseId: "CSVGKztXc2YWYVVRREhEckhIcnJ1aXNlQVBJU2VjcmUA", cruiseLineCode: "RC", cruiseName: "Bahamas Getaway Cruise", cruiseType: "OCEAN", departureDate: "2026-09-11", duration: 3, itineraryDestinations: ["BH", "SE", "US"], itineraryPorts: ["USFLL", "BSNAS", "BSFPO", "USFLL"], itineraryUrl: "https://royalcaribbean.com/booking/landing?groupId=JW03FLL-2551937889", numberOfGuests: 2, roomTypeCategoryCode: "B", shipCode: "JW", soldOut: true,
@@ -31,5 +31,15 @@ describe("parseCruiseApiItems", () => {
   it("an item without a date or ship is skipped, and a ref needs both", () => {
     assert.equal(cruiseApiRef({ shipCode: "JW" }), null);
     assert.deepEqual(parseCruiseApiItems([{ departureDate: "2026-01-01" }]), []);
+  });
+});
+
+describe("shipNameKeys", () => {
+  it("indexes the API's line-prefixed names under the registry's spelling too", () => {
+    assert.deepEqual(shipNameKeys("Cunard Queen Mary 2"), ["cunard queen mary 2", "queen mary 2"]);
+    assert.deepEqual(shipNameKeys("Virgin Scarlet Lady"), ["virgin scarlet lady", "scarlet lady"]);
+    assert.deepEqual(shipNameKeys("Carnival Mardi Gras"), ["carnival mardi gras", "mardi gras"]);
+    assert.deepEqual(shipNameKeys("Carnival Celebration"), ["carnival celebration", "celebration"]);
+    assert.deepEqual(shipNameKeys("Adventure of the Seas"), ["adventure of the seas"]);
   });
 });

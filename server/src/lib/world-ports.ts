@@ -190,6 +190,9 @@ export const WORLD_PORTS: WorldPort[] = [
   { slug: "wp-virgin-gorda", name: "Virgin Gorda, BVI", lat: 18.4500, lon: -64.4300 },
   { slug: "wp-la-palma", name: "Santa Cruz de La Palma, Canary Islands", lat: 28.6800, lon: -17.7700, aliases: ["la palma"] },
   { slug: "wp-st-george-bermuda", name: "St. George's, Bermuda", lat: 32.3800, lon: -64.6800 },
+  { slug: "wp-la-paz", name: "La Paz (Pichilingue), Mexico", lat: 24.2700, lon: -110.3200, aliases: ["la paz", "pichilingue"] },
+  { slug: "wp-loreto", name: "Loreto, Mexico", lat: 26.0100, lon: -111.3400 },
+  { slug: "wp-topolobampo", name: "Topolobampo, Mexico", lat: 25.6000, lon: -109.0500 },
 ];
 
 /** Three-letter port codes as the Widgety sailing refs use them (MSC…SOUSOU, NCL…-IST-BCN). */
