@@ -258,7 +258,7 @@ const GAZETTEER_ALIASES: Record<string, string> = {
   "hoonah": "wp-icy-strait", "icy strait point": "wp-icy-strait",
   // NCL headlines name the attraction, not the pier
   "florence": "livorno", "florence/pisa": "livorno", "florence (livorno)": "livorno", "pisa": "livorno",
-  "rome": "rome-civitavecchia", "paris": "wp-le-havre", "london": "southampton", "berlin": "wp-warnemunde", "st petersburg": "wp-tallinn",
+  "paris": "wp-le-havre", "london": "southampton", "berlin": "wp-warnemunde", "st petersburg": "wp-tallinn",
   "provence": "marseille", "provence (marseille)": "marseille", "tuscany": "livorno", "amalfi coast": "salerno", "amalfi": "salerno",
   "ephesus": "wp-kusadasi", "olympia": "wp-katakolon", "sicily": "wp-messina",
 };
