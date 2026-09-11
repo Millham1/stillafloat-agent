@@ -1,7 +1,7 @@
 // cruise-api.ts — RapidAPI "Cruise API" calls with a monthly ledger. See cruise-api-core.ts.
 import { PATHS, readJson, writeJson } from "./persistence";
 import { logger } from "./logger";
-import { CRUISE_API_DEFAULT_HOST, parseCruiseApiItems, type CruiseApiItem } from "./cruise-api-core";
+import { CRUISE_API_DEFAULT_HOST, parseCruiseApiItems, shipNameKeys, type CruiseApiItem } from "./cruise-api-core";
 import type { PlannedSailing } from "./planned-sailings";
 export * from "./cruise-api-core";
 
@@ -97,6 +97,10 @@ export async function shipCodes(fetchImpl: typeof fetch = fetch, now = new Date(
       await saveLedger();
     }
   }
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  return new Map(ships.map((s) => [norm(s.fullName), { code: s.code, line: s.cruiseLineCode }]));
+  // Exact names first, then the line-prefix-stripped spellings, so "Carnival
+  // Celebration" never loses to a stripped "Celebration" from another line.
+  const map = new Map<string, { code: string; line: string }>();
+  for (const s of ships) map.set(shipNameKeys(s.fullName)[0]!, { code: s.code, line: s.cruiseLineCode });
+  for (const s of ships) for (const k of shipNameKeys(s.fullName).slice(1)) if (!map.has(k)) map.set(k, { code: s.code, line: s.cruiseLineCode });
+  return map;
 }

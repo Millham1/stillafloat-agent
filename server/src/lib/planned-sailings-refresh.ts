@@ -75,6 +75,10 @@ export async function refreshPlannedSailings(ships: RefreshShip[], opts: { budge
   const now = opts.now ?? new Date();
   const budget = opts.budget ?? weeklySearchBudget();
   const horizon = opts.horizonDays ?? 120;
+  // Reach back so the sailing already under way is in the window: a 14-night
+  // cruise that left 10 days ago is still "current" (Adventure of the Seas on
+  // 2026-09-11 had no plan because her sailing left the day before).
+  const LOOKBACK_DAYS = 15;
   const state: State = { ranAt: now.toISOString(), nextIndex: 0, searched: 0, sailings: 0, legs: 0, skipped: [] };
   if (!cruiseApiEnabled() || budget <= 0 || !ships.length) return state;
   const codes = await shipCodes();
@@ -91,7 +95,7 @@ export async function refreshPlannedSailings(ships: RefreshShip[], opts: { budge
     const sc = codes.get(norm(ship.name))!;
     const res = await searchCruises({
       cruiseLineCodes: [sc.line], shipCodes: [sc.code], roomTypeCategoryCodes: ["I"],
-      earliestStartDate: addDays(now, 0), latestStartDate: addDays(now, horizon), pageSize: 10,
+      earliestStartDate: addDays(now, -LOOKBACK_DAYS), latestStartDate: addDays(now, horizon), pageSize: 10,
     });
     idx = (idx + 1) % eligible.length;
     if (res === null) break;                      // cap or error: stop, resume here next time

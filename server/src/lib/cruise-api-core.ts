@@ -80,3 +80,15 @@ export function parseCruiseApiItems(items: readonly CruiseApiItem[], source = "r
   }
   return [...out.values()];
 }
+
+/**
+ * Keys under which a ship name should be findable. The API prefixes some names
+ * with the line ("Cunard Queen Mary 2", "Virgin Scarlet Lady", "Carnival Mardi
+ * Gras") where the registry does not, so index both spellings.
+ */
+export function shipNameKeys(fullName: string): string[] {
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const n = norm(fullName);
+  const stripped = n.replace(/^(cunard|virgin|carnival|disney|celebrity|norwegian|msc|princess|costa|holland america|royal caribbean) /, "");
+  return stripped && stripped !== n ? [n, stripped] : [n];
+}
