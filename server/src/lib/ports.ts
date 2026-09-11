@@ -81,6 +81,11 @@ export const CRUISE_LOCATIONS: CruiseLocation[] = [
   { slug:"st-kitts",         name:"St. Kitts",                    type:"destination", lat:17.3578,  lon:-62.7830  },
   { slug:"st-lucia",         name:"St. Lucia",                    type:"destination", lat:13.9094,  lon:-60.9789  },
   { slug:"tortola",          name:"Tortola, BVI",                 type:"destination", lat:18.4315,  lon:-64.6235  },
+  { slug:"freeport-bahamas",   name:"Freeport, Grand Bahama",       type:"destination", lat:26.5170,  lon:-78.7780  },
+  { slug:"castaway-cay",       name:"Castaway Cay, Bahamas",        type:"destination", lat:26.0850,  lon:-77.5380  },
+  { slug:"ocean-cay",          name:"Ocean Cay MSC Marine Reserve, Bahamas", type:"destination", lat:25.4100, lon:-79.2100 },
+  { slug:"progreso",           name:"Progreso (Yucatan), Mexico",   type:"destination", lat:21.3395,  lon:-89.6660  },
+  { slug:"bonaire",            name:"Bonaire (Kralendijk)",         type:"destination", lat:12.1490,  lon:-68.2775  },
   // ── ALASKA ───────────────────────────────────────────────────
   { slug:"juneau",           name:"Juneau, Alaska",               type:"destination", lat:58.3019,  lon:-134.4197 },
   { slug:"ketchikan",        name:"Ketchikan, Alaska",            type:"destination", lat:55.3422,  lon:-131.6461 },
@@ -90,6 +95,11 @@ export const CRUISE_LOCATIONS: CruiseLocation[] = [
   { slug:"mykonos",          name:"Mykonos, Greece",              type:"destination", lat:37.4467,  lon:25.3289   },
   { slug:"naples",           name:"Naples, Italy",                type:"destination", lat:40.8518,  lon:14.2681   },
   { slug:"santorini",        name:"Santorini, Greece",            type:"destination", lat:36.3932,  lon:25.4615   },
+  { slug:"livorno",            name:"Livorno (Florence/Pisa), Italy", type:"destination", lat:43.5545, lon:10.3010  },
+  { slug:"marseille",          name:"Marseille, France",            type:"destination", lat:43.3410,  lon:5.3350    },
+  { slug:"messina",            name:"Messina (Sicily), Italy",      type:"destination", lat:38.1920,  lon:15.5580   },
+  { slug:"salerno",            name:"Salerno (Amalfi Coast), Italy", type:"destination", lat:40.6780, lon:14.7550   },
+  { slug:"la-spezia",          name:"La Spezia (Cinque Terre), Italy", type:"destination", lat:44.1035, lon:9.8290  },
   // ── MEXICAN RIVIERA / PACIFIC NORTHWEST (WMS destinations) ───
   { slug:"ensenada",         name:"Ensenada, Mexico",             type:"destination", lat:31.8667,  lon:-116.6167 },
   { slug:"victoria-bc",      name:"Victoria, BC, Canada",         type:"destination", lat:48.4284,  lon:-123.3656 },
@@ -99,6 +109,11 @@ export const CRUISE_LOCATIONS: CruiseLocation[] = [
   { slug:"bora-bora",        name:"Bora Bora, French Polynesia",  type:"destination", lat:-16.5004, lon:-151.7415 },
   { slug:"phuket",           name:"Phuket, Thailand",             type:"destination", lat:7.8804,   lon:98.3923   },
   { slug:"reykjavik",        name:"Reykjavik, Iceland",           type:"destination", lat:64.1466,  lon:-21.9426  },
+  { slug:"bergen",             name:"Bergen, Norway",               type:"destination", lat:60.3975,  lon:5.3140    },
+  { slug:"halifax",            name:"Halifax, Nova Scotia",         type:"destination", lat:44.6390,  lon:-63.5640  },
+  { slug:"sydney-ns",          name:"Sydney, Nova Scotia",          type:"destination", lat:46.1385,  lon:-60.1975  },
+  { slug:"saint-john-nb",      name:"Saint John, New Brunswick",    type:"destination", lat:45.2705,  lon:-66.0640  },
+  { slug:"newport-ri",         name:"Newport, Rhode Island",        type:"destination", lat:41.4890,  lon:-71.3190  },
 ];
 
 const BY_SLUG = new Map(CRUISE_LOCATIONS.map((l) => [l.slug, l]));
@@ -144,6 +159,12 @@ const DEST_ALIASES: Record<string, string> = {
   "JUNEAU": "juneau", "KETCHIKAN": "ketchikan", "SKAGWAY": "skagway",
   "VANCOUVER": "vancouver", "VICTORIA": "victoria-bc", "SITKA": "sitka",
   "ENSENADA": "ensenada", "LONG BEACH": "los-angeles",
+  // Three-letter crew shorthand seen in the live feed (2026-09-10): NCL types
+  // "GSC" for Great Stirrup Cay, Royal "CZM MX" for Cozumel.
+  "GSC": "great-stirrup", "CZM": "cozumel",
+  "KRALENDIJK": "bonaire", "BONAIRE": "bonaire", "PROGRESO": "progreso",
+  "FREEPORT": "freeport-bahamas", "CASTAWAY": "castaway-cay", "OCEAN CAY": "ocean-cay",
+  "HALIFAX": "halifax", "LIVORNO": "livorno", "MARSEILLE": "marseille",
 };
 
 // UN/LOCODE forms crews commonly type into the AIS destination field
@@ -166,7 +187,19 @@ const DEST_LOCODES: Record<string, string> = {
   BBBGI: "barbados", LCCAS: "st-lucia", KNBAS: "st-kitts",
   AGSJO: "antigua", DOPOP: "amber-cove", TCGDT: "grand-turk",
   HNRTB: "roatan", BZBZE: "belize-city", COCTG: "cartagena",
-  CWWIL: "curacao",
+  CWWIL: "curacao", CWCUR: "curacao", VISTT: "st-thomas", BMKWF: "bermuda",
+  // Bahamas private islands as crews type them: COC/CCC CocoCay, PCY/PRI Princess
+  // Cays, GOC Castaway Cay (Gorda Cay), OCE Ocean Cay, GBI Freeport (Grand Bahama
+  // Island; "US GBI" is a common mis-typed prefix). Seen live 2026-09-10.
+  BSCOC: "cococay", BSCCC: "cococay", BSPCY: "princess-cays", BSPRI: "princess-cays",
+  BSGOC: "castaway-cay", BSOCE: "ocean-cay", BSFPO: "freeport-bahamas",
+  BSGBI: "freeport-bahamas", USGBI: "freeport-bahamas", BQKRA: "bonaire",
+  MXPGO: "progreso", HNRTM: "roatan",
+  // Canada / New England
+  CAHAL: "halifax", CASYD: "sydney-ns", CASJB: "saint-john-nb", USNPT: "newport-ri",
+  // Mediterranean / Northern Europe / Australia (registry ships sail there too)
+  ITLIV: "livorno", FRMRS: "marseille", ITCVV: "rome-civitavecchia", ITSAL: "salerno",
+  ITMSN: "messina", ITSPE: "la-spezia", NOBGO: "bergen", ESBCN: "barcelona", AUSYD: "sydney",
 };
 
 function normalizeDest(text: string): string {
