@@ -230,7 +230,7 @@ const T = {
   livePill: 'Live', stalePill: 'Last known', arrivalDay: 'Expected arrival',
   estimatedPill: 'Estimated', nm: 'nm',
   estimated: (ship, ago, basis) => `${ship} last reported <strong>${ago}</strong> — she's between shore receivers, which happens a few dozen miles off the coast. The marker shows her <strong>estimated</strong> position (${basis}); the small amber ring is her last real fix. The map snaps back to the live position the moment she reports again.`,
-  basis: { route: 'projected along her route to the next port at her last speed', course: 'projected along her last course and speed', arrived: 'she should have reached her next port by now', hold: 'she was stopped at her last report' },
+  basis: { route: 'projected along her route to the next port at her last speed', course: 'projected along her last course and speed', arrived: 'she should have reached her next port by now', hold: 'she was stopped at her last report', stale: 'too long since her last report to project — this is where she was last heard' },
   lastFix: (ago) => `Last real report · ${ago}`,
   nearby: (n, r) => n ? `${n} other tracked ship${n > 1 ? 's' : ''} within ${r} miles — click one to follow it` : `No other tracked ships within ${r} miles right now`,
   statusSea: 'At sea — sea day', statusArriving: 'At sea — arriving today', statusInPort: 'In port',

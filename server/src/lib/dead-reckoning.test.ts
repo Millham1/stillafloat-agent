@@ -63,13 +63,14 @@ describe("estimatePosition", () => {
     assert.equal(e.basis, "hold");
     assert.deepEqual([e.lat, e.lon], [MIAMI.lat, MIAMI.lon]);
   });
-  it("without a destination she is dead-reckoned along her course, capped at MAX_COURSE_HOURS", () => {
+  it("without a destination she is dead-reckoned along her course for at most MAX_COURSE_HOURS, then held at the fix as stale", () => {
     const e2 = estimatePosition(underway, at(2), null, null)!;
     assert.equal(e2.basis, "course");
     assert.ok(Math.abs(distanceNm(MIAMI.lat, MIAMI.lon, e2.lat, e2.lon) - 32) < 0.5);
     const e30 = estimatePosition(underway, at(30), null, null)!;
+    assert.equal(e30.basis, "stale");
     assert.equal(e30.confidence, "low");
-    assert.ok(Math.abs(distanceNm(MIAMI.lat, MIAMI.lon, e30.lat, e30.lon) - 16 * MAX_COURSE_HOURS) < 0.5, "holds after the cap");
+    assert.deepEqual([e30.lat, e30.lon], [MIAMI.lat, MIAMI.lon], "a three-day-old fix is shown where it was, not 130 nm down a guessed course");
   });
   it("no destination and no course = no estimate at all", () => {
     assert.equal(estimatePosition({ ...underway, courseDeg: null }, at(2), null, null), null);
