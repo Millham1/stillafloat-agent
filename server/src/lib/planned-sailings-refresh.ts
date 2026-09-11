@@ -7,7 +7,7 @@
 // CRUISE_API_WEEKLY_SEARCHES bounds the spend (Basic plan: 50 a month).
 import { getSupabase, readJson, writeJson, PATHS } from "./persistence";
 import { logger } from "./logger";
-import { searchCruises, shipCodes, cruiseApiEnabled } from "./cruise-api";
+import { searchCruises, shipCodes, cruiseApiEnabled, shipNameKeys } from "./cruise-api";
 import { seaRoute } from "./sea-route";
 import { resetPlannedRouteCaches } from "./planned-route-service";
 import type { PlannedSailing } from "./planned-sailings";
@@ -26,7 +26,9 @@ async function upsertSailings(rows: PlannedSailing[], byName: Map<string, Refres
   if (!rows.length) return 0;
   const supabase = getSupabase();
   const payload = rows.map((s) => {
-    const reg = byName.get(norm(s.shipName)) ?? null;
+    // The API may spell a ship with the line in front ("Virgin Brilliant Lady");
+    // store it under the registry's name so the tracker finds her plan.
+    const reg = shipNameKeys(s.shipName).map((k) => byName.get(k)).find(Boolean) ?? null;
     return {
       source: s.source, ref: s.ref, ship_name: reg?.name ?? s.shipName, mmsi: reg?.mmsi ?? null, operator: s.operator,
       start_date: s.startDate, end_date: s.endDate, from_code: s.fromCode, to_code: s.toCode,
