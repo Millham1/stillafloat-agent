@@ -49,6 +49,8 @@ export const UNDERWAY_KN = 2;
 export const NEARBY_RADIUS_NM = 10;
 /** A declared ETA older than this is a previous leg's — the destination is stale. */
 export const STALE_DESTINATION_H = 48;
+/** A fix older than this is history, not a position: hold it, draw nothing ahead. */
+export const STALE_FIX_H = 48;
 export const NEARBY_MAX_AGE_MIN = 60;
 
 const R_NM = 3440.065; // earth radius in nautical miles
@@ -157,8 +159,11 @@ export const PATH_TRUST_OVER_GC = 1.25;
  *  - destination known → slide her along the great circle to it at her last
  *    speed, and park her at the port once she should have arrived (or her
  *    declared ETA is past);
- *  - no destination → dead-reckon along the last course, at most
- *    MAX_COURSE_HOURS, then hold. Beyond that a guess is a fabrication.
+ *  - no destination (or one whose ETA passed days ago) → dead-reckon along
+ *    the last course, at most MAX_COURSE_HOURS, then "stale": held at the
+ *    fix, nothing drawn ahead. Beyond that a guess is a fabrication.
+ *  - any fix older than STALE_FIX_H → "stale" whatever else we know: a ship
+ *    last heard 4 days ago moored at Freeport has sailed twice since.
  */
 export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc: string | null, pathToDest: Path | null = null): Estimate | null {
   const fixAt = Date.parse(fix.at);
@@ -167,22 +172,25 @@ export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc:
   if (hours * 60 < ESTIMATE_AFTER_MIN) return null;
   const hoursSinceFix = Math.round(hours * 10) / 10;
   const speed = fix.speedKn ?? 0;
+  const stale: Estimate = { lat: fix.lat, lon: fix.lon, basis: "stale", confidence: "low", hoursSinceFix };
+
+  if (hours > STALE_FIX_H) return stale;
 
   if (speed < UNDERWAY_KN) {
     return { lat: fix.lat, lon: fix.lon, basis: "hold", confidence: hours < 8 ? "medium" : "low", hoursSinceFix };
   }
 
-  if (dest) {
+  const eta = etaUtc ? Date.parse(etaUtc) : NaN;
+  const etaAgeH = isFinite(eta) ? (now.getTime() - eta) / 3_600_000 : NaN;
+  // A declared ETA that passed days ago means the crew never retyped the
+  // destination after that call — the "next port" is last leg's port. Do not
+  // park her there or draw a line to it: treat the destination as unknown.
+  const destUsable = dest && !(isFinite(etaAgeH) && etaAgeH > STALE_DESTINATION_H) ? dest : null;
+
+  if (destUsable) {
+    const dest = destUsable;
     const total = distanceNm(fix.lat, fix.lon, dest.lat, dest.lon);
     const travelled = speed * hours;
-    const eta = etaUtc ? Date.parse(etaUtc) : NaN;
-    const etaAgeH = isFinite(eta) ? (now.getTime() - eta) / 3_600_000 : NaN;
-    // A declared ETA that passed days ago means the crew never retyped the
-    // destination after that call — the "next port" is last leg's port. Do not
-    // park her there; hold the last fix and say so (low confidence).
-    if (isFinite(etaAgeH) && etaAgeH > STALE_DESTINATION_H) {
-      return { lat: fix.lat, lon: fix.lon, basis: "hold", confidence: "low", hoursSinceFix };
-    }
     const etaPassed = isFinite(etaAgeH) && etaAgeH > 0.5;
     if (travelled >= total || etaPassed) {
       return { lat: dest.lat, lon: dest.lon, basis: "arrived", confidence: "medium", hoursSinceFix };
@@ -207,9 +215,7 @@ export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc:
   // No destination and too long since the fix: a point eight hours down her
   // last course is a fabrication (a 3-day-old Norwegian Getaway fix off
   // Fort Lauderdale, 2026-09-10). Hold the last real fix and say so.
-  if (hours > MAX_COURSE_HOURS) {
-    return { lat: fix.lat, lon: fix.lon, basis: "stale", confidence: "low", hoursSinceFix };
-  }
+  if (hours > MAX_COURSE_HOURS) return stale;
   const p = destinationPoint(fix.lat, fix.lon, fix.courseDeg, speed * hours);
   return { ...p, basis: "course", confidence: hours <= 2 ? "medium" : "low", hoursSinceFix };
 }
@@ -250,7 +256,7 @@ export function routeLine(fix: Fix, estimate: Estimate | null, departed: Port | 
   const lastT = travelled[travelled.length - 1];
   if (!lastT || lastT[0] !== fix.lat || lastT[1] !== fix.lon) travelled.push([fix.lat, fix.lon]);
   if (here.lat !== fix.lat || here.lon !== fix.lon) travelled.push([here.lat, here.lon]);
-  const ahead: [number, number][] = dest && estimate?.basis !== "arrived" && inputs.aheadPath && inputs.aheadPath.length >= 2
+  const ahead: [number, number][] = dest && estimate?.basis !== "arrived" && estimate?.basis !== "stale" && inputs.aheadPath && inputs.aheadPath.length >= 2
     ? inputs.aheadPath
     : [];
   return { travelled, ahead };
