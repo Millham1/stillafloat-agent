@@ -191,6 +191,10 @@ export const WORLD_PORTS: WorldPort[] = [
   { slug: "wp-la-palma", name: "Santa Cruz de La Palma, Canary Islands", lat: 28.6800, lon: -17.7700, aliases: ["la palma"] },
   { slug: "wp-st-george-bermuda", name: "St. George's, Bermuda", lat: 32.3800, lon: -64.6800 },
   { slug: "wp-la-paz", name: "La Paz (Pichilingue), Mexico", lat: 24.2700, lon: -110.3200, aliases: ["la paz", "pichilingue"] },
+  { slug: "wp-avalon", name: "Catalina Island (Avalon), California", lat: 33.3450, lon: -118.3250, aliases: ["avalon", "santa catalina island"] },
+  { slug: "wp-santa-barbara", name: "Santa Barbara, California", lat: 34.4040, lon: -119.6920 },
+  { slug: "wp-monterey", name: "Monterey, California", lat: 36.6050, lon: -121.8900 },
+  { slug: "wp-astoria", name: "Astoria, Oregon", lat: 46.1900, lon: -123.8300 },
   { slug: "wp-loreto", name: "Loreto, Mexico", lat: 26.0100, lon: -111.3400 },
   { slug: "wp-topolobampo", name: "Topolobampo, Mexico", lat: 25.6000, lon: -109.0500 },
 ];
@@ -303,4 +307,12 @@ export function resolvePortName(raw: string): ResolvedPort | null {
   const head = n.split(" (")[0]!.split(",")[0]!.trim();
   if (head !== n) return resolvePortName(head);
   return null;
+}
+
+/** A slug from either list → coordinate. */
+export function resolvePortSlug(slug: string): ResolvedPort | null {
+  const g = byGazSlug.get(slug);
+  if (g) return { slug: g.slug, name: g.name, lat: g.lat, lon: g.lon };
+  const w = WORLD_PORTS.find((p) => p.slug === slug);
+  return w ? { slug: w.slug, name: w.name, lat: w.lat, lon: w.lon } : null;
 }

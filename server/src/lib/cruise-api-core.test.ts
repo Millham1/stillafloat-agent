@@ -43,3 +43,13 @@ describe("shipNameKeys", () => {
     assert.deepEqual(shipNameKeys("Adventure of the Seas"), ["adventure of the seas"]);
   });
 });
+
+describe("port code pinning", () => {
+  it("the two Catalina Islands and the two Sydneys resolve by code, not by name", () => {
+    assert.equal(resolveCruiseApiPort("USCKI", "Catalina Island")!.slug, "wp-avalon");
+    assert.equal(resolveCruiseApiPort("DOCAI", "Isla Catalina/Catalina Island")!.slug, "wp-catalina-island");
+    assert.equal(resolveCruiseApiPort("CASYD", "Sydney")!.slug, "sydney-ns");
+    assert.equal(resolveCruiseApiPort("AUSYD", "Sydney")!.slug, "sydney");
+    assert.equal(resolveCruiseApiPort("USSBA", "Santa Barbara")!.slug, "wp-santa-barbara");
+  });
+});

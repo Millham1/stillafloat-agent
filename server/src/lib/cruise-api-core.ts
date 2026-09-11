@@ -8,7 +8,7 @@
 // planned-route table needs: departureDate, duration (nights), the ordered
 // itineraryPorts (LOCODE-style codes, "XZAS1" = at sea) with hydrated names,
 // and the ship's full name — verified with a live call on 2026-09-11.
-import { resolvePortName, type ResolvedPort } from "./world-ports";
+import { resolvePortName, resolvePortSlug, type ResolvedPort } from "./world-ports";
 import type { PlannedSailing, PlannedPort } from "./planned-sailings";
 import portsRef from "../../data/cruise-api-ports.json";
 
@@ -22,9 +22,23 @@ export const AT_SEA_CODES = new Set(["XZAS1", "XZAS2", "XZAS3", "XZSEA"]);
 interface PortRef { portCode: string; portName: string; portCountryCode: string; scenicCruising?: boolean; landPort?: boolean }
 const PORT_NAME_BY_CODE = new Map<string, PortRef>((portsRef as PortRef[]).map((p) => [p.portCode, p]));
 
-/** A Cruise API port code → a routable coordinate: by the API's own port name, then by the LOCODE tail. */
+/**
+ * Port codes whose NAMES collide across countries, pinned to the right pier.
+ * "Catalina Island" is both USCKI (Avalon, California) and DOCAI (Dominican
+ * Republic); "Sydney" is AUSYD and CASYD; "Victoria" is CAVIC; found when
+ * Brilliant Lady's California coast run was drawn through the Caribbean.
+ */
+export const CRUISE_API_PORT_CODE_SLUGS: Record<string, string> = {
+  USCKI: "wp-avalon", USSBA: "wp-santa-barbara", DOCAI: "wp-catalina-island", DOCB1: "wp-catalina-island",
+  AUSYD: "sydney", AUSYD1: "sydney", CASYD: "sydney-ns", CAVIC: "victoria-bc", USPWM: "wp-portland-me",
+  GDSTG: "wp-st-georges", PRSJU: "san-juan", DOSDQ: "wp-santo-domingo", BMBDA: "bermuda",
+};
+
+/** A Cruise API port code → a routable coordinate: pinned code first, then the API's own port name. */
 export function resolveCruiseApiPort(code: string, hydratedName?: string | null): ResolvedPort | null {
   if (!code || AT_SEA_CODES.has(code)) return null;
+  const pinned = CRUISE_API_PORT_CODE_SLUGS[code];
+  if (pinned) { const r = resolvePortSlug(pinned); if (r) return r; }
   const ref = PORT_NAME_BY_CODE.get(code);
   if (ref?.scenicCruising || ref?.landPort) return null;   // glacier viewing / land tour days are not ports
   const name = hydratedName || ref?.portName || "";
