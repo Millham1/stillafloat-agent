@@ -57,6 +57,8 @@ export const PATHS = {
   seoOverrides: "seo-overrides",
   // Satellite AIS spend ledger (month, credits used, last lookup per ship) — lib/satellite-ais.ts
   satelliteLedger: "satellite-ais-ledger",
+  // ShipFinder call ledger (same shape) — lib/shipfinder-ais.ts
+  shipfinderLedger: "shipfinder-ledger",
   // Evergreen "Cruising Guides" — curated long-form advisory articles (Track A/B).
   // Prerendered to static /guides/<slug>.html pages, EN + ES.
   guides: "guides",

@@ -33,7 +33,8 @@
 import { getSupabase, readJson, writeJson } from "./persistence";
 import { appendTrack, type TrackPoint } from "./dead-reckoning";
 import { selectActiveSet, AISSTREAM_MMSIS_PER_SUBSCRIPTION } from "./active-set";
-import { satelliteLookup, satelliteEnabled, allowlisted, sweepEnabled, LOOKUP_AFTER_MIN, type LookupReason } from "./satellite-ais";
+import { satelliteLookup, satelliteEnabled, allowlisted, sweepEnabled, LOOKUP_AFTER_MIN, type LookupReason, type SatelliteFix } from "./satellite-ais";
+import { shipfinderLookup, shipfinderEnabled } from "./shipfinder-ais";
 import { logger } from "./logger";
 import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
@@ -380,11 +381,13 @@ export function applyExternalFix(
     positions.set(mmsi, pos);
   }
   if (pos.lastPosAt && Date.parse(fix.at) <= Date.parse(pos.lastPosAt)) return false;
-  // The provider often carries a destination our feed never decoded ("BSGBI>HNRTM"
-  // vs "Mahogany bay Honduras"); take it when ours is empty or unmatched.
-  if (fix.destination && (!pos.destinationSlug || !pos.destinationRaw)) {
+  // This fix is newer than ours, so its destination is newer too: take it when
+  // it decodes (Carnival Horizon 2026-09-11: our 4-day-old "Freeport" stayed on
+  // the card while the provider already had her next port). Keep ours only when
+  // the provider's text decodes to nothing.
+  if (fix.destination) {
     const matched = matchDestination(fix.destination);
-    if (matched) { pos.destinationRaw = fix.destination; pos.destinationSlug = matched.slug; }
+    if (matched) { pos.destinationRaw = fix.destination; pos.destinationSlug = matched.slug; pos.etaUtc = fix.etaUtc ?? pos.etaUtc; }
     else if (!pos.destinationRaw) pos.destinationRaw = fix.destination;
   }
   if (fix.etaUtc && !pos.etaUtc) pos.etaUtc = fix.etaUtc;
@@ -405,13 +408,35 @@ export function applyExternalFix(
  * there is a reason (see satellite-ais.ts for the gate). Awaited by the
  * request route (capped there) and by the periodic sweep.
  */
+export type PositionProvider = "datadocked" | "shipfinder";
+/** SATELLITE_PROVIDERS="shipfinder,datadocked" — tried in order; default Datadocked only. */
+export function positionProviders(): PositionProvider[] {
+  const raw = (process.env["SATELLITE_PROVIDERS"] ?? "datadocked").replace(/^["']+|["']+$/g, "");
+  const out: PositionProvider[] = [];
+  for (const p of raw.split(",").map((x) => x.trim().toLowerCase())) {
+    if ((p === "datadocked" || p === "shipfinder") && !out.includes(p)) out.push(p);
+  }
+  return out;
+}
+
 export async function fillFromSatellite(mmsi: string, reason: LookupReason): Promise<boolean> {
   const reg = registryByMmsi.get(mmsi);
-  if (!reg || !satelliteEnabled() || !allowlisted(mmsi, reg.name)) return false;
-  const fix = await satelliteLookup(mmsi, positions.get(mmsi)?.lastPosAt ?? null, reason);
-  // Datadocked also has terrestrial receivers we do not: a terrestrial fix from
-  // them is still AIS, so the pill says "satellite" only when it was.
-  return fix ? applyExternalFix(mmsi, fix, fix.source === "satellite" ? "satellite" : "ais") : false;
+  if (!reg || !allowlisted(mmsi, reg.name)) return false;
+  const lastFixAt = positions.get(mmsi)?.lastPosAt ?? null;
+  for (const provider of positionProviders()) {
+    let fix: SatelliteFix | null = null;
+    if (provider === "datadocked" && satelliteEnabled()) fix = await satelliteLookup(mmsi, lastFixAt, reason);
+    else if (provider === "shipfinder" && shipfinderEnabled()) fix = await shipfinderLookup(mmsi, lastFixAt, reason);
+    else continue;
+    if (!fix) continue; // gate, cap, error or no data: the next provider may still answer
+    // A provider's terrestrial fix is still AIS, so the pill says "satellite"
+    // only when a satellite heard her.
+    const applied = applyExternalFix(mmsi, fix, fix.source === "satellite" ? "satellite" : "ais");
+    // Whether or not it was newer than ours, the provider answered: paying a
+    // second provider for the same moment would buy the same answer.
+    return applied;
+  }
+  return false;
 }
 
 /**
