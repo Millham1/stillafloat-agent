@@ -227,3 +227,15 @@ export function parseShipfinderTrack(body: unknown): TrackSample[] {
   }
   return out.sort((a, b2) => Date.parse(a.at) - Date.parse(b2.at));
 }
+
+/** Return codes that mean "stop asking for now" (Service Return Code table + the live 38 seen 2026-09-11). */
+export const SHIPFINDER_THROTTLE_CODES = new Set([12, 22, 23, 29, 38]);
+export interface SearchResult { status: number | null; msg: string; hits: SearchHit[] }
+export function parseShipfinderSearchResult(body: unknown): SearchResult {
+  const b = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const st = Number(b["status"]);
+  return { status: Number.isFinite(st) ? st : null, msg: typeof b["msg"] === "string" ? b["msg"] : "", hits: parseShipfinderSearch(body) };
+}
+export function isThrottle(status: number | null): boolean {
+  return status !== null && SHIPFINDER_THROTTLE_CODES.has(status);
+}

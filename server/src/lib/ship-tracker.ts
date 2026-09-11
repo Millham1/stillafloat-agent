@@ -34,7 +34,7 @@ import { getSupabase, readJson, writeJson, PATHS } from "./persistence";
 import { appendTrack, type TrackPoint } from "./dead-reckoning";
 import { selectActiveSet, AISSTREAM_MMSIS_PER_SUBSCRIPTION } from "./active-set";
 import { satelliteLookup, satelliteEnabled, allowlisted, sweepEnabled, LOOKUP_AFTER_MIN, type LookupReason, type SatelliteFix } from "./satellite-ais";
-import { shipfinderLookup, shipfinderEnabled, shipfinderNearby, shipfinderSearch, shipfinderTrack, verifyRegistryEntry, type RegistryVerdict } from "./shipfinder-ais";
+import { shipfinderLookup, shipfinderEnabled, shipfinderNearby, shipfinderSearch, shipfinderTrack, verifyRegistryEntry, isThrottle, type RegistryVerdict } from "./shipfinder-ais";
 import { portCallsFromTrack, mergePortCalls } from "./port-calls-from-track";
 import { logger } from "./logger";
 import {
@@ -504,20 +504,43 @@ export async function seedTrackFromHistory(mmsi: string): Promise<boolean> {
  * and exactly one hull of our name) are applied; the rest are flagged
  * mmsi_suspect with the reported name for a human. Report in platform_state.
  */
-export async function verifyRegistry(opts: { delayMs?: number; apply?: boolean } = {}): Promise<{ checked: number; ok: number; suspects: number; corrected: number; unknown: number }> {
-  const delayMs = opts.delayMs ?? 150;
+interface VerificationState { ranAt: string; nextIndex: number; throttled: boolean; checked: number; ok: number; suspects: number; corrected: number; unknown: number; findings: unknown[] }
+
+/** Ships per nightly batch: the search endpoint is "unmetered" but throttles after a few hundred calls a day. */
+function registryBatchSize(): number {
+  const n = Number(process.env["SHIPFINDER_REGISTRY_BATCH"]);
+  return Number.isFinite(n) && n > 0 ? n : 60;
+}
+
+export async function verifyRegistry(opts: { delayMs?: number; apply?: boolean; batch?: number } = {}): Promise<{ checked: number; ok: number; suspects: number; corrected: number; unknown: number; throttled: boolean; nextIndex: number }> {
+  const delayMs = opts.delayMs ?? 1500;
   const apply = opts.apply ?? true;
+  const batch = opts.batch ?? registryBatchSize();
   const supabase = getSupabase();
+  // Stable order + a cursor: each night verifies the next slice, so the whole
+  // registry is covered every few nights without tripping the daily throttle.
+  const ships = [...registryByMmsi.values()].sort((a, b) => a.mmsi.localeCompare(b.mmsi));
+  let prev: Partial<VerificationState> = {};
+  try { prev = await readJson<Partial<VerificationState>>(PATHS.registryVerification, {}); } catch { /* first run */ }
+  const start = Number.isFinite(prev.nextIndex) && (prev.nextIndex ?? 0) < ships.length ? (prev.nextIndex ?? 0) : 0;
+  const slice = ships.slice(start, start + batch);
   const report: Array<{ name: string; mmsi: string } & RegistryVerdict & { applied: boolean }> = [];
-  const counts = { checked: 0, ok: 0, suspects: 0, corrected: 0, unknown: 0 };
-  for (const ship of [...registryByMmsi.values()]) {
+  const carried = Array.isArray(prev.findings) ? (prev.findings as typeof report).filter((f) => !slice.some((s2) => s2.mmsi === f.mmsi)) : [];
+  const counts = { checked: 0, ok: 0, suspects: 0, corrected: 0, unknown: 0, throttled: false, nextIndex: start };
+  for (const ship of slice) {
     const byMmsi = await shipfinderSearch(ship.mmsi, 3);
-    let verdict = verifyRegistryEntry({ name: ship.name, mmsi: ship.mmsi, imo: ship.imo }, byMmsi, []);
-    if (verdict.status !== "ok") {
+    if (isThrottle(byMmsi.status)) { counts.throttled = true; break; }        // stop; resume from this ship next run
+    let verdict = verifyRegistryEntry({ name: ship.name, mmsi: ship.mmsi, imo: ship.imo }, byMmsi.hits, []);
+    if (verdict.status !== "ok" && byMmsi.status === 0) {
+      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
       const byName = await shipfinderSearch(ship.name, 5);
-      verdict = verifyRegistryEntry({ name: ship.name, mmsi: ship.mmsi, imo: ship.imo }, byMmsi, byName);
+      if (isThrottle(byName.status)) { counts.throttled = true; break; }
+      verdict = verifyRegistryEntry({ name: ship.name, mmsi: ship.mmsi, imo: ship.imo }, byMmsi.hits, byName.hits);
+    } else if (byMmsi.status !== 0) {
+      break; // provider error of another kind: do not judge ships on it
     }
     counts.checked += 1;
+    counts.nextIndex = start + counts.checked;
     let applied = false;
     try {
       if (verdict.status === "ok") {
@@ -543,9 +566,11 @@ export async function verifyRegistry(opts: { delayMs?: number; apply?: boolean }
     if (verdict.status !== "ok") report.push({ name: ship.name, mmsi: ship.mmsi, ...verdict, applied });
     if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
   }
-  try { await writeJson(PATHS.registryVerification, { ranAt: new Date().toISOString(), ...counts, findings: report }); }
+  if (counts.nextIndex >= ships.length) counts.nextIndex = 0; // wrapped: start over next night
+  const state: VerificationState = { ranAt: new Date().toISOString(), ...counts, findings: [...carried, ...report] };
+  try { await writeJson(PATHS.registryVerification, state); }
   catch (err) { logger.warn({ err }, "wms: registry verification report persist failed"); }
-  logger.info(counts, "wms: registry verification");
+  logger.info({ ...counts, batchStart: start, registry: ships.length, findingsTotal: state.findings.length }, "wms: registry verification");
   if (counts.corrected && apply) await refreshActiveSet().catch(() => {});
   return counts;
 }

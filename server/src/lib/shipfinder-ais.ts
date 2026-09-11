@@ -4,10 +4,10 @@
 import { PATHS, readJson, writeJson } from "./persistence";
 import { logger } from "./logger";
 import { type Ledger, type SatelliteFix, type LookupReason, monthKey, blankLedger, lookupDecision } from "./satellite-ais-core";
-import { shipfinderUrl, shipfinderEndpoint, shipfinderEnabled, shipfinderCap, shipfinderTrackCap, parseShipfinder, parseShipfinderList, parseShipfinderSearch, parseShipfinderTrack, type NearbyVessel, type SearchHit, type TrackSample } from "./shipfinder-core";
+import { shipfinderUrl, shipfinderEndpoint, shipfinderEnabled, shipfinderCap, shipfinderTrackCap, parseShipfinder, parseShipfinderList, parseShipfinderSearchResult, parseShipfinderTrack, isThrottle, type NearbyVessel, type SearchResult, type TrackSample } from "./shipfinder-core";
 export * from "./shipfinder-core";
 
-type SfLedger = Ledger & { trackUsed?: number; nearbyCalls?: number; searchCalls?: number };
+type SfLedger = Ledger & { trackUsed?: number; nearbyCalls?: number; searchCalls?: number; lastSearchStatus?: { at: string; status: number | null; msg: string } | null };
 let ledger: SfLedger | null = null;
 let ledgerDirty = false;
 
@@ -60,17 +60,25 @@ export async function shipfinderNearby(mmsi: string, fetchImpl: typeof fetch = f
   }
 }
 
-/** Name / MMSI / IMO lookup — unmetered. */
-export async function shipfinderSearch(keywords: string, max = 5, fetchImpl: typeof fetch = fetch, now = new Date()): Promise<SearchHit[]> {
-  if (!shipfinderEnabled()) return [];
+/**
+ * Name / MMSI / IMO lookup. "Unmetered" on the console, but the API still
+ * answers status 38 "The number of queries exceeded" after a few hundred calls
+ * in a day (2026-09-11: ~580 in ten minutes), so callers must read `status`
+ * and stop, never treat a throttled answer as "no such ship".
+ */
+export async function shipfinderSearch(keywords: string, max = 5, fetchImpl: typeof fetch = fetch, now = new Date()): Promise<SearchResult> {
+  if (!shipfinderEnabled()) return { status: null, msg: "disabled", hits: [] };
   const l = await loadLedger(now);
   l.searchCalls = (l.searchCalls ?? 0) + 1; ledgerDirty = true;
   try {
     const body = await getJson(`${shipfinderEndpoint("AIS/VesselSearch")}?key=${encodeURIComponent(apiKey())}&keywords=${encodeURIComponent(keywords)}&max=${max}`, fetchImpl);
-    return parseShipfinderSearch(body);
+    const r = parseShipfinderSearchResult(body);
+    l.lastSearchStatus = { at: now.toISOString(), status: r.status, msg: r.msg };
+    if (isThrottle(r.status)) logger.warn({ keywords, status: r.status, msg: r.msg, searchCalls: l.searchCalls }, "shipfinder: search throttled");
+    return r;
   } catch (err) {
     logger.warn({ err, keywords }, "shipfinder: search threw");
-    return [];
+    return { status: null, msg: String((err as Error)?.message ?? err), hits: [] };
   } finally {
     await saveLedger();
   }
