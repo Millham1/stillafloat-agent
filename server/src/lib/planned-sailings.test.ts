@@ -33,6 +33,8 @@ describe("resolvePortName", () => {
     assert.equal(resolvePortName("Italy"), null);
     assert.equal(resolvePortName("At sea"), null);
     assert.equal(resolvePortName("Nowhere Special"), null);
+    assert.equal(resolvePortName("Florence")!.slug, "livorno", "NCL headlines name the attraction, not the pier");
+    assert.equal(resolvePortName("Ephesus")!.slug, "wp-kusadasi");
   });
 });
 
