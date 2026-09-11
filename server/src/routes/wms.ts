@@ -19,6 +19,7 @@ import { LOOKUP_AFTER_MIN } from "../lib/satellite-ais";
 import { makeWatchSig } from "../lib/wms-alerts";
 import { portBySlug } from "../lib/ports";
 import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../lib/dead-reckoning";
+import { plannedRouteFor } from "../lib/planned-route-service";
 import { seaRoute } from "../lib/sea-route";
 
 const router: IRouter = Router();
@@ -143,7 +144,10 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       // active set" so the page can show the wake-up message vs the coverage one.
       const reason = !inRegistry(shipName) ? "unknown_ship"
         : isSubscribed(shipName) ? "no_signal" : "waking";
-      return res.json({ ok: true, tracking: false, reason });
+      // No fix yet, but the operator's plan is still a map: draw the route she
+      // is scheduled to be on (Mark, 2026-09-11: "the route should already be plotted").
+      const planned = reason === "unknown_ship" ? null : await plannedRouteFor(shipName).catch(() => null);
+      return res.json({ ok: true, tracking: false, reason, planned });
     }
 
     const now = new Date();
@@ -167,6 +171,7 @@ router.get("/wms/position", async (req: Request, res: Response) => {
     const route = routeLine(fix, estimate, fromPort, destPort, { track, behindPath: behind?.points ?? null, aheadPath: ahead?.points ?? null });
     const centre = estimate ?? { lat: pos.lat, lon: pos.lon };
     const nearby = nearbyShips(allPositions(), centre, pos.name, now);
+    const planned = await plannedRouteFor(pos.name, now).catch(() => null);
     return res.json({
       ok: true,
       tracking: true,
@@ -192,6 +197,7 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       route,             // { travelled: [[lat,lon]...], ahead: [[lat,lon]...] }
       nearby,            // other tracked ships within NEARBY_RADIUS_NM with a recent fix
       nearbyRadiusNm: NEARBY_RADIUS_NM,
+      planned,           // the operator's itinerary under way + its stored water route (null when none on file)
     });
   } catch (err) {
     logger.error({ err }, "wms: position failed");
