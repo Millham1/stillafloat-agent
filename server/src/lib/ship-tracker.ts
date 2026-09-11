@@ -1,13 +1,17 @@
 // ship-tracker.ts — live cruise-ship positions for "Where's My Ship?" (WMS).
 //
 // v2 (Mark's design): the `ships` table is the FULL cruise-ship registry —
-// search covers every ship in it. Live AIS tracking activates on request and
-// is then RETAINED: the active set = ships with active watches, the seeded
-// US-coast fleet (seed_active), and everything ever requested, newest first,
-// up to capacity. Capacity = (number of API keys) × WMS_MAX_PER_CONN (the
-// aisstream per-connection MMSI-filter allowance; default 50 — verify
-// empirically). Under capacity pressure the least-recently-requested
-// non-seeded ships rotate out; a new request instantly rotates a ship back in.
+// search covers every ship in it. The active set is ranked: ships with active
+// watches or under a storm alert, then the seeded US-coast fleet (seed_active),
+// then everything ever requested (newest first), then the rest of the registry
+// — filled up to capacity. Capacity = (number of API keys) × WMS_MAX_PER_CONN.
+// aisstream's published allowance (docs read 2026-09-11) is 200 MMSIs per
+// subscription and 3 subscriptions per account, so 3 keys carry the whole
+// 315-ship registry; before 2026-09-11 the default was 50 and never-requested
+// ships stayed registry-only, which left 228 ships "never heard" (Mark: "it's
+// ridiculous to have a where's my ship that can't tell the user where it is").
+// Under capacity pressure the lowest-ranked ships rotate out; a new request
+// instantly rotates a ship back in.
 //
 // One websocket PER KEY to the free aisstream.io feed (aisstream allows one
 // connection per key), the active MMSI list sharded across them. Terrestrial
@@ -28,6 +32,7 @@
 
 import { getSupabase, readJson, writeJson } from "./persistence";
 import { appendTrack, type TrackPoint } from "./dead-reckoning";
+import { selectActiveSet, AISSTREAM_MMSIS_PER_SUBSCRIPTION } from "./active-set";
 import { logger } from "./logger";
 import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
@@ -113,7 +118,7 @@ function apiKeys(): string[] {
 }
 
 function maxPerConn(): number {
-  return Number(process.env["WMS_MAX_PER_CONN"] ?? "50");
+  return Number(process.env["WMS_MAX_PER_CONN"] ?? String(AISSTREAM_MMSIS_PER_SUBSCRIPTION));
 }
 
 function blankPosition(ship: RegistryShip): ShipPosition {
@@ -264,17 +269,7 @@ async function loadRegistry(): Promise<void> {
  *  (Mark's lifecycle design 2026-07-22) — they claim slots even if they were
  *  never seeded or requested. */
 function buildActiveSet(): Set<string> {
-  const ships = [...registryByMmsi.values()];
-  const rank = (s: RegistryShip): number =>
-    (stormMmsis.has(s.mmsi) || s.hasWatch ? 0 : s.seedActive ? 1 : s.lastRequestedAt ? 2 : 3);
-  ships.sort((a, b) =>
-    rank(a) - rank(b) ||
-    (b.lastRequestedAt ?? "").localeCompare(a.lastRequestedAt ?? "") ||
-    a.name.localeCompare(b.name));
-  const cap = apiKeys().length * maxPerConn();
-  // Rank 3 (never requested, not seeded, no storm) ships stay registry-only
-  // until asked for — EXCEPT storm ships, which qualify via rank 0 above.
-  return new Set(ships.filter((s) => rank(s) < 3).slice(0, cap).map((s) => s.mmsi));
+  return new Set(selectActiveSet([...registryByMmsi.values()], stormMmsis, apiKeys().length * maxPerConn()).map((s) => s.mmsi));
 }
 
 /** Re-shard the active set across connections; resubscribe the ones that changed. */
@@ -534,7 +529,9 @@ function subscribe(conn: Conn) {
 function connect(conn: Conn) {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const WebSocket = require("ws");
-  const ws = new WebSocket(AIS_URL);
+  // permessage-deflate is the ws client default; stated because aisstream
+  // rate-limits uncompressed connections from September 2026.
+  const ws = new WebSocket(AIS_URL, { perMessageDeflate: true });
   conn.ws = ws;
   let closed = false;
 
