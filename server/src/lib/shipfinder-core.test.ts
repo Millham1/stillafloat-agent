@@ -1,7 +1,7 @@
 // shipfinder-core.test.ts — the documented response shape decodes to a real fix.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseShipfinder, parseShipfinderEta, DEFAULT_SHIPFINDER_CAP, SHIPFINDER_URL, shipfinderUrl, shipfinderEndpoint, parseShipfinderList, parseShipfinderSearch, parseShipfinderTrack, shipNamesMatch, verifyRegistryEntry } from "./shipfinder-core";
+import { parseShipfinder, parseShipfinderEta, DEFAULT_SHIPFINDER_CAP, SHIPFINDER_URL, shipfinderUrl, shipfinderEndpoint, parseShipfinderList, parseShipfinderSearch, parseShipfinderTrack, shipNamesMatch, verifyRegistryEntry, parseShipfinderSearchResult, isThrottle } from "./shipfinder-core";
 
 // Verbatim example from docs.shipfinder.com 1.1.1 Single Vessel Position (read 2026-09-11)
 const DOC = { status: 0, msg: "", data: { mmsi: 413961925, imo: 0, call_sign: "P", ship_name: "WANHONGYUAN369", data_source: 0, ship_type: 70, length: 68, width: 13, draught: 4.8, dest: "TAIZHOU,CN", destcode: "CNTZO", eta: 1745827548, navistat: 0, lat: 32.192517, lng: 119.628093, sog: 6.2, cog: 80.8, hdg: 511, rot: 0, last_time: 1745827548 } };
@@ -114,5 +114,13 @@ describe("parseShipfinderTrack", () => {
     assert.equal(pts[0]!.source, "satellite");
     assert.ok(Date.parse(pts[0]!.at) < Date.parse(pts[1]!.at));
     assert.equal(pts[1]!.speedKn, 8.1);
+  });
+});
+
+describe("search throttling", () => {
+  it("status 38 'The number of queries exceeded' is a throttle with no hits, never a verdict", () => {
+    const r = parseShipfinderSearchResult({ status: 38, msg: "The number of queries exceeded" });
+    assert.equal(r.status, 38); assert.deepEqual(r.hits, []); assert.ok(isThrottle(r.status));
+    assert.ok(!isThrottle(0)); assert.ok(!isThrottle(9)); assert.ok(!isThrottle(null));
   });
 });
