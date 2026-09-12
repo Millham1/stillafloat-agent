@@ -30,16 +30,21 @@ export interface NewsHub {
 // Disney Magic itinerary as Carnival news, and put a Royal Caribbean story on
 // the Carnival page. So only markers that cannot belong to another line count.
 //
-// Carnival: the brand name itself (every Carnival ship story says "Carnival"),
-// plus the two things that are Carnival's alone — the ship named Mardi Gras and
-// the private island Celebration Key. NOT Half Moon Cay, which Holland America
-// owns and Princess visits.
-const CARNIVAL_MATCH = /\b(carnival|mardi gras|celebration key|vifp)\b/i;
+// PRIVATE ISLANDS ARE NOT A LINE SIGNAL (Mark, 2026-09-11): a parent company
+// shares its islands across its brands, and is actively moving itineraries
+// between them — Princess is being redirected off Princess Cays onto Half Moon
+// Cay and Carnival's Celebration Key. So a story about Celebration Key may be
+// Princess news, and a CocoCay story may be Celebrity news. Only the LINE and
+// its own ships decide; the island never does. The agent settles the rest.
+//
+// Carnival: the brand name (every Carnival ship story says "Carnival"), the
+// loyalty programme, and Mardi Gras — the one hull whose name no other line uses.
+const CARNIVAL_MATCH = /\b(carnival|mardi gras|vifp)\b/i;
 // Royal: the brand, and the fleet's own naming convention. Every Royal ship is
 // "<something> of the Seas" and no other line names ships that way, so one
 // pattern covers the whole fleet — including hulls not yet delivered — with no
-// collisions. CocoCay is Royal's island alone.
-const ROYAL_MATCH = /\b(royal caribbean|rccl|[a-z]+ of the seas|cococay)\b/i;
+// collisions. CocoCay is deliberately absent: Celebrity ships call there too.
+const ROYAL_MATCH = /\b(royal caribbean|rccl|[a-z]+ of the seas)\b/i;
 
 export const NEWS_HUBS: NewsHub[] = [
   {

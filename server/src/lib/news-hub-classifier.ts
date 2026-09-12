@@ -89,9 +89,11 @@ Rules:
 - Sister brands are separate: Princess, Holland America, Cunard, Costa, AIDA and
   Seabourn are not Carnival Cruise Line. Celebrity and Silversea are not Royal Caribbean
   International.
-- Private islands: Celebration Key is Carnival's. CocoCay and Perfect Day are Royal
-  Caribbean's. Half Moon Cay is Holland America's, so a Princess or Holland America
-  sailing that calls there is NOT Carnival news.
+- Private islands NEVER decide the line. A parent company shares its islands across
+  its brands and moves itineraries between them: Princess is being redirected off
+  Princess Cays onto Half Moon Cay and Carnival's Celebration Key, and Celebrity ships
+  call at Royal Caribbean's CocoCay. A Princess sailing that calls at Celebration Key
+  is PRINCESS news and belongs to neither page. Ask whose ship it is, not whose island.
 
 Return an empty list rather than a guess. A wrong story on a line's page is worse than
 a missing one.`;
