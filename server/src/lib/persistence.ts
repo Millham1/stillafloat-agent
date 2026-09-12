@@ -55,6 +55,8 @@ export const PATHS = {
   // Per-story SEO title/description overrides for the news prerenderer, keyed by
   // story id. Lets us tune search snippets without changing the on-page headline.
   seoOverrides: "seo-overrides",
+  // Which cruise line(s) each story belongs to, decided once per story — lib/news-hub-classifier.ts
+  newsHubAssignments: "news-hub-assignments",
   // Evergreen "Cruising Guides" — curated long-form advisory articles (Track A/B).
   // Prerendered to static /guides/<slug>.html pages, EN + ES.
   guides: "guides",

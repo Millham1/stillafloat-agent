@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { logger } from "./logger";
-import { PATHS, readJson } from "./persistence";
+import { PATHS, readJson, writeJson } from "./persistence";
 import { resolvePublicDir } from "./public-dir";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -449,37 +449,168 @@ ${relatedHtml}
 }
 
 // ── listing page (overwrites news.html / es/news.html in place) ──────────────
+// ── Per-line hubs ────────────────────────────────────────────────────────────
+// "carnival cruise news" is 22,200 US searches a month and "royal caribbean
+// news" 18,100, and until now nothing on the site answered either: the stories
+// existed but only ever appeared mixed together on /news.html. See news-hubs.ts.
+import { NEWS_HUBS, storiesForHub, hubPath, MIN_HUB_STORIES, type NewsHub } from "./news-hubs";
+import { classifyStories, storiesByAssignment, type HubAssignments } from "./news-hub-classifier";
+
 const FEED_CSS = `body{background:radial-gradient(circle at top right, rgba(0,119,182,0.24), transparent 28%),radial-gradient(circle at left center, rgba(93,255,154,0.10), transparent 30%),linear-gradient(to bottom,#06111f 0%,#0b2238 35%,#102f4d 100%);min-height:100vh;color:white}.news-page-header{position:relative;height:110px;width:100%}.news-wrap{max-width:1100px;margin:auto;padding:24px 22px 70px}.news-panel{margin-bottom:26px;padding:22px 24px;border-radius:26px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(16px);box-shadow:0 18px 44px rgba(0,0,0,.24)}.news-panel h1{margin:0 0 12px;font-size:44px;line-height:1}.news-panel p{margin:0;color:rgba(255,255,255,.72);line-height:1.6}article.story{margin-bottom:18px;padding:20px 22px;border-radius:22px;background:rgba(210,230,255,0.10);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 22px rgba(0,0,0,.16);transition:all .22s ease}article.story:hover{transform:translateY(-4px);box-shadow:0 18px 38px rgba(0,0,0,.24);border-color:rgba(93,255,154,.24)}article.story h2{font-size:22px;line-height:1.28;margin:0 0 10px}article.story h2 a{color:white;text-decoration:none}article.story h2 a:hover{color:#5dff9a}article.story p{line-height:1.55;color:rgba(255,255,255,.76);margin:0 0 14px;font-size:15px}article.story .more{color:#7de3ff;font-weight:800;text-decoration:none;font-size:14px}.story-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.pill{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em}.src{font-size:11px;font-weight:800;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em}.when{font-size:11px;color:rgba(255,255,255,.52);font-weight:700}.archive{margin-top:34px}.archive h2{font-size:20px}.archive a{display:block;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.10);color:white;text-decoration:none;font-weight:700;line-height:1.4}.archive a:hover{color:#5dff9a}footer{padding:30px 20px 50px;text-align:center;color:rgba(255,255,255,.52)}@media(max-width:768px){.news-page-header{height:70px}.news-wrap{padding:16px 14px 50px}.news-panel{padding:18px 16px;border-radius:18px}.news-panel h1{font-size:26px}.news-panel p{font-size:15px}}`;
 
 const FULL_CARDS = 20; // full cards on the listing; the rest become archive links
 
-function feedPageHtml(stories: NewsStory[], lang: Lang): string {
-  const t = L[lang];
-  const self = `${SITE}${t.feedPath}`;
-  const other = lang === "es" ? `${SITE}${L.en.feedPath}` : `${SITE}${L.es.feedPath}`;
+function storyHref(story: NewsStory, lang: Lang): string {
+  const slug = storySlug(story);
+  return lang === "es" ? `/es/news/${slug}.html` : `/news/${slug}.html`;
+}
 
-  const card = (story: NewsStory): string => {
-    const slug = storySlug(story);
-    const href = lang === "es" ? `/es/news/${slug}.html` : `/news/${slug}.html`;
-    const b = badge(story, lang);
-    const date = fmtDate(story.approvedAt || story.generatedAt, lang);
-    // The FULL cliffnote, untruncated — matching the pre-2026-07-08 page
-    // (Mark: the listing must carry the cliffnotes, not one-line teasers).
-    // Richer static text is also better SEO, so the goals align.
-    const desc = escapeHtml(pick(story, "summary", lang) || pick(story, "travelerImpact", lang));
-    return `<article class="story">
+/** One story card. The FULL cliffnote, untruncated — Mark: the listing must
+ *  carry the cliffnotes, not one-line teasers. Richer static text is also better
+ *  SEO, so the goals align. Shared by the feed and the per-line hubs. */
+function storyCardHtml(story: NewsStory, lang: Lang): string {
+  const t = L[lang];
+  const href = storyHref(story, lang);
+  const b = badge(story, lang);
+  const date = fmtDate(story.approvedAt || story.generatedAt, lang);
+  const desc = escapeHtml(pick(story, "summary", lang) || pick(story, "travelerImpact", lang));
+  return `<article class="story">
 <div class="story-top"><div><span class="pill" style="${b.style}">${b.label}</span> <span class="src">${escapeHtml(sourceName(story))}</span></div>${date ? `<span class="when">${date}</span>` : ""}</div>
 <h2><a href="${href}">${escapeHtml(pick(story, "title", lang))}</a></h2>
 <p>${desc}</p>
 <a class="more" href="${href}">${t.openDetail}</a>
 </article>`;
-  };
+}
 
-  const archiveLink = (story: NewsStory): string => {
-    const slug = storySlug(story);
-    const href = lang === "es" ? `/es/news/${slug}.html` : `/news/${slug}.html`;
-    return `<a href="${href}">${escapeHtml(pick(story, "title", lang))}</a>`;
-  };
+function archiveLinkHtml(story: NewsStory, lang: Lang): string {
+  return `<a href="${storyHref(story, lang)}">${escapeHtml(pick(story, "title", lang))}</a>`;
+}
+
+/** The advisor CTA that every news surface carries — the point of the traffic. */
+function ctaHtml(lang: Lang): string {
+  const t = L[lang];
+  return `<section class="story-cta" style="max-width:1100px;width:100%;margin:30px auto 0;padding:28px 30px;border-radius:26px;background:linear-gradient(135deg,rgba(93,255,154,.10),rgba(0,119,182,.12));border:1px solid rgba(93,255,154,.24);text-align:center;box-shadow:0 12px 32px rgba(0,0,0,.24)">
+<h2 style="margin:0 0 8px;font-size:24px;font-weight:900;color:#fff">${t.ctaTitle}</h2>
+<p style="margin:0 auto 18px;max-width:560px;color:rgba(255,255,255,.84);line-height:1.65">${t.ctaBody}</p>
+<a href="${t.ctaHref}" style="display:inline-block;padding:14px 30px;border-radius:16px;background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;font-weight:800;text-decoration:none;box-shadow:0 10px 28px rgba(0,0,0,.30)">${t.ctaButton}</a>
+</section>`;
+}
+
+/** Links to the per-line hubs, shown on the main feed so they are reachable and crawlable. */
+function hubNavHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssignments = {}): string {
+  const live = NEWS_HUBS.filter((h) => storiesByAssignment(stories, h, hubAssignments).length >= MIN_HUB_STORIES);
+  if (!live.length) return "";
+  const label = lang === "es" ? "Noticias por naviera" : "News by cruise line";
+  const links = live
+    .map((h) => `<a href="${hubPath(h.slug, lang)}" style="display:inline-block;padding:9px 18px;border-radius:999px;background:rgba(93,255,154,.10);border:1px solid rgba(93,255,154,.24);color:#bdfdd3;font-weight:800;text-decoration:none;font-size:15px">${escapeHtml(h[lang].h1)}</a>`)
+    .join(" ");
+  return `<nav class="hub-nav" aria-label="${label}" style="margin:0 0 22px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+<span style="color:rgba(255,255,255,.72);font-weight:800;font-size:15px">${label}:</span> ${links}
+</nav>`;
+}
+
+/**
+ * A per-line hub: everything we have run about one cruise line, newest first.
+ * Structurally the feed page, with the line's own title, intro, breadcrumb and
+ * CollectionPage markup so the query it answers is unambiguous to a crawler.
+ */
+export function hubPageHtml(hub: NewsHub, stories: NewsStory[], lang: Lang): string {
+  const c = hub[lang];
+  const t = L[lang];
+  const self = `${SITE}${hubPath(hub.slug, lang)}`;
+  const other = `${SITE}${hubPath(hub.slug, lang === "es" ? "en" : "es")}`;
+  const cards = stories.slice(0, FULL_CARDS).map((s) => storyCardHtml(s, lang)).join("\n");
+  const rest = stories.slice(FULL_CARDS);
+  const archive = rest.length
+    ? `<section class="archive"><h2>${escapeHtml(c.earlier)}</h2>${rest.map((s) => archiveLinkHtml(s, lang)).join("")}</section>`
+    : "";
+  const feedHref = lang === "es" ? L.es.feedPath : L.en.feedPath;
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CollectionPage",
+        "@id": self,
+        url: self,
+        name: c.h1,
+        description: c.desc,
+        inLanguage: lang,
+        about: { "@type": "Organization", name: hub.line },
+        isPartOf: { "@type": "WebSite", name: "Still Afloat Cruising", url: SITE },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: t.feedH1, item: `${SITE}${feedHref}` },
+          { "@type": "ListItem", position: 2, name: c.h1, item: self },
+        ],
+      },
+      {
+        "@type": "ItemList",
+        itemListOrder: "https://schema.org/ItemListOrderDescending",
+        numberOfItems: stories.length,
+        itemListElement: stories.slice(0, FULL_CARDS).map((s, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          url: `${SITE}${storyHref(s, lang)}`,
+          name: pick(s, "title", lang),
+        })),
+      },
+    ],
+  });
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(c.title)}</title>
+<meta name="description" content="${escapeHtml(c.desc)}">
+<link rel="canonical" href="${self}">
+<link rel="alternate" hreflang="${lang}" href="${self}">
+<link rel="alternate" hreflang="${lang === "es" ? "en" : "es"}" href="${other}">
+<link rel="alternate" hreflang="x-default" href="${SITE}${hubPath(hub.slug, "en")}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:url" content="${self}">
+<meta property="og:title" content="${escapeHtml(c.title)}">
+<meta property="og:description" content="${escapeHtml(c.desc)}">
+<meta property="og:image" content="${LOGO}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${escapeHtml(c.title)}">
+<meta name="twitter:description" content="${escapeHtml(c.desc)}">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>${FEED_CSS}</style>
+<script type="application/ld+json">${jsonLd}</script>
+</head>
+<body>
+<header class="news-page-header">
+  <div id="navbar-container"></div>
+</header>
+<main class="news-wrap">
+<nav aria-label="Breadcrumb" style="margin:0 0 14px;font-size:15px;font-weight:700"><a href="${feedHref}" style="color:#7de3ff;text-decoration:none">← ${escapeHtml(c.back)}</a></nav>
+<div class="news-panel">
+<h1>${escapeHtml(c.h1)}</h1>
+<p style="font-size:18px">${escapeHtml(c.intro)}</p>
+</div>
+<h2 style="margin:0 0 14px;font-size:20px">${escapeHtml(c.latest)}</h2>
+${cards}
+${archive}
+${ctaHtml(lang)}
+</main>
+<footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
+<script src="/components/navbar.js?v=20260905-homeonly"></script>
+</body>
+</html>`;
+}
+
+function feedPageHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssignments = {}): string {
+  const t = L[lang];
+  const self = `${SITE}${t.feedPath}`;
+  const other = lang === "es" ? `${SITE}${L.en.feedPath}` : `${SITE}${L.es.feedPath}`;
+
+  const card = (story: NewsStory): string => storyCardHtml(story, lang);
+  const archiveLink = (story: NewsStory): string => archiveLinkHtml(story, lang);
 
   const cards = stories.slice(0, FULL_CARDS).map(card).join("\n");
   const rest = stories.slice(FULL_CARDS);
@@ -520,6 +651,7 @@ function feedPageHtml(stories: NewsStory[], lang: Lang): string {
 <h1>${t.feedH1}</h1>
 <p>${t.feedIntro}</p>
 </div>
+${hubNavHtml(stories, lang, hubAssignments)}
 ${cards}
 ${archive}
 </main>
@@ -530,7 +662,7 @@ ${archive}
 }
 
 // ── sitemap ──────────────────────────────────────────────────────────────────
-export function sitemapXml(stories: NewsStory[], seoOverrides: SeoOverrideMap = {}): string {
+export function sitemapXml(stories: NewsStory[], seoOverrides: SeoOverrideMap = {}, hubAssignments: HubAssignments = {}): string {
   const entries: string[] = [];
   const day = (iso?: string): string => {
     const d = iso ? new Date(iso) : new Date();
@@ -541,6 +673,18 @@ export function sitemapXml(stories: NewsStory[], seoOverrides: SeoOverrideMap = 
     `<url><loc>${SITE}/news.html</loc><lastmod>${day(newest)}</lastmod><changefreq>daily</changefreq></url>`,
     `<url><loc>${SITE}/es/news.html</loc><lastmod>${day(newest)}</lastmod><changefreq>daily</changefreq></url>`,
   );
+  // Per-line hubs, once the line has enough coverage to be a real page. Their
+  // lastmod is the newest story ON THAT LINE, so a hub is only re-read when its
+  // own line has moved.
+  for (const hub of NEWS_HUBS) {
+    const hubStories = storiesByAssignment(stories, hub, hubAssignments);
+    if (hubStories.length < MIN_HUB_STORIES) continue;
+    const hubMod = day(hubStories[0]?.approvedAt || hubStories[0]?.generatedAt);
+    entries.push(
+      `<url><loc>${SITE}${hubPath(hub.slug, "en")}</loc><lastmod>${hubMod}</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>`,
+      `<url><loc>${SITE}${hubPath(hub.slug, "es")}</loc><lastmod>${hubMod}</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>`,
+    );
+  }
   // Google News eligibility window: <news:news> only on articles published in
   // the last 48h (per the News sitemap spec — older entries stay plain URLs).
   // Before 2026-08-31 this file carried no news namespace at all, so the site
@@ -656,11 +800,41 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
     pages += 2;
   }
 
-  await writeFile(path.join(publicDir, "news.html"), feedPageHtml(stories, "en"));
-  await writeFile(path.join(publicDir, "es", "news.html"), feedPageHtml(stories, "es"));
-  await writeFile(path.join(publicDir, "news-sitemap.xml"), sitemapXml(stories, seoOverrides));
+  // Which line each story belongs to is the agent's call, not a pattern's
+  // (Mark, 2026-09-11). Verdicts are stored per story id, so a story is reasoned
+  // once and every later rebuild just reads the answer.
+  const stored = await readJson<HubAssignments>(PATHS.newsHubAssignments, {});
+  const classified = await classifyStories(stories, stored, {
+    enabled: process.env["NEWS_HUB_CLASSIFIER"] !== "off",
+  });
+  if (Object.keys(classified.assignments).length) {
+    try { await writeJson(PATHS.newsHubAssignments, classified.assignments); }
+    catch (err) { logger.warn({ err }, "news hubs: could not persist assignments"); }
+  }
+  if (classified.llmCalls) {
+    logger.info({ reasoned: classified.reasoned, llmCalls: classified.llmCalls, provider: classified.provider }, "news hubs: classified");
+  }
+
+  const hubAssignmentsForPages = classified.assignments;
+
+  await writeFile(path.join(publicDir, "news.html"), feedPageHtml(stories, "en", hubAssignmentsForPages));
+  await writeFile(path.join(publicDir, "es", "news.html"), feedPageHtml(stories, "es", hubAssignmentsForPages));
+  await writeFile(path.join(publicDir, "news-sitemap.xml"), sitemapXml(stories, seoOverrides, hubAssignmentsForPages));
   pages += 3;
 
-  logger.info({ stories: stories.length, pages }, "News prerender complete");
+  // Per-line hubs, EN + ES. A hub with almost nothing on it is a thin page, so
+  // it is only written (and only linked, and only in the sitemap) once the line
+  // has real coverage.
+  const hubCounts: Record<string, number> = {};
+  for (const hub of NEWS_HUBS) {
+    const hubStories = storiesByAssignment(stories, hub, hubAssignmentsForPages);
+    hubCounts[hub.slug] = hubStories.length;
+    if (hubStories.length < MIN_HUB_STORIES) continue;
+    await writeFile(path.join(enDir, `${hub.slug}.html`), hubPageHtml(hub, hubStories, "en"));
+    await writeFile(path.join(esDir, `${hub.slug}.html`), hubPageHtml(hub, hubStories, "es"));
+    pages += 2;
+  }
+
+  logger.info({ stories: stories.length, pages, hubs: hubCounts }, "News prerender complete");
   return { stories: stories.length, pages };
 }
