@@ -9,7 +9,8 @@
 // Selection is deterministic and testable here; the rendering lives in
 // prerender-news.ts with the rest of the page furniture.
 
-export interface HubCopy { title: string; desc: string; h1: string; intro: string; latest: string; earlier: string; back: string }
+/** `name` is the line as a reader should see it in navigation; `search` stays the SEO phrase. */
+export interface HubCopy { title: string; desc: string; h1: string; intro: string; latest: string; earlier: string; back: string; name: string; moreNews: string }
 export interface NewsHub {
   slug: string;
   /** Canonical line name, used in JSON-LD and the breadcrumb. */
@@ -192,6 +193,10 @@ export function hubCopy(def: LineDef, lang: "en" | "es"): HubCopy {
   const angle = (def.angle ?? GENERIC_ANGLE)[lang];
   const intro = (def.intro ?? GENERIC_INTRO)[lang];
   const name = searchName(def, lang);
+  // Navigation names the LINE, not the search phrase: "Carnival Cruise Line",
+  // not "Carnival Cruise". Spanish keeps the market name where the brand uses
+  // one — MSC Cruceros, Costa Cruceros — and the canonical name otherwise.
+  const navName = lang === "es" && typeof def.search !== "string" ? def.search.es : def.line;
   if (lang === "es") {
     return {
       title: `Noticias de ${name}: ${angle} | Still Afloat`,
@@ -201,6 +206,8 @@ export function hubCopy(def: LineDef, lang: "en" | "es"): HubCopy {
       latest: `Lo más reciente de ${name}`,
       earlier: `Cobertura anterior de ${name}`,
       back: "Todas las noticias de cruceros",
+      name: navName,
+      moreNews: `Más noticias de ${navName}`,
     };
   }
   return {
@@ -211,6 +218,8 @@ export function hubCopy(def: LineDef, lang: "en" | "es"): HubCopy {
     latest: `Latest ${name} news`,
     earlier: `Earlier ${name} coverage`,
     back: "All cruise news",
+    name: navName,
+    moreNews: `More ${navName} news`,
   };
 }
 
