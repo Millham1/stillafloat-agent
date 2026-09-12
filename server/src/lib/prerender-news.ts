@@ -497,8 +497,15 @@ function ctaHtml(lang: Lang): string {
 }
 
 /** Links to the per-line hubs, shown on the main feed so they are reachable and crawlable. */
+const HUB_NAV_MAX = 12; // 36 lines are defined; the feed shows the best-covered ones
+
 function hubNavHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssignments = {}): string {
-  const live = NEWS_HUBS.filter((h) => storiesByAssignment(stories, h, hubAssignments).length >= MIN_HUB_STORIES);
+  const live = NEWS_HUBS
+    .map((h) => ({ hub: h, n: storiesByAssignment(stories, h, hubAssignments).length }))
+    .filter((x) => x.n >= MIN_HUB_STORIES)
+    .sort((a, b) => b.n - a.n)
+    .slice(0, HUB_NAV_MAX)
+    .map((x) => x.hub);
   if (!live.length) return "";
   const label = lang === "es" ? "Noticias por naviera" : "News by cruise line";
   const links = live
