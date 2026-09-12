@@ -46,9 +46,13 @@ describe("hub matching", () => {
       assert.ok(!matchesHub(s(title), carnival), `${title} must not be on Carnival`);
     }
   });
-  it("matches the private islands each line markets", () => {
-    assert.ok(matchesHub(s("Celebration Key Opens Ahead of Schedule"), carnival));
-    assert.ok(matchesHub(s("Perfect Day at CocoCay Raises Cabana Prices"), royal));
+  // Mark, 2026-09-11: Princess is being redirected off Princess Cays onto Half Moon
+  // Cay and Carnival's Celebration Key, so an island says nothing about the line.
+  it("a private island never decides the line — the parent shares them across brands", () => {
+    assert.ok(!matchesHub(s("Sun Princess Swaps Princess Cays for Half Moon Cay on Nov. 22, 2026 Sailing"), carnival), "Princess sailing, Holland America island");
+    assert.ok(!matchesHub(s("Princess Adds Celebration Key Calls From 2027"), carnival), "Princess calling at Carnival's island is Princess news");
+    assert.ok(!matchesHub(s("Celebrity Ascent Adds a CocoCay Day"), royal), "Celebrity calling at Royal's island is Celebrity news");
+    assert.ok(matchesHub(s("Carnival Celebration Adds a Second Celebration Key Call"), carnival), "the SHIP and the line still decide");
   });
   it("does not put one line's story on the other's hub", () => {
     assert.ok(!matchesHub(s("Royal Caribbean Adds a Fourth Private Destination"), carnival));
