@@ -8,13 +8,17 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  hubPageHtml,
+  hubRailHtml,
   isNoindex,
+  railHubs,
   renderParagraphs,
   sitemapXml,
   storyPageHtml,
   storySlug,
   type NewsStory,
 } from "./prerender-news";
+import { hubBySlug } from "./news-hubs";
 
 const base: NewsStory = {
   id: "https://example.com/story-1",
@@ -89,5 +93,84 @@ describe("news sitemap", () => {
   it("an override can pull a Low story back into the sitemap", () => {
     const xml = sitemapXml([low], { [String(low.id)]: { noindex: false } });
     assert.match(xml, new RegExp(storySlug(low)));
+  });
+});
+
+// ── the hub rail ─────────────────────────────────────────────────────────────
+// Mark, 2026-09-12: the pill block above the stories pushed the news down the
+// page. The hub links belong in a plain list down the right instead.
+const line = (id: string, title: string, day: string): NewsStory => ({
+  ...base,
+  id,
+  title,
+  approvedAt: `2026-09-${day}T12:00:00.000Z`,
+});
+const feed: NewsStory[] = [
+  line("c1", "Carnival Cancels a Celebration Key Call", "10"),
+  line("c2", "Carnival Raises Its Gratuity Rate", "09"),
+  line("c3", "Carnival Jubilee Shifts Its Drydock", "08"),
+  line("r1", "Wonder of the Seas Skips Nassau", "07"),
+  line("r2", "Royal Caribbean Adds a Perfect Day Pass", "06"),
+  line("r3", "Royal Caribbean Trims Its Drink Package", "05"),
+  line("p1", "Princess Names a New Captain", "04"),
+];
+const assignments = {
+  c1: ["carnival"], c2: ["carnival"], c3: ["carnival"],
+  r1: ["royal-caribbean"], r2: ["royal-caribbean"], r3: ["royal-caribbean"],
+  p1: ["princess"],
+};
+
+describe("hub rail", () => {
+  it("is a plain list of links, not a row of pills", () => {
+    const rail = hubRailHtml(feed, "en", assignments);
+    assert.match(rail, /<aside class="hub-rail"/);
+    assert.doesNotMatch(rail, /hub-nav/, "the pill nav is gone");
+    assert.doesNotMatch(rail, /border-radius:999px/, "no pills in the rail");
+    assert.doesNotMatch(rail, /style=/, "the rail is styled by class, not inline");
+    assert.match(rail, /<a href="\/news\/carnival.html">Carnival Cruise Line<\/a>/);
+  });
+  it("only lists a line once it has real coverage, best-covered first", () => {
+    const hubs = railHubs(feed, assignments).map((h) => h.slug);
+    assert.deepEqual(hubs, ["carnival", "royal-caribbean"]);
+    assert.ok(!hubs.includes("princess"), "one story is a thin page, not a rail entry");
+    assert.equal(hubRailHtml([], "en", {}), "", "no covered lines = no rail");
+  });
+  it("marks the line the reader is already on", () => {
+    const rail = hubRailHtml(feed, "en", assignments, "carnival");
+    assert.match(rail, /href="\/news\/carnival.html" aria-current="page"/);
+    assert.doesNotMatch(rail, /royal-caribbean.html" aria-current/);
+  });
+  it("the Spanish rail links to the Spanish hubs", () => {
+    const rail = hubRailHtml(feed, "es", assignments);
+    assert.match(rail, /href="\/es\/news\/carnival.html"/);
+    assert.match(rail, /Noticias por naviera/);
+  });
+  it("a hub page puts the stories first and the rail after, so it stacks below on a phone", () => {
+    const hub = hubBySlug("carnival")!;
+    const html = hubPageHtml(hub, feed.slice(0, 3), "en", hubRailHtml(feed, "en", assignments, "carnival"));
+    assert.match(html, /<div class="news-cols">/);
+    assert.ok(
+      html.indexOf('class="news-col-main"') < html.indexOf('class="hub-rail"'),
+      "stories come before the rail in the markup",
+    );
+    assert.match(html, /\.news-cols\{display:grid/, "the two-column rule ships with the page");
+  });
+});
+
+describe("story page links up to its line", () => {
+  const hub = hubBySlug("carnival")!;
+  it("offers the line hub beside the feed link, and names the line over the related list", () => {
+    const html = storyPageHtml(feed[0]!, storySlug(feed[0]!), "en", feed.slice(1, 3), undefined, [hub]);
+    assert.match(html, /<a href="\/news\/carnival.html">More Carnival Cruise Line news<\/a>/);
+    assert.match(html, /<h2>More Carnival Cruise Line news<\/h2>/);
+  });
+  it("falls back to the generic heading when the story is on no line", () => {
+    const html = storyPageHtml(feed[0]!, storySlug(feed[0]!), "en", feed.slice(1, 3));
+    assert.match(html, /<h2>More cruise news<\/h2>/);
+    assert.doesNotMatch(html, /More Carnival/, "no hub link when the story has no line");
+  });
+  it("the Spanish story page uses the Spanish label and hub", () => {
+    const html = storyPageHtml(feed[0]!, storySlug(feed[0]!), "es", feed.slice(1, 3), undefined, [hub]);
+    assert.match(html, /href="\/es\/news\/carnival.html">Más noticias de Carnival</);
   });
 });
