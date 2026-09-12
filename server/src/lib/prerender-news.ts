@@ -359,11 +359,21 @@ export function storyPageHtml(
   lang: Lang,
   related: NewsStory[],
   ov?: SeoOverride,
+  /** The per-line hubs this story belongs to — its way back up to the line. */
+  hubs: readonly NewsHub[] = [],
 ): string {
   const t = L[lang];
   const u = urls(slug);
   const self = lang === "es" ? u.es : u.en;
   const noindex = isNoindex(story, slug, lang, ov);
+  // A cliffnote is a dead end without a way up to its line: a reader who came for
+  // a Carnival story wants the rest of the Carnival news, and the link is also how
+  // a crawler finds the hub from 300 story pages rather than from the feed alone.
+  const hubLinks = hubs
+    .slice(0, 2)
+    .map((h) => `<a href="${hubPath(h.slug, lang)}">${escapeHtml(h[lang].moreNews)}</a>`)
+    .join("\n");
+  const relatedHeading = hubs.length === 1 && hubs[0] ? hubs[0][lang].moreNews : t.related;
   // `title` is the on-page <h1> headline (unchanged); `seoTitle` is what search
   // engines see in <title>/OG — the two differ only when an SEO override is set.
   const title = escapeHtml(pick(story, "title", lang));
@@ -382,7 +392,7 @@ export function storyPageHtml(
     .join(" · ");
 
   const relatedHtml = related.length
-    ? `<section class="related"><h2>${t.related}</h2>${related
+    ? `<section class="related"><h2>${escapeHtml(relatedHeading)}</h2>${related
         .map((r) => {
           const rs = storySlug(r);
           const href = lang === "es" ? `/es/news/${rs}.html` : `/news/${rs}.html`;
@@ -429,6 +439,7 @@ ${editorial ? `<div class="editorial-panel"><div class="tip-label">${t.editorial
 ${longform ? `<div class="story-longform">${longform}</div>` : ""}
 <div class="actions">
 ${original ? `<a href="${original}" target="_blank" rel="noopener noreferrer">${t.readOriginal}</a>` : ""}
+${hubLinks}
 <a href="${t.feedPath}">${t.backToFeed}</a>
 </div>
 <div class="note">${t.note}</div>
@@ -456,7 +467,7 @@ ${relatedHtml}
 import { NEWS_HUBS, storiesForHub, hubPath, MIN_HUB_STORIES, type NewsHub } from "./news-hubs";
 import { classifyStories, storiesByAssignment, type HubAssignments } from "./news-hub-classifier";
 
-const FEED_CSS = `body{background:radial-gradient(circle at top right, rgba(0,119,182,0.24), transparent 28%),radial-gradient(circle at left center, rgba(93,255,154,0.10), transparent 30%),linear-gradient(to bottom,#06111f 0%,#0b2238 35%,#102f4d 100%);min-height:100vh;color:white}.news-page-header{position:relative;height:110px;width:100%}.news-wrap{max-width:1100px;margin:auto;padding:24px 22px 70px}.news-panel{margin-bottom:26px;padding:22px 24px;border-radius:26px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(16px);box-shadow:0 18px 44px rgba(0,0,0,.24)}.news-panel h1{margin:0 0 12px;font-size:44px;line-height:1}.news-panel p{margin:0;color:rgba(255,255,255,.72);line-height:1.6}article.story{margin-bottom:18px;padding:20px 22px;border-radius:22px;background:rgba(210,230,255,0.10);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 22px rgba(0,0,0,.16);transition:all .22s ease}article.story:hover{transform:translateY(-4px);box-shadow:0 18px 38px rgba(0,0,0,.24);border-color:rgba(93,255,154,.24)}article.story h2{font-size:22px;line-height:1.28;margin:0 0 10px}article.story h2 a{color:white;text-decoration:none}article.story h2 a:hover{color:#5dff9a}article.story p{line-height:1.55;color:rgba(255,255,255,.76);margin:0 0 14px;font-size:15px}article.story .more{color:#7de3ff;font-weight:800;text-decoration:none;font-size:14px}.story-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.pill{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em}.src{font-size:11px;font-weight:800;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em}.when{font-size:11px;color:rgba(255,255,255,.52);font-weight:700}.archive{margin-top:34px}.archive h2{font-size:20px}.archive a{display:block;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.10);color:white;text-decoration:none;font-weight:700;line-height:1.4}.archive a:hover{color:#5dff9a}footer{padding:30px 20px 50px;text-align:center;color:rgba(255,255,255,.52)}@media(max-width:768px){.news-page-header{height:70px}.news-wrap{padding:16px 14px 50px}.news-panel{padding:18px 16px;border-radius:18px}.news-panel h1{font-size:26px}.news-panel p{font-size:15px}}`;
+const FEED_CSS = `body{background:radial-gradient(circle at top right, rgba(0,119,182,0.24), transparent 28%),radial-gradient(circle at left center, rgba(93,255,154,0.10), transparent 30%),linear-gradient(to bottom,#06111f 0%,#0b2238 35%,#102f4d 100%);min-height:100vh;color:white}.news-page-header{position:relative;height:110px;width:100%}.news-wrap{max-width:1100px;margin:auto;padding:24px 22px 70px}.news-panel{margin-bottom:26px;padding:22px 24px;border-radius:26px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(16px);box-shadow:0 18px 44px rgba(0,0,0,.24)}.news-panel h1{margin:0 0 12px;font-size:44px;line-height:1}.news-panel p{margin:0;color:rgba(255,255,255,.72);line-height:1.6}article.story{margin-bottom:18px;padding:20px 22px;border-radius:22px;background:rgba(210,230,255,0.10);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 22px rgba(0,0,0,.16);transition:all .22s ease}article.story:hover{transform:translateY(-4px);box-shadow:0 18px 38px rgba(0,0,0,.24);border-color:rgba(93,255,154,.24)}article.story h2{font-size:22px;line-height:1.28;margin:0 0 10px}article.story h2 a{color:white;text-decoration:none}article.story h2 a:hover{color:#5dff9a}article.story p{line-height:1.55;color:rgba(255,255,255,.76);margin:0 0 14px;font-size:15px}article.story .more{color:#7de3ff;font-weight:800;text-decoration:none;font-size:14px}.story-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.pill{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em}.src{font-size:11px;font-weight:800;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em}.when{font-size:11px;color:rgba(255,255,255,.52);font-weight:700}.archive{margin-top:34px}.archive h2{font-size:20px}.archive a{display:block;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.10);color:white;text-decoration:none;font-weight:700;line-height:1.4}.archive a:hover{color:#5dff9a}footer{padding:30px 20px 50px;text-align:center;color:rgba(255,255,255,.52)}.news-cols{display:grid;grid-template-columns:minmax(0,1fr) 236px;gap:26px;align-items:start}.news-col-main{min-width:0}.hub-rail{position:sticky;top:18px;padding:18px 20px 14px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(14px);box-shadow:0 10px 26px rgba(0,0,0,.18)}.hub-rail h2{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.60)}.hub-rail a{display:block;padding:8px 0;color:#bdfdd3;text-decoration:none;font-weight:700;font-size:15px;line-height:1.35;border-bottom:1px solid rgba(255,255,255,.07)}.hub-rail a:last-child{border-bottom:0}.hub-rail a:hover{color:#5dff9a}.hub-rail a[aria-current="page"]{color:#fff}@media(max-width:900px){.news-cols{grid-template-columns:1fr}.hub-rail{position:static;margin-top:24px}}@media(max-width:768px){.news-page-header{height:70px}.news-wrap{padding:16px 14px 50px}.news-panel{padding:18px 16px;border-radius:18px}.news-panel h1{font-size:26px}.news-panel p{font-size:15px}}`;
 
 const FULL_CARDS = 20; // full cards on the listing; the rest become archive links
 
@@ -496,24 +507,44 @@ function ctaHtml(lang: Lang): string {
 </section>`;
 }
 
-/** Links to the per-line hubs, shown on the main feed so they are reachable and crawlable. */
-const HUB_NAV_MAX = 12; // 36 lines are defined; the feed shows the best-covered ones
+/**
+ * Links to the per-line hubs, as a plain list down the right-hand rail.
+ * It rides beside the stories rather than above them: a reader scanning the
+ * feed should not have to scroll past a block of navigation to reach the news,
+ * and a crawler still finds every hub from the feed and from every hub page.
+ */
+const HUB_RAIL_MAX = 14; // 36 lines are defined; the rail shows the best-covered ones
 
-function hubNavHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssignments = {}): string {
-  const live = NEWS_HUBS
+/** The lines with enough coverage to have a page, best-covered first. */
+export function railHubs(stories: NewsStory[], hubAssignments: HubAssignments = {}): NewsHub[] {
+  return NEWS_HUBS
     .map((h) => ({ hub: h, n: storiesByAssignment(stories, h, hubAssignments).length }))
     .filter((x) => x.n >= MIN_HUB_STORIES)
-    .sort((a, b) => b.n - a.n)
-    .slice(0, HUB_NAV_MAX)
+    .sort((a, b) => b.n - a.n || a.hub.line.localeCompare(b.hub.line))
+    .slice(0, HUB_RAIL_MAX)
     .map((x) => x.hub);
+}
+
+export function hubRailHtml(
+  stories: NewsStory[],
+  lang: Lang,
+  hubAssignments: HubAssignments = {},
+  /** The hub being viewed, so the rail marks where the reader already is. */
+  currentSlug?: string,
+): string {
+  const live = railHubs(stories, hubAssignments);
   if (!live.length) return "";
   const label = lang === "es" ? "Noticias por naviera" : "News by cruise line";
   const links = live
-    .map((h) => `<a href="${hubPath(h.slug, lang)}" style="display:inline-block;padding:9px 18px;border-radius:999px;background:rgba(93,255,154,.10);border:1px solid rgba(93,255,154,.24);color:#bdfdd3;font-weight:800;text-decoration:none;font-size:15px">${escapeHtml(h[lang].h1)}</a>`)
-    .join(" ");
-  return `<nav class="hub-nav" aria-label="${label}" style="margin:0 0 22px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-<span style="color:rgba(255,255,255,.72);font-weight:800;font-size:15px">${label}:</span> ${links}
-</nav>`;
+    .map((h) => {
+      const current = h.slug === currentSlug ? ' aria-current="page"' : "";
+      return `<a href="${hubPath(h.slug, lang)}"${current}>${escapeHtml(h[lang].name)}</a>`;
+    })
+    .join("\n");
+  return `<aside class="hub-rail" aria-label="${label}">
+<h2>${label}</h2>
+${links}
+</aside>`;
 }
 
 /**
@@ -521,7 +552,13 @@ function hubNavHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssignm
  * Structurally the feed page, with the line's own title, intro, breadcrumb and
  * CollectionPage markup so the query it answers is unambiguous to a crawler.
  */
-export function hubPageHtml(hub: NewsHub, stories: NewsStory[], lang: Lang): string {
+export function hubPageHtml(
+  hub: NewsHub,
+  stories: NewsStory[],
+  lang: Lang,
+  /** Pre-rendered rail of sibling lines — built from the FULL feed, not this hub's slice. */
+  rail = "",
+): string {
   const c = hub[lang];
   const t = L[lang];
   const self = `${SITE}${hubPath(hub.slug, lang)}`;
@@ -600,10 +637,15 @@ export function hubPageHtml(hub: NewsHub, stories: NewsStory[], lang: Lang): str
 <h1>${escapeHtml(c.h1)}</h1>
 <p style="font-size:18px">${escapeHtml(c.intro)}</p>
 </div>
+<div class="news-cols">
+<div class="news-col-main">
 <h2 style="margin:0 0 14px;font-size:20px">${escapeHtml(c.latest)}</h2>
 ${cards}
 ${archive}
 ${ctaHtml(lang)}
+</div>
+${rail}
+</div>
 </main>
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
 <script src="/components/navbar.js?v=20260905-homeonly"></script>
@@ -658,9 +700,13 @@ function feedPageHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssig
 <h1>${t.feedH1}</h1>
 <p>${t.feedIntro}</p>
 </div>
-${hubNavHtml(stories, lang, hubAssignments)}
+<div class="news-cols">
+<div class="news-col-main">
 ${cards}
 ${archive}
+</div>
+${hubRailHtml(stories, lang, hubAssignments)}
+</div>
 </main>
 <footer>© 2026 Still Afloat LLC — Cruise smarter. Laugh more. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
 <script src="/components/navbar.js?v=20260905-homeonly"></script>
@@ -797,13 +843,20 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
   let pages = 0;
   for (const story of stories) {
     const slug = storySlug(story);
-    const related = stories
-      .filter((r) => r.id !== story.id && r.category === story.category)
-      .slice(0, 3);
-    const rel = related.length ? related : stories.filter((r) => r.id !== story.id).slice(0, 3);
+    const myHubs = NEWS_HUBS.filter((h) => (hubAssignmentsForPages[String(story.id)] ?? []).includes(h.slug));
+    // Related stories prefer the SAME LINE — a reader on a Carnival story is
+    // more likely to want another Carnival story than another "Travel
+    // Intelligence" one — then fall back to category, then to anything.
+    const sameLine = myHubs.length
+      ? stories.filter((r) => r.id !== story.id && myHubs.some((h) => (hubAssignmentsForPages[String(r.id)] ?? []).includes(h.slug))).slice(0, 3)
+      : [];
+    const sameCategory = stories.filter((r) => r.id !== story.id && r.category === story.category).slice(0, 3);
+    const rel = sameLine.length >= 2 ? sameLine
+      : sameCategory.length ? sameCategory
+      : stories.filter((r) => r.id !== story.id).slice(0, 3);
     const ov = story.id ? seoOverrides[story.id] : undefined;
-    await writeFile(path.join(enDir, `${slug}.html`), storyPageHtml(story, slug, "en", rel, ov));
-    await writeFile(path.join(esDir, `${slug}.html`), storyPageHtml(story, slug, "es", rel, ov));
+    await writeFile(path.join(enDir, `${slug}.html`), storyPageHtml(story, slug, "en", rel, ov, myHubs));
+    await writeFile(path.join(esDir, `${slug}.html`), storyPageHtml(story, slug, "es", rel, ov, myHubs));
     pages += 2;
   }
 
@@ -837,8 +890,12 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
     const hubStories = storiesByAssignment(stories, hub, hubAssignmentsForPages);
     hubCounts[hub.slug] = hubStories.length;
     if (hubStories.length < MIN_HUB_STORIES) continue;
-    await writeFile(path.join(enDir, `${hub.slug}.html`), hubPageHtml(hub, hubStories, "en"));
-    await writeFile(path.join(esDir, `${hub.slug}.html`), hubPageHtml(hub, hubStories, "es"));
+    // The rail is built from the FULL feed so every hub lists its siblings, and
+    // marks itself so the reader knows which line they are on.
+    const railEn = hubRailHtml(stories, "en", hubAssignmentsForPages, hub.slug);
+    const railEs = hubRailHtml(stories, "es", hubAssignmentsForPages, hub.slug);
+    await writeFile(path.join(enDir, `${hub.slug}.html`), hubPageHtml(hub, hubStories, "en", railEn));
+    await writeFile(path.join(esDir, `${hub.slug}.html`), hubPageHtml(hub, hubStories, "es", railEs));
     pages += 2;
   }
 
