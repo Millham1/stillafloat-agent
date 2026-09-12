@@ -1,7 +1,7 @@
 // news-hubs.test.ts — a story lands on the right line's hub, or on neither.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { NEWS_HUBS, hubBySlug, matchesHub, storiesForHub, hubPath, MIN_HUB_STORIES } from "./news-hubs";
+import { NEWS_HUBS, hubBySlug, matchesHub, storiesForHub, hubPath, MIN_HUB_STORIES, titleCase, hubCopy, LINE_DEFS } from "./news-hubs";
 
 const carnival = hubBySlug("carnival")!;
 const royal = hubBySlug("royal-caribbean")!;
@@ -144,6 +144,32 @@ describe("hub configuration", () => {
     for (const h of NEWS_HUBS) {
       for (const copy of [h.en, h.es]) {
         for (const v of Object.values(copy)) assert.ok(!/\bactually\b/i.test(v), `${h.slug}: ${v}`);
+      }
+    }
+  });
+});
+
+describe("generated copy", () => {
+  it("a proper noun in an angle keeps its capitals in the title and the description", () => {
+    assert.equal(titleCase("ships, fares and Ocean Cay"), "Ships, Fares and Ocean Cay");
+    assert.equal(titleCase("what changed this week, and what it costs you"), "What Changed This Week, and What It Costs You");
+    const msc = hubBySlug("msc")!;
+    assert.match(msc.en.title, /Ships, Fares and Ocean Cay/);
+    assert.match(msc.en.desc, /ships, fares and Ocean Cay/);
+    assert.ok(!/ocean cay/.test(msc.en.desc), "never lowercased to 'ocean cay'");
+  });
+  it("the Spanish page uses a Spanish search name, not the English phrase", () => {
+    assert.equal(hubBySlug("carnival")!.es.h1, "Noticias de Carnival");
+    assert.equal(hubBySlug("msc")!.es.h1, "Noticias de MSC Cruceros");
+    assert.ok(!/Carnival Cruise\b/.test(hubBySlug("carnival")!.es.title));
+  });
+  it("no description repeats its own angle, and all sit inside meta length", () => {
+    for (const def of LINE_DEFS) {
+      for (const lang of ["en", "es"] as const) {
+        const c = hubCopy(def, lang);
+        assert.ok(c.desc.length >= 110 && c.desc.length <= 320, `${def.slug} ${lang}: ${c.desc.length}`);
+        assert.ok(!/(what changed)[\s\S]*(what changed)/i.test(c.desc), `${def.slug} ${lang} repeats`);
+        assert.ok(!/(qué cambió)[\s\S]*(qué cambió)/i.test(c.desc), `${def.slug} ${lang} repite`);
       }
     }
   });
