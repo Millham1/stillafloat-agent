@@ -20,15 +20,19 @@ describe("triage", () => {
     const t = triage(stories);
     assert.deepEqual(t.settled.get("a"), ["carnival"]);
     assert.deepEqual(t.settled.get("b"), ["royal-caribbean"]);
+    // Every operator has a hub, so "Disney Magic" resolves to Disney rather than
+    // being an ambiguity to spend a call on — the collision it used to cause on
+    // the Carnival hub is gone at the same time.
+    assert.deepEqual(t.settled.get("d"), ["disney"]);
   });
   it("no line named, or two named, goes to the agent", () => {
     const t = triage(stories);
-    assert.deepEqual(t.ambiguous.map((x) => x.id).sort(), ["c", "d", "e"]);
+    assert.deepEqual(t.ambiguous.map((x) => x.id).sort(), ["c", "e"]);
   });
   it("a story decided before is never asked about again", () => {
-    const t = triage(stories, { c: ["carnival", "royal-caribbean"], d: [] });
-    assert.deepEqual(t.ambiguous.map((x) => x.id), ["e"]);
-    assert.deepEqual(t.settled.get("d"), [], "an empty verdict is still a verdict");
+    const t = triage(stories, { c: ["carnival", "royal-caribbean"], e: [] });
+    assert.deepEqual(t.ambiguous.map((x) => x.id), []);
+    assert.deepEqual(t.settled.get("e"), [], "an empty verdict is still a verdict");
   });
 });
 
