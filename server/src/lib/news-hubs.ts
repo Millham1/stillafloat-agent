@@ -37,68 +37,164 @@ export interface NewsHub {
 // Princess news, and a CocoCay story may be Celebrity news. Only the LINE and
 // its own ships decide; the island never does. The agent settles the rest.
 //
-// Carnival: the brand name (every Carnival ship story says "Carnival"), the
-// loyalty programme, and Mardi Gras — the one hull whose name no other line uses.
-const CARNIVAL_MATCH = /\b(carnival|mardi gras|vifp)\b/i;
-// Royal: the brand, and the fleet's own naming convention. Every Royal ship is
-// "<something> of the Seas" and no other line names ships that way, so one
-// pattern covers the whole fleet — including hulls not yet delivered — with no
-// collisions. CocoCay is deliberately absent: Celebrity ships call there too.
-const ROYAL_MATCH = /\b(royal caribbean|rccl|[a-z]+ of the seas)\b/i;
+// Ship names collide across lines too (Carnival Magic and Disney Magic;
+// Carnival Adventure and Adventure of the Seas), so a line matches its own name
+// plus only those hulls whose names no other line uses. Everything ambiguous is
+// the classifier's job, not the pattern's.
 
-export const NEWS_HUBS: NewsHub[] = [
+/** A line, compactly. The page copy is generated from this; see `hubCopy`. */
+export interface LineDef {
+  slug: string;
+  /** Full name, used in the intro, the breadcrumb and the structured data. */
+  line: string;
+  /** How searchers name it: "Carnival Cruise", "Royal Caribbean", "MSC Cruises". */
+  search: string;
+  match: RegExp;
+  /** Sister brands under the same parent that must not be dragged in. */
+  exclude?: RegExp;
+  /** The specific angle for this line, if the generic one undersells it. */
+  angle?: { en: string; es: string };
+  /** The one-sentence promise under the H1, if the generic one undersells it. */
+  intro?: { en: string; es: string };
+}
+
+const GENERIC_ANGLE = {
+  en: "Ship Updates, Fees and Itinerary Changes",
+  es: "barcos, tarifas y cambios de itinerario",
+};
+const GENERIC_INTRO = {
+  en: "New ships, new fees, and the itinerary changes that quietly rewrite a week you already paid for.",
+  es: "Barcos nuevos, tarifas nuevas y los cambios de itinerario que reescriben en silencio una semana que ya pagaste.",
+};
+
+export const LINE_DEFS: LineDef[] = [
   {
-    slug: "carnival",
-    line: "Carnival Cruise Line",
-    match: CARNIVAL_MATCH,
-    // Carnival Corporation owns Princess, Holland America, Cunard, Costa, AIDA and
-    // Seabourn: a story about one of those brands is not Carnival Cruise Line news.
-    exclude: /\b(princess cruises|holland america|cunard|costa cruises|aida|seabourn|p&o cruises)\b/i,
-    en: {
-      title: "Carnival Cruise News: What Changed This Week, and What It Costs You",
-      desc: "Carnival Cruise Line news read the way a cruiser needs it — every fee change, itinerary swap, ship update and loyalty tweak, and what each one does to your sailing.",
-      h1: "Carnival Cruise News",
-      intro: "Everything we have run about Carnival, newest first. Each story says what changed and, more to the point, what it does to your sailing and your wallet. No press releases repeated back at you.",
-      latest: "Latest Carnival news",
-      earlier: "Earlier Carnival coverage",
-      back: "All cruise news",
-    },
-    es: {
-      title: "Noticias de Carnival Cruise Line: qué cambió y cuánto te cuesta",
-      desc: "Noticias de Carnival Cruise Line explicadas para quien navega: cada cambio de tarifa, itinerario, barco y programa de lealtad, con lo que significa de verdad para tu crucero.",
-      h1: "Noticias de Carnival",
-      intro: "Todo lo que hemos publicado sobre Carnival, lo más reciente primero. Cada nota dice qué cambió y, sobre todo, cómo afecta tu crucero y tu bolsillo. Nada de comunicados repetidos.",
-      latest: "Lo más reciente de Carnival",
-      earlier: "Cobertura anterior de Carnival",
-      back: "Todas las noticias de cruceros",
+    slug: "carnival", line: "Carnival Cruise Line", search: "Carnival Cruise",
+    match: /\b(carnival|mardi gras|vifp)\b/i,
+    // Carnival Corporation also owns Princess, Holland America, Cunard, Costa,
+    // AIDA, P&O and Seabourn: those brands are not Carnival Cruise Line.
+    exclude: /\b(princess cruises|holland america|cunard|costa cruises|aida\w*|seabourn|p&o cruises)\b/i,
+    angle: { en: "What Changed This Week, and What It Costs You", es: "qué cambió y cuánto te cuesta" },
+    intro: {
+      en: "Each story says what changed and, more to the point, what it does to your sailing and your wallet. No press releases repeated back at you.",
+      es: "Cada nota dice qué cambió y, sobre todo, cómo afecta tu crucero y tu bolsillo. Nada de comunicados repetidos.",
     },
   },
   {
-    slug: "royal-caribbean",
-    line: "Royal Caribbean International",
-    match: ROYAL_MATCH,
-    // Royal Caribbean Group also owns Celebrity and Silversea.
-    exclude: /\b(celebrity cruises|celebrity (apex|edge|beyond|ascent|xcel|reflection|silhouette|equinox|solstice|eclipse|summit|millennium|infinity|constellation)|silversea)\b/i,
-    en: {
-      title: "Royal Caribbean News: Ship Updates, Fees and Itinerary Changes",
-      desc: "Royal Caribbean news with the part that matters to you — new ships and venues, drink and Wi-Fi pricing, Perfect Day changes, itinerary swaps, and what each one means before you book.",
-      h1: "Royal Caribbean News",
-      intro: "Everything we have run about Royal Caribbean, newest first. New ships, new fees, CocoCay changes and the itinerary swaps that quietly rewrite a week you already paid for.",
-      latest: "Latest Royal Caribbean news",
-      earlier: "Earlier Royal Caribbean coverage",
-      back: "All cruise news",
-    },
-    es: {
-      title: "Noticias de Royal Caribbean: barcos, tarifas y cambios de itinerario",
-      desc: "Noticias de Royal Caribbean con lo que de verdad te importa: barcos y lugares nuevos, precios de bebidas y wifi, cambios en Perfect Day e itinerarios, y qué significa cada uno antes de reservar.",
-      h1: "Noticias de Royal Caribbean",
-      intro: "Todo lo que hemos publicado sobre Royal Caribbean, lo más reciente primero. Barcos nuevos, tarifas nuevas, cambios en CocoCay y los ajustes de itinerario que reescriben en silencio una semana que ya pagaste.",
-      latest: "Lo más reciente de Royal Caribbean",
-      earlier: "Cobertura anterior de Royal Caribbean",
-      back: "Todas las noticias de cruceros",
+    slug: "royal-caribbean", line: "Royal Caribbean International", search: "Royal Caribbean",
+    // Every Royal hull is "<name> of the Seas" and no other line names ships that
+    // way, so one pattern covers the fleet, undelivered hulls included.
+    match: /\b(royal caribbean|rccl|[a-z]+ of the seas)\b/i,
+    exclude: /\b(celebrity cruises|celebrity \w+|silversea|silver \w+)\b/i,
+    angle: { en: "Ship Updates, Fees and Itinerary Changes", es: "barcos, tarifas y cambios de itinerario" },
+    intro: {
+      en: "New ships, new fees, Perfect Day changes and the itinerary swaps that quietly rewrite a week you already paid for.",
+      es: "Barcos nuevos, tarifas nuevas, cambios en Perfect Day y los ajustes de itinerario que reescriben una semana que ya pagaste.",
     },
   },
+  {
+    slug: "norwegian", line: "Norwegian Cruise Line", search: "Norwegian Cruise Line",
+    match: /\b(norwegian cruise line|ncl|norwegian (prima|viva|aqua|luna|encore|bliss|joy|escape|getaway|breakaway|epic|jade|jewel|pearl|star|sun|sky|dawn|gem|spirit)|pride of america)\b/i,
+    exclude: /\b(oceania|regent seven seas|seven seas \w+)\b/i,
+    angle: { en: "Free at Sea, Fees and Fleet Changes", es: "Free at Sea, tarifas y cambios de flota" },
+  },
+  {
+    slug: "msc", line: "MSC Cruises", search: "MSC Cruises",
+    match: /\bmsc\b/i,
+    exclude: /\b(explora journeys|explora [ivx]+)\b/i,
+    angle: { en: "Ships, Fares and Ocean Cay", es: "barcos, tarifas y Ocean Cay" },
+  },
+  {
+    slug: "princess", line: "Princess Cruises", search: "Princess Cruises",
+    match: /\b(princess cruises|(sun|sky|enchanted|discovery|majestic|regal|royal|caribbean|crown|emerald|ruby|diamond|sapphire|grand|coral|island|star) princess)\b/i,
+    exclude: /\b(carnival cruise|holland america|cunard|seabourn)\b/i,
+    angle: { en: "Itineraries, Princess Plus and Ship News", es: "itinerarios, Princess Plus y noticias de barcos" },
+  },
+  {
+    slug: "celebrity", line: "Celebrity Cruises", search: "Celebrity Cruises",
+    match: /\bcelebrity (cruises|apex|edge|beyond|ascent|xcel|reflection|silhouette|equinox|solstice|eclipse|summit|millennium|infinity|constellation|flora|xpedition|xploration)\b/i,
+    exclude: /\b(royal caribbean|[a-z]+ of the seas|silversea)\b/i,
+  },
+  {
+    slug: "holland-america", line: "Holland America Line", search: "Holland America",
+    match: /\b(holland america|zuiderdam|koningsdam|nieuw statendam|nieuw amsterdam|eurodam|oosterdam|westerdam|noordam|volendam|zaandam|rotterdam vii)\b/i,
+    exclude: /\b(carnival cruise|princess cruises|cunard|seabourn)\b/i,
+  },
+  {
+    slug: "disney", line: "Disney Cruise Line", search: "Disney Cruise Line",
+    match: /\bdisney (cruise|magic|wonder|dream|fantasy|wish|treasure|destiny|adventure|expedition)\b/i,
+    angle: { en: "Ships, Sailings and Castaway Cay", es: "barcos, salidas y Castaway Cay" },
+  },
+  {
+    slug: "virgin-voyages", line: "Virgin Voyages", search: "Virgin Voyages",
+    match: /\b(virgin voyages|(scarlet|valiant|resilient|brilliant) lady)\b/i,
+    angle: { en: "Adults-Only Sailings, Fares and Ships", es: "cruceros solo para adultos, tarifas y barcos" },
+  },
+  {
+    slug: "margaritaville", line: "Margaritaville at Sea", search: "Margaritaville at Sea",
+    match: /\bmargaritaville at sea\b/i,
+  },
+  { slug: "aida", line: "AIDA Cruises", search: "AIDA Cruises", match: /\b(aida cruises|aida[a-z]+)\b/i },
+  { slug: "cunard", line: "Cunard Line", search: "Cunard", match: /\b(cunard|queen (mary 2|elizabeth|victoria|anne))\b/i, exclude: /\b(carnival cruise|princess cruises|holland america)\b/i },
+  { slug: "costa", line: "Costa Cruises", search: "Costa Cruises", match: /\b(costa cruises|costa (smeralda|toscana|firenze|diadema|favolosa|fascinosa|deliziosa|pacifica|fortuna|serena|venezia|luminosa|magica|mediterranea))\b/i },
+  { slug: "viking", line: "Viking", search: "Viking Cruises", match: /\bviking (ocean|cruises|expeditions|star|sky|sea|sun|orion|jupiter|venus|mars|neptune|saturn|octantis|polaris|vela|vesta|mira|idun)\b/i },
+  { slug: "oceania", line: "Oceania Cruises", search: "Oceania Cruises", match: /\b(oceania|allura|insignia|nautica|sirena|regatta)\b/i, exclude: /\b(norwegian cruise line|regent seven seas)\b/i },
+  { slug: "regent", line: "Regent Seven Seas Cruises", search: "Regent Seven Seas", match: /\b(regent seven seas|seven seas (splendor|explorer|grandeur|mariner|voyager|navigator|prestige))\b/i },
+  { slug: "silversea", line: "Silversea Cruises", search: "Silversea", match: /\b(silversea|silver (dawn|moon|muse|nova|ray|shadow|whisper|wind|cloud|endeavour|origin|spirit))\b/i, exclude: /\b(royal caribbean|celebrity cruises)\b/i },
+  { slug: "seabourn", line: "Seabourn", search: "Seabourn", match: /\bseabourn\b/i },
+  { slug: "explora-journeys", line: "Explora Journeys", search: "Explora Journeys", match: /\b(explora journeys|explora [ivx]+)\b/i, exclude: /\bmsc cruises\b/i },
+  { slug: "po-cruises", line: "P&O Cruises", search: "P&O Cruises", match: /\b(p&o cruises|iona|arvia|britannia|azura|ventura|arcadia)\b/i },
+  { slug: "tui-cruises", line: "TUI Cruises", search: "TUI Cruises", match: /\b(tui cruises|mein schiff)\b/i },
+  { slug: "marella", line: "Marella Cruises", search: "Marella Cruises", match: /\bmarella\b/i },
+  { slug: "hurtigruten", line: "Hurtigruten and HX", search: "Hurtigruten", match: /\b(hurtigruten|hx expeditions)\b/i },
+  { slug: "ponant", line: "Ponant", search: "Ponant", match: /\b(ponant|le (commandant charcot|boreal|lyrial|soleal|champlain|dumont|bougainville|jacques cartier))\b/i },
+  { slug: "lindblad", line: "Lindblad Expeditions", search: "Lindblad Expeditions", match: /\b(lindblad|national geographic (endurance|resolution|explorer|orion|venture|islander|quest|sea bird|sea lion))\b/i },
+  { slug: "windstar", line: "Windstar Cruises", search: "Windstar", match: /\b(windstar|wind (surf|star|spirit)|star (breeze|legend|pride|seeker))\b/i },
+  { slug: "azamara", line: "Azamara", search: "Azamara", match: /\bazamara\b/i },
+  { slug: "ritz-carlton", line: "The Ritz-Carlton Yacht Collection", search: "Ritz-Carlton Yacht Collection", match: /\b(ritz-?carlton yacht|evrima|ilma|luminara)\b/i },
+  { slug: "emerald", line: "Emerald Cruises", search: "Emerald Cruises", match: /\bemerald (cruises|azzurra|sakara|kaia)\b/i },
+  { slug: "atlas", line: "Atlas Ocean Voyages", search: "Atlas Ocean Voyages", match: /\b(atlas ocean|world (navigator|traveller|voyager|seeker))\b/i },
+  { slug: "ambassador", line: "Ambassador Cruise Line", search: "Ambassador Cruise Line", match: /\b(ambassador cruise line|ambience|ambition)\b/i },
+  { slug: "fred-olsen", line: "Fred. Olsen Cruise Lines", search: "Fred. Olsen", match: /\b(fred\.? olsen|balmoral|borealis|bolette|braemar)\b/i },
+  { slug: "celestyal", line: "Celestyal Cruises", search: "Celestyal", match: /\bcelestyal\b/i },
+  { slug: "scenic", line: "Scenic", search: "Scenic Cruises", match: /\bscenic (cruises|eclipse)\b/i },
+  { slug: "saga", line: "Saga Cruises", search: "Saga Cruises", match: /\b(saga cruises|spirit of (discovery|adventure))\b/i },
 ];
+
+/** The seven page strings, generated from a line definition. */
+export function hubCopy(def: LineDef, lang: "en" | "es"): HubCopy {
+  const angle = (def.angle ?? GENERIC_ANGLE)[lang];
+  const intro = (def.intro ?? GENERIC_INTRO)[lang];
+  if (lang === "es") {
+    return {
+      title: `Noticias de ${def.search}: ${angle} | Still Afloat`,
+      desc: `Noticias de ${def.line} para quien navega: ${angle}. Qué cambió y cómo afecta tu crucero, seleccionadas por Still Afloat.`,
+      h1: `Noticias de ${def.search}`,
+      intro: `Todo lo que hemos publicado sobre ${def.line}, lo más reciente primero. ${intro}`,
+      latest: `Lo más reciente de ${def.search}`,
+      earlier: `Cobertura anterior de ${def.search}`,
+      back: "Todas las noticias de cruceros",
+    };
+  }
+  return {
+    title: `${def.search} News: ${angle} | Still Afloat`,
+    desc: `${def.line} news read the way a cruiser needs it: ${angle.toLowerCase()}. What changed, and what it does to your sailing, curated by Still Afloat.`,
+    h1: `${def.search} News`,
+    intro: `Everything we have run about ${def.line}, newest first. ${intro}`,
+    latest: `Latest ${def.search} news`,
+    earlier: `Earlier ${def.search} coverage`,
+    back: "All cruise news",
+  };
+}
+
+export const NEWS_HUBS: NewsHub[] = LINE_DEFS.map((def) => ({
+  slug: def.slug,
+  line: def.line,
+  match: def.match,
+  ...(def.exclude ? { exclude: def.exclude } : {}),
+  en: hubCopy(def, "en"),
+  es: hubCopy(def, "es"),
+}));
 
 export function hubBySlug(slug: string): NewsHub | undefined {
   return NEWS_HUBS.find((h) => h.slug === slug);

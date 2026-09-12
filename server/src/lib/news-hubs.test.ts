@@ -65,9 +65,32 @@ describe("hub matching", () => {
   it("but a headline that names the line itself still counts, sister brand or not", () => {
     assert.ok(matchesHub(s("Carnival Cancels a Celebration Sailing, Princess Picks Up the Guests"), carnival));
   });
-  it("an unrelated line is on neither hub", () => {
-    for (const h of NEWS_HUBS) assert.ok(!matchesHub(s("Norwegian Prima Shuts Down Its Hot Tubs"), h));
-    for (const h of NEWS_HUBS) assert.ok(!matchesHub(s("MSC World America Debuts in Miami"), h));
+  it("another line's story goes to that line's hub and no other", () => {
+    const only = (title: string, slug: string) => {
+      const hit = NEWS_HUBS.filter((h) => matchesHub(s(title), h)).map((h) => h.slug);
+      assert.deepEqual(hit, [slug], `${title} -> ${hit.join(",") || "none"}`);
+    };
+    only("Norwegian Prima Shuts Down Its Hot Tubs", "norwegian");
+    only("MSC World America Debuts in Miami", "msc");
+    only("Disney Magic's Very Merrytime Cruise Gains a Cozumel Stop", "disney");
+    only("Sun Princess Swaps Princess Cays for Half Moon Cay on Nov. 22, 2026 Sailing", "princess");
+    only("Holland America Unveils Zuiderdam Upgrades With New Suites", "holland-america");
+    only("Celebrity Cruises Makes Big Changes to Loyalty Program", "celebrity");
+    only("Brilliant Lady Closes Out Virgin Voyages' First Alaska Season", "virgin-voyages");
+  });
+  it("every line in the registry has a hub defined, so no operator is a backlog item", () => {
+    assert.ok(NEWS_HUBS.length >= 30, `only ${NEWS_HUBS.length} hubs defined`);
+    for (const slug of ["carnival", "royal-caribbean", "norwegian", "msc", "princess", "celebrity", "holland-america",
+      "disney", "virgin-voyages", "cunard", "costa", "viking", "aida", "oceania", "regent", "silversea", "seabourn",
+      "explora-journeys", "po-cruises", "tui-cruises", "marella", "hurtigruten", "ponant", "lindblad", "windstar",
+      "azamara", "ritz-carlton", "emerald", "atlas", "ambassador", "fred-olsen", "celestyal", "scenic", "saga",
+      "margaritaville"]) {
+      assert.ok(hubBySlug(slug), `missing hub: ${slug}`);
+    }
+  });
+  it("no two hubs share a slug", () => {
+    const slugs = NEWS_HUBS.map((h) => h.slug);
+    assert.equal(new Set(slugs).size, slugs.length);
   });
   it("the cliffnote counts when the headline names no line at all", () => {
     assert.ok(matchesHub(s("A Fee Change Worth Knowing About", { summary: "Royal Caribbean is raising its daily gratuity." }), royal));
