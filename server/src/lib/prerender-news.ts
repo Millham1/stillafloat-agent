@@ -840,6 +840,23 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
   await mkdir(enDir, { recursive: true });
   await mkdir(esDir, { recursive: true });
 
+  // Which line each story belongs to is the agent's call, not a pattern's
+  // (Mark, 2026-09-11). Verdicts are stored per story id, so a story is reasoned
+  // once and every later rebuild just reads the answer.
+  const stored = await readJson<HubAssignments>(PATHS.newsHubAssignments, {});
+  const classified = await classifyStories(stories, stored, {
+    enabled: process.env["NEWS_HUB_CLASSIFIER"] !== "off",
+  });
+  if (Object.keys(classified.assignments).length) {
+    try { await writeJson(PATHS.newsHubAssignments, classified.assignments); }
+    catch (err) { logger.warn({ err }, "news hubs: could not persist assignments"); }
+  }
+  if (classified.llmCalls) {
+    logger.info({ reasoned: classified.reasoned, llmCalls: classified.llmCalls, provider: classified.provider }, "news hubs: classified");
+  }
+
+  const hubAssignmentsForPages = classified.assignments;
+
   let pages = 0;
   for (const story of stories) {
     const slug = storySlug(story);
@@ -859,23 +876,6 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
     await writeFile(path.join(esDir, `${slug}.html`), storyPageHtml(story, slug, "es", rel, ov, myHubs));
     pages += 2;
   }
-
-  // Which line each story belongs to is the agent's call, not a pattern's
-  // (Mark, 2026-09-11). Verdicts are stored per story id, so a story is reasoned
-  // once and every later rebuild just reads the answer.
-  const stored = await readJson<HubAssignments>(PATHS.newsHubAssignments, {});
-  const classified = await classifyStories(stories, stored, {
-    enabled: process.env["NEWS_HUB_CLASSIFIER"] !== "off",
-  });
-  if (Object.keys(classified.assignments).length) {
-    try { await writeJson(PATHS.newsHubAssignments, classified.assignments); }
-    catch (err) { logger.warn({ err }, "news hubs: could not persist assignments"); }
-  }
-  if (classified.llmCalls) {
-    logger.info({ reasoned: classified.reasoned, llmCalls: classified.llmCalls, provider: classified.provider }, "news hubs: classified");
-  }
-
-  const hubAssignmentsForPages = classified.assignments;
 
   await writeFile(path.join(publicDir, "news.html"), feedPageHtml(stories, "en", hubAssignmentsForPages));
   await writeFile(path.join(publicDir, "es", "news.html"), feedPageHtml(stories, "es", hubAssignmentsForPages));

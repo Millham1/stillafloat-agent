@@ -19,6 +19,9 @@ import {
   type NewsStory,
 } from "./prerender-news";
 import { hubBySlug } from "./news-hubs";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const base: NewsStory = {
   id: "https://example.com/story-1",
@@ -172,5 +175,24 @@ describe("story page links up to its line", () => {
   it("the Spanish story page uses the Spanish label and hub", () => {
     const html = storyPageHtml(feed[0]!, storySlug(feed[0]!), "es", feed.slice(1, 3), undefined, [hub]);
     assert.match(html, /href="\/es\/news\/carnival.html">Más noticias de Carnival</);
+  });
+});
+
+// A TDZ hole tsc will not catch: the hub assignments are read inside the
+// story-page loop, which is a nested block, so a use BEFORE the declaration
+// compiles clean and then throws "Cannot access 'hubAssignmentsForPages'
+// before initialization" at the first prerender tick on the box — which is how
+// this shipped to dev on 2026-09-12. The order is the contract.
+describe("prerender order", () => {
+  it("classifies stories before any page reads the assignments", () => {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../../src/lib/prerender-news.ts"),
+      "utf8",
+    );
+    const declared = src.indexOf("const hubAssignmentsForPages = classified.assignments");
+    const firstUse = src.indexOf("hubAssignmentsForPages[");
+    assert.ok(declared > 0, "the assignments are still declared in runNewsPrerender");
+    assert.ok(firstUse > 0, "a page still reads the assignments");
+    assert.ok(declared < firstUse, "assignments must be computed before the first page reads them");
   });
 });
