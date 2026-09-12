@@ -148,6 +148,12 @@ describe("hub rail", () => {
     assert.match(rail, /href="\/es\/news\/carnival.html"/);
     assert.match(rail, /Noticias por naviera/);
   });
+  it("on a phone the rail lifts back above the stories instead of falling to the page bottom", () => {
+    // DOM order puts the rail last, which on one column would bury it under
+    // every story and the archive — roughly 20,000px down on the live feed.
+    const css = hubPageHtml(hubBySlug("carnival")!, feed.slice(0, 3), "en", hubRailHtml(feed, "en", assignments));
+    assert.match(css, /@media\(max-width:900px\)\{\.news-cols\{display:flex;flex-direction:column\}\.hub-rail\{order:-1/);
+  });
   it("a hub page puts the stories first and the rail after, so it stacks below on a phone", () => {
     const hub = hubBySlug("carnival")!;
     const html = hubPageHtml(hub, feed.slice(0, 3), "en", hubRailHtml(feed, "en", assignments, "carnival"));
