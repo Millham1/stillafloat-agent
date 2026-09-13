@@ -871,7 +871,8 @@ export async function startShipTracker() {
     if (plannedRefreshEnabled()) {
       const run = () => refreshPlannedSailings(refreshShipList()).catch((err) => logger.warn({ err }, "wms: planned refresh failed"));
       setTimeout(run, plannedRefreshDelayMs());
-      setInterval(run, 7 * 24 * 60 * 60 * 1000);
+      // Daily on the Pro plan (2026-09-13): priority ships every day, the fleet in turns.
+      setInterval(run, 24 * 60 * 60 * 1000);
     }
     if (registryCheckEnabled()) {
       setTimeout(() => { verifyRegistry().catch((err) => logger.warn({ err }, "wms: registry verification failed")); }, registryCheckDelayMs());
