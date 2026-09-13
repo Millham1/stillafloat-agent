@@ -32,9 +32,8 @@ import { resolvePublicDir } from "./public-dir";
 // archived page — 404ing URLs Google has indexed (GSC news sitemap). To keep
 // that SEO asset intact, archived stories are merged back in here: their detail
 // pages keep regenerating, they stay in the sitemap, and they remain reachable
-// as "Earlier stories" links on the listing page. Only the full feed CARDS (the
-// newest FULL_CARDS) shrink to the live set — which they do naturally, because
-// live stories are always newer than archived ones.
+// from the listing page, where every story is a card behind "Load More" (see
+// ORIGINAL MAPPING below), so no story page loses its internal link.
 //
 // NOTE: storySlug() has a byte-for-byte twin in public/js/news.js (storySlug)
 // so client-rendered cards link to the same static URLs. Change them together.
@@ -266,7 +265,7 @@ const L = {
       "Real-time cruise operations, weather impacts, destination changes, passenger disruptions and curated travel intelligence.",
     feedDesc:
       "Cruise news for passengers, updated daily: ship delays, port changes, weather impacts and disruptions across Carnival, Royal Caribbean, Norwegian, Princess and more — curated by Still Afloat.",
-    archive: "Earlier stories",
+    loadMore: "Load More Stories",
     openDetail: "Open Story Detail →",
     feedPath: "/news.html",
     ctaTitle: "Planning a cruise?",
@@ -288,7 +287,7 @@ const L = {
       "Operaciones de cruceros en tiempo real, impactos del clima, cambios de destino, interrupciones para pasajeros e inteligencia de viajes curada.",
     feedDesc:
       "Noticias de cruceros para pasajeros, actualizadas a diario: retrasos de barcos, cambios de puerto, impactos del clima e interrupciones en Carnival, Royal Caribbean, Norwegian, Princess y más — curadas por Still Afloat.",
-    archive: "Historias anteriores",
+    loadMore: "Cargar más historias",
     openDetail: "Ver detalle →",
     feedPath: "/es/news.html",
     ctaTitle: "¿Estás planeando un crucero?",
@@ -467,9 +466,98 @@ ${relatedHtml}
 import { NEWS_HUBS, storiesForHub, hubPath, MIN_HUB_STORIES, type NewsHub } from "./news-hubs";
 import { classifyStories, storiesByAssignment, type HubAssignments } from "./news-hub-classifier";
 
-const FEED_CSS = `body{background:radial-gradient(circle at top right, rgba(0,119,182,0.24), transparent 28%),radial-gradient(circle at left center, rgba(93,255,154,0.10), transparent 30%),linear-gradient(to bottom,#06111f 0%,#0b2238 35%,#102f4d 100%);min-height:100vh;color:white}.news-page-header{position:relative;height:110px;width:100%}.news-wrap{max-width:1100px;margin:auto;padding:24px 22px 70px}.news-panel{margin-bottom:26px;padding:22px 24px;border-radius:26px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(16px);box-shadow:0 18px 44px rgba(0,0,0,.24)}.news-panel h1{margin:0 0 12px;font-size:44px;line-height:1}.news-panel p{margin:0;color:rgba(255,255,255,.72);line-height:1.6}article.story{margin-bottom:18px;padding:20px 22px;border-radius:22px;background:rgba(210,230,255,0.10);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 22px rgba(0,0,0,.16);transition:all .22s ease}article.story:hover{transform:translateY(-4px);box-shadow:0 18px 38px rgba(0,0,0,.24);border-color:rgba(93,255,154,.24)}article.story h2{font-size:22px;line-height:1.28;margin:0 0 10px}article.story h2 a{color:white;text-decoration:none}article.story h2 a:hover{color:#5dff9a}article.story p{line-height:1.55;color:rgba(255,255,255,.76);margin:0 0 14px;font-size:15px}article.story .more{color:#7de3ff;font-weight:800;text-decoration:none;font-size:14px}.story-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.pill{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em}.src{font-size:11px;font-weight:800;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em}.when{font-size:11px;color:rgba(255,255,255,.52);font-weight:700}.archive{margin-top:34px}.archive h2{font-size:20px}.archive a{display:block;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.10);color:white;text-decoration:none;font-weight:700;line-height:1.4}.archive a:hover{color:#5dff9a}footer{padding:30px 20px 50px;text-align:center;color:rgba(255,255,255,.52)}.news-cols{display:grid;grid-template-columns:minmax(0,1fr) 236px;gap:26px;align-items:start}.news-col-main{min-width:0}.hub-rail{position:sticky;top:18px;padding:18px 20px 14px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(14px);box-shadow:0 10px 26px rgba(0,0,0,.18)}.hub-rail h2{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.60)}.hub-rail a{display:block;padding:8px 0;color:#bdfdd3;text-decoration:none;font-weight:700;font-size:15px;line-height:1.35;border-bottom:1px solid rgba(255,255,255,.07)}.hub-rail a:last-child{border-bottom:0}.hub-rail a:hover{color:#5dff9a}.hub-rail a[aria-current="page"]{color:#fff}@media(max-width:900px){.news-cols{display:flex;flex-direction:column}.hub-rail{order:-1;position:static;margin:0 0 18px;padding:14px 18px 10px}.hub-rail h2{margin:0 0 4px}.hub-rail a{display:inline-block;border-bottom:0;padding:5px 0;margin-right:16px}}@media(max-width:768px){.news-page-header{height:70px}.news-wrap{padding:16px 14px 50px}.news-panel{padding:18px 16px;border-radius:18px}.news-panel h1{font-size:26px}.news-panel p{font-size:15px}}`;
+const FEED_CSS = `body{background:radial-gradient(circle at top right, rgba(0,119,182,0.24), transparent 28%),radial-gradient(circle at left center, rgba(93,255,154,0.10), transparent 30%),linear-gradient(to bottom,#06111f 0%,#0b2238 35%,#102f4d 100%);min-height:100vh;color:white}.news-page-header{position:relative;height:110px;width:100%}.news-wrap{max-width:1100px;margin:auto;padding:24px 22px 70px}.news-panel{margin-bottom:26px;padding:22px 24px;border-radius:26px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(16px);box-shadow:0 18px 44px rgba(0,0,0,.24)}.news-panel h1{margin:0 0 12px;font-size:44px;line-height:1}.news-panel p{margin:0;color:rgba(255,255,255,.72);line-height:1.6}article.story{margin-bottom:18px;padding:20px 22px;border-radius:22px;background:rgba(210,230,255,0.10);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 22px rgba(0,0,0,.16);transition:all .22s ease}article.story:hover{transform:translateY(-4px);box-shadow:0 18px 38px rgba(0,0,0,.24);border-color:rgba(93,255,154,.24)}article.story h2{font-size:22px;line-height:1.28;margin:0 0 10px}article.story h2 a{color:white;text-decoration:none}article.story h2 a:hover{color:#5dff9a}article.story p{line-height:1.55;color:rgba(255,255,255,.76);margin:0 0 14px;font-size:15px}article.story .more{color:#7de3ff;font-weight:800;text-decoration:none;font-size:14px}.story-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.pill{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em}.src{font-size:11px;font-weight:800;color:rgba(255,255,255,.62);text-transform:uppercase;letter-spacing:.05em}.when{font-size:11px;color:rgba(255,255,255,.52);font-weight:700}.js article.story.is-later{display:none}.load-more-wrap{display:none;justify-content:center;margin-top:28px}.js .load-more-wrap{display:flex}.load-more{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(9,72,117,.96),rgba(4,33,66,.96));color:#fff;border:none;border-radius:20px;padding:16px 28px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 12px 28px rgba(0,0,0,.28);font-family:inherit}.load-more:hover{filter:brightness(1.12)}footer{padding:30px 20px 50px;text-align:center;color:rgba(255,255,255,.52)}.news-cols{display:grid;grid-template-columns:minmax(0,1fr) 236px;gap:26px;align-items:start}.news-col-main{min-width:0}.hub-rail{position:sticky;top:18px;padding:18px 20px 14px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(14px);box-shadow:0 10px 26px rgba(0,0,0,.18)}.hub-rail h2{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.60)}.hub-rail a{display:block;padding:8px 0;color:#bdfdd3;text-decoration:none;font-weight:700;font-size:15px;line-height:1.35;border-bottom:1px solid rgba(255,255,255,.07)}.hub-rail a:last-child{border-bottom:0}.hub-rail a:hover{color:#5dff9a}.hub-rail a[aria-current="page"]{color:#fff}@media(max-width:900px){.news-cols{display:flex;flex-direction:column}.hub-rail{order:-1;position:static;margin:0 0 18px;padding:14px 18px 10px}.hub-rail h2{margin:0 0 4px}.hub-rail a{display:inline-block;border-bottom:0;padding:5px 0;margin-right:16px}}@media(max-width:768px){.news-page-header{height:70px}.news-wrap{padding:16px 14px 50px}.news-panel{padding:18px 16px;border-radius:18px}.news-panel h1{font-size:26px}.news-panel p{font-size:15px}}`;
 
-const FULL_CARDS = 20; // full cards on the listing; the rest become archive links
+// ── ORIGINAL MAPPING (Mark, 2026-09-13) ─────────────────────────────────────
+// news.html is the homepage's news compilation with every approved story in it,
+// and "Open Story Detail" opens the cliffnote: Mark's paragraph of the gist, then
+// what it means for you, his take, and the link to the source.
+//
+// On 2026-07-13 (f96a9de) the card was switched to the FULL gist paragraph, with
+// "richer static text is better SEO" as the reason. That put the cliffnote on
+// the feed and left the story page repeating it. It is reversed here, and it
+// also serves the SEO goal better than it did: the pages Google refused in
+// August were thin STORY pages, and the gist now lives only on its own page.
+//
+// The card carries the opening of `travelerImpact` — the field the original
+// page used — cut on a sentence boundary. Every story is a card, ten at a time
+// behind Load More as the original page did; all cards are in the HTML, so a
+// crawler still reaches every story page from here.
+
+/** How far a card's teaser may run. Tune here, never in the template. */
+export const CARD_TEASER_CHARS = 260;
+/** Cards shown at first, and revealed per "Load More" click — the original batch. */
+export const FEED_BATCH = 10;
+/** Stories named in a hub page's ItemList markup. */
+const ITEMLIST_MAX = 20;
+
+// A period after these is not the end of a sentence.
+const ABBREVIATION_END = /\b(?:U\.S|U\.K|EE\.UU|St|Sta|Dr|Mr|Mrs|Ms|Sr|Sra|Srta|Jr|No|vs|approx|Inc|Ltd|Co|Corp|Ave|Mt|Ft|Capt|Gen|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|a\.m|p\.m)\.$/i;
+
+/**
+ * The opening of a paragraph, as whole sentences up to `max` characters. Only a
+ * single sentence longer than `max` is ever cut, and then on a word, with "…".
+ */
+export function teaser(text: string, max: number = CARD_TEASER_CHARS): string {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const pieces = clean.split(/(?<=[.!?…])\s+(?=[\p{Lu}¿¡"“‘(\d])/u);
+  const sentences: string[] = [];
+  for (const piece of pieces) {
+    const prev = sentences[sentences.length - 1];
+    if (prev !== undefined && ABBREVIATION_END.test(prev)) sentences[sentences.length - 1] = `${prev} ${piece}`;
+    else sentences.push(piece);
+  }
+  let out = "";
+  for (const sentence of sentences) {
+    const next = out ? `${out} ${sentence}` : sentence;
+    if (out && next.length > max) break;
+    out = next;
+    if (out.length >= max) break;
+  }
+  if (out.length <= max) return out;
+  const cut = out.slice(0, max - 1);
+  const space = cut.lastIndexOf(" ");
+  const trimmed = space > max * 0.6 ? cut.slice(0, space) : cut;
+  return `${trimmed.replace(/[\s,;:–—-]+$/, "")}…`;
+}
+
+/** The card paragraph: never the gist, which belongs to the story page. */
+export function cardTeaser(story: NewsStory, lang: Lang): string {
+  const source =
+    pick(story, "travelerImpact", lang) ||
+    pick(story, "editorialReasoning", lang) ||
+    pick(story, "summary", lang); // last resort, so a card is never blank
+  return teaser(source);
+}
+
+/** Every story as a card: the first FEED_BATCH visible, the rest behind Load More. */
+function cardListHtml(stories: NewsStory[], lang: Lang): string {
+  return stories
+    .map((story, i) => storyCardHtml(story, lang, i >= FEED_BATCH))
+    .join("\n");
+}
+
+function loadMoreHtml(total: number, lang: Lang): string {
+  if (total <= FEED_BATCH) return "";
+  const t = L[lang];
+  return `<div class="load-more-wrap"><button type="button" class="load-more" id="load-more-news">${t.loadMore}</button></div>
+<script>
+(function () {
+  var button = document.getElementById("load-more-news");
+  if (!button) return;
+  button.addEventListener("click", function () {
+    var hidden = document.querySelectorAll("article.story.is-later");
+    for (var i = 0; i < hidden.length && i < ${FEED_BATCH}; i++) hidden[i].classList.remove("is-later");
+    if (hidden.length <= ${FEED_BATCH}) button.parentNode.removeChild(button);
+  });
+})();
+</script>`;
+}
+
+// Set before the body parses, so later cards never flash open and then collapse.
+// Without JavaScript the class is never set and every card simply shows.
+const JS_FLAG = `<script>document.documentElement.classList.add("js")</script>`;
 
 function storyHref(story: NewsStory, lang: Lang): string {
   const slug = storySlug(story);
@@ -479,22 +567,18 @@ function storyHref(story: NewsStory, lang: Lang): string {
 /** One story card. The FULL cliffnote, untruncated — Mark: the listing must
  *  carry the cliffnotes, not one-line teasers. Richer static text is also better
  *  SEO, so the goals align. Shared by the feed and the per-line hubs. */
-function storyCardHtml(story: NewsStory, lang: Lang): string {
+function storyCardHtml(story: NewsStory, lang: Lang, later = false): string {
   const t = L[lang];
   const href = storyHref(story, lang);
   const b = badge(story, lang);
   const date = fmtDate(story.approvedAt || story.generatedAt, lang);
-  const desc = escapeHtml(pick(story, "summary", lang) || pick(story, "travelerImpact", lang));
-  return `<article class="story">
+  const desc = escapeHtml(cardTeaser(story, lang));
+  return `<article class="story${later ? " is-later" : ""}">
 <div class="story-top"><div><span class="pill" style="${b.style}">${b.label}</span> <span class="src">${escapeHtml(sourceName(story))}</span></div>${date ? `<span class="when">${date}</span>` : ""}</div>
 <h2><a href="${href}">${escapeHtml(pick(story, "title", lang))}</a></h2>
 <p>${desc}</p>
 <a class="more" href="${href}">${t.openDetail}</a>
 </article>`;
-}
-
-function archiveLinkHtml(story: NewsStory, lang: Lang): string {
-  return `<a href="${storyHref(story, lang)}">${escapeHtml(pick(story, "title", lang))}</a>`;
 }
 
 /** The advisor CTA that every news surface carries — the point of the traffic. */
@@ -563,11 +647,8 @@ export function hubPageHtml(
   const t = L[lang];
   const self = `${SITE}${hubPath(hub.slug, lang)}`;
   const other = `${SITE}${hubPath(hub.slug, lang === "es" ? "en" : "es")}`;
-  const cards = stories.slice(0, FULL_CARDS).map((s) => storyCardHtml(s, lang)).join("\n");
-  const rest = stories.slice(FULL_CARDS);
-  const archive = rest.length
-    ? `<section class="archive"><h2>${escapeHtml(c.earlier)}</h2>${rest.map((s) => archiveLinkHtml(s, lang)).join("")}</section>`
-    : "";
+  const cards = cardListHtml(stories, lang);
+  const loadMore = loadMoreHtml(stories.length, lang);
   const feedHref = lang === "es" ? L.es.feedPath : L.en.feedPath;
   const jsonLd = JSON.stringify({
     "@context": "https://schema.org",
@@ -593,7 +674,7 @@ export function hubPageHtml(
         "@type": "ItemList",
         itemListOrder: "https://schema.org/ItemListOrderDescending",
         numberOfItems: stories.length,
-        itemListElement: stories.slice(0, FULL_CARDS).map((s, i) => ({
+        itemListElement: stories.slice(0, ITEMLIST_MAX).map((s, i) => ({
           "@type": "ListItem",
           position: i + 1,
           url: `${SITE}${storyHref(s, lang)}`,
@@ -625,6 +706,7 @@ export function hubPageHtml(
 <link rel="stylesheet" href="/css/styles.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>${FEED_CSS}</style>
+${JS_FLAG}
 <script type="application/ld+json">${jsonLd}</script>
 </head>
 <body>
@@ -641,7 +723,7 @@ export function hubPageHtml(
 <div class="news-col-main">
 <h2 style="margin:0 0 14px;font-size:20px">${escapeHtml(c.latest)}</h2>
 ${cards}
-${archive}
+${loadMore}
 ${ctaHtml(lang)}
 </div>
 ${rail}
@@ -653,19 +735,12 @@ ${rail}
 </html>`;
 }
 
-function feedPageHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssignments = {}): string {
+export function feedPageHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssignments = {}): string {
   const t = L[lang];
   const self = `${SITE}${t.feedPath}`;
   const other = lang === "es" ? `${SITE}${L.en.feedPath}` : `${SITE}${L.es.feedPath}`;
-
-  const card = (story: NewsStory): string => storyCardHtml(story, lang);
-  const archiveLink = (story: NewsStory): string => archiveLinkHtml(story, lang);
-
-  const cards = stories.slice(0, FULL_CARDS).map(card).join("\n");
-  const rest = stories.slice(FULL_CARDS);
-  const archive = rest.length
-    ? `<section class="archive"><h2>${t.archive}</h2>${rest.map(archiveLink).join("")}</section>`
-    : "";
+  const cards = cardListHtml(stories, lang);
+  const loadMore = loadMoreHtml(stories.length, lang);
 
   return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -690,6 +765,7 @@ function feedPageHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssig
 <link rel="stylesheet" href="/css/styles.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>${FEED_CSS}</style>
+${JS_FLAG}
 </head>
 <body>
 <header class="news-page-header">
@@ -703,7 +779,7 @@ function feedPageHtml(stories: NewsStory[], lang: Lang, hubAssignments: HubAssig
 <div class="news-cols">
 <div class="news-col-main">
 ${cards}
-${archive}
+${loadMore}
 </div>
 ${hubRailHtml(stories, lang, hubAssignments)}
 </div>
