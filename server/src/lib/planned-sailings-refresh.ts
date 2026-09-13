@@ -18,7 +18,7 @@ import { resetPlannedRouteCaches } from "./planned-route-service";
 import type { PlannedSailing } from "./planned-sailings";
 import {
   CRUISE_API_PAGE_SIZE, DEFAULT_HORIZON_DAYS, LOOKBACK_DAYS, LIVE_SOURCE,
-  sweepShip, refsToRemove, pagesToHold, type SweepPage,
+  sweepShip, refsToRemove, pagesToHold, removableWindow, type SweepPage,
 } from "./planned-sweep-core";
 
 export interface RefreshShip { name: string; mmsi: string; cruiseLine: string; priority: number }
@@ -185,7 +185,8 @@ export async function refreshPlannedSailings(
     if (sweep.pagesUsed > 0 && sweep.totalResults === null) { state.stoppedReason = "api"; break; }
     const seen = new Set(sweep.sailings.map((s) => s.ref));
     state.sailings += await upsertSailings(sweep.sailings, ship);
-    state.removed += await removeStale(ship, seen, window, sweep.complete);
+    // Only departures from tomorrow on: the API never lists a sailing already under way.
+    state.removed += await removeStale(ship, seen, removableWindow(now.toISOString().slice(0, 10), window.to), sweep.complete);
     state.legs += await storeMissingLegs(sweep.sailings);
     state.pagesByShip[ship.name] = sweep.totalPages ?? sweep.pagesUsed;
     if (!sweep.complete) {
