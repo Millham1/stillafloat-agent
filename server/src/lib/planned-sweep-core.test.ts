@@ -3,10 +3,13 @@
 // could go wrong: a partial read removing real sailings, the archive
 // outranking the live feed, or the refresh overspending the plan.
 import { describe, it } from "node:test";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import {
   CRUISE_API_PAGE_SIZE, LIVE_SOURCE, UNKNOWN_SHIP_PAGES,
-  sweepShip, refsToRemove, preferLiveSailings, searchAllowance, pagesToHold,
+  sweepShip, refsToRemove, preferLiveSailings, searchAllowance, pagesToHold, removableWindow,
 } from "./planned-sweep-core";
 
 type S = { ref: string };
@@ -119,5 +122,38 @@ describe("pagesToHold", () => {
     assert.equal(pagesToHold(17), 18);
     assert.equal(pagesToHold(undefined), UNKNOWN_SHIP_PAGES);
     assert.equal(pagesToHold(0), UNKNOWN_SHIP_PAGES);
+  });
+});
+
+describe("removableWindow", () => {
+  it("never reaches back to a sailing already under way", () => {
+    // Carnival Sunrise on 2026-09-13: her sailing began 2026-09-09 and ends
+    // 2026-09-14. The API does not list it any more; it must survive the sweep.
+    const today = "2026-09-13";
+    const win = removableWindow(today, "2028-09-12");
+    assert.equal(win.from, "2026-09-14");
+    const stored = [
+      { ref: "under-way", startDate: "2026-09-09" },
+      { ref: "departs-today", startDate: "2026-09-13" },
+      { ref: "cancelled-next-month", startDate: "2026-10-05" },
+      { ref: "listed", startDate: "2026-09-19" },
+    ];
+    assert.deepEqual(refsToRemove(stored, new Set(["listed"]), win, true), ["cancelled-next-month"]);
+  });
+  it("rolls over month and year ends", () => {
+    assert.equal(removableWindow("2026-12-31", "2028-12-30").from, "2027-01-01");
+    assert.equal(removableWindow("2028-02-28", "2030-02-27").from, "2028-02-29");
+  });
+});
+
+describe("the refresh wires removal to the safe window", () => {
+  it("removeStale is never handed the look-back search window", () => {
+    // The pure rule above is only safe if the refresh uses it. On 2026-09-13 the
+    // first build passed the search window (15 days back) straight to removal.
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../src/lib/planned-sailings-refresh.ts"), "utf8");
+    const calls = src.match(/removeStale\([^;]*\);/g) ?? [];
+    assert.equal(calls.length, 1, "one removal call");
+    assert.match(calls[0]!, /removableWindow\(/);
+    assert.doesNotMatch(calls[0]!, /removeStale\(ship, seen, window,/);
   });
 });

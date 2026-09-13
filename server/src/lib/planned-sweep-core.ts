@@ -64,6 +64,19 @@ export async function sweepShip<T>(
 }
 
 /**
+ * The dates a sweep can vouch for. The API lists only sailings that have not
+ * departed, whatever earliestStartDate asks for (measured 2026-09-13: Carnival
+ * Sunrise, asked from 15 days back, came back starting tomorrow). So a sailing
+ * already under way is absent from every sweep, and must never be read as
+ * cancelled — it is the one the map is drawing. Removal starts tomorrow.
+ */
+export function removableWindow(today: string, to: string): { from: string; to: string } {
+  const d = new Date(`${today}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return { from: d.toISOString().slice(0, 10), to };
+}
+
+/**
  * Stored live-source sailings in the swept window that the operator no longer
  * lists — cancelled or re-planned. Nothing is removed unless the sweep was
  * complete, and an empty sweep never wipes a ship: an API that suddenly
