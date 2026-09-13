@@ -10,7 +10,7 @@
 // prerender-news.ts with the rest of the page furniture.
 
 /** `name` is the line as a reader should see it in navigation; `search` stays the SEO phrase. */
-export interface HubCopy { title: string; desc: string; h1: string; intro: string; latest: string; earlier: string; back: string; name: string; moreNews: string }
+export interface HubCopy { title: string; desc: string; h1: string; intro: string; latest: string; back: string; name: string; moreNews: string }
 export interface NewsHub {
   slug: string;
   /** Canonical line name, used in JSON-LD and the breadcrumb. */
@@ -204,7 +204,6 @@ export function hubCopy(def: LineDef, lang: "en" | "es"): HubCopy {
       h1: `Noticias de ${name}`,
       intro: `Todo lo que hemos publicado sobre ${def.line}, lo más reciente primero. ${intro}`,
       latest: `Lo más reciente de ${name}`,
-      earlier: `Cobertura anterior de ${name}`,
       back: "Todas las noticias de cruceros",
       name: navName,
       moreNews: `Más noticias de ${navName}`,
@@ -216,7 +215,6 @@ export function hubCopy(def: LineDef, lang: "en" | "es"): HubCopy {
     h1: `${name} News`,
     intro: `Everything we have run about ${def.line}, newest first. ${intro}`,
     latest: `Latest ${name} news`,
-    earlier: `Earlier ${name} coverage`,
     back: "All cruise news",
     name: navName,
     moreNews: `More ${navName} news`,
