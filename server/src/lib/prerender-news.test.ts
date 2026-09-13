@@ -8,6 +8,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  CARD_TEASER_CHARS,
+  FEED_BATCH,
+  cardTeaser,
+  feedPageHtml,
+  teaser,
   hubPageHtml,
   hubRailHtml,
   isNoindex,
@@ -200,5 +205,133 @@ describe("prerender order", () => {
     assert.ok(declared > 0, "the assignments are still declared in runNewsPrerender");
     assert.ok(firstUse > 0, "a page still reads the assignments");
     assert.ok(declared < firstUse, "assignments must be computed before the first page reads them");
+  });
+});
+
+// ── the original mapping ─────────────────────────────────────────────────────
+// Mark, 2026-09-13: news.html is the homepage's news compilation with every
+// approved story; "Open Story Detail" opens the cliffnote, which carries his
+// paragraph of the gist and the link to the source. On 2026-07-13 the card was
+// switched to that full gist paragraph for SEO, which made the cliffnote a
+// repeat of the feed. These tests hold the mapping in place.
+describe("teaser", () => {
+  it("passes short text through untouched", () => {
+    assert.equal(teaser("Call the line before Friday."), "Call the line before Friday.");
+    assert.equal(teaser(""), "");
+  });
+  it("packs whole sentences up to the limit and never ends mid-sentence", () => {
+    const a = "The ship skips Nassau on both October sailings.";
+    const b = "Guests get a $50 onboard credit per stateroom.";
+    const c = "Anyone booked on a Bahamas excursion should rebook with the line directly, because third-party refunds are not guaranteed.";
+    const out = teaser(`${a} ${b} ${c}`, 120);
+    assert.equal(out, `${a} ${b}`);
+    assert.ok(out.length <= 120);
+  });
+  it("does not treat an abbreviation as the end of a sentence", () => {
+    const out = teaser("The U.S. Coast Guard held the ship for six hours at St. Maarten. Guests missed the island entirely. The line has not offered compensation yet.", 70);
+    assert.ok(out.startsWith("The U.S. Coast Guard held the ship for six hours at St. Maarten"), out);
+    assert.doesNotMatch(out, /^The U\.S\.$/);
+  });
+  it("starts a Spanish sentence at an inverted question mark", () => {
+    const out = teaser("El barco cambia de puerto. ¿Qué significa para tu crucero? Llama a la naviera antes del viernes para confirmar tu excursión.", 60);
+    assert.equal(out, "El barco cambia de puerto. ¿Qué significa para tu crucero?");
+  });
+  it("cuts one overlong sentence on a word, with an ellipsis", () => {
+    const long = "Travelers booked on any of the affected sailings between October and December ".repeat(6).trim() + ".";
+    const out = teaser(long, 100);
+    assert.ok(out.length <= 100, String(out.length));
+    assert.ok(out.endsWith("…"));
+    assert.doesNotMatch(out, /\s…$/, "no dangling space before the ellipsis");
+    assert.ok(long.startsWith(out.slice(0, -1)), "a cut, not a rewrite");
+  });
+  it("collapses paragraph breaks", () => {
+    assert.equal(teaser("One.\n\nTwo."), "One. Two.");
+  });
+});
+
+const gist = (id: string, n: number): NewsStory => ({
+  ...base,
+  id: `https://example.com/g${id}`,
+  title: `Story ${id} headline`,
+  summary: `GIST-${id}: Mark's paragraph of the gist for story ${id}, which belongs on the cliffnote page only.`,
+  travelerImpact: `IMPACT-${id}: If you are booked, call the line. The change applies to every sailing this fall. Anyone on a shore excursion should rebook directly with the line rather than a third party.`,
+  editorialReasoning: `TAKE-${id}: My read is that this sticks.`,
+  approvedAt: new Date(Date.UTC(2026, 8, 1) - n * 3600_000).toISOString(),
+});
+
+describe("feed card", () => {
+  it("shows the opening of what it means for you, never the gist", () => {
+    const s = gist("a", 0);
+    const text = cardTeaser(s, "en");
+    assert.ok(text.startsWith("IMPACT-a: If you are booked, call the line."), text);
+    assert.ok(text.length <= CARD_TEASER_CHARS);
+    assert.doesNotMatch(text, /GIST-a/);
+  });
+  it("falls back to Mark's take, then to the gist only so a card is never blank", () => {
+    assert.match(cardTeaser({ ...gist("b", 0), travelerImpact: "" }, "en"), /^TAKE-b/);
+    assert.match(cardTeaser({ ...gist("c", 0), travelerImpact: "", editorialReasoning: "" }, "en"), /^GIST-c/);
+  });
+  it("the Spanish card uses the Spanish field", () => {
+    const s = { ...gist("d", 0), travelerImpact_es: "IMPACTO-d: Si tienes reserva, llama a la naviera." } as NewsStory;
+    assert.match(cardTeaser(s, "es"), /^IMPACTO-d/);
+  });
+});
+
+describe("feed page", () => {
+  const stories = Array.from({ length: 25 }, (_, i) => gist(String(i), i));
+  const cardCount = (html: string): number => (html.match(/<article class="story[" ]/g) || []).length;
+
+  for (const lang of ["en", "es"] as const) {
+    const html = feedPageHtml(stories, lang);
+    it(`${lang}: no story's gist appears anywhere on the feed`, () => {
+      for (const s of stories) assert.doesNotMatch(html, new RegExp(`GIST-${s.id!.slice(-2).replace(/^g/, "")}:`));
+      assert.doesNotMatch(html, /GIST-/);
+    });
+    it(`${lang}: every story is a card, and every story page stays linked`, () => {
+      assert.equal(cardCount(html), stories.length);
+      assert.doesNotMatch(html, /class="archive"/, "no bare link list");
+      for (const s of stories) assert.ok(html.includes(`/news/${storySlug(s)}.html`), storySlug(s));
+    });
+    it(`${lang}: the first ${FEED_BATCH} show, the rest wait behind Load More`, () => {
+      assert.equal((html.match(/<article class="story">/g) || []).length, FEED_BATCH);
+      assert.equal((html.match(/<article class="story is-later">/g) || []).length, stories.length - FEED_BATCH);
+      assert.match(html, /id="load-more-news"/);
+      assert.match(html, lang === "es" ? />Cargar más historias</ : />Load More Stories</);
+      assert.match(html, /\.js article\.story\.is-later\{display:none\}/, "hidden only when JavaScript runs");
+      assert.ok(html.indexOf('classList.add("js")') < html.indexOf("<body>"), "the flag is set before the body parses");
+    });
+  }
+  it("no Load More button when everything already fits", () => {
+    const html = feedPageHtml(stories.slice(0, FEED_BATCH), "en");
+    assert.doesNotMatch(html, /load-more-news/);
+    assert.doesNotMatch(html, /<article class="story is-later">/, "no card is held back");
+  });
+});
+
+describe("hub page follows the same mapping", () => {
+  const stories = Array.from({ length: 14 }, (_, i) => gist(`h${i}`, i));
+  const html = hubPageHtml(hubBySlug("carnival")!, stories, "en");
+  it("teaser cards, no gist, Load More, no link list", () => {
+    assert.doesNotMatch(html, /GIST-/);
+    assert.match(html, /IMPACT-h0:/);
+    assert.match(html, /id="load-more-news"/);
+    assert.doesNotMatch(html, /class="archive"/);
+  });
+});
+
+describe("cliffnote page carries the gist", () => {
+  it("gist first, then what it means for you, then Mark's take, then the source", () => {
+    const s = gist("p", 0);
+    const page = storyPageHtml(s, storySlug(s), "en", []);
+    // Measure inside the story body: the page's own meta description may quote
+    // the gist too, which is correct — it is this page's description.
+    const html = page.slice(page.indexOf('<div class="story-content">'));
+    const at = (needle: string): number => {
+      const i = html.indexOf(needle);
+      assert.ok(i > 0, `missing: ${needle}`);
+      return i;
+    };
+    const order = [at("GIST-p:"), at("IMPACT-p:"), at("TAKE-p:"), at(">Read Full Article<")];
+    assert.deepEqual([...order].sort((a, b) => a - b), order);
   });
 });
