@@ -18,7 +18,7 @@ import { resetPlannedRouteCaches } from "./planned-route-service";
 import type { PlannedSailing } from "./planned-sailings";
 import {
   CRUISE_API_PAGE_SIZE, DEFAULT_HORIZON_DAYS, LOOKBACK_DAYS, LIVE_SOURCE,
-  sweepShip, refsToRemove, pagesToHold, removableWindow, type SweepPage,
+  sweepShip, refsToRemove, pagesToHold, removableWindow, runIsDue, type SweepPage,
 } from "./planned-sweep-core";
 
 export interface RefreshShip { name: string; mmsi: string; cruiseLine: string; priority: number }
@@ -123,7 +123,7 @@ async function storeMissingLegs(rows: PlannedSailing[]): Promise<number> {
  */
 export async function refreshPlannedSailings(
   ships: RefreshShip[],
-  opts: { budget?: number; horizonDays?: number; now?: Date } = {},
+  opts: { budget?: number; horizonDays?: number; now?: Date; force?: boolean } = {},
 ): Promise<RefreshState> {
   const now = opts.now ?? new Date();
   const budget = opts.budget ?? dailySearchBudget();
@@ -137,6 +137,10 @@ export async function refreshPlannedSailings(
     shipsSwept: 0, priorityShips: 0, stoppedReason: null, eligible: 0, skipped: [], pagesByShip: { ...(prev.pagesByShip ?? {}) },
   };
   if (!cruiseApiEnabled() || budget <= 0 || !ships.length) { state.stoppedReason = "disabled"; return state; }
+  if (!opts.force && !runIsDue(prev.ranAt, now)) {
+    logger.info({ lastRanAt: prev.ranAt }, "planned-refresh: ran within the last 20 h — skipped");
+    return { ...state, ranAt: prev.ranAt ?? state.ranAt, stoppedReason: "ran-recently" };
+  }
 
   const codes = await shipCodes();
   const ordered = [...ships].sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name));

@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import {
   CRUISE_API_PAGE_SIZE, LIVE_SOURCE, UNKNOWN_SHIP_PAGES,
-  sweepShip, refsToRemove, preferLiveSailings, searchAllowance, pagesToHold, removableWindow,
+  sweepShip, refsToRemove, preferLiveSailings, searchAllowance, pagesToHold, removableWindow, runIsDue,
 } from "./planned-sweep-core";
 
 type S = { ref: string };
@@ -155,5 +155,17 @@ describe("the refresh wires removal to the safe window", () => {
     assert.equal(calls.length, 1, "one removal call");
     assert.match(calls[0]!, /removableWindow\(/);
     assert.doesNotMatch(calls[0]!, /removeStale\(ship, seen, window,/);
+  });
+});
+
+describe("runIsDue", () => {
+  const now = new Date("2026-09-13T19:45:00Z");
+  it("a restart soon after a run does not spend another day's searches", () => {
+    assert.equal(runIsDue("2026-09-13T19:07:45Z", now), false);
+  });
+  it("is due after 20 hours, and when there has never been a run", () => {
+    assert.equal(runIsDue("2026-09-12T23:44:00Z", now), true);
+    assert.equal(runIsDue(undefined, now), true);
+    assert.equal(runIsDue("not a date", now), true);
   });
 });

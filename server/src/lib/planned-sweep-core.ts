@@ -127,3 +127,15 @@ export function searchAllowance(api: { remaining: number | null; limit: number |
 export function pagesToHold(lastPages: number | undefined): number {
   return Number.isFinite(lastPages) && (lastPages ?? 0) > 0 ? (lastPages as number) + 1 : UNKNOWN_SHIP_PAGES;
 }
+
+/**
+ * A run is due once its predecessor is at least 20 hours old. The refresh also
+ * fires a few minutes after every restart, and dev restarts on every deploy, so
+ * without this each deploy would spend another day's searches (2026-09-13).
+ */
+export const MIN_HOURS_BETWEEN_RUNS = 20;
+export function runIsDue(lastRanAt: string | undefined, now: Date): boolean {
+  const t = lastRanAt ? Date.parse(lastRanAt) : NaN;
+  if (!Number.isFinite(t)) return true;
+  return now.getTime() - t >= MIN_HOURS_BETWEEN_RUNS * 3_600_000;
+}
