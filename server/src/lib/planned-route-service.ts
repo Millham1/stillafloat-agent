@@ -7,6 +7,7 @@
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { currentSailing, assembleRoute, type PlannedPort } from "./planned-sailings";
+import { preferLiveSailings } from "./planned-sweep-core";
 
 interface SailingRow { ref: string; source: string; ship_name: string; operator: string | null; start_date: string; end_date: string | null; ports: (PlannedPort & { ordered?: boolean })[] }
 export interface PlannedRoute {
@@ -53,7 +54,8 @@ export async function plannedRouteFor(shipName: string, now = new Date()): Promi
   const rows = await sailingsFor(shipName);
   if (!rows.length) return null;
   const today = now.toISOString().slice(0, 10);
-  const cur = currentSailing(rows.map((r) => ({ ...r, startDate: r.start_date, endDate: r.end_date })), today);
+  // The live operator feed outranks the one-time archive wherever it covers the dates.
+  const cur = currentSailing(preferLiveSailings(rows.map((r) => ({ ...r, startDate: r.start_date, endDate: r.end_date }))), today);
   if (!cur) return null;
   const ports: PlannedPort[] = (cur.ports ?? []).map((p) => ({ name: p.name, slug: p.slug, lat: p.lat, lon: p.lon }));
   const ordered = (cur.ports ?? []).every((p) => p.ordered !== false);

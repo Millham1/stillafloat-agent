@@ -2,26 +2,42 @@
 import { PATHS, readJson, writeJson } from "./persistence";
 import { logger } from "./logger";
 import { CRUISE_API_DEFAULT_HOST, parseCruiseApiItems, shipNameKeys, type CruiseApiItem } from "./cruise-api-core";
+import { searchAllowance } from "./planned-sweep-core";
 import type { PlannedSailing } from "./planned-sailings";
 export * from "./cruise-api-core";
 
-interface Ledger { month: string; searchUsed: number; refUsed: number; lastError: { at: string; status: number | string } | null }
+interface Ledger {
+  month: string; searchUsed: number; refUsed: number; lastError: { at: string; status: number | string } | null;
+  /** The plan's own count from the last search response — the real limit. */
+  apiSearchRemaining?: number | null; apiSearchLimit?: number | null; apiSeenAt?: string | null;
+}
 let ledger: Ledger | null = null;
 
 function monthKey(now = new Date()): string { return now.toISOString().slice(0, 7); }
 function unq(s: string | undefined): string { return (s ?? "").replace(/^["']+|["']+$/g, "").trim(); }
 export function cruiseApiEnabled(): boolean { return Boolean(unq(process.env["RAPIDAPI_KEY"])); }
 export function cruiseApiHost(): string { return unq(process.env["RAPIDAPI_CRUISE_HOST"]) || CRUISE_API_DEFAULT_HOST; }
-/** Basic plan: 50 searches + 50 basic reference calls a month. Leave a few for checks by hand. */
-export function cruiseApiSearchCap(): number { const n = Number(process.env["CRUISE_API_SEARCH_CAP"]); return Number.isFinite(n) && n > 0 ? n : 45; }
+/**
+ * A ceiling on our own count, per calendar month. The plan's remaining count
+ * (read from every search response, see searchAllowance) is what actually
+ * stops spending, so a smaller plan is still safe under this default. Pro:
+ * 4,000 searches + 2,000 reference calls (Mark, 2026-09-13).
+ */
+export function cruiseApiSearchCap(): number { const n = Number(process.env["CRUISE_API_SEARCH_CAP"]); return Number.isFinite(n) && n > 0 ? n : 3900; }
 export function cruiseApiRefCap(): number { const n = Number(process.env["CRUISE_API_REF_CAP"]); return Number.isFinite(n) && n > 0 ? n : 45; }
 
 async function loadLedger(now: Date): Promise<Ledger> {
   if (!ledger) {
     const stored = await readJson<Partial<Ledger>>(PATHS.cruiseApiLedger, {});
-    ledger = { month: stored.month ?? monthKey(now), searchUsed: stored.searchUsed ?? 0, refUsed: stored.refUsed ?? 0, lastError: stored.lastError ?? null };
+    ledger = {
+      month: stored.month ?? monthKey(now), searchUsed: stored.searchUsed ?? 0, refUsed: stored.refUsed ?? 0, lastError: stored.lastError ?? null,
+      apiSearchRemaining: stored.apiSearchRemaining ?? null, apiSearchLimit: stored.apiSearchLimit ?? null, apiSeenAt: stored.apiSeenAt ?? null,
+    };
   }
-  if (ledger.month !== monthKey(now)) ledger = { month: monthKey(now), searchUsed: 0, refUsed: 0, lastError: null };
+  if (ledger.month !== monthKey(now)) {
+    // Our month rolls over; the plan's count does not, so it is carried.
+    ledger = { month: monthKey(now), searchUsed: 0, refUsed: 0, lastError: null, apiSearchRemaining: ledger.apiSearchRemaining ?? null, apiSearchLimit: ledger.apiSearchLimit ?? null, apiSeenAt: ledger.apiSeenAt ?? null };
+  }
   return ledger;
 }
 async function saveLedger(): Promise<void> {
@@ -33,7 +49,13 @@ export async function cruiseApiUsage(now = new Date()): Promise<Ledger & { searc
   return { ...l, searchCap: cruiseApiSearchCap(), refCap: cruiseApiRefCap(), enabled: cruiseApiEnabled() };
 }
 
-async function call(path: string, init: RequestInit, fetchImpl: typeof fetch): Promise<{ status: number; body: unknown }> {
+function headerNum(res: Response, name: string): number | null {
+  const v = res.headers?.get?.(name);
+  const n = v === null || v === undefined ? NaN : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function call(path: string, init: RequestInit, fetchImpl: typeof fetch): Promise<{ status: number; body: unknown; searchRemaining: number | null; searchLimit: number | null }> {
   const res = await fetchImpl(`https://${cruiseApiHost()}${path}`, {
     ...init,
     headers: { "x-rapidapi-key": unq(process.env["RAPIDAPI_KEY"]), "x-rapidapi-host": cruiseApiHost(), "Content-Type": "application/json", ...(init.headers ?? {}) },
@@ -41,7 +63,11 @@ async function call(path: string, init: RequestInit, fetchImpl: typeof fetch): P
   });
   let body: unknown = null;
   try { body = await res.json(); } catch { body = null; }
-  return { status: res.status, body };
+  return {
+    status: res.status, body,
+    searchRemaining: headerNum(res, "x-ratelimit-basic-search-calls-remaining"),
+    searchLimit: headerNum(res, "x-ratelimit-basic-search-calls-limit"),
+  };
 }
 
 export interface SearchBody {
@@ -50,13 +76,27 @@ export interface SearchBody {
 }
 
 /** One search page (counted BEFORE the call). null when the cap is reached or the call fails. */
-export async function searchCruises(body: SearchBody, fetchImpl: typeof fetch = fetch, now = new Date()): Promise<{ sailings: PlannedSailing[]; totalResults: number; totalPages: number } | null> {
+export async function searchCruises(
+  body: SearchBody,
+  fetchImpl: typeof fetch = fetch,
+  now = new Date(),
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+): Promise<{ sailings: PlannedSailing[]; totalResults: number; totalPages: number } | null> {
   if (!cruiseApiEnabled()) return null;
   const l = await loadLedger(now);
   if (l.searchUsed >= cruiseApiSearchCap()) { logger.warn({ used: l.searchUsed, cap: cruiseApiSearchCap() }, "cruise-api: search cap reached"); return null; }
+  if (searchAllowance({ remaining: l.apiSearchRemaining ?? null, limit: l.apiSearchLimit ?? null }) <= 0) {
+    logger.warn({ remaining: l.apiSearchRemaining, limit: l.apiSearchLimit }, "cruise-api: plan allowance reached (reserve kept)");
+    return null;
+  }
   l.searchUsed += 1;
   try {
-    const { status, body: b } = await call("/cruises/search", { method: "POST", body: JSON.stringify({ pageSize: 10, sortBy: "departureDate", sortOrder: "asc", includeDetailedMetadata: true, ...body }) }, fetchImpl);
+    const payload = { method: "POST", body: JSON.stringify({ pageSize: 10, sortBy: "departureDate", sortOrder: "asc", includeDetailedMetadata: true, ...body }) };
+    let r = await call("/cruises/search", payload, fetchImpl);
+    // The plan also limits requests per second; one pause and one retry, then give up for this run.
+    if (r.status === 429) { await sleep(2000); l.searchUsed += 1; r = await call("/cruises/search", payload, fetchImpl); }
+    if (r.searchRemaining !== null) { l.apiSearchRemaining = r.searchRemaining; l.apiSearchLimit = r.searchLimit; l.apiSeenAt = now.toISOString(); }
+    const { status, body: b } = r;
     if (status !== 200 || !b || typeof b !== "object") {
       l.lastError = { at: now.toISOString(), status: status || String((b as Record<string, unknown> | null)?.["message"] ?? "error") };
       logger.warn({ status, body: b, searchUsed: l.searchUsed }, "cruise-api: search failed");
