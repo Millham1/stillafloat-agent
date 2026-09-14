@@ -77,6 +77,9 @@ const TOPUP_SHIPS = new Set(["mardi-gras", "carnival-vista"]); // geometry-only 
 const NEW_SHIPS = {
   "norwegian-aqua":     { slug: "norwegian-aqua",     ship: "Norwegian Aqua",     line: "Norwegian Cruise Line", class: "Prima Plus", catFrom: "ncl" },
   "norwegian-luna-ship":{ slug: "norwegian-luna",     ship: "Norwegian Luna",     line: "Norwegian Cruise Line", class: "Prima Plus", catFrom: "ncl" },
+  // 2026-09-14 (Mark: "we should be able to get ... Norwegian Aura"): same Widgety
+  // official per-deck plans as Aqua/Luna, batch msgbatch_01TYRSUuKo83rqh4ziBp3QRm.
+  "norwegian-aura":     { slug: "norwegian-aura",     ship: "Norwegian Aura",     line: "Norwegian Cruise Line", class: "Prima Plus", catFrom: "ncl" },
   "msc-world-america":  { slug: "msc-world-america",  ship: "MSC World America",  line: "MSC Cruises",           class: "World",      catFrom: null },
   "msc-world-asia":     { slug: "msc-world-asia",     ship: "MSC World Asia",     line: "MSC Cruises",           class: "World",      catFrom: null },
   "msc-world-atlantic": { slug: "msc-world-atlantic", ship: "MSC World Atlantic", line: "MSC Cruises",           class: "World",      catFrom: null },
