@@ -8,6 +8,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  DEPTH_FLOOR_IMPACT_WORDS,
+  DEPTH_FLOOR_TAKE_WORDS,
+  belowDepthFloor,
   CARD_TEASER_CHARS,
   FEED_BATCH,
   cardTeaser,
@@ -39,14 +42,18 @@ const base: NewsStory = {
   link: "https://example.com/story-1",
 };
 const low: NewsStory = { ...base, id: "https://example.com/story-2", title: "Line Names Chief Dog Officer", impactLevel: "Low" };
+// `base` keeps its short sections for the rendering tests. Index-policy tests use a
+// story at real depth: since 2026-09-13 a page under the depth floor is noindex.
+const pad = (text: string, n: number): string => `${text} ${Array.from({ length: n }, () => "detail").join(" ")}`;
+const indexable: NewsStory = { ...base, travelerImpact: pad(base.travelerImpact!, 40), editorialReasoning: pad(base.editorialReasoning!, 80) };
 
 describe("index policy", () => {
   it("keeps Low-impact stories out of the index, Medium/High in", () => {
     assert.equal(isNoindex(low, storySlug(low), "en"), true);
     assert.equal(isNoindex(low, storySlug(low), "es"), true);
-    assert.equal(isNoindex(base, storySlug(base), "en"), false);
-    assert.equal(isNoindex({ ...base, impactLevel: "High" }, "x", "en"), false);
-    assert.equal(isNoindex({ ...base, impactLevel: "" }, "x", "en"), false, "no level = no verdict = indexable");
+    assert.equal(isNoindex(indexable, storySlug(indexable), "en"), false);
+    assert.equal(isNoindex({ ...indexable, impactLevel: "High" }, "x", "en"), false);
+    assert.equal(isNoindex({ ...indexable, impactLevel: "" }, "x", "en"), false, "no level = no verdict = indexable");
   });
   it("an explicit seo-override pins a story either way", () => {
     assert.equal(isNoindex(low, "x", "en", { noindex: false }), false);
@@ -54,14 +61,14 @@ describe("index policy", () => {
   });
   it("keeps the legacy zero-intent ES page out", () => {
     assert.equal(isNoindex(base, "carnival-s-website-is-down-for-18-hours-abc123", "es"), true);
-    assert.equal(isNoindex(base, "carnival-s-website-is-down-for-18-hours-abc123", "en"), false);
+    assert.equal(isNoindex(indexable, "carnival-s-website-is-down-for-18-hours-abc123", "en"), false);
   });
 });
 
 describe("story page", () => {
   it("writes the robots noindex meta only for pages the policy excludes", () => {
     assert.match(storyPageHtml(low, storySlug(low), "en", []), /<meta name="robots" content="noindex">/);
-    assert.doesNotMatch(storyPageHtml(base, storySlug(base), "en", []), /<meta name="robots" content="noindex">/);
+    assert.doesNotMatch(storyPageHtml(indexable, storySlug(indexable), "en", []), /<meta name="robots" content="noindex">/);
   });
   it("renders the two original sections as paragraphs, escaped", () => {
     const html = storyPageHtml({ ...base, travelerImpact: "Call <the> line.\n\nThen wait." }, storySlug(base), "en", []);
@@ -90,8 +97,8 @@ describe("renderParagraphs", () => {
 
 describe("news sitemap", () => {
   it("does not submit noindex pages, and dates rewritten pages by contentUpdatedAt", () => {
-    const xml = sitemapXml([{ ...base, contentUpdatedAt: "2026-09-10T00:00:00.000Z" }, low]);
-    const baseSlug = storySlug(base);
+    const xml = sitemapXml([{ ...indexable, contentUpdatedAt: "2026-09-10T00:00:00.000Z" }, low]);
+    const baseSlug = storySlug(indexable);
     const lowSlug = storySlug(low);
     assert.match(xml, new RegExp(`<loc>https://stillafloatcruising.com/news/${baseSlug}.html</loc><lastmod>2026-09-10</lastmod>`));
     assert.match(xml, new RegExp(`<loc>https://stillafloatcruising.com/es/news/${baseSlug}.html</loc>`));
@@ -333,5 +340,41 @@ describe("cliffnote page carries the gist", () => {
     };
     const order = [at("GIST-p:"), at("IMPACT-p:"), at("TAKE-p:"), at(">Read Full Article<")];
     assert.deepEqual([...order].sort((a, b) => a - b), order);
+  });
+});
+
+// ── depth floor ──────────────────────────────────────────────────────────────
+// 2026-09-13: Google indexes the deepened story pages again; 148 of 314 submitted
+// English pages were still under the floor new stories must meet. Those stay out
+// of the index (and the sitemap) until they are deepened.
+const words = (n: number, w = "word"): string => Array.from({ length: n }, () => w).join(" ");
+const deep: NewsStory = { ...base, id: "https://example.com/deep", impactLevel: "Medium", travelerImpact: words(DEPTH_FLOOR_IMPACT_WORDS), editorialReasoning: words(DEPTH_FLOOR_TAKE_WORDS) };
+
+describe("depth floor", () => {
+  it("a story at the floor is indexable", () => {
+    assert.equal(belowDepthFloor(deep), false);
+    assert.equal(isNoindex(deep, storySlug(deep), "en"), false);
+  });
+  it("one word short on either section keeps it out of the index, in both languages", () => {
+    const thinImpact = { ...deep, travelerImpact: words(DEPTH_FLOOR_IMPACT_WORDS - 1) };
+    const thinTake = { ...deep, editorialReasoning: words(DEPTH_FLOOR_TAKE_WORDS - 1) };
+    for (const s of [thinImpact, thinTake]) {
+      assert.equal(isNoindex(s, storySlug(s), "en"), true);
+      assert.equal(isNoindex(s, storySlug(s), "es"), true, "Spanish follows the English decision");
+    }
+  });
+  it("a longer Spanish translation does not rescue a thin story", () => {
+    const s = { ...deep, editorialReasoning: words(20), editorialReasoning_es: words(200, "palabra") } as NewsStory;
+    assert.equal(isNoindex(s, storySlug(s), "es"), true);
+  });
+  it("an override keeps a thin page that still earns traffic", () => {
+    const s = { ...deep, editorialReasoning: words(10) };
+    assert.equal(isNoindex(s, storySlug(s), "en", { noindex: false }), false);
+  });
+  it("a thin page is not submitted in the sitemap", () => {
+    const s = { ...deep, id: "https://example.com/thin", title: "Thin One", editorialReasoning: words(10) };
+    const xml = sitemapXml([deep, s]);
+    assert.match(xml, new RegExp(storySlug(deep)));
+    assert.doesNotMatch(xml, new RegExp(storySlug(s)));
   });
 });
