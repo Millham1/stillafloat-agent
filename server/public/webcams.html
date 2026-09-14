@@ -7,18 +7,18 @@
 <link rel="preconnect" href="https://i.ytimg.com">
 <link rel="preconnect" href="https://s.ytimg.com">
 <link rel="dns-prefetch" href="https://googlevideo.com">
-<title>Cruise Ship Webcams: Live Port Cams | Still Afloat</title>
-<meta name="description" content="Cruise ship webcams streaming live 24/7 from PortMiami, Galveston, Key West and Vancouver, plus Cozumel and Florida beach cams. Watch ships arrive, dock and sail away.">
+<title>Live Cruise Cams | Still Afloat</title>
+<meta name="description" content="Live cruise-port and beach webcams streaming 24/7 — watch ships arrive, dock, and sail away from cruise ports and tropical harbors. Curated by Still Afloat.">
 <link rel="canonical" href="https://stillafloatcruising.com/webcams.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Still Afloat Cruising">
 <meta property="og:url" content="https://stillafloatcruising.com/webcams.html">
-<meta property="og:title" content="Cruise Ship Webcams: Live Port Cams | Still Afloat">
-<meta property="og:description" content="Cruise ship webcams streaming live 24/7 from PortMiami, Galveston, Key West and Vancouver, plus Cozumel and Florida beach cams.">
+<meta property="og:title" content="Live Cruise Cams | Still Afloat">
+<meta property="og:description" content="Live cruise-port and beach webcams streaming 24/7 — watch ships arrive and sail away from cruise ports and tropical harbors.">
 <meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Cruise Ship Webcams: Live Port Cams | Still Afloat">
-<meta name="twitter:description" content="Cruise ship webcams streaming live 24/7 from the ports where cruises begin and the beaches where they stop.">
+<meta name="twitter:title" content="Live Cruise Cams | Still Afloat">
+<meta name="twitter:description" content="Live cruise port and tropical beach webcams streaming 24/7 — curated by Still Afloat.">
 <meta name="twitter:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -45,14 +45,6 @@ body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4
 
 /* ── Shell ── */
 .shell{max-width:1300px;margin:auto;padding:44px 22px 90px}
-/* ── Intro: the visible H1 the search snippet points at, plus jump links per cam ── */
-.cams-intro{max-width:900px;margin:0 auto 40px;text-align:center}
-.cams-intro h1{color:#fff;font-size:clamp(30px,4vw,44px);font-weight:900;margin:0 0 12px;line-height:1.1}
-.cams-intro p{color:rgba(255,255,255,.78);font-size:18px;line-height:1.6;margin:0 auto 18px;max-width:720px}
-.cams-jump{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-.cams-jump a{color:#bdfdd3;text-decoration:none;font-weight:700;font-size:15px;padding:8px 14px;border-radius:12px;background:rgba(93,255,154,.08);border:1px solid rgba(93,255,154,.22)}
-.cams-jump a:hover{color:#5dff9a;border-color:#5dff9a}
-.cam{scroll-margin-top:24px}
 .section{margin-bottom:58px}
 .section h2{color:#fff;font-size:36px;font-weight:900;margin:0 0 10px}
 .section>p{color:rgba(255,255,255,.7);margin:0 0 8px;font-size:18px}
@@ -127,11 +119,7 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
 
 <main class="shell">
 
-  <section class="cams-intro">
-    <h1>Cruise Ship Webcams</h1>
-    <p>Live cruise ship webcams from the ports where cruises begin and the beaches where they stop. Watch sail-away at PortMiami, check the sky over Galveston before you fly in, or see whether your ship is already alongside. Every cam streams 24/7. Tap one to watch it full screen.</p>
-    <nav class="cams-jump" id="cams-jump" aria-label="Jump to a cam"></nav>
-  </section>
+  <h1 class="sr-only">Live Cruise Port Webcams</h1>
 
   <div id="cams-root" class="cams-root">
     <p class="cams-loading">Loading live cams…</p>
@@ -206,7 +194,6 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
     var title = esc(ES && cam.title_es ? cam.title_es : cam.title);
     var desc  = esc(ES && cam.description_es ? cam.description_es : cam.description);
     var art = document.createElement('article');
-    if (cam.slug) art.id = 'cam-' + String(cam.slug).replace(/[^a-z0-9-]/gi, '');
     if (cam.status === 'live' && cam.video_id){
       var id = esc(cam.video_id);
       art.className = 'cam';
@@ -245,20 +232,6 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
       root.appendChild(sec);
     });
     if (!any){ root.innerHTML = '<p class="cams-loading">Live cams are taking a break — check back soon.</p>'; return; }
-    // Jump links, one per live cam, in section order: a reader who came for
-    // "cruise ship webcams" lands on the port she wants in one tap.
-    var jump = document.getElementById('cams-jump');
-    if (jump){
-      jump.innerHTML = '';
-      ORDER.forEach(function(key){
-        cams.filter(function(c){ return c.section === key && c.status === 'live' && c.slug; }).forEach(function(c){
-          var a = document.createElement('a');
-          a.href = '#cam-' + String(c.slug).replace(/[^a-z0-9-]/gi, '');
-          a.textContent = (ES && c.title_es) ? c.title_es : c.title;
-          jump.appendChild(a);
-        });
-      });
-    }
     wireHover();
   }
 
