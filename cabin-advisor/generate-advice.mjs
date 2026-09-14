@@ -69,6 +69,7 @@ Fidelity rules:
 - Speak ONLY to concerns this traveler actually told you. If they never mentioned seasickness, do not bring up motion, steadiness or stomachs. If they never mentioned noise, don't lead with quiet.
 - The voice example in your instructions is a TONE reference, not content — do not reuse its phrases ("tummy troubles", "the bonus is waking up") unless this traveler genuinely has that concern.
 - Vary your openings. Do not start every reason with "Cabin NNNN is..."
+- Where a cabin sits comes ONLY from its "position" (forward / mid / aft) and "side" (port / starboard / center) fields. If a cabin has no such field, do not say where on the ship it is — never infer it from the cabin number.
 
 Respond with ONLY a JSON object:
 {"recommendations":[{"cabin":<number>,"rank":<number>,"hook":"<5-10 words>","reason":"<2-4 sentences in your voice>"}],"steerClear":[{"cabin":<number>,"reason":"<1-2 sentences>"}]}`;
@@ -112,9 +113,44 @@ async function viaClaude(prompt) {
   const text = (j.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
   return { out: parse(text), model: j.model, cost: j.usage.input_tokens * 1e-6 + j.usage.output_tokens * 5e-6 };
 }
+// POSITION CLAIMS MUST MATCH THE GRID. On Norwegian Aura (2026-09-14) the grid carried no
+// section or side, and the model called two forward inside cabins "starboard aft" — it
+// guessed from the numbers. A recommendation that names its own cabin's end of the ship or
+// side is checked against that cabin's section/side; a contradiction re-rolls the archetype
+// once, and a second contradiction is printed so it never ships unseen.
+const byId = new Map(cabins.map((c) => [String(c.id), c]));
+const SECTION_WORDS = [["forward", /\b(forward|bow|front of the ship)\b/i], ["aft", /\b(aft|stern|back of the ship|rear)\b/i], ["mid", /\b(midship|mid-ship|middle of the ship|amidships)\b/i]];
+const SIDE_WORDS = [["port", /\bport(?:[- ]side)?\b(?! (of call|stop|city|day|talk))/i], ["starboard", /\bstarboard\b/i]];
+export function positionProblems(out) {
+  const probs = [];
+  const check = (cabin, text) => {
+    const c = byId.get(String(cabin));
+    if (!c || !text) return;
+    // Only the sentence(s) naming this cabin, or the whole reason when no other cabin number appears.
+    const others = (text.match(/\b\d{4,5}\b/g) ?? []).filter((n) => n !== String(cabin));
+    const scope = others.length ? text.split(/(?<=[.!?])\s+/).filter((sen) => sen.includes(String(cabin))).join(" ") : text;
+    const sec = String(c.position ?? "").toLowerCase().replace("midship", "mid");
+    if (sec) for (const [word, re] of SECTION_WORDS) if (re.test(scope) && word !== sec) probs.push(`${cabin} is ${sec}, text says ${word}`);
+    const side = String(c.side ?? "").toLowerCase();
+    if (side === "port" || side === "starboard") for (const [word, re] of SIDE_WORDS) if (re.test(scope) && word !== side) probs.push(`${cabin} is ${side}, text says ${word}`);
+  };
+  for (const r of out.recommendations ?? []) check(r.cabin, `${r.hook ?? ""}. ${r.reason ?? ""}`);
+  for (const r of out.steerClear ?? []) check(r.cabin, r.reason ?? "");
+  return probs;
+}
+
 async function generateOne(prompt) {
   // Never throws up the stack: a failed archetype is skipped and counted.
-  if (AKEY) { try { return await viaClaude(prompt); } catch (e) { console.warn("  Haiku failed:", e.message); } }
+  if (!AKEY) return null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const res = await viaClaude(prompt);
+      const probs = positionProblems(res.out);
+      if (!probs.length) return res;
+      console.warn(`  position mismatch (attempt ${attempt}): ${probs.join("; ")}`);
+      if (attempt === 2) { res.out.positionWarnings = probs; return res; }
+    } catch (e) { console.warn("  Haiku failed:", e.message); }
+  }
   return null;
 }
 

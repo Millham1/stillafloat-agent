@@ -88,13 +88,32 @@ const MIN_HULL_COLOUR = 40, MIN_HULL_PURITY = 0.95;  // path D
 async function fetchCabins(slug) {
   const out = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await sb.from("cabins").select("id,cabin_num,deck,fill,category").eq("ship_slug", slug).order("id").range(from, from + 999);
+    const { data, error } = await sb.from("cabins").select("id,cabin_num,deck,fill,category,y").eq("ship_slug", slug).order("id").range(from, from + 999);
     if (error) throw new Error(`${slug}: ${error.message}`);
     out.push(...(data ?? []));
     if (!data || data.length < 1000) break;
   }
   return out;
 }
+// BAND. On a per-deck plan image the outboard rows (balconies, oceanviews) sit at the two
+// extremes of y and the inboard blocks between them. The vision read names colours, not
+// shades, so two different pinks come back as one "pink": on Aura deck 12 the Studio block
+// by the Solo Lounge is light pink and nine outboard balcony-row rooms are hot pink. Grouping
+// by (deck, band, colour) keeps them apart. A deck whose y values are not 0..1 (Aqua deck 5
+// mixes pixels and fractions) has no usable band and falls back to the whole deck.
+const OUTBOARD_EDGE = 0.15;
+function bandsFor(rows) {
+  const byDeck = new Map();
+  for (const c of rows) { if (c.y == null) continue; const d = byDeck.get(c.deck) ?? { min: Infinity, max: -Infinity }; d.min = Math.min(d.min, Number(c.y)); d.max = Math.max(d.max, Number(c.y)); byDeck.set(c.deck, d); }
+  const valid = new Set([...byDeck].filter(([, d]) => d.max <= 1.0001 && d.max - d.min > 0.2).map(([k]) => k));
+  const band = (c) => {
+    if (!valid.has(c.deck) || c.y == null) return "*";
+    const d = byDeck.get(c.deck), f = (Number(c.y) - d.min) / (d.max - d.min);
+    return f < OUTBOARD_EDGE || f > 1 - OUTBOARD_EDGE ? "outboard" : "inboard";
+  };
+  return { band, valid };
+}
+
 const top = (counts) => Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? [null, 0];
 const sum = (counts) => Object.values(counts).reduce((a, b) => a + b, 0);
 
@@ -105,24 +124,35 @@ if (!Object.keys(shipLegend).length) { console.error(`no deck legend for ${SHIP}
 const ship = await fetchCabins(SHIP);
 const sister = await fetchCabins(SISTER);
 const colourSisters = [];
-for (const s of COLOUR_SISTERS) colourSisters.push(...(s === SISTER ? sister : await fetchCabins(s)));
+for (const s of COLOUR_SISTERS) colourSisters.push(...(s === SISTER ? sister : await fetchCabins(s)).map((c) => ({ ...c, _slug: s })));
 console.log(`${SHIP}: ${ship.length} cabins, ${ship.filter((c) => !c.category).length} blank; sister ${SISTER}: ${sister.length}; colour sisters ${COLOUR_SISTERS.join(",")}: ${colourSisters.length}`);
 
 const sisterByNum = new Map(sister.map((c) => [`${c.deck}|${c.cabin_num}`, c.category]));
-// colour tables from the sisters: per deck and whole hull
+const shipBands = bandsFor(ship);
+// Band per sister SHIP (each has its own image frame), then pooled.
+const sisterBandDecks = new Set();
+const colourSisterBanded = [];
+for (const slug of COLOUR_SISTERS) {
+  const rows = colourSisters.filter((c) => c._slug === slug);
+  const b = bandsFor(rows);
+  for (const c of rows) { const band = b.band(c); colourSisterBanded.push({ ...c, band }); if (band !== "*") sisterBandDecks.add(c.deck); }
+}
+// colour tables from the sisters: per deck (whole deck, and per band) and whole hull
 const deckColour = new Map(), hullColour = new Map();
-for (const c of colourSisters) {
+const bump = (m, k, cat) => { m.set(k, m.get(k) ?? {}); m.get(k)[cat] = (m.get(k)[cat] ?? 0) + 1; };
+for (const c of colourSisterBanded) {
   if (!c.fill || !c.category) continue;
-  const k = `${c.deck}|${c.fill}`;
-  deckColour.set(k, deckColour.get(k) ?? {}); deckColour.get(k)[c.category] = (deckColour.get(k)[c.category] ?? 0) + 1;
+  bump(deckColour, `${c.deck}|*|${c.fill}`, c.category);
+  if (c.band !== "*") bump(deckColour, `${c.deck}|${c.band}|${c.fill}`, c.category);
   hullColour.set(c.fill, hullColour.get(c.fill) ?? {}); hullColour.get(c.fill)[c.category] = (hullColour.get(c.fill)[c.category] ?? 0) + 1;
 }
 
 // groups on the new ship
 const groups = new Map();
 for (const c of ship) {
-  const k = `${c.deck}|${c.fill ?? "(null)"}`;
-  const g = groups.get(k) ?? { deck: c.deck, fill: c.fill, n: 0, blank: 0, sisterCounts: {}, matched: 0, ids: [] };
+  const band = shipBands.band(c);
+  const k = `${c.deck}|${band}|${c.fill ?? "(null)"}`;
+  const g = groups.get(k) ?? { key: k, deck: c.deck, band, fill: c.fill, n: 0, blank: 0, sisterCounts: {}, matched: 0, ids: [] };
   g.n += 1;
   if (!c.category) { g.blank += 1; g.ids.push(c.id); }
   const sc = sisterByNum.get(`${c.deck}|${c.cabin_num}`);
@@ -169,12 +199,14 @@ function decide(g) {
   if (a?.category) return gate(a.category, a.basis, a.why);
   const reasons = [a?.skip ?? `only ${g.matched} same-numbered sister cabins`];
   if (!g.fill) return { skip: reasons.concat("no colour read").join("; ") };
-  const dc = deckColour.get(`${g.deck}|${g.fill}`);
+  const useBand = g.band !== "*" && sisterBandDecks.has(g.deck);
+  const where = useBand ? `${g.band} ` : "";
+  const dc = deckColour.get(`${g.deck}|${useBand ? g.band : "*"}|${g.fill}`);
   if (dc) {
     const [cat, n] = top(dc), tot = sum(dc);
-    if (tot >= MIN_DECK_COLOUR && n / tot >= MIN_DECK_PURITY) return gate(cat, "sister-deck-colour", `${n}/${tot} "${g.fill}" cabins on the sisters' deck ${g.deck} are ${cat}`);
-    reasons.push(`sisters' deck-${g.deck} "${g.fill}" is ${n}/${tot} "${cat}"`);
-  } else reasons.push(`no "${g.fill}" on the sisters' deck ${g.deck}`);
+    if (tot >= MIN_DECK_COLOUR && n / tot >= MIN_DECK_PURITY) return gate(cat, "sister-deck-colour", `${n}/${tot} ${where}"${g.fill}" cabins on the sisters' deck ${g.deck} are ${cat}`);
+    reasons.push(`sisters' deck-${g.deck} ${where}"${g.fill}" is ${n}/${tot} "${cat}"`);
+  } else reasons.push(`no ${where}"${g.fill}" on the sisters' deck ${g.deck}`);
   const hc = hullColour.get(g.fill);
   if (hc) {
     const [cat, n] = top(hc), tot = sum(hc);
@@ -185,15 +217,40 @@ function decide(g) {
   return { skip: reasons.join("; ") };
 }
 
+// RE-MERGE. The band split exists to keep two different rooms apart when they share a
+// colour name; it must not starve a colour that means one thing on both sides of the deck.
+// On Aura the aft Haven suites (brown, gold) split into groups of 2-8 rooms and every one
+// fell below the evidence floor, so 14 Haven rooms went blank. For each (deck, colour)
+// where NO band group is named and NONE was refused for disagreement (a split or a
+// contradiction — the deck-12 pinks), the bands are pooled and decided as one group.
+const INSUFFICIENT = /^only \d+ same-numbered|no .*on the sisters' deck|unseen on the sisters/;
+{
+  const byDeckFill = new Map();
+  for (const g of groups.values()) { const k = `${g.deck}|${g.fill ?? "(null)"}`; (byDeckFill.get(k) ?? byDeckFill.set(k, []).get(k)).push(g); }
+  for (const [k, list] of byDeckFill) {
+    if (list.length < 2 || !list.some((g) => g.blank)) continue;
+    const verdicts = list.map((g) => ({ g, d: decide(g) }));
+    if (verdicts.some(({ d }) => d.category)) continue;
+    if (verdicts.some(({ d, g }) => g.blank && !INSUFFICIENT.test(d.skip))) continue;
+    const merged = { key: `${k.split("|")[0]}|*|${k.split("|")[1]}`, deck: list[0].deck, band: "*", fill: list[0].fill, n: 0, blank: 0, sisterCounts: {}, matched: 0, ids: [] };
+    for (const g of list) {
+      merged.n += g.n; merged.blank += g.blank; merged.matched += g.matched; merged.ids.push(...g.ids);
+      for (const [c, n] of Object.entries(g.sisterCounts)) merged.sisterCounts[c] = (merged.sisterCounts[c] ?? 0) + n;
+      groups.delete(g.key);
+    }
+    groups.set(merged.key, merged);
+  }
+}
+
 const decisions = [];
 let toSet = 0, left = 0;
-for (const g of [...groups.values()].sort((x, y) => x.deck - y.deck || String(x.fill).localeCompare(String(y.fill)))) {
+for (const g of [...groups.values()].sort((x, y) => x.deck - y.deck || String(x.fill).localeCompare(String(y.fill)) || x.band.localeCompare(y.band))) {
   if (!g.blank) continue;
   const d = decide(g);
   decisions.push({ ...g, ids: undefined, ...d });
   if (d.category) toSet += g.blank; else left += g.blank;
   const tag = d.category ? `SET ${d.category.padEnd(10)} [${d.basis}]` : "null";
-  console.log(`deck ${String(g.deck).padStart(2)} ${String(g.fill).padEnd(11)} ${String(g.blank).padStart(4)} blank  ${tag}  — ${d.category ? d.why : d.skip}`);
+  console.log(`deck ${String(g.deck).padStart(2)} ${g.band.padEnd(8)} ${String(g.fill).padEnd(11)} ${String(g.blank).padStart(4)} blank  ${tag}  — ${d.category ? d.why : d.skip}`);
 }
 console.log(`\n${WRITE ? "writing" : "would write"} ${toSet} rooms; ${left} stay null`);
 
@@ -201,7 +258,7 @@ if (WRITE) {
   let written = 0;
   for (const d of decisions) {
     if (!d.category) continue;
-    const g = groups.get(`${d.deck}|${d.fill ?? "(null)"}`);
+    const g = groups.get(d.key);
     for (let i = 0; i < g.ids.length; i += 200) {
       const { error } = await sb.from("cabins").update({ category: d.category, category_source: `sister:${d.basis} (${d.why})` })
         .in("id", g.ids.slice(i, i + 200)).is("category", null);

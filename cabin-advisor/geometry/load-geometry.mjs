@@ -83,6 +83,11 @@ const NEW_SHIPS = {
   // 2026-09-14 (Mark: "we should be able to get ... Norwegian Aura"): same Widgety
   // official per-deck plans as Aqua/Luna, batch msgbatch_01TYRSUuKo83rqh4ziBp3QRm.
   "norwegian-aura":     { slug: "norwegian-aura",     ship: "Norwegian Aura",     line: "Norwegian Cruise Line", class: "Prima Plus", catFrom: "ncl" },
+  // 2026-09-14: Carnival's own PDF (carnival.com, published 2026-09-10), batch
+  // msgbatch_016WSYXXj1a3wh16K6FwbRSB. The PDF prints every deck twice; flatten()'s
+  // first-seen-wins map unions the two runs. Categories come later from the PDF legend
+  // (carnival-categories.py + apply-carnival.mjs), so catFrom is null here.
+  "carnival-tropicale": { slug: "carnival-tropicale", ship: "Carnival Tropicale", line: "Carnival Cruise Line", class: "Excel", catFrom: null },
   "msc-world-america":  { slug: "msc-world-america",  ship: "MSC World America",  line: "MSC Cruises",           class: "World",      catFrom: null },
   "msc-world-asia":     { slug: "msc-world-asia",     ship: "MSC World Asia",     line: "MSC Cruises",           class: "World",      catFrom: null },
   "msc-world-atlantic": { slug: "msc-world-atlantic", ship: "MSC World Atlantic", line: "MSC Cruises",           class: "World",      catFrom: null },
