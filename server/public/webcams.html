@@ -7,18 +7,18 @@
 <link rel="preconnect" href="https://i.ytimg.com">
 <link rel="preconnect" href="https://s.ytimg.com">
 <link rel="dns-prefetch" href="https://googlevideo.com">
-<title>Live Cruise Cams | Still Afloat</title>
-<meta name="description" content="Live cruise-port and beach webcams streaming 24/7 — watch ships arrive, dock, and sail away from cruise ports and tropical harbors. Curated by Still Afloat.">
+<title>Live Cruise Cams: Cruise Port Webcams and Ships in Port Now | Still Afloat</title>
+<meta name="description" content="Live cruise port webcams at PortMiami, Galveston, Key West and Vancouver, with the cruise ships in port right now from our ship tracker. Watch ships arrive, dock and sail away.">
 <link rel="canonical" href="https://stillafloatcruising.com/webcams.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Still Afloat Cruising">
 <meta property="og:url" content="https://stillafloatcruising.com/webcams.html">
-<meta property="og:title" content="Live Cruise Cams | Still Afloat">
-<meta property="og:description" content="Live cruise-port and beach webcams streaming 24/7 — watch ships arrive and sail away from cruise ports and tropical harbors.">
+<meta property="og:title" content="Live Cruise Cams: Cruise Port Webcams and Ships in Port Now | Still Afloat">
+<meta property="og:description" content="Live cruise port webcams with the cruise ships in port right now, from Still Afloat's ship tracker.">
 <meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Live Cruise Cams | Still Afloat">
-<meta name="twitter:description" content="Live cruise port and tropical beach webcams streaming 24/7 — curated by Still Afloat.">
+<meta name="twitter:title" content="Live Cruise Cams: Cruise Port Webcams and Ships in Port Now | Still Afloat">
+<meta name="twitter:description" content="Live cruise port webcams with the cruise ships in port right now, from Still Afloat's ship tracker.">
 <meta name="twitter:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -45,6 +45,21 @@ body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4
 
 /* ── Shell ── */
 .shell{max-width:1300px;margin:auto;padding:44px 22px 90px}
+/* ── Intro: the page says what it is (Mark, 2026-09-14) ── */
+.cams-intro{max-width:860px;margin:0 auto 38px;text-align:center}
+.cams-intro h1{color:#fff;font-size:clamp(30px,4vw,44px);font-weight:900;margin:0 0 12px;line-height:1.1}
+.cams-intro p{color:rgba(255,255,255,.78);font-size:18px;line-height:1.6;margin:0 auto;max-width:720px}
+.cams-intro a{color:#7de3ff;font-weight:700;text-decoration:none}
+/* ── Ships in port right now, under each cam title ── */
+.cam-ships{margin:8px 0 0;font-size:15px;line-height:1.5;color:rgba(255,255,255,.72)}
+.cam-ships b{color:#5dff9a;font-weight:800}
+.cam-ships .none{color:rgba(255,255,255,.5)}
+/* ── Beach cams: a small strip at the bottom, between cruises ── */
+.section.strip h2{font-size:24px}
+.section.strip .cams-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.section.strip .cam-title{font-size:16px}
+.section.strip .cam-desc{display:none}
+.section.strip .cams-grid .cam:hover{transform:scale(1.12)}
 .section{margin-bottom:58px}
 .section h2{color:#fff;font-size:36px;font-weight:900;margin:0 0 10px}
 .section>p{color:rgba(255,255,255,.7);margin:0 0 8px;font-size:18px}
@@ -119,7 +134,10 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
 
 <main class="shell">
 
-  <h1 class="sr-only">Live Cruise Port Webcams</h1>
+  <section class="cams-intro">
+    <h1>Live Cruise Cams</h1>
+    <p>Live webcams at cruise terminals and piers, each one showing which cruise ships are in port right now, straight from <a href="/wheres-my-ship.html">Where's My Ship</a>. Watch your ship come alongside, check the sky on embarkation morning, or just watch the sail-away. Tap any cam to watch it full screen.</p>
+  </section>
 
   <div id="cams-root" class="cams-root">
     <p class="cams-loading">Loading live cams…</p>
@@ -181,14 +199,29 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
       hint:  ES ? '🚢 Toca cualquier cámara para verla en pantalla completa' : '🚢 Tap any cam to watch it full screen'
     },
     tropical: {
-      title: ES ? 'Playas y Costas' : 'Beaches & Waterways',
-      lede:  ES ? 'Sol, arena y tráfico de barcos entre cruceros.' : 'Sun, sand, and boat traffic between the cruises.',
+      title: ES ? 'Entre cruceros' : 'Between cruises',
+      lede:  ES ? 'Playas y costas para cuando no estás a bordo.' : 'Beaches and waterways for the days you are not on board.',
       hint:  ES ? '🌴 Toca cualquier cámara para verla en pantalla completa' : '🌴 Tap any cam to watch it full screen'
     }
   };
   var ORDER = ['ports', 'tropical'];
 
   function esc(s){ var d=document.createElement('div'); d.textContent = (s==null?'':s); return d.innerHTML; }
+
+  // "In port now" from Where's My Ship: the tracked ships with a recent fix at
+  // this cam's port, docked ones first. Cams without a port (beaches) say nothing.
+  var IN_PORT = ES ? 'En puerto ahora' : 'In port now';
+  var NO_SHIPS = ES ? 'Sin cruceros en puerto ahora mismo' : 'No cruise ships in port right now';
+  var TRACK = ES ? 'Ver en el rastreador' : 'See them on the tracker';
+  var TRACK_HREF = ES ? '/es/wheres-my-ship.html' : '/wheres-my-ship.html';
+  function shipsLine(cam){
+    if (!Array.isArray(cam.ships_in_port)) return '';
+    var docked = cam.ships_in_port.filter(function(s){ return s.docked; });
+    var list = docked.length ? docked : cam.ships_in_port;
+    if (!list.length) return '<p class="cam-ships" data-cam="'+esc(cam.slug)+'"><span class="none">'+NO_SHIPS+'</span></p>';
+    var names = list.map(function(s){ return '<b>'+esc(s.name)+'</b>'; }).join(', ');
+    return '<p class="cam-ships" data-cam="'+esc(cam.slug)+'">'+IN_PORT+': '+names+' · <a href="'+TRACK_HREF+'" style="color:#7de3ff;text-decoration:none;font-weight:700">'+TRACK+' →</a></p>';
+  }
 
   function tile(cam){
     var title = esc(ES && cam.title_es ? cam.title_es : cam.title);
@@ -203,13 +236,13 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
           '<span class="cam-live"><span class="dot"></span> '+LIVE+'</span>' +
           '<span class="cam-play"><i class="fa-solid fa-play"></i></span>' +
         '</button>' +
-        '<div class="cam-meta"><div><h3 class="cam-title">'+title+'</h3><p class="cam-desc">'+desc+'</p></div>' +
+        '<div class="cam-meta"><div><h3 class="cam-title">'+title+'</h3><p class="cam-desc">'+desc+'</p>'+shipsLine(cam)+'</div>' +
           '<a class="cam-cta" href="https://www.youtube.com/watch?v='+id+'" target="_blank" rel="noopener">YouTube <i class="fa-solid fa-arrow-up-right-from-square"></i></a></div>';
     } else {
       art.className = 'cam cam-offline';
       art.innerHTML =
         '<div class="cam-frame"><span class="cam-offline-badge"><i class="fa-solid fa-video-slash"></i>'+OFFLINE+'</span></div>' +
-        '<div class="cam-meta"><div><h3 class="cam-title">'+title+'</h3><p class="cam-desc">'+desc+'</p></div></div>';
+        '<div class="cam-meta"><div><h3 class="cam-title">'+title+'</h3><p class="cam-desc">'+desc+'</p>'+shipsLine(cam)+'</div></div>';
     }
     return art;
   }
@@ -224,7 +257,7 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
       if (!group.length) return;
       any = true;
       var meta = SECTIONS[key] || { title:key, lede:'', hint:'' };
-      var sec = document.createElement('section'); sec.className = 'section';
+      var sec = document.createElement('section'); sec.className = key === 'tropical' ? 'section strip' : 'section';
       sec.innerHTML = '<h2>'+esc(meta.title)+'</h2><p>'+esc(meta.lede)+'</p><div class="hint">'+meta.hint+'</div>';
       var grid = document.createElement('div'); grid.className = 'cams-grid';
       group.forEach(function(c){ grid.appendChild(tile(c)); });
@@ -258,6 +291,20 @@ footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.55);font
       });
     });
   }
+
+  // The in-port lines follow the tracker: refresh them every five minutes
+  // without re-rendering the cams (a playing preview must not restart).
+  function refreshShips(){
+    fetch('/api/webcams').then(function(r){ return r.json(); }).then(function(d){
+      (d.webcams || []).forEach(function(cam){
+        var el = document.querySelector('.cam-ships[data-cam="'+cam.slug+'"]');
+        if (!el) return;
+        var tmp = document.createElement('div'); tmp.innerHTML = shipsLine(cam);
+        var fresh = tmp.firstChild; if (fresh) el.replaceWith(fresh);
+      });
+    }).catch(function(){});
+  }
+  setInterval(refreshShips, 5 * 60 * 1000);
 
   fetch('/api/webcams')
     .then(function(r){ return r.json(); })
