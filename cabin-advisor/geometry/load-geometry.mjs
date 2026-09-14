@@ -41,6 +41,9 @@ const { createClient } = require("@supabase/supabase-js");
 const ws = require("ws");
 
 const WRITE = process.argv.includes("--write");
+// --only=<db slug>: touch ONE ship and nothing else (2026-09-14, adding Norwegian
+// Aura alone; a full run would also have written 37 stray Atlantic cabins).
+const ONLY = (process.argv.find(a => a.startsWith("--only=")) || "").slice("--only=".length);
 const OUT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "out");
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -181,6 +184,7 @@ const GEOM_NOTE = `x/y loaded ${TODAY} from official per-deck PDF geometry pass;
 // ---------- 1+2: existing ships ----------
 const summary = [];
 for (const [gslug, slug] of Object.entries(UPDATE_SHIPS)) {
+  if (ONLY && slug !== ONLY && gslug !== ONLY) continue;
   const gmap = flatten(geom[gslug], gslug);
   const db = await fetchDbCabins(slug);
   const byNum = new Map(db.map(r => [String(r.cabin_num), r]));
@@ -227,6 +231,7 @@ const primaMap = colorMap(flatten(geom["norwegian-prima"], "norwegian-prima"), a
 console.log("prima-derived NCL color map:", JSON.stringify(primaMap));
 
 for (const [gslug, meta] of Object.entries(NEW_SHIPS)) {
+  if (ONLY && meta.slug !== ONLY && gslug !== ONLY) continue;
   const g = geom[gslug];
   const gmap = flatten(g, gslug);
   const cmap = meta.catFrom === "ncl" ? primaMap : {};
