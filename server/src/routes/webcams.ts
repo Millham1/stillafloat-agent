@@ -1,5 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
+import { allPositions } from "../lib/ship-tracker";
+import { portBySlug } from "../lib/ports";
+import { shipsInPort } from "../lib/webcam-ships";
 
 const router: IRouter = Router();
 
@@ -16,7 +19,7 @@ router.get("/webcams", async (req: Request, res: Response) => {
     const { data, error } = await supabase
       .from("webcams")
       .select(
-        "slug, section, title, title_es, description, description_es, video_id, status, sort",
+        "slug, section, title, title_es, description, description_es, video_id, status, sort, port_slug",
       )
       .eq("active", true)
       .order("section", { ascending: true })
@@ -27,7 +30,15 @@ router.get("/webcams", async (req: Request, res: Response) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    const webcams = data ?? [];
+    // Which of our tracked ships are in frame right now (Mark, 2026-09-14): a
+    // cam that looks at a cruise port lists the ships with a recent fix there.
+    const now = new Date();
+    const positions = allPositions();
+    type CamRow = Record<string, unknown> & { port_slug?: string | null };
+    const webcams = ((data ?? []) as CamRow[]).map((cam) => {
+      const port = cam.port_slug ? portBySlug(cam.port_slug) : undefined;
+      return { ...cam, ships_in_port: port ? shipsInPort(positions, port, now) : null };
+    });
     return res.json({
       success: true,
       source: "stillafloat-agent",
