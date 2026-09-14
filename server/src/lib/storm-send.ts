@@ -10,6 +10,7 @@ import { logger } from "./logger";
 import { labelGrounds } from "./storm-grounds";
 import { unsubscribeUrl } from "../routes/subscribe";
 import { sendMail } from "./mailer";
+import { stormAlertEmailHtml, allClearEmailHtml, emailLang, type AffectedShip } from "./storm-email-content";
 
 // Subscriber-facing links use the PUBLIC site, never the dashboard host. DASHBOARD_URL
 // is the private admin origin (a bare IP:8080 on the dev box) and a 2026-09-05 alert
@@ -45,6 +46,22 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
 // emailSubscribers below is unaffected: that's the OUTBOUND alert to subscribers
 // after Mark approves, which is the product itself, not a notification to Mark.
 
+/** The ships pinned to this storm by the lifecycle (storm_tracked_ships). A read
+ *  failure means an email without the list, never a failed send. */
+export async function affectedShips(alertId: string, opts: { includeReleased?: boolean } = {}): Promise<AffectedShip[]> {
+  try {
+    const supabase = getSupabase();
+    let q = supabase.from("storm_tracked_ships").select("ship_name, cruise_line, released_at").eq("alert_id", alertId);
+    if (!opts.includeReleased) q = q.is("released_at", null);
+    const { data, error } = await q;
+    if (error) { logger.warn({ err: error, alertId }, "storm-send: affected ships read failed"); return []; }
+    return ((data ?? []) as unknown as Array<{ ship_name: string; cruise_line: string | null }>).map((r) => ({ ship_name: r.ship_name, cruise_line: r.cruise_line }));
+  } catch (err) {
+    logger.warn({ err, alertId }, "storm-send: affected ships read threw");
+    return [];
+  }
+}
+
 export interface AlertRow {
   id: string; name: string; headline: string | null; body_md: string | null;
   affected_grounds: string[];
@@ -54,29 +71,23 @@ export interface AlertRow {
 export async function emailSubscribers(a: AlertRow): Promise<{ sent: number; failed: number; total: number }> {
   const supabase = getSupabase();
   const { data, error } = await supabase
-    .from("subscribers").select("email, name")
+    .from("subscribers").select("email, name, lang")
     .eq("status", "confirmed").eq("alerts_opt_in", true);
   if (error) throw new Error(`emailSubscribers: ${error.message}`);
-  const list = (data ?? []) as unknown as Array<{ email: string; name: string }>;
+  const list = (data ?? []) as unknown as Array<{ email: string; name: string; lang?: string | null }>;
   if (!list.length) return { sent: 0, failed: 0, total: 0 };
-
   const subject = a.headline || `Storm update: ${a.name}`;
   const bodyHtml = markToHtml(a.body_md || "");
+  const ships = await affectedShips(a.id);
   let sent = 0, failed = 0;
   for (const sub of list) {
-    const unsub = unsubscribeUrl(sub.email, siteBase());
-    const html = `
-      <div style="font-family:system-ui,Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a2330">
-        <h2 style="color:#0d2a4a;margin:0 0 6px">${a.headline ?? a.name}</h2>
-        <p style="color:#5a6b7a;margin:0 0 16px;font-size:13px">Still Afloat · Cruise Weather Alert · ${labelGrounds(a.affected_grounds)}</p>
-        ${bodyHtml}
-        <hr style="border:none;border-top:1px solid #e3e8ee;margin:20px 0">
-        <p style="color:#98a4b0;font-size:12px">You're getting this because you opted into Still Afloat cruise alerts.
-          <a href="${unsub}" style="color:#98a4b0">Unsubscribe</a>.</p>
-      </div>`;
+    const html = stormAlertEmailHtml({
+      headline: a.headline ?? a.name, name: a.name, groundsLabel: labelGrounds(a.affected_grounds), bodyHtml,
+      ships, unsubscribeUrl: unsubscribeUrl(sub.email, siteBase()), base: siteBase(), lang: emailLang(sub.lang),
+    });
     (await sendEmail(sub.email, subject, html)) ? sent++ : failed++;
   }
-  logger.info({ alert: a.name, sent, failed }, "storm-send: subscriber send complete");
+  logger.info({ alert: a.name, sent, failed, ships: ships.length }, "storm-send: subscriber send complete");
   return { sent, failed, total: list.length };
 }
 
@@ -91,28 +102,24 @@ export interface AllClearRow {
 export async function emailAllClear(a: AllClearRow): Promise<{ sent: number; failed: number; total: number }> {
   const supabase = getSupabase();
   const { data, error } = await supabase
-    .from("subscribers").select("email, name")
+    .from("subscribers").select("email, name, lang")
     .eq("status", "confirmed").eq("alerts_opt_in", true);
   if (error) throw new Error(`emailAllClear: ${error.message}`);
-  const list = (data ?? []) as unknown as Array<{ email: string; name: string }>;
+  const list = (data ?? []) as unknown as Array<{ email: string; name: string; lang?: string | null }>;
   if (!list.length) return { sent: 0, failed: 0, total: 0 };
-
   const subject = a.all_clear_headline || `All clear: ${a.name}`;
   const bodyHtml = markToHtml(a.all_clear_body_md || "");
+  // The ships that were watched for this storm, released or not: a reader who
+  // followed one wants to see her name on the all-clear too.
+  const ships = await affectedShips(a.id, { includeReleased: true });
   let sent = 0, failed = 0;
   for (const sub of list) {
-    const unsub = unsubscribeUrl(sub.email, siteBase());
-    const html = `
-      <div style="font-family:system-ui,Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a2330">
-        <h2 style="color:#166534;margin:0 0 6px">🟢 ${subject}</h2>
-        <p style="color:#5a6b7a;margin:0 0 16px;font-size:13px">Still Afloat · Cruise Weather All-Clear · ${labelGrounds(a.affected_grounds)}</p>
-        ${bodyHtml}
-        <hr style="border:none;border-top:1px solid #e3e8ee;margin:20px 0">
-        <p style="color:#98a4b0;font-size:12px">You're getting this because you opted into Still Afloat cruise alerts.
-          <a href="${unsub}" style="color:#98a4b0">Unsubscribe</a>.</p>
-      </div>`;
+    const html = allClearEmailHtml({
+      headline: subject, name: a.name, groundsLabel: labelGrounds(a.affected_grounds), bodyHtml,
+      ships, unsubscribeUrl: unsubscribeUrl(sub.email, siteBase()), base: siteBase(), lang: emailLang(sub.lang),
+    });
     (await sendEmail(sub.email, subject, html)) ? sent++ : failed++;
   }
-  logger.info({ alert: a.name, sent, failed }, "storm-send: all-clear send complete");
+  logger.info({ alert: a.name, sent, failed, ships: ships.length }, "storm-send: all-clear send complete");
   return { sent, failed, total: list.length };
 }
