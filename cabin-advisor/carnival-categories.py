@@ -49,11 +49,49 @@ def page_image(pdf, scale=RENDER, page=0):
     return Image.frombytes("RGB", (pix.width, pix.height), pix.samples), d[page].rect.width
 
 
+CODE_TOKEN = re.compile(r"^[0-9A-Z]{2}$")
+
+
+def _interleaved(spans, brand=""):
+    """A legend row printed as CODE label CODE label ... (Excel-class 'Havana Accommodations
+    HA Interior HE Cabana ...' and the Cloud 9 Spa row). Each code takes the words up to the
+    next code; codes with no words of their own (4S 4T Interior) share the next label. Words
+    before the first code are the brand ("Havana Accommodations" -> "Havana")."""
+    pending, groups, lead = [], [], []
+    words = []
+    for sp in spans:
+        txt = sp["text"].strip()
+        if not txt:
+            continue
+        if CODE_TOKEN.match(txt):
+            if words and pending:
+                groups.append((pending, " ".join(words))); pending = []
+            elif words and not pending and not groups:
+                lead = words[:]
+            words = []
+            sx0, sy0, sx1, sy1 = sp["bbox"]
+            pending.append({"code": txt, "x": (sx0 + sx1) / 2, "y": (sy0 + sy1) / 2})
+        else:
+            words.append(txt)
+    if pending and words:
+        groups.append((pending, " ".join(words)))
+    brand = brand or re.sub(r"\s*Accommodations?\s*$", "", " ".join(lead)).strip()
+    return [{"codes": codes, "category": label if not brand or label.lower().startswith(brand.lower()) else f"{brand} {label}"}
+            for codes, label in groups if label]
+
+
 def legend_lines(pdf):
     """The printed CATEGORIES block. Each code is its own text span, so its chip can be sampled
-    exactly where the code is printed — no pixel hunting, no guessing at chip pitch."""
+    exactly where the code is printed — no pixel hunting, no guessing at chip pitch.
+
+    Three layouts (Tropicale, 2026-09-14, needed the last two):
+      1. "8A 8B 8C Balcony"                  codes then one label, on one text line
+      2. codes each on their OWN text line, label on another line in the same row
+         ("4A".."4I" then "Interior") — orphan codes are paired with the label to their right
+      3. "Havana Accommodations HA Interior HE Cabana ..." — code/label interleaved"""
     d = fitz.open(pdf); p = d[0]
     out = []
+    orphans, labels, interleaved = [], [], []
     for b in p.get_text("dict")["blocks"]:
         for l in b.get("lines", []):
             t = re.sub(r"\s+", " ", " ".join(s["text"] for s in l["spans"]).strip())
@@ -61,6 +99,24 @@ def legend_lines(pdf):
             if y1 > p.rect.height * 0.35:
                 continue                      # the legend band tops the page; Vista-class
                                               # runs it FULL-WIDTH in rows, so no x filter
+            toks = [sp["text"].strip() for sp in l["spans"] if sp["text"].strip()]
+            if toks and all(CODE_TOKEN.match(x) for x in toks):
+                for sp in l["spans"]:
+                    if CODE_TOKEN.match(sp["text"].strip()):
+                        sx0, sy0, sx1, sy1 = sp["bbox"]
+                        orphans.append({"code": sp["text"].strip(), "x": (sx0 + sx1) / 2, "y": (sy0 + sy1) / 2})
+                continue
+            if toks and not any(CODE_TOKEN.match(x) for x in toks):
+                labels.append({"text": t, "x0": x0, "yc": (y0 + y1) / 2})
+                continue
+            code_idx = [i for i, x in enumerate(toks) if CODE_TOKEN.match(x)]
+            if not code_idx:
+                continue
+            first_code_at = code_idx[0]
+            # interleaved: a word sits between two codes, or words precede the first code
+            if first_code_at > 0 or any(not CODE_TOKEN.match(x) for x in toks[code_idx[0]:code_idx[-1]]):
+                interleaved.append((l["spans"], x0, (y0 + y1) / 2, t, first_code_at))
+                continue
             m = CODE_RE.match(t)
             if not m:
                 continue
@@ -76,6 +132,45 @@ def legend_lines(pdf):
             if not codes or len(codes) > 10:
                 continue
             out.append({"codes": codes, "category": label})
+    # layout 3, deferred until every label line is known: a brand printed as its own text line
+    # just left of the row ("Cloud 9 Spa Accommodations" | "4S 4T Interior 6S Ocean View ...")
+    # Only when a brand is printed (left label or leading words) — a brandless row keeps the
+    # original single-label reading, which apply-carnival.mjs resolves by code grammar and
+    # which every stored legend before 2026-09-14 was built from (Dream's spa row).
+    for spans, x0, yc, t, first_code_at in interleaved:
+        left = [lb for lb in labels if lb["x0"] < x0 and abs(lb["yc"] - yc) <= 10 and re.search(r"Accommodations?\s*$", lb["text"])]
+        brand = re.sub(r"\s*Accommodations?\s*$", "", max(left, key=lambda lb: lb["x0"])["text"]).strip() if left else ""
+        if brand or first_code_at > 0:
+            out.extend(_interleaved(spans, brand))
+            continue
+        m = CODE_RE.match(t)
+        label = m.group(2).strip() if m else ""
+        codes = []
+        for sp in spans:
+            if CODE_TOKEN.match(sp["text"].strip()):
+                sx0, sy0, sx1, sy1 = sp["bbox"]
+                codes.append({"code": sp["text"].strip(), "x": (sx0 + sx1) / 2, "y": (sy0 + sy1) / 2})
+        if label and 0 < len(codes) <= 10:
+            out.append({"codes": codes, "category": label})
+    # layout 2: orphan codes in a row take the nearest label line to their right, same row
+    rows = {}
+    for c in orphans:
+        rows.setdefault(round(c["y"] / 6), []).append(c)
+    for row in rows.values():
+        right = max(c["x"] for c in row); yc = sum(c["y"] for c in row) / len(row)
+        # fill gaps only: a code some other layout already paired keeps that pairing, and the
+        # label has to name a kind of room (Dream's "Staterooms and Suites with obstructed"
+        # footnote sits in the same row as its 6L 6M codes)
+        have = {c["code"] for line in out for c in line["codes"]}
+        row = [c for c in row if c["code"] not in have]
+        if not row:
+            continue
+        cands = [lb for lb in labels if lb["x0"] >= right - 2 and abs(lb["yc"] - yc) <= 10
+                 and re.search(r"interior|inside|ocean|balcony|suite|cabana|studio|view", lb["text"], re.I)
+                 and not re.search(r"obstruct|staterooms and", lb["text"], re.I)]
+        if cands:
+            lb = min(cands, key=lambda lb: lb["x0"] - right)
+            out.append({"codes": sorted(row, key=lambda c: c["x"]), "category": lb["text"]})
     return out
 
 

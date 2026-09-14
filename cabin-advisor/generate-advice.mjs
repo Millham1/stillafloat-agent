@@ -50,16 +50,32 @@ const cabins = shipData.cabins.map((c) => ({
 // and priced for ONE guest, with no single supplement, opening onto a keycard-only Studio
 // Lounge. Without this line the model treated them as small insides and sent a budget solo
 // to an oceanview (Aura, 2026-09-14). Stated only when the ship has them.
+const MOTION_ASKED_RE = /\b(queasy|seasick|motion|steady|steadiest|stomach|sway|rough seas)\b/i;
 const hasStudios = cabins.some((c) => /studio/i.test(c.kind ?? ""));
+// The Haven is Norwegian's suite complex; the category name does not say "suite", and on
+// 2026-09-14 the anniversary couple asking for "the suite perks" was given six balconies.
+const hasHaven = cabins.some((c) => /\bhaven\b/i.test(c.kind ?? ""));
+const HAVEN_FACT = hasHaven
+  ? `\nHouse fact: cabins of kind "The Haven" are Norwegian's suites — the private keycard-only Haven complex with its own lounge, restaurant, sundeck and butler/concierge service. They ARE "the suite perks"; a "Balcony" is not a suite.\n`
+  : "";
 const STUDIO_FACT = hasStudios
   ? `\nHouse fact: cabins of kind "Studio" are Norwegian's solo staterooms — sized and priced for one guest with no single supplement, with access to the private Studio Lounge. For a solo traveler watching cost they are the first cabins to weigh, and you say so plainly; for two people they are not an option.\n`
   : "";
 
+// Facts the model is not handed cannot be sold. A traveler who never raised motion gets the
+// cabins WITHOUT the steadiness fields: with `steady` on every Aura room, three re-rolls in a
+// row still pitched budget oceanviews on "gentle sway" (2026-09-14). The check below stays as
+// the backstop.
+const MOTION_FIELDS = ["steady", "hump"];
+const cabinsFor = (traveler) => MOTION_ASKED_RE.test(traveler)
+  ? cabins
+  : cabins.map((c) => Object.fromEntries(Object.entries(c).filter(([k]) => !MOTION_FIELDS.includes(k))));
+
 function userPrompt(traveler) {
-  return `Traveler: ${traveler}. Ship: ${shipData.ship}.${STUDIO_FACT}
+  return `Traveler: ${traveler}. Ship: ${shipData.ship}.${STUDIO_FACT}${HAVEN_FACT}
 
 Candidate cabins (all real, with the quirks that matter):
-${JSON.stringify(cabins)}
+${JSON.stringify(cabinsFor(traveler))}
 
 Recommend the best 4-6 cabins for THIS traveler, ranked (rank 1 = book first). Each reason must be distinct and tied to what they told you; where two cabins are nearly identical, say so and give the honest tie-breaker. Then list 2-3 cabins you would steer them clear of, with the honest reason.
 
@@ -70,6 +86,7 @@ Fidelity rules:
 - The voice example in your instructions is a TONE reference, not content — do not reuse its phrases ("tummy troubles", "the bonus is waking up") unless this traveler genuinely has that concern.
 - Vary your openings. Do not start every reason with "Cabin NNNN is..."
 - Where a cabin sits comes ONLY from its "position" (forward / mid / aft) and "side" (port / starboard / center) fields. If a cabin has no such field, do not say where on the ship it is — never infer it from the cabin number.
+- Position is a fact about a room, not a reason to pick it. Rank by what THIS traveler asked for. Midship and steadiness only matter to someone who raised motion or seasickness; for anyone else, do not choose rooms for being midship and do not mention motion at all.
 
 Respond with ONLY a JSON object:
 {"recommendations":[{"cabin":<number>,"rank":<number>,"hook":"<5-10 words>","reason":"<2-4 sentences in your voice>"}],"steerClear":[{"cabin":<number>,"reason":"<1-2 sentences>"}]}`;
@@ -119,7 +136,10 @@ async function viaClaude(prompt) {
 // side is checked against that cabin's section/side; a contradiction re-rolls the archetype
 // once, and a second contradiction is printed so it never ships unseen.
 const byId = new Map(cabins.map((c) => [String(c.id), c]));
-const SECTION_WORDS = [["forward", /\b(forward|bow|front of the ship)\b/i], ["aft", /\b(aft|stern|back of the ship|rear)\b/i], ["mid", /\b(midship|mid-ship|middle of the ship|amidships)\b/i]];
+const SECTION_WORDS = [["forward", /\b(forward|bow|front of the ship)\b/i], ["aft", /\b(aft|stern|back of the ship|rear)\b/i], ["mid", /\b(a?mid-?ships?|mid-deck|middle of the ship|in the middle|dead cent(er|re)|cent(er|re)d? fore)\b/i]];
+// Phrases that name ends of the ship as a CONTRAST or a relative step, not as where the cabin
+// is: "centered fore-to-aft", "costs less than one forward or aft", "a couple doors forward".
+const CONTRAST = /\b(fore[- ]to[- ]aft|forward (?:or|and) aft|aft (?:or|and) forward|bow (?:or|and|to) stern|(?:doors?|cabins?|rooms?|steps?) (?:forward|aft))\b/gi;
 const SIDE_WORDS = [["port", /\bport(?:[- ]side)?\b(?! (of call|stop|city|day|talk))/i], ["starboard", /\bstarboard\b/i]];
 export function positionProblems(out) {
   const probs = [];
@@ -128,27 +148,51 @@ export function positionProblems(out) {
     if (!c || !text) return;
     // Only the sentence(s) naming this cabin, or the whole reason when no other cabin number appears.
     const others = (text.match(/\b\d{4,5}\b/g) ?? []).filter((n) => n !== String(cabin));
-    const scope = others.length ? text.split(/(?<=[.!?])\s+/).filter((sen) => sen.includes(String(cabin))).join(" ") : text;
+    const scope = (others.length ? text.split(/(?<=[.!?])\s+/).filter((sen) => sen.includes(String(cabin))).join(" ") : text).replace(CONTRAST, " ");
+    // A sentence that names the RIGHT place may also name others by way of contrast
+    // ("midship, away from the bow and stern"), so it is only a contradiction when the
+    // cabin's own section/side is never named and a different one is.
     const sec = String(c.position ?? "").toLowerCase().replace("midship", "mid");
-    if (sec) for (const [word, re] of SECTION_WORDS) if (re.test(scope) && word !== sec) probs.push(`${cabin} is ${sec}, text says ${word}`);
+    const secRe = SECTION_WORDS.find(([w]) => w === sec)?.[1];
+    if (sec && secRe && !secRe.test(scope)) for (const [word, re] of SECTION_WORDS) if (word !== sec && re.test(scope)) probs.push(`${cabin} is ${sec}, text says ${word}`);
     const side = String(c.side ?? "").toLowerCase();
-    if (side === "port" || side === "starboard") for (const [word, re] of SIDE_WORDS) if (re.test(scope) && word !== side) probs.push(`${cabin} is ${side}, text says ${word}`);
+    const sideRe = SIDE_WORDS.find(([w]) => w === side)?.[1];
+    if (sideRe && !sideRe.test(scope)) for (const [word, re] of SIDE_WORDS) if (word !== side && re.test(scope)) probs.push(`${cabin} is ${side}, text says ${word}`);
   };
   for (const r of out.recommendations ?? []) check(r.cabin, `${r.hook ?? ""}. ${r.reason ?? ""}`);
   for (const r of out.steerClear ?? []) check(r.cabin, r.reason ?? "");
   return probs;
 }
 
-async function generateOne(prompt) {
+// FIDELITY: MOTION ONLY FOR THOSE WHO RAISED IT. The prompt already says so; on 2026-09-14 the
+// model still sold Haven suites and budget oceanviews on "gentle sway". A traveler whose own
+// words never touch motion gets an output with no motion words, or a re-roll. Separately, one
+// claim is simply false and is never allowed for anyone: higher decks do NOT move less.
+const MOTION_ASKED = MOTION_ASKED_RE;
+const MOTION_WORDS = /\b(motion|seasick\w*|queasy|steady|steadiest|steadier|stability|stable|rocking|rocks?|pitch(?:ing)?|roll(?:ing)?|sway\w*|stomach)\b/i;
+const FALSE_MOTION = /\b(higher|upper|top)\b[^.!?]{0,60}\b(less|reduces?|minimi[sz]es?|lower)\b[^.!?]{0,20}\b(motion|sway|rocking|movement)\b|\b(less|reduced)\s+(motion|sway|rocking)\b[^.!?]{0,40}\b(higher|upper)\s+deck/i;
+export function fidelityProblems(out, traveler) {
+  const probs = [];
+  const asked = MOTION_ASKED.test(traveler ?? "");
+  for (const r of [...(out.recommendations ?? []), ...(out.steerClear ?? [])]) {
+    const text = `${r.hook ?? ""}. ${r.reason ?? ""}`;
+    if (FALSE_MOTION.test(text)) probs.push(`${r.cabin}: says higher decks move less (false)`);
+    else if (!asked && MOTION_WORDS.test(text)) probs.push(`${r.cabin}: talks motion ("${text.match(MOTION_WORDS)[0]}") to a traveler who never raised it`);
+  }
+  return probs;
+}
+
+async function generateOne(prompt, traveler) {
   // Never throws up the stack: a failed archetype is skipped and counted.
   if (!AKEY) return null;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  const ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
       const res = await viaClaude(prompt);
-      const probs = positionProblems(res.out);
+      const probs = [...positionProblems(res.out), ...fidelityProblems(res.out, traveler)];
       if (!probs.length) return res;
-      console.warn(`  position mismatch (attempt ${attempt}): ${probs.join("; ")}`);
-      if (attempt === 2) { res.out.positionWarnings = probs; return res; }
+      console.warn(`  check failed (attempt ${attempt}): ${probs.join("; ")}`);
+      if (attempt === ATTEMPTS) { res.out.qcWarnings = probs; return res; }
     } catch (e) { console.warn("  Haiku failed:", e.message); }
   }
   return null;
@@ -170,7 +214,7 @@ let totalCost = 0, modelUsed = null, failures = 0;
 for (const a of archetypes) {
   if (ONLY.length && !ONLY.includes(a.id)) continue;
   process.stdout.write(`  ${a.id} ... `);
-  const res = await generateOne(userPrompt(a.traveler));
+  const res = await generateOne(userPrompt(a.traveler), a.traveler);
   if (!res) { console.log("SKIPPED (both providers failed)"); failures++; continue; }
   byArchetype[a.id] = { label: a.label, ...res.out };
   totalCost += res.cost; modelUsed = res.model;
