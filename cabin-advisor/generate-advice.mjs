@@ -19,6 +19,10 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ship = process.argv[2] || "wonder-of-the-seas";
+// --only=a,b regenerates just those archetypes and merges them into the existing
+// advice file, so one weak archetype can be redone without re-rolling (and re-translating)
+// the eleven that were already reviewed. translate-advice.mjs takes the same flag.
+const ONLY = (process.argv.find((a) => a.startsWith("--only=")) ?? "").slice(7).split(",").filter(Boolean);
 const AKEY = process.env.ANTHROPIC_API_KEY;
 
 const voice = await readFile(join(HERE, "voice-guide.md"), "utf8");
@@ -42,8 +46,17 @@ const cabins = shipData.cabins.map((c) => ({
   obstructedFlag: c.obstructed,
 }));
 
+// Norwegian's Studios are the one cabin kind whose meaning is not in its name: a room sized
+// and priced for ONE guest, with no single supplement, opening onto a keycard-only Studio
+// Lounge. Without this line the model treated them as small insides and sent a budget solo
+// to an oceanview (Aura, 2026-09-14). Stated only when the ship has them.
+const hasStudios = cabins.some((c) => /studio/i.test(c.kind ?? ""));
+const STUDIO_FACT = hasStudios
+  ? `\nHouse fact: cabins of kind "Studio" are Norwegian's solo staterooms — sized and priced for one guest with no single supplement, with access to the private Studio Lounge. For a solo traveler watching cost they are the first cabins to weigh, and you say so plainly; for two people they are not an option.\n`
+  : "";
+
 function userPrompt(traveler) {
-  return `Traveler: ${traveler}. Ship: ${shipData.ship}.
+  return `Traveler: ${traveler}. Ship: ${shipData.ship}.${STUDIO_FACT}
 
 Candidate cabins (all real, with the quirks that matter):
 ${JSON.stringify(cabins)}
@@ -64,7 +77,26 @@ Respond with ONLY a JSON object:
 function parse(text) {
   const m = text && text.match(/\{[\s\S]*\}/);
   if (!m) throw new Error("no JSON in model response");
-  return JSON.parse(m[0]);
+  return scrub(JSON.parse(m[0]));
+}
+
+// Mark's banned-words rule for anything published in his voice (2026-09-14: three
+// "actually"s reached the Aura preview). The word is filler in every sentence the model
+// writes it into, so it is removed rather than the archetype re-rolled; the surrounding
+// spacing and capitalisation are repaired. Extend BANNED as the list grows.
+const BANNED = [/\b[Aa]ctually,?\s*/g];
+export function scrubText(t) {
+  if (typeof t !== "string") return t;
+  let out = t;
+  for (const re of BANNED) out = out.replace(re, "");
+  out = out.replace(/\s{2,}/g, " ").replace(/\(\s+/g, "(").replace(/\s+([,.;:!?])/g, "$1").trim();
+  // a sentence that lost its first word gets its capital back
+  return out.replace(/(^|[.!?]\s+)([a-z])/g, (_, a, b) => a + b.toUpperCase());
+}
+function scrub(o) {
+  for (const r of o.recommendations ?? []) { r.hook = scrubText(r.hook); r.reason = scrubText(r.reason); }
+  for (const s of o.steerClear ?? []) s.reason = scrubText(s.reason);
+  return o;
 }
 
 async function viaClaude(prompt) {
@@ -89,9 +121,18 @@ async function generateOne(prompt) {
 if (!AKEY) { console.error("No ANTHROPIC_API_KEY in env."); process.exit(1); }
 
 console.log(`Generating advice for ${shipData.ship} across ${archetypes.length} archetypes...`);
-const byArchetype = {};
+const outName = useFull && existsSync(curatedPath) ? `${ship}-fullgrid` : ship;
+const outPath = join(HERE, `advice/${outName}.json`);
+let byArchetype = {};
+if (ONLY.length) {
+  if (!existsSync(outPath)) { console.error(`--only needs an existing ${outPath} to merge into`); process.exit(1); }
+  byArchetype = JSON.parse(await readFile(outPath, "utf8")).byArchetype ?? {};
+  const unknown = ONLY.filter((id) => !archetypes.some((a) => a.id === id));
+  if (unknown.length) { console.error(`unknown archetype(s): ${unknown.join(", ")}`); process.exit(1); }
+}
 let totalCost = 0, modelUsed = null, failures = 0;
 for (const a of archetypes) {
+  if (ONLY.length && !ONLY.includes(a.id)) continue;
   process.stdout.write(`  ${a.id} ... `);
   const res = await generateOne(userPrompt(a.traveler));
   if (!res) { console.log("SKIPPED (both providers failed)"); failures++; continue; }
@@ -100,9 +141,8 @@ for (const a of archetypes) {
   console.log(`ok ($${res.cost.toFixed(4)})`);
 }
 
-const out = { ship: shipData.ship, class: shipData.class, model: modelUsed, archetypes: archetypes.length, generatedCount: Object.keys(byArchetype).length, byArchetype };
+const out = { ship: shipData.ship, class: shipData.class, model: modelUsed ?? (ONLY.length ? JSON.parse(await readFile(outPath, "utf8")).model : null), archetypes: archetypes.length, generatedCount: Object.keys(byArchetype).length, byArchetype };
 await mkdir(join(HERE, "advice"), { recursive: true });
-const outName = useFull && existsSync(curatedPath) ? `${ship}-fullgrid` : ship;
-await writeFile(join(HERE, `advice/${outName}.json`), JSON.stringify(out, null, 2));
+await writeFile(outPath, JSON.stringify(out, null, 2));
 console.log(`\nDone. ${Object.keys(byArchetype).length}/${archetypes.length} archetypes, ${failures} failed. Total cost ≈ $${totalCost.toFixed(3)} (${modelUsed}).`);
 console.log(`Wrote advice/${outName}.json`);
