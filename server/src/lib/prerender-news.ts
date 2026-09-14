@@ -168,9 +168,29 @@ function seoDescFor(story: NewsStory, lang: Lang, ov?: SeoOverride): string {
 // decision in it) and every refused page in the first sample was one. They stay on
 // the feed and in the archive for readers and stop asking Google to grade them.
 // An explicit seo-override `noindex` wins either way.
+// The depth floor new stories must clear before they publish — the newsagent's
+// grounding gate (grounding.ts thinSections: 35 words of what it means for you,
+// 70 of Mark's take). A page under it is the shape Google refused in August.
+export const DEPTH_FLOOR_IMPACT_WORDS = 35;
+export const DEPTH_FLOOR_TAKE_WORDS = 70;
+const wordCount = (text: string | undefined): number => String(text || "").trim().split(/\s+/).filter(Boolean).length;
+
+/**
+ * Below the floor on the ENGLISH sections, so both languages of a story get the
+ * same answer. Measured on prod 2026-09-13: 148 of 314 submitted English story
+ * pages were under it, 124 of them from May and June, which the September
+ * backfill never reached. Stories the backfill still cannot deepen stay out of
+ * the index rather than drag the site's quality down.
+ */
+export function belowDepthFloor(story: NewsStory): boolean {
+  return wordCount(story.travelerImpact) < DEPTH_FLOOR_IMPACT_WORDS || wordCount(story.editorialReasoning) < DEPTH_FLOOR_TAKE_WORDS;
+}
+
 export function isNoindex(story: NewsStory, slug: string, lang: Lang, ov?: SeoOverride): boolean {
+  // An override pins either way: a thin page still earning search traffic can be kept.
   if (typeof ov?.noindex === "boolean") return ov.noindex;
   if (String(story.impactLevel || "").trim().toLowerCase() === "low") return true;
+  if (belowDepthFloor(story)) return true;
   // Zero-intent Carnival-outage ES article — it ranks pos ~36 for "is carnival
   // down", never converts, and only spends crawl budget. Task 2fa90ac7.
   return lang === "es" && slug.startsWith("carnival-s-website-is-down-for-18-hours");
