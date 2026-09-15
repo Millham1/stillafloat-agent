@@ -4,6 +4,8 @@ import { getSupabase, readJson, PATHS } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import { tokenOk } from "../lib/http-auth";
+import { activatePendingWatches } from "../lib/pending-watches";
+import { WATCH_WINDOW_DAYS } from "../lib/ship-watch";
 
 const router = Router();
 
@@ -40,6 +42,8 @@ export async function sendVerificationEmail(
   token: string,
   baseUrl: string,
   lang: "en" | "es" = "en",
+  /** Set when the sign-up came from a "Track this ship" button: the email says confirming starts the watch. */
+  watchShip?: string,
 ) {
   // Verification email now goes via Gmail (ops-manager /send-email), not Resend.
 
@@ -57,6 +61,12 @@ export async function sendVerificationEmail(
         ignore: "Si no te suscribiste a Still Afloat, ignora este correo — no quedarás suscrito.",
         tag: "Navega más inteligente. Ríe más.",
         unsub: "Cancelar suscripción",
+        ...(watchShip ? {
+          subject: `Confirma tu suscripción para seguir a ${watchShip} ⚓`,
+          heading: "¡Un clic para empezar a seguir tu barco!",
+          body: `Confirma tu correo para suscribirte a <strong>Still Afloat</strong> y vigilaremos a <strong>${watchShip}</strong> por ti durante los próximos ${WATCH_WINDOW_DAYS} días: te avisaremos si cambia el itinerario, si hay clima severo en la ruta o si tu línea de cruceros publica noticias que afecten tu viaje. Tu suscripción también incluye nuestras noticias semanales de cruceros.`,
+          button: "✅ Suscribirme y empezar a seguirlo →",
+        } : {}),
       }
     : {
         subject: "Confirm your Still Afloat subscription ⚓",
@@ -67,6 +77,12 @@ export async function sendVerificationEmail(
         ignore: "If you didn't sign up for Still Afloat, you can safely ignore this email — you won't be subscribed.",
         tag: "Cruise smarter. Laugh more. Stay Afloat.",
         unsub: "Unsubscribe",
+        ...(watchShip ? {
+          subject: `Confirm your subscription to start tracking ${watchShip} ⚓`,
+          heading: "One click to start tracking your ship!",
+          body: `Confirm your email to subscribe to <strong>Still Afloat</strong>, and we'll watch <strong>${watchShip}</strong> for you for the next ${WATCH_WINDOW_DAYS} days: an email if the itinerary changes, severe weather threatens the route, or your cruise line makes news that matters to your sailing. Your subscription also brings our weekly cruise news.`,
+          button: "✅ Subscribe and Start Tracking →",
+        } : {}),
       };
 
   const html = `
@@ -246,14 +262,15 @@ router.get("/verify-email", async (req, res) => {
   try {
     const supabase = getSupabase();
     const { data: subscriber, error: fetchErr } = await supabase
-      .from("subscribers").select("id, status, email, name").eq("token", token).maybeSingle();
+      .from("subscribers").select("id, status, email, name, lang").eq("token", token).maybeSingle();
 
     if (fetchErr || !subscriber) {
       logger.warn({ token }, "Verify: token not found");
       return res.redirect("/subscribe-verified.html?result=invalid");
     }
     if (subscriber.status === "confirmed") {
-      return res.redirect("/subscribe-verified.html?result=already");
+      const already = (subscriber as unknown as { lang?: string | null }).lang === "es" ? "/es/subscribe-verified.html" : "/subscribe-verified.html";
+      return res.redirect(already + "?result=already");
     }
 
     const { error: updateErr } = await supabase
@@ -267,8 +284,21 @@ router.get("/verify-email", async (req, res) => {
     }
 
     logger.info({ email: subscriber.email }, "Subscriber confirmed");
+
+    // A "Track this ship" sign-up waits for this click: switch its watches on now.
+    const confirmed = subscriber as unknown as { id: string; email: string; name: string; lang?: string | null };
+    let tracking: { ship: string; until: string }[] = [];
+    try {
+      tracking = await activatePendingWatches({
+        id: String(confirmed.id), email: String(confirmed.email), name: String(confirmed.name), lang: confirmed.lang ?? null,
+      });
+    } catch (err) {
+      logger.error({ err, email: confirmed.email }, "Verify: pending ship watches could not be switched on");
+    }
+    const page = confirmed.lang === "es" ? "/es/subscribe-verified.html" : "/subscribe-verified.html";
     return res.redirect(
-      "/subscribe-verified.html?result=success&name=" + encodeURIComponent(subscriber.name),
+      page + "?result=success&name=" + encodeURIComponent(confirmed.name)
+        + (tracking[0] ? "&ship=" + encodeURIComponent(tracking[0].ship) + "&until=" + tracking[0].until : ""),
     );
   } catch (err) {
     logger.error({ err }, "Verify email route error");

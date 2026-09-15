@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track Your Ship | Still Afloat</title>
+<meta name="robots" content="noindex,follow">
+<link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/track-ship.html">
+<link rel="alternate" hreflang="es-419" href="https://stillafloatcruising.com/es/track-ship.html">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--navy:#07183f;--ocean:#0077b6;--seafoam:#5dff9a;--gold:#ffca4f}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at top right,rgba(0,119,182,.18),transparent 24%),linear-gradient(to bottom,#040b16 0%,#071523 30%,#0c2035 100%);color:white;font-family:'Baloo 2',Poppins,sans-serif}
+.sub-shell{max-width:680px;margin:0 auto;padding:40px 24px 80px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:999px;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.22);color:#bdfdd3;font-size:12px;font-weight:900;letter-spacing:.10em;text-transform:uppercase;margin-bottom:20px}
+h1{font-size:clamp(32px,6vw,52px);font-weight:900;line-height:1.05;margin:0 0 14px}
+h1 span{color:#5dff9a}
+.sub-lead{font-size:18px;line-height:1.7;color:rgba(255,255,255,.78);margin:0 0 20px}
+.storm-note{display:flex;gap:10px;align-items:flex-start;margin:0 0 28px;padding:12px 16px;border-radius:14px;background:rgba(255,202,79,.10);border:1px solid rgba(255,202,79,.35);color:#ffe29a;font-size:16px;line-height:1.55;font-weight:600}
+.card{background:rgba(9,18,34,.84);border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:36px;backdrop-filter:blur(14px);box-shadow:0 24px 64px rgba(0,0,0,.42)}
+.field{margin-bottom:20px}
+label{display:block;font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:8px}
+input[type=text],input[type=email]{width:100%;padding:14px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:white;font-size:17px;font-family:inherit;outline:none;transition:border-color .2s;color-scheme:dark}
+input::placeholder{color:rgba(255,255,255,.3)}
+input:focus{border-color:rgba(93,255,154,.5);background:rgba(93,255,154,.04)}
+@media(max-width:520px){.card{padding:26px 20px}}
+.watch-terms{display:flex;gap:12px;align-items:flex-start;margin:0 0 22px;padding:14px 18px;border-radius:16px;background:rgba(93,255,154,.07);border:1px solid rgba(93,255,154,.22);color:rgba(255,255,255,.86);font-size:16px;line-height:1.6}
+.honey{position:absolute;left:-9999px;height:1px;width:1px;overflow:hidden;opacity:0;pointer-events:none}
+.privacy-box{border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);padding:18px 20px;margin-bottom:22px}
+.privacy-text{font-size:13px;line-height:1.7;color:rgba(255,255,255,.55);margin:0 0 14px}
+.privacy-text a{color:#5dff9a;text-decoration:none}
+.check-row{display:flex;align-items:flex-start;gap:12px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;margin:0}
+.check-row input[type=checkbox]{width:20px;height:20px;accent-color:#5dff9a;flex-shrink:0;margin-top:2px;cursor:pointer}
+.check-label{font-size:14px;line-height:1.6;color:rgba(255,255,255,.75);cursor:pointer}
+.btn-submit{width:100%;padding:16px;border-radius:16px;border:none;cursor:pointer;font-size:19px;font-weight:900;font-family:inherit;background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;box-shadow:0 10px 30px rgba(0,119,182,.35);transition:all .22s ease}
+.btn-submit:hover:not(:disabled){transform:translateY(-2px)}
+.btn-submit:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.error-msg{display:none;margin-bottom:18px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;font-size:15px;font-weight:600}
+.error-msg.show{display:block}
+.secondary{margin:18px 0 0;text-align:center;font-size:16px}
+.secondary a{color:#5dff9a;font-weight:700;text-decoration:none}
+.done{text-align:center}
+.done .icon{font-size:46px;margin-bottom:12px}
+.done h2{font-size:clamp(26px,5vw,36px);font-weight:900;margin:0 0 12px;line-height:1.15}
+.done h2 span{color:#5dff9a}
+.done p{font-size:17px;line-height:1.7;color:rgba(255,255,255,.78);margin:0 0 22px}
+</style>
+</head>
+<body>
+<div id="navbar-container"></div>
+<div class="sub-shell">
+  <div class="hero-badge"><i class="fa-solid fa-ship"></i>&nbsp; Subscriber Ship Watch</div>
+  <h1>Track <span id="shipName">your ship</span></h1>
+  <p class="sub-lead" id="lead">Ship watch is a subscriber feature, free during our launch period. Subscribe and we'll email you if the itinerary changes, severe weather threatens the route, or the cruise line makes news that affects the sailing.</p>
+  <p class="storm-note" id="stormNote" hidden><span aria-hidden="true">🌀</span><span id="stormText"></span></p>
+
+  <div class="card" id="formCard">
+    <div id="errorMsg" class="error-msg" role="alert"></div>
+    <form id="trackForm" novalidate>
+      <div class="honey" aria-hidden="true"><input type="text" name="website" id="website" tabindex="-1" autocomplete="off"></div>
+      <div class="field">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" name="name" placeholder="Your full name" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <p class="watch-terms"><span aria-hidden="true">⏱️</span><span>Your watch runs for 15 days, long enough to see a storm through. Every ship watch email has a link to stop sooner, and when the 15 days are up we'll ask if you'd like another 15.</span></p>
+      <div class="privacy-box">
+        <p class="privacy-text">
+          By subscribing you agree to receive email about this ship and the weekly <strong>Still Afloat</strong> newsletter. Your email will never be sold or shared with any third party. You can unsubscribe instantly at any time via the link in every email. If you're new to Still Afloat, we send a single confirmation email first, and clicking it from your own inbox starts the watch. Read our <a href="/privacy.html">Privacy Policy</a> and <a href="/terms.html">Terms of Use</a>.
+        </p>
+        <label class="check-row">
+          <input type="checkbox" id="privacyCheck" name="privacy" required>
+          <span class="check-label">I agree to the privacy terms and consent to receiving email from Still Afloat.</span>
+        </label>
+      </div>
+      <button type="submit" class="btn-submit" id="submitBtn"><i class="fa-solid fa-bell"></i>&nbsp; Subscribe &amp; Track This Ship</button>
+    </form>
+    <p class="secondary"><a id="liveLink" href="/wheres-my-ship.html">See where she is right now →</a></p>
+  </div>
+
+  <div class="card done" id="restartCard" hidden>
+    <div class="icon">🔁</div>
+    <h2>Keep tracking <span id="restartShip">your ship</span>?</h2>
+    <p>We'll watch her for another 15 days and email you if the itinerary changes, severe weather threatens the route, or the cruise line makes news that affects the sailing. Every ship watch email has a link to stop sooner.</p>
+    <div id="restartError" class="error-msg" role="alert"></div>
+    <button type="button" class="btn-submit" id="restartBtn"><i class="fa-solid fa-bell"></i>&nbsp; Keep Tracking for 15 More Days</button>
+  </div>
+
+  <div class="card done" id="doneCard" hidden>
+    <div class="icon" id="doneIcon">📬</div>
+    <h2 id="doneTitle"></h2>
+    <p id="doneText"></p>
+    <p class="secondary"><a id="doneLink" href="/wheres-my-ship.html">See where she is right now →</a></p>
+  </div>
+</div>
+<footer style="padding:28px 20px 50px;text-align:center;color:rgba(255,255,255,.32);font-size:.85rem">
+  &copy; 2026 Still Afloat &middot; <em>Cruise smarter. Laugh more. Stay Afloat.</em>
+</footer>
+
+<script>
+(function(){
+  var q = new URLSearchParams(location.search);
+  var ship = (q.get('ship') || '').trim();
+  var storm = (q.get('storm') || '').trim();
+  var restartId = (q.get('restart') || '').trim(), restartSig = (q.get('sig') || '').trim();
+  var source = /^[a-z-]{1,24}$/.test(q.get('from') || '') ? q.get('from') : 'tracker';
+  var $ = function(id){ return document.getElementById(id); };
+
+  var trackerUrl = '/wheres-my-ship.html' + (ship ? '?ship=' + encodeURIComponent(ship) : '');
+  $('liveLink').href = trackerUrl;
+  $('doneLink').href = trackerUrl;
+  if (ship) {
+    $('shipName').textContent = ship;
+    $('restartShip').textContent = ship;
+    document.title = 'Track ' + ship + ' | Still Afloat';
+  }
+  if (storm) {
+    $('stormText').textContent = storm + ' is being watched near this ship\'s route.';
+    $('stormNote').hidden = false;
+  }
+
+  // "September 29"; the watch's last day comes back from the server as YYYY-MM-DD.
+  function day(iso){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return '';
+    return new Date(iso + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
+  }
+  function through(iso){ return day(iso) ? ' through ' + day(iso) : ''; }
+  var shipLabel = ship || 'your ship';
+
+  var ERRORS = {
+    name_required: 'Please enter your full name.',
+    email_invalid: 'Please enter a valid email address.',
+    ship_required: 'Pick a ship on the tracker first.',
+    unknown_ship: 'We couldn\'t find that ship. Pick her on the tracker instead.',
+    email_unreachable: 'Emails to that address bounce. Please use a different address.',
+    too_many_attempts: 'Too many attempts. Please try again in a little while.'
+  };
+  var btn = $('submitBtn'), errBox = $('errorMsg');
+  var BTN = btn.innerHTML;
+  function showError(msg){
+    errBox.textContent = msg;
+    errBox.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = BTN;
+  }
+  function showDone(icon, before, highlighted, after, text){
+    $('doneIcon').textContent = icon;
+    $('doneTitle').textContent = before;
+    var span = document.createElement('span');
+    span.textContent = highlighted;
+    $('doneTitle').appendChild(span);
+    if (after) $('doneTitle').appendChild(document.createTextNode(after));
+    $('doneText').textContent = text;
+    $('formCard').hidden = true;
+    $('restartCard').hidden = true;
+    $('doneCard').hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  $('trackForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    errBox.classList.remove('show');
+    var name = $('name').value.trim(), email = $('email').value.trim();
+    if (!ship) return showError(ERRORS.ship_required);
+    if (name.length < 2) return showError(ERRORS.name_required);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError(ERRORS.email_invalid);
+    if (!$('privacyCheck').checked) return showError('Please agree to the privacy terms to continue.');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Saving…';
+    try {
+      var res = await fetch('/api/wms/track-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, email: email, ship: ship, lang: 'en', source: source, website: $('website').value })
+      });
+      var data = await res.json().catch(function(){ return {}; });
+      if (!res.ok || !data.ok) return showError(ERRORS[data.error] || 'Something went wrong. Please try again.');
+      var label = data.ship || shipLabel;
+      if (data.state === 'tracking') {
+        showDone('🛳️', 'You\'re tracking ', label, '', data.already
+          ? 'You\'re already tracking this ship' + through(data.until) + '. Nothing more to do.'
+          : 'We sent the details to ' + email + '. We\'ll watch her' + through(data.until) + ' and email you there if anything changes.');
+      } else {
+        showDone('📬', 'Check your ', 'inbox', '', 'We sent a confirmation email to ' + email + '. Confirming it subscribes you to Still Afloat and starts your 15-day watch on ' + label + ' right away.');
+      }
+    } catch (err) {
+      showError('Network error. Please check your connection and try again.');
+    }
+  });
+
+  // Opened from the "keep tracking?" email a watch sends when its 15 days are up.
+  if (restartId && restartSig) {
+    $('formCard').hidden = true;
+    $('lead').hidden = true;
+    $('restartCard').hidden = false;
+    var rBtn = $('restartBtn'), rErr = $('restartError'), R_BTN = rBtn.innerHTML;
+    rBtn.addEventListener('click', async function(){
+      rErr.classList.remove('show');
+      rBtn.disabled = true;
+      rBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Restarting…';
+      try {
+        var res = await fetch('/api/wms/watch/restart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: restartId, sig: restartSig })
+        });
+        var data = await res.json().catch(function(){ return {}; });
+        var label = data.ship || shipLabel;
+        if (res.ok && data.ok && data.state === 'restarted') {
+          return showDone('🛳️', 'You\'re tracking ', label, ' again', 'We\'ll watch her' + through(data.until) + '. Every ship watch email has a link to stop sooner.');
+        }
+        if (res.ok && data.ok && data.state === 'tracking') {
+          return showDone('🛳️', 'You\'re tracking ', label, '', 'You\'re already tracking this ship' + through(data.until) + '. Nothing more to do.');
+        }
+        if (data.error === 'too_many_attempts') {
+          rErr.textContent = ERRORS.too_many_attempts;
+          rErr.classList.add('show');
+          rBtn.disabled = false;
+          rBtn.innerHTML = R_BTN;
+          return;
+        }
+        // The link is broken, or the subscription behind it is not active: sign up again below.
+        $('restartCard').hidden = true;
+        $('lead').hidden = false;
+        $('formCard').hidden = false;
+        errBox.textContent = data.error === 'subscription_inactive'
+          ? 'Your subscription isn\'t active right now, so we can\'t restart that watch. Subscribe below to track ' + label + ' again.'
+          : 'That link no longer works. Sign up below to track ' + label + ' again.';
+        errBox.classList.add('show');
+      } catch (err) {
+        rErr.textContent = 'Network error. Please check your connection and try again.';
+        rErr.classList.add('show');
+        rBtn.disabled = false;
+        rBtn.innerHTML = R_BTN;
+      }
+    });
+  }
+})();
+</script>
+<script src="/components/navbar.js?v=20260905-homeonly"></script>
+</body>
+</html>

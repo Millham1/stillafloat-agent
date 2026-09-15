@@ -10,7 +10,8 @@ import { logger } from "../lib/logger";
 import { runStormScan } from "../lib/storm-agent";
 import { emailSubscribers, emailAllClear, type AlertRow, type AllClearRow } from "../lib/storm-send";
 import { labelGrounds, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
-import { sailingsForStorm, deploymentsForStorm, defaultWindow, type Sailing } from "../lib/storm-sailings";
+import { sailingsForStorm, deploymentsForStorm, defaultWindow, withTrackable, type TrackableSailing } from "../lib/storm-sailings";
+import { inRegistry } from "../lib/ship-tracker";
 import { resolveActionsForSource } from "../lib/actions";
 import {
   publishDiversion, ignoreDiversion, releaseAlertDiversions, listPendingDiversions, simulateDiversion,
@@ -27,15 +28,16 @@ interface DbAlert extends AlertRow {
   cruise_line_info: unknown; detail_md: string | null;
 }
 
-/** Impacted sailings for an alert (date + region aware), using its forecast window. */
-async function impactedSailings(a: DbAlert): Promise<Sailing[]> {
+/** Impacted sailings for an alert (date + region aware), using its forecast window. Each
+ *  carries `trackable`, so the storm pages can put a "Track this ship" link beside it. */
+async function impactedSailings(a: DbAlert): Promise<TrackableSailing[]> {
   const w = a.window_start && a.window_end
     ? { start: a.window_start, end: a.window_end }
     : defaultWindow();
   const derived = await sailingsForStorm(a.affected_grounds, w.start, w.end);
   const deployed = await deploymentsForStorm(a.affected_grounds, w.start, w.end);
   const seen = new Set(derived.map((x) => x.ship_name.toLowerCase()));
-  return derived.concat(deployed.filter((x) => !seen.has(x.ship_name.toLowerCase())));
+  return withTrackable(derived.concat(deployed.filter((x) => !seen.has(x.ship_name.toLowerCase()))), inRegistry);
 }
 
 // ── Dashboard queue ──────────────────────────────────────────────────────────
