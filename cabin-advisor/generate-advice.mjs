@@ -16,6 +16,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { compactCandidates, CostLedger, estimateTokens, projectCost } from "./advice-prompt.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ship = process.argv[2] || "wonder-of-the-seas";
@@ -23,7 +24,13 @@ const ship = process.argv[2] || "wonder-of-the-seas";
 // advice file, so one weak archetype can be redone without re-rolling (and re-translating)
 // the eleven that were already reviewed. translate-advice.mjs takes the same flag.
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) ?? "").slice(7).split(",").filter(Boolean);
+// --estimate prints what the run would cost and exits before any call is made (Mark,
+// 2026-09-14: no model run without a dollar figure first). Needs no API key.
+const ESTIMATE = process.argv.includes("--estimate");
 const AKEY = process.env.ANTHROPIC_API_KEY;
+const MODEL = "claude-haiku-4-5";
+const MAX_OUTPUT = 1600;
+const ATTEMPTS = 3;
 
 const voice = await readFile(join(HERE, "voice-guide.md"), "utf8");
 // Use only the prompt body (after the '---' separator) as the system prompt.
@@ -66,16 +73,17 @@ const STUDIO_FACT = hasStudios
 // cabins WITHOUT the steadiness fields: with `steady` on every Aura room, three re-rolls in a
 // row still pitched budget oceanviews on "gentle sway" (2026-09-14). The check below stays as
 // the backstop.
-const MOTION_FIELDS = ["steady", "hump"];
-const cabinsFor = (traveler) => MOTION_ASKED_RE.test(traveler)
-  ? cabins
-  : cabins.map((c) => Object.fromEntries(Object.entries(c).filter(([k]) => !MOTION_FIELDS.includes(k))));
+// The grid is sent COMPACTED (advice-prompt.mjs): rooms that share every shown attribute
+// appear once with their cabin numbers listed, so every room stays choosable at a fraction
+// of the tokens; Studios are removed for any party that cannot book one, and that is said.
+const candidatesFor = (a) => compactCandidates(cabins, { motionAsked: MOTION_ASKED_RE.test(a.traveler), party: a.match?.party ?? "two" });
 
-function userPrompt(traveler) {
-  return `Traveler: ${traveler}. Ship: ${shipData.ship}.${STUDIO_FACT}${HAVEN_FACT}
+function userPrompt(a) {
+  const { rows } = candidatesFor(a);
+  return `Traveler: ${a.traveler}. Ship: ${shipData.ship}.${STUDIO_FACT}${HAVEN_FACT}
 
-Candidate cabins (all real, with the quirks that matter):
-${JSON.stringify(cabinsFor(traveler))}
+Candidate cabins (all real, with the quirks that matter). Rooms that share every listed attribute are grouped: each entry's "cabins" are the individual cabin numbers in that group, and you recommend SPECIFIC cabin numbers from those lists.
+${JSON.stringify(rows)}
 
 Recommend the best 4-6 cabins for THIS traveler, ranked (rank 1 = book first). Each reason must be distinct and tied to what they told you; where two cabins are nearly identical, say so and give the honest tie-breaker. Then list 2-3 cabins you would steer them clear of, with the honest reason.
 
@@ -121,14 +129,18 @@ async function viaClaude(prompt) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": AKEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: "claude-haiku-4-5", max_tokens: 1600, system: VOICE, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: MAX_OUTPUT, system: VOICE, messages: [{ role: "user", content: prompt }] }),
     signal: AbortSignal.timeout(40000),
   });
   const j = await r.json();
   if (!r.ok) throw new Error(`Anthropic ${r.status}: ${JSON.stringify(j).slice(0, 160)}`);
-  if (j.stop_reason === "refusal") throw new Error("Anthropic refusal");
+  if (j.stop_reason === "refusal") throw Object.assign(new Error("Anthropic refusal"), { usage: j.usage, model: j.model });
   const text = (j.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
-  return { out: parse(text), model: j.model, cost: j.usage.input_tokens * 1e-6 + j.usage.output_tokens * 5e-6 };
+  try {
+    return { out: parse(text), model: j.model, usage: j.usage };
+  } catch (e) {
+    throw Object.assign(e, { usage: j.usage, model: j.model }); // a bad reply still cost tokens
+  }
 }
 // POSITION CLAIMS MUST MATCH THE GRID. On Norwegian Aura (2026-09-14) the grid carried no
 // section or side, and the model called two forward inside cabins "starboard aft" — it
@@ -182,25 +194,47 @@ export function fidelityProblems(out, traveler) {
   return probs;
 }
 
+const ledger = new CostLedger();
 async function generateOne(prompt, traveler) {
-  // Never throws up the stack: a failed archetype is skipped and counted.
+  // Never throws up the stack: a failed archetype is skipped and counted. EVERY attempt —
+  // rejected by the checks, unparseable, refused — goes on the ledger; only a request the
+  // API rejected outright (no usage returned) is free.
   if (!AKEY) return null;
-  const ATTEMPTS = 3;
+  let spent = 0, calls = 0;
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
       const res = await viaClaude(prompt);
       const probs = [...positionProblems(res.out), ...fidelityProblems(res.out, traveler)];
-      if (!probs.length) return res;
+      calls += 1; spent += ledger.add(res.usage, res.model, !probs.length);
+      if (!probs.length) return { ...res, cost: spent, calls };
       console.warn(`  check failed (attempt ${attempt}): ${probs.join("; ")}`);
-      if (attempt === ATTEMPTS) { res.out.qcWarnings = probs; return res; }
-    } catch (e) { console.warn("  Haiku failed:", e.message); }
+      if (attempt === ATTEMPTS) { res.out.qcWarnings = probs; return { ...res, cost: spent, calls }; }
+    } catch (e) {
+      if (e.usage) { calls += 1; spent += ledger.add(e.usage, e.model ?? MODEL, false); }
+      console.warn("  Haiku failed:", e.message);
+    }
   }
   return null;
 }
 
+const selected = archetypes.filter((a) => !ONLY.length || ONLY.includes(a.id));
+const systemTokens = estimateTokens(VOICE);
+if (ESTIMATE) {
+  console.log(`Estimate for ${shipData.ship} (${cabins.length} cabins, ${selected.length} archetype${selected.length === 1 ? "" : "s"}, ${MODEL}):`);
+  let totalMin = 0, totalMax = 0;
+  for (const a of selected) {
+    const { rows, dropped } = candidatesFor(a);
+    const promptTokens = estimateTokens(userPrompt(a));
+    const c = projectCost({ promptTokens, systemTokens, outputTokens: MAX_OUTPUT, calls: 1, attempts: ATTEMPTS, model: MODEL });
+    totalMin += c.min; totalMax += c.max;
+    console.log(`  ${a.id.padEnd(28)} ~${(promptTokens + systemTokens).toLocaleString().padStart(7)} tokens in  ${rows.length} groups${dropped.length ? ` (${dropped.length} Studios not offered)` : ""}  $${c.min.toFixed(3)} – $${c.max.toFixed(3)}`);
+  }
+  console.log(`\nProjected: $${totalMin.toFixed(2)} if every archetype passes first time, up to $${totalMax.toFixed(2)} if each needs all ${ATTEMPTS} attempts. No call was made.`);
+  process.exit(0);
+}
 if (!AKEY) { console.error("No ANTHROPIC_API_KEY in env."); process.exit(1); }
 
-console.log(`Generating advice for ${shipData.ship} across ${archetypes.length} archetypes...`);
+console.log(`Generating advice for ${shipData.ship} across ${selected.length} archetypes...`);
 const outName = useFull && existsSync(curatedPath) ? `${ship}-fullgrid` : ship;
 const outPath = join(HERE, `advice/${outName}.json`);
 let byArchetype = {};
@@ -214,15 +248,16 @@ let totalCost = 0, modelUsed = null, failures = 0;
 for (const a of archetypes) {
   if (ONLY.length && !ONLY.includes(a.id)) continue;
   process.stdout.write(`  ${a.id} ... `);
-  const res = await generateOne(userPrompt(a.traveler), a.traveler);
-  if (!res) { console.log("SKIPPED (both providers failed)"); failures++; continue; }
-  byArchetype[a.id] = { label: a.label, ...res.out };
+  const res = await generateOne(userPrompt(a), a.traveler);
+  if (!res) { console.log("SKIPPED (every attempt failed)"); failures++; continue; }
+  byArchetype[a.id] = { label: a.label, ...res.out, costUsd: Math.round(res.cost * 10000) / 10000, calls: res.calls };
   totalCost += res.cost; modelUsed = res.model;
-  console.log(`ok ($${res.cost.toFixed(4)})`);
+  console.log(`ok (${res.calls} call${res.calls === 1 ? "" : "s"}, $${res.cost.toFixed(4)})`);
 }
 
-const out = { ship: shipData.ship, class: shipData.class, model: modelUsed ?? (ONLY.length ? JSON.parse(await readFile(outPath, "utf8")).model : null), archetypes: archetypes.length, generatedCount: Object.keys(byArchetype).length, byArchetype };
+const out = { ship: shipData.ship, class: shipData.class, model: modelUsed ?? (ONLY.length ? JSON.parse(await readFile(outPath, "utf8")).model : null), archetypes: archetypes.length, generatedCount: Object.keys(byArchetype).length, lastRun: { at: new Date().toISOString(), archetypes: selected.map((a) => a.id), ...ledger.summary() }, byArchetype };
 await mkdir(join(HERE, "advice"), { recursive: true });
 await writeFile(outPath, JSON.stringify(out, null, 2));
-console.log(`\nDone. ${Object.keys(byArchetype).length}/${archetypes.length} archetypes, ${failures} failed. Total cost ≈ $${totalCost.toFixed(3)} (${modelUsed}).`);
+const L = ledger.summary();
+console.log(`\nDone. ${Object.keys(byArchetype).length}/${archetypes.length} archetypes, ${failures} failed. This run: ${L.calls} calls (${L.failed} rejected or failed), ${L.inputTokens.toLocaleString()} tokens in, ${L.outputTokens.toLocaleString()} out, $${L.usd.toFixed(3)} charged (${modelUsed}).`);
 console.log(`Wrote advice/${outName}.json`);
