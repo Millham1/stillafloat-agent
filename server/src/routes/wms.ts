@@ -13,9 +13,8 @@ import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import {
   getPosition, allPositions, trackerEnabled, trackerHealthy,
-  requestShip, isSubscribed, inRegistry, subscribedNames, capacity, fillFromSatellite, mmsiForShip,
+  requestShip, isSubscribed, inRegistry, subscribedNames, capacity,
 } from "../lib/ship-tracker";
-import { LOOKUP_AFTER_MIN } from "../lib/satellite-ais";
 import { makeWatchSig } from "../lib/wms-alerts";
 import { portBySlug } from "../lib/ports";
 import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../lib/dead-reckoning";
@@ -103,26 +102,9 @@ router.post("/wms/request", async (req: Request, res: Response) => {
   if (!ship) return res.status(400).json({ ok: false, error: "ship required" });
   try {
     if (!inRegistry(ship)) return res.status(404).json({ ok: false, error: "Unknown ship" });
-    // A Where's-My-Ship request is the one on-demand trigger for a paid position
-    // lookup (Mark's model, 2026-09-10/11: "the api data you ping at the request
-    // gives lat and long"): if the free feed has nothing fresher than
-    // LOOKUP_AFTER_MIN on her, ask the provider once, AWAITED (capped at 6 s) so
-    // the page's first poll already shows the answer. The poll itself never spends.
-    // The lookup runs IN PARALLEL with the subscribe step (which can take a few
-    // seconds of its own): on 2026-09-11 Norwegian Epic's satellite fix landed a
-    // moment after the reply because the budget only started after subscribing.
-    const mmsi = mmsiForShip(ship);
-    const pos = mmsi ? getPosition(ship) : null;
-    const staleMin = pos?.lastPosAt ? (Date.now() - Date.parse(pos.lastPosAt)) / 60000 : Infinity;
-    const lookup = mmsi && staleMin >= LOOKUP_AFTER_MIN
-      ? Promise.race([
-          fillFromSatellite(mmsi, "request").catch(() => false),
-          new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 6000)),
-        ])
-      : Promise.resolve(false);
-    const [state, satellite] = await Promise.all([requestShip(ship), lookup]);
+    const state = await requestShip(ship);
     if (state === "unknown") return res.status(404).json({ ok: false, error: "Unknown ship" });
-    return res.json({ ok: true, state, satellite }); // live | waking; satellite = a newer fix was just applied
+    return res.json({ ok: true, state }); // live | waking
   } catch (err) {
     logger.error({ err }, "wms: request failed");
     return res.status(500).json({ ok: false, error: "Request failed" });

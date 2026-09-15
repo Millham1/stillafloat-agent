@@ -280,9 +280,9 @@
       // Still draw the plan: the route exists before the first fix does.
       var pb = drawPlanned(d.planned);
       if (pb && pb.isValid()) map.fitBounds(pb, { padding: [30, 30] });
-      // No fix yet. The subscription and any satellite answer land within
-      // seconds of the request, so poll every 5 s for the first two minutes
-      // after selection, then every 20 s. Polling never spends a credit.
+      // No fix yet. A freshly woken subscription usually hears her within a
+      // couple of minutes, so poll every 5 s for the first two minutes after
+      // selection, then every 20 s.
       pollAt(shipName, Date.now() - selectedAt < 120_000 ? 5_000 : 20_000);
       return;
     }
@@ -326,8 +326,7 @@
 
   async function selectShip(shipName) {
     // Wake the ship's tracking (stamps the request; retained in the scheduler).
-    // AWAITED: the request is also the one moment the server may ask a satellite
-    // for a quiet ship (a second or two), so the first poll shows the answer.
+    // AWAITED so her subscription is switched on before the first poll.
     currentShip = shipName;
     selectedAt = Date.now();
     $('tracker').style.display = 'block';
