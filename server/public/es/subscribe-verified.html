@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>You're In! | Still Afloat</title>
+<title>¡Ya estás dentro! | Still Afloat</title>
 <link rel="stylesheet" href="/css/styles.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
@@ -31,25 +31,25 @@ footer{padding:24px 20px 40px;text-align:center;color:rgba(255,255,255,.28);font
 <div class="center">
   <div class="card" id="successCard">
     <div class="icon-ring">🎉</div>
-    <h1>You're <span>officially</span><br>aboard!</h1>
-    <p class="lead" id="leadText">Welcome to Still Afloat. Your first issue will land in your inbox soon — packed with cruise news, port weather, and travel intel that matters.</p>
+    <h1>¡Ya estás <span>oficialmente</span><br>a bordo!</h1>
+    <p class="lead" id="leadText">Bienvenido a Still Afloat. Tu primer boletín llegará pronto a tu correo, con noticias de cruceros, clima en los puertos e información de viaje que importa.</p>
     <div class="cta-row">
-      <a href="/news.html" class="btn-primary"><i class="fa-solid fa-newspaper"></i> Read Cruise News</a>
-      <a href="/index.html" class="btn-secondary"><i class="fa-solid fa-house"></i> Home</a>
+      <a href="/es/news.html" class="btn-primary"><i class="fa-solid fa-newspaper"></i> Leer noticias de cruceros</a>
+      <a href="/es/" class="btn-secondary"><i class="fa-solid fa-house"></i> Inicio</a>
     </div>
   </div>
 
   <div class="card" id="errorCard" style="display:none">
     <div class="error-icon">🔗</div>
-    <h1>Link <span>expired</span></h1>
-    <p class="lead">This confirmation link has already been used or has expired. If you haven't confirmed yet, try subscribing again.</p>
+    <h1>Enlace <span>vencido</span></h1>
+    <p class="lead">Este enlace de confirmación ya se usó o venció. Si todavía no confirmaste, intenta suscribirte de nuevo.</p>
     <div class="cta-row">
-      <a href="/subscribe.html" class="btn-primary"><i class="fa-solid fa-envelope"></i> Subscribe Again</a>
-      <a href="/index.html" class="btn-secondary">Home</a>
+      <a href="/es/subscribe.html" class="btn-primary"><i class="fa-solid fa-envelope"></i> Suscribirme de nuevo</a>
+      <a href="/es/" class="btn-secondary">Inicio</a>
     </div>
   </div>
 </div>
-<footer style="padding:24px 20px 40px;text-align:center;color:rgba(255,255,255,.28);font-size:.82rem">&copy; 2025 <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" style="height:18px;vertical-align:middle;opacity:.45"> &middot; <em>Cruise smarter. Laugh more.</em></footer>
+<footer style="padding:24px 20px 40px;text-align:center;color:rgba(255,255,255,.28);font-size:.82rem">&copy; 2025 <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" style="height:18px;vertical-align:middle;opacity:.45"> &middot; <em>Navega más inteligente. Ríe más.</em></footer>
 
 <script>
 const params = new URLSearchParams(location.search);
@@ -69,25 +69,25 @@ function heading(before, highlighted) {
 }
 
 if (result === 'already') {
-  h1.innerHTML = 'Already <span>confirmed!</span>';
-  document.getElementById('leadText').textContent = "You're already subscribed to Still Afloat — nothing more to do!";
+  h1.innerHTML = '¡Ya estabas <span>confirmado!</span>';
+  document.getElementById('leadText').textContent = 'Ya estás suscrito a Still Afloat. No hace falta nada más.';
 } else if (result === 'invalid' || result === 'error') {
   document.getElementById('successCard').style.display = 'none';
   document.getElementById('errorCard').style.display   = 'block';
 } else if (ship) {
   // Confirmed from a "Track this ship" sign-up: the watch just switched on.
-  heading("You're tracking ", ship);
-  document.getElementById('leadText').textContent = (first ? 'Welcome aboard, ' + first + '. ' : '')
-    + "We'll watch her " + (until
-      ? 'through ' + new Date(until + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
-      : 'for the next 15 days')
-    + " and email you if a storm, an itinerary change or cruise-line news affects her. Your first Still Afloat newsletter is on its way too.";
+  heading('Estás siguiendo a ', ship);
+  document.getElementById('leadText').textContent = (first ? 'Bienvenido a bordo, ' + first + '. ' : '')
+    + 'Lo vigilaremos ' + (until
+      ? 'hasta el ' + new Date(until + 'T00:00:00Z').toLocaleDateString('es-ES', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+      : 'durante los próximos 15 días')
+    + ' y te escribiremos si una tormenta, un cambio de itinerario o una noticia de la línea de cruceros lo afecta. Tu primer boletín de Still Afloat también va en camino.';
   const primary = document.querySelector('#successCard .btn-primary');
-  primary.href = '/wheres-my-ship.html?ship=' + encodeURIComponent(ship);
+  primary.href = '/es/wheres-my-ship.html?ship=' + encodeURIComponent(ship);
   primary.innerHTML = '<i class="fa-solid fa-ship"></i> ';
-  primary.appendChild(document.createTextNode('See where she is now'));
+  primary.appendChild(document.createTextNode('Ver dónde está ahora'));
 } else if (first) {
-  h1.textContent = 'Welcome,';
+  h1.textContent = '¡Bienvenido,';
   h1.appendChild(document.createElement('br'));
   const span = document.createElement('span');
   span.textContent = first + '!';

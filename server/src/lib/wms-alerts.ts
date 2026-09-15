@@ -1,6 +1,8 @@
 // wms-alerts.ts — the Where's-My-Ship watch/alert service.
 //
-// Subscribers save a (ship, sailing dates) watch from the WMS page. An hourly
+// Subscribers save a (ship, sailing dates) watch from the WMS page. A watch from
+// the storm pages' "Track this ship" buttons runs 15 days instead (window_days,
+// ship-watch.ts), and the sweep ends it with an email offering another 15. An hourly
 // sweep checks each active watch for three event kinds and emails the watcher
 // (via the ops-manager Gmail sender):
 //   1. course change — a REAL one: a mid-leg re-route, a port the ship never
@@ -29,6 +31,9 @@ import { portBySlug } from "./ports";
 import { classifyDestinationChange, EVENT_KINDS, kindLabel, type ChangeKind } from "./storm-diversion";
 import { groundsForPoint, labelGrounds } from "./storm-grounds";
 import { storySlug, type NewsStory } from "./prerender-news";
+import {
+  formatWatchDate, makeWatchSig, planWatchEndings, watchEndedEmail, watchRestartUrl, WATCH_WINDOW_DAYS, type EndingWatch,
+} from "./ship-watch";
 
 const SEVERE_WEATHER_CODES = new Set([82, 95, 96, 99]); // violent showers + thunderstorms
 const MAX_ALERT_HASHES = 60;
@@ -44,13 +49,9 @@ export interface ShipWatch {
   last_destination_at: string | null;
   itinerary_flags: { at: string; from: string | null; to: string; raw: string | null; kind?: string; reason?: string }[];
   alerted: string[];
+  /** Set for a watch from the storm pages: it runs this many days, then asks to restart (ship-watch.ts). Null for a sailing's dates. */
+  window_days: number | null;
   subscribers?: { email: string; name: string; lang: string; status: string } | null;
-}
-
-// ── Stop-watch link signing (same HMAC pattern as unsubscribe) ───────────────
-export function makeWatchSig(watchId: string): string {
-  const secret = process.env["UNSUBSCRIBE_SECRET"] || "still-afloat-unsub-v1";
-  return crypto.createHmac("sha256", secret).update(`watch:${watchId}`).digest("hex").slice(0, 24);
 }
 
 function eventHash(kind: string, key: string): string {
@@ -207,8 +208,9 @@ async function checkNews(watch: ShipWatch, pos: ShipPosition): Promise<WatchEven
 
 // ── Email ────────────────────────────────────────────────────────────────────
 
-function renderAlertEmail(
-  watcherName: string, ship: string, events: WatchEvent[], stopUrl: string, lang: string,
+/** `until` is set for a 15-day watch: the email then says when it ends, with a stop link in plain sight. */
+export function renderAlertEmail(
+  watcherName: string, ship: string, events: WatchEvent[], stopUrl: string, lang: string, until: string | null = null,
 ): { subject: string; html: string } {
   const es = lang === "es";
   const firstName = watcherName.split(" ")[0] || watcherName;
@@ -216,19 +218,25 @@ function renderAlertEmail(
     ? {
         kicker: "Vigilancia de barco — Still Afloat",
         hi: `Hola ${firstName},`,
-        intro: `Novedades sobre <strong>${ship}</strong>, el crucero que estás siguiendo:`,
+        intro: `Novedades sobre <strong>${ship}</strong>, ${until ? "el barco" : "el crucero"} que estás siguiendo:`,
         cta: "Ver el barco en vivo →",
-        stop: "Dejar de seguir este crucero",
+        stop: until ? "Dejar de seguir este barco" : "Dejar de seguir este crucero",
         tag: "Navega más inteligente. Ríe más.",
       }
     : {
         kicker: "Ship Watch — Still Afloat",
         hi: `Hey ${firstName},`,
-        intro: `An update on <strong>${ship}</strong>, the sailing you're tracking:`,
+        intro: `An update on <strong>${ship}</strong>, the ${until ? "ship" : "sailing"} you're tracking:`,
         cta: "See the ship live →",
-        stop: "Stop tracking this sailing",
+        stop: until ? "Stop tracking this ship" : "Stop tracking this sailing",
         tag: "Cruise smarter. Laugh more. Stay Afloat.",
       };
+  const watchLine = until
+    ? `
+      <p style="margin:20px 0 0;text-align:center;color:#4b5563;font-size:14px;line-height:1.6;">${es
+        ? `Vigilamos a ${ship} por ti hasta el ${formatWatchDate(until, lang)}. <a href="${stopUrl}" style="color:#0077b6;font-weight:700;">Dejar de seguirlo ahora</a>`
+        : `We're watching ${ship} for you through ${formatWatchDate(until, lang)}. <a href="${stopUrl}" style="color:#0077b6;font-weight:700;">Stop tracking now</a>`}</p>`
+    : "";
   const subject = events.length === 1
     ? events[0].title
     : (es ? `${events.length} novedades de ${ship}` : `${events.length} updates on ${ship}`);
@@ -256,7 +264,7 @@ function renderAlertEmail(
       <div style="text-align:center;margin-top:24px;">
         <a href="https://stillafloatcruising.com/${es ? "es/" : ""}wheres-my-ship.html"
            style="display:inline-block;background:linear-gradient(135deg,#0077b6,#07183f);color:#5dff9a;padding:13px 26px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:800;">${T.cta}</a>
-      </div>
+      </div>${watchLine}
     </div>
     <div style="background:#fff;padding:16px 32px;border-top:1px solid #e5e7eb;text-align:center;">
       <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.7;">
@@ -277,16 +285,20 @@ export async function runWatchSweep(): Promise<{ checked: number; emailed: numbe
   const today = new Date().toISOString().slice(0, 10);
   const soon = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
 
-  // End watches whose sailing has passed.
+  // End sailing watches whose sailing has passed.
   await (supabase.from("ship_watches") as ReturnType<typeof supabase.from>)
     .update({ status: "ended", updated_at: new Date().toISOString() })
     .eq("status", "active")
+    .is("window_days", null)
     .lt("sailing_end", today);
+
+  // A 15-day watch from the storm pages ends with an email offering another 15 days.
+  await endWindowedWatches(today);
 
   // Active watches in (or within 5 days of) their sailing window.
   const { data, error } = await supabase
     .from("ship_watches")
-    .select("id, subscriber_id, ship_name, sailing_start, sailing_end, status, last_destination, last_destination_at, itinerary_flags, alerted, subscribers ( email, name, lang, status )")
+    .select("id, subscriber_id, ship_name, sailing_start, sailing_end, status, last_destination, last_destination_at, itinerary_flags, alerted, window_days, subscribers ( email, name, lang, status )")
     .eq("status", "active")
     .lte("sailing_start", soon)
     .gte("sailing_end", today);
@@ -321,7 +333,9 @@ export async function runWatchSweep(): Promise<{ checked: number; emailed: numbe
 
     if (fresh.length) {
       const stopUrl = `https://stillafloatcruising.com/api/wms/watch/stop?id=${watch.id}&sig=${makeWatchSig(watch.id)}`;
-      const { subject, html } = renderAlertEmail(sub.name, watch.ship_name, fresh, stopUrl, sub.lang ?? "en");
+      const { subject, html } = renderAlertEmail(
+        sub.name, watch.ship_name, fresh, stopUrl, sub.lang ?? "en", watch.window_days ? watch.sailing_end : null,
+      );
       const ok = await sendMail({ to: sub.email, subject, html, fromName: "Still Afloat Ship Watch" });
       if (ok) {
         emailed++;
@@ -351,6 +365,49 @@ export async function runWatchSweep(): Promise<{ checked: number; emailed: numbe
   return { checked: watches.length, emailed };
 }
 
+/**
+ * Close 15-day watches past their last day. Mark, 2026-09-15: "maybe set a 15 day cap then
+ * restart. that should help keep down the API calls as well". A confirmed subscriber gets one
+ * "keep tracking?" email, then the watch ends; a watch whose email fails stays open (past its
+ * window, so it gets no alerts) and is retried next hour, for up to ENDED_EMAIL_RETRY_DAYS.
+ */
+async function endWindowedWatches(today: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const watches = (): any => getSupabase().from("ship_watches");
+  const { data, error } = await watches()
+    .select("id, ship_name, sailing_end, window_days, subscribers ( email, name, lang, status )")
+    .eq("status", "active")
+    .not("window_days", "is", null)
+    .lt("sailing_end", today);
+  if (error) { logger.error({ err: error }, "wms-alerts: 15-day watch query failed"); return; }
+
+  // Only a watch still past its end is closed: one restarted in the meantime keeps running.
+  const close = async (ids: string[]) => {
+    if (!ids.length) return;
+    const { error: upErr } = await watches()
+      .update({ status: "ended", updated_at: new Date().toISOString() })
+      .in("id", ids)
+      .eq("status", "active")
+      .lt("sailing_end", today);
+    if (upErr) logger.warn({ err: upErr, ids }, "wms-alerts: closing 15-day watches failed");
+  };
+
+  const plan = planWatchEndings((data ?? []) as EndingWatch[], today);
+  await close(plan.close.map((w) => w.id));
+  for (const w of plan.notify) {
+    const sub = w.subscribers!;
+    const mail = watchEndedEmail({
+      shipName: w.ship_name, subscriberName: sub.name, lang: sub.lang ?? "en",
+      windowDays: w.window_days ?? WATCH_WINDOW_DAYS, restartUrl: watchRestartUrl(w.id, w.ship_name, sub.lang),
+    });
+    const ok = await sendMail({ to: sub.email, subject: mail.subject, html: mail.html, fromName: "Still Afloat Ship Watch" });
+    if (ok) await close([w.id]);
+    else logger.warn({ watch: w.id }, "wms-alerts: watch-ended email failed — will retry next sweep");
+    await new Promise((r) => setTimeout(r, 1200)); // pace the Gmail API
+  }
+  if (data?.length) logger.info({ ended: plan.close.length, offeredRestart: plan.notify.length }, "wms-alerts: 15-day watches ended");
+}
+
 // ── Publish → watchers ───────────────────────────────────────────────────────
 
 export interface WatcherNotice { key: string; title: string; body: string }
@@ -367,7 +424,7 @@ export async function emailWatchersForShip(shipName: string, notice: WatcherNoti
   const soon = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("ship_watches")
-    .select("id, subscriber_id, ship_name, sailing_start, sailing_end, status, last_destination, last_destination_at, itinerary_flags, alerted, subscribers ( email, name, lang, status )")
+    .select("id, subscriber_id, ship_name, sailing_start, sailing_end, status, last_destination, last_destination_at, itinerary_flags, alerted, window_days, subscribers ( email, name, lang, status )")
     .eq("status", "active")
     .ilike("ship_name", shipName)
     .lte("sailing_start", soon)
@@ -384,6 +441,7 @@ export async function emailWatchersForShip(shipName: string, notice: WatcherNoti
     const stopUrl = `https://stillafloatcruising.com/api/wms/watch/stop?id=${watch.id}&sig=${makeWatchSig(watch.id)}`;
     const { subject, html } = renderAlertEmail(
       sub.name, watch.ship_name, [{ kind: "itinerary", hash, title: notice.title, body: notice.body }], stopUrl, sub.lang ?? "en",
+      watch.window_days ? watch.sailing_end : null,
     );
     const ok = await sendMail({ to: sub.email, subject, html, fromName: "Still Afloat Ship Watch" });
     if (!ok) { logger.warn({ watch: watch.id }, "wms-alerts: publish email failed"); continue; }

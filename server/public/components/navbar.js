@@ -18,7 +18,7 @@
   // Compute equivalent page URL in the other language
   // Handles /es, /es/, /es/index.html, /es/news.html correctly
   // Pages that have a Spanish (/es/) counterpart
-  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'webcams.html', 'wheres-my-ship.html', 'room-concierge.html', 'cabin-request.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html', 'work-with-mark.html']);
+  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'webcams.html', 'wheres-my-ship.html', 'room-concierge.html', 'cabin-request.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html', 'work-with-mark.html', 'track-ship.html', 'subscribe-verified.html']);
   let langUrl;
   if (isSpanish) {
     let eng = path.replace(/^\/es(\/.*)?$/, (_m, rest) => rest || '/index.html');
