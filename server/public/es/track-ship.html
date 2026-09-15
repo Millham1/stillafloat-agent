@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sigue tu barco | Still Afloat</title>
+<meta name="robots" content="noindex,follow">
+<link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/track-ship.html">
+<link rel="alternate" hreflang="es-419" href="https://stillafloatcruising.com/es/track-ship.html">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--navy:#07183f;--ocean:#0077b6;--seafoam:#5dff9a;--gold:#ffca4f}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at top right,rgba(0,119,182,.18),transparent 24%),linear-gradient(to bottom,#040b16 0%,#071523 30%,#0c2035 100%);color:white;font-family:'Baloo 2',Poppins,sans-serif}
+.sub-shell{max-width:680px;margin:0 auto;padding:40px 24px 80px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:999px;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.22);color:#bdfdd3;font-size:12px;font-weight:900;letter-spacing:.10em;text-transform:uppercase;margin-bottom:20px}
+h1{font-size:clamp(32px,6vw,52px);font-weight:900;line-height:1.05;margin:0 0 14px}
+h1 span{color:#5dff9a}
+.sub-lead{font-size:18px;line-height:1.7;color:rgba(255,255,255,.78);margin:0 0 20px}
+.storm-note{display:flex;gap:10px;align-items:flex-start;margin:0 0 28px;padding:12px 16px;border-radius:14px;background:rgba(255,202,79,.10);border:1px solid rgba(255,202,79,.35);color:#ffe29a;font-size:16px;line-height:1.55;font-weight:600}
+.card{background:rgba(9,18,34,.84);border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:36px;backdrop-filter:blur(14px);box-shadow:0 24px 64px rgba(0,0,0,.42)}
+.field{margin-bottom:20px}
+label{display:block;font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:8px}
+input[type=text],input[type=email]{width:100%;padding:14px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:white;font-size:17px;font-family:inherit;outline:none;transition:border-color .2s;color-scheme:dark}
+input::placeholder{color:rgba(255,255,255,.3)}
+input:focus{border-color:rgba(93,255,154,.5);background:rgba(93,255,154,.04)}
+@media(max-width:520px){.card{padding:26px 20px}}
+.watch-terms{display:flex;gap:12px;align-items:flex-start;margin:0 0 22px;padding:14px 18px;border-radius:16px;background:rgba(93,255,154,.07);border:1px solid rgba(93,255,154,.22);color:rgba(255,255,255,.86);font-size:16px;line-height:1.6}
+.honey{position:absolute;left:-9999px;height:1px;width:1px;overflow:hidden;opacity:0;pointer-events:none}
+.privacy-box{border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);padding:18px 20px;margin-bottom:22px}
+.privacy-text{font-size:13px;line-height:1.7;color:rgba(255,255,255,.55);margin:0 0 14px}
+.privacy-text a{color:#5dff9a;text-decoration:none}
+.check-row{display:flex;align-items:flex-start;gap:12px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;margin:0}
+.check-row input[type=checkbox]{width:20px;height:20px;accent-color:#5dff9a;flex-shrink:0;margin-top:2px;cursor:pointer}
+.check-label{font-size:14px;line-height:1.6;color:rgba(255,255,255,.75);cursor:pointer}
+.btn-submit{width:100%;padding:16px;border-radius:16px;border:none;cursor:pointer;font-size:19px;font-weight:900;font-family:inherit;background:linear-gradient(135deg,#0077b6,#023e6e);color:#5dff9a;box-shadow:0 10px 30px rgba(0,119,182,.35);transition:all .22s ease}
+.btn-submit:hover:not(:disabled){transform:translateY(-2px)}
+.btn-submit:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.error-msg{display:none;margin-bottom:18px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;font-size:15px;font-weight:600}
+.error-msg.show{display:block}
+.secondary{margin:18px 0 0;text-align:center;font-size:16px}
+.secondary a{color:#5dff9a;font-weight:700;text-decoration:none}
+.done{text-align:center}
+.done .icon{font-size:46px;margin-bottom:12px}
+.done h2{font-size:clamp(26px,5vw,36px);font-weight:900;margin:0 0 12px;line-height:1.15}
+.done h2 span{color:#5dff9a}
+.done p{font-size:17px;line-height:1.7;color:rgba(255,255,255,.78);margin:0 0 22px}
+</style>
+</head>
+<body>
+<div id="navbar-container"></div>
+<div class="sub-shell">
+  <div class="hero-badge"><i class="fa-solid fa-ship"></i>&nbsp; Vigilancia para suscriptores</div>
+  <h1>Sigue a <span id="shipName">tu barco</span></h1>
+  <p class="sub-lead" id="lead">La vigilancia de barcos es para suscriptores, gratis durante nuestro periodo de lanzamiento. Suscríbete y te enviaremos un correo si cambia el itinerario, si hay clima severo en la ruta o si la línea de cruceros publica noticias que afecten el viaje.</p>
+  <p class="storm-note" id="stormNote" hidden><span aria-hidden="true">🌀</span><span id="stormText"></span></p>
+
+  <div class="card" id="formCard">
+    <div id="errorMsg" class="error-msg" role="alert"></div>
+    <form id="trackForm" novalidate>
+      <div class="honey" aria-hidden="true"><input type="text" name="website" id="website" tabindex="-1" autocomplete="off"></div>
+      <div class="field">
+        <label for="name">Nombre completo</label>
+        <input type="text" id="name" name="name" placeholder="Tu nombre completo" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <label for="email">Correo electrónico</label>
+        <input type="email" id="email" name="email" placeholder="tu@ejemplo.com" autocomplete="email" required>
+      </div>
+      <p class="watch-terms"><span aria-hidden="true">⏱️</span><span>Tu vigilancia dura 15 días, lo suficiente para ver pasar una tormenta. Cada correo de vigilancia trae un enlace para detenerla antes, y cuando pasen los 15 días te preguntaremos si quieres otros 15.</span></p>
+      <div class="privacy-box">
+        <p class="privacy-text">
+          Al suscribirte aceptas recibir correos sobre este barco y el boletín semanal de <strong>Still Afloat</strong>. Tu correo nunca se venderá ni se compartirá con terceros. Puedes cancelar al instante con el enlace en cada correo. Si eres nuevo en Still Afloat, primero te enviamos un solo correo de confirmación, y hacer clic desde tu propia bandeja activa la vigilancia. Lee nuestra <a href="/es/privacy.html">Política de Privacidad</a> y los <a href="/es/terms.html">Términos de Uso</a>.
+        </p>
+        <label class="check-row">
+          <input type="checkbox" id="privacyCheck" name="privacy" required>
+          <span class="check-label">Acepto los términos de privacidad y consiento recibir correos de Still Afloat.</span>
+        </label>
+      </div>
+      <button type="submit" class="btn-submit" id="submitBtn"><i class="fa-solid fa-bell"></i>&nbsp; Suscribirme y seguir este barco</button>
+    </form>
+    <p class="secondary"><a id="liveLink" href="/es/wheres-my-ship.html">Ver dónde está ahora →</a></p>
+  </div>
+
+  <div class="card done" id="restartCard" hidden>
+    <div class="icon">🔁</div>
+    <h2>¿Seguir vigilando a <span id="restartShip">tu barco</span>?</h2>
+    <p>Lo vigilaremos otros 15 días y te escribiremos si cambia el itinerario, si hay clima severo en la ruta o si la línea de cruceros publica noticias que afecten el viaje. Cada correo de vigilancia trae un enlace para detenerla antes.</p>
+    <div id="restartError" class="error-msg" role="alert"></div>
+    <button type="button" class="btn-submit" id="restartBtn"><i class="fa-solid fa-bell"></i>&nbsp; Seguirlo 15 días más</button>
+  </div>
+
+  <div class="card done" id="doneCard" hidden>
+    <div class="icon" id="doneIcon">📬</div>
+    <h2 id="doneTitle"></h2>
+    <p id="doneText"></p>
+    <p class="secondary"><a id="doneLink" href="/es/wheres-my-ship.html">Ver dónde está ahora →</a></p>
+  </div>
+</div>
+<footer style="padding:28px 20px 50px;text-align:center;color:rgba(255,255,255,.32);font-size:.85rem">
+  &copy; 2026 Still Afloat &middot; <em>Navega más inteligente. Ríe más.</em>
+</footer>
+
+<script>
+(function(){
+  var q = new URLSearchParams(location.search);
+  var ship = (q.get('ship') || '').trim();
+  var storm = (q.get('storm') || '').trim();
+  var restartId = (q.get('restart') || '').trim(), restartSig = (q.get('sig') || '').trim();
+  var source = /^[a-z-]{1,24}$/.test(q.get('from') || '') ? q.get('from') : 'tracker';
+  var $ = function(id){ return document.getElementById(id); };
+
+  var trackerUrl = '/es/wheres-my-ship.html' + (ship ? '?ship=' + encodeURIComponent(ship) : '');
+  $('liveLink').href = trackerUrl;
+  $('doneLink').href = trackerUrl;
+  if (ship) {
+    $('shipName').textContent = ship;
+    $('restartShip').textContent = ship;
+    document.title = 'Sigue a ' + ship + ' | Still Afloat';
+  }
+  if (storm) {
+    $('stormText').textContent = storm + ' está bajo vigilancia cerca de la ruta de este barco.';
+    $('stormNote').hidden = false;
+  }
+
+  // "29 de septiembre"; el último día de la vigilancia llega del servidor como AAAA-MM-DD.
+  function day(iso){
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return '';
+    return new Date(iso + 'T00:00:00Z').toLocaleDateString('es-ES', { month: 'long', day: 'numeric', timeZone: 'UTC' });
+  }
+  function until(iso){ return day(iso) ? ' hasta el ' + day(iso) : ''; }
+  var shipLabel = ship || 'tu barco';
+
+  var ERRORS = {
+    name_required: 'Por favor ingresa tu nombre completo.',
+    email_invalid: 'Por favor ingresa un correo válido.',
+    ship_required: 'Primero elige un barco en el rastreador.',
+    unknown_ship: 'No encontramos ese barco. Elígelo en el rastreador.',
+    email_unreachable: 'Los correos a esa dirección rebotan. Usa otra dirección, por favor.',
+    too_many_attempts: 'Demasiados intentos. Inténtalo de nuevo en un rato.'
+  };
+  var btn = $('submitBtn'), errBox = $('errorMsg');
+  var BTN = btn.innerHTML;
+  function showError(msg){
+    errBox.textContent = msg;
+    errBox.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = BTN;
+  }
+  function showDone(icon, before, highlighted, after, text){
+    $('doneIcon').textContent = icon;
+    $('doneTitle').textContent = before;
+    var span = document.createElement('span');
+    span.textContent = highlighted;
+    $('doneTitle').appendChild(span);
+    if (after) $('doneTitle').appendChild(document.createTextNode(after));
+    $('doneText').textContent = text;
+    $('formCard').hidden = true;
+    $('restartCard').hidden = true;
+    $('doneCard').hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  $('trackForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    errBox.classList.remove('show');
+    var name = $('name').value.trim(), email = $('email').value.trim();
+    if (!ship) return showError(ERRORS.ship_required);
+    if (name.length < 2) return showError(ERRORS.name_required);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError(ERRORS.email_invalid);
+    if (!$('privacyCheck').checked) return showError('Acepta los términos de privacidad para continuar.');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Guardando…';
+    try {
+      var res = await fetch('/api/wms/track-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, email: email, ship: ship, lang: 'es', source: source, website: $('website').value })
+      });
+      var data = await res.json().catch(function(){ return {}; });
+      if (!res.ok || !data.ok) return showError(ERRORS[data.error] || 'Algo salió mal. Inténtalo de nuevo.');
+      var label = data.ship || shipLabel;
+      if (data.state === 'tracking') {
+        showDone('🛳️', 'Estás siguiendo a ', label, '', data.already
+          ? 'Ya estabas siguiendo este barco' + until(data.until) + '. No hace falta nada más.'
+          : 'Enviamos los detalles a ' + email + '. Lo vigilaremos' + until(data.until) + ' y te escribiremos ahí si algo cambia.');
+      } else {
+        showDone('📬', 'Revisa tu ', 'correo', '', 'Enviamos un correo de confirmación a ' + email + '. Al confirmarlo quedas suscrito a Still Afloat y empieza de inmediato tu vigilancia de 15 días de ' + label + '.');
+      }
+    } catch (err) {
+      showError('Error de red. Revisa tu conexión e inténtalo de nuevo.');
+    }
+  });
+
+  // Abierto desde el correo que envía una vigilancia al cumplir sus 15 días.
+  if (restartId && restartSig) {
+    $('formCard').hidden = true;
+    $('lead').hidden = true;
+    $('restartCard').hidden = false;
+    var rBtn = $('restartBtn'), rErr = $('restartError'), R_BTN = rBtn.innerHTML;
+    rBtn.addEventListener('click', async function(){
+      rErr.classList.remove('show');
+      rBtn.disabled = true;
+      rBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Reanudando…';
+      try {
+        var res = await fetch('/api/wms/watch/restart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: restartId, sig: restartSig })
+        });
+        var data = await res.json().catch(function(){ return {}; });
+        var label = data.ship || shipLabel;
+        if (res.ok && data.ok && data.state === 'restarted') {
+          return showDone('🛳️', 'Estás siguiendo a ', label, ' otra vez', 'Lo vigilaremos' + until(data.until) + '. Cada correo de vigilancia trae un enlace para detenerla antes.');
+        }
+        if (res.ok && data.ok && data.state === 'tracking') {
+          return showDone('🛳️', 'Estás siguiendo a ', label, '', 'Ya estabas siguiendo este barco' + until(data.until) + '. No hace falta nada más.');
+        }
+        if (data.error === 'too_many_attempts') {
+          rErr.textContent = ERRORS.too_many_attempts;
+          rErr.classList.add('show');
+          rBtn.disabled = false;
+          rBtn.innerHTML = R_BTN;
+          return;
+        }
+        // El enlace no sirve, o la suscripción detrás no está activa: suscribirse de nuevo abajo.
+        $('restartCard').hidden = true;
+        $('lead').hidden = false;
+        $('formCard').hidden = false;
+        errBox.textContent = data.error === 'subscription_inactive'
+          ? 'Tu suscripción no está activa en este momento, así que no podemos reanudar esa vigilancia. Suscríbete abajo para seguir a ' + label + ' otra vez.'
+          : 'Ese enlace ya no funciona. Regístrate abajo para seguir a ' + label + ' otra vez.';
+        errBox.classList.add('show');
+      } catch (err) {
+        rErr.textContent = 'Error de red. Revisa tu conexión e inténtalo de nuevo.';
+        rErr.classList.add('show');
+        rBtn.disabled = false;
+        rBtn.innerHTML = R_BTN;
+      }
+    });
+  }
+})();
+</script>
+<script src="/components/navbar.js?v=20260905-homeonly"></script>
+</body>
+</html>

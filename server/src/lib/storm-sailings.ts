@@ -44,6 +44,25 @@ export interface Sailing {
   regions: string[];
 }
 
+/** A sailing as the storm pages list it, with whether the ship can be tracked. */
+export type TrackableSailing = Sailing & { trackable: boolean };
+
+/**
+ * Mark, 2026-09-15: "on the storm alerts, we should have a CTA for tracking their ship next
+ * to each ship in the affected area. right now you have to go down several level to get to
+ * the ship tracker, end then search for the specific ship. this is another path to
+ * subscribers." Then: "it should be a direct link to sign up to the tracker with
+ * subscription." Only a ship the tracker's registry knows gets the link, so the sign-up
+ * never lands on "unknown ship". The link carries no dates: a storm-page watch runs 15 days
+ * from the day it starts (ship-watch.ts). Pure: the registry lookup is passed in.
+ */
+export function withTrackable(
+  sailings: readonly Sailing[],
+  inRegistry: (shipName: string) => boolean,
+): TrackableSailing[] {
+  return sailings.map((s) => ({ ...s, trackable: Boolean(s.ship_name) && inRegistry(s.ship_name) }));
+}
+
 /** Default forecast window: today .. today+5 days (used when an alert has none). */
 export function defaultWindow(): { start: string; end: string } {
   const now = new Date();
