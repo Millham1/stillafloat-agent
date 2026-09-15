@@ -12,6 +12,8 @@
 // Fail-closed: if a route cannot be computed we return null and the caller
 // draws NOTHING for that leg — never a straight line across land.
 
+import { believablePath, trackGaps } from "./dead-reckoning";
+
 // No logger import: tests bundle this module and the pino transport is not
 // available there. The server injects its logger at boot (index.ts).
 let warn: (meta: Record<string, unknown>, msg: string) => void = () => {};
@@ -49,6 +51,30 @@ async function load(): Promise<SearouteFn | null> {
 
 const key = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) =>
   `${a.lat.toFixed(2)},${a.lon.toFixed(2)}>${b.lat.toFixed(2)},${b.lon.toFixed(2)}`;
+
+/** At most this many coverage gaps in one track are routed per request (newest kept); older ones just break. */
+export const MAX_ROUTED_GAPS = 30;
+
+/**
+ * Water paths across the stretches of a ship's track where she was not heard (trackGaps), in
+ * the same order; null where no believable path exists (believablePath), so the line breaks there
+ * instead of running straight across land.
+ */
+export async function gapPaths(
+  track: ReadonlyArray<readonly [number, number, ...unknown[]]>,
+  route: typeof seaRoute = seaRoute,
+): Promise<([number, number][] | null)[]> {
+  const gaps = trackGaps(track);
+  const skip = Math.max(0, gaps.length - MAX_ROUTED_GAPS);
+  const out: ([number, number][] | null)[] = [];
+  for (const [n, i] of gaps.entries()) {
+    const a = { lat: track[i]![0], lon: track[i]![1] };
+    const b = { lat: track[i + 1]![0], lon: track[i + 1]![1] };
+    const path = n < skip ? null : await route(a, b);
+    out.push(path && believablePath(path.points) ? path.points : null);
+  }
+  return out;
+}
 
 /** Water path from a to b, or null when none can be computed. Cached by rounded endpoints. */
 export async function seaRoute(a: { lat: number; lon: number }, b: { lat: number; lon: number }): Promise<SeaPath | null> {

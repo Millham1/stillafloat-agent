@@ -3,7 +3,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   distanceNm, bearingDeg, destinationPoint, greatCirclePoints, pathLengthNm, pointAlongPath, appendTrack,
-  estimatePosition, routeLine, nearbyShips, ESTIMATE_AFTER_MIN, MAX_COURSE_HOURS, TRACK_MAX_POINTS, STALE_FIX_H,
+  estimatePosition, routeLine, nearbyShips, trackGaps, believablePath, pathUntil, ESTIMATE_AFTER_MIN, MAX_COURSE_HOURS,
+  TRACK_MAX_POINTS, STALE_FIX_H, TRACK_GAP_NM, type Path,
 } from "./dead-reckoning";
 
 const MIAMI = { slug: "miami", name: "Miami, Florida", lat: 25.7617, lon: -80.1918 };
@@ -116,48 +117,136 @@ describe("paths and tracks", () => {
 describe("routeLine", () => {
   const fix = { lat: 25.6, lon: -79.6, courseDeg: 105, speedKn: 16, at: T0 };
   const behind: [number, number][] = [[MIAMI.lat, MIAMI.lon], [25.70, -80.05], [fix.lat, fix.lon]];
-  it("uses the water path behind her and the water path ahead, ending on the ports", () => {
+  const longestStraight = (runs: Path[]) => Math.max(0, ...runs.flatMap((r) => r.slice(1).map((p, i) => distanceNm(r[i]![0], r[i]![1], p[0], p[1]))));
+
+  it("with no track, the water path from the departed port is dotted and the water path ahead dashed", () => {
     const est = estimatePosition(fix, at(2), NASSAU, null)!;
     const ahead: [number, number][] = [[est.lat, est.lon], [25.3, -78.4], [NASSAU.lat, NASSAU.lon]];
     const r = routeLine(fix, est, MIAMI, NASSAU, { behindPath: behind, aheadPath: ahead });
-    assert.deepEqual(r.travelled[0], [MIAMI.lat, MIAMI.lon]);
-    assert.deepEqual(r.travelled[r.travelled.length - 1], [est.lat, est.lon]);
+    assert.deepEqual(r.between, [behind], "not heard between Miami and the fix: dotted, along water");
+    assert.deepEqual(r.travelled, [], "no real fixes but one: nothing solid");
     assert.deepEqual(r.ahead, ahead);
   });
-  it("prefers her REAL track over any computed path behind her", () => {
+  it("draws her REAL track solid, and never a computed path behind her instead", () => {
     const track: [number, number, string][] = [[25.75, -80.15, T0], [25.68, -79.9, T0], [fix.lat, fix.lon, T0]];
     const r = routeLine(fix, null, MIAMI, NASSAU, { track, behindPath: behind });
-    assert.deepEqual(r.travelled, track.map(([a, b]) => [a, b]));
+    assert.deepEqual(r.travelled, [track.map(([a, b]) => [a, b])]);
+    assert.deepEqual(r.between, []);
   });
   it("draws NOTHING for a leg it has no water path for — never a straight line", () => {
     const r = routeLine(fix, null, MIAMI, NASSAU, {});
-    assert.deepEqual(r.travelled, [[fix.lat, fix.lon]]);
-    assert.deepEqual(r.ahead, []);
+    assert.deepEqual(r, { travelled: [], between: [], ahead: [] });
   });
   it("a departed port from a previous sailing (far away) is not drawn", () => {
     const seattle = { slug: "seattle", name: "Seattle", lat: 47.6, lon: -122.3 };
     const r = routeLine(fix, null, seattle, NASSAU, { behindPath: [[seattle.lat, seattle.lon], [fix.lat, fix.lon]] });
-    assert.deepEqual(r.travelled, [[fix.lat, fix.lon]]);
+    assert.deepEqual(r, { travelled: [], between: [], ahead: [] });
   });
   it("nothing ahead when the fix is stale, even with a destination and a water path", () => {
     const fix = { lat: MIAMI.lat, lon: MIAMI.lon, courseDeg: 105, speedKn: 0.2, at: T0 };
     const est = estimatePosition(fix, at(STALE_FIX_H + 1), NASSAU, null)!;
     assert.equal(est.basis, "stale");
     const r = routeLine(fix, est, MIAMI, NASSAU, { aheadPath: [[fix.lat, fix.lon], [NASSAU.lat, NASSAU.lon]] });
-    assert.deepEqual(r.ahead, []);
-    assert.deepEqual(r.travelled[r.travelled.length - 1], [fix.lat, fix.lon], "the line ends at the last real fix");
+    assert.deepEqual(r, { travelled: [], between: [], ahead: [] }, "held at the last real fix, nothing drawn from it");
   });
   it("nothing ahead once she has arrived", () => {
     const est = estimatePosition(fix, at(30), NASSAU, null)!;
     assert.equal(est.basis, "arrived");
     assert.deepEqual(routeLine(fix, est, MIAMI, NASSAU, { aheadPath: [[fix.lat, fix.lon], [NASSAU.lat, NASSAU.lon]] }).ahead, []);
   });
+
+  // Carnival Panorama, dev tracker 2026-09-15: heard off northern Baja, next heard at Cabo 629 nm later.
+  const OFF_BAJA: [number, number, string] = [31.14561, -117.15308, "2026-09-14T02:00:00Z"];
+  const CABO: [number, number, string] = [22.88432, -109.89706, "2026-09-15T10:00:00Z"];
+  const coast: [number, number, string][] = [[31.34128, -117.23454, "2026-09-14T01:50:00Z"], OFF_BAJA];
+  const atCabo: [number, number, string][] = [CABO, [22.8801, -109.9048, "2026-09-15T10:20:00Z"]];
+  const cabo = { lat: 22.8801, lon: -109.9048, courseDeg: 90, speedKn: 0, at: "2026-09-15T10:20:00Z" };
+
+  it("breaks the heard line where she went out of range and bridges the gap with its water path, dotted", () => {
+    const water: Path = [[OFF_BAJA[0], OFF_BAJA[1]], [28.0, -116.0], [23.4, -111.0], [CABO[0], CABO[1]]];
+    const track = [...coast, ...atCabo];
+    const r = routeLine(cabo, null, null, null, { track, gapPaths: [water] });
+    assert.deepEqual(r.travelled, [coast.map(([a, b]) => [a, b]), atCabo.map(([a, b]) => [a, b])]);
+    assert.deepEqual(r.between, [water]);
+    assert.ok(longestStraight(r.travelled) <= TRACK_GAP_NM, `a solid segment runs ${longestStraight(r.travelled)} nm`);
+  });
+  it("with no believable water path the line just breaks: the 629-mile straight segment is gone", () => {
+    const track = [...coast, ...atCabo];
+    const before = distanceNm(OFF_BAJA[0], OFF_BAJA[1], CABO[0], CABO[1]);
+    assert.ok(before > 600, "the old line drew this as one straight segment");
+    const r = routeLine(cabo, null, null, null, { track, gapPaths: [null] });
+    assert.equal(r.travelled.length, 2);
+    assert.deepEqual(r.between, []);
+    assert.ok(longestStraight(r.travelled) <= TRACK_GAP_NM);
+  });
+  it("a jump from the end of the track to her latest fix is a gap too, never a straight line", () => {
+    const r = routeLine({ ...cabo, lat: CABO[0], lon: CABO[1] }, null, null, null, { track: coast });
+    assert.deepEqual(r.travelled, [coast.map(([a, b]) => [a, b])]);
+    assert.deepEqual(r.between, []);
+  });
+  it("last fix to estimate follows the water path she was placed on; a course projection stays straight", () => {
+    const water: [number, number][] = [[fix.lat, fix.lon], [25.55, -79.0], [25.2, -78.0], [NASSAU.lat, NASSAU.lon]];
+    const onRoute = estimatePosition(fix, at(3), NASSAU, null, water)!;
+    assert.equal(onRoute.basis, "route");
+    const r = routeLine(fix, onRoute, null, NASSAU, { toDestPath: water });
+    assert.deepEqual(r.between[0]![0], [fix.lat, fix.lon]);
+    assert.deepEqual(r.between[0]![r.between[0]!.length - 1], [onRoute.lat, onRoute.lon]);
+    assert.ok(r.between[0]!.length >= 3, "passes through the water path's points, not straight to the estimate");
+
+    const arrived = estimatePosition(fix, at(30), NASSAU, null, water)!;
+    assert.deepEqual(routeLine(fix, arrived, null, NASSAU, { toDestPath: water }).between, [water]);
+
+    const drifting = { ...fix, courseDeg: 90 };
+    const course = estimatePosition(drifting, at(2), null, null)!;
+    assert.equal(course.basis, "course");
+    assert.deepEqual(routeLine(drifting, course, null, null, {}).between, [[[drifting.lat, drifting.lon], [course.lat, course.lon]]]);
+
+    const noPath = estimatePosition(fix, at(3), NASSAU, null)!;
+    assert.equal(noPath.basis, "route");
+    assert.deepEqual(routeLine(fix, noPath, null, NASSAU, {}).between, [], "no water path, no line to the estimate");
+  });
+
   it("with a water path the estimate slides along it, not the great circle", () => {
     const water: [number, number][] = [[fix.lat, fix.lon], [25.55, -79.0], [25.2, -78.0], [NASSAU.lat, NASSAU.lon]];
     const e = estimatePosition(fix, at(2), NASSAU, null, water)!;
     assert.equal(e.basis, "route");
     const along = distanceNm(fix.lat, fix.lon, e.lat, e.lon);
     assert.ok(along > 20 && along < 40, `travelled ${along} nm along the path`);
+  });
+});
+
+describe("coverage gaps", () => {
+  it("trackGaps marks only the jumps longer than 25 nm", () => {
+    const track: [number, number, string][] = [[25.0, -80.0, T0], [25.01, -80.0, T0], [25.4, -80.0, T0], [25.41, -80.0, T0], [26.0, -79.0, T0]];
+    // 0.6 nm, 24 nm, 0.6 nm, 64 nm
+    assert.deepEqual(trackGaps(track), [3]);
+    assert.deepEqual(trackGaps([]), []);
+  });
+  it("believablePath: two points only for a short hop, never a wild detour", () => {
+    const offBaja: [number, number] = [31.14561, -117.15308], cabo: [number, number] = [22.88432, -109.89706];
+    assert.equal(believablePath([offBaja, [32.7, -117.3], [27.5, -115.2], [25.0007, -112.4212], cabo]), true, "Baja: around the cape, about 1.3 times the straight line");
+    assert.equal(believablePath([offBaja, cabo]), false, "just the two ends of a 629-mile gap is the straight line again");
+    assert.equal(believablePath([[20.76668, -86.79518], [21.3395, -89.666]]), false, "Cozumel to Progreso as two points: straight over the Yucatán");
+    assert.equal(believablePath([[25.76, -80.13], [25.77, -80.19]]), true, "a short hop into port");
+    assert.equal(believablePath([[39.22141, 25.68713], [37.5, 24.5], [39.97138, 26.01108]]), false, "47 nm apart, drawn as a long detour");
+    assert.equal(believablePath(null), false);
+    assert.equal(believablePath([[25, -80]]), false);
+  });
+  it("a straight 'path' ahead or to the estimate is not drawn across open miles", () => {
+    const fix = { lat: 25.6, lon: -79.6, courseDeg: 105, speedKn: 16, at: T0 };
+    const straightToNassau: Path = [[fix.lat, fix.lon], [NASSAU.lat, NASSAU.lon]];
+    const est = estimatePosition(fix, at(2), NASSAU, null, straightToNassau)!;
+    const r = routeLine(fix, est, null, NASSAU, { toDestPath: straightToNassau, aheadPath: [[est.lat, est.lon], [NASSAU.lat, NASSAU.lon]] });
+    assert.deepEqual(r.between, [], "no dotted straight line to the estimate");
+    assert.deepEqual(r.ahead, [], "no dashed straight line to Nassau");
+    const nearPort = { ...fix, lat: 25.1, lon: -77.5 };
+    const close = routeLine(nearPort, null, null, NASSAU, { aheadPath: [[nearPort.lat, nearPort.lon], [NASSAU.lat, NASSAU.lon]] });
+    assert.equal(close.ahead.length, 2, "a few miles into port can be straight");
+  });
+  it("pathUntil keeps the path up to a point on it", () => {
+    const path: Path = [[0, 0], [0, 1], [0, 2], [0, 3]];
+    assert.deepEqual(pathUntil(path, { lat: 0, lon: 1.5 }), [[0, 0], [0, 1], [0, 1.5]]);
+    assert.deepEqual(pathUntil(path, { lat: 0, lon: 3 }), [[0, 0], [0, 1], [0, 2], [0, 3]]);
   });
 });
 
