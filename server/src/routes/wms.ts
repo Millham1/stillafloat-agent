@@ -19,7 +19,7 @@ import { trackingEmail, verifyWatchSig, watchStopUrl } from "../lib/ship-watch";
 import { portBySlug } from "../lib/ports";
 import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../lib/dead-reckoning";
 import { plannedRouteFor } from "../lib/planned-route-service";
-import { seaRoute } from "../lib/sea-route";
+import { gapPaths, seaRoute } from "../lib/sea-route";
 
 const router: IRouter = Router();
 
@@ -150,7 +150,11 @@ router.get("/wms/position", async (req: Request, res: Response) => {
     const track = pos.track ?? [];
     const behind = track.length < 2 && fromPort ? await seaRoute(fromPort, { lat: pos.lat, lon: pos.lon }) : null;
     const ahead = destPort && estimate?.basis !== "arrived" && estimate?.basis !== "stale" ? await seaRoute(here, destPort) : null;
-    const route = routeLine(fix, estimate, fromPort, destPort, { track, behindPath: behind?.points ?? null, aheadPath: ahead?.points ?? null });
+    // Where she went out of range, the line follows a water path or breaks: never straight across land.
+    const gaps = track.length >= 2 ? await gapPaths(track) : [];
+    const route = routeLine(fix, estimate, fromPort, destPort, {
+      track, gapPaths: gaps, behindPath: behind?.points ?? null, toDestPath: toDest?.points ?? null, aheadPath: ahead?.points ?? null,
+    });
     const centre = estimate ?? { lat: pos.lat, lon: pos.lon };
     const nearby = nearbyShips(allPositions(), centre, pos.name, now);
     const planned = await plannedRouteFor(pos.name, now).catch(() => null);
@@ -176,7 +180,7 @@ router.get("/wms/position", async (req: Request, res: Response) => {
       stale: ageMin > 90, // out of terrestrial AIS coverage — page shows the caveat
       source: pos.lastSource ?? "ais",
       estimate,          // null while the fix is fresh
-      route,             // { travelled: [[lat,lon]...], ahead: [[lat,lon]...] }
+      route,             // { travelled: [[[lat,lon]...]...] heard runs, between: [[[lat,lon]...]...] water paths where not heard, ahead: [[lat,lon]...] }
       nearby,            // other tracked ships within NEARBY_RADIUS_NM with a recent fix
       nearbyRadiusNm: NEARBY_RADIUS_NM,
       planned,           // the operator's itinerary under way + its stored water route (null when none on file)

@@ -152,10 +152,14 @@
     if (routeLayer) { routeLayer.remove(); routeLayer = null; }
     if (!route) return;
     routeLayer = L.layerGroup();
-    // Thin green line: solid where she has been, dashed for the leg still ahead.
-    if (route.travelled && route.travelled.length > 1) {
-      L.polyline(route.travelled, { color: '#5dff9a', weight: 2, opacity: .9 }).addTo(routeLayer);
-    }
+    // Thin green line: solid where she was heard, dotted along water where she was out of
+    // range (never straight across land), dashed for the leg still ahead.
+    (route.travelled || []).forEach(function (run) {
+      if (run && run.length > 1) L.polyline(run, { color: '#5dff9a', weight: 2, opacity: .9 }).addTo(routeLayer);
+    });
+    (route.between || []).forEach(function (path) {
+      if (path && path.length > 1) L.polyline(path, { color: '#5dff9a', weight: 3, opacity: .7, dashArray: '0.1 7', lineCap: 'round' }).addTo(routeLayer);
+    });
     if (route.ahead && route.ahead.length > 1) {
       L.polyline(route.ahead, { color: '#5dff9a', weight: 2, opacity: .75, dashArray: '6 7' }).addTo(routeLayer);
     }
