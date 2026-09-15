@@ -12,7 +12,7 @@
 // ends the subscriber is asked whether to keep tracking for another 15. Someone who is not a
 // subscriber yet can start one: it waits as 'pending' and starts when they confirm their email.
 
-import crypto from "node:crypto";
+import { signLink, verifyLink } from "./link-signing";
 
 /** How long a watch from the storm pages runs before it asks to be restarted. */
 export const WATCH_WINDOW_DAYS = 15;
@@ -56,14 +56,15 @@ export function signupPath(status: string | null | undefined): SignupPath {
 }
 
 /**
- * Signed links in watch emails, with the same secret as unsubscribe links. A restart link
- * signs a different message, so a stop link can never be turned into a restart. The stop
- * signature is unchanged from wms-alerts.ts, so stop links already in inboxes keep working.
+ * Signed links in watch emails (lib/link-signing.ts). A restart link signs a different message,
+ * so a stop link can never be turned into a restart.
  */
 export function makeWatchSig(watchId: string, action: "stop" | "restart" = "stop"): string {
-  const secret = process.env["UNSUBSCRIBE_SECRET"] || "still-afloat-unsub-v1";
-  const message = action === "stop" ? `watch:${watchId}` : `watch-restart:${watchId}`;
-  return crypto.createHmac("sha256", secret).update(message).digest("hex").slice(0, 24);
+  return signLink(action === "stop" ? "watch-stop" : "watch-restart", watchId);
+}
+
+export function verifyWatchSig(watchId: string, action: "stop" | "restart", sig: unknown): boolean {
+  return verifyLink(action === "stop" ? "watch-stop" : "watch-restart", watchId, sig);
 }
 
 /** One click stops the watch (GET /api/wms/watch/stop). */

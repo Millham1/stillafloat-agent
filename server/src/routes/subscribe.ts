@@ -6,6 +6,7 @@ import { sendMail } from "../lib/mailer";
 import { tokenOk } from "../lib/http-auth";
 import { activatePendingWatches } from "../lib/pending-watches";
 import { WATCH_WINDOW_DAYS } from "../lib/ship-watch";
+import { signLink, verifyLink } from "../lib/link-signing";
 
 const router = Router();
 
@@ -23,14 +24,9 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
-// ── Deterministic unsubscribe sig (no extra DB column needed) ──
-function makeUnsubscribeSig(email: string): string {
-  const secret = process.env["UNSUBSCRIBE_SECRET"] || "still-afloat-unsub-v1";
-  return crypto.createHmac("sha256", secret).update(email.toLowerCase()).digest("hex").slice(0, 24);
-}
-
+// ── Deterministic unsubscribe sig (no extra DB column needed; lib/link-signing.ts) ──
 export function unsubscribeUrl(email: string, baseUrl: string): string {
-  const sig = makeUnsubscribeSig(email);
+  const sig = signLink("unsubscribe", email);
   return `${baseUrl}/api/unsubscribe?email=${encodeURIComponent(email)}&sig=${sig}`;
 }
 
@@ -456,8 +452,7 @@ router.get("/unsubscribe", async (req, res) => {
 
   if (!email || !sig) return res.redirect("/unsubscribe-confirmed.html?result=invalid");
 
-  const expected = makeUnsubscribeSig(email);
-  if (expected !== sig) {
+  if (!verifyLink("unsubscribe", email, sig)) {
     logger.warn({ email }, "Unsubscribe: invalid sig");
     return res.redirect("/unsubscribe-confirmed.html?result=invalid");
   }
