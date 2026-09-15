@@ -2,11 +2,11 @@
 // it sends (on, alert, ended), and which past-end watches get the "keep tracking?" email.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import crypto from "node:crypto";
 import {
-  addDays, formatWatchDate, makeWatchSig, planWatchEndings, rollingWindow, trackingEmail, watchEndedEmail,
+  addDays, formatWatchDate, makeWatchSig, planWatchEndings, rollingWindow, trackingEmail, verifyWatchSig, watchEndedEmail,
   watchRestartUrl, watchStopUrl, WATCH_WINDOW_DAYS, type EndingWatch,
 } from "./ship-watch";
+import { signLink } from "./link-signing";
 import { renderAlertEmail } from "./wms-alerts";
 
 const ID = "0b6f7a8e-1c2d-4e5f-8a9b-0c1d2e3f4a5b";
@@ -28,11 +28,13 @@ describe("the 15-day window", () => {
 });
 
 describe("signed links", () => {
-  it("keeps the stop signature every stop link already in an inbox was made with", () => {
-    const secret = process.env["UNSUBSCRIBE_SECRET"] || "still-afloat-unsub-v1";
-    const before = crypto.createHmac("sha256", secret).update(`watch:${ID}`).digest("hex").slice(0, 24);
-    assert.equal(makeWatchSig(ID), before);
-    assert.equal(watchStopUrl(ID), `https://stillafloatcruising.com/api/wms/watch/stop?id=${ID}&sig=${before}`);
+  it("signs stop links through link-signing, and checks them the same way", () => {
+    const sig = signLink("watch-stop", ID);
+    assert.equal(makeWatchSig(ID), sig);
+    assert.equal(watchStopUrl(ID), `https://stillafloatcruising.com/api/wms/watch/stop?id=${ID}&sig=${sig}`);
+    assert.equal(verifyWatchSig(ID, "stop", sig), true);
+    assert.equal(verifyWatchSig(ID, "restart", sig), false, "a stop link cannot restart a watch");
+    assert.equal(verifyWatchSig("11111111-2222-4333-8444-555555555555", "stop", sig), false);
   });
 
   it("signs a restart differently, and opens the sign-up page in the subscriber's language", () => {

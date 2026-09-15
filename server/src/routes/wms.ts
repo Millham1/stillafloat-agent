@@ -15,7 +15,7 @@ import {
   getPosition, allPositions, trackerEnabled, trackerHealthy,
   requestShip, isSubscribed, inRegistry, subscribedNames, capacity,
 } from "../lib/ship-tracker";
-import { makeWatchSig, trackingEmail, watchStopUrl } from "../lib/ship-watch";
+import { trackingEmail, verifyWatchSig, watchStopUrl } from "../lib/ship-watch";
 import { portBySlug } from "../lib/ports";
 
 const router: IRouter = Router();
@@ -230,7 +230,7 @@ router.post("/wms/watch", async (req: Request, res: Response) => {
 // ── GET /api/wms/watch/stop?id=&sig= — one-click stop from any email ─────────
 router.get("/wms/watch/stop", async (req: Request, res: Response) => {
   const { id, sig } = req.query as Record<string, string>;
-  if (!id || !sig || makeWatchSig(id) !== sig) {
+  if (!id || !verifyWatchSig(id, "stop", sig)) {
     return res.redirect("/wheres-my-ship.html?watch=invalid");
   }
   try {

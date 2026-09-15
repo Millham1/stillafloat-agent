@@ -64,3 +64,15 @@ Since 2026-09-04 auth **fails closed** (`lib/http-auth.ts`), so a box left witho
 the variable returns 401 rather than serving openly. That is the safe direction, but
 it means a half-finished rotation locks you out instead of opening the doors — all
 the more reason to verify both ends.
+
+## `UNSUBSCRIBE_SECRET` (set 2026-09-15)
+
+Signs every one-click link in subscriber emails: unsubscribe, stop tracking a ship, keep
+tracking a ship (`server/src/lib/link-signing.ts`). Before 2026-09-15 it was unset on both
+boxes, so links were signed with a default written into this public repo.
+
+- Rotating it breaks every link already sitting in an inbox. An unsubscribe link must keep
+  working for at least 30 days after the email went out (CAN-SPAM), so a rotation needs a
+  grace window for the previous value, the way `LEGACY_SIGNATURES_UNTIL` handles the old default.
+- Generate the value on a box (`openssl rand -hex 32`) and copy it between locations over
+  ssh pipes; it never needs to be printed. Same value on prod, dev and the Mac secrets file.

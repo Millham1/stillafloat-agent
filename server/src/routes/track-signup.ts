@@ -23,7 +23,7 @@ import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import { sendVerificationEmail } from "./subscribe";
 import {
-  makeWatchSig, rollingWindow, signupPath, trackingEmail, watchStopUrl, WATCH_WINDOW_DAYS, type WatchWindow,
+  rollingWindow, signupPath, trackingEmail, verifyWatchSig, watchStopUrl, WATCH_WINDOW_DAYS, type WatchWindow,
 } from "../lib/ship-watch";
 
 export interface SubscriberRow {
@@ -171,7 +171,7 @@ export function createTrackSignupRouter(deps: TrackSignupDeps = defaultTrackSign
       const body = (req.body ?? {}) as Record<string, unknown>;
       const id = String(body["id"] ?? "").trim();
       const sig = String(body["sig"] ?? "").trim();
-      if (!UUID_RE.test(id) || !sig || sig !== makeWatchSig(id, "restart")) {
+      if (!UUID_RE.test(id) || !verifyWatchSig(id, "restart", sig)) {
         return res.status(400).json({ ok: false, error: "invalid_link" });
       }
       const watch = await deps.findWatch(id);
