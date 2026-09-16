@@ -89,7 +89,7 @@ async function sendConfirmationEmail(
     subject: "Got it — I'll be in touch within 24 hours ⚓",
     html,
     fromName: "Mark at Still Afloat",
-    replyTo: "stillafloatcruising@gmail.com",
+    // No reply-to: the From address is Mark's own mailbox, so a reply already reaches him.
   });
 }
 
