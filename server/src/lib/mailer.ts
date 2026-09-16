@@ -2,6 +2,18 @@ import { logger } from "./logger";
 
 const OPS_URL = process.env["OPS_MANAGER_URL"] || "http://127.0.0.1:5000";
 
+/**
+ * The address subscriber email comes from. Mark, 2026-09-15: "we should move the website to the
+ * domain emails". Set MAIL_FROM per box in shared.env (prod: mark@stillafloatcruising.com, which
+ * Zoho signs with the domain's own key so the mail passes the domain's DMARC rule instead of
+ * arriving as a gmail.com address). Unset — as on dev, whose sender is a different Gmail account —
+ * leaves the ops-manager's own account as the sender, exactly as before.
+ */
+function fromAddress(): string | undefined {
+  const addr = process.env["MAIL_FROM"]?.trim().replace(/^["']|["']$/g, "");
+  return addr || undefined;
+}
+
 export interface MailOpts {
   to: string;
   subject: string;
@@ -32,7 +44,7 @@ export async function sendMail(opts: MailOpts): Promise<boolean> {
         html: opts.html,
         text: opts.text,
         from_name: opts.fromName,
-        from_addr: opts.fromAddr,
+        from_addr: opts.fromAddr ?? fromAddress(),
         reply_to: opts.replyTo,
       }),
     });
