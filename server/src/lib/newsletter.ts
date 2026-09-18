@@ -1,6 +1,15 @@
 import { llmJson } from "./llm";
 import { logger } from "./logger";
-import { sendMail } from "./mailer";
+import { sendMail, fetchBounces } from "./mailer";
+import { notifyMark, reviewUrl } from "./notify";
+import {
+  newDelivery,
+  runDeliveryRound,
+  deliveryIsDue,
+  deliveryNotice,
+  deliveryCounts,
+  type NewsletterDelivery,
+} from "./newsletter-delivery";
 import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
 import { buildUtm, fetchChannelVideos, type Lang } from "./social-agent";
 import { storySlug } from "./prerender-news";
@@ -126,8 +135,10 @@ export interface NewsletterDraft {
   agencyPs: string;
   lang: Lang;
   generatedAt: string;
-  status: "pending" | "sent";
+  // "sending" = the paced send is under way (or parked for its one retry): no edits, no re-roll.
+  status: "pending" | "sending" | "sent";
   sentAt?: string;
+  delivery?: NewsletterDelivery; // who got it, who bounced — lib/newsletter-delivery.ts
 }
 
 function stripHtmlTags(str: string): string {
@@ -725,12 +736,72 @@ export async function confirmedSubscriberCount(lang: Lang): Promise<number> {
 }
 
 // ── Send (explicit, approve-first) ───────────────────────────────────────────
-export async function sendNewsletterDraft(
-  draft: NewsletterDraft,
-  baseUrl: string,
-): Promise<{ sent: number; failed: number; total: number }> {
-  const lang: Lang = draft.lang ?? "en";
+// Paced, bounce-checked and restart-safe — the why is at the top of newsletter-delivery.ts.
+const SITE_BASE = "https://stillafloatcruising.com";
+const PACE_MS = Number(process.env["NEWSLETTER_PACE_MS"] ?? "45000"); // one email every 45s
+const SETTLE_MS = Number(process.env["NEWSLETTER_BOUNCE_SETTLE_MS"] ?? "120000");
+const RETRY_DELAY_MS = Number(process.env["NEWSLETTER_RETRY_DELAY_MS"] ?? "3600000");
+
+// One email stream for the whole process: EN and ES queue behind each other, never interleave
+// (two editions at once would halve the pacing the relay sees).
+let deliveryChain: Promise<void> = Promise.resolve();
+const deliveryActive = new Set<Lang>();
+
+function enqueueDelivery(lang: Lang): void {
+  if (deliveryActive.has(lang)) return;
+  deliveryActive.add(lang);
+  deliveryChain = deliveryChain
+    .then(() => runDelivery(lang))
+    .catch((err) => logger.error({ err, lang }, "Newsletter delivery worker failed"))
+    .finally(() => { deliveryActive.delete(lang); });
+}
+
+async function runDelivery(lang: Lang): Promise<void> {
+  const draft = await loadDraft(lang);
+  if (!draft?.delivery || !deliveryIsDue(draft.delivery, Date.now())) return;
   const stories = await gatherApprovedStories(lang);
+  const outcome = await runDeliveryRound(draft.delivery, {
+    send: (r) =>
+      sendMail({
+        to: r.email,
+        subject: draft.subject,
+        html: renderEnrichedNewsletter(draft, stories, r.name, r.email, SITE_BASE),
+        fromName: "Still Afloat",
+      }),
+    bounces: fetchBounces,
+    save: async (d) => { draft.delivery = d; await saveDraft(draft); },
+    sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+    now: () => Date.now(),
+    paceMs: PACE_MS,
+    settleMs: SETTLE_MS,
+    retryDelayMs: RETRY_DELAY_MS,
+  });
+  if (outcome === "not-due") return;
+
+  draft.status = "sent";
+  draft.sentAt ??= new Date().toISOString();
+  await saveDraft(draft);
+  const c = deliveryCounts(draft.delivery);
+  logger.info(
+    { subject: draft.subject, lang, outcome, total: c.total, delivered: c.delivered, retrying: c.retrying.length, undeliverable: c.undeliverable.length },
+    "Newsletter delivery round complete",
+  );
+  void notifyMark({
+    ...deliveryNotice(draft.delivery, lang, draft.subject, process.env["TIMEZONE"] || "America/New_York"),
+    url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
+    tag: "newsletter-review",
+  });
+}
+
+/** Start sending a pending draft. Returns at once; the emails go out in the background and Mark
+ *  gets a push with the true delivered count once the bounce check has run. */
+export async function startNewsletterSend(
+  draft: NewsletterDraft,
+  opts: { auto?: boolean } = {},
+): Promise<{ total: number; minutes: number }> {
+  const lang: Lang = draft.lang ?? "en";
+  if (draft.status === "sending") throw new Error("This issue is going out right now.");
+  if (draft.status === "sent") throw new Error("This issue was already sent — generate a new one first.");
   const supabase = getSupabase();
   const { data: subscribers, error } = await supabase
     .from("subscribers")
@@ -739,23 +810,38 @@ export async function sendNewsletterDraft(
     .eq("lang", lang); // only this edition's language
   if (error) throw new Error("Failed to load subscribers");
   const list = (subscribers ?? []) as Array<{ email: string; name: string }>;
-  if (list.length === 0) return { sent: 0, failed: 0, total: 0 };
   if (list.length > GMAIL_LIST_CAP) {
     throw new Error(
       `Subscriber list (${list.length}) exceeds the Gmail send cap (${GMAIL_LIST_CAP}) — migrate newsletter sending to a real ESP first.`,
     );
   }
-
-  let sent = 0;
-  let failed = 0;
-  for (const sub of list) {
-    const html = renderEnrichedNewsletter(draft, stories, sub.name, sub.email, baseUrl);
-    const ok = await sendMail({ to: sub.email, subject: draft.subject, html, fromName: "Still Afloat" });
-    ok ? sent++ : failed++;
-    await new Promise((r) => setTimeout(r, 1200)); // pace the Gmail API
+  if (list.length === 0) {
+    draft.status = "sent";
+    draft.sentAt = new Date().toISOString();
+    await saveDraft(draft);
+    return { total: 0, minutes: 0 };
   }
-  logger.info({ subject: draft.subject, sent, failed }, "Newsletter (agent) send complete");
-  return { sent, failed, total: list.length };
+
+  draft.delivery = newDelivery(list, Date.now());
+  if (opts.auto) draft.delivery.auto = true;
+  draft.status = "sending";
+  await saveDraft(draft);
+  enqueueDelivery(lang);
+  return { total: list.length, minutes: Math.ceil(((list.length - 1) * PACE_MS + SETTLE_MS) / 60_000) };
+}
+
+/** Scheduler hook (boot + every few minutes): carry on a send a restart interrupted, and run
+ *  the one retry when its time comes. */
+export async function resumeNewsletterDeliveries(): Promise<void> {
+  for (const lang of ["en", "es"] as const) {
+    const draft = await loadDraft(lang);
+    if (deliveryIsDue(draft?.delivery, Date.now())) enqueueDelivery(lang);
+  }
+}
+
+/** True while a draft's ledger is still open — regenerating now would erase who is owed a retry. */
+export function deliveryOpen(draft: NewsletterDraft | null): boolean {
+  return Boolean(draft?.delivery && !draft.delivery.finishedAt);
 }
 
 function escapeAttr(s: string): string {
