@@ -1,4 +1,5 @@
 import { logger } from "./logger";
+import type { Bounce } from "./newsletter-delivery";
 
 const OPS_URL = process.env["OPS_MANAGER_URL"] || "http://127.0.0.1:5000";
 
@@ -56,5 +57,28 @@ export async function sendMail(opts: MailOpts): Promise<boolean> {
   } catch (err) {
     logger.warn({ err }, "mailer: send failed");
     return false;
+  }
+}
+
+/**
+ * Delivery failures that came back since `sinceEpochSec`, read from the sending inbox by the
+ * ops-manager. sendMail() only knows Gmail ACCEPTED a message; a refusal further along arrives
+ * afterwards as a mailer-daemon email, so a bulk sender asks here for the true delivered count.
+ * Returns null when the lookup itself failed — never an empty list, which would read as "no bounces".
+ */
+export async function fetchBounces(sinceEpochSec: number): Promise<Bounce[] | null> {
+  const key = process.env["IDEAS_API_KEY"];
+  if (!key) return null;
+  try {
+    const r = await fetch(`${OPS_URL}/mail-bounces?since=${Math.floor(sinceEpochSec)}`, { headers: { "x-api-key": key } });
+    if (!r.ok) {
+      logger.warn({ status: r.status }, "mailer: /mail-bounces non-200");
+      return null;
+    }
+    const j = (await r.json()) as { bounces?: Bounce[] };
+    return Array.isArray(j.bounces) ? j.bounces : null;
+  } catch (err) {
+    logger.warn({ err }, "mailer: bounce lookup failed");
+    return null;
   }
 }
