@@ -66,8 +66,10 @@ app.listen(port, "0.0.0.0", () => {
     logger.info("Weekly marketing cadence DISABLED (DISABLE_WEEKLY_MARKETING=1)");
   } else {
     scheduleWeeklyMarketing();
-    scheduleNewsletterDelivery();
   }
+  // Always on, dev mirror included: a hand-started Approve & Send needs its restart-resume and
+  // its one retry wherever it runs. With no open delivery ledger this is two small reads.
+  scheduleNewsletterDelivery();
   // Push-channel health. Prod only: the dev mirror shares Mark's inbox, and a
   // dev box with no subscribers is normal, not a fault.
   if (process.env["DISABLE_PUSH_HEALTH"] === "1") {
