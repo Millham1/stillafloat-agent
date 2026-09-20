@@ -4,10 +4,13 @@ import {
   draftNewsletter,
   saveDraft,
   loadDraft,
-  sendNewsletterDraft,
+  startNewsletterSend,
+  deliveryOpen,
   renderEnrichedNewsletter,
   gatherApprovedStories,
+  type NewsletterDraft,
 } from "../lib/newsletter";
+import { deliveryCounts } from "../lib/newsletter-delivery";
 import type { Lang } from "../lib/social-agent";
 import { notifyMark, reviewUrl } from "../lib/notify";
 
@@ -24,6 +27,10 @@ function editionLang(req: Request): Lang {
 router.post("/newsletter/draft", requireToken, async (req: Request, res: Response) => {
   try {
     const lang = editionLang(req);
+    if (deliveryOpen(await loadDraft(lang))) {
+      res.status(409).json({ success: false, error: "The current issue is still going out (or waiting on its retry) — generate the next one once it has finished." });
+      return;
+    }
     const draft = await draftNewsletter(lang);
     await saveDraft(draft);
     res.json({ success: true, draft });
@@ -67,8 +74,8 @@ router.post("/newsletter/draft/update", requireToken, async (req: Request, res: 
       res.status(404).json({ success: false, error: "No draft to update" });
       return;
     }
-    if (draft.status === "sent") {
-      res.status(409).json({ success: false, error: "Draft already sent — generate a new one first" });
+    if (draft.status !== "pending") {
+      res.status(409).json({ success: false, error: draft.status === "sending" ? "This issue is going out right now — it can't be edited" : "Draft already sent — generate a new one first" });
       return;
     }
     const body = req.body as {
@@ -162,11 +169,14 @@ router.post("/newsletter/send", requireToken, async (req: Request, res: Response
       res.status(404).json({ success: false, error: "No draft to send" });
       return;
     }
-    const result = await sendNewsletterDraft(draft, SITE);
-    draft.status = "sent";
-    draft.sentAt = new Date().toISOString();
-    await saveDraft(draft);
-    res.json({ success: true, lang, ...result });
+    if (draft.status !== "pending") {
+      res.status(409).json({ success: false, error: draft.status === "sending" ? "This issue is already going out." : "This issue was already sent — generate a new one first." });
+      return;
+    }
+    // Returns at once: the emails go out one every 45s in the background, then a push reports
+    // the true delivered count after the bounce check.
+    const started = await startNewsletterSend(draft);
+    res.json({ success: true, lang, started: true, ...started });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -208,7 +218,7 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
          ${draft.video ? '<span class="pill">+ video</span>' : ""}
          ${draft.affiliate ? '<span class="pill">+ affiliate</span>' : ""}
          <span class="pill ${draft.status === "sent" ? "sent" : "pend"}">${draft.status}</span>
-       </div>`
+       </div>${deliveryLine(draft.delivery)}`
     : `<p>No ${lang.toUpperCase()} draft yet — generate this week's issue.</p>`;
 
   // ── Edit panel: every human-visible field of the issue, phone-friendly. ──
@@ -351,12 +361,27 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
    if(!confirm('Send this '+LANG.toUpperCase()+' newsletter to all confirmed '+LANG.toUpperCase()+' subscribers now?')) return;
    document.getElementById('msg').textContent='Sending…';
    fetch('/api/newsletter/send?lang='+LANG,{method:'POST',headers:{'x-affiliate-token':TOKEN}})
-     .then(r=>r.json()).then(j=>{ document.getElementById('msg').textContent = j.success ? ('Sent to '+j.sent+' / '+j.total+' (failed '+j.failed+')') : ('Failed: '+(j.error||'error')); })
+     .then(r=>r.json()).then(j=>{ document.getElementById('msg').textContent = j.success ? ('Sending to '+j.total+' subscriber'+(j.total===1?'':'s')+', one every 45 seconds (about '+j.minutes+' min). You will get a notification with the delivered count; refresh this page to watch it.') : ('Failed: '+(j.error||'error')); })
      .catch(()=>document.getElementById('msg').textContent='Network error');
  }
 </script>
 </body></html>`);
 });
+
+// Who got this issue: the ledger's true counts, and anyone held back with the server's reason.
+function deliveryLine(d: NewsletterDraft["delivery"]): string {
+  if (!d) return "";
+  const c = deliveryCounts(d);
+  const who = (rs: typeof c.retrying): string => rs.map((r) => `${escapeHtml(r.email)}${r.note ? ` — ${escapeHtml(r.note)}` : ""}`).join("<br/>");
+  const retryAt = d.retryAt
+    ? new Date(d.retryAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: process.env["TIMEZONE"] || "America/New_York" })
+    : "";
+  return `<div class="card" style="font-size:16px;color:#07183f">
+    <b>Delivered to ${c.delivered} of ${c.total}</b>${c.queued ? ` · ${c.queued} still to go (one every 45 seconds)` : ""}${d.bounceCheck === "unavailable" ? " · bounce check could not run, count unconfirmed" : ""}
+    ${c.retrying.length ? `<br/>Held by the mail server${retryAt ? `, trying again at ${retryAt}` : ""}:<br/>${who(c.retrying)}` : ""}
+    ${c.undeliverable.length ? `<br/>Not delivered:<br/>${who(c.undeliverable)}` : ""}
+  </div>`;
+}
 
 function escapeHtml(s: string): string {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

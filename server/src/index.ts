@@ -5,7 +5,7 @@ import { runDuePosts } from "./lib/social-schedule";
 import { runAndDeliverBrief } from "./lib/brief";
 import { runStormScan } from "./lib/storm-agent";
 import { scanAndQueue } from "./lib/social-agent";
-import { draftNewsletter, saveDraft, loadDraft, sendNewsletterDraft, confirmedSubscriberCount } from "./lib/newsletter";
+import { draftNewsletter, saveDraft, loadDraft, startNewsletterSend, resumeNewsletterDeliveries, deliveryOpen, confirmedSubscriberCount } from "./lib/newsletter";
 import { notifyMark, reviewUrl } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
 import { runGuidesPrerender } from "./lib/prerender-guides";
@@ -67,6 +67,9 @@ app.listen(port, "0.0.0.0", () => {
   } else {
     scheduleWeeklyMarketing();
   }
+  // Always on, dev mirror included: a hand-started Approve & Send needs its restart-resume and
+  // its one retry wherever it runs. With no open delivery ledger this is two small reads.
+  scheduleNewsletterDelivery();
   // Push-channel health. Prod only: the dev mirror shares Mark's inbox, and a
   // dev box with no subscribers is normal, not a fault.
   if (process.env["DISABLE_PUSH_HEALTH"] === "1") {
@@ -398,17 +401,10 @@ function scheduleWeeklyMarketing() {
             const draft = await loadDraft(lang);
             const freshEnough = draft && Date.now() - Date.parse(draft.generatedAt) < 8 * 86_400_000;
             if (draft && draft.status === "pending" && freshEnough) {
-              const result = await sendNewsletterDraft(draft, "https://stillafloatcruising.com");
-              draft.status = "sent";
-              draft.sentAt = new Date().toISOString();
-              await saveDraft(draft);
-              logger.info({ subject: draft.subject, lang, ...result }, "Weekly newsletter AUTO-SENT (Friday fallback)");
-              void notifyMark({
-                title: `📬 Newsletter auto-sent ${lang.toUpperCase()} (${result.sent}/${result.total})`,
-                body: draft.subject,
-                url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
-                tag: "newsletter-review",
-              });
+              // Paced + bounce-checked in the background; the delivery worker pushes Mark the
+              // TRUE delivered count (the old "sent/total" here counted bounced mail as sent).
+              const started = await startNewsletterSend(draft, { auto: true });
+              logger.info({ subject: draft.subject, lang, ...started }, "Weekly newsletter AUTO-SEND started (Friday fallback)");
             }
           }
         }
@@ -417,6 +413,7 @@ function scheduleWeeklyMarketing() {
         // founding list); ES self-activates on its first confirmed subscriber.
         for (const lang of ["en", "es"] as const) {
           if (lang === "es" && (await confirmedSubscriberCount("es")) === 0) continue;
+          if (deliveryOpen(await loadDraft(lang))) continue; // last issue still owes someone a retry
           const draft = await draftNewsletter(lang);
           await saveDraft(draft);
           logger.info({ subject: draft.subject, lang }, "Weekly newsletter draft complete");
@@ -435,6 +432,22 @@ function scheduleWeeklyMarketing() {
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
   logger.info({ runHour, tz: TZ }, "Weekly marketing scheduler active — Mon social scan / Tue commentary / Thu newsletter");
+}
+
+// ── Newsletter delivery resume ───────────────────────────────────────────────
+// A newsletter now goes out one email every 45s, so a send outlives deploy restarts and its one
+// retry comes an hour later. The ledger on the draft is the truth; this just keeps it moving.
+function scheduleNewsletterDelivery() {
+  const tick = async () => {
+    try {
+      await resumeNewsletterDeliveries();
+    } catch (err) {
+      logger.error({ err }, "Newsletter delivery resume tick failed");
+    }
+  };
+  setTimeout(() => { tick().catch(() => {}); }, 90_000);
+  setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
+  logger.info("Newsletter delivery scheduler active — resumes interrupted sends, runs the one retry");
 }
 
 // ── Storm-alert scan scheduler ────────────────────────────────────────────────
