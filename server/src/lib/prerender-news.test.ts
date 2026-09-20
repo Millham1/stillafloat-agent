@@ -19,7 +19,9 @@ import {
   hubPageHtml,
   hubRailHtml,
   isNoindex,
+  pickRelated,
   railHubs,
+  relatedTerms,
   renderParagraphs,
   sitemapXml,
   storyPageHtml,
@@ -376,5 +378,50 @@ describe("depth floor", () => {
     const xml = sitemapXml([deep, s]);
     assert.match(xml, new RegExp(storySlug(deep)));
     assert.doesNotMatch(xml, new RegExp(storySlug(s)));
+  });
+});
+
+// --- related stories pick by SUBJECT, not recency (audit 2026-09-20, task 6a9c9968) ---
+// Every Carnival story linked to the same three — the three NEWEST in the hub — because the
+// old selection was filter(sameHub).slice(0,3) over a newest-first list. 64 of 67 Carnival
+// pages got no sibling link, and a Manhattan-terminal story pointed at two Galveston stories.
+describe("related stories", () => {
+  it("relatedTerms drops words that carry no signal inside a cruise hub", () => {
+    const t = relatedTerms("Carnival Jubilee adds Galveston sailings for 2028");
+    assert.ok(t.has("jubilee") && t.has("galveston"), "keeps the ship and the port");
+    assert.ok(!t.has("carnival"), "the line name is in every title in the hub");
+    assert.ok(!t.has("sailings"), "generic cruise vocabulary carries no signal");
+  });
+
+  it("pickRelated prefers a shared subject over a newer story", () => {
+    const story = { id: "a", title: "Carnival Venezia guests warned about the Manhattan terminal" };
+    const pool = [
+      { id: "n1", title: "Carnival Jubilee adds Galveston sailings for 2028" },
+      { id: "n2", title: "Carnival Miracle guests told to skip early arrival" },
+      { id: "n3", title: "Carnival Tropicale bookings open, Galveston debut" },
+      { id: "m1", title: "Manhattan terminal construction closes a lane" },
+    ];
+    const got = pickRelated(story, pool, 3).map((s) => s.id);
+    assert.equal(got[0], "m1", "the Manhattan story shares the subject and must lead");
+  });
+
+  it("pickRelated never returns the story itself and still fills when nothing matches", () => {
+    const story = { id: "a", title: "Zzzz qqqq wwww" };
+    const pool = [{ id: "a", title: "Zzzz qqqq wwww" }, { id: "b", title: "Unrelated one" },
+                  { id: "c", title: "Unrelated two" }];
+    const got = pickRelated(story, pool, 3).map((s) => s.id);
+    assert.ok(!got.includes("a"), "must never link to itself");
+    assert.deepEqual(got, ["b", "c"], "falls back to newest-first so a page is never linkless");
+  });
+
+  it("pickRelated spreads links instead of pooling them on the newest three", () => {
+    const pool = [
+      { id: "1", title: "Jubilee Galveston terminal" }, { id: "2", title: "Miracle early arrival" },
+      { id: "3", title: "Tropicale Galveston debut" }, { id: "4", title: "Venezia Manhattan terminal" },
+      { id: "5", title: "Elation itinerary change" },
+    ];
+    const linked = new Set<string>();
+    for (const s of pool) for (const r of pickRelated(s, pool, 3)) linked.add(r.id as string);
+    assert.ok(linked.size >= 4, `subject-based linking must reach more than the newest 3 (reached ${linked.size})`);
   });
 });

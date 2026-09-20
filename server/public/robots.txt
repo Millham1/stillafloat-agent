@@ -14,3 +14,4 @@ Disallow: /under-construction.html
 
 Sitemap: https://stillafloatcruising.com/sitemap.xml
 Sitemap: https://stillafloatcruising.com/news-sitemap.xml
+Sitemap: https://stillafloatcruising.com/guides-sitemap.xml
