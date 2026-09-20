@@ -266,6 +266,51 @@ function hreflangLinks(slug: string, lang: Lang): string {
 // ── story detail page ────────────────────────────────────────────────────────
 // Chrome/styles lifted from the existing story.html so the static pages look
 // identical to what the JS page rendered.
+/**
+ * Pick the stories to link from one story, by SUBJECT rather than by recency.
+ *
+ * Audit 2026-09-20 (task 6a9c9968): every Carnival story linked to the same three stories —
+ * the three NEWEST in that hub — because the selection was `stories.filter(sameHub).slice(0, 3)`
+ * and `stories` arrives newest-first. So 64 of 67 Carnival pages received no sibling link at all,
+ * the link equity pooled on whichever three happened to be latest, and the links said nothing
+ * about subject: a Venezia story about a Manhattan terminal pointed at two Galveston stories.
+ *
+ * Now candidates are scored on shared TITLE terms — ship names, ports, themes — after removing
+ * words that carry no signal inside a cruise-news hub ("cruise", "carnival", "guests"...). A
+ * story with nothing in common falls back to the most recent, so every page still gets links.
+ */
+const RELATED_STOPWORDS = new Set([
+  "cruise", "cruises", "cruising", "ship", "ships", "guests", "guest", "passengers", "sailing",
+  "sailings", "line", "lines", "news", "will", "with", "from", "that", "this", "after", "before",
+  "into", "your", "what", "when", "have", "been", "more", "than", "over", "they", "them", "their",
+  "about", "could", "would", "should", "carnival", "royal", "caribbean", "norwegian", "princess",
+  "holland", "america", "celebrity", "virgin", "disney",
+]);
+
+export function relatedTerms(title: string | undefined): Set<string> {
+  const out = new Set<string>();
+  for (const w of String(title ?? "").toLowerCase().match(/[a-z]{4,}/g) ?? []) {
+    if (!RELATED_STOPWORDS.has(w)) out.add(w);
+  }
+  return out;
+}
+
+export function pickRelated<T extends { id?: string; title?: string }>(
+  story: T, candidates: readonly T[], limit = 3,
+): T[] {
+  const mine = relatedTerms(story.title);
+  const scored = candidates
+    .filter((c) => c.id !== story.id)
+    .map((c, i) => {
+      let overlap = 0;
+      for (const w of relatedTerms(c.title)) if (mine.has(w)) overlap++;
+      return { c, overlap, i };
+    });
+  // subject first; among equals keep the newest (candidates arrive newest-first)
+  scored.sort((a, b) => b.overlap - a.overlap || a.i - b.i);
+  return scored.slice(0, limit).map((s) => s.c);
+}
+
 const STORY_CSS = `:root{--bg:#07111f;--panel:rgba(9,18,34,.84);--border:rgba(255,255,255,.10)}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right, rgba(0,119,182,.18), transparent 24%),linear-gradient(to bottom,#040b16 0%,#071523 30%,#0c2035 100%);color:white;font-family:Poppins,sans-serif}.story-page-header{position:relative;height:184px;width:100%}.story-shell{max-width:1100px;margin:auto;padding:0 24px 80px}.hero{width:100%;aspect-ratio:1392/418;max-height:480px;border-radius:34px;overflow:hidden;margin:6px 0 0;background:url('/assets/images/cliffnotes-hero-art.png') center center/cover no-repeat;border:1px solid rgba(255,255,255,.08);box-shadow:0 28px 70px rgba(0,0,0,.42)}.story-card{position:relative;z-index:5;width:100%;margin:20px auto 0;border-radius:34px;background:var(--panel);backdrop-filter:blur(14px);border:1px solid var(--border);overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.45)}.story-image{width:100%;max-height:460px;object-fit:cover;display:block}.story-content{padding:38px}.badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:rgba(93,255,154,.12);border:1px solid rgba(93,255,154,.22);color:#bdfdd3;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:22px}.story-title{font-size:clamp(34px,5vw,64px);line-height:1.05;margin:0 0 18px;font-weight:900}.story-meta{color:rgba(255,255,255,.58);margin-bottom:28px;font-weight:700}.story-summary{font-size:20px;line-height:1.8;color:rgba(255,255,255,.88);margin-bottom:34px}.story-longform{margin-top:14px;font-size:17px;line-height:1.8;color:rgba(255,255,255,.9)}.story-longform h2{font-size:24px;font-weight:800;margin:30px 0 12px;color:#fff}.story-longform h3{font-size:20px;font-weight:800;margin:24px 0 10px;color:#fff}.story-longform p{margin:0 0 15px}.story-longform ul{margin:0 0 16px;padding-left:22px}.story-longform li{margin:0 0 8px}.story-longform strong{color:#fff}.story-longform table{width:100%;border-collapse:collapse;margin:8px 0 20px;font-size:15px;display:block;overflow-x:auto}.story-longform th,.story-longform td{text-align:left;padding:9px 11px;border-bottom:1px solid rgba(255,255,255,.14);vertical-align:top}.story-longform th{color:#bdfdd3;text-transform:uppercase;font-size:12px;letter-spacing:.04em}.traveler-impact-panel{margin-top:28px;padding:22px 26px;border-radius:22px;background:rgba(93,255,154,.07);border:1px solid rgba(93,255,154,.18)}.traveler-impact-panel p{margin:8px 0 0;font-size:17px;line-height:1.7;color:rgba(255,255,255,.88)}.tip-label{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#5dff9a}.editorial-panel{margin-top:18px;padding:24px;border-radius:24px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}.editorial-panel .tip-label{color:#7de3ff}.editorial-panel p{margin:8px 0 0;font-size:16px;line-height:1.75;color:rgba(255,255,255,.80);font-style:italic}.actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:30px}.actions a{display:inline-flex;align-items:center;gap:10px;padding:16px 24px;border-radius:999px;text-decoration:none;color:white;font-weight:800;background:linear-gradient(180deg,#0e4672,#0a2748);border:1px solid rgba(102,215,255,.24)}.note{margin-top:30px;padding:18px 22px;border-radius:20px;background:rgba(255,255,255,.05);color:rgba(255,255,255,.70);line-height:1.7;font-size:14px}.related{width:100%;margin:34px auto 0}.related h2{font-size:20px;margin:0 0 14px}.related a{display:block;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.10);color:white;text-decoration:none;font-weight:700;line-height:1.4}.related a:hover{color:#5dff9a}footer{text-align:center;padding:40px 20px 60px;color:rgba(255,255,255,.52)}@media(max-width:1200px){.story-page-header{height:150px}}@media(max-width:860px){.story-page-header{height:74px}.story-card{margin-top:-16px;width:96%}.story-content{padding:26px}}`;
 
 const L = {
@@ -957,16 +1002,16 @@ export async function runNewsPrerender(): Promise<{ stories: number; pages: numb
   for (const story of stories) {
     const slug = storySlug(story);
     const myHubs = NEWS_HUBS.filter((h) => (hubAssignmentsForPages[String(story.id)] ?? []).includes(h.slug));
-    // Related stories prefer the SAME LINE — a reader on a Carnival story is
-    // more likely to want another Carnival story than another "Travel
-    // Intelligence" one — then fall back to category, then to anything.
-    const sameLine = myHubs.length
-      ? stories.filter((r) => r.id !== story.id && myHubs.some((h) => (hubAssignmentsForPages[String(r.id)] ?? []).includes(h.slug))).slice(0, 3)
+    // Same LINE first (a reader on a Carnival story wants another Carnival story),
+    // then category, then anything — but WITHIN each pool pick by SUBJECT, not by
+    // recency. slice(0,3) over a newest-first list gave all 67 Carnival stories the
+    // same three links and left 64 of them with no sibling link at all.
+    const linePool = myHubs.length
+      ? stories.filter((r) => r.id !== story.id && myHubs.some((h) => (hubAssignmentsForPages[String(r.id)] ?? []).includes(h.slug)))
       : [];
-    const sameCategory = stories.filter((r) => r.id !== story.id && r.category === story.category).slice(0, 3);
-    const rel = sameLine.length >= 2 ? sameLine
-      : sameCategory.length ? sameCategory
-      : stories.filter((r) => r.id !== story.id).slice(0, 3);
+    const categoryPool = stories.filter((r) => r.id !== story.id && r.category === story.category);
+    const pool = linePool.length >= 2 ? linePool : categoryPool.length ? categoryPool : stories;
+    const rel = pickRelated(story, pool, 3);
     const ov = story.id ? seoOverrides[story.id] : undefined;
     await writeFile(path.join(enDir, `${slug}.html`), storyPageHtml(story, slug, "en", rel, ov, myHubs));
     await writeFile(path.join(esDir, `${slug}.html`), storyPageHtml(story, slug, "es", rel, ov, myHubs));
