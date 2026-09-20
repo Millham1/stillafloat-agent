@@ -40,6 +40,36 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
   return sendMail({ to, subject, html, fromName: "Still Afloat", fromAddr: "noreply@stillafloatcruising.com" });
 }
 
+/**
+ * Storm mail goes out ONE AT A TIME with a gap between sends.
+ *
+ * 2026-09-18: the Friday newsletter pushed 11 emails through the domain alias in 18 seconds.
+ * Zoho — the alias's outbound relay — accepted ten, refused the eleventh with "550 5.4.6 Unusual
+ * sending activity detected", then BLOCKED mark@stillafloatcruising.com outright. The newsletter
+ * was paced in response; these two loops were not, and they send to the SAME 11 confirmed
+ * opted-in subscribers. Worse, they fire on weather rather than on a schedule Mark controls, so
+ * the next named storm would have re-blocked the mailbox unattended.
+ *
+ * 45s x 11 recipients is about eight minutes for a full storm send — immaterial for a weather
+ * advisory, and the alternative is not "faster", it is "blocked". STORM_PACE_MS is separate from
+ * NEWSLETTER_PACE_MS so an urgent case can be tuned without touching the weekly send; 0 disables
+ * the gap (tests, and a single-recipient send never waits at all).
+ */
+export async function sendPaced<T>(
+  list: readonly T[],
+  send: (item: T) => Promise<boolean>,
+  opts: { paceMs?: number; sleep?: (ms: number) => Promise<void> } = {},
+): Promise<{ sent: number; failed: number }> {
+  const paceMs = opts.paceMs ?? Number(process.env["STORM_PACE_MS"] ?? "45000");
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  let sent = 0, failed = 0;
+  for (let i = 0; i < list.length; i++) {
+    (await send(list[i] as T)) ? sent++ : failed++;
+    if (i < list.length - 1 && paceMs > 0) await sleep(paceMs);
+  }
+  return { sent, failed };
+}
+
 // NOTE (2026-07-06): the email review nudge was REMOVED by Mark's directive —
 // agents never email him actions. Review requests now flow through the unified
 // action queue (lib/actions.ts → one notification → inline brief buttons).
@@ -79,15 +109,16 @@ export async function emailSubscribers(a: AlertRow): Promise<{ sent: number; fai
   const subject = a.headline || `Storm update: ${a.name}`;
   const bodyHtml = markToHtml(a.body_md || "");
   const ships = await affectedShips(a.id);
-  let sent = 0, failed = 0;
-  for (const sub of list) {
+  const started = Date.now();
+  const { sent, failed } = await sendPaced(list, (sub) => {
     const html = stormAlertEmailHtml({
       headline: a.headline ?? a.name, name: a.name, groundsLabel: labelGrounds(a.affected_grounds), bodyHtml,
       ships, unsubscribeUrl: unsubscribeUrl(sub.email, siteBase()), base: siteBase(), lang: emailLang(sub.lang),
     });
-    (await sendEmail(sub.email, subject, html)) ? sent++ : failed++;
-  }
-  logger.info({ alert: a.name, sent, failed, ships: ships.length }, "storm-send: subscriber send complete");
+    return sendEmail(sub.email, subject, html);
+  });
+  logger.info({ alert: a.name, sent, failed, ships: ships.length, tookMs: Date.now() - started },
+    "storm-send: subscriber send complete");
   return { sent, failed, total: list.length };
 }
 
@@ -112,14 +143,15 @@ export async function emailAllClear(a: AllClearRow): Promise<{ sent: number; fai
   // The ships that were watched for this storm, released or not: a reader who
   // followed one wants to see her name on the all-clear too.
   const ships = await affectedShips(a.id, { includeReleased: true });
-  let sent = 0, failed = 0;
-  for (const sub of list) {
+  const started = Date.now();
+  const { sent, failed } = await sendPaced(list, (sub) => {
     const html = allClearEmailHtml({
       headline: subject, name: a.name, groundsLabel: labelGrounds(a.affected_grounds), bodyHtml,
       ships, unsubscribeUrl: unsubscribeUrl(sub.email, siteBase()), base: siteBase(), lang: emailLang(sub.lang),
     });
-    (await sendEmail(sub.email, subject, html)) ? sent++ : failed++;
-  }
-  logger.info({ alert: a.name, sent, failed, ships: ships.length }, "storm-send: all-clear send complete");
+    return sendEmail(sub.email, subject, html);
+  });
+  logger.info({ alert: a.name, sent, failed, ships: ships.length, tookMs: Date.now() - started },
+    "storm-send: all-clear send complete");
   return { sent, failed, total: list.length };
 }
