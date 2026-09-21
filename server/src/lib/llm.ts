@@ -26,6 +26,9 @@
 // commentary agent already spoke this wire format by hand; this generalises it.
 
 import { logger } from "./logger";
+import {
+  routeLocally, shadowLocally, localText, localJson, shadowCompare,
+} from "./llm-local";
 
 const ENDPOINT = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
@@ -52,6 +55,12 @@ export interface LlmRequest {
   cheap?: boolean;
   maxTokens?: number;
   timeoutMs?: number;
+  /**
+   * Short stable label for this call site, e.g. "news.relevance".
+   * Routing to the local box is opt-in PER JOB via LLM_LOCAL_JOBS, and shadow
+   * comparison via LLM_SHADOW_JOBS. A call with no job never routes locally.
+   */
+  job?: string;
 }
 
 export interface LlmJsonRequest extends LlmRequest {
@@ -163,6 +172,17 @@ async function post(body: Record<string, unknown>, timeoutMs: number): Promise<A
 
 /** Prose in, prose out. Returns the concatenated text blocks, trimmed. */
 export async function llmText(req: LlmRequest): Promise<string> {
+  if (routeLocally(req.job)) {
+    try {
+      return await localText(req);
+    } catch (err) {
+      logger.warn(
+        { job: req.job, err: err instanceof Error ? err.message : String(err) },
+        "local LLM failed, falling back to Anthropic",
+      );
+    }
+  }
+
   const payload = await post(
     {
       model: modelFor(req),
@@ -174,11 +194,14 @@ export async function llmText(req: LlmRequest): Promise<string> {
     req.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   );
 
-  return (payload.content ?? [])
+  const text = (payload.content ?? [])
     .filter((b) => b.type === "text")
     .map((b) => b.text ?? "")
     .join("")
     .trim();
+
+  if (shadowLocally(req.job)) shadowCompare(req.job as string, text, () => localText(req));
+  return text;
 }
 
 /**
@@ -189,6 +212,17 @@ export async function llmText(req: LlmRequest): Promise<string> {
  * block is read, so there is nothing to parse and nothing to fail on.
  */
 export async function llmJson<T = Record<string, unknown>>(req: LlmJsonRequest): Promise<T> {
+  if (routeLocally(req.job)) {
+    try {
+      return await localJson<T>(req);
+    } catch (err) {
+      logger.warn(
+        { job: req.job, err: err instanceof Error ? err.message : String(err) },
+        "local LLM failed, falling back to Anthropic",
+      );
+    }
+  }
+
   const payload = await post(
     {
       model: modelFor(req),
@@ -219,5 +253,7 @@ export async function llmJson<T = Record<string, unknown>>(req: LlmJsonRequest):
   if (!block || block.input === undefined || block.input === null) {
     throw new Error("Anthropic returned no structured result");
   }
-  return block.input as T;
+  const result = block.input as T;
+  if (shadowLocally(req.job)) shadowCompare(req.job as string, result, () => localJson<T>(req));
+  return result;
 }
