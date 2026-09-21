@@ -1,0 +1,625 @@
+{
+  "ship": "Carnival Tropicale",
+  "byArchetype": {
+    "first-couple-ocean-steady": {
+      "label_es": "Pareja por primera vez, quiere ver el océano, estómago sensible",
+      "recommendations_es": [
+        {
+          "cabin": "4314",
+          "rank": 1,
+          "hook": "Balcón con vista al océano, estabilidad a mitad de barco para las mañanas difíciles",
+          "reason": "El camarote 4314 te da una vista real del océano para despertar, y está a mitad de barco en el lado de babor donde el movimiento es más suave — eso importa cuando uno de ustedes se siente un poco mareado. También estás en la Cubierta 4, abajo, lo que mantiene el movimiento aún más estable. Estar en medio del barco significa que tendrás camarotes tranquilos a ambos lados, así que tu sueño ligero no se interrumpirá por los pasos de la madrugada o el ruido que tendrías cerca de los ascensores o en las áreas más movidas hacia la proa."
+        },
+        {
+          "cabin": "4330",
+          "rank": 2,
+          "hook": "Suite océano con espacio premium y estabilidad de mitad de barco garantizada",
+          "reason": "Es un paso hacia arriba en tamaño — una Family Harbor Ocean View Suite — y está a mitad de barco, así que la estabilidad está ahí para tu viajero mareado. El verdadero bonus es el océano que ves al despertar cada mañana, que es lo que buscas. Tienes un poco más de espacio que un camarote estándar, y nuevamente, la ubicación a mitad de barco en la Cubierta 4 mantiene lejos tanto el movimiento como el ruido."
+        },
+        {
+          "cabin": "4328",
+          "rank": 3,
+          "hook": "Camarote océano a mitad de barco sin el precio premium",
+          "reason": "Mismo setup a mitad de barco con vista al océano que el 4314, pero tal vez quieras una segunda opción por si el 4314 está ocupado. Es un Family Harbor Ocean View estándar, misma ubicación estable, mismo entorno tranquilo, misma vista del agua al despertar. La diferencia es el número de camarote, no la calidad — cualquiera funciona igual de bien para ustedes."
+        },
+        {
+          "cabin": "10314",
+          "rank": 4,
+          "hook": "Vista océano en cubierta alta para ver el amanecer más tranquilo y menos concurrido",
+          "reason": "Subir a la Cubierta 10 te aleja del bullicio principal del barco y más arriba, así tu vista al océano se siente más privada — bien si ustedes quieren disfrutar esa vista matinal sin el ruido de la cubierta de piscina filtrándose. Estás a mitad de barco nuevamente, así que el movimiento sigue siendo suave. La compensación es que estás unos cuantos pisos arriba de la acción, lo que algunas parejas prefieren y otras no, así que esto es tu respaldo si quieres sentirte un poco más apartado."
+        },
+        {
+          "cabin": "11312",
+          "rank": 5,
+          "hook": "Balcón océano en cubierta alta más tranquila, estabilidad a mitad de barco incluida",
+          "reason": "La Cubierta 11 es lo suficientemente alta para estar lejos de la multitud pero no tan alta que te sientas aislado. Este es un verdadero balcón (no solo una vista), así que tienes tu propio pedazo privado de océano para observar — nadie juzga tu pijama en el mar. La posición a mitad de barco mantiene las cosas estables para tu pareja mareada, y la cubierta alta significa menos camarotes directamente arriba, así que menos pasos matinales que interrumpan el sueño ligero."
+        },
+        {
+          "cabin": "5276",
+          "rank": 6,
+          "hook": "Balcón cove con contacto real del océano y movimiento suave a mitad de barco",
+          "reason": "Un Cove Balcony cuelga bajo sobre el agua, así que te sientes genuinamente cerca del océano cuando despiertas — es una vista íntima, no distante. Cubierta 5 a mitad de barco significa que la estabilidad está ahí para tu pareja. La salvedad es que los botes salvavidas cuelgan arriba (están en las cubiertas sin camarotes), así que tu vista del techo está parcialmente bloqueada por la línea del pescante — si eso te molesta, sáltalo, pero muchas parejas no lo notan o no les importa, y la compensación por estar tan cerca del agua vale la pena para mucha gente."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "8280",
+          "reason": "Este es un Havana Cabana en la Cubierta 8, lo que significa sin vista al océano — estarías mirando el paseo de la promenade en su lugar. Específicamente quieres despertar viendo el océano, y este camarote no lo entrega."
+        },
+        {
+          "cabin": "4456",
+          "reason": "Aunque es un interior en una cubierta estable, el espacio público está directamente arriba (sin camarotes), lo que significa sillas arrastrándose y pasos empezando temprano en la mañana. Dado que ambos duermen ligero, esto será un problema."
+        },
+        {
+          "cabin": "12330",
+          "reason": "La Cubierta 12 está muy arriba y pierde la estabilidad a mitad de barco — esta cubierta se mueve más en agua agitada, lo que importa para tu pareja que se marea. El camarote en sí está bien, pero la compensación del movimiento no vale la pena."
+        }
+      ]
+    },
+    "couple-ocean-balcony-treat": {
+      "label_es": "Pareja dándose un gusto con un balcón espectacular",
+      "recommendations_es": [
+        {
+          "cabin": "9322",
+          "rank": 1,
+          "hook": "Balcón a mitad de barco mirando al agua, sin nada arriba ni abajo",
+          "reason": "Este es un balcón de verdad frente al océano sin nada directamente sobre tu cabeza — sin pasarela pública que mande ruido de sillas al amanecer — y sin cabinas debajo tampoco, así que no vas a escuchar movimiento de otros pasajeros. Eso te deja con la vista tranquila sin interrupciones que buscas, sin los efectos secundarios de estar bajo el tráfico de gente."
+        },
+        {
+          "cabin": "10350",
+          "rank": 2,
+          "hook": "Balcón amplio en un rincón tranquilo a mitad de barco, lejos del bullicio",
+          "reason": "Estás a mitad de barco, lo que te mantiene lejos de las multitudes de proa y los ascensores, y el balcón amplio te da espacio real para asentarte con vista. Océano a la vista, sin obstrucciones, sin cabinas apiladas directamente arriba o debajo que trasladen ruido o pasos a tu camarote."
+        },
+        {
+          "cabin": "11355",
+          "rank": 3,
+          "hook": "Balcón amplio, berth tranquilo a mitad de barco mirando el agua abierta",
+          "reason": "Otro balcón amplio a mitad de barco con línea de visión limpia al océano y distancia de las zonas más movidas del barco. Sin ruido que filtre desde arriba o abajo significa que podés disfrutar una mañana o tarde tranquila en tu propia cubierta privada."
+        },
+        {
+          "cabin": "9378",
+          "rank": 4,
+          "hook": "Balcón con vista al océano en la zona tranquila a mitad de barco",
+          "reason": "Un balcón estándar pero bien posicionado en el medio del barco, lejos de ascensores y actividad de madrugada. Tenés tu vista al océano sin pagar el precio premium, y la ubicación mantiene el ruido no deseado a distancia."
+        },
+        {
+          "cabin": "12350",
+          "rank": 5,
+          "hook": "Balcón amplio a mitad de barco, apartado del tráfico de la cubierta arriba",
+          "reason": "Balcón amplio con vista al océano en un área a mitad de barco que queda debajo de espacio público, no de cabinas — eso significa paz durante el día sin vecinos arriba. Buen tamaño, buena línea de visión, buena separación de los canales principales del barco."
+        },
+        {
+          "cabin": "15322",
+          "rank": 6,
+          "hook": "Balcón amplio mirando el océano en un rincón tranquilo sin tráfico",
+          "reason": "Balcón amplio a mitad de barco con espacio público arriba (sin tráfico de cabinas sobre tu cabeza) y sin vecinos debajo, lo que te da un berth más tranquilo que la mayoría. Vista real al océano, soledad real, sin el precio de las suites."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "8280",
+          "reason": "Este es un camarote de pasarela, no una vista al océano — estarías mirando la pasarela pública del barco y tráfico de gente, no el mar. Para una pareja dándose un gusto con paz y una vista real al océano, esto no cumple ninguno de los dos."
+        },
+        {
+          "cabin": "9220",
+          "reason": "Balcón mirando hacia proa cerca de la proa, lo que te pone cerca de ascensores y las áreas principales de reunión del barco. El ruido y la actividad no van a ser la tranquilidad que buscas."
+        },
+        {
+          "cabin": "5251",
+          "reason": "Un Cove Balcony en Cubierta 5 queda bajo sobre el agua con la línea de pescante del bote salvavidas corriendo directamente arriba — esa obstrucción va a enmarcar tu vista y limitar la apertura que querés de un balcón, y queda bien por debajo de la propiedad inmobiliaria de primera del barco."
+        }
+      ]
+    },
+    "anniversary-suite-splurge": {
+      "label_es": "Aniversario sin límite de presupuesto",
+      "recommendations_es": [
+        {
+          "cabin": "17209",
+          "rank": 1,
+          "hook": "La mejor suite del barco—proa, vista al océano, acceso al spa",
+          "reason": "La cabina 17209 es una Presidential Suite del Carnival Excel en la Cubierta 17, la más alta del barco. Tienes vistas reales al océano, un espacio amplio digno de un aniversario, y acceso completo al Spa Cloud 9—todos los extras del nivel superior. Es la cabina que dice que estás celebrando con estilo."
+        },
+        {
+          "cabin": "9503",
+          "rank": 2,
+          "hook": "Suite orientada a popa con espacio y vista al océano detrás",
+          "reason": "Esta Aft Suite del Carnival Excel en la Cubierta 9 te da un balcón real con vista al océano y la estela del barco, más el espacio y los privilegios de suite que buscas. No hay cabinas debajo, así que no te sentirás apretujado. Es una excelente segunda opción si la 17209 está ocupada."
+        },
+        {
+          "cabin": "9357",
+          "rank": 3,
+          "hook": "Suite a mitad del barco con balcón al océano y amenidades de suite",
+          "reason": "Una Suite del Carnival Excel con balcón real frente al océano en mitad de la Cubierta 9. Tienes el espacio y la vista sin pagar la prima absoluta de la cubierta superior, y los privilegios de suite siguen intactos. Sin cabinas debajo significa que no estás apiñado."
+        },
+        {
+          "cabin": "9284",
+          "rank": 4,
+          "hook": "Suite al océano en proa—observa el horizonte desde tu balcón privado",
+          "reason": "Esta Ocean Suite en proa de la Cubierta 9 tiene un balcón real y mucho espacio. La posición en proa significa que ves el acercamiento del barco a los puertos y el océano abierto primero. Es una verdadera experiencia de suite un escalón por debajo del nivel Excel."
+        },
+        {
+          "cabin": "11282",
+          "rank": 5,
+          "hook": "Suite en proa con vistas al océano y amenidades completas",
+          "reason": "Una Ocean Suite en la Cubierta 11 con vistas reales al océano y un balcón para despertar cada mañana. Está en proa, así que tienes esa sensación de avanzar hacia lugares nuevos. La designación de suite trae los extras que quieres para un aniversario sin el precio de la cubierta superior."
+        },
+        {
+          "cabin": "10363",
+          "rank": 6,
+          "hook": "Suite a mitad del barco con balcón—tu rincón privado al océano con espacio",
+          "reason": "Esta Ocean Suite en la Cubierta 10 ofrece un balcón real y espacio de suite en mitad del barco. Tienes todo lo que quieres—espacio, vista al océano, y amenidades—sin la prima de proa o popa, lo que libera presupuesto si quieres gastar en extras en otro lado."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "5235",
+          "reason": "Este Cove Balcony está bajo la línea de botes salvavidas en la Cubierta 5, lo que obstruirá parcialmente tu vista del océano—pierdes la línea clara que estás pagando. Para un aniversario, quieres el horizonte despejado."
+        },
+        {
+          "cabin": "8250",
+          "reason": "Una Havana Cabana Suite en la Cubierta 8 con solo vista al paseo, no a un balcón al océano real—estarías mirando el pasillo del barco, no el mar. Esto no cumple con la experiencia frente al océano que pediste."
+        },
+        {
+          "cabin": "14210",
+          "reason": "Aunque es una Corner Suite en la Cubierta 14, la nota advierte que no hay cabinas arriba—eso es espacio público, lo que significa que escucharás sillas de cubierta rasguñando temprano en la mañana. Por la prima que estás pagando, no deberías tolerar ese ruido."
+        }
+      ]
+    },
+    "family-action-boardwalk": {
+      "label_es": "Familia, chicos, quiere estar donde pasa todo",
+      "recommendations_es": [
+        {
+          "cabin": "8280",
+          "rank": 1,
+          "hook": "Cabaña en la promenade a pasos de piscinas y shows",
+          "reason": "El camarote 8280 es una Havana Cabana en la Cubierta 8 proa, justo donde se concentran las familias — las piscinas, el buffet, el escenario de shows y actividades. Vas a escuchar la acción, verla por la ventana de la promenade, y tus hijos pueden volver al camarote en segundos cuando se cansen. La vista a la promenade significa que eres parte de la escena sin estar mirando una pared en blanco."
+        },
+        {
+          "cabin": "9243",
+          "rank": 2,
+          "hook": "Balcón con vista al área principal de piscinas",
+          "reason": "Este camarote con balcón en la Cubierta 9 proa te da una vista real del océano y un lugar privado para observar el área principal de piscinas abajo — perfecto para una familia que no le importa el movimiento del día. Tienes la energía sin estar confinado en una promenade, y los chicos pueden ver la acción con seguridad desde tu espacio. La posición de proa significa que estás en el corazón social del barco."
+        },
+        {
+          "cabin": "10243",
+          "rank": 3,
+          "hook": "Balcón con vista al océano, cerca de actividades familiares",
+          "reason": "Los camarotes con balcón en la Cubierta 10 proa como el 10243 están más arriba, así que ves tanto el océano como una línea de vista excelente al área de piscinas y los puntos principales de reunión. No estás metido en un camarote a mitad o popa — estás de proa donde está la energía, con un balcón de verdad para respirar. Cuatro personas duermen bien en estas habitaciones, y estás a minutos de la acción todo el día."
+        },
+        {
+          "cabin": "9251",
+          "rank": 4,
+          "hook": "Junior balcón cerca del pulso del barco",
+          "reason": "Este Junior Balcony está de proa en la Cubierta 9, así que aunque sea un espacio exterior más pequeño, estás posicionado exactamente donde se agrupan las familias. El balcón junior sigue siendo un borde exterior privado con vista al océano sin el costo de una suite completa. De proa significa que no te sentirás aislado — hay un zumbido constante de actividad cerca."
+        },
+        {
+          "cabin": "8246",
+          "rank": 5,
+          "hook": "Cabaña en la promenade en el corazón de la cubierta",
+          "reason": "Otra excelente Havana Cabana en la Cubierta 8 proa, con el mismo acceso directo a piscinas, shows y tráfico del pasillo que hace que esta zona se sienta viva. La ventana de la promenade significa que no estás sellado — gente y luz pasan constantemente, lo que atrae a familias que quieren sentir el ritmo del barco. Los chicos aprenden el plano rápido y las rutas a actividades se vuelven naturales."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "4372",
+          "reason": "Family Harbor Interior en la Cubierta 4 a mitad significa sin ventana, sin vista, y estás bajo en el barco lejos de donde se reúnen las familias — las piscinas y shows están varias cubiertas arriba. Pasarías el día subiendo escaleras hacia la acción en lugar de estar en medio de ella."
+        },
+        {
+          "cabin": "5243",
+          "reason": "Cloud 9 Spa Cove Balcony en la Cubierta 5 a mitad tiene una obstrucción parcial de la línea de botes salvavidas arriba, lo que mata la vista y limita cuánto usas el balcón. Además no está posicionado cerca de las zonas principales de actividad familiar, así que pierdes la energía que buscas."
+        },
+        {
+          "cabin": "15408",
+          "reason": "Ocean Suite en la Cubierta 15 a mitad está demasiado arriba y demasiado tranquilo — estarías lejos de las piscinas, comedor principal, y donde pasa la acción. Además pagas precios de suite cuando querías estar en medio de todo, no mirando desde la distancia."
+        }
+      ]
+    },
+    "family-value-space": {
+      "label_es": "Familia con presupuesto ajustado que necesita espacio",
+      "recommendations_es": [
+        {
+          "cabin": "4362",
+          "rank": 1,
+          "hook": "Family Harbor Interior: cuatro personas, presupuesto contenido, mucho espacio",
+          "reason": "El camarote 4362 es un Family Harbor Interior en la Cubierta 4, diseñado para una familia sin gastar de más. Tienes metros reales para cuatro personas—más que un camarote interior estándar—y el precio se mantiene bajo. Está a mitad de barco, así que los ascensores y la acción principal quedan cerca, y llevar a los chicos a la piscina o un show es rápido."
+        },
+        {
+          "cabin": "4372",
+          "rank": 2,
+          "hook": "Family Harbor Interior con el mismo confort, ubicación diferente a mitad de cubierta",
+          "reason": "Es el mismo tipo de camarote y precio que el 4362, así que obtienes el mismo espacio para tu familia. La diferencia es la posición—el 4372 también está a mitad de barco pero con una ubicación ligeramente distinta en la cubierta. Elige este si el 4362 se agota; el camarote en sí es idéntico."
+        },
+        {
+          "cabin": "4314",
+          "rank": 3,
+          "hook": "Family Harbor con vista al océano: ventana real, sin aumento grande de precio",
+          "reason": "Si quieres gastar un poco más y tener una vista al océano de verdad sin irte a una suite cara, el 4314 lo logra. Sigue siendo Family Harbor así que mantienes buen espacio para cuatro, pero ganas el bonus de despertar mirando el océano en lugar de un pasillo. La ubicación a mitad de barco mantiene todo conveniente."
+        },
+        {
+          "cabin": "4330",
+          "rank": 4,
+          "hook": "Family Harbor Ocean View Suite: más comodidad si el presupuesto lo permite",
+          "reason": "El 4330 es un paso arriba en tamaño y sensación—una suite en lugar de vista al océano estándar—y sigue siendo Family Harbor, así que está pensado para familias. Tienes una vista real al océano y un poco más de espacio. La ubicación a mitad de barco mantiene las comodidades del barco cerca, y si puedes justificar el costo extra, el espacio adicional para cuatro personas vale la pena."
+        },
+        {
+          "cabin": "4358",
+          "rank": 5,
+          "hook": "Family Harbor Interior: otra buena opción a mitad de barco",
+          "reason": "El 4358 completa tus opciones de camarote interior para familias con el mismo espacio confiable y precio que el 4362 y 4372. Tienes un camarote sin pretensiones que funciona para una familia cuidando presupuesto, ubicado a mitad de barco así que nada queda lejos."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "4456",
+          "reason": "Hay espacio público directamente arriba de este camarote—usualmente tumbonas y tránsito constante—lo que significa ruido temprano en la mañana y sonidos de movimiento. Con dos chicos, eso vale la pena evitar a menos que todos duerman profundamente."
+        },
+        {
+          "cabin": "8201",
+          "reason": "Este es un Havana Extended Cabana en la Cubierta 8, que está adelante y está diseñado más para cruceristas adultos. Los camarotes Family Harbor en la Cubierta 4 te dan mejor espacio por tu dinero y están pensados específicamente para familias."
+        }
+      ]
+    },
+    "quiet-retirees-calm": {
+      "label_es": "Jubilados que buscan tranquilidad",
+      "recommendations_es": [
+        {
+          "cabin": "4328",
+          "rank": 1,
+          "hook": "Vista al océano, tranquilidad en el medio — despierta con el agua sin el ruido",
+          "reason": "El camarote 4328 es una Family Harbor Ocean View en el medio del barco, lado de babor, así que tienes una vista real del océano para observar cada mañana sin el tráfico de gente ni el ruido que trae estar al frente o atrás. Está alejado de los ascensores y de las áreas públicas más concurridas arriba y abajo, lo que significa que dormirás toda la noche sin que otros pasajeros te despierten. La vista por sí sola te da algo tranquilo en qué enfocarte cuando despiertas."
+        },
+        {
+          "cabin": "4330",
+          "rank": 2,
+          "hook": "Suite con vista al océano en el rincón más tranquilo del medio — paz con un poco de espacio extra",
+          "reason": "Esta es una Family Harbor Ocean View Suite, en la misma ubicación central que 4328 pero con más espacio para moverte, lo que ayuda a los que duermen ligero a no sentirse apretados ni ansiosos. Sigues teniendo el océano y la misma quietud lejos del flujo principal del barco. Los metros cuadrados extra son una verdadera ventaja cuando intentas descomprimirte después de un día de ruido en el crucero."
+        },
+        {
+          "cabin": "10334",
+          "rank": 3,
+          "hook": "Balcón extendido en una cubierta más alta — tu pequeño rincón privado con vista al océano",
+          "reason": "El 10334 está en el medio de la Cubierta 10, lo que te da un balcón genuinamente espacioso donde puedes salir sin chocar codos con los vecinos. La cubierta más alta significa menos vibración de los motores y menos camarotes apilados directamente alrededor tuyo, lo que suma paz y tranquilidad. Tienes tu propio espacio exterior para relajarte, y la vista desde ese ángulo es más clara que en cubiertas bajas donde el rocío y el casco del barco a veces bloquean el horizonte."
+        },
+        {
+          "cabin": "11334",
+          "rank": 4,
+          "hook": "Balcón en la Cubierta 11 — más alto, más tranquilo, y tu refugio exterior privado",
+          "reason": "A esta altura en el barco, estás por encima de mucha de la conmoción interior y tienes un balcón de verdad para retirarte. La Cubierta 11 significa menos camarotes presionando desde abajo, y la posición central en babor te mantiene alejado de las multitudes del frente y la popa. Los que duermen ligero que tienen su propio balcón frecuentemente duermen mejor solo sabiendo que pueden salir si necesitan aire fresco y quietud."
+        },
+        {
+          "cabin": "15338",
+          "rank": 5,
+          "hook": "Balcón extendido en la Cubierta 15 — nada arriba excepto cielo, nada abajo excepto océano",
+          "reason": "Este balcón extendido está en el lado más tranquilo de la Cubierta 15 sin camarotes directamente encima, lo que elimina el rasguño de sillas y pasos a primera hora de la mañana que molestan en otras habitaciones. La altura y el espacio extendido te dan distancia real del ruido del barco y un refugio exterior genuino. El camarote 15338 es una de las pocas habitaciones donde puedes encontrar verdadera paz sin preocuparte por disturbios desde arriba."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "8280",
+          "reason": "Este Havana Cabana en la Cubierta 8 está en un área adelante y concurrida con flujo constante hacia la piscina cercana y las cubiertas de entretenimiento. Los que duermen ligero encontrarán que la vibración y el tráfico de peatones de las multitudes arriba y alrededor hacen difícil dormir profundamente durante las horas de la mañana."
+        },
+        {
+          "cabin": "4456",
+          "reason": "Aunque es un interior tranquilo en la popa, hay espacio público directamente encima — galera, salón, o pasillo de tripulación — lo que significa que sillas rasguñando y carritos moviéndose temprano en la mañana te despertarán sin importar cuán pacífico fuera el camarote de otra forma."
+        },
+        {
+          "cabin": "5203",
+          "reason": "Este Cove Balcony en la Cubierta 5 está directamente bajo la línea de botes salvavidas, lo que obstruye parte de tu vista al océano y añade desorden visual a lo que debería ser un punto de vista tranquilo por la mañana. Para alguien buscando paz y una vista calma, la obstrucción derrota el propósito del balcón."
+        }
+      ]
+    },
+    "value-hunter-ocean": {
+      "label_es": "Cazador de gangas que aún quiere el mar",
+      "recommendations_es": [
+        {
+          "cabin": "4320",
+          "rank": 1,
+          "hook": "Vista al océano con presupuesto—ahorros reales, amanecer real",
+          "reason": "El Camarote 4320 es una Family Harbor Ocean View que te da una ventana genuina al océano sin el precio de suite. Estás en medio del barco en una cubierta baja donde el precio se mantiene razonable, así que podés estirar más el presupuesto y aún despertar mirando el agua en lugar de la pared del camarote. Este es el compromiso que vale: perdés el espacio extra y los beneficios de una suite, pero mantenés la vista que querías."
+        },
+        {
+          "cabin": "4350",
+          "rank": 2,
+          "hook": "Otra ventana al océano en el medio—mismo valor, un poco más atrás",
+          "reason": "Básicamente es el mismo camarote que el 4320—misma categoría, misma posición, mismo rango de precio. La diferencia es la posición dentro del grupo; el 4350 queda un poco más atrás, lo que es honesto cuando estás eligiendo entre dos opciones idénticas. Elegí este si el 4320 se llena, o si querés ver los dos y elegir el que se sienta bien cuando entres."
+        },
+        {
+          "cabin": "4314",
+          "rank": 3,
+          "hook": "Vista al océano desde la cubierta 4—el lugar adelante para madrugadores",
+          "reason": "El Camarote 4314 está un paso adelante (literalmente) en la misma fila de Family Harbor Ocean View, situado en el extremo delantero de la sección central. Si te gusta estar más cerca de la acción—restaurantes, espectáculos, ascensores—sin pagar por un camarote más grande, esto funciona. Igual tenés la vista al océano y los ahorros de presupuesto; solo estás unos cuantos camarotes más cerca de la proa."
+        },
+        {
+          "cabin": "10306",
+          "rank": 4,
+          "hook": "Camarote con balcón a precio de cubierta media—un respiro raro en la cubierta más alta",
+          "reason": "El Camarote 10306 es un balcón en la cubierta 10, que normalmente es más alto y más caro, pero este es un Balcony regular (no una suite ni tipo extendido), así que mantiene mejor el control de costos de lo que podrías esperar. Estás intercambiando la ventana masiva al océano de una cubierta baja con vista al océano por un balcón privado más pequeño donde podés sentarte afuera—es un tipo diferente de vista, pero el presupuesto aún funciona si valoras tu propio espacio al aire libre."
+        },
+        {
+          "cabin": "4324",
+          "rank": 5,
+          "hook": "Vista al océano, camarote con tarifa familiar—una opción más sólida en el punto dulce",
+          "reason": "El Camarote 4324 completa la alineación de vista al océano central en la cubierta 4—mismo precio excelente, misma vista real. Tenés cinco opciones sólidas en este rango, así que no andás buscando migajas. Cualquiera de ellas te pone en el mismo presupuesto de barco; solo elegí el número de camarote que te parezca correcto cuando hagas la reserva."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "4358",
+          "reason": "Este es un Family Harbor Interior—sin vista al océano. Pediste la vista, así que un camarote interior arruina todo tu propósito, aunque ahorres unos dólares más."
+        },
+        {
+          "cabin": "5235",
+          "reason": "Este Cove Balcony queda en la cubierta 5 directamente bajo la línea de botes salvavidas, lo que reduce la vista que pagaste. Perderías la línea de visión al océano por el equipo colgado arriba, y cuesta más que las vistas al océano de la cubierta 4 que te dan la imagen completa."
+        },
+        {
+          "cabin": "8280",
+          "reason": "Este es un Havana Cabana con vista al paseo, no vista al océano—estás mirando el pasillo de la cubierta y el tráfico de gente, no el agua. No es ganga comparado con las vistas al océano con tarifa familiar abajo."
+        }
+      ]
+    },
+    "solo-first-value": {
+      "label_es": "Primera vez solo, presupuesto ajustado",
+      "recommendations_es": [
+        {
+          "cabin": "4314",
+          "rank": 1,
+          "hook": "Vista al océano sin el precio del balcón",
+          "reason": "El Cabin 4314 es una vista al océano en el Deck 4 a mitad de nave, y cuesta menos que un balcón. Te despiertas viendo el agua cada mañana, lo que hace que la habitación se sienta más grande y luminosa que una interior, sin el golpe del suplemento individual que te costaría una suite o camarote con balcón."
+        },
+        {
+          "cabin": "4288",
+          "rank": 2,
+          "hook": "Interior que protege tu presupuesto",
+          "reason": "Es una interior a mitad de nave en el Deck 4, lo que significa que es la cama más barata que puedes reservar en este barco. Estás en una ubicación centrada donde la mayoría de la gente no oye el ir y venir, así que la habitación se mantiene silenciosa aunque no estés pagando por una vista. Es la jugada pura para ahorrar dinero y dormir tranquilo."
+        },
+        {
+          "cabin": "9280",
+          "rank": 3,
+          "hook": "Balcón en deck alto, tarifa individual razonable",
+          "reason": "El 9280 está hacia proa en el Deck 9 como camarote con balcón—más arriba en el barco que el Deck 4, así que tienes más sensación del mar desde tu propio espacio al aire libre. Los balcones en Tropicale no cargan el suplemento individual masivo que tienen las suites, y aun así sales ganando comparado con lo que costaría una suite."
+        },
+        {
+          "cabin": "5245",
+          "rank": 4,
+          "hook": "Interior spa—beneficios sin quebrar el presupuesto solo",
+          "reason": "El 5245 es una Cloud 9 Spa Interior en el Deck 5 a mitad de nave, lo que significa que accedes a las instalaciones del spa (suite térmica, espacios tranquilos, a veces agua gratis) sin pagar por un balcón que usarías solo. Es una forma inteligente de elevar la experiencia del crucero sin el costo extra del suplemento individual."
+        },
+        {
+          "cabin": "10308",
+          "rank": 5,
+          "hook": "Interior hacia proa—más cerca de la acción que buscas",
+          "reason": "El Cabin 10308 es una interior en el Deck 10 hacia proa, cerca de las piscinas principales y los shows. Como estás manteniéndote dentro del presupuesto, una interior tiene sentido; estar hacia proa te pone a pasos de los espacios sociales, así que no estás aislado en un camarote lejos de la energía del barco."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "4456",
+          "reason": "Esta interior en el Deck 4 hacia popa está directamente debajo de una cubierta pública—eso significa que el rasgueteo de sillas y los pasos en la cabeza te despertarán temprano. Para alguien que duerme ligero, eso va en contra del propósito de una interior tranquila."
+        },
+        {
+          "cabin": "5235",
+          "reason": "Este Cove Balcony en el Deck 5 está bajo la línea de botes salvavidas, lo que obstruye parcialmente tu vista del océano. Estás pagando una tarifa de balcón por un camarote donde la experiencia del balcón está comprometida."
+        },
+        {
+          "cabin": "8201",
+          "reason": "Havana Extended Cabana en el Deck 8—es una vista del paseo, lo que significa que estás mirando hacia el pasillo y la tripulación en lugar del agua. Para un viajero solo con presupuesto, estarías pagando extra por una vista que no entrega."
+        }
+      ]
+    },
+    "solo-with-group": {
+      "label_es": "Viajando solo dentro de un grupo",
+      "recommendations_es": [
+        {
+          "cabin": "8280",
+          "rank": 1,
+          "hook": "Havana Cabana a pasos de la piscina, shows y alguna que otra conga",
+          "reason": "El camarote 8280 es buena opción para ti. Está en la Cubierta 8 proa, el centro social del barco donde la piscina, el buffet y los shows principales quedan a pasos. Estarás en medio de donde se reúne tu grupo sin estar encerrado en el camarote, y puedes desaparecer cuando necesites tranquilidad sin sentirte aislado."
+        },
+        {
+          "cabin": "8282",
+          "rank": 2,
+          "hook": "Havana Cabana al lado — la misma energía, el mismo acceso al grupo",
+          "reason": "Este camarote es esencialmente el mismo que el 8280, justo al lado en el mismo tramo proa de la Cubierta 8. Si el 8280 se ocupa primero, el 8282 te da esa misma proximidad a toda la acción con buenas chances de encontrarte con tu grupo entre la piscina y el atrio."
+        },
+        {
+          "cabin": "9240",
+          "rank": 3,
+          "hook": "Balcón con vista al lugar donde se reúne tu grupo abajo",
+          "reason": "El camarote 9240 está una cubierta arriba y proa, con un verdadero balcón al océano y vista al lugar donde sucede la mayoría de la actividad del día. Estás lo bastante cerca para reunirte rápido con el grupo, pero tienes tu propio espacio al aire libre para respirar cuando la energía se pone demasiado intensa."
+        },
+        {
+          "cabin": "9282",
+          "rank": 4,
+          "hook": "Camarote interior en la zona de acción — sin balcón, máxima proximidad",
+          "reason": "Sigues en la Cubierta 9 proa en el centro de todo, y el interior mantiene el costo bajo. Pierdes el balcón, pero ganas la posibilidad de estar cerca del grupo con un presupuesto que te deja dinero para actividades y tragos."
+        },
+        {
+          "cabin": "4346",
+          "rank": 5,
+          "hook": "Vista al océano en la zona media — aún en órbita del grupo, menos caos arriba",
+          "reason": "Esta vista al océano en posición central te sitúa en la Cubierta 4, una parte más tranquila del barco que proa, pero lo bastante cerca para llegar rápido a la acción. Tienes una ventana de verdad y algo de espacio para respirar del tráfico constante de gente, lo que ayuda cuando el grupo necesita un descanso."
+        },
+        {
+          "cabin": "8246",
+          "rank": 6,
+          "hook": "Havana Cabana proa — vista a la promenade, energía grupal sin el precio premium",
+          "reason": "Otro solid Havana Cabana proa en la misma zona social que el 8280, con vista a la promenade donde pasa la acción. Cuesta menos que un balcón y te mantiene en el centro de donde tu grupo naturalmente se reunirá."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "4456",
+          "reason": "No hay camarote arriba tuyo — eso significa espacio público y gente moviendo sillas alrededor temprano en la mañana, lo que no tiene sentido si estás cerca del grupo pero te despiertan los pasos."
+        },
+        {
+          "cabin": "5203",
+          "reason": "Este Cove Balcony está bajo y directamente debajo de la línea de botes salvavidas, así que tu vista es parcialmente obstruida y estás aislado en una cubierta más tranquila. No te ayuda a estar cerca del grupo, y el camarote es más caro de lo que pagarías por el acceso."
+        },
+        {
+          "cabin": "15488",
+          "reason": "Las cubiertas altas como la Cubierta 15 te ponen demasiado lejos de donde sucede la acción — pasarías la mitad del tiempo bajando y subiendo escaleras o ascensores solo para ver a tu grupo, lo que anula la parte de comodidad de tu presupuesto."
+        }
+      ]
+    },
+    "big-group-together": {
+      "label_es": "Grupo que quiere estar junto",
+      "recommendations_es": [
+        {
+          "cabin": "8280",
+          "rank": 1,
+          "hook": "Havana Cabana a pasos de piscinas, shows y tu gente",
+          "reason": "Estás en la Cubierta 8, proa, el corazón de la acción — caminata corta a la piscina principal, teatros y restaurantes. Es una Havana Cabana con vista al paseo, ves lo que pasa en la cubierta sin pagar balcón completo. Para un grupo que quiere estar cerca de todo y cerca uno del otro, este lugar es tu centro de operaciones."
+        },
+        {
+          "cabin": "8222",
+          "rank": 2,
+          "hook": "Havana Cabana cerca del grupo, cerca de la diversión",
+          "reason": "Mismo tipo de camarote, misma ubicación en proa que 8280, estás en la misma zona exacta. La diferencia es mínima — ambos son Havana Cabanas en el paseo. Si 8280 se llena primero, este es tu respaldo en ese mismo cluster, y el grupo sigue alcanzándose fácil."
+        },
+        {
+          "cabin": "9284",
+          "rank": 3,
+          "hook": "Ocean Suite proa — balcón y proximidad grupal juntos",
+          "reason": "Cubierta 9 proa te pone en la banda media donde viven la mayoría de actividades. Ocean Suite significa balcón real y más espacio, mejora linda si los Havana Cabanas se agotan. Sigues en proa y accesible al grupo, solo con un upgrade en el camarote."
+        },
+        {
+          "cabin": "10276",
+          "rank": 4,
+          "hook": "Ocean Suite proa mantiene al grupo cerca y unido",
+          "reason": "Cubierta 10, proa — otro buen lugar para estar centrado cerca de actividades y tu grupo. Ocean Suites en esta cubierta están bien posicionados porque proa agrupa gente naturalmente. Si quieres upgrade de camarotes estándar pero necesitas estar juntos, funciona."
+        },
+        {
+          "cabin": "4330",
+          "rank": 5,
+          "hook": "Family Harbor Suite media cubierta, fácil para que se reúna el grupo",
+          "reason": "Cubierta 4, posición media en babor. Es una Family Harbor Ocean View Suite, hay espacio extra y ventana real al océano. La ubicación media te deja equidistante de proa y popa, ayuda a un grupo esparcido en varios camarotes a estar cerca sin sentirse separado."
+        },
+        {
+          "cabin": "4372",
+          "rank": 6,
+          "hook": "Family Harbor Interior media cubierta, punto de cluster económico",
+          "reason": "Otro camarote de Cubierta 4 media, este Interior (sin vista). Costo menor, sobra presupuesto para más camarotes del grupo, y la posición media mantiene a todos al alcance uno del otro. No es la pieza más lujosa, pero resuelve lo práctico: estar juntos sin gastar tanto."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "4456",
+          "reason": "Arriba tuyo hay espacio público — espera sillas raspando temprano, molesta a dormilones ligeros y grupos buscando paz."
+        },
+        {
+          "cabin": "5203",
+          "reason": "Cloud 9 Spa Cove Balcony en Cubierta 5 está directo bajo la línea de salvavidas, reduce la vista y la sensación del espacio. Además camarote de especialidad, cuesta más sin los beneficios de layout que un grupo necesita."
+        },
+        {
+          "cabin": "15505",
+          "reason": "Aft-View Extended Balcony en Cubierta 15 está al fondo del barco, lejos de zonas de actividad y comedor — tu grupo se siente separado cada vez que se mueve, derrota tu objetivo de estar juntos."
+        }
+      ]
+    },
+    "experienced-ocean-midship": {
+      "label_es": "Los cruceristas experimentados saben que quieren un balcón real al océano",
+      "recommendations_es": [
+        {
+          "cabin": "4320",
+          "rank": 1,
+          "hook": "Balcón real al océano, estabilidad a mitad de barco, sin trucos",
+          "reason": "El camarote 4320 te da exactamente lo que pediste: un balcón real al océano en una posición estable a mitad de barco sin artificios. Es una Family Harbor Ocean View, así que te despiertas frente al mar de verdad, y la ubicación a mitad de barco minimiza el movimiento para que no tengas ese cabeceo incómodo. Para cruceristas experimentados que saben lo que quieren, esta es la respuesta directa."
+        },
+        {
+          "cabin": "4330",
+          "rank": 2,
+          "hook": "Suite balcón al océano, mitad de barco, un poco más de espacio",
+          "reason": "Esta es una Family Harbor Ocean View Suite en la misma zona estable a mitad de barco que el 4320, pero con más espacio y el layout más tranquilo de una suite. Tienes la vista real al océano y la posición sólida; el espacio extra es un bonus si te acomoda."
+        },
+        {
+          "cabin": "10322",
+          "rank": 3,
+          "hook": "Balcón al océano, estabilidad a mitad de barco, cubierta más alta, misma garantía",
+          "reason": "La Cubierta 10 te da el mismo balcón real al océano y estabilidad a mitad de barco que quieres, solo que más arriba con un ángulo de vista distinto. Es un camarote Balcony estándar sin trucos: directo y firme en el lugar exacto que mantiene el movimiento del barco manejable."
+        },
+        {
+          "cabin": "11328",
+          "rank": 4,
+          "hook": "Balcón al océano, mitad de barco, tu última oportunidad con esta configuración",
+          "reason": "La Cubierta 11 es lo más alto que puedes ir y seguir teniendo la ventaja de estabilidad a mitad de barco. Este camarote te entrega un balcón real al océano en el medio del barco, y una vez que subes más o te vas hacia proa, persigues otras posiciones. Si te gusta la altura pero no quieres sacrificar la garantía de mitad de barco, esta es la línea."
+        },
+        {
+          "cabin": "4314",
+          "rank": 5,
+          "hook": "Balcón al océano, estabilidad a mitad de barco, luz de mañana por babor",
+          "reason": "Otra Family Harbor Ocean View en la Cubierta 4 a mitad de barco, unas puertas más hacia proa del 4320. Misma vista real al océano y estabilidad; la única diferencia es la posición dentro de esa misma zona estable. Elige esta si prefieres un spot ligeramente más hacia proa dentro del rango a mitad de barco, o si el 4320 está ocupado."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "5235",
+          "reason": "El Cove Balcony en la Cubierta 5 está bajo el agua directamente debajo de la línea de botes salvavidas que tiene arriba, lo que te corta la vista y se siente apretado. Tú no pediste una vista obstruida: pediste un balcón real al océano sin trucos."
+        },
+        {
+          "cabin": "12322",
+          "reason": "La Cubierta 12 en adelante empieza a perder la ventaja de estabilidad a mitad de barco y sientes más movimiento, lo que va contra tu nivel de comodidad. A esa altura, además tenés más balanceo, aunque el camarote en sí esté bien."
+        },
+        {
+          "cabin": "8280",
+          "reason": "El Havana Cabana en la Cubierta 8 es una vista al paseo, no un balcón real al océano: estás mirando gente caminando la cubierta, no el agua. Es un truco cuando pediste la cosa de verdad."
+        }
+      ]
+    },
+    "seasick-priority-steady": {
+      "label_es": "El movimiento es lo que importa",
+      "recommendations_es": [
+        {
+          "cabin": "4320",
+          "rank": 1,
+          "hook": "Vista al océano a mitad de barco—el lugar más estable",
+          "reason": "El camarote 4320 está justo en el centro y bajo en la Cubierta 4, lo que significa que obtienes la vista al océano que realmente quieres sin sacrificar la estabilidad que más te importa. La posición a mitad de barco en una cubierta baja es donde el barco se mueve menos, así que tu estómago te lo agradecerá."
+        },
+        {
+          "cabin": "4330",
+          "rank": 2,
+          "hook": "Suite con vista al océano y la base más estable",
+          "reason": "Esta es una suite más grande en el medio del barco en la misma posición estable que el 4320, así que si tu presupuesto permite el espacio y confort extra, obtienes esa vista al océano más un poco más de espacio—todo en la parte más tranquila del buque."
+        },
+        {
+          "cabin": "5285",
+          "rank": 3,
+          "hook": "Balcón cove en la zona más estable del barco",
+          "reason": "La Cubierta 5 a mitad de barco te mantiene bajo y centrado donde el movimiento es mínimo. Sí, hay una línea de botes salvavidas arriba, así que tu vista está parcialmente obstruida, pero el trade-off es estabilidad sólida y una vista real al océano a un costo más bajo que un balcón sin obstrucciones. Si la estabilidad importa más que las líneas de vista perfectas, esta es la opción."
+        },
+        {
+          "cabin": "10320",
+          "rank": 4,
+          "hook": "Balcón a mitad de barco—la misma base estable, más arriba",
+          "reason": "Obtienes la vista al océano y la estabilidad a mitad de barco de las cubiertas bajas, pero desde un punto de vista más elevado. El movimiento sigue siendo mínimo porque estás centrado en el barco; solo estás sacrificando la elevación extra por un poco más de movimiento que la Cubierta 4—un buen intercambio si prefieres la vista desde arriba."
+        },
+        {
+          "cabin": "9334",
+          "rank": 5,
+          "hook": "Balcón extendido en el medio, sin camarotes debajo",
+          "reason": "Este camarote está a mitad de barco en la Cubierta 9 con un balcón extendido y nada debajo (solo espacio de tripulación), así que obtienes una vista real al océano y la estabilidad del centro del barco. La desventaja es que la Cubierta 9 se mueve un poco más que la Cubierta 4 o 5, pero si quieres un balcón más grande sin el costo u obstrucción de cubiertas más altas, es una opción sólida."
+        },
+        {
+          "cabin": "11320",
+          "rank": 6,
+          "hook": "Balcón en el medio—buen equilibrio entre estabilidad y vista",
+          "reason": "La posición a mitad de barco en la Cubierta 11 mantiene el movimiento manejable para alguien preocupado por el mareo, y obtienes una vista completa al océano desde un punto más elevado. No es tan estable como las cubiertas bajas, pero la elevación extra y la vista sin obstrucciones hacen que valga la pena el pequeño aumento de movimiento si la estabilidad es tu prioridad pero no la única."
+        }
+      ],
+      "steer_clear_es": [
+        {
+          "cabin": "12320",
+          "reason": "La Cubierta 12 está alta en el barco donde el movimiento es notoriamente peor, lo que va en contra de tu principal preocupación. Incluso en el medio del barco, la altura amplifica lo suficiente la sensación de sube y baja como para importar cuando el mareo es tu mayor preocupación."
+        },
+        {
+          "cabin": "4314",
+          "reason": "Esta vista al océano hacia proa en la Cubierta 4 te da estabilidad, pero la posición hacia proa cabecean más que a mitad de barco durante mares agitados—no la opción más estable, aunque la vista sea bien."
+        },
+        {
+          "cabin": "5203",
+          "reason": "Aunque está bajo y hacia proa, es un Balcón Cove con obstrucción parcial de la línea de botes salvavidas arriba, y la posición hacia proa significa que se mueve más que a mitad de barco. Estás sacrificando claridad de vista sin ganar el beneficio de estabilidad."
+        }
+      ]
+    }
+  }
+}

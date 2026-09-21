@@ -93,11 +93,12 @@ Fidelity rules:
 - Speak ONLY to concerns this traveler actually told you. If they never mentioned seasickness, do not bring up motion, steadiness or stomachs. If they never mentioned noise, don't lead with quiet.
 - The voice example in your instructions is a TONE reference, not content — do not reuse its phrases ("tummy troubles", "the bonus is waking up") unless this traveler genuinely has that concern.
 - Vary your openings. Do not start every reason with "Cabin NNNN is..."
-- Where a cabin sits comes ONLY from its "position" (forward / mid / aft) and "side" (port / starboard / center) fields. If a cabin has no such field, do not say where on the ship it is — never infer it from the cabin number.
+- Where a cabin sits comes ONLY from its "position" (forward / mid / aft) and "side" (port / starboard / center) fields. If a cabin has no such field, do not say where on the ship it is — never infer it from the cabin number. "position" is where the room sits ON THE SHIP, not within its own deck: a cabin whose position is "mid" is NOT forward, however low its number looks.
+- Before you write each reason, copy that cabin's own "position" and "side" into the "place" field, exactly as the candidate list gives them. Then your prose must agree with what you copied.
 - Position is a fact about a room, not a reason to pick it. Rank by what THIS traveler asked for. Midship and steadiness only matter to someone who raised motion or seasickness; for anyone else, do not choose rooms for being midship and do not mention motion at all.
 
 Respond with ONLY a JSON object:
-{"recommendations":[{"cabin":<number>,"rank":<number>,"hook":"<5-10 words>","reason":"<2-4 sentences in your voice>"}],"steerClear":[{"cabin":<number>,"reason":"<1-2 sentences>"}]}`;
+{"recommendations":[{"cabin":<number>,"rank":<number>,"place":"<position side, copied from the candidate list>","hook":"<5-10 words>","reason":"<2-4 sentences in your voice>"}],"steerClear":[{"cabin":<number>,"reason":"<1-2 sentences>"}]}`;
 }
 
 function parse(text) {
@@ -148,7 +149,7 @@ async function viaClaude(prompt) {
 // side is checked against that cabin's section/side; a contradiction re-rolls the archetype
 // once, and a second contradiction is printed so it never ships unseen.
 const byId = new Map(cabins.map((c) => [String(c.id), c]));
-const SECTION_WORDS = [["forward", /\b(forward|bow|front of the ship)\b/i], ["aft", /\b(aft|stern|back of the ship|rear)\b/i], ["mid", /\b(a?mid-?ships?|mid-deck|middle of the ship|in the middle|dead cent(er|re)|cent(er|re)d? fore)\b/i]];
+const SECTION_WORDS = [["forward", /\b(forward|bow|front of the ship)\b/i], ["aft", /\b(aft|stern|back of the ship|rear)\b/i], ["mid", /\b(a?mid-?ships?|mid-deck(?!\s+(?:price|cost|rate|fare|pricing|budget|money))|middle of the ship|in the middle|dead cent(er|re)|cent(er|re)d? fore)\b/i]];
 // Phrases that name ends of the ship as a CONTRAST or a relative step, not as where the cabin
 // is: "centered fore-to-aft", "costs less than one forward or aft", "a couple doors forward".
 const CONTRAST = /\b(fore[- ]to[- ]aft|forward (?:or|and) aft|aft (?:or|and) forward|bow (?:or|and|to) stern|(?:doors?|cabins?|rooms?|steps?) (?:forward|aft))\b/gi;
@@ -223,6 +224,31 @@ function saidOfCabin(sen, re) {
   return !NOT_SUBJECT.test(before) && HEIGHT_CONTEXT.test(after);
 }
 const ABOUT_OVERHEAD = /\b(above|below|over|under(?:neath)?)\s+(you|your|it|the cabin|head)/i;
+// THE ECHO. The position rule was already in the prompt and the model broke it anyway on six
+// straight attempts for one archetype (Tropicale, 2026-09-20), writing "sits forward on Deck 4"
+// about a cabin the grid calls mid. Asking it to COPY the room's own position into "place" before
+// writing the reason makes it look the value up instead of recalling it, and gives us a cheap
+// direct check: if the echo is wrong the model never read the row, and if the echo is right but
+// the prose disagrees, positionProblems() catches that. `place` is stripped before the file is
+// written, so nothing downstream sees a new field.
+export function echoProblems(out) {
+  const probs = [];
+  for (const r of out.recommendations ?? []) {
+    const c = byId.get(String(r.cabin));
+    if (!c || r.place == null) continue;
+    const said = String(r.place).toLowerCase();
+    const sec = String(c.position ?? "").toLowerCase().replace("midship", "mid");
+    const side = String(c.side ?? "").toLowerCase();
+    if (sec && !new RegExp(`\\b${sec}\\b`).test(said.replace("midship", "mid"))) probs.push(`${r.cabin}: place says "${r.place}", grid says ${sec}`);
+    else if (side && !said.includes(side)) probs.push(`${r.cabin}: place says "${r.place}", grid says ${side}`);
+  }
+  return probs;
+}
+export function stripEcho(out) {
+  for (const r of out.recommendations ?? []) delete r.place;
+  return out;
+}
+
 export function deckProblems(out) {
   const probs = [];
   const recs = [...(out.recommendations ?? []), ...(out.steerClear ?? [])];
@@ -263,11 +289,12 @@ async function generateOne(prompt, traveler) {
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
       const res = await viaClaude(prompt);
-      const probs = [...positionProblems(res.out), ...fidelityProblems(res.out, traveler), ...deckProblems(res.out)];
+      const probs = [...echoProblems(res.out), ...positionProblems(res.out), ...fidelityProblems(res.out, traveler), ...deckProblems(res.out)];
+      if (!probs.length) stripEcho(res.out);
       calls += 1; spent += ledger.add(res.usage, res.model, !probs.length);
       if (!probs.length) return { ...res, cost: spent, calls };
       console.warn(`  check failed (attempt ${attempt}): ${probs.join("; ")}`);
-      if (attempt === ATTEMPTS) { res.out.qcWarnings = probs; return { ...res, cost: spent, calls }; }
+      if (attempt === ATTEMPTS) { res.out.qcWarnings = probs; stripEcho(res.out); return { ...res, cost: spent, calls }; }
     } catch (e) {
       if (e.usage) { calls += 1; spent += ledger.add(e.usage, e.model ?? MODEL, false); }
       console.warn("  Haiku failed:", e.message);
