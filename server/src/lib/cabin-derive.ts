@@ -13,8 +13,27 @@ const INWARD: readonly (readonly [RegExp, string])[] = [
   [/boardwalk/i, "boardwalk"],
   [/promenade/i, "promenade"],
   [/inward.?facing/i, "inward"],
+  // Carnival's word for the outdoor wraparound deck. "Cloud 9 Spa Ocean View (Walkway View)"
+  // and "Interior with Picture Window (Walkway View)" have a real window — onto the walkway,
+  // with people passing it — which is the promenade case this list already models (2026-09-20).
+  [/walkway/i, "promenade"],
+  // The Havana cabanas. Their patio is real private outdoor space (ATTR_ALIASES gives them the
+  // balcony attribute, so a balcony request reaches them), but it opens onto the shared Havana
+  // deck — "direct exit to outside public deck", "view is obstructed by steel railing", 82-97 sq ft
+  // of semi-private balcony per the published category detail for sister Carnival Celebration,
+  // same Excel class. Water is visible past the walkway; a clean sea view it is not, and claiming
+  // one is the failure this whole list exists to prevent. The 2026-09-19 Tropicale pass left these
+  // 58 rooms deliberately NULL with exactly this question open — this answers it from the
+  // operator-published detail rather than by guessing, and errs to the modest reading.
+  [/havana[\s-]*(extended[\s-]+)?cabana/i, "promenade"],
   [/atrium/i, "atrium"],
 ];
+
+// The NAME can disown its own view: Carnival sells "Ocean View (obstructed views)" and
+// Margaritaville a "Partial View Balcony". The room still faces the sea, so `view` is unchanged —
+// but `real_ocean` is the "is this a genuine sea view" flag, and the line has just said it is not.
+// Found 2026-09-20: 84 such rooms across six ships were stored as clean ocean views.
+const DISOWNED = /\(\s*obstructed views?\s*\)|\bpartial[- ]view\b|\bobstructed\b/i;
 
 /** view + real_ocean, from the operator's own category name. */
 export function viewOf(category: string | null): { view: string | null; real_ocean: boolean | null } {
@@ -25,7 +44,7 @@ export function viewOf(category: string | null): { view: string | null; real_oce
   // "MSC Yacht Club Interior" carries BOTH suite and inside, and names no inward view.
   if (attrs.has("inside")) return { view: "none", real_ocean: false };
   if (attrs.has("balcony") || attrs.has("oceanview") || attrs.has("suite")) {
-    return { view: "ocean", real_ocean: true };
+    return { view: "ocean", real_ocean: !DISOWNED.test(category ?? "") };
   }
   return { view: null, real_ocean: null };
 }

@@ -41,6 +41,9 @@ const { createClient } = require("@supabase/supabase-js");
 const ws = require("ws");
 
 const WRITE = process.argv.includes("--write");
+// --only=<db slug>: touch ONE ship and nothing else (2026-09-14, adding Norwegian
+// Aura alone; a full run would also have written 37 stray Atlantic cabins).
+const ONLY = (process.argv.find(a => a.startsWith("--only=")) || "").slice("--only=".length);
 const OUT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "out");
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -77,6 +80,14 @@ const TOPUP_SHIPS = new Set(["mardi-gras", "carnival-vista"]); // geometry-only 
 const NEW_SHIPS = {
   "norwegian-aqua":     { slug: "norwegian-aqua",     ship: "Norwegian Aqua",     line: "Norwegian Cruise Line", class: "Prima Plus", catFrom: "ncl" },
   "norwegian-luna-ship":{ slug: "norwegian-luna",     ship: "Norwegian Luna",     line: "Norwegian Cruise Line", class: "Prima Plus", catFrom: "ncl" },
+  // 2026-09-14 (Mark: "we should be able to get ... Norwegian Aura"): same Widgety
+  // official per-deck plans as Aqua/Luna, batch msgbatch_01TYRSUuKo83rqh4ziBp3QRm.
+  "norwegian-aura":     { slug: "norwegian-aura",     ship: "Norwegian Aura",     line: "Norwegian Cruise Line", class: "Prima Plus", catFrom: "ncl" },
+  // 2026-09-14: Carnival's own PDF (carnival.com, published 2026-09-10), batch
+  // msgbatch_016WSYXXj1a3wh16K6FwbRSB. The PDF prints every deck twice; flatten()'s
+  // first-seen-wins map unions the two runs. Categories come later from the PDF legend
+  // (carnival-categories.py + apply-carnival.mjs), so catFrom is null here.
+  "carnival-tropicale": { slug: "carnival-tropicale", ship: "Carnival Tropicale", line: "Carnival Cruise Line", class: "Excel", catFrom: null },
   "msc-world-america":  { slug: "msc-world-america",  ship: "MSC World America",  line: "MSC Cruises",           class: "World",      catFrom: null },
   "msc-world-asia":     { slug: "msc-world-asia",     ship: "MSC World Asia",     line: "MSC Cruises",           class: "World",      catFrom: null },
   "msc-world-atlantic": { slug: "msc-world-atlantic", ship: "MSC World Atlantic", line: "MSC Cruises",           class: "World",      catFrom: null },
@@ -178,6 +189,7 @@ const GEOM_NOTE = `x/y loaded ${TODAY} from official per-deck PDF geometry pass;
 // ---------- 1+2: existing ships ----------
 const summary = [];
 for (const [gslug, slug] of Object.entries(UPDATE_SHIPS)) {
+  if (ONLY && slug !== ONLY && gslug !== ONLY) continue;
   const gmap = flatten(geom[gslug], gslug);
   const db = await fetchDbCabins(slug);
   const byNum = new Map(db.map(r => [String(r.cabin_num), r]));
@@ -224,6 +236,7 @@ const primaMap = colorMap(flatten(geom["norwegian-prima"], "norwegian-prima"), a
 console.log("prima-derived NCL color map:", JSON.stringify(primaMap));
 
 for (const [gslug, meta] of Object.entries(NEW_SHIPS)) {
+  if (ONLY && meta.slug !== ONLY && gslug !== ONLY) continue;
   const g = geom[gslug];
   const gmap = flatten(g, gslug);
   const cmap = meta.catFrom === "ncl" ? primaMap : {};

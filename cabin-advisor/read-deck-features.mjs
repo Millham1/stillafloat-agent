@@ -39,6 +39,8 @@ Report ONLY these, and only where the plan actually draws or labels them:
   stair     — a stairwell/staircase symbol (the drawn flight of steps).
   venue     — a named public room whose noise carries: bar, lounge, club, disco, theatre, casino, restaurant, buffet, galley, kitchen, pool, gym, kids club, arcade, laundry.
   service   — crew door, service lift, pantry, laundry, engine/technical space, where labelled.
+  lifeboat  — a lifeboat or tender in its davits: a capsule/rounded-rectangle drawn OUTBOARD of the hull
+              outline, in a repeating row along the ship's side. Report each boat separately, not the row.
 
 Rules:
 - Report the CENTRE of each feature as x and y, each a fraction of the image: x from 0 at the far LEFT edge to 1 at the far RIGHT edge; y from 0 at the TOP edge to 1 at the BOTTOM edge. Be precise.
@@ -48,6 +50,25 @@ Rules:
 - Do not infer a lift from a gap between cabins. Only report what is drawn.
 
 Return ONLY JSON: {"features":[{"kind":"lift|stair|venue|service","label":"<printed text or null>","x":<0..1>,"y":<0..1>}]}`;
+
+// --lifeboat-cabins: the frame-free way to answer "which cabins have a boat over them".
+// Mapping a boat's coordinate onto a cabin's coordinate needs the two to share a frame, and on
+// Carnival's plan the fit came out good to about seven cabin rows (2026-09-20) — useless when being
+// one boat out is the whole question. So instead the image carries BOTH decks and the model reads the
+// alignment the way a person would, returning CABIN NUMBERS, which are checkable against the grid.
+const PAIR = process.argv.includes("--lifeboat-cabins");
+const PAIR_SYSTEM = `You read a cruise-ship deck plan showing TWO decks side by side: a cabin deck and, next to it, the public deck above it. Lifeboats hang in davits along the public deck's outer edges, drawn as grey capsules outboard of the hull outline.
+
+For EACH lifeboat, report the cabin numbers on the cabin deck that sit directly alongside it — the cabins a plumb line from that boat would pass. Work strictly from the drawing: the two decks are drawn to the same scale and aligned, so a boat at a given point along the hull sits over the cabins at that same point.
+
+Rules:
+- Report cabin numbers exactly as printed. If a number is not legible, leave it out.
+- Give the boats in order along the hull, and say which side each is on: the two long edges are the two sides of the ship.
+- A boat spans several cabins. List them all, in order.
+- If you cannot align a boat to any cabin with confidence, return an empty "cabins" list for it. An empty answer is correct; a guess is not.
+
+Return ONLY JSON under the SAME key the other mode uses, so one parser reads both:
+{"features":[{"kind":"lifeboat","side":"edge-A|edge-B","order":<1-based along the hull>,"cabins":["5203","5207"]}]}`;
 
 const b64 = readFileSync(file).toString("base64");
 const media = file.toLowerCase().endsWith(".jpg") || file.toLowerCase().endsWith(".jpeg")
@@ -59,12 +80,14 @@ const res = await fetch("https://api.anthropic.com/v1/messages", {
   body: JSON.stringify({
     model: "claude-sonnet-5",
     max_tokens: 8000,
-    system: SYSTEM,
+    system: PAIR ? PAIR_SYSTEM : SYSTEM,
     messages: [{
       role: "user",
       content: [
         { type: "image", source: { type: "base64", media_type: media, data: b64 } },
-        { type: "text", text: "List every lift, stair, noisy venue and service space on this deck plan, with its centre as image fractions." },
+        { type: "text", text: PAIR
+            ? "For each lifeboat on the public deck, list the cabin numbers on the cabin deck that sit directly alongside it."
+            : "List every lift, stair, noisy venue and service space on this deck plan, with its centre as image fractions." },
       ],
     }],
   }),
@@ -82,6 +105,9 @@ const rows = (out.features ?? []).map((f) => ({
   ship_slug: ship, deck: deck ? Number(deck) : null,
   kind: f.kind, label: f.label ?? null,
   img_x: f.x, img_y: f.y, source_image: basename(file),
+  // --lifeboat-cabins answers in cabin numbers, not coordinates; carry them through instead of
+  // dropping them on the floor with the rest of the unknown keys.
+  ...(f.cabins ? { side: f.side ?? null, order: f.order ?? null, cabins: f.cabins } : {}),
 }));
 console.log(JSON.stringify({ image: basename(file), ship, deck, count: rows.length, features: rows }, null, 1));
 console.error(`${basename(file)}: ${rows.length} features  (in ${j.usage.input_tokens} / out ${j.usage.output_tokens} tokens)`);
