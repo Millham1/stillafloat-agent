@@ -32,11 +32,6 @@ const AKEY = process.env.ANTHROPIC_API_KEY;
 if (!AKEY) { console.error("ANTHROPIC_API_KEY required"); process.exit(1); }
 
 const doc = JSON.parse(await readFile(join(HERE, `advice/${slug}.json`), "utf8"));
-// --only=a,b translates just those archetypes and merges into the existing .es.json
-// (the rest keep their reviewed Spanish); the cabin-number guarantee runs over the whole set.
-const ONLY = (process.argv.find((a) => a.startsWith("--only=")) ?? "").slice(7).split(",").filter(Boolean);
-const esPath = join(HERE, `advice/${slug}.es.json`);
-const { existsSync } = await import("node:fs");
 
 const SYSTEM = `You translate cruise-cabin advice into LATIN AMERICAN Spanish (es-419) for Still Afloat Cruising.
 
@@ -73,14 +68,9 @@ async function translateBatch(strings) {
   return out.map(String);
 }
 
-let outByArchetype = {};
-if (ONLY.length) {
-  if (!existsSync(esPath)) { console.error(`--only needs an existing ${esPath} to merge into`); process.exit(1); }
-  outByArchetype = JSON.parse(await readFile(esPath, "utf8")).byArchetype ?? {};
-}
+const outByArchetype = {};
 let cost = 0, failed = 0;
 for (const [aid, a] of Object.entries(doc.byArchetype)) {
-  if (ONLY.length && !ONLY.includes(aid)) continue;
   process.stdout.write(`  ${aid} ... `);
   const recs = a.recommendations ?? [];
   const steer = a.steerClear ?? a.steer_clear ?? [];
@@ -116,7 +106,7 @@ for (const [aid, es] of Object.entries(outByArchetype)) {
   checked += a.length + c.length;
 }
 
-await writeFile(esPath, JSON.stringify({ ship: doc.ship, byArchetype: outByArchetype }, null, 2));
+await writeFile(join(HERE, `advice/${slug}.es.json`), JSON.stringify({ ship: doc.ship, byArchetype: outByArchetype }, null, 2));
 console.log(`\n${Object.keys(outByArchetype).length}/${Object.keys(doc.byArchetype).length} archetypes, ${failed} failed.`);
 console.log(`${checked} cabin references verified identical to the English.`);
 console.log(`Wrote advice/${slug}.es.json`);

@@ -18,7 +18,7 @@ Stages (state in geometry/state.json, images in geometry/work/, output in geomet
   submit   - build one vision request per half, POST as a message batch (prints cost estimate)
   poll     - check batch status; fetch + store results when ended
   assemble - parse reads, remap half-coords to full-strip coords, dedupe overlap, write
-             geometry/out/<slug>.json   [--only tropicale] to leave the other ships' outputs alone
+             geometry/out/<slug>.json
   status   - where everything stands
   direct   - smoke test: read ONE strip synchronously (no batch) and print the count
 
@@ -321,10 +321,6 @@ def assemble(args):
         print(f"{len(truncated)} truncated tiles listed in geometry/truncated_tiles.json")
     OUT.mkdir(parents=True, exist_ok=True)
     for slug, ship in state["ships"].items():
-        # --only: assemble ONE ship. Without it every ship in state is rewritten from the
-        # batch results, which on 2026-09-14 overwrote hand-corrected Aqua/Luna outputs.
-        if getattr(args, "only", None) and args.only.lower() not in slug:
-            continue
         decks, total = [], 0
         for si, strip in enumerate(ship["strips"]):
             w, h = strip["px"]
@@ -382,15 +378,10 @@ def reread(args):
             row = json.loads(line)
             if row.get("result", {}).get("type") not in (None, "succeeded"):
                 ids.add(row["custom_id"])
-    if getattr(args, "only", None):
-        ids = {i for i in ids if args.only.lower() in i}
     if not ids:
         print("nothing to re-read")
         return
-    # Supplemental reads accumulate: keep earlier ships' re-reads so a later --only pass
-    # does not throw away the MSC World tiles re-read in August.
-    prev = (GEO / "results_zz_reread.jsonl").read_text().splitlines() if (GEO / "results_zz_reread.jsonl").exists() else []
-    out_lines = [l for l in prev if l.strip() and json.loads(l)["custom_id"] not in ids]
+    out_lines = []
     for cid in sorted(ids):
         slug, si, hi = cid.rsplit("--", 2)
         tile = state["ships"][slug]["strips"][int(si)]["halves"][int(hi)]
@@ -478,8 +469,8 @@ if __name__ == "__main__":
     sub.add_parser("prep")
     s = sub.add_parser("submit"); s.add_argument("--only"); s.add_argument("--dry-run", action="store_true")
     sub.add_parser("poll")
-    m = sub.add_parser("assemble"); m.add_argument("--only")
-    rr = sub.add_parser("reread"); rr.add_argument("--only")
+    sub.add_parser("assemble")
+    sub.add_parser("reread")
     d = sub.add_parser("direct"); d.add_argument("--slug", required=True); d.add_argument("--img", type=int, default=0)
     sub.add_parser("status")
     a = ap.parse_args()
