@@ -181,7 +181,13 @@ export function positionProblems(out) {
 // words never touch motion gets an output with no motion words, or a re-roll. Separately, one
 // claim is simply false and is never allowed for anyone: higher decks do NOT move less.
 const MOTION_ASKED = MOTION_ASKED_RE;
+// "steady" is the one motion word with a busy day job — "steady daylight", "a steady stream of
+// families", "a steady pace". On Tropicale (2026-09-20) "you get steady daylight" cost two extra
+// Haiku calls on one archetype and still shipped flagged, so the word is only motion when it is
+// not plainly modifying something else.
+const STEADY_NOT_MOTION = /\b(steady|steadier|steadiest|stable)\s+(daylight|light|sun\w*|stream|supply|flow|pace|hand|diet|breeze|trickle|procession|parade)\b/i;
 const MOTION_WORDS = /\b(motion|seasick\w*|queasy|steady|steadiest|steadier|stability|stable|rocking|rocks?|pitch(?:ing)?|roll(?:ing)?|sway\w*|stomach)\b/i;
+const motionHit = (text) => { const t = text.replace(STEADY_NOT_MOTION, " "); const m = t.match(MOTION_WORDS); return m ? m[0] : null; };
 const FALSE_MOTION = /\b(higher|upper|top)\b[^.!?]{0,60}\b(less|reduces?|minimi[sz]es?|lower)\b[^.!?]{0,20}\b(motion|sway|rocking|movement)\b|\b(less|reduced)\s+(motion|sway|rocking)\b[^.!?]{0,40}\b(higher|upper)\s+deck/i;
 export function fidelityProblems(out, traveler) {
   const probs = [];
@@ -189,7 +195,60 @@ export function fidelityProblems(out, traveler) {
   for (const r of [...(out.recommendations ?? []), ...(out.steerClear ?? [])]) {
     const text = `${r.hook ?? ""}. ${r.reason ?? ""}`;
     if (FALSE_MOTION.test(text)) probs.push(`${r.cabin}: says higher decks move less (false)`);
-    else if (!asked && MOTION_WORDS.test(text)) probs.push(`${r.cabin}: talks motion ("${text.match(MOTION_WORDS)[0]}") to a traveler who never raised it`);
+    else if (!asked) { const hit = motionHit(text); if (hit) probs.push(`${r.cabin}: talks motion ("${hit}") to a traveler who never raised it`); }
+  }
+  return probs;
+}
+
+// DECK COMPARISONS MUST BE TRUE. On Carnival Tropicale (2026-09-20) the value archetype sold 9251
+// as sitting "higher up on Deck 9, so your view clears more of the ship's structure" — against 10240,
+// on deck TEN. Every position word in it passed, because the fault is not where the cabin is, it is
+// the arithmetic between two cabins. Only comparisons inside a sentence that names another
+// recommended cabin are judged; "public space above you" is about the deck overhead, not a cabin.
+// The comparative has to be said OF THIS CABIN. "clearer than lower decks", "without the cost of
+// higher decks" and "not as stable as the lower decks" all name the thing being contrasted AGAINST,
+// and reading them as a claim about the cabin inverts them — six of the seven hits on the first
+// draft of this check were exactly that. So: the word must not follow than/as/of/without/unlike,
+// and it must be talking about height (deck, vantage, elevation, up/down), not "a lower cost".
+const NOT_SUBJECT = /\b(than|as|of|without|versus|vs\.?|unlike|compared to|over)\s+(the\s+|a\s+|any\s+)?$/i;
+const HEIGHT_CONTEXT = /\b(deck|decks|vantage|elevation|up|down|floor|storey|story)\b/i;
+const HIGHER_THAN = /\b(higher|further up|farther up|taller)\b/i;
+const LOWER_THAN = /\b(lower|further down|farther down)\b/i;
+/** True when `re` matches as a claim about the cabin itself rather than about what it is compared to. */
+function saidOfCabin(sen, re) {
+  const m = re.exec(sen);
+  if (!m) return false;
+  const before = sen.slice(Math.max(0, m.index - 24), m.index);
+  const after = sen.slice(m.index, m.index + 40);
+  return !NOT_SUBJECT.test(before) && HEIGHT_CONTEXT.test(after);
+}
+const ABOUT_OVERHEAD = /\b(above|below|over|under(?:neath)?)\s+(you|your|it|the cabin|head)/i;
+export function deckProblems(out) {
+  const probs = [];
+  const recs = [...(out.recommendations ?? []), ...(out.steerClear ?? [])];
+  const deckOf = (n) => byId.get(String(n))?.deck;
+  for (const [i, r] of recs.entries()) {
+    const mine = deckOf(r.cabin);
+    if (mine == null) continue;
+    const text = `${r.hook ?? ""}. ${r.reason ?? ""}`;
+    for (const sen of text.split(/(?<=[.!?])\s+/)) {
+      if (ABOUT_OVERHEAD.test(sen)) continue;
+      let others = [...new Set(sen.match(/\b\d{4,5}\b/g) ?? [])]
+        .filter((n) => n !== String(r.cabin) && deckOf(n) != null);
+      // "another Junior Balcony ... but it sits higher up on Deck 9" names no rival, because the
+      // rival is the pick before it — which is how a list of recommendations reads. That is the
+      // form the Tropicale error took, so an unqualified comparative is judged against the
+      // preceding recommendation rather than waved through.
+      if (!others.length && i > 0 && (saidOfCabin(sen, HIGHER_THAN) || saidOfCabin(sen, LOWER_THAN))) {
+        const prev = recs[i - 1];
+        if (prev && deckOf(prev.cabin) != null && deckOf(prev.cabin) !== mine) others = [String(prev.cabin)];
+      }
+      for (const o of others) {
+        const theirs = deckOf(o);
+        if (saidOfCabin(sen, HIGHER_THAN) && mine <= theirs) probs.push(`${r.cabin} (deck ${mine}) is called higher than ${o} (deck ${theirs})`);
+        if (saidOfCabin(sen, LOWER_THAN) && mine >= theirs) probs.push(`${r.cabin} (deck ${mine}) is called lower than ${o} (deck ${theirs})`);
+      }
+    }
   }
   return probs;
 }
@@ -204,7 +263,7 @@ async function generateOne(prompt, traveler) {
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
       const res = await viaClaude(prompt);
-      const probs = [...positionProblems(res.out), ...fidelityProblems(res.out, traveler)];
+      const probs = [...positionProblems(res.out), ...fidelityProblems(res.out, traveler), ...deckProblems(res.out)];
       calls += 1; spent += ledger.add(res.usage, res.model, !probs.length);
       if (!probs.length) return { ...res, cost: spent, calls };
       console.warn(`  check failed (attempt ${attempt}): ${probs.join("; ")}`);
