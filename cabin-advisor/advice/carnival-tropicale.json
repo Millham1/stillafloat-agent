@@ -121,10 +121,6 @@
         {
           "cabin": "9220",
           "reason": "Forward-facing balcony near the bow, which puts you close to elevators and the ship's main gathering areas. The noise and activity won't match the quiet you're after."
-        },
-        {
-          "cabin": "5251",
-          "reason": "A Cove Balcony on Deck 5 sits low over the water with the lifeboat davit line running directly above it \u2014 that obstruction will frame your view and limit the openness you want from a balcony, and it's well below the ship's prime real estate."
         }
       ],
       "costUsd": 0.0622,
@@ -171,10 +167,6 @@
         }
       ],
       "steerClear": [
-        {
-          "cabin": "5235",
-          "reason": "This Cove Balcony sits low under the lifeboat line on Deck 5, which will partially obstruct your view of the ocean\u2014you lose the clean sightline you're paying for. For an anniversary, you want the unobstructed horizon."
-        },
         {
           "cabin": "8250",
           "reason": "A Havana Cabana Suite on Deck 8 with only a promenade view, not a real ocean balcony\u2014you'd be looking at the ship's walkway, not the sea. This doesn't deliver on the oceanfront experience you asked for."
@@ -225,10 +217,6 @@
         {
           "cabin": "4372",
           "reason": "Family Harbor Interior on Deck 4 mid means no window, no view, and you're low on the ship away from where families gather \u2014 the pools and shows are decks above you. You'd spend all day climbing stairs to the action instead of being in the middle of it."
-        },
-        {
-          "cabin": "5243",
-          "reason": "Cloud 9 Spa Cove Balcony on Deck 5 mid has a partial obstruction from the lifeboat line overhead, which kills the view and limits how much you use the balcony. It's also not positioned near the main family activity zones, so you lose the energy you're after."
         },
         {
           "cabin": "15408",
@@ -327,10 +315,6 @@
         {
           "cabin": "4456",
           "reason": "Even though it's a quiet aft interior, there's public space directly above you \u2014 galley, lounge, or crew alleyway \u2014 which means chairs scraping and carts moving early in the morning will wake you up regardless of how peaceful the cabin itself would otherwise be."
-        },
-        {
-          "cabin": "5203",
-          "reason": "This Cove Balcony on Deck 5 sits directly beneath the lifeboat line, which obstructs part of your ocean view and adds visual clutter to what should be a calm morning sight. For someone seeking peace and a calm view, the obstruction defeats the purpose of the balcony."
         }
       ],
       "costUsd": 0.0932,
@@ -374,10 +358,6 @@
         {
           "cabin": "4358",
           "reason": "This is a Family Harbor Interior\u2014no ocean view. You asked for the view, so an interior cabin defeats your whole purpose, even if it saves a few extra dollars."
-        },
-        {
-          "cabin": "5235",
-          "reason": "This Cove Balcony sits on deck 5 directly under the lifeboat line, which cuts into the view you paid for. You'd lose the ocean sightline to gear hanging overhead, and it costs more than the deck 4 ocean views that give you the full picture."
         },
         {
           "cabin": "8280",
@@ -425,10 +405,6 @@
         {
           "cabin": "4456",
           "reason": "This interior on Deck 4 aft sits directly below a public deck\u2014that means early-morning chair scraping and footsteps overhead will wake you up. For a light sleeper, it defeats the purpose of an interior's quiet."
-        },
-        {
-          "cabin": "5235",
-          "reason": "This Cove Balcony on Deck 5 sits low under the lifeboat line, which partially obstructs your view of the ocean. You're paying a balcony rate for a cabin where the balcony experience is compromised."
         },
         {
           "cabin": "8201",
@@ -484,10 +460,6 @@
           "reason": "There's no cabin above you\u2014that means public space and people moving chairs around early in the morning, which defeats the purpose of being near your group if you're woken up by foot traffic."
         },
         {
-          "cabin": "5203",
-          "reason": "This Cove Balcony sits low and directly under the lifeboat line, so your view is partially obstructed and you're isolated on a quieter deck. It doesn't help you stay near the group, and the cabin is pricier than what you'd get for the access."
-        },
-        {
           "cabin": "15488",
           "reason": "Upper decks like Deck 15 put you too far from where the action happens\u2014you'd spend half your time going down and up stairs or elevators just to see your group, which defeats the comfort part of your budget."
         }
@@ -541,10 +513,6 @@
           "reason": "Directly above you is public deck space \u2014 expect chairs scraping early in the morning, which will bother light sleepers and group gatherings looking for peace."
         },
         {
-          "cabin": "5203",
-          "reason": "Cloud 9 Spa Cove Balcony on Deck 5 sits directly under the lifeboat line above, which lowers the view and the feel of the space. It's also a specialty cabin that costs more without the layout benefit a group needs."
-        },
-        {
           "cabin": "15505",
           "reason": "Aft-View Extended Balcony on Deck 15 is at the very back of the ship and far from the main activity zones and dining \u2014 your group will feel separated every time you move around, which defeats your goal of staying together."
         }
@@ -588,10 +556,6 @@
       ],
       "steerClear": [
         {
-          "cabin": "5235",
-          "reason": "The Cove Balcony on Deck 5 sits low over the water directly beneath the lifeboat line above it, which cuts into your view and feels cramped. You didn't ask for a view obstruction\u2014you asked for a real ocean balcony with no gimmicks."
-        },
-        {
           "cabin": "12322",
           "reason": "Deck 12 and above start to lose the mid-ship steadiness advantage and feel motion more, which contradicts your comfort level. At that height, you're also dealing with more sway, even if the cabin itself is fine."
         },
@@ -622,7 +586,7 @@
           "cabin": "5285",
           "rank": 3,
           "hook": "Cove balcony in the ship's steadiest zone",
-          "reason": "Deck 5 midship keeps you low and centered where motion is minimal. Yes, there's a lifeboat line above, so your view is partially obstructed, but the tradeoff is rock-solid stability and a real ocean view at a lower cost than an unobstructed balcony. If steady matters more than perfect sightlines, this is the move."
+          "reason": "Deck 5 midship keeps you low and centered where motion is minimal. You get rock-solid stability and a real ocean view at a lower cost than a balcony higher up. If steady is what matters most, this is the move."
         },
         {
           "cabin": "10320",
@@ -651,10 +615,6 @@
         {
           "cabin": "4314",
           "reason": "This forward ocean view on Deck 4 gives you stability, but the forward position pitches more than midship during rough seas\u2014not the steadiest choice, even if the view is fine."
-        },
-        {
-          "cabin": "5203",
-          "reason": "Although it's low and forward, it's a Cove Balcony with partial obstruction from the lifeboat line above, and the forward position means it moves more than midship. You're giving up view clarity without gaining the stability benefit."
         }
       ],
       "costUsd": 0.1013,
