@@ -34,6 +34,7 @@ import { setStormShips, mmsiForShip, getPosition, trackerObservedSince } from ".
 import { labelGrounds } from "./storm-grounds";
 import { portBySlug, CRUISE_LOCATIONS } from "./ports";
 import { classifyDestinationChange, EVENT_KINDS, type ChangeKind } from "./storm-diversion";
+import { itinerariesFor } from "./planned-itinerary";
 import { recordDiversionEvents, releaseAlertDiversions, type PendingDiversion } from "./storm-diversion-events";
 import type { SystemsSnapshot } from "./storm-source";
 
@@ -184,6 +185,10 @@ async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; d
   const detections: PendingDiversion[] = [];
   const now = new Date().toISOString();
   const observedSince = trackerObservedSince();
+  // One read for every pinned ship: the published itineraries they are on
+  // today. A ship missing from this map has no itinerary on file, and the
+  // classifier stays silent for her rather than guessing from AIS history.
+  const itineraries = await itinerariesFor([...existing.values()].map((s) => s.ship_name));
   for (const ship of existing.values()) {
     const pos = getPosition(ship.ship_name);
     const key = ship.ship_name.toLowerCase();
@@ -203,6 +208,7 @@ async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; d
       portCalls: pos?.portCalls ?? [],
       knownExtra,
       observedSince,
+      itinerary: itineraries.get(ship.ship_name.trim().toLowerCase())?.ports ?? null,
     });
     const baselineMoved = verdict.newBaseline !== ship.baseline_destination;
     if (!baselineMoved && !verdict.change) continue;

@@ -6,10 +6,18 @@ import { test } from "node:test";
 import * as assert from "node:assert/strict";
 import {
   classifyDestinationChange, successorsOf, knownPorts, dedupKey, kindConfidence,
-  MIN_LEG_HOURS, MAX_SILENCE_HOURS, type PortCall, type ChangeInput,
+  MIN_LEG_HOURS, MAX_SILENCE_HOURS, EVENT_KINDS,
+  type PortCall, type ChangeInput, type ChangeVerdict,
 } from "./storm-diversion";
 import { mergeDetections, describeDiversion, diversionButtons, type PendingDiversion } from "./storm-diversion-events";
 import { newsItemMatchesShip } from "./storm-intel";
+
+// The cases below this point were written for the AIS-only classifier, which
+// as of 2026-09-21 is the FALLBACK rather than the default (it produced 25
+// false diversions in three days — see the header of storm-diversion.ts).
+// They still document that path, so the suite runs it explicitly. The
+// itinerary-first tests at the bottom of this file manage the flag themselves.
+process.env["STORM_DIVERSION_AIS_FALLBACK"] = "1";
 import { buildWatchItineraryEvent } from "./wms-alerts";
 
 const T0 = Date.parse("2026-09-04T12:00:00Z");
@@ -219,4 +227,90 @@ test("watchers are told about a REAL course change in plain words, deduped per d
   const again = buildWatchItineraryEvent("Navigator of the Seas", "reroute", { from: "cabo-san-lucas", to: "los-angeles" }, "w1", iso(5));
   assert.equal(ev.hash, again.hash); // same day → same hash → one email
   assert.notEqual(ev.hash, buildWatchItineraryEvent("Navigator of the Seas", "reroute", { from: "cabo-san-lucas", to: "los-angeles" }, "w2", iso(0)).hash);
+});
+
+// ── Itinerary-first classification (2026-09-21) ───────────────────────────────
+// Regression fixtures are the REAL events the AIS-only classifier filed between
+// 19 and 21 Sep. Every one was a scheduled port; every one must now be silent.
+
+const GETAWAY = ["miami", "great-stirrup", "nassau", "miami"];
+const SPIRIT = ["seattle", "endicott-arm", "skagway", "juneau", "ketchikan", "victoria-bc", "seattle"];
+
+function withItinerary(over: Partial<ChangeInput>, itinerary: readonly string[]): ChangeVerdict {
+  return classifyDestinationChange({
+    baseline: "miami", baselineDeclaredAt: "2026-09-21T00:00:00Z",
+    current: "great-stirrup", now: "2026-09-21T10:34:00Z",
+    inPortSlug: "miami", lastPortSlug: "miami", lastPortDepartedAt: null,
+    lastPosAt: "2026-09-21T10:30:00Z", portCalls: [], observedSince: "2026-09-05T21:12:00Z",
+    itinerary, ...over,
+  });
+}
+
+test("REGRESSION: Getaway's Great Stirrup Cay is her itinerary, not a new port", () => {
+  const v = withItinerary({}, GETAWAY);
+  assert.equal(v.kind, "rotation");
+  assert.equal(EVENT_KINDS.has(v.kind), false, "must not reach the review queue");
+});
+
+test("REGRESSION: Getaway Nassau → Miami is the run home, not a re-route", () => {
+  const v = withItinerary({ baseline: "nassau", current: "miami" }, GETAWAY);
+  assert.equal(v.kind, "rotation");
+  assert.equal(EVENT_KINDS.has(v.kind), false);
+});
+
+test("REGRESSION: Carnival Spirit declaring a port further down her run is silent", () => {
+  // Crews type "USKTN > CAVIC"; our decoder takes Victoria, five ports ahead.
+  const v = withItinerary({ baseline: "seattle", current: "victoria-bc" }, SPIRIT);
+  assert.equal(EVENT_KINDS.has(v.kind), false, "declaring a later scheduled port is the timetable");
+});
+
+test("a port that is NOT on the itinerary is still a real diversion", () => {
+  const v = withItinerary({ current: "bermuda" }, GETAWAY);
+  assert.equal(v.kind, "reroute");
+  assert.equal(EVENT_KINDS.has(v.kind), true);
+  assert.match(v.reason, /not on this sailing's itinerary/);
+});
+
+test("an out-of-order scheduled port is recorded as a swap, never alerted", () => {
+  const v = withItinerary({ baseline: "nassau", current: "great-stirrup" }, GETAWAY);
+  assert.equal(v.kind, "itinerary_swap");
+  assert.equal(EVENT_KINDS.has(v.kind), false, "sources disagree on order — a swap must not email anyone");
+});
+
+test("with NO itinerary the classifier says nothing rather than guessing", () => {
+  const prev = process.env["STORM_DIVERSION_AIS_FALLBACK"];
+  delete process.env["STORM_DIVERSION_AIS_FALLBACK"];
+  const v = classifyDestinationChange({
+    baseline: "nassau", baselineDeclaredAt: "2026-09-19T12:00:00Z",
+    current: "miami", now: "2026-09-21T07:34:00Z",
+    inPortSlug: null, lastPortSlug: "miami", lastPortDepartedAt: "2026-09-18T20:17:00Z",
+    lastPosAt: "2026-09-21T07:30:00Z",
+    // The exact history that produced the false re-route: five Miami calls.
+    portCalls: [
+      { slug: "miami", arrivedAt: "2026-09-07T09:52:00Z", departedAt: "2026-09-07T20:36:00Z" },
+      { slug: "miami", arrivedAt: "2026-09-11T09:46:00Z", departedAt: "2026-09-11T20:15:00Z" },
+      { slug: "miami", arrivedAt: "2026-09-14T08:55:00Z", departedAt: "2026-09-14T20:17:00Z" },
+      { slug: "miami", arrivedAt: "2026-09-18T09:38:00Z", departedAt: "2026-09-18T20:17:00Z" },
+    ],
+    observedSince: "2026-09-05T21:12:00Z", itinerary: null,
+  });
+  assert.equal(v.kind, "unknown");
+  assert.equal(EVENT_KINDS.has(v.kind), false);
+  assert.match(v.reason, /no itinerary on file/);
+  if (prev !== undefined) process.env["STORM_DIVERSION_AIS_FALLBACK"] = prev;
+});
+
+test("the old AIS heuristics still work when explicitly re-enabled", () => {
+  const prev = process.env["STORM_DIVERSION_AIS_FALLBACK"];
+  process.env["STORM_DIVERSION_AIS_FALLBACK"] = "1";
+  const v = classifyDestinationChange({
+    baseline: "nassau", baselineDeclaredAt: "2026-09-19T12:00:00Z",
+    current: "miami", now: "2026-09-21T07:34:00Z",
+    inPortSlug: null, lastPortSlug: "miami", lastPortDepartedAt: "2026-09-18T20:17:00Z",
+    lastPosAt: "2026-09-21T07:30:00Z", portCalls: [], observedSince: "2026-09-05T21:12:00Z",
+    itinerary: null,
+  });
+  assert.equal(v.kind, "reroute", "the old path is preserved behind the flag");
+  if (prev === undefined) delete process.env["STORM_DIVERSION_AIS_FALLBACK"];
+  else process.env["STORM_DIVERSION_AIS_FALLBACK"] = prev;
 });

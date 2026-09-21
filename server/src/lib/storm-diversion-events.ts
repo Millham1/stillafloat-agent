@@ -112,7 +112,22 @@ export function diversionButtons(id: string): NotifyButton[] {
 }
 
 /** Persist merged detections; nudge Mark once per NEW event. Returns nudges sent. */
+/**
+ * Kill switch. DISABLE_STORM_DIVERSIONS=1 stops course-change events being
+ * filed at all — detection still runs and is still recorded on the ship row,
+ * but nothing reaches the review queue or Mark's phone. Added 2026-09-21 after
+ * the detector filed 25 false diversions in three days; it is the brake to
+ * pull if the classifier is ever untrustworthy again.
+ */
+export function diversionEventsDisabled(): boolean {
+  return process.env["DISABLE_STORM_DIVERSIONS"] === "1";
+}
+
 export async function recordDiversionEvents(detections: PendingDiversion[]): Promise<number> {
+  if (diversionEventsDisabled()) {
+    if (detections.length) logger.info({ suppressed: detections.length }, "storm-diversion: DISABLE_STORM_DIVERSIONS=1 — no events filed");
+    return 0;
+  }
   const merged = mergeDetections(detections);
   if (!merged.length) return 0;
   const supabase = getSupabase();
