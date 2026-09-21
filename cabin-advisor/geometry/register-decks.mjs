@@ -24,16 +24,49 @@
 //         node geometry/register-decks.mjs --ship norwegian-aura --ref-deck 12 --bow right [--write]
 // Prod:   ALLOW_PROD=1 with prod creds.
 import { createRequire } from "module";
-const require = createRequire(process.env.HOME + "/Desktop/Claude Local/saf-runtime/node/node_modules/x.js");
+// Resolve supabase-js/ws from wherever this is run: the box (the server's own node_modules) or the
+// Mac (the saf-runtime deps). Hardcoding the Mac path meant the script could not run on a box at all,
+// which is where the service key lives — found 2026-09-20.
+const require = createRequire(
+  [process.env.SAF_NODE_MODULES && `${process.env.SAF_NODE_MODULES}/x.js`,
+   "/root/saf-full/server/x.js",
+   process.env.HOME + "/Desktop/Claude Local/saf-runtime/node/node_modules/x.js"]
+    .filter(Boolean)
+    .find((p) => { try { createRequire(p).resolve("@supabase/supabase-js"); return true; } catch { return false; } })
+  ?? process.env.HOME + "/Desktop/Claude Local/saf-runtime/node/node_modules/x.js");
 const { createClient } = require("@supabase/supabase-js");
 const ws = require("ws");
 
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf(k); return i > -1 ? argv[i + 1] : d; };
-const SHIP = opt("--ship"), REF = Number(opt("--ref-deck")), BOW = opt("--bow"), WRITE = argv.includes("--write");
-if (!SHIP || !Number.isFinite(REF) || !["right", "left"].includes(BOW)) {
-  console.error("usage: node register-decks.mjs --ship <slug> --ref-deck <n> --bow right|left [--write]"); process.exit(1);
+const SHIP = opt("--ship"), BOW = opt("--bow"), WRITE = argv.includes("--write");
+// WHICH RAW AXIS RUNS BOW-TO-STERN, and whether the decks already share one frame.
+//   --along x  (default)  per-deck operator images, e.g. NCL/Widgety PNGs — Aura, Aqua, Luna
+//   --along y --frame shared   Carnival's deck-plan PDF, where every deck is a STRIP on one page,
+//     carved at the same crop, so the decks are already registered and fitting them to a reference
+//     deck would only add error. Verified on Carnival Tropicale 2026-09-20: its own
+//     `Forward-View Extended Balcony` sits at y 0.03-0.07 and `Aft-View Extended Balcony` at
+//     y 0.92-0.99 on EVERY deck, which is what "one shared frame" looks like in the data.
+// A shared frame needs no --ref-deck. `across` is then kept RAW, because that is what the rest of
+// the fleet stores (mardi-gras pos_across == its x exactly) and because per-deck normalising the
+// beam stretches a narrow upper deck to the full width and moves rooms off the centre band.
+const ALONG = opt("--along", "x"), FRAME = opt("--frame", "per-deck");
+// WHICH END OF THE ACROSS AXIS IS PORT. Orientation is an input here, not a guess (same rule as
+// --bow). The default keeps the landscape convention this script was written for: bow pointing
+// right means the TOP of the image is port. A Carnival strip is drawn bow-UP, and on those plans
+// PORT is the LEFT of the image, i.e. the LOW end of the across axis — verified on Tropicale,
+// whose stored `side` has port at x 0.06-0.50 and starboard at x 0.38-0.90.
+const PORT_END = opt("--port", "");
+const REF = Number(opt("--ref-deck", FRAME === "shared" ? "0" : undefined));
+if (PORT_END && !["low", "high"].includes(PORT_END)) { console.error("--port must be low or high"); process.exit(1); }
+if (!SHIP || !["right", "left"].includes(BOW) || !["x", "y"].includes(ALONG) || !["per-deck", "shared"].includes(FRAME)
+    || (FRAME === "per-deck" && !Number.isFinite(REF))) {
+  console.error("usage: node register-decks.mjs --ship <slug> --bow right|left [--along x|y] [--frame per-deck|shared] [--ref-deck <n>, per-deck only] [--write]");
+  process.exit(1);
 }
+// Read the raw pair in the order (along, across) whichever way round the source stores it.
+const rawAlong = (r) => Number(ALONG === "x" ? r.x : r.y);
+const rawAcross = (r) => Number(ALONG === "x" ? r.y : r.x);
 const MIN_MATCHES = 25, MIN_R2 = 0.99, MIN_INLIER_SHARE = 0.5;
 const SECTION_FWD = 0.34, SECTION_AFT = 0.67, CENTER_BAND = 0.06;
 const ABOVE_SAME = 0.012, ABOVE_OPEN = 0.02;
@@ -52,9 +85,11 @@ for (let from = 0; ; from += 1000) {
 }
 const suffix = (r) => (/^\d+$/.test(r.cabin_num) && r.cabin_num.startsWith(String(r.deck))) ? r.cabin_num.slice(String(r.deck).length) : null;
 const byDeck = new Map();
-for (const r of rows) { if (r.x == null) continue; (byDeck.get(r.deck) ?? byDeck.set(r.deck, []).get(r.deck)).push(r); }
-if (!byDeck.has(REF)) { console.error(`reference deck ${REF} has no geometry`); process.exit(1); }
-const refX = new Map(byDeck.get(REF).map((r) => [suffix(r), Number(r.x)]).filter(([s]) => s));
+for (const r of rows) { if (r.x == null || r.y == null) continue; (byDeck.get(r.deck) ?? byDeck.set(r.deck, []).get(r.deck)).push(r); }
+if (FRAME === "per-deck" && !byDeck.has(REF)) { console.error(`reference deck ${REF} has no geometry`); process.exit(1); }
+const refX = FRAME === "per-deck"
+  ? new Map(byDeck.get(REF).map((r) => [suffix(r), rawAlong(r)]).filter(([s]) => s))
+  : new Map();
 
 // Consensus fit (RANSAC, deterministic). Cabin numbers only stack where both decks carry
 // standard-width rooms. Where one deck has wide suites (Aura's aft Haven on 13-15) the
@@ -87,17 +122,31 @@ function fit(pairs) {
 }
 
 const reg = new Map(); // id -> {along, across, deck}
-for (const [deck, list] of [...byDeck].sort((p, q) => p[0] - q[0])) {
-  const pairs = list.map((r) => [Number(r.x), refX.get(suffix(r))]).filter(([, y]) => y != null);
+if (FRAME === "shared") {
+  // The decks are already in one frame: normalise the along axis across the WHOLE ship and keep
+  // across raw. No fit, so no fit to go wrong — and nothing is left NULL for want of matching
+  // suffixes, which matters on a hull whose partial decks carry too few rooms to fit anyway.
+  const alls = [...byDeck.values()].flat().map(rawAlong);
+  const lo = Math.min(...alls), hi = Math.max(...alls);
+  for (const [deck, list] of [...byDeck].sort((p, q) => p[0] - q[0])) {
+    console.log(`deck ${String(deck).padStart(2)}: ${String(list.length).padStart(4)} rooms, shared frame (no fit)`);
+    for (const r of list) {
+      const a0 = hi > lo ? (rawAlong(r) - lo) / (hi - lo) : 0.5;
+      reg.set(r.id, { deck, along: BOW === "right" ? 1 - a0 : a0, across: rawAcross(r) });
+    }
+  }
+}
+for (const [deck, list] of FRAME === "shared" ? [] : [...byDeck].sort((p, q) => p[0] - q[0])) {
+  const pairs = list.map((r) => [rawAlong(r), refX.get(suffix(r))]).filter(([, y]) => y != null);
   const f = deck === REF ? { a: 1, b: 0, r2: 1, n: list.length, inliers: list.length, of: list.length } : pairs.length >= 3 ? robustFit(pairs) : { a: NaN, b: NaN, r2: 0, n: pairs.length, inliers: 0, of: pairs.length };
   const ok = deck === REF || (f.inliers >= MIN_MATCHES && f.r2 >= MIN_R2 && f.inliers / f.of >= MIN_INLIER_SHARE);
-  const ys = list.map((r) => Number(r.y)), ymin = Math.min(...ys), ymax = Math.max(...ys);
+  const ys = list.map(rawAcross), ymin = Math.min(...ys), ymax = Math.max(...ys);
   console.log(`deck ${String(deck).padStart(2)}: ${String(list.length).padStart(4)} rooms, ${String(f.inliers).padStart(3)}/${String(f.of).padStart(3)} suffix matches kept, x_ref = ${f.a.toFixed(3)}x ${f.b >= 0 ? "+" : "-"} ${Math.abs(f.b).toFixed(3)}, r2 ${f.r2.toFixed(4)}  ${ok ? "REGISTERED" : "left NULL"}`);
   if (!ok) continue;
   for (const r of list) {
-    const xr = Math.min(1, Math.max(0, f.a * Number(r.x) + f.b));
+    const xr = Math.min(1, Math.max(0, f.a * rawAlong(r) + f.b));
     const along = BOW === "right" ? 1 - xr : xr;                    // 0 = forward-most cabins, 1 = aft
-    const across = ymax > ymin ? (Number(r.y) - ymin) / (ymax - ymin) : 0.5;
+    const across = ymax > ymin ? (rawAcross(r) - ymin) / (ymax - ymin) : 0.5;
     reg.set(r.id, { deck, along, across });
   }
 }
@@ -112,7 +161,8 @@ for (const r of rows) {
   const p = reg.get(r.id);
   if (!p) { updates.push({ id: r.id, pos_along: null, pos_across: null, section: null, side: null, above_kind: null, below_kind: null }); continue; }
   // top of the image is port when the bow points right, starboard when it points left
-  const topSide = BOW === "right" ? "port" : "starboard", bottomSide = topSide === "port" ? "starboard" : "port";
+  const topSide = PORT_END ? (PORT_END === "low" ? "port" : "starboard") : (BOW === "right" ? "port" : "starboard");
+  const bottomSide = topSide === "port" ? "starboard" : "port";
   updates.push({
     id: r.id, pos_along: Math.round(p.along * 1e4) / 1e4, pos_across: Math.round(p.across * 1e4) / 1e4,
     section: p.along < SECTION_FWD ? "forward" : p.along > SECTION_AFT ? "aft" : "mid",
@@ -128,7 +178,9 @@ for (let i = 0; i < updates.length; i += 200) {
   const chunk = updates.slice(i, i + 200);
   await Promise.all(chunk.map(({ id, ...cols }) => sb.from("cabins").update(cols).eq("id", id).then(({ error }) => { if (error) throw new Error(`${id}: ${error.message}`); })));
 }
-const note = `register-decks.mjs ${new Date().toISOString().slice(0, 10)}: decks fitted to deck ${REF} by stacked cabin-number suffix (consensus fit within ${INLIER_TOL}, r2>=${MIN_R2}, >=${MIN_MATCHES} inliers, >=${MIN_INLIER_SHARE * 100}% kept); bow ${BOW}; pos_along 0=forward-most cabins; section thirds; side from image top (${BOW === "right" ? "port" : "starboard"}); unregistered decks NULL.`;
+const note = FRAME === "shared"
+  ? `register-decks.mjs ${new Date().toISOString().slice(0, 10)}: shared frame, no fit — pos_along = ship-wide normalised ${ALONG}, pos_across = raw ${ALONG === "x" ? "y" : "x"}; bow ${BOW}; section thirds at ${SECTION_FWD}/${SECTION_AFT}; side from the ${CENTER_BAND * 100}% centre band; above/below = nearest cabin on deck±1 within ${ABOVE_SAME}, open beyond ${ABOVE_OPEN}.`
+  : `register-decks.mjs ${new Date().toISOString().slice(0, 10)}: decks fitted to deck ${REF} by stacked cabin-number suffix (consensus fit within ${INLIER_TOL}, r2>=${MIN_R2}, >=${MIN_MATCHES} inliers, >=${MIN_INLIER_SHARE * 100}% kept); bow ${BOW}; pos_along 0=forward-most cabins; section thirds; side from the low end of the across axis (${PORT_END ? (PORT_END === "low" ? "port" : "starboard") : (BOW === "right" ? "port" : "starboard")}); unregistered decks NULL.`;
 const { data: sr } = await sb.from("cabin_ships").select("notes").eq("slug", SHIP).maybeSingle();
-await sb.from("cabin_ships").update({ geometry_frame: "x-along", notes: { ...(sr?.notes ?? {}), position: note }, updated_at: new Date().toISOString() }).eq("slug", SHIP);
+await sb.from("cabin_ships").update({ geometry_frame: `${ALONG}-along`, notes: { ...(sr?.notes ?? {}), position: note }, updated_at: new Date().toISOString() }).eq("slug", SHIP);
 console.log(`wrote ${updates.length} rooms`);
