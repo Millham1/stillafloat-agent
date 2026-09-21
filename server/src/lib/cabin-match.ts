@@ -110,6 +110,17 @@ const ATTR_ALIASES: Readonly<Record<string, readonly CabinType[]>> = {
   // Celebrity's Concierge Class is a veranda tier, never sold windowless. Verified against the
   // grid 2026-08-19: all 3,250 rooms carrying the name sit on 14 ships, every one Celebrity.
   "concierge class": ["balcony"],
+  // Carnival's Havana rooms. "Havana Cabana" and "Havana Extended Cabana" carry no type word,
+  // so 52 rooms on Carnival Tropicale came back with NO attributes — no view, no tier, invisible
+  // to the advisor (2026-09-20). The cabana IS the category: Carnival's own copy is "an outdoor
+  // patio, complete with your own loungy deck chairs, all right outside your room", so private
+  // outdoor space is stated, not inferred. Only these two bare names are mapped — "Havana
+  // Interior" already resolves on the word interior, and "Havana ... Balcony"/"... Suite" on
+  // theirs. ⚠️ The patio opens onto the Havana public deck and a steel railing crosses the
+  // sightline (verified on sister Carnival Celebration, same Excel class) — that caveat belongs
+  // in the room's obstruction/notes, NOT here; this map says only what the room HAS.
+  "havana cabana": ["balcony"],
+  "havana extended cabana": ["balcony"],
 };
 
 /**
