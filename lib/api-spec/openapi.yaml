@@ -423,13 +423,9 @@ components:
           properties:
             anthropicConfigured:
               type: boolean
-            resendConfigured:
-              type: boolean
             gnewsConfigured:
               type: boolean
             weatherConfigured:
-              type: boolean
-            approvalConfigured:
               type: boolean
         publishing:
           type: object

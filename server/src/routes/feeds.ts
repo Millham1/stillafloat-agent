@@ -183,10 +183,8 @@ router.get("/system-status", async (req: Request, res: Response) => {
       environment: process.env["NODE_ENV"] || "unknown",
       systems: {
         anthropicConfigured: anthropicConfigured(),
-        resendConfigured: Boolean(process.env["RESEND_API_KEY"]),
         gnewsConfigured: Boolean(process.env["GNEWS_API_KEY"]),
         weatherConfigured: true, // Open-Meteo — no API key required
-        approvalConfigured: Boolean(process.env["APPROVAL_EMAIL"] && process.env["RESEND_API_KEY"]),
       },
       publishing: {
         candidateStories: (candidates.stories || []).length,
@@ -236,7 +234,6 @@ router.get("/platform-manifest", async (req: Request, res: Response) => {
         approvalWorkflow: true,
         affiliateManager: true,
         weatherMonitoring: Boolean(process.env["OPENWEATHER_API_KEY"]),
-        emailDelivery: Boolean(process.env["RESEND_API_KEY"]),
       },
     });
   } catch (error) {
