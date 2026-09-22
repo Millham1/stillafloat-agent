@@ -223,7 +223,20 @@ function scheduleLiveAisCredits() {
   const tick = async () => {
     try {
       const status = await checkLiveAisCredits();
-      if (status) logger.info({ remaining: status.remaining, used: status.used, cap: status.threshold }, "Live-AIS credit check");
+      // Field names matter here: a human reads this line in a hurry. It used
+      // to log `cap: 50` — the ALERT THRESHOLD — beside a spend figure, which
+      // reads as "a $50 cap has been blown" when the truth was 21 credits,
+      // $0.42 of a $50 balance. Name the threshold for what it is and put the
+      // dollars in the line so nobody has to multiply by 0.02 to know whether
+      // to worry.
+      if (status) {
+        logger.info({
+          creditsRemaining: status.remaining,
+          creditsUsed: status.used,
+          alertBelow: status.threshold,
+          dollarsUsed: Number((status.used * 0.02).toFixed(2)),
+        }, "Live-AIS credit check");
+      }
     } catch (err) {
       logger.error({ err }, "Live-AIS credit check failed");
     }
