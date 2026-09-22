@@ -1,6 +1,7 @@
 import "./env"; // must be first — populates process.env from the shared .env
 import app from "./app";
 import { logger } from "./lib/logger";
+import { checkLiveAisCredits, liveAisEnabled } from "./lib/live-ais";
 import { runDuePosts } from "./lib/social-schedule";
 import { runAndDeliverBrief } from "./lib/brief";
 import { runStormScan } from "./lib/storm-agent";
@@ -96,6 +97,10 @@ app.listen(port, "0.0.0.0", () => {
   // (3 days after signup), then archives them (21 days, kept for future
   // re-permission marketing, not deleted). Disabled on the dev mirror so
   // subscribers are never reminded/archived twice.
+  // Live-AIS credit balance — the paid position lookups run down a prepaid
+  // balance that has no expiry and no auto-refill, so running dry is silent:
+  // ship positions simply stop refreshing. Watch it and say so in advance.
+  scheduleLiveAisCredits();
   if (process.env["DISABLE_SUBSCRIBER_HYGIENE"] === "1") {
     logger.info("Subscriber hygiene DISABLED (DISABLE_SUBSCRIBER_HYGIENE=1)");
   } else {
@@ -196,6 +201,36 @@ function scheduleGuidesPrerender() {
   setTimeout(() => { tick().catch(() => {}); }, 50_000);
   setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
   logger.info("Guides prerender scheduler active — on boot + hourly");
+}
+
+// ── Live-AIS credit listener ──────────────────────────────────────────────────
+// Mark, 2026-09-21: "we need a listener to alert me when credits drop below 50."
+//
+// Reads the provider's FREE usage endpoint — this costs no credits, so it can
+// run often — folds it into the running balance and pushes ONE alert per
+// crossing (see creditAlarm: a latch stops it repeating every tick, and a
+// top-up clears the latch so the next crossing speaks again).
+//
+// Four-hourly rather than hourly: the balance only moves when someone looks up
+// a ship, and a four-hour warning is ample for a top-up that takes a minute.
+// No-ops without LIVEAIS_API_KEY, and reports `remaining: null` rather than
+// inventing a number when LIVEAIS_CREDITS_PURCHASED is unset.
+function scheduleLiveAisCredits() {
+  if (!liveAisEnabled()) {
+    logger.info("Live-AIS credit listener idle — no LIVEAIS_API_KEY");
+    return;
+  }
+  const tick = async () => {
+    try {
+      const status = await checkLiveAisCredits();
+      if (status) logger.info({ remaining: status.remaining, used: status.used, cap: status.threshold }, "Live-AIS credit check");
+    } catch (err) {
+      logger.error({ err }, "Live-AIS credit check failed");
+    }
+  };
+  setTimeout(() => { tick().catch(() => {}); }, 70_000);
+  setInterval(() => { tick().catch(() => {}); }, 4 * 60 * 60 * 1000);
+  logger.info("Live-AIS credit listener active — on boot + every 4h");
 }
 
 // ── Social poster scheduler ───────────────────────────────────────────────────
