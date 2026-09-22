@@ -158,6 +158,14 @@ export async function classifyStories(
         schema: HUB_VERDICT_SCHEMA as unknown as Record<string, unknown>,
         model: CHEAP_MODEL,          // sorting, not writing
         maxTokens: 1500,
+        job: "news.hubclass",
+        // This is a BATCH call: the same verdicts in a different order are the
+        // same answer. Compare id -> sorted hub slugs, so only a genuine
+        // classification difference counts as a disagreement.
+        shadowNormalise: (out: { verdicts?: { storyId?: string; lines?: string[] }[] }) =>
+          (out.verdicts ?? [])
+            .map((v) => [String(v.storyId ?? ""), [...new Set(v.lines ?? [])].sort()] as const)
+            .sort((a, b) => a[0].localeCompare(b[0])),
       });
       const byId = new Map(batch.map((s) => [String(s.id ?? ""), s]));
       const answered = new Set<string>();

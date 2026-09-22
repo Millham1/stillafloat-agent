@@ -183,16 +183,23 @@ export async function localJson<T = Record<string, unknown>>(req: LocalJsonReque
  * Run the local model alongside a result Anthropic already produced and log any
  * disagreement. Never throws and never changes what the caller receives — a
  * shadow run that fails is a quiet log line, not an incident.
+ *
+ * `normalise` exists because raw equality measures the wrong thing on most real
+ * payloads. Free prose is never worded identically by two models, and a batch
+ * result can carry the same verdicts in a different order — compare either
+ * verbatim and you get 100% disagreement that tells you nothing. Pass a
+ * normaliser that reduces the value to the DECISION you actually care about.
  */
 export function shadowCompare<T>(
   job: string,
   authoritative: T,
   run: () => Promise<T>,
+  normalise: (value: T) => unknown = (v) => v,
 ): void {
   void run()
     .then((local) => {
-      const a = JSON.stringify(authoritative);
-      const b = JSON.stringify(local);
+      const a = JSON.stringify(normalise(authoritative));
+      const b = JSON.stringify(normalise(local));
       if (a === b) {
         logger.info({ job, agree: true }, "llm shadow: local agreed");
       } else {
