@@ -61,6 +61,13 @@ export interface LlmRequest {
    * comparison via LLM_SHADOW_JOBS. A call with no job never routes locally.
    */
   job?: string;
+  /**
+   * Reduce a result to the part a shadow comparison should judge. Without one,
+   * two models are compared verbatim — and free prose or a differently-ordered
+   * batch then reads as 100% disagreement, which measures nothing. Supply this
+   * whenever the payload carries anything but the decision itself.
+   */
+  shadowNormalise?: (value: never) => unknown;
 }
 
 export interface LlmJsonRequest extends LlmRequest {
@@ -200,7 +207,10 @@ export async function llmText(req: LlmRequest): Promise<string> {
     .join("")
     .trim();
 
-  if (shadowLocally(req.job)) shadowCompare(req.job as string, text, () => localText(req));
+  if (shadowLocally(req.job)) {
+    shadowCompare(req.job as string, text, () => localText(req),
+      req.shadowNormalise as ((v: string) => unknown) | undefined);
+  }
   return text;
 }
 
@@ -254,6 +264,9 @@ export async function llmJson<T = Record<string, unknown>>(req: LlmJsonRequest):
     throw new Error("Anthropic returned no structured result");
   }
   const result = block.input as T;
-  if (shadowLocally(req.job)) shadowCompare(req.job as string, result, () => localJson<T>(req));
+  if (shadowLocally(req.job)) {
+    shadowCompare(req.job as string, result, () => localJson<T>(req),
+      req.shadowNormalise as ((v: T) => unknown) | undefined);
+  }
   return result;
 }

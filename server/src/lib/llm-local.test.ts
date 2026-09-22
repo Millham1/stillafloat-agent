@@ -198,3 +198,43 @@ test("a local JSON call describes the schema in the prompt as well as enforcing 
   assert.equal(rf.type, "json_schema");
   assert.equal(rf.json_schema.strict, true);
 });
+
+// ---------------------------------------------------------------- shadow normalising
+
+test("without a normaliser, a reordered batch reads as disagreement", async () => {
+  process.env["LOCAL_LLM_URL"] = LOCAL_URL;
+  process.env["LLM_SHADOW_JOBS"] = "news.hubclass";
+  const anthropic = { verdicts: [{ storyId: "a", lines: ["x"] }, { storyId: "b", lines: ["y"] }] };
+  const local = { verdicts: [{ storyId: "b", lines: ["y"] }, { storyId: "a", lines: ["x"] }] };
+  stubFetch([[200, anthropicTool(anthropic)], [200, localText(JSON.stringify(local))]]);
+
+  await llmJson({ system: "s", user: "u", schema: SCHEMA, job: "news.hubclass" });
+  await new Promise((r) => setTimeout(r, 30));
+
+  // Same classification, different order. Verbatim comparison calls this a
+  // disagreement — which is exactly the false signal the normaliser exists for.
+  assert.notEqual(JSON.stringify(anthropic), JSON.stringify(local));
+});
+
+test("a normaliser makes the same answer in a different order compare equal", async () => {
+  process.env["LOCAL_LLM_URL"] = LOCAL_URL;
+  process.env["LLM_SHADOW_JOBS"] = "news.hubclass";
+  const anthropic = { verdicts: [{ storyId: "a", lines: ["x", "z"] }, { storyId: "b", lines: ["y"] }] };
+  const local = { verdicts: [{ storyId: "b", lines: ["y"] }, { storyId: "a", lines: ["z", "x"] }] };
+
+  // the normaliser the hub classifier actually uses
+  const norm = (out: { verdicts?: { storyId?: string; lines?: string[] }[] }) =>
+    (out.verdicts ?? [])
+      .map((v) => [String(v.storyId ?? ""), [...new Set(v.lines ?? [])].sort()] as const)
+      .sort((a, b) => a[0].localeCompare(b[0]));
+
+  assert.equal(JSON.stringify(norm(anthropic)), JSON.stringify(norm(local)),
+    "order of verdicts, and of slugs within a verdict, must not count as a difference");
+
+  stubFetch([[200, anthropicTool(anthropic)], [200, localText(JSON.stringify(local))]]);
+  const out = await llmJson({
+    system: "s", user: "u", schema: SCHEMA, job: "news.hubclass",
+    shadowNormalise: norm as unknown as (v: never) => unknown,
+  });
+  assert.deepEqual(out, anthropic, "the shadow must not alter what the caller receives");
+});
