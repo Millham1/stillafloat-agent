@@ -32,6 +32,8 @@ import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
 } from "./ports";
 import { groundsForPoint } from "./storm-grounds";
+import { allowlisted, type LookupReason, type PositionFix } from "./position-provider";
+import { liveAisEnabled, liveAisLookup } from "./live-ais";
 import type { PortCall } from "./storm-diversion";
 
 const STATE_KEY = "wms-positions";
@@ -204,6 +206,68 @@ export function allPositions(): ShipPosition[] {
  * A visitor asked for this ship: stamp the request (retention) and pull the
  * active set forward immediately so the wake-up takes moments, not minutes.
  */
+/**
+ * Apply a fix bought from a paid provider to the in-memory position, exactly as
+ * if the free feed had delivered it. Returns false when it is not newer than
+ * what we already hold — we still paid, but we do not move the pin backwards.
+ */
+export function applyExternalFix(mmsi: string, fix: PositionFix): boolean {
+  const reg = registryByMmsi.get(mmsi);
+  if (!reg) return false;
+  let pos = positions.get(mmsi);
+  if (!pos) {
+    pos = {
+      mmsi, name: reg.name, cruiseLine: reg.cruiseLine,
+      lat: null, lon: null, cogDeg: null, sogKn: null, headingDeg: null,
+      destinationRaw: null, destinationSlug: null, etaUtc: null,
+      lastPosAt: null, lastPortSlug: null, lastPortDepartedAt: null,
+      inPortSlug: null, portCalls: [], regionsSeen: [],
+      currentSailingStart: null, currentDepartPort: null,
+    } as ShipPosition;
+    positions.set(mmsi, pos);
+  }
+  if (pos.lastPosAt && Date.parse(fix.at) <= Date.parse(pos.lastPosAt)) return false;
+  pos.lat = fix.lat;
+  pos.lon = fix.lon;
+  if (fix.courseDeg !== null) pos.cogDeg = fix.courseDeg;
+  if (fix.speedKn !== null) pos.sogKn = fix.speedKn;
+  pos.headingDeg = fix.headingDeg;
+  pos.lastPosAt = fix.at;
+  if (fix.destination) {
+    pos.destinationRaw = fix.destination;
+    pos.destinationSlug = matchDestination(fix.destination)?.slug ?? pos.destinationSlug;
+  }
+  if (fix.etaUtc) pos.etaUtc = fix.etaUtc;
+  for (const g of groundsForPoint(fix.lat, fix.lon)) {
+    if (!pos.regionsSeen.includes(g)) pos.regionsSeen.push(g);
+  }
+  detectPortCall(pos);
+  return true;
+}
+
+/**
+ * Buy ONE position for a ship the free feed has gone quiet on. Every guard —
+ * freshness, per-ship window, monthly cap, allowlist — lives in the adapter and
+ * position-provider; this only decides that a reason exists and applies the
+ * answer. Silent no-op when no paid provider is configured.
+ */
+export async function refreshStalePosition(shipName: string, reason: LookupReason): Promise<boolean> {
+  if (!liveAisEnabled()) return false;
+  const reg = registryByName(shipName);
+  if (!reg || !allowlisted(reg.mmsi, reg.name)) return false;
+  const lastFixAt = positions.get(reg.mmsi)?.lastPosAt ?? null;
+  try {
+    const fix = await liveAisLookup(reg.mmsi, lastFixAt, reason);
+    if (!fix) return false;
+    const applied = applyExternalFix(reg.mmsi, fix);
+    logger.info({ ship: reg.name, reason, at: fix.at, applied }, "wms: paid position lookup");
+    return applied;
+  } catch (err) {
+    logger.warn({ err, ship: reg.name, reason }, "wms: paid position lookup threw");
+    return false;
+  }
+}
+
 export async function requestShip(shipName: string): Promise<"live" | "waking" | "unknown"> {
   const ship = registryByName(shipName);
   if (!ship) return "unknown";

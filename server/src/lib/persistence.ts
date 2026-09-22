@@ -55,6 +55,10 @@ export const PATHS = {
   // Per-story SEO title/description overrides for the news prerenderer, keyed by
   // story id. Lets us tune search snippets without changing the on-page headline.
   seoOverrides: "seo-overrides",
+  // Live-AIS credit ledger (`used` counts CREDITS, not calls) — lib/live-ais.ts
+  liveAisLedger: "live-ais-ledger",
+  // Live-AIS running balance (purchased minus consumed) + low-credit latch — lib/live-ais.ts
+  liveAisCredits: "live-ais-credits",
   // Which cruise line(s) each story belongs to, decided once per story — lib/news-hub-classifier.ts
   newsHubAssignments: "news-hub-assignments",
   // Evergreen "Cruising Guides" — curated long-form advisory articles (Track A/B).

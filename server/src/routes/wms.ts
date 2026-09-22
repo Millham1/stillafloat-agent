@@ -13,8 +13,7 @@ import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import {
   getPosition, allPositions, trackerEnabled, trackerHealthy,
-  requestShip, isSubscribed, inRegistry, subscribedNames, capacity,
-} from "../lib/ship-tracker";
+  requestShip, isSubscribed, inRegistry, subscribedNames, capacity, refreshStalePosition } from "../lib/ship-tracker";
 import { trackingEmail, verifyWatchSig, watchStopUrl } from "../lib/ship-watch";
 import { portBySlug } from "../lib/ports";
 
@@ -100,7 +99,14 @@ router.post("/wms/request", async (req: Request, res: Response) => {
   try {
     const state = await requestShip(ship);
     if (state === "unknown") return res.status(404).json({ ok: false, error: "Unknown ship" });
-    return res.json({ ok: true, state }); // live | waking
+    // A ship outside the terrestrial subscription can sit silent for MONTHS —
+    // MSC Meraviglia showed a 13 July position on 22 September while a paid
+    // provider had a fix from three minutes earlier. Subscribing her does not
+    // fix that on its own: she has to come within range of a shore receiver.
+    // So when someone actually asks for a stale ship, buy one position. Every
+    // guard (freshness, per-ship window, monthly cap) is inside the adapter.
+    const refreshed = await refreshStalePosition(ship, "request").catch(() => false);
+    return res.json({ ok: true, state: refreshed ? "live" : state, refreshed });
   } catch (err) {
     logger.error({ err }, "wms: request failed");
     return res.status(500).json({ ok: false, error: "Request failed" });
