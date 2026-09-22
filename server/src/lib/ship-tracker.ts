@@ -1,13 +1,29 @@
 // ship-tracker.ts — live cruise-ship positions for "Where's My Ship?" (WMS).
 //
 // v2 (Mark's design): the `ships` table is the FULL cruise-ship registry —
-// search covers every ship in it. Live AIS tracking activates on request and
-// is then RETAINED: the active set = ships with active watches, the seeded
-// US-coast fleet (seed_active), and everything ever requested, newest first,
-// up to capacity. Capacity = (number of API keys) × WMS_MAX_PER_CONN (the
-// aisstream per-connection MMSI-filter allowance; default 50 — verify
-// empirically). Under capacity pressure the least-recently-requested
-// non-seeded ships rotate out; a new request instantly rotates a ship back in.
+// search covers every ship in it. Capacity = (number of API keys) ×
+// WMS_MAX_PER_CONN (the aisstream per-connection MMSI-filter allowance;
+// default 50), so ~150 of 315 ships can be listened to at once.
+//
+// WHO GETS A SLOT (Mark, 2026-09-22). Only work that needs to notice CHANGE
+// OVER TIME needs continuous tracking:
+//   • a ship pinned to a live named storm — the diversion detector compares
+//     her declared destination across scans;
+//   • a ship someone is following on a 15-day watch — the sweep emails them
+//     when her itinerary changes;
+//   • a ship asked for in the last hour, so a page left open keeps updating
+//     free rather than re-buying.
+// Everything else is answered ON DEMAND: a "where is she" query buys one
+// current position (routes/wms.ts -> refreshStalePosition). So no ship can be
+// "missed" by not holding a slot.
+//
+// seed_active is GONE from this decision. It pre-warmed an 84-ship US-coast
+// fleet from July, before on-demand lookups existed and a cold ship had
+// nothing to show. It now buys nothing and cost more than nothing: with 64
+// storm ships + 84 seeded + 6 requested = 155 eligible against a cap of 150,
+// five ships were being dropped — and because seeding outranked requests, the
+// ones dropped were ships somebody had actually asked for. The column is left
+// in the table; nothing reads it.
 //
 // One websocket PER KEY to the free aisstream.io feed (aisstream allows one
 // connection per key), the active MMSI list sharded across them. Terrestrial
@@ -51,7 +67,6 @@ export interface RegistryShip {
   mmsi: string;
   name: string;
   cruiseLine: string;
-  seedActive: boolean;
   hasWatch: boolean;
   lastRequestedAt: string | null;
 }
@@ -292,7 +307,7 @@ async function loadRegistry(): Promise<void> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("ships")
-    .select("name, cruise_line, mmsi, seed_active, last_requested_at")
+    .select("name, cruise_line, mmsi, last_requested_at")
     .eq("active", true)
     .not("mmsi", "is", null);
   if (error) throw new Error(`loadRegistry: ${error.message}`);
@@ -306,34 +321,43 @@ async function loadRegistry(): Promise<void> {
   const watched = new Set(((watches ?? []) as { ship_name: string }[]).map((w) => w.ship_name.toLowerCase()));
 
   registryByMmsi = new Map(
-    ((data ?? []) as { name: string; cruise_line: string; mmsi: string; seed_active: boolean | null; last_requested_at: string | null }[])
+    ((data ?? []) as { name: string; cruise_line: string; mmsi: string; last_requested_at: string | null }[])
       .map((r) => [String(r.mmsi), {
         mmsi: String(r.mmsi),
         name: r.name,
         cruiseLine: r.cruise_line,
-        seedActive: Boolean(r.seed_active),
         hasWatch: watched.has(r.name.toLowerCase()),
         lastRequestedAt: r.last_requested_at,
       }]),
   );
 }
 
-/** Priority-ordered active set: storm-impacted + watches → seeded US fleet →
- *  requested, newest first. Storm ships are pinned for the storm's lifetime
- *  (Mark's lifecycle design 2026-07-22) — they claim slots even if they were
- *  never seeded or requested. */
-function buildActiveSet(): Set<string> {
+/**
+ * How long a ship keeps her slot after someone asks for her.
+ *
+ * Mark, 2026-09-22: "at 19 knots a ship isn't going far." An hour of free
+ * updates covers the visitor who leaves the page open; after that she has
+ * moved ~19 nm and the next enquiry buys a current fix anyway, so holding the
+ * slot only denies it to a storm ship or a watcher.
+ */
+export const REQUEST_HOLD_MS = 60 * 60 * 1000;
+
+/** Priority-ordered active set — see the header for who qualifies and why. */
+function buildActiveSet(now = Date.now()): Set<string> {
   const ships = [...registryByMmsi.values()];
+  const recentlyRequested = (s: RegistryShip): boolean => {
+    const t = Date.parse(s.lastRequestedAt ?? "");
+    return Number.isFinite(t) && now - t < REQUEST_HOLD_MS;
+  };
   const rank = (s: RegistryShip): number =>
-    (stormMmsis.has(s.mmsi) || s.hasWatch ? 0 : s.seedActive ? 1 : s.lastRequestedAt ? 2 : 3);
+    stormMmsis.has(s.mmsi) || s.hasWatch ? 0 : recentlyRequested(s) ? 1 : 2;
   ships.sort((a, b) =>
     rank(a) - rank(b) ||
     (b.lastRequestedAt ?? "").localeCompare(a.lastRequestedAt ?? "") ||
     a.name.localeCompare(b.name));
   const cap = apiKeys().length * maxPerConn();
-  // Rank 3 (never requested, not seeded, no storm) ships stay registry-only
-  // until asked for — EXCEPT storm ships, which qualify via rank 0 above.
-  return new Set(ships.filter((s) => rank(s) < 3).slice(0, cap).map((s) => s.mmsi));
+  // Rank 2 stays registry-only: searchable, and answered on demand.
+  return new Set(ships.filter((s) => rank(s) < 2).slice(0, cap).map((s) => s.mmsi));
 }
 
 /** Re-shard the active set across connections; resubscribe the ones that changed. */
