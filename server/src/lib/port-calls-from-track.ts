@@ -1,12 +1,19 @@
 // port-calls-from-track.ts — read a ship's recent port calls off a position track.
 //
 // The live tracker logs a call when it sees a ship slow inside a port radius
-// and closes it when she leaves. A provider's history track (ShipFinder,
+// and closes it when she leaves. A provider's history track
 // 24 h of points) lets us do the same replay for a ship we have only just
 // started following, so her card has "departed Miami" on the first request
 // instead of a week later. Pure; the thresholds mirror ship-tracker.ts.
 import { nearestPort } from "./ports";
-import type { TrackSample } from "./shipfinder-core";
+/** A single history-track sample from any position provider. */
+export interface TrackSample {
+  lat: number;
+  lon: number;
+  at: string;
+  speedKn: number | null;
+  source: "satellite" | "terrestrial" | "unknown";
+}
 
 export interface DerivedPortCall { slug: string; arrivedAt: string; departedAt: string | null }
 

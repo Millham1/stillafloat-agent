@@ -34,7 +34,6 @@ import { getSupabase, readJson, writeJson, PATHS } from "./persistence";
 import { appendTrack, type TrackPoint } from "./dead-reckoning";
 import { selectActiveSet, trackingRank, AISSTREAM_MMSIS_PER_SUBSCRIPTION } from "./active-set";
 import { satelliteLookup, satelliteEnabled, allowlisted, sweepEnabled, LOOKUP_AFTER_MIN, type LookupReason, type SatelliteFix } from "./satellite-ais";
-import { shipfinderLookup, shipfinderEnabled, shipfinderNearby, shipfinderSearch, shipfinderTrack, verifyRegistryEntry, isThrottle, type RegistryVerdict } from "./shipfinder-ais";
 import { portCallsFromTrack, mergePortCalls } from "./port-calls-from-track";
 import { refreshPlannedSailings, type RefreshShip } from "./planned-sailings-refresh";
 import { cruiseApiEnabled } from "./cruise-api";
@@ -413,13 +412,13 @@ export function applyExternalFix(
  * there is a reason (see satellite-ais.ts for the gate). Awaited by the
  * request route (capped there) and by the periodic sweep.
  */
-export type PositionProvider = "datadocked" | "shipfinder";
-/** SATELLITE_PROVIDERS="shipfinder,datadocked" — tried in order; default Datadocked only. */
+export type PositionProvider = "datadocked";
+/** SATELLITE_PROVIDERS="datadocked" — tried in order. */
 export function positionProviders(): PositionProvider[] {
   const raw = (process.env["SATELLITE_PROVIDERS"] ?? "datadocked").replace(/^["']+|["']+$/g, "");
   const out: PositionProvider[] = [];
   for (const p of raw.split(",").map((x) => x.trim().toLowerCase())) {
-    if ((p === "datadocked" || p === "shipfinder") && !out.includes(p)) out.push(p);
+    if (p === "datadocked" && !out.includes(p)) out.push(p);
   }
   return out;
 }
@@ -431,150 +430,16 @@ export async function fillFromSatellite(mmsi: string, reason: LookupReason): Pro
   for (const provider of positionProviders()) {
     let fix: SatelliteFix | null = null;
     if (provider === "datadocked" && satelliteEnabled()) fix = await satelliteLookup(mmsi, lastFixAt, reason);
-    else if (provider === "shipfinder" && shipfinderEnabled()) fix = await shipfinderLookup(mmsi, lastFixAt, reason);
     else continue;
     if (!fix) continue; // gate, cap, error or no data: the next provider may still answer
     // A provider's terrestrial fix is still AIS, so the pill says "satellite"
     // only when a satellite heard her.
     const applied = applyExternalFix(mmsi, fix, fix.source === "satellite" ? "satellite" : "ais");
-    if (provider === "shipfinder") {
-      // Two free follow-ups (unmetered / once per ship): everyone sharing her
-      // pier, and the last day of her own track on the first request.
-      await refreshClusterFrom(mmsi).catch((err) => logger.warn({ err, mmsi }, "wms: cluster refresh failed"));
-      await seedTrackFromHistory(mmsi).catch((err) => logger.warn({ err, mmsi }, "wms: history seed failed"));
-    }
     // Whether or not it was newer than ours, the provider answered: paying a
     // second provider for the same moment would buy the same answer.
     return applied;
   }
   return false;
-}
-
-/**
- * FREE cluster refresh (ShipFinder Vessels Nearby is unmetered): after a paid
- * lookup on one ship, every registry ship within 10 nm of her gets the same
- * quality of fix at no cost. Cruise ships bunch at piers and anchorages, so one
- * paid call at Miami refreshed four ships on 2026-09-11.
- */
-export async function refreshClusterFrom(mmsi: string): Promise<{ vessels: number; updated: string[] }> {
-  const list = await shipfinderNearby(mmsi);
-  const updated: string[] = [];
-  for (const v of list) {
-    if (v.mmsi === mmsi || !registryByMmsi.has(v.mmsi)) continue;
-    if (applyExternalFix(v.mmsi, v.fix, v.fix.source === "satellite" ? "satellite" : "ais")) updated.push(registryByMmsi.get(v.mmsi)!.name);
-  }
-  if (list.length) logger.info({ mmsi, vessels: list.length, updated }, "wms: cluster refresh");
-  return { vessels: list.length, updated };
-}
-
-const HISTORY_SEED_MIN_TRACK = 10;   // a ship with fewer real points than this gets her last day from the provider
-const HISTORY_SEED_HOURS = 24;
-
-/**
- * First-request seed (metered, once per ship): the provider's last 24 h of
- * track becomes the line behind her, and the port calls read off it become her
- * recent itinerary, so the card is complete on the first look.
- */
-export async function seedTrackFromHistory(mmsi: string): Promise<boolean> {
-  const pos = positions.get(mmsi);
-  if (!pos || (pos.track?.length ?? 0) >= HISTORY_SEED_MIN_TRACK) return false;
-  const samples = await shipfinderTrack(mmsi, HISTORY_SEED_HOURS);
-  if (!samples || samples.length < 2) return false;
-  let track: TrackPoint[] = [];
-  for (const s of samples) track = appendTrack(track, s.lat, s.lon, s.at);
-  // Keep any real points we already had that are newer than the history.
-  const lastHistory = Date.parse(samples[samples.length - 1]!.at);
-  for (const p of pos.track ?? []) if (Date.parse(p[2]) > lastHistory) track = appendTrack(track, p[0], p[1], p[2]);
-  pos.track = track;
-  const derived = portCallsFromTrack(samples);
-  pos.portCalls = mergePortCalls(pos.portCalls ?? [], derived, PORT_CALL_LOG_MAX);
-  const lastCall = derived[derived.length - 1];
-  if (lastCall && lastCall.departedAt && !pos.lastPortDepartedAt) {
-    const port = portBySlug(lastCall.slug);
-    pos.lastPortSlug = lastCall.slug;
-    pos.lastPortDepartedAt = lastCall.departedAt;
-    if (port?.type === "embarkation" && !pos.currentDepartPort) { pos.currentDepartPort = port.slug; pos.currentSailingStart = lastCall.departedAt.slice(0, 10); }
-  }
-  logger.info({ mmsi, ship: pos.name, points: track.length, portCalls: derived.map((c) => c.slug) }, "wms: track seeded from history");
-  return true;
-}
-
-/**
- * Nightly registry verification (ShipFinder Vessel Search, unmetered): does each
- * MMSI still answer to our ship's name? Reflagged ships change MMSI and a stale
- * one tracks the wrong hull. Safe corrections (tied by IMO, or our MMSI unknown
- * and exactly one hull of our name) are applied; the rest are flagged
- * mmsi_suspect with the reported name for a human. Report in platform_state.
- */
-interface VerificationState { ranAt: string; nextIndex: number; throttled: boolean; checked: number; ok: number; suspects: number; corrected: number; unknown: number; findings: unknown[] }
-
-/** Ships per nightly batch: the search endpoint is "unmetered" but throttles after a few hundred calls a day. */
-function registryBatchSize(): number {
-  const n = Number(process.env["SHIPFINDER_REGISTRY_BATCH"]);
-  return Number.isFinite(n) && n > 0 ? n : 60;
-}
-
-export async function verifyRegistry(opts: { delayMs?: number; apply?: boolean; batch?: number } = {}): Promise<{ checked: number; ok: number; suspects: number; corrected: number; unknown: number; throttled: boolean; nextIndex: number }> {
-  const delayMs = opts.delayMs ?? 1500;
-  const apply = opts.apply ?? true;
-  const batch = opts.batch ?? registryBatchSize();
-  const supabase = getSupabase();
-  // Stable order + a cursor: each night verifies the next slice, so the whole
-  // registry is covered every few nights without tripping the daily throttle.
-  const ships = [...registryByMmsi.values()].sort((a, b) => a.mmsi.localeCompare(b.mmsi));
-  let prev: Partial<VerificationState> = {};
-  try { prev = await readJson<Partial<VerificationState>>(PATHS.registryVerification, {}); } catch { /* first run */ }
-  const start = Number.isFinite(prev.nextIndex) && (prev.nextIndex ?? 0) < ships.length ? (prev.nextIndex ?? 0) : 0;
-  const slice = ships.slice(start, start + batch);
-  const report: Array<{ name: string; mmsi: string } & RegistryVerdict & { applied: boolean }> = [];
-  const carried = Array.isArray(prev.findings) ? (prev.findings as typeof report).filter((f) => !slice.some((s2) => s2.mmsi === f.mmsi)) : [];
-  const counts = { checked: 0, ok: 0, suspects: 0, corrected: 0, unknown: 0, throttled: false, nextIndex: start };
-  for (const ship of slice) {
-    const byMmsi = await shipfinderSearch(ship.mmsi, 3);
-    if (isThrottle(byMmsi.status)) { counts.throttled = true; break; }        // stop; resume from this ship next run
-    let verdict = verifyRegistryEntry({ name: ship.name, mmsi: ship.mmsi, imo: ship.imo }, byMmsi.hits, []);
-    if (verdict.status !== "ok" && byMmsi.status === 0) {
-      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
-      const byName = await shipfinderSearch(ship.name, 5);
-      if (isThrottle(byName.status)) { counts.throttled = true; break; }
-      verdict = verifyRegistryEntry({ name: ship.name, mmsi: ship.mmsi, imo: ship.imo }, byMmsi.hits, byName.hits);
-    } else if (byMmsi.status !== 0) {
-      break; // provider error of another kind: do not judge ships on it
-    }
-    counts.checked += 1;
-    counts.nextIndex = start + counts.checked;
-    let applied = false;
-    try {
-      if (verdict.status === "ok") {
-        counts.ok += 1;
-        if (apply && verdict.proposedImo) await (supabase.from("ships") as ReturnType<typeof supabase.from>).update({ imo: verdict.proposedImo }).eq("mmsi", ship.mmsi);
-      } else if (verdict.status === "corrected" && verdict.proposedMmsi) {
-        counts.corrected += 1;
-        if (apply) {
-          const patch: Record<string, unknown> = { mmsi: verdict.proposedMmsi, mmsi_suspect: false, reported_name: verdict.reportedName };
-          if (verdict.proposedImo) patch["imo"] = verdict.proposedImo;
-          await (supabase.from("ships") as ReturnType<typeof supabase.from>).update(patch).eq("mmsi", ship.mmsi);
-          applied = true;
-        }
-      } else if (verdict.status === "suspect") {
-        counts.suspects += 1;
-        if (apply) await (supabase.from("ships") as ReturnType<typeof supabase.from>).update({ mmsi_suspect: true, reported_name: verdict.reportedName }).eq("mmsi", ship.mmsi);
-      } else {
-        counts.unknown += 1;
-      }
-    } catch (err) {
-      logger.warn({ err, ship: ship.name }, "wms: registry verification write failed");
-    }
-    if (verdict.status !== "ok") report.push({ name: ship.name, mmsi: ship.mmsi, ...verdict, applied });
-    if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
-  }
-  if (counts.nextIndex >= ships.length) counts.nextIndex = 0; // wrapped: start over next night
-  const state: VerificationState = { ranAt: new Date().toISOString(), ...counts, findings: [...carried, ...report] };
-  try { await writeJson(PATHS.registryVerification, state); }
-  catch (err) { logger.warn({ err }, "wms: registry verification report persist failed"); }
-  logger.info({ ...counts, batchStart: start, registry: ships.length, findingsTotal: state.findings.length }, "wms: registry verification");
-  if (counts.corrected && apply) await refreshActiveSet().catch(() => {});
-  return counts;
 }
 
 /** Registry ships in the tracker's priority order for the Cruise API refresh. */
@@ -589,13 +454,6 @@ function plannedRefreshDelayMs(): number {
   return (Number.isFinite(n) && n >= 0 ? n : 20) * 60 * 1000;
 }
 
-function registryCheckEnabled(): boolean {
-  return shipfinderEnabled() && process.env["SHIPFINDER_REGISTRY_CHECK"] !== "off";
-}
-function registryCheckDelayMs(): number {
-  const n = Number(process.env["SHIPFINDER_REGISTRY_CHECK_DELAY_MIN"]);
-  return (Number.isFinite(n) && n >= 0 ? n : 15) * 60 * 1000;
-}
 
 /**
  * Every six hours (Mark's model, 2026-09-10): ships identified as potentially
@@ -874,10 +732,6 @@ export async function startShipTracker() {
       // Checked hourly; runIsDue lets one through every ~20 h on the Pro plan
       // (2026-09-13), so a restart neither spends a second run nor skips a day.
       setInterval(run, 60 * 60 * 1000);
-    }
-    if (registryCheckEnabled()) {
-      setTimeout(() => { verifyRegistry().catch((err) => logger.warn({ err }, "wms: registry verification failed")); }, registryCheckDelayMs());
-      setInterval(() => { verifyRegistry().catch((err) => logger.warn({ err }, "wms: registry verification failed")); }, 24 * 60 * 60 * 1000);
     }
     setInterval(() => { syncDerivedSailings().catch((err) => logger.warn({ err }, "wms: sailings sync failed")); }, SAILINGS_EVERY_MS);
     setTimeout(() => { syncDerivedSailings().catch(() => {}); }, 10 * 60 * 1000);

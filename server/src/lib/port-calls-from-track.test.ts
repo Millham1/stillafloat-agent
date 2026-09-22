@@ -2,7 +2,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { portCallsFromTrack, mergePortCalls, MIN_CALL_MINUTES } from "./port-calls-from-track";
-import type { TrackSample } from "./shipfinder-core";
+import type { TrackSample } from "./port-calls-from-track";
 
 const CANAVERAL = { lat: 28.3922, lon: -80.6077 };
 const NASSAU = { lat: 25.0443, lon: -77.3504 };

@@ -59,10 +59,6 @@ export const PATHS = {
   newsHubAssignments: "news-hub-assignments",
   // Satellite AIS spend ledger (month, credits used, last lookup per ship) — lib/satellite-ais.ts
   satelliteLedger: "satellite-ais-ledger",
-  // ShipFinder call ledger (same shape) — lib/shipfinder-ais.ts
-  shipfinderLedger: "shipfinder-ledger",
-  // Nightly registry verification report (ShipFinder Vessel Search) — ship-tracker.ts verifyRegistry
-  registryVerification: "registry-verification",
   // RapidAPI Cruise API: monthly call ledger, cached ship codes, refresh cursor — lib/cruise-api.ts, planned-sailings-refresh.ts
   cruiseApiLedger: "cruise-api-ledger",
   cruiseApiShips: "cruise-api-ships",
