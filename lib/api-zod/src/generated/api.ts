@@ -28,10 +28,8 @@ export const GetSystemStatusResponse = zod.object({
   "environment": zod.string().optional(),
   "systems": zod.object({
   "anthropicConfigured": zod.boolean().optional(),
-  "resendConfigured": zod.boolean().optional(),
   "gnewsConfigured": zod.boolean().optional(),
   "weatherConfigured": zod.boolean().optional(),
-  "approvalConfigured": zod.boolean().optional()
 }).optional(),
   "publishing": zod.object({
   "candidateStories": zod.number().optional(),

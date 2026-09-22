@@ -8,8 +8,6 @@
 
 export type SystemStatusSystems = {
   anthropicConfigured?: boolean;
-  resendConfigured?: boolean;
   gnewsConfigured?: boolean;
   weatherConfigured?: boolean;
-  approvalConfigured?: boolean;
 };
