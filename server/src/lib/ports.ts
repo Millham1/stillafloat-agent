@@ -16,14 +16,14 @@ export interface CruiseLocation {
 
 export const CRUISE_LOCATIONS: CruiseLocation[] = [
   // ── US EMBARKATION PORTS ─────────────────────────────────────
-  { slug:"miami",              name:"Miami, Florida",              type:"embarkation", featured:true, lat:25.7617,  lon:-80.1918  },
+  { slug:"miami",              name:"Miami, Florida",              type:"embarkation", featured:true, lat:25.7732  ,  lon:-80.1608    },
   { slug:"fort-lauderdale",    name:"Fort Lauderdale, Florida",    type:"embarkation", featured:true, lat:26.1224,  lon:-80.1373  },
-  { slug:"port-canaveral",     name:"Port Canaveral, Florida",     type:"embarkation", featured:true, lat:28.3922,  lon:-80.6077  },
-  { slug:"tampa",              name:"Tampa, Florida",              type:"embarkation", featured:true, lat:27.9506,  lon:-82.4572  },
-  { slug:"galveston",          name:"Galveston, Texas",            type:"embarkation", featured:true, lat:29.3013,  lon:-94.7977  },
+  { slug:"port-canaveral",     name:"Port Canaveral, Florida",     type:"embarkation", featured:true, lat:28.4119  ,  lon:-80.6282    },
+  { slug:"tampa",              name:"Tampa, Florida",              type:"embarkation", featured:true, lat:27.9467  ,  lon:-82.4433    },
+  { slug:"galveston",          name:"Galveston, Texas",            type:"embarkation", featured:true, lat:29.3179  ,  lon:-94.7817    },
   { slug:"new-york",           name:"New York City, New York",     type:"embarkation", featured:true, lat:40.7128,  lon:-74.0060  },
   { slug:"new-orleans",        name:"New Orleans, Louisiana",      type:"embarkation", featured:true, lat:29.9511,  lon:-90.0715  },
-  { slug:"seattle",            name:"Seattle, Washington",         type:"embarkation", featured:true, lat:47.6062,  lon:-122.3321 },
+  { slug:"seattle",            name:"Seattle, Washington",         type:"embarkation", featured:true, lat:47.6292  ,  lon:-122.384   },
   { slug:"los-angeles",        name:"Los Angeles / San Pedro, CA", type:"embarkation", featured:true, lat:33.7405,  lon:-118.2775 },
   { slug:"honolulu",           name:"Honolulu, Hawaii",            type:"embarkation", featured:true, lat:21.3069,  lon:-157.8583 },
   { slug:"baltimore",          name:"Baltimore, Maryland",         type:"embarkation", featured:true, lat:39.2904,  lon:-76.6122  },
@@ -49,9 +49,24 @@ export const CRUISE_LOCATIONS: CruiseLocation[] = [
   { slug:"venice",             name:"Venice, Italy",               type:"embarkation", lat:45.4408,  lon:12.3155   },
   { slug:"yokohama",           name:"Yokohama / Tokyo, Japan",     type:"embarkation", lat:35.4437,  lon:139.6380  },
 
+// ── PORT COORDINATES: measured, not looked up ────────────────────────────────
+// 2026-09-21. Nine of these were the TOWN, not the cruise berth, and Nassau's
+// was 4.17 km out against a PORT_RADIUS_KM of 4 — so a ship alongside Nassau
+// could never register a port call even when the feed could hear her. That is
+// a second, independent cause of the missed calls behind the false storm
+// diversions (see storm-diversion.ts).
+//
+// The values below are the MEDIAN position of ships actually moored there
+// (sog <= 0.5 kn), taken from six real ShipFinder history tracks covering
+// ~78,000 fixes over 7 days. Fix counts are in the commit message. If you
+// change one, change it from measurement, not from a map search.
+//
+// Still suspect, NOT changed for want of evidence: halfmoon-cay measured
+// 13.47 km off but on only 35 fixes, and costa-maya 2.76 km on 35 — too thin
+// to act on. Re-measure when a track for a ship calling there is available.
   // ── CARIBBEAN / BAHAMAS DESTINATIONS ─────────────────────────
-  { slug:"nassau",           name:"Nassau, Bahamas",              type:"destination", featured:true, lat:25.0443,  lon:-77.3504  },
-  { slug:"cozumel",          name:"Cozumel, Mexico",              type:"destination", featured:true, lat:20.4229,  lon:-86.9223  },
+  { slug:"nassau",           name:"Nassau, Bahamas",              type:"destination", featured:true, lat:25.0812  ,  lon:-77.343     },
+  { slug:"cozumel",          name:"Cozumel, Mexico",              type:"destination", featured:true, lat:20.4825  ,  lon:-86.9759    },
   { slug:"st-thomas",        name:"St. Thomas, USVI",             type:"destination", featured:true, lat:18.3381,  lon:-64.8941  },
   { slug:"grand-cayman",     name:"Grand Cayman",                 type:"destination", featured:true, lat:19.3133,  lon:-81.2546  },
   { slug:"aruba",            name:"Aruba",                        type:"destination", featured:true, lat:12.5211,  lon:-69.9683  },
@@ -82,9 +97,9 @@ export const CRUISE_LOCATIONS: CruiseLocation[] = [
   { slug:"st-lucia",         name:"St. Lucia",                    type:"destination", lat:13.9094,  lon:-60.9789  },
   { slug:"tortola",          name:"Tortola, BVI",                 type:"destination", lat:18.4315,  lon:-64.6235  },
   // ── ALASKA ───────────────────────────────────────────────────
-  { slug:"juneau",           name:"Juneau, Alaska",               type:"destination", lat:58.3019,  lon:-134.4197 },
+  { slug:"juneau",           name:"Juneau, Alaska",               type:"destination", lat:58.294   ,  lon:-134.4003  },
   { slug:"ketchikan",        name:"Ketchikan, Alaska",            type:"destination", lat:55.3422,  lon:-131.6461 },
-  { slug:"skagway",          name:"Skagway, Alaska",              type:"destination", lat:59.4583,  lon:-135.3139 },
+  { slug:"skagway",          name:"Skagway, Alaska",              type:"destination", lat:59.4453  ,  lon:-135.3261  },
   // ── MEDITERRANEAN ────────────────────────────────────────────
   { slug:"dubrovnik",        name:"Dubrovnik, Croatia",           type:"destination", lat:42.6507,  lon:18.0944   },
   { slug:"mykonos",          name:"Mykonos, Greece",              type:"destination", lat:37.4467,  lon:25.3289   },
