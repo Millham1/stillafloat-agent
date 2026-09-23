@@ -18,6 +18,7 @@
 
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
+import { briefly } from "./brief-error";
 import { CRUISEMAPPER_BASE as BASE } from "./cruisemapper";
 import {
   fetchCruiseMapper, isNonPort, pageIdentity, parsePortTable, parseSchedule, resolvePort,
@@ -31,6 +32,8 @@ const BACK_DAYS = 21;
 const FWD_DAYS = 90;
 const MAX_SAILINGS_PER_SHIP = 12;
 export const SOURCE = "cruisemapper";
+/** Backoff after a failed run, in minutes. Covers a provider blip without hammering. */
+const RETRY_DELAYS_MIN = [5, 20, 60, 180] as const;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -164,16 +167,37 @@ export function scheduleItineraryRefresh() {
     logger.info("Itinerary refresh DISABLED (DISABLE_ITINERARY_REFRESH=1)");
     return;
   }
+
+  let retries = 0;
   const tick = async () => {
     try {
       const r = await refreshItineraries();
+      retries = 0;
       logger.info({
         ships: r.ships, sailings: r.sailings, portCalls: r.portCalls,
         portsWithoutAKnownSlug: r.unmatchedPorts, rowsWritten: r.written,
         shipsThatFailed: r.errors.length,
       }, "Itinerary refresh complete");
     } catch (err) {
-      logger.error({ err }, "Itinerary refresh failed");
+      // Log the REASON, not the page. Supabase answered the first live run with
+      // a Cloudflare 522 HTML page and `{ err }` serialised the whole thing —
+      // thousands of characters of markup in the log for a five-word fault.
+      logger.error({ reason: briefly(err), attempt: retries + 1 }, "Itinerary refresh failed");
+
+      // A transient fault must not cost a month of itineraries. That first run
+      // died on a Supabase blip; on the original 30-day timer the table would
+      // have stayed empty until late October, and the storm detector would have
+      // gone right back to guessing from AIS port history.
+      if (retries < RETRY_DELAYS_MIN.length) {
+        const wait = RETRY_DELAYS_MIN[retries]!;
+        retries += 1;
+        logger.info({ retryInMinutes: wait }, "Itinerary refresh will retry");
+        setTimeout(() => void tick(), wait * 60 * 1000);
+      } else {
+        logger.error({ attempts: retries + 1 },
+          "Itinerary refresh gave up — waiting for the next monthly run");
+        retries = 0;
+      }
     }
   };
   setTimeout(() => void tick(), 5 * 60 * 1000);
