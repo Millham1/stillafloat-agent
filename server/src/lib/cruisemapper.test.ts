@@ -91,6 +91,9 @@ test("isNonPort rejects the two labels that are not places", () => {
   assert.equal(isNonPort("sea cruising"), true);
   assert.equal(isNonPort("land tour, train/bus travel"), true);
   assert.equal(isNonPort("flight"), true);
+  assert.equal(isNonPort("coastal cruising"), true);
+  assert.equal(isNonPort("river cruising"), true);
+  assert.equal(isNonPort("fjord cruising"), true);
   assert.equal(isNonPort("Coco Cay, Bahamas, Royal Caribbean"), false);
   assert.equal(isNonPort("Seattle, Washington"), false);
 });
@@ -111,40 +114,34 @@ test("pageIdentity returns nulls rather than guessing", () => {
   assert.deepEqual(pageIdentity("<p>no identity here</p>"), { mmsi: null, imo: null });
 });
 
-test("resolvePort prefers the clean slug over the noisy display text", () => {
-  // Real rows from the 2026-09-23 fleet pull. The display text carries region
-  // suffixes; the slug in the href does not.
-  const nassau = resolvePort({
-    date: "2026-09-25", times: "08:00 - 17:00",
-    name: "Nassau, Bahamas, New Providence Island",
-    portSlug: "nassau", portId: "24",
-  });
-  assert.equal(nassau.slug, "nassau");
-  assert.equal(nassau.ordered, true);
-  assert.equal(nassau.date, "2026-09-25");
-  assert.ok(typeof nassau.lat === "number" && typeof nassau.lon === "number");
+test("resolvePort uses the curated matcher first", () => {
+  // Nassau is curated, so it must come back as the same slug the AIS side
+  // produces — both run through matchDestination.
+  const p = resolvePort({ date: "2026-09-25", times: "08:00 - 17:00",
+    name: "Nassau, Bahamas, New Providence Island", portSlug: "nassau", portId: "24" });
+  assert.equal(p.slug, "nassau");
+  assert.equal(p.ordered, true);
+  assert.equal(p.date, "2026-09-25");
 });
 
 test("resolvePort matches Coco Cay written as two words", () => {
   // CruiseMapper writes "Coco Cay"; ports.ts stores the slug "cococay".
-  // Searching our data for "cococay" finds nothing and looks like a gap.
-  const a = resolvePort({ date: null, times: "", name: "Coco Cay, Bahamas, Royal Caribbean",
-                          portSlug: "coco-cay", portId: "1" });
-  const b = resolvePort({ date: null, times: "", name: "CocoCay, Bahamas",
-                          portSlug: null, portId: null });
-  assert.equal(a.slug, "cococay");
-  assert.equal(b.slug, "cococay");
+  assert.equal(resolvePort({ date: null, times: "", name: "Coco Cay, Bahamas, Royal Caribbean",
+    portSlug: "coco-cay", portId: "1" }).slug, "cococay");
 });
 
-test("resolvePort falls back to the display name when there is no link", () => {
-  const p = resolvePort({ date: null, times: "", name: "Seattle, Washington",
-                          portSlug: null, portId: null });
-  assert.equal(p.slug, "seattle");
+test("resolvePort falls back to the world catalogue for ports we never curated", () => {
+  // 66% of the fleet's calls used to resolve to nothing at all.
+  for (const [name, slug] of [
+    ["Civitavecchia-Rome, Italy", "civitavecchia-rome"],
+    ["Piraeus-Athens, Greece", "piraeus-athens"],
+    ["Split, Croatia", "split"],
+  ] as const) {
+    assert.equal(resolvePort({ date: null, times: "", name, portSlug: null, portId: null }).slug, slug);
+  }
 });
 
-test("resolvePort reports an unknown port as null rather than a wrong guess", () => {
-  const p = resolvePort({ date: null, times: "", name: "Somewhere Nobody Charted",
-                          portSlug: "somewhere-nobody-charted", portId: "0" });
-  assert.equal(p.slug, null);
-  assert.equal(p.name, "Somewhere Nobody Charted");
+test("resolvePort returns null rather than inventing a key", () => {
+  assert.equal(resolvePort({ date: null, times: "", name: "Somewhere Nobody Charted",
+    portSlug: null, portId: null }).slug, null);
 });

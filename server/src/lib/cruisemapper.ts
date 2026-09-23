@@ -16,6 +16,7 @@
  */
 
 import { matchDestination } from "./ports";
+import { WORLD_PORT_SLUGS } from "./world-ports";
 
 export const CRUISEMAPPER_BASE = "https://www.cruisemapper.com";
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
@@ -28,12 +29,14 @@ const MONTHS: Record<string, number> = {
 
 /**
  * Rows CruiseMapper lists in the port table that are not places a ship calls.
- * Measured against the 2026-09-23 fleet pull: 954 "sea cruising"/"land tour"
- * rows and 220 "flight" rows out of 28,032. They would each fail the port
- * matcher and vanish silently; naming them keeps the per-sailing port count
- * honest instead of quietly short.
+ * Measured against the 2026-09-23 fleet pull, out of 28,032 rows: 536 "land
+ * tour, train/bus travel", 418 "sea cruising", 220 "flight", plus 91
+ * "coastal cruising", 36 "river cruising" and 27 "fjord cruising" — hence the
+ * trailing-"cruising" rule rather than a list that keeps growing. They would
+ * each fail the port matcher and vanish silently; naming them keeps the
+ * per-sailing port count honest instead of quietly short.
  */
-const NON_PORT = /^(sea cruising|land tour|cruising\b|scenic cruising|at sea|transit\b|flight\b)/i;
+const NON_PORT = /^(land tour|at sea|transit\b|flight\b)|cruising\s*$/i;
 
 export interface ScheduleRow {
   cruiseId: string;
@@ -164,35 +167,49 @@ export function pageIdentity(html: string): { mmsi: string | null; imo: string |
 }
 
 /**
- * Resolve one call to a known port.
+ * Resolve one call to a stable port key.
  *
- * CruiseMapper's own slug is tried FIRST: the display text carries region noise
- * ("Nassau, Bahamas, New Providence Island", "Costa Maya, Mexico, Riviera Maya")
- * that can steer the alias matcher onto the wrong entry, while the slug is the
- * bare place name. matchDestination() is the single matcher for the whole
- * system — a second one written elsewhere would drift from it, and matcher drift
- * is what put 25 false diversions on the public page.
+ * Curated ports first, via matchDestination() — the one matcher the rest of the
+ * system uses, so an itinerary and an AIS destination always agree about Nassau.
+ * Anything it does not know falls back to CruiseMapper's own catalogue, which
+ * covers the other 776 ports the fleet visits. Without that, a Mediterranean
+ * sailing stored two ports out of seven.
+ *
+ * ⛔ The fallback is deliberately NOT wired into matchDestination itself.
+ * ship-tracker reads every AIS destination through that function, and widening
+ * it would change position tracking — which is working and is not what this
+ * change is for. The extra vocabulary stays on the itinerary side only.
+ *
+ * No coordinates: the key is all that is compared. Port-call detection keeps
+ * using the measured berths in ports.ts.
  */
 export function resolvePort(call: PortCall) {
-  const fromSlug = call.portSlug ? matchDestination(call.portSlug.replace(/-/g, " ")) : null;
-  const loc = fromSlug ?? matchDestination(call.name);
+  const curated = matchDestination(call.name)
+    ?? (call.portSlug ? matchDestination(call.portSlug.replace(/-/g, " ")) : null);
   return {
     name: call.name,
-    slug: loc?.slug ?? null,
-    lat: loc?.lat ?? null,
-    lon: loc?.lon ?? null,
+    slug: curated?.slug ?? WORLD_PORT_SLUGS.get(call.name) ?? call.portSlug ?? null,
     date: call.date,
-    ordered: true,          // unlike the Widgety archive, these ARE in call order
+    ordered: true,        // unlike the Widgety archive, these ARE in call order
   };
 }
 
 /**
+ * Fetch a CruiseMapper page or JSON endpoint.
+ *
  * cruise.json answers 403 to a bare request — it wants the session cookie the
  * ship page sets, plus that page as Referer. Node's fetch keeps no cookie jar,
- * so we carry the header through by hand.
+ * so the caller carries the header through by hand: fetch the ship page first,
+ * then pass its `cookie` to the JSON call.
  */
-export async function fetchCruiseMapper(url: string, opts: { referer?: string; cookie?: string; xhr?: boolean } = {}) {
-  const headers: Record<string, string> = { "User-Agent": UA, "Accept-Language": "en-US,en;q=0.9" };
+export async function fetchCruiseMapper(
+  url: string,
+  opts: { referer?: string; cookie?: string; xhr?: boolean } = {},
+): Promise<{ body: string; cookie: string }> {
+  const headers: Record<string, string> = {
+    "User-Agent": UA,
+    "Accept-Language": "en-US,en;q=0.9",
+  };
   if (opts.referer) headers["Referer"] = opts.referer;
   if (opts.cookie) headers["Cookie"] = opts.cookie;
   if (opts.xhr) {
