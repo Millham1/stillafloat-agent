@@ -2,6 +2,7 @@ import "./env"; // must be first — populates process.env from the shared .env
 import app from "./app";
 import { logger } from "./lib/logger";
 import { checkLiveAisCredits, liveAisEnabled } from "./lib/live-ais";
+import { scheduleItineraryRefresh } from "./lib/itinerary-refresh";
 import { runDuePosts } from "./lib/social-schedule";
 import { runAndDeliverBrief } from "./lib/brief";
 import { runStormScan } from "./lib/storm-agent";
@@ -101,6 +102,11 @@ app.listen(port, "0.0.0.0", () => {
   // balance that has no expiry and no auto-refill, so running dry is silent:
   // ship positions simply stop refreshing. Watch it and say so in advance.
   scheduleLiveAisCredits();
+
+  // Published itineraries from CruiseMapper. The storm detector judges a
+  // "destination change" against the ship's plan, so an empty planned_sailings
+  // is what made it guess from AIS port history and file 25 false diversions.
+  scheduleItineraryRefresh();
   if (process.env["DISABLE_SUBSCRIBER_HYGIENE"] === "1") {
     logger.info("Subscriber hygiene DISABLED (DISABLE_SUBSCRIBER_HYGIENE=1)");
   } else {
