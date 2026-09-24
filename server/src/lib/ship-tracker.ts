@@ -122,6 +122,12 @@ let lastMessageAt = 0;
  *  message received. 2026-09-24: aisstream was closing prod's sockets on sight and
  *  the fixed 30-second retry had three connections re-dialing ~6 times a minute for
  *  more than a day — which is how an account earns a longer block, not a shorter one. */
+/** May the periodic set refresh open this connection? Only when it has ships, no
+ *  socket, and no back-off timer waiting to do the same thing. */
+export function shouldDialFromRefresh(conn: { mmsis: readonly string[]; ws: unknown; retryTimer?: unknown }): boolean {
+  return conn.mmsis.length > 0 && !conn.ws && !conn.retryTimer;
+}
+
 export const RECONNECT_BASE_MS = 30_000;
 export const RECONNECT_MAX_MS = 15 * 60_000;
 export function reconnectDelayMs(failures: number): number {
@@ -131,6 +137,8 @@ export function reconnectDelayMs(failures: number): number {
 interface Conn {
   /** consecutive drops without a message in between */
   failures?: number;
+  /** the pending back-off timer after a drop; while it is set nobody else may dial */
+  retryTimer?: ReturnType<typeof setTimeout> | null;
   key: string;
   ws: import("ws") | null;
   mmsis: string[];   // shard assigned to this connection
@@ -405,7 +413,7 @@ async function refreshActiveSet(): Promise<void> {
     const shard = list.slice(i * per, (i + 1) * per);
     const shardChanged = shard.length !== conn.mmsis.length || shard.some((m, j) => conn.mmsis[j] !== m);
     conn.mmsis = shard;
-    if (shard.length && !conn.ws) connect(conn);       // was idle (empty set) — dial now
+    if (shouldDialFromRefresh(conn)) connect(conn);   // idle (empty set) or never dialed — not mid back-off
     else if (shardChanged) subscribe(conn);
   });
   logger.info({ active: next.size, capacity: apiKeys().length * per }, "wms: active tracking set updated");
@@ -703,7 +711,10 @@ function connect(conn: Conn) {
     conn.failures = (conn.failures ?? 0) + 1;
     const wait = reconnectDelayMs(conn.failures - 1);
     logger.warn({ why, failures: conn.failures, retryInSeconds: wait / 1000 }, "wms: aisstream disconnected — reconnecting");
-    setTimeout(() => connect(conn), wait);
+    // The 5-minute set refresh must not dial while this timer is pending — on dev
+    // (2026-09-24) it did, so a "15-minute" back-off re-dialed every 5 minutes and
+    // the failure count climbed to 66 in eight hours.
+    conn.retryTimer = setTimeout(() => { conn.retryTimer = null; connect(conn); }, wait);
   };
   ws.on("close", () => reconnect("close"));
   ws.on("error", (err: Error) => { logger.warn({ err }, "wms: socket error"); ws.terminate?.(); reconnect("error"); });
