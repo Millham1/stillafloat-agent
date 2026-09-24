@@ -33,6 +33,19 @@ export const REQUEST_GUARD_MIN = 5;
 /** Storm cone / followed sailing: every six hours (Mark, "to save credits"). */
 export const STANDING_WINDOW_MIN = 360;
 
+/**
+ * Mark's design (2026-09-24): "when a ship is inquired the API grabs terrestrial
+ * AIS; if the data is stale it grabs Live-AIS and projects — one inquiry, one
+ * call." This is the "stale" half: no fix at all, or a fix older than the free
+ * feed's freshness bar. The per-ship guard and monthly cap in lookupDecision()
+ * still bound the spend when the same ship is asked for again and again.
+ */
+export function staleForInquiry(lastPosAt: string | null | undefined, now = new Date()): boolean {
+  if (!lastPosAt) return true;
+  const t = Date.parse(lastPosAt);
+  return !Number.isFinite(t) || (now.getTime() - t) / 60_000 > LOOKUP_AFTER_MIN;
+}
+
 export function perShipWindowMin(reason: LookupReason): number {
   return reason === "request" ? REQUEST_GUARD_MIN : STANDING_WINDOW_MIN;
 }
