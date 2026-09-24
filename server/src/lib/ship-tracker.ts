@@ -393,7 +393,8 @@ async function refreshActiveSet(): Promise<void> {
     const shard = list.slice(i * per, (i + 1) * per);
     const shardChanged = shard.length !== conn.mmsis.length || shard.some((m, j) => conn.mmsis[j] !== m);
     conn.mmsis = shard;
-    if (shardChanged) subscribe(conn);
+    if (shard.length && !conn.ws) connect(conn);       // was idle (empty set) — dial now
+    else if (shardChanged) subscribe(conn);
   });
   logger.info({ active: next.size, capacity: apiKeys().length * per }, "wms: active tracking set updated");
 }
@@ -644,6 +645,12 @@ function subscribe(conn: Conn) {
 }
 
 function connect(conn: Conn) {
+  // Nothing to subscribe → nothing to dial. aisstream closes a connection that
+  // never sends a filter, and the old code then re-dialed every 30 s on every
+  // key, forever — three sockets flapping, "offline" on the page and a log full
+  // of disconnects (prod 2026-09-24 04:20Z, when the live set was empty).
+  // refreshActiveSet() dials the moment a shard gets its first ship.
+  if (!conn.mmsis.length) { conn.ws = null; conn.alive = false; return; }
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const WebSocket = require("ws");
   // permessage-deflate is the ws client default; stated because aisstream
@@ -688,19 +695,37 @@ function connect(conn: Conn) {
 }
 
 /** Boot the tracker. Safe to call once at startup; no-ops without an API key. */
+/**
+ * Back-off between registry load attempts at boot. 2026-09-23 17:55Z on prod:
+ * Supabase answered the boot-time load with a 522 and startShipTracker simply
+ * returned — no retry, no refresh timer — so for the next ten-plus hours every
+ * visitor to Where's My Ship was told "unknown ship" while the process sat
+ * healthy in pm2. A load failure is a delay, never a decision.
+ */
+export const REGISTRY_RETRY_MS = [30_000, 60_000, 120_000, 300_000] as const;
+export function registryRetryDelayMs(attempt: number): number {
+  return REGISTRY_RETRY_MS[Math.min(Math.max(attempt, 0), REGISTRY_RETRY_MS.length - 1)]!;
+}
+
 export async function startShipTracker() {
   if (started) return;
   started = true;
+  await bootTracker(0);
+}
 
+async function bootTracker(attempt: number): Promise<void> {
   // The registry always loads — search metadata and requestShip() must work
   // even without an AIS key, so visitor requests are stamped and retained
   // for the moment tracking comes online.
   try {
     await loadRegistry();
   } catch (err) {
-    logger.error({ err }, "wms: registry load failed");
+    const wait = registryRetryDelayMs(attempt);
+    logger.error({ err, attempt: attempt + 1, retryInSeconds: wait / 1000 }, "wms: registry load failed — will retry");
+    setTimeout(() => { void bootTracker(attempt + 1); }, wait);
     return;
   }
+  if (attempt > 0) logger.info({ attempt: attempt + 1, ships: registryByMmsi.size }, "wms: registry loaded after retry");
 
   const keys = apiKeys();
   if (!keys.length) {
