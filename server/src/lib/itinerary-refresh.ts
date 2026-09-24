@@ -18,7 +18,7 @@
 
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
-import { briefly } from "./brief-error";
+import { after, briefly } from "./brief-error";
 import { CRUISEMAPPER_BASE as BASE } from "./cruisemapper";
 import {
   fetchCruiseMapper, isNonPort, pageIdentity, parsePortTable, parseSchedule, resolvePort,
@@ -34,6 +34,8 @@ const MAX_SAILINGS_PER_SHIP = 12;
 export const SOURCE = "cruisemapper";
 /** Backoff after a failed run, in minutes. Covers a provider blip without hammering. */
 const RETRY_DELAYS_MIN = [5, 20, 60, 180] as const;
+/** Itineraries are published months ahead and barely move. */
+const REFRESH_EVERY_MS = 30 * 24 * 60 * 60 * 1000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -192,7 +194,7 @@ export function scheduleItineraryRefresh() {
         const wait = RETRY_DELAYS_MIN[retries]!;
         retries += 1;
         logger.info({ retryInMinutes: wait }, "Itinerary refresh will retry");
-        setTimeout(() => void tick(), wait * 60 * 1000);
+        after(wait * 60 * 1000, () => void tick());
       } else {
         logger.error({ attempts: retries + 1 },
           "Itinerary refresh gave up — waiting for the next monthly run");
@@ -200,7 +202,8 @@ export function scheduleItineraryRefresh() {
       }
     }
   };
-  setTimeout(() => void tick(), 5 * 60 * 1000);
-  setInterval(() => void tick(), 30 * 24 * 60 * 60 * 1000);
+  after(5 * 60 * 1000, () => void tick());
+  const monthly = () => after(REFRESH_EVERY_MS, () => { void tick(); monthly(); });
+  monthly();
   logger.info("Itinerary refresh scheduled — 5 min after boot, then every 30 days");
 }
