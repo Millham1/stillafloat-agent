@@ -12,3 +12,13 @@ test("first retry is 30 s, then it doubles, then it holds at 15 minutes", () => 
 test("the ceiling fits a 32-bit timer", () => {
   assert.ok(RECONNECT_MAX_MS < 2 ** 31 - 1);
 });
+
+import { shouldDialFromRefresh } from "./ship-tracker";
+
+test("the set refresh never dials a connection that is waiting out its back-off", () => {
+  const t = setTimeout(() => {}, 1); clearTimeout(t);
+  assert.equal(shouldDialFromRefresh({ mmsis: ["1"], ws: null, retryTimer: t }), false);
+  assert.equal(shouldDialFromRefresh({ mmsis: ["1"], ws: null, retryTimer: null }), true);
+  assert.equal(shouldDialFromRefresh({ mmsis: [], ws: null, retryTimer: null }), false);
+  assert.equal(shouldDialFromRefresh({ mmsis: ["1"], ws: {}, retryTimer: null }), false);
+});
