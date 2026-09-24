@@ -2,7 +2,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { parseWidgetyRef, parseWidgetyShip, withEndDates, currentSailing, assembleRoute, portNamesFromSailingName } from "./planned-sailings";
-import { resolvePortName } from "./world-ports";
+import { resolvePortName } from "./port-resolve";
 
 // Verbatim shape from the July 2026 Widgety archive (msc-meraviglia/ship.json)
 const SHIP = { title: "MSC Meraviglia", operator: { name: "MSC Cruises" }, cruises: [

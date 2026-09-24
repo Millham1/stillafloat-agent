@@ -21,6 +21,28 @@
 //     ship's alternating 3-night / 7-night pattern is learned, not flagged.
 //   • Otherwise                                     → "rotation"     (no event)
 //
+// ⛔ 2026-09-21 — THE AIS-ONLY MODEL ABOVE IS WRONG AND IS NO LONGER TRUSTED.
+// Between 09-19 and 09-21 it fired 25 events. Every single one was a scheduled
+// port. Root cause: `portCalls` is not the ship's itinerary, it is the list of
+// places a TERRESTRIAL receiver happened to hear her. Over 16 days the fleet
+// logged 0 calls at Nassau, Cozumel, Great Stirrup Cay, CocoCay, Grand Turk,
+// Costa Maya and Roatán while catching every Miami / Port Canaveral turnaround,
+// so every real island stop read as "a port this ship has never been seen at",
+// and every leg ending at one read as "declared it, never called there".
+// Norwegian Getaway's entire 16-day history was five calls, all Miami, while
+// she ran Miami → Great Stirrup Cay → Nassau → Miami on a loop.
+//
+// THE FIX: classify against the ship's PUBLISHED ITINERARY (planned_sailings)
+// when we have one, and say NOTHING when we do not. A declared port that is on
+// the plan is the timetable, whatever order it comes in — crews routinely type
+// a port further down the run ("USKTN > CAVIC"), and our two itinerary sources
+// disagree about the order of the same sailing, so order alone cannot carry an
+// alert. Only a port that is NOT on the plan is a diversion.
+//
+// Without an itinerary the honest answer is silence: set
+// STORM_DIVERSION_AIS_FALLBACK=1 to re-enable the old heuristics, and read the
+// paragraph above first.
+//
 // EVIDENCE RULES keep it honest. A mid-leg re-route is only claimed when the
 // tracker watched the whole leg: the destination was declared after the
 // observation window opened, at least MIN_LEG_HOURS ago (a flip minutes after
@@ -34,7 +56,7 @@ export interface PortCall {
   departedAt: string | null;
 }
 
-export type ChangeKind = "rotation" | "order_change" | "new_port" | "reroute" | "unknown";
+export type ChangeKind = "rotation" | "order_change" | "new_port" | "reroute" | "itinerary_swap" | "unknown";
 
 /** Prior departures from a port before its usual successors count as "known". */
 export const MIN_TRANSITIONS = 2;
@@ -65,6 +87,12 @@ export interface ChangeInput {
   knownExtra?: string[];
   /** When continuous observation began (tracker), null = unknown. */
   observedSince: string | null;
+  /**
+   * The ordered port slugs of the sailing this ship is ON, from the operator
+   * (planned_sailings). null = we have no itinerary for her today, which is a
+   * reason to stay quiet, not a reason to guess.
+   */
+  itinerary?: readonly string[] | null;
 }
 
 export interface ChangeVerdict {
@@ -117,6 +145,44 @@ function visitedSince(calls: PortCall[], slug: string, sinceIso: string | null):
   return (calls ?? []).some((c) => c.slug === slug && (Number.isNaN(since) || ms(c.arrivedAt) >= since));
 }
 
+/** Old AIS-only heuristics, off unless explicitly re-enabled. See the header. */
+export function aisFallbackEnabled(): boolean {
+  return process.env["STORM_DIVERSION_AIS_FALLBACK"] === "1";
+}
+
+/**
+ * Classify a declared destination against the ship's published itinerary.
+ *
+ * On the plan  → the timetable, in whatever order it is declared (silent).
+ * Off the plan → a real diversion.
+ *
+ * Order is deliberately NOT an alert. Crews declare a port further along the
+ * run, and our own sources disagree: for Norwegian Getaway's 18 Sep sailing the
+ * Widgety archive says Great Stirrup Cay then Nassau and the Cruise API says
+ * Nassau then Great Stirrup Cay. An order rule on top of that reports the
+ * disagreement, not the ship. A genuine day-swap needs port-CALL evidence
+ * (Live-AIS), not a declaration, so it is recorded as `itinerary_swap` and
+ * kept out of EVENT_KINDS until that evidence is wired in.
+ */
+export function classifyAgainstItinerary(
+  baseline: string, current: string, itinerary: readonly string[],
+): { kind: ChangeKind; reason: string } {
+  const plan = itinerary.filter(Boolean);
+  if (!plan.includes(current)) {
+    return { kind: "reroute", reason: `${current} is not on this sailing's itinerary (${plan.join(" → ")})` };
+  }
+  // A round trip REPEATS its homeport — Miami → Great Stirrup → Nassau → Miami —
+  // so asking "is current before baseline?" with indexOf reports the run home
+  // as going backwards. Ahead means: does this port occur ANYWHERE after the
+  // one we were last headed for?
+  const from = plan.indexOf(baseline);
+  const ahead = from >= 0 && plan.slice(from + 1).includes(current);
+  if (from < 0 || ahead) {
+    return { kind: "rotation", reason: "next port on the published itinerary" };
+  }
+  return { kind: "itinerary_swap", reason: `${current} is on the itinerary but not ahead of ${baseline}` };
+}
+
 export function classifyDestinationChange(i: ChangeInput): ChangeVerdict {
   const keep = (kind: ChangeKind, reason: string): ChangeVerdict =>
     ({ kind, newBaseline: i.baseline, newBaselineDeclaredAt: i.baselineDeclaredAt, change: null, reason });
@@ -130,6 +196,15 @@ export function classifyDestinationChange(i: ChangeInput): ChangeVerdict {
   const current = i.current;
   const moved = (kind: ChangeKind, reason: string): ChangeVerdict =>
     ({ kind, newBaseline: current, newBaselineDeclaredAt: i.now, change: { from: baseline, to: current }, reason });
+
+  // ── Itinerary first. It is the only input that has ever been right. ──
+  if (i.itinerary && i.itinerary.length) {
+    const v = classifyAgainstItinerary(baseline, current, i.itinerary);
+    return moved(v.kind, v.reason);
+  }
+  if (!aisFallbackEnabled()) {
+    return moved("unknown", "no itinerary on file for this sailing — not guessing from AIS port history");
+  }
 
   const declared = ms(i.baselineDeclaredAt);
   // Strictly later: a departure stamped at the declaration instant is the port it left.
@@ -179,6 +254,7 @@ export function kindLabel(kind: ChangeKind): string {
     case "reroute": return "re-routed mid-leg";
     case "new_port": return "is heading to a port it doesn't normally call at";
     case "order_change": return "changed its port order";
+    case "itinerary_swap": return "called its scheduled ports in a different order";
     case "rotation": return "moved to its next scheduled port";
     default: return "changed declared destination";
   }

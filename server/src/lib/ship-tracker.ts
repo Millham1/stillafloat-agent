@@ -1,17 +1,29 @@
 // ship-tracker.ts — live cruise-ship positions for "Where's My Ship?" (WMS).
 //
 // v2 (Mark's design): the `ships` table is the FULL cruise-ship registry —
-// search covers every ship in it. The active set is ranked: ships with active
-// watches or under a storm alert, then the seeded US-coast fleet (seed_active),
-// then everything ever requested (newest first), then the rest of the registry
-// — filled up to capacity. Capacity = (number of API keys) × WMS_MAX_PER_CONN.
-// aisstream's published allowance (docs read 2026-09-11) is 200 MMSIs per
-// subscription and 3 subscriptions per account, so 3 keys carry the whole
-// 315-ship registry; before 2026-09-11 the default was 50 and never-requested
-// ships stayed registry-only, which left 228 ships "never heard" (Mark: "it's
-// ridiculous to have a where's my ship that can't tell the user where it is").
-// Under capacity pressure the lowest-ranked ships rotate out; a new request
-// instantly rotates a ship back in.
+// search covers every ship in it. Capacity = (number of API keys) ×
+// WMS_MAX_PER_CONN (the aisstream per-connection MMSI-filter allowance;
+// default 50), so ~150 of 315 ships can be listened to at once.
+//
+// WHO GETS A SLOT (Mark, 2026-09-22). Only work that needs to notice CHANGE
+// OVER TIME needs continuous tracking:
+//   • a ship pinned to a live named storm — the diversion detector compares
+//     her declared destination across scans;
+//   • a ship someone is following on a 15-day watch — the sweep emails them
+//     when her itinerary changes;
+//   • a ship asked for in the last hour, so a page left open keeps updating
+//     free rather than re-buying.
+// Everything else is answered ON DEMAND: a "where is she" query buys one
+// current position (routes/wms.ts -> refreshStalePosition). So no ship can be
+// "missed" by not holding a slot.
+//
+// seed_active is GONE from this decision. It pre-warmed an 84-ship US-coast
+// fleet from July, before on-demand lookups existed and a cold ship had
+// nothing to show. It now buys nothing and cost more than nothing: with 64
+// storm ships + 84 seeded + 6 requested = 155 eligible against a cap of 150,
+// five ships were being dropped — and because seeding outranked requests, the
+// ones dropped were ships somebody had actually asked for. The column is left
+// in the table; nothing reads it.
 //
 // One websocket PER KEY to the free aisstream.io feed (aisstream allows one
 // connection per key), the active MMSI list sharded across them. Terrestrial
@@ -32,7 +44,6 @@
 
 import { getSupabase, readJson, writeJson } from "./persistence";
 import { appendTrack, type TrackPoint } from "./dead-reckoning";
-import { selectActiveSet, trackingRank, AISSTREAM_MMSIS_PER_SUBSCRIPTION } from "./active-set";
 import { refreshPlannedSailings, type RefreshShip } from "./planned-sailings-refresh";
 import { cruiseApiEnabled } from "./cruise-api";
 import { logger } from "./logger";
@@ -40,6 +51,8 @@ import {
   matchDestination, nearestPort, distanceKm, portBySlug, type CruiseLocation,
 } from "./ports";
 import { groundsForPoint } from "./storm-grounds";
+import { allowlisted, type LookupReason, type PositionFix } from "./position-provider";
+import { liveAisEnabled, liveAisLookup } from "./live-ais";
 import type { PortCall } from "./storm-diversion";
 
 const STATE_KEY = "wms-positions";
@@ -57,8 +70,6 @@ export interface RegistryShip {
   mmsi: string;
   name: string;
   cruiseLine: string;
-  imo: string | null;
-  seedActive: boolean;
   hasWatch: boolean;
   lastRequestedAt: string | null;
 }
@@ -123,7 +134,7 @@ function apiKeys(): string[] {
 }
 
 function maxPerConn(): number {
-  return Number(process.env["WMS_MAX_PER_CONN"] ?? String(AISSTREAM_MMSIS_PER_SUBSCRIPTION));
+  return Number(process.env["WMS_MAX_PER_CONN"] ?? "50");
 }
 
 function blankPosition(ship: RegistryShip): ShipPosition {
@@ -219,6 +230,72 @@ export function allPositions(): ShipPosition[] {
  * A visitor asked for this ship: stamp the request (retention) and pull the
  * active set forward immediately so the wake-up takes moments, not minutes.
  */
+/**
+ * Apply a fix bought from a paid provider to the in-memory position, exactly as
+ * if the free feed had delivered it. Returns false when it is not newer than
+ * what we already hold — we still paid, but we do not move the pin backwards.
+ */
+export function applyExternalFix(mmsi: string, fix: PositionFix): boolean {
+  const reg = registryByMmsi.get(mmsi);
+  if (!reg) return false;
+  let pos = positions.get(mmsi);
+  if (!pos) {
+    pos = {
+      mmsi, name: reg.name, cruiseLine: reg.cruiseLine,
+      lat: null, lon: null, cogDeg: null, sogKn: null, headingDeg: null,
+      destinationRaw: null, destinationSlug: null, etaUtc: null,
+      lastPosAt: null, lastPortSlug: null, lastPortDepartedAt: null,
+      inPortSlug: null, portCalls: [], regionsSeen: [], track: [],
+      currentSailingStart: null, currentDepartPort: null,
+    } as ShipPosition;
+    positions.set(mmsi, pos);
+  }
+  if (pos.lastPosAt && Date.parse(fix.at) <= Date.parse(pos.lastPosAt)) return false;
+  pos.lat = fix.lat;
+  pos.lon = fix.lon;
+  if (fix.courseDeg !== null) pos.cogDeg = fix.courseDeg;
+  if (fix.speedKn !== null) pos.sogKn = fix.speedKn;
+  pos.headingDeg = fix.headingDeg;
+  pos.lastPosAt = fix.at;
+  // A bought fix is a real position too: it joins the drawn track and is labelled
+  // as not-from-the-free-feed, exactly as handlePositionReport does for AIS.
+  pos.lastSource = "satellite";
+  pos.track = appendTrack(pos.track ?? [], fix.lat, fix.lon, fix.at);
+  if (fix.destination) {
+    pos.destinationRaw = fix.destination;
+    pos.destinationSlug = matchDestination(fix.destination)?.slug ?? pos.destinationSlug;
+  }
+  if (fix.etaUtc) pos.etaUtc = fix.etaUtc;
+  for (const g of groundsForPoint(fix.lat, fix.lon)) {
+    if (!pos.regionsSeen.includes(g)) pos.regionsSeen.push(g);
+  }
+  detectPortCall(pos);
+  return true;
+}
+
+/**
+ * Buy ONE position for a ship the free feed has gone quiet on. Every guard —
+ * freshness, per-ship window, monthly cap, allowlist — lives in the adapter and
+ * position-provider; this only decides that a reason exists and applies the
+ * answer. Silent no-op when no paid provider is configured.
+ */
+export async function refreshStalePosition(shipName: string, reason: LookupReason): Promise<boolean> {
+  if (!liveAisEnabled()) return false;
+  const reg = registryByName(shipName);
+  if (!reg || !allowlisted(reg.mmsi, reg.name)) return false;
+  const lastFixAt = positions.get(reg.mmsi)?.lastPosAt ?? null;
+  try {
+    const fix = await liveAisLookup(reg.mmsi, lastFixAt, reason);
+    if (!fix) return false;
+    const applied = applyExternalFix(reg.mmsi, fix);
+    logger.info({ ship: reg.name, reason, at: fix.at, applied }, "wms: paid position lookup");
+    return applied;
+  } catch (err) {
+    logger.warn({ err, ship: reg.name, reason }, "wms: paid position lookup threw");
+    return false;
+  }
+}
+
 export async function requestShip(shipName: string): Promise<"live" | "waking" | "unknown"> {
   const ship = registryByName(shipName);
   if (!ship) return "unknown";
@@ -243,7 +320,7 @@ async function loadRegistry(): Promise<void> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("ships")
-    .select("name, cruise_line, mmsi, imo, seed_active, last_requested_at")
+    .select("name, cruise_line, mmsi, last_requested_at")
     .eq("active", true)
     .not("mmsi", "is", null);
   if (error) throw new Error(`loadRegistry: ${error.message}`);
@@ -257,25 +334,46 @@ async function loadRegistry(): Promise<void> {
   const watched = new Set(((watches ?? []) as { ship_name: string }[]).map((w) => w.ship_name.toLowerCase()));
 
   registryByMmsi = new Map(
-    ((data ?? []) as { name: string; cruise_line: string; mmsi: string; imo: string | number | null; seed_active: boolean | null; last_requested_at: string | null }[])
+    ((data ?? []) as { name: string; cruise_line: string; mmsi: string; last_requested_at: string | null }[])
       .map((r) => [String(r.mmsi), {
         mmsi: String(r.mmsi),
         name: r.name,
         cruiseLine: r.cruise_line,
-        imo: r.imo ? String(r.imo) : null,
-        seedActive: Boolean(r.seed_active),
         hasWatch: watched.has(r.name.toLowerCase()),
         lastRequestedAt: r.last_requested_at,
       }]),
   );
 }
 
-/** Priority-ordered active set: storm-impacted + watches → seeded US fleet →
- *  requested, newest first. Storm ships are pinned for the storm's lifetime
- *  (Mark's lifecycle design 2026-07-22) — they claim slots even if they were
- *  never seeded or requested. */
-function buildActiveSet(): Set<string> {
-  return new Set(selectActiveSet([...registryByMmsi.values()], stormMmsis, apiKeys().length * maxPerConn()).map((s) => s.mmsi));
+/**
+ * How long a ship keeps her slot after someone asks for her.
+ *
+ * Mark, 2026-09-22: "at 19 knots a ship isn't going far." An hour of free
+ * updates covers the visitor who leaves the page open; after that she has
+ * moved ~19 nm and the next enquiry buys a current fix anyway, so holding the
+ * slot only denies it to a storm ship or a watcher.
+ */
+export const REQUEST_HOLD_MS = 60 * 60 * 1000;
+
+/** Priority-ordered active set — see the header for who qualifies and why. */
+/** 0 = storm-pinned or watched, 1 = asked for within the hold, 2 = everyone else
+ *  (answered on demand). The Cruise API itinerary refresh sweeps in this order too. */
+function slotRank(s: RegistryShip, now = Date.now()): number {
+  const t = Date.parse(s.lastRequestedAt ?? "");
+  const recentlyRequested = Number.isFinite(t) && now - t < REQUEST_HOLD_MS;
+  return stormMmsis.has(s.mmsi) || s.hasWatch ? 0 : recentlyRequested ? 1 : 2;
+}
+
+function buildActiveSet(now = Date.now()): Set<string> {
+  const ships = [...registryByMmsi.values()];
+  const rank = (s: RegistryShip): number => slotRank(s, now);
+  ships.sort((a, b) =>
+    rank(a) - rank(b) ||
+    (b.lastRequestedAt ?? "").localeCompare(a.lastRequestedAt ?? "") ||
+    a.name.localeCompare(b.name));
+  const cap = apiKeys().length * maxPerConn();
+  // Rank 2 stays registry-only: searchable, and answered on demand.
+  return new Set(ships.filter((s) => rank(s) < 2).slice(0, cap).map((s) => s.mmsi));
 }
 
 /** Re-shard the active set across connections; resubscribe the ones that changed. */
@@ -365,7 +463,7 @@ function handleStaticData(pos: ShipPosition, msg: Record<string, unknown>) {
 
 /** Registry ships in the tracker's priority order for the Cruise API refresh. */
 export function refreshShipList(): RefreshShip[] {
-  return [...registryByMmsi.values()].map((s) => ({ name: s.name, mmsi: s.mmsi, cruiseLine: s.cruiseLine, priority: trackingRank(s, stormMmsis) }));
+  return [...registryByMmsi.values()].map((s) => ({ name: s.name, mmsi: s.mmsi, cruiseLine: s.cruiseLine, priority: slotRank(s) }));
 }
 function plannedRefreshEnabled(): boolean {
   return cruiseApiEnabled() && process.env["CRUISE_API_REFRESH"] !== "off";

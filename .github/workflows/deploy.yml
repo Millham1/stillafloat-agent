@@ -27,9 +27,16 @@ jobs:
     permissions:
       contents: write
     steps:
+      # On a push, github.ref_name is the branch, which is what the lockfile
+      # step below needs (it pushes to dev, so it cannot run on a detached
+      # HEAD). On a PULL_REQUEST, ref_name is "<number>/merge" — not a ref the
+      # runner can fetch — and checkout dies with "The process '/usr/bin/git'
+      # failed with exit code 1". That went unnoticed because this workflow had
+      # never seen a pull_request until PR #1 (2026-09-21); head_ref gives the
+      # PR's source branch and leaves push behaviour exactly as it was.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: "20"

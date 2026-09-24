@@ -7,7 +7,7 @@
 // `cruises[]` = the operator's published sailings, MSC + NCL, to Nov 2028).
 // Each sailing is an ordered port list with a start date; the water route is
 // assembled from stored port-pair legs (port_routes) at request time.
-import { resolvePortName, resolvePortCode, type ResolvedPort } from "./world-ports";
+import { resolvePortName, resolvePortCode, type ResolvedPort } from "./port-resolve";
 
 export interface PlannedPort { name: string; slug: string | null; lat: number | null; lon: number | null }
 export interface PlannedSailing {

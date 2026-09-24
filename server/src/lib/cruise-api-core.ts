@@ -8,7 +8,7 @@
 // planned-route table needs: departureDate, duration (nights), the ordered
 // itineraryPorts (LOCODE-style codes, "XZAS1" = at sea) with hydrated names,
 // and the ship's full name — verified with a live call on 2026-09-11.
-import { resolvePortName, resolvePortSlug, type ResolvedPort } from "./world-ports";
+import { resolvePortName, resolvePortSlug, type ResolvedPort } from "./port-resolve";
 import type { PlannedSailing, PlannedPort } from "./planned-sailings";
 import portsRef from "../../data/cruise-api-ports.json";
 
