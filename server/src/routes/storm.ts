@@ -8,7 +8,7 @@ import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
 import { runStormScan } from "../lib/storm-agent";
-import { emailSubscribers, emailAllClear, type AlertRow, type AllClearRow } from "../lib/storm-send";
+import { emailSubscribers, emailAllClear, startAlertSend, subscriberCount, type AlertRow, type AllClearRow } from "../lib/storm-send";
 import { labelGrounds, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
 import { sailingsForStorm, deploymentsForStorm, defaultWindow, withTrackable, type TrackableSailing } from "../lib/storm-sailings";
 import { inRegistry } from "../lib/ship-tracker";
@@ -88,26 +88,57 @@ router.patch("/storm-alerts/:id", requireToken, async (req: Request, res: Respon
 });
 
 // ── Approve → email subscribers ──────────────────────────────────────────────
-async function approveAndSend(id: string): Promise<{ sent: number; failed: number; total: number }> {
+/**
+ * Approve = claim the alert and START the paced send; the caller gets an answer at once.
+ * 2026-09-24: the old version awaited the ~7.5-minute send and guarded only on
+ * status "sent", so a second click a minute later sent everything again (Fay).
+ * The row is flipped to "sending" atomically (WHERE status not in sending/sent);
+ * whoever loses that update sends nothing. A failed send drops back to "approved"
+ * so it can be retried; a finished one becomes "sent" with the real count.
+ */
+type ApproveOutcome =
+  | { state: "sending"; total: number }
+  | { state: "already_sent"; sent: number }
+  | { state: "already_sending" };
+
+async function approveAndSend(id: string): Promise<ApproveOutcome> {
   const supabase = getSupabase();
   const { data, error } = await supabase.from("storm_alerts").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
   const alert = data as unknown as DbAlert | null;
   if (!alert) throw new Error("not found");
-  if (alert.status === "sent") return { sent: 0, failed: 0, total: 0 }; // idempotent
-  await supabase.from("storm_alerts").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", id);
-  const counts = await emailSubscribers(alert);
-  await supabase.from("storm_alerts").update({
-    status: "sent", sent_at: new Date().toISOString(), sent_count: counts.sent,
-  }).eq("id", id);
-  await resolveActionsForSource("storm_alert", id, "done");
-  return counts;
+  if (alert.status === "sent") return { state: "already_sent", sent: alert.sent_count ?? 0 };
+  if (alert.status === "sending") return { state: "already_sending" };
+  const total = await subscriberCount();
+  const now = () => new Date().toISOString();
+  const state = await startAlertSend(id, {
+    claim: async (alertId) => {
+      const { data: won, error: claimErr } = await supabase.from("storm_alerts")
+        .update({ status: "sending", approved_at: now(), last_updated: now() })
+        .eq("id", alertId).not("status", "in", '("sending","sent")').select("id");
+      if (claimErr) throw claimErr;
+      return (won?.length ?? 0) > 0;
+    },
+    send: () => emailSubscribers(alert),
+    markSent: async (counts) => {
+      await supabase.from("storm_alerts").update({
+        status: "sent", sent_at: now(), sent_count: counts.sent, last_updated: now(),
+      }).eq("id", id);
+      await resolveActionsForSource("storm_alert", id, "done");
+    },
+    markFailed: async () => {
+      await supabase.from("storm_alerts").update({ status: "approved", last_updated: now() }).eq("id", id);
+    },
+  });
+  return state === "started" ? { state: "sending", total } : { state: "already_sending" };
 }
 
 router.post("/storm-alerts/:id/approve", requireToken, async (req: Request, res: Response) => {
   try {
-    const counts = await approveAndSend((req.params["id"] ?? ""));
-    res.json({ success: true, ...counts });
+    const out = await approveAndSend((req.params["id"] ?? ""));
+    if (out.state === "sending") { res.status(202).json({ success: true, sending: true, total: out.total, sent: 0, failed: 0 }); return; }
+    if (out.state === "already_sending") { res.status(409).json({ success: false, error: "This alert is already going out — one email every 45 seconds, about 8 minutes for the whole list." }); return; }
+    res.json({ success: true, alreadySent: true, sent: out.sent, failed: 0, total: out.sent });
   } catch (err) {
     logger.error({ err }, "approve failed");
     res.status(500).json({ success: false, error: "Approve failed" });
@@ -144,14 +175,28 @@ router.post("/storm-alerts/:id/all-clear", requireToken, async (req: Request, re
     if (alert.all_clear_sent_at) { res.json({ success: true, sent: 0, alreadySent: true }); return; }
     if (!alert.all_clear_headline) { res.status(422).json({ success: false, error: "No all-clear draft on this alert" }); return; }
 
-    const counts = await emailAllClear(alert as unknown as AllClearRow);
-    await supabase.from("storm_alerts").update({
-      all_clear_sent_at: new Date().toISOString(),
-      all_clear_sent_count: counts.sent,
-      last_updated: new Date().toISOString(),
-    }).eq("id", id);
-    await resolveActionsForSource("storm_alert", id, "done");
-    res.json({ success: true, ...counts });
+    // Same one-send guard as approve: answer now, send in the background. The
+    // all-clear has no status column of its own, so the claim re-checks
+    // all_clear_sent_at and the in-process lock covers the send window.
+    const total = await subscriberCount();
+    const state = await startAlertSend(`${id}:all-clear`, {
+      claim: async () => {
+        const { data: fresh } = await supabase.from("storm_alerts").select("all_clear_sent_at").eq("id", id).maybeSingle();
+        return !(fresh as { all_clear_sent_at?: string | null } | null)?.all_clear_sent_at;
+      },
+      send: () => emailAllClear(alert as unknown as AllClearRow),
+      markSent: async (counts) => {
+        await supabase.from("storm_alerts").update({
+          all_clear_sent_at: new Date().toISOString(),
+          all_clear_sent_count: counts.sent,
+          last_updated: new Date().toISOString(),
+        }).eq("id", id);
+        await resolveActionsForSource("storm_alert", id, "done");
+      },
+      markFailed: async () => { /* nothing stamped, so the button simply works again */ },
+    });
+    if (state === "started") res.status(202).json({ success: true, sending: true, total, sent: 0, failed: 0 });
+    else res.status(409).json({ success: false, error: "The all-clear is already going out." });
   } catch (err) {
     logger.error({ err }, "all-clear send failed");
     res.status(500).json({ success: false, error: "All-clear send failed" });
@@ -179,8 +224,11 @@ router.get("/storm-alerts/:id/action", requireToken, async (req: Request, res: R
   const doAction = String(req.query["do"] ?? "");
   try {
     if (doAction === "approve") {
-      const c = await approveAndSend((req.params["id"] ?? ""));
-      res.type("html").send(`<p>✅ Alert approved and sent to ${c.sent} subscriber(s).</p>`);
+      const out = await approveAndSend((req.params["id"] ?? ""));
+      const msg = out.state === "sending"
+        ? `✅ Alert approved. It is going out to ${out.total} subscriber(s) now, one email every 45 seconds.`
+        : out.state === "already_sending" ? "This alert is already going out." : `Already sent to ${out.sent} subscriber(s).`;
+      res.type("html").send(`<p>${msg}</p>`);
       return;
     }
     if (doAction === "dismiss") {
