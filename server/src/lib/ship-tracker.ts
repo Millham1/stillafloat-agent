@@ -634,6 +634,12 @@ function connect(conn: Conn) {
   // of disconnects (prod 2026-09-24 04:20Z, when the live set was empty).
   // refreshActiveSet() dials the moment a shard gets its first ship.
   if (!conn.mmsis.length) { conn.ws = null; conn.alive = false; return; }
+  // One socket per connection, ever. 2026-09-24: at boot refreshActiveSet() dialed
+  // every shard and then startup dialed them all AGAIN, so each key held two
+  // sockets; aisstream closes the duplicate, the close handler re-dials, and the
+  // feed flaps for hours after every restart (dev 15:37Z: two "connected" 4 ms
+  // apart, then the drops). A second dial while a socket exists is a no-op.
+  if (conn.ws) return;
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const WebSocket = require("ws");
   const ws = new WebSocket(AIS_URL);
@@ -727,8 +733,7 @@ async function bootTracker(attempt: number): Promise<void> {
     }
     await warmFromSnapshot();
     for (const key of keys) conns.push({ key, ws: null, mmsis: [], alive: false });
-    await refreshActiveSet(); // shards the initial set
-    for (const conn of conns) connect(conn);
+    await refreshActiveSet(); // shards the initial set and dials each shard that has ships
     setInterval(() => { refreshActiveSet().catch((err) => logger.warn({ err }, "wms: set refresh failed")); }, REFRESH_SET_EVERY_MS);
     setInterval(() => { persistSnapshot().catch(() => {}); }, PERSIST_EVERY_MS);
     setInterval(() => { syncDerivedSailings().catch((err) => logger.warn({ err }, "wms: sailings sync failed")); }, SAILINGS_EVERY_MS);
