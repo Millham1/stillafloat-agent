@@ -66,3 +66,24 @@ describe("allowlist", () => {
     assert.equal(allowlisted("249973000", "MSC Meraviglia", '"MSC Meraviglia,Norwegian Getaway"'), true);
   });
 });
+
+// ── staleForInquiry: Mark's rule — inquiry answers from the free feed, stale → buy once ──
+import { staleForInquiry } from "./position-provider";
+
+it("no fix at all is stale — the first inquiry buys", () => {
+  assert.equal(staleForInquiry(null), true);
+  assert.equal(staleForInquiry(undefined), true);
+  assert.equal(staleForInquiry("not a date"), true);
+});
+
+it("a fix inside the freshness bar is not stale — no spend", () => {
+  const now = new Date("2026-09-24T04:00:00Z");
+  const fresh = new Date(now.getTime() - (LOOKUP_AFTER_MIN - 1) * 60_000).toISOString();
+  assert.equal(staleForInquiry(fresh, now), false);
+});
+
+it("a fix older than the freshness bar is stale — buy once", () => {
+  const now = new Date("2026-09-24T04:00:00Z");
+  const old = new Date(now.getTime() - (LOOKUP_AFTER_MIN + 1) * 60_000).toISOString();
+  assert.equal(staleForInquiry(old, now), true);
+});

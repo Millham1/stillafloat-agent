@@ -30,7 +30,7 @@ import { notifyMark } from "./notify";
 import { emailAllClear } from "./storm-send";
 import { sailingsForStorm, deploymentsForStorm, defaultWindow, type Sailing } from "./storm-sailings";
 import { severityRank } from "./storm-escalation";
-import { setStormShips, mmsiForShip, getPosition, trackerObservedSince } from "./ship-tracker";
+import { setStormShips, mmsiForShip, getPosition, trackerObservedSince, refreshStalePosition } from "./ship-tracker";
 import { labelGrounds } from "./storm-grounds";
 import { portBySlug, CRUISE_LOCATIONS } from "./ports";
 import { classifyDestinationChange, EVENT_KINDS, type ChangeKind } from "./storm-diversion";
@@ -183,7 +183,13 @@ async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; d
       released_at: null,
     }, { onConflict: "alert_id,ship_name" });
     if (error) logger.warn({ err: error, ship: sail.ship_name }, "storm-lifecycle: pin failed");
-    else existing.set(key, {
+    // Mark's design (2026-09-24): a named storm pins the ship AND calls Live-AIS,
+    // so the diversion baseline starts from a current fix rather than whatever
+    // the free feed last heard; she then stays active until the storm clears.
+    // Fire-and-forget: the scan must not wait on a provider, and the adapter's
+    // 6-hour per-ship window keeps a re-pin from buying again.
+    if (!error) void refreshStalePosition(sail.ship_name, "storm").catch(() => false);
+    if (!error) existing.set(key, {
       id: "", ship_name: sail.ship_name, cruise_line: sail.cruise_line, mmsi: mmsiForShip(sail.ship_name),
       baseline_destination: null, baseline_declared_at: null, changes: [],
     });

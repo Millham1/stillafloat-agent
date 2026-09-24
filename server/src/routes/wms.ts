@@ -18,6 +18,7 @@ import { trackingEmail, verifyWatchSig, watchStopUrl } from "../lib/ship-watch";
 import { portBySlug } from "../lib/ports";
 import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../lib/dead-reckoning";
 import { plannedRouteFor } from "../lib/planned-route-service";
+import { staleForInquiry } from "../lib/position-provider";
 import { gapPaths, seaRoute } from "../lib/sea-route";
 
 const router: IRouter = Router();
@@ -125,6 +126,13 @@ router.get("/wms/position", async (req: Request, res: Response) => {
 
     if (!trackerEnabled()) {
       return res.json({ ok: true, tracking: false, reason: "tracker_offline" });
+    }
+    // Mark's design (2026-09-24): an inquiry answers from terrestrial AIS; when
+    // that is stale — or there is no fix at all — buy ONE Live-AIS position and
+    // project from it. Every guard (freshness bar, per-ship window, monthly cap,
+    // allowlist) lives in the adapter, so asking twice is one call.
+    if (inRegistry(shipName) && staleForInquiry(getPosition(shipName)?.lastPosAt ?? null)) {
+      await refreshStalePosition(shipName, "request").catch(() => false);
     }
     const pos = getPosition(shipName);
     if (!pos || pos.lat === null || pos.lon === null || !pos.lastPosAt) {
@@ -251,6 +259,10 @@ router.post("/wms/watch", async (req: Request, res: Response) => {
     }
 
     const watchId = String((inserted as { id: string }).id);
+    // Mark's design (2026-09-24): a track request calls Live-AIS once and the
+    // ship then stays active for the watch's window. The slot policy already
+    // holds a watched ship live; this is the call that starts her off current.
+    void refreshStalePosition(String((shipRow as { name: string }).name), "watch").catch(() => false);
     const mail = trackingEmail({
       shipName: String(shipRow.name),
       sailingStart,
