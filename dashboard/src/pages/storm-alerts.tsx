@@ -44,6 +44,7 @@ type AlertsResponse = { alerts: Alert[] };
 const STATUS_COLORS: Record<string, string> = {
   draft:    "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300",
   approved: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
+  sending:  "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300",
   sent:     "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300",
   ended:    "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300",
 };
@@ -178,7 +179,11 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
   async function approve() {
     if (dirty) await call("", "PATCH", editPayload());
     const r = await call("/approve", "POST");
-    toast({ title: "Approved & sent", description: `Emailed ${r?.sent ?? 0} subscriber(s).` });
+    // The server answers at once and sends in the background (one email every 45 s),
+    // so the toast says what is happening, not a count that does not exist yet.
+    if (r?.sending) toast({ title: "Approved — going out now", description: `Emailing ${r.total ?? 0} subscriber(s), one every 45 seconds. No need to click again.` });
+    else if (r?.alreadySent) toast({ title: "Already sent", description: `This alert already went to ${r.sent ?? 0} subscriber(s).` });
+    else toast({ title: r?.success ? "Approved" : "Not sent", description: String(r?.error ?? "") });
     onChanged();
   }
   async function dismiss() {
@@ -189,7 +194,8 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
   async function sendAllClear() {
     if (dirty) await call("", "PATCH", editPayload());
     const r = await call("/all-clear", "POST");
-    toast({ title: "All-clear sent", description: `Emailed ${r?.sent ?? 0} subscriber(s).` });
+    if (r?.sending) toast({ title: "All-clear going out now", description: `Emailing ${r.total ?? 0} subscriber(s), one every 45 seconds.` });
+    else toast({ title: r?.success ? "All-clear" : "Not sent", description: String(r?.error ?? "") });
     onChanged();
   }
   async function skipAllClear() {
@@ -293,7 +299,7 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
           {dirty && (
             <Button variant="outline" size="sm" onClick={save} disabled={busy}>Save edits</Button>
           )}
-          {!ended && alert.status !== "sent" && (
+          {!ended && alert.status !== "sent" && alert.status !== "sending" && (
             <Button size="sm" onClick={approve} disabled={busy}>
               <Send className="h-4 w-4 mr-1" /> Approve &amp; Send
             </Button>

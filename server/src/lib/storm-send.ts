@@ -70,6 +70,64 @@ export async function sendPaced<T>(
   return { sent, failed };
 }
 
+/**
+ * One send per alert, and the caller never waits for it.
+ *
+ * 2026-09-24, on prod: Fay was approved at 03:42:12 and again at 03:43:07. The
+ * approve route awaited the whole paced send (~7.5 min for 11 recipients) before
+ * answering, so the first click showed nothing and invited the second; and the
+ * only guard was `status === "sent"`, which a row mid-send does not satisfy. Both
+ * clicks sent — eleven subscribers got the same alert twice, a minute apart.
+ *
+ * The claim is the lock: `deps.claim` must flip the row to a "sending" state
+ * ATOMICALLY (an UPDATE whose WHERE excludes sending/sent, returning the row) so
+ * two callers cannot both win, even across a restart. `inFlight` is the cheap
+ * in-process short-circuit in front of it. The send then runs in the background;
+ * `markSent`/`markFailed` record the outcome. Same shape as newsletter-delivery.
+ */
+export interface AlertSendDeps {
+  claim: (id: string) => Promise<boolean>;
+  send: () => Promise<{ sent: number; failed: number; total: number }>;
+  markSent: (counts: { sent: number; failed: number; total: number }) => Promise<void>;
+  markFailed: (err: unknown) => Promise<void>;
+}
+const inFlight = new Set<string>();
+
+export async function startAlertSend(id: string, deps: AlertSendDeps): Promise<"started" | "already"> {
+  if (inFlight.has(id)) return "already";
+  inFlight.add(id);
+  let claimed = false;
+  try {
+    claimed = await deps.claim(id);
+  } finally {
+    if (!claimed) inFlight.delete(id);
+  }
+  if (!claimed) return "already";
+  void (async () => {
+    try {
+      const counts = await deps.send();
+      await deps.markSent(counts);
+    } catch (err) {
+      logger.error({ err, id }, "storm-send: background send failed");
+      try { await deps.markFailed(err); } catch (e2) { logger.error({ err: e2, id }, "storm-send: could not record the failure"); }
+    } finally {
+      inFlight.delete(id);
+    }
+  })();
+  return "started";
+}
+
+/** Test seam: forget in-process locks (never used by the app). */
+export function _resetInFlightForTests(): void { inFlight.clear(); }
+
+/** How many people a storm send will reach — for the immediate response. */
+export async function subscriberCount(): Promise<number> {
+  const supabase = getSupabase();
+  const { count } = await supabase.from("subscribers").select("email", { count: "exact", head: true })
+    .eq("status", "confirmed").eq("alerts_opt_in", true);
+  return count ?? 0;
+}
+
 // NOTE (2026-07-06): the email review nudge was REMOVED by Mark's directive —
 // agents never email him actions. Review requests now flow through the unified
 // action queue (lib/actions.ts → one notification → inline brief buttons).

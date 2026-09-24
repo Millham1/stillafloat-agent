@@ -168,12 +168,20 @@ async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; d
     if (seenNames.has(key)) continue;
     seenNames.add(key);
     if (existing.has(key)) continue;
-    const { error } = await supabase.from("storm_tracked_ships").insert({
+    // upsert that UN-RELEASES, not insert. `existing` only lists unreleased pins,
+    // so when a storm the lifecycle had ended came back (Fay: ended 9/23 06:58,
+    // re-drafted and sent 9/24) every insert hit the (alert_id, ship_name) key of
+    // its released row — ~30 "duplicate key" warnings per hourly scan, and not one
+    // ship re-pinned. With nothing pinned, watched or asked for, prod's live set
+    // was EMPTY and the tracker read as offline (2026-09-24 04:20Z). Clearing
+    // released_at on conflict is the re-pin; the row's history is kept.
+    const { error } = await supabase.from("storm_tracked_ships").upsert({
       alert_id: row.id,
       ship_name: sail.ship_name,
       cruise_line: sail.cruise_line,
       mmsi: mmsiForShip(sail.ship_name),
-    });
+      released_at: null,
+    }, { onConflict: "alert_id,ship_name" });
     if (error) logger.warn({ err: error, ship: sail.ship_name }, "storm-lifecycle: pin failed");
     else existing.set(key, {
       id: "", ship_name: sail.ship_name, cruise_line: sail.cruise_line, mmsi: mmsiForShip(sail.ship_name),
