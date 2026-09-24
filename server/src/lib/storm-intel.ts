@@ -104,6 +104,23 @@ export function newsItemMatchesShip(item: { title: string; description: string }
   return /\b(hurricane|tropical|storm|itinerar|divert|re-?rout|skip|cancel|port|weather|advisor)/i.test(text);
 }
 
+/** Names of every storm this pass knows about, for cross-storm attribution.
+ *  Exported for tests. */
+export function newsItemNamesAnotherStorm(
+  item: { title: string; description: string },
+  stormName: string,
+  knownStormNames: readonly string[],
+): string | null {
+  const text = `${item.title} ${item.description}`;
+  const mentions = (name: string) => new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text);
+  if (mentions(stormName)) return null;
+  for (const other of knownStormNames) {
+    if (!other || other.toLowerCase() === stormName.toLowerCase()) continue;
+    if (mentions(other)) return other;
+  }
+  return null;
+}
+
 // ── Fetching ─────────────────────────────────────────────────────────────────
 
 async function fetchText(url: string, timeoutMs = 15_000): Promise<string | null> {
@@ -269,6 +286,13 @@ export async function runStormIntel(): Promise<{ alertsChecked: number; newEntri
     officialPages.set(src.key, html ? stripHtml(html) : null);
   }
   const newsItems = await fetchNewsBackbone();
+  // Every named storm of the last 45 days, any status — a dismissed storm
+  // (Polo, 2026-09-24) is still the one an article may be about.
+  const since = new Date(Date.now() - 45 * 86_400_000).toISOString();
+  const { data: nameRows } = await supabase.from("storm_alerts").select("name").gte("last_updated", since);
+  const knownStormNames = [...new Set(((nameRows ?? []) as Array<{ name: string | null }>)
+    .map((r) => (r.name ?? "").trim())
+    .filter((n) => n && !/unnamed|area\(s\)|^(one|two|three|four|five|six|seven|eight|nine|ten)(-e)?$/i.test(n)))];
 
   for (const alert of alerts) {
     try {
@@ -304,6 +328,8 @@ export async function runStormIntel(): Promise<{ alertsChecked: number; newEntri
         for (const shipName of pinned) {
           const window = extractWindow(text, shipName);
           if (!window) continue;
+          // A ship-named advisory that names a DIFFERENT storm belongs to that storm.
+          if (newsItemNamesAnotherStorm({ title: "", description: window }, stormName, knownStormNames)) continue;
           const hash = intelHash(["official-ship", src.key, shipName, window]);
           if (seen.has(hash)) continue;
           seen.add(hash);
@@ -314,6 +340,12 @@ export async function runStormIntel(): Promise<{ alertsChecked: number; newEntri
       for (const item of newsItems) {
         for (const shipName of pinned) {
           if (!newsItemMatchesShip(item, shipName)) continue;
+          // 2026-09-24: a Cruise Hive piece on Navigator of the Seas dodging Hurricane
+          // POLO was appended to Nolo AND Odalys (Polo was dismissed, so never scanned)
+          // and nudged Mark twice. Ship-only matching is still wanted (operators seldom
+          // name the storm), but an article that names another storm is about that storm.
+          const other = newsItemNamesAnotherStorm(item, stormName, knownStormNames);
+          if (other) { logger.debug({ alert: alert.nhc_id, other, title: item.title }, "storm-intel: ship item belongs to another storm"); continue; }
           const hash = intelHash(["news", item.link || item.title]);
           if (seen.has(hash)) continue;
           seen.add(hash);
