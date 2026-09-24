@@ -118,7 +118,19 @@ let started = false;
 let observedSince: string | null = null;
 let lastMessageAt = 0;
 
+/** Reconnect back-off: 30 s, doubling to a 15-minute ceiling, reset by the first
+ *  message received. 2026-09-24: aisstream was closing prod's sockets on sight and
+ *  the fixed 30-second retry had three connections re-dialing ~6 times a minute for
+ *  more than a day — which is how an account earns a longer block, not a shorter one. */
+export const RECONNECT_BASE_MS = 30_000;
+export const RECONNECT_MAX_MS = 15 * 60_000;
+export function reconnectDelayMs(failures: number): number {
+  return Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** Math.max(0, Math.min(failures, 10)));
+}
+
 interface Conn {
+  /** consecutive drops without a message in between */
+  failures?: number;
   key: string;
   ws: import("ws") | null;
   mmsis: string[];   // shard assigned to this connection
@@ -667,6 +679,7 @@ function connect(conn: Conn) {
 
   ws.on("message", (buf: Buffer) => {
     lastMessageAt = Date.now();
+    conn.failures = 0;
     try {
       const frame = JSON.parse(buf.toString());
       const mmsi = String(frame?.MetaData?.MMSI ?? "");
@@ -687,8 +700,10 @@ function connect(conn: Conn) {
     closed = true;
     conn.alive = false;
     conn.ws = null;
-    logger.warn({ why }, "wms: aisstream disconnected — reconnecting in 30s");
-    setTimeout(() => connect(conn), 30_000);
+    conn.failures = (conn.failures ?? 0) + 1;
+    const wait = reconnectDelayMs(conn.failures - 1);
+    logger.warn({ why, failures: conn.failures, retryInSeconds: wait / 1000 }, "wms: aisstream disconnected — reconnecting");
+    setTimeout(() => connect(conn), wait);
   };
   ws.on("close", () => reconnect("close"));
   ws.on("error", (err: Error) => { logger.warn({ err }, "wms: socket error"); ws.terminate?.(); reconnect("error"); });
