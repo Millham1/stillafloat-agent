@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { briefly } from "./brief-error";
+import { after, briefly, MAX_TIMER_MS } from "./brief-error";
 
 test("briefly pulls the reason out of a provider's HTML error page", () => {
   // Shape of what Supabase actually returned on the first live run, 2026-09-23:
@@ -34,4 +34,25 @@ test("briefly caps a long message so one fault cannot flood the log", () => {
   const out = briefly(new Error("x".repeat(5000)));
   assert.equal(out.length, 201);          // 200 + the ellipsis
   assert.ok(out.endsWith("…"));
+});
+
+test("after() does not fire a multi-week delay immediately", async () => {
+  // The bug this guards: setInterval(fn, 30 days) silently became "every
+  // millisecond" on prod — 56% CPU, 2.9GB RAM and a 19GB log inside 20 minutes.
+  let fired = false;
+  after(30 * 24 * 60 * 60 * 1000, () => { fired = true; });
+  await new Promise((r) => setTimeout(r, 40));
+  assert.equal(fired, false, "a 30-day timer must not fire in 40ms");
+});
+
+test("after() still fires a short delay normally", async () => {
+  let fired = false;
+  after(5, () => { fired = true; });
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(fired, true);
+});
+
+test("MAX_TIMER_MS is Node's real 32-bit ceiling", () => {
+  assert.equal(MAX_TIMER_MS, 2 ** 31 - 1);
+  assert.ok(30 * 24 * 60 * 60 * 1000 > MAX_TIMER_MS, "30 days must exceed it — that was the bug");
 });
