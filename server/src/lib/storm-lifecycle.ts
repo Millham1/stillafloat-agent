@@ -31,7 +31,7 @@ import { emailAllClear } from "./storm-send";
 import { sailingsForStorm, deploymentsForStorm, defaultWindow, type Sailing } from "./storm-sailings";
 import { severityRank } from "./storm-escalation";
 import { setStormShips, mmsiForShip, getPosition, trackerObservedSince, refreshStalePosition } from "./ship-tracker";
-import { labelGrounds } from "./storm-grounds";
+import { labelGrounds, shipsForGrounds } from "./storm-grounds";
 import { portBySlug, CRUISE_LOCATIONS } from "./ports";
 import { classifyDestinationChange, EVENT_KINDS, type ChangeKind } from "./storm-diversion";
 import { itinerariesFor } from "./planned-itinerary";
@@ -134,6 +134,22 @@ function portName(slug: string): string {
   return portBySlug(slug)?.name ?? slug;
 }
 
+/**
+ * Pins to release when an alert's grounds move. Nolo (2026-09-25) went from
+ * "Mexican Riviera" to "Hawaii" and left five Riviera ships pinned: listed as
+ * affected in the subscriber email and holding storm-priority AIS slots. A pin
+ * STAYS while the ship is still derived for the storm OR her registry regions
+ * still overlap the grounds — sticky by design, because AIS-derived sailings
+ * come and go and every re-pin buys a Live-AIS fix. Only a ship with no claim
+ * on these waters goes. Names compare case-insensitively. Exported for tests.
+ */
+export function pinsToRelease(
+  pinned: readonly string[], derived: readonly string[], groundShips: readonly string[],
+): string[] {
+  const keep = new Set([...derived, ...groundShips].map((n) => n.trim().toLowerCase()));
+  return pinned.filter((n) => !keep.has(n.trim().toLowerCase()));
+}
+
 /** Pin impacted ships to the alert and classify AIS destination changes.
  *  Returns the MMSIs this alert wants tracked plus any REAL course changes. */
 async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; detections: PendingDiversion[] }> {
@@ -193,6 +209,26 @@ async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; d
       id: "", ship_name: sail.ship_name, cruise_line: sail.cruise_line, mmsi: mmsiForShip(sail.ship_name),
       baseline_destination: null, baseline_declared_at: null, changes: [],
     });
+  }
+
+  // Release pins the grounds no longer justify (pinsToRelease). A registry
+  // read failure releases nothing: a stale pin is cheaper than a lost one.
+  try {
+    const groundShips = (await shipsForGrounds(row.affected_grounds)).map((s) => s.name);
+    for (const key of pinsToRelease([...existing.keys()], [...seenNames], groundShips)) {
+      const pin = existing.get(key);
+      if (!pin) continue;
+      if (pin.id) {
+        const { error } = await supabase.from("storm_tracked_ships")
+          .update({ released_at: new Date().toISOString() } as never).eq("id", pin.id);
+        if (error) { logger.warn({ err: error, ship: pin.ship_name }, "storm-lifecycle: pin release failed"); continue; }
+      }
+      existing.delete(key);
+      logger.info({ alert: row.nhc_id, ship: pin.ship_name, grounds: row.affected_grounds },
+        "storm-lifecycle: pin released — ship no longer sails these grounds");
+    }
+  } catch (err) {
+    logger.warn({ err, alert: row.nhc_id }, "storm-lifecycle: grounds check for pins failed");
   }
 
   // Course-change check on everything pinned to this alert.
