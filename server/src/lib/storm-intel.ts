@@ -72,6 +72,35 @@ export function extractWindow(text: string, needle: string, radius = 700): strin
   return text.slice(Math.max(0, idx - radius), idx + needle.length + radius).trim();
 }
 
+/**
+ * A page window is worth a model call only if it reads like weather news.
+ * Royal Caribbean's itinerary-updates page (2026-09-25) lists "Utopia of the
+ * Seas" in its navigation menu; the window around it was menu text, the model
+ * said so, and that sentence went onto the PUBLIC Fay alert as a cruise-line
+ * advisory. Exported for tests.
+ */
+const ADVISORY_CONTEXT = /\b(hurricane|tropical (storm|depression|cyclone)|storms?|weather|itinerary (change|update|modification|adjust)\w*|re-?rout\w*|divert\w*|advisor(y|ies)|cancel+ed|modified)\b/i;
+export function windowLooksLikeAdvisory(window: string): boolean {
+  return ADVISORY_CONTEXT.test(window);
+}
+
+/** The model's ways of saying "there is nothing here". */
+const REFUSAL = /\b(i (cannot|can't|can not|couldn't|could not|don't|do not|am unable|was unable|need|would need|appreciate)|unable to (find|extract|locate|identify)|(no|not an?) (specific |actual )?(storm |operational )?(advisory|advisories|notice)|navigation menu|menu content|(text|excerpt|content|page|information) (you('ve| have)? )?(provided|shared|supplied)|appears to (be|contain)|please (provide|share)|could you (provide|share)|does not (contain|include|appear)|doesn't (contain|include|appear))\b/i;
+
+/**
+ * A summary is intel only if it says something: long enough, not a refusal,
+ * and about one of its subjects (storm, ship) or at least about weather.
+ * Exported for tests.
+ */
+export function usableAdvisoryNote(note: string, subjects: readonly string[]): boolean {
+  const n = note.trim();
+  if (n.length < 20) return false;
+  if (REFUSAL.test(n)) return false;
+  const lower = n.toLowerCase();
+  if (subjects.some((s) => s && lower.includes(s.toLowerCase()))) return true;
+  return ADVISORY_CONTEXT.test(n);
+}
+
 export interface RssItem { title: string; link: string; description: string; pubDate: string }
 
 export function parseRssItems(xml: string): RssItem[] {
@@ -312,7 +341,18 @@ export async function runStormIntel(): Promise<{ alertsChecked: number; newEntri
         if (!window) continue;
         const hash = intelHash(["official", src.key, window]);
         if (seen.has(hash)) continue;
+        // Remember a window we judged empty so the same menu is not re-read every pass.
+        if (!windowLooksLikeAdvisory(window)) {
+          seen.add(hash);
+          logger.info({ alert: alert.nhc_id, source: src.key }, "storm-intel: page window skipped — no advisory language");
+          continue;
+        }
         const note = await summarizeAdvisory(src.line, stormName, window);
+        if (!usableAdvisoryNote(note, [stormName])) {
+          seen.add(hash);
+          logger.info({ alert: alert.nhc_id, source: src.key, note: note.slice(0, 120) }, "storm-intel: advisory note dropped — nothing announced");
+          continue;
+        }
         fresh.push({ hash, entry: { line: src.line, note, url: src.url } });
       }
 
@@ -333,7 +373,15 @@ export async function runStormIntel(): Promise<{ alertsChecked: number; newEntri
           const hash = intelHash(["official-ship", src.key, shipName, window]);
           if (seen.has(hash)) continue;
           seen.add(hash);
+          if (!windowLooksLikeAdvisory(window)) {
+            logger.info({ alert: alert.nhc_id, source: src.key, ship: shipName }, "storm-intel: page window skipped — no advisory language");
+            continue;
+          }
           const note = await summarizeAdvisory(src.line, `${stormName} (${shipName})`, window);
+          if (!usableAdvisoryNote(note, [stormName, shipName])) {
+            logger.info({ alert: alert.nhc_id, source: src.key, ship: shipName, note: note.slice(0, 120) }, "storm-intel: advisory note dropped — nothing announced");
+            continue;
+          }
           fresh.push({ hash, entry: { line: `${src.line} — ${shipName}`, note, url: src.url } });
         }
       }

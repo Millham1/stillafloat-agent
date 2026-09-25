@@ -54,6 +54,23 @@ function basinFromId(id: string): RawSystem["basin"] {
   return "atlantic";
 }
 
+/**
+ * The basin a system is IN, not the one it was born in. A storm keeps its
+ * Eastern Pacific id for life, but once it crosses 140°W the feed files it
+ * under a Central Pacific bin (CP1, CP2, …) and Honolulu writes the advisories.
+ * Hurricane Nolo (ep152026, bin CP2, 2026-09-25) sat 240 mi south of the Big
+ * Island under a Hawaii County watch and was mapped to the Mexican Riviera
+ * because only the id was consulted. The bin wins; the id is the fallback.
+ * Exported for tests.
+ */
+export function basinFor(id: string, binNumber: string | null | undefined): RawSystem["basin"] {
+  const bin = String(binNumber ?? "").trim().toUpperCase();
+  if (bin.startsWith("CP")) return "central_pacific";
+  if (bin.startsWith("EP")) return "eastern_pacific";
+  if (bin.startsWith("AT")) return "atlantic";
+  return basinFromId(id);
+}
+
 function classify(code: string): string {
   const map: Record<string, string> = {
     TD: "Tropical Depression", TS: "Tropical Storm", HU: "Hurricane",
@@ -78,7 +95,7 @@ async function fetchActiveStorms(): Promise<RawSystem[] | null> {
     const id = String(s.id ?? s.binNumber ?? "").trim();
     return {
       nhcId: id || `${s.name ?? "system"}-${s.classification ?? ""}`,
-      basin: id ? basinFromId(id) : "atlantic",
+      basin: basinFor(id, typeof s.binNumber === "string" ? s.binNumber : null),
       name: s.name ? String(s.name) : "Unnamed system",
       classification: classify(String(s.classification ?? "")),
       lat: num(s.latitudeNumeric ?? s.latitude),
