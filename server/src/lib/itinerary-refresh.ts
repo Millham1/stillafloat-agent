@@ -34,8 +34,16 @@ const MAX_SAILINGS_PER_SHIP = 12;
 export const SOURCE = "cruisemapper";
 /** Backoff after a failed run, in minutes. Covers a provider blip without hammering. */
 const RETRY_DELAYS_MIN = [5, 20, 60, 180] as const;
-/** Itineraries are published months ahead and barely move. */
-const REFRESH_EVERY_MS = 30 * 24 * 60 * 60 * 1000;
+/**
+ * Mark, 2026-09-25: "it is only supposed to fire once a month at the beginning
+ * of the month." So: the 1st of each month at RUN_HOUR_UTC (04:00/05:00 New
+ * York), plus a boot run ONLY when the newest CruiseMapper row is older than
+ * STALE_AFTER_DAYS — a rebuilt box is stocked once, and a redeploy is not a
+ * fleet crawl (eleven restarts on 2026-09-24 ran the whole pass four times).
+ */
+export const RUN_HOUR_UTC = 9;
+export const STALE_AFTER_DAYS = 35;
+const BOOT_CHECK_DELAY_MS = 5 * 60 * 1000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -159,10 +167,33 @@ export async function refreshItineraries(opts: RefreshOptions = {}): Promise<Ref
   return out;
 }
 
+/** The next 1st-of-the-month run strictly after `now`. Exported for tests. */
+export function nextMonthlyRunAt(now: Date, hourUtc = RUN_HOUR_UTC): Date {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const thisMonth = new Date(Date.UTC(y, m, 1, hourUtc));
+  return thisMonth.getTime() > now.getTime() ? thisMonth : new Date(Date.UTC(y, m + 1, 1, hourUtc));
+}
+
+/** Boot run only when the newest CruiseMapper row is missing or too old. Exported for tests. */
+export function bootRefreshNeeded(newestUpdatedAt: string | null, now: Date, staleAfterDays = STALE_AFTER_DAYS): boolean {
+  if (!newestUpdatedAt) return true;
+  const age = now.getTime() - Date.parse(newestUpdatedAt);
+  return !Number.isFinite(age) || age > staleAfterDays * 24 * 60 * 60 * 1000;
+}
+
+async function newestCruiseMapperRow(): Promise<string | null> {
+  const { data, error } = await getSupabase().from("planned_sailings")
+    .select("updated_at").eq("source", SOURCE)
+    .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { updated_at?: string | null } | null)?.updated_at ?? null;
+}
+
 /**
- * Monthly, and once a few minutes after boot so a fresh box is not left with a
- * stale table. Itineraries are published months ahead and barely move, so a
- * faster cadence would just be traffic on someone else's free website.
+ * The 1st of the month at RUN_HOUR_UTC, and at boot only if the table is empty
+ * or stale. Itineraries are published months ahead and barely move, so a faster
+ * cadence would just be traffic on someone else's free website.
  */
 export function scheduleItineraryRefresh() {
   if (process.env["DISABLE_ITINERARY_REFRESH"] === "1") {
@@ -202,8 +233,28 @@ export function scheduleItineraryRefresh() {
       }
     }
   };
-  after(5 * 60 * 1000, () => void tick());
-  const monthly = () => after(REFRESH_EVERY_MS, () => { void tick(); monthly(); });
-  monthly();
-  logger.info("Itinerary refresh scheduled — 5 min after boot, then every 30 days");
+  // Boot: stock a fresh box once; never re-crawl the fleet because pm2 restarted.
+  after(BOOT_CHECK_DELAY_MS, () => void (async () => {
+    try {
+      const newest = await newestCruiseMapperRow();
+      if (!bootRefreshNeeded(newest, new Date())) {
+        logger.info({ newest }, "Itinerary refresh: table is fresh, no boot run");
+        return;
+      }
+      logger.info({ newest }, "Itinerary refresh: table empty or stale — running at boot");
+      await tick();
+    } catch (err) {
+      logger.error({ reason: briefly(err) }, "Itinerary refresh: boot freshness check failed — waiting for the monthly run");
+    }
+  })());
+
+  // Monthly: the 1st at RUN_HOUR_UTC. `after` chains any wait past Node's
+  // 2^31-1 ms timer cap (the 9/23 outage). The +60 s keeps a timer that fires a
+  // hair early from re-arming for the same instant.
+  const arm = () => {
+    const next = nextMonthlyRunAt(new Date(Date.now() + 60_000));
+    after(next.getTime() - Date.now(), () => { void tick(); arm(); });
+    logger.info({ next: next.toISOString() }, "Itinerary refresh scheduled — 1st of the month");
+  };
+  arm();
 }
