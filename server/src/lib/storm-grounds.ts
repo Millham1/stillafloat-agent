@@ -32,7 +32,11 @@ const REGION_BOXES: Record<RegionKey, [number, number, number, number]> = {
   bermuda:         [30, 34, -66, -63],
   us_east_coast:   [25, 41, -82, -69],
   mexican_riviera: [15, 27, -115, -104],
-  hawaii:          [17, 23, -161, -154],
+  // Central Pacific storms reach the islands from the south and south-east;
+  // the old [17, 23] box was the archipelago itself, so Nolo at 15.5N — 240 mi
+  // south of South Point with the Big Island under a watch — fell outside it
+  // and through to the basin fallback (2026-09-25).
+  hawaii:          [12, 26, -166, -150],
 };
 
 // Basin → candidate regions, used when we only know the basin (e.g. a Tropical

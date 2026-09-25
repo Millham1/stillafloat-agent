@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
 import {
-  judgeDeath, draftAllClear, portSlugByName, allClearMode, MISSING_SCANS_TO_END,
+  judgeDeath, draftAllClear, portSlugByName, allClearMode, MISSING_SCANS_TO_END, pinsToRelease,
   type LifecycleAlertState,
 } from "./storm-lifecycle";
 import { newsItemMatchesStorm, extractWindow, parseRssItems } from "./storm-intel";
@@ -93,4 +93,24 @@ test("parseRssItems pulls title/link from RSS", () => {
   assert.equal(items[0].title, "Storm Bertha Update");
   assert.equal(items[0].link, "https://x/y");
   assert.equal(items[0].description, "Bertha news");
+});
+
+// ── Pins released when the grounds move (Nolo, 2026-09-25) ──────────────────
+
+test("a pinned ship with no claim on the new grounds is released", () => {
+  const pinned = ["navigator of the seas", "quantum of the seas", "pride of america"];
+  const derived = ["Pride of America"];                 // the Hawaii sailing derived today
+  const groundShips = ["Pride of America"];             // registry ships whose regions overlap "hawaii"
+  assert.deepEqual(pinsToRelease(pinned, derived, groundShips), ["navigator of the seas", "quantum of the seas"]);
+});
+
+test("a ship still derived for the storm, or still in the grounds' registry, keeps her pin", () => {
+  // Fay: an AIS-derived Bahamas sailing lapsed, but the ship's registry regions still overlap.
+  assert.deepEqual(pinsToRelease(["utopia of the seas"], [], ["Utopia of the Seas"]), []);
+  assert.deepEqual(pinsToRelease(["utopia of the seas"], ["Utopia of the Seas"], []), []);
+});
+
+test("names compare case-insensitively and nothing is released when nothing is pinned", () => {
+  assert.deepEqual(pinsToRelease(["PRIDE OF AMERICA"], ["pride of america"], []), []);
+  assert.deepEqual(pinsToRelease([], ["x"], ["y"]), []);
 });
