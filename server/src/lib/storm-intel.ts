@@ -342,7 +342,11 @@ export async function runStormIntel(): Promise<{ alertsChecked: number; newEntri
         const hash = intelHash(["official", src.key, window]);
         if (seen.has(hash)) continue;
         // Remember a window we judged empty so the same menu is not re-read every pass.
-        if (!windowLooksLikeAdvisory(window)) { seen.add(hash); continue; }
+        if (!windowLooksLikeAdvisory(window)) {
+          seen.add(hash);
+          logger.info({ alert: alert.nhc_id, source: src.key }, "storm-intel: page window skipped — no advisory language");
+          continue;
+        }
         const note = await summarizeAdvisory(src.line, stormName, window);
         if (!usableAdvisoryNote(note, [stormName])) {
           seen.add(hash);
@@ -369,7 +373,10 @@ export async function runStormIntel(): Promise<{ alertsChecked: number; newEntri
           const hash = intelHash(["official-ship", src.key, shipName, window]);
           if (seen.has(hash)) continue;
           seen.add(hash);
-          if (!windowLooksLikeAdvisory(window)) continue;
+          if (!windowLooksLikeAdvisory(window)) {
+            logger.info({ alert: alert.nhc_id, source: src.key, ship: shipName }, "storm-intel: page window skipped — no advisory language");
+            continue;
+          }
           const note = await summarizeAdvisory(src.line, `${stormName} (${shipName})`, window);
           if (!usableAdvisoryNote(note, [stormName, shipName])) {
             logger.info({ alert: alert.nhc_id, source: src.key, ship: shipName, note: note.slice(0, 120) }, "storm-intel: advisory note dropped — nothing announced");
