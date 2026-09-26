@@ -19,6 +19,7 @@ import { resolveActionsForSource } from "../lib/actions";
 import {
   publishDiversion, ignoreDiversion, releaseAlertDiversions, listPendingDiversions, simulateDiversion,
 } from "../lib/storm-diversion-events";
+import { loadDiversionLog, clampDays } from "../lib/storm-diversion-log";
 
 const router: IRouter = Router();
 
@@ -407,6 +408,20 @@ router.get("/storm-watch/:id", async (req: Request, res: Response) => {
 // Mark's three-way nudge (2026-09-05). Publish appends the change to every
 // affected alert's advisories card (public detail page + dashboard); it never
 // emails anyone. Both endpoints resolve the brief action themselves.
+
+// The running list (Mark, 2026-09-26): every destination change the detector
+// saw on a storm-pinned ship in the window — routine moves and swaps included —
+// with its review-queue event attached where one exists. Registered before the
+// /:id routes so "log" can never be read as an event id. ?days=1..180 (default 30).
+router.get("/storm-diversions/log", requireToken, async (req: Request, res: Response) => {
+  try {
+    const log = await loadDiversionLog(clampDays(req.query["days"]));
+    res.json({ success: true, ...log });
+  } catch (err) {
+    logger.error({ err }, "GET /storm-diversions/log failed");
+    res.status(500).json({ success: false, error: "Failed to load the diversion log" });
+  }
+});
 
 router.post("/storm-diversions/:id/publish", requireToken, async (req: Request, res: Response) => {
   try {
