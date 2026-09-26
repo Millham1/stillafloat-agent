@@ -28,7 +28,7 @@ import { logger } from "./logger";
 import { resolveActionsForSource, createAction } from "./actions";
 import { notifyMark } from "./notify";
 import { emailAllClear } from "./storm-send";
-import { sailingsForStorm, deploymentsForStorm, defaultWindow, type Sailing } from "./storm-sailings";
+import { impactedShipsForAlert, defaultWindow, type Sailing } from "./storm-sailings";
 import { severityRank } from "./storm-escalation";
 import { setStormShips, mmsiForShip, getPosition, trackerObservedSince, refreshStalePosition } from "./ship-tracker";
 import { labelGrounds, shipsForGrounds } from "./storm-grounds";
@@ -76,7 +76,7 @@ export function draftAllClear(a: { name: string | null; classification: string |
   return {
     headline: `All clear: ${name} is no longer a threat`.slice(0, 120),
     body_md:
-      `**${name}** (${a.classification ?? "tropical system"}) has dissipated and is no longer being tracked by the National Hurricane Center.\n\n` +
+      `**${name}** (${a.classification ?? "tropical system"}) has dissipated and is no longer being tracked by NOAA's forecasters.\n\n` +
       `**What this means for you:** the threat to ${grounds} has passed. Itineraries that were adjusted should settle back to normal — ` +
       `your cruise line has the final word on any remaining changes, so keep an eye on their app for your specific sailing.\n\n` +
       `Thanks for riding it out with us. We watch the tropics year-round, and if anything new spins up, you'll hear from us. Until then — smooth sailing.`,
@@ -91,6 +91,19 @@ export function isLiveNamedThreat(a: { is_threat: boolean; classification: strin
 
 export function allClearMode(env: Record<string, string | undefined> = process.env): "auto" | "gated" {
   return env["DISABLE_STORM_ALLCLEAR_AUTOSEND"] === "1" ? "gated" : "auto";
+}
+
+/**
+ * A storm Mark declared by hand (nhc_id MANUAL-…, 2026-09-26) is in no feed,
+ * so "absent from the scan" means nothing for it. It counts as seen until a
+ * day after its window closes, then dies like any other storm (all-clear and
+ * pin release included). No window = open until dismissed. Pure; tested.
+ */
+export function manualStillOpen(row: { nhc_id: string; window_end: string | null }, now = new Date()): boolean {
+  if (!row.nhc_id.startsWith("MANUAL-")) return false;
+  if (!row.window_end) return true;
+  const end = Date.parse(`${row.window_end}T23:59:59Z`);
+  return !Number.isFinite(end) || now.getTime() <= end + 86_400_000;
 }
 
 /** Slug for a port named the way `sailings.depart_port` / deployments name it. */
@@ -115,6 +128,8 @@ interface LifecycleRow {
   affected_grounds: string[];
   window_start: string | null;
   window_end: string | null;
+  /** Source facts; NWS marine events keep their path here (storm-sailings.pathOf). */
+  raw: unknown;
 }
 
 interface TrackedShipRow {
@@ -132,6 +147,8 @@ function feedHealthyFor(row: LifecycleRow, snap: SystemsSnapshot): boolean {
     const basin = row.nhc_id.slice(4);
     return snap.outlookOkByBasin[basin] ?? false;
   }
+  if (row.nhc_id.startsWith("NWS-")) return snap.nwsMarineOk;
+  if (row.nhc_id.startsWith("MANUAL-")) return true; // judged by its window, not a feed
   return snap.currentStormsOk;
 }
 
@@ -162,12 +179,10 @@ async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; d
   const win = row.window_start && row.window_end
     ? { start: row.window_start, end: row.window_end }
     : defaultWindow();
-  const derived = await sailingsForStorm(row.affected_grounds, win.start, win.end);
-  // Forward deployments fill in ships whose current AIS sailing isn't derived yet;
-  // AIS-derived rows win on conflict (they're date-precise, deployments are seasonal).
-  const deployed = await deploymentsForStorm(row.affected_grounds, win.start, win.end);
-  const seen = new Set(derived.map((x) => x.ship_name.toLowerCase()));
-  const sailings: Sailing[] = derived.concat(deployed.filter((x) => !seen.has(x.ship_name.toLowerCase())));
+  // One answer for "which ships are in this storm" (storm-sailings.ts): by the
+  // storm's PATH when the alert carries one (NWS marine events), else by the
+  // grounds — the same function the public and dashboard lists use.
+  const sailings: Sailing[] = await impactedShipsForAlert(row, win.start, win.end);
 
   const { data: existingData, error: exErr } = await supabase
     .from("storm_tracked_ships")
@@ -349,7 +364,7 @@ async function endAlert(row: LifecycleRow): Promise<void> {
       }).eq("id", row.id);
       await notifyMark({
         title: `🟢 All-clear sent: ${row.name ?? row.nhc_id} → ${counts.sent} subscriber${counts.sent === 1 ? "" : "s"}`,
-        body: `${draft.headline}\nSent automatically when NHC dropped the system` +
+        body: `${draft.headline}\nSent automatically when the feed dropped the system` +
           (counts.failed ? ` (${counts.failed} failed — see the dashboard).` : ". Nothing to do."),
         tag: `storm-allclear-${row.nhc_id}`,
       }).catch((err) => logger.warn({ err }, "storm-lifecycle: all-clear notify failed"));
@@ -385,7 +400,7 @@ export async function runStormLifecycle(snap: SystemsSnapshot): Promise<Lifecycl
 
   const { data, error } = await supabase
     .from("storm_alerts")
-    .select("id, nhc_id, name, classification, status, is_threat, approved_at, missing_scans, affected_grounds, window_start, window_end")
+    .select("id, nhc_id, name, classification, status, is_threat, approved_at, missing_scans, affected_grounds, window_start, window_end, raw")
     .in("status", ["draft", "approved", "sent"]);
   if (error) {
     logger.error({ err: error }, "storm-lifecycle: alert load failed");
@@ -398,7 +413,7 @@ export async function runStormLifecycle(snap: SystemsSnapshot): Promise<Lifecycl
 
   for (const row of (data ?? []) as unknown as LifecycleRow[]) {
     try {
-      const verdict = judgeDeath(row, seenIds.has(row.nhc_id), feedHealthyFor(row, snap));
+      const verdict = judgeDeath(row, seenIds.has(row.nhc_id) || manualStillOpen(row), feedHealthyFor(row, snap));
       if (verdict.kind === "seen") {
         if (row.missing_scans > 0) {
           await supabase.from("storm_alerts").update({ missing_scans: 0 }).eq("id", row.id);

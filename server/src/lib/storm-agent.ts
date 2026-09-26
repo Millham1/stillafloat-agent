@@ -11,6 +11,7 @@ import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { createAction, resolveActionsForSource } from "./actions";
 import { fetchSystemsSnapshot, fixtureSystem, basinGraphics, type RawSystem, type SystemsSnapshot } from "./storm-source";
+import type { PriorMarineAlert } from "./nws-marine-source";
 import { defaultWindow } from "./storm-sailings";
 import { planScanAction, type ExistingAlertState } from "./storm-escalation";
 import { runStormLifecycle } from "./storm-lifecycle";
@@ -31,7 +32,11 @@ export interface DraftContent { headline: string; body_md: string; }
  * disturbance, which has no coordinates yet, falls back to its basin.
  * Exported for tests.
  */
-export function groundsFor(sys: Pick<RawSystem, "lat" | "lon" | "basin">): string[] {
+export function groundsFor(sys: Pick<RawSystem, "lat" | "lon" | "basin" | "grounds">): string[] {
+  // An NWS marine event arrives with its grounds already decided by which
+  // warning zones it touches (nws-marine-source.ts); re-deriving them from the
+  // position with the tropical margin would hand a nor'easter Bermuda too.
+  if (sys.grounds) return [...sys.grounds];
   if (sys.lat != null && sys.lon != null) return groundsForPoint(sys.lat, sys.lon, NAMED_STORM_MARGIN_DEG);
   return groundsForBasin(sys.basin);
 }
@@ -42,9 +47,12 @@ function hashSystem(sys: RawSystem, grounds: string[]): string {
   return crypto.createHash("sha256").update(key).digest("hex").slice(0, 32);
 }
 
-const SYSTEM_PROMPT = `You write short tropical-weather alerts for a cruise-travel brand ("Still Afloat").
+const SYSTEM_PROMPT = `You write short weather alerts for a cruise-travel brand ("Still Afloat"): tropical systems from the
+National Hurricane Center, and non-tropical marine storms (nor'easters, Gulf of Alaska lows) from the NWS Ocean Prediction Center.
 Voice: the experienced friend who tells the truth — calm, grounded, practical, never hype or fear-mongering.
-You are given one tropical system and the cruising grounds it may affect. Write a subscriber alert.
+You are given one weather system and the cruising grounds it may affect. Write a subscriber alert.
+For a non-tropical storm say what it is in plain words (a nor'easter is a strong coastal low, not a hurricane) and
+what it usually means for cruisers: rough seas, delayed arrivals/departures, shortened or swapped port calls.
 Return JSON: {"headline": string, "body_md": string}.
 - headline: <= 80 chars, plain and specific (system name + what/where). No emoji spam.
 - body_md: 2-4 short paragraphs, markdown. MUST include a clearly-worded "What this means for you" that ties
@@ -73,8 +81,9 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
     sys.formationChance != null ? `Formation chance: ${sys.formationChance}%` : "",
     sys.lat != null && sys.lon != null ? `Position: ${sys.lat}, ${sys.lon}` : "",
     `Basin: ${sys.basin}`,
+    `Source: ${sys.source === "nws_marine" ? "NWS Ocean Prediction Center marine warnings (non-tropical)" : sys.source === "manual" ? "declared by hand on the dashboard" : "NOAA National Hurricane Center"}`,
     `Affected cruising grounds: ${groundsLabel}`,
-    sys.outlookText ? `NHC outlook text: ${sys.outlookText}` : "",
+    sys.outlookText ? `Forecast / warning text: ${sys.outlookText}` : "",
   ].filter(Boolean).join("\n");
 
   // Graceful fallback if no AI key is configured — a plain, honest draft.
@@ -102,13 +111,29 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
 
 interface ScanResult { scanned: number; drafted: number; updated: number; skipped: number; escalated: number; ended: number; }
 
+/** NWS marine alerts from the last two days, so an OPC low with no id of its
+ *  own keeps the same alert while it lives (nws-marine-source.matchPrior). */
+async function loadPriorMarineAlerts(): Promise<PriorMarineAlert[]> {
+  try {
+    const since = new Date(Date.now() - 48 * 3_600_000).toISOString();
+    const { data, error } = await getSupabase()
+      .from("storm_alerts").select("nhc_id, status, last_updated, raw")
+      .like("nhc_id", "NWS-%").gte("last_updated", since);
+    if (error) throw error;
+    return (data ?? []) as unknown as PriorMarineAlert[];
+  } catch (err) {
+    logger.warn({ err }, "storm-agent: prior NWS alerts unreadable — marine events may re-file under new ids");
+    return [];
+  }
+}
+
 /** One full scan cycle. `opts.test` injects a fixture system so the pipeline can
  *  be exercised off-season / for the demo without waiting on real weather. */
 export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanResult> {
   const supabase = getSupabase();
   const snapshot: SystemsSnapshot = opts.test
-    ? { systems: [fixtureSystem()], currentStormsOk: true, outlookOkByBasin: {} }
-    : await fetchSystemsSnapshot();
+    ? { systems: [fixtureSystem()], currentStormsOk: true, outlookOkByBasin: {}, nwsMarineOk: true }
+    : await fetchSystemsSnapshot({ priorMarine: await loadPriorMarineAlerts() });
   const systems = snapshot.systems;
   const result: ScanResult = { scanned: systems.length, drafted: 0, updated: 0, skipped: 0, escalated: 0, ended: 0 };
 
@@ -160,7 +185,7 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
         window_start: win.start,
         window_end: win.end,
         cone_url: sys.coneUrl ?? gfx.outlook,
-        satellite_url: gfx.satellite,
+        satellite_url: sys.satelliteUrl ?? gfx.satellite,
         last_updated: new Date().toISOString(),
         ...(content ? { headline: content.headline, body_md: content.body_md, status: "draft" } : {}),
       };

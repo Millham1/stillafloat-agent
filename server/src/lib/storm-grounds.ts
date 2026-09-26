@@ -8,7 +8,8 @@ import { getSupabase } from "./persistence";
 
 export type RegionKey =
   | "e_caribbean" | "w_caribbean" | "bahamas" | "gulf" | "bermuda"
-  | "us_east_coast" | "mexican_riviera" | "hawaii";
+  | "us_east_coast" | "mexican_riviera" | "hawaii"
+  | "canada_new_england" | "alaska";
 
 export const REGION_LABELS: Record<RegionKey, string> = {
   e_caribbean: "Eastern Caribbean",
@@ -19,6 +20,10 @@ export const REGION_LABELS: Record<RegionKey, string> = {
   us_east_coast: "U.S. East Coast",
   mexican_riviera: "Mexican Riviera",
   hawaii: "Hawaii",
+  // Added 2026-09-26 with the NWS marine-warning source (nor'easters, Gulf of
+  // Alaska storms). `alaska` is the tag ship_deployments already used.
+  canada_new_england: "Canada & New England",
+  alaska: "Alaska & Pacific Northwest",
 };
 
 // Rough bounding boxes [minLat, maxLat, minLon, maxLon] (lon negative = west).
@@ -37,12 +42,18 @@ const REGION_BOXES: Record<RegionKey, [number, number, number, number]> = {
   // south of South Point with the Big Island under a watch — fell outside it
   // and through to the basin fallback (2026-09-25).
   hawaii:          [12, 26, -166, -150],
+  // Boston/Portland/Bar Harbor to Halifax, Sydney NS, Charlottetown, Saguenay,
+  // Quebec — the Canada/New England run that a nor'easter crosses (Sept–Oct).
+  canada_new_england: [41, 51, -72, -52],
+  // Seattle/Vancouver/Victoria up the Inside Passage to Juneau, Skagway,
+  // Glacier Bay, Hubbard Glacier, Seward and Whittier (May–Sept).
+  alaska:          [46, 62, -152, -121],
 };
 
 // Basin → candidate regions, used when we only know the basin (e.g. a Tropical
 // Weather Outlook disturbance with no precise coordinates yet).
 const BASIN_REGIONS: Record<string, RegionKey[]> = {
-  atlantic:        ["e_caribbean", "w_caribbean", "bahamas", "gulf", "bermuda", "us_east_coast"],
+  atlantic:        ["e_caribbean", "w_caribbean", "bahamas", "gulf", "bermuda", "us_east_coast", "canada_new_england"],
   eastern_pacific: ["mexican_riviera"],
   central_pacific: ["hawaii"],
 };
