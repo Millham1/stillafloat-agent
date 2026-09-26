@@ -47,12 +47,23 @@ const BASIN_REGIONS: Record<string, RegionKey[]> = {
   central_pacific: ["hawaii"],
 };
 
-/** Regions whose bounding box contains the given point. */
-export function groundsForPoint(lat: number, lon: number): RegionKey[] {
+/**
+ * How far outside a region box a POSITIONED system still counts, in degrees
+ * (~600 nautical miles, two to three days of travel at storm speeds). This is
+ * the "know before you go" reach: Hurricane Odalys 8° west of the Mexican
+ * Riviera box is that region's business; Tropical Storm Gonzalo 35° east of the
+ * Caribbean, off Cabo Verde, is nobody's — yet on 2026-09-25 it inherited every
+ * Atlantic region through the basin fallback and pinned 59 ships.
+ */
+export const NAMED_STORM_MARGIN_DEG = 10;
+
+/** Regions whose bounding box, widened by `marginDeg` on every side, contains the point. */
+export function groundsForPoint(lat: number, lon: number, marginDeg = 0): RegionKey[] {
   const hits: RegionKey[] = [];
   for (const key of Object.keys(REGION_BOXES) as RegionKey[]) {
     const [minLat, maxLat, minLon, maxLon] = REGION_BOXES[key];
-    if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon) hits.push(key);
+    if (lat >= minLat - marginDeg && lat <= maxLat + marginDeg &&
+        lon >= minLon - marginDeg && lon <= maxLon + marginDeg) hits.push(key);
   }
   return hits;
 }
