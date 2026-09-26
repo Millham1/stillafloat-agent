@@ -5,7 +5,7 @@ import { test } from "node:test";
 import * as assert from "node:assert/strict";
 import {
   judgeDeath, draftAllClear, portSlugByName, allClearMode, MISSING_SCANS_TO_END, pinsToRelease, isLiveNamedThreat,
-  manualStillOpen,
+  manualStillOpen, pinsOutOfReach,
   type LifecycleAlertState,
 } from "./storm-lifecycle";
 import { newsItemMatchesStorm, extractWindow, parseRssItems } from "./storm-intel";
@@ -139,4 +139,10 @@ test("a hand-declared storm counts as seen until a day after its window, then di
   // Gale Warning ranks 2: a hand-declared or NWS gale keeps its ships pinned.
   assert.equal(isLiveNamedThreat({ is_threat: true, classification: "Gale Warning" }), true);
   assert.equal(isLiveNamedThreat({ is_threat: true, classification: "Storm Warning" }), true);
+});
+
+test("a path-based alert releases every pin that is no longer in reach; the grounds rule stays sticky", () => {
+  assert.deepEqual(pinsOutOfReach(["Anthem of the Seas", "carnival miracle", "Pride of America"], ["Pride of America"]), ["Anthem of the Seas", "carnival miracle"]);
+  assert.deepEqual(pinsOutOfReach([], ["x"]), []);
+  assert.deepEqual(pinsToRelease(["Anthem of the Seas"], [], ["anthem of the seas"]), [], "grounds rule: a registry ship in the grounds keeps her pin");
 });

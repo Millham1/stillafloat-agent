@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
-import { parseForecastAdvisory, advisoryPath, advisoryTime, advisoryText } from "./nhc-forecast-track";
+import { parseForecastAdvisory, advisoryPath, advisoryTime, advisoryText, reachPoints } from "./nhc-forecast-track";
 import { nearPath } from "./storm-sailings";
 
 const FAY = `
@@ -115,4 +115,12 @@ test("the .shtml page's <pre> block is the advisory; a page with neither centre 
   assert.equal(parseForecastAdvisory(page, NOW)!.points.length, 7);
   assert.equal(advisoryText("<pre>a &amp; b</pre>"), "a & b");
   assert.equal(parseForecastAdvisory("<html>nothing here</html>", NOW), null);
+});
+
+test("grounds are reached by the 12–72 h tropical points only; remnant-low and outlook points pin but do not threaten", () => {
+  const fay = parseForecastAdvisory(FAY, NOW)!;
+  assert.equal(reachPoints(fay).length, 6, "six FORECAST points, none noted; the remnant OUTLOOK point is out");
+  const odalys = parseForecastAdvisory(ODALYS, NOW)!;
+  assert.deepEqual(reachPoints(odalys), [{ lat: 21.3, lon: -123.5 }, { lat: 22.3, lon: -123.2 }, { lat: 22.4, lon: -122.9 }], "the three points before she goes post-tropical");
+  assert.equal(advisoryPath(odalys).length, 8, "…while the path for pinning keeps every point");
 });

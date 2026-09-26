@@ -28,7 +28,7 @@ import { logger } from "./logger";
 import { resolveActionsForSource, createAction } from "./actions";
 import { notifyMark } from "./notify";
 import { emailAllClear } from "./storm-send";
-import { impactedShipsForAlert, defaultWindow, type Sailing } from "./storm-sailings";
+import { impactedShipsForAlert, pathOf, defaultWindow, type Sailing } from "./storm-sailings";
 import { severityRank } from "./storm-escalation";
 import { setStormShips, mmsiForShip, getPosition, trackerObservedSince, refreshStalePosition } from "./ship-tracker";
 import { labelGrounds, shipsForGrounds } from "./storm-grounds";
@@ -172,6 +172,18 @@ export function pinsToRelease(
   return pinned.filter((n) => !keep.has(n.trim().toLowerCase()));
 }
 
+/**
+ * For an alert that knows its PATH the derived set is the published
+ * itineraries in reach — stable, not an AIS sighting that comes and goes —
+ * so a pin that is no longer in reach goes (2026-09-26: Odalys kept 14
+ * box-based pins after the track said none of them were near her). Exported
+ * for tests.
+ */
+export function pinsOutOfReach(pinned: readonly string[], derived: readonly string[]): string[] {
+  const keep = new Set(derived.map((n) => n.trim().toLowerCase()));
+  return pinned.filter((n) => !keep.has(n.trim().toLowerCase()));
+}
+
 /** Pin impacted ships to the alert and classify AIS destination changes.
  *  Returns the MMSIs this alert wants tracked plus any REAL course changes. */
 async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; detections: PendingDiversion[] }> {
@@ -234,8 +246,12 @@ async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; d
   // Release pins the grounds no longer justify (pinsToRelease). A registry
   // read failure releases nothing: a stale pin is cheaper than a lost one.
   try {
-    const groundShips = (await shipsForGrounds(row.affected_grounds)).map((s) => s.name);
-    for (const key of pinsToRelease([...existing.keys()], [...seenNames], groundShips)) {
+    const pathBased = pathOf(row.raw).length > 0;
+    const groundShips = pathBased ? [] : (await shipsForGrounds(row.affected_grounds)).map((s) => s.name);
+    const toRelease = pathBased
+      ? pinsOutOfReach([...existing.keys()], [...seenNames])
+      : pinsToRelease([...existing.keys()], [...seenNames], groundShips);
+    for (const key of toRelease) {
       const pin = existing.get(key);
       if (!pin) continue;
       if (pin.id) {
@@ -244,8 +260,8 @@ async function syncTrackedShips(row: LifecycleRow): Promise<{ mmsis: string[]; d
         if (error) { logger.warn({ err: error, ship: pin.ship_name }, "storm-lifecycle: pin release failed"); continue; }
       }
       existing.delete(key);
-      logger.info({ alert: row.nhc_id, ship: pin.ship_name, grounds: row.affected_grounds },
-        "storm-lifecycle: pin released — ship no longer sails these grounds");
+      logger.info({ alert: row.nhc_id, ship: pin.ship_name, grounds: row.affected_grounds, pathBased },
+        pathBased ? "storm-lifecycle: pin released — ship no longer in the storm's path" : "storm-lifecycle: pin released — ship no longer sails these grounds");
     }
   } catch (err) {
     logger.warn({ err, alert: row.nhc_id }, "storm-lifecycle: grounds check for pins failed");

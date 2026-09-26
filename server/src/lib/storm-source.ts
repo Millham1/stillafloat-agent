@@ -8,7 +8,7 @@
 
 import { logger } from "./logger";
 import { fetchMarineSystems, type PriorMarineAlert } from "./nws-marine-source";
-import { fetchForecastAdvisory, advisoryPath } from "./nhc-forecast-track";
+import { fetchForecastAdvisory, advisoryPath, reachPoints } from "./nhc-forecast-track";
 
 export interface RawSystem {
   nhcId: string;
@@ -113,7 +113,7 @@ async function fetchActiveStorms(): Promise<RawSystem[] | null> {
     const id = String(s.id ?? s.binNumber ?? "").trim();
     const adv = advisories[i] ?? null;
     const path = adv ? advisoryPath(adv) : [];
-    const forecastPoints = adv ? adv.points.map((p) => ({ lat: p.lat, lon: p.lon })) : [];
+    const forecastPoints = adv ? reachPoints(adv) : [];
     return {
       ...(adv ? { pressureMb: adv.pressureMb, forecastPoints } : {}),
       nhcId: id || `${s.name ?? "system"}-${s.classification ?? ""}`,

@@ -130,6 +130,20 @@ export function advisoryPath(adv: ForecastAdvisory, horizonH = 120, now = new Da
   return out;
 }
 
+/**
+ * The points that decide which GROUNDS a system threatens: the 12–72 h
+ * forecast, and only while it is still a tropical cyclone. A day-4 "post-
+ * tropical remnant low" a thousand miles from the Caribbean put TD Fay back
+ * on the Eastern Caribbean's list on 2026-09-26; a remnant still drives
+ * pinning through the path (weather over a port is weather) but never makes a
+ * system a threat to a cruising ground.
+ */
+export function reachPoints(adv: ForecastAdvisory): Array<{ lat: number; lon: number }> {
+  return adv.points
+    .filter((p) => p.kind === "forecast" && !p.note)
+    .map((p) => ({ lat: p.lat, lon: p.lon }));
+}
+
 // ── Fetcher ─────────────────────────────────────────────────────────────────
 
 const USER_AGENT = "stillafloatcruising.com storm-alerts (mark@stillafloatcruising.com)";

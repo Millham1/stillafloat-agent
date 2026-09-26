@@ -163,9 +163,12 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
 
       const action = planScanAction(existing, sys, contentHash);
 
-      // Unchanged system we've already seen → just touch last_updated.
+      // Unchanged system we've already seen → touch last_updated, and refresh
+      // `raw` so the forecast track rides along (2026-09-26: Odalys and Nolo
+      // kept box-based pins for a whole scan because nothing but their raw
+      // had changed and raw was not written).
       if (action.kind === "touch" && existing) {
-        await supabase.from("storm_alerts").update({ last_updated: new Date().toISOString() })
+        await supabase.from("storm_alerts").update({ last_updated: new Date().toISOString(), raw: sys.raw as object } as never)
           .eq("id", existing.id);
         result.skipped++;
         continue;
