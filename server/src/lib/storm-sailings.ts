@@ -226,19 +226,30 @@ export async function plannedSailingsForStorm(
 // their forecast points are parsed, and hand-declared storms — keep the
 // grounds rule, which is what they have always used.
 
-export interface PathPoint { kind: "low" | "f24" | "f48" | "zone"; lat: number; lon: number; label?: string }
+export interface PathPoint {
+  kind: "low" | "f24" | "f48" | "forecast" | "zone";
+  lat: number;
+  lon: number;
+  label?: string;
+  /** Reach of this point in nm when it differs from the kind's default. */
+  reachNm?: number;
+}
 
 /** A port call this close to warned waters is in the storm. */
 export const PATH_ZONE_NM = 150;
-/** …or this close to the low's position / forecast positions. */
+/** …or this close to a mid-latitude low's position / forecast positions. */
 export const PATH_LOW_NM = 250;
+/** A tropical cyclone's wind field and swell reach further than a nor'easter's
+ *  centre suggests: Nolo passed ~270 nm from Honolulu with Hawaii under watches. */
+export const PATH_TROPICAL_NM = 300;
 
 export function pathOf(raw: unknown): PathPoint[] {
   const p = (raw as { path?: unknown } | null)?.path;
   if (!Array.isArray(p)) return [];
   return p.filter((x): x is PathPoint =>
     Boolean(x) && typeof (x as PathPoint).lat === "number" && typeof (x as PathPoint).lon === "number" &&
-    ["low", "f24", "f48", "zone"].includes(String((x as PathPoint).kind)));
+    ["low", "f24", "f48", "forecast", "zone"].includes(String((x as PathPoint).kind)) &&
+    ((x as PathPoint).reachNm === undefined || typeof (x as PathPoint).reachNm === "number"));
 }
 
 const NM_PER_KM = 1 / 1.852;
@@ -247,7 +258,7 @@ const NM_PER_KM = 1 / 1.852;
 export function nearPath(lat: number, lon: number, path: readonly PathPoint[]): string | null {
   for (const p of path) {
     const nm = distanceKm(lat, lon, p.lat, p.lon) * NM_PER_KM;
-    const limit = p.kind === "zone" ? PATH_ZONE_NM : PATH_LOW_NM;
+    const limit = p.reachNm ?? (p.kind === "zone" ? PATH_ZONE_NM : PATH_LOW_NM);
     if (nm <= limit) return `${Math.round(nm)} nm from ${p.label ?? p.kind}`;
   }
   return null;

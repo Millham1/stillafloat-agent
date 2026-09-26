@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
-import { groundsForPoint, groundsForBasin } from "./storm-grounds";
+import { groundsForPoint, groundsForBasin, groundActive, activeGrounds } from "./storm-grounds";
 import { basinFor } from "./storm-source";
 
 test("a storm south of the Big Island is Hawaii's, not the Mexican Riviera's", () => {
@@ -75,4 +75,24 @@ test("Alaska & Pacific Northwest covers Seattle to Whittier", () => {
   assert.deepEqual(groundsForPoint(60.8, -148.7), ["alaska"]);  // Whittier
   assert.deepEqual(groundsForPoint(57, -168), []);              // Bering Sea: nobody's
   assert.ok(!groundsForBasin("eastern_pacific").includes("alaska"), "a coordinate-less EP outlook never reaches Alaska");
+});
+
+// 2026-09-26, with the prod GO — Mark: "Alaska Sailing season is a set period of time, not all year."
+test("Alaska is a ground from late April to early October and empty water the rest of the year", () => {
+  assert.equal(groundActive("alaska", new Date("2026-06-15T12:00:00Z")), true);
+  assert.equal(groundActive("alaska", new Date("2026-04-25T00:00:00Z")), true, "first day");
+  assert.equal(groundActive("alaska", new Date("2026-10-10T23:00:00Z")), true, "last day");
+  assert.equal(groundActive("alaska", new Date("2026-10-11T00:00:00Z")), false);
+  assert.equal(groundActive("alaska", new Date("2026-11-20T12:00:00Z")), false);
+  assert.equal(groundActive("alaska", new Date("2026-04-24T12:00:00Z")), false);
+  assert.equal(groundActive("us_east_coast", new Date("2026-01-15T12:00:00Z")), true, "New York sails year-round");
+  assert.equal(groundActive("canada_new_england", new Date("2026-01-15T12:00:00Z")), true);
+  assert.deepEqual(activeGrounds(["alaska", "hawaii"], new Date("2026-12-01T00:00:00Z")), ["hawaii"]);
+  assert.deepEqual(groundsFor({ lat: 58, lon: -150, basin: "eastern_pacific" }, new Date("2026-12-01T00:00:00Z")), [], "a December Gulf of Alaska low threatens nowhere");
+});
+
+test("a positioned system reaches every ground its forecast track passes", () => {
+  // A system far east of Hawaii's box (and its 10° margin), forecast to run straight at the islands.
+  assert.deepEqual(groundsFor({ lat: 8, lon: -132, basin: "central_pacific", forecastPoints: [{ lat: 11, lon: -142 }, { lat: 14, lon: -152 }, { lat: 17, lon: -157 }] }), ["hawaii"]);
+  assert.deepEqual(groundsFor({ lat: 8, lon: -132, basin: "central_pacific" }), [], "without the track it is still open ocean");
 });

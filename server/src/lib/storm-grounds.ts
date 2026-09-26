@@ -80,6 +80,31 @@ export function groundsForPoint(lat: number, lon: number, marginDeg = 0): Region
 }
 
 /** Fallback grounds when only the basin is known (no coordinates). */
+/**
+ * Cruising seasons (Mark, 2026-09-26: "Alaska Sailing season is a set period
+ * of time, not all year"). A ground with no entry is sailed year-round. Dates
+ * are month/day, inclusive, UTC. Alaska: the first ships arrive in late April
+ * and the last leave in early October; Gulf of Alaska lows blow all winter and
+ * must reach nobody then.
+ */
+export const GROUND_SEASONS: Partial<Record<RegionKey, { from: [number, number]; to: [number, number] }>> = {
+  alaska: { from: [4, 25], to: [10, 10] },
+};
+
+export function groundActive(region: string, at: Date = new Date()): boolean {
+  const season = GROUND_SEASONS[region as RegionKey];
+  if (!season) return true;
+  const md = (at.getUTCMonth() + 1) * 100 + at.getUTCDate();
+  const from = season.from[0] * 100 + season.from[1];
+  const to = season.to[0] * 100 + season.to[1];
+  return from <= to ? md >= from && md <= to : md >= from || md <= to;
+}
+
+/** The grounds in season on `at`, order kept. */
+export function activeGrounds<T extends string>(grounds: readonly T[], at: Date = new Date()): T[] {
+  return grounds.filter((g) => groundActive(g, at));
+}
+
 export function groundsForBasin(basin: string): RegionKey[] {
   return BASIN_REGIONS[basin] ?? [];
 }
