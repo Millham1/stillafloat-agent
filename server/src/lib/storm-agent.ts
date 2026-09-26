@@ -16,17 +16,23 @@ import { planScanAction, type ExistingAlertState } from "./storm-escalation";
 import { runStormLifecycle } from "./storm-lifecycle";
 import { runStormIntel } from "./storm-intel";
 import {
-  groundsForPoint, groundsForBasin, shipsForGrounds, labelGrounds, type Ship,
+  groundsForPoint, groundsForBasin, shipsForGrounds, labelGrounds, NAMED_STORM_MARGIN_DEG, type Ship,
 } from "./storm-grounds";
 
 export interface DraftContent { headline: string; body_md: string; }
 
-function groundsFor(sys: RawSystem): string[] {
-  if (sys.lat != null && sys.lon != null) {
-    const pt = groundsForPoint(sys.lat, sys.lon);
-    if (pt.length) return pt;
-  }
-  // No usable coordinates (e.g. an outlook disturbance) → basin-level grounds.
+/**
+ * The cruising grounds one system can affect. A POSITIONED system — anything in
+ * CurrentStorms.json: depression, storm, hurricane, potential cyclone — is judged
+ * by where it is: inside a region box or within NAMED_STORM_MARGIN_DEG of one,
+ * otherwise nowhere, and "nowhere" means no threat, no draft, no pins. It never
+ * inherits a basin's whole list (Mark, 2026-09-26: Gonzalo, 35 mi off Cabo Verde,
+ * had been given all six Atlantic regions and 59 pinned ships). Only an outlook
+ * disturbance, which has no coordinates yet, falls back to its basin.
+ * Exported for tests.
+ */
+export function groundsFor(sys: Pick<RawSystem, "lat" | "lon" | "basin">): string[] {
+  if (sys.lat != null && sys.lon != null) return groundsForPoint(sys.lat, sys.lon, NAMED_STORM_MARGIN_DEG);
   return groundsForBasin(sys.basin);
 }
 
