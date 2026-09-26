@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { CloudLightning, Ship, Send, Trash2, ChevronDown, RefreshCw } from "lucide-react";
+import { CloudLightning, Ship, Send, Trash2, ChevronDown, RefreshCw, Plus } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 type Sailing = { ship_name: string; cruise_line: string; depart_port: string | null; start_date: string; end_date: string };
 type CruiseInfo = { line: string; note: string; url?: string };
@@ -68,6 +69,7 @@ function parseCruiseInfo(text: string): CruiseInfo[] {
 export default function StormAlerts() {
   const { toast } = useToast();
   const [scanning, setScanning] = useState(false);
+  const [declaring, setDeclaring] = useState(false);
   const { data, isLoading, refetch } = useQuery<AlertsResponse>({
     queryKey: ["storm-alerts"],
     queryFn: () => fetch("/api/storm-alerts", { headers: { ...authHeaders() } }).then((r) => r.json()),
@@ -105,8 +107,17 @@ export default function StormAlerts() {
           <Button variant="secondary" size="sm" onClick={() => runScan(true)} disabled={scanning}>
             Test alert
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setDeclaring(true)}>
+            <Plus className="h-4 w-4 mr-1" /> Declare a storm
+          </Button>
         </div>
       </div>
+
+      <DeclareStormDialog
+        open={declaring}
+        onOpenChange={setDeclaring}
+        onDeclared={async () => { await refetch(); await runScan(false); }}
+      />
 
       {isLoading && <p className="text-muted-foreground">Loading…</p>}
       {!isLoading && alerts.length === 0 && (
@@ -329,5 +340,118 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ── Declare a storm by hand (Mark, 2026-09-26) ───────────────────────────────
+// For weather no feed carries (the Med, Asia, Australia) or anything a feed
+// missed. Creates an ordinary draft alert: same card, same approval gate; ships
+// pin on the scan that runs right after. It ends a day after its window closes
+// or when dismissed.
+type RegionsResponse = { regions: Record<string, string>; classifications: string[] };
+
+const selectClass = "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm";
+
+function plusDays(n: number): string {
+  return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+}
+
+function DeclareStormDialog({ open, onOpenChange, onDeclared }: { open: boolean; onOpenChange: (v: boolean) => void; onDeclared: () => Promise<void> }) {
+  const { toast } = useToast();
+  const { data: meta } = useQuery<RegionsResponse>({
+    queryKey: ["storm-regions"],
+    queryFn: () => fetch("/api/storm-alerts/regions", { headers: { ...authHeaders() } }).then((r) => r.json()),
+    staleTime: 60 * 60_000,
+    enabled: open,
+  });
+  const [name, setName] = useState("");
+  const [classification, setClassification] = useState("Storm Warning");
+  const [grounds, setGrounds] = useState<string[]>([]);
+  const [start, setStart] = useState(plusDays(0));
+  const [end, setEnd] = useState(plusDays(5));
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  function toggleGround(key: string) {
+    setGrounds((g) => (g.includes(key) ? g.filter((x) => x !== key) : [...g, key]));
+  }
+
+  async function submit() {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/storm-alerts/declare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ name, classification, grounds, window_start: start, window_end: end, note }),
+      }).then((x) => x.json());
+      if (!r?.success) { toast({ variant: "destructive", title: "Not declared", description: String(r?.error ?? "") }); return; }
+      toast({ title: `Declared ${name}`, description: "Draft created — pinning ships now. Review and approve it below." });
+      onOpenChange(false);
+      setName(""); setGrounds([]); setNote("");
+      await onDeclared();
+    } catch {
+      toast({ variant: "destructive", title: "Declare failed" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const regions = meta?.regions ?? {};
+  const classifications = meta?.classifications ?? ["Gale Warning", "Storm Warning", "Hurricane Force Wind Warning", "Tropical Storm", "Hurricane"];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Declare a storm</DialogTitle>
+          <DialogDescription>
+            For weather the feeds don’t carry — the Med, Asia, Australia — or anything they missed. Makes a normal draft alert:
+            ships pin on the next scan, nothing emails until you approve it.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nor'easter, Mistral, Cyclone Alfred…" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Classification</label>
+            <select className={selectClass} value={classification} onChange={(e) => setClassification(e.target.value)}>
+              {classifications.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Cruising grounds</label>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
+              {Object.entries(regions).map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={grounds.includes(key)} onChange={() => toggleGround(key)} />
+                  {label}
+                </label>
+              ))}
+              {!Object.keys(regions).length && <span className="text-xs text-muted-foreground">Loading regions…</span>}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">From</label>
+              <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Through</label>
+              <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Note for the draft (optional)</label>
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="What you know: source, expected timing, ports likely affected…" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
+          <Button onClick={submit} disabled={busy || name.trim().length < 2 || !grounds.length}>Create draft alert</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

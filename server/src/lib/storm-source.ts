@@ -7,6 +7,7 @@
 // Everything is best-effort: a failing source degrades to [] rather than throwing.
 
 import { logger } from "./logger";
+import { fetchMarineSystems, type PriorMarineAlert } from "./nws-marine-source";
 
 export interface RawSystem {
   nhcId: string;
@@ -20,8 +21,15 @@ export interface RawSystem {
   formationChance: number | null;  // 0-100 (Tropical Weather Outlook)
   advisoryUrl: string | null;
   coneUrl: string | null;          // NHC forecast cone/track image (named systems)
-  outlookText?: string;            // TWO prose (for the AI to summarise)
-  source: "current_storms" | "outlook";
+  outlookText?: string;            // TWO prose / High Seas text (for the AI to summarise)
+  source: "current_storms" | "outlook" | "nws_marine" | "manual";
+  /** Set when the source already knows the grounds (NWS marine events are
+   *  gated on which warning zones they touch); the scan then does not re-derive
+   *  them from the position. */
+  grounds?: string[];
+  /** Satellite sector to show instead of the basin default (Alaska, Northeast). */
+  satelliteUrl?: string | null;
+  pressureMb?: number | null;
   raw: unknown;
 }
 
@@ -175,14 +183,24 @@ export interface SystemsSnapshot {
   systems: RawSystem[];
   currentStormsOk: boolean;
   outlookOkByBasin: Record<string, boolean>;
+  /** NWS marine feeds (alerts API + High Seas Forecasts) all answered. */
+  nwsMarineOk: boolean;
 }
 
-export async function fetchSystemsSnapshot(): Promise<SystemsSnapshot> {
-  const [active, outlooks] = await Promise.all([fetchActiveStorms(), fetchOutlooks()]);
+/**
+ * `priorMarine` = the NWS alerts from recent scans (nhc_id NWS-…, with their
+ * last position in `raw`), so a nor'easter keeps one id while it lives — an
+ * OPC low has no id of its own. See nws-marine-source.ts.
+ */
+export async function fetchSystemsSnapshot(opts: { priorMarine?: PriorMarineAlert[] } = {}): Promise<SystemsSnapshot> {
+  const [active, outlooks, marine] = await Promise.all([
+    fetchActiveStorms(), fetchOutlooks(), fetchMarineSystems(opts.priorMarine ?? []),
+  ]);
   return {
-    systems: [...(active ?? []), ...outlooks.systems],
+    systems: [...(active ?? []), ...outlooks.systems, ...marine.systems],
     currentStormsOk: active !== null,
     outlookOkByBasin: outlooks.okByBasin,
+    nwsMarineOk: marine.ok,
   };
 }
 

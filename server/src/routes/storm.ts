@@ -10,7 +10,10 @@ import { logger } from "../lib/logger";
 import { runStormScan } from "../lib/storm-agent";
 import { emailSubscribers, emailAllClear, startAlertSend, subscriberCount, type AlertRow, type AllClearRow } from "../lib/storm-send";
 import { labelGrounds, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
-import { sailingsForStorm, deploymentsForStorm, defaultWindow, withTrackable, type TrackableSailing } from "../lib/storm-sailings";
+import { impactedShipsForAlert, defaultWindow, withTrackable, type TrackableSailing } from "../lib/storm-sailings";
+import { severityRank } from "../lib/storm-escalation";
+import { SURFACE_CHART, satelliteFor } from "../lib/nws-marine-source";
+import * as crypto from "crypto";
 import { inRegistry } from "../lib/ship-tracker";
 import { resolveActionsForSource } from "../lib/actions";
 import {
@@ -20,6 +23,7 @@ import {
 const router: IRouter = Router();
 
 interface DbAlert extends AlertRow {
+  nhc_id: string;
   basin: string | null; classification: string | null; status: string;
   is_threat: boolean; formation_chance: number | null; last_updated: string;
   sent_at: string | null; sent_count: number;
@@ -34,11 +38,86 @@ async function impactedSailings(a: DbAlert): Promise<TrackableSailing[]> {
   const w = a.window_start && a.window_end
     ? { start: a.window_start, end: a.window_end }
     : defaultWindow();
-  const derived = await sailingsForStorm(a.affected_grounds, w.start, w.end);
-  const deployed = await deploymentsForStorm(a.affected_grounds, w.start, w.end);
-  const seen = new Set(derived.map((x) => x.ship_name.toLowerCase()));
-  return withTrackable(derived.concat(deployed.filter((x) => !seen.has(x.ship_name.toLowerCase()))), inRegistry);
+  // The same answer the lifecycle pins from (storm-sailings.impactedShipsForAlert):
+  // by the storm's path when the alert has one, else by its grounds.
+  return withTrackable(await impactedShipsForAlert(a, w.start, w.end), inRegistry);
 }
+
+/** Which feed an alert came from — the public pages caption the graphics by it. */
+function sourceOf(nhcId: string): "nhc" | "nws" | "manual" {
+  if (nhcId.startsWith("NWS-")) return "nws";
+  if (nhcId.startsWith("MANUAL-")) return "manual";
+  return "nhc";
+}
+
+// ── Declare a storm by hand (Mark, 2026-09-26) ───────────────────────────────
+// For weather no feed carries — the Med, Asia, Australia — or anything a feed
+// missed. The row is an ordinary draft alert: same review card, same pins on
+// the next scan, same approval gate; it lives until its window closes (+1 day)
+// or Mark dismisses it (storm-lifecycle.manualStillOpen).
+const DECLARABLE = ["Gale Warning", "Storm Warning", "Hurricane Force Wind Warning", "Tropical Storm", "Hurricane"] as const;
+
+router.get("/storm-alerts/regions", requireToken, (_req: Request, res: Response) => {
+  res.json({ success: true, regions: REGION_LABELS, classifications: DECLARABLE });
+});
+
+router.post("/storm-alerts/declare", requireToken, async (req: Request, res: Response) => {
+  try {
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const name = String(b["name"] ?? "").trim().slice(0, 60);
+    const classification = String(b["classification"] ?? "");
+    const grounds = Array.isArray(b["grounds"]) ? (b["grounds"] as unknown[]).map(String).filter((g) => g in REGION_LABELS) : [];
+    const dflt = defaultWindow();
+    const isDay = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    const windowStart = isDay(b["window_start"]) ? b["window_start"] : dflt.start;
+    const windowEnd = isDay(b["window_end"]) ? b["window_end"] : dflt.end;
+    const note = typeof b["note"] === "string" ? b["note"].trim().slice(0, 2000) : "";
+    const headlineIn = typeof b["headline"] === "string" ? b["headline"].trim().slice(0, 120) : "";
+    if (name.length < 2) { res.status(400).json({ success: false, error: "Give the storm a name" }); return; }
+    if (!(DECLARABLE as readonly string[]).includes(classification) || severityRank(classification) < 2) {
+      res.status(400).json({ success: false, error: "Pick a classification from the list" }); return;
+    }
+    if (!grounds.length) { res.status(400).json({ success: false, error: "Pick at least one cruising ground" }); return; }
+    if (windowEnd < windowStart) { res.status(400).json({ success: false, error: "The window ends before it starts" }); return; }
+
+    const supabase = getSupabase();
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "storm";
+    const day = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    let nhcId = `MANUAL-${slug}-${day}`;
+    for (let n = 2; n < 50; n++) {
+      const { data } = await supabase.from("storm_alerts").select("id").eq("nhc_id", nhcId).maybeSingle();
+      if (!data) break;
+      nhcId = `MANUAL-${slug}-${day}-${n}`;
+    }
+    const pacific = grounds.some((g) => g === "alaska" || g === "mexican_riviera" || g === "hawaii");
+    const basin = grounds.includes("hawaii") ? "central_pacific" : pacific ? "eastern_pacific" : "atlantic";
+    const groundsLabel = labelGrounds(grounds);
+    const headline = headlineIn || `${name}: watching ${groundsLabel}`.slice(0, 120);
+    const bodyMd =
+      `**${name}** (${classification}) — declared on the Still Afloat dashboard.\n\n` +
+      `**What this means for you:** if you're sailing ${groundsLabel} between ${windowStart} and ${windowEnd}, ` +
+      `itineraries could be adjusted or rerouted at the cruise line's discretion. Nothing to do right now — we'll keep you posted.` +
+      (note ? `\n\n${note}` : "");
+    const now = new Date().toISOString();
+    const row = {
+      nhc_id: nhcId, basin, name, classification, is_threat: true, affected_grounds: grounds,
+      formation_chance: null, raw: { source: "manual", note, declared_at: now },
+      content_hash: crypto.createHash("sha256").update(`${nhcId}::${classification}::${grounds.slice().sort().join("|")}`).digest("hex").slice(0, 32),
+      window_start: windowStart, window_end: windowEnd,
+      cone_url: SURFACE_CHART[basin === "atlantic" ? "atlantic" : "pacific"],
+      satellite_url: satelliteFor(grounds, basin === "atlantic" ? "atlantic" : "pacific"),
+      headline, body_md: bodyMd, status: "draft", first_seen: now, last_updated: now,
+    };
+    const ins = await supabase.from("storm_alerts").insert(row as never).select("id").single();
+    const id = (ins.data as { id?: string } | null)?.id;
+    if (ins.error || !id) throw ins.error ?? new Error("insert returned no id");
+    logger.info({ nhcId, grounds, classification }, "storm: declared by hand");
+    res.json({ success: true, id, nhc_id: nhcId });
+  } catch (err) {
+    logger.error({ err }, "POST /storm-alerts/declare failed");
+    res.status(500).json({ success: false, error: "Declare failed" });
+  }
+});
 
 // ── Dashboard queue ──────────────────────────────────────────────────────────
 router.get("/storm-alerts", requireToken, async (_req: Request, res: Response) => {
@@ -279,6 +358,7 @@ router.get("/storm-watch", async (_req: Request, res: Response) => {
       formation_chance: a.formation_chance,
       updated: a.last_updated,
       detail_url: `/storm-watch.html?id=${a.id}`,
+      source: sourceOf(a.nhc_id),
       sailings: await impactedSailings(a),
     })));
     // Cache a little at the edge; this is public, low-cardinality data.
@@ -313,6 +393,7 @@ router.get("/storm-watch/:id", async (req: Request, res: Response) => {
         window_start: a.window_start, window_end: a.window_end,
         cone_url: a.cone_url, satellite_url: a.satellite_url,
         cruise_line_info: Array.isArray(a.cruise_line_info) ? a.cruise_line_info : [],
+        source: sourceOf(a.nhc_id),
         sailings: await impactedSailings(a),
       },
     });
