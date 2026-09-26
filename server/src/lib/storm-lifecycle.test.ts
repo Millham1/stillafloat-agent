@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
 import {
-  judgeDeath, draftAllClear, portSlugByName, allClearMode, MISSING_SCANS_TO_END, pinsToRelease,
+  judgeDeath, draftAllClear, portSlugByName, allClearMode, MISSING_SCANS_TO_END, pinsToRelease, isLiveNamedThreat,
   type LifecycleAlertState,
 } from "./storm-lifecycle";
 import { newsItemMatchesStorm, extractWindow, parseRssItems } from "./storm-intel";
@@ -113,4 +113,14 @@ test("a ship still derived for the storm, or still in the grounds' registry, kee
 test("names compare case-insensitively and nothing is released when nothing is pinned", () => {
   assert.deepEqual(pinsToRelease(["PRIDE OF AMERICA"], ["pride of america"], []), []);
   assert.deepEqual(pinsToRelease([], ["x"], ["y"]), []);
+});
+
+// ── Only a live named threat keeps its pins (2026-09-26) ─────────────────────
+
+test("a positioned storm that threatens nowhere is not a live named threat, so its pins go", () => {
+  assert.equal(isLiveNamedThreat({ is_threat: true, classification: "Tropical Storm" }), true);
+  assert.equal(isLiveNamedThreat({ is_threat: true, classification: "Hurricane" }), true);
+  assert.equal(isLiveNamedThreat({ is_threat: false, classification: "Tropical Storm" }), false); // Fay, Gonzalo after the grounds fix
+  assert.equal(isLiveNamedThreat({ is_threat: true, classification: "Disturbance" }), false);     // outlook items never pin
+  assert.equal(isLiveNamedThreat({ is_threat: true, classification: null }), false);
 });
