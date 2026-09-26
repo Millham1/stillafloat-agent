@@ -236,6 +236,12 @@ test("a Bering Sea 973 mb low is nobody's storm until its forecast brings it int
   assert.equal(s.nhcId, "NWS-PA-20260926-57N168W");
 });
 
+test("the same Bering low in November reaches nobody: Alaska is out of season", () => {
+  const lows = parseHighSeasLows(HSF_EP1, "pacific");
+  const out = buildMarineSystems({ warnings: parseMarineAlerts(alertsJson([AK_GALE, BERING_GALE])), lows, codedLows: [], zones: ZONES, prior: [], now: new Date("2026-11-26T16:00:00Z") });
+  assert.equal(out.systems.length, 0);
+});
+
 test("an invest off Mexico in TAFB's gale block is NHC's business: no NWS zones, 1008 mb → silent", () => {
   const lows = parseHighSeasLows(HSF_EP1, "pacific").filter((l) => l.pressureMb === 1008);
   const out = buildMarineSystems({ warnings: [], lows, codedLows: [], zones: ZONES, prior: [], now: NOW });

@@ -348,7 +348,7 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
 // missed. Creates an ordinary draft alert: same card, same approval gate; ships
 // pin on the scan that runs right after. It ends a day after its window closes
 // or when dismissed.
-type RegionsResponse = { regions: Record<string, string>; classifications: string[] };
+type RegionsResponse = { regions: Record<string, string>; classifications: string[]; outOfSeason?: string[] };
 
 const selectClass = "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm";
 
@@ -397,6 +397,7 @@ function DeclareStormDialog({ open, onOpenChange, onDeclared }: { open: boolean;
   }
 
   const regions = meta?.regions ?? {};
+  const outOfSeason = new Set(meta?.outOfSeason ?? []);
   const classifications = meta?.classifications ?? ["Gale Warning", "Storm Warning", "Hurricane Force Wind Warning", "Tropical Storm", "Hurricane"];
 
   return (
@@ -424,9 +425,9 @@ function DeclareStormDialog({ open, onOpenChange, onDeclared }: { open: boolean;
             <label className="text-xs font-medium text-muted-foreground">Cruising grounds</label>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
               {Object.entries(regions).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={grounds.includes(key)} onChange={() => toggleGround(key)} />
-                  {label}
+                <label key={key} className={`flex items-center gap-2 text-sm ${outOfSeason.has(key) ? "text-muted-foreground" : ""}`}>
+                  <input type="checkbox" checked={grounds.includes(key)} disabled={outOfSeason.has(key)} onChange={() => toggleGround(key)} />
+                  {label}{outOfSeason.has(key) ? " (out of season)" : ""}
                 </label>
               ))}
               {!Object.keys(regions).length && <span className="text-xs text-muted-foreground">Loading regions…</span>}

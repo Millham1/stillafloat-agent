@@ -17,7 +17,7 @@ import { planScanAction, type ExistingAlertState } from "./storm-escalation";
 import { runStormLifecycle } from "./storm-lifecycle";
 import { runStormIntel } from "./storm-intel";
 import {
-  groundsForPoint, groundsForBasin, shipsForGrounds, labelGrounds, NAMED_STORM_MARGIN_DEG, type Ship,
+  groundsForPoint, groundsForBasin, activeGrounds, shipsForGrounds, labelGrounds, NAMED_STORM_MARGIN_DEG, type Ship,
 } from "./storm-grounds";
 
 export interface DraftContent { headline: string; body_md: string; }
@@ -32,13 +32,22 @@ export interface DraftContent { headline: string; body_md: string; }
  * disturbance, which has no coordinates yet, falls back to its basin.
  * Exported for tests.
  */
-export function groundsFor(sys: Pick<RawSystem, "lat" | "lon" | "basin" | "grounds">): string[] {
+export function groundsFor(sys: Pick<RawSystem, "lat" | "lon" | "basin" | "grounds" | "forecastPoints">, at: Date = new Date()): string[] {
   // An NWS marine event arrives with its grounds already decided by which
   // warning zones it touches (nws-marine-source.ts); re-deriving them from the
   // position with the tropical margin would hand a nor'easter Bermuda too.
   if (sys.grounds) return [...sys.grounds];
-  if (sys.lat != null && sys.lon != null) return groundsForPoint(sys.lat, sys.lon, NAMED_STORM_MARGIN_DEG);
-  return groundsForBasin(sys.basin);
+  if (sys.lat != null && sys.lon != null) {
+    // Where it is AND where the forecast takes it (2026-09-26): Nolo sat
+    // south of Hawaii's box for a day while its track ran straight at the
+    // islands. Only grounds in season count — an Alaska ground in winter is
+    // empty water (Mark: "Alaska sailing season is a set period of time").
+    const pts = [{ lat: sys.lat, lon: sys.lon }, ...(sys.forecastPoints ?? [])];
+    const hits = new Set<string>();
+    for (const p of pts) for (const g of groundsForPoint(p.lat, p.lon, NAMED_STORM_MARGIN_DEG)) hits.add(g);
+    return activeGrounds([...hits], at);
+  }
+  return activeGrounds(groundsForBasin(sys.basin), at);
 }
 
 function hashSystem(sys: RawSystem, grounds: string[]): string {

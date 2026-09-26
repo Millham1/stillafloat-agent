@@ -8,6 +8,7 @@
 
 import { logger } from "./logger";
 import { fetchMarineSystems, type PriorMarineAlert } from "./nws-marine-source";
+import { fetchForecastAdvisory, advisoryPath } from "./nhc-forecast-track";
 
 export interface RawSystem {
   nhcId: string;
@@ -30,6 +31,9 @@ export interface RawSystem {
   /** Satellite sector to show instead of the basin default (Alaska, Northeast). */
   satelliteUrl?: string | null;
   pressureMb?: number | null;
+  /** Forecast positions (NHC advisory / OPC 24-48 h) — a system reaches every
+   *  ground its track passes, not only the one it sits in now. */
+  forecastPoints?: Array<{ lat: number; lon: number }>;
   raw: unknown;
 }
 
@@ -99,9 +103,19 @@ async function fetchActiveStorms(): Promise<RawSystem[] | null> {
   try { parsed = JSON.parse(txt); } catch { return null; }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const storms: any[] = Array.isArray((parsed as any)?.activeStorms) ? (parsed as any).activeStorms : [];
-  return storms.map((s): RawSystem => {
+  // The Forecast/Advisory (TCM) carries the five-day track. Fetched per storm,
+  // best-effort: a missing advisory leaves the system position-only, as before.
+  const advisories = await Promise.all(storms.map(async (s) => {
+    const url = s?.forecastAdvisory?.url ? String(s.forecastAdvisory.url) : null;
+    return url ? fetchForecastAdvisory(url) : null;
+  }));
+  return storms.map((s, i): RawSystem => {
     const id = String(s.id ?? s.binNumber ?? "").trim();
+    const adv = advisories[i] ?? null;
+    const path = adv ? advisoryPath(adv) : [];
+    const forecastPoints = adv ? adv.points.map((p) => ({ lat: p.lat, lon: p.lon })) : [];
     return {
+      ...(adv ? { pressureMb: adv.pressureMb, forecastPoints } : {}),
       nhcId: id || `${s.name ?? "system"}-${s.classification ?? ""}`,
       basin: basinFor(id, typeof s.binNumber === "string" ? s.binNumber : null),
       name: s.name ? String(s.name) : "Unnamed system",
@@ -116,7 +130,11 @@ async function fetchActiveStorms(): Promise<RawSystem[] | null> {
       coneUrl: s?.forecastCone?.url ? String(s.forecastCone.url)
         : (s?.forecastTrack?.url ? String(s.forecastTrack.url) : null),
       source: "current_storms",
-      raw: s,
+      // The path rides in raw so storm-sailings.impactedShipsForAlert pins by
+      // it (the same field NWS events use); the advisory summary sits beside it.
+      raw: path.length
+        ? { ...s, path, forecast: { issuedAt: adv?.issuedAt ?? null, pressureMb: adv?.pressureMb ?? null, maxWindKt: adv?.maxWindKt ?? null, points: adv?.points ?? [], dissipates: adv?.dissipates ?? false } }
+        : s,
     };
   });
 }

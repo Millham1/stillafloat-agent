@@ -9,7 +9,7 @@ import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
 import { runStormScan } from "../lib/storm-agent";
 import { emailSubscribers, emailAllClear, startAlertSend, subscriberCount, type AlertRow, type AllClearRow } from "../lib/storm-send";
-import { labelGrounds, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
+import { labelGrounds, groundActive, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
 import { impactedShipsForAlert, defaultWindow, withTrackable, type TrackableSailing } from "../lib/storm-sailings";
 import { severityRank } from "../lib/storm-escalation";
 import { SURFACE_CHART, satelliteFor } from "../lib/nws-marine-source";
@@ -59,7 +59,9 @@ function sourceOf(nhcId: string): "nhc" | "nws" | "manual" {
 const DECLARABLE = ["Gale Warning", "Storm Warning", "Hurricane Force Wind Warning", "Tropical Storm", "Hurricane"] as const;
 
 router.get("/storm-alerts/regions", requireToken, (_req: Request, res: Response) => {
-  res.json({ success: true, regions: REGION_LABELS, classifications: DECLARABLE });
+  const now = new Date();
+  const outOfSeason = (Object.keys(REGION_LABELS) as RegionKey[]).filter((k) => !groundActive(k, now));
+  res.json({ success: true, regions: REGION_LABELS, classifications: DECLARABLE, outOfSeason });
 });
 
 router.post("/storm-alerts/declare", requireToken, async (req: Request, res: Response) => {
@@ -79,6 +81,8 @@ router.post("/storm-alerts/declare", requireToken, async (req: Request, res: Res
       res.status(400).json({ success: false, error: "Pick a classification from the list" }); return;
     }
     if (!grounds.length) { res.status(400).json({ success: false, error: "Pick at least one cruising ground" }); return; }
+    const dormant = grounds.filter((g) => !groundActive(g));
+    if (dormant.length) { res.status(400).json({ success: false, error: `${labelGrounds(dormant)}: out of season — no ships sail there now` }); return; }
     if (windowEnd < windowStart) { res.status(400).json({ success: false, error: "The window ends before it starts" }); return; }
 
     const supabase = getSupabase();

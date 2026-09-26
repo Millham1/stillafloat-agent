@@ -36,7 +36,7 @@
 // Pure functions first; the fetchers are at the bottom.
 
 import { logger } from "./logger";
-import { groundsForPoint, NAMED_STORM_MARGIN_DEG, type RegionKey } from "./storm-grounds";
+import { groundsForPoint, activeGrounds, NAMED_STORM_MARGIN_DEG, type RegionKey } from "./storm-grounds";
 import type { RawSystem } from "./storm-source";
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -300,8 +300,11 @@ function hoursBetween(a: string | null, b: string | null): number | null {
 
 function uniq<T>(xs: readonly T[]): T[] { return [...new Set(xs)]; }
 
-function groundsAround(p: { lat: number; lon: number } | null, marginDeg: number): RegionKey[] {
-  return p ? groundsForPoint(p.lat, p.lon, marginDeg) : [];
+/** Grounds near a point — only those in season (Mark, 2026-09-26: "Alaska
+ *  sailing season is a set period of time, not all year"). `at` is the scan
+ *  time; a Gulf of Alaska low in November reaches no cruising ground. */
+function groundsAround(p: { lat: number; lon: number } | null, marginDeg: number, at: Date): RegionKey[] {
+  return p ? activeGrounds(groundsForPoint(p.lat, p.lon, marginDeg), at) : [];
 }
 
 export interface WarningWithRegions extends MarineWarning {
@@ -406,7 +409,7 @@ interface MarineEvent {
   via: string[];
 }
 
-export interface PathPoint { kind: "low" | "f24" | "f48" | "zone"; lat: number; lon: number; label?: string }
+export interface PathPoint { kind: "low" | "f24" | "f48" | "forecast" | "zone"; lat: number; lon: number; label?: string; reachNm?: number }
 
 /** The storm's track and the waters under warning, as points ships are measured against. */
 export function pathPointsFor(ev: { lat: number | null; lon: number | null; low: HighSeasLow | null; warnings: readonly WarningWithRegions[] }): PathPoint[] {
@@ -448,15 +451,15 @@ function summarizeWarnings(ws: readonly WarningWithRegions[]): string {
  */
 export function buildMarineSystems(input: MarineBuildInput): { systems: RawSystem[]; ignoredGales: number } {
   const { now } = input;
-  const warnings = withRegions(input.warnings, input.zones);
+  const warnings = withRegions(input.warnings, input.zones).map((w) => ({ ...w, regions: activeGrounds(w.regions, now) }));
   const usedWarnings = new Set<string>();
   const events: MarineEvent[] = [];
 
   for (const low of input.lows) {
     const reach = uniq([
-      ...groundsAround(low, NAMED_STORM_MARGIN_DEG),
-      ...groundsAround(low.forecast24, NAMED_STORM_MARGIN_DEG),
-      ...groundsAround(low.forecast48, NAMED_STORM_MARGIN_DEG),
+      ...groundsAround(low, NAMED_STORM_MARGIN_DEG, now),
+      ...groundsAround(low.forecast24, NAMED_STORM_MARGIN_DEG, now),
+      ...groundsAround(low.forecast48, NAMED_STORM_MARGIN_DEG, now),
     ]);
     if (!reach.length) continue;
 
@@ -477,7 +480,7 @@ export function buildMarineSystems(input: MarineBuildInput): { systems: RawSyste
     const graded = low.grade >= 2 || low.pressureMb <= BOMB_LOW_MAX_MB;
     const grounds = uniq([
       ...qualifying.flatMap((w) => w.regions).filter((r) => reach.includes(r)),
-      ...(graded ? [...groundsAround(low, EVENT_MARGIN_DEG), ...groundsAround(low.forecast24, EVENT_MARGIN_DEG)] : []),
+      ...(graded ? [...groundsAround(low, EVENT_MARGIN_DEG, now), ...groundsAround(low.forecast24, EVENT_MARGIN_DEG, now)] : []),
     ]);
     if (!grounds.length) continue;
 
@@ -510,7 +513,7 @@ export function buildMarineSystems(input: MarineBuildInput): { systems: RawSyste
   // feed above has caught yet (the High Seas text lags the 3-hourly analysis).
   for (const c of input.codedLows) {
     if (c.pressureMb > BOMB_LOW_MAX_MB) continue;
-    const grounds = groundsAround(c, EVENT_MARGIN_DEG);
+    const grounds = groundsAround(c, EVENT_MARGIN_DEG, now);
     if (!grounds.length) continue;
     const dup = events.some((e) => e.lat != null && e.lon != null && nmBetween(e.lat, e.lon, c.lat, c.lon) <= SAME_STORM_NM);
     if (dup) continue;
