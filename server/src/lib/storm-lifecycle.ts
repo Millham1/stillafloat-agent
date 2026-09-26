@@ -84,6 +84,11 @@ export function draftAllClear(a: { name: string | null; classification: string |
 }
 
 /** Autonomous all-clear unless explicitly disabled (dev box). Pure; tested. */
+/** A named system that still threatens somewhere keeps its ships pinned; anything else does not. Exported for tests. */
+export function isLiveNamedThreat(a: { is_threat: boolean; classification: string | null }): boolean {
+  return a.is_threat && severityRank(a.classification) >= 2;
+}
+
 export function allClearMode(env: Record<string, string | undefined> = process.env): "auto" | "gated" {
   return env["DISABLE_STORM_ALLCLEAR_AUTOSEND"] === "1" ? "gated" : "auto";
 }
@@ -399,11 +404,22 @@ export async function runStormLifecycle(snap: SystemsSnapshot): Promise<Lifecycl
           await supabase.from("storm_alerts").update({ missing_scans: 0 }).eq("id", row.id);
         }
         // Live named threats get their impacted ships pinned + course-change-checked.
-        if (row.is_threat && severityRank(row.classification) >= 2) {
+        if (isLiveNamedThreat(row)) {
           const synced = await syncTrackedShips(row);
           stormMmsis.push(...synced.mmsis);
           detections.push(...synced.detections);
           result.tracked += synced.mmsis.length;
+        } else {
+          // A system that threatens nowhere keeps no pins. Fay and Gonzalo
+          // (2026-09-26) lost their grounds when the basin fallback went, but
+          // this branch used to skip them, leaving 64 ships each on storm-
+          // priority tracker slots and Live-AIS lookups. Same release as an
+          // ended or dismissed storm; a no-op when nothing is pinned.
+          const released = await releaseAlertDiversions(row.id);
+          if (released.shipsReleased) {
+            logger.info({ alert: row.nhc_id, ...released, grounds: row.affected_grounds },
+              "storm-lifecycle: pins released — system threatens no cruising ground");
+          }
         }
       } else if (verdict.kind === "count") {
         await supabase.from("storm_alerts").update({ missing_scans: verdict.missing }).eq("id", row.id);
