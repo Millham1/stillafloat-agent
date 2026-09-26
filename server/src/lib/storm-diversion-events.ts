@@ -44,6 +44,8 @@ export interface PendingDiversion {
 
 export interface DiversionEventRow {
   id: string;
+  /** ship|from|to|day — the upsert's conflict key; the diversion log joins on it. */
+  dedup_key: string;
   ship_name: string;
   cruise_line: string | null;
   mmsi: string | null;

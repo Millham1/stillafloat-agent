@@ -61,7 +61,7 @@
     <span class="meta">Cruise Weather Advisory</span>
   </div>
   <div id="content"><p class="meta" style="margin-top:30px">Loading advisory…</p></div>
-  <p class="foot">Source: <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">NOAA / National Hurricane Center</a>. Still Afloat summarizes public NHC data for cruisers; always follow your cruise line and captain for itinerary decisions.</p>
+  <p class="foot">Source: <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">NOAA / National Hurricane Center</a> and the <a href="https://ocean.weather.gov/" target="_blank" rel="noopener">NWS Ocean Prediction Center</a>. Still Afloat summarizes public NOAA data for cruisers; always follow your cruise line and captain for itinerary decisions.</p>
 </div>
 <div class="lightbox" id="lightbox"><button class="back" id="lb-back">← Back</button><img id="lb-img" alt="Full-size storm graphic"></div>
 <script>
@@ -81,7 +81,7 @@
     var gfx="";
     if(s.cone_url||s.satellite_url){
       gfx='<div class="card"><h2>Forecast & satellite</h2><div class="gfx">'
-        +(s.cone_url?'<figure><img src="'+esc(s.cone_url)+'" alt="NHC forecast graphic" loading="lazy"><figcaption>NHC forecast track / outlook</figcaption></figure>':'')
+        +(s.cone_url?'<figure><img src="'+esc(s.cone_url)+'" alt="'+(s.source==='nws'?'NWS surface analysis':'NHC forecast graphic')+'" loading="lazy"><figcaption>'+(s.source==='nws'?'NWS Ocean Prediction Center surface analysis (latest)':s.source==='manual'?'Surface analysis (latest)':'NHC forecast track / outlook')+'</figcaption></figure>':'')
         +(s.satellite_url?'<figure><img src="'+esc(s.satellite_url)+'" alt="GOES satellite" loading="lazy"><figcaption>GOES satellite (latest)</figcaption></figure>':'')
         +'</div></div>';
     }
@@ -103,7 +103,7 @@
       +gfx
       +shipsCard
       +advCard
-      +'<div class="disclaimer">This is guidance, not an official warning. Cruise lines decide itinerary changes; monitor your cruise line’s app and the National Hurricane Center for the latest.</div>';
+      +'<div class="disclaimer">This is guidance, not an official warning. Cruise lines decide itinerary changes; monitor your cruise line’s app and NOAA (the National Hurricane Center or the Ocean Prediction Center) for the latest.</div>';
     // Click a graphic → full-size lightbox with a Back button.
     var lb=document.getElementById('lightbox'),lbImg=document.getElementById('lb-img');
     function closeLb(){lb.classList.remove('open');lbImg.src='';}

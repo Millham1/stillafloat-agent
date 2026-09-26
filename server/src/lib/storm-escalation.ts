@@ -32,8 +32,9 @@ export type ScanAction =
 const SEVERITY: Array<[RegExp, number]> = [
   [/major hurricane/i, 5],
   [/hurricane/i, 4],
-  [/storm/i, 3], // Tropical Storm / Subtropical Storm
+  [/storm/i, 3], // Tropical Storm / Subtropical Storm / Storm Warning (NWS marine)
   [/depression/i, 2],
+  [/gale/i, 2], // Gale Warning (NWS marine) — enough to pin ships, below a Storm Warning
   [/potential tropical cyclone/i, 1],
 ];
 

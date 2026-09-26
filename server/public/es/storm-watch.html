@@ -61,7 +61,7 @@
     <span class="meta">Aviso Meteorológico para Cruceros</span>
   </div>
   <div id="content"><p class="meta" style="margin-top:30px">Cargando aviso…</p></div>
-  <p class="foot">Fuente: <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">NOAA / Centro Nacional de Huracanes</a>. Still Afloat resume datos públicos del NHC para cruceristas; siga siempre a su línea de crucero y capitán para las decisiones de itinerario.</p>
+  <p class="foot">Fuente: <a href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">NOAA / Centro Nacional de Huracanes</a> y el <a href="https://ocean.weather.gov/" target="_blank" rel="noopener">Ocean Prediction Center del NWS</a>. Still Afloat resume datos públicos de la NOAA para cruceristas; siga siempre a su línea de crucero y capitán para las decisiones de itinerario.</p>
 </div>
 <div class="lightbox" id="lightbox"><button class="back" id="lb-back">← Volver</button><img id="lb-img" alt="Gráfico de tormenta a tamaño completo"></div>
 <script>
@@ -80,7 +80,7 @@
     var gfx="";
     if(s.cone_url||s.satellite_url){
       gfx='<div class="card"><h2>Pronóstico y satélite</h2><div class="gfx">'
-        +(s.cone_url?'<figure><img src="'+esc(s.cone_url)+'" alt="Gráfico del NHC" loading="lazy"><figcaption>Trayectoria / pronóstico del NHC</figcaption></figure>':'')
+        +(s.cone_url?'<figure><img src="'+esc(s.cone_url)+'" alt="'+(s.source==='nws'?'Análisis de superficie del NWS':'Gráfico del NHC')+'" loading="lazy"><figcaption>'+(s.source==='nws'?'Análisis de superficie del Ocean Prediction Center (NWS), último':s.source==='manual'?'Análisis de superficie (último)':'Trayectoria / pronóstico del NHC')+'</figcaption></figure>':'')
         +(s.satellite_url?'<figure><img src="'+esc(s.satellite_url)+'" alt="Satélite GOES" loading="lazy"><figcaption>Satélite GOES (último)</figcaption></figure>':'')
         +'</div></div>';
     }
@@ -102,7 +102,7 @@
       +gfx
       +shipsCard
       +advCard
-      +'<div class="disclaimer">Esto es orientación, no una advertencia oficial. Las líneas de crucero deciden los cambios de itinerario; consulte la app de su línea y el Centro Nacional de Huracanes para lo más reciente.</div>';
+      +'<div class="disclaimer">Esto es orientación, no una advertencia oficial. Las líneas de crucero deciden los cambios de itinerario; consulte la app de su línea y la NOAA (Centro Nacional de Huracanes u Ocean Prediction Center) para lo más reciente.</div>';
     // Clic en un gráfico → visor a tamaño completo con botón Volver.
     var lb=document.getElementById('lightbox'),lbImg=document.getElementById('lb-img');
     function closeLb(){lb.classList.remove('open');lbImg.src='';}

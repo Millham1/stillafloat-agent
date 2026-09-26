@@ -53,6 +53,26 @@ test("a storm within the approach margin of a box is that region's business", ()
 
 test("only an outlook disturbance, which has no coordinates, falls back to its basin", () => {
   assert.deepEqual(groundsFor({ lat: null, lon: null, basin: "atlantic" }),
-    ["e_caribbean", "w_caribbean", "bahamas", "gulf", "bermuda", "us_east_coast"]);
+    ["e_caribbean", "w_caribbean", "bahamas", "gulf", "bermuda", "us_east_coast", "canada_new_england"]);
   assert.deepEqual(groundsFor({ lat: null, lon: null, basin: "central_pacific" }), ["hawaii"]);
+});
+
+// 2026-09-26 — two grounds added with the NWS marine source. The nor'easter of
+// 22–25 Sep crossed waters the old list stopped at (41N): Boston, Halifax, the
+// Gulf of Maine. Alaska/PNW is the Gulf of Alaska storm season's grounds.
+test("Canada / New England is its own ground and the Atlantic outlook fallback includes it", () => {
+  assert.deepEqual(groundsForPoint(44.65, -63.57), ["canada_new_england"]); // Halifax
+  assert.deepEqual(groundsForPoint(42.36, -71.06), ["canada_new_england"]); // Boston
+  assert.deepEqual(groundsForPoint(46.8, -71.2), ["canada_new_england"]);   // Quebec City
+  assert.deepEqual(groundsForPoint(40.7, -74.0), ["us_east_coast"]);        // New York stays East Coast
+  assert.ok(groundsForBasin("atlantic").includes("canada_new_england"));
+});
+
+test("Alaska & Pacific Northwest covers Seattle to Whittier", () => {
+  assert.deepEqual(groundsForPoint(47.6, -122.3), ["alaska"]);  // Seattle
+  assert.deepEqual(groundsForPoint(49.3, -123.1), ["alaska"]);  // Vancouver
+  assert.deepEqual(groundsForPoint(58.3, -134.4), ["alaska"]);  // Juneau
+  assert.deepEqual(groundsForPoint(60.8, -148.7), ["alaska"]);  // Whittier
+  assert.deepEqual(groundsForPoint(57, -168), []);              // Bering Sea: nobody's
+  assert.ok(!groundsForBasin("eastern_pacific").includes("alaska"), "a coordinate-less EP outlook never reaches Alaska");
 });

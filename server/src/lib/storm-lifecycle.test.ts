@@ -5,6 +5,7 @@ import { test } from "node:test";
 import * as assert from "node:assert/strict";
 import {
   judgeDeath, draftAllClear, portSlugByName, allClearMode, MISSING_SCANS_TO_END, pinsToRelease, isLiveNamedThreat,
+  manualStillOpen,
   type LifecycleAlertState,
 } from "./storm-lifecycle";
 import { newsItemMatchesStorm, extractWindow, parseRssItems } from "./storm-intel";
@@ -123,4 +124,19 @@ test("a positioned storm that threatens nowhere is not a live named threat, so i
   assert.equal(isLiveNamedThreat({ is_threat: false, classification: "Tropical Storm" }), false); // Fay, Gonzalo after the grounds fix
   assert.equal(isLiveNamedThreat({ is_threat: true, classification: "Disturbance" }), false);     // outlook items never pin
   assert.equal(isLiveNamedThreat({ is_threat: true, classification: null }), false);
+});
+
+// 2026-09-26 — a storm Mark declares by hand is in no feed.
+test("a hand-declared storm counts as seen until a day after its window, then dies like the rest", () => {
+  const at = (iso: string) => new Date(iso);
+  const row = { nhc_id: "MANUAL-mistral-20260926", window_end: "2026-09-30" };
+  assert.equal(manualStillOpen(row, at("2026-09-27T12:00:00Z")), true);
+  assert.equal(manualStillOpen(row, at("2026-10-01T12:00:00Z")), true, "grace day after the window");
+  assert.equal(manualStillOpen(row, at("2026-10-02T12:00:00Z")), false);
+  assert.equal(manualStillOpen({ nhc_id: "MANUAL-x", window_end: null }, at("2027-01-01T00:00:00Z")), true, "no window = open until dismissed");
+  assert.equal(manualStillOpen({ nhc_id: "al062026", window_end: "2026-09-30" }, at("2026-09-27T12:00:00Z")), false, "only MANUAL ids");
+  assert.equal(manualStillOpen({ nhc_id: "NWS-AT-20260926-38N72W", window_end: null }, at("2026-09-27T12:00:00Z")), false);
+  // Gale Warning ranks 2: a hand-declared or NWS gale keeps its ships pinned.
+  assert.equal(isLiveNamedThreat({ is_threat: true, classification: "Gale Warning" }), true);
+  assert.equal(isLiveNamedThreat({ is_threat: true, classification: "Storm Warning" }), true);
 });
