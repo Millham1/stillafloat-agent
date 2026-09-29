@@ -82,7 +82,9 @@ describe("work-with-mark declares Mark", () => {
       assert.deepEqual(mark["worksFor"], { "@type": "Organization", name: "Cornerstone Collective" });
       assert.deepEqual(mark["affiliation"], { "@id": ORG_ID });
       assert.deepEqual(mark["sameAs"], [...SAME_AS]);
-      assert.deepEqual(mark["knowsLanguage"], ["en", "es"]);
+      // Mark's own languages: English only until he confirms Spanish (the Spanish
+      // site is served by the advisory service, which keeps ["en","es"] below).
+      assert.deepEqual(mark["knowsLanguage"], ["en"]);
 
       const service = nodes.find((n) => n["@type"] === "TravelAgency");
       assert.ok(service, "TravelAgency node missing");
