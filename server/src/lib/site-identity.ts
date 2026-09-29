@@ -14,8 +14,7 @@
 // carry the full nodes by hand; site-identity.test.ts parses them and fails if
 // they drift from the values here.
 //
-// sameAs lists ONLY profiles that exist in the repo. The YouTube channel is the
-// only one found (2026-09-29); add a Facebook/LinkedIn URL here — and in the four
+// sameAs lists ONLY confirmed profiles (2026-09-29): add one here — and in the four
 // static pages — once it is confirmed, never a guess.
 
 export const SITE = "https://stillafloatcruising.com";
@@ -30,8 +29,17 @@ export const ORG_NAME = "Still Afloat Cruising";
 export const ORG_LEGAL_NAME = "Still Afloat LLC";
 export const PERSON_NAME = "Mark Millham";
 
-/** Real, confirmed profiles only. */
-export const SAME_AS: readonly string[] = ["https://www.youtube.com/@StillAfloatcruising2026"];
+/** Real, confirmed profiles only. The business: its YouTube channel and Facebook page
+ *  (page id from the Make Facebook connection, 1089040447632520). Mark himself: his
+ *  LinkedIn (the author link on his published LinkedIn articles) and the channel. */
+export const SAME_AS: readonly string[] = [
+  "https://www.youtube.com/@StillAfloatcruising2026",
+  "https://www.facebook.com/1089040447632520",
+];
+export const PERSON_SAME_AS: readonly string[] = [
+  "https://www.linkedin.com/in/mark-millham-413016414",
+  "https://www.youtube.com/@StillAfloatcruising2026",
+];
 
 /** The full Organization node, as index.html carries it. */
 export function organizationNode(): Record<string, unknown> {
