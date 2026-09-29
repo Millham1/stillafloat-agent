@@ -68,6 +68,10 @@ export const PATHS = {
   // Evergreen "Cruising Guides" — curated long-form advisory articles (Track A/B).
   // Prerendered to static /guides/<slug>.html pages, EN + ES.
   guides: "guides",
+  // AI-visibility program (2026-09-29): AI-assistant lookups, crawlers, praise,
+  // forum questions and prompt tests (filled by a separate job), plus the agent's
+  // activity log (appended by routes/ai-visibility.ts) — lib/ai-visibility.ts.
+  aiVisibility: "ai-visibility",
 };
 
 export async function writeJson(key: string, payload: unknown): Promise<boolean> {
