@@ -448,12 +448,16 @@ export function renderBriefPage(brief: Brief, conflicts: ConflictItem[], token: 
 }
 
 /** Assemble, then deliver via Web Push + email. Returns what happened. */
-export async function runAndDeliverBrief(): Promise<{
+export async function runAndDeliverBrief(opts: { update?: boolean } = {}): Promise<{
   brief: Brief; push: { sent: number; pruned: number }; emailed: boolean;
 }> {
   const brief = await assembleBrief();
+  // Midday and afternoon slots (brief-schedule.ts) say "update", not "daily brief".
+  const title = opts.update
+    ? (brief.nothingToDo ? "📋 Brief update — all clear" : "📋 Brief update")
+    : (brief.nothingToDo ? "📋 Daily Brief — all clear" : "📋 Your daily brief");
   const push = await sendPush({
-    title: brief.nothingToDo ? "📋 Daily Brief — all clear" : "📋 Your daily brief",
+    title,
     body: pushBody(brief),
     url: briefViewUrl(),
     tag: "daily-brief",

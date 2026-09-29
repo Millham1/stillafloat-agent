@@ -361,9 +361,13 @@
   }
 
   // ALWAYS LIVE: every load forces a fresh assemble. No stored-snapshot view.
-  function load(){
+  var lastLoad = 0;
+  function load(quiet){
     if(!token()){ needToken(); return; }
-    content.innerHTML='<div id="loading">Loading your brief…</div>';
+    lastLoad = Date.now();
+    // A quiet reload (the page coming back on screen) keeps the old brief up
+    // until the fresh one replaces it, instead of blanking to "Loading…".
+    if(!quiet) content.innerHTML='<div id="loading">Loading your brief…</div>';
     Promise.all([
       fetch(API+"/api/brief?fresh=1",{headers:authHeaders()}).then(function(r){ if(r.status===401) throw new Error("401"); return r.json(); }),
       fetch(API+"/api/ops/conflicts",{headers:authHeaders()}).then(function(r){return r.ok?r.json():{conflicts:[]};}).catch(function(){return {conflicts:[]};}),
@@ -380,6 +384,17 @@
 
   document.getElementById("refreshBtn").onclick=function(){ load(); };
   load();
+
+  // Mark, 2026-09-28: the brief must update "every time I open the brief, either
+  // on my phone or the dashboard on my laptop". The home-screen app and a laptop
+  // tab left open RESUME the page instead of reloading it, so load() never ran
+  // again and the page kept showing what it fetched hours earlier. Re-fetch
+  // whenever the page comes back on screen (30 s floor so a quick app switch
+  // doesn't hammer the server).
+  function refreshIfStale(){ if(Date.now()-lastLoad > 30000) load(true); }
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="visible") refreshIfStale(); });
+  window.addEventListener("pageshow", function(e){ if(e.persisted) refreshIfStale(); });
+  window.addEventListener("focus", refreshIfStale);
 })();
 </script>
 </body>
