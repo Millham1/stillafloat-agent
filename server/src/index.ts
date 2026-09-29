@@ -5,6 +5,7 @@ import { checkLiveAisCredits, liveAisEnabled } from "./lib/live-ais";
 import { scheduleItineraryRefresh } from "./lib/itinerary-refresh";
 import { runDuePosts } from "./lib/social-schedule";
 import { runAndDeliverBrief } from "./lib/brief";
+import { parseBriefHours, dueBriefHour, slotKey } from "./lib/brief-schedule";
 import { runStormScan } from "./lib/storm-agent";
 import { scanAndQueue } from "./lib/social-agent";
 import { draftNewsletter, saveDraft, loadDraft, startNewsletterSend, resumeNewsletterDeliveries, deliveryOpen, confirmedSubscriberCount } from "./lib/newsletter";
@@ -293,13 +294,15 @@ function scheduleYouTubeScan() {
 }
 
 // ── Daily brief scheduler ─────────────────────────────────────────────────────
-// Fires once per local day at DAILY_BRIEF_HOUR (default 7am, in TIMEZONE). We poll
-// every 5 minutes and gate on local hour + date so it's timezone-correct without a
-// scheduling dependency — the same approach the Python ops-manager uses.
+// Fires at each hour in DAILY_BRIEF_HOURS (default 7am, noon, 4pm, in TIMEZONE;
+// Mark, 2026-09-28: "3 times during the work day"). The first slot is the
+// morning brief, later ones push as an update. We poll every 5 minutes and gate
+// on local hour + date so it's timezone-correct without a scheduling dependency
+// — the same approach the Python ops-manager uses.
 function scheduleDailyBrief() {
   const TZ = process.env["TIMEZONE"] || "America/New_York";
-  const briefHour = Number(process.env["DAILY_BRIEF_HOUR"] ?? "7");
-  let lastBriefDate: string | null = null;
+  const briefHours = parseBriefHours(process.env["DAILY_BRIEF_HOURS"]);
+  const sent = new Set<string>();
 
   const localHourDate = (): { hour: number; date: string } => {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -312,18 +315,18 @@ function scheduleDailyBrief() {
 
   const tick = async () => {
     const { hour, date } = localHourDate();
-    if (hour === briefHour && lastBriefDate !== date) {
-      lastBriefDate = date;
-      try {
-        await runAndDeliverBrief();
-      } catch (err) {
-        logger.error({ err }, "Daily brief tick failed");
-      }
+    const slot = dueBriefHour(hour, date, briefHours, sent);
+    if (slot === null) return;
+    sent.add(slotKey(date, slot));
+    try {
+      await runAndDeliverBrief({ update: slot !== briefHours[0] });
+    } catch (err) {
+      logger.error({ err }, "Daily brief tick failed");
     }
   };
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
-  logger.info({ briefHour, tz: TZ }, "Daily brief scheduler active — checks every 5m");
+  logger.info({ briefHours, tz: TZ }, "Daily brief scheduler active — checks every 5m");
 }
 
 // ── Weekly marketing scheduler ────────────────────────────────────────────────
