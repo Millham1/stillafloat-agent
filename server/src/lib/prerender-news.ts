@@ -3,6 +3,7 @@ import path from "node:path";
 import { logger } from "./logger";
 import { PATHS, readJson, writeJson } from "./persistence";
 import { resolvePublicDir } from "./public-dir";
+import { authorRef, publisherRef } from "./site-identity";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // News PRE-RENDERER — replaces the JS-built news pages with real static HTML.
@@ -404,12 +405,10 @@ function jsonLd(story: NewsStory, slug: string, lang: Lang, ov?: SeoOverride): s
     inLanguage: lang === "es" ? "es-419" : "en-US",
     mainEntityOfPage: lang === "es" ? u.es : u.en,
     isBasedOn: story.originalLink || story.link || undefined,
-    author: [{ "@type": "Organization", name: "Still Afloat Cruising", url: SITE }],
-    publisher: {
-      "@type": "Organization",
-      name: "Still Afloat Cruising",
-      logo: { "@type": "ImageObject", url: LOGO },
-    },
+    // Mark is the author and Still Afloat the publisher — the same @ids the
+    // static pages declare in full (lib/site-identity.ts).
+    author: [authorRef()],
+    publisher: publisherRef(),
   };
   if (story.image) data["image"] = [story.image];
   // JSON-LD lives inside a <script> tag: escape "<" so story text can never
