@@ -29,6 +29,7 @@ import wmsRouter from "./wms";
 import trackSignupRouter from "./track-signup";
 import cabinsRouter from "./cabins";
 import congaLineRouter from "./conga-line";
+import aiVisibilityRouter from "./ai-visibility";
 
 const router: IRouter = Router();
 
@@ -62,5 +63,6 @@ router.use(wmsRouter);
 router.use(trackSignupRouter);
 router.use(cabinsRouter);
 router.use(congaLineRouter);
+router.use(aiVisibilityRouter);
 
 export default router;

@@ -24,6 +24,7 @@ import Today from "@/pages/today";
 import StormAlerts from "@/pages/storm-alerts";
 import Diversions from "@/pages/diversions";
 import Search from "@/pages/search";
+import AiVisibility from "@/pages/ai-visibility";
 import Ratings from "@/pages/ratings";
 
 const queryClient = new QueryClient({
@@ -50,6 +51,7 @@ function Router() {
         <Route path="/storm-alerts" component={StormAlerts} />
         <Route path="/diversions" component={Diversions} />
         <Route path="/search" component={Search} />
+        <Route path="/ai-visibility" component={AiVisibility} />
         <Route path="/ratings" component={Ratings} />
         <Route path="/affiliate"   component={AffiliateManager} />
         <Route path="/favorites"   component={FavoritesManager} />

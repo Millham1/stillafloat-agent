@@ -12,6 +12,7 @@ import { draftNewsletter, saveDraft, loadDraft, startNewsletterSend, resumeNewsl
 import { notifyMark, reviewUrl } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
 import { runGuidesPrerender } from "./lib/prerender-guides";
+import { writeLlmsTxt } from "./lib/llms-txt";
 import { stageWeeklyCommentary, loadCommentaryDraft } from "./lib/commentary-agent";
 import { startShipTracker } from "./lib/ship-tracker";
 import { runWatchSweep } from "./lib/wms-alerts";
@@ -193,6 +194,17 @@ function scheduleNewsPrerender() {
 // Evergreen guide pages regenerated from the `guides` data on boot + hourly, the
 // same cadence and error-isolation as the news prerender.
 function scheduleGuidesPrerender() {
+  // /llms.txt lists every guide and news hub, so it is rebuilt right after each
+  // guides tick — and once immediately on boot, because it is untracked and a
+  // fresh checkout has none until this runs (lib/llms-txt.ts).
+  const llms = async () => {
+    try {
+      const r = await writeLlmsTxt();
+      logger.info(r, "llms.txt written");
+    } catch (err) {
+      logger.error({ err }, "llms.txt write failed");
+    }
+  };
   const tick = async () => {
     try {
       const r = await runGuidesPrerender();
@@ -204,10 +216,14 @@ function scheduleGuidesPrerender() {
     } catch (err) {
       logger.error({ err }, "Guides prerender tick failed");
     }
+    // Isolated from the prerender's outcome: a failed guides tick still leaves
+    // the news hubs and the static sections worth refreshing.
+    await llms();
   };
+  void llms();
   setTimeout(() => { tick().catch(() => {}); }, 50_000);
   setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
-  logger.info("Guides prerender scheduler active — on boot + hourly");
+  logger.info("Guides prerender scheduler active — on boot + hourly (llms.txt after each tick)");
 }
 
 // ── Live-AIS credit listener ──────────────────────────────────────────────────

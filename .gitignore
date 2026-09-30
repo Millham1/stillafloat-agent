@@ -65,6 +65,11 @@ server/public/es/news/
 server/public/news-sitemap.xml
 server/public/news.html
 server/public/es/news.html
+# llms.txt is generated too (server/src/lib/llms-txt.ts, on boot + after every
+# guides prerender tick). Tracked, every rewrite on a box would read as a
+# hand-edit to the drift monitor.
+server/public/llms.txt
+server/public/llms.txt.tmp
 
 # local caches + box-local runtime files (keep out of git)
 .cache/
