@@ -30,11 +30,13 @@ export const ORG_LEGAL_NAME = "Still Afloat LLC";
 export const PERSON_NAME = "Mark Millham";
 
 /** Real, confirmed profiles only. The business: its YouTube channel and Facebook page
- *  (page id from the Make Facebook connection, 1089040447632520). Mark himself: his
- *  LinkedIn (the author link on his published LinkedIn articles) and the channel. */
+ *  (page id from the Make Facebook connection, 1089040447632520) and Instagram
+ *  (handle confirmed by Mark 2026-09-29). Mark himself: his LinkedIn (confirmed by
+ *  Mark) and the channel. */
 export const SAME_AS: readonly string[] = [
   "https://www.youtube.com/@StillAfloatcruising2026",
   "https://www.facebook.com/1089040447632520",
+  "https://www.instagram.com/stillafloatcruising2026/",
 ];
 export const PERSON_SAME_AS: readonly string[] = [
   "https://www.linkedin.com/in/mark-millham-413016414",
