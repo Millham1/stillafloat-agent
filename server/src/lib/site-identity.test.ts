@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  ORG_ID, PERSON_ID, ORG_NAME, ORG_LEGAL_NAME, PERSON_NAME, SAME_AS, PERSON_SAME_AS, WORK_WITH_MARK,
+  ORG_ID, PERSON_ID, ORG_NAME, ORG_LEGAL_NAME, PERSON_NAME, SAME_AS, WORK_WITH_MARK,
   authorRef, organizationNode, publisherRef,
 } from "./site-identity";
 import { guideJsonLd, type Guide } from "./prerender-guides";
@@ -81,7 +81,8 @@ describe("work-with-mark declares Mark", () => {
       assert.equal(mark["jobTitle"], "Independent Cruise Advisor");
       assert.deepEqual(mark["worksFor"], { "@type": "Organization", name: "Cornerstone Collective" });
       assert.deepEqual(mark["affiliation"], { "@id": ORG_ID });
-      assert.deepEqual(mark["sameAs"], [...PERSON_SAME_AS]);
+      // Mark keeps his personal pages separate from the LLC: no profile links on him.
+      assert.equal(mark["sameAs"], undefined);
       // Mark's own languages: English only until he confirms Spanish (the Spanish
       // site is served by the advisory service, which keeps ["en","es"] below).
       assert.deepEqual(mark["knowsLanguage"], ["en"]);

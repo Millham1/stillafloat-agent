@@ -29,18 +29,16 @@ export const ORG_NAME = "Still Afloat Cruising";
 export const ORG_LEGAL_NAME = "Still Afloat LLC";
 export const PERSON_NAME = "Mark Millham";
 
-/** Real, confirmed profiles only. The business: its YouTube channel and Facebook page
- *  (page id from the Make Facebook connection, 1089040447632520) and Instagram
- *  (handle confirmed by Mark 2026-09-29). Mark himself: his LinkedIn (confirmed by
- *  Mark) and the channel. */
+/** The business's own confirmed pages only: its YouTube channel, Facebook page
+ *  (page id from the Make Facebook connection) and Instagram.
+ *
+ *  Mark's person node links NO profiles, by his decision (2026-09-29): "i dont want
+ *  my personal pages linked to the business. the LLC needs to remain separate." Never
+ *  add a personal LinkedIn, personal YouTube channel or email to the markup. */
 export const SAME_AS: readonly string[] = [
   "https://www.youtube.com/@StillAfloatcruising2026",
   "https://www.facebook.com/1089040447632520",
   "https://www.instagram.com/stillafloatcruising2026/",
-];
-export const PERSON_SAME_AS: readonly string[] = [
-  "https://www.linkedin.com/in/mark-millham-413016414",
-  "https://www.youtube.com/@StillAfloatcruising2026",
 ];
 
 /** The full Organization node, as index.html carries it. */
