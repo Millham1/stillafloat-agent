@@ -22,6 +22,7 @@ import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import { sendVerificationEmail } from "./subscribe";
+import { verificationSendCap, logCapHit, type SendCap } from "../lib/verification-send-cap";
 import {
   rollingWindow, signupPath, trackingEmail, verifyWatchSig, watchStopUrl, WATCH_WINDOW_DAYS, type WatchWindow,
 } from "../lib/ship-watch";
@@ -69,6 +70,8 @@ export interface TrackSignupDeps {
   today(): string;
   newToken(): string;
   rateLimited(ip: string): boolean;
+  /** The site-wide cap on confirmation emails, shared with /api/subscribe (lib/verification-send-cap.ts). */
+  sendCap: SendCap;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -133,6 +136,13 @@ export function createTrackSignupRouter(deps: TrackSignupDeps = defaultTrackSign
       }
 
       // Not confirmed yet: the watch waits, and the confirmation email switches it on.
+      // That email counts against the site-wide confirmation cap (added 2026-10-02 after bots
+      // used /api/subscribe to send confirmations to strangers); over it, nothing is saved or sent.
+      // The page already shows too_many_attempts as "please try again in a little while".
+      if (!deps.sendCap.tryReserve()) {
+        logCapHit(deps.sendCap, "track-signup");
+        return res.status(429).json({ ok: false, error: "too_many_attempts" });
+      }
       let subscriberId: string;
       let token: string;
       if (!existing) {
@@ -269,6 +279,7 @@ export const defaultTrackSignupDeps: TrackSignupDeps = {
   },
   today: () => new Date().toISOString().slice(0, 10),
   newToken: () => crypto.randomUUID(),
+  sendCap: verificationSendCap,
   rateLimited(ip) {
     const now = Date.now();
     const entry = attempts.get(ip);
