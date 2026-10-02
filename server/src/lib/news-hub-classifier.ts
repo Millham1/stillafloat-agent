@@ -153,6 +153,7 @@ export async function classifyStories(
     try {
       llmCalls += 1;
       const out = await llmJson<{ verdicts?: { storyId?: string; lines?: string[] }[] }>({
+        job: "news.hubclass",
         system: SYSTEM,
         user: buildClassifyPrompt(batch),
         schema: HUB_VERDICT_SCHEMA as unknown as Record<string, unknown>,

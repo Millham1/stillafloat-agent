@@ -17,7 +17,11 @@ RESOLUTION: the PNGs are ~1661px wide with ~6px digits. Same failure mode as the
 render (found 102 of 289 rooms and reported the misses as data findings) — so upscale 6x before
 tiling, and treat a low found-count as a failed read, never as missing rooms.
 
-Usage:  python3 widgety-categories.py [--only msc-world-america] [--jobs widgety-jobs.json]
+Usage:  python3 widgety-categories.py [--only msc-world-america] [--jobs widgety-jobs.json] [--dry-run] [--approved-cost 8]
+
+COST (Mark, 2026-10-02 — claude_bulk.py): every tile of every pending deck is built first, the
+estimate prints, and a run over 20 tiles (or a $2 ceiling) goes through the Message Batches API
+and needs --approved-cost; --dry-run stops after the estimate. Tagged site:cabin.widgety-categories.
 Output: widgety-reads.json  {"<ship>|<deck>": [{"num": "12345", "hex": "F4A7B9"}, ...]}
 """
 import argparse, base64, collections, importlib.util, io, json, re, sys, urllib.request
@@ -26,8 +30,8 @@ from pathlib import Path
 from PIL import Image
 
 HERE = Path(__file__).resolve().parent
-_spec = importlib.util.spec_from_file_location("nf", HERE / "noise-features.py")
-nf = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(nf)
+sys.path.insert(0, str(HERE))
+import claude_bulk as cb  # noqa: E402 — the one door to the API, the job tags and the bulk gate
 
 SCALE = 6
 READ_PROMPT = """This image is part of a cruise-ship deck plan. Every stateroom is a small
@@ -50,45 +54,47 @@ def fetch(href, cache):
     return Image.open(p).convert("RGB")
 
 
-def read_image(im):
-    """Tile the upscaled strip, vision-read numbers, return [{num, x, y}] in ORIGINAL pixels."""
+def image_tiles(im):
+    """Tile the upscaled strip: [(jpeg_b64, a, b, BH)] — a..b is the tile's span in upscaled px."""
     W, H = im.size
     big = im.resize((W * SCALE, H * SCALE), Image.LANCZOS)
     BW, BH = big.size
     n = max(1, round(BW / (BH * 1.15)))
     step = BW / n
-    rooms = []
+    tiles = []
     for i in range(n):
         a = max(0, int(i * step) - 90); b = min(BW, int((i + 1) * step) + 90)
         t = big.crop((a, 0, b, BH))
         sc = min(1.0, 1568 / max(t.size))
         t2 = t.resize((int(t.width * sc), int(t.height * sc)), Image.LANCZOS) if sc < 1 else t
         buf = io.BytesIO(); t2.convert("RGB").save(buf, "JPEG", quality=92)
-        try:
-            r = json.loads(nf.api("POST", "/messages", {
-                "model": "claude-sonnet-5", "max_tokens": 8000,
-                "messages": [{"role": "user", "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
-                     "data": base64.standard_b64encode(buf.getvalue()).decode()}},
-                    {"type": "text", "text": READ_PROMPT}]}]}, timeout=300))
-        except Exception as e:
-            print(f"    tile {i}: request failed — {e}", flush=True); continue
-        txt = "".join(x["text"] for x in r["content"] if x["type"] == "text")
-        got = []
-        m = re.search(r"\{[\s\S]*\}", txt)
-        if m:
-            try: got = json.loads(m.group(0)).get("cabins", [])
-            except json.JSONDecodeError: got = []
-        if not got:      # a truncated reply still holds complete records — keep them
-            got = [{"num": g[0], "x": float(g[1]), "y": float(g[2])} for g in re.findall(
-                r'"num":\s*"(\d+)"\s*,\s*"x":\s*([\d.]+)\s*,\s*"y":\s*([\d.]+)', txt)]
-        for c in got:
-            try: num, ux, uy = str(c["num"]), float(c["x"]), float(c["y"])
-            except (KeyError, TypeError, ValueError): continue
-            if num.isdigit():
-                rooms.append({"num": num,
-                              "px": (a + ux * (b - a)) / SCALE,
-                              "py": (uy * BH) / SCALE})
+        tiles.append((base64.standard_b64encode(buf.getvalue()).decode(), a, b, BH))
+    return tiles
+
+
+def read_request(b64):
+    return {"model": cb.MODELS["DEFAULT"], "max_tokens": 8000,
+            "messages": [{"role": "user", "content": [
+                {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
+                {"type": "text", "text": READ_PROMPT}]}]}
+
+
+def rooms_from(txt, a, b, BH):
+    """Vision reads -> [{num, px, py}] in ORIGINAL pixels."""
+    got = []
+    m = re.search(r"\{[\s\S]*\}", txt)
+    if m:
+        try: got = json.loads(m.group(0)).get("cabins", [])
+        except json.JSONDecodeError: got = []
+    if not got:      # a truncated reply still holds complete records — keep them
+        got = [{"num": g[0], "x": float(g[1]), "y": float(g[2])} for g in re.findall(
+            r'"num":\s*"(\d+)"\s*,\s*"x":\s*([\d.]+)\s*,\s*"y":\s*([\d.]+)', txt)]
+    rooms = []
+    for c in got:
+        try: num, ux, uy = str(c["num"]), float(c["x"]), float(c["y"])
+        except (KeyError, TypeError, ValueError): continue
+        if num.isdigit():
+            rooms.append({"num": num, "px": (a + ux * (b - a)) / SCALE, "py": (uy * BH) / SCALE})
     return rooms
 
 
@@ -122,21 +128,49 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--jobs", default=str(HERE / "widgety-jobs.json"))
     ap.add_argument("--only", default=None)
+    ap.add_argument("--dry-run", action="store_true")
+    cb.add_bulk_args(ap)
     a = ap.parse_args()
     jobs = json.load(open(a.jobs))
     if a.only: jobs = [j for j in jobs if j["ship"] == a.only]
     out_path = HERE / "widgety-reads.json"
     out = json.load(open(out_path)) if out_path.exists() else {}
+
+    # Every tile of every pending deck, built before any call, so the run is estimated and gated
+    # whole (it used to be one synchronous call per tile, with no figure up front).
+    pending, reqs, where = [], [], {}
     for j in jobs:
         key = f"{j['ship']}|{j['deck']}"
         if key in out:
             print(f"{key}: already read ({len(out[key])} rooms), skipping"); continue
-        print(f"=== {key} ===", flush=True)
         try:
             im = fetch(j["href"], HERE / "widgety-cache")
         except Exception as e:
-            print(f"  fetch failed: {e}"); continue
-        rooms = read_image(im)
+            print(f"{key}: fetch failed: {e}"); continue
+        pending.append((key, im))
+        for ti, (b64, ta, tb, BH) in enumerate(image_tiles(im)):
+            cid = re.sub(r"[^a-zA-Z0-9_-]", "_", f"{j['ship']}-{j['deck']}-t{ti}")[:64]
+            reqs.append({"custom_id": cid, "params": read_request(b64)})
+            where[cid] = (key, ta, tb, BH)
+    if not reqs:
+        print("nothing to read"); return
+    if a.dry_run:
+        cb.preview("cabin.widgety-categories", [r["params"] for r in reqs], expected_output_tokens=3000)
+        return
+    try:
+        results = cb.run_bulk("cabin.widgety-categories", reqs, a, expected_output_tokens=3000)
+    except cb.BulkRuleError as e:
+        sys.exit(str(e))
+
+    by_key = {}
+    for cid, (key, ta, tb, BH) in where.items():
+        res = results.get(cid) or {}
+        if not res.get("ok"):
+            print(f"    {cid}: request failed — {res.get('error')}", flush=True); continue
+        by_key.setdefault(key, []).extend(rooms_from(cb.message_text(res["message"]), ta, tb, BH))
+    for key, im in pending:
+        print(f"=== {key} ===", flush=True)
+        rooms = by_key.get(key, [])
         uniq = {}
         for r in rooms: uniq.setdefault(r["num"], (r["px"], r["py"]))
         rows = []

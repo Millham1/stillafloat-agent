@@ -106,6 +106,7 @@ async function autoTranslate(text: string, attempt = 0): Promise<string> {
   if (!anthropicConfigured() || !text.trim()) return "";
   try {
     return await llmText({
+      job: "commentary.translate",
       system:
         "You are a professional translator. Translate the following English text to Latin American Spanish (es-419). Preserve ALL HTML tags exactly as-is — only translate the visible text content between tags. Preserve the tone, personality, paragraph structure, and formatting. Return only the translated HTML — no explanations, no preamble.",
       user: text,
@@ -254,6 +255,7 @@ router.post("/translate-commentary", async (req: Request, res: Response) => {
     let translation: string;
     try {
       translation = await llmText({
+        job: "commentary.translate-text",
         system:
           "You are a professional translator. Translate the following English text to Latin American Spanish (es-419). Preserve the tone, personality, paragraph structure, and formatting. Return only the translated text — no explanations, no preamble.",
         user: String(text),

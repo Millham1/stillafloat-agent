@@ -25,12 +25,16 @@ Stages (state in geometry/state.json, images in geometry/work/, output in geomet
 Usage:
   python3 geometry-carnival.py carve [--pdf-dir DIR] [--only breeze]
   python3 geometry-carnival.py prep
-  python3 geometry-carnival.py submit [--only breeze] [--dry-run]
+  python3 geometry-carnival.py submit [--only breeze] [--dry-run] [--approved-cost 40]
   python3 geometry-carnival.py poll
   python3 geometry-carnival.py assemble
   python3 geometry-carnival.py direct --slug carnival-breeze --img 1
 
 Key: ANTHROPIC_API_KEY env, else parsed from ~/.config/saf-secrets/env.txt.
+COST (Mark, 2026-10-02 — claude_bulk.py): submit and reread print the estimate and refuse more
+than 20 reads (or a $2 ceiling) without --approved-cost <dollars>; --dry-run stops after the
+estimate. Requests are tagged site:cabin.geometry / site:cabin.geometry-reread. The Aug 19-21
+fleet run cost $91 with no quote; this is the line that would have stopped it.
 Background: nohup caffeinate -i python3 geometry-carnival.py <stage> >> geometry/run.log 2>&1 &
 """
 import argparse, base64, hashlib, io, json, os, re, sys, time, urllib.request
@@ -39,12 +43,14 @@ from pathlib import Path
 from PIL import Image
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import claude_bulk as cb  # noqa: E402 — the one door to the API, the job tags and the bulk gate
+
 GEO = HERE / "geometry"
 WORK, OUT = GEO / "work", GEO / "out"
 STATE_F = GEO / "state.json"
 DEFAULT_PDF_DIR = Path.home() / "Library/CloudStorage/GoogleDrive-mmillham1@gmail.com/My Drive/Carnival"
-MODEL = os.environ.get("GEOMETRY_MODEL", "claude-sonnet-5")
-API = "https://api.anthropic.com/v1"
+MODEL = os.environ.get("GEOMETRY_MODEL", cb.MODELS["DEFAULT"])
 # The API downscales any image to a 1568px long edge — tighter than the Read tool's 2000px
 # the original proof relied on. Tiling each strip into ~800px segments keeps every tile's
 # effective magnification (1568/~800 ≈ 2x) ABOVE what the proof showed was legible (1.57x).
@@ -66,28 +72,8 @@ Rules:
 - If the image contains no cabins (legend page, artwork, blank frame), return {"deck_label": null, "cabins": []}."""
 
 
-def api_key():
-    k = os.environ.get("ANTHROPIC_API_KEY")
-    if not k:
-        f = Path.home() / ".config/saf-secrets/env.txt"
-        if f.exists():
-            for line in f.read_text().splitlines():
-                if line.startswith("ANTHROPIC_API_KEY="):
-                    k = line.split("=", 1)[1].strip()
-    if not k:
-        sys.exit("ANTHROPIC_API_KEY not found (env or ~/.config/saf-secrets/env.txt)")
-    return k
-
-
-def api(method, path, body=None, key=None, raw_url=None, timeout=300):
-    req = urllib.request.Request(raw_url or (API + path), method=method)
-    req.add_header("x-api-key", key or api_key())
-    req.add_header("anthropic-version", "2023-06-01")
-    if body is not None:
-        req.add_header("content-type", "application/json")
-        req.data = json.dumps(body).encode()
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read()
+api_key = cb.api_key
+api = cb.api
 
 
 def load_state():
@@ -239,19 +225,18 @@ def submit(args):
                 reqs.append({"custom_id": f"{slug}--{si:02d}--{hi}", "params": _vision_request(p)})
     if not reqs:
         sys.exit("nothing to submit — run carve + prep first")
-    est_cost = est_tokens * 3e-6 * 0.5 + len(reqs) * 4000 * 15e-6 * 0.5  # batch = 50% off
-    print(f"{len(reqs)} vision reads, est ~{est_tokens/1000:.0f}K input tokens, est cost ~${est_cost:.2f} (Batch API, {MODEL})")
+    print(f"{len(reqs)} vision reads across {len(ships_in)} ships")
+    # A dense strip returns ~4,000 tokens of cabin JSON; the ceiling assumes all 16,000.
     if args.dry_run:
+        cb.preview("cabin.geometry", [r["params"] for r in reqs], expected_output_tokens=4000, batch=True)
         return
-    # Chunk: base64 images make one giant POST brush the API's 256MB request cap.
-    CHUNK = 150
-    for ci in range(0, len(reqs), CHUNK):
-        chunk = reqs[ci:ci + CHUNK]
-        out = json.loads(api("POST", "/messages/batches", {"requests": chunk}, timeout=900))
-        state["batches"].append({"id": out["id"], "n": len(chunk), "submitted": time.strftime("%F %T"),
-                                 "status": out.get("processing_status")})
+    cb.gate_or_exit("cabin.geometry", [r["params"] for r in reqs], args, expected_output_tokens=4000, batch=True)
+
+    def remember(bid, n):
+        state["batches"].append({"id": bid, "n": n, "submitted": time.strftime("%F %T"), "status": "in_progress"})
         save_state(state)
-        print(f"submitted batch {out['id']} ({len(chunk)} requests)")
+    # Chunk: base64 images make one giant POST brush the API's 256MB request cap.
+    cb.submit_batches("cabin.geometry", reqs, chunk=150, on_submitted=remember)
     for slug in ships_in:
         state["ships"][slug]["submitted_at"] = time.strftime("%F %T")
     save_state(state)
@@ -381,7 +366,9 @@ def reread(args):
     if not ids:
         print("nothing to re-read")
         return
-    out_lines = []
+    # Build every sub-tile read up front so the whole re-read is estimated and gated as one
+    # run (it used to be a synchronous loop of 2 calls per failed tile, unquoted).
+    plan, reqs = [], []
     for cid in sorted(ids):
         slug, si, hi = cid.rsplit("--", 2)
         tile = state["ships"][slug]["strips"][int(si)]["halves"][int(hi)]
@@ -389,24 +376,37 @@ def reread(args):
         w, h = im.size
         axis_long = max(w, h)
         vert = h >= w
-        merged, labels = {}, []
         cut_a = int(axis_long * 0.53)
         cut_b = int(axis_long * 0.47)
         boxes = [(0, 0, w, cut_a), (0, cut_b, w, h)] if vert else [(0, 0, cut_a, h), (cut_b, 0, w, h)]
-        for box in boxes:
+        parts = []
+        for k, box in enumerate(boxes):
             part = im.crop(box)
             part = part.resize((part.width * 2, part.height * 2), Image.LANCZOS)
             if max(part.size) > API_MAX_EDGE:
                 part.thumbnail((API_MAX_EDGE, API_MAX_EDGE), Image.LANCZOS)
             buf = io.BytesIO(); part.convert("RGB").save(buf, "JPEG", quality=88)
             b64 = base64.standard_b64encode(buf.getvalue()).decode()
-            body = {"model": MODEL, "max_tokens": 16000,
-                    "messages": [{"role": "user", "content": [
-                        {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
-                        {"type": "text", "text": READ_PROMPT}]}]}
-            j = json.loads(api("POST", "/messages", body))
-            text = "".join(b.get("text", "") for b in j["content"] if b["type"] == "text")
-            r = _extract_json(text) or {}
+            rid = "rr-" + hashlib.md5(f"{cid}|{k}".encode()).hexdigest()[:20]
+            reqs.append({"custom_id": rid, "params": {"model": MODEL, "max_tokens": 16000,
+                         "messages": [{"role": "user", "content": [
+                             {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
+                             {"type": "text", "text": READ_PROMPT}]}]}})
+            parts.append((rid, box))
+        plan.append((cid, vert, axis_long, parts))
+    results = cb.run_bulk("cabin.geometry-reread", reqs, args, expected_output_tokens=4000) if not getattr(args, "dry_run", False) \
+        else (cb.preview("cabin.geometry-reread", [r["params"] for r in reqs], expected_output_tokens=4000) and {})
+    if not results:
+        return
+    out_lines = []
+    for cid, vert, axis_long, parts in plan:
+        merged, labels = {}, []
+        for rid, box in parts:
+            res = results.get(rid) or {}
+            if not res.get("ok"):
+                print(f"  ! {cid}: sub-read failed — {res.get('error')}")
+                continue
+            r = _extract_json(cb.message_text(res["message"])) or {}
             if r.get("deck_label") is not None:
                 labels.append(r["deck_label"])
             off, ln = (box[1], box[3] - box[1]) if vert else (box[0], box[2] - box[0])
@@ -437,7 +437,7 @@ def direct(args):
     total, labels = {}, []
     for hi, half in enumerate(strip.get("halves", [])):
         body = _vision_request(WORK / args.slug / half["file"])
-        j = json.loads(api("POST", "/messages", body))
+        j = cb.sync_call(body, "cabin.geometry-reread")
         text = "".join(b.get("text", "") for b in j["content"] if b["type"] == "text")
         if j.get("stop_reason") == "max_tokens":
             print(f"  ! half {hi}: TRUNCATED at max_tokens — tile too dense")
@@ -467,10 +467,10 @@ if __name__ == "__main__":
     c = sub.add_parser("carve"); c.add_argument("--pdf-dir", default=str(DEFAULT_PDF_DIR)); c.add_argument("--only")
     g = sub.add_parser("ingest"); g.add_argument("--dir", required=True)
     sub.add_parser("prep")
-    s = sub.add_parser("submit"); s.add_argument("--only"); s.add_argument("--dry-run", action="store_true")
+    s = sub.add_parser("submit"); s.add_argument("--only"); s.add_argument("--dry-run", action="store_true"); cb.add_bulk_args(s)
     sub.add_parser("poll")
     sub.add_parser("assemble")
-    sub.add_parser("reread")
+    rr = sub.add_parser("reread"); rr.add_argument("--dry-run", action="store_true"); cb.add_bulk_args(rr)
     d = sub.add_parser("direct"); d.add_argument("--slug", required=True); d.add_argument("--img", type=int, default=0)
     sub.add_parser("status")
     a = ap.parse_args()

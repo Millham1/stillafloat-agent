@@ -274,6 +274,7 @@ export async function generateSocialBatch(
   // the cheap one. It is also the exact call that produced nothing for four days
   // while the OpenAI key was being rejected.
   const parsed = await llmJson<{ posts?: LlmPost[] }>({
+    job: "social.posts",
     system: SYSTEM_PROMPT,
     user: userContent,
     schema: POSTS_SCHEMA as unknown as Record<string, unknown>,
@@ -348,6 +349,7 @@ async function translateCaptions(captions: string[]): Promise<string[]> {
   if (captions.length === 0) return [];
   try {
     const parsed = await llmJson<{ translations?: string[] }>({
+      job: "social.gloss",
       system:
         'Translate each Spanish social-media caption into natural, faithful English (keep the meaning, tone, and emoji). Respond ONLY with JSON: {"translations":["...", ...]} in the same order as the input.',
       user: JSON.stringify({ captions }),

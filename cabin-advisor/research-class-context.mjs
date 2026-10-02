@@ -38,14 +38,13 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { claudeSync, usageCost, MODELS } from "../server/src/lib/claude-core.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const slug = process.argv[2];
 if (!slug) { console.error("usage: node research-class-context.mjs <ship-slug>"); process.exit(1); }
-const AKEY = process.env.ANTHROPIC_API_KEY;
-if (!AKEY) { console.error("ANTHROPIC_API_KEY required"); process.exit(1); }
 
-const MODEL = process.env.CONTEXT_MODEL || "claude-sonnet-5";
+const MODEL = process.env.CONTEXT_MODEL || MODELS.DEFAULT;
 const MAX_SEARCHES = Number(process.env.CONTEXT_MAX_SEARCHES || 25);
 
 /** Ground the research in the real grid: which decks exist, how many cabins, what categories. */
@@ -179,34 +178,26 @@ console.log(`Researching context for ${raw.ship} (${raw.class || "?"} class), ${
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 let messages = [{ role: "user", content: prompt }];
 let j;
+let spent = 0; // every response that billed — continuations and retried attempts included
 for (let attempt = 1, continuations = 0; ; ) {
-  let r;
   try {
-    r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": AKEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 24000,
-        system: SYSTEM,
-        messages,
-        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: MAX_SEARCHES }],
-      }),
-      signal: AbortSignal.timeout(900000),
-    });
-    j = await r.json();
+    // Tagged "site:cabin.context". A fleet run (run-all-context.sh) is gated there.
+    j = await claudeSync({
+      model: MODEL,
+      max_tokens: 24000,
+      system: SYSTEM,
+      messages,
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: MAX_SEARCHES }],
+    }, { job: "cabin.context", timeoutMs: 900000, retries: 0 });
   } catch (e) {
-    if (attempt >= 4) { console.error(`fetch failed after ${attempt} attempts: ${e.message}`); process.exit(1); }
-    console.log(`  (network error, retry ${attempt}: ${e.message})`);
-    attempt++; await sleep(20000 * attempt); continue;
-  }
-  if (!r.ok) {
-    if ((r.status === 429 || r.status >= 500) && attempt < 4) {
-      console.log(`  (Anthropic ${r.status}, retry ${attempt})`);
-      attempt++; await sleep(30000 * attempt); continue;
+    const status = e.status ?? 0;
+    if ((status === 0 || status === 429 || status >= 500) && attempt < 4) {
+      console.log(`  (${status ? `Anthropic ${status}` : `network error: ${e.message}`}, retry ${attempt})`);
+      attempt++; await sleep((status ? 30000 : 20000) * attempt); continue;
     }
-    console.error(`Anthropic ${r.status}: ${JSON.stringify(j).slice(0, 300)}`); process.exit(1);
+    console.error(e.message); process.exit(1);
   }
+  spent += usageCost(MODEL, j.usage);
   if (j.stop_reason === "pause_turn" && continuations < 8) {
     continuations++;
     console.log(`  (pause_turn — continuing, ${continuations})`);
@@ -240,7 +231,9 @@ out.totalCabins = cabins.length;
 out.cabinsTouchedByAZone = covered;
 out.model = j.model;
 out.grounded = { webSearches: searches, maxAllowed: MAX_SEARCHES };
-out.cost = j.usage.input_tokens * 3e-6 + j.usage.output_tokens * 15e-6 + searches * 0.01;
+// Every call in the conversation, at the current price table (the old line counted only the
+// last response, at Sonnet 4's $3/$15).
+out.cost = spent;
 
 await mkdir(join(HERE, "context"), { recursive: true });
 await writeFile(join(HERE, `context/${slug}.json`), JSON.stringify(out, null, 2));

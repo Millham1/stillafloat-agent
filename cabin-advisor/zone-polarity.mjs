@@ -10,11 +10,15 @@
 // an area, or names it as the EXCEPTION to a problem, must not be scored as a penalty.
 //
 // Reports only. Nothing is written — the fix for a mis-signed zone is a judgement call.
+//
+// ~40 calls: over the bulk-run line, so they go through the Message Batches API and need
+// --approved-cost (Mark's quoted yes); --no-batch "<reason>" runs them one at a time.
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
+import { bulkFlags, runBulk, messageText, MODELS } from "../server/src/lib/claude-core.mjs";
 
-const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_KEY, AK = process.env.ANTHROPIC_API_KEY;
-if (!url || !key || !AK) { console.error("need SUPABASE_URL + SUPABASE_SERVICE_KEY + ANTHROPIC_API_KEY"); process.exit(1); }
+const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_KEY;
+if (!url || !key) { console.error("need SUPABASE_URL + SUPABASE_SERVICE_KEY (and ANTHROPIC_API_KEY)"); process.exit(1); }
 const sb = createClient(url, key, { realtime: { transport: ws }, auth: { persistSession: false } });
 
 const SYS = `Each numbered item is a research note about an AREA of a cruise ship, already filed
@@ -39,34 +43,39 @@ const PENALTY_FACTORS = ["lifeboat", "motion", "above", "below", "engine", "elev
 const subject = zones.filter((z) => PENALTY_FACTORS.includes(z.factor));
 console.log(`${zones.length} zones, ${subject.length} filed under a downside factor`);
 
-async function ask(batch) {
-  const body = { model: "claude-sonnet-5", max_tokens: 4000, system: SYS,
+function askParams(batch) {
+  return { model: MODELS.DEFAULT, max_tokens: 4000, system: SYS,
     messages: [{ role: "user", content: batch.map((z, i) =>
       `${i + 1}. [factor=${z.factor}] ${(z.what || "") + " " + (z.effect || "")}`.slice(0, 900)).join("\n\n") }] };
-  for (let a = 0; a < 3; a++) {
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST",
-        headers: { "content-type": "application/json", "x-api-key": AK, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify(body) });
-      if (!r.ok) throw new Error(`${r.status}`);
-      const j = await r.json();
-      const t = j.content.filter((c) => c.type === "text").map((c) => c.text).join("");
-      return JSON.parse(t.match(/\[[\s\S]*\]/)[0]);
-    } catch (e) { if (a === 2) { console.error(`  batch failed: ${e.message}`); return null; }
-      await new Promise((r) => setTimeout(r, 1500 * (a + 1))); }
-  }
+}
+
+const groups = [];
+for (let i = 0; i < subject.length; i += 12) groups.push(subject.slice(i, i + 12));
+let results;
+try {
+  ({ results } = await runBulk({
+    job: "cabin.zone-polarity",
+    requests: groups.map((g, gi) => ({ custom_id: `zones-${gi}`, params: askParams(g) })),
+    expectedOutputTokens: 1200,
+    ...bulkFlags(),
+  }));
+} catch (e) {
+  console.error(e.message);
+  process.exit(2);
 }
 
 const flagged = [];
-for (let i = 0; i < subject.length; i += 12) {
-  const batch = subject.slice(i, i + 12);
-  const out = await ask(batch);
+groups.forEach((batch, gi) => {
+  const r = results.get(`zones-${gi}`);
+  let out = null;
+  try { out = r?.ok ? JSON.parse(messageText(r.message).match(/\[[\s\S]*\]/)[0]) : null; }
+  catch (e) { console.error(`  group ${gi} unparseable: ${e.message}`); }
+  if (!r?.ok) console.error(`  group ${gi} failed: ${r?.error ?? "no result"}`);
   if (out) for (const v of out) {
     const z = batch[(v.id ?? 0) - 1];
     if (z && v.sign !== "penalty") flagged.push({ ...z, sign: v.sign, why: v.why });
   }
-  console.log(`  ${Math.min(i + 12, subject.length)}/${subject.length}`);
-}
+});
 
 const byFactor = {};
 for (const f of flagged) byFactor[`${f.factor}/${f.sign}`] = (byFactor[`${f.factor}/${f.sign}`] ?? 0) + 1;

@@ -24,8 +24,12 @@ Stages (state in noise/state.json, output in noise/out/<slug>.json):
   apply    - write cabins.noise_nearby / noise_source in Supabase + tick deck_read_log
   status   - where everything stands
 
+COST (Mark, 2026-10-02 — claude_bulk.py): every submit stage prints the estimate, then refuses
+to send more than 20 reads (or a $2 ceiling) without --approved-cost <dollars>; --dry-run stops
+after the estimate. Every request is tagged site:cabin.noise / cabin.noise-plan / cabin.noise-boats.
+
 Usage:
-  python3 noise-features.py submit [--only carnival] [--dry-run]
+  python3 noise-features.py submit [--only carnival] [--dry-run] [--approved-cost 12.50]
   python3 noise-features.py poll
   python3 noise-features.py assemble
   python3 noise-features.py apply [--only carnival] [--write]
@@ -35,13 +39,15 @@ from pathlib import Path
 from PIL import Image
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import claude_bulk as cb  # noqa: E402 — the one door to the API, the job tags and the bulk gate
+
 GEO = HERE / "geometry"
 WORK = GEO / "work"
 NOISE = HERE / "noise"
 OUT = NOISE / "out"
 STATE_F = NOISE / "state.json"
-MODEL = os.environ.get("NOISE_MODEL", "claude-sonnet-5")
-API = "https://api.anthropic.com/v1"
+MODEL = os.environ.get("NOISE_MODEL", cb.MODELS["DEFAULT"])
 
 # geometry-file slug -> Supabase cabin_ships.slug (the class rep that owns the grid)
 SHIP_MAP = {
@@ -98,28 +104,10 @@ Rules:
 - If the segment has no noise source at all, return {"features":[]}."""
 
 
-def api_key():
-    k = os.environ.get("ANTHROPIC_API_KEY")
-    if not k:
-        f = Path.home() / ".config/saf-secrets/env.txt"
-        if f.exists():
-            for line in f.read_text().splitlines():
-                if line.startswith("ANTHROPIC_API_KEY="):
-                    k = line.split("=", 1)[1].strip()
-    if not k:
-        sys.exit("ANTHROPIC_API_KEY not found (env or ~/.config/saf-secrets/env.txt)")
-    return k
-
-
-def api(method, path, body=None, raw_url=None, timeout=300):
-    req = urllib.request.Request(raw_url or (API + path), method=method)
-    req.add_header("x-api-key", api_key())
-    req.add_header("anthropic-version", "2023-06-01")
-    if body is not None:
-        req.add_header("content-type", "application/json")
-        req.data = json.dumps(body).encode()
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read()
+# carnival-categories.py and widgety-categories.py load this module as `nf` and call nf.api;
+# both names now point at claude_bulk, which refuses an untagged request.
+api_key = cb.api_key
+api = cb.api
 
 
 # db_slug -> the directory of deck-plan images whose frame is NOT the frame the grid was
@@ -209,18 +197,16 @@ def submit(args):
                         {"type": "text", "text": READ_PROMPT}]}]}})
     if not reqs:
         sys.exit("nothing to submit")
-    est = est_tokens * 3e-6 * 0.5 + len(reqs) * 900 * 15e-6 * 0.5
-    print(f"{len(reqs)} noise reads across {len(ships_in)} ships, ~{est_tokens/1000:.0f}K input tokens, est ~${est:.2f} (Batch API, {MODEL})")
+    print(f"{len(reqs)} noise reads across {len(ships_in)} ships")
     if args.dry_run:
+        cb.preview("cabin.noise", [r["params"] for r in reqs], expected_output_tokens=900, batch=True)
         return
-    CHUNK = 150
-    for ci in range(0, len(reqs), CHUNK):
-        chunk = reqs[ci:ci + CHUNK]
-        out = json.loads(api("POST", "/messages/batches", {"requests": chunk}, timeout=900))
-        state["batches"].append({"id": out["id"], "n": len(chunk), "submitted": time.strftime("%F %T"),
-                                 "status": out.get("processing_status")})
+    cb.gate_or_exit("cabin.noise", [r["params"] for r in reqs], args, expected_output_tokens=900, batch=True)
+
+    def remember(bid, n):
+        state["batches"].append({"id": bid, "n": n, "submitted": time.strftime("%F %T"), "status": "in_progress"})
         save_state(state)
-        print(f"submitted batch {out['id']} ({len(chunk)} requests)")
+    cb.submit_batches("cabin.noise", reqs, chunk=150, on_submitted=remember)
     for slug in ships_in:
         state["ships"].setdefault(slug, {})["submitted_at"] = time.strftime("%F %T")
     save_state(state)
@@ -433,18 +419,16 @@ def plan_submit(args):
                         {"type": "text", "text": prompt}]}]}})
     if not reqs:
         sys.exit("nothing to submit — run plan-prep first")
-    est = est_tokens * 3e-6 * 0.5 + len(reqs) * 1200 * 15e-6 * 0.5
-    print(f"{len(reqs)} plan reads across {len(ships_in)} ships, ~{est_tokens/1000:.0f}K input tokens, est ~${est:.2f}")
+    print(f"{len(reqs)} plan reads across {len(ships_in)} ships")
     if args.dry_run:
+        cb.preview("cabin.noise-plan", [r["params"] for r in reqs], expected_output_tokens=1200, batch=True)
         return
-    CHUNK = 120
-    for ci in range(0, len(reqs), CHUNK):
-        chunk = reqs[ci:ci + CHUNK]
-        out = json.loads(api("POST", "/messages/batches", {"requests": chunk}, timeout=900))
-        state["batches"].append({"id": out["id"], "n": len(chunk), "submitted": time.strftime("%F %T"),
-                                 "status": out.get("processing_status"), "kind": "plan"})
+    cb.gate_or_exit("cabin.noise-plan", [r["params"] for r in reqs], args, expected_output_tokens=1200, batch=True)
+
+    def remember(bid, n):
+        state["batches"].append({"id": bid, "n": n, "submitted": time.strftime("%F %T"), "status": "in_progress", "kind": "plan"})
         save_state(state)
-        print(f"submitted batch {out['id']} ({len(chunk)} requests)")
+    cb.submit_batches("cabin.noise-plan", reqs, chunk=120, on_submitted=remember)
     for slug in ships_in:
         state["ships"][slug]["plan_submitted_at"] = time.strftime("%F %T")
     save_state(state)
@@ -1264,18 +1248,17 @@ def boats_submit(args):
                 {"type": "text", "text": BOAT_PROMPT}]}]}})
     if not reqs:
         sys.exit("nothing to submit")
-    print(f"{len(reqs)} boat reads, ~{est/1000:.0f}K input tokens, "
-          f"est ~${est*3e-6*0.5 + len(reqs)*700*15e-6*0.5:.2f}")
+    print(f"{len(reqs)} boat reads")
     if args.dry_run:
+        cb.preview("cabin.noise-boats", [r["params"] for r in reqs], expected_output_tokens=700, batch=True)
         return
-    for ci in range(0, len(reqs), 120):
-        chunk = reqs[ci:ci + 120]
-        out = json.loads(api("POST", "/messages/batches", {"requests": chunk}, timeout=900))
-        state["batches"].append({"id": out["id"], "n": len(chunk), "kind": "boats",
-                                 "submitted": time.strftime("%F %T"),
-                                 "status": out.get("processing_status")})
+    cb.gate_or_exit("cabin.noise-boats", [r["params"] for r in reqs], args, expected_output_tokens=700, batch=True)
+
+    def remember(bid, n):
+        state["batches"].append({"id": bid, "n": n, "kind": "boats", "submitted": time.strftime("%F %T"),
+                                 "status": "in_progress"})
         save_state(state)
-        print(f"submitted batch {out['id']} ({len(chunk)} requests)")
+    cb.submit_batches("cabin.noise-boats", reqs, chunk=120, on_submitted=remember)
 
 
 def boats_assemble(args):
@@ -1356,6 +1339,7 @@ def main():
         p = sub.add_parser(name)
         p.add_argument("--only")
         p.add_argument("--dry-run", action="store_true")
+        cb.add_bulk_args(p)
     a = ap.parse_args()
     {"submit": submit, "poll": poll, "assemble": assemble, "status": status, "selftest": selftest, "boats-submit": boats_submit, "boats-assemble": boats_assemble, "svg-assemble": svg_assemble, "apply": apply_,
      "plan-prep": plan_prep, "plan-submit": plan_submit, "plan-assemble": plan_assemble}[a.cmd](a)

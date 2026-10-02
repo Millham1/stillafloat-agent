@@ -19,6 +19,9 @@ import json, os, sys, urllib.parse, urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import claude_bulk as cb  # noqa: E402 — tags the call "site:cabin.preview"
+
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8899
 ROOT = Path(__file__).resolve().parent.parent / "server" / "public"
 URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
@@ -134,18 +137,10 @@ Speak ONLY to concerns they actually told you. REQUIRED, not optional: at least 
 {{"recommendations":[{{"cabin":"<number>","hook":"...","reason":"..."}}],"steerClear":[{{"cabin":"<number or area>","reason":"..."}}]}}"""
 
     try:
-        req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
-            data=json.dumps({
-                "model": "claude-haiku-4-5", "max_tokens": 1800, "system": VOICE,
-                "messages": [{"role": "user", "content": prompt}],
-            }).encode(),
-            headers={"x-api-key": AKEY, "anthropic-version": "2023-06-01",
-                     "content-type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as r:
-            j = json.load(r)
+        j = cb.interactive_call({
+            "model": cb.MODELS["CHEAP"], "max_tokens": 1800, "system": VOICE,
+            "messages": [{"role": "user", "content": prompt}],
+        }, "cabin.preview", timeout=30)
         text = "".join(b.get("text", "") for b in j.get("content", []) if b.get("type") == "text")
         start, end = text.find("{"), text.rfind("}")
         out = json.loads(text[start:end + 1])

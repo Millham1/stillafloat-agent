@@ -24,26 +24,50 @@
 // Raw fetch, deliberately: the server has no @anthropic-ai/sdk dependency and
 // the pnpm lockfile is fragile enough that adding one is its own risk. The
 // commentary agent already spoke this wire format by hand; this generalises it.
+//
+// 2026-10-02 (Mark, "do both"):
+//   * The workhorse moved to Claude Sonnet 5.5 — same per-token price as Sonnet 5
+//     (checked on the pricing page). Sonnet 5.5 REJECTS a forced tool_choice, so
+//     llmJson now asks for the tool with tool_choice "auto" on that model and
+//     retries once if prose comes back; Haiku keeps the forced call. Thinking is
+//     switched off on Sonnet 5.5 ("between_tools") because every max_tokens below
+//     was sized for the answer alone, and Sonnet 5 did not think inside a forced
+//     tool call either — same output, same bill.
+//   * Every request carries metadata.user_id = "site:<job>" so the Console's Logs
+//     page says which job made it. `job` is REQUIRED and typed against
+//     llm-jobs.json: an untagged or misspelled call does not compile.
+//   The shared rules (models, tags, the bulk-run gate) live in claude-core.mjs.
 
 import { logger } from "./logger";
+import {
+  MODELS, withJobTag, assertRequestAllowed, structuredCallShape, supportsBetweenTools,
+} from "./claude-core.mjs";
 
 const ENDPOINT = "https://api.anthropic.com/v1/messages";
 const API_VERSION = "2023-06-01";
 
+/** Every job tag a call from this server may carry — the keys of llm-jobs.json "site". */
+export type SiteJob = keyof (typeof import("./llm-jobs.json"))["site"];
+
 /** Default workhorse. Overridable per-deploy without a code change. */
-export const DEFAULT_MODEL = process.env["LLM_MODEL"] || "claude-sonnet-5";
+export const DEFAULT_MODEL = process.env["LLM_MODEL"] || MODELS.DEFAULT;
 
 /**
  * Captions, categorisation, one-line summaries, mechanical translation — work
  * where the judgement is thin and the volume is high. Not overridable by
  * LLM_MODEL: the point of `cheap` is that it is cheap.
  */
-export const CHEAP_MODEL = process.env["LLM_CHEAP_MODEL"] || "claude-haiku-4-5";
+export const CHEAP_MODEL = process.env["LLM_CHEAP_MODEL"] || MODELS.CHEAP;
 
 /** Two minutes matches what every ported call site used to allow OpenAI. */
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 export interface LlmRequest {
+  /**
+   * Which job this call belongs to, e.g. "news.hubclass". Sent as
+   * metadata.user_id = "site:<job>" so the Console attributes the spend.
+   */
+  job: SiteJob;
   system: string;
   user: string;
   /** Explicit model id. Wins over `cheap` and over LLM_MODEL. */
@@ -59,17 +83,18 @@ export interface LlmJsonRequest extends LlmRequest {
   schema: Record<string, unknown>;
 }
 
-interface AnthropicContentBlock {
+export interface AnthropicContentBlock {
   type: string;
   text?: string;
   name?: string;
   input?: unknown;
 }
 
-interface AnthropicResponse {
+export interface AnthropicResponse {
   content?: AnthropicContentBlock[];
   stop_reason?: string;
   model?: string;
+  usage?: { input_tokens?: number; output_tokens?: number; [k: string]: unknown };
   error?: { message?: string; type?: string };
 }
 
@@ -107,13 +132,23 @@ function modelFor(req: LlmRequest): string {
  * retrying — 429 and 5xx. A 400 (bad schema, bad model id) repeated is just the
  * same 400 twice, and a timeout retried doubles the wall clock on the calls
  * that are already the slowest thing the server does.
+ *
+ * The job tag is stamped here, at the last step before the wire, so no path
+ * through this module can send an untagged request.
  */
-async function post(body: Record<string, unknown>, timeoutMs: number): Promise<AnthropicResponse> {
+async function post(
+  job: SiteJob,
+  body: Record<string, unknown>,
+  timeoutMs: number,
+  retries = 1,
+): Promise<AnthropicResponse> {
+  const tagged = withJobTag(body, job);
+  assertRequestAllowed(tagged);
   const key = apiKey();
   let lastStatus = 0;
   let lastDetail = "";
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 1_000));
 
     const response = await fetch(ENDPOINT, {
@@ -123,7 +158,7 @@ async function post(body: Record<string, unknown>, timeoutMs: number): Promise<A
         "anthropic-version": API_VERSION,
         "content-type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(tagged),
       signal: AbortSignal.timeout(timeoutMs),
     });
 
@@ -148,11 +183,11 @@ async function post(body: Record<string, unknown>, timeoutMs: number): Promise<A
 
     const retryable = response.status === 429 || response.status >= 500;
     if (!retryable) break;
-    // Only the first attempt has a retry left; saying "retrying" on the second
+    // Only an attempt with a retry left says "retrying"; saying it on the last
     // would put a line in the log for something that never happens.
-    if (attempt === 0) {
+    if (attempt < retries) {
       logger.warn(
-        { status: response.status, model: body["model"] },
+        { status: response.status, model: body["model"], job },
         "Anthropic call failed, retrying once",
       );
     }
@@ -161,14 +196,25 @@ async function post(body: Record<string, unknown>, timeoutMs: number): Promise<A
   throw new Error(redact(`Anthropic HTTP ${lastStatus}: ${lastDetail}`, key));
 }
 
+/**
+ * Sonnet 5.5 thinks by default and cannot take "disabled"; "between_tools" is its
+ * thinking-off switch. Every caller here sized max_tokens for the answer alone.
+ */
+function thinkingFor(model: string): Record<string, unknown> {
+  return supportsBetweenTools(model) ? { thinking: { type: "between_tools" } } : {};
+}
+
 /** Prose in, prose out. Returns the concatenated text blocks, trimmed. */
 export async function llmText(req: LlmRequest): Promise<string> {
+  const model = modelFor(req);
   const payload = await post(
+    req.job,
     {
-      model: modelFor(req),
+      model,
       max_tokens: req.maxTokens ?? 2000,
       // No `temperature`: removed on the Claude 5 models and a hard 400 if sent.
       system: req.system,
+      ...thinkingFor(model),
       messages: [{ role: "user", content: req.user }],
     },
     req.timeoutMs ?? DEFAULT_TIMEOUT_MS,
@@ -184,40 +230,67 @@ export async function llmText(req: LlmRequest): Promise<string> {
 /**
  * Prose in, schema-guaranteed object out.
  *
- * The model is forced to call a single tool named `emit` whose input_schema is
- * the caller's schema; the parsed tool input IS the return value. No text
- * block is read, so there is nothing to parse and nothing to fail on.
+ * The model answers through a single tool named `emit` whose input_schema is the
+ * caller's schema; the parsed tool input IS the return value. No text block is
+ * read, so there is nothing to parse and nothing to fail on.
+ *
+ * Where the model still accepts a forced tool call (Haiku 4.5, Sonnet 5) it is
+ * forced, exactly as before. Sonnet 5.5 rejects that with a 400, so there the
+ * tool is offered with tool_choice "auto", the system prompt says to answer
+ * through it, and a reply that comes back as prose is asked again ONCE.
  */
 export async function llmJson<T = Record<string, unknown>>(req: LlmJsonRequest): Promise<T> {
-  const payload = await post(
-    {
-      model: modelFor(req),
-      max_tokens: req.maxTokens ?? 2000,
-      system: req.system,
-      tools: [
-        {
-          name: "emit",
-          description: "Return the finished result. This is the only way to answer.",
-          input_schema: req.schema,
-        },
-      ],
-      tool_choice: { type: "tool", name: "emit" },
-      messages: [{ role: "user", content: req.user }],
-    },
-    req.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-  );
+  const model = modelFor(req);
+  const shape = structuredCallShape(model, "emit");
+  const body: Record<string, unknown> = {
+    model,
+    max_tokens: req.maxTokens ?? 2000,
+    system: shape.instruction ? `${req.system}\n\n${shape.instruction}` : req.system,
+    tools: [
+      {
+        name: "emit",
+        description: "Return the finished result. This is the only way to answer.",
+        input_schema: req.schema,
+      },
+    ],
+    tool_choice: shape.tool_choice,
+    ...(shape.thinking ? { thinking: shape.thinking } : {}),
+    messages: [{ role: "user", content: req.user }],
+  };
 
-  // max_tokens mid-tool-call yields a truncated (and therefore absent) input.
-  // Name it, because it used to surface as a bare "no structured result".
-  if (payload.stop_reason === "max_tokens") {
-    throw new Error(
-      `Anthropic hit max_tokens (${req.maxTokens ?? 2000}) before finishing the structured result`,
-    );
-  }
+  const attempts = shape.forced ? 1 : 2;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const payload = await post(req.job, body, req.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
-  const block = (payload.content ?? []).find((b) => b.type === "tool_use" && b.name === "emit");
-  if (!block || block.input === undefined || block.input === null) {
-    throw new Error("Anthropic returned no structured result");
+    // max_tokens mid-tool-call yields a truncated (and therefore absent) input.
+    // Name it, because it used to surface as a bare "no structured result".
+    if (payload.stop_reason === "max_tokens") {
+      throw new Error(
+        `Anthropic hit max_tokens (${req.maxTokens ?? 2000}) before finishing the structured result`,
+      );
+    }
+
+    const block = (payload.content ?? []).find((b) => b.type === "tool_use" && b.name === "emit");
+    if (block && block.input !== undefined && block.input !== null) {
+      return block.input as T;
+    }
+    if (attempt + 1 < attempts) {
+      logger.warn({ job: req.job, model }, "model answered in prose instead of the emit tool — asking once more");
+    }
   }
-  return block.input as T;
+  throw new Error("Anthropic returned no structured result");
+}
+
+/**
+ * A raw Messages call for the two shapes llmText/llmJson cannot express — the
+ * commentary fact-check with live web search (server tools, pause_turn) and the
+ * Conga Line draft that reports its own token cost. Still tagged, still checked.
+ * `retries` defaults to 0: the web-search call already runs for minutes.
+ */
+export async function anthropicMessages(
+  job: SiteJob,
+  body: Record<string, unknown>,
+  opts: { timeoutMs?: number; retries?: number } = {},
+): Promise<AnthropicResponse> {
+  return post(job, body, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS, opts.retries ?? 0);
 }
