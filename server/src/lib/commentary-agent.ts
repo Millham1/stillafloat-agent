@@ -1,4 +1,5 @@
-import { llmJson } from "./llm";
+import { llmJson, anthropicMessages, type SiteJob } from "./llm";
+import { MODELS } from "./claude-core.mjs";
 import { logger } from "./logger";
 import { PATHS, getSupabase, readJson, writeJson } from "./persistence";
 import { notifyMark, reviewUrl } from "./notify";
@@ -536,7 +537,9 @@ function recordCommentaryRejection(story: CommentaryStorySeed, reason: string): 
 // the OpenAI fallback that used to sit behind it was removed on 2026-09-09 when
 // the whole service dropped OpenAI (its key had been rejected since 09-05, so the
 // "crash-proof fallback" was in fact a guaranteed second failure).
-const COMMENTARY_MODEL = process.env["COMMENTARY_MODEL"] || "claude-sonnet-5";
+// Sonnet 5.5 since 2026-10-02 (same per-token price as Sonnet 5); COMMENTARY_MODEL
+// in shared.env still overrides without a deploy.
+const COMMENTARY_MODEL = process.env["COMMENTARY_MODEL"] || MODELS.DEFAULT;
 
 // JSON SCHEMAS — the model fills these via a forced tool call, so the API guarantees
 // well-formed JSON. Parsing prose-JSON out of the text block failed on 2 of 3 real runs
@@ -647,14 +650,17 @@ export const COMMENTARY_SCHEMA = {
 
 // This function used to hand-roll the Anthropic request; llm.ts now owns that
 // wire format for the whole service (plus a timeout and one retry on 429/5xx).
-// The behaviour here is unchanged — same model, same forced `emit` tool call.
+// The behaviour here is unchanged — same `emit` tool (forced where the model
+// still allows it; see llm.ts for Sonnet 5.5), now tagged with its step.
 async function claudeJson(
+  job: SiteJob,
   system: string,
   user: string,
   schema: Record<string, unknown>,
   maxTokens = 2000,
 ): Promise<Record<string, unknown>> {
   return llmJson<Record<string, unknown>>({
+    job,
     system,
     user,
     schema,
@@ -690,46 +696,29 @@ export async function claudeJsonSearch(
   // a 500-word piece; eight pushed a real run past five minutes.
   maxSearches = 5,
 ): Promise<Record<string, unknown>> {
-  const apiKey = process.env["ANTHROPIC_API_KEY"] || "";
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
-
   const messages: Array<Record<string, unknown>> = [{ role: "user", content: user }];
   const MAX_CONTINUATIONS = 3;
 
   for (let attempt = 0; attempt <= MAX_CONTINUATIONS; attempt++) {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: COMMENTARY_MODEL,
-        max_tokens: maxTokens,
-        system,
-        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: maxSearches }],
-        output_config: { format: { type: "json_schema", schema } },
-        messages,
-      }),
+    // Through llm.ts so it is tagged like every other call (and an Anthropic error
+    // carries no key). No retry: one attempt already runs for minutes.
+    const payload = await anthropicMessages("commentary.verify", {
+      model: COMMENTARY_MODEL,
+      max_tokens: maxTokens,
+      system,
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: maxSearches }],
+      output_config: { format: { type: "json_schema", schema } },
+      messages,
+    }, {
       // Twelve minutes. This one call does the searching AND rewrites the whole
       // body, so it is nothing like the other model calls: a real run took 5m44s
       // and was killed by a 5-minute abort, which then read as "verification
       // unavailable" rather than "we did not wait long enough". Nothing waits on
       // this interactively except the review page's own spinner, and the weekly
       // cron does not care.
-      signal: AbortSignal.timeout(720_000),
+      timeoutMs: 720_000,
+      retries: 0,
     });
-
-    const payload = (await response.json()) as {
-      content?: { type: string; text?: string }[];
-      stop_reason?: string;
-      error?: { message?: string };
-    };
-    if (!response.ok) {
-      throw new Error(`Anthropic HTTP ${response.status} ${payload.error?.message ?? ""}`);
-    }
-    if (payload.stop_reason === "refusal") throw new Error("Anthropic refused the verification");
     // Searching eats output tokens alongside the JSON body, so this is the
     // realistic failure — and it surfaced as a bare "no content" until named.
     if (payload.stop_reason === "max_tokens") {
@@ -766,12 +755,13 @@ export async function claudeJsonSearch(
 // second one blaming the wrong service). llm.ts retries a 429/5xx once; anything
 // past that is a real outage and the caller should see it.
 export async function opinionJson(
+  job: SiteJob,
   system: string,
   user: string,
   schema: Record<string, unknown>,
   maxTokens = 2000,
 ): Promise<Record<string, unknown>> {
-  return claudeJson(system, user, schema, maxTokens);
+  return claudeJson(job, system, user, schema, maxTokens);
 }
 
 const VOICE = `You write for Still Afloat Cruising in Mark's voice: "the experienced friend who
@@ -807,6 +797,7 @@ async function deriveQueries(candidates: Array<Record<string, unknown>>): Promis
   const map = new Map<string, string>();
   try {
     const out = await opinionJson(
+      "commentary.queries",
       QUERIES_PROMPT,
       JSON.stringify(candidates.map((c) => String(c["title"] ?? "")), null, 2),
       QUERIES_SCHEMA as unknown as Record<string, unknown>,
@@ -884,6 +875,7 @@ async function chooseSubject(
 
   try {
     const out = await opinionJson(
+      "commentary.subject",
       SUBJECT_PROMPT,
       JSON.stringify(
         scored.map((x) => ({ ...toSeed(x.story), traction_score: x.traction.score, traction: x.traction.basis })),
@@ -923,6 +915,7 @@ async function explainSubject(
   const rankLine = traction ? `Traction ${traction.score}/100 — ${traction.basis}.` : "";
   try {
     const out = await opinionJson(
+      "commentary.reason",
       REASON_PROMPT,
       JSON.stringify({ story, traction: traction?.basis ?? null, traction_score: traction?.score ?? null }, null, 2),
       REASON_SCHEMA as unknown as Record<string, unknown>,
@@ -1257,6 +1250,7 @@ export async function stageWeeklyCommentary(options?: {
   // Questions are no longer the ask — they seed the "add my thoughts" box, so a
   // blank textarea does not stare Mark down when he has an opinion but no opening.
   const out = await opinionJson(
+    "commentary.questions",
     QUESTIONS_PROMPT,
     `This week's story:\n${JSON.stringify(subject, null, 2)}`,
     QUESTIONS_SCHEMA as unknown as Record<string, unknown>,
@@ -1483,6 +1477,7 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
   let agentTake: CommentaryDraft["agentTake"];
   if (autonomous) {
     const decided = await opinionJson(
+      "commentary.take",
       TAKE_PROMPT,
       JSON.stringify(
         {
@@ -1512,6 +1507,7 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
   // Autonomous step B: write it. The decided position occupies the same slot Mark's
   // take does — the spine of the piece.
   const out = await opinionJson(
+    "commentary.write",
     autonomous ? AUTONOMOUS_PROMPT : SYNTHESIZE_PROMPT,
     JSON.stringify(
       autonomous
@@ -1582,6 +1578,7 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
           "Commentary: search-backed verification failed — falling back to sources-only check",
         );
         checked = await opinionJson(
+          "commentary.factcheck",
           FACTCHECK_PROMPT,
           verifyInput,
           FACTCHECK_SCHEMA as unknown as Record<string, unknown>,

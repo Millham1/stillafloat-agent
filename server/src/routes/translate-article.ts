@@ -93,6 +93,7 @@ router.get("/translate-article", async (req, res) => {
     // below read back, so this stays a text call — there is no JSON here to
     // guarantee. Cheap model: literal translation of supplied prose.
     const translated = await llmText({
+      job: "translate.article",
       system:
         "Traduce el siguiente artículo de noticias de cruceros del inglés al español latinoamericano. " +
         "Devuelve exactamente el mismo formato: primero una línea 'TÍTULO: ...' y luego párrafos 'P1: ...', 'P2: ...' etc. " +
@@ -225,6 +226,7 @@ router.get("/translate-story", async (req, res) => {
 
     // Same TEXT contract as above (FIELDNAME: …), read back by extractField().
     const translated = await llmText({
+      job: "translate.fields",
       system:
         "Translate the following cruise-travel news fields from English to Latin American Spanish. " +
         "Return exactly the same field names in uppercase followed by a colon, one field per paragraph. " +

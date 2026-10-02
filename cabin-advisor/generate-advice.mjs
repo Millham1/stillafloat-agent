@@ -5,21 +5,32 @@
 // recommendations for a ship, once. Store the result. The site then serves these
 // pre-generated write-ups for free — no LLM call when a customer searches.
 //
-// Run: node generate-advice.mjs [ship-slug]     (default: wonder-of-the-seas)
-// Env: ANTHROPIC_API_KEY (Haiku). The OpenAI fallback was removed 2026-09-09 when
-// the service dropped OpenAI entirely (its key had been rejected since 09-05).
+// Run: node generate-advice.mjs [ship-slug] [--estimate] [--approved-cost <$>] [--no-batch "<reason>"]
+//      (default ship: wonder-of-the-seas)
+// Env: ANTHROPIC_API_KEY (Haiku), or ~/.config/saf-secrets/env.txt. The OpenAI fallback
+// was removed 2026-09-09 when the service dropped OpenAI entirely.
 //
-// Cost model: ~a dollar for a whole fleet, ONE TIME. Re-run only when cabin data
-// or the voice guide changes. See README.md.
+// COST (Mark, 2026-10-02 — the bulk-run rule, enforced in ../server/src/lib/claude-core.mjs):
+// the estimate prints before any call. A run over 20 calls or a $2 ceiling goes through the
+// Message Batches API and needs --approved-cost; --estimate prints the figure and stops.
+// The 2026-09-14 Aura run put the whole ~110K-token cabin grid into EVERY archetype prompt,
+// uncached, after a line that differed per archetype — so nothing could ever be cached. The
+// grid now sits in the system prompt, identical for every archetype, marked cache_control:
+// the first call writes it and the rest read it at a tenth of the price.
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { bulkFlags, openBulkRun, messageText, MODELS } from "../server/src/lib/claude-core.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ship = process.argv[2] || "wonder-of-the-seas";
-const AKEY = process.env.ANTHROPIC_API_KEY;
+const FLAGS_WITH_VALUES = new Set(["--approved-cost", "--no-batch"]);
+const positional = process.argv.slice(2).filter((a, i, all) => !a.startsWith("--") && !FLAGS_WITH_VALUES.has(all[i - 1]));
+const ship = positional[0] || "wonder-of-the-seas";
+const ESTIMATE_ONLY = process.argv.includes("--estimate");
+const MODEL = MODELS.CHEAP; // Haiku 4.5 — unchanged
+const MAX_OUTPUT = 1600;
 
 const voice = await readFile(join(HERE, "voice-guide.md"), "utf8");
 // Use only the prompt body (after the '---' separator) as the system prompt.
@@ -42,11 +53,19 @@ const cabins = shipData.cabins.map((c) => ({
   obstructedFlag: c.obstructed,
 }));
 
-function userPrompt(traveler) {
-  return `Traveler: ${traveler}. Ship: ${shipData.ship}.
+// The part every archetype shares: the voice, then the ship's cabin grid. Identical bytes in
+// every call and marked for caching — the grid is most of every prompt.
+const SYSTEM = [
+  { type: "text", text: VOICE },
+  {
+    type: "text",
+    text: `Ship: ${shipData.ship}.\n\nCandidate cabins (all real, with the quirks that matter):\n${JSON.stringify(cabins)}`,
+    cache_control: { type: "ephemeral" },
+  },
+];
 
-Candidate cabins (all real, with the quirks that matter):
-${JSON.stringify(cabins)}
+function userPrompt(traveler) {
+  return `Traveler: ${traveler}. Ship: ${shipData.ship}. The candidate cabins are in your instructions above.
 
 Recommend the best 4-6 cabins for THIS traveler, ranked (rank 1 = book first). Each reason must be distinct and tied to what they told you; where two cabins are nearly identical, say so and give the honest tie-breaker. Then list 2-3 cabins you would steer them clear of, with the honest reason.
 
@@ -67,42 +86,48 @@ function parse(text) {
   return JSON.parse(m[0]);
 }
 
-async function viaClaude(prompt) {
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": AKEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: "claude-haiku-4-5", max_tokens: 1600, system: VOICE, messages: [{ role: "user", content: prompt }] }),
-    signal: AbortSignal.timeout(40000),
-  });
-  const j = await r.json();
-  if (!r.ok) throw new Error(`Anthropic ${r.status}: ${JSON.stringify(j).slice(0, 160)}`);
-  if (j.stop_reason === "refusal") throw new Error("Anthropic refusal");
-  const text = (j.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
-  return { out: parse(text), model: j.model, cost: j.usage.input_tokens * 1e-6 + j.usage.output_tokens * 5e-6 };
-}
-async function generateOne(prompt) {
-  // Never throws up the stack: a failed archetype is skipped and counted.
-  if (AKEY) { try { return await viaClaude(prompt); } catch (e) { console.warn("  Haiku failed:", e.message); } }
-  return null;
-}
-
-if (!AKEY) { console.error("No ANTHROPIC_API_KEY in env."); process.exit(1); }
+const requests = archetypes.map((a) => ({
+  custom_id: String(a.id).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64),
+  params: { model: MODEL, max_tokens: MAX_OUTPUT, system: SYSTEM, messages: [{ role: "user", content: userPrompt(a.traveler) }] },
+}));
 
 console.log(`Generating advice for ${shipData.ship} across ${archetypes.length} archetypes...`);
+let run;
+try {
+  run = openBulkRun({
+    job: "cabin.advice",
+    paramsList: requests.map((r) => r.params),
+    expectedOutputTokens: 900,
+    ...bulkFlags(),
+    ...(ESTIMATE_ONLY ? { approvedCost: undefined } : {}),
+  });
+} catch (e) {
+  console.error(e.message);
+  process.exit(ESTIMATE_ONLY ? 0 : 2);
+}
+if (ESTIMATE_ONLY) { console.log("(--estimate: nothing sent)"); process.exit(0); }
+
+const results = await run.execute(requests);
 const byArchetype = {};
-let totalCost = 0, modelUsed = null, failures = 0;
-for (const a of archetypes) {
+let modelUsed = null, failures = 0;
+for (const [i, a] of archetypes.entries()) {
+  const r = results.get(requests[i].custom_id);
   process.stdout.write(`  ${a.id} ... `);
-  const res = await generateOne(userPrompt(a.traveler));
-  if (!res) { console.log("SKIPPED (both providers failed)"); failures++; continue; }
-  byArchetype[a.id] = { label: a.label, ...res.out };
-  totalCost += res.cost; modelUsed = res.model;
-  console.log(`ok ($${res.cost.toFixed(4)})`);
+  if (!r?.ok) { console.log(`SKIPPED (${r?.error ?? "no result"})`); failures++; continue; }
+  try {
+    if (r.message.stop_reason === "refusal") throw new Error("Anthropic refusal");
+    byArchetype[a.id] = { label: a.label, ...parse(messageText(r.message)) };
+    modelUsed = r.message.model ?? MODEL;
+    console.log(`ok ($${(r.cost ?? 0).toFixed(4)})`);
+  } catch (e) {
+    console.log(`SKIPPED (${e.message})`); failures++;
+  }
 }
 
 const out = { ship: shipData.ship, class: shipData.class, model: modelUsed, archetypes: archetypes.length, generatedCount: Object.keys(byArchetype).length, byArchetype };
 await mkdir(join(HERE, "advice"), { recursive: true });
 const outName = useFull && existsSync(curatedPath) ? `${ship}-fullgrid` : ship;
 await writeFile(join(HERE, `advice/${outName}.json`), JSON.stringify(out, null, 2));
-console.log(`\nDone. ${Object.keys(byArchetype).length}/${archetypes.length} archetypes, ${failures} failed. Total cost ≈ $${totalCost.toFixed(3)} (${modelUsed}).`);
+// Every call that billed is in this figure, including any that failed to parse.
+console.log(`\nDone. ${Object.keys(byArchetype).length}/${archetypes.length} archetypes, ${failures} failed. Total cost ≈ $${run.spent().toFixed(3)} (${modelUsed}).`);
 console.log(`Wrote advice/${outName}.json`);

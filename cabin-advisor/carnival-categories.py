@@ -25,9 +25,13 @@ RENDER SCALE MATTERS AND FAILS SILENTLY
 
 Usage:
     python3 carnival-categories.py legend  --pdf ~/Downloads/carnival-conquest-deck-plan-pdf.pdf
-    python3 carnival-categories.py rooms   --pdf <pdf> --slug carnival-conquest --decks 6,8
+    python3 carnival-categories.py rooms   --pdf <pdf> --slug carnival-conquest --decks 6,8 [--dry-run] [--approved-cost 6]
+
+COST (Mark, 2026-10-02 — claude_bulk.py): every tile of every requested deck is built first, the
+estimate prints, and a run over 20 tiles (or a $2 ceiling) goes through the Message Batches API
+and needs --approved-cost; --dry-run stops after the estimate. Tagged site:cabin.categories.
 """
-import argparse, base64, collections, importlib.util, json, os, re, sys
+import argparse, base64, collections, importlib.util, io, json, os, re, sys
 from pathlib import Path
 
 import fitz
@@ -35,8 +39,8 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "carnival"
-_spec = importlib.util.spec_from_file_location("nf", HERE / "noise-features.py")
-nf = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(nf)
+sys.path.insert(0, str(HERE))
+import claude_bulk as cb  # noqa: E402 — the one door to the API, the job tags and the bulk gate
 
 RENDER = int(os.environ.get("RENDER_SCALE", "8"))   # 4 is not enough (see above); 12 is the
                                                     # residual pass for digits 8x still misses
@@ -158,50 +162,43 @@ Transcribe EVERY stateroom number you can read. Ignore the small symbols printed
 number (stars, squares, dots) — digits only. Omit any number that is not fully legible."""
 
 
-def read_deck(im, S, cx, half=46, page_ctx=None):
+def deck_tiles(im, S, cx, half=46):
+    """Cut one deck strip into overlapping tiles at the API's 1568px cap: [(jpeg_b64, x0, x1, y0, a, b)]."""
     W, H = im.size
     x0, x1 = int((cx - half) * S), int((cx + half) * S)
     y0, y1 = int(0.18 * H), int(0.95 * H)
     strip = im.crop((x0, y0, x1, y1)); w, h = strip.size
     n = max(1, round(h / (w * 1.1))); step = h / n
-    rooms = []
+    tiles = []
     for i in range(n):
         ov = int(os.environ.get("TILE_OVERLAP", "70"))
         a = max(0, int(i * step) - ov); b = min(h, int((i + 1) * step) + ov)
         t = strip.crop((0, a, w, b)); sc = 1568 / max(t.size)
         t = t.resize((int(t.width * sc), int(t.height * sc)), Image.LANCZOS)
-        t.save("/tmp/cc_tile.jpg", quality=92)
+        buf = io.BytesIO(); t.convert("RGB").save(buf, "JPEG", quality=92)
+        tiles.append((base64.standard_b64encode(buf.getvalue()).decode(), x0, x1, y0, a, b))
+    return tiles
+
+
+def read_request(b64):
+    return {"model": cb.MODELS["DEFAULT"], "max_tokens": 8000,
+            "messages": [{"role": "user", "content": [
+                {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
+                {"type": "text", "text": READ_PROMPT}]}]}
+
+
+def parse_reads(txt):
+    got = []
+    m = re.search(r"\{[\s\S]*\}", txt)
+    if m:
         try:
-            r = json.loads(nf.api("POST", "/messages", {
-                "model": "claude-sonnet-5", "max_tokens": 8000,
-                "messages": [{"role": "user", "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
-                     "data": base64.standard_b64encode(open("/tmp/cc_tile.jpg", "rb").read()).decode()}},
-                    {"type": "text", "text": READ_PROMPT}]}]}, timeout=300))
-        except Exception as e:
-            print(f"    tile {i}: request failed — {e}", flush=True); continue
-        txt = "".join(x["text"] for x in r["content"] if x["type"] == "text")
-        got = []
-        m = re.search(r"\{[\s\S]*\}", txt)
-        if m:
-            try:
-                got = json.loads(m.group(0)).get("cabins", [])
-            except json.JSONDecodeError:
-                got = []
-        if not got:      # a truncated reply still holds complete records — keep them
-            got = [{"num": g[0], "x": float(g[1]), "y": float(g[2])} for g in re.findall(
-                r'"num":\s*"(\d+)"\s*,\s*"x":\s*([\d.]+)\s*,\s*"y":\s*([\d.]+)', txt)]
-            if got:
-                print(f"    tile {i}: salvaged {len(got)} from a truncated reply", flush=True)
-        for c in got:
-            try:
-                num, ux, uy = str(c["num"]), float(c["x"]), float(c["y"])
-            except (KeyError, TypeError, ValueError):
-                continue
-            if num.isdigit():
-                rooms.append({"num": num, "px_x": x0 + ux * (x1 - x0), "px_y": y0 + a + uy * (b - a),
-                              "img": page_ctx[0] if page_ctx else im})
-    return rooms
+            got = json.loads(m.group(0)).get("cabins", [])
+        except json.JSONDecodeError:
+            got = []
+    if not got:      # a truncated reply still holds complete records — keep them
+        got = [{"num": g[0], "x": float(g[1]), "y": float(g[2])} for g in re.findall(
+            r'"num":\s*"(\d+)"\s*,\s*"x":\s*([\d.]+)\s*,\s*"y":\s*([\d.]+)', txt)]
+    return got
 
 
 def cmd_rooms(a):
@@ -235,13 +232,44 @@ def cmd_rooms(a):
     for pg in range(n_pages):
         im, page_w = page_image(a.pdf, page=pg)
         pages.append((im, im.size[0] / page_w, deck_strips(a.pdf, page=pg), im.load(), im.size))
-    for deck in [int(d) for d in a.decks.split(",")]:
+    # Every tile of every requested deck, built before any call, so the run is estimated and
+    # gated whole (this used to be one synchronous call per tile, with no figure up front).
+    decks = [int(d) for d in a.decks.split(",")]
+    reqs, where = [], {}
+    for deck in decks:
         if not any(deck in st for _, _, st, _, _ in pages):
             print(f"deck {deck}: no label on this plan"); continue
-        rooms = []
-        for im, S, strips, px_, sz in pages:
-            for cx in strips.get(deck, []):
-                rooms.extend(read_deck(im, S, cx, page_ctx=(im,)))
+        for pi, (im, S, strips, px_, sz) in enumerate(pages):
+            for si, cx in enumerate(strips.get(deck, [])):
+                for ti, (b64, x0, x1, y0, ta, tb) in enumerate(deck_tiles(im, S, cx)):
+                    cid = f"d{deck}-p{pi}-s{si}-t{ti}"
+                    reqs.append({"custom_id": cid, "params": read_request(b64)})
+                    where[cid] = (deck, im, x0, x1, y0, ta, tb)
+    if not reqs:
+        sys.exit("nothing to read")
+    if a.dry_run:
+        cb.preview("cabin.categories", [r["params"] for r in reqs], expected_output_tokens=3000)
+        return
+    try:
+        results = cb.run_bulk("cabin.categories", reqs, a, expected_output_tokens=3000)
+    except cb.BulkRuleError as e:
+        sys.exit(str(e))
+    rooms_by_deck = collections.defaultdict(list)
+    for cid, (deck, im, x0, x1, y0, ta, tb) in where.items():
+        res = results.get(cid) or {}
+        if not res.get("ok"):
+            print(f"    {cid}: request failed — {res.get('error')}", flush=True); continue
+        for c in parse_reads(cb.message_text(res["message"])):
+            try:
+                num, ux, uy = str(c["num"]), float(c["x"]), float(c["y"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if num.isdigit():
+                rooms_by_deck[deck].append({"num": num, "px_x": x0 + ux * (x1 - x0), "px_y": y0 + ta + uy * (tb - ta), "img": im})
+    for deck in decks:
+        if deck not in rooms_by_deck:
+            continue
+        rooms = rooms_by_deck[deck]
         uniq = {}
         for r in rooms:
             uniq.setdefault(r["num"], (r["px_x"], r["px_y"], r["img"]))
@@ -276,6 +304,8 @@ def main():
         p.add_argument("--pdf", required=True)
         p.add_argument("--slug")
         p.add_argument("--decks", default="")
+        p.add_argument("--dry-run", action="store_true")
+        cb.add_bulk_args(p)
     a = ap.parse_args()
     {"legend": cmd_legend, "rooms": cmd_rooms}[a.cmd](a)
 

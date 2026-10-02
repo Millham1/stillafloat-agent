@@ -110,10 +110,10 @@ test("shadow and local routing are independent switches", () => {
 
 test("a routed job hits the local box and never calls Anthropic", async () => {
   process.env["LOCAL_LLM_URL"] = LOCAL_URL;
-  process.env["LLM_LOCAL_JOBS"] = "news.relevance";
+  process.env["LLM_LOCAL_JOBS"] = "storm.intel";
   stubFetch([[200, localText("locally answered")]]);
 
-  const out = await llmText({ system: "s", user: "u", job: "news.relevance" });
+  const out = await llmText({ system: "s", user: "u", job: "storm.intel" });
 
   assert.equal(out, "locally answered");
   assert.equal(calls.length, 1);
@@ -125,7 +125,7 @@ test("an unrouted job still goes to Anthropic", async () => {
   process.env["LLM_LOCAL_JOBS"] = "something.else";
   stubFetch([[200, anthropicText("from anthropic")]]);
 
-  const out = await llmText({ system: "s", user: "u", job: "news.relevance" });
+  const out = await llmText({ system: "s", user: "u", job: "storm.intel" });
 
   assert.equal(out, "from anthropic");
   assert.ok(calls[0]!.url.includes("api.anthropic.com"));
@@ -135,11 +135,11 @@ test("an unrouted job still goes to Anthropic", async () => {
 
 test("local failure falls back to Anthropic and the caller never notices", async () => {
   process.env["LOCAL_LLM_URL"] = LOCAL_URL;
-  process.env["LLM_LOCAL_JOBS"] = "news.relevance";
+  process.env["LLM_LOCAL_JOBS"] = "storm.intel";
   // box is down: 502, then Anthropic answers
   stubFetch([[502, { error: { message: "bad gateway" } }], [200, anthropicText("rescued")]]);
 
-  const out = await llmText({ system: "s", user: "u", job: "news.relevance" });
+  const out = await llmText({ system: "s", user: "u", job: "storm.intel" });
 
   assert.equal(out, "rescued", "a dead box must not surface as an error");
   assert.equal(calls.length, 2);
@@ -149,13 +149,13 @@ test("local failure falls back to Anthropic and the caller never notices", async
 
 test("local returning unparseable JSON also falls back", async () => {
   process.env["LOCAL_LLM_URL"] = LOCAL_URL;
-  process.env["LLM_LOCAL_JOBS"] = "news.relevance";
+  process.env["LLM_LOCAL_JOBS"] = "storm.intel";
   stubFetch([
     [200, localText("I'm afraid I can't do that")],
     [200, anthropicTool({ relevant: true, category: "safety" })],
   ]);
 
-  const out = await llmJson({ system: "s", user: "u", schema: SCHEMA, job: "news.relevance" });
+  const out = await llmJson({ system: "s", user: "u", schema: SCHEMA, job: "storm.intel" });
 
   assert.deepEqual(out, { relevant: true, category: "safety" });
   assert.equal(calls.length, 2);
@@ -163,20 +163,20 @@ test("local returning unparseable JSON also falls back", async () => {
 
 test("local returning empty text falls back rather than yielding an empty answer", async () => {
   process.env["LOCAL_LLM_URL"] = LOCAL_URL;
-  process.env["LLM_LOCAL_JOBS"] = "news.relevance";
+  process.env["LLM_LOCAL_JOBS"] = "storm.intel";
   stubFetch([[200, localText("   ")], [200, anthropicText("real answer")]]);
 
-  assert.equal(await llmText({ system: "s", user: "u", job: "news.relevance" }), "real answer");
+  assert.equal(await llmText({ system: "s", user: "u", job: "storm.intel" }), "real answer");
 });
 
 // ---------------------------------------------------------------- the 18x prompt rule
 
 test("a local JSON call describes the schema in the prompt as well as enforcing it", async () => {
   process.env["LOCAL_LLM_URL"] = LOCAL_URL;
-  process.env["LLM_LOCAL_JOBS"] = "news.relevance";
+  process.env["LLM_LOCAL_JOBS"] = "storm.intel";
   stubFetch([[200, localText('{"relevant":true,"category":"pricing"}')]]);
 
-  await llmJson({ system: "s", user: "Fares are up.", schema: SCHEMA, job: "news.relevance" });
+  await llmJson({ system: "s", user: "Fares are up.", schema: SCHEMA, job: "storm.intel" });
 
   const body = calls[0]!.body;
   const messages = body["messages"] as Array<{ role: string; content: string }>;

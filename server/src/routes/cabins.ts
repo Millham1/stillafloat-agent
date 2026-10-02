@@ -480,6 +480,7 @@ Write EVERYTHING (hooks, reasons, steer-clear reasons) in neutral Latin American
   // an empty-recommendations reply are different failures with different
   // causes; retrying those just doubles the wait before the same fallback.
   const attempt = (timeoutMs: number) => llmJson<LiveOut>({
+    job: "cabins.live",
     system: VOICE,
     user: prompt,
     schema: LIVE_OUT_SCHEMA,
@@ -580,6 +581,7 @@ Respond with ONLY JSON: {"lines":[{"cabin":"<number>","reason":"..."}]}`;
 
   try {
     const parsed = await llmJson<{ lines?: { cabin?: string; reason?: string }[] }>({
+      job: "cabins.steer",
       system: VOICE,
       user: prompt,
       schema: STEER_LINES_SCHEMA,

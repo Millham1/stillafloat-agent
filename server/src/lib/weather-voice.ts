@@ -79,7 +79,7 @@ export async function weatherSynopsis(
   loc: { slug: string; name: string; type: string },
   forecast: DayRow[],
   lang: Lang = "en",
-  gen: Gen = llmText,
+  gen: Gen = (args) => llmText({ job: "weather.synopsis", ...args }),
   now: () => number = Date.now,
 ): Promise<string> {
   const key = `${loc.slug}|${lang}`;

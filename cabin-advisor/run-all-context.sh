@@ -13,7 +13,13 @@
 #   tail -f logs/context-batch-*.log     # watch progress
 #
 # Resume after an interruption: already-written context/<slug>.json files are skipped.
-# Usage: ANTHROPIC_API_KEY=... ./run-all-context.sh
+# Usage: ANTHROPIC_API_KEY=... ./run-all-context.sh --approved-cost <$> --no-batch "<reason>"
+#
+# BULK-RUN RULE (Mark, 2026-10-02): one web-search conversation per class is a bulk run
+# (more than 20 calls in one run), so before the first call this prints the cost estimate
+# and refuses to start without Mark's quoted --approved-cost. These conversations pause and
+# resume around live web search, which the Batch API does not drive here, so the run also
+# needs --no-batch "<reason>"; the reason is printed and written to the audit log.
 set -uo pipefail
 cd "$(dirname "$0")"
 
@@ -24,7 +30,21 @@ slugs=$(ls data/cabins/*-full.json | xargs -n1 basename | sed 's/-full\.json$//'
 ordered=$(printf '%s\n' "wonder-of-the-seas"; printf '%s\n' "$slugs" | grep -v '^wonder-of-the-seas$')
 total=$(printf '%s\n' "$ordered" | wc -l | tr -d ' ')
 
-echo "Layer 2 context research — $total classes" | tee -a "$LOG"
+# Only the classes still to research count toward the estimate.
+todo=0
+for slug in $ordered; do
+  if [ -f "context/$slug.json" ] && grep -q '"grounded"' "context/$slug.json"; then continue; fi
+  todo=$((todo+1))
+done
+# Per class: ~100K input tokens once search results are in context, a 24K output ceiling,
+# up to CONTEXT_MAX_SEARCHES (25) searches at $10 per 1,000 — the gate prices the ceiling.
+if [ "$todo" -gt 0 ] && ! node ../server/src/lib/claude-core.mjs gate --job cabin.context \
+     --model "${CONTEXT_MODEL:-claude-sonnet-5-5}" --calls "$todo" --input-tokens 100000 \
+     --max-tokens 24000 --web-searches "${CONTEXT_MAX_SEARCHES:-25}" "$@" 2>&1 | grep -v ExperimentalWarning | tee -a "$LOG"; then
+  exit 2
+fi
+
+echo "Layer 2 context research — $total classes ($todo to research)" | tee -a "$LOG"
 i=0; ok=0; failed=""
 for slug in $ordered; do
   i=$((i+1))

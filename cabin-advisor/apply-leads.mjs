@@ -16,15 +16,17 @@
 //   * never apply a low-confidence lead unless --include-low is passed
 //
 // Usage (on a box, so the keys stay there):
-//   node apply-leads.mjs [--write] [--include-low]
+//   node apply-leads.mjs [--write] [--include-low] [--approved-cost <$>] [--no-batch "<reason>"]
+// ~33 classification calls: over the bulk-run line (20), so they go through the Message
+// Batches API and need Mark's quoted --approved-cost (claude-core.mjs prints the figure).
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
+import { bulkFlags, runBulk, messageText, MODELS } from "../server/src/lib/claude-core.mjs";
 
 const WRITE = process.argv.includes("--write");
 const INCLUDE_LOW = process.argv.includes("--include-low");
 const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_KEY;
-const AK = process.env.ANTHROPIC_API_KEY;
-if (!url || !key || !AK) { console.error("SUPABASE_URL + SUPABASE_SERVICE_KEY + ANTHROPIC_API_KEY required"); process.exit(1); }
+if (!url || !key) { console.error("SUPABASE_URL + SUPABASE_SERVICE_KEY required (and ANTHROPIC_API_KEY)"); process.exit(1); }
 if (url.includes("gbjfrnrkkjnutmogdzln") && process.env.ALLOW_PROD !== "1") {
   console.error("PROD project detected and ALLOW_PROD!=1 — aborting."); process.exit(1);
 }
@@ -54,29 +56,17 @@ Only mark "negative" when the claim asserts a downside for the cabins it names.
 
 Return ONLY a JSON array, minified, one object per claim.`;
 
-async function classify(batch) {
-  const body = {
-    model: "claude-sonnet-5", max_tokens: 4000, system: SYS,
+function classifyParams(batch) {
+  return {
+    model: MODELS.DEFAULT, max_tokens: 4000, system: SYS,
     messages: [{ role: "user", content: batch.map((l, i) => `${i + 1}. ${l.claim}`).join("\n\n") }],
   };
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-api-key": AK, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0, 200)}`);
-      const j = await r.json();
-      const txt = j.content.filter((c) => c.type === "text").map((c) => c.text).join("");
-      const m = txt.match(/\[[\s\S]*\]/);
-      if (!m) throw new Error("no JSON array in reply");
-      return JSON.parse(m[0]);
-    } catch (e) {
-      if (attempt === 2) { console.error(`  batch failed: ${e.message}`); return null; }
-      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
-    }
-  }
+}
+
+function parseVerdicts(message) {
+  const m = messageText(message).match(/\[[\s\S]*\]/);
+  if (!m) throw new Error("no JSON array in reply");
+  return JSON.parse(m[0]);
 }
 
 const { data: leads, error: le } = await sb.from("cabin_context_leads")
@@ -93,16 +83,32 @@ for (const s of fleet) {
 const usable = leads.filter((l) => (l.cabin_nums ?? []).length);
 console.log(`${leads.length} leads, ${usable.length} name cabins`);
 
+const groups = [];
+for (let i = 0; i < usable.length; i += 10) groups.push(usable.slice(i, i + 10));
+let results;
+try {
+  ({ results } = await runBulk({
+    job: "cabin.leads",
+    requests: groups.map((g, gi) => ({ custom_id: `leads-${gi}`, params: classifyParams(g) })),
+    expectedOutputTokens: 1500,
+    ...bulkFlags(),
+  }));
+} catch (e) {
+  console.error(e.message);
+  process.exit(2);
+}
 const verdicts = new Map();
-for (let i = 0; i < usable.length; i += 10) {
-  const batch = usable.slice(i, i + 10);
-  const out = await classify(batch);
+groups.forEach((batch, gi) => {
+  const r = results.get(`leads-${gi}`);
+  let out = null;
+  try { out = r?.ok ? parseVerdicts(r.message) : null; } catch (e) { console.error(`  group ${gi} unparseable: ${e.message}`); }
+  if (!r?.ok) console.error(`  group ${gi} failed: ${r?.error ?? "no result"}`);
   if (out) for (const v of out) {
     const lead = batch[(v.id ?? 0) - 1];
     if (lead) verdicts.set(lead.id, v);
   }
-  console.log(`  classified ${Math.min(i + 10, usable.length)}/${usable.length}`);
-}
+});
+console.log(`  classified ${verdicts.size}/${usable.length}`);
 
 const tally = {};
 for (const v of verdicts.values()) {

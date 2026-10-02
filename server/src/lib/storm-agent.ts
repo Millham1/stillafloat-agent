@@ -106,6 +106,7 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
   }
 
   const parsed = await llmJson<Partial<DraftContent>>({
+    job: "storm.draft",
     system: SYSTEM_PROMPT,
     user: facts,
     schema: DRAFT_SCHEMA as unknown as Record<string, unknown>,

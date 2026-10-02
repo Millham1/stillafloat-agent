@@ -27,6 +27,8 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { requireToken } from "../lib/http-auth";
+import { anthropicConfigured, anthropicMessages } from "../lib/llm";
+import { MODELS } from "../lib/claude-core.mjs";
 
 const router: IRouter = Router();
 
@@ -247,8 +249,7 @@ router.post("/admin/conga-line/:slug/draft-comment", requireToken, async (req: R
     const blended = blendRating(body.cruiseline, body.cruisecritic);
     if (!blended) return res.status(400).json({ ok: false, error: "At least one source score is required" });
 
-    const apiKey = process.env["ANTHROPIC_API_KEY"];
-    if (!apiKey) return res.status(503).json({ ok: false, error: "AI drafting is not configured (ANTHROPIC_API_KEY missing)" });
+    if (!anthropicConfigured()) return res.status(503).json({ ok: false, error: "AI drafting is not configured (ANTHROPIC_API_KEY missing)" });
 
     const shipName = body.ship || slug.replace(/-/g, " ");
     const sourceLines: string[] = [];
@@ -272,21 +273,12 @@ ${themes || "(no themes entered — write from the source scores alone, keep it 
 
 Write the "comment" and "saltyMarkTake" as specified.`;
 
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5", max_tokens: 700, system: CONGA_SYSTEM,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
-    const j = (await r.json()) as {
-      content?: { type: string; text?: string }[];
-      usage?: { input_tokens?: number; output_tokens?: number };
-      stop_reason?: string;
-    };
-    if (!r.ok || j.stop_reason === "refusal") throw new Error(`anthropic ${r.status} ${j.stop_reason ?? ""}`);
+    // Through llm.ts so the call is tagged "site:conga.draft" for the Console; a
+    // non-2xx or a refusal throws there, exactly as the hand-rolled fetch did here.
+    const j = await anthropicMessages("conga.draft", {
+      model: MODELS.CHEAP, max_tokens: 700, system: CONGA_SYSTEM,
+      messages: [{ role: "user", content: prompt }],
+    }, { timeoutMs: 25000 });
     const text = (j.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
     const m = text.match(/\{[\s\S]*\}/);
     if (!m) throw new Error("no JSON in draft response");

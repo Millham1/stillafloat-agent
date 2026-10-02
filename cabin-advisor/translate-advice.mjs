@@ -18,18 +18,20 @@
 // so a translation cannot move anybody to a different room. Length is asserted;
 // a mismatch fails the archetype rather than writing a scrambled set.
 //
-// Run: node translate-advice.mjs <ship-slug>       (reads advice/<slug>.json)
-// Env: ANTHROPIC_API_KEY
+// Run: node translate-advice.mjs <ship-slug> [--approved-cost <$>] [--no-batch "<reason>"]
+//      (reads advice/<slug>.json)
+// Env: ANTHROPIC_API_KEY. One call per archetype (12): under the bulk-run line, so it runs
+// one call at a time with no flags; claude-core.mjs prints the estimate first regardless.
 
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { bulkFlags, runBulk, messageText, MODELS } from "../server/src/lib/claude-core.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const slug = process.argv[2];
+const FLAGS_WITH_VALUES = new Set(["--approved-cost", "--no-batch"]);
+const slug = process.argv.slice(2).filter((a, i, all) => !a.startsWith("--") && !FLAGS_WITH_VALUES.has(all[i - 1]))[0];
 if (!slug) { console.error("usage: node translate-advice.mjs <ship-slug>"); process.exit(1); }
-const AKEY = process.env.ANTHROPIC_API_KEY;
-if (!AKEY) { console.error("ANTHROPIC_API_KEY required"); process.exit(1); }
 
 const doc = JSON.parse(await readFile(join(HERE, `advice/${slug}.json`), "utf8"));
 
@@ -47,20 +49,15 @@ Rules:
 - Keep hooks SHORT (5-10 words), like the English.
 - Return ONLY a JSON array of translated strings, same length and order as the input.`;
 
-async function translateBatch(strings) {
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": AKEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5", max_tokens: 4000, system: SYSTEM,
-      messages: [{ role: "user", content: `Translate each string. Return ONLY a JSON array of ${strings.length} strings, same order.\n\n${JSON.stringify(strings, null, 1)}` }],
-    }),
-    signal: AbortSignal.timeout(90000),
-  });
-  const j = await r.json();
-  if (!r.ok) throw new Error(`Anthropic ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
-  const text = (j.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
-  const m = text.match(/\[[\s\S]*\]/);
+function translateParams(strings) {
+  return {
+    model: MODELS.CHEAP, max_tokens: 4000, system: SYSTEM,
+    messages: [{ role: "user", content: `Translate each string. Return ONLY a JSON array of ${strings.length} strings, same order.\n\n${JSON.stringify(strings, null, 1)}` }],
+  };
+}
+
+function readTranslation(message, strings) {
+  const m = messageText(message).match(/\[[\s\S]*\]/);
   if (!m) throw new Error("no JSON array in response");
   const out = JSON.parse(m[0]);
   if (!Array.isArray(out) || out.length !== strings.length)
@@ -68,23 +65,42 @@ async function translateBatch(strings) {
   return out.map(String);
 }
 
-const outByArchetype = {};
-let cost = 0, failed = 0;
-for (const [aid, a] of Object.entries(doc.byArchetype)) {
-  process.stdout.write(`  ${aid} ... `);
+// Flatten every archetype to a strict, positional list of text-only fields, up front, so
+// the whole run is estimated (and gated) before the first call.
+const jobs = Object.entries(doc.byArchetype).map(([aid, a]) => {
   const recs = a.recommendations ?? [];
   const steer = a.steerClear ?? a.steer_clear ?? [];
-  // Flatten to a strict, positional list of text-only fields.
   const strings = [a.label ?? "", ...recs.flatMap((r) => [r.hook ?? "", r.reason ?? ""]), ...steer.map((s) => s.reason ?? "")];
+  return { aid, recs, steer, strings, custom_id: `es-${aid}`.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64) };
+});
+let results;
+try {
+  ({ results } = await runBulk({
+    job: "cabin.advice-es",
+    requests: jobs.map((j) => ({ custom_id: j.custom_id, params: translateParams(j.strings) })),
+    expectedOutputTokens: 1500,
+    ...bulkFlags(),
+  }));
+} catch (e) {
+  console.error(e.message);
+  process.exit(2);
+}
+
+const outByArchetype = {};
+let failed = 0;
+for (const { aid, recs, steer, strings, custom_id } of jobs) {
+  process.stdout.write(`  ${aid} ... `);
   try {
-    const t = await translateBatch(strings);
+    const r = results.get(custom_id);
+    if (!r?.ok) throw new Error(r?.error ?? "no result");
+    const t = readTranslation(r.message, strings);
     let i = 0;
     const label_es = t[i++];
-    const recommendations_es = recs.map((r) => ({
-      cabin: r.cabin, rank: r.rank,            // ← re-attached from English, never translated
+    const recommendations_es = recs.map((rec) => ({
+      cabin: rec.cabin, rank: rec.rank,            // ← re-attached from English, never translated
       hook: t[i++], reason: t[i++],
     }));
-    const steer_clear_es = steer.map((s) => ({ cabin: s.cabin, reason: t[i++] }));
+    const steer_clear_es = steer.map((x) => ({ cabin: x.cabin, reason: t[i++] }));
     outByArchetype[aid] = { label_es, recommendations_es, steer_clear_es };
     console.log("ok");
   } catch (e) {

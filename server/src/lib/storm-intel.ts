@@ -171,6 +171,7 @@ async function summarizeAdvisory(line: string, storm: string, window: string): P
   if (!anthropicConfigured()) return fallback;
   try {
     const note = await llmText({
+      job: "storm.intel",
       system:
         "Summarize the cruise line's storm advisory in ONE plain factual sentence (max 180 chars) for a cruise-news card. No hype, no advice, just what the line announced.",
       user: `Cruise line: ${line}\nStorm: ${storm}\nAdvisory page excerpt:\n${window}`,

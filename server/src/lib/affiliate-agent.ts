@@ -123,6 +123,7 @@ async function describeAndCategorize(products: RawProduct[]): Promise<Map<number
   const userContent = JSON.stringify(products.map((p, idx) => ({ idx, title: p.title })), null, 2);
   // A blurb plus a bucket from a product title — high volume, thin judgement.
   const parsed = await llmJson<{ items?: LlmItem[] }>({
+    job: "affiliate.describe",
     system: SYSTEM_PROMPT,
     user: `Write a blurb + category for each product:\n\n${userContent}`,
     schema: ITEMS_SCHEMA as unknown as Record<string, unknown>,

@@ -153,12 +153,12 @@ export async function classifyStories(
     try {
       llmCalls += 1;
       const out = await llmJson<{ verdicts?: { storyId?: string; lines?: string[] }[] }>({
+        job: "news.hubclass",
         system: SYSTEM,
         user: buildClassifyPrompt(batch),
         schema: HUB_VERDICT_SCHEMA as unknown as Record<string, unknown>,
         model: CHEAP_MODEL,          // sorting, not writing
         maxTokens: 1500,
-        job: "news.hubclass",
         // This is a BATCH call: the same verdicts in a different order are the
         // same answer. Compare id -> sorted hub slugs, so only a genuine
         // classification difference counts as a disagreement.

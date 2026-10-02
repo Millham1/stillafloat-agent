@@ -25,9 +25,7 @@
 
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
-
-const AKEY = process.env.ANTHROPIC_API_KEY;
-if (!AKEY) { console.error("ANTHROPIC_API_KEY required"); process.exit(1); }
+import { claudeSync, MODELS } from "../server/src/lib/claude-core.mjs";
 const file = process.argv[2];
 if (!file) { console.error("usage: read-deck-features.mjs <image> [--deck N] [--ship slug]"); process.exit(1); }
 const arg = (name) => { const i = process.argv.indexOf(name); return i > -1 ? process.argv[i + 1] : null; };
@@ -53,11 +51,13 @@ const b64 = readFileSync(file).toString("base64");
 const media = file.toLowerCase().endsWith(".jpg") || file.toLowerCase().endsWith(".jpeg")
   ? "image/jpeg" : "image/png";
 
-const res = await fetch("https://api.anthropic.com/v1/messages", {
-  method: "POST",
-  headers: { "x-api-key": AKEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-  body: JSON.stringify({
-    model: "claude-sonnet-5",
+// One image, one call — tagged "site:cabin.deck-features". A loop over a fleet's deck plans
+// is a bulk run: claudeSync refuses the 21st one-off call in a process, so drive many images
+// through noise-features.py (batched) instead of calling this in a shell loop.
+let j;
+try {
+  j = await claudeSync({
+    model: MODELS.DEFAULT,
     max_tokens: 8000,
     system: SYSTEM,
     messages: [{
@@ -67,11 +67,8 @@ const res = await fetch("https://api.anthropic.com/v1/messages", {
         { type: "text", text: "List every lift, stair, noisy venue and service space on this deck plan, with its centre as image fractions." },
       ],
     }],
-  }),
-  signal: AbortSignal.timeout(180000),
-});
-const j = await res.json();
-if (!res.ok) { console.error(`Anthropic ${res.status}:`, JSON.stringify(j).slice(0, 300)); process.exit(1); }
+  }, { job: "cabin.deck-features", timeoutMs: 180000 });
+} catch (e) { console.error(e.message); process.exit(1); }
 const text = (j.content ?? []).filter((b) => b.type === "text").map((b) => b.text).join("");
 const m = text.match(/\{[\s\S]*\}/);
 if (!m) { console.error("no JSON in response:", text.slice(0, 300)); process.exit(1); }

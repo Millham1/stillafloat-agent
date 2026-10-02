@@ -451,6 +451,7 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
     affiliate_blurb?: string;
     agency_ps?: string;
   }>({
+    job: "newsletter.write",
     system: lang === "es" ? SYSTEM_PROMPT_ES : SYSTEM_PROMPT,
     user: `Build this week's newsletter from:\n\n${userContent}`,
     schema: NEWSLETTER_SCHEMA as unknown as Record<string, unknown>,
