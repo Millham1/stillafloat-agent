@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
+import { verifyTurnstile } from "../lib/turnstile";
 
 const router = Router();
 
@@ -19,30 +20,7 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
-// ── Verify Cloudflare Turnstile token ────────────────────────────
-async function verifyTurnstile(token: string | null): Promise<boolean> {
-  const secret = process.env["TURNSTILE_SECRET_KEY"];
-  if (!secret) {
-    logger.warn("TURNSTILE_SECRET_KEY not set — skipping Turnstile verification");
-    return true;
-  }
-  if (!token) return false;
-  try {
-    const res = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret, response: token }),
-      },
-    );
-    const data = (await res.json()) as { success?: boolean };
-    return data.success === true;
-  } catch (err) {
-    logger.error({ err }, "Turnstile verification request failed");
-    return false;
-  }
-}
+// ── Turnstile verification lives in lib/turnstile.ts (shared with the newsletter sign-up) ──
 
 // ── Send confirmation email via Resend ───────────────────────────
 async function sendConfirmationEmail(

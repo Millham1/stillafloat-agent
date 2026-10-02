@@ -44,6 +44,7 @@ input[type=text]:focus,input[type=email]:focus{border-color:rgba(93,255,154,.5);
 .btn-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,119,182,.45)}
 .btn-submit:disabled{opacity:.55;cursor:not-allowed;transform:none}
 
+.turnstile-wrap{margin:0 0 4px;min-height:0;display:flex;justify-content:center}
 .error-msg{display:none;margin-bottom:18px;padding:12px 16px;border-radius:12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;font-size:14px;font-weight:600}
 .error-msg.show{display:block}
 
@@ -89,6 +90,9 @@ input[type=text]:focus,input[type=email]:focus{border-color:rgba(93,255,154,.5);
         </label>
       </div>
 
+      <!-- Cloudflare Turnstile (same pattern as work-with-mark.html); invisible unless Cloudflare needs a click -->
+      <div class="turnstile-wrap" id="turnstileWrap"></div>
+
       <button type="submit" class="btn-submit" id="submitBtn">
         <i class="fa-solid fa-paper-plane"></i>&nbsp; Subscribe Free
       </button>
@@ -118,6 +122,40 @@ function showError(msg) {
   btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>&nbsp; Subscribe Free';
 }
 
+// ── Cloudflare Turnstile — same pattern as work-with-mark.html (added 2026-10-02: bots were
+// signing strangers up). The server refuses a sign-up without a valid token whenever its secret is set.
+let turnstileToken = null, turnstileSiteKey = null, turnstileWidget = null;
+async function initTurnstile() {
+  try {
+    const cfg = await fetch('/api/public-config').then(r => r.json());
+    turnstileSiteKey = cfg.turnstileSiteKey;
+  } catch (_) {}
+  if (!turnstileSiteKey) return;
+  const script = document.createElement('script');
+  script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+  script.onload = () => {
+    const wrap = document.getElementById('turnstileWrap');
+    wrap.innerHTML = '';
+    const widget = document.createElement('div');
+    widget.id = 'cfTurnstile';
+    wrap.appendChild(widget);
+    turnstileWidget = turnstile.render('#cfTurnstile', {
+      sitekey: turnstileSiteKey,
+      appearance: 'interaction-only',
+      callback: (token) => { turnstileToken = token; },
+      'expired-callback': () => { turnstileToken = null; },
+      'error-callback': () => { turnstileToken = null; },
+    });
+  };
+  document.head.appendChild(script);
+}
+// A token works once: after the server has used it, get a fresh one for the next try.
+function resetTurnstile() {
+  turnstileToken = null;
+  if (turnstileWidget !== null && window.turnstile) window.turnstile.reset(turnstileWidget);
+}
+initTurnstile();
+
 form.addEventListener('submit', async e => {
   e.preventDefault();
   errBox.classList.remove('show');
@@ -131,6 +169,7 @@ form.addEventListener('submit', async e => {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     return showError('Please enter a valid email address.');
   if (!privacy) return showError('Please agree to the privacy terms to continue.');
+  if (turnstileSiteKey && !turnstileToken) return showError('Please complete the security check.');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Sending…';
@@ -139,11 +178,11 @@ form.addEventListener('submit', async e => {
     const res = await fetch('/api/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, website: honey }),
+      body: JSON.stringify({ name, email, website: honey, 'cf-turnstile-response': turnstileToken || null }),
     });
     const data = await res.json();
 
-    if (!res.ok) return showError(data.error || 'Something went wrong. Please try again.');
+    if (!res.ok) { resetTurnstile(); return showError(data.error || 'Something went wrong. Please try again.'); }
 
     // Redirect to pending page regardless of `already` status
     window.location.href = '/subscribe-pending.html?email=' + encodeURIComponent(email) +

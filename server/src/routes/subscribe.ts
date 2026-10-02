@@ -1,9 +1,11 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type RequestHandler } from "express";
 import crypto from "node:crypto";
 import { getSupabase, readJson, PATHS } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import { tokenOk } from "../lib/http-auth";
+import { verifyTurnstile } from "../lib/turnstile";
+import { verificationSendCap, logCapHit, type SendCap } from "../lib/verification-send-cap";
 import { activatePendingWatches } from "../lib/pending-watches";
 import { WATCH_WINDOW_DAYS } from "../lib/ship-watch";
 import { signLink, verifyLink } from "../lib/link-signing";
@@ -11,17 +13,33 @@ import { signLink, verifyLink } from "../lib/link-signing";
 const router = Router();
 
 // ── Simple in-memory rate limiter: max 5 attempts per IP per hour ──
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
+// One limiter per route: the sign-up keeps the count it always had, and resend-verification
+// (which had none at all until 2026-10-02) gets its own.
+function ipLimiter(max = 5, windowMs = 60 * 60 * 1000): (ip: string) => boolean {
+  const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+  return (ip: string): boolean => {
+    const now = Date.now();
+    const entry = rateLimitMap.get(ip);
+    if (!entry || now > entry.resetAt) {
+      rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
+      return false;
+    }
+    if (entry.count >= max) return true;
+    entry.count++;
     return false;
-  }
-  if (entry.count >= 5) return true;
-  entry.count++;
-  return false;
+  };
+}
+
+function clientIp(req: Request): string {
+  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+    || req.socket?.remoteAddress || "unknown";
+}
+
+// Links in a subscriber's inbox must always be the public site. Deriving them from
+// the request host was correct behind nginx on prod but wrong anywhere else
+// (dev sends carried the box address). Pinned 2026-09-09 alongside the storm-alert fix.
+function publicBaseUrl(): string {
+  return process.env["PUBLIC_URL"]?.replace(/\/$/, "") || "https://stillafloatcruising.com";
 }
 
 // ── Deterministic unsubscribe sig (no extra DB column needed; lib/link-signing.ts) ──
@@ -186,69 +204,125 @@ function renderNewsletter(
 }
 
 // ── POST /api/subscribe ──────────────────────────────────────────
-router.post("/subscribe", async (req, res) => {
-  try {
-    const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
-      || req.socket?.remoteAddress || "unknown";
+// 2026-10-02: bots were signing strangers up (21 on Oct 1, 28 on Oct 2), and every sign-up
+// sent a confirmation email from mark@stillafloatcruising.com through Zoho. Now, in order:
+// IP limit → honeypot → field checks → Turnstile (required whenever TURNSTILE_SECRET_KEY is
+// set) → already-subscribed → the site-wide confirmation-email cap → insert → send.
+// Nothing is saved and nothing is sent unless every check before the insert passes.
+// Dependencies are injected so the tests never touch Supabase or email.
 
-    if (isRateLimited(ip)) {
-      return res.status(429).json({ error: "Too many attempts. Please try again later." });
-    }
+/** Messages for the checks added 2026-10-02, in the language of the page that sent the form. */
+export const SUBSCRIBE_MESSAGES = {
+  en: {
+    security: "Please complete the security check and try again.",
+    busy: "We're getting a lot of signups right now — please try again in a little while.",
+  },
+  es: {
+    security: "Por favor completa la verificación de seguridad e inténtalo de nuevo.",
+    busy: "Estamos recibiendo muchas suscripciones en este momento — por favor inténtalo de nuevo en un rato.",
+  },
+} as const;
 
-    const { name, email, website, lang } = req.body as Record<string, string>;
-    const subLang = lang === "es" ? "es" : "en"; // tag the subscriber's language
+export interface NewSubscriberRow {
+  email: string; name: string; status: "pending"; token: string; lang: "en" | "es";
+}
 
-    if (website && website.length > 0) {
-      logger.info({ ip }, "Honeypot triggered — bot blocked");
+export interface SubscribeDeps {
+  rateLimited(ip: string): boolean;
+  verifyTurnstile(token: string | null): Promise<boolean>;
+  findSubscriber(email: string): Promise<{ status: string } | null>;
+  insertSubscriber(row: NewSubscriberRow): Promise<{ error: unknown }>;
+  sendVerification(args: { name: string; email: string; token: string; lang: "en" | "es" }): Promise<unknown>;
+  sendCap: SendCap;
+  newToken(): string;
+}
+
+export function createSubscribeHandler(deps: SubscribeDeps): RequestHandler {
+  return async (req: Request, res: Response) => {
+    try {
+      const ip = clientIp(req);
+
+      if (deps.rateLimited(ip)) {
+        return res.status(429).json({ error: "Too many attempts. Please try again later." });
+      }
+
+      const { name, email, website, lang } = (req.body ?? {}) as Record<string, string>;
+      const subLang = lang === "es" ? "es" : "en"; // tag the subscriber's language
+      const M = SUBSCRIBE_MESSAGES[subLang];
+
+      if (website && website.length > 0) {
+        logger.info({ ip }, "Honeypot triggered — bot blocked");
+        return res.json({ ok: true });
+      }
+
+      if (!name || name.trim().length < 2) {
+        return res.status(400).json({ error: "Please enter your full name." });
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        return res.status(400).json({ error: "Please enter a valid email address." });
+      }
+
+      // ── Turnstile: a missing or rejected token stops here — no insert, no email ──
+      const rawToken = (req.body as Record<string, unknown>)["cf-turnstile-response"];
+      const turnstileToken = typeof rawToken === "string" && rawToken ? rawToken : null;
+      if (!(await deps.verifyTurnstile(turnstileToken))) {
+        logger.warn({ ip, hadToken: Boolean(turnstileToken) }, "Turnstile verification failed — newsletter sign-up blocked");
+        return res.status(400).json({ error: M.security });
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanName  = name.trim();
+
+      const existing = await deps.findSubscriber(cleanEmail);
+      if (existing) {
+        if (existing.status === "confirmed") return res.json({ ok: true, already: "confirmed" });
+        if (existing.status === "pending")   return res.json({ ok: true, already: "pending" });
+      }
+
+      // ── Site-wide cap on confirmation emails (lib/verification-send-cap.ts) ──
+      if (!deps.sendCap.tryReserve()) {
+        logCapHit(deps.sendCap, "subscribe");
+        return res.status(429).json({ error: M.busy });
+      }
+
+      const token = deps.newToken();
+      const { error: insertErr } = await deps.insertSubscriber({
+        email: cleanEmail, name: cleanName, status: "pending", token, lang: subLang,
+      });
+
+      if (insertErr) {
+        deps.sendCap.release(); // nothing was sent, so the slot goes back
+        logger.error({ err: insertErr }, "Subscriber insert failed");
+        return res.status(500).json({ error: "Could not save subscription. Please try again." });
+      }
+
+      const emailResult = await deps.sendVerification({ name: cleanName, email: cleanEmail, token, lang: subLang });
+      logger.info({ email: cleanEmail, emailResult }, "Subscriber added — verification email sent");
       return res.json({ ok: true });
+    } catch (err) {
+      logger.error({ err }, "Subscribe route error");
+      return res.status(500).json({ error: "An unexpected error occurred." });
     }
+  };
+}
 
-    if (!name || name.trim().length < 2) {
-      return res.status(400).json({ error: "Please enter your full name." });
-    }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      return res.status(400).json({ error: "Please enter a valid email address." });
-    }
+export const defaultSubscribeDeps: SubscribeDeps = {
+  rateLimited: ipLimiter(),
+  verifyTurnstile: (token) => verifyTurnstile(token, { form: "subscribe" }),
+  async findSubscriber(email) {
+    const { data } = await getSupabase().from("subscribers").select("status").eq("email", email).maybeSingle();
+    return data ? { status: String(data.status) } : null;
+  },
+  async insertSubscriber(row) {
+    const { error } = await getSupabase().from("subscribers").insert(row);
+    return { error };
+  },
+  sendVerification: ({ name, email, token, lang }) => sendVerificationEmail(name, email, token, publicBaseUrl(), lang),
+  sendCap: verificationSendCap,
+  newToken: () => crypto.randomUUID(),
+};
 
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanName  = name.trim();
-    const supabase   = getSupabase();
-
-    const { data: existing } = await supabase
-      .from("subscribers")
-      .select("status")
-      .eq("email", cleanEmail)
-      .maybeSingle();
-
-    if (existing) {
-      if (existing.status === "confirmed") return res.json({ ok: true, already: "confirmed" });
-      if (existing.status === "pending")   return res.json({ ok: true, already: "pending" });
-    }
-
-    const token = crypto.randomUUID();
-
-    const { error: insertErr } = await supabase.from("subscribers").insert({
-      email: cleanEmail, name: cleanName, status: "pending", token, lang: subLang,
-    });
-
-    if (insertErr) {
-      logger.error({ err: insertErr }, "Subscriber insert failed");
-      return res.status(500).json({ error: "Could not save subscription. Please try again." });
-    }
-
-    // Links in a subscriber's inbox must always be the public site. Deriving them from
-    // the request host was correct behind nginx on prod but wrong anywhere else
-    // (dev sends carried the box address). Pinned 2026-09-09 alongside the storm-alert fix.
-    const baseUrl = process.env["PUBLIC_URL"]?.replace(/\/$/, "") || "https://stillafloatcruising.com";
-
-    const emailResult = await sendVerificationEmail(cleanName, cleanEmail, token, baseUrl, subLang);
-    logger.info({ email: cleanEmail, emailResult }, "Subscriber added — verification email sent");
-    return res.json({ ok: true });
-  } catch (err) {
-    logger.error({ err }, "Subscribe route error");
-    return res.status(500).json({ error: "An unexpected error occurred." });
-  }
-});
+router.post("/subscribe", createSubscribeHandler(defaultSubscribeDeps));
 
 // ── GET /api/verify-email?token= ────────────────────────────────
 router.get("/verify-email", async (req, res) => {
@@ -303,57 +377,88 @@ router.get("/verify-email", async (req, res) => {
 });
 
 // ── POST /api/resend-verification ────────────────────────────────
-router.post("/resend-verification", async (req, res) => {
-  try {
-    const { email } = req.body as { email?: string };
-    if (!email) return res.status(400).json({ error: "Email is required." });
+// The "send a new confirmation email" button on subscribe-pending.html. Public, and until
+// 2026-10-02 it had no limit of any kind: anyone could make us email any pending address
+// again and again. Now it has its own IP limit and shares the site-wide confirmation cap.
 
-    const cleanEmail = email.trim().toLowerCase();
-    const supabase   = getSupabase();
+export interface ResendDeps {
+  rateLimited(ip: string): boolean;
+  findSubscriber(email: string): Promise<{ id: string; name: string; status: string; lang?: string | null } | null>;
+  setToken(id: string, token: string): Promise<{ error: unknown }>;
+  sendVerification(args: { name: string; email: string; token: string; lang: "en" | "es" }): Promise<unknown>;
+  sendCap: SendCap;
+  newToken(): string;
+}
 
-    const { data: subscriber, error: fetchErr } = await supabase
+export function createResendVerificationHandler(deps: ResendDeps): RequestHandler {
+  return async (req: Request, res: Response) => {
+    try {
+      if (deps.rateLimited(clientIp(req))) {
+        return res.status(429).json({ error: "Too many attempts. Please try again later." });
+      }
+
+      const { email } = (req.body ?? {}) as { email?: string };
+      if (!email) return res.status(400).json({ error: "Email is required." });
+
+      const cleanEmail = email.trim().toLowerCase();
+      const subscriber = await deps.findSubscriber(cleanEmail);
+
+      if (!subscriber) {
+        return res.status(404).json({ error: "No subscription found for that email." });
+      }
+      if (subscriber.status === "confirmed") {
+        return res.json({ ok: true, already: "confirmed" });
+      }
+      if (subscriber.status === "unsubscribed") {
+        return res.status(400).json({ error: "This email has been unsubscribed." });
+      }
+
+      const lang = subscriber.lang === "es" ? "es" : "en";
+      if (!deps.sendCap.tryReserve()) {
+        logCapHit(deps.sendCap, "resend-verification");
+        return res.status(429).json({ error: SUBSCRIBE_MESSAGES[lang].busy });
+      }
+
+      const newToken = deps.newToken();
+      const { error: updateErr } = await deps.setToken(subscriber.id, newToken);
+
+      if (updateErr) {
+        deps.sendCap.release();
+        logger.error({ err: updateErr }, "Resend: token update failed");
+        return res.status(500).json({ error: "Could not regenerate your confirmation link." });
+      }
+
+      const emailResult = await deps.sendVerification({ name: subscriber.name, email: cleanEmail, token: newToken, lang });
+      logger.info({ email: cleanEmail, emailResult }, "Verification email resent");
+      return res.json({ ok: true });
+    } catch (err) {
+      logger.error({ err }, "Resend verification route error");
+      return res.status(500).json({ error: "An unexpected error occurred." });
+    }
+  };
+}
+
+export const defaultResendDeps: ResendDeps = {
+  rateLimited: ipLimiter(),
+  async findSubscriber(email) {
+    const { data, error } = await getSupabase()
       .from("subscribers")
       .select("id, name, status, lang")
-      .eq("email", cleanEmail)
+      .eq("email", email)
       .maybeSingle();
+    if (error || !data) return null;
+    return { id: String(data.id), name: String(data.name ?? ""), status: String(data.status), lang: data.lang ?? null };
+  },
+  async setToken(id, token) {
+    const { error } = await getSupabase().from("subscribers").update({ token }).eq("id", id);
+    return { error };
+  },
+  sendVerification: ({ name, email, token, lang }) => sendVerificationEmail(name, email, token, publicBaseUrl(), lang),
+  sendCap: verificationSendCap,
+  newToken: () => crypto.randomUUID(),
+};
 
-    if (fetchErr || !subscriber) {
-      return res.status(404).json({ error: "No subscription found for that email." });
-    }
-    if (subscriber.status === "confirmed") {
-      return res.json({ ok: true, already: "confirmed" });
-    }
-    if (subscriber.status === "unsubscribed") {
-      return res.status(400).json({ error: "This email has been unsubscribed." });
-    }
-
-    const newToken = crypto.randomUUID();
-    const { error: updateErr } = await supabase
-      .from("subscribers")
-      .update({ token: newToken })
-      .eq("id", subscriber.id);
-
-    if (updateErr) {
-      logger.error({ err: updateErr }, "Resend: token update failed");
-      return res.status(500).json({ error: "Could not regenerate your confirmation link." });
-    }
-
-    // Links in a subscriber's inbox must always be the public site. Deriving them from
-    // the request host was correct behind nginx on prod but wrong anywhere else
-    // (dev sends carried the box address). Pinned 2026-09-09 alongside the storm-alert fix.
-    const baseUrl = process.env["PUBLIC_URL"]?.replace(/\/$/, "") || "https://stillafloatcruising.com";
-
-    const emailResult = await sendVerificationEmail(
-      subscriber.name, cleanEmail, newToken, baseUrl,
-      (subscriber as { lang?: string }).lang === "es" ? "es" : "en",
-    );
-    logger.info({ email: cleanEmail, emailResult }, "Verification email resent");
-    return res.json({ ok: true });
-  } catch (err) {
-    logger.error({ err }, "Resend verification route error");
-    return res.status(500).json({ error: "An unexpected error occurred." });
-  }
-});
+router.post("/resend-verification", createResendVerificationHandler(defaultResendDeps));
 
 // ── GET /api/subscribers ─────────────────────────────────────────
 router.get("/subscribers", async (req, res) => {

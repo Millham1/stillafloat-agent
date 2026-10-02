@@ -25,6 +25,7 @@ import crypto from "node:crypto";
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { sendVerificationEmail } from "../routes/subscribe";
+import { verificationSendCap, logCapHit, type SendCap } from "./verification-send-cap";
 
 const REMINDER_AFTER_DAYS = 3;
 const ARCHIVE_AFTER_DAYS = 21; // well past the reminder window — gives it time to land + be acted on
@@ -49,6 +50,73 @@ function daysAgoIso(days: number): string {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
+export interface PendingRow { id: string; name: string; email: string; lang?: string | null }
+
+export interface ReminderDeps {
+  /** New token + reminder_sent_at, written BEFORE the send so a row is never reminded twice. */
+  markReminded(id: string, token: string): Promise<{ error: unknown }>;
+  send(sub: PendingRow, token: string, lang: "en" | "es"): Promise<{ success: boolean }>;
+  /** The site-wide confirmation-email cap (lib/verification-send-cap.ts). */
+  sendCap: SendCap;
+  newToken(): string;
+  pause(): Promise<void>;
+}
+
+/**
+ * Send one reminder per pending row, stopping at the site-wide confirmation cap.
+ *
+ * Added 2026-10-02: bots created ~49 pending rows on Oct 1–2, and this sweep would have
+ * reminded all of them three days later at 500 ms apart — a burst of the size that got
+ * mark@ blocked by Zoho on Sep 18 (it refused the 11th mail in 18 s). Rows past the cap are
+ * left exactly as they are (no token change, no reminder_sent_at), so the next daily sweep
+ * picks them up.
+ */
+export async function remindPending(
+  pending: PendingRow[],
+  deps: ReminderDeps,
+): Promise<{ reminded: number; failed: number; deferred: number }> {
+  let reminded = 0;
+  let failed = 0;
+  let deferred = 0;
+
+  for (let i = 0; i < pending.length; i++) {
+    const sub = pending[i]!;
+    if (!deps.sendCap.tryReserve()) {
+      deferred = pending.length - i;
+      logCapHit(deps.sendCap, "pending-reminders");
+      logger.info({ deferred }, "Pending-subscriber reminders paused at the cap — the rest wait for the next daily sweep");
+      break;
+    }
+    try {
+      // Fresh token — the original may be stale/lost, and a reminder is a good
+      // time to invalidate any old link (same pattern as /api/resend-verification).
+      const newToken = deps.newToken();
+      const { error: updateErr } = await deps.markReminded(sub.id, newToken);
+
+      if (updateErr) {
+        deps.sendCap.release();
+        logger.error({ err: updateErr, email: sub.email }, "Reminder: token update failed");
+        failed++;
+        continue;
+      }
+
+      const lang = sub.lang === "es" ? "es" : "en";
+      const result = await deps.send(sub, newToken, lang);
+      if (result.success) {
+        reminded++;
+      } else {
+        failed++;
+        logger.warn({ email: sub.email }, "Reminder email send failed");
+      }
+      await deps.pause(); // pace the send path
+    } catch (err) {
+      failed++;
+      logger.error({ err, email: sub.email }, "Reminder: unexpected error");
+    }
+  }
+  return { reminded, failed, deferred };
+}
+
 export async function sendPendingReminders(
   baseUrl: string = SITE,
 ): Promise<{ reminded: number; failed: number }> {
@@ -66,41 +134,21 @@ export async function sendPendingReminders(
   }
   if (!pending || pending.length === 0) return { reminded: 0, failed: 0 };
 
-  let reminded = 0;
-  let failed = 0;
-
-  for (const sub of pending) {
-    try {
-      // Fresh token — the original may be stale/lost, and a reminder is a good
-      // time to invalidate any old link (same pattern as /api/resend-verification).
-      const newToken = crypto.randomUUID();
+  const { reminded, failed, deferred } = await remindPending(pending as PendingRow[], {
+    async markReminded(id, token) {
       const { error: updateErr } = await supabase
         .from("subscribers")
-        .update({ token: newToken, reminder_sent_at: new Date().toISOString() })
-        .eq("id", sub.id);
+        .update({ token, reminder_sent_at: new Date().toISOString() })
+        .eq("id", id);
+      return { error: updateErr };
+    },
+    send: (sub, token, lang) => sendVerificationEmail(sub.name, sub.email, token, baseUrl, lang),
+    sendCap: verificationSendCap,
+    newToken: () => crypto.randomUUID(),
+    pause: () => new Promise((r) => setTimeout(r, 500)),
+  });
 
-      if (updateErr) {
-        logger.error({ err: updateErr, email: sub.email }, "Reminder: token update failed");
-        failed++;
-        continue;
-      }
-
-      const lang = (sub as { lang?: string }).lang === "es" ? "es" : "en";
-      const result = await sendVerificationEmail(sub.name, sub.email, newToken, baseUrl, lang);
-      if (result.success) {
-        reminded++;
-      } else {
-        failed++;
-        logger.warn({ email: sub.email }, "Reminder email send failed");
-      }
-      await new Promise((r) => setTimeout(r, 500)); // pace the Gmail send path
-    } catch (err) {
-      failed++;
-      logger.error({ err, email: sub.email }, "Reminder: unexpected error");
-    }
-  }
-
-  logger.info({ reminded, failed, total: pending.length }, "Pending-subscriber reminders complete");
+  logger.info({ reminded, failed, deferred, total: pending.length }, "Pending-subscriber reminders complete");
   return { reminded, failed };
 }
 

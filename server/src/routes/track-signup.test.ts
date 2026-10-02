@@ -12,6 +12,7 @@ import type { AddressInfo } from "node:net";
 import { createTrackSignupRouter, type TrackSignupDeps, type SubscriberRow } from "./track-signup";
 import { activatePendingWatches } from "../lib/pending-watches";
 import { makeWatchSig } from "../lib/ship-watch";
+import { createSendCap } from "../lib/verification-send-cap";
 
 interface Watch {
   id: string; subscriber_id: string; ship_name: string; sailing_start: string; sailing_end: string;
@@ -22,7 +23,7 @@ const TODAY = "2026-09-15";
 const W1 = "0b6f7a8e-1c2d-4e5f-8a9b-0c1d2e3f4a5b";
 const W2 = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 
-function world(opts: { subscribers?: (SubscriberRow & { email: string })[]; watches?: Watch[]; limited?: boolean } = {}) {
+function world(opts: { subscribers?: (SubscriberRow & { email: string })[]; watches?: Watch[]; limited?: boolean; capLimit?: number } = {}) {
   const subscribers = new Map((opts.subscribers ?? []).map((s) => [s.email, { ...s }]));
   const watches: Watch[] = (opts.watches ?? []).map((w) => ({ ...w }));
   const sent = {
@@ -68,6 +69,7 @@ function world(opts: { subscribers?: (SubscriberRow & { email: string })[]; watc
     today: () => TODAY,
     newToken: () => `token-${++n}`,
     rateLimited: () => Boolean(opts.limited),
+    sendCap: createSendCap({ limit: opts.capLimit ?? 1000 }),
   };
   return { deps, subscribers, watches, sent };
 }
@@ -183,6 +185,21 @@ test("a bounced address, bad input, an unknown ship and a flood are refused; the
   assert.deepEqual((await signup(bot.deps, form({ website: "http://spam" }))).json, { ok: true, state: "confirm_email" });
   assert.equal(bot.subscribers.size, 0);
   assert.equal(bot.watches.length, 0);
+});
+
+test("over the site-wide confirmation cap a new visitor is turned away with nothing saved or sent; a confirmed subscriber still tracks", async () => {
+  const w = world({ capLimit: 1, subscribers: [{ ...confirmedPat, email: "sam@example.com", id: "s9", name: "Sam Sailor" }] });
+  const first = await signup(w.deps, form());
+  assert.equal(first.status, 200, "the first confirmation fits under the cap");
+  const second = await signup(w.deps, form({ email: "lee@example.com", name: "Lee Lookout" }));
+  assert.equal(second.status, 429);
+  assert.deepEqual(second.json, { ok: false, error: "too_many_attempts" }, "the page already words this as 'try again in a little while'");
+  assert.equal(w.subscribers.has("lee@example.com"), false, "no subscriber row");
+  assert.deepEqual(w.watches.map((x) => x.subscriber_id), [w.subscribers.get("pat@example.com")!.id], "no watch for the refused visitor");
+  assert.deepEqual(w.sent.verification.map((v) => v.email), ["pat@example.com"], "no second confirmation email");
+  const confirmed = await signup(w.deps, form({ email: "sam@example.com" }));
+  assert.equal(confirmed.status, 200);
+  assert.equal(confirmed.json["state"], "tracking", "a confirmed subscriber gets no confirmation email, so the cap does not apply");
 });
 
 test("the keep-tracking button starts an ended 15-day watch again from today, for another 15 days, without another email", async () => {
