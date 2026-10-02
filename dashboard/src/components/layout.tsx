@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink, RefreshCw, ShoppingBag, Heart, MessageSquare, Users, Mail, Wallet, CreditCard, Gauge, Sunrise, Menu, X, CloudLightning, Waypoints, Archive, Search, PartyPopper, Bot } from "lucide-react";
+import { LayoutDashboard, ListTodo, CheckCircle2, Rss, AlertTriangle, ExternalLink, RefreshCw, ShoppingBag, Heart, MessageSquare, Users, Mail, Wallet, CreditCard, Gauge, Sunrise, Menu, X, CloudLightning, Waypoints, Archive, Search, PartyPopper, Bot, Ship } from "lucide-react";
 import { useScanNews, getGetSystemStatusQueryKey, getGetEditorialQueueQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +51,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/search",       label: "Search",       icon: Search },
     { href: "/ai-visibility", label: "AI Visibility", icon: Bot },
     { href: "/ratings",      label: "Ratings",      icon: PartyPopper },
+    { href: "/groups",       label: "Group Bookings", icon: Ship },
     { href: "/affiliate",    label: "Affiliate Manager", icon: ShoppingBag },
     { href: "/favorites",    label: "Favorites",         icon: Heart },
     { href: "/commentary",   label: "Commentary",        icon: MessageSquare },

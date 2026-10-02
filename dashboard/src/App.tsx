@@ -26,6 +26,7 @@ import Diversions from "@/pages/diversions";
 import Search from "@/pages/search";
 import AiVisibility from "@/pages/ai-visibility";
 import Ratings from "@/pages/ratings";
+import Groups from "@/pages/groups";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +54,8 @@ function Router() {
         <Route path="/search" component={Search} />
         <Route path="/ai-visibility" component={AiVisibility} />
         <Route path="/ratings" component={Ratings} />
+        <Route path="/groups" component={Groups} />
+        <Route path="/groups/:id" component={Groups} />
         <Route path="/affiliate"   component={AffiliateManager} />
         <Route path="/favorites"   component={FavoritesManager} />
         <Route path="/commentary"  component={CommentaryManager} />
