@@ -154,7 +154,7 @@ function wxEmoji(code) {
 async function renderTiles(gridId, tiles) {
   const grid = document.getElementById(gridId);
   grid.innerHTML = tiles.map(t => `
-    <a class="tile" href="/forecast.html?lat=${t.lat}&lon=${t.lon}&name=${encodeURIComponent(t.name)}">
+    <a class="tile" href="/forecast.html?place=${t.slug}&lang=es">
       <div class="t-emoji" id="e-${t.slug}">⏳</div>
       <div class="t-name">${t.name}</div>
       <div class="t-temp" id="tmp-${t.slug}"><span class="t-loading">…</span></div>
@@ -189,7 +189,7 @@ async function geocode(query) {
 // ── Dropdown item builders ─────────────────────────────────────
 function popularItems(list) {
   return list.map(name => `
-    <a class="d-item" href="/forecast.html?name=${encodeURIComponent(name)}&search=1">
+    <a class="d-item" href="/forecast.html?name=${encodeURIComponent(name)}&search=1&lang=es">
       <span>${name}</span>
       <i class="fa-solid fa-chevron-right d-arrow"></i>
     </a>`).join('');
@@ -199,7 +199,7 @@ function geoItems(results) {
   return results.map(r => {
     const label = [r.name, r.admin1, r.country].filter(Boolean).join(', ');
     return `
-    <a class="d-item" href="/forecast.html?lat=${r.latitude}&lon=${r.longitude}&name=${encodeURIComponent(r.name)}">
+    <a class="d-item" href="/forecast.html?lat=${r.latitude}&lon=${r.longitude}&name=${encodeURIComponent(r.name)}&lang=es">
       <span>${label}</span>
       <i class="fa-solid fa-chevron-right d-arrow"></i>
     </a>`;
