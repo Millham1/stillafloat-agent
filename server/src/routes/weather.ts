@@ -87,6 +87,33 @@ async function fetchForecast(loc: CruiseLocation) {
   throw lastErr;
 }
 
+// forecast.html can arrive with raw coordinates (the weather page's search dropdown, and the
+// Spanish tiles) instead of a port slug. Those visits used to fetch Open-Meteo straight from the
+// browser and skipped this route — so they never got Mark's synopsis (Mark, 2026-10-02: Bermuda
+// had no ten-day synopsis). Resolve coords to a known port when one is close, otherwise an ad-hoc
+// location, and serve them the same payload the slug path gets.
+const SNAP_KM = 30;
+function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
+  const r = (d: number) => (d * Math.PI) / 180;
+  const dLat = r(bLat - aLat), dLon = r(bLon - aLon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+export function resolveCoords(latRaw: unknown, lonRaw: unknown, nameRaw: unknown): CruiseLocation | null {
+  const lat = Number(latRaw), lon = Number(lonRaw);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  let best: CruiseLocation | undefined, bestKm = SNAP_KM;
+  for (const l of CRUISE_LOCATIONS) {
+    const km = haversineKm(lat, lon, l.lat, l.lon);
+    if (km < bestKm) { best = l; bestKm = km; }
+  }
+  if (best) return best;
+  // The name is visitor-supplied and ends up in the synopsis prompt: keep it short and plain.
+  const name = String(nameRaw ?? "").replace(/[^\p{L}\p{N} ,.'’()-]/gu, "").trim().slice(0, 60)
+    || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  return { slug: `ll:${lat.toFixed(2)},${lon.toFixed(2)}`, name, type: "destination", lat, lon };
+}
+
 // 15-minute in-memory cache for the all-ports response (avoids 24 parallel fetches on every page load)
 let allPortsCache: { payload: object; expiresAt: number } | null = null;
 
@@ -94,10 +121,16 @@ router.get("/weather", async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=1800");
   try {
     const place = String(req.query.place || "").trim();
+    const byCoords = req.query.lat !== undefined || req.query.lon !== undefined;
 
-    if (place) {
-      const loc = CRUISE_LOCATIONS.find((l) => l.slug === place);
-      if (!loc) { res.status(404).json({ ok: false, error: "Destination not found" }); return; }
+    if (place || byCoords) {
+      const loc = byCoords
+        ? resolveCoords(req.query.lat, req.query.lon, req.query.name)
+        : CRUISE_LOCATIONS.find((l) => l.slug === place);
+      if (!loc) {
+        res.status(byCoords ? 400 : 404).json({ ok: false, error: byCoords ? "Bad coordinates" : "Destination not found" });
+        return;
+      }
       const forecast = await fetchForecast(loc);
       // The synopsis is Mark's read of the week (lib/weather-voice.ts): written in his voice,
       // cached per place+language for six hours, never a restatement of the table.

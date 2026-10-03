@@ -137,41 +137,48 @@ async function loadHeroImage(searchName) {
 function renderDays(days) {
   document.getElementById('forecast').innerHTML = days.map(item => `
     <div class="day-card">
-      <div class="day-label">${new Date(item.day + 'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
+      <div class="day-label">${new Date(item.day + 'T12:00:00').toLocaleDateString(T.locale,{weekday:'short',month:'short',day:'numeric'})}</div>
       <div class="day-emoji">${item.emoji}</div>
       <div class="day-temp">${item.high}°</div>
-      <div class="day-low">${item.low}° low</div>
+      <div class="day-low">${item.low}° ${T.low}</div>
     </div>`).join('');
 }
 
-async function fetchByCoords(lat, lon, displayName) {
-  const url = `https://api.open-meteo.com/v1/forecast` +
-    `?latitude=${lat}&longitude=${lon}` +
-    `&current=temperature_2m,weather_code` +
-    `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
-    `&temperature_unit=fahrenheit&timezone=auto&forecast_days=10`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error('Weather fetch failed');
+// Every path goes through /api/weather: it is the only place Mark's synopsis is written,
+// and the search pill used to bypass it (Open-Meteo straight from the browser), so searched
+// places — Bermuda, 2026-10-02 — showed the ten days with no synopsis.
+const LANG = (new URLSearchParams(window.location.search).get('lang') || 'en').toLowerCase() === 'es' ? 'es' : 'en';
+const T = LANG === 'es'
+  ? { sub: 'Pronóstico de 10 días para cruceros', low: 'mín.', locale: 'es-419', unavailable: 'Pronóstico no disponible',
+      err: 'No pudimos cargar ese pronóstico.', back: '← Volver al clima', backHref: '/es/weather.html' }
+  : { sub: '10-day cruise weather outlook', low: 'low', locale: 'en-US', unavailable: 'Forecast unavailable',
+      err: 'Could not load that forecast.', back: '← Back to Weather', backHref: 'weather.html' };
+
+async function loadFromApi(query, displayName) {
+  query.set('lang', LANG);
+  const r = await fetch(`/api/weather?${query.toString()}`);
   const d = await r.json();
-  document.getElementById('title').textContent = displayName;
-  loadHeroImage(displayName);
-  renderDays(d.daily.time.map((day, i) => ({
-    day,
-    emoji: wxEmoji(d.daily.weather_code[i]),
-    high:  Math.round(d.daily.temperature_2m_max[i]),
-    low:   Math.round(d.daily.temperature_2m_min[i]),
-  })));
+  if (!r.ok || !d.ok) throw new Error(d.error || 'Forecast not found');
+  const loc = d.forecast;
+  const title = displayName || loc.name;
+  document.getElementById('title').textContent = title;
+  loadHeroImage(loc.name);
+  renderDays(loc.forecast);
+  if (loc.synopsis) {
+    document.getElementById('synopsis').textContent = loc.synopsis;
+    document.getElementById('synopsis-wrap').style.display = '';
+  }
 }
 
 async function geocodeAndFetch(name) {
   const r = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=en&format=json`
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=${LANG}&format=json`
   );
   const d = await r.json();
   if (!d.results || !d.results.length) throw new Error('Location not found');
   const loc = d.results[0];
   const displayName = [loc.name, loc.admin1, loc.country].filter(Boolean).join(', ');
-  await fetchByCoords(loc.latitude, loc.longitude, displayName);
+  await loadFromApi(new URLSearchParams({ lat: loc.latitude, lon: loc.longitude, name: loc.name }), displayName);
 }
 
 async function loadForecast() {
@@ -181,30 +188,21 @@ async function loadForecast() {
   const name   = params.get('name');
   const place  = params.get('place');
   const search = params.get('search');
+  document.documentElement.lang = LANG;
+  document.querySelector('.hero-content p').textContent = T.sub;
 
   try {
     if (lat && lon && name) {
-      await fetchByCoords(parseFloat(lat), parseFloat(lon), decodeURIComponent(name));
+      await loadFromApi(new URLSearchParams({ lat, lon, name }));
     } else if (name && search) {
-      await geocodeAndFetch(decodeURIComponent(name));
+      await geocodeAndFetch(name);
     } else {
-      const slug = place || 'miami';
-      const r = await fetch(`/api/weather?place=${encodeURIComponent(slug)}`);
-      const d = await r.json();
-      if (!r.ok || !d.ok) throw new Error(d.error || 'Forecast not found');
-      const loc = d.forecast;
-      document.getElementById('title').textContent = loc.name;
-      loadHeroImage(loc.name);
-      renderDays(loc.forecast);
-      if (loc.synopsis) {
-        document.getElementById('synopsis').textContent = loc.synopsis;
-        document.getElementById('synopsis-wrap').style.display = '';
-      }
+      await loadFromApi(new URLSearchParams({ place: place || 'miami' }));
     }
   } catch (err) {
-    document.getElementById('title').textContent = 'Forecast unavailable';
+    document.getElementById('title').textContent = T.unavailable;
     document.getElementById('forecast').innerHTML =
-      `<div class="error">Could not load that forecast. <a href="weather.html" style="color:#5dff9a">← Back to Weather</a></div>`;
+      `<div class="error">${T.err} <a href="${T.backHref}" style="color:#5dff9a">${T.back}</a></div>`;
   }
 }
 
