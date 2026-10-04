@@ -81,6 +81,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="h-14 flex items-center px-6 border-b border-sidebar-border">
           <span className="font-bold text-sidebar-foreground tracking-tight">STILL AFLOAT</span>
           <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-mono bg-sidebar-accent text-sidebar-accent-foreground">OP</span>
+          {/* The dev box serves this dashboard under /dashboard/ and looks identical to
+              prod; say which one this is (Mark mistook one for the other, 2026-10-04). */}
+          {import.meta.env.BASE_URL !== "/" && (
+            <span className="ml-2 px-2 py-0.5 rounded text-[11px] font-bold bg-red-600 text-white" title="This is the DEV box — test data only">DEV — TEST DATA</span>
+          )}
           <button
             className="ml-auto md:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground"
             onClick={() => setSidebarOpen(false)}

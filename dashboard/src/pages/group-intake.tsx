@@ -24,6 +24,7 @@ async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> 
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const json = await r.json().catch(() => ({}));
+  if (r.status === 401) throw new Error("This browser's access token was not accepted. Open the sign-in link again.");
   if (!r.ok) throw new Error(json?.error || `Request failed (${r.status})`);
   return json as T;
 }
@@ -227,7 +228,7 @@ export default function GroupIntake() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 p-4">
               <label className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
                 Group file name <span className="text-amber-600">(you choose)</span>
-                <input className={inputCls} value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="American Legion — Carnival Celebration, March 2027" />
+                <input className={inputCls} value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="Type a name for this file" />
               </label>
               {FIELDS.map((f) => (
                 <label key={f.key} className="text-xs text-muted-foreground">
