@@ -36,6 +36,7 @@ async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> 
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const json = await r.json().catch(() => ({}));
+  if (r.status === 401) throw new Error("This browser's access token was not accepted. Open the sign-in link again.");
   if (!r.ok) throw new Error(json?.error || `Request failed (${r.status})`);
   return json as T;
 }
@@ -197,7 +198,7 @@ function GroupList() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [name, setName] = useState("");
-  const [cabins, setCabins] = useState("16");
+  const [cabins, setCabins] = useState("");
   const { data, isLoading, error } = useQuery<{ groups: Array<Row & { summary: Summary }> }>({
     queryKey: ["groups"],
     queryFn: () => api("/groups"),
@@ -229,12 +230,12 @@ function GroupList() {
         <CardContent className="p-0 flex items-end gap-3 flex-wrap">
           <label className="flex-1 min-w-[14rem] text-xs text-muted-foreground">
             Or open an empty group file by name
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="American Legion — ship, month, year"
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Type a name for the group"
               className="mt-1 w-full px-3 py-1.5 text-sm rounded-md border bg-card text-foreground" />
           </label>
           <label className="w-28 text-xs text-muted-foreground">
             Cabins held
-            <input value={cabins} onChange={(e) => setCabins(e.target.value)} type="number" min={0}
+            <input value={cabins} onChange={(e) => setCabins(e.target.value)} type="number" min={0} placeholder="0"
               className="mt-1 w-full px-3 py-1.5 text-sm rounded-md border bg-card text-foreground" />
           </label>
           <button onClick={create} disabled={!name.trim()}
@@ -244,9 +245,11 @@ function GroupList() {
         </CardContent>
       </Card>
 
-      {isLoading && <p className="text-muted-foreground">Loading…</p>}
-      {error && <p className="text-destructive">Failed to load groups: {(error as Error).message}</p>}
-      {!isLoading && !error && (data?.groups.length ?? 0) === 0 && <p className="text-muted-foreground">No groups yet. Open the first one above.</p>}
+      {/* The empty state shows ONLY when the server answered with an empty list —
+          a refused or stalled request must never read as "no groups". */}
+      {!data && !error && <p className="text-muted-foreground">Loading…</p>}
+      {error && <p className="text-destructive">Could not load your groups: {(error as Error).message}</p>}
+      {data && data.groups.length === 0 && <p className="text-muted-foreground">No groups yet. Open the first one above.</p>}
 
       <div className="grid gap-4 md:grid-cols-2">
         {data?.groups.map((g) => {
