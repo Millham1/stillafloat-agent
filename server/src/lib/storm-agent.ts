@@ -19,6 +19,7 @@ import { runStormIntel } from "./storm-intel";
 import {
   groundsForPoint, groundsForBasin, shipsForGrounds, labelGrounds, NAMED_STORM_MARGIN_DEG, type Ship,
 } from "./storm-grounds";
+import { relateToGrounds, relationLines, bottomLine, checkDraft, compassWord, headingFrom, intensityLine } from "./storm-facts";
 
 export interface DraftContent { headline: string; body_md: string; }
 
@@ -50,15 +51,30 @@ function hashSystem(sys: RawSystem, grounds: string[]): string {
 const SYSTEM_PROMPT = `You write short weather alerts for a cruise-travel brand ("Still Afloat"): tropical systems from the
 National Hurricane Center, and non-tropical marine storms (nor'easters, Gulf of Alaska lows) from the NWS Ocean Prediction Center.
 Voice: the experienced friend who tells the truth — calm, grounded, practical, never hype or fear-mongering.
-You are given one weather system and the cruising grounds it may affect. Write a subscriber alert.
+You are given one weather system as a list of facts, and the cruising grounds it may affect. Write a subscriber alert.
 For a non-tropical storm say what it is in plain words (a nor'easter is a strong coastal low, not a hurricane) and
 what it usually means for cruisers: rough seas, delayed arrivals/departures, shortened or swapped port calls.
+For a post-tropical cyclone or remnants say plainly that the storm is spent and winding down.
 Return JSON: {"headline": string, "body_md": string}.
-- headline: <= 80 chars, plain and specific (system name + what/where). No emoji spam.
-- body_md: 2-4 short paragraphs, markdown. MUST include a clearly-worded "What this means for you" that ties
-  the system to the affected cruising grounds and approximate timing, and sets expectations (itineraries can be
-  rerouted/rescheduled; the cruise line decides; we'll keep you posted). Do NOT invent specific ship names,
-  exact dates, or wind numbers beyond what you are given. If it's only a disturbance/low chance, say so plainly.`;
+- headline: <= 80 chars, plain and specific (system name + what/where). No emoji spam. Never say a storm is "near" or
+  "approaching" a place unless the Bottom line fact says it is close.
+- body_md: 2-4 short paragraphs, markdown. MUST include a clearly-worded "**What this means for you**" that ties
+  the system to the affected cruising grounds and sets expectations (itineraries can be rerouted/rescheduled; the
+  cruise line decides; we'll keep you posted).
+THE FACTS ARE THE WHOLE STORY — these rules outrank everything above:
+- Direction, speed, distance, and whether the storm is moving toward or away from each cruising ground have been
+  worked out for you in the Movement and Distance facts. Repeat them as given. The ONLY direction word you may use
+  for the storm's motion is the one in the Movement fact. Never convert degrees yourself, never estimate a distance
+  yourself, and never contradict a Distance fact.
+- The "Bottom line" fact is the verdict. Build "What this means for you" on it, in your own warm words. Do not
+  escalate it and do not soften it, and never mention rules, thresholds or how the verdict was reached.
+- Do NOT forecast. Say nothing about strengthening, weakening, landfall, future track, rain, surf, gusts or timing
+  unless the "Forecast / warning text" fact says it. With no such fact, say the forecast can change and that we are
+  watching it — and nothing more about the future.
+- Never promise an outcome. Do not say a storm "will not affect" or "is not expected to affect" anyone's cruise;
+  when there is nothing to do, say exactly that: nothing to do right now, and we are watching it.
+- Do NOT invent ship names, port names, dates, wind speeds or pressures beyond what you are given.
+- If it's only a disturbance/low chance, say so plainly.`;
 
 // Schema the alert copy must satisfy — was a sentence in SYSTEM_PROMPT
 // ("Return JSON: {...}") enforced by nothing; now enforced by the API.
@@ -71,20 +87,39 @@ const DRAFT_SCHEMA = {
   required: ["headline", "body_md"],
 } as const;
 
-async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
+/** The fact sheet the model writes from. Exported for tests and for offline comparisons. */
+export function draftFacts(sys: RawSystem, grounds: string[]): string {
   const groundsLabel = labelGrounds(grounds) || "open water (no cruising grounds directly in the path yet)";
-  const facts = [
+  // Distance, bearing, toward/away and the verdict for each ground — computed here so the
+  // model never does geometry or weighs it (storm-facts.ts).
+  const rels = sys.lat != null && sys.lon != null
+    ? relateToGrounds(sys.lat, sys.lon, headingFrom(sys.movementDeg, sys.movement), grounds) : [];
+  return [
     `Name/label: ${sys.name}`,
     `Classification: ${sys.classification}`,
-    sys.intensity ? `Intensity: ${sys.intensity}` : "",
+    sys.intensity ? `Intensity: ${intensityLine(sys.intensity)}` : "",
     sys.movement ? `Movement: ${sys.movement}` : "",
     sys.formationChance != null ? `Formation chance: ${sys.formationChance}%` : "",
     sys.lat != null && sys.lon != null ? `Position: ${sys.lat}, ${sys.lon}` : "",
     `Basin: ${sys.basin}`,
     `Source: ${sys.source === "nws_marine" ? "NWS Ocean Prediction Center marine warnings (non-tropical)" : sys.source === "manual" ? "declared by hand on the dashboard" : "NOAA National Hurricane Center"}`,
     `Affected cruising grounds: ${groundsLabel}`,
+    ...(rels.length ? [...relationLines(rels), bottomLine(rels, sys.source === "nws_marine")!.line] : []),
     sys.outlookText ? `Forecast / warning text: ${sys.outlookText}` : "",
   ].filter(Boolean).join("\n");
+}
+
+/** What checkDraft compares a finished draft against: the one motion word, and whether any forecast text was given. */
+export function draftCheckFacts(sys: RawSystem): { motionWord: string | null; hasForecastText: boolean } {
+  const heading = headingFrom(sys.movementDeg, sys.movement);
+  return { motionWord: heading == null ? null : compassWord(heading), hasForecastText: Boolean(sys.outlookText) };
+}
+
+export const STORM_DRAFT_PROMPT = SYSTEM_PROMPT;
+
+async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
+  const groundsLabel = labelGrounds(grounds) || "open water (no cruising grounds directly in the path yet)";
+  const facts = draftFacts(sys, grounds);
 
   // Graceful fallback if no AI key is configured — a plain, honest draft.
   if (!anthropicConfigured()) {
@@ -96,18 +131,33 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
     };
   }
 
-  const parsed = await llmJson<Partial<DraftContent>>({
-    job: "storm.draft",
-    system: SYSTEM_PROMPT,
-    user: facts,
-    schema: DRAFT_SCHEMA as unknown as Record<string, unknown>,
-    maxTokens: 1500,
-    timeoutMs: 60_000,
-  });
-  return {
-    headline: (parsed.headline ?? `${sys.name}: ${labelGrounds(grounds)}`).slice(0, 120),
-    body_md: parsed.body_md ?? "",
+  const write = async (user: string): Promise<DraftContent> => {
+    const parsed = await llmJson<Partial<DraftContent>>({
+      job: "storm.draft",
+      system: SYSTEM_PROMPT,
+      user,
+      schema: DRAFT_SCHEMA as unknown as Record<string, unknown>,
+      maxTokens: 1500,
+      timeoutMs: 60_000,
+    });
+    return {
+      headline: (parsed.headline ?? `${sys.name}: ${labelGrounds(grounds)}`).slice(0, 120),
+      body_md: parsed.body_md ?? "",
+    };
   };
+
+  // Read the draft back against its own facts (wrong direction word, forecasts nobody
+  // supplied). One rewrite naming the faults; if they survive it the draft still goes to
+  // Mark's review — nothing here sends — but the log says exactly what to look for.
+  const check = draftCheckFacts(sys);
+  let out = await write(facts);
+  let problems = checkDraft(out, check);
+  if (problems.length) {
+    out = await write(`${facts}\n\nYour last draft broke the rules:\n- ${problems.join("\n- ")}\nRewrite it from the facts above with those faults removed.`);
+    problems = checkDraft(out, check);
+    if (problems.length) logger.warn({ nhcId: sys.nhcId, problems }, "storm-agent: draft still fails its fact check after one rewrite — review carefully");
+  }
+  return out;
 }
 
 interface ScanResult { scanned: number; drafted: number; updated: number; skipped: number; escalated: number; ended: number; }
