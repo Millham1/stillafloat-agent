@@ -45,9 +45,14 @@ async function impactedSailings(a: DbAlert): Promise<TrackableSailing[]> {
 }
 
 /** Which feed an alert came from — the public pages caption the graphics by it. */
-function sourceOf(nhcId: string): "nhc" | "nws" | "manual" {
-  if (nhcId.startsWith("NWS-")) return "nws";
-  if (nhcId.startsWith("MANUAL-")) return "manual";
+export function sourceOf(nhcId: string | null | undefined): "nhc" | "nws" | "manual" {
+  // Tolerates a missing id: on 2026-09-26 the public list query below did not select
+  // nhc_id, so this threw on every row and GET /storm-watch answered 500 whenever any
+  // alert was public — the homepage Storm Watch panel was dark exactly when it mattered
+  // (found 2026-10-04 with Hurricane Rachel live). A caption must never take the page down.
+  const id = nhcId ?? "";
+  if (id.startsWith("NWS-")) return "nws";
+  if (id.startsWith("MANUAL-")) return "manual";
   return "nhc";
 }
 
@@ -342,7 +347,7 @@ router.get("/storm-watch", async (_req: Request, res: Response) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("storm_alerts")
-      .select("id, name, classification, basin, headline, body_md, affected_grounds, formation_chance, is_threat, last_updated, status, window_start, window_end, cone_url, satellite_url, cruise_line_info, detail_md, sent_at, sent_count")
+      .select("id, nhc_id, name, classification, basin, headline, body_md, affected_grounds, formation_chance, is_threat, last_updated, status, window_start, window_end, cone_url, satellite_url, cruise_line_info, detail_md, sent_at, sent_count, raw")
       .in("status", ["approved", "sent"])
       .eq("is_threat", true)
       .order("last_updated", { ascending: false });
