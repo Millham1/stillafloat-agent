@@ -31,6 +31,7 @@ import cabinsRouter from "./cabins";
 import congaLineRouter from "./conga-line";
 import aiVisibilityRouter from "./ai-visibility";
 import groupsRouter from "./groups";
+import groupIntakeRouter from "./group-intake";
 
 const router: IRouter = Router();
 
@@ -65,6 +66,7 @@ router.use(trackSignupRouter);
 router.use(cabinsRouter);
 router.use(congaLineRouter);
 router.use(aiVisibilityRouter);
+router.use(groupIntakeRouter);
 router.use(groupsRouter);
 
 export default router;

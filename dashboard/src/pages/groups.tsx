@@ -3,7 +3,7 @@ import { Link, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Ship, Plus, Trash2, ArrowLeft, AlertTriangle, CalendarClock } from "lucide-react";
+import { Ship, Plus, Trash2, ArrowLeft, AlertTriangle, CalendarClock, FileText } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
 import { useToast } from "@/hooks/use-toast";
 
@@ -215,15 +215,20 @@ function GroupList() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold tracking-tight">Group Bookings</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">One file per group: cabins, travelers, paperwork, payments, travel and checklist.</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">Group Bookings</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">One file per group: cabins, travelers, paperwork, payments, travel and checklist.</p>
+        </div>
+        <Link href="/groups/new">
+          <span className="flex items-center gap-1 text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground cursor-pointer"><FileText className="w-4 h-4" /> Enter a booking (drop a PDF)</span>
+        </Link>
       </div>
 
       <Card className="p-4">
         <CardContent className="p-0 flex items-end gap-3 flex-wrap">
           <label className="flex-1 min-w-[14rem] text-xs text-muted-foreground">
-            New group name
+            Or open an empty group file by name
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="American Legion — ship, month, year"
               className="mt-1 w-full px-3 py-1.5 text-sm rounded-md border bg-card text-foreground" />
           </label>
@@ -485,5 +490,5 @@ function GroupDetail({ id }: { id: string }) {
 
 export default function Groups() {
   const [match, params] = useRoute("/groups/:id");
-  return match && params?.id ? <GroupDetail id={params.id} /> : <GroupList />;
+  return match && params?.id && params.id !== "new" ? <GroupDetail id={params.id} /> : <GroupList />;
 }

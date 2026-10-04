@@ -97,6 +97,16 @@ test("attention list is sorted soonest-first, flags overdue, and respects the ho
   assert.ok(wide.includes("1 traveler form sent but not returned"));
 });
 
+test("payments with the same kind and due date collapse into one attention line", () => {
+  const f = fixture();
+  f.cabins.push({ id: "c4", cabin_num: "8220", status: "held" });
+  f.payments.push({ id: "p4", cabin_id: "c2", kind: "final", amount: 100, due_date: "2026-12-15", paid_at: null });
+  f.payments.push({ id: "p5", cabin_id: "c4", kind: "final", amount: 100, due_date: "2026-12-15", paid_at: null });
+  const labels = summarize(f, "2026-10-10", 90).attention.map((a) => a.label);
+  assert.ok(labels.includes("Final payment — 3 cabins"));
+  assert.ok(!labels.includes("Final payment — cabin 8214"));
+});
+
 test("missingSchedule adds deposit + final once per live cabin and is repeat-safe", () => {
   const f = fixture();
   const rows = missingSchedule(f);
