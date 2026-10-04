@@ -107,8 +107,6 @@ body{margin:0;font-family:'Baloo 2',system-ui,sans-serif;background:#06111f;colo
 <div class="forecast-grid" id="forecast"></div>
 
 <script>
-const PEXELS_KEY = 'P82hqxcbAMVh4XpB7Dr3zwUrzWY1kldO6Q8QvO9XkJ8FXGsl4iH6ebzA';
-
 function wxEmoji(code) {
   if (code === 0) return '☀️';
   if ([1,2].includes(code)) return '🌤️';
@@ -120,16 +118,14 @@ function wxEmoji(code) {
   return '⛅';
 }
 
+// The photo lookup runs on our server (/api/weather/hero) — no API key in this page.
 async function loadHeroImage(searchName) {
   try {
-    const r = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchName + ' cruise port')}&per_page=1`,
-      { headers: { Authorization: PEXELS_KEY } }
-    );
+    const r = await fetch(`/api/weather/hero?q=${encodeURIComponent(searchName)}`);
     const d = await r.json();
-    if (d.photos && d.photos.length) {
+    if (d.url) {
       document.getElementById('hero').style.backgroundImage =
-        `linear-gradient(rgba(6,17,31,.38),rgba(6,17,31,.55)), url(${d.photos[0].src.landscape})`;
+        `linear-gradient(rgba(6,17,31,.38),rgba(6,17,31,.55)), url("${d.url}")`;
     }
   } catch { /* keep gradient fallback */ }
 }
