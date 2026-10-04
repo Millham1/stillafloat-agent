@@ -99,6 +99,9 @@ function haversineKm(aLat: number, aLon: number, bLat: number, bLon: number): nu
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(dLon / 2) ** 2;
   return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
+export function cleanPlaceName(raw: unknown): string {
+  return String(raw ?? "").replace(/[^\p{L}\p{N} ,.'’()-]/gu, "").trim().slice(0, 60);
+}
 export function resolveCoords(latRaw: unknown, lonRaw: unknown, nameRaw: unknown): CruiseLocation | null {
   const lat = Number(latRaw), lon = Number(lonRaw);
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
@@ -109,10 +112,65 @@ export function resolveCoords(latRaw: unknown, lonRaw: unknown, nameRaw: unknown
   }
   if (best) return best;
   // The name is visitor-supplied and ends up in the synopsis prompt: keep it short and plain.
-  const name = String(nameRaw ?? "").replace(/[^\p{L}\p{N} ,.'’()-]/gu, "").trim().slice(0, 60)
-    || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  const name = cleanPlaceName(nameRaw) || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
   return { slug: `ll:${lat.toFixed(2)},${lon.toFixed(2)}`, name, type: "destination", lat, lon };
 }
+
+// The forecast page's hero photo. The browser used to call Pexels itself with the API key
+// written into forecast.html — public on the page and in the public repo (found 2026-10-02).
+// The key now stays on the server (PEXELS_API_KEY in shared.env) and the page asks here.
+// One lookup per place per week, and an hourly ceiling on upstream calls so this open
+// endpoint cannot be used to burn the Pexels quota (200 requests an hour). No key, no
+// result, over budget or any failure → "" and the page keeps its gradient.
+export const HERO_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const HERO_HOURLY_BUDGET = 120;
+const HERO_CACHE_MAX = 2000;
+const heroCache = new Map<string, { url: string; expiresAt: number }>();
+let heroWindow = { start: 0, calls: 0 };
+export function _resetHero() { heroCache.clear(); heroWindow = { start: 0, calls: 0 }; }
+
+type HeroFetch = (url: string, init: { headers: Record<string, string>; signal: AbortSignal }) => Promise<{ ok: boolean; json(): Promise<unknown> }>;
+
+export async function heroImageUrl(
+  nameRaw: unknown,
+  key: string = process.env["PEXELS_API_KEY"] || "",
+  fetchImpl: HeroFetch = fetch as unknown as HeroFetch,
+  now: () => number = Date.now,
+): Promise<string> {
+  const name = cleanPlaceName(nameRaw);
+  if (!name || !key) return "";
+  const cacheKey = name.toLowerCase();
+  const hit = heroCache.get(cacheKey);
+  if (hit && now() < hit.expiresAt) return hit.url;
+
+  if (now() - heroWindow.start >= 60 * 60 * 1000) heroWindow = { start: now(), calls: 0 };
+  if (heroWindow.calls >= HERO_HOURLY_BUDGET) return "";
+  heroWindow.calls++;
+
+  let url = "";
+  try {
+    const res = await fetchImpl(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(name + " cruise port")}&per_page=1`,
+      { headers: { authorization: key }, signal: AbortSignal.timeout(6000) },
+    );
+    if (!res.ok) return "";                    // a failed lookup is not cached — the next visit retries
+    const data = (await res.json()) as { photos?: Array<{ src?: { landscape?: unknown } }> };
+    const candidate = String(data.photos?.[0]?.src?.landscape ?? "");
+    // Only a Pexels image address ever goes back to the page (it lands in a CSS url()).
+    if (/^https:\/\/images\.pexels\.com\/[A-Za-z0-9/._?=&%-]+$/.test(candidate)) url = candidate;
+  } catch {
+    return "";
+  }
+  if (heroCache.size >= HERO_CACHE_MAX) heroCache.clear();
+  heroCache.set(cacheKey, { url, expiresAt: now() + HERO_TTL_MS });
+  return url;
+}
+
+router.get("/weather/hero", async (req: Request, res: Response) => {
+  const url = await heroImageUrl(req.query["q"]);
+  res.setHeader("Cache-Control", url ? "public, max-age=86400" : "no-store");
+  res.json({ ok: true, url });
+});
 
 // 15-minute in-memory cache for the all-ports response (avoids 24 parallel fetches on every page load)
 let allPortsCache: { payload: object; expiresAt: number } | null = null;
