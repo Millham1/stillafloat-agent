@@ -220,7 +220,7 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
     openCount++;
     if (p.due_date && daysBetween(today, p.due_date) < 0) overduePayments++;
     const key = `${p.kind}|${p.due_date ?? ""}`;
-    const entry = byKindAndDate.get(key) ?? { kind: p.kind, due: p.due_date ?? null, who: [] };
+    const entry = byKindAndDate.get(key) ?? { kind: p.kind as string, due: (p.due_date ?? null) as string | null, who: [] as string[] };
     entry.who.push(p.cabin_id ? cabinLabel.get(p.cabin_id) ?? "cabin" : "group");
     byKindAndDate.set(key, entry);
   }
