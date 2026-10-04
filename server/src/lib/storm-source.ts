@@ -7,6 +7,7 @@
 // Everything is best-effort: a failing source degrades to [] rather than throwing.
 
 import { logger } from "./logger";
+import { compassWord } from "./storm-facts";
 import { fetchMarineSystems, type PriorMarineAlert } from "./nws-marine-source";
 
 export interface RawSystem {
@@ -17,7 +18,10 @@ export interface RawSystem {
   lat: number | null;
   lon: number | null;
   intensity: string | null;        // e.g. "65 kt"
-  movement: string | null;
+  movement: string | null;         // "west-northwest (300°) at 5 mph" (NHC) or "E at 5 kt" (NWS marine)
+  /** Heading in degrees when the source gives one (NHC feed) — storm-facts turns it
+   *  into "moving toward/away from" each cruising ground. */
+  movementDeg?: number | null;
   formationChance: number | null;  // 0-100 (Tropical Weather Outlook)
   advisoryUrl: string | null;
   coneUrl: string | null;          // NHC forecast cone/track image (named systems)
@@ -79,14 +83,28 @@ export function basinFor(id: string, binNumber: string | null | undefined): RawS
   return basinFromId(id);
 }
 
-function classify(code: string): string {
+export function classify(code: string): string {
   const map: Record<string, string> = {
     TD: "Tropical Depression", TS: "Tropical Storm", HU: "Hurricane",
     MH: "Major Hurricane",
     STS: "Subtropical Storm", SD: "Subtropical Depression",
-    PTC: "Potential Tropical Cyclone",
+    STD: "Subtropical Depression",
+    // NHC's codes: PTC is POST-tropical (a spent storm / remnants), PC is POTENTIAL
+    // tropical cyclone (one that has not formed yet). This map had PTC as "Potential",
+    // so Post-Tropical Cyclone Fay — advisory 39, winding down — was headlined as a
+    // system that "forms in Atlantic" (found 2026-10-03; NHC_JSON_Sample.json shows
+    // post-tropical Hilary under PTC).
+    PTC: "Post-Tropical Cyclone",
+    PC: "Potential Tropical Cyclone",
   };
   return map[code.toUpperCase()] ?? (code || "Tropical System");
+}
+
+/** "west-northwest (300°) at 5 mph"; a storm with no forward speed is "stationary". */
+export function movementText(dirDeg: number | null, speedMph: number | null): string | null {
+  if (dirDeg == null || speedMph == null) return null;
+  if (speedMph === 0) return "stationary";
+  return `${compassWord(dirDeg)} (${Math.round(dirDeg)}°) at ${Math.round(speedMph)} mph`;
 }
 
 /** Active/named systems from CurrentStorms.json (all basins).
@@ -109,8 +127,12 @@ async function fetchActiveStorms(): Promise<RawSystem[] | null> {
       lat: num(s.latitudeNumeric ?? s.latitude),
       lon: num(s.longitudeNumeric ?? s.longitude),
       intensity: s.intensity ? `${s.intensity} kt` : null,
-      movement: s.movementDir && s.movementSpeed
-        ? `${s.movementDir} at ${s.movementSpeed} kt` : null,
+      // movementDir is degrees and movementSpeed is MPH (intensity is the only knots
+      // field). This used to print "300 at 5 kt": a bare number for a direction and the
+      // wrong unit — NHC advisory 28 for Rachel reads "WNW OR 300 DEGREES AT 5 MPH"
+      // against a feed value of 5 (checked 2026-10-03).
+      movement: movementText(num(s.movementDir), num(s.movementSpeed)),
+      movementDeg: num(s.movementSpeed) ? num(s.movementDir) : null,
       formationChance: null,
       advisoryUrl: s?.publicAdvisory?.url ? String(s.publicAdvisory.url) : null,
       coneUrl: s?.forecastCone?.url ? String(s.forecastCone.url)
@@ -218,7 +240,8 @@ export function fixtureSystem(): RawSystem {
     classification: "Tropical Storm",
     lat: 15.2, lon: -60.1,
     intensity: "55 kt",
-    movement: "WNW at 14 kt",
+    movement: "west-northwest (290°) at 16 mph",
+    movementDeg: 290,
     formationChance: null,
     advisoryUrl: "https://www.nhc.noaa.gov/",
     coneUrl: null,
