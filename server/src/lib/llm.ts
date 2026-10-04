@@ -40,6 +40,9 @@
 
 import { logger } from "./logger";
 import {
+  routeLocally, shadowLocally, localText, localJson, shadowCompare,
+} from "./llm-local";
+import {
   MODELS, withJobTag, assertRequestAllowed, structuredCallShape, supportsBetweenTools,
 } from "./claude-core.mjs";
 
@@ -64,8 +67,10 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 
 export interface LlmRequest {
   /**
-   * Which job this call belongs to, e.g. "news.hubclass". Sent as
-   * metadata.user_id = "site:<job>" so the Console attributes the spend.
+   * Which job this call belongs to, e.g. "news.hubclass". REQUIRED: sent as
+   * metadata.user_id = "site:<job>" so the Console attributes the spend. The same
+   * label opts a job into the local box: routing is per job via LLM_LOCAL_JOBS,
+   * shadow comparison via LLM_SHADOW_JOBS.
    */
   job: SiteJob;
   system: string;
@@ -76,6 +81,13 @@ export interface LlmRequest {
   cheap?: boolean;
   maxTokens?: number;
   timeoutMs?: number;
+  /**
+   * Reduce a result to the part a shadow comparison should judge. Without one,
+   * two models are compared verbatim — and free prose or a differently-ordered
+   * batch then reads as 100% disagreement, which measures nothing. Supply this
+   * whenever the payload carries anything but the decision itself.
+   */
+  shadowNormalise?: (value: never) => unknown;
 }
 
 export interface LlmJsonRequest extends LlmRequest {
@@ -206,6 +218,17 @@ function thinkingFor(model: string): Record<string, unknown> {
 
 /** Prose in, prose out. Returns the concatenated text blocks, trimmed. */
 export async function llmText(req: LlmRequest): Promise<string> {
+  if (routeLocally(req.job)) {
+    try {
+      return await localText(req);
+    } catch (err) {
+      logger.warn(
+        { job: req.job, err: err instanceof Error ? err.message : String(err) },
+        "local LLM failed, falling back to Anthropic",
+      );
+    }
+  }
+
   const model = modelFor(req);
   const payload = await post(
     req.job,
@@ -220,11 +243,17 @@ export async function llmText(req: LlmRequest): Promise<string> {
     req.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   );
 
-  return (payload.content ?? [])
+  const text = (payload.content ?? [])
     .filter((b) => b.type === "text")
     .map((b) => b.text ?? "")
     .join("")
     .trim();
+
+  if (shadowLocally(req.job)) {
+    shadowCompare(req.job, text, () => localText(req),
+      req.shadowNormalise as ((v: string) => unknown) | undefined);
+  }
+  return text;
 }
 
 /**
@@ -240,6 +269,17 @@ export async function llmText(req: LlmRequest): Promise<string> {
  * through it, and a reply that comes back as prose is asked again ONCE.
  */
 export async function llmJson<T = Record<string, unknown>>(req: LlmJsonRequest): Promise<T> {
+  if (routeLocally(req.job)) {
+    try {
+      return await localJson<T>(req);
+    } catch (err) {
+      logger.warn(
+        { job: req.job, err: err instanceof Error ? err.message : String(err) },
+        "local LLM failed, falling back to Anthropic",
+      );
+    }
+  }
+
   const model = modelFor(req);
   const shape = structuredCallShape(model, "emit");
   const body: Record<string, unknown> = {
@@ -272,7 +312,12 @@ export async function llmJson<T = Record<string, unknown>>(req: LlmJsonRequest):
 
     const block = (payload.content ?? []).find((b) => b.type === "tool_use" && b.name === "emit");
     if (block && block.input !== undefined && block.input !== null) {
-      return block.input as T;
+      const result = block.input as T;
+      if (shadowLocally(req.job)) {
+        shadowCompare(req.job, result, () => localJson<T>(req),
+          req.shadowNormalise as ((v: T) => unknown) | undefined);
+      }
+      return result;
     }
     if (attempt + 1 < attempts) {
       logger.warn({ job: req.job, model }, "model answered in prose instead of the emit tool — asking once more");
