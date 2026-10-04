@@ -174,10 +174,13 @@ jobs:
             [ -f server/public/es/news.html ] || cp /tmp/saf-prerender-keep/es/news.html server/public/es/ 2>/dev/null || true
             export CI=true  # non-interactive: auto-confirm pnpm's modules purge over SSH (no TTY)
             pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
-            # Dev build mirrors prod (base "/"); API stays relative so the dev mirror
-            # never points at the prod API.
+            # The dev box has no dashboard hostname: nginx serves the dashboard under
+            # /dashboard/ on the box IP, so it must be BUILT with that base. Built
+            # with "/" (as prod is, on its own subdomain) the page asked for
+            # /assets/* at the site root, got 404s and rendered blank (found
+            # 2026-10-03). API stays relative so the dev mirror never points at prod.
             STAMP=$(date -u +%Y%m%d%H%M%S)
-            SAF_SERVER_DIST=dist.v$STAMP SAF_DASH_DIST=dist.v$STAMP PORT=5000 BASE_PATH=/ pnpm --filter @workspace/api-server run build:all
+            SAF_SERVER_DIST=dist.v$STAMP SAF_DASH_DIST=dist.v$STAMP PORT=5000 BASE_PATH=/dashboard/ pnpm --filter @workspace/api-server run build:all
             # ---- runtime env ----
             # Canonical shared env (matches prod: env.ts reads /opt/stillafloat/shared.env).
             # One-time seed from the legacy newsagent .env if the shared file is absent.
