@@ -207,6 +207,8 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
   let paidTotal = 0;
   let openCount = 0;
   let overduePayments = 0;
+  // Sixteen cabins with the same deposit date make ONE attention line, not sixteen.
+  const byKindAndDate = new Map<string, { kind: string; due: string | null; who: string[] }>();
   for (const p of file.payments) {
     if (!liveCabin(p.cabin_id)) continue;
     const amount = Number(p.amount ?? 0) || 0;
@@ -217,8 +219,15 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
     dueTotal += amount;
     openCount++;
     if (p.due_date && daysBetween(today, p.due_date) < 0) overduePayments++;
-    const who = p.cabin_id ? cabinLabel.get(p.cabin_id) ?? "cabin" : "group";
-    push("payment", `${p.kind === "final" ? "Final payment" : p.kind === "deposit" ? "Deposit" : "Payment"} — ${who}`, p.due_date ?? null);
+    const key = `${p.kind}|${p.due_date ?? ""}`;
+    const entry = byKindAndDate.get(key) ?? { kind: p.kind, due: p.due_date ?? null, who: [] };
+    entry.who.push(p.cabin_id ? cabinLabel.get(p.cabin_id) ?? "cabin" : "group");
+    byKindAndDate.set(key, entry);
+  }
+  for (const { kind, due, who } of byKindAndDate.values()) {
+    const what = kind === "final" ? "Final payment" : kind === "deposit" ? "Deposit" : "Payment";
+    const target = who.length === 1 ? who[0]! : `${who.length} cabins`;
+    push("payment", `${what} — ${target}`, due);
   }
 
   let openDocs = 0;
