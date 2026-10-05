@@ -71,7 +71,22 @@
   function md(t){if(!t)return"";return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").split(/\n{2,}/).map(function(p){return "<p>"+p.trim().replace(/\n/g,"<br>")+"</p>";}).join("");}
   var id=new URLSearchParams(location.search).get("id");
   var host=document.getElementById("content");
-  if(!id){host.innerHTML='<p class="meta" style="margin-top:30px">Ningún aviso seleccionado.</p>';return;}
+  if(!id){
+    // No advisory in the address (the storm email's "all warnings" button lands here): list every active one.
+    fetch("/api/storm-watch").then(function(r){return r.json();}).then(function(d){
+      var list=(d&&d.success&&d.systems)||[];
+      if(!list.length){host.innerHTML='<h1>Alertas de tormenta activas</h1><p class="meta" style="margin-top:14px;font-size:16px">Ninguna tormenta amenaza las rutas de crucero en este momento.</p>';return;}
+      host.innerHTML='<h1>Alertas de tormenta activas</h1>'+list.map(function(s){
+        return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="/es/storm-watch.html?id='+encodeURIComponent(s.id)+'">'
+          +'<h2>'+esc(((s.classification?s.classification+" ":"")+(s.name||"")).trim())+'</h2>'
+          +'<div style="font-size:17px;line-height:1.45">'+esc(s.headline||"")+'</div>'
+          +(s.grounds_label?'<div class="meta" style="margin:8px 0 0">'+esc(s.grounds_label)+'</div>':'')
+          +(s.updated?'<div class="meta" style="margin:4px 0 0">Actualizado '+esc(String(s.updated).slice(0,10))+'</div>':'')
+          +'</a>';
+      }).join("");
+    }).catch(function(){host.innerHTML='<p class="meta" style="margin-top:30px">No se pudieron cargar las alertas de tormenta. Inténtalo de nuevo en un minuto.</p>';});
+    return;
+  }
   fetch("/api/storm-watch/"+encodeURIComponent(id)).then(function(r){return r.json();}).then(function(d){
     if(!d||!d.success||!d.system){host.innerHTML='<p class="meta" style="margin-top:30px">Este aviso ya no está activo.</p>';return;}
     var s=d.system;
