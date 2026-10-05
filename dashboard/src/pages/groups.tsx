@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Ship, Plus, Trash2, ArrowLeft, AlertTriangle, CalendarClock, FileText } from "lucide-react";
 import { authHeaders } from "@/lib/auth-token";
 import { useToast } from "@/hooks/use-toast";
+import { GroupTerms } from "./group-terms";
 
 // Group bookings — one file per group (cabins, travelers, paperwork, payments,
 // travel, checklist). Every cell saves when you leave it. Card numbers are
@@ -391,6 +392,8 @@ function GroupDetail({ id }: { id: string }) {
           ))}
         </div>
       </Card>
+
+      <GroupTerms terms={g.terms} sailDate={g.sail_date} />
 
       <Section title="Cabins" groupId={id} child="cabins" rows={data.cabins} newRow={{}} onChanged={refresh}
         cols={[
