@@ -15,6 +15,7 @@ type Intake = {
   id: string; booking_kind: "group" | "individual"; lang: "en" | "es" | "both"; filename: string;
   status: "queued" | "reading" | "extracting" | "ready" | "accepted" | "failed";
   text_chars: number | null; extracted: Row | null; error: string | null; group_id: string | null;
+  model: string | null; created_at: string; updated_at: string;
 };
 
 async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
@@ -32,7 +33,7 @@ async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> 
 const STATUS_TEXT: Record<Intake["status"], string> = {
   queued: "Waiting to start…",
   reading: "Reading the PDF…",
-  extracting: "Picking out the booking details…",
+  extracting: "Picking out the booking details on the AI box. A full quote takes about two minutes; you can leave this page and come back.",
   ready: "Read. Check the details below.",
   accepted: "Saved to a group file.",
   failed: "Could not read this document.",
@@ -58,13 +59,29 @@ const FIELDS: Field[] = [
 
 const inputCls = "mt-1 w-full px-3 py-1.5 text-sm rounded-md border bg-card text-foreground";
 
+/** 2027-02-24 → Wed, Feb 24, 2027 */
+function day(d: string | null | undefined): string {
+  if (!d) return "—";
+  const t = new Date(`${d}T12:00:00Z`);
+  return Number.isNaN(t.getTime()) ? d : t.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+const usd = (n: unknown) => (typeof n === "number" ? `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—");
+
 export default function GroupIntake() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [kind, setKind] = useState<"group" | "individual">("group");
   const [lang, setLang] = useState<"en" | "es" | "both">("en");
   const [uploading, setUploading] = useState(false);
-  const [intakeId, setIntakeId] = useState<string | null>(null);
+  // The read is kept in the address (?intake=…) so leaving the page, or a reload,
+  // comes back to the same document instead of an empty drop zone.
+  const [intakeId, setIntakeIdState] = useState<string | null>(() => new URLSearchParams(window.location.search).get("intake"));
+  const setIntakeId = (id: string | null) => {
+    setIntakeIdState(id);
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("intake", id); else url.searchParams.delete("intake");
+    window.history.replaceState(null, "", url);
+  };
   const [form, setForm] = useState<Row>({});
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -77,10 +94,11 @@ export default function GroupIntake() {
       const s = q.state.data?.intake.status;
       return s === "ready" || s === "failed" || s === "accepted" ? false : 2500;
     },
+    refetchIntervalInBackground: true,
   });
   const intake = data?.intake;
   const found = new Set(data?.found ?? []);
-  const shownKeys = [...FIELDS.map((f) => f.key), "notes", "cabin_categories", "amenities", "itinerary"];
+  const shownKeys = [...FIELDS.map((f) => f.key), "cabin_categories", "amenities", "itinerary", "allotment_reviews", "cancellation_schedule"];
   const foundShown = shownKeys.filter((k) => found.has(k)).length;
 
   // When the reader finishes, seed the form from what it read.
@@ -145,7 +163,23 @@ export default function GroupIntake() {
   };
 
   const busy = intake && (intake.status === "queued" || intake.status === "reading" || intake.status === "extracting");
+  // Minutes since the upload, so a long read shows progress instead of a bare spinner.
+  const [, tick] = useState(0);
+  useEffect(() => { if (!busy) return; const t = setInterval(() => tick((n) => n + 1), 15_000); return () => clearInterval(t); }, [busy]);
+  const minutes = intake ? Math.floor((Date.now() - Date.parse(intake.created_at)) / 60_000) : 0;
   const cats: Row[] = Array.isArray(form.cabin_categories) ? form.cabin_categories : [];
+  const list = (k: string): Row[] => (Array.isArray(form[k]) ? form[k] : []);
+  const warnings: string[] = Array.isArray(form.warnings) ? form.warnings : [];
+  const reviews = list("allotment_reviews");
+  const penalties = list("cancellation_schedule");
+  const deadlines = list("deadlines");
+  const extraPrices = cats.some((c) => c.commissionable_fare != null || c.price_third_fourth_adult != null);
+  // Why a date field is blank, when the document explains it.
+  const hint = (key: string): string | null =>
+    key === "deposit_due" && form.deposit_timing === "at_booking" ? "due when each cabin is booked; the document sets no calendar date"
+      : key === "final_payment_due" && form.final_payment_days_before ? `${form.final_payment_days_before} days before sailing`
+      : key === "recall_date" && reviews.length ? "the last review date below"
+      : null;
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -199,7 +233,8 @@ export default function GroupIntake() {
               {intake.status === "ready" && <CheckCircle2 className="w-4 h-4 text-green-500" />}
               {intake.status === "failed" && <AlertTriangle className="w-4 h-4 text-red-500" />}
               <span className="font-medium">{intake.filename}</span>
-              <span className="text-muted-foreground">— {STATUS_TEXT[intake.status]}</span>
+              <span className="text-muted-foreground">— {STATUS_TEXT[intake.status]}{busy && minutes >= 1 ? ` (${minutes} min so far)` : ""}</span>
+              {intake.status === "ready" && intake.model && <span className="text-muted-foreground">Read by: {intake.model}</span>}
               {intake.status === "failed" && (
                 <>
                   <span className="text-red-600">{intake.error}</span>
@@ -214,6 +249,12 @@ export default function GroupIntake() {
 
       {intake?.status === "ready" && Object.keys(form).length > 0 && (
         <>
+          {warnings.length > 0 && (
+            <Card className="border-amber-500/60">
+              <div className="px-4 py-3 border-b flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-amber-500" /><h3 className="font-semibold">Check these against the PDF</h3></div>
+              <ul className="list-disc pl-9 pr-4 py-3 text-sm space-y-1">{warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
+            </Card>
+          )}
           <Card>
             <div className="px-4 py-3 border-b flex items-center justify-between gap-3 flex-wrap">
               <div>
@@ -232,32 +273,91 @@ export default function GroupIntake() {
               </label>
               {FIELDS.map((f) => (
                 <label key={f.key} className="text-xs text-muted-foreground">
-                  {f.label} {found.has(f.key) ? <span className="text-green-600">· from the document</span> : <span className="text-amber-600">· not found</span>}
+                  {f.label} {found.has(f.key) ? <span className="text-green-600">· from the document{hint(f.key) ? ` (${hint(f.key)})` : ""}</span>
+                    : hint(f.key) ? <span className="text-sky-600">· {hint(f.key)}</span> : <span className="text-amber-600">· not found</span>}
                   <input className={inputCls} type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
                     value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />
                 </label>
               ))}
               <label className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
-                Notes from the document {found.has("notes") ? <span className="text-green-600">· from the document</span> : <span className="text-amber-600">· not found</span>}
+                Notes {found.has("notes") ? <span className="text-green-600">· from the document</span> : <span>(yours; saved on the group file)</span>}
                 <textarea className={inputCls} rows={3} value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} />
               </label>
             </div>
           </Card>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card>
-              <div className="px-4 py-3 border-b"><h3 className="font-semibold">Cabin categories {found.has("cabin_categories") ? <span className="text-xs text-green-600 font-normal">· from the document</span> : <span className="text-xs text-amber-600 font-normal">· not found</span>}</h3></div>
+          <Card>
+            <div className="px-4 py-3 border-b"><h3 className="font-semibold">Cabin categories and prices {found.has("cabin_categories") ? <span className="text-xs text-green-600 font-normal">· from the document</span> : <span className="text-xs text-amber-600 font-normal">· not found</span>}</h3></div>
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/30 text-muted-foreground"><th className="text-left px-3 py-2">Type</th><th className="text-left px-3 py-2">Code</th><th className="text-right px-3 py-2">Cabins</th><th className="text-right px-3 py-2">Per person</th><th className="text-right px-3 py-2">Deposit pp</th></tr></thead>
+                <thead><tr className="border-b bg-muted/30 text-muted-foreground">
+                  <th className="text-left px-3 py-2">Type</th><th className="text-left px-3 py-2">Code</th><th className="text-right px-3 py-2">Cabins</th>
+                  <th className="text-right px-3 py-2">Price per person</th>
+                  {extraPrices && <><th className="text-right px-3 py-2">3rd/4th adult</th><th className="text-right px-3 py-2">3rd/4th child</th><th className="text-right px-3 py-2">Junior child</th>
+                    <th className="text-right px-3 py-2">Commissionable fare</th><th className="text-right px-3 py-2">Non-comm. fare</th><th className="text-right px-3 py-2">Taxes</th></>}
+                  <th className="text-right px-3 py-2">Deposit per person</th>
+                </tr></thead>
                 <tbody className="divide-y divide-border">
-                  {cats.length === 0 && <tr><td colSpan={5} className="px-3 py-4 text-muted-foreground">None listed. {kind === "group" ? `${form.cabins_held || 0} held cabin(s) will be opened without a type.` : "One cabin will be opened."}</td></tr>}
+                  {cats.length === 0 && <tr><td colSpan={11} className="px-3 py-4 text-muted-foreground">None listed. {kind === "group" ? `${form.cabins_held || 0} held cabin(s) will be opened without a type.` : "One cabin will be opened."}</td></tr>}
                   {cats.map((c, i) => (
-                    <tr key={i}><td className="px-3 py-2">{c.category ?? "—"}</td><td className="px-3 py-2">{c.code ?? "—"}</td><td className="px-3 py-2 text-right">{c.count ?? "—"}</td><td className="px-3 py-2 text-right">{c.price_per_person ?? "—"}</td><td className="px-3 py-2 text-right">{c.deposit_per_person ?? "—"}</td></tr>
+                    <tr key={i}><td className="px-3 py-2">{c.category ?? "—"}</td><td className="px-3 py-2">{c.code ?? "—"}</td><td className="px-3 py-2 text-right">{c.count ?? "—"}</td>
+                      <td className="px-3 py-2 text-right font-medium">{usd(c.price_per_person)}</td>
+                      {extraPrices && <><td className="px-3 py-2 text-right">{usd(c.price_third_fourth_adult)}</td><td className="px-3 py-2 text-right">{usd(c.price_child)}</td><td className="px-3 py-2 text-right">{usd(c.price_junior_child)}</td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">{usd(c.commissionable_fare)}</td><td className="px-3 py-2 text-right text-muted-foreground">{usd(c.ncf)}</td><td className="px-3 py-2 text-right text-muted-foreground">{usd(c.taxes)}</td></>}
+                      <td className="px-3 py-2 text-right">{usd(c.deposit_per_person)}</td></tr>
                   ))}
                 </tbody>
               </table>
-              <p className="px-3 py-2 text-xs text-muted-foreground">Per-person prices become per-cabin totals (two guests) on the file. Adjust any cabin afterward.</p>
+            </div>
+            <p className="px-3 py-2 text-xs text-muted-foreground">Prices are per person with taxes and fees in. On the file each cabin is priced for two guests. Adjust any cabin afterward.</p>
+          </Card>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card>
+              <div className="px-4 py-3 border-b"><h3 className="font-semibold">When the line takes cabins back {reviews.length ? <span className="text-xs text-green-600 font-normal">· from the document</span> : <span className="text-xs text-amber-600 font-normal">· not found</span>}</h3></div>
+              <table className="w-full text-sm">
+                <thead><tr className="border-b bg-muted/30 text-muted-foreground"><th className="text-left px-3 py-2">Date</th><th className="text-right px-3 py-2">Days before sailing</th><th className="text-right px-3 py-2">Unsold cabins taken back</th></tr></thead>
+                <tbody className="divide-y divide-border">
+                  {reviews.length === 0 && <tr><td colSpan={3} className="px-3 py-4 text-muted-foreground">The document lists no review dates.</td></tr>}
+                  {reviews.map((r, i) => (
+                    <React.Fragment key={i}>
+                      <tr><td className="px-3 py-2">{day(r.date)}</td><td className="px-3 py-2 text-right">{r.days_before ?? "—"}</td><td className="px-3 py-2 text-right">{r.percent_retaken != null ? `${r.percent_retaken}%` : "—"}</td></tr>
+                      {r.note && <tr><td colSpan={3} className="px-3 pb-2 text-xs text-muted-foreground">{r.note}</td></tr>}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
             </Card>
+            <Card>
+              <div className="px-4 py-3 border-b"><h3 className="font-semibold">Cancellation charges {penalties.length ? <span className="text-xs text-green-600 font-normal">· from the document</span> : <span className="text-xs text-amber-600 font-normal">· not found</span>}</h3></div>
+              <table className="w-full text-sm">
+                <thead><tr className="border-b bg-muted/30 text-muted-foreground"><th className="text-left px-3 py-2">Cancel between</th><th className="text-right px-3 py-2">Days before sailing</th><th className="text-left px-3 py-2">Charge</th></tr></thead>
+                <tbody className="divide-y divide-border">
+                  {penalties.length === 0 && <tr><td colSpan={3} className="px-3 py-4 text-muted-foreground">The document lists no cancellation schedule.</td></tr>}
+                  {penalties.length > 0 && penalties[0]!.from_date && <tr><td className="px-3 py-2">Before {day(penalties[0]!.from_date)}</td><td className="px-3 py-2 text-right">{penalties[0]!.from_days + 1} or more</td><td className="px-3 py-2">No charge stated</td></tr>}
+                  {penalties.map((r, i) => (
+                    <tr key={i}><td className="px-3 py-2">{day(r.from_date)} and {day(r.to_date)}</td><td className="px-3 py-2 text-right">{r.from_days} to {r.to_days}</td><td className="px-3 py-2">{r.penalty ?? (r.percent != null ? `${r.percent}%` : "—")}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+              {form.cancellation_note && <p className="px-3 py-2 text-xs text-muted-foreground">{form.cancellation_note}</p>}
+            </Card>
+          </div>
+
+          {deadlines.length > 0 && (
+            <Card>
+              <div className="px-4 py-3 border-b"><h3 className="font-semibold">Other deadlines in the document</h3></div>
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-border">
+                  {deadlines.map((d, i) => (
+                    <tr key={i}><td className="px-3 py-2 whitespace-nowrap align-top">{day(d.date)}</td><td className="px-3 py-2 whitespace-nowrap align-top text-muted-foreground">{d.days_before} days before</td><td className="px-3 py-2">{d.text}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
+
+          <div className="grid md:grid-cols-1 gap-4">
             <Card>
               <div className="px-4 py-3 border-b"><h3 className="font-semibold">Amenities and itinerary</h3></div>
               <CardContent className="p-4 space-y-3 text-sm">

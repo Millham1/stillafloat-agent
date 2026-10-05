@@ -13,6 +13,10 @@
 // is honest, a guess is not.
 
 import { llmJson } from "./llm";
+import {
+  WHOLE_DOCUMENT_CHARS, cutSections, verifyExtraction,
+  type AllotmentReview, type CancellationRow, type Deadline,
+} from "./booking-terms";
 
 export const MAX_PDF_BYTES = 20 * 1024 * 1024;
 /** Enough for any quote; keeps a 200-page brochure from blowing the context. */
@@ -22,8 +26,14 @@ export interface CabinCategoryLine {
   category: string | null;        // Inside / Ocean View / Balcony / Suite / the line's name
   code: string | null;            // the line's category code, e.g. 8C
   count: number | null;           // cabins of this category in the block
-  price_per_person: number | null;
+  price_per_person: number | null; // what one guest pays, 1st/2nd guest, taxes and fees in
   deposit_per_person: number | null;
+  commissionable_fare: number | null;
+  ncf: number | null;              // non-commissionable fare
+  taxes: number | null;
+  price_third_fourth_adult: number | null;
+  price_child: number | null;
+  price_junior_child: number | null;
 }
 
 export interface ItineraryStop {
@@ -56,9 +66,46 @@ export interface BookingExtraction {
   travelers: Array<{ first_name: string | null; last_name: string | null }>;
   total_price: number | null;
   notes: string | null;
+  // Terms (2026-10-05). Dates in these come from code, not from a model.
+  deposit_timing: "at_booking" | "by_date" | null;
+  final_payment_days_before: number | null;
+  allotment_reviews: AllotmentReview[];
+  cancellation_schedule: CancellationRow[];
+  cancellation_note: string | null;
+  deadlines: Deadline[];
+  /** What the checks in booking-terms.ts blanked or corrected, in plain words. */
+  warnings: string[];
 }
 
 const nullable = (type: string) => ({ type: [type, "null"] });
+const CATEGORY_KEYS = [
+  "category", "code", "count", "price_per_person", "deposit_per_person", "commissionable_fare", "ncf", "taxes",
+  "price_third_fourth_adult", "price_child", "price_junior_child",
+];
+const REVIEW_SCHEMA = {
+  type: "array",
+  items: {
+    type: "object",
+    additionalProperties: false,
+    properties: { date: nullable("string"), days_before: nullable("integer"), percent_retaken: nullable("integer"), note: nullable("string") },
+    required: ["date", "days_before", "percent_retaken", "note"],
+  },
+};
+const CANCELLATION_SCHEMA = {
+  type: "array",
+  description: "Only the rows that apply to this cruise's length and a standard stateroom",
+  items: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      from_days: { ...nullable("integer"), description: "Days before sailing the row starts (the larger number)" },
+      to_days: nullable("integer"),
+      penalty: { ...nullable("string"), description: "As printed" },
+      percent: { ...nullable("integer"), description: "null when the penalty is the deposit" },
+    },
+    required: ["from_days", "to_days", "penalty", "percent"],
+  },
+};
 
 export const BOOKING_SCHEMA: Record<string, unknown> = {
   type: "object",
@@ -97,10 +144,16 @@ export const BOOKING_SCHEMA: Record<string, unknown> = {
           category: nullable("string"),
           code: nullable("string"),
           count: nullable("integer"),
-          price_per_person: nullable("number"),
+          price_per_person: { ...nullable("number"), description: "Total price one guest pays (1st/2nd guest, double occupancy), taxes and fees included" },
           deposit_per_person: nullable("number"),
+          commissionable_fare: nullable("number"),
+          ncf: { ...nullable("number"), description: "Non-commissionable fare" },
+          taxes: { ...nullable("number"), description: "Government taxes and fees per guest" },
+          price_third_fourth_adult: nullable("number"),
+          price_child: nullable("number"),
+          price_junior_child: nullable("number"),
         },
-        required: ["category", "code", "count", "price_per_person", "deposit_per_person"],
+        required: CATEGORY_KEYS,
       },
     },
     deposit_per_person: nullable("number"),
@@ -121,18 +174,24 @@ export const BOOKING_SCHEMA: Record<string, unknown> = {
     },
     total_price: nullable("number"),
     notes: { ...nullable("string"), description: "Anything else a travel advisor must not miss: penalties, deadlines, conditions. Two or three sentences at most." },
+    deposit_timing: { type: ["string", "null"], enum: ["at_booking", "by_date", null], description: "at_booking when the deposit is due when each cabin is booked; by_date when a calendar date is printed" },
+    final_payment_days_before: { ...nullable("integer"), description: "When the document says final payment is due N days before sailing" },
+    allotment_reviews: REVIEW_SCHEMA,
+    cancellation_schedule: CANCELLATION_SCHEMA,
+    cancellation_note: { ...nullable("string"), description: "The footnote under the cancellation table, as printed" },
   },
   required: [
     "cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary",
     "group_number", "booking_number", "cabins_held", "cabin_categories", "deposit_per_person",
     "deposit_due", "names_due", "final_payment_due", "recall_date", "amenities", "organizer_name",
     "travelers", "total_price", "notes",
+    "deposit_timing", "final_payment_days_before", "allotment_reviews", "cancellation_schedule", "cancellation_note",
   ],
 };
 
 export const SYSTEM_PROMPT = `You read cruise line group contracts, group quotes and individual booking confirmations for a travel advisor and fill in a booking record.
 Rules:
-- Copy only what the document states. If a field is not in the document, return null (or an empty list). Never guess, infer or fill a typical value.
+- Copy only what the document states. If a field is not in the document, return null (or an empty list). Never guess, infer, calculate or fill a typical value.
 - Dates as YYYY-MM-DD. Money as plain numbers in the document's currency, no symbols. Per-person figures stay per person.
 - Cabin categories: one entry per category line in the block, with the line's own code when printed.
 - Amenities: the group's perks exactly as written (onboard credit, free berths, cocktail party, etc.), one per entry.
@@ -217,6 +276,12 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
       count: normalizeInt(x["count"]),
       price_per_person: normalizeMoney(x["price_per_person"]),
       deposit_per_person: normalizeMoney(x["deposit_per_person"]),
+      commissionable_fare: normalizeMoney(x["commissionable_fare"]),
+      ncf: normalizeMoney(x["ncf"]),
+      taxes: normalizeMoney(x["taxes"]),
+      price_third_fourth_adult: normalizeMoney(x["price_third_fourth_adult"]),
+      price_child: normalizeMoney(x["price_child"]),
+      price_junior_child: normalizeMoney(x["price_junior_child"]),
     }))
     .filter((x) => x.category || x.code);
   const travelers = list(r["travelers"])
@@ -224,6 +289,21 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     .map((x) => ({ first_name: str(x["first_name"]), last_name: str(x["last_name"]) }))
     .filter((x) => x.first_name || x.last_name);
   const amenities = list(r["amenities"]).map(str).filter((x): x is string => !!x);
+  const obj = (x: unknown) => (x && typeof x === "object" ? (x as Record<string, unknown>) : {});
+  const allotment_reviews: AllotmentReview[] = list(r["allotment_reviews"]).map(obj)
+    .map((x) => ({ date: normalizeDate(x["date"]), days_before: normalizeInt(x["days_before"]), percent_retaken: normalizeInt(x["percent_retaken"]), note: str(x["note"]) }))
+    .filter((x) => x.date || x.days_before !== null);
+  const cancellation_schedule: CancellationRow[] = list(r["cancellation_schedule"]).map(obj)
+    .map((x) => ({
+      from_days: normalizeInt(x["from_days"]), to_days: normalizeInt(x["to_days"]),
+      from_date: normalizeDate(x["from_date"]), to_date: normalizeDate(x["to_date"]),
+      penalty: str(x["penalty"]), percent: normalizeInt(x["percent"]),
+    }))
+    .filter((x) => x.from_days !== null || x.to_days !== null);
+  const deadlines: Deadline[] = list(r["deadlines"]).map(obj)
+    .map((x) => ({ date: normalizeDate(x["date"]), days_before: normalizeInt(x["days_before"]) ?? 0, text: str(x["text"]) ?? "" }))
+    .filter((x) => x.text);
+  const timing = r["deposit_timing"];
 
   const sail_date = normalizeDate(r["sail_date"]);
   const return_date = normalizeDate(r["return_date"]);
@@ -260,12 +340,20 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     travelers,
     total_price: normalizeMoney(r["total_price"]),
     notes: str(r["notes"]),
+    deposit_timing: timing === "at_booking" || timing === "by_date" ? timing : null,
+    final_payment_days_before: normalizeInt(r["final_payment_days_before"]),
+    allotment_reviews,
+    cancellation_schedule,
+    cancellation_note: str(r["cancellation_note"]),
+    deadlines,
+    warnings: list(r["warnings"]).map(str).filter((x): x is string => !!x),
   };
 }
 
 /** Which fields the document gave us — the form marks the rest "not found". */
 export function foundFields(x: BookingExtraction): string[] {
   return (Object.keys(x) as Array<keyof BookingExtraction>).filter((k) => {
+    if (k === "warnings") return false;
     const v = x[k];
     return Array.isArray(v) ? v.length > 0 : v !== null;
   });
@@ -330,16 +418,122 @@ export async function extractPdfText(bytes: Uint8Array): Promise<string> {
   return pages.join("\n\n--- page break ---\n\n").trim().slice(0, MAX_TEXT_CHARS);
 }
 
-export async function extractBooking(text: string, kind: "group" | "individual"): Promise<BookingExtraction> {
-  const raw = await llmJson<Record<string, unknown>>({
-    job: "groups.extract",
-    system: SYSTEM_PROMPT,
-    user:
-      `This document is ${kind === "group" ? "a GROUP contract or group quote" : "an INDIVIDUAL booking confirmation or quote"}. ` +
-      `Fill in the booking record from it.\n\n<document>\n${text}\n</document>`,
-    schema: BOOKING_SCHEMA,
-    maxTokens: 4000,
-    timeoutMs: 180_000,
-  });
-  return normalizeExtraction(raw);
+export type ReaderProvider = { provider: "local" | "anthropic"; model: string; fellBackFrom?: string };
+
+/** How long the AI box gets for ONE question before Claude takes over. Node's
+ * fetch gives up at 300 s whatever we ask for (the box sends nothing until it
+ * has finished writing), so the ceiling is just under that. A section takes the
+ * box about 25 s; a whole short document about a minute. */
+export function readerTimeoutMs(): number {
+  const v = Number(process.env["BOOKING_READER_LOCAL_TIMEOUT_MS"]);
+  return Number.isFinite(v) && v >= 30_000 ? Math.min(v, 290_000) : 240_000;
+}
+
+/** Plain-English label for the dashboard: who read the document. */
+export function describeProvider(p: ReaderProvider | null): string {
+  if (!p) return "unknown";
+  if (p.provider === "local") return "AI box";
+  const why = p.fellBackFrom && /timeout|aborted/i.test(p.fellBackFrom) ? "the AI box ran out of time"
+    : p.fellBackFrom ? "the AI box could not answer" : "the AI box is not set up for this job";
+  return `Claude (${why})`;
+}
+
+/** The same, for a document read in several parts. */
+export function describeProviders(ps: ReaderProvider[]): string {
+  if (!ps.length) return "unknown";
+  const claude = ps.filter((p) => p.provider === "anthropic");
+  if (!claude.length) return "AI box";
+  if (claude.length === ps.length) return describeProvider(claude[0]!);
+  return `AI box, with ${claude.length} of ${ps.length} parts read by Claude`;
+}
+
+const SECTION_SYSTEM = `You read one section of a cruise line group contract, quote or booking confirmation for a travel advisor.
+Copy only what the section states. If something is not stated, return null (or an empty list). Never calculate, infer or guess a value.
+Money as plain numbers, no symbols. Dates as YYYY-MM-DD.`;
+
+const pick = (schema: Record<string, unknown>, keys: string[]): Record<string, unknown> => {
+  const props = (schema["properties"] ?? {}) as Record<string, unknown>;
+  return { type: "object", additionalProperties: false, properties: Object.fromEntries(keys.map((k) => [k, props[k]])), required: keys };
+};
+
+type Ask = <T>(what: string, section: string, question: string, schema: Record<string, unknown>, maxTokens: number) => Promise<T | null>;
+
+/** A long document, one short section per question, each answered in seconds by the box. */
+async function readBySection(text: string, kind: "group" | "individual", ask: Ask): Promise<Record<string, unknown>> {
+  const s = cutSections(text);
+  const what = kind === "group" ? "a GROUP contract or group quote" : "an INDIVIDUAL booking confirmation or quote";
+  const basics = await ask<Record<string, unknown>>("the ship and sailing details", s.basics,
+    `These lines come from ${what}. Fill in: cruise_line, ship_name, sail_date, return_date, nights, embark_port, itinerary (one entry per day listed), ` +
+    `group_number (the line's group id), booking_number, organizer_name (the group's own leader; the travel agency and the advisor named after \"Attention\" are not the organizer), ` +
+    `travelers (guests named, else an empty list), amenities (the group's perks as written, one per entry; else an empty list).`,
+    pick(BOOKING_SCHEMA, ["cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary", "group_number", "booking_number", "organizer_name", "travelers", "amenities"]), 1200);
+
+  const rates = s.rates ? await ask<Record<string, unknown>>("the price table", s.rates,
+    `In a rate table the total price a guest pays is the largest per-person figure for that guest type: it equals the commissionable fare plus the ` +
+    `non-commissionable fare plus the government tax. The numbers in each row follow the order of the column headers.\n\n` +
+    `Fill in cabin_categories: one entry per cabin category row, with category (its name), code, count (cabins in the block), ` +
+    `commissionable_fare (1st/2nd guest), ncf, taxes, price_per_person (total price, 1st/2nd guest), price_third_fourth_adult, price_child, ` +
+    `price_junior_child (total prices), deposit_per_person (only if the row prints one).`,
+    pick(BOOKING_SCHEMA, ["cabin_categories"]), 900) : null;
+
+  const cats = Array.isArray(rates?.["cabin_categories"]) ? (rates!["cabin_categories"] as Array<Record<string, unknown>>) : [];
+  const held = cats.reduce((n, c) => n + (typeof c["count"] === "number" ? c["count"] : 0), 0);
+  const payments = s.payments ? await ask<Record<string, unknown>>("the deposit and payment terms", s.payments,
+    `${held ? `This booking holds ${held} staterooms. ` : ""}Fill in: deposit_per_person (the deposit each guest pays to book a standard stateroom), ` +
+    `deposit_timing (at_booking when it is due when the cabin is booked, by_date when a calendar date is printed, else null), ` +
+    `deposit_due (only a printed calendar date), names_due (only a printed calendar date), final_payment_days_before, ` +
+    `final_payment_due (only a printed calendar date), total_price (only for a single booking).`,
+    pick(BOOKING_SCHEMA, ["deposit_per_person", "deposit_timing", "deposit_due", "names_due", "final_payment_days_before", "final_payment_due", "total_price"]), 300) : null;
+
+  const nights = typeof basics?.["nights"] === "number" ? basics["nights"] : null;
+  const cancellation = s.cancellation ? await ask<Record<string, unknown>>("the cancellation schedule", s.cancellation,
+    `${nights ? `This is a ${nights}-night cruise in a standard stateroom (not a suite club). ` : ""}Fill in cancellation_schedule: one entry per row that applies to this cruise ` +
+    `(from_days, to_days, penalty as printed, percent as a number or null when the penalty is the deposit), and cancellation_note (the footnote, as printed).`,
+    pick(BOOKING_SCHEMA, ["cancellation_schedule", "cancellation_note"]), 500) : null;
+
+  if (!basics && !rates && !payments && !cancellation) throw new Error("No part of the document could be read");
+  return { ...basics, ...rates, ...payments, ...cancellation };
+}
+
+export async function extractBooking(
+  text: string,
+  kind: "group" | "individual",
+  onProviders?: (ps: ReaderProvider[]) => void,
+): Promise<BookingExtraction> {
+  const providers: ReaderProvider[] = [];
+  const warnings: string[] = [];
+  let raw: Record<string, unknown>;
+  if (text.length <= WHOLE_DOCUMENT_CHARS) {
+    raw = await llmJson<Record<string, unknown>>({
+      job: "groups.extract",
+      system: SYSTEM_PROMPT,
+      user:
+        `This document is ${kind === "group" ? "a GROUP contract or group quote" : "an INDIVIDUAL booking confirmation or quote"}. ` +
+        `Fill in the booking record from it.\n\n<document>\n${text}\n</document>`,
+      schema: BOOKING_SCHEMA,
+      maxTokens: 4000,
+      timeoutMs: readerTimeoutMs(),
+      onProvider: (p) => { providers.push(p); },
+    });
+  } else {
+    const ask: Ask = async (what, section, question, schema, maxTokens) => {
+      try {
+        return await llmJson({
+          job: "groups.extract",
+          system: SECTION_SYSTEM,
+          user: `<section>\n${section}\n</section>\n\n${question}`,
+          schema,
+          maxTokens,
+          timeoutMs: readerTimeoutMs(),
+          onProvider: (p) => { providers.push(p); },
+        });
+      } catch (err) {
+        warnings.push(`Could not read ${what} (${err instanceof Error ? err.message : String(err)}). Fill those fields in by hand.`);
+        return null;
+      }
+    };
+    raw = await readBySection(text, kind, ask);
+  }
+  onProviders?.(providers);
+  return verifyExtraction(normalizeExtraction({ ...raw, warnings }), text);
 }
