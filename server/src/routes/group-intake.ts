@@ -179,6 +179,15 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
       lang: picked.row["lang"] ?? intake.lang,
       itinerary: picked.row["itinerary"] ?? extracted.itinerary,
       amenities: picked.row["amenities"] ?? extracted.amenities,
+      terms: {
+        cabin_categories: extracted.cabin_categories,
+        deposit_timing: extracted.deposit_timing,
+        final_payment_days_before: extracted.final_payment_days_before,
+        allotment_reviews: extracted.allotment_reviews,
+        cancellation_schedule: extracted.cancellation_schedule,
+        cancellation_note: extracted.cancellation_note,
+        deadlines: extracted.deadlines,
+      },
     };
     const { data: group, error: ge } = await db().from("groups").insert(groupRow).select("*").single();
     if (ge) {
