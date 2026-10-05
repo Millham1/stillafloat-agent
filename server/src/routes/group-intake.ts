@@ -4,8 +4,8 @@ import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
 import { CHILDREN, GROUP_COLUMNS, missingSchedule, pickWritable, slugify } from "../lib/group-file";
 import {
-  MAX_PDF_BYTES, cabinRowsFromExtraction, extractBooking, extractPdfText, foundFields, normalizeExtraction,
-  type BookingExtraction,
+  MAX_PDF_BYTES, cabinRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
+  type BookingExtraction, type ReaderProvider,
 } from "../lib/booking-extract";
 
 // "Enter a booking" (Mark, 2026-10-02): drop the cruise line's contract or
@@ -21,6 +21,24 @@ import {
 
 const router: IRouter = Router();
 const BUCKET = "group-docs";
+
+// A document is read inside this one server process. If the process restarts
+// mid-read (a deploy does exactly that) the row would say "reading" forever and
+// the page would spin (2026-10-05, Mark's first real quote). At boot nothing can
+// still be in flight, so any unfinished row was interrupted: say so plainly.
+export async function recoverInterruptedIntakes(): Promise<number> {
+  const { data, error } = await db().from("group_intakes")
+    .update({ status: "failed", error: "Interrupted: the server restarted while this document was being read. Press Try again.", updated_at: new Date().toISOString() })
+    .in("status", ["queued", "reading", "extracting"])
+    .select("id");
+  if (error) throw new Error(error.message);
+  return (data ?? []).length;
+}
+setTimeout(() => {
+  recoverInterruptedIntakes()
+    .then((n) => { if (n) logger.warn({ count: n }, "booking intakes interrupted by a restart were marked failed"); })
+    .catch((err: unknown) => logger.warn({ err: err instanceof Error ? err.message : String(err) }, "booking intake recovery skipped"));
+}, 5_000).unref();
 type Row = Record<string, any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = (): any => getSupabase();
@@ -54,11 +72,11 @@ async function processIntake(id: string): Promise<void> {
     }
     await setStatus(id, { status: "extracting", text_chars: text.length });
 
-    const extracted = await extractBooking(text, intake.booking_kind);
-    await setStatus(id, {
-      status: "ready", extracted, model: process.env["LLM_LOCAL_JOBS"]?.split(",").map((s) => s.trim()).includes("groups.extract") ? "local-first" : "claude",
-    });
-    logger.info({ intake: id, found: foundFields(extracted).length, chars: text.length }, "booking intake read");
+    let providers: ReaderProvider[] = [];
+    const extracted = await extractBooking(text, intake.booking_kind, (ps) => { providers = ps; });
+    const reader = describeProviders(providers);
+    await setStatus(id, { status: "ready", extracted, model: reader });
+    logger.info({ intake: id, found: foundFields(extracted).length, warnings: extracted.warnings.length, chars: text.length, reader }, "booking intake read");
   } catch (err) {
     logger.error({ intake: id, err: err instanceof Error ? err.message : String(err) }, "booking intake failed");
     await setStatus(id, { status: "failed", error: err instanceof Error ? err.message : String(err) }).catch(() => undefined);

@@ -88,6 +88,12 @@ export interface LlmRequest {
    * whenever the payload carries anything but the decision itself.
    */
   shadowNormalise?: (value: never) => unknown;
+  /**
+   * Told which provider actually answered (2026-10-05: the booking reader
+   * labelled every result "local-first" from the CONFIG, so a Claude fallback
+   * looked like the box). `fellBackFrom` carries the box's error when it did.
+   */
+  onProvider?: (p: { provider: "local" | "anthropic"; model: string; fellBackFrom?: string }) => void;
 }
 
 export interface LlmJsonRequest extends LlmRequest {
@@ -269,14 +275,15 @@ export async function llmText(req: LlmRequest): Promise<string> {
  * through it, and a reply that comes back as prose is asked again ONCE.
  */
 export async function llmJson<T = Record<string, unknown>>(req: LlmJsonRequest): Promise<T> {
+  let fellBackFrom: string | undefined;
   if (routeLocally(req.job)) {
     try {
-      return await localJson<T>(req);
+      const local = await localJson<T>(req);
+      req.onProvider?.({ provider: "local", model: "qwen3-30b" });
+      return local;
     } catch (err) {
-      logger.warn(
-        { job: req.job, err: err instanceof Error ? err.message : String(err) },
-        "local LLM failed, falling back to Anthropic",
-      );
+      fellBackFrom = err instanceof Error ? err.message : String(err);
+      logger.warn({ job: req.job, err: fellBackFrom }, "local LLM failed, falling back to Anthropic");
     }
   }
 
@@ -313,6 +320,7 @@ export async function llmJson<T = Record<string, unknown>>(req: LlmJsonRequest):
     const block = (payload.content ?? []).find((b) => b.type === "tool_use" && b.name === "emit");
     if (block && block.input !== undefined && block.input !== null) {
       const result = block.input as T;
+      req.onProvider?.({ provider: "anthropic", model, ...(fellBackFrom ? { fellBackFrom } : {}) });
       if (shadowLocally(req.job)) {
         shadowCompare(req.job, result, () => localJson<T>(req),
           req.shadowNormalise as ((v: T) => unknown) | undefined);
