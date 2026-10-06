@@ -73,7 +73,7 @@ function fixture(): GroupFile {
 test("summarize counts cabins, money and paperwork, ignoring released cabins", () => {
   const s = summarize(fixture(), "2026-10-10", 30);
   assert.deepEqual(s.cabins, { total: 3, held: 1, offered: 0, booked: 1, released: 1 });
-  assert.deepEqual(s.travelers, { total: 2, formsIn: 1, signed: 1 });
+  assert.deepEqual(s.travelers, { total: 4, formsIn: 1, signed: 1 });
   assert.deepEqual(s.payments, { dueTotal: 1900, paidTotal: 500, openCount: 1, overdueCount: 0 });
   assert.deepEqual(s.documents, { open: 1, overdue: 1 });
   assert.deepEqual(s.checklist, { open: 1, overdue: 1 });
@@ -87,6 +87,7 @@ test("attention list is sorted soonest-first, flags overdue, and respects the ho
     "Client terms (client)",          // 9 days overdue
     "Send invitation",                // 5 days overdue
     "Group deposit deadline",         // in 10 days
+    "No emails sent yet on this group", // undated
   ]);
   assert.equal(s.attention[0]!.overdue, true);
   assert.equal(s.attention[2]!.overdue, false);
@@ -94,7 +95,7 @@ test("attention list is sorted soonest-first, flags overdue, and respects the ho
   const wide = summarize(fixture(), "2026-10-10", 90).attention.map((a) => a.label);
   assert.ok(wide.includes("Final payment — cabin 8214"));
   assert.ok(wide.includes("Names due to the cruise line"));
-  assert.ok(wide.includes("1 traveler form sent but not returned"));
+  assert.ok(wide.some((l) => /^3 of 4 traveler forms not returned/.test(l)));
 });
 
 test("payments with the same kind and due date collapse into one attention line", () => {
@@ -124,4 +125,28 @@ test("missingSchedule computes the final balance from price minus deposit", () =
   f.payments = [];
   const c1 = missingSchedule(f).filter((r) => r.cabin_id === "c1");
   assert.deepEqual(c1.map((r) => [r.kind, r.amount]), [["deposit", 500], ["final", 1900]]);
+});
+
+test("a block with no cabin rows yet still reads against the block size, deposits and forms", () => {
+  const f = { group: { id: "g", status: "draft", sail_date: "2027-05-10", cabins_held: 16, deposit_per_person: 99, final_payment_due: "2027-02-24",
+    terms: { allotment_reviews: [{ date: "2026-11-11", percent_retaken: 75 }] } },
+    cabins: [], travelers: [], documents: [], payments: [], checklist: [], messages: [] } as any;
+  const s = summarize(f, "2026-10-06", 3650);
+  assert.equal(s.cabins.total, 16);
+  assert.deepEqual(s.deposits, { total: 3168, paid: 0 });
+  assert.equal(s.travelers.total, 32);
+  const labels = s.attention.map((a) => a.label).join(" | ");
+  assert.match(labels, /Deposits — 16 cabins, \$3,168 still to collect \(due at booking\)/);
+  assert.match(labels, /32 of 32 traveler forms not returned|32 traveler forms/);
+  assert.match(labels, /Group final payment deadline/);
+  assert.match(labels, /Line reviews the block \(takes back 75% of unsold\)/);
+  assert.match(labels, /No emails sent yet/);
+});
+
+test("a deposit due at booking (no date) still gets a payment row per cabin", () => {
+  const rows = missingSchedule({ group: { id: "g", deposit_due: null, final_payment_due: null } as any,
+    cabins: [{ id: "c1", status: "held", deposit_amount: 198, price_total: 1000 } as any], payments: [] });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]!["kind"], "deposit");
+  assert.equal(rows[0]!["due_date"], null);
 });
