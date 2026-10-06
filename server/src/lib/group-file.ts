@@ -302,7 +302,11 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
     }
     for (const [label, due] of groupDates) {
       // A group-level date only matters while it is still ahead (or just passed).
-      if (due && daysBetween(today, due) >= -7) push("group-date", label, due);
+      if (!due || daysBetween(today, due) < -7) continue;
+      // Already shown as per-cabin payment lines, or as one of the line's review dates.
+      if (label === "Group final payment deadline" && attention.some((a) => a.kind === "payment" && a.due === due && a.label.startsWith("Final payment"))) continue;
+      if (label === "Unsold cabins go back to the line" && reviews.some((r) => r.date === due)) continue;
+      push("group-date", label, due);
     }
   }
 
