@@ -150,3 +150,13 @@ test("a deposit due at booking (no date) still gets a payment row per cabin", ()
   assert.equal(rows[0]!["kind"], "deposit");
   assert.equal(rows[0]!["due_date"], null);
 });
+
+test("the final payment and the last review date are not listed twice", () => {
+  const f = { group: { id: "g", status: "draft", sail_date: "2027-05-10", cabins_held: 1, final_payment_due: "2027-02-24", recall_date: "2027-01-10",
+    terms: { allotment_reviews: [{ date: "2027-01-10", percent_retaken: 100 }] } },
+    cabins: [{ id: "c1", status: "held" }], travelers: [], documents: [], checklist: [], messages: [],
+    payments: [{ id: "p", cabin_id: "c1", kind: "final", amount: 100, due_date: "2027-02-24", paid_at: null }] } as any;
+  const labels = summarize(f, "2026-10-06", 3650).attention.map((a) => a.label);
+  assert.equal(labels.filter((l) => /final payment/i.test(l)).length, 1);
+  assert.equal(labels.filter((l) => /review|go back/i.test(l)).length, 1);
+});
