@@ -20,6 +20,8 @@ type Summary = {
   cabins: { total: number; held: number; offered: number; booked: number; released: number };
   travelers: { total: number; formsIn: number; signed: number };
   payments: { dueTotal: number; paidTotal: number; openCount: number; overdueCount: number };
+  deposits: { total: number; paid: number };
+  emails: { sent: number };
   documents: { open: number; overdue: number };
   checklist: { open: number; overdue: number };
   daysToSail: number | null;
@@ -317,7 +319,7 @@ const GROUP_FIELDS: Col[] = [
 function GroupDetail({ id }: { id: string }) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { data, isLoading, error } = useQuery<GroupFile>({ queryKey: ["group", id], queryFn: () => api(`/groups/${id}?horizon=45`) });
+  const { data, isLoading, error } = useQuery<GroupFile>({ queryKey: ["group", id], queryFn: () => api(`/groups/${id}?horizon=3650`) });
   const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); };
 
   if (isLoading) return <p className="text-muted-foreground">Loading…</p>;
@@ -358,7 +360,7 @@ function GroupDetail({ id }: { id: string }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "cabins booked", value: `${s.cabins.booked} of ${s.cabins.total - s.cabins.released}` },
-          { label: `paid · ${money(s.payments.dueTotal)} still due`, value: money(s.payments.paidTotal) },
+          { label: s.deposits.total > 0 ? "deposits paid" : `paid · ${money(s.payments.dueTotal)} still due`, value: s.deposits.total > 0 ? `${money(s.deposits.paid)} of ${money(s.deposits.total)}` : money(s.payments.paidTotal) },
           { label: "traveler forms returned", value: `${s.travelers.formsIn} of ${s.travelers.total}` },
           { label: "open paperwork items", value: String(s.documents.open) },
         ].map((x) => (
@@ -367,9 +369,9 @@ function GroupDetail({ id }: { id: string }) {
       </div>
 
       <Card>
-        <div className="px-4 py-3 border-b flex items-center gap-2"><CalendarClock className="w-4 h-4" /><h3 className="font-semibold">Needs attention — next 45 days</h3></div>
+        <div className="px-4 py-3 border-b flex items-center gap-2"><CalendarClock className="w-4 h-4" /><h3 className="font-semibold">Needs attention</h3></div>
         <div className="divide-y divide-border">
-          {s.attention.length === 0 && <p className="px-4 py-4 text-sm text-muted-foreground">Nothing due in the next 45 days.</p>}
+          {s.attention.length === 0 && <p className="px-4 py-4 text-sm text-muted-foreground">Nothing open.</p>}
           {s.attention.map((a, i) => (
             <div key={i} className="px-4 py-2 flex items-center justify-between gap-3 text-sm">
               <span>{a.label}</span>

@@ -189,6 +189,12 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
         deadlines: extracted.deadlines,
       },
     };
+    // Anything the confirmation form left out but the document said still goes on the file.
+    for (const k of ["cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "group_number", "cabins_held",
+      "deposit_per_person", "deposit_due", "names_due", "final_payment_due", "recall_date", "organizer_name"] as const) {
+      const v = (extracted as unknown as Row)[k];
+      if ((groupRow[k] === undefined || groupRow[k] === null || groupRow[k] === "") && v !== null && v !== undefined) groupRow[k] = v;
+    }
     const { data: group, error: ge } = await db().from("groups").insert(groupRow).select("*").single();
     if (ge) {
       return res.status(ge.code === "23505" ? 409 : 400).json({ success: false, error: ge.code === "23505" ? "A group with that name already exists" : ge.message });

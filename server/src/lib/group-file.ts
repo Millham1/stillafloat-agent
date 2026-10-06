@@ -150,10 +150,11 @@ export type GroupFile = {
   documents: Row[];
   payments: Row[];
   checklist: Row[];
+  messages?: Row[];
 };
 
 export type AttentionItem = {
-  kind: "payment" | "document" | "checklist" | "traveler-form" | "group-date";
+  kind: "payment" | "document" | "checklist" | "traveler-form" | "group-date" | "email";
   label: string;
   due: string | null;
   overdue: boolean;
@@ -164,6 +165,9 @@ export type GroupSummary = {
   cabins: { total: number; held: number; offered: number; booked: number; released: number };
   travelers: { total: number; formsIn: number; signed: number };
   payments: { dueTotal: number; paidTotal: number; openCount: number; overdueCount: number };
+  /** Deposits for the whole block: what the quote says they add up to, and what has come in. */
+  deposits: { total: number; paid: number };
+  emails: { sent: number };
   documents: { open: number; overdue: number };
   checklist: { open: number; overdue: number };
   daysToSail: number | null;
@@ -196,7 +200,8 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
 
   const count = (status: string) => file.cabins.filter((c) => c.status === status).length;
   const cabins = {
-    total: file.cabins.length,
+    // Until each cabin has its own row, the block size on the file is the count.
+    total: Math.max(file.cabins.length, Number(file.group.cabins_held ?? 0) || 0),
     held: count("held"),
     offered: count("offered"),
     booked: count("booked"),
@@ -230,6 +235,23 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
     push("payment", `${what} — ${target}`, due);
   }
 
+  // Deposits for the block: per-cabin amounts when the cabins are listed, else
+  // cabins held × per-person deposit × two (double occupancy).
+  const perPerson = Number(file.group.deposit_per_person ?? 0) || 0;
+  const liveCabins = file.cabins.filter((c) => CABIN_LIVE.has(c.status ?? "held"));
+  let depositsTotal = liveCabins.reduce((n, c) => n + (Number(c.deposit_amount ?? 0) || 0), 0);
+  const unlisted = Math.max(0, cabins.total - file.cabins.length);
+  depositsTotal += unlisted * perPerson * 2;
+  const depositsPaid = file.payments
+    .filter((p) => p.kind === "deposit" && p.paid_at && liveCabin(p.cabin_id))
+    .reduce((n, p) => n + (Number(p.amount ?? 0) || 0), 0);
+  const depositsOpen = file.payments.filter((p) => p.kind === "deposit" && !p.paid_at && liveCabin(p.cabin_id));
+  const noDepositRows = !file.payments.some((p) => p.kind === "deposit");
+  if (depositsTotal > 0 && depositsPaid < depositsTotal && (noDepositRows || depositsOpen.length === 0)) {
+    const due = file.group.deposit_due ?? null;
+    push("payment", `Deposits — ${cabins.total - cabins.released} cabins, $${Math.round(depositsTotal - depositsPaid).toLocaleString("en-US")} still to collect${due ? "" : " (due at booking)"}`, due);
+  }
+
   let openDocs = 0;
   let overdueDocs = 0;
   for (const d of file.documents) {
@@ -249,12 +271,21 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
   }
 
   const liveTravelers = file.travelers.filter((t) => liveCabin(t.cabin_id));
+  // Two to a cabin until the names are in.
+  const expectedTravelers = Math.max(liveTravelers.length, (cabins.total - cabins.released) * 2);
   const formsIn = liveTravelers.filter((t) => t.form_submitted_at).length;
   const signed = liveTravelers.filter((t) => t.consent_signed_at).length;
   const formsOut = liveTravelers.filter((t) => t.form_sent_at && !t.form_submitted_at).length;
-  if (formsOut > 0) {
-    push("traveler-form", `${formsOut} traveler form${formsOut === 1 ? "" : "s"} sent but not returned`, file.group.names_due ?? null);
+  const formsMissing = expectedTravelers - formsIn;
+  if (formsMissing > 0) {
+    const unsent = Math.max(0, expectedTravelers - liveTravelers.filter((t) => t.form_sent_at || t.form_submitted_at).length);
+    push("traveler-form",
+      `${formsMissing} of ${expectedTravelers} traveler forms not returned` +
+      (formsOut > 0 || unsent < expectedTravelers ? ` (${formsOut} sent, ${unsent} not yet sent)` : " (none sent yet)"),
+      file.group.names_due ?? null);
   }
+  const sentEmails = (file.messages ?? []).filter((m) => m.status === "sent" || m.sent_at).length;
+  if (sentEmails === 0) push("email", "No emails sent yet on this group", null);
 
   const g = file.group;
   const active = !["sailed", "closed", "cancelled"].includes(g.status);
@@ -265,6 +296,10 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
       ["Group final payment deadline", g.final_payment_due],
       ["Unsold cabins go back to the line", g.recall_date],
     ];
+    const reviews: Array<{ date?: string | null; percent_retaken?: number | null }> = Array.isArray(g.terms?.allotment_reviews) ? g.terms.allotment_reviews : [];
+    for (const r of reviews) {
+      if (r.date) groupDates.push([`Line reviews the block${r.percent_retaken != null ? ` (takes back ${r.percent_retaken}% of unsold)` : ""}`, r.date]);
+    }
     for (const [label, due] of groupDates) {
       // A group-level date only matters while it is still ahead (or just passed).
       if (due && daysBetween(today, due) >= -7) push("group-date", label, due);
@@ -275,8 +310,10 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
 
   return {
     cabins,
-    travelers: { total: liveTravelers.length, formsIn, signed },
+    travelers: { total: expectedTravelers, formsIn, signed },
     payments: { dueTotal, paidTotal, openCount, overdueCount: overduePayments },
+    deposits: { total: depositsTotal, paid: depositsPaid },
+    emails: { sent: sentEmails },
     documents: { open: openDocs, overdue: overdueDocs },
     checklist: { open: openChecks, overdue: overdueChecks },
     daysToSail: g.sail_date ? daysBetween(today, g.sail_date) : null,
@@ -293,8 +330,9 @@ export function missingSchedule(file: Pick<GroupFile, "group" | "cabins" | "paym
     const has = (kind: string) => file.payments.some((p) => p.cabin_id === cabin.id && p.kind === kind);
     const deposit = cabin.deposit_amount != null ? Number(cabin.deposit_amount) : null;
     const total = cabin.price_total != null ? Number(cabin.price_total) : null;
-    if (!has("deposit") && file.group.deposit_due) {
-      out.push({ group_id: file.group.id, cabin_id: cabin.id, kind: "deposit", amount: deposit, due_date: file.group.deposit_due });
+    // A deposit "due at booking" has no calendar date, but it is still owed.
+    if (!has("deposit") && (file.group.deposit_due || deposit != null)) {
+      out.push({ group_id: file.group.id, cabin_id: cabin.id, kind: "deposit", amount: deposit, due_date: file.group.deposit_due ?? null });
     }
     if (!has("final") && file.group.final_payment_due) {
       out.push({
