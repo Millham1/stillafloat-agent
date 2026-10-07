@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Group Cruise | Still Afloat Cruising</title>
+<!-- A group page is shared by private link with the group's own people. It is never indexed. -->
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:20px;color:#fff;line-height:1.5}
+h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400}
+
+/* Branded banner + plaque — the Weather / Where's My Ship pattern */
+.gp-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;
+  background:url('/assets/images/wheres-my-ship-hero.png') center 46%/cover no-repeat;height:clamp(380px,40vw,600px)}
+.gp-banner::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(6,17,31,.30) 0%,rgba(6,17,31,.05) 24%,rgba(6,17,31,.05) 60%,rgba(6,17,31,.88) 100%)}
+.gp-lockup{position:absolute;left:0;right:0;bottom:22px;z-index:4;display:flex;justify-content:center;padding:0 20px}
+.gp-plaque{display:inline-flex;align-items:center;gap:13px;background:rgba(4,14,28,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:9px 24px;max-width:92vw}
+.gp-plaque .dash{width:20px;height:3px;border-radius:2px;background:rgba(255,211,0,.7);flex:none}
+.gp-plaque .txt{color:rgba(255,255,255,.96);font-weight:600;letter-spacing:.2em;text-transform:uppercase;font-size:clamp(15px,1.5vw,19px);text-align:center}
+
+.shell{max-width:1100px;margin:auto;padding:44px 22px 90px}
+.section{margin-bottom:54px}
+.section h2{font-size:clamp(28px,3vw,36px);margin:0 0 12px;color:#fff}
+.section p{margin:0 0 14px;color:rgba(255,255,255,.9);font-size:20px;white-space:pre-line}
+.hint{color:rgba(255,255,255,.72);font-size:18px}
+.lead h1{font-size:clamp(34px,4.4vw,54px);margin:0 0 10px;line-height:1.12}
+.lead .sub{font-size:clamp(20px,2vw,24px);color:rgba(255,255,255,.88);margin:0 0 22px}
+
+.preview-bar{background:#ffd21f;color:#07183f;text-align:center;font-weight:700;padding:10px 16px;font-size:18px}
+.langswitch{text-align:right;margin:-14px 0 18px}
+.langswitch a{color:#5dff9a;font-size:18px;font-weight:600;text-decoration:none;border:1px solid rgba(93,255,154,.35);border-radius:999px;padding:5px 16px}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:0 0 8px}
+.stat{background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:16px 18px}
+.stat .k{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.66)}
+.stat .v{font-size:23px;font-weight:700;color:#fff;line-height:1.25;margin-top:4px}
+
+.card{background:rgba(10,30,56,.9);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:22px 24px}
+table{width:100%;border-collapse:collapse;font-size:19px}
+th{text-align:left;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.66);font-weight:600;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.18)}
+td{padding:11px 10px;border-bottom:1px solid rgba(255,255,255,.09);vertical-align:top;color:rgba(255,255,255,.94)}
+tr:last-child td{border-bottom:none}
+td.num{text-align:right;white-space:nowrap;font-weight:700}
+th.num{text-align:right}
+.sea{color:rgba(255,255,255,.62);font-style:italic}
+ul.perks{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+ul.perks li{display:flex;gap:12px;align-items:flex-start;font-size:20px}
+ul.perks li i{color:#5dff9a;margin-top:6px}
+.score{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.score .n{font-family:'Bree Serif',serif;font-size:46px;color:#ffd21f;line-height:1}
+.score .n small{font-size:20px;color:rgba(255,255,255,.7)}
+blockquote{margin:0;padding:4px 0 4px 20px;border-left:4px solid #5dff9a;font-size:21px;color:rgba(255,255,255,.94);white-space:pre-line}
+blockquote cite{display:block;margin-top:8px;font-style:normal;font-size:18px;color:rgba(255,255,255,.72)}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid .full{grid-column:1/-1}
+label{display:block;font-size:17px;color:rgba(255,255,255,.82);margin-bottom:5px}
+input[type=text],input[type=email],input[type=tel],select,textarea{width:100%;box-sizing:border-box;background:rgba(4,14,28,.7);border:1px solid rgba(255,255,255,.24);
+  border-radius:12px;color:#fff;font:inherit;font-size:19px;padding:11px 14px}
+textarea{min-height:96px;resize:vertical}
+select option{color:#07183f}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:18px;color:rgba(255,255,255,.86)}
+.check input{width:20px;height:20px;margin-top:4px;flex:none}
+.btn{display:inline-block;cursor:pointer;border:1px solid rgba(93,255,154,.3);border-radius:14px;background:linear-gradient(135deg,#07183f,#0077b6);
+  color:#5dff9a;font:inherit;font-weight:700;font-size:21px;padding:13px 30px}
+.btn:disabled{opacity:.55;cursor:default}
+.msg{margin-top:14px;font-size:19px}
+.msg.ok{color:#5dff9a}.msg.err{color:#ffd21f}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.fine{font-size:17px;color:rgba(255,255,255,.7)}
+.mark{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.mark p{flex:1;min-width:260px}
+footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font-size:16px}
+#gp-state{padding:80px 22px;text-align:center;font-size:22px;color:rgba(255,255,255,.85)}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}table{font-size:17px}td,th{padding:9px 6px}.shell{padding:30px 16px 70px}}
+</style>
+</head>
+<body>
+<div id="navbar-container"></div>
+
+<div id="gp-preview" class="preview-bar" hidden></div>
+<div class="gp-banner"><div class="gp-lockup"><span class="gp-plaque"><span class="dash"></span><span class="txt" id="gp-plaque">Group Cruise</span><span class="dash"></span></span></div></div>
+
+<div id="gp-state"></div>
+<main class="shell" id="gp-main" hidden>
+  <div class="langswitch" id="gp-lang" hidden></div>
+
+  <section class="section lead">
+    <h1 id="gp-headline"></h1>
+    <p class="sub" id="gp-subhead"></p>
+    <div class="stats" id="gp-stats"></div>
+  </section>
+
+  <section class="section"><p id="gp-intro"></p></section>
+
+  <section class="section" id="sec-itin" hidden>
+    <h2 data-t="itinerary"></h2>
+    <div class="card"><table><thead><tr><th data-t="day"></th><th data-t="date"></th><th data-t="port"></th><th data-t="inport"></th></tr></thead><tbody id="gp-itin"></tbody></table></div>
+    <p class="fine" style="margin-top:12px" data-t="itin_note"></p>
+  </section>
+
+  <section class="section" id="sec-perks" hidden>
+    <h2 data-t="included"></h2>
+    <div class="card"><ul class="perks" id="gp-perks"></ul></div>
+  </section>
+
+  <section class="section" id="sec-cabins" hidden>
+    <h2 data-t="cabins"></h2>
+    <div class="card"><table><thead><tr><th data-t="cabin_type"></th><th class="num" data-t="per_person"></th><th class="num" data-t="deposit"></th><th class="num" data-t="left"></th></tr></thead><tbody id="gp-cabins"></tbody></table></div>
+    <p class="fine" style="margin-top:12px" data-t="price_note"></p>
+  </section>
+
+  <section class="section">
+    <h2 data-t="why"></h2>
+    <p id="gp-why"></p>
+    <div class="card" id="gp-rating" hidden>
+      <div class="score"><div class="n"><span id="gp-score"></span><small> / 5</small></div><div><div style="font-weight:700" data-t="score_label"></div><div class="hint" data-t="score_hint"></div></div></div>
+      <p id="gp-score-comment" style="margin:14px 0 0"></p>
+      <p id="gp-score-salty" class="hint" style="margin:10px 0 0"></p>
+    </div>
+  </section>
+
+  <section class="section"><h2 data-t="who"></h2><p id="gp-who"></p></section>
+
+  <section class="section" id="sec-org" hidden><blockquote><span id="gp-org"></span><cite id="gp-org-cite"></cite></blockquote></section>
+
+  <section class="section" id="sec-dates" hidden>
+    <h2 data-t="dates"></h2>
+    <div class="stats" id="gp-dates"></div>
+  </section>
+
+  <section class="section" id="interest">
+    <h2 id="gp-cta-title"></h2>
+    <p id="gp-cta-blurb"></p>
+    <div class="card">
+      <form id="gp-form" novalidate>
+        <div class="form-grid">
+          <div><label for="f-first" data-t="first"></label><input id="f-first" type="text" autocomplete="given-name" required></div>
+          <div><label for="f-last" data-t="last"></label><input id="f-last" type="text" autocomplete="family-name"></div>
+          <div><label for="f-email" data-t="email"></label><input id="f-email" type="email" autocomplete="email" required></div>
+          <div><label for="f-phone" data-t="phone"></label><input id="f-phone" type="tel" autocomplete="tel"></div>
+          <div><label for="f-cabin" data-t="cabin_pick"></label><select id="f-cabin"></select></div>
+          <div><label for="f-guests" data-t="guests"></label><select id="f-guests"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
+          <div class="full"><label for="f-note" data-t="note"></label><textarea id="f-note"></textarea></div>
+          <div class="full"><label class="check"><input type="checkbox" id="f-news"><span data-t="news"></span></label></div>
+          <div class="hp" aria-hidden="true"><label>Website<input type="text" id="f-website" tabindex="-1" autocomplete="off"></label></div>
+          <div class="full" id="gp-turnstile"></div>
+          <div class="full"><button class="btn" type="submit" id="gp-submit"></button><div class="msg" id="gp-msg" role="status"></div></div>
+        </div>
+      </form>
+    </div>
+    <p class="fine" style="margin-top:12px" data-t="no_payment"></p>
+  </section>
+
+  <section class="section">
+    <h2 data-t="about"></h2>
+    <div class="mark"><p data-t="bio"></p></div>
+    <p class="fine" id="gp-legal"></p>
+  </section>
+</main>
+
+<footer><p>© 2026 Still Afloat LLC — Cruise smarter. Laugh more.</p></footer>
+
+<script>
+(function(){
+  var ES = document.documentElement.lang === 'es';
+  var T = ES ? {
+    loading:'Cargando la invitación…', gone:'Esta página no está disponible. Si recibió el enlace de su grupo, escriba a mark@stillafloatcruising.com.',
+    preview:'VISTA PREVIA — solo usted puede ver esta página hasta que la apruebe.',
+    ship:'Barco', sails:'Zarpa', returns:'Regresa', nights:'Noches', from:'Sale de', price_from:'Desde', pp:'por persona',
+    itinerary:'El itinerario', day:'Día', date:'Fecha', port:'Puerto', inport:'En puerto', sea:'Día en el mar',
+    itin_note:'Los horarios y puertos los fija la naviera y pueden cambiar.',
+    included:'Lo que incluye el grupo', cabins:'Cabinas y precios', cabin_type:'Tipo de cabina', per_person:'Por persona', deposit:'Depósito', left:'Disponibles',
+    price_note:'Precios por persona, con dos huéspedes por cabina. El precio, los impuestos, las tasas y los cargos portuarios se confirman por escrito al reservar. Los depósitos y pagos se hacen directamente a la naviera.',
+    why:'Por qué este barco', score_label:'Puntaje Conga Line', score_hint:'Lo que dicen los cruceristas, resumido por Still Afloat.',
+    who:'Para quién es este viaje', dates:'Fechas que importan', book_by:'Reserve antes de', final_pay:'Pago final', sail_day:'Día de salida',
+    first:'Nombre', last:'Apellido', email:'Correo electrónico', phone:'Teléfono (opcional)', cabin_pick:'Cabina que le interesa', guests:'Huéspedes en su cabina',
+    note:'Preguntas o necesidades (movilidad, dieta, quién viaja con usted)', news:'Quiero recibir también el boletín de Still Afloat. Le enviaremos un correo para confirmarlo.',
+    not_sure:'Todavía no sé', no_payment:'Aquí no se paga nada ni se pide tarjeta. Mark le responde personalmente, por lo general el mismo día.',
+    sent:'Recibido. Mark le escribirá pronto.', sending:'Enviando…', err:'No se pudo enviar. Escriba a mark@stillafloatcruising.com.',
+    about:'Quién organiza esto', bio:'Soy Mark Millham — veterano de EE. UU., gerente de TI retirado, exmarinero de a bordo y asesor de cruceros independiente con más de 20 años en el agua (Cornerstone Collective).',
+    sailing_too:' Yo también viajo con el grupo.', legal_a:'Afiliado de', other:'English', title:'Crucero en grupo'
+  } : {
+    loading:'Loading the invitation…', gone:'This page is not available. If your group sent you the link, email mark@stillafloatcruising.com.',
+    preview:'PREVIEW — only you can see this page until you approve it.',
+    ship:'Ship', sails:'Sails', returns:'Returns', nights:'Nights', from:'Sails from', price_from:'From', pp:'per person',
+    itinerary:'The itinerary', day:'Day', date:'Date', port:'Port', inport:'In port', sea:'Day at sea',
+    itin_note:'Times and ports are set by the cruise line and can change.',
+    included:'What the group gets', cabins:'Cabins and prices', cabin_type:'Cabin type', per_person:'Per person', deposit:'Deposit', left:'Available',
+    price_note:'Prices are per person, based on two guests per cabin. The price, taxes, fees and port expenses are confirmed in writing when you book. Deposits and payments are made directly to the cruise line.',
+    why:'Why this ship', score_label:'Conga Line score', score_hint:'What cruisers say, summed up by Still Afloat.',
+    who:'Who this trip suits', dates:'Dates that matter', book_by:'Reserve by', final_pay:'Final payment', sail_day:'Sailing day',
+    first:'First name', last:'Last name', email:'Email', phone:'Phone (optional)', cabin_pick:'Cabin you are interested in', guests:'Guests in your cabin',
+    note:'Questions or needs (mobility, diet, who is traveling with you)', news:'Also send me the Still Afloat newsletter. We will email you to confirm.',
+    not_sure:'Not sure yet', no_payment:'Nothing is paid here and no card is asked for. Mark replies personally, usually the same day.',
+    sent:'Got it. Mark will be in touch soon.', sending:'Sending…', err:'That did not go through. Email mark@stillafloatcruising.com.',
+    about:'Who is organizing this', bio:"I'm Mark Millham — U.S. veteran, retired senior IT manager, former liveaboard sailor, and independent cruise advisor with 20+ years on the water (Cornerstone Collective).",
+    sailing_too:' I am sailing with the group too.', legal_a:'Affiliate of', other:'Español', title:'Group Cruise'
+  };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ var d=document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function show(id){ var e=$(id); if(e) e.hidden=false; }
+  document.querySelectorAll('[data-t]').forEach(function(el){ el.textContent = T[el.getAttribute('data-t')] || ''; });
+
+  var qs = new URLSearchParams(location.search);
+  var code = (qs.get('g') || '').trim();
+  // A preview carries the dashboard token in the FRAGMENT (never sent to the server in the URL, never logged).
+  var hm = location.hash.match(/[#&]preview=([^&]+)/);
+  var previewToken = hm ? decodeURIComponent(hm[1]) : '';
+  var state = $('gp-state');
+  state.textContent = T.loading;
+  if(!/^[a-hjkmnp-z2-9]{10}$/.test(code)){ state.textContent = T.gone; return; }
+
+  var headers = previewToken ? { 'x-affiliate-token': previewToken } : {};
+  fetch('/api/group-page/' + code + '?lang=' + (ES ? 'es' : 'en'), { headers: headers })
+    .then(function(r){ if(!r.ok) throw new Error('gone'); return r.json(); })
+    .then(render)
+    .catch(function(){ state.textContent = T.gone; });
+
+  var turnstileToken = null, siteKey = '';
+
+  function stat(k, v){ return v ? '<div class="stat"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div></div>' : ''; }
+
+  function render(d){
+    var f = d.facts, c = d.copy;
+    state.hidden = true; show('gp-main');
+    document.title = c.headline + ' | Still Afloat Cruising';
+    $('gp-plaque').textContent = f.groupName;
+    if(d.preview){ var pb=$('gp-preview'); pb.textContent=T.preview; pb.hidden=false; }
+    if(d.langs && d.langs.length > 1){
+      var other = ES ? '/group.html' : '/es/group.html';
+      $('gp-lang').innerHTML = '<a href="'+other+'?g='+code+location.hash+'">'+esc(T.other)+'</a>'; show('gp-lang');
+    }
+    $('gp-headline').textContent = c.headline;
+    $('gp-subhead').textContent = c.subhead;
+    $('gp-stats').innerHTML = stat(T.ship, f.ship) + stat(T.sails, f.sailDateText) + stat(T.nights, f.nights) + stat(T.from, f.embarkPort)
+      + (f.fromPerPersonText ? stat(T.price_from, f.fromPerPersonText + ' ' + T.pp) : '');
+    $('gp-intro').textContent = c.intro;
+
+    if(f.itinerary && f.itinerary.length){
+      $('gp-itin').innerHTML = f.itinerary.map(function(s){
+        return '<tr><td>'+esc(s.day == null ? '' : s.day)+'</td><td>'+esc(s.dateText||'')+'</td><td class="'+(s.seaDay?'sea':'')+'">'+esc(s.seaDay ? T.sea : s.port)+'</td><td>'+esc(s.timesText||'')+'</td></tr>';
+      }).join(''); show('sec-itin');
+    }
+    if(f.amenities && f.amenities.length){
+      $('gp-perks').innerHTML = f.amenities.map(function(a){ return '<li><i class="fa-solid fa-check"></i><span>'+esc(a)+'</span></li>'; }).join(''); show('sec-perks');
+    }
+    var priced = (f.cabins||[]).filter(function(x){ return x.category; });
+    if(priced.length){
+      $('gp-cabins').innerHTML = priced.map(function(x){
+        return '<tr><td>'+esc(x.category)+'</td><td class="num">'+esc(x.perPersonText||'—')+'</td><td class="num">'+esc(x.depositPerPersonText||'—')+'</td><td class="num">'+esc(x.available)+'</td></tr>';
+      }).join(''); show('sec-cabins');
+    }
+    $('gp-why').textContent = c.why_ship;
+    if(f.rating){
+      $('gp-score').textContent = f.rating.scoreText;
+      $('gp-score-comment').textContent = f.rating.comment || '';
+      $('gp-score-salty').textContent = f.rating.saltyTake || '';
+      show('gp-rating');
+    }
+    $('gp-who').textContent = c.who_for;
+    if(c.organizer_note){ $('gp-org').textContent = c.organizer_note; show('sec-org'); }
+    var dates = stat(T.book_by, f.bookByText) + stat(T.final_pay, f.finalPaymentText) + stat(T.sail_day, f.sailDateText);
+    if(f.bookByText || f.finalPaymentText){ $('gp-dates').innerHTML = dates; show('sec-dates'); }
+
+    $('gp-cta-title').textContent = c.cta_label;
+    $('gp-cta-blurb').textContent = c.cta_blurb;
+    $('gp-submit').textContent = c.cta_label;
+    $('f-cabin').innerHTML = '<option value="">'+esc(T.not_sure)+'</option>' + priced.map(function(x){ return '<option>'+esc(x.category)+'</option>'; }).join('');
+    document.querySelector('[data-t="bio"]').textContent = T.bio + (f.markSailing ? T.sailing_too : '');
+    $('gp-legal').textContent = f.business.legalName + ' · ' + T.legal_a + ' ' + f.business.host + ' · ' + f.business.email;
+
+    siteKey = d.turnstileSiteKey || '';
+    if(siteKey){
+      var s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=gpTurnstile'; s.async = true;
+      window.gpTurnstile = function(){ window.turnstile.render('#gp-turnstile', { sitekey: siteKey, theme: 'dark', callback: function(t){ turnstileToken = t; } }); };
+      document.head.appendChild(s);
+    }
+  }
+
+  $('gp-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var msg = $('gp-msg'), btn = $('gp-submit');
+    msg.className = 'msg'; msg.textContent = T.sending; btn.disabled = true;
+    fetch('/api/group-page/' + code + '/interest', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        first_name: $('f-first').value, last_name: $('f-last').value, email: $('f-email').value, phone: $('f-phone').value,
+        cabin_type: $('f-cabin').value, guests: Number($('f-guests').value), note: $('f-note').value,
+        newsletter_opt_in: $('f-news').checked, website: $('f-website').value, lang: ES ? 'es' : 'en',
+        'cf-turnstile-response': turnstileToken
+      })
+    }).then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+      .then(function(x){
+        if(x.ok){ msg.className = 'msg ok'; msg.textContent = T.sent; $('gp-form').reset(); }
+        else { msg.className = 'msg err'; msg.textContent = (x.j && x.j.error) || T.err; btn.disabled = false; }
+      })
+      .catch(function(){ msg.className = 'msg err'; msg.textContent = T.err; btn.disabled = false; });
+  });
+})();
+</script>
+<script src="/components/navbar.js?v=20260915-trackship"></script>
+</body>
+</html>

@@ -25,6 +25,7 @@
     "translate.fields": "Spanish translation of a story's fields (cheap model)",
     "conga.draft": "Conga Line rating copy draft (cheap model)",
     "groups.extract": "Enter a booking: read a group contract / quote PDF into the group file fields (Mark reviews before save)",
+    "groups.marketing": "Group marketing: write the invitation copy from Mark's interview + the group file's facts (validated, Mark approves)",
     "cabin.advice": "cabin-advisor/generate-advice.mjs — per-archetype cabin advice for one ship (bulk)",
     "cabin.advice-es": "cabin-advisor/translate-advice.mjs — Spanish advice per archetype",
     "cabin.leads": "cabin-advisor/apply-leads.mjs — classify research leads by kind and polarity (bulk)",
