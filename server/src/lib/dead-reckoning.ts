@@ -49,6 +49,13 @@ export const UNDERWAY_KN = 2;
 export const NEARBY_RADIUS_NM = 10;
 /** A declared ETA older than this is a previous leg's — the destination is stale. */
 export const STALE_DESTINATION_H = 48;
+/**
+ * A passed ETA parks her at the port only when her own fix had her this close.
+ * Farther out, the fix wins: Carnival Celebration (2026-10-07) reported off
+ * Roatán at 10 kn with "HNRTM>BSGBI" and an ETA ten hours gone, and was drawn
+ * as "arrived" at Freeport — about 840 nm from where she was.
+ */
+export const ETA_ARRIVE_SLACK_NM = 30;
 /** A fix older than this is history, not a position: hold it, draw nothing ahead. */
 export const STALE_FIX_H = 48;
 export const NEARBY_MAX_AGE_MIN = 60;
@@ -192,9 +199,12 @@ export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc:
     const total = distanceNm(fix.lat, fix.lon, dest.lat, dest.lon);
     const travelled = speed * hours;
     const etaPassed = isFinite(etaAgeH) && etaAgeH > 0.5;
-    if (travelled >= total || etaPassed) {
+    if (travelled >= total || (etaPassed && total - travelled <= ETA_ARRIVE_SLACK_NM)) {
       return { lat: dest.lat, lon: dest.lon, basis: "arrived", confidence: "medium", hoursSinceFix };
     }
+    // ETA gone but she is still well out: the declared ETA is contradicted by her
+    // own position, so it cannot place her. Dead-reckon on her course instead.
+    if (etaPassed) return courseEstimate(fix, hours, speed, hoursSinceFix, stale);
     // Slide her along the WATER path when we have one (a great circle crosses
     // land — Galveston to Cozumel runs straight over the Yucatán). The lane
     // network is coarse offshore, so the length we trust is capped relative to
@@ -211,6 +221,10 @@ export function estimatePosition(fix: Fix, now: Date, dest: Port | null, etaUtc:
     return { lat, lon, basis: "route", confidence: hours < 3 ? "high" : hours < 12 ? "medium" : "low", hoursSinceFix };
   }
 
+  return courseEstimate(fix, hours, speed, hoursSinceFix, stale);
+}
+
+function courseEstimate(fix: Fix, hours: number, speed: number, hoursSinceFix: number, stale: Estimate): Estimate | null {
   if (fix.courseDeg === null) return null;
   // No destination and too long since the fix: a point eight hours down her
   // last course is a fabrication (a 3-day-old Norwegian Getaway fix off

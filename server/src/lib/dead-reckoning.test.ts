@@ -49,9 +49,25 @@ describe("estimatePosition", () => {
     assert.equal(e.basis, "arrived");
     assert.deepEqual([e.lat, e.lon], [NASSAU.lat, NASSAU.lon]);
   });
-  it("a passed ETA also parks her at the port", () => {
-    const e = estimatePosition(underway, at(1), NASSAU, "2026-09-10T12:20:00.000Z")!;
+  it("a passed ETA parks her at the port when her fix had her close", () => {
+    const offNassau = { ...underway, ...destinationPoint(NASSAU.lat, NASSAU.lon, 270, 20) };
+    const e = estimatePosition(offNassau, at(1), NASSAU, "2026-09-10T12:20:00.000Z")!;
     assert.equal(e.basis, "arrived");
+    assert.deepEqual([e.lat, e.lon], [NASSAU.lat, NASSAU.lon]);
+  });
+  it("a passed ETA does NOT park her at a port her own fix says is far away — her course does", () => {
+    const e = estimatePosition(underway, at(1), NASSAU, "2026-09-10T12:20:00.000Z")!;
+    assert.equal(e.basis, "course");
+    assert.ok(Math.abs(distanceNm(MIAMI.lat, MIAMI.lon, e.lat, e.lon) - 16) < 0.5); // 16 kn x 1 h
+  });
+  it("Carnival Celebration 2026-10-07: off Roatán with a Freeport ETA ten hours gone is not 'arrived' at Freeport", () => {
+    // Verbatim dev /api/wms/position values, 2026-10-07 ~22:31Z.
+    const FREEPORT = { slug: "freeport-bahamas", name: "Freeport, Grand Bahama", lat: 26.517, lon: -78.778 };
+    const fix = { lat: 16.307198, lon: -86.490021, courseDeg: 111, speedKn: 10, at: "2026-10-07T22:01:40.000Z" };
+    const e = estimatePosition(fix, new Date("2026-10-07T22:31:40.000Z"), FREEPORT, "2026-10-07T11:48:00.000Z")!;
+    assert.equal(e.basis, "course");
+    assert.ok(distanceNm(fix.lat, fix.lon, e.lat, e.lon) < 6, "half an hour at 10 kn from her real fix");
+    assert.ok(distanceNm(e.lat, e.lon, FREEPORT.lat, FREEPORT.lon) > 700);
   });
   it("an ETA that passed days ago means the destination is last leg's — it is ignored, never parked at", () => {
     const e6 = estimatePosition(underway, at(6), NASSAU, "2026-09-07T12:00:00.000Z")!;
