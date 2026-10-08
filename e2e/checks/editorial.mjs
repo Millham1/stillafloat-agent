@@ -758,14 +758,21 @@ export default [
     id: "editorial.newsletter-brief-queue-writes-refuse",
     title: "On dev, the newsletter generate/edit/send/notify, legacy send, brief run, and the brief's resolve/approve/dismiss/close/keep buttons refuse requests without the key, reject empty or unknown input, and do nothing to items that do not exist",
     covers: ["POST /api/newsletter/draft", "POST /api/newsletter/draft/update", "POST /api/newsletter/send", "POST /api/newsletter/notify", "POST /api/send-newsletter",
-      "POST /api/brief/run", "POST /api/actions/:id/resolve", "POST /api/proposals/:id/approve", "POST /api/proposals/:id/dismiss", "POST /api/tasks/:id/close", "POST /api/tasks/:id/keep",
+      "POST /api/brief/run", "POST /api/actions", "POST /api/actions/:id/resolve", "POST /api/proposals/:id/approve", "POST /api/proposals/:id/dismiss", "POST /api/tasks/:id/close", "POST /api/tasks/:id/keep",
       "GET /api/newsletter/draft"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST requests (refusal and no-op paths only); prod is read-only",
     run: async (t) => {
       for (const p of ["/api/newsletter/draft", "/api/newsletter/draft/update", "/api/newsletter/send", "/api/newsletter/notify", "/api/send-newsletter", "/api/brief/run",
-        `/api/actions/${NOBODY}/resolve`, `/api/proposals/${NOBODY}/approve`, `/api/proposals/${NOBODY}/dismiss`, `/api/tasks/${NOBODY}/close`, `/api/tasks/${NOBODY}/keep`]) {
+        "/api/actions", `/api/actions/${NOBODY}/resolve`, `/api/proposals/${NOBODY}/approve`, `/api/proposals/${NOBODY}/dismiss`, `/api/tasks/${NOBODY}/close`, `/api/tasks/${NOBODY}/keep`]) {
         await refusesWithoutKey(t, "POST", p);
+      }
+
+      // Filing an action for Mark (POST /api/actions, 2026-10-08) refuses a typeless, titleless or
+      // badly named request even WITH the key: nothing is stored and no notification goes out.
+      for (const body of [{}, { type: "release_gate" }, { type: "release_gate", title: "short" }, { type: "bad type!", title: "A sentence long enough to pass" }]) {
+        const r = await t.send("POST", "/api/actions", { auth: true, body });
+        t.equal(r.status, 400, `filing an action with ${JSON.stringify(body)} must be refused`);
       }
 
       // Newsletter edit: an edit that would empty the issue is refused BEFORE anything is saved.
