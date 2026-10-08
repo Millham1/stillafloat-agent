@@ -4,6 +4,7 @@
     "news.hubclass": "Sort ambiguous news stories onto the per-cruise-line hub pages (prerender pass; cheap model)",
     "storm.intel": "One factual sentence from a cruise line's storm-advisory page (cheap model)",
     "storm.draft": "Storm-alert draft for subscribers, reviewed by Mark before it sends",
+    "storm.translate": "Spanish twin of a storm alert's reviewed English text (faithful translation, no new facts; cheap model)",
     "affiliate.describe": "Blurb and category for newly ingested affiliate products (cheap model)",
     "newsletter.write": "The weekly newsletter in Mark's voice",
     "social.posts": "Social posts for the review queue",

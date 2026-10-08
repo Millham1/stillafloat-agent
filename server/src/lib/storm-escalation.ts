@@ -92,7 +92,7 @@ export function scanHashKey(
 /** Statuses whose headline/body are on the public Storm Watch. */
 export const PUBLIC_STATUSES = ["approved", "sent"] as const;
 
-export interface RefreshedText { headline: string; body_md: string; problems?: string[]; fallback?: boolean }
+export interface RefreshedText { headline: string; body_md: string; headline_es?: string | null; body_md_es?: string | null; problems?: string[]; fallback?: boolean }
 
 /**
  * The headline/body to write over a live alert's public text, or null to leave
@@ -104,12 +104,17 @@ export function publicTextRefresh(
   action: ScanAction,
   existingStatus: string | null | undefined,
   content: RefreshedText | null,
-): { headline: string; body_md: string } | null {
+): { headline: string; body_md: string; headline_es?: string | null; body_md_es?: string | null } | null {
   if (action.kind !== "refresh") return null;
   if (!existingStatus || !(PUBLIC_STATUSES as readonly string[]).includes(existingStatus)) return null;
   if (!content || content.fallback || (content.problems?.length ?? 0) > 0) return null;
   const headline = content.headline.trim();
   const body_md = content.body_md.trim();
   if (!headline || !body_md) return null;
+  // The Spanish twin follows the English text it translates — a refreshed English text with no
+  // translation clears the stale Spanish rather than leaving yesterday's Spanish under today's English.
+  if ("headline_es" in content || "body_md_es" in content) {
+    return { headline, body_md, headline_es: content.headline_es ?? null, body_md_es: content.body_md_es ?? null };
+  }
   return { headline, body_md };
 }

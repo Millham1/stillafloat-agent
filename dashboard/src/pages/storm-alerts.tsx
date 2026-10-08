@@ -27,6 +27,8 @@ type Alert = {
   formation_chance: number | null;
   headline: string | null;
   body_md: string | null;
+  headline_es: string | null;
+  body_md_es: string | null;
   detail_md: string | null;
   cruise_line_info: CruiseInfo[];
   sailings: Sailing[];
@@ -230,6 +232,12 @@ function AlertCard({ alert, onChanged }: { alert: Alert; onChanged: () => void }
 
         <Input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Headline" />
         <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} placeholder="What this means for you…" />
+        {/* Mark edits English only; the Spanish twin is translated on save and sent to Spanish subscribers (2026-10-08). */}
+        <p className="text-xs text-muted-foreground">
+          {alert.headline_es && alert.body_md_es
+            ? <>Español: <span className="text-foreground">{alert.headline_es}</span>{dirty ? " — se vuelve a traducir al guardar" : ""}</>
+            : "Español: sin traducción todavía — se traduce al guardar; hasta entonces los suscriptores en español reciben el inglés"}
+        </p>
 
         <div>
           <label className="text-xs font-medium text-muted-foreground">

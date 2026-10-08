@@ -20,10 +20,14 @@ import {
   groundsForPoint, groundsForBasin, activeGrounds, shipsForGrounds, labelGrounds, NAMED_STORM_MARGIN_DEG, type Ship,
 } from "./storm-grounds";
 import { relateToGrounds, relationLines, bottomLine, checkDraft, compassWord, headingFrom, intensityLine } from "./storm-facts";
+import { translateStormText, declaredAlertEs } from "./storm-spanish";
 
 export interface DraftContent {
   headline: string;
   body_md: string;
+  /** Spanish twin (storm-spanish.ts); null when the translation failed — the pages fall back to English. */
+  headline_es?: string | null;
+  body_md_es?: string | null;
   /** Fact-check faults that survived the rewrite (empty = clean). */
   problems?: string[];
   /** The no-AI placeholder text, not a real draft. */
@@ -143,6 +147,7 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
       body_md: `**${sys.name}** (${sys.classification}) is being monitored in the ${sys.basin.replace(/_/g, " ")} basin.\n\n` +
         `**What this means for you:** if you're sailing ${groundsLabel} in the coming days, itineraries could be ` +
         `adjusted or rerouted at the cruise line's discretion. Nothing to do right now — we'll keep you posted as the forecast firms up.`,
+      ...declaredAlertEs({ name: sys.name, classification: sys.classification, grounds }),
       fallback: true,
     };
   }
@@ -173,7 +178,10 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
     problems = checkDraft(out, check);
     if (problems.length) logger.warn({ nhcId: sys.nhcId, problems }, "storm-agent: draft still fails its fact check after one rewrite — review carefully");
   }
-  return { ...out, problems };
+  // The Spanish twin (a faithful translation of the text above, never a re-draft). A failed
+  // translation stores null: the Spanish pages and emails fall back to English, visibly.
+  const es = await translateStormText(out, { nhcId: sys.nhcId });
+  return { ...out, headline_es: es?.headline_es ?? null, body_md_es: es?.body_md_es ?? null, problems };
 }
 
 interface ScanResult { scanned: number; drafted: number; updated: number; skipped: number; escalated: number; ended: number; }
@@ -262,7 +270,7 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
         cone_url: sys.coneUrl ?? gfx.outlook,
         satellite_url: sys.satelliteUrl ?? gfx.satellite,
         last_updated: new Date().toISOString(),
-        ...(reDraftable && content ? { headline: content.headline, body_md: content.body_md, status: "draft" } : {}),
+        ...(reDraftable && content ? { headline: content.headline, body_md: content.body_md, headline_es: content.headline_es ?? null, body_md_es: content.body_md_es ?? null, status: "draft" } : {}),
         ...(publicText ?? {}),
       };
 
@@ -321,8 +329,39 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
     }
   }
 
+  // Public alerts written before 2026-10-08 (or whose translation failed) get their Spanish twin
+  // here, from the English text Mark approved — no email, no change to the English. Best-effort.
+  if (!opts.test) {
+    try {
+      await backfillSpanish();
+    } catch (err) {
+      logger.error({ err }, "storm-agent: Spanish backfill failed");
+    }
+  }
+
   logger.info(result, "storm-agent: scan complete");
   return result;
+}
+
+/** Translate the English text of live (approved/sent) alerts that have no Spanish twin yet. */
+export async function backfillSpanish(limit = 5): Promise<number> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("storm_alerts")
+    .select("id, nhc_id, headline, body_md, headline_es, body_md_es")
+    .in("status", [...PUBLIC_STATUSES]).eq("is_threat", true).is("headline_es", null)
+    .order("last_updated", { ascending: false }).limit(limit);
+  if (error) throw error;
+  let done = 0;
+  for (const a of (data ?? []) as Array<{ id: string; nhc_id: string; headline: string | null; body_md: string | null }>) {
+    if (!a.headline || !a.body_md) continue;
+    const es = await translateStormText({ headline: a.headline, body_md: a.body_md }, { nhcId: a.nhc_id });
+    if (!es) continue;
+    const { error: updErr } = await supabase.from("storm_alerts").update({ headline_es: es.headline_es, body_md_es: es.body_md_es } as never).eq("id", a.id);
+    if (updErr) { logger.error({ err: updErr, nhcId: a.nhc_id }, "storm-agent: Spanish backfill update failed"); continue; }
+    logger.info({ nhcId: a.nhc_id, headline_es: es.headline_es }, "storm-agent: live alert's Spanish text filled in (no email)");
+    done++;
+  }
+  return done;
 }
 
 async function notifyReview(

@@ -8,6 +8,7 @@
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
 import { labelGrounds } from "./storm-grounds";
+import { textFor } from "./storm-spanish";
 import { unsubscribeUrl } from "../routes/subscribe";
 import { sendMail } from "./mailer";
 import { stormAlertEmailHtml, allClearEmailHtml, emailLang, type AffectedShip } from "./storm-email-content";
@@ -152,6 +153,7 @@ export async function affectedShips(alertId: string, opts: { includeReleased?: b
 
 export interface AlertRow {
   id: string; name: string; headline: string | null; body_md: string | null;
+  headline_es?: string | null; body_md_es?: string | null;
   affected_grounds: string[];
 }
 
@@ -164,16 +166,22 @@ export async function emailSubscribers(a: AlertRow): Promise<{ sent: number; fai
   if (error) throw new Error(`emailSubscribers: ${error.message}`);
   const list = (data ?? []) as unknown as Array<{ email: string; name: string; lang?: string | null }>;
   if (!list.length) return { sent: 0, failed: 0, total: 0 };
-  const subject = a.headline || `Storm update: ${a.name}`;
-  const bodyHtml = markToHtml(a.body_md || "");
+  // Subject and body in the subscriber's language (2026-10-08): Spanish when the alert carries
+  // its Spanish twin, else English for everyone — never a Spanish frame around English text.
+  const text = (lang: "en" | "es") => {
+    const t = textFor(a, lang);
+    return { subject: t.headline || (t.lang === "es" ? `Actualización de tormenta: ${a.name}` : `Storm update: ${a.name}`), bodyHtml: markToHtml(t.body_md || ""), lang: t.lang };
+  };
+  const byLang = { en: text("en"), es: text("es") };
   const ships = await affectedShips(a.id);
   const started = Date.now();
   const { sent, failed } = await sendPaced(list, (sub) => {
+    const t = byLang[emailLang(sub.lang)];
     const html = stormAlertEmailHtml({
-      headline: a.headline ?? a.name, name: a.name, groundsLabel: labelGrounds(a.affected_grounds), bodyHtml,
+      headline: t.subject, name: a.name, groundsLabel: labelGrounds(a.affected_grounds), bodyHtml: t.bodyHtml,
       ships, unsubscribeUrl: unsubscribeUrl(sub.email, siteBase()), base: siteBase(), lang: emailLang(sub.lang),
     });
-    return sendEmail(sub.email, subject, html);
+    return sendEmail(sub.email, t.subject, html);
   });
   logger.info({ alert: a.name, sent, failed, ships: ships.length, tookMs: Date.now() - started },
     "storm-send: subscriber send complete");
@@ -183,6 +191,7 @@ export async function emailSubscribers(a: AlertRow): Promise<{ sent: number; fai
 export interface AllClearRow {
   id: string; name: string; affected_grounds: string[];
   all_clear_headline: string | null; all_clear_body_md: string | null;
+  all_clear_headline_es?: string | null; all_clear_body_md_es?: string | null;
 }
 
 /** Send the all-clear to the same opted-in subscriber base the storm alert went
@@ -196,18 +205,22 @@ export async function emailAllClear(a: AllClearRow): Promise<{ sent: number; fai
   if (error) throw new Error(`emailAllClear: ${error.message}`);
   const list = (data ?? []) as unknown as Array<{ email: string; name: string; lang?: string | null }>;
   if (!list.length) return { sent: 0, failed: 0, total: 0 };
-  const subject = a.all_clear_headline || `All clear: ${a.name}`;
-  const bodyHtml = markToHtml(a.all_clear_body_md || "");
+  const text = (lang: "en" | "es") => {
+    const t = textFor({ headline: a.all_clear_headline, body_md: a.all_clear_body_md, headline_es: a.all_clear_headline_es, body_md_es: a.all_clear_body_md_es }, lang);
+    return { subject: t.headline || (t.lang === "es" ? `Todo despejado: ${a.name}` : `All clear: ${a.name}`), bodyHtml: markToHtml(t.body_md || "") };
+  };
+  const byLang = { en: text("en"), es: text("es") };
   // The ships that were watched for this storm, released or not: a reader who
   // followed one wants to see her name on the all-clear too.
   const ships = await affectedShips(a.id, { includeReleased: true });
   const started = Date.now();
   const { sent, failed } = await sendPaced(list, (sub) => {
+    const t = byLang[emailLang(sub.lang)];
     const html = allClearEmailHtml({
-      headline: subject, name: a.name, groundsLabel: labelGrounds(a.affected_grounds), bodyHtml,
+      headline: t.subject, name: a.name, groundsLabel: labelGrounds(a.affected_grounds), bodyHtml: t.bodyHtml,
       ships, unsubscribeUrl: unsubscribeUrl(sub.email, siteBase()), base: siteBase(), lang: emailLang(sub.lang),
     });
-    return sendEmail(sub.email, subject, html);
+    return sendEmail(sub.email, t.subject, html);
   });
   logger.info({ alert: a.name, sent, failed, ships: ships.length, tookMs: Date.now() - started },
     "storm-send: all-clear send complete");

@@ -79,7 +79,7 @@
       host.innerHTML='<h1>Alertas de tormenta activas</h1>'+list.map(function(s){
         return '<a class="card" style="display:block;text-decoration:none;color:inherit" href="/es/storm-watch.html?id='+encodeURIComponent(s.id)+'">'
           +'<h2>'+esc(((s.classification?s.classification+" ":"")+(s.name||"")).trim())+'</h2>'
-          +'<div style="font-size:17px;line-height:1.45">'+esc(s.headline||"")+'</div>'
+          +'<div style="font-size:17px;line-height:1.45">'+esc(s.headline_es||s.headline||"")+'</div>'
           +(s.grounds_label?'<div class="meta" style="margin:8px 0 0">'+esc(s.grounds_label)+'</div>':'')
           +(s.updated?'<div class="meta" style="margin:4px 0 0">Actualizado '+esc(String(s.updated).slice(0,10))+'</div>':'')
           +'</a>';
@@ -110,10 +110,10 @@
       +'</div>'):'';
     host.innerHTML=
       '<p class="eyebrow">Vigilancia de Tormentas</p>'
-      +'<h1>'+esc(s.headline||s.name)+'</h1>'
+      +'<h1>'+esc(s.headline_es||s.headline||s.name)+'</h1>'
       +'<div class="meta">'+esc(s.classification||"")+' · '+esc(s.grounds_label||"")+(s.formation_chance!=null?' · '+s.formation_chance+'% de probabilidad de formación':'')+'</div>'
       +'<span class="status">Aviso activo · actualizado '+esc((s.updated||"").slice(0,10))+'</span>'
-      +'<div class="card"><h2>Qué significa esto para usted</h2><div class="prose">'+md(s.detail_md||s.body_md)+'</div></div>'
+      +'<div class="card"><h2>Qué significa esto para usted</h2><div class="prose">'+md(s.detail_md_es||s.body_md_es||s.detail_md||s.body_md)+'</div></div>'
       +gfx
       +shipsCard
       +advCard

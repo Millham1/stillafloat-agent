@@ -28,6 +28,7 @@ import { logger } from "./logger";
 import { resolveActionsForSource, createAction } from "./actions";
 import { notifyMark } from "./notify";
 import { emailAllClear } from "./storm-send";
+import { allClearEs } from "./storm-spanish";
 import { impactedShipsForAlert, pathOf, defaultWindow, type Sailing } from "./storm-sailings";
 import { severityRank } from "./storm-escalation";
 import { setStormShips, mmsiForShip, getPosition, trackerObservedSince, refreshStalePosition } from "./ship-tracker";
@@ -351,7 +352,7 @@ async function endAlert(row: LifecycleRow): Promise<void> {
     ended_at: new Date().toISOString(),
     missing_scans: MISSING_SCANS_TO_END,
     last_updated: new Date().toISOString(),
-    ...(draft ? { all_clear_headline: draft.headline, all_clear_body_md: draft.body_md } : {}),
+    ...(draft ? { all_clear_headline: draft.headline, all_clear_body_md: draft.body_md, ...allClearEs(row) } : {}),
   }).eq("id", row.id);
   if (error) {
     logger.error({ err: error, alert: row.nhc_id }, "storm-lifecycle: end update failed");
@@ -371,7 +372,7 @@ async function endAlert(row: LifecycleRow): Promise<void> {
     try {
       const counts = await emailAllClear({
         id: row.id, name: row.name ?? row.nhc_id, affected_grounds: row.affected_grounds,
-        all_clear_headline: draft.headline, all_clear_body_md: draft.body_md,
+        all_clear_headline: draft.headline, all_clear_body_md: draft.body_md, ...allClearEs(row),
       });
       await supabase.from("storm_alerts").update({
         all_clear_sent_at: new Date().toISOString(),

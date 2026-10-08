@@ -9,6 +9,7 @@ import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
 import { runStormScan } from "../lib/storm-agent";
 import { emailSubscribers, emailAllClear, startAlertSend, subscriberCount, type AlertRow, type AllClearRow } from "../lib/storm-send";
+import { translateStormText, declaredAlertEs, textFor } from "../lib/storm-spanish";
 import { labelGrounds, groundActive, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
 import { impactedShipsForAlert, defaultWindow, withTrackable, type TrackableSailing } from "../lib/storm-sailings";
 import { severityRank } from "../lib/storm-escalation";
@@ -31,6 +32,8 @@ interface DbAlert extends AlertRow {
   window_start: string | null; window_end: string | null;
   cone_url: string | null; satellite_url: string | null;
   cruise_line_info: unknown; detail_md: string | null;
+  headline_es: string | null; body_md_es: string | null; detail_md_es: string | null;
+  all_clear_headline_es: string | null; all_clear_body_md_es: string | null;
 }
 
 /** Impacted sailings for an alert (date + region aware), using its forecast window. Each
@@ -117,7 +120,13 @@ router.post("/storm-alerts/declare", requireToken, async (req: Request, res: Res
       cone_url: SURFACE_CHART[basin === "atlantic" ? "atlantic" : "pacific"],
       satellite_url: satelliteFor(grounds, basin === "atlantic" ? "atlantic" : "pacific"),
       headline, body_md: bodyMd, status: "draft", first_seen: now, last_updated: now,
+      // Spanish twin of the template; a headline Mark typed himself is translated like any edit.
+      ...(headlineIn ? {} : declaredAlertEs({ name, classification, grounds, windowStart, windowEnd, note, declared: true })),
     };
+    if (headlineIn) {
+      const es = await translateStormText({ headline, body_md: bodyMd }, { nhcId });
+      Object.assign(row, { headline_es: es?.headline_es ?? null, body_md_es: es?.body_md_es ?? null });
+    }
     const ins = await supabase.from("storm_alerts").insert(row as never).select("id").single();
     const id = (ins.data as { id?: string } | null)?.id;
     if (ins.error || !id) throw ins.error ?? new Error("insert returned no id");
@@ -167,9 +176,32 @@ router.patch("/storm-alerts/:id", requireToken, async (req: Request, res: Respon
     if (typeof all_clear_headline === "string") patch["all_clear_headline"] = all_clear_headline.slice(0, 120);
     if (typeof all_clear_body_md === "string") patch["all_clear_body_md"] = all_clear_body_md;
     const supabase = getSupabase();
-    const { error } = await supabase.from("storm_alerts").update(patch).eq("id", (req.params["id"] ?? ""));
+    const id = req.params["id"] ?? "";
+    // Mark edits English only; the Spanish twin follows (2026-10-08). The dashboard sends every
+    // field on each save, so only text that actually changed — or has no Spanish yet — is translated.
+    const { data: cur } = await supabase.from("storm_alerts")
+      .select("nhc_id, headline, body_md, headline_es, body_md_es, detail_md, detail_md_es, all_clear_headline, all_clear_body_md, all_clear_headline_es, all_clear_body_md_es")
+      .eq("id", id).maybeSingle();
+    const row = (cur ?? {}) as Partial<DbAlert & { all_clear_headline: string | null; all_clear_body_md: string | null }>;
+    const nextHeadline = (patch["headline"] as string | undefined) ?? row.headline ?? "";
+    const nextBody = (patch["body_md"] as string | undefined) ?? row.body_md ?? "";
+    if (nextHeadline && nextBody && (nextHeadline !== (row.headline ?? "") || nextBody !== (row.body_md ?? "") || !row.headline_es || !row.body_md_es)) {
+      const es = await translateStormText({ headline: nextHeadline, body_md: nextBody }, { nhcId: row.nhc_id });
+      patch["headline_es"] = es?.headline_es ?? null; patch["body_md_es"] = es?.body_md_es ?? null;
+    }
+    if (typeof detail_md === "string" && detail_md.trim() && (detail_md !== (row.detail_md ?? "") || !row.detail_md_es)) {
+      const es = await translateStormText({ headline: nextHeadline || "—", body_md: detail_md }, { nhcId: row.nhc_id });
+      patch["detail_md_es"] = es?.body_md_es ?? null;
+    } else if (typeof detail_md === "string" && !detail_md.trim()) patch["detail_md_es"] = null;
+    const nextAcH = (patch["all_clear_headline"] as string | undefined) ?? row.all_clear_headline ?? "";
+    const nextAcB = (patch["all_clear_body_md"] as string | undefined) ?? row.all_clear_body_md ?? "";
+    if (nextAcH && nextAcB && (nextAcH !== (row.all_clear_headline ?? "") || nextAcB !== (row.all_clear_body_md ?? "") || !row.all_clear_headline_es || !row.all_clear_body_md_es)) {
+      const es = await translateStormText({ headline: nextAcH, body_md: nextAcB }, { nhcId: row.nhc_id });
+      patch["all_clear_headline_es"] = es?.headline_es ?? null; patch["all_clear_body_md_es"] = es?.body_md_es ?? null;
+    }
+    const { error } = await supabase.from("storm_alerts").update(patch).eq("id", id);
     if (error) throw error;
-    res.json({ success: true });
+    res.json({ success: true, spanish: Boolean(patch["headline_es"] ?? row.headline_es) });
   } catch (err) {
     logger.error({ err }, "PATCH /storm-alerts failed");
     res.status(500).json({ success: false, error: "Failed to save" });
@@ -198,6 +230,14 @@ async function approveAndSend(id: string): Promise<ApproveOutcome> {
   if (!alert) throw new Error("not found");
   if (alert.status === "sent") return { state: "already_sent", sent: alert.sent_count ?? 0 };
   if (alert.status === "sending") return { state: "already_sending" };
+  // Spanish subscribers get Spanish (2026-10-08): one last try at the twin before anything goes out.
+  if (alert.headline && alert.body_md && !(alert.headline_es && alert.body_md_es)) {
+    const es = await translateStormText({ headline: alert.headline, body_md: alert.body_md }, { nhcId: alert.nhc_id });
+    if (es) {
+      alert.headline_es = es.headline_es; alert.body_md_es = es.body_md_es;
+      await supabase.from("storm_alerts").update({ headline_es: es.headline_es, body_md_es: es.body_md_es } as never).eq("id", id);
+    } else logger.warn({ nhcId: alert.nhc_id }, "storm: approving with no Spanish twin — Spanish subscribers get English");
+  }
   const total = await subscriberCount();
   const now = () => new Date().toISOString();
   const state = await startAlertSend(id, {
@@ -351,7 +391,7 @@ router.get("/storm-watch", async (_req: Request, res: Response) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("storm_alerts")
-      .select("id, nhc_id, name, classification, basin, headline, body_md, affected_grounds, formation_chance, is_threat, last_updated, status, window_start, window_end, cone_url, satellite_url, cruise_line_info, detail_md, sent_at, sent_count, raw")
+      .select("id, nhc_id, name, classification, basin, headline, body_md, headline_es, body_md_es, affected_grounds, formation_chance, is_threat, last_updated, status, window_start, window_end, cone_url, satellite_url, cruise_line_info, detail_md, detail_md_es, sent_at, sent_count, raw")
       .in("status", ["approved", "sent"])
       .eq("is_threat", true)
       .order("last_updated", { ascending: false });
@@ -363,6 +403,9 @@ router.get("/storm-watch", async (_req: Request, res: Response) => {
       classification: a.classification,
       headline: a.headline,
       body_md: a.body_md,
+      // Spanish twin (2026-10-08); null until translated — the Spanish pages fall back to English
+      headline_es: textFor(a, "es").lang === "es" ? a.headline_es : null,
+      body_md_es: textFor(a, "es").lang === "es" ? a.body_md_es : null,
       grounds: a.affected_grounds,
       grounds_label: labelGrounds(a.affected_grounds),
       formation_chance: a.formation_chance,
@@ -398,6 +441,9 @@ router.get("/storm-watch/:id", async (req: Request, res: Response) => {
       system: {
         id: a.id, name: a.name, classification: a.classification, basin: a.basin,
         headline: a.headline, body_md: a.body_md, detail_md: a.detail_md,
+        headline_es: textFor(a, "es").lang === "es" ? a.headline_es : null,
+        body_md_es: textFor(a, "es").lang === "es" ? a.body_md_es : null,
+        detail_md_es: a.detail_md_es ?? null,
         grounds: a.affected_grounds, grounds_label: labelGrounds(a.affected_grounds),
         formation_chance: a.formation_chance, updated: a.last_updated,
         window_start: a.window_start, window_end: a.window_end,
