@@ -561,13 +561,23 @@ export default [
     modes: ["dev", "prod"],
     incident: "found 2026-10-08: the page fetches /api/editorial-queue with no token; the agent requires one, so the page can only ever say 'Editorial queue currently unavailable'",
     run: async (t) => {
-      const html = t.html(await t.get("/editorial-queue.html"), { mustContain: ["/api/editorial-queue"] });
+      const html = t.html(await t.get("/editorial-queue.html"));
       t.equal(H.htmlLang(html).slice(0, 2), "en", "/editorial-queue.html language");
-      // what the page's own request gets (it sends no token unless the page code adds one)
-      const sendsToken = /x-affiliate-token|Authorization|[?&]token=/.test(html);
-      const r = await t.get("/api/editorial-queue");
-      const pageCanLoad = sendsToken || (r.status === 200 && r.json?.success === true && Array.isArray(r.json?.stories));
-      t.ok(pageCanLoad, `/editorial-queue.html asks for the queue without a token and gets ${r.describe()} — the page can only ever show "Editorial queue currently unavailable". Retire it (the real review page is /review) or send the token`);
+      // Retired 2026-10-08: the page now hands off to the news agent's /review (meta refresh + script).
+      // A page that still fetches the queue itself must send the token, or get the queue without one.
+      const handsOff = /http-equiv=["']refresh["'][^>]*url=\/review/i.test(html) && /location\.replace\(['"]\/review['"]\)/.test(html);
+      if (handsOff) {
+        t.ok(/noindex/i.test(H.metaContent(html, "robots")), "the retired editorial-queue page is not marked noindex");
+        t.ok(!/\/api\/editorial-queue/.test(html), "the retired editorial-queue page still asks for the queue itself");
+      } else {
+        t.ok(/\/api\/editorial-queue/.test(html), "/editorial-queue.html neither loads the queue nor hands off to /review");
+        // what the page's own request gets (it sends no token unless the page code adds one)
+        const sendsToken = /x-affiliate-token|Authorization|[?&]token=/.test(html);
+        const r = await t.get("/api/editorial-queue");
+        const pageCanLoad = sendsToken || (r.status === 200 && r.json?.success === true && Array.isArray(r.json?.stories));
+        t.ok(pageCanLoad, `/editorial-queue.html asks for the queue without a token and gets ${r.describe()} — the page can only ever show "Editorial queue currently unavailable". Retire it (the real review page is /review) or send the token`);
+      }
+      t.observe("editorial-queue page hands off to /review", handsOff);
       const q = t.success(await t.get("/api/editorial-queue", { auth: true }));
       t.ok(Array.isArray(q.stories), "the editorial queue has no stories array");
     },

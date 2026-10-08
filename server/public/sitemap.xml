@@ -108,9 +108,11 @@
   </url>
   <url>
     <loc>https://stillafloatcruising.com/favorites.html</loc>
-    <lastmod>2026-08-15</lastmod>
+    <lastmod>2026-10-08</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/favorites.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://stillafloatcruising.com/es/favorites.html"/>
   </url>
   <url>
     <loc>https://stillafloatcruising.com/subscribe.html</loc>
@@ -194,6 +196,14 @@
     <priority>0.6</priority>
     <xhtml:link rel="alternate" hreflang="es" href="https://stillafloatcruising.com/es/webcams.html"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/webcams.html"/>
+  </url>
+  <url>
+    <loc>https://stillafloatcruising.com/es/favorites.html</loc>
+    <lastmod>2026-10-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="es" href="https://stillafloatcruising.com/es/favorites.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/favorites.html"/>
   </url>
   <url>
     <loc>https://stillafloatcruising.com/es/wheres-my-ship.html</loc>

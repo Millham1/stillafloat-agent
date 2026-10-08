@@ -310,9 +310,9 @@
       var play=document.createElement('span'); play.className='yt-card-play';
       play.innerHTML='<i class="fa-brands fa-youtube"></i>';
       tw.appendChild(play);
-      if(v.isLatest){
+      if(v.isFeatured || v.isLatest){
         var nb=document.createElement('span'); nb.className='yt-card-new';
-        nb.textContent='NEW';
+        nb.textContent=v.isFeatured ? 'FEATURED' : 'NEW';
         tw.appendChild(nb);
       }
       var meta=document.createElement('span'); meta.className='yt-card-meta';
@@ -327,7 +327,23 @@
       .then(function(d){ render((d&&d.videos)||[], target); })
       .catch(function(){});
   }
-  load('/api/youtube-top?limit=4&lang=en&type=long', grid);
+  // The dashboard's "Feature on Homepage" pick leads the Episodes row (badge "FEATURED") when it is a
+  // video in this page's language; otherwise the row is the newest-then-most-watched list as before.
+  // (Since 7e4fd05 the homepage never read the pick, so the button changed nothing — gate 2026-10-08.)
+  function loadEpisodes(){
+    var top = fetch('/api/youtube-top?limit=4&lang=en&type=long').then(function(r){ return r.json(); });
+    var pick = fetch('/api/youtube-featured?lang=en').then(function(r){ return r.json(); }).catch(function(){ return null; });
+    Promise.all([top, pick]).then(function(res){
+      var videos = (res[0] && res[0].videos) || [];
+      var f = res[1];
+      if (f && f.manual && f.videoId) {
+        videos = [{ id: f.videoId, title: f.title, thumbnail: f.thumbnail, isFeatured: true }]
+          .concat(videos.filter(function(v){ return v && v.id !== f.videoId; }));
+      }
+      render(videos, grid);
+    }).catch(function(){});
+  }
+  loadEpisodes();
   load('/api/youtube-top?limit=6&lang=en&type=short', document.getElementById('yt-shorts-grid'));
 })();
 </script>

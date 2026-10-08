@@ -110,7 +110,9 @@ const PAGES = [
   { path: "/es/room-concierge.html", lang: "es", kind: "customer" },
   { path: "/cabin-request.html", lang: "en", kind: "template" },
   { path: "/es/cabin-request.html", lang: "es", kind: "template" },
-  { path: "/cabin-finder.html", lang: "en", kind: "customer" },
+  // the 2026-08 cabin quiz, superseded by Room Concierge: nothing on the site links to it (only the
+  // dashboard's ratings page), so it is kept out of search (noindex since 8d59440) and needs no twin
+  { path: "/cabin-finder.html", lang: "en", kind: "utility", noTwin: "orphaned cabin quiz superseded by Room Concierge; only the dashboard links to it" },
   // commentary + stories
   { path: "/commentary.html", lang: "en", kind: "customer" },
   { path: "/es/commentary.html", lang: "es", kind: "customer" },

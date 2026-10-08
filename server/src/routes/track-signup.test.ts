@@ -23,7 +23,7 @@ const TODAY = "2026-09-15";
 const W1 = "0b6f7a8e-1c2d-4e5f-8a9b-0c1d2e3f4a5b";
 const W2 = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 
-function world(opts: { subscribers?: (SubscriberRow & { email: string })[]; watches?: Watch[]; limited?: boolean; capLimit?: number } = {}) {
+function world(opts: { subscribers?: (SubscriberRow & { email: string })[]; watches?: Watch[]; limited?: boolean; capLimit?: number; turnstile?: (token: string | null) => boolean } = {}) {
   const subscribers = new Map((opts.subscribers ?? []).map((s) => [s.email, { ...s }]));
   const watches: Watch[] = (opts.watches ?? []).map((w) => ({ ...w }));
   const sent = {
@@ -70,6 +70,7 @@ function world(opts: { subscribers?: (SubscriberRow & { email: string })[]; watc
     newToken: () => `token-${++n}`,
     rateLimited: () => Boolean(opts.limited),
     sendCap: createSendCap({ limit: opts.capLimit ?? 1000 }),
+    verifyTurnstile: async (token) => (opts.turnstile ? opts.turnstile(token) : true),
   };
   return { deps, subscribers, watches, sent };
 }
@@ -281,4 +282,23 @@ test("confirming the email starts each pending watch: a 15-day one counts from t
   assert.deepEqual(mails.map((m) => m.subject), ["You're tracking Carnival Panorama — Still Afloat", "You're tracking Navigator of the Seas — Still Afloat"]);
   assert.ok(mails[0]!.html.includes("for the next 15 days, through September 29"));
   assert.ok(mails[1]!.html.includes("from 2026-09-15 to 2026-09-20") && !mails[1]!.html.includes("15 days"), "a sailing watch keeps its dates");
+});
+
+test("track-signup: a sign-up the security check refuses saves nothing and sends nothing (2026-10-02 bot hole)", async () => {
+  // Enforced like production with the secret set: no token → false, the right token → true.
+  const w = world({ turnstile: (token) => token === "tok-good" });
+  const noToken = await post(w.deps, "/wms/track-signup", { name: "Pat Bot", email: "pat@example.com", ship: "Carnival Panorama" });
+  assert.equal(noToken.status, 400);
+  assert.deepEqual(noToken.json, { ok: false, error: "security_check" });
+  const badToken = await post(w.deps, "/wms/track-signup", { name: "Pat Bot", email: "pat@example.com", ship: "Carnival Panorama", "cf-turnstile-response": "tok-forged" });
+  assert.equal(badToken.status, 400);
+  assert.deepEqual(badToken.json, { ok: false, error: "security_check" });
+  assert.equal(w.subscribers.size, 0, "no subscriber saved");
+  assert.equal(w.watches.length, 0, "no watch saved");
+  assert.equal(w.sent.verification.length + w.sent.tracking.length, 0, "no email sent");
+  // The same request with a token Cloudflare accepts goes through as before.
+  const ok = await post(w.deps, "/wms/track-signup", { name: "Pat Real", email: "pat@example.com", ship: "Carnival Panorama", "cf-turnstile-response": "tok-good" });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.json["state"], "confirm_email");
+  assert.equal(w.sent.verification.length, 1);
 });

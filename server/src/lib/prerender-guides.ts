@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { logger } from "./logger";
 import { PATHS, readJson } from "./persistence";
@@ -370,6 +370,11 @@ export async function runGuidesPrerender(): Promise<{ guides: number; pages: num
     }
   }
 
+  // Pages whose guide left the data (renamed slug, unpublished, retired) are duplicates Google can
+  // still index — /es/guides/como-elegir-tu-primer-crucero.html lived on for months after its guide
+  // became how-to-choose-your-first-cruise (release gate cabins.guides-no-orphan-pages, 2026-10-08).
+  const removed = await removeOrphanGuidePages(enDir, esDir, guides);
+
   const enGuides = guides.filter((g) => hasLang(g, "en"));
   const esGuides = guides.filter((g) => hasLang(g, "es"));
   await writeFile(path.join(publicDir, "guides.html"), guidesIndexHtml(enGuides, "en"));
@@ -377,6 +382,42 @@ export async function runGuidesPrerender(): Promise<{ guides: number; pages: num
   await writeFile(path.join(publicDir, "guides-sitemap.xml"), sitemapXml(guides));
   pages += 3;
 
-  logger.info({ guides: guides.length, pages }, "Guides prerender complete");
+  logger.info({ guides: guides.length, pages, removed }, "Guides prerender complete");
   return { guides: guides.length, pages };
+}
+
+/** The guide pages each language should have on disk right now (slug list, tools excluded). */
+export function expectedGuideSlugs(guides: Guide[]): { en: Set<string>; es: Set<string> } {
+  const en = new Set<string>();
+  const es = new Set<string>();
+  for (const guide of guides) {
+    if (toolHrefFor(guide, "en") || toolHrefFor(guide, "es")) continue;
+    const slug = cleanSlug(guide);
+    if (hasLang(guide, "en")) en.add(slug);
+    if (hasLang(guide, "es")) es.add(slug);
+  }
+  return { en, es };
+}
+
+/** Delete /guides/<slug>.html and /es/guides/<slug>.html files no published guide produces any more. */
+async function removeOrphanGuidePages(enDir: string, esDir: string, guides: Guide[]): Promise<string[]> {
+  const expected = expectedGuideSlugs(guides);
+  const removed: string[] = [];
+  for (const [dir, keep] of [[enDir, expected.en], [esDir, expected.es]] as const) {
+    let files: string[] = [];
+    try { files = await readdir(dir); } catch { continue; }
+    for (const f of files) {
+      if (!f.endsWith(".html")) continue;
+      const slug = f.replace(/\.html$/, "");
+      if (keep.has(slug)) continue;
+      try {
+        await unlink(path.join(dir, f));
+        removed.push(path.join(dir, f));
+        logger.warn({ file: path.join(dir, f) }, "Guides prerender: removed orphan guide page");
+      } catch (err) {
+        logger.warn({ err, file: f }, "Guides prerender: could not remove orphan guide page");
+      }
+    }
+  }
+  return removed;
 }

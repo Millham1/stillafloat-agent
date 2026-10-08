@@ -532,6 +532,9 @@ export default [
       t.status(wjs, 200);
       const tpl = /class="home-weather-tile" href="([^"$]*)\$\{port\.slug\}([^"]*)"/.exec(wjs.text);
       t.ok(tpl, "the homepage weather tiles no longer link to a forecast");
+      // The template's tail may branch on the page language — `${isEs ? '&lang=es' : ''}` — so it is
+      // evaluated for each homepage the way the browser would, instead of being read literally.
+      const tileTail = (lang) => String(tpl[2]).replace(/\$\{\s*isEs\s*\?\s*'([^']*)'\s*:\s*'([^']*)'\s*\}/g, (_m, es, en) => (lang === "es" ? es : en));
       const shown = Number(/\.slice\(0,\s*(\d+)\)/.exec(wjs.text)?.[1] || 0);
       t.ok(shown > 0, "the homepage no longer says how many weather tiles it shows");
       // ONE fixed place: Miami (the first featured homepage tile), so the synopsis below stays inside
@@ -547,7 +550,8 @@ export default [
       for (const [lang, path] of [["en", "/"], ["es", "/es/"]]) {
         const html = t.html(await t.get(path), { mustContain: ['id="weather-container"'] });
         t.ok(H.scripts(html).some((s) => /(^|\/)js\/weather\.js$/.test(s)), `the ${lang} homepage no longer loads the weather tiles`);
-        const url = new URL(`${tpl[1]}${tile.slug}${tpl[2]}`, t.url(path));
+        const url = new URL(`${tpl[1]}${tile.slug}${tileTail(lang)}`, t.url(path));
+        t.ok(!/\$\{/.test(url.href), `the ${lang} homepage's tile link still holds code the gate could not evaluate: ${url.href}`);
         target[lang] = url;
         L.check(url.pathname === "/forecast.html", `the ${lang} homepage's ${tile.name} tile opens ${url.pathname}, which is not the forecast page`);
         L.check(lang === "en" || url.searchParams.get("lang") === "es", `the ${lang} homepage's ${tile.name} tile opens the forecast in English (no lang=es)`);

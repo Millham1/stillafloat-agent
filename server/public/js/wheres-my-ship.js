@@ -257,7 +257,7 @@
           <div class="t">${day.high}°<small>/${day.low}°</small></div>
         </div>`;
       $('wx-syn').textContent = d.forecast.synopsis || '';
-      $('wx-more').href = `/forecast.html?place=${dest.slug}`;
+      $('wx-more').href = `/forecast.html?place=${dest.slug}&lang=${LANG === 'es' ? 'es' : 'en'}`;
       card.style.display = '';
     } catch { card.style.display = 'none'; }
   }

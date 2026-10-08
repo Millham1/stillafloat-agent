@@ -215,12 +215,13 @@ footer{
 </section>
 
 <main class="shell">
-  <div class="feature-wrap">
-    <div class="feature">
+  <div class="feature-wrap" id="featured-wrap" style="display:none">
+    <div class="feature" id="featured-item">
       <small>Artículo Destacado de la Semana</small>
-      <h2>El Favorito de <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> Esta Semana</h2>
-      <p>Un hallazgo para cruceros, ayuda de viaje o producto práctico que vale la pena destacar antes de explorar las categorías.</p>
-      <a class="btn" href="#featured-item">Ver Este Favorito →</a>
+      <img id="featured-img" src="" alt="" style="display:none;max-width:260px;max-height:220px;object-fit:contain;margin:12px auto 16px;border-radius:8px;">
+      <h2 id="featured-title">El Favorito de <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img"> Esta Semana</h2>
+      <p id="featured-desc">Un hallazgo para cruceros, ayuda de viaje o producto práctico que vale la pena destacar antes de explorar las categorías.</p>
+      <a class="btn" id="featured-link" href="#" target="_blank" rel="noopener noreferrer">Ver Este Favorito →</a>
     </div>
   </div>
 
@@ -293,6 +294,40 @@ footer{
 <footer>© 2026 Still Afloat LLC — Navega más inteligente. Ríe más. <img src="/assets/images/stay-afloat-text.png" alt="Stay Afloat" class="brand-img-sm"></footer>
 
 <script src="/components/navbar.js?v=20260915-trackship"></script>
+<script>
+// The same featured pick the English hub shows (/api/affiliate-items?featured=true), in Spanish
+// when the item has a Spanish blurb. Until 2026-10-08 this page had a static block whose button
+// jumped to an anchor that did not exist (release gate pages.crawl-gear-hub).
+function esc(s){const d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML}
+function extractLink(smartStrip){
+  if(!smartStrip)return null;
+  const trimmed=smartStrip.trim();
+  if(/^https?:\/\//i.test(trimmed))return trimmed;
+  const m=trimmed.match(/href=["']([^"']+)["']/i);
+  return m?m[1]:null;
+}
+async function loadFeatured(){
+  try{
+    const resp=await fetch('/api/affiliate-items?featured=true');
+    const data=await resp.json();
+    if(!data.items||data.items.length===0)return;
+    const item=data.items[0];
+    document.getElementById('featured-wrap').style.display='';
+    if(item.title)document.getElementById('featured-title').innerHTML=
+      esc(item.title)+' — El Favorito de <img src="/assets/images/still-afloat-text.png" alt="Still Afloat" class="brand-img">';
+    const blurb=item.descriptionEs||item.description;
+    if(blurb)document.getElementById('featured-desc').textContent=blurb;
+    if(item.imageUrl){
+      const img=document.getElementById('featured-img');
+      img.src=item.imageUrl; img.alt=item.title||'Artículo destacado'; img.style.display='block';
+    }
+    const link=item.affiliateLink||extractLink(item.smartStrip);
+    if(link&&item.id)document.getElementById('featured-link').href='/api/go/'+encodeURIComponent(item.id)+'?p=affiliate&l=es';
+    else if(link)document.getElementById('featured-link').href=link;
+  }catch(e){/* sin artículo destacado — se queda oculto */}
+}
+loadFeatured();
+</script>
 
 </body>
 </html>

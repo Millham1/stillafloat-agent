@@ -24,6 +24,7 @@ import { sendMail } from "../lib/mailer";
 import { sendVerificationEmail } from "./subscribe";
 import { verificationSendCap, logCapHit, type SendCap } from "../lib/verification-send-cap";
 import { clientIp } from "../lib/client-ip";
+import { verifyTurnstile } from "../lib/turnstile";
 import {
   rollingWindow, signupPath, trackingEmail, verifyWatchSig, watchStopUrl, WATCH_WINDOW_DAYS, type WatchWindow,
 } from "../lib/ship-watch";
@@ -73,6 +74,8 @@ export interface TrackSignupDeps {
   rateLimited(ip: string): boolean;
   /** The site-wide cap on confirmation emails, shared with /api/subscribe (lib/verification-send-cap.ts). */
   sendCap: SendCap;
+  /** Cloudflare Turnstile (lib/turnstile.ts): true when the secret is unset (dev) or the token verifies. */
+  verifyTurnstile(token: string | null): Promise<boolean>;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -98,6 +101,16 @@ export function createTrackSignupRouter(deps: TrackSignupDeps = defaultTrackSign
       if (name.length < 2) return res.status(400).json({ ok: false, error: "name_required" });
       if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, error: "email_invalid" });
       if (!shipName) return res.status(400).json({ ok: false, error: "ship_required" });
+
+      // Turnstile, before anything is looked up, saved or sent (added 2026-10-08: this form sends
+      // the same confirmation email as /api/subscribe and was the one public form without it — the
+      // 2026-10-02 bot hole). Whenever TURNSTILE_SECRET_KEY is set, no token or a bad token stops here.
+      const rawToken = body["cf-turnstile-response"];
+      const turnstileToken = typeof rawToken === "string" && rawToken ? rawToken : null;
+      if (!(await deps.verifyTurnstile(turnstileToken))) {
+        logger.warn({ ip: clientIp(req), hadToken: Boolean(turnstileToken) }, "Turnstile verification failed — ship-tracking sign-up blocked");
+        return res.status(400).json({ ok: false, error: "security_check" });
+      }
 
       const ship = await deps.findShip(shipName);
       if (!ship) return res.status(404).json({ ok: false, error: "unknown_ship" });
@@ -277,6 +290,7 @@ export const defaultTrackSignupDeps: TrackSignupDeps = {
   today: () => new Date().toISOString().slice(0, 10),
   newToken: () => crypto.randomUUID(),
   sendCap: verificationSendCap,
+  verifyTurnstile: (token) => verifyTurnstile(token, { form: "track-signup" }),
   rateLimited(ip) {
     const now = Date.now();
     const entry = attempts.get(ip);

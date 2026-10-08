@@ -187,12 +187,14 @@ async function gatherFeaturedVideo(lang: Lang): Promise<{ id: string; title: str
     {},
   );
   const vids = ch.videos ?? [];
-  if (ch.featuredId) {
-    const v = vids.find((x) => String(x["id"]) === ch.featuredId);
-    if (v) return { id: ch.featuredId, title: String(v["title"] ?? ""), thumbnail: String(v["thumbnail"] ?? "") };
-  }
   const langMatch = (title: string): boolean =>
     lang === "es" ? SPANISH_TITLE.test(title) : !SPANISH_TITLE.test(title);
+  // Mark's pin wins only in the edition whose language it matches (2026-10-08: a pinned video
+  // used to feature in BOTH editions, so a Spanish pin led the English letter and vice versa).
+  if (ch.featuredId) {
+    const v = vids.find((x) => String(x["id"]) === ch.featuredId);
+    if (v && langMatch(String(v["title"] ?? ""))) return { id: ch.featuredId, title: String(v["title"] ?? ""), thumbnail: String(v["thumbnail"] ?? "") };
+  }
   const pickFrom = (list: Array<{ id: string; title: string; thumbnail: string }>): { id: string; title: string; thumbnail: string } | null =>
     list.find((v) => v.id && langMatch(v.title)) ?? list[0] ?? null;
 

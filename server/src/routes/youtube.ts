@@ -245,8 +245,29 @@ router.post("/youtube-feature", async (req: Request, res: Response) => {
 });
 
 // ── GET /api/youtube-featured ─────────────────────────────────────────────────
-// Public endpoint used by the homepage to get the currently featured video
-router.get("/youtube-featured", async (_req: Request, res: Response) => {
+// Public endpoint used by the homepages (?lang=en|es) and the newsletter to get the
+// currently featured video. `manual: true` means Mark pinned it with "Feature on Homepage".
+// A pin only counts for a page whose language matches the video's title (2026-10-08: the
+// 2026-07-09 English newsletter featured a Spanish video because the pin was language-blind,
+// and the homepages had not read the pick at all since 7e4fd05).
+const SPANISH_TITLE_RE = /[¡¿áéíóúüñ]/i;
+export function pickFeatured(
+  data: { featuredId?: string; featuredManual?: boolean; videos?: YTVideo[] } | null,
+  lang: "en" | "es" | null,
+): { video: YTVideo; manual: boolean } | null {
+  const videos = data?.videos ?? [];
+  const langOk = (v: YTVideo) => lang === null || (lang === "es") === SPANISH_TITLE_RE.test(String(v.title || ""));
+  // 1. A video Mark explicitly featured wins — as long as it's still in the feed and in this language.
+  if (data?.featuredManual && data.featuredId) {
+    const pinned = videos.find((v) => v.id === data.featuredId);
+    if (pinned && langOk(pinned)) return { video: pinned, manual: true };
+  }
+  // 2. Otherwise the latest upload in this language (the feed is newest-first).
+  const latest = videos.find(langOk) ?? videos[0];
+  return latest ? { video: latest, manual: false } : null;
+}
+
+router.get("/youtube-featured", async (req: Request, res: Response) => {
   try {
     const data = (await readJson("youtube-channel")) as {
       featuredId?: string;
@@ -254,25 +275,21 @@ router.get("/youtube-featured", async (_req: Request, res: Response) => {
       videos?: YTVideo[];
       scannedAt?: string;
     } | null;
+    const q = String(req.query["lang"] ?? "").toLowerCase();
+    const lang = q === "es" ? "es" : q === "en" ? "en" : null;
 
-    const videos = data?.videos ?? [];
-
-    const respond = (v: YTVideo) =>
+    const picked = pickFeatured(data, lang);
+    if (picked) {
+      const v = picked.video;
       res.json({
         videoId: v.id,
         title: v.title,
         thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
         channelUrl: CHANNEL_URL,
+        manual: picked.manual,
       });
-
-    // 1. A video Mark explicitly featured wins — as long as it's still in the feed.
-    if (data?.featuredManual && data.featuredId) {
-      const pinned = videos.find(v => v.id === data.featuredId);
-      if (pinned) { respond(pinned); return; }
+      return;
     }
-
-    // 2. Otherwise track the latest upload (the feed is newest-first).
-    if (videos.length > 0) { respond(videos[0]); return; }
 
     // 3. Nothing scanned yet — fall back to the hardcoded Short.
     res.json({
@@ -280,6 +297,7 @@ router.get("/youtube-featured", async (_req: Request, res: Response) => {
       title: "Cruise Relationship Crisis",
       thumbnail: "https://img.youtube.com/vi/qjzM4sm7cqA/mqdefault.jpg",
       channelUrl: CHANNEL_URL,
+      manual: false,
     });
   } catch (err) {
     logger.error({ err }, "YouTube featured fetch failed");

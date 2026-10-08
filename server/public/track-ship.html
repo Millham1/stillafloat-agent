@@ -79,6 +79,7 @@ input:focus{border-color:rgba(93,255,154,.5);background:rgba(93,255,154,.04)}
           <span class="check-label">I agree to the privacy terms and consent to receiving email from Still Afloat.</span>
         </label>
       </div>
+      <div class="turnstile-wrap" id="turnstileWrap" style="margin:0 0 12px;min-height:0;display:flex;justify-content:center"></div>
       <button type="submit" class="btn-submit" id="submitBtn"><i class="fa-solid fa-bell"></i>&nbsp; Subscribe &amp; Track This Ship</button>
     </form>
     <p class="secondary"><a id="liveLink" href="/wheres-my-ship.html">See where she is right now →</a></p>
@@ -139,9 +140,43 @@ input:focus{border-color:rgba(93,255,154,.5);background:rgba(93,255,154,.04)}
     ship_required: 'Pick a ship on the tracker first.',
     unknown_ship: 'We couldn\'t find that ship. Pick her on the tracker instead.',
     email_unreachable: 'Emails to that address bounce. Please use a different address.',
+    security_check: 'Please complete the security check.',
     too_many_attempts: 'Too many attempts. Please try again in a little while.'
   };
   var btn = $('submitBtn'), errBox = $('errorMsg');
+
+  // Cloudflare Turnstile — same check as the newsletter sign-up (added 2026-10-08: this form sends
+  // the same confirmation email as /api/subscribe and had no bot check, the 2026-10-02 hole).
+  var turnstileToken = null, turnstileSiteKey = null, turnstileWidget = null;
+  function initTurnstile(){
+    fetch('/api/public-config').then(function(r){ return r.json(); }).then(function(cfg){
+      turnstileSiteKey = cfg && cfg.turnstileSiteKey;
+      if (!turnstileSiteKey) return;
+      var script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.onload = function(){
+        var wrap = $('turnstileWrap');
+        wrap.innerHTML = '';
+        var widget = document.createElement('div');
+        widget.id = 'cfTurnstile';
+        wrap.appendChild(widget);
+        turnstileWidget = turnstile.render('#cfTurnstile', {
+          sitekey: turnstileSiteKey,
+          appearance: 'interaction-only',
+          callback: function(token){ turnstileToken = token; },
+          'expired-callback': function(){ turnstileToken = null; },
+          'error-callback': function(){ turnstileToken = null; }
+        });
+      };
+      document.head.appendChild(script);
+    }).catch(function(){});
+  }
+  // A token works once: after the server has used it, get a fresh one for the next try.
+  function resetTurnstile(){
+    turnstileToken = null;
+    if (turnstileWidget !== null && window.turnstile) window.turnstile.reset(turnstileWidget);
+  }
+  initTurnstile();
   var BTN = btn.innerHTML;
   function showError(msg){
     errBox.textContent = msg;
@@ -171,6 +206,7 @@ input:focus{border-color:rgba(93,255,154,.5);background:rgba(93,255,154,.04)}
     if (name.length < 2) return showError(ERRORS.name_required);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError(ERRORS.email_invalid);
     if (!$('privacyCheck').checked) return showError('Please agree to the privacy terms to continue.');
+    if (turnstileSiteKey && !turnstileToken) return showError(ERRORS.security_check);
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Saving…';
@@ -178,10 +214,10 @@ input:focus{border-color:rgba(93,255,154,.5);background:rgba(93,255,154,.04)}
       var res = await fetch('/api/wms/track-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, email: email, ship: ship, lang: 'en', source: source, website: $('website').value })
+        body: JSON.stringify({ name: name, email: email, ship: ship, lang: 'en', source: source, website: $('website').value, 'cf-turnstile-response': turnstileToken || null })
       });
       var data = await res.json().catch(function(){ return {}; });
-      if (!res.ok || !data.ok) return showError(ERRORS[data.error] || 'Something went wrong. Please try again.');
+      if (!res.ok || !data.ok) { resetTurnstile(); return showError(ERRORS[data.error] || 'Something went wrong. Please try again.'); }
       var label = data.ship || shipLabel;
       if (data.state === 'tracking') {
         showDone('🛳️', 'You\'re tracking ', label, '', data.already

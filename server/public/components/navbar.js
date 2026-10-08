@@ -18,17 +18,23 @@
   // Compute equivalent page URL in the other language
   // Handles /es, /es/, /es/index.html, /es/news.html correctly
   // Pages that have a Spanish (/es/) counterpart
-  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'webcams.html', 'wheres-my-ship.html', 'room-concierge.html', 'cabin-request.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html', 'work-with-mark.html', 'track-ship.html', 'subscribe-verified.html', 'subscribe.html', 'privacy.html', 'terms.html']);
+  // Filenames, matched on the last path segment; the twin keeps the folder (so
+  // /affiliate/clothing.html → /es/affiliate/clothing.html). The release gate reads this list.
+  const ES_PAGES = new Set(['index.html', 'news.html', 'weather.html', 'webcams.html', 'wheres-my-ship.html', 'room-concierge.html', 'cabin-request.html', 'affiliate.html', 'story.html', 'commentary.html', 'commentary-post.html', 'work-with-mark.html', 'track-ship.html', 'subscribe-verified.html', 'subscribe.html', 'privacy.html', 'terms.html', 'favorites.html', 'air-travel.html', 'cabin-essentials.html', 'clothing.html', 'cruise-fun.html', 'great-ideas.html', 'health-at-sea.html']);
+  // The Spanish twin of an English path, or null when there is none.
+  const esTwinOf = (p) => {
+    if (p === '/' || p === '' || p === '/index.html') return '/es/index.html';
+    const file = p.split('/').pop() || '';
+    return ES_PAGES.has(file) ? '/es' + p : null;
+  };
   let langUrl;
   if (isSpanish) {
     let eng = path.replace(/^\/es(\/.*)?$/, (_m, rest) => rest || '/index.html');
     if (eng === '/' || eng === '') eng = '/index.html';
     langUrl = eng;
   } else {
-    const file = (path.split('/').pop()) || 'index.html';
     // Fall back to /es/index.html for pages without a Spanish counterpart
-    const esFile = ES_PAGES.has(file) ? file : 'index.html';
-    langUrl = '/es/' + esFile;
+    langUrl = esTwinOf(path) || '/es/index.html';
   }
   // Preserve query string (e.g. ?id=... on story pages) when switching languages
   langUrl = langUrl + window.location.search;
@@ -52,11 +58,10 @@
     // explicit English choice ('en' pref, via the switcher) turns it off.
     const browserLangs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
     const prefersEs = langPref === 'es' || browserLangs.some(l => String(l).toLowerCase().startsWith('es'));
-    const file = (path.split('/').pop()) || 'index.html';
-    const esTwin = ES_PAGES.has(file) ? file : (path === '/' || path === '' ? 'index.html' : null);
+    const esTwin = esTwinOf(path);
     if (prefersEs && esTwin) {
       rememberLang('es');
-      window.location.replace('/es/' + esTwin + window.location.search);
+      window.location.replace(esTwin + window.location.search);
     }
   }
 
@@ -68,7 +73,7 @@
     { href: '/es/webcams.html',        label: 'Cámaras'      },
     { href: '/es/wheres-my-ship.html', label: 'Mi Barco'     },
     { href: '/es/room-concierge.html', label: 'Concierge'    },
-    { href: '/favorites.html',         label: 'Favoritos'    },
+    { href: '/es/favorites.html',      label: 'Favoritos'    },
     { href: '/es/commentary.html',     label: 'Comentarios'  },
     { href: '/es/affiliate.html',      label: 'Equipo'       },
   ] : [

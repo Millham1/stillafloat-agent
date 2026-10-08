@@ -294,9 +294,8 @@ export default [
     modes: ["dev", "prod"],
     incident: "2026-10-02: bots used POST /api/subscribe to make us email strangers; Turnstile was added there only. POST /api/wms/track-signup (2026-09-15) sends the same confirmation email (and, for a confirmed address, a tracking email) with no Turnstile, and shares the site-wide 10-an-hour confirmation cap, so a bot can also use it to lock real sign-ups out.",
     run: async (t) => {
-      // Page-level only: the server cannot be probed without a token-less request that, on a box
-      // where nothing refuses it, saves a subscriber and sends a real email. Once the server enforces
-      // Turnstile here, add its refusal to audience.turnstile-enforced-by-server.
+      // Page-level here; the server's refusal is proven in audience.turnstile-enforced-by-server
+      // (with a ship that does not exist, so a box without Turnstile still saves and sends nothing).
       for (const p of ["/track-ship.html", "/es/track-ship.html"]) {
         const html = t.html(await t.get(p), { mustContain: ["/api/wms/track-signup"] });
         t.equal(H.htmlLang(html).slice(0, 2), p.startsWith("/es/") ? "es" : "en", `${p} language`);
@@ -311,9 +310,9 @@ export default [
   {
     id: "audience.turnstile-enforced-by-server",
     title: "The server refuses a sign-up or contact request that has no security check (English and Spanish messages)",
-    covers: ["POST /api/subscribe", "POST /api/contact", "flow:turnstile-enforced", "GET /api/subscribers"],
+    covers: ["POST /api/subscribe", "POST /api/contact", "POST /api/wms/track-signup", "flow:turnstile-enforced", "GET /api/subscribers"],
     modes: ["dev"],
-    devOnlyBecause: "it POSTs to the sign-up and contact forms; prod is read-only",
+    devOnlyBecause: "it POSTs to the sign-up, contact and ship-tracking forms; prod is read-only",
     incident: "2026-10-02: bot sign-ups; the server only enforces Turnstile when TURNSTILE_SECRET_KEY is set",
     run: async (t) => {
       // A confirmed subscriber's address: if Turnstile were off, the handler stops at "already
@@ -331,6 +330,15 @@ export default [
       refused(t, es, 400, /verificación de seguridad/i, "sign-up with no security token (Spanish)");
       const bad = await post(t, "/api/subscribe", { name: `${FIXTURE} probe`, email: probe, website: "", lang: "en", "cf-turnstile-response": "e2e-fixture-not-a-real-token" });
       refused(t, bad, 400, /security check/i, "sign-up with a forged security token");
+
+      // The ship-tracking sign-up (POST /api/wms/track-signup, Turnstile added 2026-10-08) — SAFE BY
+      // CONSTRUCTION: the ship named does not exist, so if Turnstile were NOT enforced the route answers
+      // 404 unknown_ship before anything is saved or any email is sent. Turnstile runs before the ship lookup.
+      const track = await post(t, "/api/wms/track-signup", { name: `${FIXTURE} probe`, email: probe, ship: "e2e-fixture-no-such-ship", lang: "en", website: "" });
+      t.ok(track.status !== 404, "the ship-tracking sign-up looked the ship up BEFORE the security check — a bot's token-less sign-up reaches the database and the mailer");
+      refused(t, track, 400, /^security_check$/, "ship-tracking sign-up with no security token");
+      const trackForged = await post(t, "/api/wms/track-signup", { name: `${FIXTURE} probe`, email: probe, ship: "e2e-fixture-no-such-ship", lang: "en", website: "", "cf-turnstile-response": "e2e-fixture-not-a-real-token" });
+      refused(t, trackForged, 400, /^security_check$/, "ship-tracking sign-up with a forged security token");
 
       // Same secret governs the contact form, and it is now proven to be enforced.
       // 2.5 travellers: if this request ever got past Turnstile, the integer column refuses the insert
