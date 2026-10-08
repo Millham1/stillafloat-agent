@@ -832,7 +832,11 @@ router.get("/cabins/ships", async (_req: Request, res: Response) => {
     if (!slugs.length) return res.json({ ships: [] });
 
     const { data: ships, error: sErr } = await supabase
-      .from("cabin_ships").select("slug,ship,line,class,total_cabins").in("slug", slugs);
+      .from("cabin_ships").select("slug,ship,line,class,total_cabins").in("slug", slugs)
+      // Same gate as /cabins/fleet: a hull that left the fleet (in_fleet=false,
+      // e.g. Carnival Tropicale) must not be offered here either. Missed when the
+      // flag was added 2026-08-17; caught by e2e cabins.concierge-ship-list-in-fleet.
+      .eq("in_fleet", true);
     if (sErr) throw new Error(sErr.message);
     return res.json({ ships: ships ?? [] });
   } catch (err) {

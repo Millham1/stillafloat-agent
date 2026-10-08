@@ -3,6 +3,7 @@ import { loadQueue } from "./social-agent";
 import { sendPush } from "./push";
 import { logger } from "./logger";
 import { recentClickTotal } from "./affiliate-clicks";
+import { reviewUrl } from "./notify";
 
 // ── Daily brief assembler + delivery ───────────────────────────────────────────
 // One readable, actionable brief, assembled on our own box. Ops data (calendar,
@@ -222,7 +223,9 @@ export function renderBriefEmail(brief: Brief): string {
   const social = s.social.pending
     ? li(`<b>${s.social.pending}</b> social post${s.social.pending === 1 ? "" : "s"} awaiting your review` +
         (s.social.items.length ? `<div style="color:#6b7794;margin-top:4px">${s.social.items.map((i) => esc(i.title)).join(" · ")}</div>` : "") +
-        `<div style="margin-top:6px"><a href="${SITE}${esc(s.social.reviewPath)}" style="color:#0b5cab">Review &amp; approve →</a></div>`)
+        // Same token-bearing link the social review nudges send (lib/notify reviewUrl): the
+        // page is requireToken, so a bare link answered 401 and the button was dead in the email.
+        `<div style="margin-top:6px"><a href="${esc(reviewUrl(s.social.reviewPath))}" style="color:#0b5cab">Review &amp; approve →</a></div>`)
     : "";
 
   const arrow = (t: string) => (t === "up" ? "▲" : t === "down" ? "▼" : "▬");
