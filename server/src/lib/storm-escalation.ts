@@ -70,3 +70,46 @@ export function planScanAction(
   }
   return existing.status === "draft" ? { kind: "redraft" } : { kind: "refresh" };
 }
+
+// ── Public text refresh (Mark, 2026-10-07: "go with option one") ─────────────
+// A sent alert's Storm Watch text used to freeze at whatever was approved:
+// Isaias read "35 kt, 300 miles west of Progreso" all evening while NHC had her
+// at 55 kt and closing. A same-strength change on an APPROVED/SENT row now
+// re-writes the PUBLIC headline and text in place — status unchanged, nobody
+// emailed. Subscriber email stays Mark's decision; the page just stays true.
+
+/** What makes a system "materially changed". Position is rounded to whole
+ *  degrees (~60 nm), so the text follows a storm that moves, not every wobble. */
+export function scanHashKey(
+  sys: { nhcId: string; classification: string; intensity?: string | null; formationChance?: string | number | null; lat?: number | null; lon?: number | null },
+  grounds: string[],
+): string {
+  const deg = (v: number | null | undefined) => (typeof v === "number" && Number.isFinite(v) ? String(Math.round(v)) : "");
+  return [sys.nhcId, sys.classification, sys.intensity ?? "", sys.formationChance ?? "",
+    grounds.slice().sort().join("|"), deg(sys.lat), deg(sys.lon)].join("::");
+}
+
+/** Statuses whose headline/body are on the public Storm Watch. */
+export const PUBLIC_STATUSES = ["approved", "sent"] as const;
+
+export interface RefreshedText { headline: string; body_md: string; problems?: string[]; fallback?: boolean }
+
+/**
+ * The headline/body to write over a live alert's public text, or null to leave
+ * it alone. Only a "refresh" on a public row qualifies, and only a real draft:
+ * never the no-AI placeholder, never one that still fails its fact check — an
+ * unreviewed page must not get worse than the reviewed text it replaces.
+ */
+export function publicTextRefresh(
+  action: ScanAction,
+  existingStatus: string | null | undefined,
+  content: RefreshedText | null,
+): { headline: string; body_md: string } | null {
+  if (action.kind !== "refresh") return null;
+  if (!existingStatus || !(PUBLIC_STATUSES as readonly string[]).includes(existingStatus)) return null;
+  if (!content || content.fallback || (content.problems?.length ?? 0) > 0) return null;
+  const headline = content.headline.trim();
+  const body_md = content.body_md.trim();
+  if (!headline || !body_md) return null;
+  return { headline, body_md };
+}

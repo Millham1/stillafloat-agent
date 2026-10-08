@@ -13,7 +13,7 @@ import { createAction, resolveActionsForSource } from "./actions";
 import { fetchSystemsSnapshot, fixtureSystem, basinGraphics, type RawSystem, type SystemsSnapshot } from "./storm-source";
 import type { PriorMarineAlert } from "./nws-marine-source";
 import { defaultWindow } from "./storm-sailings";
-import { planScanAction, type ExistingAlertState } from "./storm-escalation";
+import { planScanAction, type ExistingAlertState, scanHashKey, publicTextRefresh, PUBLIC_STATUSES } from "./storm-escalation";
 import { runStormLifecycle } from "./storm-lifecycle";
 import { runStormIntel } from "./storm-intel";
 import {
@@ -21,7 +21,14 @@ import {
 } from "./storm-grounds";
 import { relateToGrounds, relationLines, bottomLine, checkDraft, compassWord, headingFrom, intensityLine } from "./storm-facts";
 
-export interface DraftContent { headline: string; body_md: string; }
+export interface DraftContent {
+  headline: string;
+  body_md: string;
+  /** Fact-check faults that survived the rewrite (empty = clean). */
+  problems?: string[];
+  /** The no-AI placeholder text, not a real draft. */
+  fallback?: boolean;
+}
 
 /**
  * The cruising grounds one system can affect. A POSITIONED system — anything in
@@ -52,8 +59,7 @@ export function groundsFor(sys: Pick<RawSystem, "lat" | "lon" | "basin" | "groun
 }
 
 function hashSystem(sys: RawSystem, grounds: string[]): string {
-  const key = [sys.nhcId, sys.classification, sys.intensity ?? "", sys.formationChance ?? "",
-    grounds.slice().sort().join("|")].join("::");
+  const key = scanHashKey(sys, grounds);
   return crypto.createHash("sha256").update(key).digest("hex").slice(0, 32);
 }
 
@@ -137,6 +143,7 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
       body_md: `**${sys.name}** (${sys.classification}) is being monitored in the ${sys.basin.replace(/_/g, " ")} basin.\n\n` +
         `**What this means for you:** if you're sailing ${groundsLabel} in the coming days, itineraries could be ` +
         `adjusted or rerouted at the cruise line's discretion. Nothing to do right now — we'll keep you posted as the forecast firms up.`,
+      fallback: true,
     };
   }
 
@@ -166,7 +173,7 @@ async function draft(sys: RawSystem, grounds: string[]): Promise<DraftContent> {
     problems = checkDraft(out, check);
     if (problems.length) logger.warn({ nhcId: sys.nhcId, problems }, "storm-agent: draft still fails its fact check after one rewrite — review carefully");
   }
-  return out;
+  return { ...out, problems };
 }
 
 interface ScanResult { scanned: number; drafted: number; updated: number; skipped: number; escalated: number; ended: number; }
@@ -231,7 +238,12 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
       // the row back in Mark's review queue; only a same-strength change on a
       // sent/dismissed row stays a silent data refresh.
       const reDraftable = action.kind !== "refresh";
-      const content = reDraftable ? await draft(sys, grounds) : null;
+      // A live (approved/sent) alert's public text follows the storm; see
+      // publicTextRefresh. Dismissed rows are not public — no draft spent on them.
+      const wantsPublicText = action.kind === "refresh" && isThreat &&
+        (PUBLIC_STATUSES as readonly string[]).includes(existing?.status ?? "");
+      const content = reDraftable || wantsPublicText ? await draft(sys, grounds) : null;
+      const publicText = publicTextRefresh(action, existing?.status, wantsPublicText ? content : null);
 
       const win = defaultWindow();
       const gfx = basinGraphics(sys.basin);
@@ -250,7 +262,8 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
         cone_url: sys.coneUrl ?? gfx.outlook,
         satellite_url: sys.satelliteUrl ?? gfx.satellite,
         last_updated: new Date().toISOString(),
-        ...(content ? { headline: content.headline, body_md: content.body_md, status: "draft" } : {}),
+        ...(reDraftable && content ? { headline: content.headline, body_md: content.body_md, status: "draft" } : {}),
+        ...(publicText ?? {}),
       };
 
       let alertId = existing?.id ?? "";
@@ -262,6 +275,8 @@ export async function runStormScan(opts: { test?: boolean } = {}): Promise<ScanR
         }
         if (action.kind === "escalate") result.escalated++;
         else result.updated++;
+        if (publicText) logger.info({ nhcId: sys.nhcId, headline: publicText.headline }, "storm-agent: live alert's public text refreshed (no email)");
+        else if (wantsPublicText) logger.warn({ nhcId: sys.nhcId, problems: content?.problems, fallback: content?.fallback }, "storm-agent: public text NOT refreshed — the new draft did not pass; the approved text stays");
       } else {
         const ins = await supabase.from("storm_alerts").insert(row).select("id").single();
         alertId = (ins.data as { id?: string } | null)?.id ?? "";
