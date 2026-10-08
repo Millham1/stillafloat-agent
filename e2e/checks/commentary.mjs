@@ -66,7 +66,8 @@ async function navbar(t) {
   t.ok(nav.text.length > 500 && /label:/.test(nav.text), "the navbar script is missing or empty");
   const link = (label) => new RegExp(`href:\\s*'([^']+)',\\s*label:\\s*'${label}'`).exec(nav.text)?.[1] || null;
   const esPages = /ES_PAGES\s*=\s*new Set\(\[([^\]]*)\]/.exec(nav.text)?.[1] || "";
-  return { text: nav.text, link, esTwin: (file) => esPages.includes(`'${file}'`) };
+  // ES_PAGES holds root-relative paths since 2026-10-08 (bare filenames before); accept either spelling
+  return { text: nav.text, link, esTwin: (file) => esPages.includes(`'/${file}'`) || esPages.includes(`'${file}'`) };
 }
 
 /** The public commentary list, with the shape every page relies on. */

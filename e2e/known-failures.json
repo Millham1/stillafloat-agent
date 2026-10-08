@@ -2,7 +2,7 @@
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
     "listed": 40,
-    "fixed_and_removed_2026-10-08": 21,
+    "fixed_and_removed_2026-10-08": 22,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -64,12 +64,6 @@
       "id": "affiliate.hub-links-and-featured-pick",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no products. ALSO prod: EN hub featured button skips /api/go (clicks uncounted); ES hub never loads a featured product.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "ships.webcams-ships-in-frame",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): only testable 12:00–20:00 UTC (port day); the gate run was at 01:54 UTC. Re-run in the window, no waiver needed then.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
@@ -245,6 +239,12 @@
       "since": "2026-10-08",
       "reason": "GATE TOOLING vs SITE LIMITER: a full sweep sends 11 POST /api/contact probes (6 here, 3 cabins, 2 pages) from one address; the contact limiter allows 5 per hour per visitor and is checked BEFORE field validation, so the gate's own later probes get 429. Since 60d15a1 every visitor has a real address, so this now bites. Decision needed: count only submissions that pass field checks toward the limit, or run this check first.",
       "decision": "Mark 2026-10-08: KEEP the 5/h contact limiter as is; the gate waits an hour between full dev sweeps (site-e2e.sh refuses sooner). REVIEW this rule after the current dev→main merge completes."
+    },
+    {
+      "id": "pages.crawl-policies-and-owner",
+      "since": "2026-10-08",
+      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): the retired /editorial-queue.html hands off to the news agent's /review, which is a 404 on dev because dev nginx lacks snippets/editorial-3003.conf and the dev news agent is stopped (same root cause as news.agent-reachable-through-site). On prod /review answers.",
+      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (dev nginx editorial snippet + running news agent). Entry stays listed only until the check passes on dev."
     }
   ],
   "_rulings_2026-10-08": "Mark: (1) fix the dev-mirror gaps, (2) fix the pre-existing prod defects, (3) keep the contact limiter, review after the merge. Nothing here is a permanent waiver."
