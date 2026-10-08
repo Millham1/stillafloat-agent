@@ -1,10 +1,9 @@
 {
  "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
  "_counts_2026-10-08": {
-  "dev_mirror_gaps": 32,
-  "site_problems_preexisting_on_prod": 25,
-  "release_candidate_problems": 1,
-  "gate_tooling": 1
+  "listed": 51,
+  "fixed_and_removed_2026-10-08": 10,
+  "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
  },
  "known": [
   {
@@ -224,12 +223,6 @@
    "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
-   "id": "affiliate.pages-findable-in-search",
-   "since": "2026-05-25",
-   "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: 6 ES category pages declare the EN page canonical; 7 gear pages missing from sitemap.xml; no hreflang pairs on 12 category pages.",
-   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
-  },
-  {
    "id": "cabins.cabin-check-matches-deck-map",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: Wonder of the Seas answers quote Royal Caribbean Blog word for word and tell sea-facing balconies 8272/8732 they 'face inward' (content, EN+ES, prod same).",
@@ -239,30 +232,6 @@
    "id": "cabins.guides-no-orphan-pages",
    "since": "2026-09-30",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: orphan /es/guides/como-elegir-tu-primer-crucero.html on disk with no guide record (prod 10 pages for 9 guides).",
-   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
-  },
-  {
-   "id": "cabins.concierge-language-twins",
-   "since": "2026-10-08",
-   "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /room-concierge.html has no hreflang links while the ES twin declares both.",
-   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
-  },
-  {
-   "id": "cabins.spanish-request-reaches-mark-as-spanish",
-   "since": "2026-10-08",
-   "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /es/cabin-request.html posts to /api/contact without preferred_lang; stored as 'en'.",
-   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
-  },
-  {
-   "id": "cabins.request-page-escapes-link-text",
-   "since": "2026-10-08",
-   "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: SECURITY: ?ship= and ?cabins= written to innerHTML unescaped on EN and ES request pages; no Content-Security-Policy header. Fix before or with the promotion.",
-   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
-  },
-  {
-   "id": "audience.spanish-unsubscribe-page",
-   "since": "2026-10-08",
-   "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /es/unsubscribe-confirmed.html is 404 on both boxes; /api/unsubscribe always redirects to the English page.",
    "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
@@ -308,27 +277,9 @@
    "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
-   "id": "pages.crawl-commentary-and-stories",
-   "since": "2026-10-08",
-   "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /es/translate-loading.html indexable; /es/story.html loads navbar.js twice.",
-   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
-  },
-  {
-   "id": "pages.crawl-policies-and-owner",
-   "since": "2026-10-08",
-   "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: privacy.html and terms.html missing from ES_PAGES, so the language switch goes to the ES home page.",
-   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
-  },
-  {
    "id": "pages.navbar-menu",
    "since": "2026-05-25",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: Spanish menu 'Favoritos' opens the English /favorites.html.",
-   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
-  },
-  {
-   "id": "pages.missing-page-404",
-   "since": "2026-10-08",
-   "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: an unknown /api/ address answers HTTP 200 with the home page instead of 404.",
    "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
