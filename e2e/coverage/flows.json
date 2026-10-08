@@ -1,0 +1,22 @@
+{
+  "_about": "Cross-feature journeys (e2e/checks/flows.mjs): the paths a visitor or Mark takes from one feature into the next. Each flow below is walked by one check; the route and page keys those checks really request are claimed in their covers[] (other areas cover the same keys feature by feature).",
+  "extra": {
+    "flow:storm-visitor-journey": "homepage Storm Watch panel (EN /, ES /es/) -> 'More details' -> storm page in the reader's language -> 'Track this ship' -> /track-ship.html sign-up -> 'See where she is now' -> Where's My Ship, and the tracker follows and holds that ship",
+    "flow:storm-spanish-reader": "a Spanish reader on /es/ and /es/storm-watch.html sees the storm's own headline and 'what this means for you' text in Spanish",
+    "flow:news-reader-journey": "homepage news card -> /news/<story>.html -> its related stories, cruise-line hub, feed, gear page (with products in its category) and Work-with-Mark links -> the Spanish twin /es/news/<story>.html (translated headline) and its Spanish links",
+    "flow:weather-journey": "homepage weather tile (EN and ES) and Where's My Ship's arrival-weather card -> /forecast.html -> /api/weather the same port, with Mark's synopsis, in the reader's language; every destination the tracker holds is a place the forecast knows",
+    "flow:one-ship-every-view": "one ship as shown by the public storm list, Mark's storm dashboard, the tracker's search and live list, and the cams' ships-in-port lists: same name, line, sailing and fix",
+    "flow:mark-queue-matches-storm-queues": "Mark's to-do list (public.actions, the brief) vs the storm drafts, all-clears and course changes waiting on him, and the course-change log's live storms vs the dashboard and the public list",
+    "email:storm-alert-links": "the links in a storm alert / all-clear email (each pinned ship -> tracker, 'Track your ship', 'See all storm warnings'), EN and ES, read from the storm-email template deployed on the box (server/src/lib/storm-email-content.ts) and followed on the box",
+    "email:storm-alert-rendered": "the storm alert / all-clear email itself as a subscriber receives it (subject, body language, ship list)",
+    "email:newsletter-issue-links": "every link in the weekly newsletter issue (stories, commentary, video, gear, booking, unsubscribe, images), EN and ES, from the issue as mailed (GET /api/newsletter/email)",
+    "flow:group-page-journey": "Mark approves a group's marketing page in the dashboard -> GET /api/group-page/:code (as a visitor) shows the same copy, ship, dates, itinerary, cabins, prices, business footer and the published Conga Line score -> /group.html?g=<code> and its Spanish twin /es/group.html load it"
+  },
+  "exempt": {},
+  "gaps": {
+    "email:storm-alert-rendered": {
+      "reason": "The storm alert and all-clear emails are rendered only inside the send (storm-send.ts) and never served over HTTP, and a send emails every opted-in subscriber, so the gate cannot read the real email. flows.storm-email-links reads the deployed template on the box (storm-email-content.ts) for the link paths, follows them, and cross-checks the pinned-ship count against the storm's pins. What cannot be seen: the rendered body (Spanish subscribers get the English body_md), the names of the pinned ships the email lists (only their count is exposed, by the course-change log), and the host every link starts with (PUBLIC_URL in the box's env, read only inside the send). Closing this needs a token-gated, read-only preview such as GET /api/storm-alerts/:id/email-preview?lang=en|es that renders stormAlertEmailHtml / allClearEmailHtml for a dummy recipient.",
+      "since": "2026-10-08"
+    }
+  }
+}

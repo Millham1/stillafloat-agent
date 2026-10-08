@@ -1,0 +1,12 @@
+{
+  "_area": "cabins — Room Concierge, cabin finder, Conga Line ship ratings, Cruising Guides",
+  "extra": {
+    "data:guide-pages": "The prerendered Cruising Guide pages /guides/<slug>.html and /es/guides/<slug>.html, written from platform_state.guides by runGuidesPrerender (not in git)",
+    "data:guides-index-pages": "The generated guide index pages /guides.html and /es/guides.html (written by the hourly guides job, not in git)",
+    "data:guides-sitemap": "/guides-sitemap.xml — every guide URL, rewritten by the hourly guides job",
+    "flow:guide-scores-match-conga-ratings": "The hand-written \"My Score\" numbers in the 30-largest-ships guide (EN and ES) must equal the live Conga Line ratings Room Concierge shows",
+    "flow:concierge-to-cabin-request": "Room Concierge's \"Send my picks\" button opens /cabin-request.html (or /es/cabin-request.html) carrying ?ship= and ?cabins=, which posts to /api/contact"
+  },
+  "exempt": {},
+  "gaps": {}
+}

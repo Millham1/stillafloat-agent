@@ -1,0 +1,57 @@
+{
+  "_about": "Mark's editorial dashboard: storm-alert admin, diversion log, action queue, daily brief, newsletter, proposals. Checks: e2e/checks/editorial.mjs. Every POST in this area sends email or push or calls a paid model except declare/edit/dismiss/all-clear-skip, which run on a throwaway e2e-fixture storm on dev; the sends are tested on their refusal paths only and admitted below as gaps.",
+  "extra": {
+    "email:newsletter-preview-links": "Every link and picture in the weekly newsletter email (EN and ES) opens, stays in its language, and points at the public site",
+    "flow:editorial-brief-buttons-match-sources": "Each button in Mark's brief action queue acts on a storm, course change, proposal or task that is still waiting for him, and everything waiting has a button",
+    "flow:editorial-diversion-log-vs-storm-queue": "The course-change log's live storms and open events are the storm queue's live threats and open course changes",
+    "flow:editorial-storm-manual-declare": "A storm declared by hand on the dashboard: declare, appear in the queue, edit, stay off the public list, refuse an early all-clear, dismiss",
+    "email:storm-alert-to-subscribers": "Approving a storm alert (dashboard button, brief button or email link) emails every storm-alert subscriber, one every 45 seconds",
+    "email:storm-all-clear-to-subscribers": "Sending the all-clear for an ended storm emails every subscriber who got the alert",
+    "email:diversion-publish-to-watchers": "Publishing a course change adds it to the storm's public advisories and emails the people watching that ship",
+    "flow:storm-scan-on-demand": "A manual storm scan reads NHC/NWS, has the model write new drafts and nudges Mark",
+    "email:newsletter-weekly-send": "Sending the weekly newsletter (review page, Friday auto-send, or the legacy composer) emails every confirmed subscriber of that language",
+    "flow:newsletter-generate-edit-notify": "Generating an issue (paid model), saving Mark's edits to it, and the review nudge to his phone",
+    "push:daily-brief-delivery": "The daily brief run assembles the brief and pushes it to Mark's phone",
+    "flow:brief-buttons-act-on-real-items": "Resolving an action, approving/dismissing a proposal (including an SEO change applied on approval), closing/keeping a task changes that real item and clears it from the brief",
+    "flow:brief-ops-feed-section-errors": "When the ops-manager cannot read the calendar, Gmail, tasks, notes, bills or pulse, the daily brief says so instead of showing an empty section"
+  },
+  "exempt": {},
+  "gaps": {
+    "email:storm-alert-to-subscribers": {
+      "reason": "Approving emails real subscribers on either box (dev sends real email) and there is no fixture subscriber list or mail sink; only the refusal paths (no key, wrong key) are tested. Needs a dev-only mail sink or a subscriber filter for e2e-fixture alerts.",
+      "since": "2026-10-08"
+    },
+    "email:storm-all-clear-to-subscribers": {
+      "reason": "Same as the alert send: an all-clear on an ended storm emails real subscribers. Tested: no key, wrong key, unknown storm (404) and a not-yet-ended storm (409) on the fixture.",
+      "since": "2026-10-08"
+    },
+    "email:diversion-publish-to-watchers": {
+      "reason": "Publishing writes to a real storm's public advisories and emails ship watchers; the dev simulate endpoint creates a brief action and runs the intel lookup. Tested: refusals and an unknown event (404). Needs a fixture course change on a fixture storm with no watchers.",
+      "since": "2026-10-08"
+    },
+    "flow:storm-scan-on-demand": {
+      "reason": "A scan calls the model to write drafts and nudges Mark (the test mode injects a fixture system that does the same). Tested: refusals only.",
+      "since": "2026-10-08"
+    },
+    "email:newsletter-weekly-send": {
+      "reason": "Sending emails every confirmed subscriber (dev sends real email). Tested: refusals, and the legacy composer's empty-subject / empty-story-list rejections (both refused before any store is read; the unknown-story path is deliberately not sent, since a story-matching bug there would email every dev subscriber).",
+      "since": "2026-10-08"
+    },
+    "flow:newsletter-generate-edit-notify": {
+      "reason": "Generating is a paid model call plus a push; notify is a push; saving an edit rewrites the only real draft. Tested: refusals and the empty-issue rejection (nothing saved). Needs a fixture draft store or a dry-run flag.",
+      "since": "2026-10-08"
+    },
+    "push:daily-brief-delivery": {
+      "reason": "The run pushes to Mark's phone. The assembly half is tested on dev through GET /api/brief?fresh=1; the push is not.",
+      "since": "2026-10-08"
+    },
+    "flow:brief-buttons-act-on-real-items": {
+      "reason": "There is no way to create a fixture action, proposal or task through the site without a notification (createAction notifies; tasks are written by the ops-manager). Tested: refusals and no-op answers for unknown ids.",
+      "since": "2026-10-08"
+    },
+    "flow:brief-ops-feed-section-errors": {
+      "reason": "The ops-manager's /brief/feed returns per-section errors, but lib/brief.ts drops them: a failed calendar or Gmail read reaches Mark's brief as an empty section with opsReachable=true (dev's calendar read has failed with Google 404 this way). The site exposes nothing a check can read; the feed itself needs IDEAS_API_KEY, which the harness does not hold. Needs the brief to carry the feed's errors (e.g. brief.opsErrors), then the brief check asserts it empty.",
+      "since": "2026-10-08"
+    }
+  }
+}

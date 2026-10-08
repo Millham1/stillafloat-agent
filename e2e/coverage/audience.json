@@ -1,0 +1,95 @@
+{
+  "_about": "Sign-up, confirmation, unsubscribe, contact, push, health, the static customer pages, and every email template the site and its two services send. Checks: e2e/checks/audience.mjs. Templates with no way to render them without sending are gaps until a token-gated preview exists (see the report).",
+  "extra": {
+    "email:subscribe-confirmation": "The 'confirm your subscription' email, EN and ES (server/src/routes/subscribe.ts sendVerificationEmail). The same template is sent by the sign-up, by the resend button on subscribe-pending.html, by the pending-subscriber reminder (lib/subscriber-hygiene.ts), and in its 'track this ship' variant by the track-signup flow. Links: /api/verify-email?token=, /api/unsubscribe?email=&sig=.",
+    "email:contact-confirmation": "The 'Got it, I'll be in touch within 24 hours' email to someone who submits a Work With Mark or cabin-request form (server/src/routes/contact.ts sendConfirmationEmail). Links: the YouTube channel.",
+    "email:contact-alert-to-mark": "The 'New Work With Mark Inquiry' email to Mark (APPROVAL_EMAIL) with every field of the form (server/src/routes/contact.ts sendInternalAlert). Links: the home page.",
+    "email:newsletter-weekly": "The weekly newsletter, English and Spanish editions (server/src/lib/newsletter.ts renderEnrichedNewsletter, sent by startNewsletterSend after Mark approves). Preview: GET /api/newsletter/email?lang=en|es.",
+    "email:newsletter-composer-legacy": "The older composer newsletter (server/src/routes/subscribe.ts renderNewsletter, POST /api/send-newsletter) — emails every confirmed subscriber at once, English only.",
+    "email:storm-alert": "The storm alert email to opted-in subscribers, EN/ES (server/src/lib/storm-email-content.ts stormAlertEmailHtml, sent by lib/storm-send.ts emailSubscribers). Links: per-ship tracker links, Where's My Ship, Storm Watch, unsubscribe.",
+    "email:storm-all-clear": "The storm all-clear email, EN/ES (storm-email-content.ts allClearEmailHtml, lib/storm-send.ts emailAllClear) — same buttons as the alert.",
+    "email:ship-watch-started": "The 'you're now tracking <ship>' email (trackingEmail, sent by POST /api/wms/watch, routes/track-signup.ts and lib/pending-watches.ts when a sign-up is confirmed). Links: stop-tracking link, Where's My Ship.",
+    "email:ship-watch-alert": "The Ship Watch alert email: itinerary change, severe weather, cruise-line news for a watched ship, EN/ES (lib/wms-alerts.ts renderAlertEmail). Links: stop-tracking link, Where's My Ship.",
+    "email:mark-notification-floor": "The plain-text email Mark gets when a high-priority or lead notification reaches no push device (lib/notify.ts notifyMark email floor) — includes group-page interest leads.",
+    "email:morning-brief": "Mark's morning brief email (lib/brief.ts renderBriefEmail, sent by runAndDeliverBrief). Preview: GET /api/brief/email-preview.",
+    "email:editorial-digest": "The news agent's 'AI Editorial Digest' email to Mark after a news scan (stillafloat-newsagent src/lib/email-delivery.ts renderEditorialDigest / sendEditorialDigest).",
+    "email:channel-workday": "The ops-manager's 'Channel workday' email to Mark (saf-ops-manager agent/channel_workday.py, via agent/gmail.py send_email).",
+    "flow:confirmation-email-links": "Following the confirm and unsubscribe links from a subscriber email: where they land, and that a forged link changes no subscriber.",
+    "flow:spanish-unsubscribe": "A Spanish subscriber clicking 'Cancelar suscripción' lands on a Spanish confirmation page.",
+    "flow:turnstile-enforced": "The server itself refuses sign-up and contact requests with no (or a forged) Turnstile token, in the visitor's language.",
+    "flow:storm-email-buttons": "The buttons and ship links in the storm alert / all-clear emails open pages with real content (Storm Watch list, Where's My Ship deep links), EN and ES.",
+    "flow:subscribe-success": "A real sign-up end to end: row saved as pending, confirmation email delivered, link clicked, row confirmed, pending ship watches switched on, welcome page shown.",
+    "flow:contact-success": "A real Work With Mark submission end to end: prospect row saved, confirmation email to the visitor, alert email to Mark.",
+    "flow:subscriber-admin-writes": "The successful paths of the subscriber admin actions: changing a subscriber's newsletter language, marking an address bounced (ops-manager bounce scanner), resending a confirmation.",
+    "push:device-registration": "Registering and removing a push device for Mark's alerts (POST /api/push/subscribe and /unsubscribe) and the device count they report.",
+    "push:alert-delivery": "A push notification actually reaching Mark's devices (POST /api/push/test, /api/push/notify, notifyMark).",
+    "push:operator-devices": "How many of Mark's devices are registered for alerts on each box, as the other box's watchdog reads it from GET /api/healthz/alerts with the canary token."
+  },
+  "exempt": {},
+  "gaps": {
+    "email:subscribe-confirmation": {
+      "reason": "No way to render it without sending it: the only callers insert a subscriber and email them, and the dev box sends real email. Its two links are covered by flow:confirmation-email-links. Needs a token-gated preview endpoint (fixture name, EN/ES, watch-ship variant).",
+      "since": "2026-10-08"
+    },
+    "email:contact-confirmation": {
+      "reason": "Only rendered inside a successful contact submission, which saves a prospect and emails the visitor and Mark. Needs a token-gated preview endpoint.",
+      "since": "2026-10-08"
+    },
+    "email:contact-alert-to-mark": {
+      "reason": "Only rendered inside a successful contact submission, which emails Mark. Needs a token-gated preview endpoint.",
+      "since": "2026-10-08"
+    },
+    "email:newsletter-composer-legacy": {
+      "reason": "Rendered only by POST /api/send-newsletter, which emails every confirmed subscriber; only its refusals are tested (audience.subscriber-admin-refusals). Needs a preview, or retiring in favour of the weekly newsletter.",
+      "since": "2026-10-08"
+    },
+    "email:storm-alert": {
+      "reason": "Rendered only inside the subscriber send (lib/storm-send.ts); no preview endpoint. Its fixed buttons and ship links are covered by flow:storm-email-buttons, but the body as sent is not.",
+      "since": "2026-10-08"
+    },
+    "email:storm-all-clear": {
+      "reason": "Rendered only inside the all-clear send; no preview endpoint. Its buttons are the same as the alert's and are covered by flow:storm-email-buttons.",
+      "since": "2026-10-08"
+    },
+    "email:ship-watch-started": {
+      "reason": "Rendered only when a watch is saved (which also buys a Live-AIS position and emails the subscriber); no preview endpoint.",
+      "since": "2026-10-08"
+    },
+    "email:ship-watch-alert": {
+      "reason": "Rendered only inside the watch sweep that emails watchers; no preview endpoint. Its stop link is a side-effecting GET.",
+      "since": "2026-10-08"
+    },
+    "email:mark-notification-floor": {
+      "reason": "Sent only when a high-priority notification fails every push channel; triggering it emails Mark. Needs a dry-run mode on notifyMark.",
+      "since": "2026-10-08"
+    },
+    "email:editorial-digest": {
+      "reason": "The news agent renders it only inside a news scan (which runs paid model calls) and has no preview route; the news agent is also stopped on the dev box.",
+      "since": "2026-10-08"
+    },
+    "email:channel-workday": {
+      "reason": "The ops-manager renders it only inside the workday job, which also texts Mark; no preview route.",
+      "since": "2026-10-08"
+    },
+    "flow:subscribe-success": {
+      "reason": "Completing a sign-up needs a real Turnstile token and sends a real confirmation email from the dev box; only the refusals and the forged-link paths can be exercised. Needs a dev-only Turnstile test key pair plus a mail sink.",
+      "since": "2026-10-08"
+    },
+    "flow:contact-success": {
+      "reason": "A successful submission saves a prospect and emails the visitor and Mark; only refusals are tested. Needs a Turnstile test key pair and a mail sink on dev.",
+      "since": "2026-10-08"
+    },
+    "flow:subscriber-admin-writes": {
+      "reason": "The success paths change a real subscriber row and there is no way to create a fixture subscriber without a real sign-up (see flow:subscribe-success); only refusals and not-found paths are tested.",
+      "since": "2026-10-08"
+    },
+    "push:alert-delivery": {
+      "reason": "Delivering a push reaches Mark's phone; only the refusals (no token, empty message) are tested.",
+      "since": "2026-10-08"
+    },
+    "push:operator-devices": {
+      "reason": "GET /api/healthz/alerts needs CANARY_TOKEN, which the sweep is not given; only its refusals are tested. Covered indirectly: audience.health-and-push-key fails on prod if the push-health sweep has an open 'reaching nobody' fault for today or yesterday, and audience.push-device-roundtrip holds dev's device count against that same fault. The count itself on prod is still not readable.",
+      "since": "2026-10-08"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "_about": "News area (e2e/checks/news.mjs): feeds, story pages EN+ES, the prerendered /news/ pages and sitemap, the news archive, translations, and the news agent service on port 3003 (repo stillafloat-newsagent).",
+  "extra": {
+    "ext:page /news.html": "the generated English news listing (written in place by runNewsPrerender, not tracked in git)",
+    "ext:page /es/news.html": "the generated Spanish news listing",
+    "ext:page /news/<story>.html": "one prerendered English page per approved or archived story (slug = storySlug(id))",
+    "ext:page /es/news/<story>.html": "the Spanish twin of each prerendered story page (same slug)",
+    "ext:page /news/<line>.html hub": "per-cruise-line English news hubs (written once a line has 3+ stories)",
+    "ext:page /es/news/<line>.html hub": "per-cruise-line Spanish news hubs",
+    "ext:file /news-sitemap.xml": "the generated news sitemap robots.txt points at (indexable story pages + hubs)",
+    "ext:news GET /health": "news agent liveness (app-level)",
+    "ext:news GET /api/health": "news agent liveness with its clock (router-level)",
+    "ext:news GET /api/editorial-queue": "the token-gated queue of candidate stories awaiting Mark's review",
+    "ext:news GET /review": "the editorial review page Mark's notifications open (served by the agent, proxied by nginx)",
+    "ext:news GET /api/agent-action": "approve / reject / hold / feature a story (side-effecting GET, token-gated)",
+    "ext:news POST /api/scan-news": "run the news scan (paid model calls, emails the editorial digest)",
+    "ext:news POST /api/archive-sweep": "move stories older than 21 days from the live feed into the archive",
+    "flow:news approve a story end to end": "agent-action approve -> approved-stories / news-index / story-details / archive copy -> hourly prerender page + sitemap",
+    "flow:news daily scan end to end": "scheduled scan -> candidate queue -> digest email / push to Mark",
+    "flow:news translate-article success": "an original article fetched and machine-translated into Spanish for /es/translate-loading.html"
+  },
+  "exempt": {},
+  "gaps": {
+    "flow:news approve a story end to end": {
+      "reason": "Approving a story (GET /api/agent-action?action=approve on the news agent) publishes it to the live feed and, right after answering, fires two PAID model jobs on that box: learnFromDecisions (re-learns editorial preferences) and ensureSpanishMirror (translates any approved story missing Spanish). There is also no API to seed a fixture candidate into candidate-stories, and the dev agent is stopped. So the gate tests the refusals (news.agent-actions-refuse-without-token, dev) and cross-checks every downstream view of approved stories field for field: feed, Spanish feed, homepage, story-details, alerts, prerendered EN/ES pages, listing, sitemap and archive (news.feeds-agree, news.prerendered-pages-match-feed, news.archive-search). Closing it needs a fixture mode in the agent (ids starting e2e-fixture approved into a sandbox with no model jobs).",
+      "since": "2026-10-08"
+    },
+    "flow:news daily scan end to end": {
+      "reason": "A scan makes paid model calls and emails the editorial digest to Mark on both boxes, so the gate cannot trigger it. Its result is checked instead: the queue must be under 36 hours old, not degraded, translated, and agree with the site's status (news.agent-alive-queue-readable).",
+      "since": "2026-10-08"
+    },
+    "flow:news translate-article success": {
+      "reason": "Every successful call fetches an arbitrary outside URL and makes an uncached paid model call, so only the refusal paths are tested (news.translations). The endpoint is also open to anyone (see the site problem reported 2026-10-08); a safe test needs a cached or allow-listed mode.",
+      "since": "2026-10-08"
+    }
+  }
+}

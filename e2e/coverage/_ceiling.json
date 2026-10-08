@@ -1,0 +1,4 @@
+{
+  "_about": "The number of admitted coverage gaps may only go down. Lower this number whenever a gap is closed; raising it means the site grew without a check, and the commit that does so must say why.",
+  "max_gaps": 0
+}

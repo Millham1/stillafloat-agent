@@ -1,0 +1,69 @@
+{
+  "_about": "Jobs area (e2e/checks/jobs.mjs): the scheduled jobs the website server starts (job schedule* keys from server/src/index.ts), the news agent's daily scan, and the ops-manager scheduler loop (saf-ops-manager agent/core.py). Each check reads what a job produces and asserts it is fresh against the job's cadence. Covered elsewhere: job scheduleYouTubeScan by commentary.youtube-cache-matches-channel; job schedulePushHealth by audience.push-device-roundtrip (dev only: it reads the daily no-device fault, which exists only because push health runs on dev with no device; on prod nothing shows the sweep runs while a device is subscribed); job scheduleWmsAlerts and job scheduleLiveAisCredits are admitted gaps in coverage/ships.json (neither exposes a last-run sign; the live-ais-credits state has no timestamp and no route reads it). The gaps below each name the signal that is missing; the token-gated job-health endpoint being added by the lead (GET /api/healthz/jobs: last start / last success / last error / consecutive failures per job) would close every monorepo one.",
+  "extra": {
+    "ext:news job daily scan": "the news agent's own 08:00 Eastern scheduler (stillafloat-newsagent src/index.ts) POSTs /api/scan-news, which runs the 21-day archive sweep and replaces the editorial queue",
+    "ext:ops job ai-visibility": "ops-manager daily 10:00 Eastern: AI-assistant lookups/referrals/crawlers measured into platform_state ai-visibility (agent/ai_visibility.py)",
+    "ext:ops job inbox triage poll": "ops-manager every 15 minutes: reads Mark's Gmail inbox, triages and files mail, adds calendar events from invites (process_inbox)",
+    "ext:ops job calendar upkeep": "ops-manager every 5 minutes (meeting alerts) and every 30 minutes (duplicate-event cleanup, meeting archive, VA appointment sync)",
+    "ext:ops job ai canary": "ops-manager daily 06:00 Eastern and on boot: proves the AI model answers before triage depends on it (agent/ai_canary.py)",
+    "ext:ops job promo purge": "ops-manager daily 03:00 Eastern: purges promotional mail (agent/promo_purge.py)",
+    "ext:ops job stale-task closure": "ops-manager Mondays 09:00 Eastern: proposes finished-looking tasks for closure as actions (agent/task_closer.py)",
+    "ext:ops job webcam monitor": "ops-manager daily 04:00 Eastern: re-resolves each live cam's YouTube video id and status into the webcams table (agent/webcam_monitor.py)",
+    "ext:ops job drift monitor": "ops-manager every 2 hours: alerts when main diverges from dev or a box checkout has hand edits (agent/drift_monitor.py)",
+    "ext:ops job unfiled-mail check": "ops-manager daily 09:00 Eastern: finds mail out of the inbox that the agent never filed (run_unfiled_check)",
+    "ext:ops job orphan news-page rebuild": "ops-manager daily 05:00 Eastern: rebuilds archive rows for prerendered story pages with no story behind them (agent/orphan_pages.py)",
+    "ext:ops job youtube optimizer": "ops-manager every 3 days at the optimizer hour plus a fresh-video pass every 30 minutes: audits and edits YouTube titles, tags and thumbnails (agent/youtube_optimizer.py)",
+    "ext:job scheduleItineraryRefresh": "website server, 1st of each month 09:00 UTC (plus a boot run when the newest CruiseMapper row is over 35 days old): refills planned_sailings from CruiseMapper for the storm detector and the tracker's planned sailings (lib/itinerary-refresh.ts). Declared here because surface.mjs only collects schedule* functions DEFINED in index.ts, and this one is imported."
+  },
+  "exempt": {},
+  "gaps": {
+    "job scheduleDailyBrief": {
+      "reason": "The brief job (07:00, 12:00, 16:00 Eastern) only pushes and emails; the stored brief behind GET /api/brief is rewritten every time Mark opens the Brief page (it always asks for ?fresh=1) and by any read when none is stored, so its generatedAt cannot show the job ran (prod's read 18:31 Eastern on 2026-10-07, not a slot). Needs the job-health endpoint, or the job stamping its own lastDeliveredAt on the stored brief.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job inbox triage poll": {
+      "reason": "The 15-minute Gmail poll keeps its state in files on the box. Every ops-manager route except /health needs the ops x-api-key, which the gate does not hold, and /health reports only pending calendar confirmations, not a last poll time. Needs a last-poll time on the ops /health.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job calendar upkeep": {
+      "reason": "Meeting alerts, duplicate cleanup, meeting archive and VA sync act on Google Calendar and local state files; nothing is readable over HTTP with the dashboard token. Needs last-run times on the ops /health.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job ai canary": {
+      "reason": "The daily canary writes only a log line when the model answers (it files a task only on failure), so a stopped canary and a healthy one look the same over HTTP. Needs its last-OK time on the ops /health.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job promo purge": {
+      "reason": "The nightly purge acts only inside Gmail and logs; no HTTP-readable output. Needs a last-run time on the ops /health.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job stale-task closure": {
+      "reason": "The Monday sweep files closure proposals as actions only when it finds stale tasks; a quiet week and a stopped job look the same. Needs a last-run time on the ops /health.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job webcam monitor": {
+      "reason": "The daily monitor stamps webcams.last_verified, but GET /api/webcams does not return that column, so the gate cannot see when cams were last verified. Judging the result instead (is each 'live' cam's video still live?) needs the YouTube Data API key, which the gate must not spend; oEmbed answers 200 for an ended stream too. Adding last_verified to the /api/webcams select would let a check assert it is under 27 hours old.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job drift monitor": {
+      "reason": "The two-hourly drift guard alerts only when it finds drift and otherwise logs; nothing over HTTP shows it ran. Needs a last-run time on the ops /health.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job unfiled-mail check": {
+      "reason": "The daily unfiled check texts Mark only when mail is unsorted; otherwise it logs. No HTTP-readable output. Needs a last-run time on the ops /health.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job orphan news-page rebuild": {
+      "reason": "The daily rebuild restores archive rows only when an orphan resolves (prod logs 16 orphan pages, 0 restored, 16 unresolved every day) and keeps its backup in a platform_state row no route serves. A result check (no prerendered story page without a story) belongs to the news area. Needs a last-run time and the unresolved count on the ops /health.",
+      "since": "2026-10-08"
+    },
+    "ext:ops job youtube optimizer": {
+      "reason": "The optimizer's state (last sweep day, changes, deferred) lives in a file on the box and its report route /youtube/optimization is not proxied by the website, so the dashboard token cannot read it; checking its effect would mean reading the live YouTube channel's metadata history. Needs the website to proxy GET /youtube/optimization behind the dashboard token.",
+      "since": "2026-10-08"
+    },
+    "ext:job scheduleItineraryRefresh": {
+      "reason": "No route returns planned_sailings.updated_at: the tracker's planned sailing (GET /api/wms/position) carries ref, source and startDate only, and that GET can buy a paid Live-AIS fix. A check could require the newest CruiseMapper row to be under 35 days old if GET /api/wms/health (or the job-health endpoint) reported it.",
+      "since": "2026-10-08"
+    }
+  }
+}

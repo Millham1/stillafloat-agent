@@ -1,0 +1,38 @@
+{
+  "_area": "commentary — Mark's Commentary (EN + ES), homepage YouTube rows + dashboard YouTube cockpit, Favorites. Checks: e2e/checks/commentary.mjs",
+  "extra": {
+    "flow:commentary-voice-note-transcription": "Dashboard 'record your take': POST /api/transcribe on the site → ops-manager POST /transcribe (x-api-key) → ffmpeg → faster-whisper on the box's CPU → transcript back into the commentary editor",
+    "flow:commentary-publish-with-spanish-twin": "Publishing a commentary (POST /api/commentary, or Approve on the review page → POST /api/commentary/publish-draft): the post is saved and its Spanish title/body are machine-translated at publish time; Mark is notified if the twin is missing",
+    "flow:commentary-agent-run": "The weekly commentary writer: POST /api/commentary/draft (stage), /reject (bench and restage), /synthesize (write or rewrite around Mark's take) — 2-6 minute background runs polled through GET /api/commentary/draft",
+    "flow:commentary-edit-and-delete": "Mark edits (PATCH /api/commentary/:id, incl. title_es/body_es) or deletes (DELETE /api/commentary/:id) a published commentary and the public list and post pages follow",
+    "flow:commentary-draft-discard": "Skip this week: POST /api/commentary/draft/discard marks the staged draft discarded",
+    "flow:youtube-feature-pin": "Dashboard 'Feature on Homepage': POST /api/youtube-feature pins a video as featured (featuredId + featuredManual) in the youtube-channel store; GET /api/youtube-featured and the weekly newsletter (lib/newsletter.ts gatherFeaturedVideo, BOTH editions) then use the pin"
+  },
+  "exempt": {},
+  "gaps": {
+    "GET /api/youtube-scan": {
+      "reason": "An UNAUTHENTICATED GET that rewrites the box's real youtube-channel row (merge, prune, reorder — the rules forbid touching real rows even on dev, and dev's row is the one its homepage and newsletter read) and spends YouTube Data API quota, so the gate never calls it on either box. Its output (the cached video list) is checked against YouTube's live numbers by commentary.youtube-cache-matches-channel, and its job by the same check. Closing this needs either a token on the route plus a dry-run flag (scan and answer without writing).",
+      "since": "2026-10-08"
+    },
+    "flow:commentary-publish-with-spanish-twin": {
+      "reason": "Every successful publish calls the paid translation model (the title is always translated, even when body_es is supplied), and the dev box has no way to publish without it. Only the refusal paths run (commentary.write-routes-refuse); the published result is checked from the outside by commentary.spanish-twin-complete. Closing this needs a model stub or a 'no-translate' fixture switch on dev.",
+      "since": "2026-10-08"
+    },
+    "flow:commentary-agent-run": {
+      "reason": "Staging, rejecting and writing a commentary are multi-minute runs of paid model calls with live web search, and staging can notify Mark. Only refusal paths run (401 without the token; 400 for an empty take). Closing this needs a dry-run mode for the commentary agent.",
+      "since": "2026-10-08"
+    },
+    "flow:commentary-edit-and-delete": {
+      "reason": "A successful edit or delete needs a commentary to change, the gate must never touch a real post, and the only way to create a fixture post (POST /api/commentary) calls the paid translation model. Refusal paths (401, 404 for an unknown id) run on dev. Closes together with flow:commentary-publish-with-spanish-twin.",
+      "since": "2026-10-08"
+    },
+    "flow:commentary-draft-discard": {
+      "reason": "Discarding changes the box's one real commentary draft and there is no undo route; only the 401 refusal runs. Closing this needs a way to stage a fixture draft without a paid run.",
+      "since": "2026-10-08"
+    },
+    "flow:youtube-feature-pin": {
+      "reason": "A successful pin overwrites the box's featured pick, and no route can clear a pick (featuredId can never be set back to null). Dev today has NO manual pick (its /api/youtube-featured answers the newest upload), so a pin made by the gate could not be undone, and it would become the featured video of dev's next newsletter draft in both languages. Only refusal paths run (no token, wrong token, no videoId). The pick's effects are checked read-only by commentary.youtube-featured-pick (homepage + newsletter editions). Closing this needs an unpin route (or featuredId:null accepted), then a dev round trip pin → read → unpin.",
+      "since": "2026-10-08"
+    }
+  }
+}

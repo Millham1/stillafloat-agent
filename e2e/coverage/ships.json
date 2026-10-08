@@ -1,0 +1,46 @@
+{
+  "_about": "Where's My Ship tracker, ship watches, the storm Track-this-ship sign-up, and the live cams page. Checks: e2e/checks/ships.mjs. Route keys whose success path cannot be exercised safely are covered by their refusal paths; the success paths are declared below as flow: extras and admitted as gaps.",
+  "extra": {
+    "flow:wms-wake-ship": "POST /api/wms/request for a real registry ship: stamps last_requested_at, pulls her into the live subscription, and buys one Live-AIS position when her fix is stale",
+    "flow:wms-watch-save": "POST /api/wms/watch by a confirmed subscriber: saves a ship_watches row, buys a starting Live-AIS position, and emails the tracking confirmation",
+    "flow:wms-track-signup-success": "POST /api/wms/track-signup for a real ship: a confirmed subscriber starts a 15-day watch and gets the tracking email; anyone else gets a pending subscriber + pending watch and a confirmation email",
+    "flow:wms-watch-stop-signed": "GET /api/wms/watch/stop with a valid signature: stops the watch and lands on /wheres-my-ship.html?watch=stopped",
+    "flow:wms-watch-restart-signed": "POST /api/wms/watch/restart with a valid signed link: restarts a lapsed 15-day watch",
+    "flow:wms-position-stale-estimate": "GET /api/wms/position for a ship not heard in 20+ minutes: buys a Live-AIS fix, then shows a dead-reckoned estimate and the line between"
+  },
+  "exempt": {},
+  "gaps": {
+    "flow:wms-wake-ship": {
+      "reason": "Waking a real ship can buy a paid Live-AIS position on either box and writes to the shared ships table; only its refusal paths (no ship, unknown ship) are checked. Would need a dev-only dry-run flag on the endpoint or a fixture ship that is never stale.",
+      "since": "2026-10-08"
+    },
+    "flow:wms-watch-save": {
+      "reason": "A successful save sends a real email (the dev box sends real mail) and can buy a Live-AIS position; only the five refusal paths are checked. Would need a fixture confirmed subscriber on a mail sink plus a no-purchase switch for the e2e client.",
+      "since": "2026-10-08"
+    },
+    "flow:wms-track-signup-success": {
+      "reason": "A successful sign-up writes a subscriber and a watch and sends a confirmation or tracking email to the address given; only the refusal paths and the bot honeypot are checked. Would need a mail sink address that the mailer drops on dev.",
+      "since": "2026-10-08"
+    },
+    "flow:wms-watch-stop-signed": {
+      "reason": "A valid stop link needs the server's signing secret and an existing watch; the gate proves a forged link and a link with no id are refused (302 to ?watch=invalid, read without following the redirect). Would need a dev-only fixture watch with a published signed stop link.",
+      "since": "2026-10-08"
+    },
+    "flow:wms-watch-restart-signed": {
+      "reason": "A valid restart link needs the signing secret and an existing confirmed subscriber's watch; only forged and malformed links are checked. Same fixture need as the signed stop link.",
+      "since": "2026-10-08"
+    },
+    "flow:wms-position-stale-estimate": {
+      "reason": "Asking for a ship whose fix is over 20 minutes old buys a paid Live-AIS position on either box, so the estimate and dead-reckoned line are never exercised end to end; the fresh-fix path is. Would need a dev-only no-purchase mode for gate requests.",
+      "since": "2026-10-08"
+    },
+    "job scheduleWmsAlerts": {
+      "reason": "The hourly watch sweep emails real subscribers and exposes no status over HTTP (no last-run time, no counts), so nothing can show it ran. Would need /api/wms/health to report the last sweep time and how many watches it checked.",
+      "since": "2026-10-08"
+    },
+    "job scheduleLiveAisCredits": {
+      "reason": "The four-hourly Live-AIS credit listener (index.ts) only writes a log line and, below its threshold, notifies Mark; nothing exposes the credit balance or the last check over HTTP, so no check can see that it ran or that credits remain. Would need /api/wms/health (or a token-gated status) to report credits remaining and the last check time.",
+      "since": "2026-10-08"
+    }
+  }
+}

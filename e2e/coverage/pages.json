@@ -1,0 +1,18 @@
+{
+  "_about": "Pages area (e2e/checks/pages.mjs): every tracked page EN and ES (crawled in groups: loads as text/html, title, h1, lang and the language of its words, canonical (one), robots, Spanish twin, hreflang, the menu present on both twins with its container, no script loaded twice, navbar version, the language switch AND the Spanish-browser redirect computed by RUNNING the served navbar.js, the /api/ endpoints each page must still call and EN/ES calling the same ones, every same-site script/stylesheet/image including CSS backgrounds and og:image, public-CDN scripts and stylesheets, in-page and cross-page jump links, sampled links), sitemap.xml (incl. page vs sitemap hreflang agreement), robots.txt, llms.txt (cross-checked against the guides and news sitemaps), the shared navbar (desktop vs phone menu, home-only pills, ES_PAGES redirect) and the missing-page 404 (pages, files and unknown /api/ addresses). Every 'page /...' key is covered by a pages.crawl-* check.",
+  "extra": {
+    "ext:file /robots.txt": "the production robots.txt (server/public/robots.txt; on the dev box nginx answers /robots.txt itself with a block-everything file, so the shipping file is read from the dev app on port 5000)",
+    "ext:file /sitemap.xml": "the hand-maintained sitemap of the static pages, with hreflang alternates (server/public/sitemap.xml)",
+    "ext:file /llms.txt": "the map AI assistants read, generated on boot and after each hourly guides prerender (server/src/lib/llms-txt.ts; not tracked in git). Its guide and news-hub lists must match /guides-sitemap.xml and /news-sitemap.xml.",
+    "ext:file /components/navbar.js": "the shared site navbar loaded by 50 pages: the menu (desktop and phone), the En Español / English switch, the Spanish-browser redirect (ES_PAGES) and the home-only pills. The checks run the served script in a sandbox and test what it draws.",
+    "ext:file /components/affiliate-page.js": "the shared component that fills every gear category page from /api/affiliate-items (the crawl requires it to load as JavaScript and to still call that endpoint)",
+    "ext:file /css/styles.css": "the shared site stylesheet (loaded with and without ?v= cache-busting by different pages)",
+    "flow:language-switch": "on every page that loads the navbar, the En Español / English link (desktop and phone) and the automatic Spanish-browser redirect open that page's own twin (query string kept), never a missing page; an explicit English choice sticks; Spanish pages never redirect",
+    "flow:spanish-twins": "every English customer page has a Spanish twin that opens as a Spanish page (Mark: a missing ES twin is a bug)",
+    "flow:search-signals": "canonical = itself on stillafloatcruising.com, reciprocal hreflang pairs (in the page or sitemap.xml), customer pages listed in sitemap.xml, utility and owner pages kept out of search",
+    "flow:missing-page-404": "an address that does not exist answers 404 rather than the home page — pages, nested pages, images, scripts and unknown /api/ addresses (app.ts serves index.html for any unknown path that reaches it)",
+    "flow:dev-not-indexable": "the dev mirror answers robots.txt with Disallow: / and sends X-Robots-Tag: noindex on every page (2026-09-29 foreign-domain incident)"
+  },
+  "exempt": {},
+  "gaps": {}
+}
