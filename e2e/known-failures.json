@@ -1,8 +1,8 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 36,
-    "fixed_and_removed_2026-10-08": 26,
+    "listed": 28,
+    "fixed_and_removed_2026-10-08": 34,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -22,12 +22,6 @@
       "id": "news.agent-reachable-through-site",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev nginx does not include snippets/editorial-3003.conf, so /api/editorial-queue returns the homepage and /review 404s. Fix = add the snippet on the dev box via the deploy path.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "news.agent-actions-refuse-without-token",
-      "since": "2026-10-02",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent stopped, so the token probe cannot connect.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
@@ -52,30 +46,6 @@
       "id": "affiliate.category-pages-show-products",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has 0 gear products. ALSO prod: air-travel category has 0 products while the hub links to it.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "affiliate.spanish-blurbs",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no products. ALSO prod: 11 of 33 products have no Spanish blurb.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "affiliate.hub-links-and-featured-pick",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no products. ALSO prod: EN hub featured button skips /api/go (clicks uncounted); ES hub never loads a featured product.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "audience.turnstile-on-every-form",
-      "since": "2026-10-02",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no Turnstile keys (empty turnstileSiteKey).",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "audience.turnstile-enforced-by-server",
-      "since": "2026-10-02",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no Turnstile keys, so a token-less sign-up is accepted there.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
@@ -145,12 +115,6 @@
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
-      "id": "flows.news-reader-journey",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev gear list is empty, so story gear links land on 'being curated'.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
       "id": "flows.newsletter-links",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no Spanish newsletter issue; English draft is 90 days old and pending.",
@@ -187,12 +151,6 @@
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
-      "id": "news.editorial-queue-page-shows-queue",
-      "since": "2026-05-01",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): the page itself was FIXED 2026-10-08 (retired → hands off to the news agent's /review, noindex; verified on dev a4a6e5c). The check's last step reads the queue from the news agent, which is stopped on dev (pm2 saf-newsagent, since 2026-10-02) → 404. Passes once the dev news agent runs.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (restart dev news agent via the deploy path; same root cause as the news.* entries). Entry stays listed only until the check passes on dev."
-    },
-    {
       "id": "commentary.favorites-list",
       "since": "2026-05-25",
       "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: 0 favorites on both boxes; the page shows two 'Coming soon' boxes (content).",
@@ -215,12 +173,6 @@
       "since": "2026-10-08",
       "reason": "GATE TOOLING vs SITE LIMITER: a full sweep sends 11 POST /api/contact probes (6 here, 3 cabins, 2 pages) from one address; the contact limiter allows 5 per hour per visitor and is checked BEFORE field validation, so the gate's own later probes get 429. Since 60d15a1 every visitor has a real address, so this now bites. Decision needed: count only submissions that pass field checks toward the limit, or run this check first.",
       "decision": "Mark 2026-10-08: KEEP the 5/h contact limiter as is; the gate waits an hour between full dev sweeps (site-e2e.sh refuses sooner). REVIEW this rule after the current dev→main merge completes."
-    },
-    {
-      "id": "pages.crawl-policies-and-owner",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): the retired /editorial-queue.html hands off to the news agent's /review, which is a 404 on dev because dev nginx lacks snippets/editorial-3003.conf and the dev news agent is stopped (same root cause as news.agent-reachable-through-site). On prod /review answers.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (dev nginx editorial snippet + running news agent). Entry stays listed only until the check passes on dev."
     }
   ],
   "_rulings_2026-10-08": "Mark: (1) fix the dev-mirror gaps, (2) fix the pre-existing prod defects, (3) keep the contact limiter, review after the merge. Nothing here is a permanent waiver."
