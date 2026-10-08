@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { requireToken, extractToken } from "../lib/http-auth";
-import { ingestProducts, loadPending, approvePending, rejectPending, type RawProduct } from "../lib/affiliate-agent";
+import { logger } from "../lib/logger";
+import { ingestProducts, loadPending, approvePending, rejectPending, fillMissingSpanishBlurbs, type RawProduct } from "../lib/affiliate-agent";
 import { notifyMark, reviewUrl } from "../lib/notify";
 
 const router: IRouter = Router();
@@ -33,6 +34,17 @@ router.post("/affiliate/ingest", requireToken, async (req: Request, res: Respons
 });
 
 // POST /api/affiliate/notify — re-send the review nudge for the current queue (manual).
+// Fill the Spanish blurb of every published product that has none (2026-10-08: 11 of 33 on prod
+// showed English on the Spanish gear pages). One cheap-model call; safe to run again any time.
+router.post("/affiliate/translate-missing", requireToken, async (_req: Request, res: Response) => {
+  try {
+    res.json({ success: true, ...(await fillMissingSpanishBlurbs()) });
+  } catch (err) {
+    logger.error({ err }, "affiliate translate-missing failed");
+    res.status(500).json({ success: false, error: "translate failed" });
+  }
+});
+
 router.post("/affiliate/notify", requireToken, async (_req: Request, res: Response) => {
   const pending = await loadPending();
   const n = pending.items.length;

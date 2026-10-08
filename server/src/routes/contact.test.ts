@@ -108,5 +108,6 @@ test("contact: the per-IP limit is unchanged — five an hour, the sixth is refu
 test("public-config still hands the pages the Turnstile site key", async () => {
   const { status, json } = await call("GET", "/public-config");
   assert.equal(status, 200);
-  assert.deepEqual(json, { turnstileSiteKey: "test-site-key" });
+  // turnstileTestMode is true only for Cloudflare's documented always-pass test key (the dev mirror)
+  assert.deepEqual(json, { turnstileSiteKey: "test-site-key", turnstileTestMode: false });
 });

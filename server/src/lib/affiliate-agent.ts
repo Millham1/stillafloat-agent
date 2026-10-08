@@ -34,6 +34,8 @@ export interface PendingItem {
   asin: string;
   title: string;
   description: string;
+  /** Spanish blurb for the /es/ gear pages (2026-10-08; English-only blurbs were a release-gate defect). */
+  descriptionEs?: string;
   category: Category;
   imageUrl: string;
   affiliateLink: string;
@@ -94,6 +96,7 @@ Respond ONLY with JSON: { "items": [ { "idx": <int>, "description": "<string>", 
 interface LlmItem {
   idx: number;
   description?: string;
+  descriptionEs?: string;
   category?: string;
 }
 
@@ -107,17 +110,18 @@ const ITEMS_SCHEMA = {
         properties: {
           idx: { type: "integer" },
           description: { type: "string" },
+          descriptionEs: { type: "string", description: "the same blurb in Latin American Spanish (es-419), same facts" },
           category: { type: "string", enum: [...CATEGORIES] },
         },
-        required: ["idx", "description", "category"],
+        required: ["idx", "description", "descriptionEs", "category"],
       },
     },
   },
   required: ["items"],
 } as const;
 
-async function describeAndCategorize(products: RawProduct[]): Promise<Map<number, { description: string; category: Category }>> {
-  const out = new Map<number, { description: string; category: Category }>();
+export async function describeAndCategorize(products: RawProduct[]): Promise<Map<number, { description: string; descriptionEs: string; category: Category }>> {
+  const out = new Map<number, { description: string; descriptionEs: string; category: Category }>();
   if (!products.length || !anthropicConfigured()) return out;
 
   const userContent = JSON.stringify(products.map((p, idx) => ({ idx, title: p.title })), null, 2);
@@ -125,7 +129,7 @@ async function describeAndCategorize(products: RawProduct[]): Promise<Map<number
   const parsed = await llmJson<{ items?: LlmItem[] }>({
     job: "affiliate.describe",
     system: SYSTEM_PROMPT,
-    user: `Write a blurb + category for each product:\n\n${userContent}`,
+    user: `Write a blurb + category for each product, and the same blurb in Latin American Spanish (descriptionEs — the Spanish gear pages show it; English only is a bug):\n\n${userContent}`,
     schema: ITEMS_SCHEMA as unknown as Record<string, unknown>,
     cheap: true,
     maxTokens: 4000,
@@ -135,7 +139,7 @@ async function describeAndCategorize(products: RawProduct[]): Promise<Map<number
     const category = (CATEGORIES as readonly string[]).includes(it.category ?? "")
       ? (it.category as Category)
       : "great-ideas";
-    out.set(it.idx, { description: (it.description ?? "").trim(), category });
+    out.set(it.idx, { description: (it.description ?? "").trim(), descriptionEs: (it.descriptionEs ?? "").trim(), category });
   }
   return out;
 }
@@ -171,6 +175,7 @@ export async function ingestProducts(
       asin: p.asin,
       title: p.title,
       description: m?.description ?? "",
+      descriptionEs: m?.descriptionEs ?? "",
       category: m?.category ?? "great-ideas",
       imageUrl: p.imageUrl ?? "",
       affiliateLink: buildAffiliateLink(p.asin),
@@ -200,6 +205,7 @@ export async function approvePending(id: string, feature: boolean): Promise<Affi
     id: crypto.randomUUID(),
     title: item.title,
     description: item.description,
+    descriptionEs: item.descriptionEs ?? "",
     category: item.category,
     smartStrip: item.affiliateLink, // plain affiliate URL → renders the "Buy on Amazon" button
     affiliateLink: item.affiliateLink,
@@ -224,4 +230,47 @@ export async function rejectPending(id: string): Promise<boolean> {
   if (pending.items.length === before) return false;
   await writeJson(PENDING_KEY, pending);
   return true;
+}
+
+// ── Spanish blurbs for products that have none ───────────────────────────────
+// Before 2026-10-08 the describe step wrote English only; 11 of 33 published products had no
+// Spanish blurb, so /es/affiliate pages showed English. This fills the gap from the English
+// blurb (a translation, not a rewrite) — run from POST /api/affiliate/translate-missing.
+const ES_SCHEMA = {
+  type: "object",
+  properties: { items: { type: "array", items: { type: "object", properties: { idx: { type: "integer" }, descriptionEs: { type: "string" } }, required: ["idx", "descriptionEs"] } } },
+  required: ["items"],
+} as const;
+
+export async function spanishBlurbs(items: Array<{ title: string; description: string }>): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  if (!items.length || !anthropicConfigured()) return out;
+  const parsed = await llmJson<{ items?: Array<{ idx?: number; descriptionEs?: string }> }>({
+    job: "affiliate.describe",
+    system: "You translate short product blurbs for a cruise-travel gear page into Latin American Spanish (es-419). Keep the facts and the friendly tone; no new claims; keep brand and product names. Return JSON {\"items\":[{\"idx\":n,\"descriptionEs\":\"...\"}]}.",
+    user: JSON.stringify(items.map((p, idx) => ({ idx, title: p.title, description: p.description })), null, 2),
+    schema: ES_SCHEMA as unknown as Record<string, unknown>,
+    cheap: true,
+    maxTokens: 4000,
+  });
+  for (const it of parsed.items ?? []) {
+    if (typeof it.idx !== "number") continue;
+    const es = (it.descriptionEs ?? "").trim();
+    if (es) out.set(it.idx, es);
+  }
+  return out;
+}
+
+/** Fill descriptionEs on every published product missing one. Returns how many were filled. */
+export async function fillMissingSpanishBlurbs(): Promise<{ missing: number; filled: number }> {
+  const store = await readJson<{ items?: Array<Record<string, unknown>> }>(PATHS.affiliateItems, { items: [] });
+  const items = store.items ?? [];
+  const todo = items.filter((i) => !String(i["descriptionEs"] ?? "").trim() && String(i["description"] ?? "").trim());
+  if (!todo.length) return { missing: 0, filled: 0 };
+  const es = await spanishBlurbs(todo.map((i) => ({ title: String(i["title"] ?? ""), description: String(i["description"] ?? "") })));
+  let filled = 0;
+  todo.forEach((i, idx) => { const v = es.get(idx); if (v) { i["descriptionEs"] = v; filled++; } });
+  if (filled) await writeJson(PATHS.affiliateItems, store);
+  logger.info({ missing: todo.length, filled }, "affiliate: Spanish blurbs filled");
+  return { missing: todo.length, filled };
 }

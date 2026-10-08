@@ -247,8 +247,13 @@ export default [
       // so that each failure names its own cause.
       const cfg = t.json(await t.get("/api/public-config"));
       t.ok(cfg && typeof cfg === "object" && "turnstileSiteKey" in cfg, `/api/public-config no longer returns turnstileSiteKey (keys: ${keysOf(cfg)})`);
-      t.matches(cfg.turnstileSiteKey, /^0x[0-9A-Za-z_-]{16,}$/,
+      // prod: a real key. dev: Cloudflare's documented always-pass TEST key (1x00000000000000000000AA) is
+      // the mirror — the widget renders and a missing token is refused; only the forged-token probe is moot.
+      const TEST_KEY = "1x00000000000000000000AA";
+      t.matches(cfg.turnstileSiteKey, t.mode === "dev" ? /^(0x[0-9A-Za-z_-]{16,}|1x00000000000000000000AA)$/ : /^0x[0-9A-Za-z_-]{16,}$/,
         `the Turnstile site key from /api/public-config (empty means the sign-up and contact pages show no security check and the server lets every bot through${t.mode === "dev" ? " — dev does not mirror prod" : ""})`);
+      t.equal(Boolean(cfg.turnstileTestMode), cfg.turnstileSiteKey === TEST_KEY, "public-config says test mode exactly when the site key is Cloudflare's test key");
+      if (t.mode === "prod") t.ok(!cfg.turnstileTestMode, "PRODUCTION is running Cloudflare's always-pass TEST key — every bot passes the security check");
       t.observe("public-config keys", keysOf(cfg));
       t.observe("turnstile site key present", Boolean(cfg.turnstileSiteKey));
     },
@@ -328,8 +333,16 @@ export default [
       refused(t, en, 400, /security check/i, "sign-up with no security token (English)");
       const es = await post(t, "/api/subscribe", { name: `${FIXTURE} probe`, email: probe, website: "", lang: "es" });
       refused(t, es, 400, /verificación de seguridad/i, "sign-up with no security token (Spanish)");
-      const bad = await post(t, "/api/subscribe", { name: `${FIXTURE} probe`, email: probe, website: "", lang: "en", "cf-turnstile-response": "e2e-fixture-not-a-real-token" });
-      refused(t, bad, 400, /security check/i, "sign-up with a forged security token");
+      // A forged token is refused by Cloudflare, not by us — with the documented test secret Cloudflare
+      // accepts every token, so on a test-key box this probe would SIGN THE PROBE ADDRESS UP (it is already
+      // confirmed, so the handler stops at "already subscribed" — no insert, no email) and prove nothing.
+      const cfg = t.json(await t.get("/api/public-config"));
+      const testMode = Boolean(cfg.turnstileTestMode);
+      t.observe("turnstile test keys on this box", testMode);
+      if (!testMode) {
+        const bad = await post(t, "/api/subscribe", { name: `${FIXTURE} probe`, email: probe, website: "", lang: "en", "cf-turnstile-response": "e2e-fixture-not-a-real-token" });
+        refused(t, bad, 400, /security check/i, "sign-up with a forged security token");
+      }
 
       // The ship-tracking sign-up (POST /api/wms/track-signup, Turnstile added 2026-10-08) — SAFE BY
       // CONSTRUCTION: the ship named does not exist, so if Turnstile were NOT enforced the route answers
@@ -337,8 +350,10 @@ export default [
       const track = await post(t, "/api/wms/track-signup", { name: `${FIXTURE} probe`, email: probe, ship: "e2e-fixture-no-such-ship", lang: "en", website: "" });
       t.ok(track.status !== 404, "the ship-tracking sign-up looked the ship up BEFORE the security check — a bot's token-less sign-up reaches the database and the mailer");
       refused(t, track, 400, /^security_check$/, "ship-tracking sign-up with no security token");
-      const trackForged = await post(t, "/api/wms/track-signup", { name: `${FIXTURE} probe`, email: probe, ship: "e2e-fixture-no-such-ship", lang: "en", website: "", "cf-turnstile-response": "e2e-fixture-not-a-real-token" });
-      refused(t, trackForged, 400, /^security_check$/, "ship-tracking sign-up with a forged security token");
+      if (!testMode) {
+        const trackForged = await post(t, "/api/wms/track-signup", { name: `${FIXTURE} probe`, email: probe, ship: "e2e-fixture-no-such-ship", lang: "en", website: "", "cf-turnstile-response": "e2e-fixture-not-a-real-token" });
+        refused(t, trackForged, 400, /^security_check$/, "ship-tracking sign-up with a forged security token");
+      }
 
       // Same secret governs the contact form, and it is now proven to be enforced.
       // 2.5 travellers: if this request ever got past Turnstile, the integer column refuses the insert

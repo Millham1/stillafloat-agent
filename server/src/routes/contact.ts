@@ -115,9 +115,16 @@ async function sendInternalAlert(
 }
 
 // ── GET /api/public-config ───────────────────────────────────────
+// Cloudflare's documented always-pass test keys (sitekey 1x00000000000000000000AA / secret
+// 1x0000000000000000000000000000000AA). The dev mirror runs them (2026-10-08): the widget renders
+// and the server refuses a missing token exactly as prod does, but Cloudflare accepts any token —
+// so the release gate skips its forged-token probe when `turnstileTestMode` is true.
+export const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
 router.get("/public-config", (_req: Request, res: Response) => {
+  const siteKey = process.env["TURNSTILE_SITE_KEY"] || "";
   res.json({
-    turnstileSiteKey: process.env["TURNSTILE_SITE_KEY"] || "",
+    turnstileSiteKey: siteKey,
+    turnstileTestMode: siteKey === TURNSTILE_TEST_SITE_KEY,
   });
 });
 
