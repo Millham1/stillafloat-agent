@@ -196,7 +196,7 @@
       "id": "commentary.favorites-list",
       "since": "2026-05-25",
       "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: 0 favorites on both boxes; the page shows two 'Coming soon' boxes (content).",
-      "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
+      "decision": "Mark 2026-10-08 (19:55Z): 'I have not decided on favorites yet, ignore that one piece' — CONTENT, waits for Mark's picks; not a release blocker and not to be chased. Entry stays until the picks exist."
     },
     {
       "id": "cabins.cabin-check-matches-deck-map",
