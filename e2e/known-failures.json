@@ -45,8 +45,8 @@
     {
       "id": "affiliate.category-pages-show-products",
       "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has 0 gear products. ALSO prod: air-travel category has 0 products while the hub links to it.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
+      "reason": "CONTENT (Mark): the air-travel gear category has 0 products on BOTH boxes while the hub links to it, so the page shows 'Coming soon'. Dev now mirrors prod (33 products seeded 2026-10-08). Needs Mark: add air-travel products, or say the card comes off the hub until there are some.",
+      "decision": "Mark 2026-10-08: FIX, do not waive — waits on Mark's content call (products or drop the card). Entry stays until the category has products or the card is gone."
     },
     {
       "id": "audience.newsletter-email",

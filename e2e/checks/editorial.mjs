@@ -47,6 +47,12 @@
 import { keysOf } from "../lib/harness.mjs";
 import * as H from "../lib/html.mjs";
 
+// The dev mirror has no certificate: its PUBLIC_URL is http://178.156.154.144, so links to the dev
+// box itself are http there by design. Anywhere else (and on prod everywhere) a link must be https.
+const DEV_BOX_HOSTS = new Set(["178.156.154.144", "127.0.0.1", "localhost"]);
+const httpsOrDevBox = (t, u) => u.protocol === "https:" || (t.mode === "dev" && u.protocol === "http:" && DEV_BOX_HOSTS.has(u.hostname));
+
+
 const PUBLIC_HOST = "stillafloatcruising.com";
 const NOBODY = "00000000-0000-4000-8000-000000000000"; // an id no row has
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -159,7 +165,7 @@ function newsletterCheck(lang) {
       for (const raw of [...hrefs, ...pics]) {
         let u;
         try { u = new URL(raw); } catch { t.ok(false, `the ${name} email has a link that is not a web address`); }
-        t.equal(u.protocol, "https:", `the ${name} email links over ${u.protocol} (${u.host}${u.pathname})`);
+        t.ok(httpsOrDevBox(t, u), `the ${name} email links over ${u.protocol} (${u.host}${u.pathname})`);
         const isPic = pics.includes(raw);
         if (u.host === PUBLIC_HOST || u.host === `www.${PUBLIC_HOST}`) {
           // language: the Spanish email keeps Spanish readers on /es/ pages, the English one never sends them there
@@ -571,7 +577,7 @@ export default [
       const links = [...new Set(H.links(html).map(dec))];
       for (const raw of links) {
         let u; try { u = new URL(raw); } catch { t.ok(false, "the brief email has a link that is not a web address"); }
-        t.equal(u.protocol, "https:", `the brief email links over ${u.protocol}`);
+        t.ok(httpsOrDevBox(t, u), `the brief email links over ${u.protocol} (${u.host})`);
         if (u.host === PUBLIC_HOST) {
           t.equal(u.pathname, "/api/social/review", "the only site link in the brief email is the social review page");
           t.html(await t.get(H.onBase(u.toString(), t.bases.site), { auth: true }));
