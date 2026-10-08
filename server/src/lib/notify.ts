@@ -45,8 +45,13 @@ export interface Notification {
    * the dashboard queue, so emailing it adds noise, not information. Telegram
    * was retired for exactly that noise; a 14-call-site email fan-out would
    * rebuild it under a new name.
+   *
+   * "lead" is a customer waiting on Mark (a group-page "I'm interested"). It
+   * gets the same email floor as a fault: a lead nobody sees is lost business,
+   * and unlike a review nudge it does not sit in a queue he checks daily.
+   * Mark, 2026-10-07, after a dev test reply reached no device: "yes go ahead".
    */
-  priority?: "high" | "normal";
+  priority?: "high" | "lead" | "normal";
 }
 
 function dashboardBase(): string {
@@ -149,13 +154,13 @@ export async function notifyMark(
   // is what keeps "never silently fail" from turning into "email me 14 times a
   // day". A normal nudge that lands nowhere is still a real fault — it is just
   // one to fix at the channel, which the push-health check raises separately.
-  if (n.priority === "high") {
+  if (n.priority === "high" || n.priority === "lead") {
     try {
       const ok = await mail({
         to: ownerEmail(),
         subject: n.title,
         text: `${n.body}\n\n${n.url ?? briefUrl()}`,
-        fromName: "Still Afloat Ops",
+        fromName: n.priority === "lead" ? "Still Afloat Leads" : "Still Afloat Ops",
       });
       if (ok) return "email";
     } catch (err) {

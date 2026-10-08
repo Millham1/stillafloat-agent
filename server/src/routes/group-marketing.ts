@@ -378,6 +378,7 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
       body: `${group.name} — ${guests ? guests + " guest(s), " : ""}${text(body["cabin_type"], 80) || "no cabin type picked"}. Reply within a few hours.`,
       tag: `group-interest-${group.id}`,
       buttons: [{ label: "Open the group file", href: `/groups/${group.id}` }],
+      priority: "lead",
     }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest notify failed"));
 
     return res.json({ success: true });

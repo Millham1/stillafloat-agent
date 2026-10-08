@@ -67,6 +67,32 @@ test("a high-priority fault that reaches no device DOES email", async () => {
   assert.match(sent.text, /Re-subscribe\./);
 });
 
+test("a customer lead that reaches no device DOES email (Mark, 2026-10-07)", async () => {
+  const mail = mailSpy();
+  const channel = await notifyMark(
+    { title: "Group reply: Pat Doe", body: "MSC Seaside — 2 guest(s), BR2 Deluxe Balcony. Reply within a few hours.", priority: "lead" },
+    { push: NO_DEVICES, mail: mail.fn },
+  );
+
+  assert.equal(channel, "email");
+  assert.equal(mail.calls.length, 1);
+  const sent = mail.calls[0] as { subject: string; text: string; fromName: string };
+  assert.match(sent.subject, /Group reply: Pat Doe/);
+  assert.match(sent.text, /BR2 Deluxe Balcony/);
+  assert.equal(sent.fromName, "Still Afloat Leads");
+});
+
+test("a customer lead that reaches a device does NOT also email", async () => {
+  const mail = mailSpy();
+  const channel = await notifyMark(
+    { title: "Group reply: Pat Doe", body: "b", priority: "lead" },
+    { push: ONE_DEVICE, mail: mail.fn },
+  );
+
+  assert.equal(channel, "webpush");
+  assert.equal(mail.calls.length, 0);
+});
+
 test("email is a FLOOR, not a duplicate — a delivered push never also emails", async () => {
   const mail = mailSpy();
   const channel = await notifyMark(
