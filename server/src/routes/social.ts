@@ -561,9 +561,12 @@ function renderSchedulePage(items: any[], cfg: { tz: string; times: string[] }):
     if (!groups.has(day)) groups.set(day, []);
     groups.get(day)!.push(it);
   }
-  const badge = (it: { postState?: string }) => {
+  // Skipped posts (platform off, language off, stale) showed as "scheduled" until 2026-10-08: the
+  // calendar said 86 scheduled when 4 were waiting (release gate ops.social-calendar).
+  const badge = (it: { postState?: string; postError?: string; error?: string }) => {
     if (it.postState === "posted") return '<span class="st posted">✅ posted</span>';
     if (it.postState === "failed") return '<span class="st failed">⚠ failed</span>';
+    if (it.postState === "skipped") return `<span class="st skipped" title="${esc(String(it.postError || it.error || ""))}">⏭ skipped</span>`;
     return '<span class="st sched">🕒 scheduled</span>';
   };
   const sections = [...groups.entries()].map(([day, list]) => `
@@ -599,7 +602,7 @@ function renderSchedulePage(items: any[], cfg: { tz: string; times: string[] }):
  .trk-A{background:#7c3aed}.trk-B{background:#0369a1}
  .plat{font-size:12px;color:#374151;text-transform:capitalize}
  .st{font-size:11px;border-radius:5px;padding:1px 6px}
- .st.sched{background:#fef3c7;color:#92400e}.st.posted{background:#dcfce7;color:#166534}.st.failed{background:#fee2e2;color:#991b1b}
+ .st.sched{background:#fef3c7;color:#92400e}.st.posted{background:#dcfce7;color:#166534}.st.failed{background:#fee2e2;color:#991b1b}.st.skipped{background:#e5e7eb;color:#4b5563}
  .cap{font-size:13px;line-height:1.4}.ttl{font-size:11px;color:#9ca3af;margin-top:2px}
  .err{font-size:11px;color:#b91c1c;margin-top:2px}
  .empty{text-align:center;color:#6b7280;padding:50px 0}

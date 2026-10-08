@@ -993,3 +993,15 @@ test("the Spanish page gets the Spanish zone prose, and falls back honestly", ()
   assert.ok(viewVerdict(cabin, [untranslated], "es").detail
     .includes("Lifeboats sit on the deck below."), "missing ES must fall back to EN, not to silence");
 });
+
+test("zonesForCabin: a zone about particular views skips cabins with another or an unknown view (Wonder 8272, 2026-10-08)", () => {
+  const inward: Zone = { factor: "other", decks: [8], sections: ["aft", "mid"], sides: [], views: ["boardwalk", "garden"], what: "Neighborhood balconies face inward", effect: "privacy", mattersTo: null, severity: "minor", sign: "penalty", confidence: null, source: null } as unknown as Zone;
+  const sea = { deck: 8, section: "aft", side: "port", category: "Ocean View Balcony", view: "ocean" };
+  const boardwalk = { deck: 8, section: "aft", side: "port", category: "Boardwalk Balcony", view: "boardwalk" };
+  const unknown = { deck: 8, section: "aft", side: "port", category: "Ocean View Balcony" };
+  assert.equal(zonesForCabin(sea, [inward]).length, 0, "a sea-facing balcony is not told it faces inward");
+  assert.equal(zonesForCabin(boardwalk, [inward]).length, 1);
+  assert.equal(zonesForCabin(unknown, [inward]).length, 0, "unknown view: silence beats a guess");
+  const anyView = { ...inward, views: [] };
+  assert.equal(zonesForCabin(sea, [anyView]).length, 1, "a zone with no views applies to every view, as before");
+});

@@ -75,11 +75,14 @@ export async function createAction(a: {
 
 export async function listPendingActions(): Promise<ActionRow[]> {
   const supabase = getSupabase();
+  // Every pending action, newest first. Until 2026-10-08 this stopped at 30: with 54 waiting, a
+  // storm all-clear from September fell off Mark's brief with no notice (release gate
+  // editorial.action-queue-matches-its-sources). A long queue is a problem to show, not to hide.
   const { data, error } = await supabase
     .from("actions").select("*")
     .eq("status", "pending")
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(500);
   if (error) throw new Error(`listPendingActions: ${error.message}`);
   return (data ?? []) as unknown as ActionRow[];
 }

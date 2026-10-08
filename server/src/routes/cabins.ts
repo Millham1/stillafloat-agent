@@ -86,14 +86,14 @@ async function zonesForShip(ship: string): Promise<{ rep: string; zones: Zone[] 
   const rep = (ctxShip as { rep_slug: string } | null)?.rep_slug ?? ship;
   const { data, error } = await supabase
     .from("cabin_context_zones")
-    .select("factor,decks,sections,sides,what,effect,what_es,effect_es,matters_to,severity,sign,confidence,source")
+    .select("factor,decks,sections,sides,views,what,effect,what_es,effect_es,matters_to,severity,sign,confidence,source")
     .eq("rep_slug", rep);
   // A schema mismatch (e.g. a box whose DB missed migration 0025/0026) must not
   // silently disable the whole moat layer as an empty zone list.
   if (error) console.error(`zonesForShip ${ship}: zone select failed - ${error.message}`);
   const zones = ((data ?? []) as Record<string, unknown>[]).map((z) => ({
     factor: String(z["factor"]), decks: (z["decks"] as number[]) ?? [],
-    sections: (z["sections"] as string[]) ?? [], sides: (z["sides"] as string[]) ?? [],
+    sections: (z["sections"] as string[]) ?? [], sides: (z["sides"] as string[]) ?? [], views: (z["views"] as string[]) ?? [],
     what: (z["what"] as string) ?? null, effect: (z["effect"] as string) ?? null,
     whatEs: (z["what_es"] as string) ?? null, effectEs: (z["effect_es"] as string) ?? null,
     mattersTo: (z["matters_to"] as string) ?? null,
@@ -667,7 +667,7 @@ router.post("/cabins/check", async (req: Request, res: Response) => {
     // that are the entire reason this feature has an edge.
     const { zones } = await zonesForShip(ship);
     const research = hit ? zonesForCabin(
-      { deck: hit.deck, section: hit.section, side: hit.side, category: hit.category }, zones)
+      { deck: hit.deck, section: hit.section, side: hit.side, category: hit.category, view: hit.view ?? null }, zones)
       // Only penalty zones may WARN. Without this, the 83 benefit-signed zones ("the horizon
       // view is unaffected", the hump) headline as problems on this page — the same inversion
       // fixed in viewVerdict, living on in this hand-rolled third copy of the verdict logic.
@@ -1243,11 +1243,11 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     // cabin_context_zones is loaded, in which case the tool simply says less.
     const { data: zoneData } = await supabase
       .from("cabin_context_zones")
-      .select("factor,decks,sections,sides,what,effect,what_es,effect_es,matters_to,severity,sign,confidence,source")
+      .select("factor,decks,sections,sides,views,what,effect,what_es,effect_es,matters_to,severity,sign,confidence,source")
       .eq("rep_slug", adviceSlug);
     const zones = ((zoneData ?? []) as Record<string, unknown>[]).map((z) => ({
       factor: String(z["factor"]), decks: (z["decks"] as number[]) ?? [],
-      sections: (z["sections"] as string[]) ?? [], sides: (z["sides"] as string[]) ?? [],
+      sections: (z["sections"] as string[]) ?? [], sides: (z["sides"] as string[]) ?? [], views: (z["views"] as string[]) ?? [],
       what: (z["what"] as string) ?? null, effect: (z["effect"] as string) ?? null,
       whatEs: (z["what_es"] as string) ?? null, effectEs: (z["effect_es"] as string) ?? null,
       mattersTo: (z["matters_to"] as string) ?? null,
@@ -1414,7 +1414,7 @@ router.post("/cabins/recommend", async (req: Request, res: Response) => {
     const withZones = picks.map((p) => {
       const f = p.facts;
       const hits = f ? zonesForCabin(
-        { deck: f.deck, section: f.section, side: f.side, category: f.category }, zones) : [];
+        { deck: f.deck, section: f.section, side: f.side, category: f.category, view: f.view ?? null }, zones) : [];
       return {
         ...p,
         heads_up: hits.slice(0, 2).map((z) => ({ what: z.what, effect: z.effect, severity: z.severity })),

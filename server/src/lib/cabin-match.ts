@@ -224,6 +224,8 @@ export function pickArchetype(
 
 export type PoolCabin = {
   cabin: string;
+  /** The grid's view (ocean, boardwalk, garden, promenade, none) when known — zones about particular views need it. */
+  view?: string | null;
   /**
    * Where the pre-written reasoning put this cabin, when there IS any for it.
    * NOT a gate on eligibility — see selectCabins. Null for the great majority of
@@ -401,7 +403,7 @@ export function selectCabins(opts: {
     // and only THEN what the research knows about this particular hull
     if (zones.length) {
       const hit = zonesForCabin(
-        { deck: c.deck ?? null, section: c.section ?? null, side: c.side ?? null, category: c.category },
+        { deck: c.deck ?? null, section: c.section ?? null, side: c.side ?? null, category: c.category, view: c.view ?? null },
         zones,
       ).filter((z) => z.factor === "motion");
       for (const z of hit) {
@@ -438,7 +440,7 @@ export function selectCabins(opts: {
     let score = 0;
     if (zones.length) {
       const applicable = zonesForCabin(
-        { deck: c.deck ?? null, section: c.section ?? null, side: c.side ?? null, category: c.category },
+        { deck: c.deck ?? null, section: c.section ?? null, side: c.side ?? null, category: c.category, view: c.view ?? null },
         zones,
       );
       for (const z of applicable) {
@@ -616,6 +618,12 @@ export type Zone = {
   decks: number[];
   sections: string[];
   sides: string[];
+  /**
+   * Cabin views the zone is about (migration 0048): e.g. ["boardwalk","garden"] for the inward-facing
+   * neighborhood balconies on Oasis-class ships. Empty/absent = every view. Added 2026-10-08 after
+   * sea-facing balconies 8272/8732 on Wonder were told they "face inward".
+   */
+  views?: string[];
   what: string | null;
   effect: string | null;
   /**
@@ -654,6 +662,8 @@ export type CabinPlacement = {
   section: string | null;
   side: string | null;
   category: string | null;
+  /** The grid's `view` (ocean, boardwalk, garden, promenade, none); unknown = null. */
+  view?: string | null;
 };
 
 /** The grid writes both "fwd"/"forward" and "mid"/"midship". Collapse or the join misses. */
@@ -693,6 +703,7 @@ export function zonesForCabin(cabin: CabinPlacement, zones: readonly Zone[]): Zo
   const deck = cabin.deck;
   const section = normSection(cabin.section);
   const side = String(cabin.side ?? "").trim().toLowerCase() || null;
+  const view = String(cabin.view ?? "").trim().toLowerCase() || null;
   const type = classifyCategory(cabin.category);
   if (deck == null) return [];
 
@@ -705,6 +716,9 @@ export function zonesForCabin(cabin: CabinPlacement, zones: readonly Zone[]): Zo
       // silence beats a guess about someone's actual booked room.
       if (z.sections.length && (!section || !z.sections.includes(section))) return false;
       if (z.sides.length && (!side || !z.sides.includes(side))) return false;
+      // a zone about particular views (inward-facing neighborhood balconies) needs a matching view;
+      // an unknown view is NOT matched — silence beats telling a sea-facing cabin it faces inward.
+      if (z.views?.length && (!view || !z.views.includes(view))) return false;
       // view-blocking factors only mean something for a cabin with a window;
       // if we don't know the type, we don't claim the view is affected.
       if (VIEW_FACTORS.has(z.factor) && (type === null || type === "inside")) return false;

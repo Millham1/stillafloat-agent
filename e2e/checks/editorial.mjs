@@ -429,7 +429,7 @@ export default [
       const log = t.success(await t.get("/api/storm-diversions/log", { auth: true }));
       const alerts = new Map(dash.alerts.map((a) => [a.id, a]));
       const events = new Map(log.pings.filter((p) => p.event).map((p) => [p.event.id, p.event]));
-      const AT_CAP = acts.length >= 30; // listPendingActions stops at 30
+      // listPendingActions stopped at 30 until 2026-10-08; it now returns every pending action
 
       const types = {};
       for (const a of acts) {
@@ -479,9 +479,8 @@ export default [
       t.observe("pending actions", acts.length, "info");
       t.observe("action keys", keysOf(acts[0]));
 
-      // the other direction: everything waiting on Mark has a button. This runs even when the list is
-      // cut at 30 — a storm decision that fell off the end of the list is exactly what Mark would miss.
-      const why = AT_CAP ? " (the queue is at its 30-item display limit, which is why it fell off)" : "";
+      // the other direction: everything waiting on Mark has a button.
+      const why = "";
       const alertActs = new Set(acts.filter((a) => a.type === "storm_alert").map((a) => a.source_ref));
       for (const al of dash.alerts) {
         if (isFixture(al) || /^MANUAL-/.test(al.nhc_id || "")) continue; // Mark declared it himself: no nudge by design
@@ -490,8 +489,8 @@ export default [
       }
       const divActs = new Set(acts.filter((a) => a.type === "storm_diversion").map((a) => a.source_ref));
       for (const [id, ev] of events) if (ev.status === "pending") t.ok(divActs.has(id), `an open course change is waiting for Mark but his brief has no button for it${why}`);
-      // LAST: the queue the brief shows stops at 30 rows, newest first — anything older is hidden with no notice.
-      t.ok(!AT_CAP, `Mark's action queue is at its 30-item limit (${Object.entries(types).map(([k, v]) => `${v} ${k}`).join(", ")}) — older items waiting for him are cut off his brief without notice`);
+      // the whole queue is shown now (no cap since 2026-10-08); how long it is, is for Mark to see, not for the gate to hide
+      t.observe("pending actions by type", Object.entries(types).map(([k, v]) => `${v} ${k}`).join(", "), "info");
     },
   },
 
