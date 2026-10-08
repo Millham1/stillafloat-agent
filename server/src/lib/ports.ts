@@ -206,7 +206,8 @@ const DEST_LOCODES: Record<string, string> = {
   // Bahamas private islands as crews type them: COC/CCC CocoCay, PCY/PRI Princess
   // Cays, GOC Castaway Cay (Gorda Cay), OCE Ocean Cay, GBI Freeport (Grand Bahama
   // Island; "US GBI" is a common mis-typed prefix). Seen live 2026-09-10.
-  BSCOC: "cococay", BSCCC: "cococay", BSPCY: "princess-cays", BSPRI: "princess-cays",
+  // PCC = "Perfect Day at CocoCay": Oasis of the Seas leaving Nassau, 2026-10-07.
+  BSCOC: "cococay", BSCCC: "cococay", BSPCC: "cococay", BSPCY: "princess-cays", BSPRI: "princess-cays",
   BSGOC: "castaway-cay", BSOCE: "ocean-cay", BSFPO: "freeport-bahamas",
   BSGBI: "freeport-bahamas", USGBI: "freeport-bahamas", BQKRA: "bonaire",
   MXPGO: "progreso", HNRTM: "roatan",

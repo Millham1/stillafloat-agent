@@ -13,6 +13,7 @@ const CASES: Array<[string, string | null]> = [
   ["US GBI", "freeport-bahamas"],            // Carnival Sunrise (mis-typed prefix)
   ["BS COC", "cococay"],                     // Icon of the Seas
   ["BSCOC", "cococay"],                      // Adventure of the Seas
+  ["BS PCC", "cococay"],                     // Oasis of the Seas, Nassau -> Perfect Day at CocoCay (2026-10-07)
   ["BS CCC", "cococay"],                     // Freedom of the Seas
   ["BSPCY", "princess-cays"],                // Carnival Conquest
   ["BS PRI", "princess-cays"],               // Carnival Magic
