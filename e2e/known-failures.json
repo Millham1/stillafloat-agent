@@ -1,8 +1,8 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 20,
-    "fixed_and_removed_2026-10-08": 42,
+    "listed": 18,
+    "fixed_and_removed_2026-10-08": 44,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -40,18 +40,6 @@
       "id": "audience.newsletter-email",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no confirmed Spanish subscriber and no Spanish draft.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "editorial.newsletter-preview-en",
-      "since": "2026-07-09",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev English issue is a 2026-07-09 draft whose video answers oEmbed 401.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "editorial.newsletter-preview-es",
-      "since": "2026-06-18",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no Spanish newsletter issue (DISABLE_WEEKLY_MARKETING).",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
