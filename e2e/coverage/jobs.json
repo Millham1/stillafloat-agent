@@ -1,5 +1,5 @@
 {
-  "_about": "Jobs area (e2e/checks/jobs.mjs): the scheduled jobs the website server starts (job schedule* keys from server/src/index.ts), the news agent's daily scan, and the ops-manager scheduler loop (saf-ops-manager agent/core.py). Each check reads what a job produces and asserts it is fresh against the job's cadence. Covered elsewhere: job scheduleYouTubeScan by commentary.youtube-cache-matches-channel; job schedulePushHealth by audience.push-device-roundtrip (dev only: it reads the daily no-device fault, which exists only because push health runs on dev with no device; on prod nothing shows the sweep runs while a device is subscribed); job scheduleWmsAlerts and job scheduleLiveAisCredits are admitted gaps in coverage/ships.json (neither exposes a last-run sign; the live-ais-credits state has no timestamp and no route reads it). The gaps below each name the signal that is missing; the token-gated job-health endpoint being added by the lead (GET /api/healthz/jobs: last start / last success / last error / consecutive failures per job) would close every monorepo one.",
+  "_about": "Jobs area (e2e/checks/jobs.mjs): the scheduled jobs the website server starts (job schedule* keys from server/src/index.ts), the news agent's daily scan, and the ops-manager scheduler loop (saf-ops-manager agent/core.py). Each check reads what a job produces and asserts it is fresh against the job's cadence. Covered elsewhere: job scheduleYouTubeScan by commentary.youtube-cache-matches-channel; job schedulePushHealth by audience.push-device-roundtrip (dev only: it reads the daily no-device fault, which exists only because push health runs on dev with no device; on prod nothing shows the sweep runs while a device is subscribed); job scheduleWmsAlerts and job scheduleLiveAisCredits are admitted gaps in coverage/ships.json (neither exposes a last-run sign; the live-ais-credits state has no timestamp and no route reads it). The gaps below each name the signal that is missing; the token-gated job-health endpoint GET /api/healthz/jobs (added 2026-10-08, lib/job-health.ts; read by vitals.mjs) reports last start / last success / last error / consecutive failures per job.",
   "extra": {
     "ext:news job daily scan": "the news agent's own 08:00 Eastern scheduler (stillafloat-newsagent src/index.ts) POSTs /api/scan-news, which runs the 21-day archive sweep and replaces the editorial queue",
     "ext:ops job ai-visibility": "ops-manager daily 10:00 Eastern: AI-assistant lookups/referrals/crawlers measured into platform_state ai-visibility (agent/ai_visibility.py)",
@@ -17,10 +17,6 @@
   },
   "exempt": {},
   "gaps": {
-    "job scheduleDailyBrief": {
-      "reason": "The brief job (07:00, 12:00, 16:00 Eastern) only pushes and emails; the stored brief behind GET /api/brief is rewritten every time Mark opens the Brief page (it always asks for ?fresh=1) and by any read when none is stored, so its generatedAt cannot show the job ran (prod's read 18:31 Eastern on 2026-10-07, not a slot). Needs the job-health endpoint, or the job stamping its own lastDeliveredAt on the stored brief.",
-      "since": "2026-10-08"
-    },
     "ext:ops job inbox triage poll": {
       "reason": "The 15-minute Gmail poll keeps its state in files on the box. Every ops-manager route except /health needs the ops x-api-key, which the gate does not hold, and /health reports only pending calendar confirmations, not a last poll time. Needs a last-poll time on the ops /health.",
       "since": "2026-10-08"

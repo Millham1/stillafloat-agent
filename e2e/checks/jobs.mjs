@@ -513,7 +513,7 @@ export default [
   {
     id: "jobs.subscriber-hygiene-archives-unconfirmed",
     title: "The daily subscriber clean-up is running: people are waiting to confirm and none has waited more than 22 days (and the subscriber list refuses strangers)",
-    covers: ["job scheduleSubscriberHygiene", "GET /api/subscribers"],
+    covers: ["job scheduleSubscriberHygiene", "GET /api/subscribers", "GET /api/healthz/jobs"],
     modes: ["dev", "prod"],
     incident: "2026-10-02: subscription bombing left bot rows pending; 2026-08-26: bounced rows had never been cleared",
     run: async (t) => {
@@ -533,12 +533,24 @@ export default [
       const last = pending.total > 200 ? await list("pending", 200, Math.ceil(pending.total / 200)) : pending;
       // With nobody pending, "nobody pending too long" is true of an empty list and says nothing
       // about whether the 10:00 clean-up still runs (adversarial review 2026-10-08: prod had 0
-      // pending; its last archive by the job was 2026-09-21; the 51 rows archived 2026-10-02 were
-      // the hand clean-up after the bot signups). Archived rows do not show who archived them, so
-      // they cannot stand in. UNTESTABLE until someone is pending — or until the job-health
-      // endpoint (GET /api/healthz/jobs) reports the job's last run.
-      t.require(pending.total > 0,
-        `nobody is waiting unconfirmed on this box (${archived.total} archived, by hand or by the job — the list cannot tell), so there is nothing the daily clean-up must be archiving and its run cannot be seen`);
+      // pending; archived rows do not show who archived them). Since 2026-10-08 the job-health
+      // ledger (GET /api/healthz/jobs) records the job's runs, so the run itself is checked there:
+      // the daily job must have succeeded within the last 26 hours once the box has been up a day
+      // (the ledger survives restarts, so a deploy does not reset it).
+      const ledger = t.json(await t.get("/api/healthz/jobs", { auth: true }));
+      const job = (ledger.jobs || []).find((j) => j.name === "scheduleSubscriberHygiene");
+      t.ok(job, "the job-health ledger has no entry for scheduleSubscriberHygiene");
+      if (job && !job.disabled) {
+        const bootedH = (t.now() - Date.parse(ledger.bootedAt)) / HOUR;
+        if (job.lastOkAt) {
+          t.fresh(job.lastOkAt, 26, "the daily subscriber clean-up's last successful run (10:00 Eastern)");
+          t.ok(job.consecutiveFailures === 0, `the subscriber clean-up has failed ${job.consecutiveFailures} time(s) in a row: ${job.lastError}`);
+          t.observe("clean-up last result", job.lastResult || "", "info");
+        } else {
+          t.require(bootedH > 26, `the subscriber clean-up has not run yet on this box (up ${bootedH.toFixed(1)} h; it runs daily at 10:00 Eastern) — nothing to judge until it has`);
+          t.ok(false, `the daily subscriber clean-up has never succeeded on a box that has been up ${bootedH.toFixed(0)} hours${job.lastError ? ` — last error: ${job.lastError}` : ""}`);
+        }
+      } else if (job) t.observe("subscriber clean-up disabled on this box", job.disabledWhy || true);
       const tooOld = last.subscribers.filter((r) => ageH(t, r.created_at) > 22 * 24 + 1);
       t.ok(tooOld.length === 0, `${tooOld.length} subscribers have been pending for more than 22 days (oldest signed up ${tooOld.map((r) => r.created_at).sort()[0]}) — the 10:00 Eastern clean-up archives them after 21, so it has not run`);
       t.observe("confirmed subscribers", confirmed.total, "info");

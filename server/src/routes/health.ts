@@ -1,6 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 import { subscriptionCount, getVapidPublicKey } from "../lib/push";
+import { requireToken } from "../lib/http-auth";
+import { jobHealthReport } from "../lib/job-health";
 
 const router: IRouter = Router();
 
@@ -39,6 +41,16 @@ router.get("/healthz/alerts", (req: Request, res: Response) => {
       res.status(503).json({ ok: false, error: "state unreadable" });
     }
   })();
+});
+
+// ── Job-health ledger ─────────────────────────────────────────────────────────
+// Every scheduled job's last start / success / error / streak, plus the error counter (lib/job-health.ts,
+// lib/error-ledger.ts). Token-gated: it names jobs, errors and timings. `ok` is false when any job is
+// overdue; the release gate (e2e/checks/vitals.mjs) reads this on every sweep.
+router.get("/healthz/jobs", requireToken, (_req: Request, res: Response) => {
+  const report = jobHealthReport();
+  res.set("Cache-Control", "no-store");
+  res.status(report.ok ? 200 : 503).json({ success: true, ...report });
 });
 
 export default router;

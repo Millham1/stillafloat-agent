@@ -33,14 +33,6 @@
     "flow:wms-position-stale-estimate": {
       "reason": "Asking for a ship whose fix is over 20 minutes old buys a paid Live-AIS position on either box, so the estimate and dead-reckoned line are never exercised end to end; the fresh-fix path is. Would need a dev-only no-purchase mode for gate requests.",
       "since": "2026-10-08"
-    },
-    "job scheduleWmsAlerts": {
-      "reason": "The hourly watch sweep emails real subscribers and exposes no status over HTTP (no last-run time, no counts), so nothing can show it ran. Would need /api/wms/health to report the last sweep time and how many watches it checked.",
-      "since": "2026-10-08"
-    },
-    "job scheduleLiveAisCredits": {
-      "reason": "The four-hourly Live-AIS credit listener (index.ts) only writes a log line and, below its threshold, notifies Mark; nothing exposes the credit balance or the last check over HTTP, so no check can see that it ran or that credits remain. Would need /api/wms/health (or a token-gated status) to report credits remaining and the last check time.",
-      "since": "2026-10-08"
     }
   }
 }

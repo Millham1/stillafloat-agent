@@ -19,6 +19,7 @@ import { startShipTracker } from "./lib/ship-tracker";
 import { runWatchSweep } from "./lib/wms-alerts";
 import { sendPendingReminders, archiveStaleUnconfirmed, purgeBounced } from "./lib/subscriber-hygiene";
 import { checkPushHealth } from "./lib/push-health";
+import { registerJob, runJob, loadJobHealth } from "./lib/job-health";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -29,6 +30,23 @@ if (Number.isNaN(port) || port <= 0) {
 
 app.listen(port, "0.0.0.0", () => {
   logger.info({ port }, "Server listening on 0.0.0.0");
+  // Job-health ledger (lib/job-health.ts): every schedule…() below registers its cadence and
+  // runs its tick through runJob(), so GET /api/healthz/jobs can say what last ran and when.
+  // Jobs switched off on this box register as disabled with the flag that did it.
+  const off = (flag: string) => (process.env[flag] === "1" ? `${flag}=1 on this box` : undefined);
+  registerJob("scheduleYouTubeScan", { every: "on boot + every 6h", everyMs: 6 * 3_600_000, disabled: Boolean(off("DISABLE_YOUTUBE_SCAN")), disabledWhy: off("DISABLE_YOUTUBE_SCAN") });
+  registerJob("scheduleSocialPoster", { every: "every 10 min", everyMs: 10 * 60_000, disabled: Boolean(off("DISABLE_SOCIAL_POSTER")), disabledWhy: off("DISABLE_SOCIAL_POSTER") });
+  registerJob("scheduleDailyBrief", { every: "daily at DAILY_BRIEF_HOURS (polled every 5 min)", everyMs: 24 * 3_600_000, disabled: Boolean(off("DISABLE_DAILY_BRIEF")), disabledWhy: off("DISABLE_DAILY_BRIEF") });
+  registerJob("scheduleStormScan", { every: "on boot + hourly", everyMs: 3_600_000, disabled: Boolean(off("DISABLE_STORM_SCAN")), disabledWhy: off("DISABLE_STORM_SCAN") });
+  registerJob("scheduleWeeklyMarketing", { every: "daily at WEEKLY_MARKETING_HOUR (polled every 5 min; Tue/Thu/Fri do the weekly work)", everyMs: 24 * 3_600_000, disabled: Boolean(off("DISABLE_WEEKLY_MARKETING")), disabledWhy: off("DISABLE_WEEKLY_MARKETING") });
+  registerJob("scheduleNewsletterDelivery", { every: "every 5 min", everyMs: 5 * 60_000 });
+  registerJob("schedulePushHealth", { every: "on boot + every 6h", everyMs: 6 * 3_600_000, disabled: Boolean(off("DISABLE_PUSH_HEALTH")), disabledWhy: off("DISABLE_PUSH_HEALTH") });
+  registerJob("scheduleNewsPrerender", { every: "on boot + hourly", everyMs: 3_600_000 });
+  registerJob("scheduleGuidesPrerender", { every: "on boot + hourly", everyMs: 3_600_000 });
+  registerJob("scheduleWmsAlerts", { every: "hourly (first run 15 min after boot)", everyMs: 3_600_000, disabled: Boolean(off("DISABLE_WMS_ALERTS")), disabledWhy: off("DISABLE_WMS_ALERTS") });
+  registerJob("scheduleLiveAisCredits", { every: "on boot + every 4h", everyMs: 4 * 3_600_000, disabled: !liveAisEnabled(), disabledWhy: liveAisEnabled() ? undefined : "no LIVEAIS_API_KEY on this box" });
+  registerJob("scheduleSubscriberHygiene", { every: "daily at SUBSCRIBER_HYGIENE_HOUR (polled every 5 min)", everyMs: 24 * 3_600_000, disabled: Boolean(off("DISABLE_SUBSCRIBER_HYGIENE")), disabledWhy: off("DISABLE_SUBSCRIBER_HYGIENE") });
+  void loadJobHealth();
   // Editorial/news is owned entirely by the standalone news agent
   // (:3003, stillafloat-newsagent). The monorepo no longer contains or runs any
   // editorial scan — it only serves the website + dashboard and reads the
@@ -122,13 +140,7 @@ app.listen(port, "0.0.0.0", () => {
 // cruise-line news, emailed via the ops-manager Gmail sender with per-event
 // dedup. First tick waits 15 minutes so the AIS cache has positions to check.
 function scheduleWmsAlerts() {
-  const tick = async () => {
-    try {
-      await runWatchSweep();
-    } catch (err) {
-      logger.error({ err }, "WMS watch sweep failed");
-    }
-  };
+  const tick = () => runJob("scheduleWmsAlerts", () => runWatchSweep(), { logFail: "WMS watch sweep failed" });
   setTimeout(() => { tick().catch(() => {}); }, 15 * 60 * 1000);
   setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
   logger.info("WMS watch-alert scheduler active — hourly");
@@ -158,16 +170,15 @@ function scheduleSubscriberHygiene() {
     const { hour, date } = localHourDate();
     if (hour !== runHour || lastRunDate === date) return;
     lastRunDate = date;
-    try {
+    await runJob("scheduleSubscriberHygiene", async () => {
       const { reminded, failed } = await sendPendingReminders();
       const { archived } = await archiveStaleUnconfirmed();
       // Bounced rows are addresses that do not exist. Nothing cleared them until
       // 2026-08-26, so they accumulated in the table indefinitely.
       const { purged } = await purgeBounced();
       logger.info({ reminded, failed, archived, purged }, "Subscriber hygiene tick complete");
-    } catch (err) {
-      logger.error({ err }, "Subscriber hygiene tick failed");
-    }
+      return { reminded, failed, archived, purged };
+    }, { logFail: "Subscriber hygiene tick failed" });
   };
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
@@ -181,13 +192,7 @@ function scheduleSubscriberHygiene() {
 setSeaRouteLogger((meta, msg) => logger.warn(meta, msg));
 
 function scheduleNewsPrerender() {
-  const tick = async () => {
-    try {
-      await runNewsPrerender();
-    } catch (err) {
-      logger.error({ err }, "News prerender tick failed");
-    }
-  };
+  const tick = () => runJob("scheduleNewsPrerender", () => runNewsPrerender(), { logFail: "News prerender tick failed" });
   setTimeout(() => { tick().catch(() => {}); }, 40_000);
   setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
   logger.info("News prerender scheduler active — on boot + hourly");
@@ -209,16 +214,15 @@ function scheduleGuidesPrerender() {
     }
   };
   const tick = async () => {
-    try {
+    await runJob("scheduleGuidesPrerender", async () => {
       const r = await runGuidesPrerender();
       // Report the SLUG COUNT, not just "complete". A guide written to
       // platform_state is a 404 until this runs, and for the hour in between
       // nothing said which state the site was in — the log line read
       // "guides:5 pages:10" whether or not a sixth guide was waiting.
       logger.info(r, "Guides prerender tick");
-    } catch (err) {
-      logger.error({ err }, "Guides prerender tick failed");
-    }
+      return r;
+    }, { logFail: "Guides prerender tick failed" });
     // Isolated from the prerender's outcome: a failed guides tick still leaves
     // the news hubs and the static sections worth refreshing.
     await llms();
@@ -246,8 +250,7 @@ function scheduleLiveAisCredits() {
     logger.info("Live-AIS credit listener idle — no LIVEAIS_API_KEY");
     return;
   }
-  const tick = async () => {
-    try {
+  const tick = () => runJob("scheduleLiveAisCredits", async () => {
       const status = await checkLiveAisCredits();
       // Field names matter here: a human reads this line in a hurry. It used
       // to log `cap: 50` — the ALERT THRESHOLD — beside a spend figure, which
@@ -263,10 +266,8 @@ function scheduleLiveAisCredits() {
           dollarsUsed: Number((status.used * 0.02).toFixed(2)),
         }, "Live-AIS credit check");
       }
-    } catch (err) {
-      logger.error({ err }, "Live-AIS credit check failed");
-    }
-  };
+      return status ? { creditsRemaining: status.remaining, creditsUsed: status.used } : null;
+  }, { logFail: "Live-AIS credit check failed" });
   setTimeout(() => { tick().catch(() => {}); }, 70_000);
   setInterval(() => { tick().catch(() => {}); }, 4 * 60 * 60 * 1000);
   logger.info("Live-AIS credit listener active — on boot + every 4h");
@@ -277,13 +278,7 @@ function scheduleLiveAisCredits() {
 // (and harmless) until the Make webhooks are configured — unconfigured posts stay
 // scheduled and go out once the env vars land.
 function scheduleSocialPoster() {
-  const tick = async () => {
-    try {
-      await runDuePosts();
-    } catch (err) {
-      logger.error({ err }, "Social poster tick failed");
-    }
-  };
+  const tick = () => runJob("scheduleSocialPoster", () => runDuePosts(), { logFail: "Social poster tick failed" });
   setTimeout(() => { tick().catch(() => {}); }, 20_000);
   setInterval(() => { tick().catch(() => {}); }, 10 * 60 * 1000);
   logger.info("Social poster active — every 10m");
@@ -296,15 +291,13 @@ function scheduleSocialPoster() {
 // homepage went stale — run it on boot and every 6 hours.
 
 function scheduleYouTubeScan() {
-  const runScan = async () => {
-    try {
-      const res = await fetch(`http://localhost:${port}/api/youtube-scan`);
-      const body = await res.json() as { success?: boolean; videos?: unknown[] };
-      logger.info({ success: body.success, videos: body.videos?.length ?? 0 }, "Scheduled YouTube scan complete");
-    } catch (err) {
-      logger.error({ err }, "Scheduled YouTube scan failed");
-    }
-  };
+  const runScan = () => runJob("scheduleYouTubeScan", async () => {
+    const res = await fetch(`http://localhost:${port}/api/youtube-scan`);
+    const body = await res.json() as { success?: boolean; videos?: unknown[]; error?: string };
+    if (!res.ok || body.success === false) throw new Error(`youtube-scan answered ${res.status}: ${body.error ?? ""}`);
+    logger.info({ success: body.success, videos: body.videos?.length ?? 0 }, "Scheduled YouTube scan complete");
+    return { videos: body.videos?.length ?? 0 };
+  }, { logFail: "Scheduled YouTube scan failed" });
 
   // Initial scan shortly after boot (let the listener settle), then every 6 hours.
   setTimeout(() => { runScan().catch(() => {}); }, 10_000);
@@ -337,11 +330,7 @@ function scheduleDailyBrief() {
     const slot = dueBriefHour(hour, date, briefHours, sent);
     if (slot === null) return;
     sent.add(slotKey(date, slot));
-    try {
-      await runAndDeliverBrief({ update: slot !== briefHours[0] });
-    } catch (err) {
-      logger.error({ err }, "Daily brief tick failed");
-    }
+    await runJob("scheduleDailyBrief", () => runAndDeliverBrief({ update: slot !== briefHours[0] }), { logFail: "Daily brief tick failed" });
   };
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
@@ -459,7 +448,7 @@ function scheduleWeeklyMarketing() {
     }
     if (weekday !== "Tue" && weekday !== "Thu" && weekday !== "Fri") return;
     lastRunDate = date;
-    try {
+    await runJob("scheduleWeeklyMarketing", async () => {
       if (weekday === "Tue") {
         const draft = await stageWeeklyCommentary(); // picks the topic, writes it, nudges
         logger.info(
@@ -501,9 +490,8 @@ function scheduleWeeklyMarketing() {
           });
         }
       }
-    } catch (err) {
-      logger.error({ err }, "Weekly marketing tick failed");
-    }
+      return { weekday };
+    }, { logFail: "Weekly marketing tick failed" });
   };
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
@@ -514,13 +502,7 @@ function scheduleWeeklyMarketing() {
 // A newsletter now goes out one email every 45s, so a send outlives deploy restarts and its one
 // retry comes an hour later. The ledger on the draft is the truth; this just keeps it moving.
 function scheduleNewsletterDelivery() {
-  const tick = async () => {
-    try {
-      await resumeNewsletterDeliveries();
-    } catch (err) {
-      logger.error({ err }, "Newsletter delivery resume tick failed");
-    }
-  };
+  const tick = () => runJob("scheduleNewsletterDelivery", () => resumeNewsletterDeliveries(), { logFail: "Newsletter delivery resume tick failed" });
   setTimeout(() => { tick().catch(() => {}); }, 90_000);
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
   logger.info("Newsletter delivery scheduler active — resumes interrupted sends, runs the one retry");
@@ -535,27 +517,18 @@ function scheduleNewsletterDelivery() {
 // Boot + every 6h. Raises a deduped high-priority action (which reaches email)
 // when no device can receive a push.
 function schedulePushHealth() {
-  const tick = async () => {
-    try {
-      await checkPushHealth();
-    } catch (err) {
-      logger.error({ err }, "Push health tick failed");
-    }
-  };
+  const tick = () => runJob("schedulePushHealth", () => checkPushHealth(), { logFail: "Push health tick failed" });
   setTimeout(() => { tick().catch(() => {}); }, 60_000);
   setInterval(() => { tick().catch(() => {}); }, 6 * 60 * 60 * 1000);
   logger.info("Push-health scheduler active — on boot + every 6h");
 }
 
 function scheduleStormScan() {
-  const tick = async () => {
-    try {
-      const r = await runStormScan();
-      if (r.drafted || r.updated) logger.info(r, "Storm scan produced drafts");
-    } catch (err) {
-      logger.error({ err }, "Storm scan tick failed");
-    }
-  };
+  const tick = () => runJob("scheduleStormScan", async () => {
+    const r = await runStormScan();
+    if (r.drafted || r.updated) logger.info(r, "Storm scan produced drafts");
+    return r;
+  }, { logFail: "Storm scan tick failed" });
   setTimeout(() => { tick().catch(() => {}); }, 30_000);
   setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
   logger.info("Storm-alert scan scheduler active — on boot + hourly");

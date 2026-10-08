@@ -39,7 +39,7 @@
     {
       "id": "jobs.subscriber-hygiene-archives-unconfirmed",
       "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): both boxes have 0 pending subscribers; the archive step cannot be observed until GET /api/healthz/jobs (release-gate item 1) exists.",
+      "reason": "TIMING: the job-health ledger (GET /api/healthz/jobs, built 2026-10-08) now records the daily clean-up's runs and the check reads it; the ledger starts empty on first deploy, so the check is UNTESTABLE until the 10:00 Eastern run has happened once on each box (then it judges freshness and streak every sweep).",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
