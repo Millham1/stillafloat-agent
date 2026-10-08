@@ -530,10 +530,17 @@ export default [
       t.observe("featured video is a manual pick", pinned, "info");
 
       const problems = [];
-      // The newsletter reads the same pick (lib/newsletter.ts gatherFeaturedVideo): a pin wins in
-      // BOTH editions, skipping the language match that was added after 2026-07-09. So a pinned
-      // video in one language is the featured video of the other language's next issue.
-      if (pinned) problems.push(`Mark's pinned video ${f.videoId} has a${pickLang === "es" ? " Spanish" : "n English"} title, and the newsletter features the pin in BOTH editions, so the next ${pickLang === "es" ? "English" : "Spanish"} newsletter will feature ${pickLang === "es" ? "a Spanish" : "an English"} video`);
+      // Since 2026-10-08 the pick is language-aware: /api/youtube-featured?lang=es answers Mark's pin
+      // only when the pin is a Spanish video, else the newest Spanish upload (same for en), and the
+      // newsletter honours the pin only in its own edition. Each language's answer must be in that language.
+      t.observe("featured pick is Mark's pin (manual)", Boolean(f.manual), "info");
+      for (const lang of ["en", "es"]) {
+        const fl = t.json(await t.get(`/api/youtube-featured?lang=${lang}`));
+        t.matches(fl.videoId, YT_ID, `the ${lang} featured video id`);
+        const isEs = SPANISH_TITLE.test(String(fl.title || ""));
+        if (isEs !== (lang === "es")) problems.push(`the ${lang} featured video (${fl.videoId}, "${String(fl.title).slice(0, 50)}") is in the other language${fl.manual ? " — Mark's pin leaked into the wrong language" : ""}`);
+        if (pinned && pickLang === lang) t.ok(fl.videoId === f.videoId && fl.manual === true, `the ${lang} featured video should be Mark's pin ${f.videoId}, got ${fl.videoId} (manual=${fl.manual})`);
+      }
       // the saved drafts (the issue in review or the last one sent) — their video must match the edition
       let drafts = 0;
       for (const lang of ["en", "es"]) {
