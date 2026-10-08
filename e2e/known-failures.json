@@ -11,355 +11,356 @@
    "id": "news.feeds-agree",
    "since": "2026-10-02",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent (pm2 saf-newsagent) stopped since 2026-10-02, dev news is a June snapshot. ALSO a prod data defect: story carnival-cruise-ship-saves-nine-people-adrift-in-disabled-boat credits Cruise Hive/Cruise Radio with no source link.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "news.agent-alive-queue-readable",
    "since": "2026-10-02",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent stopped; port 3003 does not answer.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "news.agent-reachable-through-site",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev nginx does not include snippets/editorial-3003.conf, so /api/editorial-queue returns the homepage and /review 404s. Fix = add the snippet on the dev box via the deploy path.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "news.agent-actions-refuse-without-token",
    "since": "2026-10-02",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent stopped, so the token probe cannot connect.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "commentary.weekly-cadence",
    "since": "2026-06-18",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_WEEKLY_MARKETING=1; newest dev post 91 days old.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "commentary.youtube-cache-matches-channel",
    "since": "2026-06-18",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_YOUTUBE_SCAN=1 (deploy.yml, since 49c75b1).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "commentary.voice-note-transcription",
    "since": "2026-10-02",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev ops-manager venv has PyAV 19.0.0 (installed 2026-10-02), prod has 18.1.0; `av` is unpinned in saf-ops-manager requirements.txt. Fix = pin av in saf-ops-manager.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "affiliate.category-pages-show-products",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has 0 gear products. ALSO prod: air-travel category has 0 products while the hub links to it.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "affiliate.spanish-blurbs",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no products. ALSO prod: 11 of 33 products have no Spanish blurb.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "affiliate.hub-links-and-featured-pick",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no products. ALSO prod: EN hub featured button skips /api/go (clicks uncounted); ES hub never loads a featured product.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "ships.webcams-ships-in-frame",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): only testable 12:00–20:00 UTC (port day); the gate run was at 01:54 UTC. Re-run in the window, no waiver needed then.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "audience.turnstile-on-every-form",
    "since": "2026-10-02",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no Turnstile keys (empty turnstileSiteKey).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "audience.turnstile-enforced-by-server",
    "since": "2026-10-02",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no Turnstile keys, so a token-less sign-up is accepted there.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "audience.newsletter-email",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no confirmed Spanish subscriber and no Spanish draft.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "editorial.newsletter-preview-en",
    "since": "2026-07-09",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev English issue is a 2026-07-09 draft whose video answers oEmbed 401.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "editorial.newsletter-preview-es",
    "since": "2026-06-18",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no Spanish newsletter issue (DISABLE_WEEKLY_MARKETING).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "editorial.approved-stories-for-newsletter",
    "since": "2026-10-02",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent stopped; newest approved story 2026-06-29.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "ops.social-calendar",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev social poster disabled, calendar empty. ALSO prod: page shows 86 'scheduled' when 4 are waiting; 82 skipped posts have no badge.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "ops.ai-visibility",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev gets no AI-assistant traffic; every weekly count is 0.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "ops.finance-pages",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev Supabase project has 0 transactions and 0 subscriptions.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "ops.finance-every-receipt-complete",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no finance data. ALSO prod: 9 of 32 captured transactions have no date, 3 also no amount.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "ops.youtube-analytics",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev ops manager has no YouTube Analytics authorisation (503).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "ops.search-console",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev ops manager has no Search Console authorisation (503).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "ops.group-page-public",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no live Spanish group page and no Turnstile site key.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "flows.news-reader-journey",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev gear list is empty, so story gear links land on 'being curated'.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "flows.newsletter-links",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no Spanish newsletter issue; English draft is 90 days old and pending.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "jobs.social-poster-handles-due-posts",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_SOCIAL_POSTER=1 with 0 scheduled posts.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "jobs.weekly-marketing-drafts-current",
    "since": "2026-06-18",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_WEEKLY_MARKETING=1.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "jobs.newsletter-delivery-never-stuck",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has never sent a newsletter, so there is no delivery ledger.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "jobs.subscriber-hygiene-archives-unconfirmed",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): both boxes have 0 pending subscribers; the archive step cannot be observed until GET /api/healthz/jobs (release-gate item 1) exists.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "jobs.news-daily-scan-ran",
    "since": "2026-10-02",
    "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent stopped.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "news.editorial-queue-page-shows-queue",
    "since": "2026-05-01",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /editorial-queue.html fetches /api/editorial-queue without a token, so it can only ever say 'currently unavailable'.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "commentary.spanish-twin-complete",
    "since": "2026-09-05",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: prod post e5a54688 has no title_es and empty body_es; dev post 88628bbf has no body_es (data).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "commentary.youtube-featured-pick",
    "since": "2026-06-18",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: neither homepage reads /api/youtube-featured since 7e4fd05; the manual pin becomes the Spanish newsletter's featured video too.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "commentary.favorites-list",
    "since": "2026-05-25",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: 0 favorites on both boxes; the page shows two 'Coming soon' boxes (content).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "commentary.favorites-spanish-twin",
    "since": "2026-05-25",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: Spanish navbar 'Favoritos' points to English /favorites.html; no /es/favorites.html exists.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "affiliate.pages-findable-in-search",
    "since": "2026-05-25",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: 6 ES category pages declare the EN page canonical; 7 gear pages missing from sitemap.xml; no hreflang pairs on 12 category pages.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "cabins.cabin-check-matches-deck-map",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: Wonder of the Seas answers quote Royal Caribbean Blog word for word and tell sea-facing balconies 8272/8732 they 'face inward' (content, EN+ES, prod same).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "cabins.guides-no-orphan-pages",
    "since": "2026-09-30",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: orphan /es/guides/como-elegir-tu-primer-crucero.html on disk with no guide record (prod 10 pages for 9 guides).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "cabins.concierge-language-twins",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /room-concierge.html has no hreflang links while the ES twin declares both.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "cabins.spanish-request-reaches-mark-as-spanish",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /es/cabin-request.html posts to /api/contact without preferred_lang; stored as 'en'.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "cabins.request-page-escapes-link-text",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: SECURITY: ?ship= and ?cabins= written to innerHTML unescaped on EN and ES request pages; no Content-Security-Policy header. Fix before or with the promotion.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "audience.spanish-unsubscribe-page",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /es/unsubscribe-confirmed.html is 404 on both boxes; /api/unsubscribe always redirects to the English page.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "audience.turnstile-on-ship-tracking-signup",
    "since": "2026-10-02",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /track-ship.html EN+ES has no Turnstile and POST /api/wms/track-signup never checks it, though it sends the same confirmation email as /api/subscribe.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "ops.social-pulse-matches-stats",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: Overview social panel reads 'social-stats' expecting {latest, previous}; the ingest route stores a list. Panel can never show data.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "pages.crawl-advisor-and-signup",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /es/subscribe-verified.html indexable; /es/subscribe.html has no site menu; subscribe.html missing from ES_PAGES.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "pages.crawl-gear-hub",
    "since": "2026-05-25",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: gear category pages have no <h1>; ES canonical points to EN; no hreflang; /es/affiliate.html never calls /api/affiliate-items.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "pages.crawl-gear-categories",
    "since": "2026-05-25",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: same root causes as crawl-gear-hub; /affiliate/health-at-sea.html missing from sitemap.xml.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "pages.crawl-weather-cams-favorites",
    "since": "2026-05-25",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /es/favorites.html returns 404.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "pages.crawl-cabins",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /cabin-finder.html orphaned, English-only, not in sitemap; its hero image /assets/images/concierge/cta.jpg is 404.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "pages.crawl-commentary-and-stories",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: /es/translate-loading.html indexable; /es/story.html loads navbar.js twice.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "pages.crawl-policies-and-owner",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: privacy.html and terms.html missing from ES_PAGES, so the language switch goes to the ES home page.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "pages.navbar-menu",
    "since": "2026-05-25",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: Spanish menu 'Favoritos' opens the English /favorites.html.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "pages.missing-page-404",
    "since": "2026-10-08",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: an unknown /api/ address answers HTTP 200 with the home page instead of 404.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "flows.storm-spanish-reader",
    "since": "2026-07-04",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: storm headline and 'what this means' text are English on /es/ and /es/storm-watch.html (audit high static-06).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "flows.weather-journey",
    "since": "2026-05-01",
    "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: Spanish homepage tiles open /es/forecast.html (404); Spanish tracker 10-day link has no lang=es (audit medium, one-line fix).",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "editorial.action-queue-matches-its-sources",
    "since": "2026-09-11",
    "reason": "SITE PROBLEM on the release candidate (dev-only today, latent on prod): 54 actions pending but only the newest 30 are shown; Lowell's all-clear (waiting since 2026-09-11) fell off the brief.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
   },
   {
    "id": "editorial.daily-brief-and-its-email",
    "since": "2026-10-08",
    "reason": "DEV MIRROR GAP: dev runs PUBLIC_URL=http://178.156.154.144:8080, so the brief email's review link is http and points at the dev box itself (intended on dev; prod's PUBLIC_URL is https). The check is right for prod.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
   {
    "id": "audience.contact-refusals",
    "since": "2026-10-08",
    "reason": "GATE TOOLING vs SITE LIMITER: a full sweep sends 11 POST /api/contact probes (6 here, 3 cabins, 2 pages) from one address; the contact limiter allows 5 per hour per visitor and is checked BEFORE field validation, so the gate's own later probes get 429. Since 60d15a1 every visitor has a real address, so this now bites. Decision needed: count only submissions that pass field checks toward the limit, or run this check first.",
-   "decision": "Listed 2026-10-08 by Claude from the first full gate run. NOT yet shown to or accepted by Mark; the list goes to him as one document (iCloud Downloads) for a yes/no per entry."
+   "decision": "Mark 2026-10-08: KEEP the 5/h contact limiter as is; the gate waits an hour between full dev sweeps (site-e2e.sh refuses sooner). REVIEW this rule after the current dev→main merge completes."
   }
- ]
+ ],
+ "_rulings_2026-10-08": "Mark: (1) fix the dev-mirror gaps, (2) fix the pre-existing prod defects, (3) keep the contact limiter, review after the merge. Nothing here is a permanent waiver."
 }
