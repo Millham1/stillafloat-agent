@@ -1,8 +1,8 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 21,
-    "fixed_and_removed_2026-10-08": 41,
+    "listed": 20,
+    "fixed_and_removed_2026-10-08": 42,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -35,12 +35,6 @@
       "since": "2026-06-18",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_YOUTUBE_SCAN=1 (deploy.yml, since 49c75b1).",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "affiliate.category-pages-show-products",
-      "since": "2026-10-08",
-      "reason": "CONTENT (Mark): the air-travel gear category has 0 products on BOTH boxes while the hub links to it, so the page shows 'Coming soon'. Dev now mirrors prod (33 products seeded 2026-10-08). Needs Mark: add air-travel products, or say the card comes off the hub until there are some.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — waits on Mark's content call (products or drop the card). Entry stays until the category has products or the card is gone."
     },
     {
       "id": "audience.newsletter-email",
