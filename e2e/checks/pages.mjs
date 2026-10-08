@@ -838,13 +838,17 @@ export default [
       // a Spanish-language browser on the English page is sent to /es/<page>, and that opens as a Spanish page
       const esPages = readEsPages(nav.text);
       t.ok(esPages && esPages.size >= 5, "could not read ES_PAGES from navbar.js");
+      // entries are root-relative English paths since 2026-10-08 (bare filenames before: the gear category
+      // pages live in /affiliate/, which a filename cannot say); the twin is /es + the same path
       for (const f of esPages) {
-        const r = run(`/${f}`, { languages: ["es-MX", "es"] });
-        const sw = hrefOfClass(run(`/${f}`).desktop, "sa-lang-link");
-        if (r.redirect !== `/es/${f}`) problems.push(`a Spanish-language browser on /${f} is sent to ${r.redirect || "nowhere"}, not /es/${f}`);
-        if (sw !== `/es/${f}`) problems.push(`the "En Español" link on /${f} opens ${sw || "nothing"}, not /es/${f}`);
-        const p = await get(`/es/${f}`);
-        if (!isRealPage(p) || !H.htmlLang(p.text).toLowerCase().startsWith("es")) problems.push(`navbar.js sends Spanish readers to /es/${f}, which does not open as a Spanish page (HTTP ${p.status})`);
+        const en = f.startsWith("/") ? f : `/${f}`;
+        const es = `/es${en}`;
+        const r = run(en, { languages: ["es-MX", "es"] });
+        const sw = hrefOfClass(run(en).desktop, "sa-lang-link");
+        if (r.redirect !== es) problems.push(`a Spanish-language browser on ${en} is sent to ${r.redirect || "nowhere"}, not ${es}`);
+        if (sw !== es) problems.push(`the "En Español" link on ${en} opens ${sw || "nothing"}, not ${es}`);
+        const p = await get(es);
+        if (!isRealPage(p) || !H.htmlLang(p.text).toLowerCase().startsWith("es")) problems.push(`navbar.js sends Spanish readers to ${es}, which does not open as a Spanish page (HTTP ${p.status})`);
       }
       t.observe("navbar version", (src.split("?")[1] || ""));
       t.observe("English menu", menus.en.join(" "));

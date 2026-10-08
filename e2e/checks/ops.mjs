@@ -264,7 +264,8 @@ export default [
       t.ok(pulse.instagram.connected === true,
         `the dashboard's social panel says Instagram is not connected ("${String(pulse.instagram.reason || "").slice(0, 80)}") while the stats feed holds ${stats.items.length} snapshots — the ingest route that runs (social.ts) stores a list of snapshots under the same key, and the panel looks for a single "latest" snapshot that is never written`);
       t.equal(pulse.instagram.followers, ig, "Instagram followers: dashboard panel vs the stats feed");
-      t.fresh(pulse.updated_at, 26, "the dashboard social panel's snapshot");
+      // the panel shows the feed's newest snapshot; whether THAT is fresh is judged below, per box
+      t.equal(pulse.updated_at, stats.summary.latestAt, "the dashboard social panel's snapshot time vs the feed's newest");
       // A real account's follower count is not zero for a month: zero means the feed reads the wrong thing.
       const igSeen = stats.items.filter((s) => Number.isInteger(s.instagram?.followers));
       t.ok(ig > 0, `every one of the ${igSeen.length} Instagram snapshots since ${String(stats.summary.firstAt).slice(0, 10)} reports 0 followers — the Make "Social Stats" scenario is not reading the real count`);
