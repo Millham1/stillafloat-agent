@@ -1,8 +1,8 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 28,
-    "fixed_and_removed_2026-10-08": 34,
+    "listed": 26,
+    "fixed_and_removed_2026-10-08": 36,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -109,12 +109,6 @@
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
-      "id": "ops.group-page-public",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no live Spanish group page and no Turnstile site key.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
       "id": "flows.newsletter-links",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev has no Spanish newsletter issue; English draft is 90 days old and pending.",
@@ -161,12 +155,6 @@
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): the panel's read of the snapshot list was FIXED 2026-10-08 (06e3ccb: panel = feed's newest snapshot, verified on dev), but dev receives no Make 'Social Stats' snapshots (newest 2026-09-05), so the feed-freshness part is UNTESTABLE on dev. Passes on prod once promoted if the Make scenario is still posting.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (point a copy of the Make Social Stats scenario at dev, or seed a snapshot each sweep). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "editorial.daily-brief-and-its-email",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP: dev runs PUBLIC_URL=http://178.156.154.144:8080, so the brief email's review link is http and points at the dev box itself (intended on dev; prod's PUBLIC_URL is https). The check is right for prod.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
       "id": "audience.contact-refusals",
