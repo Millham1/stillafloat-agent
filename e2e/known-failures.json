@@ -1,8 +1,8 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 18,
-    "fixed_and_removed_2026-10-08": 44,
+    "listed": 16,
+    "fixed_and_removed_2026-10-08": 46,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -22,12 +22,6 @@
       "id": "news.agent-reachable-through-site",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev nginx does not include snippets/editorial-3003.conf, so /api/editorial-queue returns the homepage and /review 404s. Fix = add the snippet on the dev box via the deploy path.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "commentary.weekly-cadence",
-      "since": "2026-06-18",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_WEEKLY_MARKETING=1; newest dev post 91 days old.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
@@ -70,12 +64,6 @@
       "id": "jobs.social-poster-handles-due-posts",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_SOCIAL_POSTER=1 with 0 scheduled posts.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "jobs.weekly-marketing-drafts-current",
-      "since": "2026-06-18",
-      "reason": "DEV MIRROR GAP: DISABLE_WEEKLY_MARKETING is now 0 on dev (2026-10-08) and the scheduler is active; the check wants this week's Tuesday commentary draft — written by hand on 2026-10-08 via POST /api/commentary/draft; passes once the dated draft is in place / after next Tuesday's run.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
