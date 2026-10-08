@@ -1,8 +1,8 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 26,
-    "fixed_and_removed_2026-10-08": 36,
+    "listed": 21,
+    "fixed_and_removed_2026-10-08": 41,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -34,12 +34,6 @@
       "id": "commentary.youtube-cache-matches-channel",
       "since": "2026-06-18",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_YOUTUBE_SCAN=1 (deploy.yml, since 49c75b1).",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "commentary.voice-note-transcription",
-      "since": "2026-10-02",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev ops-manager venv has PyAV 19.0.0 (installed 2026-10-02), prod has 18.1.0; `av` is unpinned in saf-ops-manager requirements.txt. Fix = pin av in saf-ops-manager.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
@@ -82,30 +76,6 @@
       "id": "ops.ai-visibility",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev gets no AI-assistant traffic; every weekly count is 0.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "ops.finance-pages",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev Supabase project has 0 transactions and 0 subscriptions.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "ops.finance-every-receipt-complete",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev Supabase has no finance data. PROD side FIXED 2026-10-08: the 9 undated captured transactions (fal invoices, 1 Hetzner) got txn_date = capture date; check PASSES on prod (read-only run 21:55Z). Follow-up: the ops-manager extractor should default txn_date to the email date (saf-ops-manager repo).",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "ops.youtube-analytics",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev ops manager has no YouTube Analytics authorisation (503).",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "ops.search-console",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev ops manager has no Search Console authorisation (503).",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
