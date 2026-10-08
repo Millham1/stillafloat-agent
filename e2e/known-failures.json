@@ -1,8 +1,8 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 40,
-    "fixed_and_removed_2026-10-08": 22,
+    "listed": 39,
+    "fixed_and_removed_2026-10-08": 23,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -191,12 +191,6 @@
       "since": "2026-05-01",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): the page itself was FIXED 2026-10-08 (retired → hands off to the news agent's /review, noindex; verified on dev a4a6e5c). The check's last step reads the queue from the news agent, which is stopped on dev (pm2 saf-newsagent, since 2026-10-02) → 404. Passes once the dev news agent runs.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (restart dev news agent via the deploy path; same root cause as the news.* entries). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "commentary.spanish-twin-complete",
-      "since": "2026-09-05",
-      "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: prod post e5a54688 has no title_es and empty body_es; dev post 88628bbf has no body_es (data).",
-      "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
     },
     {
       "id": "commentary.favorites-list",
