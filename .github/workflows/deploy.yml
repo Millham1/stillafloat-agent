@@ -213,7 +213,10 @@ jobs:
             # :5000 on dev). Point the brief's ops feed at it so the sections light
             # up whenever the gated dev ops-manager is enabled.
             export OPS_MANAGER_URL=http://127.0.0.1:5001
-            export DISABLE_YOUTUBE_SCAN=1
+            # The YouTube scan (routes/youtube.ts) only READS the channel (RSS + Data API) and
+            # writes the local video cache; it never edits a video. It ran on prod only until
+            # 2026-10-08 (Mark: dev must mirror prod, read-only). The thing that edits the live
+            # channel is the ops-manager optimizer, kept OFF on dev with DISABLE_YT_OPTIMIZER=1.
             unset NODE_ENV
             # NOTE (2026-07-04): schema is managed via supabase/migrations
             # (applied dev-first, then prod) — NOT drizzle. The drizzle schema is
