@@ -1,8 +1,8 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 38,
-    "fixed_and_removed_2026-10-08": 24,
+    "listed": 36,
+    "fixed_and_removed_2026-10-08": 26,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -105,7 +105,7 @@
     {
       "id": "ops.social-calendar",
       "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev social poster disabled, calendar empty. ALSO prod: page shows 86 'scheduled' when 4 are waiting; 82 skipped posts have no badge.",
+      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev social poster disabled (DISABLE_SOCIAL_POSTER=1), calendar empty, so the page cannot be tested on dev. PROD side FIXED in code 2026-10-08 (74c6ca2: skipped posts show ⏭ skipped with the reason instead of 🕒 scheduled) — rides the promotion.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
@@ -199,22 +199,10 @@
       "decision": "Mark 2026-10-08 (19:55Z): 'I have not decided on favorites yet, ignore that one piece' — CONTENT, waits for Mark's picks; not a release blocker and not to be chased. Entry stays until the picks exist."
     },
     {
-      "id": "cabins.cabin-check-matches-deck-map",
-      "since": "2026-10-08",
-      "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: Wonder of the Seas answers quote Royal Caribbean Blog word for word and tell sea-facing balconies 8272/8732 they 'face inward' (content, EN+ES, prod same).",
-      "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
-    },
-    {
       "id": "ops.social-pulse-matches-stats",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): the panel's read of the snapshot list was FIXED 2026-10-08 (06e3ccb: panel = feed's newest snapshot, verified on dev), but dev receives no Make 'Social Stats' snapshots (newest 2026-09-05), so the feed-freshness part is UNTESTABLE on dev. Passes on prod once promoted if the Make scenario is still posting.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (point a copy of the Make Social Stats scenario at dev, or seed a snapshot each sweep). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "editorial.action-queue-matches-its-sources",
-      "since": "2026-09-11",
-      "reason": "SITE PROBLEM on the release candidate (dev-only today, latent on prod): 54 actions pending but only the newest 30 are shown; Lowell's all-clear (waiting since 2026-09-11) fell off the brief.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — site defect to be fixed in this release. Entry stays listed only until the check passes."
     },
     {
       "id": "editorial.daily-brief-and-its-email",
