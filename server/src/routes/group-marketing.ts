@@ -7,6 +7,7 @@ import { llmJson } from "../lib/llm";
 import { verifyTurnstile } from "../lib/turnstile";
 import { notifyMark } from "../lib/notify";
 import { hashForAudit } from "../lib/group-secure";
+import { clientIp } from "../lib/client-ip";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, missingAnswers, newShareCode, normalizeAnswers, retryNote,
   shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
@@ -325,7 +326,7 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
   try {
     const code = String(req.params["code"]);
     if (!CODE.test(code)) return res.status(404).json({ success: false, error: "Not found" });
-    const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.ip || "unknown";
+    const ip = clientIp(req);
     if (limited(ip)) return res.status(429).json({ success: false, error: "Too many requests. Please email mark@stillafloatcruising.com." });
 
     const body = (req.body ?? {}) as Row;

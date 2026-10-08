@@ -23,6 +23,7 @@ import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import { sendVerificationEmail } from "./subscribe";
 import { verificationSendCap, logCapHit, type SendCap } from "../lib/verification-send-cap";
+import { clientIp } from "../lib/client-ip";
 import {
   rollingWindow, signupPath, trackingEmail, verifyWatchSig, watchStopUrl, WATCH_WINDOW_DAYS, type WatchWindow,
 } from "../lib/ship-watch";
@@ -77,10 +78,6 @@ export interface TrackSignupDeps {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SOURCE_RE = /^[a-z-]{1,24}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function clientIp(req: Request): string {
-  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
-}
 
 export function createTrackSignupRouter(deps: TrackSignupDeps = defaultTrackSignupDeps): IRouter {
   const router: IRouter = Router();

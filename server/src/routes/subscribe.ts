@@ -9,6 +9,7 @@ import { verificationSendCap, logCapHit, type SendCap } from "../lib/verificatio
 import { activatePendingWatches } from "../lib/pending-watches";
 import { WATCH_WINDOW_DAYS } from "../lib/ship-watch";
 import { signLink, verifyLink } from "../lib/link-signing";
+import { clientIp } from "../lib/client-ip";
 
 const router = Router();
 
@@ -28,11 +29,6 @@ function ipLimiter(max = 5, windowMs = 60 * 60 * 1000): (ip: string) => boolean 
     entry.count++;
     return false;
   };
-}
-
-function clientIp(req: Request): string {
-  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
-    || req.socket?.remoteAddress || "unknown";
 }
 
 // Links in a subscriber's inbox must always be the public site. Deriving them from

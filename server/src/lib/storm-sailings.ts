@@ -11,6 +11,7 @@ import { logger } from "./logger";
 import { portBySlug, distanceKm, CRUISE_LOCATIONS } from "./ports";
 import { resolvePortSlug, resolvePortName } from "./port-resolve";
 import { groundsForPoint } from "./storm-grounds";
+import { readAllRows } from "./read-all";
 
 /** Forward-looking deployments whose region overlaps the storm's grounds and
  *  whose season contains any part of the forecast window. Complements the
@@ -180,7 +181,7 @@ export function plannedRowsInGrounds(
   return [...byShip.values()].sort((a, b) => a.start_date.localeCompare(b.start_date) || a.ship_name.localeCompare(b.ship_name));
 }
 
-// The window query returns ~1,000 rows with their port lists; every live alert
+// The window query returns 1,000–2,000 rows with their port lists; every live alert
 // asks for the same window during one scan or one dashboard load, so the raw
 // rows are kept for a minute and the grounds filter runs in memory.
 const PLANNED_CACHE_MS = 60_000;
@@ -191,18 +192,23 @@ async function plannedRowsForWindow(windowStart: string, windowEnd: string): Pro
   const hit = plannedCache.get(key);
   if (hit && Date.now() - hit.at < PLANNED_CACHE_MS) return hit.rows;
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  // Paged (2026-10-08): PostgREST caps a response at 1,000 rows and `.limit(3000)`
+  // never raised it. A live storm's window held 1,076–1,128 rows, so 7–11% of
+  // sailings were silently dropped and their ships never listed or pinned.
+  // `ref` is UNIQUE NOT NULL, so ordering by it makes the pages disjoint.
+  const { rows: data, error } = await readAllRows<PlannedSailingRow>((from, to) => supabase
     .from("planned_sailings")
     .select("ship_name, operator, source, start_date, end_date, ports")
     .lte("start_date", windowEnd)
     .or(`end_date.gte.${windowStart},end_date.is.null`)
-    .limit(3000);
+    .order("ref")
+    .range(from, to) as unknown as PromiseLike<{ data: PlannedSailingRow[] | null; error: { message: string } | null }>);
   if (error) {
     // A read failure pins nothing extra; the other two sources still apply.
-    logger.warn({ err: error, windowStart, windowEnd }, "storm-sailings: planned_sailings read failed");
+    logger.warn({ err: error, windowStart, windowEnd, partialRows: data.length }, "storm-sailings: planned_sailings read failed");
     return [];
   }
-  const rows = (data ?? []) as unknown as PlannedSailingRow[];
+  const rows = data;
   plannedCache.set(key, { at: Date.now(), rows });
   return rows;
 }

@@ -26,6 +26,7 @@ import {
   type ClickInput,
 } from "../lib/affiliate-clicks";
 import type { AffiliateItem } from "./affiliate";
+import { clientIp } from "../lib/client-ip";
 
 const CACHE_MS = 10 * 60 * 1000;
 const RATE_LIMIT_PER_MIN = 60;
@@ -63,12 +64,6 @@ function targetUrlFor(item: AffiliateItem): string {
   const smart = (item.smartStrip || "").trim();
   const raw = /^https?:\/\//i.test(smart) ? smart : (item.affiliateLink || "").trim();
   return raw ? ensureAffiliateTag(raw) : "";
-}
-
-function clientIp(req: Request): string {
-  const fwd = req.headers["x-forwarded-for"];
-  if (typeof fwd === "string" && fwd) return fwd.split(",")[0]!.trim();
-  return req.socket?.remoteAddress || "unknown";
 }
 
 export function createGoRouter(deps: GoRouterDeps = defaultGoRouterDeps): IRouter {

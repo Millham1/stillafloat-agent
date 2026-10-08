@@ -36,6 +36,7 @@ import { obstructionLine, placementLines } from "../lib/cabin-placement.js";
 import { logger } from "../lib/logger";
 import { llmJson, anthropicConfigured } from "../lib/llm";
 import { factsSentence, type CabinFacts } from "../lib/cabin-facts-sentence";
+import { clientIp } from "../lib/client-ip";
 import {
   normalizeAnswers, pickArchetype, selectCabins, selectionNote,
   shipTypeInventory, zonesForCabin, zoneSign, classifyCategory, satisfies,
@@ -1601,10 +1602,7 @@ router.post("/cabins/session", async (req: Request, res: Response) => {
   // landed — because there is nothing here worth probing for.
   res.status(204).end();
   try {
-    const ip =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-      req.socket?.remoteAddress ||
-      "unknown";
+    const ip = clientIp(req);
     if (sessionRateLimited(ip)) return;
 
     const body = (req.body ?? {}) as Record<string, unknown>;

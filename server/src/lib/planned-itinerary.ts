@@ -12,6 +12,7 @@
 // agree, so see mergeItineraries() for how that is resolved.
 import { getSupabase } from "./persistence";
 import { logger } from "./logger";
+import { readAllRows } from "./read-all";
 
 export interface PlannedRow {
   ship_name: string;
@@ -77,11 +78,16 @@ export async function itinerariesFor(
   if (!names.length) return out;
 
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  // Paged (2026-10-08): 67 pinned ships already needed 869 rows; PostgREST stops
+  // at 1,000 with no error, which would silently re-arm the guesswork for the
+  // ships beyond it. `ref` is UNIQUE NOT NULL, so the pages are disjoint.
+  const { rows: data, error } = await readAllRows<PlannedRow>((from, to) => supabase
     .from("planned_sailings")
     .select("ship_name, source, start_date, end_date, ports")
     .in("ship_name", names)
-    .lte("start_date", date);
+    .lte("start_date", date)
+    .order("ref")
+    .range(from, to) as unknown as PromiseLike<{ data: PlannedRow[] | null; error: { message: string } | null }>);
   if (error) {
     // A read failure must not look like "no itinerary anywhere", which would
     // silently re-arm the guesswork. Log loudly and return nothing; the caller
@@ -91,7 +97,7 @@ export async function itinerariesFor(
   }
 
   const byShip = new Map<string, PlannedRow[]>();
-  for (const row of (data ?? []) as PlannedRow[]) {
+  for (const row of data) {
     if (!covers(row, date)) continue;
     const key = row.ship_name.trim().toLowerCase();
     const list = byShip.get(key) ?? [];

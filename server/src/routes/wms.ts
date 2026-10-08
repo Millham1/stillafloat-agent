@@ -20,6 +20,7 @@ import { estimatePosition, routeLine, nearbyShips, NEARBY_RADIUS_NM } from "../l
 import { plannedRouteFor } from "../lib/planned-route-service";
 import { staleForInquiry } from "../lib/position-provider";
 import { gapPaths, seaRoute } from "../lib/sea-route";
+import { clientIp } from "../lib/client-ip";
 
 const router: IRouter = Router();
 
@@ -36,11 +37,6 @@ function rateLimited(ip: string, max = 30): boolean {
   entry.count++;
   return false;
 }
-function clientIp(req: Request): string {
-  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
-    || req.socket?.remoteAddress || "unknown";
-}
-
 // ── Subscriber verification (10-min cache so polling doesn't hammer the DB) ──
 interface SubInfo { id: string; name: string; lang: string; tier: string }
 const subCache = new Map<string, { sub: SubInfo | null; expiresAt: number }>();

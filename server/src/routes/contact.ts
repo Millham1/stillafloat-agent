@@ -3,6 +3,7 @@ import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { sendMail } from "../lib/mailer";
 import { verifyTurnstile } from "../lib/turnstile";
+import { clientIp } from "../lib/client-ip";
 
 const router = Router();
 
@@ -123,10 +124,7 @@ router.get("/public-config", (_req: Request, res: Response) => {
 // ── POST /api/contact ────────────────────────────────────────────
 router.post("/contact", async (req: Request, res: Response) => {
   try {
-    const ip =
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
-      req.socket?.remoteAddress ||
-      "unknown";
+    const ip = clientIp(req);
 
     if (isRateLimited(ip)) {
       return res
