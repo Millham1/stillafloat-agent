@@ -1,8 +1,8 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 15,
-    "fixed_and_removed_2026-10-08": 47,
+    "listed": 14,
+    "fixed_and_removed_2026-10-08": 48,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
@@ -34,12 +34,6 @@
       "id": "editorial.approved-stories-for-newsletter",
       "since": "2026-10-02",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent stopped; newest approved story 2026-06-29.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "ops.social-calendar",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev social poster disabled (DISABLE_SOCIAL_POSTER=1), calendar empty, so the page cannot be tested on dev. PROD side FIXED in code 2026-10-08 (74c6ca2: skipped posts show ⏭ skipped with the reason instead of 🕒 scheduled) — rides the promotion.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
