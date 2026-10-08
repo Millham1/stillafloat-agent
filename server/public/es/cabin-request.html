@@ -120,9 +120,11 @@ const ship = (P.get("ship") || "").trim();
 const cabins = (P.get("cabins") || "").trim();
 
 const picksEl = document.getElementById("picks");
+// URL values are untrusted: escape before they touch innerHTML (e2e cabins.request-page-escapes-link-text, 2026-10-08).
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 if (ship || cabins){
-  picksEl.innerHTML = `${ship ? `<div class="ship">${ship}</div>` : ""}
-    ${cabins ? `<div class="cabs">Camarote${cabins.includes(",") ? "s" : ""} ${cabins}</div>` : ""}`;
+  picksEl.innerHTML = `${ship ? `<div class="ship">${esc(ship)}</div>` : ""}
+    ${cabins ? `<div class="cabs">Camarote${cabins.includes(",") ? "s" : ""} ${esc(cabins)}</div>` : ""}`;
 } else {
   picksEl.innerHTML = `<div class="none">Sin camarotes adjuntos — no pasa nada, cuéntame qué tienes en mente en las notas.</div>`;
 }
@@ -176,6 +178,7 @@ document.getElementById("crForm").addEventListener("submit", async e => {
         first_name: firstName, last_name: lastName, email,
         num_travelers: parseInt(numTrav), travel_dates: dates,
         referral_source: "cabin-concierge-es",
+        preferred_lang: "es",
         notes: (context + (notes ? "\n" + notes : "")).slice(0, 1000),
         "cf-turnstile-response": turnstileToken || null,
       }),

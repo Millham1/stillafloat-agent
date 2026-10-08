@@ -236,4 +236,39 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://stillafloatcruising.com/terms.html"/>
   </url>
 
+  <url>
+    <loc>https://stillafloatcruising.com/affiliate/health-at-sea.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://stillafloatcruising.com/es/affiliate/air-travel.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://stillafloatcruising.com/es/affiliate/cabin-essentials.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://stillafloatcruising.com/es/affiliate/clothing.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://stillafloatcruising.com/es/affiliate/cruise-fun.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://stillafloatcruising.com/es/affiliate/great-ideas.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://stillafloatcruising.com/es/affiliate/health-at-sea.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
 </urlset>

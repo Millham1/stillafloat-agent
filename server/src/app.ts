@@ -89,6 +89,12 @@ for (const f of ["brief.html", "brief-manifest.json", "apple-touch-icon.png", "i
   });
 }
 
+// An unknown /api/ address is an error, not a page: answering the home page with
+// HTTP 200 hid every mistyped or unmounted route (e2e pages.missing-page-404, 2026-10-08).
+app.all("/api/{*path}", (_req, res) => {
+  res.status(404).json({ ok: false, success: false, error: "Not found" });
+});
+
 // Fallback: serve the website index.html for unmatched paths.
 app.get("/{*path}", (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));

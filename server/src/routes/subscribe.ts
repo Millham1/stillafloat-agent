@@ -549,17 +549,22 @@ router.post("/subscribers/mark-bounced", async (req, res) => {
 
 // ── GET /api/unsubscribe?email=&sig= ─────────────────────────────
 router.get("/unsubscribe", async (req, res) => {
-  const { email, sig } = req.query as Record<string, string>;
+  const { email, sig, lang } = req.query as Record<string, string>;
+  // Spanish subscribers land on the Spanish page (e2e audience.spanish-unsubscribe-page,
+  // 2026-10-08): the subscriber's own language wins, ?lang=es on the link is the fallback.
+  let page = lang === "es" ? "/es/unsubscribe-confirmed.html" : "/unsubscribe-confirmed.html";
 
-  if (!email || !sig) return res.redirect("/unsubscribe-confirmed.html?result=invalid");
+  if (!email || !sig) return res.redirect(`${page}?result=invalid`);
 
   if (!verifyLink("unsubscribe", email, sig)) {
     logger.warn({ email }, "Unsubscribe: invalid sig");
-    return res.redirect("/unsubscribe-confirmed.html?result=invalid");
+    return res.redirect(`${page}?result=invalid`);
   }
 
   try {
     const supabase = getSupabase();
+    const { data: who } = await supabase.from("subscribers").select("lang").eq("email", email.toLowerCase()).maybeSingle();
+    if ((who as { lang?: string } | null)?.lang === "es") page = "/es/unsubscribe-confirmed.html";
     const { error } = await supabase
       .from("subscribers")
       .update({ status: "unsubscribed" })
@@ -567,16 +572,14 @@ router.get("/unsubscribe", async (req, res) => {
 
     if (error) {
       logger.error({ err: error }, "Unsubscribe update failed");
-      return res.redirect("/unsubscribe-confirmed.html?result=error");
+      return res.redirect(`${page}?result=error`);
     }
 
     logger.info({ email }, "Subscriber unsubscribed");
-    return res.redirect(
-      "/unsubscribe-confirmed.html?result=success&email=" + encodeURIComponent(email),
-    );
+    return res.redirect(`${page}?result=success&email=` + encodeURIComponent(email));
   } catch (err) {
     logger.error({ err }, "Unsubscribe route error");
-    return res.redirect("/unsubscribe-confirmed.html?result=error");
+    return res.redirect(`${page}?result=error`);
   }
 });
 

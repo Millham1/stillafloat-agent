@@ -16,8 +16,11 @@ async function loadWeather() {
 
     if (ports.length === 0) throw new Error('No ports returned');
 
+    // Absolute link, language-aware: the relative "forecast.html" sent Spanish visitors to
+    // /es/forecast.html, which does not exist (404 since May 2026; e2e flows.weather-journey).
+    const isEs = location.pathname.startsWith('/es/');
     weatherContainer.innerHTML = ports.map(port => `
-      <a class="home-weather-tile" href="forecast.html?place=${port.slug}">
+      <a class="home-weather-tile" href="/forecast.html?place=${port.slug}${isEs ? '&lang=es' : ''}">
         <div class="home-weather-emoji">${port.emoji}</div>
         <div class="home-weather-location">${port.name.replace(/, .*/, '')}</div>
         <div class="home-weather-temp">${port.temp}°</div>

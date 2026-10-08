@@ -138,9 +138,14 @@ export async function assembleBrief(): Promise<Brief> {
   const pulse = ops?.pulse ?? {};
   // Reach overlay: FB/IG from the Make-fed snapshot (best-effort).
   try {
-    const socialStats = await readJson<SocialStatsStored>("social-stats", {});
-    const latest = socialStats.latest;
-    const prevSnap = socialStats.previous ?? {};
+    // The ingest route that runs (routes/social.ts) APPENDS snapshots as a list under
+    // "social-stats"; this read expected {latest, previous} and so never showed data
+    // (e2e ops.social-pulse-matches-stats, 2026-10-08). Accept both shapes.
+    const stored = await readJson<SocialStatsStored | Array<{ at?: string; facebook?: SocialSnap; instagram?: SocialSnap }>>("social-stats", {});
+    const list = Array.isArray(stored) ? [...stored].sort((a, b) => String(a.at ?? "").localeCompare(String(b.at ?? ""))) : null;
+    const obj = Array.isArray(stored) ? ({} as SocialStatsStored) : stored;
+    const latest = list ? list[list.length - 1] : obj.latest;
+    const prevSnap = (list ? list[list.length - 2] : obj.previous) ?? {};
     if (latest?.facebook) pulse.facebook = snapPulse(latest.facebook, prevSnap?.facebook ?? undefined);
     if (latest?.instagram) pulse.instagram = snapPulse(latest.instagram, prevSnap?.instagram ?? undefined);
   } catch { /* reach overlay is best-effort */ }
