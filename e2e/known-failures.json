@@ -9,7 +9,7 @@
     {
       "id": "audience.newsletter-email",
       "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP, nearly closed: ES test subscriber + EN/ES drafts now exist on dev (2026-10-08). Remaining: the dev EN issue links only 1 of our pages because dev's approved stories are a June snapshot — clears after the dev news agent's 08:00 ET scan + a few dev story approvals, then re-draft (POST /api/newsletter/draft).",
+      "reason": "DEV MIRROR GAP, closing: dev news scan forced + 3 stories approved + newsletters re-drafted (2026-10-08 23:35Z); the issue now links /news/<slug>.html pages that the HOURLY news prerender has not written yet → 404 until the next prerender tick. Re-run after it.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
@@ -21,7 +21,7 @@
     {
       "id": "flows.newsletter-links",
       "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP, nearly closed: EN/ES drafts exist on dev; the EN issue has 0 story links because dev's approved stories are stale (June). Clears after the dev news scan + approvals + a re-draft.",
+      "reason": "DEV MIRROR GAP, closing: dev news scan forced + 3 stories approved + newsletters re-drafted (2026-10-08 23:35Z); the issue now links /news/<slug>.html pages that the HOURLY news prerender has not written yet → 404 until the next prerender tick. Re-run after it.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
@@ -33,7 +33,7 @@
     {
       "id": "jobs.newsletter-delivery-never-stuck",
       "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP: dev has never SENT a newsletter, so there is no delivery ledger. Dev may only email the test list (Mark's rule 2026-10-08) — dev subscribers = Mark's gmail + test addresses, so one dev send is safe; needs Mark's word to send the dev issue to the test list.",
+      "reason": "TIMING: dev DID send both editions to the test list on 2026-10-08 (EN 1/1, ES 1/1, ledgers written), but each edition was then RE-DRAFTED to pick up fresh stories, and a new draft replaces the issue (and its delivery ledger). The check only sees a ledger between a send and the next draft — on prod that is the week after Thursday. Passes on dev after the next send that is not followed by a re-draft.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
