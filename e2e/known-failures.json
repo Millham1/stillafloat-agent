@@ -1,39 +1,15 @@
 {
   "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
   "_counts_2026-10-08": {
-    "listed": 13,
-    "fixed_and_removed_2026-10-08": 49,
+    "listed": 8,
+    "fixed_and_removed_2026-10-08": 54,
     "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
   },
   "known": [
     {
-      "id": "news.feeds-agree",
-      "since": "2026-10-02",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent (pm2 saf-newsagent) stopped since 2026-10-02, dev news is a June snapshot. ALSO a prod data defect: story carnival-cruise-ship-saves-nine-people-adrift-in-disabled-boat credits Cruise Hive/Cruise Radio with no source link.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "news.agent-alive-queue-readable",
-      "since": "2026-10-02",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent stopped; port 3003 does not answer.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "news.agent-reachable-through-site",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev nginx does not include snippets/editorial-3003.conf, so /api/editorial-queue returns the homepage and /review 404s. Fix = add the snippet on the dev box via the deploy path.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
       "id": "audience.newsletter-email",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP, nearly closed: ES test subscriber + EN/ES drafts now exist on dev (2026-10-08). Remaining: the dev EN issue links only 1 of our pages because dev's approved stories are a June snapshot — clears after the dev news agent's 08:00 ET scan + a few dev story approvals, then re-draft (POST /api/newsletter/draft).",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "editorial.approved-stories-for-newsletter",
-      "since": "2026-10-02",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent stopped; newest approved story 2026-06-29.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
@@ -64,12 +40,6 @@
       "id": "jobs.subscriber-hygiene-archives-unconfirmed",
       "since": "2026-10-08",
       "reason": "DEV MIRROR GAP (dev lacks a condition prod has): both boxes have 0 pending subscribers; the archive step cannot be observed until GET /api/healthz/jobs (release-gate item 1) exists.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "jobs.news-daily-scan-ran",
-      "since": "2026-10-02",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev news agent stopped.",
       "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
     },
     {
