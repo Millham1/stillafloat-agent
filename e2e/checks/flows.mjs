@@ -837,7 +837,7 @@ export default [
       const L = legs(t);
       const acts = t.success(await t.get("/api/actions", { auth: true }), "ok");
       t.ok(Array.isArray(acts.actions), "Mark's to-do list has no actions array");
-      const full = acts.actions.length >= 30;
+      const full = false; // listPendingActions returned at most 30 rows until 2026-10-08; it now returns every pending action
       const dash = t.success(await t.get("/api/storm-alerts", { auth: true }));
       t.ok(Array.isArray(dash.alerts), "Mark's storm dashboard has no alerts list");
       t.nonEmpty(dash.alerts, "Mark's storm dashboard (no storm alert at all, live or ended)");

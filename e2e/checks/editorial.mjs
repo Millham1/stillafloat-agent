@@ -223,8 +223,10 @@ function newsletterCheck(lang) {
           let vt = String(oe.json?.title || "");
           if (oe.status !== 200) {
             t.ok(oe.status === 401, `the video in the ${name} email (${v}) cannot be watched — YouTube says HTTP ${oe.status} (deleted or removed)`);
+            // the pick itself (a pin is in the cache but may not be in the top ten by views) or the top ten
+            const pick = t.json(await t.get(`/api/youtube-featured?lang=${lang}`));
             const cached = t.json(await t.get(`/api/youtube-top?limit=10&lang=${lang}&type=all`)).videos || [];
-            const hit = cached.find((x) => x.id === v);
+            const hit = pick?.videoId === v ? { id: v, title: pick.title } : cached.find((x) => x.id === v);
             t.ok(hit, `the video in the ${name} email (${v}) is not embeddable AND is not in the site's video cache — the scan pruned it, so it is private or gone`);
             vt = String(hit?.title || "");
             t.observe(`${name} email video is public with embedding off`, true);
