@@ -5,8 +5,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   lookupDecision, blankLedger, allowlisted, perShipWindowMin,
-  LOOKUP_AFTER_MIN, REQUEST_GUARD_MIN, STANDING_WINDOW_MIN,
-} from "./position-provider";
+  LOOKUP_AFTER_MIN, REQUEST_GUARD_MIN, STANDING_WINDOW_MIN, noteUnreachable, clearUnreachable, isUnreachable, UNREACHABLE_TTL_MS } from "./position-provider";
 
 
 describe("lookupDecision — nothing is bought without a reason", () => {
@@ -86,4 +85,39 @@ it("a fix older than the freshness bar is stale — buy once", () => {
   const now = new Date("2026-09-24T04:00:00Z");
   const old = new Date(now.getTime() - (LOOKUP_AFTER_MIN + 1) * 60_000).toISOString();
   assert.equal(staleForInquiry(old, now), true);
+});
+
+
+// ── unreachable ships: a provider 404 keeps a ship out of paid lookups and off the buttons for 24 h ──
+describe("unreachable ships", () => {
+it("a provider 404 marks the ship unreachable for 24 h, then expires", () => {
+  const now = new Date("2026-10-09T16:00:00Z");
+  const l = blankLedger(now);
+  assert.equal(isUnreachable(l, "578000700", now), false);
+  noteUnreachable(l, "578000700", 404, now);
+  assert.equal(isUnreachable(l, "578000700", now), true);
+  assert.equal(isUnreachable(l, "578000700", new Date(now.getTime() + UNREACHABLE_TTL_MS - 1)), true);
+  assert.equal(isUnreachable(l, "578000700", new Date(now.getTime() + UNREACHABLE_TTL_MS)), false, "expires after a day so a vessel the provider adds later is picked up");
+  assert.equal(isUnreachable(l, "210662000", now), false, "other ships untouched");
+});
+
+it("a successful call clears the unreachable mark; a missing or old ledger never blocks", () => {
+  const now = new Date("2026-10-09T16:00:00Z");
+  const l = blankLedger(now);
+  noteUnreachable(l, "578000700", 404, now);
+  clearUnreachable(l, "578000700");
+  assert.equal(isUnreachable(l, "578000700", now), false);
+  assert.equal(isUnreachable(null, "578000700", now), false);
+  assert.equal(isUnreachable({ month: "2026-10", used: 0, lastByMmsi: {} }, "578000700", now), false, "a ledger persisted before this field existed");
+});
+
+it("lookupDecision refuses a paid lookup for an unreachable ship (no credit spent asking the same question hourly)", () => {
+  const now = new Date("2026-10-09T16:00:00Z");
+  const l = blankLedger(now);
+  noteUnreachable(l, "578000700", 404, new Date(now.getTime() - 60 * 60 * 1000));
+  const d = lookupDecision({ lastFixAt: null, ledger: l, mmsi: "578000700", cap: 100, cost: 1, now, reason: "storm" });
+  assert.deepEqual(d, { ok: false, why: "unreachable" });
+  const other = lookupDecision({ lastFixAt: null, ledger: l, mmsi: "210662000", cap: 100, cost: 1, now, reason: "storm" });
+  assert.equal(other.ok, true);
+});
 });

@@ -69,6 +69,28 @@ export interface SpendLedger {
   used: number;                       // CREDITS, not calls
   lastByMmsi: Record<string, string>; // ISO time of the last lookup per ship
   lastError?: { at: string; status: number | string } | null;
+  /** Ships the provider does not know (HTTP 404 on a track/vessel call), by MMSI, with when and the status.
+   *  Mark 2026-10-09 (L'Austral, MMSI 578000700 — correct per registry, 404 from Live-AIS every hour): a
+   *  ship like that must not be offered "Track this ship", and we must not pay to ask again every hour. */
+  unreachable?: Record<string, { at: string; status: number | string }>;
+}
+
+/** How long a provider 404 keeps a ship out of the lookups and off the Track-this-ship buttons. */
+export const UNREACHABLE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function noteUnreachable(ledger: SpendLedger, mmsi: string, status: number | string, now = new Date()): void {
+  (ledger.unreachable ??= {})[mmsi] = { at: now.toISOString(), status };
+}
+export function clearUnreachable(ledger: SpendLedger, mmsi: string): void {
+  if (ledger.unreachable) delete ledger.unreachable[mmsi];
+}
+/** True while a provider 404 for this ship is younger than UNREACHABLE_TTL_MS. */
+export function isUnreachable(ledger: SpendLedger | null | undefined, mmsi: string | null | undefined, now = new Date(), ttlMs = UNREACHABLE_TTL_MS): boolean {
+  if (!ledger?.unreachable || !mmsi) return false;
+  const u = ledger.unreachable[mmsi];
+  if (!u) return false;
+  const age = now.getTime() - Date.parse(u.at);
+  return Number.isFinite(age) && age >= 0 && age < ttlMs;
 }
 
 export function monthKey(now = new Date()): string {
@@ -76,7 +98,7 @@ export function monthKey(now = new Date()): string {
 }
 
 export function blankLedger(now = new Date()): SpendLedger {
-  return { month: monthKey(now), used: 0, lastByMmsi: {}, lastError: null };
+  return { month: monthKey(now), used: 0, lastByMmsi: {}, lastError: null, unreachable: {} };
 }
 
 /**
@@ -110,8 +132,10 @@ export function lookupDecision(args: {
   cost: number;
   now: Date;
   reason: LookupReason;
-}): { ok: true } | { ok: false; why: "fresh" | "recent-lookup" | "cap" } {
+}): { ok: true } | { ok: false; why: "fresh" | "recent-lookup" | "cap" | "unreachable" } {
   const { lastFixAt, ledger, mmsi, cap, cost, now, reason } = args;
+  // the provider said it does not know this ship less than a day ago — asking again costs a credit and answers the same
+  if (isUnreachable(ledger, mmsi, now)) return { ok: false, why: "unreachable" };
   const fixAge = lastFixAt ? (now.getTime() - Date.parse(lastFixAt)) / 60_000 : Infinity;
   if (Number.isFinite(fixAge) && fixAge < LOOKUP_AFTER_MIN) return { ok: false, why: "fresh" };
   const last = ledger.lastByMmsi[mmsi];

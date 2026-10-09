@@ -13,7 +13,7 @@ import { PATHS, readJson, writeJson } from "./persistence";
 import { logger } from "./logger";
 import {
   type SpendLedger as Ledger, type PositionFix, type LookupReason,
-  monthKey, blankLedger, lookupDecision,
+  monthKey, blankLedger, lookupDecision, noteUnreachable, clearUnreachable, isUnreachable,
 } from "./position-provider";
 import {
   type VesselRecord, type TrackPoint, type ScheduledPort, type LiveAisCall,
@@ -32,7 +32,7 @@ let ledgerDirty = false;
 async function loadLedger(now: Date): Promise<Ledger> {
   if (!ledger) {
     const stored = await readJson<Partial<Ledger>>(PATHS.liveAisLedger, {});
-    ledger = { ...blankLedger(now), ...stored, lastByMmsi: stored.lastByMmsi ?? {} };
+    ledger = { ...blankLedger(now), ...stored, lastByMmsi: stored.lastByMmsi ?? {}, unreachable: stored.unreachable ?? {} };
   }
   if (ledger.month !== monthKey(now)) ledger = blankLedger(now);
   return ledger;
@@ -42,6 +42,14 @@ async function saveLedger(): Promise<void> {
   if (!ledger || !ledgerDirty) return;
   ledgerDirty = false;
   try { await writeJson(PATHS.liveAisLedger, ledger); } catch (err) { logger.warn({ err }, "live-ais: ledger persist failed"); }
+}
+
+/** Load the ledger so the synchronous liveAisUnreachable() can answer; cheap after the first call. */
+export async function warmLiveAisLedger(now = new Date()): Promise<void> { await loadLedger(now); }
+
+/** Did the provider say (within 24 h) that it does not know this ship? Synchronous; false until the ledger is loaded. */
+export function liveAisUnreachable(mmsi: string | null | undefined, now = new Date()): boolean {
+  return isUnreachable(ledger, mmsi, now);
 }
 
 export async function liveAisUsage(now = new Date()): Promise<{ enabled: boolean; month: string; used: number; cap: number; lastError: Ledger["lastError"] }> {
@@ -88,11 +96,15 @@ async function spend(
   const res = await getJson(path, fetchImpl);
   if (!res.ok) {
     l.lastError = { at: now.toISOString(), status: res.status };
+    // 404 = the provider does not know this vessel. Remember it: no more paid asks for a day, and the
+    // storm pages / tracker list stop offering to follow her (routes read liveAisUnreachable()).
+    if (mmsi && res.status === 404) { noteUnreachable(l, mmsi, res.status, now); logger.warn({ call, mmsi }, "live-ais: vessel unknown to the provider — held unreachable for 24 h"); }
     logger.warn({ call, mmsi, status: res.status }, "live-ais: call failed");
     await saveLedger();
     return null;
   }
   l.lastError = null;
+  if (mmsi) clearUnreachable(l, mmsi);
   await saveLedger();
   logger.info({ call, mmsi, cost, used: l.used, cap: liveAisCap() }, "live-ais: call");
   return res.body;
@@ -115,6 +127,7 @@ export async function liveAisLookup(
   const gate = lookupDecision({ lastFixAt, ledger: l, mmsi, cap: liveAisCap(), cost: creditCost("track", 1), now, reason });
   if (!gate.ok) {
     if (gate.why === "cap") logger.warn({ mmsi, reason, used: l.used, cap: liveAisCap() }, "live-ais: monthly cap reached — no lookup");
+    if (gate.why === "unreachable") logger.info({ mmsi, reason, since: l.unreachable?.[mmsi]?.at }, "live-ais: provider does not know this vessel — no lookup for 24 h");
     return null;
   }
   const body = await spend("track", `vessel/${encodeURIComponent(mmsi)}/track/1`, creditCost("track", 1), mmsi, fetchImpl, now);

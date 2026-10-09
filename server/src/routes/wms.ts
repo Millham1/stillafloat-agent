@@ -8,6 +8,7 @@
 // watches are swept by lib/wms-alerts.ts.
 
 import { tokenOk } from "../lib/http-auth";
+import { liveAisUnreachable, warmLiveAisLedger } from "../lib/live-ais";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
@@ -76,11 +77,14 @@ router.get("/wms/ships", async (_req: Request, res: Response) => {
       .order("name");
     if (error) throw new Error(error.message);
     const live = subscribedNames();
+    await warmLiveAisLedger();
     const ships = ((data ?? []) as { name: string; cruise_line: string; mmsi: string | null }[])
       .map((s) => ({
         name: s.name,
         cruiseLine: s.cruise_line,
-        tracked: Boolean(s.mmsi),
+        // "tracked" = we can follow her: an MMSI on file that the position provider knows. A ship the
+        // provider 404'd in the last 24 h is not offered (matches the storm pages' Track-this-ship rule).
+        tracked: Boolean(s.mmsi) && !liveAisUnreachable(s.mmsi),
         live: live.has(s.name.toLowerCase()),
       }));
     res.json({ ok: true, trackerOnline: trackerEnabled() && trackerHealthy(), capacity: capacity(), ships });
@@ -309,6 +313,7 @@ router.get("/wms/health", (req: Request, res: Response) => {
     hasFix: p.lat !== null,
     lastPosAt: p.lastPosAt,
     destination: p.destinationSlug,
+    unreachable: liveAisUnreachable(p.mmsi),
     ...(withFix ? { lat: p.lat, lon: p.lon, sogKn: p.sogKn, cruiseLine: p.cruiseLine } : {}),
   }));
   res.json({ ok: true, enabled: trackerEnabled(), healthy: trackerHealthy(), ships });

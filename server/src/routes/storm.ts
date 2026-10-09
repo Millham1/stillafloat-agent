@@ -15,7 +15,8 @@ import { impactedShipsForAlert, defaultWindow, withTrackable, type TrackableSail
 import { severityRank } from "../lib/storm-escalation";
 import { SURFACE_CHART, satelliteFor } from "../lib/nws-marine-source";
 import * as crypto from "crypto";
-import { inRegistry } from "../lib/ship-tracker";
+import { inRegistry, mmsiForShip } from "../lib/ship-tracker";
+import { liveAisUnreachable, warmLiveAisLedger } from "../lib/live-ais";
 import { resolveActionsForSource } from "../lib/actions";
 import {
   publishDiversion, ignoreDiversion, releaseAlertDiversions, listPendingDiversions, simulateDiversion,
@@ -44,7 +45,10 @@ async function impactedSailings(a: DbAlert): Promise<TrackableSailing[]> {
     : defaultWindow();
   // The same answer the lifecycle pins from (storm-sailings.impactedShipsForAlert):
   // by the storm's path when the alert has one, else by its grounds.
-  return withTrackable(await impactedShipsForAlert(a, w.start, w.end), inRegistry);
+  await warmLiveAisLedger();
+  // A ship the registry knows but the position provider does not (404 within 24 h) gets no
+  // Track-this-ship button: the sign-up would lead to an empty map (Mark 2026-10-09, L'Austral).
+  return withTrackable(await impactedShipsForAlert(a, w.start, w.end), (name) => inRegistry(name) && !liveAisUnreachable(mmsiForShip(name)));
 }
 
 /** Which feed an alert came from — the public pages caption the graphics by it. */
