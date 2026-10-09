@@ -475,6 +475,22 @@ export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraf
     })
     .filter((h) => h.text)
     .slice(0, 4);
+  // The model sometimes answers with no quick hits, or with hits whose story_id matches nothing
+  // (the 2026-10-08 Spanish draft: 3 stories in, 0 hits out). A letter with stories and no story
+  // links fails the release gate (audience.newsletter-email, flows.newsletter-links) and leaves the
+  // reader nothing to tap, so the stories themselves stand in: headline → story page.
+  // `stories` already carry the edition's title (title_es for the Spanish issue — see gatherStories)
+  const headline = (st: { title?: string }) => String(st.title || "").trim();
+  if (quickHits.length === 0 && stories.length > 0) {
+    for (const st of stories.slice(0, 4)) {
+      const text = headline(st);
+      if (text) quickHits.push({ text, url: `${SITE}${esNewsPrefix}${storySlug({ id: st.id })}.html` });
+    }
+    logger.warn({ lang, stories: stories.length }, "newsletter: the model returned no quick hits — story headlines used instead");
+  } else if (quickHits.length > 0 && !quickHits.some((h) => h.url)) {
+    quickHits.forEach((h, i) => { const st = stories[i]; if (st) h.url = `${SITE}${esNewsPrefix}${storySlug({ id: st.id })}.html`; });
+    logger.warn({ lang }, "newsletter: no quick hit named a story id — hits linked to the stories in order");
+  }
 
   const draft: NewsletterDraft = {
     subject: (parsed.subject ?? (lang === "es" ? "Still Afloat Semanal" : "Still Afloat Weekly")).trim(),
