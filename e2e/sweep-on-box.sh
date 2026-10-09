@@ -43,6 +43,17 @@ for i in $(seq 1 60); do
   sleep 10
 done
 
+# let the box SETTLE: right after a restart the tracker has not re-subscribed yet, so storm-path
+# ships read as "not followed" (first CI run, 2026-10-09 13:21Z: 2 false fails one minute after
+# boot; both passed two minutes later). Wait until the server has been up 3 min and the tracker
+# reports live ships (or 5 more minutes have passed — then the sweep says so itself).
+UP="$(pm2 jlist 2>/dev/null | python3 -c 'import sys,json,time; d=json.load(sys.stdin); print(int(time.time()-next((p["pm2_env"]["pm_uptime"] for p in d if p["name"]=="saf-full-server"),0)/1000))' 2>/dev/null || echo 999)"
+[ "$UP" -lt 180 ] && { echo "settling: saf-full-server has been up ${UP}s; waiting $((180-UP))s for the tracker to re-subscribe"; sleep $((180-UP)); }
+for i in $(seq 1 30); do
+  live="$(curl -s -m 10 "$SITE/api/wms/ships" | python3 -c 'import sys,json; d=json.load(sys.stdin); print(sum(1 for s in d.get("ships",[]) if s.get("live")))' 2>/dev/null || echo 0)"
+  [ "${live:-0}" -gt 0 ] && break
+  sleep 10
+done
 TOK="$(grep -E '^AGENT_APPROVAL_TOKEN=' /opt/stillafloat/shared.env 2>/dev/null | head -1 | cut -d= -f2-)"
 TOK="${TOK%\"}"; TOK="${TOK#\"}"; TOK="${TOK%\'}"; TOK="${TOK#\'}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"; FILE="$OUT/$MODE-$STAMP.json"
