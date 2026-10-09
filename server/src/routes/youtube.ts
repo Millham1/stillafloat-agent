@@ -11,25 +11,43 @@ const CHANNEL_URL = `https://www.youtube.com/@StillAfloatcruising2026`;
 // Cache the resolved channel ID in memory so we don't re-fetch every time
 let cachedChannelId: string | null = null;
 
+/** The channel's RSS feed answers 200 only for a real channel id — the one check that cannot lie. */
+async function channelFeedAnswers(channelId: string): Promise<boolean> {
+  try {
+    const r = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, { method: "HEAD" });
+    return r.ok;
+  } catch { return false; }
+}
+
 async function resolveChannelId(): Promise<string | null> {
   if (cachedChannelId) return cachedChannelId;
+  // 2026-10-09: the dev box's three scans after a deploy each failed with "RSS feed returned 404" —
+  // the handle page YouTube served it carried a channelId that was not ours (a recommended channel on
+  // a consent/limited page), the scan cached it, and every scan after used it. So: the configured id
+  // wins when set; any id read from the page is proven against the feed before it is cached; the
+  // page's own `channel_id=` RSS link is read too.
+  const configured = (process.env["YOUTUBE_CHANNEL_ID"] || "").trim();
+  if (/^UC[a-zA-Z0-9_-]{22}$/.test(configured)) {
+    cachedChannelId = configured;
+    return cachedChannelId;
+  }
   try {
     const res = await fetch(CHANNEL_URL, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; StillAfloatBot/1.0)" },
     });
     const html = await res.text();
-    // YouTube embeds channelId in the page as `"channelId":"UCxxxxxxx"`
-    const match = /"channelId":"(UC[a-zA-Z0-9_-]{22})"/?.exec(html);
-    if (match?.[1]) {
-      cachedChannelId = match[1];
-      logger.info({ channelId: cachedChannelId }, "Resolved YouTube channel ID");
-      return cachedChannelId;
-    }
-    // Fallback: externalId pattern
-    const match2 = /"externalId":"(UC[a-zA-Z0-9_-]{22})"/?.exec(html);
-    if (match2?.[1]) {
-      cachedChannelId = match2[1];
-      logger.info({ channelId: cachedChannelId, via: "externalId" }, "Resolved YouTube channel ID");
+    const candidates = [
+      ...[...html.matchAll(/channel_id=(UC[a-zA-Z0-9_-]{22})/g)].map((m) => [m[1], "rss link"] as const),
+      ...[...html.matchAll(/"channelId":"(UC[a-zA-Z0-9_-]{22})"/g)].map((m) => [m[1], "channelId"] as const),
+      ...[...html.matchAll(/"externalId":"(UC[a-zA-Z0-9_-]{22})"/g)].map((m) => [m[1], "externalId"] as const),
+    ];
+    const seen = new Set<string>();
+    for (const [id, via] of candidates) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      if (!(await channelFeedAnswers(id))) { logger.warn({ channelId: id, via }, "YouTube channel id from the page does not answer as a feed — ignored"); continue; }
+      cachedChannelId = id;
+      logger.info({ channelId: cachedChannelId, via }, "Resolved YouTube channel ID");
       return cachedChannelId;
     }
     logger.warn({ html: html.slice(0, 500) }, "Could not extract channel ID from YouTube page");
