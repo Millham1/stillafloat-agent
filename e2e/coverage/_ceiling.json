@@ -1,4 +1,4 @@
 {
-  "_about": "The number of admitted coverage gaps may only go down. Lower this number whenever a gap is closed; raising it means the site grew without a check, and the commit that does so must say why.",
-  "max_gaps": 0
+ "_about": "The number of admitted coverage gaps may only go down. Lower this number whenever a gap is closed; raising it means the site grew without a check, and the commit that does so must say why. 2026-10-09: set to the real count (78) when server/src/e2e-gate.test.ts began enforcing it \u2014 before that the 0 was an aspiration nothing checked. Gaps by area that day: ops 25, audience 16, jobs 11, editorial 9, ships 6, commentary 6, news 3, affiliate 1, flows 1.",
+ "max_gaps": 78
 }

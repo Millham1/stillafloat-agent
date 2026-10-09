@@ -1,12 +1,14 @@
 {
-  "extra": {
-    "flow:affiliate-ingest-review-publish": "A wishlist upload (POST /api/affiliate/ingest) is described and categorised by the model, queued, nudges Mark (Web Push / email floor), then Approve/Feature on the review page publishes it to the gear pages"
-  },
-  "exempt": {},
-  "gaps": {
-    "flow:affiliate-ingest-review-publish": {
-      "reason": "Approve/Feature need a queued pick, and the only way to queue one is a successful ingest of a valid new ASIN, which makes a paid model call and nudges Mark (the dev box sends real email). What IS checked: every refusal path (affiliate.review-actions-refuse-safely), ingest's own success path with a pick it skips before the model (same check: added=0, notified=false, queue unchanged), the queue data vs the review page (affiliate.review-queue), and publish-to-gear-page via the store API and /api/go (affiliate.buy-click-redirect-and-report). Still unchecked: approvePending copying a pick into the gear store (and that it never writes descriptionEs), and ingest's dedupe against already-published ASINs. Needs a dev-only dry-run switch on POST /api/affiliate/ingest that skips the model and the notification and queues an e2e-fixture pick.",
-      "since": "2026-10-08"
-    }
+ "extra": {
+  "flow:affiliate-ingest-review-publish": "A wishlist upload (POST /api/affiliate/ingest) is described and categorised by the model, queued, nudges Mark (Web Push / email floor), then Approve/Feature on the review page publishes it to the gear pages"
+ },
+ "exempt": {
+  "POST /api/affiliate/translate-missing": "A token-gated maintenance call that sends every gear product lacking a Spanish blurb to the model (paid) and writes the result; run by hand on dev after a product import, then copied to prod. Its OUTPUT is what matters to a visitor and that is checked: affiliate.category-pages-show-products reads every Spanish gear page and the store's descriptionEs."
+ },
+ "gaps": {
+  "flow:affiliate-ingest-review-publish": {
+   "reason": "Approve/Feature need a queued pick, and the only way to queue one is a successful ingest of a valid new ASIN, which makes a paid model call and nudges Mark (the dev box sends real email). What IS checked: every refusal path (affiliate.review-actions-refuse-safely), ingest's own success path with a pick it skips before the model (same check: added=0, notified=false, queue unchanged), the queue data vs the review page (affiliate.review-queue), and publish-to-gear-page via the store API and /api/go (affiliate.buy-click-redirect-and-report). Still unchecked: approvePending copying a pick into the gear store (and that it never writes descriptionEs), and ingest's dedupe against already-published ASINs. Needs a dev-only dry-run switch on POST /api/affiliate/ingest that skips the model and the notification and queues an e2e-fixture pick.",
+   "since": "2026-10-08"
   }
+ }
 }

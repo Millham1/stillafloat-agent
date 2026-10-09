@@ -1,0 +1,27 @@
+name: Whole-site sweep (prod, scheduled)
+
+# Release gate, part 4 (Mark 2026-10-04): prod is swept end to end every 6 hours with the
+# suite main carries, run ON the prod box (read-only in prod mode by construction). A red
+# run means a visitor-facing part of the site is broken or empty right now; GitHub emails
+# the failure. Untestable counts as a failure (empty ≠ pass).
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sweep-prod
+  cancel-in-progress: false
+
+jobs:
+  sweep-production:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Whole-site sweep on the production box
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 5.161.52.102
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 90m
+          script: bash /root/saf-full/e2e/sweep-on-box.sh prod

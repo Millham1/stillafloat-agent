@@ -204,7 +204,7 @@ export default [
   {
     id: "audience.spanish-unsubscribe-page",
     title: "A Spanish subscriber who unsubscribes lands on a Spanish confirmation page",
-    covers: ["flow:spanish-unsubscribe", "page /unsubscribe-confirmed.html"],
+    covers: ["flow:spanish-unsubscribe", "page /unsubscribe-confirmed.html", "page /es/unsubscribe-confirmed.html"],
     modes: ["dev", "prod"],
     incident: "ES first-class: GET /api/unsubscribe always redirects to the English /unsubscribe-confirmed.html, and no /es/ twin exists (found 2026-10-07)",
     run: async (t) => {

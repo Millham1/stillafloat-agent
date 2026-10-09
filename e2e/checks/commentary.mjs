@@ -612,7 +612,7 @@ export default [
   {
     id: "commentary.favorites-spanish-twin",
     title: "Spanish readers who click \"Favoritos\" get a Spanish Favorites page",
-    covers: ["page /favorites.html"],
+    covers: ["page /favorites.html", "page /es/favorites.html"],
     modes: ["dev", "prod"],
     run: async (t) => {
       // the Spanish navbar's "Favoritos" link — where does it go?

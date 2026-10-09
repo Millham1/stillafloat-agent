@@ -61,6 +61,17 @@ service boundary.
    git -> deploy. Nothing is edited directly on the server, ever. (This rule
    exists because direct-on-server edits caused the live code to drift onto a
    commit no branch tracked.)
+6. **Nothing reaches `main` without a whole-site PASS on dev (2026-10-09).**
+   Dev is a mirror of prod and the only stage where the app RUNS before prod
+   does. Every release is the WHOLE of dev (no cherry-picks), promoted only after
+   the end-to-end suite in `e2e/` has passed against the dev box running exactly
+   `origin/dev`. Empty is not a pass: an untestable check fails the run, partial
+   runs never count, and a failing check can only be released past by a
+   `known-failures.json` entry naming who accepted it. Enforced by
+   `saf-ops-tools/promote.sh` (the one way to push main), the PreToolUse hook
+   `~/.claude/hooks/saf-main-guard.sh`, the post-deploy `sweep-dev` /
+   `sweep-production` jobs and the 6-hourly `sweep-prod.yml`, and the unit test
+   `server/src/e2e-gate.test.ts` (lint, vacuity, coverage). See `e2e/README.md`.
 
 ## Components
 - **Static frontend** — hand-authored HTML/CSS/JS in `server/public`, **inside the
@@ -153,6 +164,10 @@ one deploy;** don't push repeatedly while someone is watching the live site.
 - Read-only SSH is available for inspection on both (`ssh root@<ip>`).
 
 ## Changelog
+- **2026-10-09** — Whole-site release gate (Mark 2026-10-04): `e2e/` suite (148
+  checks, coverage audit, vacuity), `promote.sh`, main-guard PASS requirement,
+  post-deploy and scheduled sweeps, job-health ledger (`GET /api/healthz/jobs`),
+  `e2e-gate.test.ts`. First release through it: main `f97ae1e` on 2026-10-09.
 - **2026-06-30** — SEO remediation (Semrush: privacy/terms pages [fixes a broken
   internal link], robots.txt, sitemap.xml, llms.txt, missing H1s across EN+ES).
   nginx brought under version control (`infra/nginx/*` via `deploy-nginx.sh`);

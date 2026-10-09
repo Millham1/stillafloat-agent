@@ -245,3 +245,35 @@ jobs:
             # Version-controlled dashboard subdomain nginx (no-op on dev — no dashboard cert)
             bash infra/deploy-nginx.sh
             echo "monorepo dev deployment complete"
+
+  # ---- WHOLE-SITE SWEEP after each deploy (release gate, Mark 2026-10-04) ----
+  # The box runs the suite it just received (e2e/) against itself. A red job means the site
+  # that just went live fails its own checks — GitHub emails the failure. Untestable counts
+  # as a failure (empty ≠ pass); the on-box script waits out the site's hourly probe limits.
+  sweep-dev:
+    needs: deploy-dev
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Whole-site sweep on the dev box
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 178.156.154.144
+          username: root
+          key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+          command_timeout: 90m
+          script: bash /root/saf-full/e2e/sweep-on-box.sh dev
+
+  sweep-production:
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Whole-site sweep on the production box
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 5.161.52.102
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 90m
+          script: bash /root/saf-full/e2e/sweep-on-box.sh prod
