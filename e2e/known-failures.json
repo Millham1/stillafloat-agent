@@ -1,41 +1,29 @@
 {
-  "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
-  "_counts_2026-10-08": {
-    "listed": 5,
-    "fixed_and_removed_2026-10-08": 57,
-    "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
+ "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
+ "_counts_2026-10-08": {
+  "listed": 3,
+  "fixed_and_removed_2026-10-08": 59,
+  "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
+ },
+ "known": [
+  {
+   "id": "ops.ai-visibility",
+   "since": "2026-10-08",
+   "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev gets no AI-assistant traffic; every weekly count is 0.",
+   "decision": "Mark 2026-10-08: FIX, do not waive \u2014 make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
   },
-  "known": [
-    {
-      "id": "ops.ai-visibility",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev gets no AI-assistant traffic; every weekly count is 0.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "jobs.social-poster-handles-due-posts",
-      "since": "2026-10-08",
-      "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_SOCIAL_POSTER=1 with 0 scheduled posts.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "jobs.newsletter-delivery-never-stuck",
-      "since": "2026-10-08",
-      "reason": "TIMING: dev DID send both editions to the test list on 2026-10-08 (EN 1/1, ES 1/1, ledgers written), but each edition was then RE-DRAFTED to pick up fresh stories, and a new draft replaces the issue (and its delivery ledger). The check only sees a ledger between a send and the next draft — on prod that is the week after Thursday. Passes on dev after the next send that is not followed by a re-draft.",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "jobs.subscriber-hygiene-archives-unconfirmed",
-      "since": "2026-10-08",
-      "reason": "TIMING: the job-health ledger (GET /api/healthz/jobs, built 2026-10-08) now records the daily clean-up's runs and the check reads it; the ledger starts empty on first deploy, so the check is UNTESTABLE until the 10:00 Eastern run has happened once on each box (then it judges freshness and streak every sweep).",
-      "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-    },
-    {
-      "id": "commentary.favorites-list",
-      "since": "2026-05-25",
-      "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: 0 favorites on both boxes; the page shows two 'Coming soon' boxes (content).",
-      "decision": "Mark 2026-10-08 (19:55Z): 'I have not decided on favorites yet, ignore that one piece' — CONTENT, waits for Mark's picks; not a release blocker and not to be chased. Entry stays until the picks exist."
-    }
-  ],
-  "_rulings_2026-10-08": "Mark: (1) fix the dev-mirror gaps, (2) fix the pre-existing prod defects, (3) keep the contact limiter, review after the merge. Nothing here is a permanent waiver."
+  {
+   "id": "jobs.social-poster-handles-due-posts",
+   "since": "2026-10-08",
+   "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_SOCIAL_POSTER=1 with 0 scheduled posts.",
+   "decision": "Mark 2026-10-08: FIX, do not waive \u2014 make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
+  },
+  {
+   "id": "commentary.favorites-list",
+   "since": "2026-05-25",
+   "reason": "SITE PROBLEM, pre-existing on prod (fails on BOTH boxes), not a regression of this release: 0 favorites on both boxes; the page shows two 'Coming soon' boxes (content).",
+   "decision": "Mark 2026-10-08 (19:55Z): 'I have not decided on favorites yet, ignore that one piece' \u2014 CONTENT, waits for Mark's picks; not a release blocker and not to be chased. Entry stays until the picks exist."
+  }
+ ],
+ "_rulings_2026-10-08": "Mark: (1) fix the dev-mirror gaps, (2) fix the pre-existing prod defects, (3) keep the contact limiter, review after the merge. Nothing here is a permanent waiver."
 }

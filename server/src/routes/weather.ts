@@ -173,7 +173,33 @@ router.get("/weather/hero", async (req: Request, res: Response) => {
 });
 
 // 15-minute in-memory cache for the all-ports response (avoids 24 parallel fetches on every page load)
-let allPortsCache: { payload: object; expiresAt: number } | null = null;
+type WeatherCard = { slug: string; type: string; [k: string]: unknown };
+type WeatherPayload = { embarkation: WeatherCard[]; destinations: WeatherCard[]; [k: string]: unknown };
+let allPortsCache: { payload: WeatherPayload; expiresAt: number } | null = null;
+
+// The homepage shows up to 12 departure ports and 12 destinations; fewer than 6 of either reads as
+// broken. open-meteo fails in bursts, and 2026-10-09 14:21Z the release gate caught the dev homepage
+// with 5 destination cards cached for 15 min: 7 of 12 destination fetches had failed while the
+// embarkation side was fine, so the old "at least half of ALL cards" guard let the thin set through.
+// Judge each list on its own: a list short of MIN_CARDS_PER_TYPE is topped up from the last good
+// payload (same slugs never twice), and a payload that needed topping up is cached only briefly.
+export const MIN_CARDS_PER_TYPE = 6;
+export function fillThinLists<T extends { slug: string; type: string }>(
+  fresh: T[], cached: T[] | null | undefined, min = MIN_CARDS_PER_TYPE,
+): { cards: T[]; fullyFresh: boolean } {
+  const out = [...fresh];
+  let fullyFresh = true;
+  for (const type of ["embarkation", "destination"]) {
+    const have = fresh.filter((c) => c.type === type);
+    if (have.length >= min) continue;
+    fullyFresh = false;
+    const seen = new Set(have.map((c) => c.slug));
+    for (const c of cached ?? []) {
+      if (c.type === type && !seen.has(c.slug)) { out.push(c); seen.add(c.slug); }
+    }
+  }
+  return { cards: out, fullyFresh };
+}
 
 router.get("/weather", async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=1800");
@@ -222,17 +248,19 @@ router.get("/weather", async (req: Request, res: Response) => {
     // Tolerate partial upstream failures: a single bad open-meteo fetch must
     // never blank the whole homepage. Keep whatever cards succeeded.
     const settled = await Promise.allSettled(targets.map(fetchForecast));
-    const cards = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    const freshCards = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
 
-    // If too few cards came back, serve the last good payload rather than a
-    // half-empty homepage (don't overwrite a healthy cache with a degraded set).
+    // A thin list (fewer than MIN_CARDS_PER_TYPE departure ports OR destinations) is topped up from
+    // the last good payload instead of being shown — or cached — as is. See fillThinLists.
+    const lastGood = allPortsCache ? [...allPortsCache.payload.embarkation, ...allPortsCache.payload.destinations] : null;
+    const { cards, fullyFresh } = fillThinLists(freshCards, lastGood);
     const minOk = Math.ceil(targets.length / 2);
     if (cards.length < minOk && allPortsCache) {
       res.json(allPortsCache.payload);
       return;
     }
 
-    const payload = {
+    const payload: WeatherPayload = {
       ok: true,
       generatedAt: new Date().toISOString(),
       embarkation: cards.filter((c) => c.type === "embarkation"),
@@ -246,9 +274,10 @@ router.get("/weather", async (req: Request, res: Response) => {
         .map(publicLocation)
         .sort((a, b) => a.name.localeCompare(b.name)),
     };
-    // Only cache a healthy payload so we never pin an empty result for 15 min.
+    // Only cache a healthy payload so we never pin an empty result for 15 min; a payload that had
+    // to be topped up from the last good one is cached for 3 min only, so the next fetch retries soon.
     if (cards.length >= minOk) {
-      allPortsCache = { payload, expiresAt: Date.now() + 15 * 60 * 1000 };
+      allPortsCache = { payload, expiresAt: Date.now() + (fullyFresh ? 15 : 3) * 60 * 1000 };
     }
     res.json(payload);
   } catch (error) {

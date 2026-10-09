@@ -2,7 +2,7 @@
 // (so Bermuda-by-coords shares Bermuda-by-slug's synopsis cache), else to an ad-hoc location.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveCoords, heroImageUrl, _resetHero, HERO_TTL_MS, HERO_HOURLY_BUDGET } from "./weather";
+import { resolveCoords, heroImageUrl, _resetHero, HERO_TTL_MS, HERO_HOURLY_BUDGET, fillThinLists, MIN_CARDS_PER_TYPE } from "./weather";
 
 test("coords near a known port snap to it", () => {
   const loc = resolveCoords("32.33022", "-64.74003", "Bermuda");
@@ -77,4 +77,33 @@ test("hero: a failed lookup is not cached", async () => {
   const failing = async () => { n++; return { ok: false, json: async () => ({}) }; };
   await heroImageUrl("Roatan", "k", failing); await heroImageUrl("Roatan", "k", failing);
   assert.equal(n, 2);
+});
+
+// ── fillThinLists: a thin destination list is topped up from the last good payload ───────────
+const card = (type: string, n: number) => ({ slug: `${type}-${n}`, type, temp: 80 });
+const many = (type: string, n: number) => Array.from({ length: n }, (_, i) => card(type, i));
+
+test("a payload with enough cards of both types is left alone and counts as fully fresh", () => {
+  const fresh = [...many("embarkation", 12), ...many("destination", 12)];
+  const r = fillThinLists(fresh, [...many("embarkation", 12), ...many("destination", 12)]);
+  assert.equal(r.cards.length, 24);
+  assert.equal(r.fullyFresh, true);
+});
+
+test("5 destinations with 8 departure ports (the 2026-10-09 dev homepage) is topped up from the last good set, destinations only", () => {
+  const fresh = [...many("embarkation", 8), ...many("destination", 5)];
+  const lastGood = [...many("embarkation", 12), ...many("destination", 12)];
+  const r = fillThinLists(fresh, lastGood);
+  assert.equal(r.fullyFresh, false);
+  assert.equal(r.cards.filter((c) => c.type === "destination").length, 12, "destinations filled to the last good 12");
+  assert.equal(r.cards.filter((c) => c.type === "embarkation").length, 8, "departure ports had enough and are untouched");
+  const slugs = r.cards.map((c) => c.slug);
+  assert.equal(new Set(slugs).size, slugs.length, "no slug twice");
+  assert.ok(r.cards.filter((c) => c.type === "destination").length >= MIN_CARDS_PER_TYPE);
+});
+
+test("with no last good payload a thin list stays thin but is reported as not fully fresh (so it is cached only briefly)", () => {
+  const r = fillThinLists([...many("embarkation", 12), ...many("destination", 3)], null);
+  assert.equal(r.cards.length, 15);
+  assert.equal(r.fullyFresh, false);
 });
