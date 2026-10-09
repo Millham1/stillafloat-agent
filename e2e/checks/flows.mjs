@@ -826,8 +826,8 @@ export default [
   //     one pending to-do, and every course-change to-do is one still waiting;
   //   • the course-change log's live storms are exactly the dashboard's live threats, and every
   //     public storm is one of them.
-  // The to-do list is read 30 rows at a time (listPendingActions): if it is full, a storm whose
-  // to-do is not among those 30 cannot be judged — UNTESTABLE, and that full list is worth a look.
+  // Until 2026-10-08 the to-do list was read 30 rows at a time (listPendingActions), so a full list made
+  // this UNTESTABLE; it now returns every pending action and the check judges the whole list.
   {
     id: "flows.mark-queue-matches-storm-queues",
     title: "Mark's to-do list has one Approve/Dismiss item for every storm draft and one item for every course change waiting on him, and no buttons for storms already decided",
