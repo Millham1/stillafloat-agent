@@ -7,6 +7,7 @@
 // flag). Positions come from the in-process AIS tracker (lib/ship-tracker.ts);
 // watches are swept by lib/wms-alerts.ts.
 
+import { tokenOk } from "../lib/http-auth";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
@@ -296,12 +297,19 @@ router.get("/wms/watch/stop", async (req: Request, res: Response) => {
 });
 
 // Debug/ops: current cache freshness across all tracked ships (no positions).
-router.get("/wms/health", (_req: Request, res: Response) => {
+// With the dashboard token the list also carries the held fix itself (lat/lon/speed), so the release
+// gate can recompute what the webcams page should say from the SAME positions the page reads — no
+// new pull, nothing bought (2026-10-09: positions are only pulled on a tracking request or a storm
+// track, by design, so "is a ship in frame" is not a property of the site; "do the cams agree with
+// the tracker" is). The public shape is unchanged.
+router.get("/wms/health", (req: Request, res: Response) => {
+  const withFix = tokenOk(req);
   const ships = allPositions().map((p) => ({
     name: p.name,
     hasFix: p.lat !== null,
     lastPosAt: p.lastPosAt,
     destination: p.destinationSlug,
+    ...(withFix ? { lat: p.lat, lon: p.lon, sogKn: p.sogKn, cruiseLine: p.cruiseLine } : {}),
   }));
   res.json({ ok: true, enabled: trackerEnabled(), healthy: trackerHealthy(), ships });
 });

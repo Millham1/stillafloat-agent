@@ -503,25 +503,52 @@ export default [
     },
   },
   {
-    id: "ships.webcams-ships-in-frame",
-    title: "During the cruise-port day, at least one port cam names a tracked ship that is in port now",
-    covers: ["GET /api/webcams"],
+    id: "ships.webcams-agree-with-tracker",
+    title: "Each port cam names exactly the tracked ships whose held position puts them in that port right now, and none when none is",
+    covers: ["GET /api/webcams", "GET /api/wms/health"],
     modes: ["dev", "prod"],
     run: async (t) => {
-      // Ships come alongside at Miami, Galveston and Key West about 06:00–07:00 local and sail
-      // about 16:00–17:00 (roughly 11:00–21:00 UTC). Outside 12:00–20:00 UTC no cam can be expected to
-      // show one, so the run says UNTESTABLE rather than passing on an empty list.
-      const body = t.success(await t.get("/api/webcams"));
-      t.ok(Array.isArray(body.webcams), "the cams answer has no webcams array");
-      const portCams = body.webcams.filter((c) => c.port_slug);
+      // Positions are only pulled when a visitor files a tracking request or a storm's track names a
+      // ship (Mark, 2026-10-09: "that is the way we designed it"). So whether a ship is in frame is not
+      // a property of the site, and the earlier version of this check (which waited for one) was
+      // untestable most of the time. What IS a property of the site: the cam cards must agree with the
+      // positions the tracker already holds — the same rules the page applies (within 8 km of the
+      // port, a fix under 12 h old), computed here from GET /api/wms/health (fixes shown with the
+      // dashboard token; nothing is pulled or bought).
+      const RADIUS_KM = 8, MAX_AGE_H = 12;
+      const km = (aLat, aLon, bLat, bLon) => {
+        const r = (d) => (d * Math.PI) / 180;
+        const h = Math.sin(r(bLat - aLat) / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(r(bLon - aLon) / 2) ** 2;
+        return 2 * 6371 * Math.asin(Math.sqrt(h));
+      };
+      const cams = t.success(await t.get("/api/webcams"));
+      t.ok(Array.isArray(cams.webcams), "the cams answer has no webcams array");
+      const portCams = cams.webcams.filter((c) => c.port_slug);
       t.atLeast(portCams.length, 4, "cams that look at a cruise port");
-      const hourUtc = new Date(t.now()).getUTCHours();
-      t.require(hourUtc >= 12 && hourUtc < 20,
-        `it is ${hourUtc}:00 UTC — outside the cruise-port day (12:00–20:00 UTC), so no cam can be expected to show a ship in port. Re-run this check in that window.`);
-      const withShips = portCams.filter((c) => Array.isArray(c.ships_in_port) && c.ships_in_port.length);
-      t.require(withShips.length > 0,
-        `in the middle of the port day none of the ${portCams.length} port cams names a ship: either the tracker is following no ship at those ports, or the in-port match is broken`);
-      t.observe("port cams with a ship in frame", withShips.length, "info");
+      const health = t.success(await t.get("/api/wms/health", { auth: true }), "ok");
+      t.ok(Array.isArray(health.ships) && health.ships.length > 0, "the tracker reports no ships at all");
+      const held = health.ships.filter((p) => typeof p.lat === "number" && typeof p.lon === "number" && p.lastPosAt);
+      t.ok(held.length > 0 || health.ships.every((p) => !p.hasFix), "the tracker says it holds fixes but shows none even with the token — the health route no longer carries lat/lon");
+      const ports = t.success(await t.get("/api/weather?list=true"), "ok");
+      const coords = new Map([...(ports.allEmbarkationPorts || []), ...(ports.allDestinations || [])].map((p) => [p.slug, p]));
+      const now = t.now();
+      let inFrame = 0;
+      for (const cam of portCams) {
+        const port = coords.get(cam.port_slug);
+        t.ok(port, `cam "${cam.slug}" looks at port "${cam.port_slug}", which the port list does not know`);
+        if (!port) continue;
+        const expected = held
+          .filter((p) => { const age = now - Date.parse(p.lastPosAt); return age >= 0 && age <= MAX_AGE_H * 3_600_000 && km(p.lat, p.lon, port.lat, port.lon) <= RADIUS_KM; })
+          .map((p) => p.name).sort();
+        t.ok(Array.isArray(cam.ships_in_port), `cam "${cam.slug}" has no ships_in_port list`);
+        const shown = (cam.ships_in_port || []).map((s) => s.name).sort();
+        t.equal(shown.join(" | "), expected.join(" | "), `cam "${cam.slug}" (${cam.port_slug}) names [${shown.join(", ")}] but the tracker's held fixes put [${expected.join(", ")}] in that port`);
+        for (const s of cam.ships_in_port || []) t.ok(typeof s.docked === "boolean" && s.lastPosAt, `cam "${cam.slug}": ship "${s.name}" lacks docked/lastPosAt`);
+        inFrame += shown.length;
+      }
+      t.observe("port cams", portCams.length, "min");
+      t.observe("held fixes", held.length, "info");
+      t.observe("ships in frame across the port cams", inFrame, "info");
     },
   },
   {
