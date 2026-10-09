@@ -862,7 +862,10 @@ export default [
         if (paths.some((p) => /\/(approve|dismiss)$/.test(p))) L.check(al.status === "draft", `the to-do "Approve/Dismiss ${al.name}" is still open but the storm is already ${al.status}`);
         if (paths.some((p) => /\/all-clear$/.test(p))) L.check(al.status === "ended" && !al.all_clear_sent_at && !al.all_clear_skipped_at, `the all-clear to-do for "${al.name}" is still open but the all-clear is ${al.all_clear_sent_at ? "sent" : al.all_clear_skipped_at ? "skipped" : `not due (storm ${al.status})`}`);
       }
-      const drafts = dash.alerts.filter((a) => a.status === "draft" && a.is_threat === true);
+      // Storms Mark declared by hand and the gate's own fixtures get no review nudge by design
+      // (storm-agent notifyReview runs for scanned systems only) — same skip as editorial.mjs.
+      const noNudgeByDesign = (a) => /^MANUAL-/i.test(a.nhc_id || "") || /^e2e-fixture/i.test(a.name || "");
+      const drafts = dash.alerts.filter((a) => a.status === "draft" && a.is_threat === true && !noNudgeByDesign(a));
       for (const d of drafts) {
         const mine = stormActs.filter((a) => a.source_ref === d.id && (a.buttons || []).some((b) => /\/approve$/.test(String(b.path))));
         if (!mine.length && full) t.require(false, `Mark's to-do list is full (30 shown), so whether the "${d.name}" draft has its Approve to-do cannot be told`);
@@ -880,7 +883,9 @@ export default [
       }
 
       // the course-change log's live storms vs the dashboard vs the public list
-      const live = new Set(liveThreats.map((a) => a.id));
+      // the gate's storm fixture runs the scan in test mode, which skips the lifecycle pass that pins
+      // ships — so a fixture storm is never in the course-change log; real storms (hand-declared too) are
+      const live = new Set(liveThreats.filter((a) => !/^e2e-fixture/i.test(a.name || "")).map((a) => a.id));
       const logLive = new Set(log.storms.map((s) => s.id));
       for (const id of live) L.check(logLive.has(id), `the live storm "${byId.get(id)?.name}" is missing from the course-change log's storms`);
       for (const id of logLive) L.check(live.has(id), `the course-change log shows a live storm the dashboard does not (${String(id).slice(0, 8)})`);
