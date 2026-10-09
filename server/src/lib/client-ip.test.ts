@@ -29,3 +29,11 @@ describe("clientIp — the visitor, not nginx", () => {
     assert.notEqual(a, b);
   });
 });
+
+it("clientIp: a loopback X-Real-IP (the box calling itself through nginx) yields to the caller's X-Forwarded-For; a real address never does", () => {
+  const req = (h: Record<string, string>) => ({ headers: h, socket: { remoteAddress: "10.0.0.9" } }) as never;
+  assert.equal(clientIp(req({ "x-real-ip": "127.0.0.1", "x-forwarded-for": "192.0.2.7" })), "192.0.2.7");
+  assert.equal(clientIp(req({ "x-real-ip": "::1", "x-forwarded-for": "192.0.2.8, 10.1.1.1" })), "192.0.2.8");
+  assert.equal(clientIp(req({ "x-real-ip": "127.0.0.1" })), "127.0.0.1", "loopback with nothing else stays loopback");
+  assert.equal(clientIp(req({ "x-real-ip": "203.0.113.5", "x-forwarded-for": "192.0.2.7" })), "203.0.113.5", "a visitor cannot pick their address");
+});

@@ -532,7 +532,14 @@ export default [
     devOnlyBecause: "POSTs are refused on prod. A successful sign-up writes a subscriber and a watch and sends a real email, so only the refusal paths and the bot honeypot are exercised (each returns before any write or send); the success path is a gap.",
     run: async (t) => {
       const headers = gateClient();
-      const signup = async (body) => t.send("POST", "/api/wms/track-signup", { body, headers });
+      // Since 2026-10-08 the sign-up refuses a missing Turnstile token before it looks anything up
+      // (audience.turnstile-enforced-by-server proves that). These probes test the OTHER refusals, so
+      // on a box running Cloudflare's test keys (dev) they carry a token the test secret accepts;
+      // a box with no Turnstile skips the check anyway.
+      const cfg = t.json(await t.get("/api/public-config"));
+      const turnstile = cfg.turnstileTestMode ? { "cf-turnstile-response": "e2e-fixture-test-mode-token" } : {};
+      t.require(!cfg.turnstileSiteKey || cfg.turnstileTestMode, "this box runs a REAL Turnstile key, so the gate cannot pass the security check to reach the other refusals (dev should run Cloudflare's test key)");
+      const signup = async (body) => t.send("POST", "/api/wms/track-signup", { body: { ...turnstile, ...body }, headers });
       const refused = (res, status, code, what) => {
         t.status(res, status);
         t.ok(res.json && res.json.ok === false, `${what}: expected a refusal: ${res.describe()}`);
