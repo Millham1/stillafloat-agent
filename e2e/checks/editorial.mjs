@@ -213,14 +213,25 @@ function newsletterCheck(lang) {
           const v = u.searchParams.get("v");
           t.matches(v, /^[A-Za-z0-9_-]{11}$/, `the ${name} email's video link`);
           if (d.video?.thumbnail) t.ok(d.video.thumbnail.includes(v), `the ${name} email's video thumbnail shows a different video than its link`);
-          // oEmbed answers 401/404 for a private, deleted or non-embeddable video (the watch page answers 200 regardless)
+          // oEmbed answers 200 for a public embeddable video, 401 for a PUBLIC video whose owner switched
+          // embedding off (2026-10-09: the pinned Shokz video is public, embeddable=false — the email links
+          // to the watch page, which plays it fine), 404 for a deleted one. Private videos answer 401 too,
+          // so a 401 is confirmed against the site's own video cache, which the six-hourly scan prunes of
+          // anything the YouTube Data API no longer returns (private and deleted alike).
           const oe = await t.get(`https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${v}`)}&format=json`);
           opened++;
-          t.ok(oe.status === 200, `the video in the ${name} email (${v}) cannot be watched — YouTube says HTTP ${oe.status} (private, deleted or embedding off)`);
+          let vt = String(oe.json?.title || "");
+          if (oe.status !== 200) {
+            t.ok(oe.status === 401, `the video in the ${name} email (${v}) cannot be watched — YouTube says HTTP ${oe.status} (deleted or removed)`);
+            const cached = t.json(await t.get(`/api/youtube-top?limit=10&lang=${lang}&type=all`)).videos || [];
+            const hit = cached.find((x) => x.id === v);
+            t.ok(hit, `the video in the ${name} email (${v}) is not embeddable AND is not in the site's video cache — the scan pruned it, so it is private or gone`);
+            vt = String(hit?.title || "");
+            t.observe(`${name} email video is public with embedding off`, true);
+          }
           // the video is in the edition's language (2026-07-09: the English issue featured the Spanish
           // site-tour video; newsletter.ts picks by a Spanish-title test, the same test used here)
-          const vt = String(oe.json?.title || "");
-          t.ok(vt.length > 0, `YouTube gave no title for the ${name} email's video`);
+          t.ok(vt.length > 0, `no title could be read for the ${name} email's video`);
           t.ok(lang === "es" ? SPANISH_TITLE.test(vt) : !SPANISH_TITLE.test(vt), `the ${name} email features a video whose title is in the other language`);
           continue;
         }
