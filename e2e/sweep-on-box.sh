@@ -60,11 +60,22 @@ STAMP="$(date -u +%Y%m%dT%H%M%SZ)"; FILE="$OUT/$MODE-$STAMP.json"
 date +%s > "$MARK"
 cd "$HERE/.." && AGENT_APPROVAL_TOKEN="$TOK" node e2e/run.mjs --mode "$MODE" --site "$SITE" --news "$NEWS" --ops "$OPS" --json "$FILE"
 rc=$?
-cp "$FILE" "$OUT/latest-$MODE.json" 2>/dev/null
 ls -t "$OUT"/$MODE-*.json 2>/dev/null | tail -n +31 | xargs -r rm -f   # keep the last 30
-python3 - "$FILE" "$(git -C "$HERE/.." rev-parse --short HEAD 2>/dev/null)" <<'PY'
+# Record WHAT was swept, so this file can be the release-gate record (site-e2e.sh --adopt):
+# the three repos' heads and trees as they were on this box, the pm2 states, the suite commit.
+HEADS="$(for d in /root/saf-full /root/stillafloat-newsagent /opt/saf-ops-manager; do printf "%s:%s " "$(git -C $d rev-parse HEAD 2>/dev/null || echo none)" "$(git -C $d rev-parse "HEAD^{tree}" 2>/dev/null || echo none)"; done)"
+PROCS="$(pm2 jlist 2>/dev/null | python3 -c 'import sys,json; print(",".join(p["name"]+"="+p["pm2_env"]["status"] for p in json.load(sys.stdin)))' 2>/dev/null)"
+python3 - "$FILE" "$MODE" "$HEADS" "$PROCS" <<'PY'
 import json, sys
-r = json.load(open(sys.argv[1])); s = r["summary"]
-print(f"SWEEP {r['meta']['mode']} {s['result']} pass={s['pass']} fail={s['fail']} untestable={s['untestable']} known={s['waived']} suite={sys.argv[2]} file={sys.argv[1]}")
+f, mode, heads, procs = sys.argv[1:5]
+r = json.load(open(f)); s = r["summary"]
+ha, hn, ho = (heads.split() + ["none:none"] * 3)[:3]
+def pair(x): sha, _, tree = x.partition(":"); return {"box_head": sha, "box_tree": tree}
+r["gate"] = {"box": mode, "suite": ha.split(":")[0][:7], "committed_suite": True, "ran_on_box": True,
+             "heads": {"agent": pair(ha), "news": pair(hn), "ops": pair(ho)}, "processes": procs,
+             "complete": not s.get("partial", False)}
+json.dump(r, open(f, "w"), indent=1)
+print(f"SWEEP {mode} {s['result']} pass={s['pass']} fail={s['fail']} untestable={s['untestable']} known={s['waived']} suite={r['gate']['suite']} file={f}")
 PY
+cp "$FILE" "$OUT/latest-$MODE.json" 2>/dev/null
 exit $rc
