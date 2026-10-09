@@ -24,7 +24,8 @@ export default [
       const res = await t.get("/api/healthz/jobs", { auth: true });
       // 503 is the ledger's own verdict (a job is overdue); the body is still the report
       t.ok(res.status === 200 || res.status === 503, `the job ledger answered ${res.describe()}`);
-      const r = t.json(res);
+      // 503 is the ledger's own verdict (a job is overdue) and still carries the report — read it as such
+      const r = res.json && typeof res.json === "object" ? res.json : t.json(res);
       t.fields(r, ["ok", "now", "bootedAt", "uptimeSec", "jobs", "errors"], "the job-health report");
       t.ok(Array.isArray(r.jobs), "the report has no jobs list");
       t.atLeast(r.jobs.length, 10, "scheduled jobs in the ledger");
