@@ -33,6 +33,8 @@ async function buildAll() {
     external: [
       "*.node",
       "sharp",
+      "pdfkit",   // group marketing poster PDF (2026-10-10): bundling it dragged in a helper package the box does not have
+      "qrcode",
       "pdfjs-dist",
       "better-sqlite3",
       "sqlite3",
