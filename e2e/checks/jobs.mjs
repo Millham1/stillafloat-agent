@@ -19,7 +19,10 @@
 //
 // DEV vs PROD. The dev box deliberately switches some jobs off so it never posts, emails or
 // nudges twice (shared.env on 178.156.154.144, 2026-10-08): DISABLE_DAILY_BRIEF,
-// DISABLE_SOCIAL_POSTER, DISABLE_WEEKLY_MARKETING, DISABLE_WMS_ALERTS, DISABLE_YOUTUBE_SCAN.
+// DISABLE_WEEKLY_MARKETING, DISABLE_WMS_ALERTS, DISABLE_YOUTUBE_SCAN. (The social poster runs on dev since
+// 2026-10-09 in SINK mode — SOCIAL_POSTER_SINK=1: same schedule and rules as prod, but the last hop goes to a
+// test sink instead of Make, and a feeder approves pending dev batches so the calendar never runs dry;
+// lib/social-sink.ts.)
 // A check for one of those reports UNTESTABLE on dev when the output is stale (never a pass):
 // the candidate cannot show that job works before it reaches prod. That is a true statement
 // about the release, and it fails the run until dev can exercise the job (e.g. a dry-run mode).
@@ -40,7 +43,7 @@ const SITE = "https://stillafloatcruising.com";
 
 const DEV_OFF = {
   weekly: "the weekly marketing job is switched off on the dev box (DISABLE_WEEKLY_MARKETING=1), so the release candidate cannot show it still writes the newsletter and commentary drafts",
-  poster: "the social poster is switched off on the dev box (DISABLE_SOCIAL_POSTER=1) and dev has no scheduled posts, so the release candidate cannot show the poster still handles due posts",
+  poster: "the social poster has handled no post on the dev box in the last 7 days (it runs there in sink mode, SOCIAL_POSTER_SINK=1, with a feeder that approves pending test batches), so the release candidate cannot show the poster still handles due posts — check that the poster is switched on (DISABLE_SOCIAL_POSTER=0) and that dev has pending batches to feed it",
 };
 
 /** Age in hours of an ISO time or ms; NaN when unreadable. */

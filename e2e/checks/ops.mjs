@@ -402,7 +402,7 @@ export default [
       t.observe("calendar posts", s.items.length, "info");
       t.observe("posts waiting past their slot (retrying)", overdue, "info");
       t.observe("days since last post", posted.length ? Number(daysOld(t, posted.at(-1)).toFixed(1)) : null, "info");
-      // Dev runs with DISABLE_SOCIAL_POSTER=1 and a test queue: no calendar → nothing above was exercised.
+      // Dev runs the poster in sink mode (SOCIAL_POSTER_SINK=1, lib/social-sink.ts) on a test queue; an empty calendar means nothing above was exercised.
       // Whether Mark has approved any batch is his cadence, not the site's, so an empty calendar on prod is not a
       // failure. Dev holds a seeded approved batch by his 2026-10-08 dev-mirror ruling and must still show it.
       if (t.mode === "dev") t.require(s.items.length > 0, "the posting calendar is empty on dev, so the calendar, its page and the stuck-post rule cannot be tested (seed an approved fixture batch on dev)");

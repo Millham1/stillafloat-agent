@@ -1,6 +1,7 @@
 import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
 import { composeCaption } from "./hashtags";
+import { sinkEnabled, sinkPost } from "./social-sink";
 import type { QueuedBatch, SocialPost } from "./social-agent";
 
 // Posting actuator. On batch approval the backend pushes each post to its
@@ -92,6 +93,7 @@ export async function publishOnePost(post: SocialPost): Promise<PublishResult> {
     const media = await loadMediaMap();
     const clip = media.items[post.videoId]?.videoUrl;
     if (!clip) return { surface: post.surface, platform: "instagram", ok: false, reason: "ig-no-clip" };
+    if (sinkEnabled()) return sinkPost(post); // dev mirror: recorded, never sent (lib/social-sink.ts)
     if (!igWebhook) return { surface: post.surface, platform: "instagram", ok: false, reason: "ig-not-configured" };
     // Hashtags live INSIDE the caption on Instagram — the webhook has no other
     // field for them. Until 2026-09-09 only post.caption was sent, so no Reel in
@@ -100,6 +102,7 @@ export async function publishOnePost(post: SocialPost): Promise<PublishResult> {
   }
 
   // facebook — photo post: send the YouTube thumbnail + caption + link.
+  if (sinkEnabled()) return sinkPost(post); // dev mirror: recorded, never sent (lib/social-sink.ts)
   if (!fbWebhook) return { surface: post.surface, platform: "facebook", ok: false, reason: "fb-not-configured" };
   const caption = composeCaption(post.caption, post.hashtags, post.link);
   const image_url = `https://i.ytimg.com/vi/${post.videoId}/hqdefault.jpg`;

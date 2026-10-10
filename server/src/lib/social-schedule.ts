@@ -1,7 +1,8 @@
 import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
-import { loadQueue, saveQueue, type QueuedBatch, type SocialPost } from "./social-agent";
+import { loadQueue, saveQueue, setBatchStatus, type QueuedBatch, type SocialPost } from "./social-agent";
 import { publishOnePost, isPersonalSurface } from "./social-publish";
+import { sinkEnabled, pickBatchToFeed } from "./social-sink";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Social posting SCHEDULER.
@@ -182,6 +183,22 @@ export function decideOutcome(
   }
   if (SKIP_REASONS.has(res.reason)) return { kind: "skipped", error: res.reason };
   return { kind: "failed", error: res.reason };
+}
+
+// DEV MIRROR ONLY (SOCIAL_POSTER_SINK=1, never on prod — see social-sink.ts). On prod Mark approves
+// batches by hand, so the calendar always has posts coming; on dev nobody does, so before each tick
+// the poster approves the oldest pending test batch when fewer than 3 posts wait for a future slot.
+// Returns the batch id it approved, or null (off, enough queued, or nothing pending).
+export async function feedSinkQueue(): Promise<string | null> {
+  if (!sinkEnabled()) return null;
+  const queue = await loadQueue();
+  const pick = pickBatchToFeed(queue.batches, Date.now());
+  if (!pick) return null;
+  const approved = await setBatchStatus(pick.id, "approved");
+  if (!approved) return null;
+  await scheduleApprovedBatch(approved);
+  logger.info({ batch: pick.id }, "social poster (dev sink): approved the oldest pending test batch to keep the calendar supplied");
+  return pick.id;
 }
 
 // Post everything that's due. Throttled per tick. Returns count posted.

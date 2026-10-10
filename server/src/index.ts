@@ -3,7 +3,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { checkLiveAisCredits, liveAisEnabled } from "./lib/live-ais";
 import { scheduleItineraryRefresh } from "./lib/itinerary-refresh";
-import { runDuePosts } from "./lib/social-schedule";
+import { runDuePosts, feedSinkQueue } from "./lib/social-schedule";
 import { runAndDeliverBrief } from "./lib/brief";
 import { parseBriefHours, dueBriefHour, slotKey } from "./lib/brief-schedule";
 import { runStormScan } from "./lib/storm-agent";
@@ -276,9 +276,13 @@ function scheduleLiveAisCredits() {
 // ── Social poster scheduler ───────────────────────────────────────────────────
 // Every 10 minutes, post any scheduled social items whose time has arrived. No-op
 // (and harmless) until the Make webhooks are configured — unconfigured posts stay
-// scheduled and go out once the env vars land.
+// scheduled and go out once the env vars land. On the dev mirror SOCIAL_POSTER_SINK=1 sends
+// to a test sink instead of Make and keeps its calendar supplied (lib/social-sink.ts).
 function scheduleSocialPoster() {
-  const tick = () => runJob("scheduleSocialPoster", () => runDuePosts(), { logFail: "Social poster tick failed" });
+  const tick = () => runJob("scheduleSocialPoster", async () => {
+    await feedSinkQueue().catch((err) => logger.warn({ err }, "social poster (dev sink): could not feed the queue"));
+    return runDuePosts();
+  }, { logFail: "Social poster tick failed" });
   setTimeout(() => { tick().catch(() => {}); }, 20_000);
   setInterval(() => { tick().catch(() => {}); }, 10 * 60 * 1000);
   logger.info("Social poster active — every 10m");
