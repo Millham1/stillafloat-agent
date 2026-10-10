@@ -215,6 +215,19 @@ export function humanizeAmenity(raw: string, lang: Lang): string {
     : `${n} amenity ${n === 1 ? "point" : "points"} from the cruise line: group perks (such as onboard credit) that Mark picks for the group before final payment`;
 }
 
+/** Cruise-line quotes name the home port by its code; the page says the city. Unknown codes pass through. */
+const PORT_CODES: Record<string, string> = {
+  MIA: "Miami, Florida", FLL: "Fort Lauderdale, Florida", PCV: "Port Canaveral, Florida", PCN: "Port Canaveral, Florida", CAN: "Port Canaveral, Florida",
+  GAL: "Galveston, Texas", TPA: "Tampa, Florida", NYC: "New York", NY: "New York", BOS: "Boston, Massachusetts", BAL: "Baltimore, Maryland",
+  NOL: "New Orleans, Louisiana", MSY: "New Orleans, Louisiana", LAX: "Los Angeles, California", SEA: "Seattle, Washington", SJU: "San Juan, Puerto Rico",
+  SFO: "San Francisco, California", SAN: "San Diego, California", JAX: "Jacksonville, Florida", CHS: "Charleston, South Carolina", MOB: "Mobile, Alabama",
+};
+export function portDisplayName(raw: unknown): string | null {
+  const s = typeof raw === "string" ? raw.trim() : "";
+  if (!s) return null;
+  return PORT_CODES[s.toUpperCase()] ?? s;
+}
+
 export function buildFacts(
   file: { group: Row; cabins: Row[]; travel?: Row[] },
   rating: Row | null,
@@ -235,7 +248,10 @@ export function buildFacts(
     return { day: Number.isInteger(s.day) ? s.day : null, dateText: formatDate(s.date, lang), port, timesText: times, seaDay: SEA_DAY.test(port) };
   }).filter((s: ItineraryLine) => s.port);
 
-  const home = (g.embark_port ?? "").split(",")[0]!.trim().toLowerCase();
+  // A quote often prints the home port as a code ("MIA"); the page and poster say the city, and the
+  // city is not a port of call (2026-10-10: the poster read "FROM MIA" and listed Miami as a port).
+  const embarkPort = portDisplayName(g.embark_port);
+  const home = (embarkPort ?? "").split(",")[0]!.trim().toLowerCase();
   const ports: string[] = [];
   for (const s of itinerary) {
     const short = s.port.split(",")[0]!.trim();
@@ -288,7 +304,7 @@ export function buildFacts(
     sailDateText: formatDate(g.sail_date, lang),
     returnDateText: formatDate(g.return_date, lang),
     nights: Number.isInteger(g.nights) ? g.nights : null,
-    embarkPort: g.embark_port ?? null,
+    embarkPort,
     ports,
     itinerary,
     amenities: (Array.isArray(g.amenities) ? g.amenities : []).filter((a: unknown): a is string => typeof a === "string" && !!a.trim()).map((a) => humanizeAmenity(a, lang)),

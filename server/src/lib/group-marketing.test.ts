@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
-  normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines } from "./group-marketing";
+  normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -172,6 +172,19 @@ test("the prompt hides prices and the score when Mark switches them off", () => 
   assert.ok(!off.includes("4.3"));
 });
 
+
+test("the home port's code becomes its city, and the city is not a port of call (the poster read 'FROM MIA' and listed Miami)", () => {
+  assert.equal(portDisplayName("MIA"), "Miami, Florida");
+  assert.equal(portDisplayName("Galveston, Texas"), "Galveston, Texas");
+  assert.equal(portDisplayName(""), null);
+  const f = buildFacts({ group: { ...file().group, embark_port: "MIA", itinerary: [
+    { day: 1, date: "2027-05-10", port: "Miami, Florida", arrive: null, depart: "16:00" },
+    { day: 2, date: "2027-05-11", port: "Nassau, Bahamas", arrive: "08:00", depart: "18:00" },
+    { day: 5, date: "2027-05-14", port: "Miami, Florida", arrive: "07:00", depart: null },
+  ] }, cabins: [] }, null, "en");
+  assert.equal(f.embarkPort, "Miami, Florida");
+  assert.deepEqual(f.ports, ["Nassau"]);
+});
 
 test("a quote's '3 AMENITY POINTS' shorthand becomes a plain sentence on the page, in both languages; plain perks pass through", () => {
   assert.equal(humanizeAmenity("3 AMENITY POINTS", "en"), "3 amenity points from the cruise line: group perks (such as onboard credit) that Mark picks for the group before final payment");
