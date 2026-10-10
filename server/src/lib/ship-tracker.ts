@@ -195,6 +195,17 @@ export function isSubscribed(shipName: string): boolean {
   return Boolean(ship && activeMmsis.has(ship.mmsi));
 }
 
+/** Has a visitor specifically asked for this ship — an active watch, or a tracking request within
+ *  `days` (the 15-day watch window)? Storm pages list a non-mainstream line's ship only then
+ *  (Mark 2026-10-09; storm-sailings.keepMainstreamOrRequested). */
+export function specificallyRequested(shipName: string, now = Date.now(), days = 15): boolean {
+  const ship = registryByName(shipName);
+  if (!ship) return false;
+  if (ship.hasWatch) return true;
+  const t = Date.parse(ship.lastRequestedAt ?? "");
+  return Number.isFinite(t) && now - t < days * 24 * 60 * 60 * 1000;
+}
+
 /** Registry MMSI for a ship name (null when unknown / no MMSI on file). */
 export function mmsiForShip(shipName: string): string | null {
   return registryByName(shipName)?.mmsi ?? null;

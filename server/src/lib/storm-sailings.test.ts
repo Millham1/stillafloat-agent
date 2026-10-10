@@ -2,7 +2,7 @@
 // tracker knows. It carries no dates: a storm-page watch runs 15 days from when it starts.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { withTrackable, type Sailing } from "./storm-sailings";
+import { withTrackable, keepMainstreamOrRequested, isMainstreamLine, MAINSTREAM_LINES, type Sailing } from "./storm-sailings";
 
 const sailing = (ship_name: string, start_date = "2026-09-15", end_date = "2026-09-20"): Sailing => ({
   ship_name, cruise_line: "Carnival", depart_port: "Miami", start_date, end_date, regions: ["bahamas"],
@@ -154,4 +154,24 @@ test("a port call counts only on the day it happens: a Montreal → New York cru
   assert.equal(callInWindow({ date: "2026-10-02" }, win), false);
   assert.equal(callInWindow({ date: null }, win), true);
   assert.equal(callInWindow({ date: "2026-09-30T10:00:00Z" }, win), true, "a timestamp is judged by its day");
+});
+
+
+describe("mainstream lines only, unless specifically requested (Mark 2026-10-09)", () => {
+  const sail = (ship_name: string, cruise_line: string): Sailing => ({ ship_name, cruise_line, depart_port: null, start_date: "2026-10-06", end_date: "2026-10-13", regions: [] });
+  it("recognises the mainstream lines under the spellings the ships table uses", () => {
+    for (const l of ["Carnival", "Royal Caribbean", "Norwegian", "MSC", "Princess", "Celebrity", "Holland America", "Disney Cruise Line", "Virgin Voyages", "Margaritaville at Sea"]) assert.equal(isMainstreamLine(l), true, l);
+    for (const l of ["Ponant", "AIDA", "Costa", "TUI Cruises", "Viking", "Silversea", "Cunard", "P&O UK", "Lindblad Expeditions", "", null]) assert.equal(isMainstreamLine(l), false, String(l));
+    assert.ok(MAINSTREAM_LINES.length >= 10);
+  });
+  it("drops a Ponant ship nobody asked for (L'Austral) and keeps the mainstream ships", () => {
+    const list = [sail("L'Austral", "Ponant"), sail("Carnival Liberty", "Carnival"), sail("AIDAdiva", "AIDA"), sail("Enchantment of the Seas", "Royal Caribbean")];
+    const kept = keepMainstreamOrRequested(list, () => false).map((s) => s.ship_name);
+    assert.deepEqual(kept, ["Carnival Liberty", "Enchantment of the Seas"]);
+  });
+  it("keeps a non-mainstream ship a visitor specifically requested", () => {
+    const list = [sail("L'Austral", "Ponant"), sail("AIDAdiva", "AIDA")];
+    const kept = keepMainstreamOrRequested(list, (name) => name === "AIDAdiva").map((s) => s.ship_name);
+    assert.deepEqual(kept, ["AIDAdiva"]);
+  });
 });

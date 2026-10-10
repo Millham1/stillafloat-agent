@@ -12,6 +12,7 @@ import { portBySlug, distanceKm, CRUISE_LOCATIONS } from "./ports";
 import { resolvePortSlug, resolvePortName } from "./port-resolve";
 import { groundsForPoint } from "./storm-grounds";
 import { readAllRows } from "./read-all";
+import { specificallyRequested } from "./ship-tracker";
 
 /** Forward-looking deployments whose region overlaps the storm's grounds and
  *  whose season contains any part of the forecast window. Complements the
@@ -51,6 +52,31 @@ export interface Sailing {
 
 /** A sailing as the storm pages list it, with whether the ship can be tracked. */
 export type TrackableSailing = Sailing & { trackable: boolean };
+
+/**
+ * Mark, 2026-10-09: "limit the lines to the most common lines, unless there is a specific request
+ * for one." Said when L'Austral (Ponant, 264 passengers) sat on Isaias's page with a dead
+ * Track-this-ship button and held a release: "ridiculous waiting for one ship that isn't even in
+ * the mainstream market." Storm pages, storm emails and the storm dashboard list a ship only if her
+ * line is here, or a visitor has specifically asked for her (active watch / tracking request within
+ * the 15-day window). Every other registry ship stays searchable and trackable ON REQUEST in the
+ * tracker itself; it is just not surfaced unasked. Add a line here when Mark says so.
+ */
+export const MAINSTREAM_LINES: readonly string[] = [
+  "Carnival", "Royal Caribbean", "Norwegian", "MSC", "Princess", "Celebrity",
+  "Holland America", "Disney", "Virgin Voyages", "Margaritaville at Sea",
+];
+const lineKey = (s: string): string => s.toLowerCase().replace(/\b(cruise lines?|cruises)\b/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+export function isMainstreamLine(cruiseLine: string | null | undefined): boolean {
+  const k = lineKey(cruiseLine ?? "");
+  return Boolean(k) && MAINSTREAM_LINES.some((m) => k === lineKey(m) || k.startsWith(lineKey(m) + " "));
+}
+/** Pure: keep mainstream-line sailings, plus any ship a visitor specifically requested. */
+export function keepMainstreamOrRequested<T extends { ship_name: string; cruise_line: string }>(
+  sailings: readonly T[], requested: (shipName: string) => boolean,
+): T[] {
+  return sailings.filter((s) => isMainstreamLine(s.cruise_line) || requested(s.ship_name));
+}
 
 /**
  * Mark, 2026-09-15: "on the storm alerts, we should have a CTA for tracking their ship next
@@ -353,10 +379,11 @@ export async function impactedShipsForAlert(
   if (path.length) {
     add(sailingsNearPath(derived, path));
     add(plannedRowsNearPath(await plannedRowsForWindow(windowStart, windowEnd), path, locatePort, { start: windowStart, end: windowEnd }));
-    return out;
+  } else {
+    add(derived);
+    add(await deploymentsForStorm(grounds, windowStart, windowEnd));
+    add(await plannedSailingsForStorm(grounds, windowStart, windowEnd));
   }
-  add(derived);
-  add(await deploymentsForStorm(grounds, windowStart, windowEnd));
-  add(await plannedSailingsForStorm(grounds, windowStart, windowEnd));
-  return out;
+  // Mainstream lines only, unless a visitor specifically asked for the ship (Mark 2026-10-09).
+  return keepMainstreamOrRequested(out, (name) => specificallyRequested(name));
 }
