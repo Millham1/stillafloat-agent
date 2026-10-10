@@ -79,7 +79,8 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.feeds-agree",
-    title: "The news feed, homepage news, alerts and story details all list the same approved stories, in English and Spanish, and the feed is current",
+    basis: "master-ref: §5 NEWS / EDITORIAL AGENT — one set of approved stories is written together into the news feed, homepage feed and story details, in English and Spanish, and the daily scan's 21-day archive sweep keeps old stories out of the live feed",
+    title: "The news feed, homepage news, alerts and story details all list the same approved stories, in English and Spanish, written together, with no story left past the 21-day sweep",
     covers: ["GET /api/news-feed", "GET /api/homepage-feed", "GET /api/story-details", "GET /api/alerts-feed"],
     modes: ["dev", "prod"],
     incident: "risk: one view of a story drifting from the others (a homepage card with no details record shows 'Story unavailable'); a stopped agent leaves a stale feed answering 200",
@@ -167,7 +168,7 @@ export default [
       const al = t.success(await t.get("/api/alerts-feed"));
       t.ok(Array.isArray(al.alerts), "the alerts feed has no alerts array");
       const expected = en.stories.filter(isAlert).slice(0, 10).map((s) => s.id);
-      t.require(expected.length > 0, "the news feed has no featured, high or critical story, so the alerts feed cannot be tested");
+      // (no featured, high or critical story means an empty alerts feed, which the comparison below holds to)
       t.equal(al.alerts.map((a) => a.id).join("|"), expected.join("|"), "alerts feed vs the feed's featured/high/critical stories");
       for (const a of al.alerts) {
         t.fields(a, ["id", "title", "impactLevel", "approvedAt"], `alert ${a.id}`);
@@ -183,8 +184,9 @@ export default [
       t.observe("newest story age (hours)", Math.round(ageH(t, en.stories[0].approvedAt)), "info");
 
       // asserted last so every other view is still compared when these fail.
-      // the feed is alive: a story was approved this week, and the daily 21-day sweep ran
-      t.fresh(en.stories[0].approvedAt, 7 * 24, "the newest approved news story (no story approved in a week means the agent or the approvals have stopped)");
+      // The age of the newest approved story is the news and Mark's approval cadence, not the site (2026-10-09
+      // grounding pass); the agent's own scan is held by jobs.news-daily-scan-ran and the three feeds' stamps
+      // above. What the site promises here: the daily 21-day sweep ran.
       const overdue = en.stories.filter((s) => !s.featured && !s.pinned && ageH(t, s.approvedAt) > 23 * 24);
       t.ok(overdue.length === 0, `${overdue.length} unfeatured stories older than 23 days are still in the live feed — the news agent's daily 21-day archive sweep has not run`);
 
@@ -195,6 +197,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.story-lookup-en-es",
+    basis: "ruling: mark-en-approval-implies-es-translation.md — Mark 10/8: whatever is approved in English needs its Spanish twin; a story page must serve stored Spanish text, never a paid translation on a visitor's page load",
     title: "Opening a story by id (story.html / es/story.html) returns that story, with the Spanish version already translated",
     covers: ["GET /api/story-details", "page /story.html", "page /es/story.html"],
     modes: ["dev", "prod"],
@@ -236,6 +239,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.prerendered-pages-match-feed",
+    basis: "ruling: stillafloat-news-prerender.md — the hourly prerender gives every approved story its own EN and ES page, listing card and sitemap entry (or noindex); aged-out stories keep their pages",
     title: "Every approved story has its own English and Spanish news page, is listed on /news.html and /es/news.html, and is in the news sitemap unless the page is marked noindex",
     covers: ["GET /api/news-feed", "job scheduleNewsPrerender", "ext:page /news.html", "ext:page /es/news.html", "ext:page /news/<story>.html", "ext:page /es/news/<story>.html", "ext:page /news/<line>.html hub", "ext:page /es/news/<line>.html hub", "ext:file /news-sitemap.xml"],
     modes: ["dev", "prod"],
@@ -243,7 +247,8 @@ export default [
     run: async (t) => {
       const feed = await loadFeed(t, "en");
       const settled = feed.stories.filter((s) => ageH(t, s.approvedAt) > PRERENDER_SLACK_H);
-      t.require(settled.length > 0, "every story in the feed was approved within the last hour, so the hourly prerender cannot be judged yet");
+      // A story approved in the last 75 minutes has no page yet by design (the prerender is hourly), so only
+      // settled stories are held to one; if there are none, only the listings and sitemap are checked.
 
       const listEn = t.html(await t.get("/news.html"));
       const listEs = t.html(await t.get("/es/news.html"));
@@ -356,6 +361,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.homepage-cards-open-pages",
+    basis: "ruling: stillafloat-news-prerender.md — a homepage news card is a teaser linking /news/<slug>.html (ES /es/news/…) built by the same slug rule the server writes with",
     title: "The English and Spanish homepages load the news panel script, and its cards link to story pages that exist (the browser's copy of the page-address rule matches the server's)",
     covers: ["GET /api/homepage-feed", "GET /api/news-feed", "page /index.html", "page /es/index.html", "ext:page /news/<story>.html", "ext:page /es/news/<story>.html"],
     modes: ["dev", "prod"],
@@ -398,7 +404,7 @@ export default [
       }
 
       const settled = home.stories.filter((s) => ageH(t, s.approvedAt) > PRERENDER_SLACK_H);
-      t.require(settled.length > 0, "every homepage story was approved within the last hour, so its page cannot be expected yet");
+      // (a story younger than 75 minutes has no page yet by design — the prerender is hourly)
       for (const s of spread(settled, 2)) {
         const en = t.html(await t.get(browserUrlEn(s)));
         t.equal(norm(H.h1s(en)[0]), norm(s.title), `homepage card "${s.id}" opens a page with a different headline`);
@@ -415,6 +421,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.archive-search",
+    basis: "ruling: stillafloat-news-prerender.md — a story aged out of the live feed by the 21-day sweep keeps its pages and its card on /news.html; the dashboard archive finds it and is token-gated",
     title: "The dashboard's news archive finds old stories, every archived story still has a card on /news.html and working pages, and the archive refuses anyone without the dashboard token",
     covers: ["GET /api/news-archive", "GET /api/news-archive/story", "ext:page /news.html", "ext:page /news/<story>.html", "ext:page /es/news/<story>.html"],
     modes: ["dev", "prod"],
@@ -484,6 +491,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.agent-alive-queue-readable",
+    basis: "master-ref: §5 NEWS / EDITORIAL AGENT — the standalone agent on port 3003 serves /health and a token-gated /api/editorial-queue replaced by the 08:00 scan; queued stories carry Spanish text so approving never publishes English-only",
     title: "The news agent is running, its editorial queue is readable with the token (and refused without it), and today's scan ran — the site's news status agrees with it",
     covers: ["ext:news GET /health", "ext:news GET /api/health", "ext:news GET /api/editorial-queue", "GET /api/system-status"],
     modes: ["dev", "prod"],
@@ -532,6 +540,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.agent-reachable-through-site",
+    basis: "master-ref: §5 NEWS / EDITORIAL AGENT — nginx routes /review and /api/* to the news agent on port 3003, so the links in Mark's notification open the review page",
     title: "The editorial review page and queue that Mark's notification links open are routed from the website to the news agent",
     covers: ["ext:news GET /review", "ext:news GET /api/editorial-queue"],
     modes: ["dev", "prod"],
@@ -556,6 +565,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.editorial-queue-page-shows-queue",
+    basis: "code: server/public/editorial-queue.html — the page either loads the queue with a token or hands off to the agent's /review; it must never be a page that can only say 'unavailable' (found 10/8)",
     title: "The website's /editorial-queue.html page can actually show the stories awaiting review",
     covers: ["page /editorial-queue.html"],
     modes: ["dev", "prod"],
@@ -586,6 +596,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.translations",
+    basis: "ruling: mark-en-approval-implies-es-translation.md — Mark 10/8: approved English needs its Spanish twin automatically; translate-story serves the stored text and never re-translates (a paid model call) on a story view",
     title: "Spanish story translations are served from storage (no paid re-translation), and the article translator refuses bad requests",
     covers: ["GET /api/translate-story", "GET /api/translate-article", "page /es/translate-loading.html"],
     modes: ["dev", "prod"],
@@ -604,7 +615,8 @@ export default [
       // the stored-translation path, ONLY for stories whose feed record already has Spanish text
       const feed = await loadFeed(t, "en");
       const translated = feed.stories.filter((s) => s.title_es && s.summary_es);
-      t.require(translated.length > 0, "no story in the feed has a stored Spanish translation, so the cached path cannot be tested without a paid model call");
+      // every story carries stored Spanish text (news.feeds-agree demands it), so none having it is a translation defect
+      t.atLeast(translated.length, 1, "stories in the feed with a stored Spanish translation (so the cached path can be tested without a paid model call)");
       for (const s of spread(translated, 2)) {
         const r = t.success(await t.get(`/api/translate-story?id=${encodeURIComponent(s.id)}`));
         t.equal(r.translated, false, `translate-story re-translated ${s.id} instead of serving the stored Spanish text (a paid model call)`);
@@ -623,6 +635,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.manifest-and-weather-scaffold",
+    basis: "code: server/src/routes/feeds.ts — GET /platform-manifest lists the site's working news endpoints, and /weather-alerts monitors the home ports",
     title: "The platform manifest lists working news endpoints, and the weather-alerts stub still answers",
     // covers only what this check judges: the manifest and the weather stub. The feeds it follows are
     // only proven to answer here; their content is judged by news.feeds-agree / news.agent-alive-queue-readable.
@@ -653,6 +666,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "news.agent-actions-refuse-without-token",
+    basis: "master-ref: §5 NEWS / EDITORIAL AGENT — the agent's actions (approve, hold, feature, reject), manual scan and archive sweep are token-gated; nothing is approved or scanned without the dashboard key",
     title: "The news agent refuses approve/reject actions, manual scans and archive sweeps without the token (refusals only — the actions themselves are not run)",
     covers: ["ext:news GET /api/agent-action", "ext:news POST /api/scan-news", "ext:news POST /api/archive-sweep"],
     modes: ["dev"],

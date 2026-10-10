@@ -582,8 +582,23 @@ async function crawl(t, paths, { label }) {
   t.atLeast(assets.script.size + assets.style.size, 1, `${label}: scripts and stylesheets found`);
 }
 
+// Why each crawl group exists, in a cited source (Mark 2026-10-09: a gate check tests a property of the site, never a state of the world).
+const CRAWL_BASIS = {
+  "home": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
+  "advisor-and-signup": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
+  "gear-hub": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
+  "gear-categories": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
+  "weather-cams-favorites": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
+  "ships-and-storms": "ruling: stillafloat-home-pills-rule.md — navbar.js is the single source of site chrome (home-only pills, corner logo on every page but home); every tracker and Storm Watch page opens with its scripts and links working in its language (stillafloat-es-first-class.md)",
+  "cabins": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
+  "commentary-and-stories": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
+  "policies-and-owner": "ruling: stillafloat-es-first-class.md — privacy and terms ship in both languages; Mark's own review pages and placeholders stay out of search; Search Console's ownership file stays in place",
+  "group-cruise": "ruling: stillafloat-group-bookings.md — a group cruise page is shared by private link and must never be indexed (noindex), in English and Spanish, with its scripts and links working"
+};
+
 const crawlCheck = (id, label, title, paths, extra = {}) => ({
   id: `pages.crawl-${id}`,
+  basis: CRAWL_BASIS[id],
   title,
   covers: [...paths.map((p) => `page ${p}`), "flow:language-switch", "flow:spanish-twins", "flow:search-signals", ...(extra.covers || [])],
   modes: ["dev", "prod"],
@@ -629,6 +644,7 @@ export default [
 
   {
     id: "pages.sitemap",
+    basis: "ruling: stillafloat-search-collapse-2026-09.md — Search Console downloads sitemap.xml daily; every entry must open and name itself canonical or the crawl is wasted (9/2026 search collapse)",
     title: "Every address in sitemap.xml opens a real page that names itself as the address search engines should use",
     covers: ["ext:file /sitemap.xml", "flow:search-signals"],
     modes: ["dev", "prod"],
@@ -677,6 +693,7 @@ export default [
 
   {
     id: "pages.robots",
+    basis: "ruling: stillafloat-search-collapse-2026-09.md — production robots.txt lets search engines in and names real sitemaps; the dev mirror must never be indexable (9/29 foreign-domain incident)",
     title: "robots.txt lets search engines in on production, points at sitemaps that exist, and the dev mirror stays out of search",
     covers: ["ext:file /robots.txt", "flow:dev-not-indexable"],
     modes: ["dev", "prod"],
@@ -724,6 +741,7 @@ export default [
 
   {
     id: "pages.llms-txt",
+    basis: "ruling: stillafloat-ai-visibility-program.md — /llms.txt is the map AI assistants read: Work with Mark first, then exactly the guides and news hubs the site publishes, every link opening a real page",
     title: "llms.txt (the map AI assistants read) lists Work with Mark first, then the same guides and news hubs the site publishes, and its links open real pages",
     covers: ["ext:file /llms.txt", "data:guides-sitemap", "ext:file /news-sitemap.xml"],
     modes: ["dev", "prod"],
@@ -791,6 +809,7 @@ export default [
 
   {
     id: "pages.navbar-menu",
+    basis: "ruling: stillafloat-home-pills-rule.md — navbar.js is the one source of the site menu (Concierge and Gear pills on the homepage only, EN and ES); every menu link opens a real page in the menu's language on computers and phones",
     title: "Every link in the site menu opens a real page in the menu's language, in English and in Spanish, on computers and phones",
     covers: ["ext:file /components/navbar.js", "flow:language-switch"],
     modes: ["dev", "prod"],
@@ -860,6 +879,7 @@ export default [
 
   {
     id: "pages.missing-page-404",
+    basis: "code: server/src/app.ts — an unknown address answers 404, never the home page or a 200 (a 200 hid every mistyped or unmounted route, found 10/8), for pages, files and the site's data addresses",
     title: "An address that does not exist answers 'not found' instead of quietly showing the home page, for pages, files and the site's data addresses",
     covers: ["flow:missing-page-404"],
     modes: ["dev", "prod"],
