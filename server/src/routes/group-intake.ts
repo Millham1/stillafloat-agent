@@ -179,6 +179,7 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
       lang: picked.row["lang"] ?? intake.lang,
       itinerary: picked.row["itinerary"] ?? extracted.itinerary,
       amenities: picked.row["amenities"] ?? extracted.amenities,
+      inclusions: picked.row["inclusions"] ?? extracted.guest_inclusions,
       terms: {
         cabin_categories: extracted.cabin_categories,
         deposit_timing: extracted.deposit_timing,

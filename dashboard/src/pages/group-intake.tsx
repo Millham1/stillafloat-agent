@@ -142,7 +142,7 @@ export default function GroupIntake() {
   });
   const intake = data?.intake;
   const found = new Set(data?.found ?? []);
-  const shownKeys = [...FIELDS.map((f) => f.key), "cabin_categories", "amenities", "itinerary", "allotment_reviews", "cancellation_schedule", "travel_package"];
+  const shownKeys = [...FIELDS.map((f) => f.key), "cabin_categories", "amenities", "guest_inclusions", "itinerary", "allotment_reviews", "cancellation_schedule", "travel_package"];
   const foundShown = shownKeys.filter((k) => found.has(k)).length;
 
   // When the reader finishes, seed the form from what it read.
@@ -197,6 +197,7 @@ export default function GroupIntake() {
       group.notes = form.notes ?? null;
       group.itinerary = form.itinerary ?? [];
       group.amenities = form.amenities ?? [];
+      group.inclusions = form.guest_inclusions ?? [];
       const travel = travelRows(tp);
       const r = await api<{ group: Row; cabins: number; payments: number; travel: number }>(`/groups/intake/${intakeId}/accept`, "POST", { group, travel });
       toast({ title: "Group file opened", description: `${r.cabins} cabin${r.cabins === 1 ? "" : "s"} and ${r.payments} payment line${r.payments === 1 ? "" : "s"} created.` });
@@ -462,7 +463,9 @@ export default function GroupIntake() {
               <div className="px-4 py-3 border-b"><h3 className="font-semibold">Amenities and itinerary</h3></div>
               <CardContent className="p-4 space-y-3 text-sm">
                 <div>
-                  <div className="text-xs text-muted-foreground mb-1">Amenities {found.has("amenities") ? "· from the document" : "· not found"}</div>
+                  <div className="text-xs text-muted-foreground mb-1">Included for every guest (the perks the page and the marketing show) {found.has("guest_inclusions") ? "· from the document" : "· not found — add them below, one per line"}</div>
+                  <textarea className={inputCls} rows={3} value={((form.guest_inclusions as string[] | undefined) ?? []).join("\n")} onChange={(e) => set("guest_inclusions", e.target.value.split("\n").map((x) => x.trim()).filter(Boolean))} placeholder={"Premium drinks package\nWi-Fi, one device, first two guests"} />
+                  <div className="text-xs text-muted-foreground mb-1 mt-3">Organizer amenities (your side; never shown to guests) {found.has("amenities") ? "· from the document" : "· not found"}</div>
                   {(form.amenities ?? []).length === 0 ? <p className="text-muted-foreground">None listed.</p> : <ul className="list-disc pl-5">{(form.amenities as string[]).map((a, i) => <li key={i}>{a}</li>)}</ul>}
                 </div>
                 <div>

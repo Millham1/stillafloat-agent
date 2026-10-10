@@ -19,6 +19,8 @@ export const BUSINESS = {
   tradeName: "Still Afloat Cruising",
   agentName: "Mark Millham",
   email: "mark@stillafloatcruising.com",
+  /** Marketing pieces (Mark 2026-10-10): the QR/info sheet is the primary contact, this number second. */
+  phone: "919-346-6127",
   site: "https://stillafloatcruising.com",
   host: "Cornerstone Collective",
   /** Terms §14 venue (Mark 2026-10-03: pending Cornerstone's answer on the Texas governing-law line). */

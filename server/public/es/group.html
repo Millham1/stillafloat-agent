@@ -183,7 +183,7 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     ship:'Barco', sails:'Zarpa', returns:'Regresa', nights:'Noches', from:'Sale de', price_from:'Desde', pp:'por persona',
     itinerary:'El itinerario', day:'Día', date:'Fecha', port:'Puerto', inport:'En puerto', sea:'Día en el mar',
     itin_note:'Los horarios y puertos los fija la naviera y pueden cambiar.',
-    included:'Lo que incluye el grupo', travel:'Cómo llegar', cabins:'Cabinas y precios', cabin_type:'Tipo de cabina', per_person:'Por persona', deposit:'Depósito', left:'Disponibles',
+    included:'Incluido para cada huésped', travel:'Cómo llegar', cabins:'Cabinas y precios', cabin_type:'Tipo de cabina', per_person:'Por persona', deposit:'Depósito', left:'Disponibles',
     price_note:'Precios por persona, con dos huéspedes por cabina. El precio, los impuestos, las tasas y los cargos portuarios se confirman por escrito al reservar. Los depósitos y pagos se hacen directamente a la naviera.',
     why:'Por qué este barco', score_label:'Puntaje Conga Line', score_hint:'Lo que dicen los cruceristas, resumido por Still Afloat.',
     who:'Para quién es este viaje', dates:'Fechas que importan', book_by:'Reserve antes de', final_pay:'Pago final', sail_day:'Día de salida',
@@ -199,7 +199,7 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     ship:'Ship', sails:'Sails', returns:'Returns', nights:'Nights', from:'Sails from', price_from:'From', pp:'per person',
     itinerary:'The itinerary', day:'Day', date:'Date', port:'Port', inport:'In port', sea:'Day at sea',
     itin_note:'Times and ports are set by the cruise line and can change.',
-    included:'What the group gets', travel:'Getting there', cabins:'Cabins and prices', cabin_type:'Cabin type', per_person:'Per person', deposit:'Deposit', left:'Available',
+    included:'Included for every guest', travel:'Getting there', cabins:'Cabins and prices', cabin_type:'Cabin type', per_person:'Per person', deposit:'Deposit', left:'Available',
     price_note:'Prices are per person, based on two guests per cabin. The price, taxes, fees and port expenses are confirmed in writing when you book. Deposits and payments are made directly to the cruise line.',
     why:'Why this ship', score_label:'Conga Line score', score_hint:'What cruisers say, summed up by Still Afloat.',
     who:'Who this trip suits', dates:'Dates that matter', book_by:'Reserve by', final_pay:'Final payment', sail_day:'Sailing day',
@@ -256,8 +256,10 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
         return '<tr><td>'+esc(s.day == null ? '' : s.day)+'</td><td>'+esc(s.dateText||'')+'</td><td class="'+(s.seaDay?'sea':'')+'">'+esc(s.seaDay ? T.sea : s.port)+'</td><td>'+esc(s.timesText||'')+'</td></tr>';
       }).join(''); show('sec-itin');
     }
-    if(f.amenities && f.amenities.length){
-      $('gp-perks').innerHTML = f.amenities.map(function(a){ return '<li><i class="fa-solid fa-check"></i><span>'+esc(a)+'</span></li>'; }).join(''); show('sec-perks');
+    var perks = (f.perks || []).slice();
+    perks.push('Mejoras de cabina disponibles: pregunte por balcón y categorías superiores');
+    if(perks.length){
+      $('gp-perks').innerHTML = perks.map(function(a){ return '<li><i class="fa-solid fa-check"></i><span>'+esc(a)+'</span></li>'; }).join(''); show('sec-perks');
     }
     if(f.travel && f.travel.length){
       $('gp-travel').innerHTML = f.travel.map(function(t){ return '<li><i class="fa-solid fa-'+(t.kind==='flight'?'plane':t.kind==='hotel'?'bed':'van-shuttle')+'"></i><span>'+esc(t.text)+'</span></li>'; }).join(''); show('sec-travel');

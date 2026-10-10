@@ -7,7 +7,7 @@ const facts = {
   lang: "en", sailDateText: "May 10, 2027", returnDateText: "May 14, 2027", nights: 4, embarkPort: "Miami", ports: ["Nassau, Bahamas", "Ocean Cay MSC Marine Reserve"],
   amenities: ["3 amenity points from the cruise line: group perks (such as onboard credit) that Mark picks for the group before final payment"],
   cabins: [{ category: "IR2 Deluxe Interior", perPersonText: "$575.80", depositPerPersonText: "$99" }], fromPerPersonText: "$575.80", bookByText: "January 10, 2027",
-  travel: [{ kind: "flight", text: "Airfare from Raleigh-Durham: $412 per person", included: false, priceText: "$412" }], allowedNumbers: [],
+  travel: [{ kind: "flight", text: "Airfare from Raleigh-Durham: $412 per person", included: false, priceText: "$412" }], perks: ["Premium drinks package"], allowedNumbers: [],
 } as unknown as GroupFacts;
 const copy = { headline: "Four Nights on MSC Seaside for Legion Veterans, Friends and Family" } as GroupCopy;
 
@@ -22,7 +22,10 @@ test("the poster says the dates, the ports, the from-price, the deposit, the res
   assert.equal(spec.dates, "May 10, 2027 – May 14, 2027 · 4 nights · from Miami");
   assert.deepEqual(spec.facts.slice(0, 4), ["Ports: Nassau, Bahamas, Ocean Cay MSC Marine Reserve", "From $575.80 per person", "Deposit $99 per person", "Reserve by January 10, 2027"]);
   assert.deepEqual(spec.travel, ["Airfare from Raleigh-Durham: $412 per person"]);
-  assert.equal(spec.cta, "Call or text Mark"); assert.equal(spec.phone, MARK_PHONE);
+  assert.equal(spec.cta, "Scan the QR to join the fun"); assert.equal(spec.phone, MARK_PHONE); assert.equal(MARK_PHONE, "919-346-6127");
+  assert.ok(spec.facts.includes("Included: Premium drinks package"), "the guest's perk is on the poster");
+  assert.ok(spec.facts.includes("Cabin upgrades available"), "the upgrades line is on the poster");
+  assert.ok(!spec.facts.some((x) => /amenity point/i.test(x)), "amenity points never reach the poster");
   assert.equal(spec.url, "stillafloatcruising.com/group.html?g=rj4qhy2xft");
   assert.match(spec.credit, /CC BY 4.0/);
   assert.match(spec.footer, /Still Afloat LLC/);

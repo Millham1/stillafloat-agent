@@ -93,7 +93,7 @@ function publicFacts(f: GroupFacts, answers: Record<string, string | boolean>): 
   return {
     lang: f.lang, business: f.business, groupName: f.groupName, line: f.line, ship: f.ship,
     sailDateText: f.sailDateText, returnDateText: f.returnDateText, nights: f.nights, embarkPort: f.embarkPort,
-    travel: f.travel,
+    travel: f.travel, perks: f.perks,
     ports: f.ports, itinerary: f.itinerary, amenities: f.amenities,
     cabins: f.cabins.map((c) => ({
       category: c.category, available: c.available,

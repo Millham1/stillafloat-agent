@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
-  normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName } from "./group-marketing";
+  normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -156,7 +156,7 @@ test("interview answers are normalised with defaults, and the three core answers
   assert.equal(a["tone"], "warm-humor");
   assert.equal(a["show_prices"], false);
   assert.equal(a["show_rating"], true);
-  assert.equal(a["mark_sailing"], false);
+  assert.equal("mark_sailing" in a, false, "the advisor-sailing question is gone (Mark 2026-10-10: leave me out of it)");
   assert.equal("junk" in a, false);
   assert.equal(Object.keys(a).length, INTERVIEW.length);
   assert.deepEqual(missingAnswers(a), ["occasion", "why_sailing"]);
@@ -209,4 +209,20 @@ test("the group's air / hotel / transfer offer reads as plain lines (EN and ES);
   const es = travelLines(rows, "es");
   assert.match(es[0]!.text, /^Vuelos desde Raleigh-Durham/);
   assert.match(es[2]!.text, /incluido en el precio del crucero$/);
+});
+
+
+test("perks shown to guests come from the fare inclusions, never the organizer's amenities; the prompt names the QR and the upgrades line and never the advisor", () => {
+  const f = buildFacts({ group: { ...file().group, inclusions: ["Premium drinks package", " Wi-Fi, one device, first two guests "] }, cabins: [] }, null, "en");
+  assert.deepEqual(f.perks, ["Premium drinks package", "Wi-Fi, one device, first two guests"]);
+  assert.ok(f.amenities.length > 0, "amenities still exist for the dashboard");
+  const prompt = userPrompt(f, { audience: "Veterans", occasion: "A fun week", why_sailing: "Seaside" });
+  assert.match(prompt, /Included for every guest: Premium drinks package/);
+  assert.doesNotMatch(prompt, /Group perks|onboard credit per stateroom/);
+  assert.match(prompt, /Cabin upgrades: available/);
+  assert.match(prompt, /919-346-6127/);
+  assert.doesNotMatch(prompt, /sailing with the group/);
+  const sys = systemPrompt("en");
+  assert.match(sys, /never a person/); assert.match(sys, /scan the QR to join the fun/); assert.match(sys, /cabin upgrades are available/i);
+  assert.doesNotMatch(sys, /Mark Millham/);
 });

@@ -4,7 +4,7 @@ import type { GroupFacts, GroupCopy } from "./group-marketing";
 import type { AssetRow } from "./group-assets";
 import { BUSINESS } from "./group-secure";
 
-export const MARK_PHONE = "207-232-7469";
+export const MARK_PHONE = BUSINESS.phone;
 
 export interface Line { text: string; size: number; weight?: 400 | 700; color?: string }
 export interface PosterSpec {
@@ -44,13 +44,14 @@ export function posterSpec(facts: GroupFacts, copy: GroupCopy, args: { url: stri
   const dep = facts.cabins.find((c) => c.depositPerPersonText)?.depositPerPersonText;
   if (dep) f.push(`${es ? "Depósito" : "Deposit"} ${dep} ${es ? "por persona" : "per person"}`);
   if (facts.bookByText) f.push(`${es ? "Reserve antes del" : "Reserve by"} ${facts.bookByText}`);
-  for (const a of facts.amenities.slice(0, 2)) f.push(a);
+  for (const a of facts.perks.slice(0, 3)) f.push(`${es ? "Incluido" : "Included"}: ${a}`);
+  f.push(es ? "Mejoras de cabina disponibles" : "Cabin upgrades available");
   return {
     headline: wrap(copy.headline, 26),
     dates,
     facts: f,
     travel: facts.travel.map((t) => t.text),
-    cta: es ? "Llame o escriba a Mark" : "Call or text Mark",
+    cta: es ? "Escanee el código para unirse a la diversión" : "Scan the QR to join the fun",
     phone: MARK_PHONE,
     url: args.url.replace(/^https?:\/\//, ""),
     credit: args.credits.filter(Boolean).join("  ·  "),

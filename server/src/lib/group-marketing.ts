@@ -36,7 +36,6 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "occasion", type: "text", label: "What is the occasion?", hint: "A reunion, a milestone birthday, an annual trip. One line." },
   { key: "why_sailing", type: "long", label: "Why this ship and this sailing?", hint: "Your honest reasons, in your own words. This is the heart of the page." },
   { key: "who_fits", type: "long", label: "Who is this trip right for, and who should think twice?", hint: "Mobility, budget, first-timers, kids. The honest version builds trust." },
-  { key: "mark_sailing", type: "yesno", label: "Are you sailing with the group?", fallback: false },
   { key: "organizer_quote", type: "long", label: "A line from the organizer (optional)", hint: "Their words, as they said them. Leave blank if you have none." },
   { key: "extras", type: "long", label: "Anything else planned around the cruise? (optional)", hint: "A group dinner, a bus to the port, a hotel the night before." },
   { key: "tone", type: "choice", label: "Tone", fallback: "warm-humor",
@@ -159,7 +158,10 @@ export interface GroupFacts {
   embarkPort: string | null;
   ports: string[];                 // distinct ports of call, in order, excluding sea days and the home port
   itinerary: ItineraryLine[];
+  /** The ORGANIZER's side (amenity points …): dashboard only, never public. */
   amenities: string[];
+  /** The GUEST's perks printed on the quote (drinks package, Wi-Fi …): the page, the poster, every piece. */
+  perks: string[];
   cabins: CabinOffer[];
   cabinsAvailable: number;
   cabinsTotal: number;
@@ -308,6 +310,7 @@ export function buildFacts(
     ports,
     itinerary,
     amenities: (Array.isArray(g.amenities) ? g.amenities : []).filter((a: unknown): a is string => typeof a === "string" && !!a.trim()).map((a) => humanizeAmenity(a, lang)),
+    perks: (Array.isArray(g.inclusions) ? g.inclusions : []).filter((a: unknown): a is string => typeof a === "string" && !!a.trim()).map((a) => a.trim()),
     cabins,
     cabinsAvailable: live.filter((c) => c.status !== "booked").length,
     cabinsTotal: live.length,
@@ -342,8 +345,9 @@ function collectNumbers(f: GroupFacts, g: Row): string[] {
   add(f.sailDateText); add(f.returnDateText); add(f.depositDueText); add(f.finalPaymentText); add(f.bookByText);
   add(g.sail_date); add(g.return_date);
   for (const s of f.itinerary) { add(s.day); add(s.dateText); add(s.timesText); add(s.port); }
-  for (const a of f.amenities) add(a);
+  for (const a of f.perks) add(a);
   for (const t of f.travel) add(t.text);
+  add(BUSINESS.phone);
   for (const c of f.cabins) { add(c.perPersonText); add(c.depositPerPersonText); add(c.available); add(c.total); add(c.code); }
   add(f.cabinsAvailable); add(f.cabinsTotal); add(f.fromPerPersonText);
   add(f.ports.length);
@@ -452,20 +456,25 @@ const TONE: Record<string, string> = {
 
 export function systemPrompt(lang: Lang): string {
   return [
-    `You write a group cruise invitation for ${BUSINESS.agentName} of ${BUSINESS.tradeName}, a travel advisor who talks like a seasoned cruiser and a trusted friend.`,
+    `You write the public invitation for a group cruise, in the voice of ${BUSINESS.tradeName}: a seasoned cruiser and trusted friend who tells the truth about cruising. Tagline: "Cruise smarter, laugh more."`,
     lang === "es"
       ? "Write in natural Latin American Spanish (es-419), usted for a mixed-age group unless the notes say family, then tú. Do not translate English idioms word for word."
       : "Write in plain American English.",
+    "Voice: conversational expert. Dry, understated humor aimed at situations, documents and cruise habits — one or two touches per piece, never at the traveler, never cute. A flat statement, then a comparison out of proportion, delivered like it is nothing. Practical, specific, honest.",
     "Rules that are never broken:",
-    "- Use only the facts given. Do not state any number, date, price, port, perk, deadline or ship feature that is not in the facts block. Prices, dates and the itinerary are shown on the page by the system; you do not need to repeat them, and when you do mention one it must match the facts exactly.",
+    "- The headline sells the EXPERIENCE (the overnight, the beach, the music, the short escape), never a person. The advisor is never named and never speaks in the first person; no 'join Mark', no 'I'll be sailing'. The brand speaks as 'we' or not at all.",
+    "- Use only the facts given. Do not state any number, date, price, port, perk, deadline or ship feature that is not in the facts block. Prices, dates and the itinerary are shown on the page by the system; when you mention one it must match the facts exactly.",
+    "- Perks are the guest's own: what the fare includes (the 'Included for every guest' facts). Never mention amenity points or anything the organizer receives.",
+    "- Say that cabin upgrades are available (balcony and up, by request) in a natural line in the intro or who_for; it is a fact of every group.",
+    "- The call to action is the QR code / the info sheet link: readers scan the QR or open the link to see everything and say they are in — 'scan the QR to join the fun' or a close variant appears in the cta_blurb, the email and the social post. The phone number is second, for people who would rather call or text.",
     "- No hype and no sales pressure: no superlatives, no urgency, nothing called amazing, ultimate, unforgettable, luxury or paradise. Be specific instead.",
     "- Never promise or guarantee anything about prices, availability, weather, ports or the experience. Say what is planned and what is included.",
-    "- Never say \"cheaper\"; say \"less expensive\". Never use the word \"actually\".",
+    "- Never say \"cheaper\"; say \"less expensive\". Never use the word \"actually\". No brochure words: boasts, offers, features, delivers.",
     "- Do not speak against the cruise line or any other line.",
-    "- The advisor's own words in the interview are the spine: keep his reasons and his honest caveats; tighten, do not embellish.",
+    "- The interview answers are the spine: keep the reasons and the honest caveats; tighten, do not embellish. Rewrite any first-person line from the advisor into the brand's voice.",
     "- organizer_note: only the organizer's own line, lightly tidied, or null when none was given. Never invent a quote.",
     "- Plain text only. No markdown, no emoji, no hashtags, no exclamation marks in the headline.",
-    "- email_body: two or three short paragraphs separated by blank lines, ending with the advisor's first name on its own line. It may refer to \"the link below\" for details; do not write a web address.",
+    `- email_body: two or three short paragraphs separated by blank lines, ending with "${BUSINESS.tradeName}" on its own line. It may refer to "the link below" for details; do not write a web address.`,
   ].join("\n");
 }
 
@@ -480,7 +489,9 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
   if (facts.returnDateText) lines.push(`Returns: ${facts.returnDateText}`);
   if (facts.nights !== null) lines.push(`Nights: ${facts.nights}`);
   if (facts.ports.length) lines.push(`Ports of call: ${facts.ports.join("; ")}`);
-  if (facts.amenities.length) lines.push(`Group perks: ${facts.amenities.join("; ")}`);
+  if (facts.perks.length) lines.push(`Included for every guest: ${facts.perks.join("; ")}`);
+  lines.push("Cabin upgrades: available by request (balcony and up).");
+  lines.push(`Phone (second contact, after the QR / link): ${BUSINESS.phone}`);
   if (facts.travel.length) lines.push(`Getting there (air, hotel before, transfers): ${facts.travel.map((t) => t.text).join("; ")}`);
   if (answers["show_prices"] !== false) {
     for (const c of facts.cabins) if (c.perPersonText) lines.push(`Cabin: ${c.category} from ${c.perPersonText} per person, double occupancy${c.depositPerPersonText ? `, deposit ${c.depositPerPersonText} per person` : ""}`);
@@ -497,12 +508,11 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
   lines.push(`Occasion: ${answers["occasion"] || "(not given)"}`);
   lines.push(`Why this ship and sailing: ${answers["why_sailing"] || "(not given)"}`);
   lines.push(`Who it suits / who should think twice: ${answers["who_fits"] || "(not given)"}`);
-  lines.push(`Advisor is sailing with the group: ${answers["mark_sailing"] ? "yes" : "no"}`);
   lines.push(`Organizer's line: ${answers["organizer_quote"] || "(none)"}`);
   lines.push(`Also planned: ${answers["extras"] || "(nothing extra)"}`);
   lines.push("</advisor_interview>");
   lines.push(`Tone: ${TONE[String(answers["tone"])] ?? TONE["warm-humor"]}`);
-  lines.push("Write the invitation copy. The button asks the reader to tell the advisor they are interested; it does not take a payment.");
+  lines.push("Write the invitation copy. The button asks the reader to say they are interested; it does not take a payment. The QR code on printed pieces opens the same page.");
   return lines.join("\n");
 }
 

@@ -8,7 +8,7 @@ export const GROUP_STATUSES = ["draft", "marketing", "booking", "final-paid", "s
 export const GROUP_COLUMNS = [
   "name", "slug", "status", "organizer_name", "organizer_email", "organizer_phone",
   "cruise_line", "ship_name", "ship_slug", "sail_date", "return_date", "nights",
-  "embark_port", "itinerary", "group_number", "cabins_held", "amenities",
+  "embark_port", "itinerary", "group_number", "cabins_held", "amenities", "inclusions",
   "deposit_per_person", "deposit_due", "names_due", "final_payment_due",
   "recall_date", "lang", "notes",
 ] as const;

@@ -31,13 +31,23 @@ export const CAMPAIGN_SCHEMA: Record<string, unknown> = {
 };
 
 export function campaignSystemPrompt(lang: Lang): string {
-  return lang === "es"
-    ? `Escribes, en primera persona como Mark Millham (asesor de cruceros independiente), una campaña de correo de tres mensajes y una campaña de Facebook para invitar a un grupo a un crucero. Usa SOLO los hechos del archivo del grupo y las palabras de Mark. Nunca inventes precios, fechas, beneficios ni promesas. Cada pieza termina con una llamada a la acción clara: llamar o escribir a Mark al ${MARK_PHONE}, o el enlace de la página del grupo. Sin emojis, sin signos de exclamación en cadena, sin mayúsculas sostenidas. Texto plano.`
-    : `You write, in the first person as Mark Millham (independent cruise advisor), a three-email campaign and a Facebook campaign inviting a group to a cruise. Use ONLY the facts in the group file and Mark's own words. Never invent prices, dates, perks or promises; never promise an entitlement. Each piece ends with one clear call to action: call or text Mark at ${MARK_PHONE}, or the group page link. No emojis, no stacked exclamation marks, no all-caps. Plain text, short paragraphs. The three emails are: announcement (the invitation), reminder (a few weeks before the reserve-by date; what is still open), last call (the final days before the reserve-by date). The Facebook pieces: a post announcing the trip, a shorter reminder post, an event title and description, and a 300-character boosted-post text.`;
+  const base = lang === "es"
+    ? `Escribes, en la voz de Still Afloat Cruising ("Cruise smarter, laugh more": experto conversacional, humor seco y contenido, honesto, sin hype), una campaña de correo de tres mensajes y una campaña de Facebook que invita a un grupo a un crucero.`
+    : `You write, in the voice of Still Afloat Cruising ("Cruise smarter, laugh more": conversational expert, dry understated humor aimed at situations, honest, never hype), a three-email campaign and a Facebook campaign inviting a group to a cruise.`;
+  return [base,
+    "Rules that are never broken:",
+    "- The pieces sell the EXPERIENCE: the overnight, the beach at night, the short escape, the company. No person is named and nobody speaks in the first person singular; the brand says 'we' or nothing. Never 'join Mark', never 'I'll be sailing'.",
+    "- Use ONLY the facts in the group file and the interview answers. Never invent prices, dates, perks or promises; never promise an entitlement.",
+    "- Perks are what the fare includes for the guest ('Included for every guest'). Never mention amenity points or what the organizer receives.",
+    "- Every piece says that cabin upgrades are available (balcony and up, by request).",
+    "- The primary call to action is the QR code on the printed sheet / the info-sheet link: 'scan the QR to join the fun' (print) or 'open the link to join the fun' (email, Facebook). The phone number is second, for people who would rather call or text.",
+    "- The three emails: announcement (the invitation), reminder (a few weeks before the reserve-by date; what is still open), last call (the final days before the reserve-by date). Facebook: an announcement post, a shorter reminder post, an event title and description, and a 300-character boosted-post text.",
+    "- No emojis, no stacked exclamation marks, no all-caps, no superlatives, no urgency words. Never 'cheaper' (say 'less expensive'), never 'actually'. Plain text, short paragraphs. Emails end with 'Still Afloat Cruising' on its own line.",
+  ].join("\n");
 }
 
 export function campaignUserPrompt(facts: GroupFacts, answers: Record<string, string | boolean>, pageUrl: string): string {
-  return `${userPrompt(facts, answers)}\n\nGroup page link (the call-to-action link): ${pageUrl}\nMark's phone (the call-to-action number): ${MARK_PHONE}\n\nWrite the campaign now.`;
+  return `${userPrompt(facts, answers)}\n\nInfo-sheet link (the primary call to action; on print it is a QR code to this page): ${pageUrl}\nPhone (second contact): ${MARK_PHONE}\n\nWrite the campaign now.`;
 }
 
 const BANNED: Record<Lang, RegExp[]> = { en: [/\bactually\b/i, /\bguarantee[ds]?\b/i, /\bfree\b(?! berths)/i, /!{2,}/], es: [/\bgarantiza/i, /!{2,}/] };

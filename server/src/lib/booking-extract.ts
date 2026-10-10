@@ -62,6 +62,8 @@ export interface BookingExtraction {
   final_payment_due: string | null;
   recall_date: string | null;
   amenities: string[];
+  /** What the GUEST's fare includes, as printed (drinks package, Wi-Fi, gratuities …) — never amenity points. */
+  guest_inclusions: string[];
   organizer_name: string | null;
   travelers: Array<{ first_name: string | null; last_name: string | null }>;
   total_price: number | null;
@@ -190,7 +192,8 @@ export const BOOKING_SCHEMA: Record<string, unknown> = {
     names_due: { ...nullable("string"), description: "Date passenger names are due to the line, YYYY-MM-DD" },
     final_payment_due: { ...nullable("string"), description: "Final payment date, YYYY-MM-DD" },
     recall_date: { ...nullable("string"), description: "Date unsold cabins are released back to the line, YYYY-MM-DD" },
-    amenities: { type: "array", items: { type: "string" }, description: "Group amenities / perks, one per entry, as stated" },
+    amenities: { type: "array", items: { type: "string" }, description: "Group amenities / perks for the ORGANIZER (amenity points, free berths, cocktail party), one per entry, as stated" },
+    guest_inclusions: { type: "array", items: { type: "string" }, description: "What the guest's price INCLUDES for the guest, as printed: a drinks package, Wi-Fi, gratuities, specialty dining, onboard credit per cabin. One per entry, the document's own words. Never amenity points, taxes or fees." },
     organizer_name: nullable("string"),
     travelers: {
       type: "array",
@@ -213,7 +216,7 @@ export const BOOKING_SCHEMA: Record<string, unknown> = {
   required: [
     "cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary",
     "group_number", "booking_number", "cabins_held", "cabin_categories", "deposit_per_person",
-    "deposit_due", "names_due", "final_payment_due", "recall_date", "amenities", "organizer_name",
+    "deposit_due", "names_due", "final_payment_due", "recall_date", "amenities", "guest_inclusions", "organizer_name",
     "travelers", "total_price", "notes",
     "deposit_timing", "final_payment_days_before", "allotment_reviews", "cancellation_schedule", "cancellation_note", "travel_package",
   ],
@@ -319,6 +322,7 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     .map((x) => ({ first_name: str(x["first_name"]), last_name: str(x["last_name"]) }))
     .filter((x) => x.first_name || x.last_name);
   const amenities = list(r["amenities"]).map(str).filter((x): x is string => !!x);
+  const guest_inclusions = list(r["guest_inclusions"]).map(str).filter((x): x is string => !!x && !/amenity point/i.test(x));
   const obj = (x: unknown) => (x && typeof x === "object" ? (x as Record<string, unknown>) : {});
   const allotment_reviews: AllotmentReview[] = list(r["allotment_reviews"]).map(obj)
     .map((x) => ({ date: normalizeDate(x["date"]), days_before: normalizeInt(x["days_before"]), percent_retaken: normalizeInt(x["percent_retaken"]), note: str(x["note"]) }))
@@ -365,6 +369,7 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
 
   return {
     cruise_line: str(r["cruise_line"]),
+    guest_inclusions,
     travel_package,
     ship_name: str(r["ship_name"]),
     sail_date,
@@ -541,8 +546,9 @@ async function readBySection(text: string, kind: "group" | "individual", ask: As
     `non-commissionable fare plus the government tax. The numbers in each row follow the order of the column headers.\n\n` +
     `Fill in cabin_categories: one entry per cabin category row, with category (its name), code, count (cabins in the block), ` +
     `commissionable_fare (1st/2nd guest), ncf, taxes, price_per_person (total price, 1st/2nd guest), price_third_fourth_adult, price_child, ` +
-    `price_junior_child (total prices), deposit_per_person (only if the row prints one).`,
-    pick(BOOKING_SCHEMA, ["cabin_categories"]), 900) : null;
+    `price_junior_child (total prices), deposit_per_person (only if the row prints one). Also fill guest_inclusions: what the ` +
+    `guest's price INCLUDES for the guest as printed near the table (a drinks package, Wi-Fi, gratuities …); never amenity points, taxes or fees; else an empty list.`,
+    pick(BOOKING_SCHEMA, ["cabin_categories", "guest_inclusions"]), 1000) : null;
 
   const cats = Array.isArray(rates?.["cabin_categories"]) ? (rates!["cabin_categories"] as Array<Record<string, unknown>>) : [];
   const held = cats.reduce((n, c) => n + (typeof c["count"] === "number" ? c["count"] : 0), 0);

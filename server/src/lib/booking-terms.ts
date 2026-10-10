@@ -360,6 +360,13 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
   // Deadlines: found by pattern, dated by arithmetic.
   const found = findDeadlines(text, out.sail_date);
   warnings.push(...found.warnings);
+  // Guest inclusions: keep one only when the document prints its distinctive words (the model must not invent a perk).
+  out.guest_inclusions = (out.guest_inclusions ?? []).filter((inc) => {
+    const words = inc.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
+    const ok = words.length > 0 && words.some((w) => flat.includes(w));
+    if (!ok) warnings.push(`Guest inclusion "${inc}" is not printed in the document. Left out.`);
+    return ok;
+  });
   // Travel package (air / hotel before / transfers): every price must be printed in the document.
   if (out.travel_package) {
     const tp = { ...out.travel_package };
