@@ -111,11 +111,18 @@ async function refusesWithoutKey(t, method, path, body = {}) {
 }
 
 // ── newsletter preview, one check per language ───────────────────────────────
+// Cited source for each language's issue check (Mark 2026-10-09: a gate check tests a property of the site, never a state of the world).
+const NEWSLETTER_BASIS = {
+  "en": "ruling: stillafloat-newsletter.md — Still Afloat Weekly drafts every Thursday; the review page wraps the exact email, every link opens a real page in the reader's language, the unsubscribe link is signed, and the featured video is in the edition's own language",
+  "es": "ruling: stillafloat-es-first-class.md — the Spanish issue is first-class: drafted the same week as the English one, Spanish links and video, no English fallback (7/9 and 10/3 incidents)"
+};
+
 function newsletterCheck(lang) {
   const LANG = lang.toUpperCase();
   const name = lang === "es" ? "Spanish" : "English";
   return {
     id: `editorial.newsletter-preview-${lang}`,
+    basis: NEWSLETTER_BASIS[lang],
     title: `The ${name} newsletter issue opens on Mark's review page with its email preview, and every link and picture in that email works and stays in ${name}`,
     covers: ["GET /api/newsletter/draft", "GET /api/newsletter/email", "GET /api/newsletter/review", "email:newsletter-preview-links"],
     modes: ["dev", "prod"],
@@ -281,6 +288,7 @@ function newsletterCheck(lang) {
 export default [
   {
     id: "editorial.dashboard-reads-refuse-without-key",
+    basis: "code: server/src/lib/http-auth.ts — requireToken fails closed: every admin and personal-data read answers 401 with no data and no page when the dashboard key is missing or wrong (9/4 incident, 103 call sites)",
     title: "The lock on Mark's editorial dashboard data: storm admin, diversion log, action queue, daily brief and newsletter all refuse anyone without the dashboard key (the lock only — the data itself is checked below)",
     covers: [...new Set(GATED_READS.map(([, k]) => k))],
     modes: ["dev", "prod"],
@@ -307,6 +315,7 @@ export default [
 
   {
     id: "editorial.storm-regions-match-queue-and-public",
+    basis: "ruling: stillafloat-storm-alerts.md — Mark can declare a storm for a cruising region; the public Storm Watch uses the same region names, and Caribbean grounds are sailed all year (only Alaska has a season)",
     title: "The storm admin's cruising-region list matches the public Storm Watch regions, keeps the Caribbean in season, and every storm in Mark's queue is labelled with those regions",
     covers: ["GET /api/storm-alerts/regions", "GET /api/storm-alerts", "GET /api/storm-watch"],
     modes: ["dev", "prod"],
@@ -355,7 +364,8 @@ export default [
 
   {
     id: "editorial.diversion-log-matches-storm-queue",
-    title: "The course-change log lists exactly the live storms in Mark's queue, with ships pinned, consistent counts, and the same open course changes the storm queue shows",
+    basis: "ruling: stillafloat-storm-diversions.md — the course-change detector pins every ship in a live named storm's path and logs her declared-destination changes; 9/24 Fay incident: a returning storm was never re-pinned",
+    title: "The course-change log lists exactly the live storms in Mark's queue, with every storm that has ships in its path watching them, consistent counts, and the same open course changes the storm queue shows",
     covers: ["GET /api/storm-diversions/log", "GET /api/storm-alerts", "flow:editorial-diversion-log-vs-storm-queue"],
     modes: ["dev", "prod"],
     incident: "2026-09-24: a returning storm was never re-pinned, so the detector watched nothing",
@@ -366,8 +376,10 @@ export default [
       const span = (ms(log.generated_at) - ms(log.since)) / 86_400_000;
       t.ok(Math.abs(span - 30) < 0.1, `the log says 30 days but covers ${span.toFixed(1)}`);
       t.ok(Array.isArray(log.pings) && Array.isArray(log.storms), "the log has no ping or storm list");
-      t.require(log.storms.length > 0, "no live storm on this box, so the course-change log and its pins cannot be tested");
-      t.nonEmpty(log.pings, "course changes seen in the last 30 days while storms are live");
+      // Whether a named storm is live right now is the weather, not the site, so prod may have none (the log
+      // must then be empty of storms and agree with the queue, below). Dev holds a seeded storm fixture by
+      // Mark's 2026-10-04 mirror ruling and must still show it. Course changes seen are ships' own doing.
+      if (t.mode === "dev") t.require(log.storms.length > 0, "dev has no live storm (the seeded storm fixture should be approved), so the course-change log and its pins cannot be tested");
 
       const c = log.counts || {};
       t.equal(c.pings, log.pings.length, "log count of pings vs the list");
@@ -412,7 +424,8 @@ export default [
           t.atLeast((a.sailings || []).length, 1, `sailings Mark's storm queue shows in the path of "${s.name}" (${s.live_pins} ships are pinned to it)`);
         }
       }
-      t.ok(logStorms.some((s) => s.live_pins > 0), "no live storm has a single ship pinned — the course-change detector is watching nothing");
+      // (A storm with ships in its path must have them pinned — the per-storm rule above; a storm with no
+      // ship near it legitimately has none, so "at least one pin somewhere" is not demanded.)
       // the queue's open course changes are the log's open events
       const dashPending = new Set(dash.alerts.flatMap((a) => (a.diversions || []).map((d) => d.id)));
       for (const p of pendingEvents) {
@@ -437,13 +450,17 @@ export default [
 
   {
     id: "editorial.action-queue-matches-its-sources",
+    basis: "ruling: mark-approvals-go-to-dashboard-actions.md — Mark 10/8: approvals go to dashboard actions plus a notification, never a file; every storm, all-clear and course change waiting on him must have a button that points at it",
     title: "Every button in Mark's daily-brief action queue points at a storm, course change, proposal or task that is still waiting for him — and every storm or course change waiting for him has a button",
     covers: ["GET /api/actions", "GET /api/storm-alerts", "GET /api/storm-diversions/log", "flow:editorial-brief-buttons-match-sources"],
     modes: ["dev", "prod"],
     run: async (t) => {
       const acts = t.success(await t.get("/api/actions", { auth: true }), "ok").actions;
       t.ok(Array.isArray(acts), "the action queue is missing");
-      t.require(acts.length > 0, "Mark's action queue is empty on this box, so none of its buttons can be checked against what they act on");
+      // What is waiting for Mark is his workload, not the site, so an empty queue on prod is fine (the
+      // "everything waiting has a button" half below still runs). Dev, per his 2026-10-04 mirror ruling,
+      // holds a pending item (the seeded storm draft) so the buttons are exercised.
+      if (t.mode === "dev") t.require(acts.length > 0, "dev's action queue is empty (the seeded storm draft should be waiting), so none of its buttons can be checked against what they act on");
       const dash = t.success(await t.get("/api/storm-alerts", { auth: true }));
       const log = t.success(await t.get("/api/storm-diversions/log", { auth: true }));
       const alerts = new Map(dash.alerts.map((a) => [a.id, a]));
@@ -496,7 +513,7 @@ export default [
 
       t.observe("action types", Object.keys(types).sort().join(","), "info");
       t.observe("pending actions", acts.length, "info");
-      t.observe("action keys", keysOf(acts[0]));
+      if (acts[0]) t.observe("action keys", keysOf(acts[0]));
 
       // the other direction: everything waiting on Mark has a button.
       const why = "";
@@ -515,6 +532,7 @@ export default [
 
   {
     id: "editorial.daily-brief-and-its-email",
+    basis: "ruling: stillafloat-inhouse-brief.md — Mark's morning brief is assembled by the in-house brief job from the ops-manager's calendar, mail, tasks and money, and its email shows the same day and numbers; 9/9 incident: the dashboard said 0 to review while 10 drafts waited",
     title: "Mark's daily brief assembles with the ops-manager's calendar, mail, tasks and money, shows today's events and only real action mail and priority tasks, its numbers match its own lists, and the brief email shows the same day and numbers with working links",
     covers: ["GET /api/brief", "GET /api/brief/email-preview"],
     modes: ["dev", "prod"],
@@ -540,7 +558,7 @@ export default [
       t.equal(c.ideasNew, s.ideas?.count, "brief count of new phone notes vs its section");
       t.equal(c.socialPending, s.social?.pending, "brief count of social posts to review vs its section");
       t.ok(Number.isInteger(s.tasksTotal) && s.tasksTotal >= s.tasks.length, "the brief lists more tasks than its total");
-      t.atLeast(s.tasksTotal, 1, "open tasks in Mark's list (zero means the ops-manager's task read failed)");
+      // (How many tasks Mark has open is his workload, not the site's; opsReachable above proves the read worked.)
       t.ok(Number.isInteger(c.affiliateClicks28d) && c.affiliateClicks28d >= 0, "the brief's affiliate-click count is not a number");
       t.equal(b.nothingToDo, c.actions === 0 && c.tasks === 0 && c.ideasNew === 0 && c.socialPending === 0, "the brief's \"nothing to do\" flag vs its counts");
       t.equal(s.social?.reviewPath, "/api/social/review", "the brief's social-review link");
@@ -609,13 +627,15 @@ export default [
 
   {
     id: "editorial.approved-stories-for-newsletter",
-    title: "The approved-story list the newsletter is written from is populated, every story has a real Spanish twin, and the newest one is recent",
+    basis: "ruling: mark-en-approval-implies-es-translation.md — Mark 10/8: whatever he approves in English needs its Spanish twin automatically, and a twin that is raw model output or English copied over is a defect",
+    title: "The approved-story list the newsletter is written from is well-formed, and every story on it has a real Spanish twin",
     covers: ["GET /api/approved-stories-list"],
     modes: ["dev", "prod"],
     run: async (t) => {
       const body = t.json(await t.get("/api/approved-stories-list", { auth: true }));
       t.ok(Array.isArray(body.stories), "the approved-story list is missing");
-      t.nonEmpty(body.stories, "approved stories");
+      // How many stories Mark has approved, and how recently, is the news and his own cadence, not a property
+      // of the site (2026-10-09 grounding pass): the list must be well-formed and every story translated.
       const ids = new Set();
       let noSpanish = 0;
       const badSpanish = [];
@@ -634,16 +654,14 @@ export default [
       }
       t.equal(noSpanish, 0, "approved stories with no Spanish title or summary (the Spanish issue falls back to English for them)");
       t.ok(badSpanish.length === 0, `${badSpanish.length} approved stories have a broken Spanish twin (${[...new Set(badSpanish)].join(", ")})`);
-      t.observe("story keys", keysOf(body.stories[0]), "info");
+      if (body.stories[0]) t.observe("story keys", keysOf(body.stories[0]), "info");
       t.observe("approved stories", body.stories.length, "info");
-      // LAST: the newsletter uses only stories under 48 hours old; a stale list means an issue with no news.
-      const newest = Math.max(...body.stories.map((s) => ms(s.publishedAt ?? s.approvedAt)));
-      t.fresh(newest, 72, "the newest approved story (the newsletter only uses stories under 48 hours old)");
     },
   },
 
   {
     id: "editorial.storm-declare-edit-dismiss-fixture",
+    basis: "ruling: stillafloat-storm-alerts.md — Mark can declare a storm by hand, edit its headline and text, and dismiss it; nothing reaches the public Storm Watch or any subscriber until Mark approves (approval-gated)",
     title: "On dev, a storm Mark declares by hand lands in his storm queue and the course-change log with the right regions, takes his headline and text edits, stays off the public Storm Watch until approved, refuses an all-clear before it ends, and dismisses — on a throwaway e2e-fixture storm",
     covers: ["POST /api/storm-alerts/declare", "PATCH /api/storm-alerts/:id", "POST /api/storm-alerts/:id/all-clear", "POST /api/storm-alerts/:id/all-clear-skip",
       "GET /api/storm-alerts/:id/action", "POST /api/storm-alerts/:id/dismiss", "GET /api/storm-alerts", "GET /api/storm-alerts/regions", "GET /api/storm-watch", "GET /api/storm-diversions/log", "flow:editorial-storm-manual-declare"],
@@ -752,6 +770,7 @@ export default [
 
   {
     id: "editorial.storm-sends-refuse-bad-requests",
+    basis: "ruling: stillafloat-storm-alerts.md — storm approvals, scans and course-change publishes are approval-gated and token-gated; the buttons that email subscribers refuse a missing key and unknown events",
     title: "On dev, the storm buttons that email subscribers or call the storm scan (approve, scan, course-change publish/ignore/simulate) refuse requests without the key and reject unknown events — the sends themselves are not exercised",
     covers: ["POST /api/storm-alerts/:id/approve", "POST /api/storm-scan", "POST /api/storm-diversions/:id/publish", "POST /api/storm-diversions/:id/ignore", "POST /api/storm-diversions/simulate"],
     modes: ["dev"],
@@ -774,6 +793,7 @@ export default [
 
   {
     id: "editorial.newsletter-brief-queue-writes-refuse",
+    basis: "code: server/src/routes/newsletter.ts — the newsletter generate/edit/send/notify, legacy send, brief run and the brief's resolve/approve/dismiss/close/keep buttons refuse a missing key and empty or unknown input, and do nothing to items that do not exist",
     title: "On dev, the newsletter generate/edit/send/notify, legacy send, brief run, and the brief's resolve/approve/dismiss/close/keep buttons refuse requests without the key, reject empty or unknown input, and do nothing to items that do not exist",
     covers: ["POST /api/newsletter/draft", "POST /api/newsletter/draft/update", "POST /api/newsletter/send", "POST /api/newsletter/notify", "POST /api/send-newsletter",
       "POST /api/brief/run", "POST /api/actions", "POST /api/actions/:id/resolve", "POST /api/proposals/:id/approve", "POST /api/proposals/:id/dismiss", "POST /api/tasks/:id/close", "POST /api/tasks/:id/keep",

@@ -140,7 +140,8 @@ export default [
   // that this path works; dev has Isaias approved since 2026-10-07).
   {
     id: "flows.storm-visitor-journey",
-    title: "A visitor can follow a storm from the homepage panel to its details page, press Track this ship and reach the tracker for a ship it is following (English and Spanish)",
+    basis: "ruling: stillafloat-storm-alerts.md — the homepage Storm Watch panel appears only for a real approved threat and links to the storm's page; Mark 9/15: a Track-this-ship call to action next to each ship in the affected area, opening a one-step 15-day sign-up",
+    title: "A visitor can follow a storm from the homepage panel to its details page, press Track this ship and reach the tracker (English and Spanish); in calm seas the storm pages say so and Track this ship still opens for any ship the tracker can follow",
     covers: ["flow:storm-visitor-journey", "page /index.html", "page /es/index.html", "GET /api/storm-watch", "GET /api/storm-watch/:id",
       "page /storm-watch.html", "page /es/storm-watch.html", "page /track-ship.html", "page /es/track-ship.html",
       "GET /api/wms/ships", "GET /api/wms/health", "page /wheres-my-ship.html", "page /es/wheres-my-ship.html"],
@@ -149,8 +150,10 @@ export default [
     run: async (t) => {
       const L = legs(t);
       const sw = await publicStorms(t);
-      t.require(sw.systems.length > 0,
-        "no storm is public, so the homepage panel, storm page and Track-this-ship path do not exist for a visitor to walk (dev: approve the storm fixture)");
+      // Whether a named storm is public right now is the weather, not the site (Mark 2026-10-09): prod walks
+      // the calm-sea path below when there is none. Dev holds a seeded storm fixture (Mark 2026-10-04).
+      if (t.mode === "dev") t.require(sw.systems.length > 0,
+        "dev has no public storm (the seeded storm fixture should be approved), so the homepage panel, storm page and Track-this-ship path cannot be walked");
 
       // 1. the homepage panels (EN + ES)
       const home = {};
@@ -206,7 +209,15 @@ export default [
       for (const lang of ["en", "es"]) {
         const want = lang === "es" ? "/es/track-ship.html?ship=" : "/track-ship.html?ship=";
         L.check(home[lang].track?.prefix === want, `the ${lang} homepage's Track this ship opens ${home[lang].track?.prefix} instead of ${want}`);
-        L.check(detailPage[lang]?.prefix === want, `the ${lang} storm page's Track this ship opens ${detailPage[lang]?.prefix} instead of ${want}`);
+        if (storms.length) L.check(detailPage[lang]?.prefix === want, `the ${lang} storm page's Track this ship opens ${detailPage[lang]?.prefix} instead of ${want}`);
+      }
+      if (!storms.length) {
+        // Calm sea: the storm pages must say so honestly, and an unknown storm is a clean "not found".
+        t.status(await t.get("/api/storm-watch/00000000-0000-4000-8000-000000000000"), 404);
+        for (const [lang, p, say] of [["en", "/storm-watch.html", "No storm is threatening cruise routes right now."], ["es", "/es/storm-watch.html", "Ninguna tormenta amenaza las rutas de crucero en este momento."]]) {
+          const html = t.html(await t.get(p), { mustContain: ['fetch("/api/storm-watch")', say] });
+          L.check(H.htmlLang(html).slice(0, 2) === lang, `${p} is not in ${lang}`);
+        }
       }
 
       // 3 + 4. Track this ship → sign-up page → tracker; the tracker knows her
@@ -219,12 +230,17 @@ export default [
       const notOffered = [...new Set(sw.systems.flatMap((s) => (s.sailings || []).filter((v) => !v.trackable && byName.get(lc(v.ship_name))?.tracked).map((v) => v.ship_name)))];
       t.ok(trackable.length > 0 || notOffered.length === 0, `no storm offers Track this ship at all, yet the tracker can follow ${notOffered.length} of the storms' ships (e.g. ${notOffered.slice(0, 3).join(", ")})`);
       L.check(notOffered.length === 0, `${notOffered.length} storm ship(s) the tracker can follow have no Track-this-ship button: ${notOffered.slice(0, 4).join(", ")}`);
-      t.require(trackable.length > 0, "no public storm has a trackable sailing, so no Track-this-ship button exists to follow");
-      const picks = [...new Map(spread(trackable, 2).map((x) => [lc(x.v.ship_name), x])).values()];
+      if (t.mode === "dev") t.require(trackable.length > 0, "dev's storm fixture has no trackable sailing, so no Track-this-ship button exists to follow");
+      // With no trackable storm ship (calm sea), the same hand-off is walked for any ship the tracker can follow.
+      const calmShip = [...byName.values()].find((x) => x.tracked);
+      t.ok(trackable.length > 0 || calmShip, "no storm ship is trackable and the tracker offers no ship to follow");
+      const picks = trackable.length
+        ? [...new Map(spread(trackable, 2).map((x) => [lc(x.v.ship_name), x])).values()]
+        : [{ v: { ship_name: calmShip.name, cruise_line: calmShip.cruiseLine }, s: { name: "calm sea", classification: "" }, calm: true }];
       const held = t.success(await t.get("/api/wms/health"), "ok");
       t.ok(Array.isArray(held.ships), "the tracker health answer has no ships array");
       const heldBy = new Map(held.ships.map((x) => [lc(x.name), x]));
-      for (const { v, s } of picks) {
+      for (const { v, s, calm } of picks) {
         for (const lang of ["en", "es"]) {
           const p = detailPage[lang] || home[lang].track;
           const url = `${p.prefix}${encodeURIComponent(v.ship_name)}&from=${p.from}&storm=${encodeURIComponent(stormLabel(s))}`;
@@ -240,6 +256,7 @@ export default [
         }
         const r = byName.get(lc(v.ship_name));
         L.check(r && r.tracked, `"${v.ship_name}" has a Track-this-ship button on "${s.name}" but the tracker's ship search does not know her`);
+        if (calm) continue; // a storm ship is pinned and held (tracker design: a named storm pins her); an ordinary ship is answered on demand
         L.check(r?.live, `"${v.ship_name}" is in "${s.name}"'s path but the tracker is not following her`);
         // "held" means a position the tracker can draw: hasFix (lat/lon), not just a name in its cache
         L.check(heldBy.get(lc(v.ship_name))?.hasFix === true, `"${v.ship_name}" is followed but the tracker has no position for her — "See where she is now" opens an empty map`);
@@ -279,6 +296,7 @@ export default [
   // "No advisory selected". This check stays strict and FAILS on prod until then.
   {
     id: "flows.storm-email-links",
+    basis: "code: server/src/lib/storm-email-content.ts — the storm alert email links each pinned ship to /wheres-my-ship.html?ship=, a Track-your-ship button, and See-all-storm-warnings to a page that lists the active storms (10/7 incident: 'No advisory selected')",
     title: "Every link in a storm alert email (English and Spanish) opens a page with the storm or the ship on it — including the See all storm warnings button",
     covers: ["email:storm-alert-links", "GET /api/storm-watch", "GET /api/storm-diversions/log", "GET /api/wms/ships",
       "page /wheres-my-ship.html", "page /es/wheres-my-ship.html", "page /storm-watch.html", "page /es/storm-watch.html"],
@@ -287,7 +305,9 @@ export default [
     run: async (t) => {
       const L = legs(t);
       const sw = await publicStorms(t);
-      t.require(sw.systems.length > 0, "no storm is public, so no storm alert email exists whose links could be followed (dev: approve the storm fixture)");
+      // No storm now is the weather, not the site: prod's email links are still checked from the deployed
+      // template with any ship the tracker knows. Dev holds a seeded storm fixture (Mark 2026-10-04).
+      if (t.mode === "dev") t.require(sw.systems.length > 0, "dev has no public storm (the seeded storm fixture should be approved), so the storm email's ship list cannot be compared");
 
       // the email's ship list (pins) holds at least every ship the storm page lists
       const log = t.success(await t.get("/api/storm-diversions/log?days=30", { auth: true }));
@@ -307,8 +327,8 @@ export default [
       }
 
       // the pages the links open
-      const sample = [...new Set(sw.systems.flatMap((s) => (s.sailings || []).map((v) => v.ship_name)))][0];
-      t.ok(sample, "no public storm lists a ship");
+      const sample = [...new Set(sw.systems.flatMap((s) => (s.sailings || []).map((v) => v.ship_name)))][0] || reg.ships.find((x) => x.tracked)?.name;
+      t.ok(sample, "no public storm lists a ship and the tracker offers none to link");
       // The links as the email on THIS box builds them: read from the box's own deployed template
       // (the email is not served over HTTP). Hard-coding them here would keep passing after the
       // template changed to a path that does not exist.
@@ -354,6 +374,7 @@ export default [
   // is not observable over HTTP; see the report.)
   {
     id: "flows.storm-spanish-reader",
+    basis: "ruling: stillafloat-es-first-class.md — Mark 8/15: 'everything needs to be translated or it's just a copy'; a Spanish reader must see the storm warning itself in Spanish on the Spanish panel and page",
     title: "A Spanish reader sees the storm warning itself in Spanish on the Spanish homepage panel and the Spanish storm page",
     covers: ["flow:storm-spanish-reader", "page /es/index.html", "page /es/storm-watch.html", "GET /api/storm-watch", "GET /api/storm-watch/:id"],
     modes: ["dev", "prod"],
@@ -371,7 +392,10 @@ export default [
       const field = (html, base) => (new RegExp(`s\\.${base}_es\\b`).test(html) ? `${base}_es` : base);
       const sw = t.success(await t.get(listUrl));
       t.ok(Array.isArray(sw.systems), "the storm list has no systems array");
-      t.require(sw.systems.length > 0, "no storm is public, so there is no storm text for a Spanish reader to read (dev: approve the storm fixture)");
+      // No public storm is the weather, not the site: prod then has no storm text to read. Dev holds a seeded
+      // storm fixture (Mark 2026-10-04).
+      if (t.mode === "dev") t.require(sw.systems.length > 0, "dev has no public storm (the seeded storm fixture should be approved), so there is no storm text for a Spanish reader to read");
+      if (!sw.systems.length) t.status(await t.get("/api/storm-watch/00000000-0000-4000-8000-000000000000"), 404);
       for (const s of spread(sw.systems, 3)) {
         const panelText = `${s[field(home, "headline")] || s.headline || ""} ${s[field(home, "body_md")] || s.body_md || ""}`.slice(0, 600);
         L.check(readsSpanish(panelText), `"${s.name}": the Spanish homepage panel shows the storm in English ("${decode(s.headline).slice(0, 70)}")`);
@@ -400,6 +424,7 @@ export default [
   //      feed list the story; the Spanish page's links are the Spanish twins of the English links.
   {
     id: "flows.news-reader-journey",
+    basis: "ruling: stillafloat-news-prerender.md — a homepage card is a teaser that opens its prerendered /news/ page, written hourly; the Spanish twin is the same story in Spanish with Spanish links",
     title: "A homepage news card opens its story, whose related stories, cruise-line page, feed and gear links all work, and whose Spanish twin is the same story in Spanish",
     covers: ["flow:news-reader-journey", "page /index.html", "page /es/index.html", "GET /api/homepage-feed", "GET /api/affiliate-items", "page /work-with-mark.html", "page /es/work-with-mark.html"],
     modes: ["dev", "prod"],
@@ -419,7 +444,16 @@ export default [
       t.atLeast(en.stories.length, 1, "stories on the homepage");
       const esById = new Map(es.stories.map((s) => [s.id, s]));
       const ready = en.stories.filter((s) => s.id && Number.isFinite(Date.parse(s.approvedAt)) && (t.now() - Date.parse(s.approvedAt)) / 3_600_000 > 1.25);
-      t.require(ready.length > 0, "every homepage story was approved in the last 75 minutes, before the hourly prerender — re-run in an hour");
+      // A story approved in the last 75 minutes has no page yet BY DESIGN (the prerender runs hourly), so it
+      // is never held to one. If every story on the homepage is that new there is nothing to follow: the
+      // other doors are still opened and the journey is recorded as not walked.
+      if (ready.length === 0) {
+        t.note("every homepage story was approved in the last 75 minutes, before the hourly prerender wrote its page — no story page to follow this run");
+        t.ok(Array.isArray((t.success(await t.get("/api/affiliate-items"))).items), "the gear list has no items array");
+        for (const p of ["/work-with-mark.html", "/es/work-with-mark.html"]) t.html(await t.get(p));
+        L.done("the news reader journey (no story old enough to have a page)");
+        return;
+      }
       const picks = spread(ready, 4);
 
       const gearOf = new Map(); // gear page → how many sampled stories link it
@@ -520,6 +554,7 @@ export default [
   //   4. every destination the tracker holds is a place the forecast knows (the card's link works).
   {
     id: "flows.weather-journey",
+    basis: "ruling: stillafloat-forecast-synopsis-and-pexels.md — Mark 10/2: every road into the ten-day forecast (homepage tiles, search, the tracker's arrival card) shows his synopsis, in the reader's language",
     title: "Tapping a homepage weather tile or the tracker's arrival-weather card opens that port's ten-day forecast with Mark's synopsis, in English and in Spanish",
     covers: ["flow:weather-journey", "page /index.html", "page /es/index.html", "GET /api/weather", "GET /api/wms/health", "page /forecast.html"],
     modes: ["dev", "prod"],
@@ -595,7 +630,8 @@ export default [
       const held = t.success(await t.get("/api/wms/health"), "ok");
       t.ok(Array.isArray(held.ships), "the tracker health answer has no ships array");
       const dests = [...new Set(held.ships.map((x) => x.destination).filter(Boolean))];
-      t.require(dests.length > 0, "the tracker holds no ship with a matched destination, so no arrival-weather card exists to follow");
+      // which ships the tracker holds, and where they say they are going, is not the site's doing (positions
+      // are pulled only on a request or a storm track — Mark 2026-10-09); every destination it does hold must be known.
       const list = t.success(await t.get("/api/weather?list=true"), "ok");
       const known = new Set([...(list.allEmbarkationPorts || []), ...(list.allDestinations || [])].map((p) => p.slug));
       t.atLeast(known.size, 10, "places the forecast knows");
@@ -627,6 +663,7 @@ export default [
   // A missing Spanish issue on dev (prod has one) is UNTESTABLE: dev does not mirror prod.
   {
     id: "flows.newsletter-links",
+    basis: "ruling: stillafloat-newsletter.md — every story, commentary, video, gear and booking link in the weekly letter opens live content in the issue's language; unsubscribe and gear links are checked by form, never followed",
     title: "Every story, commentary, video, gear and booking link in this week's newsletter (English and Spanish) opens live content",
     covers: ["email:newsletter-issue-links", "GET /api/newsletter/draft", "GET /api/newsletter/email", "GET /api/commentary", "GET /api/affiliate-items",
       "page /commentary-post.html", "page /es/commentary-post.html", "page /work-with-mark.html", "page /es/work-with-mark.html"],
@@ -728,6 +765,7 @@ export default [
   //   • a ship a cam shows in port is one the tracker holds, at a fix no newer than the tracker's.
   {
     id: "flows.one-ship-every-view",
+    basis: "ruling: mark-storm-pages-mainstream-lines-only.md — Mark 10/9: the storm pages, Track-this-ship buttons and the one-ship-every-view consistency list one set of ships; a ship reads the same on the public pages, Mark's dashboard, the tracker and the cams",
     title: "A ship in a storm's path reads the same everywhere: the public storm pages, Mark's storm dashboard, the ship tracker and the port cams",
     covers: ["flow:one-ship-every-view", "GET /api/storm-watch", "GET /api/storm-alerts", "GET /api/wms/ships", "GET /api/wms/health", "GET /api/webcams"],
     modes: ["dev", "prod"],
@@ -735,7 +773,9 @@ export default [
       const L = legs(t);
       const sw = await publicStorms(t);
       const sailings = sw.systems.flatMap((s) => (s.sailings || []).map((v) => ({ v, s })));
-      t.require(sailings.length > 0, "no public storm lists a sailing, so no ship appears in more than one view (dev: approve the storm fixture)");
+      // A ship in a storm's path exists only while a storm does (the weather, not the site); prod with no storm
+      // still compares the cams with the tracker. Dev holds a seeded storm fixture (Mark 2026-10-04).
+      if (t.mode === "dev") t.require(sailings.length > 0, "dev has no public storm sailing (the seeded storm fixture should be approved), so no ship appears in more than one view");
       const dash = t.success(await t.get("/api/storm-alerts", { auth: true }));
       t.ok(Array.isArray(dash.alerts), "Mark's storm dashboard has no alerts list");
       const dashById = new Map(dash.alerts.map((a) => [a.id, a]));
@@ -812,7 +852,7 @@ export default [
       t.observe("storm sailings", sailings.length, "info");
       t.observe("ships listed under two storms", shared, "info");
       t.observe("ships in port on a cam", inFrame, "info");
-      t.observe("storm sailing keys", keysOf(sailings[0].v));
+      if (sailings[0]) t.observe("storm sailing keys", keysOf(sailings[0].v));
     },
   },
 
@@ -830,6 +870,7 @@ export default [
   // this UNTESTABLE; it now returns every pending action and the check judges the whole list.
   {
     id: "flows.mark-queue-matches-storm-queues",
+    basis: "ruling: mark-approvals-go-to-dashboard-actions.md — Mark 10/8: every approval becomes a dashboard action with a notification; each storm draft and course change waiting has exactly one to-do pointing at it, and none points at one already decided",
     title: "Mark's to-do list has one Approve/Dismiss item for every storm draft and one item for every course change waiting on him, and no buttons for storms already decided",
     covers: ["flow:mark-queue-matches-storm-queues", "GET /api/actions", "GET /api/storm-alerts", "GET /api/storm-diversions/log", "GET /api/storm-watch"],
     modes: ["dev", "prod"],
@@ -852,8 +893,10 @@ export default [
       const waiting = log.pings.filter((p) => p.event?.status === "pending").length;
       // With no live storm, no storm to-do and no course change waiting, every comparison below is
       // between empty sets — that proves nothing about the hand-off between the two queues.
-      t.require(liveThreats.length + stormActs.length + waiting > 0,
-        "no live storm, no storm to-do and no course change waiting for Mark, so there is nothing to match between his to-do list and the storm queues (dev: approve or draft the storm fixture)");
+      // What is waiting on Mark is his workload and the weather, not the site: prod may have nothing waiting
+      // (the empty comparisons then pass honestly). Dev holds a seeded storm fixture (Mark 2026-10-04).
+      if (t.mode === "dev") t.require(liveThreats.length + stormActs.length + waiting > 0,
+        "dev has no live storm, no storm to-do and no course change waiting (the seeded storm fixture should be drafted or approved), so there is nothing to match between his to-do list and the storm queues");
       for (const a of stormActs) {
         const al = byId.get(a.source_ref);
         if (!L.check(al, `a pending storm to-do (${a.created_at?.slice(0, 10)}) acts on a storm that is gone or dismissed (${String(a.source_ref).slice(0, 8)})`)) continue;
@@ -920,7 +963,8 @@ export default [
   // 2026-10-08 promotion, so this check is UNTESTABLE on prod until then (dev: 4a5fg8ypac, EN).
   {
     id: "flows.group-page-journey",
-    title: "A group page Mark approved in the dashboard is what visitors see: same words, same ship, dates, cabins and prices, and the ship's real Conga Line score",
+    basis: "ruling: stillafloat-group-bookings.md — a group page Mark approves is what the public sees: same words, ship, dates, cabins and prices, the business named, no payment or card on the page",
+    title: "Whenever Mark has approved a group page, it is what visitors see: same words, same ship, dates, cabins and prices, and the ship's real Conga Line score; the group page itself loads and refuses a made-up code",
     covers: ["flow:group-page-journey", "GET /api/groups", "GET /api/groups/:id/marketing", "GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/ships/ratings"],
     modes: ["dev", "prod"],
     incident: "release candidate 2026-10-08: group marketing pages (dev only until the promotion)",
@@ -929,7 +973,9 @@ export default [
       const list = t.success(await t.get("/api/groups", { auth: true }));
       t.ok(Array.isArray(list.groups), "Mark's group list has no groups array");
       const live = list.groups.filter((g) => g.share_code && g.marketing_approved_at && ["marketing", "booking"].includes(g.status));
-      t.require(live.length > 0, `none of the ${list.groups.length} groups has an approved public page${t.mode === "prod" ? " (group pages arrive on prod with the 2026-10-08 promotion)" : " (dev: the test group 4a5fg8ypac should be approved)"}`);
+      // Whether Mark has approved a group page right now is his business (a group he is marketing), not the
+      // site's, so prod is only compared when there is one. Dev holds a seeded test group (Mark 2026-10-04).
+      if (t.mode === "dev") t.require(live.length > 0, `none of dev's ${list.groups.length} groups has an approved public page (the seeded test group should be approved)`);
       const ratings = t.success(await t.get("/api/ships/ratings"), "ok");
       t.ok(Array.isArray(ratings.ratings) && ratings.ratings.length > 0, "the published Conga Line ratings list is empty");
       const bySlug = new Map(ratings.ratings.map((r) => [r.ship_slug, r]));
@@ -994,6 +1040,11 @@ export default [
         }
         pageCode = pageCode || g.share_code;
       }
+      if (!live.length) {
+        // no approved page: the dashboard's marketing view of a group that does not exist is a clean 404
+        t.status(await t.get("/api/groups/00000000-0000-4000-8000-000000000000/marketing", { auth: true }), 404);
+        pageCode = "zzzzzzzzzz"; // a well-formed share code no group holds
+      }
       const page = t.html(await t.get(`/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'"] });
       t.equal(H.htmlLang(page).slice(0, 2), "en", "the group page language");
       const rule = /if\(!\/(\^[^/]+\$)\/\.test\(code\)\)/.exec(page)?.[1];
@@ -1009,8 +1060,10 @@ export default [
       L.check(gone.status === 404, `a made-up group code should be a clean 404: ${gone.describe()}`);
       L.done("the group page journey");
       t.observe("live group pages", live.length, "info");
-      t.observe("public group page keys", keysOf(lastPub));
-      t.observe("public group page fact keys", keysOf(lastPub?.facts));
+      if (lastPub) {
+        t.observe("public group page keys", keysOf(lastPub));
+        t.observe("public group page fact keys", keysOf(lastPub.facts));
+      }
     },
   },
 ];

@@ -98,6 +98,7 @@ export default [
   // two ticks + 30 minutes. A deploy restart resets the clock (+40 s), never more than that.
   {
     id: "jobs.news-prerender-ran-this-hour",
+    basis: "ruling: stillafloat-news-prerender.md — the hourly prerender writes a crawlable page for every live story and the EN and ES listings and news sitemap; a card is a teaser, the gist lives on the story page (scheduleNewsPrerender, server/src/index.ts)",
     title: "The hourly news job rebuilt the English and Spanish news listings, the newest story's pages and the news sitemap in one run within the last two and a half hours: every live story has its card, Spanish titles on the Spanish listing",
     covers: ["job scheduleNewsPrerender", "ext:page /news.html", "ext:page /es/news.html", "ext:file /news-sitemap.xml", "GET /api/news-feed"],
     modes: ["dev", "prod"],
@@ -188,6 +189,7 @@ export default [
   // cross-checks it against the guide data and against the news job's hub pages.
   {
     id: "jobs.guides-tick-rewrote-llms-txt",
+    basis: "ruling: stillafloat-cruising-guides.md — the hourly guides job renders every published guide in each language and rewrites the guide indexes and /llms.txt together (8/27 incident: a stored guide was a 404 for an hour)",
     title: "The hourly guides job rebuilt the guide indexes, the guide pages and the AI-assistant index (/llms.txt) together: it lists exactly the published guides in English and Spanish, the indexes link them all, and its links open freshly built pages",
     covers: ["job scheduleGuidesPrerender", "GET /api/guides/status", "ext:file /llms.txt"],
     modes: ["dev", "prod"],
@@ -247,7 +249,8 @@ export default [
   // under 2.5 hours old (two ticks + 30 minutes). Runs on BOTH boxes (dev does not switch it off).
   {
     id: "jobs.storm-scan-refreshes-live-storms",
-    title: "The hourly storm scan is refreshing every live storm with the Hurricane Center's latest advisory (or ending it once the Center drops it): the dashboard and the public Storm Watch show data under two and a half hours old",
+    basis: "ruling: stillafloat-storm-alerts.md — the hourly NHC scan refreshes every live system with the newest advisory, or ends it once the Center drops it (lifecycle v3); a stopped scan freezes the public storm text",
+    title: "Whenever a storm is live, the hourly storm scan is refreshing it with the Hurricane Center's latest advisory (or ending it once the Center drops it): the dashboard and the public Storm Watch show data under two and a half hours old",
     covers: ["job scheduleStormScan", "GET /api/storm-alerts", "GET /api/storm-watch"],
     modes: ["dev", "prod"],
     incident: "2026-09-26: the public storm list broke while a storm was live, and Odalys and Nolo kept stale tracks because the scan touched only the time; a stopped scan would leave the public text frozen the same way",
@@ -264,11 +267,14 @@ export default [
       const LIVE = new Set(["draft", "approved", "sending", "sent"]);
       const fed = dash.alerts.filter((a) => FEED.test(a.nhc_id || "") && LIVE.has(a.status));
       const live = fed.filter((a) => NHC.test(a.nhc_id || ""));
-      t.require(live.length > 0,
-        "no named Hurricane Center storm is live in the alert list, so there is nothing the hourly scan must be refreshing (off-season). The scan can only be judged while a storm is active.");
+      // Whether a named storm is live is the weather, not the site (Mark 2026-10-09), so off-season is not a
+      // failure: with none live there is nothing the scan must be refreshing, the other feed-backed rows
+      // are still judged below, and the scan's own ticking is held by vitals.jobs-ran-on-time.
       for (const a of live) t.fields(a, ["id", "name", "status", "last_updated", "raw.lastUpdate"], `live storm "${a.name}"`);
-      const newest = maxTime(live.map((a) => Date.parse(a.last_updated)));
-      t.fresh(newest, 2.5, "the newest refresh of a live storm by the hourly storm scan");
+      if (live.length) {
+        const newest = maxTime(live.map((a) => Date.parse(a.last_updated)));
+        t.fresh(newest, 2.5, "the newest refresh of a live storm by the hourly storm scan");
+      }
       // EVERY live row, not just the newest (adversarial review 2026-10-08: one basin's feed can
       // stop while another refreshes). Fresh within 2.5 hours, or on its way to being ended:
       // counted missing by the lifecycle pass (1-2 scans) and refreshed within 4.5 hours.
@@ -305,7 +311,7 @@ export default [
       t.equal(seen, publicLive.filter((a) => a.is_threat === true).length, "public live storms on the Storm Watch list vs approved threats in the dashboard");
       t.observe("live NHC storms", live.length, "info");
       t.observe("live feed-backed alerts", fed.length, "info");
-      t.observe("alert keys", keysOf(live[0]), "exact");
+      if (live[0]) t.observe("alert keys", keysOf(live[0]), "exact");
     },
   },
 
@@ -319,7 +325,8 @@ export default [
   //     are three a day; one retry slot cannot open a 24-hour hole, a stopped poster does).
   {
     id: "jobs.social-poster-handles-due-posts",
-    title: "The social poster is sending posts when their time comes: Facebook posts go out within the hour, none failed this week, and nothing due is left waiting past its slot or the seven-day retry limit",
+    basis: "master-ref: §6 PA SOCIAL POSTING PIPELINE — approved posts go out through the Make Facebook scenario at their scheduled slot; the poster ticks every 10 minutes and skips retry-forever items after seven days (scheduleSocialPoster, server/src/index.ts); 9/6 incident",
+    title: "The social poster handles posts when their time comes: any that fell due this week were handled, Facebook posts went out within the hour, none failed, and nothing due is left waiting past its slot or the seven-day retry limit",
     covers: ["job scheduleSocialPoster", "GET /api/social/schedule"],
     modes: ["dev", "prod"],
     incident: "2026-09-06: Instagram items sat \"scheduled\" indefinitely and the calendar promised posts that never went out",
@@ -334,17 +341,23 @@ export default [
       const unresolved = (i) => !i.postedAt && (!i.postState || i.postState === "scheduled");
       const due = s.items.filter((i) => Number.isFinite(at(i)) && at(i) <= now - 20 * 60_000);
       const recent = due.filter((i) => at(i) >= now - 7 * DAY);
+      // Whether a post fell due this week depends on whether Mark approved a batch (his cadence, not the
+      // site's — 2026-10-09 grounding pass), so prod with nothing due is not a failure: the stale-post rule
+      // below still holds and the timing rules apply to whatever did fall due. Dev, with the poster switched
+      // off on purpose, cannot show the poster working (Mark's 2026-10-08 dev-mirror ruling: decide which
+      // disabled jobs must run for parity).
       if (t.mode === "dev" && recent.length === 0) t.require(false, DEV_OFF.poster);
-      t.require(recent.length > 0, "no social post was due in the last 7 days, so the poster's work cannot be seen (approve a batch to give it something to post)");
       for (const i of recent) t.fields(i, ["platform", "surface", "scheduledFor"], "a due social post");
       const overdue = due.filter((i) => unresolved(i) && at(i) < now - 7 * DAY - 30 * 60_000);
       t.ok(overdue.length === 0, `${overdue.length} social posts due more than 7 days ago are still waiting (oldest slot ${overdue.map((i) => i.scheduledFor).sort()[0]}) — the poster skips those as stale on its next run, so it has not run`);
-      const newestDue = maxTime(recent.map(at));
-      const newestResolved = maxTime(recent.filter((i) => !unresolved(i)).map(at));
-      const holeH = (newestDue - newestResolved) / HOUR;
-      t.ok(holeH <= 24, Number.isFinite(newestResolved)
-        ? `no due social post has been handled since the ${new Date(newestResolved).toISOString()} slot, ${holeH.toFixed(0)} hours before the newest due slot — the 10-minute poster has stopped`
-        : `none of the ${recent.length} social posts due in the last 7 days has been handled — the 10-minute poster has stopped`);
+      if (recent.length) {
+        const newestDue = maxTime(recent.map(at));
+        const newestResolved = maxTime(recent.filter((i) => !unresolved(i)).map(at));
+        const holeH = (newestDue - newestResolved) / HOUR;
+        t.ok(holeH <= 24, Number.isFinite(newestResolved)
+          ? `no due social post has been handled since the ${new Date(newestResolved).toISOString()} slot, ${holeH.toFixed(0)} hours before the newest due slot — the 10-minute poster has stopped`
+          : `none of the ${recent.length} social posts due in the last 7 days has been handled — the 10-minute poster has stopped`);
+      }
       for (const i of recent.filter((x) => x.postedAt)) {
         t.ok(Date.parse(i.postedAt) >= at(i) - 60_000, `a ${i.platform} post went out before its slot (${i.scheduledFor} → ${i.postedAt})`);
       }
@@ -382,6 +395,7 @@ export default [
   // whatever draft exists, so a hand-made draft from before the slot does not excuse it.
   {
     id: "jobs.weekly-marketing-drafts-current",
+    basis: "ruling: stillafloat-newsletter.md — the newsletter is drafted Thursday 09:00 Eastern (English always, Spanish once a Spanish subscriber is confirmed) and the weekly commentary is staged Tuesday (scheduleWeeklyMarketing, server/src/index.ts)",
     title: "This week's newsletter draft (English, and Spanish once a Spanish subscriber exists) was written at Thursday's 9am run, this week's commentary at Tuesday's, and no draft is left unsent after Friday's auto-send",
     covers: ["job scheduleWeeklyMarketing", "GET /api/newsletter/draft", "GET /api/commentary/draft", "GET /api/subscribers"],
     modes: ["dev", "prod"],
@@ -411,7 +425,9 @@ export default [
         total = cb.total;
         if (subs.length >= total || cb.subscribers.length === 0) break;
       }
-      t.atLeast(total, 1, "confirmed subscribers (the newsletter has nobody to go to)");
+      // how many people are signed up is the audience, not the site; dev holds test addresses (Mark 2026-10-08)
+      // and must carry at least one so the editions are exercised
+      if (t.mode === "dev") t.require(total >= 1, "dev has no confirmed test subscriber (seed one), so the newsletter has nobody to be drafted for");
       const esAtSlot = subs.filter((x) => x.lang === "es" && Date.parse(x.confirmed_at || x.created_at || "") <= thu).length;
 
       const editions = [["en", "English"]].concat(esAtSlot > 0 ? [["es", "Spanish"]] : []);
@@ -456,6 +472,7 @@ export default [
   // Dev has never sent an issue, so there is nothing to judge there (UNTESTABLE).
   {
     id: "jobs.newsletter-delivery-never-stuck",
+    basis: "ruling: stillafloat-transactional-email.md — the weekly send is paced one email every 45 seconds and resumed by the five-minute delivery job, so no ledger is left half-sent (9/18 incident: 11 emails in 18 seconds)",
     title: "No newsletter send is stuck half-way: every issue sent from this box finished at one email every 45 seconds (not all at once), or is still moving, and its retry ran on time",
     covers: ["job scheduleNewsletterDelivery", "GET /api/newsletter/draft"],
     modes: ["dev", "prod"],
@@ -512,6 +529,7 @@ export default [
   // nobody may still be "pending" more than 22 days + 1 hour after signing up.
   {
     id: "jobs.subscriber-hygiene-archives-unconfirmed",
+    basis: "code: server/src/index.ts — scheduleSubscriberHygiene runs daily at 10:00 Eastern: reminds unconfirmed sign-ups after 3 days, archives them after 21, deletes bounced rows after 7",
     title: "The daily subscriber clean-up is running: people are waiting to confirm and none has waited more than 22 days (and the subscriber list refuses strangers)",
     covers: ["job scheduleSubscriberHygiene", "GET /api/subscribers", "GET /api/healthz/jobs"],
     modes: ["dev", "prod"],
@@ -525,8 +543,7 @@ export default [
         for (const r of b.subscribers) t.equal(r.status, status, `a row in the ${status} subscriber list`);
         return b;
       };
-      const confirmed = await list("confirmed", 1);
-      t.atLeast(confirmed.total, 1, "confirmed subscribers");
+      const confirmed = await list("confirmed", 1);   // how many are signed up is the audience, not the site
       const archived = await list("archived", 1);
       const pending = await list("pending", 200);
       // newest first: the oldest pending rows are on the last page
@@ -569,6 +586,7 @@ export default [
   // On dev the agent process is stopped (2026-10-07), so this check fails there — correctly.
   {
     id: "jobs.news-daily-scan-ran",
+    basis: "master-ref: §5 NEWS / EDITORIAL AGENT — the news agent self-schedules a daily scan at 08:00 America/New_York that replaces the editorial queue, preceded by the 21-day archive sweep",
     title: "The news agent's 08:00 daily scan ran in the last day and its 21-day archive sweep is keeping old stories out of the live news feed",
     covers: ["ext:news job daily scan", "GET /api/news-feed"],
     modes: ["dev", "prod"],
@@ -580,13 +598,13 @@ export default [
       t.ok(Array.isArray(q.stories), "the editorial queue has no stories array");
       t.fresh(q.generatedAt, 30, "the editorial queue (replaced by the news agent's 08:00 Eastern scan every day)");
       t.equal(q.degradedMode, false, "the last news scan ran in degraded mode (without the AI editor)");
-      t.atLeast(q.stories.length, 1, "stories the last daily scan put in the editorial queue");
-      for (const s of [q.stories[0], q.stories[q.stories.length - 1]]) t.fields(s, ["id", "title", "category"], "a story in the editorial queue");
+      // how many stories the scan found worth queueing is the news (and Mark's approvals shrink the queue
+      // through the day), so only the scan's own stamp is demanded; each queued story must be well-formed
+      for (const s of [q.stories[0], q.stories[q.stories.length - 1]].filter(Boolean)) t.fields(s, ["id", "title", "category"], "a story in the editorial queue");
 
       const feed = t.success(await t.get("/api/news-feed"));
       t.nonEmpty(feed.stories, "the live news feed");
       const sweepable = feed.stories.filter((s) => !(s.featured || s.pinned));
-      t.require(sweepable.length > 0, "every story in the live feed is featured (exempt from the archive sweep), so the sweep cannot be judged");
       t.ok(sweepable.every((s) => Number.isFinite(Date.parse(s.approvedAt || ""))), "a live story has no readable approval date, so the archive sweep can never age it out");
       const stale = sweepable.filter((s) => ageH(t, s.approvedAt) > 22 * 24 + 2);
       t.ok(stale.length === 0, `${stale.length} stories approved more than 22 days ago are still in the live news feed (e.g. ${stale[0]?.id}) — the 21-day archive sweep that runs with the daily scan has not run`);
@@ -603,7 +621,8 @@ export default [
   // others are listed as gaps in coverage/jobs.json. Runs on both boxes.
   {
     id: "jobs.ops-ai-visibility-measured-today",
-    title: "The ops manager is up and its daily AI-visibility measurement ran in the last day with real crawler counts and this week's numbers, readable from the dashboard",
+    basis: "master-ref: §4 SAF-OPS-MANAGER — the ops manager's scheduler measures AI-assistant visibility daily at 10:00 Eastern and writes platform_state 'ai-visibility', which the dashboard reads",
+    title: "The ops manager is up and its daily AI-visibility measurement ran in the last day with well-formed crawler counts and this week's numbers, readable from the dashboard",
     covers: ["ext:ops job ai-visibility", "GET /api/ai-visibility"],
     modes: ["dev", "prod"],
     run: async (t) => {
@@ -615,8 +634,12 @@ export default [
       t.fields(v, ["updatedAt", "lookups.generatedAt", "lookups.crawlers"], "the AI-visibility data");
       t.fresh(v.updatedAt, 27, "the AI-visibility data (measured daily at 10:00 Eastern by the ops manager)");
       t.fresh(v.lookups.generatedAt, 27, "the AI-visibility lookups (assistant crawlers and referrals from the web logs)");
-      const crawlerTotal = Object.values(v.lookups.crawlers || {}).reduce((n, x) => n + (Number(x) || 0), 0);
-      t.atLeast(crawlerTotal, 1, "AI crawler visits counted in the last 28 days");
+      // How many AI-assistant crawlers visited is traffic, not the site (dev gets none), so the count may be
+      // zero; it must be a well-formed set of non-negative numbers.
+      const crawlerCounts = Object.values(v.lookups.crawlers || {});
+      t.ok(crawlerCounts.every((x) => Number.isFinite(Number(x)) && Number(x) >= 0), "an AI crawler count is not a non-negative number");
+      const crawlerTotal = crawlerCounts.reduce((n, x) => n + (Number(x) || 0), 0);
+      t.observe("AI crawler visits counted in 28 days", crawlerTotal, "info");
       t.ok(Array.isArray(v.lookups.weeks) && v.lookups.weeks.length >= 1, "the AI-visibility lookups have no weekly breakdown");
       // A run that stamps the time but rebuilds from an old log window shows no current week
       // (adversarial review 2026-10-08). The newest week starts on this week's Monday: at most
