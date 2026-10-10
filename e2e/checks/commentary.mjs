@@ -115,6 +115,7 @@ export default [
   // ── Commentary: public list, post pages, EN + ES ─────────────────────────────────────
   {
     id: "commentary.published-list-and-posts",
+    basis: "ruling: stillafloat-commentary-agent.md — Mark's published commentary is listed newest first and each piece opens on its own page, with its Spanish title and text on the Spanish pages (stillafloat-es-first-class.md)",
     title: "The Commentary page lists Mark's published pieces, and each piece opens on its own page in English and Spanish",
     covers: ["GET /api/commentary", "page /commentary.html", "page /es/commentary.html", "page /commentary-post.html", "page /es/commentary-post.html"],
     modes: ["dev", "prod"],
@@ -188,6 +189,7 @@ export default [
   },
   {
     id: "commentary.spanish-twin-complete",
+    basis: "ruling: mark-en-approval-implies-es-translation.md — Mark 10/8 on the July commentary: 'whatever gets approved there needs translation for the ES site. that is standing rules'; 9/5 incident: a piece published with no Spanish twin",
     title: "Every published commentary has its own Spanish title and Spanish text (no Spanish reader is shown English)",
     covers: ["GET /api/commentary", "page /es/commentary-post.html"],
     modes: ["dev", "prod"],
@@ -214,7 +216,8 @@ export default [
   },
   {
     id: "commentary.weekly-cadence",
-    title: "A new commentary has been published within the last 15 days, and the Tuesday writer has staged a draft within the last 8 days (the weekly piece has not stopped)",
+    basis: "ruling: stillafloat-commentary-agent.md — the weekly commentary writer stages a fresh draft every Tuesday for Mark to review; what Mark publishes and when is his decision",
+    title: "The Tuesday commentary writer has staged a draft within the last 8 days (the weekly writer has not stopped)",
     covers: ["GET /api/commentary", "GET /api/commentary/draft", "job scheduleWeeklyMarketing"],
     modes: ["dev", "prod"],
     run: async (t) => {
@@ -230,13 +233,15 @@ export default [
       const d = t.success(await t.get("/api/commentary/draft", { auth: true }));
       const genAgeDays = d.draft?.generatedAt ? (t.now() - Date.parse(d.draft.generatedAt)) / day : Infinity;
       t.observe("days since the commentary writer last staged a draft", Number.isFinite(genAgeDays) ? Math.round(genAgeDays) : -1, "info");
+      // When Mark publishes a piece is his own cadence, not the site's, so the age of the newest published
+      // commentary is recorded and no longer demanded (2026-10-09 grounding pass). The site's promise is
+      // the writer job: it stages a draft every Tuesday.
       if (t.mode === "dev") {
         // Dev has its own database and runs with DISABLE_WEEKLY_MARKETING=1, so the Tuesday writer
         // never runs there and dev cannot show the cadence. That makes the check UNTESTABLE on dev
         // (a real gap in the mirror), not a pass.
-        t.require(ageDays <= 15 && genAgeDays <= 8, `dev's newest commentary is ${Math.round(ageDays)} days old and its draft was staged ${Number.isFinite(genAgeDays) ? Math.round(genAgeDays) : "never"} days ago: dev runs with the weekly writer switched off (DISABLE_WEEKLY_MARKETING=1), so the weekly cadence cannot be tested here`);
+        t.require(genAgeDays <= 8, `dev's commentary draft was staged ${Number.isFinite(genAgeDays) ? Math.round(genAgeDays) : "never"} days ago: dev runs with the weekly writer switched off (DISABLE_WEEKLY_MARKETING=1), so the weekly cadence cannot be tested here`);
       }
-      t.fresh(newest.published_at, 15 * 24, "the newest published commentary");
       t.ok(d.draft && d.draft.generatedAt, "there is no commentary draft at all — the Tuesday writer has never staged one on this box");
       t.fresh(d.draft.generatedAt, 8 * 24, "the commentary writer's latest draft (staged every Tuesday)");
     },
@@ -245,6 +250,7 @@ export default [
   // ── Commentary: Mark's gated views (GET only) ────────────────────────────────────────
   {
     id: "commentary.review-and-draft-views",
+    basis: "ruling: stillafloat-commentary-agent.md — the review page and draft status are token-gated, show the draft in review, and agree with the public list; editing is surgical, never a re-roll (9/4 incident: the buttons did nothing)",
     title: "Mark's commentary review page and draft status refuse strangers, and with the token show the same draft the public list agrees with",
     covers: ["GET /api/commentary/draft", "GET /api/commentary/review", "GET /api/commentary"],
     modes: ["dev", "prod"],
@@ -309,6 +315,7 @@ export default [
   //    change a real row with no undo) ─────────────────────────────────────────────────────
   {
     id: "commentary.write-routes-refuse",
+    basis: "code: server/src/routes/commentary.ts — every commentary and video-pin write shares one token guard and refuses an empty request before any paid model call or database write",
     title: "The commentary and video-pin buttons refuse anyone without Mark's token, and refuse empty requests (refusal paths only)",
     covers: [
       "POST /api/commentary", "PATCH /api/commentary/:id", "DELETE /api/commentary/:id", "POST /api/translate-commentary",
@@ -362,6 +369,7 @@ export default [
   },
   {
     id: "commentary.voice-note-transcription",
+    basis: "code: server/src/routes/commentary.ts — POST /transcribe takes Mark's recorded take and hops to Whisper on our own box (9/5 to 9/9 incident: it answered 501 for days after the vendor key died)",
     title: "The dashboard's \"record your take\" button reaches Whisper on our own box and answers (tested with a 2-second silent clip)",
     covers: ["POST /api/transcribe", "flow:commentary-voice-note-transcription"],
     modes: ["dev"],
@@ -393,6 +401,7 @@ export default [
   // ── YouTube: homepage rows, cockpit, featured pick ───────────────────────────────────
   {
     id: "commentary.youtube-home-rows",
+    basis: "code: server/src/routes/youtube.ts — /youtube-top fills the homepage Episodes row (4) and Shorts row (6) per language from the six-hourly scan cache, newest in slot one, then most watched",
     title: "The homepage Episodes and Shorts rows (English and Spanish) are full of real videos with working thumbnails",
     covers: ["GET /api/youtube-top", "page /index.html", "page /es/index.html"],
     modes: ["dev", "prod"],
@@ -444,6 +453,7 @@ export default [
   },
   {
     id: "commentary.youtube-cache-matches-channel",
+    basis: "code: server/src/routes/youtube.ts — the homepage rows are built from a cache the six-hourly YouTube scan refreshes, so the cache must track the channel's own numbers or the scan has stopped",
     title: "The homepage video rows match YouTube's live numbers (the six-hourly channel scan is still running), and the cockpit refuses strangers",
     covers: ["GET /api/youtube-stats", "GET /api/youtube-top", "job scheduleYouTubeScan"],
     modes: ["dev", "prod"],
@@ -504,6 +514,7 @@ export default [
   },
   {
     id: "commentary.youtube-featured-pick",
+    basis: "ruling: stillafloat-newsletter.md — the newsletter's featured video pick is language-aware (7/9 incident: the English issue featured a Spanish video); Mark's 'Feature on Homepage' pin is honoured only in its own language",
     title: "The video Mark pins with \"Feature on Homepage\" is a real video, the homepage shows it, and the newsletter's featured video is in each edition's own language",
     covers: ["GET /api/youtube-featured", "GET /api/youtube-top", "GET /api/newsletter/draft", "page /index.html", "page /es/index.html"],
     modes: ["dev", "prod"],
@@ -577,7 +588,8 @@ export default [
   // ── Favorites ────────────────────────────────────────────────────────────────────────
   {
     id: "commentary.favorites-list",
-    title: "Mark's Favorites page has YouTube channels and cruise websites to show (not two \"Coming soon\" boxes)",
+    basis: "ruling: stillafloat-es-first-class.md — Favorites is linked from both language menus and sections hold Mark's picks in his order; Mark 10/8: 'I have not decided on favorites yet, ignore that one piece' (known-failures.json)",
+    title: "Mark's Favorites page lists the YouTube channels and cruise websites he has picked in his order and section, and says honestly when a section has none yet",
     covers: ["GET /api/favorites", "page /favorites.html"],
     modes: ["dev", "prod"],
     run: async (t) => {
@@ -598,8 +610,12 @@ export default [
         byCat[cat] = one.items;
         t.observe(`favorites ${cat}`, one.items.length, "min");
       }
+      // Which channels and sites Mark has chosen is his content ("I have not decided on favorites yet",
+      // 2026-10-08), not the site's. A section with no picks must say so with the page's own designed
+      // message, so the page must still carry it.
       const empty = Object.entries(byCat).filter(([, v]) => v.length === 0).map(([k]) => k);
-      t.ok(empty.length === 0, `the Favorites page shows "Coming soon" instead of picks for: ${empty.join(", ")} (${all.items.length} favorites stored in total)`);
+      t.observe("favorites sections with no picks yet", empty.join(",") || "(none)", "info");
+      t.ok(/being curated/i.test(html), "/favorites.html no longer carries its \"being curated — check back soon\" message for a section with no picks yet");
       t.equal(byCat["youtube-channels"].length + byCat["cruise-websites"].length, all.items.length, "favorites in the two sections vs all favorites (an item in an unknown section is never shown)");
       for (const i of all.items) {
         t.fields(i, ["id", "title", "url", "category"], `favorite ${i.id}`);
@@ -611,6 +627,7 @@ export default [
   },
   {
     id: "commentary.favorites-spanish-twin",
+    basis: "ruling: stillafloat-es-first-class.md — Spanish readers who click 'Favoritos' must reach a Spanish Favorites page; a missing Spanish twin is a bug",
     title: "Spanish readers who click \"Favoritos\" get a Spanish Favorites page",
     covers: ["page /favorites.html", "page /es/favorites.html"],
     modes: ["dev", "prod"],
@@ -631,6 +648,7 @@ export default [
   },
   {
     id: "commentary.favorites-edit-roundtrip",
+    basis: "code: server/src/routes/favorites.ts — Mark adds, renames and removes favorites from the dashboard, token-gated, and the public list follows into the right section in his sortOrder",
     title: "Mark can add, rename and remove favorites from the dashboard, and the public list follows them into the right section in his order (fixtures, dev only)",
     covers: ["POST /api/favorites", "PATCH /api/favorites/:id", "DELETE /api/favorites/:id", "GET /api/favorites"],
     modes: ["dev"],

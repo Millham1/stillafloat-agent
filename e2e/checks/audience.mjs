@@ -139,6 +139,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.static-pages",
+    basis: "ruling: stillafloat-es-first-class.md — Mark 8/15: every page ships with its Spanish twin, translated, and Spanish readers stay on Spanish pages; sign-up, contact, privacy and terms pages carry real content",
     title: "The sign-up, confirmation, unsubscribe, Work With Mark, privacy and terms pages load with real content, in English and Spanish",
     covers: PAGES.map((p) => `page ${p.path}`),
     modes: ["dev", "prod"],
@@ -203,6 +204,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.spanish-unsubscribe-page",
+    basis: "ruling: mark-en-approval-implies-es-translation.md — Mark 10/8 (stillafloat-es-first-class.md): a missing Spanish twin is a bug; a Spanish subscriber who unsubscribes must land on a Spanish confirmation page",
     title: "A Spanish subscriber who unsubscribes lands on a Spanish confirmation page",
     covers: ["flow:spanish-unsubscribe", "page /unsubscribe-confirmed.html", "page /es/unsubscribe-confirmed.html"],
     modes: ["dev", "prod"],
@@ -223,6 +225,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.turnstile-on-every-form",
+    basis: "ruling: stillafloat-newsletter-subscription-bombing.md — Mark 10/2: bots abused the sign-up to make us email strangers; Turnstile (site key from /api/public-config) on every public form that emails",
     title: "Every sign-up and contact form loads the security check, and the server hands the pages its site key",
     covers: ["GET /api/public-config", "page /subscribe.html", "page /es/subscribe.html", "page /work-with-mark.html", "page /es/work-with-mark.html", "page /cabin-request.html", "page /es/cabin-request.html"],
     modes: ["dev", "prod"],
@@ -262,8 +265,9 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.turnstile-on-group-interest-form",
+    basis: "ruling: stillafloat-newsletter-subscription-bombing.md — Mark 10/2: every public form that emails someone carries Turnstile; the group interest form emails Mark and must use the same site key as the other forms",
     title: "The group cruise page's 'I'm interested' form (English and Spanish) loads the security check with the same site key as the other forms",
-    covers: ["page /group.html", "page /es/group.html", "GET /api/group-page/:code", "GET /api/public-config"],
+    covers: ["page /group.html", "page /es/group.html", "GET /api/group-page/:code", "GET /api/public-config", "GET /api/groups"],
     modes: ["dev", "prod"],
     incident: "2026-10-02 bot sign-ups: every public form that emails Mark or a stranger must carry Turnstile. POST /api/group-page/:code/interest emails Mark (priority lead).",
     // PROD: group marketing is dev-only until the 2026-10-08 promotion — /group.html is 404 on prod
@@ -279,21 +283,31 @@ export default [
       }
       // The page takes its key from the group API, not /api/public-config: the two must agree, or the
       // group page renders a widget for a key the server does not verify against.
-      // The dev test group (approved 2026-10-07); prod has no approved group page before the promotion.
-      const code = "4a5fg8ypac";
-      const g = await t.get(`/api/group-page/${code}?lang=en`);
-      t.require(g.status !== 404, `the test group page (${code}) is gone — re-approve a dev test group so the group form can be checked`);
-      const gp = t.success(g);
-      t.ok("turnstileSiteKey" in gp, "the group page API no longer hands the page a turnstileSiteKey");
+      // Whether Mark has an approved, public group page right now is his business, not the site's, so prod
+      // is never required to have one (the pages above are tested regardless). Dev is seeded with a test
+      // group on purpose (Mark's 2026-10-04 mirror ruling; approved 2026-10-07) and must still hold it.
+      const list = t.success(await t.get("/api/groups", { auth: true }));
+      t.ok(Array.isArray(list.groups), "Mark's group list has no groups array");
+      const live = list.groups.filter((x) => x.share_code && x.marketing_approved_at && ["marketing", "booking"].includes(x.status));
+      if (t.mode === "dev") t.require(live.length > 0, "dev has no group with an approved public page (the seeded test group should be approved), so the group form's key cannot be compared");
+      t.observe("live group pages", live.length, "info");
       const cfg = t.json(await t.get("/api/public-config"));
-      t.equal(gp.turnstileSiteKey, cfg.turnstileSiteKey, "the group page's security-check key compared with /api/public-config's");
-      t.observe("group page api keys", keysOf(gp));
+      if (live.length) {
+        const gp = t.success(await t.get(`/api/group-page/${encodeURIComponent(live[0].share_code)}?lang=en`));
+        t.ok("turnstileSiteKey" in gp, "the group page API no longer hands the page a turnstileSiteKey");
+        t.equal(gp.turnstileSiteKey, cfg.turnstileSiteKey, "the group page's security-check key compared with /api/public-config's");
+        t.observe("group page api keys", keysOf(gp));
+      } else {
+        // no approved page: a made-up code is a clean "not found", never a crash or a preview
+        t.status(await t.get("/api/group-page/zzzzzzzzzz?lang=en"), 404);
+      }
     },
   },
 
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.turnstile-on-ship-tracking-signup",
+    basis: "ruling: stillafloat-newsletter-subscription-bombing.md — Mark 10/2: the Track-this-ship sign-up sends the same confirmation email as the newsletter, so it carries the same bot check",
     title: "The 'Track this ship' sign-up (English and Spanish), which sends the same confirmation email as the newsletter sign-up, carries the same bot check",
     covers: ["page /track-ship.html", "page /es/track-ship.html"],
     modes: ["dev", "prod"],
@@ -314,6 +328,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.turnstile-enforced-by-server",
+    basis: "ruling: stillafloat-newsletter-subscription-bombing.md — Mark 10/2: the server itself refuses a sign-up or contact request with no security check, in English and Spanish; dev holds only test subscribers (mark-dev-never-emails-real-people.md)",
     title: "The server refuses a sign-up or contact request that has no security check (English and Spanish messages)",
     covers: ["POST /api/subscribe", "POST /api/contact", "POST /api/wms/track-signup", "flow:turnstile-enforced", "GET /api/subscribers"],
     modes: ["dev"],
@@ -369,6 +384,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.subscribe-refusals",
+    basis: "code: server/src/routes/subscribe.ts — the sign-up refuses the hidden honeypot field, a short name and a bad address, and resend-verification refuses a missing or unknown address, all before any save or send",
     title: "The newsletter sign-up refuses bots, blank names and bad addresses, and the resend button refuses unknown addresses — and nothing is saved",
     covers: ["POST /api/subscribe", "POST /api/resend-verification", "GET /api/subscribers"],
     modes: ["dev"],
@@ -398,6 +414,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.contact-refusals",
+    basis: "ruling: stillafloat-contact-form.md — the Work With Mark form posts to /api/contact, which refuses missing names, a bad address, a traveller count outside 1 to 20 and missing dates before saving or emailing",
     title: "The Work With Mark contact form refuses missing names, bad addresses, bad traveller counts and missing dates",
     covers: ["POST /api/contact"],
     modes: ["dev"],
@@ -423,7 +440,8 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.subscriber-counts",
-    title: "Mark's subscriber list refuses visitors and, with the token, counts subscribers by status and language",
+    basis: "code: server/src/lib/newsletter.ts — each edition selects confirmed subscribers by language, so every confirmed subscriber must be tagged en or es; the daily clean-up archives unconfirmed sign-ups after 21 days",
+    title: "Mark's subscriber list refuses visitors and, with the token, counts subscribers by status and language with every confirmed one tagged English or Spanish",
     covers: ["GET /api/subscribers", "GET /api/approved-stories-list"],
     modes: ["dev", "prod"],
     run: async (t) => {
@@ -437,8 +455,10 @@ export default [
         t.ok(b.subscribers.length <= 1, `the subscriber list ignored limit=1 (${s})`);
         totals[s] = b.total;
       }
-      t.atLeast(totals.all, 1, "subscribers on file");
-      t.atLeast(totals.confirmed, 1, "confirmed subscribers (nobody would receive the newsletter or storm alerts)");
+      // How many people have signed up is the audience, not the site, so prod is not required to have any.
+      // Dev holds test addresses only (Mark 2026-10-08) and must still carry one confirmed subscriber, or
+      // the language split and the newsletter's use of it are never exercised.
+      if (t.mode === "dev") t.require(totals.confirmed >= 1, "dev has no confirmed test subscriber, so the subscriber list, language tags and newsletter cannot be exercised (seed a test-address fixture)");
       const known = totals.confirmed + totals.pending + totals.unsubscribed + totals.bounced + totals.archived;
       t.ok(known === totals.all, `subscribers in an unknown status: ${totals.all} on file but only ${known} in confirmed/pending/unsubscribed/bounced/archived`);
 
@@ -461,10 +481,11 @@ export default [
         t.fresh(row.created_at, 22 * 24, "the oldest unconfirmed sign-up (the daily sweep archives them after 21 days)");
       }
 
+      // Which stories Mark has approved is the news, not the site: the list must be well-formed whatever its length.
       const ap = t.json(await t.get("/api/approved-stories-list", { auth: true }));
-      t.nonEmpty(ap.stories, "approved stories for the newsletter composer");
+      t.ok(Array.isArray(ap.stories), "the approved-stories list for the newsletter composer has no stories array");
       const st = ap.stories;
-      for (const s of [st[0], st[Math.floor(st.length / 2)], st[st.length - 1]]) t.fields(s, ["id", "title", "summary"], "an approved story");
+      for (const s of [st[0], st[Math.floor(st.length / 2)], st[st.length - 1]].filter(Boolean)) t.fields(s, ["id", "title", "summary"], "an approved story");
 
       for (const [k, v] of Object.entries(totals)) t.observe(`subscribers ${k}`, v, k === "all" ? "min" : "info");
       t.observe("confirmed subscribers en", byLang.en, "info");
@@ -476,6 +497,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.subscriber-admin-refusals",
+    basis: "code: server/src/routes/subscribe.ts — the subscriber admin routes (language fix, mark-bounced, legacy send) are token-gated and refuse bad input before touching a subscriber",
     title: "The subscriber admin actions (language fix, bounce, legacy newsletter send) refuse visitors and bad requests without touching a subscriber",
     covers: ["PATCH /api/subscribers/:id/lang", "POST /api/subscribers/mark-bounced", "POST /api/send-newsletter"],
     modes: ["dev"],
@@ -502,6 +524,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.health-and-push-key",
+    basis: "ruling: mark-whole-site-e2e-release-gate.md — Mark 10/4 rule 6: the site may degrade for visitors but never silently for Mark; incident 2026-08-26, push had zero devices for five days and nothing noticed",
     title: "The site's health check answers, the push key is published for the dashboard app, the alert canary refuses anyone without its own secret, and on the live site no 'alerts are reaching nobody' fault is open",
     covers: ["GET /api/healthz", "GET /api/push/vapid-public-key", "GET /api/healthz/alerts", "GET /api/push/generate-keys", "GET /api/actions"],
     modes: ["dev", "prod"],
@@ -552,6 +575,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.push-device-roundtrip",
+    basis: "ruling: stillafloat-inhouse-brief.md — agent alerts go over Web Push to the Still Afloat app; a device can register and be removed, and the push-health sweep must flag a box with none (incident 2026-08-26)",
     title: "A device can register for Mark's push alerts and be removed again, sending refuses visitors and empty messages, and the push-health sweep flags a box with no device",
     covers: ["POST /api/push/subscribe", "POST /api/push/unsubscribe", "POST /api/push/notify", "POST /api/push/test", "push:device-registration", "GET /api/actions", "job schedulePushHealth"],
     modes: ["dev"],
@@ -601,6 +625,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.confirmation-email-links",
+    basis: "code: server/src/lib/link-signing.ts — confirm and unsubscribe links are signed; a forged one is refused and changes nobody; the old public default is honoured only until 2026-10-31 (incident 2026-09-15)",
     title: "The confirm and unsubscribe links in a subscriber's email go to the right page with the right result: a real signed link unsubscribes, a forged one is refused and changes nobody",
     covers: ["GET /api/verify-email", "GET /api/unsubscribe", "flow:confirmation-email-links", "page /subscribe-verified.html", "page /unsubscribe-confirmed.html", "page /subscribe.html", "GET /api/subscribers", "GET /api/newsletter/email"],
     modes: ["dev"],
@@ -668,6 +693,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.newsletter-email",
+    basis: "ruling: stillafloat-newsletter.md — Still Afloat Weekly: the letter links quick hits to the prerendered /news/ pages, in the reader's language, with a signed unsubscribe link; ES first-class (stillafloat-es-first-class.md)",
     title: "The weekly newsletter email renders for every language that has subscribers, and every link in it opens a real page in the reader's language",
     covers: ["email:newsletter-weekly", "GET /api/newsletter/email", "GET /api/subscribers", "GET /api/affiliate-items", "GET /api/commentary"],
     modes: ["dev", "prod"],
@@ -752,7 +778,10 @@ export default [
         }
         t.observe(`newsletter ${lang} own-page links`, pages.length, "info");
       }
-      t.require(untested.length === 0, `this box has no confirmed ${untested.map((l) => (l === "es" ? "Spanish" : "English")).join(" or ")} subscriber and no draft in that language, so that edition cannot be checked (seed a fixture subscriber in that language on dev)`);
+      // A language with neither subscribers nor a draft has nothing to render: on prod that is the audience's
+      // state, so it is observed. Dev holds a test subscriber per language by Mark's 2026-10-04 mirror ruling.
+      t.observe("newsletter languages with nothing to preview", untested.join(",") || "(none)", "info");
+      if (t.mode === "dev") t.require(untested.length === 0, `this box has no confirmed ${untested.map((l) => (l === "es" ? "Spanish" : "English")).join(" or ")} subscriber and no draft in that language, so that edition cannot be checked (seed a fixture subscriber in that language on dev)`);
       t.observe("newsletter editions with subscribers", Object.entries(n).filter(([, v]) => v > 0).map(([k]) => k).join(","));
     },
   },
@@ -760,6 +789,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.storm-email-buttons",
+    basis: "code: server/src/lib/storm-email-content.ts — the storm email's buttons open /storm-watch.html (listing live storms) and each ship on /wheres-my-ship.html?ship= in the reader's language; dev holds a seeded storm fixture (mark-whole-site-e2e-release-gate.md 10/4)",
     title: "The storm email's buttons open real pages: 'See all storm warnings' lists the live storms and each ship named in it opens on the tracker (English and Spanish)",
     covers: ["flow:storm-email-buttons", "GET /api/storm-watch", "GET /api/wms/ships", "page /storm-watch.html", "page /es/storm-watch.html", "page /wheres-my-ship.html", "page /es/wheres-my-ship.html"],
     modes: ["dev", "prod"],
@@ -810,6 +840,7 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "audience.brief-email",
+    basis: "ruling: stillafloat-inhouse-brief.md — Mark's morning brief arrives as an email whose links to our site open real pages",
     title: "Mark's morning brief email renders, and every link in it to our site opens a real page when clicked from the email",
     covers: ["email:morning-brief", "GET /api/brief/email-preview"],
     modes: ["dev", "prod"],

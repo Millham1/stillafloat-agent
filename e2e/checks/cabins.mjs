@@ -125,6 +125,7 @@ export default [
   // ── Fleet, ships, ratings ──────────────────────────────────────────────────
   {
     id: "cabins.fleet-agrees-with-ratings",
+    basis: "ruling: stillafloat-cabin-concierge-build.md — Room Concierge lists every ship with its own room picks and only the published Conga Line score; 8/17 incident: a database read cut off at 1,000 rows reported 'no rooms' for 137 of 138 ships",
     title: "Room Concierge's ship list is full, and every score on it is the published Conga Line score for that ship",
     covers: ["GET /api/cabins/fleet", "GET /api/ships/ratings"],
     modes: ["dev", "prod"],
@@ -173,6 +174,7 @@ export default [
   },
   {
     id: "cabins.ratings-list-and-detail-agree",
+    basis: "ruling: stillafloat-conga-line-ratings.md — the Conga Line score is Still Afloat's own (rating copy never names its sources, never uses banned words — mark-banned-words.md), in Spanish too (stillafloat-es-first-class.md)",
     title: "Each published Conga Line rating reads the same on the ship card as in the list, in English and Spanish, with clean copy",
     covers: ["GET /api/ships/ratings", "GET /api/ships/:slug/rating"],
     modes: ["dev", "prod"],
@@ -222,6 +224,7 @@ export default [
   },
   {
     id: "cabins.dashboard-ratings-match-public",
+    basis: "ruling: stillafloat-conga-line-ratings.md — Mark 8/14: a rating reaches the public only when both gates are crossed (comment approved, rating published); dashboard and public list are the same rows",
     title: "The Conga Line ratings Mark approved and published in the dashboard are exactly the ones the public sees (and the list refuses anyone without the token)",
     covers: ["GET /api/admin/conga-line", "GET /api/ships/ratings"],
     modes: ["dev", "prod"],
@@ -252,6 +255,7 @@ export default [
   },
   {
     id: "cabins.concierge-ship-list-in-fleet",
+    basis: "code: server/src/routes/cabins.ts — every ship the cabin finder offers (/cabins/ships) must be a fleet ship with room picks, so no choice dead-ends in Room Concierge",
     title: "The cabin finder's ship list is populated and every ship on it can be opened in Room Concierge",
     covers: ["GET /api/cabins/ships", "GET /api/cabins/fleet", "page /cabin-finder.html"],
     modes: ["dev", "prod"],
@@ -283,6 +287,7 @@ export default [
   },
   {
     id: "cabins.deck-maps-for-loaded-ships",
+    basis: "ruling: stillafloat-cabin-concierge-build.md — our own deck map is the ground truth for which rooms exist on each ship (8/17 incident: ships were served another ship's cabins)",
     title: "Our own deck map draws real cabins for a spread of ships that have room picks",
     covers: ["GET /api/cabins/deckmap", "GET /api/cabins/fleet"],
     modes: ["dev", "prod"],
@@ -324,6 +329,7 @@ export default [
   // ── The concierge's lookups (POSTs that only read — dev only) ──────────────
   {
     id: "cabins.cabin-check-matches-deck-map",
+    basis: "ruling: stillafloat-cabin-concierge-build.md — 'I'm already booked' answers from our own research, never names a review site, never shows the confidence score (Mark 8/16), real rooms on more than one line",
     title: "\"I'm already booked — is my view OK?\" answers for real rooms on two cruise lines (English and Spanish) from our own research, without quoting review sites, helps with a typo, and never shows the internal confidence score",
     covers: ["POST /api/cabins/check", "GET /api/cabins/deckmap", "GET /api/cabins/fleet"],
     modes: ["dev"],
@@ -339,7 +345,9 @@ export default [
       const sorted = [...map.cabins].sort((a, b) => String(a.cabin_num).localeCompare(String(b.cabin_num), "en", { numeric: true }));
       const onMap = new Set(sorted.map((c) => String(c.cabin_num)));
       const seaBalconies = sorted.filter((c) => /ocean/i.test(c.category || "") && /balcony/i.test(c.category || "") && !/park|boardwalk|promenade/i.test(c.category || ""));
-      t.require(seaBalconies.length >= 3, "the deck map shows no sea-facing balconies on Wonder of the Seas deck 8, so the balcony answers cannot be checked");
+      // The deck map is the site's own cabin catalog, not the world: a ship with 2,886 cabins and no sea-facing
+      // balcony on deck 8 is a data defect to fail, not a missing condition.
+      t.atLeast(seaBalconies.length, 3, "sea-facing balconies on the Wonder of the Seas deck 8 map (so the balcony answers can be checked)");
       const sample = [...new Map([...spread(sorted, 3), ...spread(seaBalconies, 3)].map((c) => [String(c.cabin_num), c])).values()];
 
       const copyRules = (r, label) => {
@@ -400,7 +408,7 @@ export default [
       // 2026-08-17 Carnival/Norwegian mix-up): the first Carnival ship with room picks in the fleet.
       const fleetShips = await fleet(t);
       const other = fleetShips.find((s) => /carnival/i.test(s.line) && s.hasRooms);
-      t.require(other, "no Carnival ship in the fleet has room picks, so the cabin check cannot be tested on a second line");
+      t.ok(other, "no Carnival ship in the fleet has room picks (the catalog should), so the cabin check cannot be tested on a second line");
       let found = null;
       for (const deck of [8, 7, 6, 9, 5]) {
         const d = t.json(await t.get(`/api/cabins/deckmap?ship=${encodeURIComponent(other.repSlug)}&deck=${deck}`));
@@ -422,6 +430,7 @@ export default [
   },
   {
     id: "cabins.ship-suggestions",
+    basis: "ruling: stillafloat-cabin-concierge-build.md — 'Help me choose a ship' suggests two real ships from different lines; Mark 8/21: 'money is no object' must not suggest a value line, and the language must not change the ships",
     title: "\"Help me choose a ship\" suggests two real ships from different lines that fit the answers, in English and Spanish",
     covers: ["POST /api/cabins/suggest-ships", "GET /api/cabins/fleet"],
     modes: ["dev"],
@@ -430,7 +439,7 @@ export default [
       const ships = await fleet(t);
       const bySlug = new Map(ships.map((s) => [s.slug, s]));
       const westCarib = ships.filter((s) => s.regions.includes("w_caribbean")).length;
-      t.require(westCarib > 0, "no ship in the fleet has a Western Caribbean deployment, so the destination answer cannot be tested");
+      t.atLeast(westCarib, 1, "ships in the fleet with a Western Caribbean deployment (the catalog should hold many)");
       const personas = [
         { what: "a sociable couple headed to the Western Caribbean", lang: "en", body: { personality: { energy: "social", social: "extrovert", structure: "planner", splurge: "value", crowds: "fine" }, party: "couple", traits: { food: 2 }, budget: "treat", destination: "w_caribbean" } },
         { what: "a quiet couple for whom money is no object (Spanish)", lang: "es", body: { personality: { energy: "quiet", social: "introvert", splurge: "cabin", crowds: "avoids" }, party: "couple", budget: "sky", lang: "es" } },
@@ -481,6 +490,7 @@ export default [
   },
   {
     id: "cabins.recommend-refuses-bad-requests",
+    basis: "code: server/src/routes/cabins.ts — POST /cabins/recommend refuses a request with no ship (400) or an unknown ship (404) before the paid model is called",
     title: "Room picks refuse a request with no ship or an unknown ship (refusal only: a real request is written by a paid model)",
     covers: ["POST /api/cabins/recommend"],
     modes: ["dev"],
@@ -494,6 +504,7 @@ export default [
   },
   {
     id: "cabins.session-beacon-drops-junk",
+    basis: "code: server/src/routes/cabins.ts — POST /cabins/session answers 204 to anything and drops a malformed beacon without writing",
     title: "The concierge's visit beacon answers instantly and drops a malformed beacon (refusal only: a real beacon writes an analytics row nothing can remove)",
     covers: ["POST /api/cabins/session"],
     modes: ["dev"],
@@ -508,6 +519,7 @@ export default [
   // ── Conga Line admin writes: refusal paths only ─────────────────────────────
   {
     id: "cabins.rating-admin-writes-refused",
+    basis: "ruling: stillafloat-conga-line-ratings.md — Mark 8/14: the rating admin is token-gated, sources are the two locked ones, and publishing stays Mark's explicit gate",
     title: "The Conga Line admin actions refuse anyone without the token and refuse incomplete input before touching any rating (refusal paths only)",
     covers: [
       "POST /api/admin/conga-line/:slug/sources", "POST /api/admin/conga-line/:slug/draft-comment",
@@ -546,6 +558,7 @@ export default [
   // ── Cruising Guides ─────────────────────────────────────────────────────────
   {
     id: "cabins.guides-site-matches-data",
+    basis: "ruling: stillafloat-cruising-guides.md — a published guide in the data has its page in each language it is written in, kept by the hourly guide job (8/27 incident: a stored guide was a 404 for an hour)",
     title: "Every published Cruising Guide has its page, in each language it is written in, and the hourly guide job has run",
     covers: ["GET /api/guides/status", "job scheduleGuidesPrerender", "data:guides-sitemap"],
     modes: ["dev", "prod"],
@@ -567,6 +580,7 @@ export default [
   },
   {
     id: "cabins.guides-no-orphan-pages",
+    basis: "ruling: stillafloat-cruising-guides.md — pages on disk are exactly the guides in the data; a guide that left the data must stop being served (10/8 duplicate found)",
     title: "No guide page is still being served after its guide left the data (an orphan is a duplicate Google can index)",
     covers: ["GET /api/guides/status", "data:guide-pages"],
     modes: ["dev", "prod"],
@@ -579,6 +593,7 @@ export default [
   },
   {
     id: "cabins.guides-sitemap-index-pages-agree",
+    basis: "ruling: stillafloat-cruising-guides.md — the guides sitemap, the EN and ES index pages and the guide pages list the same guides, each in the right language with a Work-with-Mark button (stillafloat-es-first-class.md)",
     title: "The guides sitemap, the English and Spanish guide index pages and the guide pages themselves all list the same guides, and each page is the right language with correct links",
     covers: ["GET /api/guides/status", "data:guides-sitemap", "data:guides-index-pages", "data:guide-pages"],
     modes: ["dev", "prod"],
@@ -631,15 +646,18 @@ export default [
   },
   {
     id: "cabins.guide-scores-match-ratings",
-    title: "The \"My Score\" numbers in the 30-largest-ships guide (English and Spanish) match the live Conga Line ratings",
+    basis: "ruling: stillafloat-conga-line-ratings.md — the hand-typed 'My Score' numbers in the 30-largest-ships guide must match the live Conga Line scores so the guide never contradicts the concierge",
+    title: "Whenever the 30-largest-ships guide is published, its \"My Score\" numbers (English and Spanish) match the live Conga Line ratings",
     covers: ["GET /api/ships/ratings", "GET /api/cabins/fleet", "data:guide-pages", "flow:guide-scores-match-conga-ratings"],
     modes: ["dev", "prod"],
     incident: "2026-08-14: guide scores are typed into the guide; a quarterly ratings refresh would leave the guide contradicting Room Concierge",
     run: async (t) => {
       const slug = "30-largest-cruise-ships-in-the-world";
       const { paths } = await guidesSitemap(t);
-      t.require(paths.includes(`/guides/${slug}.html`) && paths.includes(`/es/guides/${slug}.html`),
-        `the 30-largest-ships guide is not published in both languages on this box, so its scores cannot be compared`);
+      const published = paths.includes(`/guides/${slug}.html`) && paths.includes(`/es/guides/${slug}.html`);
+      // Whether Mark has the guide published is his content choice, so prod is only compared when it is; dev
+      // mirrors prod's guides (Mark 2026-10-04) and must carry it.
+      if (t.mode === "dev") t.require(published, "the 30-largest-ships guide is not published in both languages on dev (prod's copy should be mirrored), so its scores cannot be compared");
       const ratings = await publicRatings(t);
       const rating = new Map(ratings.map((r) => [r.ship_slug, r.rating]));
       const ships = await fleet(t);
@@ -647,7 +665,7 @@ export default [
       const names = new Map(ships.map((s) => [s.slug, s.ship]));
       for (const r of ratings) if (!names.has(r.ship_slug)) names.set(r.ship_slug, r.ship_slug.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" "));
       const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      for (const [path, label, tooSoon] of [[`/guides/${slug}.html`, "My Score", "Too soon to tell"], [`/es/guides/${slug}.html`, "Mi Puntaje", "Muy pronto para saber"]]) {
+      for (const [path, label, tooSoon] of published ? [[`/guides/${slug}.html`, "My Score", "Too soon to tell"], [`/es/guides/${slug}.html`, "Mi Puntaje", "Muy pronto para saber"]] : []) {
         const text = H.visibleText(t.html(await t.get(path))).replace(/&amp;/g, "&");
         let matched = 0;
         for (const [shipSlug, name] of names) {
@@ -665,6 +683,7 @@ export default [
   },
   {
     id: "cabins.guides-prerender-refused",
+    basis: "code: server/src/routes/guides.ts — POST /guides/prerender rewrites the site's files, so it refuses any request without the dashboard token",
     title: "The \"re-render the guides now\" action refuses anyone without the token (refusal only: with the token it rewrites the site's files)",
     covers: ["POST /api/guides/prerender"],
     modes: ["dev"],
@@ -678,6 +697,7 @@ export default [
   // ── The pages ────────────────────────────────────────────────────────────────
   {
     id: "cabins.concierge-pages-wired",
+    basis: "ruling: stillafloat-es-first-class.md — Mark 8/15: Room Concierge is 'Concierge de Camarotes' on every Spanish surface and asks its endpoints in Spanish; its 'Send my picks' button opens the request page in the same language",
     title: "Room Concierge (English and Spanish) loads, asks the right endpoints in its own language, and its \"Send my picks\" button opens the request page in the same language",
     covers: ["page /room-concierge.html", "page /es/room-concierge.html", "page /cabin-request.html", "page /es/cabin-request.html", "flow:concierge-to-cabin-request"],
     modes: ["dev", "prod"],
@@ -717,6 +737,7 @@ export default [
   },
   {
     id: "cabins.concierge-language-twins",
+    basis: "ruling: stillafloat-es-first-class.md — every English page ships with its Spanish twin and the pair names each other (hreflang) so search engines treat them as a pair",
     title: "Room Concierge's English and Spanish pages point search engines at each other",
     covers: ["page /room-concierge.html", "page /es/room-concierge.html"],
     modes: ["dev", "prod"],
@@ -734,6 +755,7 @@ export default [
   },
   {
     id: "cabins.spanish-request-reaches-mark-as-spanish",
+    basis: "ruling: stillafloat-audience-segments.md — the Spanish-speaking audience is a core market; a Spanish cabin request must reach Mark marked as a Spanish speaker like the Spanish Work-with-Mark form (found 10/8)",
     title: "A cabin request sent from the Spanish page reaches Mark marked as a Spanish speaker, the way the Spanish \"Work with Mark\" form does",
     covers: ["page /es/cabin-request.html", "flow:concierge-to-cabin-request"],
     modes: ["dev", "prod"],
@@ -752,6 +774,7 @@ export default [
   },
   {
     id: "cabins.request-page-escapes-link-text",
+    basis: "code: server/public/cabin-request.html — values read from the page's own link (?ship=, ?cabins=) are shown as text, never written as HTML (10/8 incident: a crafted link ran script on the site)",
     title: "The \"Send your cabins to Mark\" page (English and Spanish) shows the ship and cabins from its link as text, never as page code",
     covers: ["page /cabin-request.html", "page /es/cabin-request.html"],
     modes: ["dev", "prod"],
