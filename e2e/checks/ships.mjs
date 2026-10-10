@@ -239,7 +239,11 @@ export default [
       t.equal(h.enabled, true, "the tracker has an AIS key (enabled)");
       t.ok(typeof h.healthy === "boolean", "the tracker health answer does not say whether the feed is healthy");
       const { body, byName } = await registry(t);
-      t.equal(body.trackerOnline, h.enabled && h.healthy, "the ship search list and the tracker health list say the same about whether the tracker is online");
+      // two reads of the health answer bracket the ship-list read, so a feed that flips online/offline between
+      // the requests cannot make the two endpoints look like they disagree
+      const h2 = await health(t);
+      t.ok(body.trackerOnline === (h.enabled && h.healthy) || body.trackerOnline === (h2.enabled && h2.healthy),
+        `the ship search list says the tracker is ${body.trackerOnline ? "online" : "offline"} but the tracker health list says ${h.healthy ? "healthy" : "not healthy"} (then ${h2.healthy ? "healthy" : "not healthy"})`);
 
       // Two views of the same fleet: everything health reports is a registry ship, and every ship the
       // search list marks "live" is one the tracker is holding.
