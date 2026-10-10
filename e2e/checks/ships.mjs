@@ -140,20 +140,24 @@ async function position(t, ship, healthFix) {
 export default [
   {
     id: "ships.search-list-and-pages",
-    title: "Where's My Ship (English and Spanish) loads its ship search with every cruise ship we cover, says the tracker is online, and has every on-screen message the tracker shows in both languages",
+    basis: "ruling: stillafloat-tracker-design-mark-2026-09-24.md — Mark 9/24: the tracker is inquiry-driven and live slots exist only for watches and storms, so an idle tracker is legitimate; search covers every ship in the registry (ship-tracker.ts header)",
+    title: "Where's My Ship (English and Spanish) loads its ship search with every cruise ship we cover, reports the tracker's state and slots truthfully, and has every on-screen message the tracker shows in both languages",
     covers: ["GET /api/wms/ships", "page /wheres-my-ship.html", "page /es/wheres-my-ship.html"],
     modes: ["dev", "prod"],
     incident: "2026-09-24: the free AIS feed was refused for a day while the page kept answering from memory; since 2026-09-23 (dev, 06a26a3) both tracker pages lack nine strings the script reads, so picking a ship throws on T.checking",
     run: async (t) => {
       const { body, byName } = await registry(t);
-      t.equal(body.trackerOnline, true, "the tracker reports itself online (a live socket and a message in the last 15 minutes)");
+      // Whether the tracker is following anyone right now is not a property of the site: by Mark's design a
+      // slot exists only for a ship pinned to a live storm, a 15-day watch, or a ship asked for in the last
+      // hour (ship-tracker.ts header; tracker design 2026-09-24), so an idle tracker is legitimate.
+      // What the site promises is that it says so truthfully and that the box has the AIS key (slots > 0).
+      t.ok(typeof body.trackerOnline === "boolean", "the ship list does not say whether the tracker is online");
       t.fields(body, ["capacity.active", "capacity.max"], "the tracker's capacity");
-      t.ok(body.capacity.max > 0 && body.capacity.active > 0 && body.capacity.active <= body.capacity.max,
+      t.ok(body.capacity.max > 0 && body.capacity.active >= 0 && body.capacity.active <= body.capacity.max,
         `the tracker's slots make no sense: following ${body.capacity.active} ships of ${body.capacity.max}`);
       const ships = body.ships;
       const live = ships.filter((s) => s.live).length;
       const tracked = ships.filter((s) => s.tracked).length;
-      t.atLeast(live, 1, "ships the tracker is following right now");
       t.ok(live <= body.capacity.active, `${live} ships are marked live but the tracker only holds ${body.capacity.active} slots`);
       t.ok(tracked / ships.length >= 0.9, `only ${tracked} of ${ships.length} ships have an AIS identity on file — the rest can never be found`);
       const lines = new Set(ships.map((s) => s.cruiseLine));
@@ -212,20 +216,30 @@ export default [
       t.observe("ships in search list", ships.length, "min");
       t.observe("cruise lines", lines.size, "min");
       t.observe("ships followed live", live, "info");
+      t.observe("tracker online", body.trackerOnline, "info");
       t.observe("tracker slots", body.capacity.max, "info");
     },
   },
   {
     id: "ships.tracker-hearing-ships",
-    title: "The live tracker is hearing ships right now: its feed is connected and the ships it follows have recent positions",
+    basis: "ruling: stillafloat-tracker-design-mark-2026-09-24.md — Mark 9/24 and 10/9: positions are pulled only on a tracking request or a named storm's track, so how many ships are heard is the world; the site must keep its own two views of the tracker in agreement (routes/wms.ts)",
+    title: "The tracker's two views of the fleet agree: its health list, the ship search list and the weather cards name the same ships and ports, and its online flag says the same on both endpoints",
     covers: ["GET /api/wms/health", "GET /api/wms/ships"],
     modes: ["dev", "prod"],
     incident: "2026-09-22: MSC Meraviglia sat on a 71-day-old position; 2026-09-24: the feed was refused for a day",
     run: async (t) => {
+      // Mark, 2026-10-09 (positions are pulled only on a tracking request or a named storm's track, by
+      // design): how many ships the tracker holds, how recently they were heard and whether a message
+      // arrived in the last 15 minutes depend on who asked and on the weather, not on the site. The
+      // earlier version of this check demanded >= 3 ships heard in the last hour and a healthy feed;
+      // both are states of the world. What the site does promise: the box has its AIS key, the two
+      // endpoints that report the tracker's state agree with each other, and every ship and port the
+      // tracker names is one the rest of the site knows.
       const h = await health(t);
       t.equal(h.enabled, true, "the tracker has an AIS key (enabled)");
-      t.equal(h.healthy, true, "the tracker is healthy (a live socket and a message in the last 15 minutes)");
-      const { byName } = await registry(t);
+      t.ok(typeof h.healthy === "boolean", "the tracker health answer does not say whether the feed is healthy");
+      const { body, byName } = await registry(t);
+      t.equal(body.trackerOnline, h.enabled && h.healthy, "the ship search list and the tracker health list say the same about whether the tracker is online");
 
       // Two views of the same fleet: everything health reports is a registry ship, and every ship the
       // search list marks "live" is one the tracker is holding.
@@ -246,36 +260,27 @@ export default [
         hp.set(lc(s.name), s);
       }
       const live = [...byName.values()].filter((s) => s.live);
-      t.atLeast(live.length, 1, "ships the tracker is following");
       for (const s of live) t.ok(hp.has(lc(s.name)), `"${s.name}" is marked live in the search but the tracker holds nothing for her`);
-
-      const ages = live.map((s) => hp.get(lc(s.name))).filter((p) => p?.lastPosAt).map((p) => ageMin(t, p.lastPosAt));
-      const within48h = ages.filter((a) => a <= 48 * 60).length;
-      const within1h = ages.filter((a) => a <= 60).length;
-      t.ok(within48h >= live.length / 2,
-        `only ${within48h} of the ${live.length} ships the tracker follows were heard in the last 48 hours — the rest show positions the tracker itself treats as history`);
-      t.atLeast(within1h, 3, "followed ships heard in the last hour");
 
       // The tracker shows an arrival-day weather card from /api/weather?place=<her destination>: every
       // port the tracker decodes as a destination must be a place the weather service knows, or the card
       // silently disappears. (?list=true is the fast path: no forecast fetch, no synopsis.)
-      t.atLeast(destinations.size, 5, "different destination ports among the ships the tracker holds");
       const wx = t.success(await t.get("/api/weather?list=true"), "ok");
       const places = new Set([...(wx.allEmbarkationPorts || []), ...(wx.allDestinations || [])].map((p) => p?.slug));
       t.atLeast(places.size, 40, "places the weather service knows");
       const unknown = [...destinations].filter((d) => !places.has(d));
       t.ok(unknown.length === 0, `the tracker sends ships to port(s) the weather card cannot show: ${unknown.join(", ")}`);
       t.observe("ships held by the tracker", h.ships.length, "info");
+      t.observe("tracker healthy", h.healthy, "info");
       t.observe("destination ports held", destinations.size, "info");
-      t.observe("health ship keys", keysOf(h.ships[0]));
-      t.observe("followed ships heard within 48 hours", within48h, "info");
-      t.observe("followed ships heard within 1 hour", within1h, "info");
+      if (h.ships.length) t.observe("health ship keys", keysOf(h.ships[0]));
       t.observe("health keys", keysOf(h));
     },
   },
   {
     id: "ships.position-fresh-ship",
-    title: "Picking a ship heard in the last 15 minutes shows her at a real position, with her line, course and speed",
+    basis: "ruling: stillafloat-tracker-design-mark-2026-09-24.md — Mark 9/24: an inquiry answers from the held fix and only buys a Live-AIS position when it is stale; an unknown ship is answered cleanly",
+    title: "Picking a ship the tracker already holds a fresh fix for shows her at that real position, with her line, course and speed; an unknown ship or no ship is answered cleanly",
     covers: ["GET /api/wms/position", "GET /api/wms/health", "GET /api/wms/ships"],
     modes: ["dev", "prod"],
     run: async (t) => {
@@ -283,9 +288,11 @@ export default [
       const { byName } = await registry(t);
       const h = await health(t);
       const fresh = freshShips(t, h, byName);
-      t.require(fresh.length > 0,
-        `no followed ship was heard in the last ${FRESH_FOR_POSITION_MIN} minutes, so a position cannot be asked for without buying one`);
-      const picks = [fresh[0], fresh.find((s) => s.cruiseLine !== fresh[0].cruiseLine)].filter(Boolean);
+      // Whether any ship was heard in the last 15 minutes is a state of the world (positions are pulled
+      // only for a tracking request or a storm's track — Mark 2026-10-09), so its absence is not a failure:
+      // asking about a ship whose fix is older would BUY a position. When one exists, assert it; either
+      // way the unknown-ship and missing-name answers below are the site's own promises.
+      const picks = fresh.length ? [fresh[0], fresh.find((s) => s.cruiseLine !== fresh[0].cruiseLine)].filter(Boolean) : [];
       for (const s of picks) {
         const d = await position(t, s.name, s.lastPosAt);
         t.equal(d.tracking, true, `${s.name} is shown as tracked`);
@@ -305,7 +312,7 @@ export default [
         }
         if (s === picks[0]) t.observe("position keys", keysOf(d));
       }
-      t.observe("ships asked for", picks.length, "info");
+      t.observe("ships asked for (0 = none had a fix fresh enough to ask without buying one)", picks.length, "info");
 
       // a name the registry does not know: a clean "unknown", never a crash (and never a paid lookup)
       const unknown = t.success(await t.get(`/api/wms/position?ship=${encodeURIComponent(NO_SUCH_SHIP)}`), "ok");
@@ -317,16 +324,23 @@ export default [
   },
   {
     id: "ships.position-route-line",
-    title: "The tracker draws a fresh ship's travelled line and nearby ships, and does not invent an estimate while her fix is fresh",
+    basis: "code: server/src/routes/wms.ts — GET /wms/position returns route, estimate, nearby and planned; no estimate under 20 minutes; a line exists only where a water path does ('No path → no line')",
+    title: "The tracker script draws the travelled line, estimate, nearby ships and planned sailing; for a ship with a fresh fix the answer carries them well-formed and invents no estimate",
     covers: ["GET /api/wms/position"],
     modes: ["dev", "prod"],
     incident: "2026-09-15: route lines ran straight across Baja; 2026-10-08: estimates, route lines and planned sailings are in the release candidate only — this check FAILS on prod until the promotion",
     run: async (t) => {
-      // ONE ship (see PAID-POSITION SAFETY).
+      // ONE ship (see PAID-POSITION SAFETY). The page promise is unconditional; the shape of the answer is
+      // asserted for a ship whose fix is already fresh. That one exists only if someone asked for a ship
+      // or a storm named one (Mark 2026-10-09: by design) — its absence is not a failure, and asking about
+      // an older one would buy a position.
+      const js = await t.get("/js/wheres-my-ship.js");
+      t.status(js, 200);
+      for (const field of ["d.estimate", "route", "nearby", "planned"]) t.ok(js.text.includes(field), `the tracker script never reads "${field}"`);
       const { byName } = await registry(t);
       const fresh = freshShips(t, await health(t), byName);
-      t.require(fresh.length > 0,
-        `no followed ship was heard in the last ${FRESH_FOR_POSITION_MIN} minutes, so a position cannot be asked for without buying one`);
+      t.observe("ships asked for (0 = none had a fix fresh enough to ask without buying one)", fresh.length ? 1 : 0, "info");
+      if (!fresh.length) return;
       const s = fresh[0];
       const d = await position(t, s.name, s.lastPosAt);
       t.equal(d.tracking, true, `${s.name} is shown as tracked`);
@@ -336,10 +350,11 @@ export default [
       // under 20 minutes the fix is shown as-is (ESTIMATE_AFTER_MIN): an estimate here is invented
       t.equal(d.estimate, null, `${s.name}: an estimated position for a ship heard ${s.age.toFixed(0)} minutes ago`);
 
+      // A line exists only where a water path does (route lines never cross land — wms.ts: "No path → no
+      // line"), so a ship with no declared destination and no track has none; what is drawn must be real.
       const r = d.route;
       t.ok(r && Array.isArray(r.travelled) && Array.isArray(r.between) && Array.isArray(r.ahead), `${s.name}: the route line is missing or malformed`);
       const paths = [...r.travelled, ...r.between, r.ahead].filter((p) => p.length);
-      t.atLeast(paths.length, 1, `${s.name}: route segments drawn (a followed ship heard minutes ago has a line behind or ahead of her)`);
       for (const p of paths) {
         t.atLeast(p.length, 2, `${s.name}: points in a route segment`);
         for (const pt of [p[0], p[Math.floor(p.length / 2)], p[p.length - 1]]) {
@@ -364,10 +379,6 @@ export default [
         t.ok(Array.isArray(d.planned.ports) && d.planned.ports.length >= 2, `${s.name}: a planned sailing with fewer than two ports`);
         t.ok(Array.isArray(d.planned.segments), `${s.name}: the planned sailing has no water line`);
       }
-      // the page draws what the API sends
-      const js = await t.get("/js/wheres-my-ship.js");
-      t.status(js, 200);
-      for (const field of ["d.estimate", "route", "nearby", "planned"]) t.ok(js.text.includes(field), `the tracker script never reads "${field}"`);
       t.observe("route keys", keysOf(r));
       t.observe("has planned sailing", Boolean(d.planned), "info");
       t.observe("nearby ships", d.nearby.length, "info");
@@ -375,7 +386,8 @@ export default [
   },
   {
     id: "ships.storm-track-links",
-    title: "Every \"Track this ship\" link on the Storm Watch pages (English and Spanish) names a ship the tracker is following, matches the storm's own page, and opens the sign-up page (with its Keep-tracking button) in the same language",
+    basis: "ruling: stillafloat-storm-alerts.md — Mark 9/15: a Track-this-ship call to action next to each ship in a storm's affected area, one-step 15-day sign-up; dev holds a seeded storm fixture (mark-whole-site-e2e-release-gate 10/4)",
+    title: "Every \"Track this ship\" link the Storm Watch pages (English and Spanish) offer names a ship the tracker is following, matches the storm's own page, and opens the sign-up page (with its Keep-tracking button) in the same language",
     covers: ["GET /api/storm-watch", "GET /api/storm-watch/:id", "GET /api/wms/ships", "page /track-ship.html", "page /es/track-ship.html",
       "page /storm-watch.html", "page /es/storm-watch.html", "page /index.html", "page /es/index.html"],
     modes: ["dev", "prod"],
@@ -384,8 +396,14 @@ export default [
       const sw = t.success(await t.get("/api/storm-watch"));
       t.ok(Array.isArray(sw.systems), "the public storm list has no systems array");
       const sailings = sw.systems.flatMap((s) => (s.sailings || []).map((v) => ({ v, s })));
-      t.require(sailings.length > 0,
-        "no public storm has affected sailings, so no Track-this-ship link exists to test (dev: approve the storm fixture)");
+      // Whether a named storm is threatening a sailing right now is the weather, not the site, so prod is
+      // never required to have one: with no storm there is no link to compare, and the pages' link builder
+      // and the sign-up page (below) are still tested. DEV is different: Mark's 2026-10-04 mirror ruling is
+      // that dev holds the conditions prod can have (a live storm alert), seeded on purpose as a fixture.
+      if (t.mode === "dev") {
+        t.require(sailings.length > 0,
+          "dev has no public storm with affected sailings, so no Track-this-ship link exists to compare (Mark 2026-10-04: dev holds a seeded storm fixture — approve it)");
+      }
       const { byName } = await registry(t);
 
       // `trackable` comes from the tracker's in-memory registry; the search list comes from the database.
@@ -408,15 +426,19 @@ export default [
           t.ok(!reg?.tracked, `storm "${s.name}": "${v.ship_name}" is a tracked ship but the storm page gives her no Track-this-ship link`);
         }
       }
-      t.atLeast(trackable, 1, "storm sailings with a Track-this-ship link");
 
       // The storm's own page (storm-watch.html?id=…) reads the DETAIL endpoint, not the list: the same
       // storm must offer the same Track-this-ship links in both, or one view loses the button.
       const sample = sailings.find((x) => x.v.trackable);
-      const det = t.success(await t.get(`/api/storm-watch/${encodeURIComponent(sample.s.id)}`));
-      t.ok(det.system && Array.isArray(det.system.sailings), `storm "${sample.s.name}": the detail answer has no sailings list`);
-      const sig = (list) => list.map((v) => `${lc(v.ship_name)}|${v.trackable}`).sort().join(";");
-      t.equal(sig(det.system.sailings), sig(sample.s.sailings), `storm "${sample.s.name}": affected ships and their Track-this-ship links, detail page vs list`);
+      if (sample) {
+        const det = t.success(await t.get(`/api/storm-watch/${encodeURIComponent(sample.s.id)}`));
+        t.ok(det.system && Array.isArray(det.system.sailings), `storm "${sample.s.name}": the detail answer has no sailings list`);
+        const sig = (list) => list.map((v) => `${lc(v.ship_name)}|${v.trackable}`).sort().join(";");
+        t.equal(sig(det.system.sailings), sig(sample.s.sailings), `storm "${sample.s.name}": affected ships and their Track-this-ship links, detail page vs list`);
+      } else {
+        // no storm: the detail route still answers an id it does not hold with a clean "not found"
+        t.status(await t.get("/api/storm-watch/00000000-0000-4000-8000-000000000000"), 404);
+      }
 
       // The link each page builds: /track-ship.html?ship=…&from=storm (Spanish pages: /es/track-ship.html).
       for (const [page, prefix] of [["/storm-watch.html", "/track-ship.html?ship="], ["/es/storm-watch.html", "/es/track-ship.html?ship="],
@@ -429,9 +451,12 @@ export default [
         t.ok(/^[a-z-]{1,24}$/.test(from), `${page}: the link's source tag "${from}" would be dropped by the sign-up form`);
         t.ok(/trackable\s*\?/.test(html), `${page} shows the link without checking that the ship is trackable`);
       }
+      // the sign-up page opens for any tracked ship (a storm's own, or — with no storm — the first in the list)
+      const shipName = sample ? sample.v.ship_name : [...byName.values()].find((x) => x.tracked)?.name;
+      t.ok(shipName, "no tracked ship in the search list to open the Track-this-ship page for");
       for (const [p, lang, tracker] of [["/track-ship.html", "en", "'/wheres-my-ship.html'"], ["/es/track-ship.html", "es", "'/es/wheres-my-ship.html'"]]) {
-        const label = `${sample.s.classification ? sample.s.classification + " " : ""}${sample.s.name}`.trim();
-        const html = t.html(await t.get(`${p}?ship=${encodeURIComponent(sample.v.ship_name)}&from=storm&storm=${encodeURIComponent(label)}`),
+        const label = sample ? `${sample.s.classification ? sample.s.classification + " " : ""}${sample.s.name}`.trim() : "e2e-fixture storm";
+        const html = t.html(await t.get(`${p}?ship=${encodeURIComponent(shipName)}&from=storm&storm=${encodeURIComponent(label)}`),
           { mustContain: ["/api/wms/track-signup", "/api/wms/watch/restart", 'id="restartBtn"', 'id="shipName"', 'id="liveLink"', `lang: '${lang}'`, tracker] });
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         t.observe(`${lang} track-ship title`, H.title(html));
@@ -442,7 +467,8 @@ export default [
   },
   {
     id: "ships.webcams-list",
-    title: "The live cams page (English and Spanish) lists its cams with a video and Spanish labels, and any ship it shows in port is one the tracker holds",
+    basis: "ruling: stillafloat-webcams-page.md — Mark 9/14 (approved rebuild): cams at cruise terminals, one cam per city, each cam lists the tracked ships in port from Where's My Ship; Spanish labels (es-first-class)",
+    title: "The live cams page (English and Spanish) lists its cams with a video, a status and Spanish labels, and any ship it shows in port is one the tracker holds",
     covers: ["GET /api/webcams", "page /webcams.html", "page /es/webcams.html", "GET /api/wms/health"],
     modes: ["dev", "prod"],
     incident: "2026-09-14: cams list the tracked ships in frame, computed from the tracker's memory",
@@ -473,7 +499,9 @@ export default [
           t.equal(c.ships_in_port, null, `cam "${c.slug}" (no port) ships-in-port`);
         }
       }
-      t.ok(live >= body.webcams.length / 2, `only ${live} of ${body.webcams.length} cams are live`);
+      // How many streams are up this minute is YouTube's and the camera operators' doing, not the site's
+      // (the daily monitor records it; offline cards render "temporarily offline") — so it is observed,
+      // not demanded.
       t.atLeast(portCams, 4, "cams that look at a cruise port");
       t.ok(new Set(body.webcams.map((c) => c.section)).has("ports"), "the cams page has no ports section");
 
@@ -504,6 +532,7 @@ export default [
   },
   {
     id: "ships.webcams-agree-with-tracker",
+    basis: "ruling: stillafloat-tracker-design-mark-2026-09-24.md — Mark 10/9: positions are pulled only on a tracking request or a storm track, so a ship in frame is not a property of the site; the cams must agree with the tracker's held fixes (webcam-ships.ts: 8 km, 12 h)",
     title: "Each port cam names exactly the tracked ships whose held position puts them in that port right now, and none when none is",
     covers: ["GET /api/webcams", "GET /api/wms/health"],
     modes: ["dev", "prod"],
@@ -526,7 +555,7 @@ export default [
       const portCams = cams.webcams.filter((c) => c.port_slug);
       t.atLeast(portCams.length, 4, "cams that look at a cruise port");
       const health = t.success(await t.get("/api/wms/health", { auth: true }), "ok");
-      t.ok(Array.isArray(health.ships) && health.ships.length > 0, "the tracker reports no ships at all");
+      t.ok(Array.isArray(health.ships), "the tracker health answer has no ships list");
       const held = health.ships.filter((p) => typeof p.lat === "number" && typeof p.lon === "number" && p.lastPosAt);
       t.ok(held.length > 0 || health.ships.every((p) => !p.hasFix), "the tracker says it holds fixes but shows none even with the token — the health route no longer carries lat/lon");
       const ports = t.success(await t.get("/api/weather?list=true"), "ok");
@@ -553,6 +582,7 @@ export default [
   },
   {
     id: "ships.track-signup-refusals",
+    basis: "code: server/src/routes/track-signup.ts — the storm sign-up refuses a missing name, bad email, missing or unknown ship and forged restart links before any write or send; the honeypot answers like success and does nothing",
     title: "The storm Track-this-ship sign-up and the keep-tracking button refuse bad input and forged links, without saving or emailing anything (refusals only)",
     covers: ["POST /api/wms/track-signup", "POST /api/wms/watch/restart"],
     modes: ["dev"],
@@ -588,6 +618,7 @@ export default [
   },
   {
     id: "ships.watch-and-wake-refusals",
+    basis: "code: server/src/routes/wms.ts — POST /wms/request and /wms/watch refuse a missing or unknown ship, bad or past or over-long sailing dates and non-subscribers before buying a position or sending email",
     title: "The tracker's save-my-sailing form and ship wake-up refuse bad input and non-subscribers, without buying a position or sending email (refusals only)",
     covers: ["POST /api/wms/watch", "POST /api/wms/request"],
     modes: ["dev"],
@@ -619,6 +650,7 @@ export default [
   },
   {
     id: "ships.watch-stop-forged-link",
+    basis: "code: server/src/routes/wms.ts — GET /wms/watch/stop redirects a bad signature to /wheres-my-ship.html?watch=invalid and stops nothing",
     title: "A forged or broken \"stop watching\" email link is refused (sent back to the tracker marked invalid, not stopped) and changes nothing",
     covers: ["GET /api/wms/watch/stop", "page /wheres-my-ship.html"],
     modes: ["dev"],

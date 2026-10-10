@@ -17,6 +17,7 @@ const isPublic = (a) => (a.status === "approved" || a.status === "sent") && a.is
 export default [
   {
     id: "storm.watch-list-matches-dashboard",
+    basis: "ruling: mark-whole-site-e2e-release-gate.md — Mark 10/4: dev holds the conditions prod can have (a live storm alert, seeded) so the populated Storm Watch path is exercised; the public list must match the dashboard (the 9/26 outage)",
     title: "Every storm alert Mark has approved appears on the public Storm Watch list, with its affected sailings",
     covers: ["GET /api/storm-watch", "GET /api/storm-alerts", "GET /api/storm-watch/:id", "page /storm-watch.html", "page /es/storm-watch.html"],
     modes: ["dev", "prod"],
@@ -76,6 +77,7 @@ export default [
   },
   {
     id: "storm.home-panel-wired",
+    basis: "ruling: stillafloat-storm-alerts.md — approved storm alerts appear on the homepage Storm Watch panel and the public list (EN and ES); the panel reads /api/storm-watch",
     title: "The homepage Storm Watch panel (English and Spanish) reads the public storm list",
     covers: ["page /index.html", "page /es/index.html", "GET /api/storm-watch"],
     modes: ["dev", "prod"],

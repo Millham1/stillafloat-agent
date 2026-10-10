@@ -35,6 +35,7 @@ function synopsis(t, f, what) {
 export default [
   {
     id: "weather.home-cards",
+    basis: "code: server/src/routes/weather.ts — MIN_CARDS_PER_TYPE = 6: a list short of six departure ports or destinations is topped up from the last good set, never shown thin",
     title: "The weather cards for departure ports and destinations load with real temperatures",
     covers: ["GET /api/weather"],
     modes: ["dev", "prod"],
@@ -60,6 +61,7 @@ export default [
   },
   {
     id: "weather.port-forecast-synopsis",
+    basis: "ruling: stillafloat-forecast-synopsis-and-pexels.md — Mark 10/2: every ten-day page carries Mark's synopsis, in Spanish on the Spanish pages (stillafloat-es-first-class.md)",
     title: "A port's ten-day page shows the forecast and Mark's synopsis, in English and in Spanish",
     covers: ["GET /api/weather"],
     modes: ["dev", "prod"],
@@ -79,6 +81,7 @@ export default [
   },
   {
     id: "weather.search-path-synopsis",
+    basis: "ruling: stillafloat-forecast-synopsis-and-pexels.md — Mark 10/2: a destination typed into the weather search must show the synopsis too; every path goes through /api/weather",
     title: "Typing a destination into the weather search shows the synopsis too (English and Spanish)",
     covers: ["GET /api/weather", "page /forecast.html", "page /weather.html", "page /es/weather.html"],
     modes: ["dev", "prod"],
@@ -109,6 +112,7 @@ export default [
   },
   {
     id: "weather.hero-photo",
+    basis: "ruling: stillafloat-forecast-synopsis-and-pexels.md — 10/2 incident, Pexels key readable in forecast.html: the page calls /api/weather/hero on our server and carries no key",
     title: "Forecast pages get their destination photo from our server, and the page carries no API key",
     covers: ["GET /api/weather/hero", "page /forecast.html"],
     modes: ["dev", "prod"],

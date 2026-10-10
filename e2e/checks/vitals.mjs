@@ -14,6 +14,7 @@ const JOB_FIELDS = ["name", "every", "everyMs", "disabled", "registeredAt", "con
 export default [
   {
     id: "vitals.jobs-ran-on-time",
+    basis: "ruling: mark-whole-site-e2e-release-gate.md — Mark 10/4 rule 6: a failure tells Mark; the site may degrade gracefully for visitors but never silently for him (job-health ledger, routes/health.ts)",
     title: "Every scheduled job on the website server has succeeded within its cadence, none is failing in a row, and the ledger refuses strangers",
     covers: ["GET /api/healthz/jobs", "job scheduleWmsAlerts", "job scheduleLiveAisCredits", "job scheduleNewsletterDelivery", "job scheduleDailyBrief"],
     modes: ["dev", "prod"],
