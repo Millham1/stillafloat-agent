@@ -1,18 +1,11 @@
 {
  "_about": "Checks that fail today and that Mark has been told about. A check listed here does not block a release, but every run prints it. There is no flag to ignore a failure: the only way to release past one is to list it here, with the reason and who accepted it, in a commit Mark can see. Remove an entry the moment its check passes.",
  "_counts_2026-10-08": {
-  "listed": 1,
+  "listed": 0,
   "fixed_and_removed_2026-10-08": 59,
   "note": "Mark 2026-10-08: everything listed is to be FIXED, not waived; see _rulings_2026-10-08"
  },
- "known": [
-  {
-   "id": "jobs.social-poster-handles-due-posts",
-   "since": "2026-10-08",
-   "reason": "DEV MIRROR GAP (dev lacks a condition prod has): dev runs DISABLE_SOCIAL_POSTER=1 with 0 scheduled posts.",
-   "decision": "Mark 2026-10-08: FIX, do not waive — make dev a true mirror (seed/enable the condition on dev). Entry stays listed only until the check passes on dev."
-  }
- ],
+ "known": [],
  "_rulings_2026-10-08": "Mark: (1) fix the dev-mirror gaps, (2) fix the pre-existing prod defects, (3) keep the contact limiter, review after the merge. Nothing here is a permanent waiver.",
- "_removed_2026-10-09": "ops.ai-visibility and commentary.favorites-list: the grounding pass rewrote both to test the site, not the world (traffic; Mark's undecided picks) and they pass on dev and prod. Removed on Mark's go, 2026-10-09."
+ "_removed_2026-10-09": "ops.ai-visibility and commentary.favorites-list: the grounding pass rewrote both to test the site, not the world (traffic; Mark's undecided picks) and they pass on dev and prod. Removed on Mark's go, 2026-10-09. jobs.social-poster-handles-due-posts removed 2026-10-10: dev now runs the poster in sink mode (SOCIAL_POSTER_SINK=1, lib/social-sink.ts) and the check passes on both boxes."
 }
