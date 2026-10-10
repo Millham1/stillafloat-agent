@@ -266,5 +266,6 @@ export function lintCheck(c) {
   if (Array.isArray(c.modes) && !c.modes.includes("prod") && !c.devOnlyBecause) p.push(`${c.id}: a check that does not run on prod must say why (devOnlyBecause)`);
   if (Array.isArray(c.modes) && !c.modes.includes("dev") && !c.prodOnlyBecause) p.push(`${c.id}: a check that does not run on dev must say why (prodOnlyBecause) — dev is supposed to mirror prod`);
   if (typeof c.run !== "function") p.push(`${c.id}: run(t) is missing`);
+  if (typeof c.basis !== "string" || !/^(ruling|tad|master-ref|code|incident): .{20,}/.test(c.basis)) p.push(`${c.id}: basis must cite the design source (ruling: | tad: | master-ref: | code: | incident: …) — a gate check tests a property of the site, never a state of the world (Mark 2026-10-09)`);
   return p;
 }

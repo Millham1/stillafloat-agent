@@ -5,8 +5,8 @@ tested end to end very thoroughly… think of the website holistically, not as s
 This folder is that test, and the tools around it make it the only road to prod.
 
 ## What it is
-- `checks/*.mjs` — ~150 checks over 11 areas (news, commentary, affiliate, ships, cabins, audience,
-  editorial, ops, pages, flows, jobs, vitals). Each check requests real pages and endpoints of a
+- `checks/*.mjs` — 148 checks over 14 areas (news, commentary, affiliate, ships, cabins, audience,
+  editorial, ops, pages, flows, jobs, vitals, weather, storm). Each check requests real pages and endpoints of a
   running box and asserts what a visitor or Mark would see. One check may cover many routes.
 - `run.mjs` — the runner. `--mode dev|prod`, `--site/--news/--ops` base addresses, `--only a,b`
   (a PARTIAL run, never a pass), `--compare before.json` (what disappeared or changed), `--json out`.
@@ -30,6 +30,22 @@ This folder is that test, and the tools around it make it the only road to prod.
 5. **Covers must be real.** A check that claims to cover a route it never requested fails.
 6. **Cooldown.** A full sweep sends refusal probes to endpoints limited to ~5 per visitor per hour.
    A second full sweep within the hour is refused (Mac) or waited out (box).
+7. **Every check cites its design source (Mark, 2026-10-09).** A gate check tests a property of the
+   SITE — what the code promises, or what a design document or one of Mark's dated rulings says the
+   site must do — never whether the world happens to be in some state (a ship in front of a webcam, a
+   storm active, traffic from AI assistants, a newsletter sent this week, a third-party stream being up
+   this minute). Each check carries a `basis` string, enforced by the linter, in one of five forms:
+   - `ruling: <memory file> — <Mark's words or a paraphrase, with the date>`
+   - `tad: <section heading> — <what the Technical Architecture Document says>`
+   - `master-ref: <section number/title> — <what the Master Reference says>`
+   - `code: <file path> — <the promise the code makes>` (a route, a page, a job: "the code returns X" is a
+     basis for "X must still be returned", never for an expectation about traffic, weather, positions or time of day)
+   - `incident: <date> — <what broke and what this prevents>`
+   Every assertion inside `run(t)` must follow from the basis. Where one assumes a world state, rewrite it
+   to compare two of the site's own outputs, or to assert the honest empty case; do not loosen a check to
+   make it pass. `t.require(...)` is for a precondition the box cannot satisfy on purpose — a real
+   Turnstile key on prod, a seeded dev fixture that Mark's 2026-10-04 mirror ruling says dev must carry
+   (and then only `if (t.mode === "dev")`) — never for "the world is not in the state I wanted".
 
 ## How it runs
 | Where | Command | Result file |
@@ -54,7 +70,7 @@ Each run prints one line: `SWEEP <box> PASS|FAIL pass=N fail=N untestable=N know
    hand: whole-dev tree only, and a qualifying dev PASS record. No override flag, by design.
 
 ## Adding a check
-Export default an array from `checks/<area>.mjs`: `{ id: "area.what-it-checks", title, covers: [...],
+Export default an array from `checks/<area>.mjs`: `{ id: "area.what-it-checks", basis, title, covers: [...],
 modes: ["dev","prod"], run(t) }`. `t.get/post`, `t.success`, `t.html`, `t.require`, `t.equal/ok/matches`.
 Name every route/page the check requests in `covers`. Run `node e2e/run.mjs --coverage` and
 `pnpm --filter @workspace/api-server test` (e2e-gate.test.ts) before committing.
