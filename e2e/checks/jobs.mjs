@@ -557,7 +557,11 @@ export default [
       // ledger (GET /api/healthz/jobs) records the job's runs, so the run itself is checked there:
       // the daily job must have succeeded within the last 26 hours once the box has been up a day
       // (the ledger survives restarts, so a deploy does not reset it).
-      const ledger = t.json(await t.get("/api/healthz/jobs", { auth: true }));
+      // (503 is the ledger's own verdict that SOME job is overdue and still carries the report — read it as
+      // such; whether another job is overdue is vitals.jobs-ran-on-time's finding, not this check's)
+      const ledgerRes = await t.get("/api/healthz/jobs", { auth: true });
+      t.ok(ledgerRes.status === 200 || ledgerRes.status === 503, `the job ledger answered ${ledgerRes.describe()}`);
+      const ledger = ledgerRes.json && typeof ledgerRes.json === "object" ? ledgerRes.json : t.json(ledgerRes);
       const job = (ledger.jobs || []).find((j) => j.name === "scheduleSubscriberHygiene");
       t.ok(job, "the job-health ledger has no entry for scheduleSubscriberHygiene");
       if (job && !job.disabled) {
