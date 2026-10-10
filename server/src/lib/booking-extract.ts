@@ -73,8 +73,18 @@ export interface BookingExtraction {
   cancellation_schedule: CancellationRow[];
   cancellation_note: string | null;
   deadlines: Deadline[];
+  /** Air, hotel before the cruise and transfers, when the quote prints them (Mark 2026-10-10:
+   *  "If the quote holds transfers, air and hotel then the fields prepopulate"). */
+  travel_package: TravelPackage | null;
   /** What the checks in booking-terms.ts blanked or corrected, in plain words. */
   warnings: string[];
+}
+
+export type TransferRoute = "airport_to_hotel" | "hotel_to_port" | "airport_to_port" | "port_to_airport" | "port_to_hotel";
+export interface TravelPackage {
+  air: { included: boolean | null; description: string | null; from_city: string | null; price_per_person: number | null } | null;
+  hotel_before: { included: boolean | null; name: string | null; city: string | null; nights: number | null; price_per_person: number | null } | null;
+  transfers: Array<{ route: TransferRoute; included: boolean | null; provider: string | null; price_per_person: number | null }>;
 }
 
 const nullable = (type: string) => ({ type: [type, "null"] });
@@ -105,6 +115,25 @@ const CANCELLATION_SCHEMA = {
     },
     required: ["from_days", "to_days", "penalty", "percent"],
   },
+};
+
+const TRANSFER_ROUTES = ["airport_to_hotel", "hotel_to_port", "airport_to_port", "port_to_airport", "port_to_hotel"];
+const TRAVEL_SCHEMA = {
+  type: ["object", "null"],
+  additionalProperties: false,
+  description: "Air, hotel before the cruise and transfers ONLY when the document prints them (fly & cruise, hotel package, transfer options). Null when the document says nothing about them.",
+  properties: {
+    air: { type: ["object", "null"], additionalProperties: false,
+      properties: { included: { type: ["boolean", "null"] }, description: nullable("string"), from_city: nullable("string"), price_per_person: nullable("number") },
+      required: ["included", "description", "from_city", "price_per_person"] },
+    hotel_before: { type: ["object", "null"], additionalProperties: false,
+      properties: { included: { type: ["boolean", "null"] }, name: nullable("string"), city: nullable("string"), nights: nullable("integer"), price_per_person: nullable("number") },
+      required: ["included", "name", "city", "nights", "price_per_person"] },
+    transfers: { type: "array", items: { type: "object", additionalProperties: false,
+      properties: { route: { type: "string", enum: TRANSFER_ROUTES }, included: { type: ["boolean", "null"] }, provider: nullable("string"), price_per_person: nullable("number") },
+      required: ["route", "included", "provider", "price_per_person"] } },
+  },
+  required: ["air", "hotel_before", "transfers"],
 };
 
 export const BOOKING_SCHEMA: Record<string, unknown> = {
@@ -179,13 +208,14 @@ export const BOOKING_SCHEMA: Record<string, unknown> = {
     allotment_reviews: REVIEW_SCHEMA,
     cancellation_schedule: CANCELLATION_SCHEMA,
     cancellation_note: { ...nullable("string"), description: "The footnote under the cancellation table, as printed" },
+    travel_package: TRAVEL_SCHEMA,
   },
   required: [
     "cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary",
     "group_number", "booking_number", "cabins_held", "cabin_categories", "deposit_per_person",
     "deposit_due", "names_due", "final_payment_due", "recall_date", "amenities", "organizer_name",
     "travelers", "total_price", "notes",
-    "deposit_timing", "final_payment_days_before", "allotment_reviews", "cancellation_schedule", "cancellation_note",
+    "deposit_timing", "final_payment_days_before", "allotment_reviews", "cancellation_schedule", "cancellation_note", "travel_package",
   ],
 };
 
@@ -300,6 +330,21 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
       penalty: str(x["penalty"]), percent: normalizeInt(x["percent"]),
     }))
     .filter((x) => x.from_days !== null || x.to_days !== null);
+  const bool = (v: unknown): boolean | null => (typeof v === "boolean" ? v : null);
+  const tpRaw = r["travel_package"] && typeof r["travel_package"] === "object" ? (r["travel_package"] as Record<string, unknown>) : null;
+  let travel_package: TravelPackage | null = null;
+  if (tpRaw) {
+    const a = tpRaw["air"] && typeof tpRaw["air"] === "object" ? obj(tpRaw["air"]) : null;
+    const h = tpRaw["hotel_before"] && typeof tpRaw["hotel_before"] === "object" ? obj(tpRaw["hotel_before"]) : null;
+    const air = a && (str(a["description"]) || str(a["from_city"]) || normalizeMoney(a["price_per_person"]) !== null || bool(a["included"]) !== null)
+      ? { included: bool(a["included"]), description: str(a["description"]), from_city: str(a["from_city"]), price_per_person: normalizeMoney(a["price_per_person"]) } : null;
+    const hotel_before = h && (str(h["name"]) || str(h["city"]) || normalizeInt(h["nights"]) !== null || normalizeMoney(h["price_per_person"]) !== null || bool(h["included"]) !== null)
+      ? { included: bool(h["included"]), name: str(h["name"]), city: str(h["city"]), nights: normalizeInt(h["nights"]), price_per_person: normalizeMoney(h["price_per_person"]) } : null;
+    const transfers = list(tpRaw["transfers"]).map(obj)
+      .filter((t) => typeof t["route"] === "string" && TRANSFER_ROUTES.includes(t["route"] as string))
+      .map((t) => ({ route: t["route"] as TransferRoute, included: bool(t["included"]), provider: str(t["provider"]), price_per_person: normalizeMoney(t["price_per_person"]) }));
+    if (air || hotel_before || transfers.length) travel_package = { air, hotel_before, transfers };
+  }
   const deadlines: Deadline[] = list(r["deadlines"]).map(obj)
     .map((x) => ({ date: normalizeDate(x["date"]), days_before: normalizeInt(x["days_before"]) ?? 0, text: str(x["text"]) ?? "" }))
     .filter((x) => x.text);
@@ -320,6 +365,7 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
 
   return {
     cruise_line: str(r["cruise_line"]),
+    travel_package,
     ship_name: str(r["ship_name"]),
     sail_date,
     return_date,
@@ -355,8 +401,30 @@ export function foundFields(x: BookingExtraction): string[] {
   return (Object.keys(x) as Array<keyof BookingExtraction>).filter((k) => {
     if (k === "warnings") return false;
     const v = x[k];
+    if (k === "travel_package") { const tp = x.travel_package; return !!tp && (!!tp.air || !!tp.hotel_before || tp.transfers.length > 0); }
     return Array.isArray(v) ? v.length > 0 : v !== null;
   });
+}
+
+/** Group-level travel rows (air, hotel before, transfers) for group_travel from what the quote printed. */
+export function travelRowsFromExtraction(x: BookingExtraction): Array<Record<string, unknown>> {
+  const tp = x.travel_package;
+  if (!tp) return [];
+  const rows: Array<Record<string, unknown>> = [];
+  const money = (n: number | null) => (n === null ? "" : ` · $${n.toFixed(2)} per person`);
+  const incl = (b: boolean | null) => (b === true ? "included in the quote" : b === false ? "offered, not included" : "see the quote");
+  if (tp.air) rows.push({ kind: "flight", direction: "pre", provider: tp.air.description, from_place: tp.air.from_city, to_place: null,
+    price_per_person: tp.air.price_per_person, included: tp.air.included === true, source: "quote", notes: `Air: ${incl(tp.air.included)}${money(tp.air.price_per_person)}` });
+  if (tp.hotel_before) rows.push({ kind: "hotel", direction: "pre", provider: tp.hotel_before.name, from_place: tp.hotel_before.city, to_place: null,
+    reference: tp.hotel_before.nights ? `${tp.hotel_before.nights} night${tp.hotel_before.nights === 1 ? "" : "s"}` : null,
+    price_per_person: tp.hotel_before.price_per_person, included: tp.hotel_before.included === true, source: "quote", notes: `Hotel before the cruise: ${incl(tp.hotel_before.included)}${money(tp.hotel_before.price_per_person)}` });
+  const place = (p: string) => ({ airport: "Airport", hotel: "Hotel", port: "Cruise port" }[p] ?? p);
+  for (const t of tp.transfers) {
+    const [from, to] = t.route.split("_to_") as [string, string];
+    rows.push({ kind: "transfer", direction: from === "port" ? "post" : "pre", provider: t.provider, from_place: place(from), to_place: place(to),
+      price_per_person: t.price_per_person, included: t.included === true, source: "quote", notes: `Transfer ${place(from).toLowerCase()} → ${place(to).toLowerCase()}: ${incl(t.included)}${money(t.price_per_person)}` });
+  }
+  return rows;
 }
 
 /** The cabins to open on the group from the category lines (one row per cabin). */
@@ -491,8 +559,16 @@ async function readBySection(text: string, kind: "group" | "individual", ask: As
     `(from_days, to_days, penalty as printed, percent as a number or null when the penalty is the deposit), and cancellation_note (the footnote, as printed).`,
     pick(BOOKING_SCHEMA, ["cancellation_schedule", "cancellation_note"]), 500) : null;
 
+  // Air, hotel before, transfers — only asked when the document has lines about them.
+  const travel = s.travel ? await ask<Record<string, unknown>>("air, hotel and transfers", s.travel,
+    `Fill in travel_package from these lines: air (included true/false when the document says so, description as printed, from_city, price_per_person), ` +
+    `hotel_before (the hotel the night before the cruise: name, city, nights, price_per_person, included), transfers (one entry per transfer the document offers: ` +
+    `route one of airport_to_hotel, hotel_to_port, airport_to_port, port_to_airport, port_to_hotel; included; provider; price_per_person). ` +
+    `If the lines do not describe air, a hotel or transfers, return travel_package as null.`,
+    pick(BOOKING_SCHEMA, ["travel_package"]), 500) : null;
+
   if (!basics && !rates && !payments && !cancellation) throw new Error("No part of the document could be read");
-  return { ...basics, ...rates, ...payments, ...cancellation };
+  return { ...basics, ...rates, ...payments, ...cancellation, ...travel };
 }
 
 export async function extractBooking(

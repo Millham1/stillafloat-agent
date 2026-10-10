@@ -59,6 +59,50 @@ const FIELDS: Field[] = [
 
 const inputCls = "mt-1 w-full px-3 py-1.5 text-sm rounded-md border bg-card text-foreground";
 
+type TransferRoute = "airport_to_hotel" | "hotel_to_port" | "port_to_airport";
+const TRANSFER_ROUTES: Array<{ route: TransferRoute; label: string; direction: "pre" | "post"; from: string; to: string }> = [
+  { route: "airport_to_hotel", label: "Airport → hotel", direction: "pre", from: "Airport", to: "Hotel" },
+  { route: "hotel_to_port", label: "Hotel → cruise port", direction: "pre", from: "Hotel", to: "Cruise port" },
+  { route: "port_to_airport", label: "Cruise port → airport", direction: "post", from: "Cruise port", to: "Airport" },
+];
+type Tri = "" | "yes" | "no";
+type TravelForm = {
+  air: { offered: boolean; included: Tri; description: string; from_city: string; price_per_person: string };
+  hotel_before: { offered: boolean; included: Tri; name: string; city: string; nights: string; price_per_person: string };
+  transfers: Array<{ route: TransferRoute; offered: boolean; included: Tri; provider: string; price_per_person: string }>;
+};
+const tri = (v: unknown): Tri => (v === "yes" || v === "no" ? v : v === true ? "yes" : v === false ? "no" : "");
+const txt = (v: unknown): string => (v === null || v === undefined ? "" : String(v));
+/** The reader's travel_package (or a half-edited form) → the form's shape. */
+function normalizeTravelForm(v: unknown): TravelForm {
+  const x = (v && typeof v === "object" ? v : {}) as Row;
+  const a = (x.air && typeof x.air === "object" ? x.air : null) as Row | null;
+  const h = (x.hotel_before && typeof x.hotel_before === "object" ? x.hotel_before : null) as Row | null;
+  const ts = Array.isArray(x.transfers) ? (x.transfers as Row[]) : [];
+  return {
+    air: { offered: a ? (a.offered ?? true) : false, included: tri(a?.included), description: txt(a?.description), from_city: txt(a?.from_city), price_per_person: txt(a?.price_per_person) },
+    hotel_before: { offered: h ? (h.offered ?? true) : false, included: tri(h?.included), name: txt(h?.name), city: txt(h?.city), nights: txt(h?.nights), price_per_person: txt(h?.price_per_person) },
+    transfers: TRANSFER_ROUTES.map((r) => {
+      const t = ts.find((y) => y.route === r.route);
+      return { route: r.route, offered: t ? (t.offered ?? true) : false, included: tri(t?.included), provider: txt(t?.provider), price_per_person: txt(t?.price_per_person) };
+    }),
+  };
+}
+/** The form → group_travel rows (group-level: no traveler, no cabin). Only offers that are switched on. */
+function travelRows(tp: TravelForm): Row[] {
+  const num = (s: string) => (s.trim() === "" ? null : Number(s));
+  const inc = (t: Tri) => t === "yes";
+  const rows: Row[] = [];
+  if (tp.air.offered) rows.push({ kind: "flight", direction: "pre", provider: tp.air.description || null, from_place: tp.air.from_city || null, price_per_person: num(tp.air.price_per_person), included: inc(tp.air.included), source: "quote" });
+  if (tp.hotel_before.offered) rows.push({ kind: "hotel", direction: "pre", provider: tp.hotel_before.name || null, from_place: tp.hotel_before.city || null, reference: tp.hotel_before.nights ? `${tp.hotel_before.nights} night${tp.hotel_before.nights === "1" ? "" : "s"}` : null, price_per_person: num(tp.hotel_before.price_per_person), included: inc(tp.hotel_before.included), source: "quote" });
+  for (const t of tp.transfers) {
+    if (!t.offered) continue;
+    const r = TRANSFER_ROUTES.find((x) => x.route === t.route)!;
+    rows.push({ kind: "transfer", direction: r.direction, provider: t.provider || null, from_place: r.from, to_place: r.to, price_per_person: num(t.price_per_person), included: inc(t.included), source: "quote" });
+  }
+  return rows;
+}
+
 /** 2027-02-24 → Wed, Feb 24, 2027 */
 function day(d: string | null | undefined): string {
   if (!d) return "—";
@@ -98,7 +142,7 @@ export default function GroupIntake() {
   });
   const intake = data?.intake;
   const found = new Set(data?.found ?? []);
-  const shownKeys = [...FIELDS.map((f) => f.key), "cabin_categories", "amenities", "itinerary", "allotment_reviews", "cancellation_schedule"];
+  const shownKeys = [...FIELDS.map((f) => f.key), "cabin_categories", "amenities", "itinerary", "allotment_reviews", "cancellation_schedule", "travel_package"];
   const foundShown = shownKeys.filter((k) => found.has(k)).length;
 
   // When the reader finishes, seed the form from what it read.
@@ -133,6 +177,13 @@ export default function GroupIntake() {
   };
 
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+  // Air, hotel before and transfers (Mark 2026-10-10): prefilled from the quote when it prints them, typed in otherwise.
+  const tp: TravelForm = normalizeTravelForm(form.travel_package);
+  const setTp = (next: TravelForm) => set("travel_package", next);
+  const setAir = (k: keyof TravelForm["air"], v: unknown) => setTp({ ...tp, air: { ...tp.air, [k]: v } });
+  const setHotel = (k: keyof TravelForm["hotel_before"], v: unknown) => setTp({ ...tp, hotel_before: { ...tp.hotel_before, [k]: v } });
+  const setTransfer = (route: TransferRoute, k: "included" | "provider" | "price_per_person", v: unknown) =>
+    setTp({ ...tp, transfers: tp.transfers.map((t) => (t.route === route ? { ...t, [k]: v } : t)) });
 
   const save = async () => {
     if (!intakeId) return;
@@ -146,7 +197,8 @@ export default function GroupIntake() {
       group.notes = form.notes ?? null;
       group.itinerary = form.itinerary ?? [];
       group.amenities = form.amenities ?? [];
-      const r = await api<{ group: Row; cabins: number; payments: number }>(`/groups/intake/${intakeId}/accept`, "POST", { group });
+      const travel = travelRows(tp);
+      const r = await api<{ group: Row; cabins: number; payments: number; travel: number }>(`/groups/intake/${intakeId}/accept`, "POST", { group, travel });
       toast({ title: "Group file opened", description: `${r.cabins} cabin${r.cabins === 1 ? "" : "s"} and ${r.payments} payment line${r.payments === 1 ? "" : "s"} created.` });
       navigate(`/groups/${r.group.id}`);
     } catch (e) {
@@ -310,6 +362,54 @@ export default function GroupIntake() {
               </table>
             </div>
             <p className="px-3 py-2 text-xs text-muted-foreground">Prices are per person with taxes and fees in. On the file each cabin is priced for two guests. Adjust any cabin afterward.</p>
+          </Card>
+
+          <Card>
+            <div className="px-4 py-3 border-b"><h3 className="font-semibold">Air, hotel before and transfers {found.has("travel_package") ? <span className="text-xs text-green-600 font-normal">· from the document</span> : <span className="text-xs text-amber-600 font-normal">· not in the document — type what you offer the group</span>}</h3></div>
+            <CardContent className="p-4 space-y-4 text-sm">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="rounded-md border p-3 space-y-2">
+                  <label className="flex items-center gap-2 font-medium"><input type="checkbox" checked={tp.air.offered} onChange={(e) => setAir("offered", e.target.checked)} /> Airfare</label>
+                  {tp.air.offered && <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="text-xs text-muted-foreground">From city<input className={inputCls} value={tp.air.from_city} onChange={(e) => setAir("from_city", e.target.value)} /></label>
+                      <label className="text-xs text-muted-foreground">Price per person ($)<input className={inputCls} type="number" step="0.01" value={tp.air.price_per_person} onChange={(e) => setAir("price_per_person", e.target.value)} /></label>
+                    </div>
+                    <label className="text-xs text-muted-foreground">Airline / details<input className={inputCls} value={tp.air.description} onChange={(e) => setAir("description", e.target.value)} /></label>
+                    <label className="text-xs text-muted-foreground">Included in the cruise price?<select className={inputCls} value={tp.air.included} onChange={(e) => setAir("included", e.target.value)}><option value="">—</option><option value="yes">Yes, included</option><option value="no">No, add-on</option></select></label>
+                  </>}
+                </div>
+                <div className="rounded-md border p-3 space-y-2">
+                  <label className="flex items-center gap-2 font-medium"><input type="checkbox" checked={tp.hotel_before.offered} onChange={(e) => setHotel("offered", e.target.checked)} /> Hotel the night before</label>
+                  {tp.hotel_before.offered && <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="text-xs text-muted-foreground">Hotel<input className={inputCls} value={tp.hotel_before.name} onChange={(e) => setHotel("name", e.target.value)} /></label>
+                      <label className="text-xs text-muted-foreground">City<input className={inputCls} value={tp.hotel_before.city} onChange={(e) => setHotel("city", e.target.value)} /></label>
+                      <label className="text-xs text-muted-foreground">Nights<input className={inputCls} type="number" min="1" value={tp.hotel_before.nights} onChange={(e) => setHotel("nights", e.target.value)} /></label>
+                      <label className="text-xs text-muted-foreground">Price per person ($)<input className={inputCls} type="number" step="0.01" value={tp.hotel_before.price_per_person} onChange={(e) => setHotel("price_per_person", e.target.value)} /></label>
+                    </div>
+                    <label className="text-xs text-muted-foreground">Included in the cruise price?<select className={inputCls} value={tp.hotel_before.included} onChange={(e) => setHotel("included", e.target.value)}><option value="">—</option><option value="yes">Yes, included</option><option value="no">No, add-on</option></select></label>
+                  </>}
+                </div>
+              </div>
+              <div className="rounded-md border p-3 space-y-2">
+                <div className="font-medium">Transfers</div>
+                {tp.transfers.map((t) => {
+                  const r = TRANSFER_ROUTES.find((x) => x.route === t.route)!;
+                  return (
+                    <div key={t.route} className="grid md:grid-cols-4 gap-2 items-end">
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={t.offered} onChange={(e) => setTp({ ...tp, transfers: tp.transfers.map((y) => (y.route === t.route ? { ...y, offered: e.target.checked } : y)) })} /> {r.label}</label>
+                      {t.offered ? <>
+                        <label className="text-xs text-muted-foreground">Company<input className={inputCls} value={t.provider} onChange={(e) => setTransfer(t.route, "provider", e.target.value)} /></label>
+                        <label className="text-xs text-muted-foreground">Price per person ($)<input className={inputCls} type="number" step="0.01" value={t.price_per_person} onChange={(e) => setTransfer(t.route, "price_per_person", e.target.value)} /></label>
+                        <label className="text-xs text-muted-foreground">Included?<select className={inputCls} value={t.included} onChange={(e) => setTransfer(t.route, "included", e.target.value)}><option value="">—</option><option value="yes">Yes, included</option><option value="no">No, add-on</option></select></label>
+                      </> : <div className="md:col-span-3 text-xs text-muted-foreground">Not offered.</div>}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">Saved on the group file under Flights, hotels and transfers (as the group's offer, not per traveler) and shown on the group page and in the marketing package.</p>
+            </CardContent>
           </Card>
 
           <div className="grid md:grid-cols-2 gap-4">

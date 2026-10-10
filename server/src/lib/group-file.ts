@@ -57,7 +57,8 @@ export const CHILDREN: Record<string, ChildSpec> = {
   travel: {
     table: "group_travel",
     columns: ["cabin_id", "traveler_id", "kind", "direction", "provider", "reference",
-      "from_place", "to_place", "starts_at", "ends_at", "confirmation", "notes"],
+      "from_place", "to_place", "starts_at", "ends_at", "confirmation", "notes",
+      "price_per_person", "included", "source"],
     select: "*",
     order: "starts_at",
   },

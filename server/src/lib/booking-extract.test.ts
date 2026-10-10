@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BOOKING_SCHEMA, cabinRowsFromExtraction, foundFields, normalizeDate, normalizeExtraction, normalizeMoney } from "./booking-extract";
+import { BOOKING_SCHEMA, cabinRowsFromExtraction, foundFields, normalizeDate, normalizeExtraction, normalizeMoney, travelRowsFromExtraction } from "./booking-extract";
 
 test("normalizeDate accepts the formats quotes print and rejects junk", () => {
   assert.equal(normalizeDate("2027-03-01"), "2027-03-01");
@@ -206,4 +206,65 @@ test("cutSections pulls the price rows with their headers and the payment lines"
   assert.match(s.payments, /75 days/);
   assert.match(s.cancellation, /74 – 51 days/);
   assert.match(s.basics, /MSC SEASIDE/);
+});
+
+
+// ── Air, hotel before and transfers (Mark 2026-10-10) ───────────────────────────────────────────
+test("a quote's air / hotel / transfer lines become the group's travel offer, and are found", () => {
+  const x = normalizeExtraction({
+    ship_name: "MSC SEASIDE",
+    travel_package: {
+      air: { included: false, description: "Round trip from RDU, economy", from_city: "Raleigh-Durham", price_per_person: 412 },
+      hotel_before: { included: false, name: "Hampton Inn Miami Airport", city: "Miami", nights: 1, price_per_person: 89.5 },
+      transfers: [
+        { route: "hotel_to_port", included: true, provider: "MSC motorcoach", price_per_person: null },
+        { route: "port_to_airport", included: false, provider: "MSC motorcoach", price_per_person: 29 },
+        { route: "mars_to_venus", included: true, provider: "x", price_per_person: 1 },
+      ],
+    },
+  });
+  assert.ok(x.travel_package);
+  assert.equal(x.travel_package!.air!.price_per_person, 412);
+  assert.equal(x.travel_package!.hotel_before!.nights, 1);
+  assert.deepEqual(x.travel_package!.transfers.map((t) => t.route), ["hotel_to_port", "port_to_airport"], "an unknown route is dropped");
+  assert.ok(foundFields(x).includes("travel_package"));
+  const rows = travelRowsFromExtraction(x);
+  assert.deepEqual(rows.map((r) => [r.kind, r.direction, r.included, r.price_per_person]), [
+    ["flight", "pre", false, 412], ["hotel", "pre", false, 89.5], ["transfer", "pre", true, null], ["transfer", "post", false, 29],
+  ]);
+  assert.equal(rows[1]!.reference, "1 night");
+  assert.equal(rows[2]!.from_place, "Hotel"); assert.equal(rows[2]!.to_place, "Cruise port");
+  assert.ok(rows.every((r) => r.source === "quote"));
+});
+
+test("a quote with nothing about air, hotel or transfers leaves travel_package null and not found", () => {
+  const x = normalizeExtraction({ ship_name: "MSC SEASIDE", travel_package: null });
+  assert.equal(x.travel_package, null);
+  assert.ok(!foundFields(x).includes("travel_package"));
+  assert.deepEqual(travelRowsFromExtraction(x), []);
+  const y = normalizeExtraction({ travel_package: { air: null, hotel_before: null, transfers: [] } });
+  assert.equal(y.travel_package, null);
+});
+
+test("a travel price the document does not print is blanked with a warning; a printed one stays", () => {
+  const text = "MSC SEASIDE\nAir add-on from RDU: $412.00 per person\nHotel night before: Hampton Inn Miami Airport $89.50 pp\nTransfer port to airport $29 pp";
+  const x = normalizeExtraction({ travel_package: {
+    air: { included: false, description: "from RDU", from_city: "RDU", price_per_person: 412 },
+    hotel_before: { included: false, name: "Hampton Inn Miami Airport", city: "Miami", nights: 1, price_per_person: 99 },
+    transfers: [{ route: "port_to_airport", included: false, provider: null, price_per_person: 29 }],
+  } });
+  const v = verifyExtraction(x, text);
+  assert.equal(v.travel_package!.air!.price_per_person, 412);
+  assert.equal(v.travel_package!.hotel_before!.price_per_person, null, "99 is not printed");
+  assert.ok(v.warnings.some((w) => /Hotel before the cruise price was read as 99/.test(w)));
+  assert.equal(v.travel_package!.transfers[0]!.price_per_person, 29);
+});
+
+test("cutSections finds the air / hotel / transfer lines of a quote", () => {
+  const text = ["GROUP QUOTE", "Ship: MSC SEASIDE", "Fly & Cruise package available from RDU: $412 per person", "Pre-cruise hotel: Hampton Inn Miami Airport, 1 night, $89.50 pp", "Transfers hotel to pier included; pier to airport $29 pp", "", "Rates", "BR2 Deluxe Balcony 14 $523.00 $88.00 $84.80 $695.80"].join("\n");
+  const s = cutSections(text);
+  assert.match(s.travel, /Fly & Cruise/);
+  assert.match(s.travel, /Pre-cruise hotel/);
+  assert.match(s.travel, /Transfers hotel to pier/);
+  assert.doesNotMatch(s.travel, /Deluxe Balcony/);
 });

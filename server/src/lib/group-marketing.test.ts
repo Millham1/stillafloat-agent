@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
-  normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity } from "./group-marketing";
+  normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -178,4 +178,22 @@ test("a quote's '3 AMENITY POINTS' shorthand becomes a plain sentence on the pag
   assert.equal(humanizeAmenity("1 amenity point", "en"), "1 amenity point from the cruise line: group perks (such as onboard credit) that Mark picks for the group before final payment");
   assert.match(humanizeAmenity("3 AMENITY POINTS", "es"), /^3 puntos de beneficios de la naviera/);
   assert.equal(humanizeAmenity("$50 onboard credit per stateroom", "en"), "$50 onboard credit per stateroom");
+});
+
+
+test("the group's air / hotel / transfer offer reads as plain lines (EN and ES); per-traveler rows are not the group's offer", () => {
+  const rows = [
+    { kind: "flight", direction: "pre", provider: "Round trip from RDU", from_place: "Raleigh-Durham", price_per_person: 412, included: false, traveler_id: null, cabin_id: null },
+    { kind: "hotel", direction: "pre", provider: "Hampton Inn Miami Airport", from_place: "Miami", reference: "1 night", price_per_person: "89.5", included: false, traveler_id: null, cabin_id: null },
+    { kind: "transfer", direction: "pre", provider: "MSC motorcoach", from_place: "Hotel", to_place: "Cruise port", price_per_person: null, included: true, traveler_id: null, cabin_id: null },
+    { kind: "flight", direction: "pre", provider: "AA 1234", from_place: "RDU", traveler_id: "t1", cabin_id: null },
+  ];
+  const en = travelLines(rows, "en");
+  assert.equal(en.length, 3, "the traveler's own flight is not the group's offer");
+  assert.equal(en[0]!.text, "Airfare from Raleigh-Durham (Round trip from RDU): $412 per person");
+  assert.equal(en[1]!.text, "Hotel the night before in Miami (Hampton Inn Miami Airport, 1 night): $89.50 per person");
+  assert.equal(en[2]!.text, "Transfer Hotel → Cruise port (MSC motorcoach): included in the cruise price");
+  const es = travelLines(rows, "es");
+  assert.match(es[0]!.text, /^Vuelos desde Raleigh-Durham/);
+  assert.match(es[2]!.text, /incluido en el precio del crucero$/);
 });

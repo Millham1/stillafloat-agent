@@ -168,8 +168,33 @@ export interface GroupFacts {
   finalPaymentText: string | null;
   bookByText: string | null;       // the earlier of deposit deadline and recall date
   rating: { score: number; scoreText: string; comment: string | null; saltyTake: string | null } | null;
+  /** Air, hotel before the cruise, transfers — the group's offer (Mark 2026-10-10). */
+  travel: TravelLine[];
   /** Every number the copy is allowed to mention. */
   allowedNumbers: string[];
+}
+
+export interface TravelLine { kind: "flight" | "hotel" | "transfer"; text: string; included: boolean; priceText: string | null }
+
+/** Plain lines for the group's air / hotel / transfer offer, from group_travel rows with no traveler or cabin. */
+export function travelLines(rows: readonly Row[], lang: Lang): TravelLine[] {
+  const es = lang === "es";
+  const out: TravelLine[] = [];
+  for (const r of rows) {
+    if (r.traveler_id || r.cabin_id) continue;
+    const kind = r.kind as TravelLine["kind"];
+    if (!["flight", "hotel", "transfer"].includes(kind)) continue;
+    const price = typeof r.price_per_person === "number" ? r.price_per_person : (typeof r.price_per_person === "string" && r.price_per_person !== "" ? Number(r.price_per_person) : null);
+    const priceText = price !== null && Number.isFinite(price) ? formatMoney(price) : null;
+    const included = r.included === true;
+    const tail = included ? (es ? "incluido en el precio del crucero" : "included in the cruise price") : priceText ? (es ? `${priceText} por persona` : `${priceText} per person`) : (es ? "disponible, precio a confirmar" : "available, price on request");
+    let text: string;
+    if (kind === "flight") text = (es ? "Vuelos" : "Airfare") + (r.from_place ? ` ${es ? "desde" : "from"} ${r.from_place}` : "") + (r.provider ? ` (${r.provider})` : "") + `: ${tail}`;
+    else if (kind === "hotel") text = (es ? "Hotel la noche anterior" : "Hotel the night before") + (r.from_place ? ` ${es ? "en" : "in"} ${r.from_place}` : "") + (r.provider ? ` (${r.provider}${r.reference ? `, ${r.reference}` : ""})` : r.reference ? ` (${r.reference})` : "") + `: ${tail}`;
+    else text = (es ? "Traslado" : "Transfer") + (r.from_place && r.to_place ? ` ${r.from_place} → ${r.to_place}` : "") + (r.provider ? ` (${r.provider})` : "") + `: ${tail}`;
+    out.push({ kind, text, included, priceText });
+  }
+  return out;
 }
 
 const SEA_DAY = /^(at sea|sea day|en el mar|d[ií]a de mar|navegaci[oó]n)/i;
@@ -191,10 +216,11 @@ export function humanizeAmenity(raw: string, lang: Lang): string {
 }
 
 export function buildFacts(
-  file: { group: Row; cabins: Row[] },
+  file: { group: Row; cabins: Row[]; travel?: Row[] },
   rating: Row | null,
   lang: Lang,
 ): GroupFacts {
+  const travel = travelLines(file.travel ?? [], lang);
   const g = file.group;
   const ship = displayName(g.ship_name);
   const line = displayName(g.cruise_line);
@@ -274,6 +300,7 @@ export function buildFacts(
     finalPaymentText: formatDate(g.final_payment_due, lang),
     bookByText: formatDate(bookBy, lang),
     rating: r,
+    travel,
     allowedNumbers: [],
   };
   facts.allowedNumbers = collectNumbers(facts, g);
@@ -300,6 +327,7 @@ function collectNumbers(f: GroupFacts, g: Row): string[] {
   add(g.sail_date); add(g.return_date);
   for (const s of f.itinerary) { add(s.day); add(s.dateText); add(s.timesText); add(s.port); }
   for (const a of f.amenities) add(a);
+  for (const t of f.travel) add(t.text);
   for (const c of f.cabins) { add(c.perPersonText); add(c.depositPerPersonText); add(c.available); add(c.total); add(c.code); }
   add(f.cabinsAvailable); add(f.cabinsTotal); add(f.fromPerPersonText);
   add(f.ports.length);
@@ -437,6 +465,7 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
   if (facts.nights !== null) lines.push(`Nights: ${facts.nights}`);
   if (facts.ports.length) lines.push(`Ports of call: ${facts.ports.join("; ")}`);
   if (facts.amenities.length) lines.push(`Group perks: ${facts.amenities.join("; ")}`);
+  if (facts.travel.length) lines.push(`Getting there (air, hotel before, transfers): ${facts.travel.map((t) => t.text).join("; ")}`);
   if (answers["show_prices"] !== false) {
     for (const c of facts.cabins) if (c.perPersonText) lines.push(`Cabin: ${c.category} from ${c.perPersonText} per person, double occupancy${c.depositPerPersonText ? `, deposit ${c.depositPerPersonText} per person` : ""}`);
   }

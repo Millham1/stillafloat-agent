@@ -470,6 +470,8 @@ function GroupDetail({ id }: { id: string }) {
           { key: "starts_at", label: "Starts", type: "datetime", width: "12rem" },
           { key: "ends_at", label: "Ends", type: "datetime", width: "12rem" },
           { key: "confirmation", label: "Confirmation" },
+          { key: "price_per_person", label: "Price pp ($)" },
+          { key: "included", label: "Included", type: "select", options: [{ value: "false", label: "No" }, { value: "true", label: "Yes" }] },
         ]} />
 
       <Section title="Checklist" hint="Your own to-dos, plus the product links and excursion ideas clients will see in the checklist phase." groupId={id} child="checklist" rows={data.checklist} newRow={{ title: "New item" }} onChanged={refresh}

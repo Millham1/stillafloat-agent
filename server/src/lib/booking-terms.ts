@@ -184,7 +184,10 @@ export function sliceLines(text: string, hit: (line: string) => boolean, before:
 
 const amounts = (line: string) => (line.match(/\$\s?\d/g) ?? []).length;
 
-export interface Sections { basics: string; rates: string; payments: string; cancellation: string }
+export interface Sections { basics: string; rates: string; payments: string; cancellation: string
+  /** Lines about air, hotel-before and transfers (fly & cruise packages) — Mark 2026-10-10. */
+  travel: string;
+}
 
 export function cutSections(text: string): Sections {
   const lines = text.split("\n");
@@ -214,6 +217,8 @@ export function cutSections(text: string): Sections {
     cancellation: hasTable
       ? sliceLines(text, dayRange, 4, 2)
       : sliceLines(text, (l) => /cancel|penalt|non-?refundable/i.test(l), 1, 1),
+    // Air, hotel before the cruise, transfers (a fly & cruise or hotel package printed on the quote).
+    travel: sliceLines(text, (l) => /\b(air|airfare|flights?|fly\b|hotel|pre-?cruise|post-?cruise|transfers?|shuttle|motor ?coach)\b/i.test(l) && !/\bbalcony|interior|suite\b/i.test(l), 1, 1),
   };
 }
 
@@ -355,6 +360,18 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
   // Deadlines: found by pattern, dated by arithmetic.
   const found = findDeadlines(text, out.sail_date);
   warnings.push(...found.warnings);
+  // Travel package (air / hotel before / transfers): every price must be printed in the document.
+  if (out.travel_package) {
+    const tp = { ...out.travel_package };
+    const checkPrice = (label: string, v: number | null): number | null => {
+      if (v !== null && !moneyAppears(flat, v)) { warnings.push(`${label} price was read as ${v}, which is not printed in the document. Left blank.`); return null; }
+      return v;
+    };
+    if (tp.air) tp.air = { ...tp.air, price_per_person: checkPrice("Air", tp.air.price_per_person) };
+    if (tp.hotel_before) tp.hotel_before = { ...tp.hotel_before, price_per_person: checkPrice("Hotel before the cruise", tp.hotel_before.price_per_person) };
+    tp.transfers = tp.transfers.map((t) => ({ ...t, price_per_person: checkPrice(`Transfer ${t.route.replace(/_/g, " ")}`, t.price_per_person) }));
+    out.travel_package = tp;
+  }
   out.deadlines = found.deadlines;
   if (found.reviews.length) {
     out.allotment_reviews = found.reviews;

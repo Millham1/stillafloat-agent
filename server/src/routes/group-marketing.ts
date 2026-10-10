@@ -45,7 +45,7 @@ function langsFor(group: Row): Lang[] {
   return group.lang === "es" ? ["es"] : group.lang === "both" ? ["en", "es"] : ["en"];
 }
 
-async function loadGroup(where: { id?: string; code?: string }): Promise<{ group: Row; cabins: Row[]; rating: Row | null } | null> {
+async function loadGroup(where: { id?: string; code?: string }): Promise<{ group: Row; cabins: Row[]; travel: Row[]; rating: Row | null } | null> {
   let q = db().from("groups").select("*");
   q = where.id ? q.eq("id", where.id) : q.eq("share_code", where.code);
   const { data: group, error } = await q.maybeSingle();
@@ -53,6 +53,9 @@ async function loadGroup(where: { id?: string; code?: string }): Promise<{ group
   if (!group) return null;
   const { data: cabins, error: ce } = await db().from("group_cabins").select("*").eq("group_id", group.id).order("id", { ascending: true });
   if (ce) throw new Error(ce.message);
+  // The group's own air / hotel / transfer offer: rows with no traveler and no cabin.
+  const { data: travel, error: tre } = await db().from("group_travel").select("*").eq("group_id", group.id).is("traveler_id", null).is("cabin_id", null).order("created_at", { ascending: true });
+  if (tre) throw new Error(tre.message);
 
   // The ship's Conga Line row, when we know the hull. Resolve the slug once from
   // the name and remember it on the file.
@@ -73,7 +76,7 @@ async function loadGroup(where: { id?: string; code?: string }): Promise<{ group
     const { data } = await db().from("conga_line_ratings").select("*").eq("ship_slug", slug).maybeSingle();
     rating = data ?? null;
   }
-  return { group, cabins: cabins ?? [], rating };
+  return { group, cabins: cabins ?? [], travel: travel ?? [], rating };
 }
 
 function copyFor(group: Row, lang: Lang): GroupCopy | null {
@@ -87,6 +90,7 @@ function publicFacts(f: GroupFacts, answers: Record<string, string | boolean>): 
   return {
     lang: f.lang, business: f.business, groupName: f.groupName, line: f.line, ship: f.ship,
     sailDateText: f.sailDateText, returnDateText: f.returnDateText, nights: f.nights, embarkPort: f.embarkPort,
+    travel: f.travel,
     ports: f.ports, itinerary: f.itinerary, amenities: f.amenities,
     cabins: f.cabins.map((c) => ({
       category: c.category, available: c.available,
@@ -107,12 +111,12 @@ router.get("/groups/:id/marketing", requireToken, async (req: Request, res: Resp
   try {
     const loaded = await loadGroup({ id: String(req.params["id"]) });
     if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
-    const { group, cabins, rating } = loaded;
+    const { group, cabins, travel, rating } = loaded;
     const answers = normalizeAnswers(group.marketing);
     const langs = langsFor(group);
     const perLang: Row = {};
     for (const lang of langs) {
-      const facts = buildFacts({ group, cabins }, rating, lang);
+      const facts = buildFacts({ group, cabins, travel }, rating, lang);
       const copy = copyFor(group, lang);
       perLang[lang] = { facts, copy, problems: copy ? validateCopy(copy, facts, answers) : [] };
     }
@@ -146,7 +150,7 @@ router.post("/groups/:id/marketing/write", requireToken, async (req: Request, re
   try {
     const loaded = await loadGroup({ id: String(req.params["id"]) });
     if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
-    const { group, cabins, rating } = loaded;
+    const { group, cabins, travel, rating } = loaded;
     const lang: Lang = (req.body as Row)?.["lang"] === "es" ? "es" : "en";
     if (!langsFor(group).includes(lang)) return res.status(400).json({ success: false, error: "This group is not set to that language" });
     const answers = normalizeAnswers(group.marketing);
@@ -154,7 +158,7 @@ router.post("/groups/:id/marketing/write", requireToken, async (req: Request, re
     if (missing.length) return res.status(400).json({ success: false, error: "Answer the first three interview questions before writing the copy" });
     if (!group.ship_name || !group.sail_date) return res.status(400).json({ success: false, error: "The group file needs a ship and a sail date first" });
 
-    const facts = buildFacts({ group, cabins }, rating, lang);
+    const facts = buildFacts({ group, cabins, travel }, rating, lang);
     const base = { job: "groups.marketing" as const, system: systemPrompt(lang), schema: COPY_SCHEMA, maxTokens: 2500, timeoutMs: 180_000 };
     let copy = tidyCopy(await llmJson<Row>({ ...base, user: userPrompt(facts, answers) }));
     let problems = validateCopy(copy, facts, answers);
@@ -183,11 +187,11 @@ router.put("/groups/:id/marketing/copy", requireToken, async (req: Request, res:
   try {
     const loaded = await loadGroup({ id: String(req.params["id"]) });
     if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
-    const { group, cabins, rating } = loaded;
+    const { group, cabins, travel, rating } = loaded;
     const body = (req.body ?? {}) as Row;
     const lang: Lang = body["lang"] === "es" ? "es" : "en";
     const copy = tidyCopy(body["copy"]);
-    const facts = buildFacts({ group, cabins }, rating, lang);
+    const facts = buildFacts({ group, cabins, travel }, rating, lang);
     const problems = validateCopy(copy, facts, normalizeAnswers(group.marketing));
     const next = { ...(group.marketing_copy ?? {}), [lang]: copy };
     // An edit to approved copy that introduces a problem takes the page down;
@@ -206,7 +210,7 @@ router.post("/groups/:id/marketing/approve", requireToken, async (req: Request, 
   try {
     const loaded = await loadGroup({ id: String(req.params["id"]) });
     if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
-    const { group, cabins, rating } = loaded;
+    const { group, cabins, travel, rating } = loaded;
     const approve = (req.body as Row)?.["approved"] !== false;
     if (!approve) {
       const { error } = await db().from("groups").update({ marketing_approved_at: null }).eq("id", group.id);
@@ -218,7 +222,7 @@ router.post("/groups/:id/marketing/approve", requireToken, async (req: Request, 
     for (const lang of langsFor(group)) {
       const copy = copyFor(group, lang);
       if (!copy) return res.status(400).json({ success: false, error: `There is no ${lang === "es" ? "Spanish" : "English"} copy yet` });
-      const problems = validateCopy(copy, buildFacts({ group, cabins }, rating, lang), answers);
+      const problems = validateCopy(copy, buildFacts({ group, cabins, travel }, rating, lang), answers);
       if (problems.length) {
         return res.status(400).json({ success: false, error: `The ${lang === "es" ? "Spanish" : "English"} copy still has ${problems.length} problem(s) to fix`, problems });
       }
@@ -288,7 +292,7 @@ router.get("/group-page/:code", async (req: Request, res: Response) => {
     if (!CODE.test(code)) return res.status(404).json({ success: false, error: "Not found" });
     const loaded = await loadGroup({ code });
     if (!loaded) return res.status(404).json({ success: false, error: "Not found" });
-    const { group, cabins, rating } = loaded;
+    const { group, cabins, travel, rating } = loaded;
     const preview = tokenOk(req);
     const live = !!group.marketing_approved_at && ["marketing", "booking"].includes(group.status);
     if (!live && !preview) return res.status(404).json({ success: false, error: "Not found" });
@@ -299,7 +303,7 @@ router.get("/group-page/:code", async (req: Request, res: Response) => {
     const copy = copyFor(group, lang);
     if (!copy) return res.status(404).json({ success: false, error: "Not found" });
     const answers = normalizeAnswers(group.marketing);
-    const facts = buildFacts({ group, cabins }, rating, lang);
+    const facts = buildFacts({ group, cabins, travel }, rating, lang);
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
     return res.json({

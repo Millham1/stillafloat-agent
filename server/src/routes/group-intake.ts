@@ -4,7 +4,7 @@ import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
 import { CHILDREN, GROUP_COLUMNS, missingSchedule, pickWritable, slugify } from "../lib/group-file";
 import {
-  MAX_PDF_BYTES, cabinRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
+  MAX_PDF_BYTES, cabinRowsFromExtraction, travelRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
   type BookingExtraction, type ReaderProvider,
 } from "../lib/booking-extract";
 
@@ -223,6 +223,16 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
       if (te) throw new Error(`group_travelers: ${te.message}`);
     }
 
+    // Air, hotel before and transfers: what the confirmation form sent back, else what the quote printed.
+    const travel: Row[] = (Array.isArray(body["travel"]) ? (body["travel"] as unknown[]).map((t) => {
+      const p = pickWritable(CHILDREN["travel"]!.columns, t);
+      return p.ok ? p.row : null;
+    }).filter((x): x is Row => !!x) : travelRowsFromExtraction(extracted)).map((t) => ({ ...t, group_id: group.id }));
+    if (travel.length) {
+      const { error: tre } = await db().from("group_travel").insert(travel);
+      if (tre) throw new Error(`group_travel: ${tre.message}`);
+    }
+
     // Payment schedule from the dates we now have.
     const schedule = missingSchedule({ group, cabins: cabinRows, payments: [] });
     if (schedule.length) {
@@ -244,7 +254,7 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
     if (de) throw new Error(`group_documents: ${de.message}`);
 
     await setStatus(id, { status: "accepted", group_id: group.id });
-    return res.status(201).json({ success: true, group, cabins: cabinRows.length, payments: schedule.length });
+    return res.status(201).json({ success: true, group, cabins: cabinRows.length, payments: schedule.length, travel: travel.length });
   } catch (err) {
     return fail(req, res, err, "booking intake accept failed");
   }
