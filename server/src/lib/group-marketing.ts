@@ -175,6 +175,21 @@ export interface GroupFacts {
 const SEA_DAY = /^(at sea|sea day|en el mar|d[ií]a de mar|navegaci[oó]n)/i;
 const LIVE = new Set(["held", "offered", "booked"]);
 
+/**
+ * A cruise line's quote lists group perks in its own shorthand — MSC prints "3 AMENITY POINTS", meaning
+ * the group earns points the organizer spends on perks (onboard credit, a party, photos) before final
+ * payment. A client reading the group page needs that in plain words (Mark 2026-10-07: the raw line
+ * on the page "needs wording"). Anything already in plain words passes through untouched.
+ */
+export function humanizeAmenity(raw: string, lang: Lang): string {
+  const m = /^\s*(\d+)\s+amenity\s+points?\s*$/i.exec(raw);
+  if (!m) return raw.trim();
+  const n = Number(m[1]);
+  return lang === "es"
+    ? `${n} ${n === 1 ? "punto" : "puntos"} de beneficios de la naviera: ventajas para el grupo (como crédito a bordo) que Mark elige antes del pago final`
+    : `${n} amenity ${n === 1 ? "point" : "points"} from the cruise line: group perks (such as onboard credit) that Mark picks for the group before final payment`;
+}
+
 export function buildFacts(
   file: { group: Row; cabins: Row[] },
   rating: Row | null,
@@ -250,7 +265,7 @@ export function buildFacts(
     embarkPort: g.embark_port ?? null,
     ports,
     itinerary,
-    amenities: (Array.isArray(g.amenities) ? g.amenities : []).filter((a: unknown): a is string => typeof a === "string" && !!a.trim()),
+    amenities: (Array.isArray(g.amenities) ? g.amenities : []).filter((a: unknown): a is string => typeof a === "string" && !!a.trim()).map((a) => humanizeAmenity(a, lang)),
     cabins,
     cabinsAvailable: live.filter((c) => c.status !== "booked").length,
     cabinsTotal: live.length,
