@@ -37,14 +37,19 @@ export function licenseClass(name: string | null | undefined): "free" | "sa" | "
 }
 
 /** Rank candidates: usable license first, then landscape and large; SA last. Pure. */
-export function rankCandidates(list: readonly CommonsCandidate[], want = 4): CommonsCandidate[] {
+const INTERIOR = /atrium|interior|lobby|restaurant|buffet|cabin|stateroom|theat|casino|corridor|elevator|bar\b|lounge|gym|spa\b/i;
+/** Words that mean "not the place we are selling" when a port shares its name with somewhere else. */
+const OFF_TOPIC = /new york|county|long island|germany|bahamas district|river\b/i;
+export function rankCandidates(list: readonly CommonsCandidate[], want = 4, subject: "ship" | "destination" = "ship"): CommonsCandidate[] {
   const score = (c: CommonsCandidate) => {
     const cls = licenseClass(c.license);
     if (cls === "no") return -1;
+    if (subject === "destination" && OFF_TOPIC.test(c.title) && !/bahamas/i.test(c.title)) return -1;
     const ratio = c.width / Math.max(1, c.height);
     const landscape = ratio >= 1.2 && ratio <= 2.2 ? 2 : ratio > 1 ? 1 : 0;
     const big = c.width >= 2400 ? 2 : c.width >= 1600 ? 1 : 0;
-    return (cls === "free" ? 10 : 0) + landscape + big;
+    const exterior = subject === "ship" && INTERIOR.test(c.title) ? -4 : 0;   // a poster wants the hull, not the atrium
+    return (cls === "free" ? 10 : 0) + landscape + big + exterior;
   };
   return [...list].filter((c) => score(c) >= 0).sort((a, b) => score(b) - score(a)).slice(0, want);
 }
@@ -125,11 +130,20 @@ export async function fetchAssets(args: { cruiseLine: string | null; shipName: s
   let fetched = 0;
   for (const subject of subjects) {
     if (have.some((a) => a.subject === subject)) continue;
-    const query = subject === "ship" ? `${args.shipName} cruise ship` : `${subject.slice("destination:".length)}`;
+    // The port's full name as the itinerary prints it ("Nassau, Bahamas"), plus the word that tells
+    // Commons which Nassau we mean. A bare "Nassau" returned Nassau, New York (2026-10-10).
+    const name = subject === "ship" ? args.shipName : subject.slice("destination:".length);
+    // The contextual wording first ("Ocean Cay … cruise port" finds nothing on Commons; "Ocean Cay" does), then the bare name.
+    const queries = subject === "ship" ? [`${name} cruise ship`, name] : [`${name} cruise port`, name];
     let candidates: CommonsCandidate[] = [];
-    try { candidates = rankCandidates(await searchCommons(query, fetchImpl), args.perSubject ?? 3); }
-    catch (err) { notes.push(`${subject}: ${err instanceof Error ? err.message : String(err)}`); continue; }
-    if (!candidates.length) { notes.push(`${subject}: no openly licensed photo found on Wikimedia Commons for "${query}"`); continue; }
+    let query = queries[0]!;
+    try {
+      for (query of queries) {
+        candidates = rankCandidates(await searchCommons(query, fetchImpl), args.perSubject ?? 3, subject === "ship" ? "ship" : "destination");
+        if (candidates.length) break;
+      }
+    } catch (err) { notes.push(`${subject}: ${err instanceof Error ? err.message : String(err)}`); continue; }
+    if (!candidates.length) { notes.push(`${subject}: no openly licensed photo found on Wikimedia Commons for "${queries.join('" or "')}"`); continue; }
     for (const c of candidates) {
       try {
         const res = await fetchImpl(c.fileUrl, { headers: { "user-agent": UA }, signal: AbortSignal.timeout(30_000) });

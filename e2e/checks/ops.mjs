@@ -1187,13 +1187,13 @@ export default [
       const groups = await groupsList(t);
       t.require(groups.length > 0, "there are no group files on dev (the seeded test groups should be there)");
       // refusals first: unknown group → 404 before anything is written or paid for
-      for (const [m, path, body] of [["post", "assets/fetch", {}], ["put", "package/choose", { assetIds: [] }], ["post", "package/render", {}], ["post", "campaign/write", {}], ["put", "campaign", { campaign: null }]]) {
-        unauthorized(t, await t[m](`/api/groups/${ZERO}/marketing/${path}`, body), `${m.toUpperCase()} /api/groups/:id/marketing/${path}`);
-        refused(t, await t[m](`/api/groups/${ZERO}/marketing/${path}`, body, { auth: true }), 404, `${path} for a group that does not exist`, /not found/i);
+      for (const [m, path, body] of [["POST", "assets/fetch", {}], ["PUT", "package/choose", { assetIds: [] }], ["POST", "package/render", {}], ["POST", "campaign/write", {}], ["PUT", "campaign", { campaign: null }]]) {
+        unauthorized(t, await t.send(m, `/api/groups/${ZERO}/marketing/${path}`, { body }), `${m} /api/groups/:id/marketing/${path}`);
+        refused(t, await t.send(m, `/api/groups/${ZERO}/marketing/${path}`, { body, auth: true }), 404, `${path} for a group that does not exist`, /not found/i);
       }
       const g = groups.find((x) => x.ship_name && x.marketing_copy) || groups.find((x) => x.ship_name) || groups[0];
       // fetch: idempotent (only what is missing); afterwards the ship has at least one photo or a note says why not
-      const f = t.success(await t.post(`/api/groups/${g.id}/marketing/assets/fetch`, {}, { auth: true }));
+      const f = t.success(await t.send("POST", `/api/groups/${g.id}/marketing/assets/fetch`, { body: {}, auth: true, timeoutMs: 240_000 }));
       t.ok(Array.isArray(f.assets) && Array.isArray(f.notes), "the fetch answer lists assets and notes");
       t.ok(f.assets.some((a) => a.subject === "ship") || f.notes.some((n) => /^ship:/.test(n)), `no ship photo and no note saying why for ${g.ship_name}`);
       for (const a of f.assets) {
@@ -1202,11 +1202,11 @@ export default [
       }
       // choose: the first photo becomes the main one
       if (f.assets.length) {
-        const c = t.success(await t.put(`/api/groups/${g.id}/marketing/package/choose`, { assetIds: [f.assets[0].id] }, { auth: true }));
+        const c = t.success(await t.send("PUT", `/api/groups/${g.id}/marketing/package/choose`, { body: { assetIds: [f.assets[0].id] }, auth: true }));
         t.equal(c.chosen[0], f.assets[0].id, "the chosen photo");
       }
       // render: needs page copy and a photo; else it says which is missing
-      const r = await t.post(`/api/groups/${g.id}/marketing/package/render`, {}, { auth: true });
+      const r = await t.send("POST", `/api/groups/${g.id}/marketing/package/render`, { body: {}, auth: true, timeoutMs: 240_000 });
       if (r.status === 200) {
         const rd = t.success(r).renders;
         t.fields(rd, ["poster_png", "poster_pdf", "facebook_landscape", "facebook_square", "credits"], "the rendered package");
@@ -1217,14 +1217,14 @@ export default [
       } else refused(t, r, 400, "render without copy or photos", /write the group page copy|no photo on file/i);
       // campaign: a group with no interview answers is refused before the model is called (no spend in a sweep)
       const bare = groups.find((x) => !x.marketing || !x.marketing.why_sailing);
-      if (bare) refused(t, await t.post(`/api/groups/${bare.id}/marketing/campaign/write`, {}, { auth: true }), 400, "campaign write with no interview", /interview/i);
+      if (bare) refused(t, await t.send("POST", `/api/groups/${bare.id}/marketing/campaign/write`, { body: {}, auth: true }), 400, "campaign write with no interview", /interview/i);
       // saving an edited campaign re-validates every number against the file
       const pk = t.success(await t.get(`/api/groups/${g.id}/marketing/package`, { auth: true }));
       if (pk.campaign) {
         const edited = { ...pk.campaign, facebook: { ...pk.campaign.facebook, boosted: `${pk.campaign.facebook.boosted} Only 4321 left.` } };
-        const sv = t.success(await t.put(`/api/groups/${g.id}/marketing/campaign`, { campaign: edited }, { auth: true }));
+        const sv = t.success(await t.send("PUT", `/api/groups/${g.id}/marketing/campaign`, { body: { campaign: edited }, auth: true }));
         t.ok(sv.problems.some((p) => /4321/.test(p.problem)), "an invented number in an edit is caught");
-        t.success(await t.put(`/api/groups/${g.id}/marketing/campaign`, { campaign: pk.campaign }, { auth: true }));   // put it back
+        t.success(await t.send("PUT", `/api/groups/${g.id}/marketing/campaign`, { body: { campaign: pk.campaign }, auth: true }));   // put it back
       }
       t.observe("photos on file for the test group", f.assets.length, "info");
     },

@@ -406,7 +406,13 @@ async function savePkg(groupId: string, next: Row): Promise<void> {
   const { error } = await db().from("groups").update({ marketing_package: next, updated_at: new Date().toISOString() }).eq("id", groupId);
   if (error) throw new Error(error.message);
 }
-function subjectsFor(facts: { ports: string[] }): string[] { return facts.ports.slice(0, 3); }
+/** The destinations to picture: the itinerary's full port names (never the home port or a sea day), else the short list. */
+function subjectsFor(facts: { ports: string[]; itinerary: Array<{ port: string | null }>; embarkPort: string | null }): string[] {
+  const home = (facts.embarkPort ?? "").toLowerCase().slice(0, 4);
+  const full = facts.itinerary.map((s) => s.port ?? "").filter((p) => p && !/^(at sea|sea day|en el mar)/i.test(p) && !(home && p.toLowerCase().startsWith(home)));
+  const names = [...new Set(full.length ? full : facts.ports)];
+  return names.filter((n) => !/^(miami|mia|port canaveral|fort lauderdale|galveston|new york)/i.test(n)).slice(0, 3);
+}
 async function shareCodeFor(group: Row): Promise<string> {
   if (group.share_code) return String(group.share_code);
   const code = newShareCode((n) => randomBytes(n));
