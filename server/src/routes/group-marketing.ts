@@ -13,6 +13,9 @@ import {
   shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
+import { assetsFor, fetchAssets, putPublic, type AssetRow } from "../lib/group-assets";
+import { pickPhotos, posterPdf, posterSpec, renderPoster, renderSocial } from "../lib/group-package";
+import { CAMPAIGN_SCHEMA, campaignSystemPrompt, campaignUserPrompt, tidyCampaign, validateCampaign, type Campaign } from "../lib/group-campaign";
 
 // Group marketing (migration 0045).
 //
@@ -390,6 +393,147 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
   } catch (err) {
     return fail(req, res, err, "group interest failed");
   }
+});
+
+// ── THE MARKETING PACKAGE (Mark 2026-10-10: "A poster, email campaign, a facebook campaign") ──
+// Photos are fetched by the system (openly licensed; the line's kit when the rep sends it), the
+// poster and Facebook images are rendered from the file + Mark's approved copy, and the campaign
+// words are written from his interview. Every piece is previewed on the dashboard before use.
+
+function publicSite(): string { return (process.env["PUBLIC_URL"] || "https://stillafloatcruising.com").replace(/\/$/, ""); }
+function pkgOf(group: Row): Row { return (group.marketing_package && typeof group.marketing_package === "object" ? group.marketing_package : {}) as Row; }
+async function savePkg(groupId: string, next: Row): Promise<void> {
+  const { error } = await db().from("groups").update({ marketing_package: next, updated_at: new Date().toISOString() }).eq("id", groupId);
+  if (error) throw new Error(error.message);
+}
+function subjectsFor(facts: { ports: string[] }): string[] { return facts.ports.slice(0, 3); }
+async function shareCodeFor(group: Row): Promise<string> {
+  if (group.share_code) return String(group.share_code);
+  const code = newShareCode((n) => randomBytes(n));
+  const { error } = await db().from("groups").update({ share_code: code }).eq("id", group.id);
+  if (error) throw new Error(error.message);
+  group.share_code = code;
+  return code;
+}
+
+/** Everything the package screen shows. */
+router.get("/groups/:id/marketing/package", requireToken, async (req: Request, res: Response) => {
+  try {
+    const loaded = await loadGroup({ id: String(req.params["id"]) });
+    if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
+    const { group, cabins, travel, rating } = loaded;
+    const facts = buildFacts({ group, cabins, travel }, rating, langsFor(group)[0]!);
+    const assets = group.ship_name ? await assetsFor(String(group.ship_name), ["ship", ...subjectsFor(facts).map((d) => `destination:${d}`)]) : [];
+    const pkg = pkgOf(group);
+    return res.json({ success: true, assets, chosen: Array.isArray(pkg["chosen"]) ? pkg["chosen"] : [], renders: pkg["renders"] ?? null, campaign: pkg["campaign"] ?? null,
+      campaignProblems: pkg["campaign_problems"] ?? [], notes: pkg["notes"] ?? [], hasCopy: !!copyFor(group, langsFor(group)[0]!), shareCode: group.share_code ?? null });
+  } catch (err) { return fail(req, res, err, "group package read failed"); }
+});
+
+/** Fetch photographs for the ship and the ports (idempotent: only what is missing). */
+router.post("/groups/:id/marketing/assets/fetch", requireToken, async (req: Request, res: Response) => {
+  try {
+    const loaded = await loadGroup({ id: String(req.params["id"]) });
+    if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
+    const { group, cabins, travel, rating } = loaded;
+    if (!group.ship_name) return res.status(400).json({ success: false, error: "The group file needs a ship first" });
+    const facts = buildFacts({ group, cabins, travel }, rating, langsFor(group)[0]!);
+    const r = await fetchAssets({ cruiseLine: group.cruise_line ?? null, shipName: String(group.ship_name), destinations: subjectsFor(facts) });
+    const pkg = pkgOf(group);
+    await savePkg(group.id, { ...pkg, notes: r.notes, assets_fetched_at: new Date().toISOString() });
+    return res.json({ success: true, assets: r.assets, fetched: r.fetched, notes: r.notes });
+  } catch (err) { return fail(req, res, err, "group assets fetch failed"); }
+});
+
+/** Mark's choice of photos (ids, hero first). */
+router.put("/groups/:id/marketing/package/choose", requireToken, async (req: Request, res: Response) => {
+  try {
+    const loaded = await loadGroup({ id: String(req.params["id"]) });
+    if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
+    const ids = Array.isArray((req.body as Row)?.["assetIds"]) ? ((req.body as Row)["assetIds"] as unknown[]).filter((x): x is string => typeof x === "string").slice(0, 4) : [];
+    await savePkg(loaded.group.id, { ...pkgOf(loaded.group), chosen: ids });
+    return res.json({ success: true, chosen: ids });
+  } catch (err) { return fail(req, res, err, "group package choose failed"); }
+});
+
+/** Render the poster (PNG + PDF) and the two Facebook images from the approved-or-draft copy. */
+router.post("/groups/:id/marketing/package/render", requireToken, async (req: Request, res: Response) => {
+  try {
+    const loaded = await loadGroup({ id: String(req.params["id"]) });
+    if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
+    const { group, cabins, travel, rating } = loaded;
+    const lang = langsFor(group)[0]!;
+    const copy = copyFor(group, lang);
+    if (!copy) return res.status(400).json({ success: false, error: "Write the group page copy first — the poster uses its headline" });
+    const facts = buildFacts({ group, cabins, travel }, rating, lang);
+    const assets = await assetsFor(String(group.ship_name), ["ship", ...subjectsFor(facts).map((d) => `destination:${d}`)]);
+    const pkg = pkgOf(group);
+    const { hero, second, credits } = pickPhotos(assets, Array.isArray(pkg["chosen"]) ? (pkg["chosen"] as string[]) : []);
+    if (!hero) return res.status(400).json({ success: false, error: "No photo on file yet — fetch photographs first" });
+    const code = await shareCodeFor(group);
+    const url = `${publicSite()}/group.html?g=${code}`;
+    const spec = posterSpec(facts, copy, { url, credits, lang });
+    const get = async (a: AssetRow) => Buffer.from(await (await fetch(a.public_url, { signal: AbortSignal.timeout(30_000) })).arrayBuffer());
+    const heroBytes = await get(hero);
+    const secondBytes = second ? await get(second) : null;
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15);
+    const base = `renders/${group.id}/${stamp}`;
+    const posterPng = await renderPoster(spec, heroBytes, secondBytes);
+    const [poster, pdf, fbLandscape, fbSquare] = await Promise.all([
+      putPublic(`${base}/poster.png`, posterPng, "image/png"),
+      posterPdf(posterPng).then((b) => putPublic(`${base}/poster.pdf`, b, "application/pdf")),
+      renderSocial(spec, heroBytes, "landscape").then((b) => putPublic(`${base}/facebook-1200x628.jpg`, b, "image/jpeg")),
+      renderSocial(spec, second ? secondBytes! : heroBytes, "square").then((b) => putPublic(`${base}/facebook-1080x1080.jpg`, b, "image/jpeg")),
+    ]);
+    const renders = { at: new Date().toISOString(), poster_png: poster.url, poster_pdf: pdf.url, facebook_landscape: fbLandscape.url, facebook_square: fbSquare.url, hero: hero.id, second: second?.id ?? null, credits };
+    await savePkg(group.id, { ...pkg, renders });
+    logger.info({ group: group.id }, "group package rendered");
+    return res.json({ success: true, renders });
+  } catch (err) { return fail(req, res, err, "group package render failed"); }
+});
+
+/** Write the email + Facebook campaign from the interview and the file (one retry on validator findings). */
+router.post("/groups/:id/marketing/campaign/write", requireToken, async (req: Request, res: Response) => {
+  try {
+    const loaded = await loadGroup({ id: String(req.params["id"]) });
+    if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
+    const { group, cabins, travel, rating } = loaded;
+    const lang = langsFor(group)[0]!;
+    const answers = normalizeAnswers(group.marketing);
+    if (missingAnswers(answers).length) return res.status(400).json({ success: false, error: "Answer the first three interview questions first" });
+    const facts = buildFacts({ group, cabins, travel }, rating, lang);
+    const url = `${publicSite()}/group.html?g=${await shareCodeFor(group)}`;
+    const base = { job: "groups.marketing" as const, system: campaignSystemPrompt(lang), schema: CAMPAIGN_SCHEMA, maxTokens: 4000, timeoutMs: 180_000 };
+    let campaign = tidyCampaign(await llmJson<Row>({ ...base, user: campaignUserPrompt(facts, answers, url) }));
+    let problems = validateCampaign(campaign, facts, answers, url);
+    if (problems.length) {
+      campaign = tidyCampaign(await llmJson<Row>({ ...base, user: `${campaignUserPrompt(facts, answers, url)}\n\n<previous_draft>\n${JSON.stringify(campaign)}\n</previous_draft>\n\nFix only these problems and return the whole campaign again:\n${problems.map((p) => `- ${p.field}: ${p.problem}`).join("\n")}` }));
+      problems = validateCampaign(campaign, facts, answers, url);
+    }
+    await savePkg(group.id, { ...pkgOf(group), campaign, campaign_problems: problems, campaign_written_at: new Date().toISOString(), campaign_approved_at: null });
+    logger.info({ group: group.id, problems: problems.length }, "group campaign written");
+    return res.json({ success: true, campaign, problems });
+  } catch (err) { return fail(req, res, err, "group campaign write failed"); }
+});
+
+/** Mark's edits to the campaign words, or his approval. */
+router.put("/groups/:id/marketing/campaign", requireToken, async (req: Request, res: Response) => {
+  try {
+    const loaded = await loadGroup({ id: String(req.params["id"]) });
+    if (!loaded) return res.status(404).json({ success: false, error: "Group not found" });
+    const { group, cabins, travel, rating } = loaded;
+    const lang = langsFor(group)[0]!;
+    const answers = normalizeAnswers(group.marketing);
+    const facts = buildFacts({ group, cabins, travel }, rating, lang);
+    const url = `${publicSite()}/group.html?g=${await shareCodeFor(group)}`;
+    const body = (req.body ?? {}) as Row;
+    const pkg = pkgOf(group);
+    const campaign: Campaign = tidyCampaign(body["campaign"] ?? pkg["campaign"]);
+    const problems = validateCampaign(campaign, facts, answers, url);
+    const approve = body["approved"] === true && problems.length === 0;
+    await savePkg(group.id, { ...pkg, campaign, campaign_problems: problems, campaign_approved_at: approve ? new Date().toISOString() : (body["approved"] === false ? null : pkg["campaign_approved_at"] ?? null) });
+    return res.json({ success: true, campaign, problems, approvedAt: approve ? new Date().toISOString() : null });
+  } catch (err) { return fail(req, res, err, "group campaign save failed"); }
 });
 
 export default router;

@@ -955,7 +955,7 @@ export default [
     id: "ops.group-marketing-dashboard",
     basis: "ruling: stillafloat-group-bookings.md — Mark's group-marketing screen: interview, facts taken from the group file, share code and replies, all agreeing with the file",
     title: "Mark's group-marketing screen shows the interview, the facts taken from the group file, the share code and the replies for whatever groups he has (a spread), refuses unknown groups, and the dashboard program is wired to it",
-    covers: ["GET /api/groups/:id/marketing", "GET /api/groups/:id/interests"],
+    covers: ["GET /api/groups/:id/marketing", "GET /api/groups/:id/interests", "GET /api/groups/:id/marketing/package"],
     modes: ["dev", "prod"],
     // Group marketing is new in the 2026-10-08 release: on prod (before the promotion) these
     // addresses do not exist and this check FAILS — that is correct, not a reason to weaken it.
@@ -969,6 +969,8 @@ export default [
       unauthorized(t, await t.get(`/api/groups/${gid}/interests`), "GET /api/groups/:id/interests");
       // On prod a group with a ship name but no slug is skipped: reading its marketing screen would save the slug (a write).
       const readable = groups.filter((g) => safeMarketingRead(t, g));
+      unauthorized(t, await t.get(`/api/groups/${gid}/marketing/package`), "GET /api/groups/:id/marketing/package");
+      refused(t, await t.get(`/api/groups/${ZERO}/marketing/package`, { auth: true }), 404, "the package screen of a group that does not exist", /not found/i);
       if (!readable.length) {
         refused(t, await t.get(`/api/groups/${ZERO}/marketing`, { auth: true }), 404, "the marketing screen of a group that does not exist", /not found/i);
         t.equal(t.success(await t.get(`/api/groups/${ZERO}/interests`, { auth: true })).interests.length, 0, "replies listed for a group that does not exist");
@@ -976,6 +978,13 @@ export default [
       let replies = 0; let live = 0;
       for (const g of spread(readable)) {
         const m = t.success(await t.get(`/api/groups/${g.id}/marketing`, { auth: true }));
+        // The marketing PACKAGE screen (Mark 2026-10-10): photos on file, his choice, the renders, the campaign — read-only.
+        const pk = t.success(await t.get(`/api/groups/${g.id}/marketing/package`, { auth: true }));
+        t.ok(Array.isArray(pk.assets) && Array.isArray(pk.chosen) && Array.isArray(pk.notes) && typeof pk.hasCopy === "boolean", `group ${g.id}: the package screen is missing its lists`);
+        for (const a of pk.assets) t.fields(a, ["id", "subject", "public_url", "license", "attribution"], `group ${g.id}: a photo on file`);
+        t.ok(pk.chosen.every((id) => pk.assets.some((a) => a.id === id)), `group ${g.id}: a chosen photo is not on file`);
+        if (pk.renders) t.fields(pk.renders, ["poster_png", "poster_pdf", "facebook_landscape", "facebook_square", "credits"], `group ${g.id}: the rendered package`);
+        if (pk.campaign) { t.equal(pk.campaign.emails.length, 3, `group ${g.id}: the campaign has three emails`); t.fields(pk.campaign.facebook, ["announcement", "reminder", "event_title", "event_description", "boosted"], `group ${g.id}: the Facebook campaign`); }
         // What pages/group-marketing.tsx reads: interview[].key/label/type, answers, missing[],
         // copyFields[].key/label/max, langs, perLang[l].facts/copy/problems, shareCode, approvedAt.
         t.nonEmpty(m.interview, `group ${g.id}: the marketing interview`);
@@ -1162,6 +1171,62 @@ export default [
       // Both answered "too many requests": the limiter works, but neither the bot trap nor the
       // validation was reached — that is not a pass.
       t.require(trap.status !== 429 || bare.status !== 429, "the interest form's hourly limit (5 per address) was already used up on this box, so neither the bot trap nor the validation was reached this run");
+    },
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: "ops.group-package-roundtrip",
+    basis: "ruling: mark-group-marketing-is-a-package.md — Mark 2026-10-10: a poster, email campaign and Facebook campaign built on the line's material, fetched by the system; every piece previewed to him",
+    title: "On the dev test group the marketing package can fetch photographs, take Mark's choice, render the poster and Facebook images, and the write routes refuse unknown groups and missing input (writes, dev only)",
+    covers: ["POST /api/groups/:id/marketing/assets/fetch", "PUT /api/groups/:id/marketing/package/choose", "POST /api/groups/:id/marketing/package/render",
+      "POST /api/groups/:id/marketing/campaign/write", "PUT /api/groups/:id/marketing/campaign"],
+    modes: ["dev"],
+    devOnlyBecause: "fetching photos, rendering and writing the campaign change the group file and the public bucket; the campaign write is a paid model call, so only its refusal is exercised",
+    run: async (t) => {
+      const groups = await groupsList(t);
+      t.require(groups.length > 0, "there are no group files on dev (the seeded test groups should be there)");
+      // refusals first: unknown group → 404 before anything is written or paid for
+      for (const [m, path, body] of [["post", "assets/fetch", {}], ["put", "package/choose", { assetIds: [] }], ["post", "package/render", {}], ["post", "campaign/write", {}], ["put", "campaign", { campaign: null }]]) {
+        unauthorized(t, await t[m](`/api/groups/${ZERO}/marketing/${path}`, body), `${m.toUpperCase()} /api/groups/:id/marketing/${path}`);
+        refused(t, await t[m](`/api/groups/${ZERO}/marketing/${path}`, body, { auth: true }), 404, `${path} for a group that does not exist`, /not found/i);
+      }
+      const g = groups.find((x) => x.ship_name && x.marketing_copy) || groups.find((x) => x.ship_name) || groups[0];
+      // fetch: idempotent (only what is missing); afterwards the ship has at least one photo or a note says why not
+      const f = t.success(await t.post(`/api/groups/${g.id}/marketing/assets/fetch`, {}, { auth: true }));
+      t.ok(Array.isArray(f.assets) && Array.isArray(f.notes), "the fetch answer lists assets and notes");
+      t.ok(f.assets.some((a) => a.subject === "ship") || f.notes.some((n) => /^ship:/.test(n)), `no ship photo and no note saying why for ${g.ship_name}`);
+      for (const a of f.assets) {
+        t.ok(/^(CC0|CC BY|Public domain)/i.test(a.license || "") || a.share_alike || a.source === "line-kit", `a photo with a license the poster may not use: ${a.license}`);
+        t.ok(a.attribution && a.public_url, "a photo without a credit line or a public address");
+      }
+      // choose: the first photo becomes the main one
+      if (f.assets.length) {
+        const c = t.success(await t.put(`/api/groups/${g.id}/marketing/package/choose`, { assetIds: [f.assets[0].id] }, { auth: true }));
+        t.equal(c.chosen[0], f.assets[0].id, "the chosen photo");
+      }
+      // render: needs page copy and a photo; else it says which is missing
+      const r = await t.post(`/api/groups/${g.id}/marketing/package/render`, {}, { auth: true });
+      if (r.status === 200) {
+        const rd = t.success(r).renders;
+        t.fields(rd, ["poster_png", "poster_pdf", "facebook_landscape", "facebook_square", "credits"], "the rendered package");
+        for (const k of ["poster_png", "poster_pdf", "facebook_landscape", "facebook_square"]) {
+          const img = await t.get(rd[k]);
+          t.equal(img.status, 200, `${k} is served from the public bucket`);
+        }
+      } else refused(t, r, 400, "render without copy or photos", /write the group page copy|no photo on file/i);
+      // campaign: a group with no interview answers is refused before the model is called (no spend in a sweep)
+      const bare = groups.find((x) => !x.marketing || !x.marketing.why_sailing);
+      if (bare) refused(t, await t.post(`/api/groups/${bare.id}/marketing/campaign/write`, {}, { auth: true }), 400, "campaign write with no interview", /interview/i);
+      // saving an edited campaign re-validates every number against the file
+      const pk = t.success(await t.get(`/api/groups/${g.id}/marketing/package`, { auth: true }));
+      if (pk.campaign) {
+        const edited = { ...pk.campaign, facebook: { ...pk.campaign.facebook, boosted: `${pk.campaign.facebook.boosted} Only 4321 left.` } };
+        const sv = t.success(await t.put(`/api/groups/${g.id}/marketing/campaign`, { campaign: edited }, { auth: true }));
+        t.ok(sv.problems.some((p) => /4321/.test(p.problem)), "an invented number in an edit is caught");
+        t.success(await t.put(`/api/groups/${g.id}/marketing/campaign`, { campaign: pk.campaign }, { auth: true }));   // put it back
+      }
+      t.observe("photos on file for the test group", f.assets.length, "info");
     },
   },
 ];

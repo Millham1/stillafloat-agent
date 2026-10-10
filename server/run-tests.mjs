@@ -37,7 +37,7 @@ await esbuild({
   outExtension: { ".js": ".mjs" },
   logLevel: "warning",
   // Optional native deps (ws etc.) that must not be resolved at bundle time.
-  external: ["node:*", "bufferutil", "utf-8-validate", "fsevents"],
+  external: ["node:*", "bufferutil", "utf-8-validate", "fsevents", "sharp", "pdfkit", "qrcode"],   // native / heavy renderers stay outside the test bundle
   banner: {
     js: `import { createRequire as __trCrReq } from 'node:module';\nglobalThis.require = __trCrReq(import.meta.url);`,
   },
