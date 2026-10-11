@@ -450,7 +450,14 @@ function scheduleWeeklyMarketing() {
         logger.error({ err }, "Daily social scan failed");
       }
     }
-    if (weekday !== "Tue" && weekday !== "Thu" && weekday !== "Fri") return;
+    if (weekday !== "Tue" && weekday !== "Thu" && weekday !== "Fri") {
+      // No weekly work today, but the job still RAN: record it, so the job-health ledger (registered as a
+      // daily job) is not read as overdue every Sunday-to-Tuesday (found 2026-10-11: vitals.jobs-ran-on-time
+      // went red on both boxes because the last recorded run was Friday's).
+      lastRunDate = date;
+      await runJob("scheduleWeeklyMarketing", async () => ({ weekday, work: "none today" }), { logFail: "Weekly marketing tick failed" });
+      return;
+    }
     lastRunDate = date;
     await runJob("scheduleWeeklyMarketing", async () => {
       if (weekday === "Tue") {
