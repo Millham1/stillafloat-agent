@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { readJson, writeJson } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { tokenOk } from "../lib/http-auth";
+import { fetchUploads, channelIdForHandle } from "../lib/youtube-api";
 
 const router: IRouter = Router();
 
@@ -30,6 +31,20 @@ async function resolveChannelId(): Promise<string | null> {
   if (/^UC[a-zA-Z0-9_-]{22}$/.test(configured)) {
     cachedChannelId = configured;
     return cachedChannelId;
+  }
+  // With the Data API key the handle resolves through the API (no page scraping at all).
+  const apiKey = process.env["YOUTUBE_API_KEY"];
+  if (apiKey) {
+    try {
+      const id = await channelIdForHandle(CHANNEL_HANDLE, apiKey);
+      if (id) {
+        cachedChannelId = id;
+        logger.info({ channelId: id, via: "Data API handle lookup" }, "Resolved YouTube channel ID");
+        return id;
+      }
+    } catch (err) {
+      logger.warn({ err }, "YouTube handle lookup through the Data API failed — falling back to the channel page");
+    }
   }
   try {
     const res = await fetch(CHANNEL_URL, {
@@ -109,6 +124,40 @@ async function fetchChannelVideos(channelId: string): Promise<YTVideo[]> {
   return entries;
 }
 
+/**
+ * The channel's newest public uploads. The Data API is primary (the RSS feed answered 404/500 for about a
+ * day on 2026-10-09/11 and failed every scan on both boxes); the RSS feed is the fallback for a box with
+ * no key or a Data API failure. Views, titles, thumbnails and Short flags are filled in afterwards by the
+ * videos.list refresh below, so the Data API listing only has to supply ids and publish times.
+ */
+async function scanChannel(channelId: string): Promise<{ scanned: YTVideo[]; source: "data-api" | "rss" }> {
+  const apiKey = process.env["YOUTUBE_API_KEY"];
+  let apiError = "";
+  if (apiKey) {
+    try {
+      const uploads = await fetchUploads(channelId, apiKey);
+      if (uploads.length > 0) {
+        return {
+          source: "data-api",
+          scanned: uploads.map((u) => ({
+            id: u.id, title: u.title, published: u.published, thumbnail: u.thumbnail,
+            url: `https://www.youtube.com/watch?v=${u.id}`, isShort: false, views: 0,
+          })),
+        };
+      }
+      apiError = "the Data API listed no public uploads";
+    } catch (err) {
+      apiError = (err as Error).message;
+    }
+    logger.warn({ apiError }, "YouTube scan: Data API read failed — falling back to the RSS feed");
+  }
+  try {
+    return { scanned: await fetchChannelVideos(channelId), source: "rss" };
+  } catch (err) {
+    throw new Error(apiError ? `Data API: ${apiError}; RSS: ${(err as Error).message}` : (err as Error).message);
+  }
+}
+
 // ── GET /api/youtube-scan ─────────────────────────────────────────────────────
 router.get("/youtube-scan", async (req: Request, res: Response) => {
   try {
@@ -118,7 +167,7 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
       return;
     }
 
-    const scanned = await fetchChannelVideos(channelId);
+    const { scanned, source } = await scanChannel(channelId);
     const scannedAt = new Date().toISOString();
 
     const existing = (await readJson("youtube-channel")) as
@@ -129,7 +178,12 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
     // exposes the ~15 newest videos, so a pure overwrite made older popular
     // videos vanish from the homepage grid once they aged out of the feed.
     const byId = new Map<string, YTVideo>((existing?.videos ?? []).map((v) => [v.id, v]));
-    for (const v of scanned) byId.set(v.id, v); // fresh feed data wins
+    // Fresh listing data wins — except a view count of 0 (the Data API listing carries none; the videos.list
+    // refresh below fills it) and the Short flag, which keep their last-known values if that refresh fails.
+    for (const v of scanned) {
+      const prev = byId.get(v.id);
+      byId.set(v.id, prev ? { ...v, views: v.views || prev.views, isShort: prev.isShort || v.isShort } : v);
+    }
     let videos = [...byId.values()];
 
     // Refresh view counts for the whole history when the Data API key is
@@ -228,7 +282,8 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
       featuredManual: existing?.featuredManual ?? false,
     });
 
-    res.json({ success: true, scannedAt, channelId, videos });
+    logger.info({ source, listed: scanned.length, kept: videos.length }, "YouTube scan done");
+    res.json({ success: true, scannedAt, channelId, source, videos });
   } catch (err) {
     logger.error({ err }, "YouTube scan failed");
     res.status(500).json({ success: false, error: (err as Error).message });
