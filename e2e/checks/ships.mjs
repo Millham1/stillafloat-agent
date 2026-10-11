@@ -344,6 +344,10 @@ export default [
       const { byName } = await registry(t);
       const fresh = freshShips(t, await health(t), byName);
       t.observe("ships asked for (0 = none had a fix fresh enough to ask without buying one)", fresh.length ? 1 : 0, "info");
+      // The route this check covers is always exercised: a name the registry does not know answers a clean
+      // "unknown" and never reaches the paid lookup (so it works with no fresh ship too).
+      const unknown = t.success(await t.get(`/api/wms/position?ship=${encodeURIComponent(NO_SUCH_SHIP)}`), "ok");
+      t.equal(unknown.tracking, false, "an unknown ship is not shown as tracked");
       if (!fresh.length) return;
       const s = fresh[0];
       const d = await position(t, s.name, s.lastPosAt);
