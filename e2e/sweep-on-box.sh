@@ -49,6 +49,11 @@ TOK="$(grep -E '^AGENT_APPROVAL_TOKEN=' /opt/stillafloat/shared.env 2>/dev/null 
 TOK="${TOK%\"}"; TOK="${TOK#\"}"; TOK="${TOK%\'}"; TOK="${TOK#\'}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"; FILE="$OUT/$MODE-$STAMP.json"
 date +%s > "$MARK"
+# ONE SWEEP AT A TIME per box (2026-10-12). With no cooldown a Mac sweep and the CI sweep can start together, and the
+# write fixtures (favorites, a checklist row, a transcription, a gear product) are shared on dev: each run deleted
+# or tripped over the other's rows (4 false reds). Whoever arrives second waits its turn.
+exec 9>"$OUT/sweep-$MODE.lock"
+flock -w 1500 9 || { echo "SWEEP $MODE FAIL another sweep held this box for 25 minutes"; exit 1; }
 cd "$HERE/.." && AGENT_APPROVAL_TOKEN="$TOK" node e2e/run.mjs --mode "$MODE" --site "$SITE" --news "$NEWS" --ops "$OPS" --json "$FILE"
 rc=$?
 ls -t "$OUT"/$MODE-*.json 2>/dev/null | tail -n +31 | xargs -r rm -f   # keep the last 30
