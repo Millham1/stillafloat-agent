@@ -13,6 +13,7 @@ import { resolvePortSlug, resolvePortName } from "./port-resolve";
 import { groundsForPoint } from "./storm-grounds";
 import { readAllRows } from "./read-all";
 import { specificallyRequested } from "./ship-tracker";
+import { isDevFixtureAlert, fixtureSailings } from "./dev-storm-fixture";
 
 /** Forward-looking deployments whose region overlaps the storm's grounds and
  *  whose season contains any part of the forecast window. Complements the
@@ -364,6 +365,9 @@ export async function impactedShipsForAlert(
 ): Promise<Sailing[]> {
   const grounds = a.affected_grounds ?? [];
   if (!grounds.length) return [];
+  // The dev mirror's permanent test storm lists exactly its own three ships, never the real fleet on its
+  // grounds (lib/dev-storm-fixture.ts; off everywhere but a dev box with DEV_STORM_FIXTURE=1).
+  if (isDevFixtureAlert(a)) return fixtureSailings(windowStart, windowEnd);
   const path = pathOf(a.raw);
   const derived = await sailingsForStorm(grounds, windowStart, windowEnd);
   const out: Sailing[] = [];

@@ -38,6 +38,7 @@ import { classifyDestinationChange, EVENT_KINDS, type ChangeKind } from "./storm
 import { itinerariesFor } from "./planned-itinerary";
 import { recordDiversionEvents, releaseAlertDiversions, type PendingDiversion } from "./storm-diversion-events";
 import type { SystemsSnapshot } from "./storm-source";
+import { ensureDevStormFixture } from "./dev-storm-fixture";
 
 export const MISSING_SCANS_TO_END = 3;
 const MAX_CHANGES_KEPT = 60;
@@ -430,6 +431,8 @@ export interface LifecycleResult { tracked: number; ended: number; diversions: n
 export async function runStormLifecycle(snap: SystemsSnapshot): Promise<LifecycleResult> {
   const supabase = getSupabase();
   const result: LifecycleResult = { tracked: 0, ended: 0, diversions: 0 };
+  // Dev mirror only (DEV_STORM_FIXTURE=1): keep the permanent test storm alive before judging anything.
+  await ensureDevStormFixture().catch((err) => logger.warn({ err }, "dev storm fixture: could not be kept alive"));
 
   const { data, error } = await supabase
     .from("storm_alerts")
