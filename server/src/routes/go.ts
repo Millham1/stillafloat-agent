@@ -55,9 +55,12 @@ async function cachedGetItemMap(force = false): Promise<Map<string, AffiliateIte
 }
 // A product added or re-tagged in the last 10 minutes was a 404 from its own buy
 // button until the cache aged out (found by e2e affiliate.buy-click-redirect-and-report,
-// 2026-10-08). On a miss the real cache reloads once, at most every 30 s, so a
-// bot walking made-up ids cannot turn this into a database hammer.
-const MISS_RELOAD_MS = 30_000;
+// 2026-10-08). On a miss the real cache reloads once, at most every 5 s (one small row read), so a
+// bot walking made-up ids cannot turn this into a database hammer. It was 30 s until 2026-10-12: any
+// miss — a bot, or the release gate's own probe of an unknown id — then left every product added in the
+// next 30 s with a dead buy button (the gate failed 2 of 3 back-to-back runs of
+// affiliate.buy-click-redirect-and-report).
+const MISS_RELOAD_MS = 5_000;
 let lastMissReload = 0;
 async function reloadOnMiss(itemId: string, byId: Map<string, AffiliateItem>): Promise<Map<string, AffiliateItem>> {
   if (byId.has(itemId) || Date.now() - lastMissReload < MISS_RELOAD_MS) return byId;
