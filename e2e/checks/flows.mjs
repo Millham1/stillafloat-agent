@@ -929,7 +929,9 @@ export default [
       // the gate's storm fixture runs the scan in test mode, which skips the lifecycle pass that pins
       // ships — so a fixture storm is never in the course-change log; real storms (hand-declared too) are
       const live = new Set(liveThreats.filter((a) => !/^e2e-fixture/i.test(a.name || "")).map((a) => a.id));
-      const logLive = new Set(log.storms.map((s) => s.id));
+      // (the gate's own throwaway storm, declared by editorial.storm-declare-edit-dismiss-fixture while the pool runs
+      // this check, is live in the log for a moment too — it is not a storm Mark's queue should be compared with)
+      const logLive = new Set(log.storms.filter((s) => !/^MANUAL-e2e-fixture/i.test(s.nhc_id || "")).map((s) => s.id));
       for (const id of live) L.check(logLive.has(id), `the live storm "${byId.get(id)?.name}" is missing from the course-change log's storms`);
       for (const id of logLive) L.check(live.has(id), `the course-change log shows a live storm the dashboard does not (${String(id).slice(0, 8)})`);
       for (const s of pub.systems) L.check(live.has(s.id), `"${s.name}" is public but not a live threat in Mark's dashboard`);
