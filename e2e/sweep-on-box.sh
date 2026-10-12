@@ -10,9 +10,9 @@
 #
 # Rules it enforces (not configurable, by design):
 #   • waits up to 10 min for /api/healthz, then runs; an unreachable site is a FAIL, not a skip
-#   • COOLDOWN: a full sweep sends refusal probes to endpoints limited to ~5/visitor/hour. If a
-#     full sweep for this mode started under an hour ago (marker written by this script AND by
-#     site-e2e.sh), wait out the remainder instead of making the site 429 the gate's own probes.
+#   • NO COOLDOWN (Mark 2026-10-11): every request the suite makes carries its own client address
+#     (e2e/lib/harness.mjs), so refusal probes never share a rate-limit bucket and sweeps can run
+#     back to back.
 #   • exit code = the runner's: 0 only on PASS (fail=0, untestable=0, complete). Untestable is
 #     not a pass (Mark 2026-10-04: empty ≠ pass).
 set -u
@@ -25,15 +25,6 @@ esac
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT=/root/saf-e2e; mkdir -p "$OUT"; chmod 700 "$OUT"
 MARK="$OUT/last-full-$MODE.at"
-
-# cooldown
-if [ -f "$MARK" ]; then
-  last="$(cat "$MARK" 2>/dev/null || echo 0)"; now="$(date +%s)"; left=$(( 3600 - (now - last) ))
-  if [ "$left" -gt 0 ] && [ "$left" -le 3600 ]; then
-    echo "cooldown: a full $MODE sweep started $(( (now - last) / 60 )) min ago; waiting $(( left / 60 + 1 )) min so the site's hourly per-visitor limits do not 429 the gate's own probes"
-    sleep "$left"
-  fi
-fi
 
 # wait for the site
 for i in $(seq 1 60); do

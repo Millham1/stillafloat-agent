@@ -59,6 +59,11 @@ export function redactUrl(u) {
 
 export const SERVICES = ["site", "news", "ops"];
 
+/** A fresh address in 198.18.0.0/15 (the RFC 2544 benchmarking range): never a real visitor's. */
+export function gateClientAddress(random = Math.random) {
+  return `198.${18 + Math.floor(random() * 2)}.${Math.floor(random() * 256)}.${1 + Math.floor(random() * 254)}`;
+}
+
 /**
  * One check's working context. All HTTP goes through here so that load, timeouts,
  * auth and recording are uniform, and so the vacuity test can swap the transport.
@@ -99,6 +104,14 @@ export class Ctx {
   async #send(method, path, { service, auth, headers, body, timeoutMs }) {
     const url = this.url(path, service);
     const h = { "user-agent": "saf-e2e/1 (whole-site release gate)", ...headers };
+    // Every request is its own visitor to the site's per-address limits (5 an hour on sign-up, contact,
+    // resend, group interest…). The server reads a caller-set X-Forwarded-For when the connection is the
+    // box itself (lib/client-ip.ts), which is how the gate runs, so each request without an address of
+    // its own gets one from the benchmarking range (198.18.0.0/15, never a real visitor). A probe can
+    // then never use up another probe's budget, which is why full sweeps need no hour-long cooldown
+    // (Mark 2026-10-11: "im tired of having to wait an hour for every refresh"). A check that sets its
+    // own address (to make several requests share a bucket on purpose) keeps it.
+    if (!Object.keys(h).some((k) => k.toLowerCase() === "x-forwarded-for")) h["x-forwarded-for"] = gateClientAddress();
     if (auth) {
       if (!this.token) throw new Untestable(`this check needs the dashboard token and none was supplied (${redactUrl(path)})`);
       h["x-affiliate-token"] = this.token;

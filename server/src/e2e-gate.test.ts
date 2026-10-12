@@ -68,3 +68,25 @@ test("vacuity: no check passes against a dead, empty, hollow or 404 site (dev an
   const bad = [...(await hollowChecks(checks, "dev")), ...(await hollowChecks(checks.filter((c: { modes: string[] }) => !c.modes.includes("dev")), "prod"))];
   assert.deepEqual(bad, [], "these checks PASS when the site returns nothing — they test nothing");
 });
+
+// Mark 2026-10-11: "im tired of having to wait an hour for every refresh". The hour-long cooldown between
+// full sweeps existed because the gate's refusal probes shared one per-address rate-limit bucket (5 an hour).
+// Each request now carries its own client address, so there is nothing left to cool down.
+test("every request the gate makes is its own visitor to the site's per-address limits", async () => {
+  const { Ctx, gateClientAddress } = await load("lib/harness.mjs");
+  const seen: Record<string, string>[] = [];
+  const fetchImpl = async (_url: string, init: { headers: Record<string, string> }) => {
+    seen.push(init.headers);
+    return new Response("{}", { status: 200 });
+  };
+  const t = new Ctx({ mode: "dev", bases: { site: "http://x.invalid" }, fetchImpl });
+  for (let i = 0; i < 40; i++) await t.get("/a");
+  await t.send("POST", "/b", { body: {} });
+  await t.send("POST", "/c", { body: {}, headers: { "x-forwarded-for": "203.0.113.9" } });
+  const own = seen.slice(0, 41).map((h) => h["x-forwarded-for"]);
+  assert.equal(new Set(own).size, 41, "each request without an address of its own gets a different one");
+  for (const a of own) assert.match(a, /^198\.(18|19)\.\d{1,3}\.\d{1,3}$/, `${a} is not in the benchmarking range 198.18.0.0/15`);
+  assert.equal(seen[41]["x-forwarded-for"], "203.0.113.9", "a check that sets its own address keeps it");
+  assert.match(gateClientAddress(() => 0), /^198\.18\.0\.1$/);
+  assert.match(gateClientAddress(() => 0.999), /^198\.19\.255\.254$/);
+});

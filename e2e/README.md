@@ -28,8 +28,11 @@ This folder is that test, and the tools around it make it the only road to prod.
    failure that exists only on dev is a dev-mirror gap to FIX on dev (seed/enable), not to waive.
 4. **Prod is read-only.** In prod mode the harness refuses writes; only refusal paths are probed.
 5. **Covers must be real.** A check that claims to cover a route it never requested fails.
-6. **Cooldown.** A full sweep sends refusal probes to endpoints limited to ~5 per visitor per hour.
-   A second full sweep within the hour is refused (Mac) or waited out (box).
+6. **No cooldown between sweeps (Mark, 2026-10-11).** Every request the gate makes carries its own client
+   address (a fresh one from 198.18.0.0/15; the server honours it from the box itself, `lib/client-ip.ts`),
+   so refusal probes never use up each other's 5-an-hour budgets and full sweeps can run back to back.
+   (Until then a second full sweep within the hour was refused, because the second one answered 429 to its
+   own probes.)
 7. **Every check cites its design source (Mark, 2026-10-09).** A gate check tests a property of the
    SITE — what the code promises, or what a design document or one of Mark's dated rulings says the
    site must do — never whether the world happens to be in some state (a ship in front of a webcam, a

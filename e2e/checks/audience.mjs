@@ -52,7 +52,7 @@
 // unsubscribe link and a real one land on the same static page; only ?result= differs), so
 // noFollow() below reads the Location header itself, through the same recorded transport.
 import crypto from "node:crypto";
-import { keysOf, Res, redactUrl } from "../lib/harness.mjs";
+import { keysOf, Res, redactUrl, gateClientAddress } from "../lib/harness.mjs";
 import * as H from "../lib/html.mjs";
 
 const PROD_HOST = "https://stillafloatcruising.com";
@@ -63,8 +63,7 @@ const PUSH_FIXTURE = {
   keys: { p256dh: "BE2E-fixture-not-a-real-key-saf-release-gate", auth: "e2e-fixture-auth" },
 };
 
-let xffSeq = Math.floor(Math.random() * 250);
-const testNetAddr = () => `192.0.2.${1 + (xffSeq++ % 254)}`;
+const testNetAddr = () => gateClientAddress(); // a fresh benchmarking-range address per request (lib/harness.mjs)
 
 /** A refused form submission from its own documentation-range address (see RATE LIMITS above). */
 async function post(t, path, body, { auth = false, method = "POST" } = {}) {
