@@ -155,7 +155,7 @@
   var L={show:"Show Impacted Ships",hide:"Hide Impacted Ships",chance:"% formation chance",more:"More details →",track:"Track this ship →"};
   function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];});}
   function trackHref(sh,s){var label=((s.classification?s.classification+" ":"")+(s.name||"")).trim();return "/track-ship.html?ship="+encodeURIComponent(sh.ship_name)+"&from=storm"+(label?"&storm="+encodeURIComponent(label):"");}
-  function para(md){if(!md)return"";var t=String(md).replace(/\*\*/g,"").split(/\n{2,}/).map(function(s){return s.trim();}).filter(Boolean);var w=t.filter(function(p){return /what this means/i.test(p);})[0];return esc(w||t[0]||"");}
+  function para(md){if(!md)return"";var t=String(md).replace(/\*\*/g,"").split(/\n{2,}/).map(function(s){return s.trim();}).filter(Boolean);var i=-1;for(var k=0;k<t.length;k++){if(/what this means/i.test(t[k])){i=k;break;}}if(i<0)return esc(t[0]||"");var w=t[i];if(w.length<40&&t[i+1])w=t[i+1];return esc(w);}
   fetch("/api/storm-watch").then(function(r){return r.json();}).then(function(d){
     var sys=(d&&d.systems)||[];if(!sys.length)return;
     var host=document.getElementById("storm-watch-list");if(!host)return;

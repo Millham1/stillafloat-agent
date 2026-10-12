@@ -165,6 +165,7 @@ export default [
         const lit = /(\/(?:es\/)?storm-watch\.html\?id=)/.exec(more)?.[1] || "";
         const track = trackHrefParts(html);
         t.ok(track, `the ${lang} homepage panel no longer builds a Track-this-ship link`);
+        t.ok(/function para\(md\)\{[^\n]*w\.length<40&&t\[i\+1\]/.test(html), `the ${lang} homepage panel shows only a heading when a storm's text puts "What this means for you" in a block of its own (para() must skip a heading-only block)`);
         home[lang] = { usesDetailUrl: /s\.detail_url/.test(more), lit, track };
       }
 
@@ -178,7 +179,13 @@ export default [
         t.fields(s, ["id", "name", "headline", "classification", "grounds_label", "body_md", "updated", "detail_url"], `public storm ${s?.name}`);
         t.ok(Array.isArray(s.sailings), `"${s.name}": the public list has no sailings array`);
         const para = String(s.body_md).replace(/\*\*/g, "").split(/\n{2,}/).map((x) => x.trim()).filter(Boolean);
-        L.check((para.find((p) => /what this means/i.test(p)) || para[0] || "").length >= 40, `"${s.name}": the homepage panel's "what this means for you" text is missing or a stub`);
+        // exactly what the homepage panel's para() shows: the block that names "what this means", or — when the
+        // writer put that heading in a block of its own — the block after it (2026-10-12: Simon's panel showed
+        // only the three-word heading until para() learned to skip it)
+        const at = para.findIndex((p) => /what this means/i.test(p));
+        let shown = at >= 0 ? para[at] : para[0] || "";
+        if (at >= 0 && shown.length < 40 && para[at + 1]) shown = para[at + 1];
+        L.check(shown.length >= 40, `"${s.name}": the homepage panel's "what this means for you" text is missing or a stub`);
         const bad = s.sailings.flatMap((v) => sailingProblems(v, s.name));
         L.check(bad.length === 0, `${bad.length} affected-sailing row(s) a visitor cannot trust: ${bad.slice(0, 3).join("; ")}${bad.length > 3 ? "; …" : ""}`);
         const d = t.success(await t.get(`/api/storm-watch/${encodeURIComponent(s.id)}`)).system;
