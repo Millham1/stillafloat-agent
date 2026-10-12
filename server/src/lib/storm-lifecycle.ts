@@ -472,10 +472,26 @@ export async function runStormLifecycle(snap: SystemsSnapshot): Promise<Lifecycl
         }
       } else if (verdict.kind === "count") {
         await supabase.from("storm_alerts").update({ missing_scans: verdict.missing }).eq("id", row.id);
+        // Not ended yet (it takes MISSING_SCANS_TO_END absent scans): a published named storm keeps her
+        // ships tracked until it is (Mark 2026-10-11). Without this the ships were released the first
+        // scan the feed stopped carrying the storm, hours before the alert itself ended.
+        if (keepsPins(row)) {
+          const synced = await syncTrackedShips(row);
+          stormMmsis.push(...synced.mmsis);
+          detections.push(...synced.detections);
+          result.tracked += synced.mmsis.length;
+        }
       } else if (verdict.kind === "end") {
         await endAlert(row);
         result.ended++;
-      } // hold → nothing
+      } else if (keepsPins(row)) {
+        // hold — the feed is unhealthy, so there is no evidence the storm is over: a feed outage must not
+        // release a published storm's ships either.
+        const synced = await syncTrackedShips(row);
+        stormMmsis.push(...synced.mmsis);
+        detections.push(...synced.detections);
+        result.tracked += synced.mmsis.length;
+      }
     } catch (err) {
       logger.error({ err, alert: row.nhc_id }, "storm-lifecycle: alert pass failed");
     }

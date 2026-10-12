@@ -375,6 +375,13 @@ function scheduleWeeklyMarketing() {
 
   const tick = async () => {
     const { weekday, hour, date } = localNow();
+    // A quiet day's run is only a ledger entry, so it is also recorded from the hour after the run hour:
+    // a restart on a Sunday afternoon must not leave the job-health ledger saying "overdue" until Monday.
+    if (hour > runHour && lastRunDate !== date && weekday !== "Tue" && weekday !== "Thu" && weekday !== "Fri") {
+      lastRunDate = date;
+      await runJob("scheduleWeeklyMarketing", async () => ({ weekday, work: "none today" }), { logFail: "Weekly marketing tick failed" });
+      return;
+    }
     if (hour !== runHour || lastRunDate === date) return;
     // Stale-draft re-nudge, ANY day at the run hour: a commentary draft still waiting
     // on Mark gets one reminder per day until he acts. Born 8/11→8/16: the staging
