@@ -13,7 +13,8 @@
 // 14 call sites out to email would rebuild the noise Telegram was retired for.
 //
 // Env: NTFY_URL (e.g. https://ntfy.stillafloatcruising.com), NTFY_TOPIC,
-//      NTFY_TOKEN (optional bearer auth), DASHBOARD_URL, OWNER_EMAIL.
+//      NTFY_TOKEN (optional bearer auth), DASHBOARD_URL, OWNER_EMAIL,
+//      DISABLE_NOTIFY_EMAIL=1 (dev: never email Mark from this box).
 
 import { logger } from "./logger";
 import { sendPush } from "./push";
@@ -154,7 +155,17 @@ export async function notifyMark(
   // is what keeps "never silently fail" from turning into "email me 14 times a
   // day". A normal nudge that lands nowhere is still a real fault — it is just
   // one to fix at the channel, which the push-health check raises separately.
-  if (n.priority === "high" || n.priority === "lead") {
+  //
+  // DISABLE_NOTIFY_EMAIL=1 (dev box): dev has no subscribed phone by design, so
+  // every fault it raised fell to this floor and emailed Mark's real inbox — a
+  // daily false "Push notifications are reaching nobody" filed into @Action
+  // (Mark, 2026-10-12: "stop dev from sending those emails"; standing rule
+  // 10/8: dev never emails real people). The action row is still written.
+  const emailOff = process.env["DISABLE_NOTIFY_EMAIL"] === "1";
+  if (emailOff && (n.priority === "high" || n.priority === "lead")) {
+    logger.warn({ title: n.title }, "notify: email floor disabled on this box (DISABLE_NOTIFY_EMAIL=1)");
+  }
+  if (!emailOff && (n.priority === "high" || n.priority === "lead")) {
     try {
       const ok = await mail({
         to: ownerEmail(),

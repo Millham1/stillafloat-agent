@@ -15,6 +15,7 @@ import { notifyMark } from "./notify";
 beforeEach(() => {
   delete process.env["NTFY_URL"];
   delete process.env["NTFY_TOPIC"];
+  delete process.env["DISABLE_NOTIFY_EMAIL"];
 });
 
 const NO_DEVICES = async () => ({ sent: 0, pruned: 0 });
@@ -134,4 +135,25 @@ test("notifyMark never throws, even when every tier throws", async () => {
   );
 
   assert.equal(channel, "none");
+});
+
+// Dev box (Mark, 2026-10-12): no phone is subscribed to dev, so every fault fell
+// to the email floor and mailed his real inbox a daily false alarm.
+test("DISABLE_NOTIFY_EMAIL=1 stops the email floor for faults and leads", async () => {
+  process.env["DISABLE_NOTIFY_EMAIL"] = "1";
+  const mail = mailSpy();
+  for (const priority of ["high", "lead"] as const) {
+    const channel = await notifyMark(
+      { title: "Push notifications are reaching nobody", body: "dev", priority },
+      { push: NO_DEVICES, mail: mail.fn },
+    );
+    assert.equal(channel, "none");
+  }
+  assert.equal(mail.calls.length, 0);
+});
+
+test("DISABLE_NOTIFY_EMAIL=1 still delivers by push when a device exists", async () => {
+  process.env["DISABLE_NOTIFY_EMAIL"] = "1";
+  const channel = await notifyMark({ title: "t", body: "b", priority: "high" }, { push: ONE_DEVICE, mail: mailSpy().fn });
+  assert.equal(channel, "webpush");
 });
