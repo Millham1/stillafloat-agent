@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { CRUISE_LOCATIONS, type CruiseLocation } from "../lib/ports";
 import { weatherSynopsis, type Lang } from "../lib/weather-voice";
+import { fetchWithBackoff, loaderCache } from "../lib/upstream";
 
 const router: IRouter = Router();
 
@@ -46,7 +47,15 @@ function featuredByType(type: string, limit = 12) {
     .slice(0, limit);
 }
 
-async function fetchForecast(loc: CruiseLocation) {
+// One upstream call per place per 10 minutes however many visitors ask, shared while in flight, and — if
+// Open-Meteo refuses a refresh — the last good forecast for up to 6 hours more (lib/upstream.ts).
+const forecastCache = loaderCache<Awaited<ReturnType<typeof loadForecast>>>({ ttlMs: 10 * 60_000, staleMs: 6 * 3_600_000 });
+export function _resetForecastCache() { forecastCache.clear(); }
+function fetchForecast(loc: CruiseLocation) {
+  return forecastCache.get(loc.slug, () => loadForecast(loc));
+}
+
+async function loadForecast(loc: CruiseLocation) {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", String(loc.lat));
   url.searchParams.set("longitude", String(loc.lon));
@@ -55,36 +64,28 @@ async function fetchForecast(loc: CruiseLocation) {
   url.searchParams.set("temperature_unit", "fahrenheit");
   url.searchParams.set("timezone", "auto");
   url.searchParams.set("forecast_days", "10");
-  // open-meteo intermittently returns a response Node's HTTP parser rejects
-  // ("Parse Error: Data after Connection: close") under parallel load. Retry
-  // once, with a timeout, so a single transient hiccup doesn't kill the card.
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error(`Weather fetch failed for ${loc.slug} (${res.status})`);
-      const data = await res.json() as {
-        current: { temperature_2m: number; weather_code: number };
-        daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[] };
-      };
-      return {
-        ...publicLocation(loc),
-        temp: Math.round(data.current.temperature_2m),
-        emoji: weatherEmoji(data.current.weather_code),
-        forecastUrl: `/forecast.html?place=${loc.slug}`,
-        forecast: data.daily.time.map((day, i) => ({
-          day,
-          emoji: weatherEmoji(data.daily.weather_code[i]),
-          weatherCode: data.daily.weather_code[i],
-          high: Math.round(data.daily.temperature_2m_max[i]),
-          low: Math.round(data.daily.temperature_2m_min[i]),
-        })),
-      };
-    } catch (e) {
-      lastErr = e;
-    }
-  }
-  throw lastErr;
+  // open-meteo intermittently returns a response Node's HTTP parser rejects ("Parse Error: Data after
+  // Connection: close") under parallel load, and answers 429 in bursts. fetchWithBackoff retries both,
+  // waiting as the API asks, with a timeout on each attempt.
+  const res = await fetchWithBackoff((u, init) => fetch(u, init), url.toString(), { signal: AbortSignal.timeout(8000) }, { attempts: 3 });
+  if (!res.ok) throw new Error(`Weather fetch failed for ${loc.slug} (${res.status})`);
+  const data = await res.json() as {
+    current: { temperature_2m: number; weather_code: number };
+    daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[] };
+  };
+  return {
+    ...publicLocation(loc),
+    temp: Math.round(data.current.temperature_2m),
+    emoji: weatherEmoji(data.current.weather_code),
+    forecastUrl: `/forecast.html?place=${loc.slug}`,
+    forecast: data.daily.time.map((day, i) => ({
+      day,
+      emoji: weatherEmoji(data.daily.weather_code[i]),
+      weatherCode: data.daily.weather_code[i],
+      high: Math.round(data.daily.temperature_2m_max[i]),
+      low: Math.round(data.daily.temperature_2m_min[i]),
+    })),
+  };
 }
 
 // forecast.html can arrive with raw coordinates (the weather page's search dropdown, and the
