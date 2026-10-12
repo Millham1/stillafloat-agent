@@ -90,6 +90,22 @@ export function isLiveNamedThreat(a: { is_threat: boolean; classification: strin
   return a.is_threat && severityRank(a.classification) >= 2;
 }
 
+/**
+ * Which alerts keep their ships pinned this pass. Mark 2026-10-09/11 ("keep ships tracked until ended"):
+ * a named storm he has PUBLISHED (approved or sent) that is still a threat keeps its impacted ships pinned
+ * until the alert is ENDED, whatever its classification is by now. Until 2026-10-11 only a live named
+ * threat (depression and up) kept them, so a storm that dropped to Post-Tropical Cyclone stayed on the
+ * public Storm Watch page with a Track-this-ship button for every ship in its path while the tracker had
+ * released all of them (found by the release gate: "the tracker is not following her"). Still released at
+ * once: an alert that threatens nowhere (Fay and Gonzalo, 2026-09-26), an unpublished draft that is not a
+ * live named threat, and an unnamed outlook area. Pure; tested.
+ */
+export function keepsPins(a: { name: string | null; status: string; is_threat: boolean; classification: string | null }): boolean {
+  if (isLiveNamedThreat(a)) return true;
+  const named = Boolean(a.name) && !/unnamed|area\(s\)|disturb|outlook/i.test(a.name ?? "");
+  return a.is_threat && named && (a.status === "approved" || a.status === "sent");
+}
+
 export function allClearMode(env: Record<string, string | undefined> = process.env): "auto" | "gated" {
   return env["DISABLE_STORM_ALLCLEAR_AUTOSEND"] === "1" ? "gated" : "auto";
 }
@@ -435,8 +451,9 @@ export async function runStormLifecycle(snap: SystemsSnapshot): Promise<Lifecycl
         if (row.missing_scans > 0) {
           await supabase.from("storm_alerts").update({ missing_scans: 0 }).eq("id", row.id);
         }
-        // Live named threats get their impacted ships pinned + course-change-checked.
-        if (isLiveNamedThreat(row)) {
+        // Live named threats — and any named storm Mark published, until it ends — get their impacted
+        // ships pinned + course-change-checked (keepsPins).
+        if (keepsPins(row)) {
           const synced = await syncTrackedShips(row);
           stormMmsis.push(...synced.mmsis);
           detections.push(...synced.detections);

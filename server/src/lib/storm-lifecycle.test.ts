@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
 import {
-  judgeDeath, draftAllClear, portSlugByName, allClearMode, MISSING_SCANS_TO_END, pinsToRelease, isLiveNamedThreat,
+  judgeDeath, draftAllClear, portSlugByName, allClearMode, MISSING_SCANS_TO_END, pinsToRelease, isLiveNamedThreat, keepsPins,
   manualStillOpen, pinsOutOfReach,
   type LifecycleAlertState,
 } from "./storm-lifecycle";
@@ -145,4 +145,26 @@ test("a path-based alert releases every pin that is no longer in reach; the grou
   assert.deepEqual(pinsOutOfReach(["Anthem of the Seas", "carnival miracle", "Pride of America"], ["Pride of America"]), ["Anthem of the Seas", "carnival miracle"]);
   assert.deepEqual(pinsOutOfReach([], ["x"]), []);
   assert.deepEqual(pinsToRelease(["Anthem of the Seas"], [], ["anthem of the seas"]), [], "grounds rule: a registry ship in the grounds keeps her pin");
+});
+
+// ── A published named storm keeps its ships until it ENDS (Mark 2026-10-11) ──────────────────────
+
+test("a published named storm keeps its pins after it drops to Post-Tropical Cyclone (Isaias), until it ends", () => {
+  const isaias = { name: "Isaias", status: "sent", is_threat: true, classification: "Post-Tropical Cyclone" };
+  assert.equal(isLiveNamedThreat(isaias), false, "by rank it is no longer a live threat…");
+  assert.equal(keepsPins(isaias), true, "…but Mark published it and it has not ended, so her ships stay tracked");
+  assert.equal(keepsPins({ ...isaias, status: "approved" }), true);
+});
+
+test("everything else is released exactly as before", () => {
+  const base = { name: "Isaias", status: "sent", is_threat: true, classification: "Post-Tropical Cyclone" };
+  assert.equal(keepsPins({ ...base, is_threat: false }), false, "threatens nowhere (Fay, Gonzalo)");
+  assert.equal(keepsPins({ ...base, status: "draft" }), false, "unpublished and no longer a live threat");
+  assert.equal(keepsPins({ ...base, status: "ended" }), false, "ended");
+  assert.equal(keepsPins({ ...base, name: "Area(s) of disturbed weather" }), false, "an unnamed outlook area");
+  assert.equal(keepsPins({ ...base, name: null }), false);
+  assert.equal(keepsPins({ ...base, name: "Unnamed system" }), false);
+  // a live named threat is unchanged, published or not
+  assert.equal(keepsPins({ name: "Simon", status: "draft", is_threat: true, classification: "Tropical Storm" }), true);
+  assert.equal(keepsPins({ name: "Fay", status: "sent", is_threat: false, classification: "Tropical Storm" }), false);
 });

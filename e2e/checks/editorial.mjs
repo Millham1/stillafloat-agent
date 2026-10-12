@@ -410,7 +410,9 @@ export default [
       // a live NAMED storm with sailings in its path must have ships pinned, or no course change can be seen
       for (const s of logStorms) {
         const a = byId.get(s.id);
-        if (rankOf(a.classification) >= 2 && namedStorm(a) && (a.sailings || []).length > 0) {
+        // pinned while it is a live named threat OR a published named storm that has not ended (storm-lifecycle keepsPins)
+        const holdsPins = (rankOf(a.classification) >= 2 || (["approved", "sent"].includes(a.status) && a.is_threat === true)) && namedStorm(a);
+        if (holdsPins && (a.sailings || []).length > 0) {
           t.ok(s.live_pins > 0, `"${s.name}" has ${a.sailings.length} sailings in its path but the course-change detector is watching none of them`);
           // The lifecycle pins from the same answer the queue shows (storm-sailings.impactedShipsForAlert),
           // one pin per ship, and pins are sticky — so pins cover (nearly) every ship in the path. A pin
@@ -420,7 +422,7 @@ export default [
         }
         // the other way round: ships pinned to a named storm, but Mark's queue shows no sailing in its path
         // (the queue's sailing lookup broke, or the window column is no longer read)
-        if (rankOf(a.classification) >= 2 && namedStorm(a) && s.live_pins > 0) {
+        if (holdsPins && s.live_pins > 0) {
           t.atLeast((a.sailings || []).length, 1, `sailings Mark's storm queue shows in the path of "${s.name}" (${s.live_pins} ships are pinned to it)`);
         }
       }
