@@ -43,7 +43,7 @@ test("the three ships' sailing straddles today, is far inside the 120-day sanity
   assert.equal(w.end, "2026-10-22");
   const rows = fixtureSailingRows(NOW);
   assert.equal(rows.length, 3);
-  assert.deepEqual(rows.map((r) => r.ship_name), ["MSC Grandiosa", "MSC Splendida", "MSC Fantasia"]);
+  assert.deepEqual(rows.map((r) => r.ship_name), ["MSC Meraviglia", "MSC Seashore", "MSC Seascape"]);
   for (const r of rows) {
     assert.equal(r.source, FIXTURE_SOURCE);
     assert.equal(r.active, true);

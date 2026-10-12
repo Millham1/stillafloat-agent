@@ -11,8 +11,9 @@ import type { Sailing } from "./storm-sailings";
 //   • a "sent" alert on the Bermuda grounds, classification Gale Warning (so it pins ships, and the paid intel sweep —
 //     which only reads Tropical Storm and up — never touches it), no window (a hand-declared storm with no window is
 //     open until dismissed), English and Spanish text, labelled as a test on its face;
-//   • exactly three impacted ships — MSC Grandiosa, MSC Splendida, MSC Fantasia, mainstream and Mediterranean-based,
-//     so they rarely sit in a real storm's path — through rolling `sailings` rows tagged source "dev-fixture" and
+//   • exactly three impacted ships — MSC Meraviglia, MSC Seashore, MSC Seascape: mainstream, and each already has a
+//     position in the tracker (the gate's "she is followed and held" check needs one, and a first pin of a ship the
+//     tracker has never heard would buy a Live-AIS fix) — through rolling `sailings` rows tagged source "dev-fixture" and
 //     region "dev-fixture" (so no real storm ever matches them). impactedShipsForAlert answers with those rows
 //     only, so the pins (and the Live-AIS lookups a new pin makes: three, about $0.06, once) never grow with the fleet.
 // It never emails anyone (the row is inserted already "sent"), and it refuses to run on a box whose PUBLIC_URL is the
@@ -26,9 +27,9 @@ export const FIXTURE_REGION = "dev-fixture";
 const PRODUCTION_HOST = /(^|[/.])stillafloatcruising\.com(?=[/:]|$)/i;
 
 export const FIXTURE_SHIPS = [
-  { name: "MSC Grandiosa", line: "MSC", port: "Genoa, Italy" },
-  { name: "MSC Splendida", line: "MSC", port: "Genoa, Italy" },
-  { name: "MSC Fantasia", line: "MSC", port: "Genoa, Italy" },
+  { name: "MSC Meraviglia", line: "MSC", port: "Port Canaveral, Florida" },
+  { name: "MSC Seashore", line: "MSC", port: "Port Canaveral, Florida" },
+  { name: "MSC Seascape", line: "MSC", port: "Galveston, Texas" },
 ] as const;
 
 export function devStormFixtureEnabled(env: Record<string, string | undefined> = process.env): boolean {
