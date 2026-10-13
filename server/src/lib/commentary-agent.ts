@@ -1254,7 +1254,7 @@ export async function stageWeeklyCommentary(options?: {
     QUESTIONS_PROMPT,
     `This week's story:\n${JSON.stringify(subject, null, 2)}`,
     QUESTIONS_SCHEMA as unknown as Record<string, unknown>,
-    1000,
+    2000,
   );
 
   const draft: CommentaryDraft = {
@@ -1488,7 +1488,9 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
         2,
       ),
       TAKE_SCHEMA as unknown as Record<string, unknown>,
-      1200,
+      // 1200 ran out mid-answer on 2026-10-13 (three hurricanes in the research) and the
+      // Tuesday run died with no draft. Unused tokens cost nothing.
+      3000,
     );
     agentTake = {
       peg_story_title: String(decided["peg_story_title"] ?? draft.stories[0]!.title),
