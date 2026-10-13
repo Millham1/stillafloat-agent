@@ -39,8 +39,8 @@ const STORIES = [
 
 const TAKE = {
   peg_story_title: "11 Crew Members Arrested in Boston",
-  question: "q", position: "p", whos_wrong: "w",
-  what_should_change: "c", sharpest_line: "s",
+  question: "q", position: "p", funny_angle: "w",
+  reader_move: "c", best_line: "s",
 };
 
 // ── selection: the roundup can no longer be assembled ────────────────────────

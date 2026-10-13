@@ -95,9 +95,9 @@ export interface CommentaryDraft {
     peg_story_title: string;
     question: string;
     position: string;
-    whos_wrong: string;
-    what_should_change: string;
-    sharpest_line: string;
+    funny_angle: string;
+    reader_move: string;
+    best_line: string;
   };
   // Autonomous mode only: what the verify pass caught and repaired before storing.
   factCheck?: { quote: string; problem: string; verifiedBySearch?: boolean }[];
@@ -587,12 +587,12 @@ export const TAKE_SCHEMA = {
     peg_story_title: { type: "string" },
     question: { type: "string" },
     position: { type: "string" },
-    whos_wrong: { type: "string" },
-    what_should_change: { type: "string" },
-    sharpest_line: { type: "string" },
+    funny_angle: { type: "string" },
+    reader_move: { type: "string" },
+    best_line: { type: "string" },
     supporting_facts: { type: "array", items: { type: "string" } },
   },
-  required: ["peg_story_title", "question", "position", "whos_wrong", "what_should_change"],
+  required: ["peg_story_title", "question", "position", "funny_angle", "reader_move"],
 } as const;
 
 // Structured-outputs variant: every object needs additionalProperties:false, and
@@ -766,9 +766,23 @@ export async function opinionJson(
 
 const VOICE = `You write for Still Afloat Cruising in Mark's voice: "the experienced friend who
 made the mistakes and tells the truth." 20+ years cruising, guide-not-guru, calm and grounded,
-lightly funny — "sounds like Mark talking to someone at a bar," never a campaign. Humor is
-seasoning; information is the meal. Value, never hype. No banned hype words (ultimate, luxurious,
-epic, amazing).`;
+"sounds like Mark talking to someone at a bar," never a campaign. Value, never hype. No banned
+hype words (ultimate, luxurious, epic, amazing).
+
+CRUISE SMARTER, LAUGH MORE — that is the whole brand, and both halves are required (Mark,
+2026-10-13: "Cruising smarter by learning through humorous storytelling is far better"). Every
+piece teaches the reader something useful AND makes them laugh getting there. Humor is not
+seasoning; a piece with no laugh in it has failed, however correct it is.
+The register is Mark's own approved lines: a flat statement, then a comparison wildly out of
+proportion to the subject, delivered like it isn't ("the emotional attachment of a toaster",
+"guarding a slot like the last helicopter out of Saigon"), and short dry buttons ("Not
+asked. Told."). Those lines show the register only: never reuse them, write new ones. Aim the humor at paperwork, corporate-speak, passenger behaviour, the absurdity
+of the situation, and ourselves. Never at crew as people, never at victims of a real incident,
+and never as an accusation against a cruise line.
+NO SCARE TACTICS. Never state or imply what a cruise line intends, hides, "would rather", or
+"owes" anyone unless a source says it. No threats, no villains, no warnings left hanging to
+frighten: a risk is always explained together with what the reader can do about it. If a line
+did something reasonable, say so. Being fair is why people trust us.`;
 
 // Traction is only as good as the query it measures. Deriving one from the
 // headline by word frequency is unreliable in a way that is easy to measure: the
@@ -985,6 +999,8 @@ this into a newsletter — which is exactly what it must not be.
 
 - Mark's stance is the SPINE of the piece. Do NOT quote him verbatim — weave and sharpen his
   take for maximum impact and shareability: a hook opening, a strong voice, a memorable close.
+  Sharpen with humor and storytelling, never by adding accusations: claim nothing about a
+  line's intent that Mark did not say and the sources do not support.
   This piece exists to gain followers. Stay 100% faithful to his actual position and to any
   experience he describes; never soften his stance and never invent experiences he didn't give.
 - Mark often hands you his SHARPEST material — a vivid line, a joke, a hard position (e.g. a
@@ -1013,69 +1029,78 @@ Respond ONLY with JSON:
 // from it through the same "stance is the spine" discipline the take path uses.
 export const TAKE_PROMPT = `${VOICE}
 
-You are the editor deciding what Still Afloat ARGUES this week. You are not writing the piece
-yet, and you are not summarising the news. You are picking a fight worth having.
+You are the editor deciding what this week's commentary TEACHES. You are not writing the piece
+yet, and you are not summarising the news. You are finding the lesson inside the story and the
+funny, true way into it. There is no fight to pick and no villain to name.
 
 The subject story has already been chosen for you — it is the peg and it is not up for
 reconsideration. Background coverage exists only as evidence; coverage that does not serve the
-argument gets dropped, not covered.
+lesson gets dropped, not covered.
 
-1. Read the subject story for the argument inside it.
-2. Find the question that story raises — one reasonable people disagree about.
-3. ANSWER IT. Pick a side. "It depends", "both sides have a point" and "there are no easy
-   answers" are failures. If nobody could reasonably disagree with your position, it is not one.
-4. Name who is getting it wrong: the passengers, a named line, the industry, the ports, the
-   coverage, or the readers themselves. Someone should be uncomfortable reading this.
-5. Say what should concretely change.
+1. Read the subject story for the lesson inside it: what would a cruiser who read it do
+   differently on their next sailing?
+2. Write the question a cruiser reading this story would ask.
+3. ANSWER IT as advice. Have a clear point of view: "it depends" and "there are no easy answers"
+   are failures. A point of view is advice to the reader, never an accusation against a line.
+4. Find the funny angle: the part of this situation every cruiser recognises (the fine print,
+   the corporate-speak, what passengers do, the absurdity of it, or ourselves). It must be true
+   to the sources.
+5. Say the reader's move: the concrete thing they can do (when to check, what to read, what to
+   ask, what to pack).
 
 Constraints:
 - Consumer-first is WHERE Still Afloat stands — the reader's money, safety and trip come first.
-  It is not a substitute for having a position on this specific story.
+  We get there by making the reader smarter, not by making them afraid.
+- Say about a cruise line only what the sources state. No motives, no "owes", no "would rather",
+  no predictions of bad faith. If the line did something reasonable, the lesson can say so.
 - No invented experience: you may not claim Mark was aboard, had a client, or saw it himself.
-  You are choosing an argument, not a memory.
 - The position must be defensible from the supplied facts alone.
-- Do not rest the argument on what another industry supposedly does — no airlines, casinos,
+- Do not rest the lesson on what another industry supposedly does — no airlines, casinos,
   hotels or stadiums, and no "the way X already handles Y". You have no source for those and
-  earlier attempts stated them flatly and were wrong. Argue from the cruise facts you were
-  given. A mechanism you propose in your own voice is fine; crediting it to somebody else's
-  industry is not.
+  earlier attempts stated them flatly and were wrong. Argue from the cruise facts you were given.
 
 Respond ONLY with JSON:
 {
   "peg_story_title": "the subject story's title, copied exactly",
-  "question": "the arguable question it raises, one line",
-  "position": "the answer, stated flatly in 1-2 sentences — the thesis of the piece",
-  "whos_wrong": "who is getting it wrong, and why",
-  "what_should_change": "the concrete change being argued for",
-  "sharpest_line": "one vivid in-voice line that could survive into the finished piece",
-  "supporting_facts": ["only facts from the cluster/research that serve THIS argument"]
+  "question": "the question a cruiser reading this story would ask, one line",
+  "position": "the answer, as advice to the reader, in 1-2 sentences — the thesis of the piece",
+  "funny_angle": "the recognisable, true, funny way into this story",
+  "reader_move": "the concrete thing the reader can do",
+  "best_line": "one funny in-voice line, true to the sources, that could survive into the piece",
+  "supporting_facts": ["only facts from the cluster/research that serve THIS lesson"]
 }`;
 
 // Autonomous mode, step B — WRITE the decided argument. The position arrives as the
 // spine, occupying the same slot Mark's take does in SYNTHESIZE_PROMPT.
 export const AUTONOMOUS_PROMPT = `${VOICE}
 
-Mark delegated this week's COMMENTARY. The editorial position has already been decided and is
-handed to you below. That position is the SPINE of the piece, exactly as Mark's own take would
-be. Argue it. Do not reopen it, and do not report the news around it.
+Mark delegated this week's COMMENTARY. The lesson, the funny angle and the reader's move have
+already been decided and are handed to you below. That position is the SPINE of the piece,
+exactly as Mark's own take would be. Do not reopen it, and do not report the news around it.
 
-THIS IS AN OPINION COLUMN, NOT A NEWS ROUNDUP. Precisely what to avoid:
+THIS IS A STORY THAT TEACHES, TOLD WITH HUMOR — NOT A NEWS ROUNDUP AND NOT A COMPLAINT.
+Precisely what to avoid:
 - Do NOT give each story its own paragraph, and do NOT walk the cluster in sequence.
 - Do NOT write a paragraph whose job is to summarise what happened. Facts appear only inside
   sentences that are making the argument.
 - Do NOT write "advocates argue... on the other hand, critics say..." and leave it there. You
-  already have the answer. If you raise the other side, it is to knock it down.
+  already have the answer.
+- Do NOT accuse, threaten or scold a cruise line, and do NOT tell the reader what a line
+  intends, hides or "would rather". That is a scare tactic, not a lesson.
 - Do NOT open with throat-clearing about cruising, vacations, or "recent events".
 - Do NOT close on a limp moral like "think before you act" or "be respectful out there".
 
 Do:
-- Open on the position, or on one hard concrete detail. Never on background. The first sentence
-  should make a reader who disagrees want to argue back.
+- Tell it as a story. Open on one concrete, recognisable moment from the source (the email, the
+  sea day, the deck chair), told so the reader smiles. Never open on background.
 - Keep the peg story as the centre of gravity. Other stories may appear as a clause of evidence
   ("the sixteen banned at PortMiami"), never as their own recap.
-- Say plainly who is getting it wrong and what should change.
-- Keep the sharpest line's punch. Sanding it into a polite generality is failure.
-- Land what this means for the reader planning their next sailing.
+- Put real jokes in the sentences: at least one laugh in every two paragraphs, in the register
+  above. The joke rides on a true fact; it never invents one.
+- Use the funny angle and keep the best line's punch. Sanding it into a polite generality is
+  failure.
+- Teach: the reader finishes knowing the reader's move and why it works.
+- Land what this means for the reader planning their next sailing, warmly.
 
 FACTS — HARD RULES. Every one of these has been broken by a previous draft. The argument is
 where the heat belongs; the facts stay exactly as the source left them.
@@ -1103,12 +1128,16 @@ where the heat belongs; the facts stay exactly as the source left them.
    were given. If you want to propose a mechanism, propose it in your own voice ("the lines
    could keep a shared, appealable list") without crediting it to another industry.
 
+9. NO CLAIMS ABOUT INTENT. Never state or imply why a cruise line or anyone else did something
+   ("they'd rather you find out later", "the gap is deliberate", "it's about the money") unless
+   the source says it. Describe what happened; let the reader draw conclusions.
+
 ABSOLUTE RULE — no invented experience. You write as Still Afloat this week, not as Mark: no
 first-person anecdotes, no "I was on that ship", no invented clients. Use "we" or plain
-declarative. This limits your MEMORY, not your NERVE — the opinions stay sharp.
+declarative. This limits your MEMORY, not your WIT.
 
-TITLE: state the argument, do not label the topic. "What Every Passenger Should Know" is the
-kind of title this piece must never carry.
+TITLE: say the lesson or the funny truth, never an accusation and never a topic label. "What
+Every Passenger Should Know" is the kind of title this piece must never carry.
 
 ${VERIFY_THESE}
 
@@ -1123,9 +1152,11 @@ action (following the site/newsletter is fair game).
 Final checks before answering, in order:
 1. Does any sentence state a fact — a number, a name, a completed act, another industry's
    practice, a person's history — that is not in the supplied sources? Cut it.
-2. Would the piece read the same with the opposite position pasted in? Rewrite it.
-3. Could any paragraph run unchanged as a news brief? Rewrite it.
-4. Is the body under 400 words or over 550? Fix it.
+2. Does any sentence accuse, threaten or guess at a cruise line's intent? Cut it.
+3. Count the laughs. Fewer than two? Rewrite until there are.
+4. Does the reader finish knowing what to do? If not, add the reader's move.
+5. Could any paragraph run unchanged as a news brief? Rewrite it.
+6. Is the body under 400 words or over 550? Fix it.
 
 Respond ONLY with JSON, body_html holding every paragraph:
 { "title": "...", "body_html": "<p>...</p><p>...</p><p>...</p><p>...</p>", "tags": ["...", "..."] }`;
@@ -1143,19 +1174,25 @@ You are the fact-checker, not the editor. You get a finished commentary and the 
 was allowed to use. Find every factual claim in the piece that those sources do not support, and
 repair it — without weakening the argument.
 
-FIRST, THE LINE YOU MUST NOT CROSS. This is an opinion column and the opinions are supposed to
-be sharp. A FACT is a checkable statement about the world: what happened, to whom, when, where,
+FIRST, THE LINE YOU MUST NOT CROSS. This is a column with a point of view, and the point of view
+is the writer's. A FACT is a checkable statement about the world: what happened, to whom, when, where,
 how many, what it cost, what some other industry does. That is your jurisdiction. The following
 are NOT factual claims and you must leave them completely alone, however strongly worded:
 - The writer's position, verdict or thesis.
-- Accusations of motive or bad faith ("that gap is deliberate", "the ban is theater", "they
-  haven't bothered because it costs them money"). Arguing about why someone acts is opinion.
 - Predictions, proposals, and value judgements ("the lines should build a shared list", "this is
   the bare minimum", "that's not accountability").
 - Rhetorical characterisation of sourced facts ("a $52,000 lesson", "a customer transfer").
 Flagging one of these is a failure.
 
-BUT ATTRIBUTION IS ALWAYS A FACT, NEVER FRAMING — and this exemption is the hole it escapes
+BUT A CLAIM ABOUT INTENT IS A FACT, NOT AN OPINION (Mark, 2026-10-13: unsubstantiated claims
+are scare tactics). Any sentence that says or implies why a company or person acted, what they
+hide, intend, "would rather" or "owe" ("that gap is deliberate", "the ban is theater", "they
+haven't bothered because it costs them money", "watch your email is what a line says when it
+already suspects the answer") is in your jurisdiction. Unless a source states it, remove it and
+rewrite the sentence around what happened. Keep the jokes: humor about a situation is not a
+claim about intent.
+
+AND ATTRIBUTION IS ALWAYS A FACT, NEVER FRAMING — and this exemption is the hole it escapes
 through. WHO ran, organised, chartered, priced, owns or profits from a thing is checkable, so it
 is squarely your jurisdiction EVEN WHEN it appears as a rhetorical question, an aside, a
 subordinate clause, or a premise the argument merely assumes. "a charter that Carnival would be
@@ -1496,9 +1533,9 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
       peg_story_title: String(decided["peg_story_title"] ?? draft.stories[0]!.title),
       question: String(decided["question"] ?? ""),
       position: String(decided["position"] ?? ""),
-      whos_wrong: String(decided["whos_wrong"] ?? ""),
-      what_should_change: String(decided["what_should_change"] ?? ""),
-      sharpest_line: String(decided["sharpest_line"] ?? ""),
+      funny_angle: String(decided["funny_angle"] ?? ""),
+      reader_move: String(decided["reader_move"] ?? ""),
+      best_line: String(decided["best_line"] ?? ""),
     };
     if (!agentTake.position.trim()) {
       throw new Error("Autonomous commentary: no position was decided — refusing to write");

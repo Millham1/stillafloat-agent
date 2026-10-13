@@ -574,11 +574,11 @@ router.get("/commentary/review", async (req: Request, res: Response) => {
     ${
       draft!.agentTake
         ? `<div class="storyline" style="border-left:3px solid #17a457;padding-left:10px;margin-top:12px">
-      <div class="label" style="margin:0 0 6px">The position it argued — judge this first</div>
+      <div class="label" style="margin:0 0 6px">The lesson it teaches — judge this first</div>
       <b>${esc(draft!.agentTake.position)}</b>
       <div class="muted small" style="margin-top:6px">
-        <b>Who's wrong:</b> ${esc(draft!.agentTake.whos_wrong)}<br>
-        <b>What should change:</b> ${esc(draft!.agentTake.what_should_change)}
+        <b>Funny angle:</b> ${esc(draft!.agentTake.funny_angle ?? "")}<br>
+        <b>Reader's move:</b> ${esc(draft!.agentTake.reader_move ?? "")}
       </div>
     </div>`
         : ""
