@@ -266,7 +266,10 @@ export default [
       t.ok(!d.lastError, `the last commentary run failed: "${String(d.lastError || "").slice(0, 160)}"`);
       t.require(d.draft && Array.isArray(d.draft.stories), "there is no commentary draft on this box at all, so the review page's draft path cannot be tested — stage one");
       const draft = d.draft;
-      t.fields(draft, ["status", "suggestedTitle"], "the commentary draft");
+      t.fields(draft, ["status"], "the commentary draft");
+      // The title is written WITH the piece, after Mark's take (commentary-agent.ts stages "awaiting_take"
+      // with suggestedTitle ""). Every Tuesday's fresh draft read red until he answered (2026-10-13).
+      if (["drafted", "published"].includes(draft.status)) t.fields(draft, ["suggestedTitle"], "the written commentary draft");
       t.ok(["awaiting_take", "drafted", "published", "discarded"].includes(draft.status), `the draft has an unknown status "${draft.status}"`);
       t.nonEmpty(draft.stories, "the draft's subject story");
       t.fields(draft.stories[0], ["title"], "the draft's subject story");
