@@ -372,6 +372,11 @@ function scheduleWeeklyMarketing() {
 
   let lastNudgeDate: string | null = null;
   let lastScanDate: string | null = null;
+  // One retry of a FAILED weekly-work day (Tue commentary / Thu newsletter / Fri auto-send).
+  // 2026-10-13: Tuesday's commentary hit max_tokens at 9:04 and lastRunDate was already set, so
+  // nothing retried, Mark was not told, and the job sat "overdue" until Wednesday's quiet run.
+  let retryDate: string | null = null;
+  let retriedDate: string | null = null;
 
   const tick = async () => {
     const { weekday, hour, date } = localNow();
@@ -382,7 +387,8 @@ function scheduleWeeklyMarketing() {
       await runJob("scheduleWeeklyMarketing", async () => ({ weekday, work: "none today" }), { logFail: "Weekly marketing tick failed" });
       return;
     }
-    if (hour !== runHour || lastRunDate === date) return;
+    const retryDue = retryDate === date && hour > runHour;
+    if ((hour !== runHour && !retryDue) || lastRunDate === date) return;
     // Stale-draft re-nudge, ANY day at the run hour: a commentary draft still waiting
     // on Mark gets one reminder per day until he acts. Born 8/11→8/16: the staging
     // nudge fired while the VAPID keys were empty and the draft sat unseen for five
@@ -466,7 +472,8 @@ function scheduleWeeklyMarketing() {
       return;
     }
     lastRunDate = date;
-    await runJob("scheduleWeeklyMarketing", async () => {
+    const work = weekday === "Tue" ? "the weekly commentary" : weekday === "Thu" ? "the newsletter draft" : "the newsletter auto-send";
+    const done = await runJob("scheduleWeeklyMarketing", async () => {
       if (weekday === "Tue") {
         const draft = await stageWeeklyCommentary(); // picks the topic, writes it, nudges
         logger.info(
@@ -510,6 +517,22 @@ function scheduleWeeklyMarketing() {
       }
       return { weekday };
     }, { logFail: "Weekly marketing tick failed" });
+    if (done !== undefined) { retryDate = null; return; }
+    if (retriedDate !== date) {
+      // First failure today: try once more on the next 5-minute tick, even past the run hour.
+      retriedDate = date;
+      retryDate = date;
+      lastRunDate = null;
+      logger.warn({ weekday, work }, "Weekly marketing failed — one retry on the next tick");
+      return;
+    }
+    retryDate = null;
+    void notifyMark({
+      title: `⚠️ ${work[0]!.toUpperCase()}${work.slice(1)} failed twice today`,
+      body: "It did not run. The error is on the dashboard's job health; tell Claude to look at it.",
+      url: "/brief.html",
+      tag: "weekly-marketing-failed",
+    });
   };
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
