@@ -11,7 +11,7 @@ import {
   type NewsletterDraft,
   sendWeeklyIssue,
 } from "../lib/newsletter";
-import { SPANISH_FOLLOWS_ENGLISH } from "../lib/newsletter-editions";
+import { SPANISH_FOLLOWS_ENGLISH, SPANISH_NEEDS_ENGLISH } from "../lib/newsletter-editions";
 import { issueHasStories, EMPTY_ISSUE_MESSAGE } from "../lib/newsletter-freshness";
 import { deliveryCounts } from "../lib/newsletter-delivery";
 import type { Lang } from "../lib/social-agent";
@@ -34,7 +34,11 @@ router.post("/newsletter/draft", requireToken, async (req: Request, res: Respons
       res.status(409).json({ success: false, error: "The current issue is still going out (or waiting on its retry) — generate the next one once it has finished." });
       return;
     }
-    const draft = await draftNewsletter(lang);
+    if (lang === "es" && !(await loadDraft("en"))) {
+      res.status(409).json({ success: false, error: SPANISH_NEEDS_ENGLISH });
+      return;
+    }
+    const draft = await draftNewsletter(lang); // "es" = a build of the English issue
     await saveDraft(draft);
     res.json({ success: true, draft });
     if (lang !== "en") return; // Spanish is never put in front of Mark (2026-10-08 rule)

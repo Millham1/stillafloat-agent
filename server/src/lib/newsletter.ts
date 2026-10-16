@@ -14,7 +14,7 @@ import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
 import { buildUtm, fetchChannelVideos, type Lang } from "./social-agent";
 import { storySlug } from "./prerender-news";
 import { selectFreshStories, issueHasStories, EMPTY_ISSUE_MESSAGE } from "./newsletter-freshness";
-import { planWeeklySend, type EditionState, type WeeklySendPlan } from "./newsletter-editions";
+import { planWeeklySend, SPANISH_NEEDS_ENGLISH, type EditionState, type WeeklySendPlan } from "./newsletter-editions";
 import { unsubscribeUrl } from "../routes/subscribe";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +137,8 @@ export interface NewsletterDraft {
   agencyPs: string;
   lang: Lang;
   generatedAt: string;
+  /** Spanish edition only: the generatedAt of the English issue it was built from. */
+  builtFrom?: string;
   // "sending" = the paced send is under way (or parked for its one retry): no edits, no re-roll.
   status: "pending" | "sending" | "sent";
   sentAt?: string;
@@ -171,6 +173,20 @@ async function gatherApprovedStories(lang: Lang = "en"): Promise<Story[]> {
     ),
     link: String(s.link ?? s.originalLink ?? ""),
     impact: String((lang === "es" && s["impactLevel_es"]) || s.impactLevel || s.travelerImpact || ""),
+  })).filter((s) => s.id && s.title);
+}
+
+/** The English issue's stories, in its order, in the edition's language — no freshness window: the
+ *  Spanish edition mirrors exactly what the English one carries, whenever it is built. */
+async function approvedStoriesById(ids: string[], lang: Lang): Promise<Story[]> {
+  const data = await readJson<{ stories?: Record<string, unknown>[] }>(PATHS.approved, { stories: [] });
+  const byId = new Map((data.stories ?? []).map((s) => [String(s["id"] ?? ""), s]));
+  return ids.map((id) => byId.get(id)).filter((s): s is Record<string, unknown> => Boolean(s)).map((s) => ({
+    id: String(s["id"] ?? ""),
+    title: String((lang === "es" && s["title_es"]) || s["title"] || ""),
+    summary: String((lang === "es" && (s["summary_es"] ?? s["cliffnote_es"])) || s["summary"] || s["synopsis"] || ""),
+    link: String(s["link"] ?? s["originalLink"] ?? ""),
+    impact: String((lang === "es" && s["impactLevel_es"]) || s["impactLevel"] || s["travelerImpact"] || ""),
   })).filter((s) => s.id && s.title);
 }
 
@@ -263,6 +279,21 @@ async function gatherLatestCommentary(
     excerpt,
     body: body.slice(0, 1500), // raw material for distilling Mark's letter
     url: `${SITE}${esPrefix}/commentary-post.html?id=${encodeURIComponent(String(post["id"] ?? ""))}`,
+  };
+}
+
+/** The commentary post the English issue carries, in Spanish (title_es/body_es are its translations). */
+async function commentaryById(id: string): Promise<{ id: string; title: string; excerpt: string; url: string } | null> {
+  const store = await readJson<{ posts?: Array<Record<string, unknown>> }>(PATHS.commentary, { posts: [] });
+  const post = (store.posts ?? []).find((p) => String(p["id"] ?? "") === id);
+  if (!post) return null;
+  const body = stripHtmlTags(String(post["body_es"] || post["body_en"] || "")).trim();
+  const excerpt = body.length > 220 ? `${body.slice(0, 220).replace(/\s+\S*$/, "")}…` : body;
+  return {
+    id,
+    title: String(post["title_es"] || post["title"] || ""),
+    excerpt,
+    url: `${SITE}/es/commentary-post.html?id=${encodeURIComponent(id)}`,
   };
 }
 
@@ -414,7 +445,16 @@ const NEWSLETTER_SCHEMA = {
   ],
 } as const;
 
-export async function draftNewsletter(lang: Lang = "en"): Promise<NewsletterDraft> {
+export async function draftNewsletter(edition: Lang = "en"): Promise<NewsletterDraft> {
+  if (edition === "es") {
+    // Mark 2026-10-16: the Spanish edition is a BUILD of the English issue, never its own draft.
+    const en = await loadDraft("en");
+    if (!en) throw new Error(SPANISH_NEEDS_ENGLISH);
+    return buildSpanishEdition(en);
+  }
+  // Only the English issue is written below. (`as Lang`, not the narrowed "en": the body keeps
+  // its language-aware branches for the day the Spanish build is replaced by a native draft.)
+  const lang = edition as Lang;
   const [stories, video, affiliate, commentary, photo] = await Promise.all([
     gatherApprovedStories(lang),
     gatherFeaturedVideo(lang),
@@ -902,23 +942,119 @@ export async function sendWeeklyIssue(opts: { auto?: boolean } = {}): Promise<We
   if (plan.sendEn && en) result.en = await startNewsletterSend(en, opts);
   if (plan.es === "skip") return result;
   try {
-    let esDraft = es;
-    let drafted = false;
-    if (plan.es === "draft-then-send") {
-      esDraft = await draftNewsletter("es");
-      await saveDraft(esDraft);
-      drafted = true;
-    }
-    if (esDraft && issueHasStories(esDraft)) {
-      result.es = { ...(await startNewsletterSend(esDraft, opts)), drafted };
+    // Built from the English issue AS IT IS NOW — Mark's edits included — then sent right behind it.
+    const esDraft = await buildSpanishEdition(en!);
+    await saveDraft(esDraft);
+    if (issueHasStories(esDraft)) {
+      result.es = { ...(await startNewsletterSend(esDraft, opts)), drafted: true };
     } else {
-      logger.warn({ drafted }, "Spanish edition not sent: no stories even after drafting");
+      logger.warn({ builtFrom: esDraft.builtFrom }, "Spanish edition not sent: the build carried no stories");
     }
   } catch (err) {
     // English is already on its way; a Spanish failure is logged and reported, never a 500 to Mark.
     logger.error({ err }, "Spanish edition failed to draft or send behind the English issue");
   }
   return result;
+}
+
+// ── The Spanish edition: a build of the English issue ───────────────────────
+// Mark 2026-10-16: "the ES site is a mirror of the EN site so it should be an identical ES
+// newsletter. The ES commentary is a translation of the EN commentary, so the ES newsletter is
+// built from ES versions of commentary and news stories that already exist and it is just a build."
+// Structure is copied one-to-one from the English draft (same stories, same commentary post, same
+// gear pick, same photo, the Spanish featured video); the only model call is a translation of the
+// text Mark wrote or edited (subject, letter, quick hits, booking pitch, sunny side, P.S.). No new
+// editorial choices are made here.
+const TRANSLATE_SYSTEM = `You translate Still Afloat's weekly newsletter from English into Latin American Spanish (es-419) for its Spanish-speaking readers.
+Rules: same facts, same length, same dry warmth as the English — this is Mark's letter, translated, not rewritten. Never add, drop, soften or explain anything. Keep numbers, prices, dates, ship names, cruise-line names and "Still Afloat" exactly. Keep each quick hit a one-liner and keep their count and order. An empty field stays empty. Never use the word "realmente". Respond ONLY with the JSON object requested.`;
+
+const TRANSLATE_SCHEMA = {
+  type: "object",
+  properties: {
+    subject: { type: "string" },
+    letterTitle: { type: "string" },
+    letter: { type: "string" },
+    quickHits: { type: "array", items: { type: "string" } },
+    bookingHeadline: { type: "string" },
+    bookingBody: { type: "string" },
+    sunnySide: { type: "string" },
+    pps: { type: "string" },
+    agencyPs: { type: "string" },
+    photoCaption: { type: "string" },
+    videoTitle: { type: "string" },
+    videoBlurb: { type: "string" },
+    affiliateBlurb: { type: "string" },
+  },
+  required: ["subject", "letterTitle", "letter", "quickHits", "bookingHeadline", "bookingBody", "sunnySide", "pps", "agencyPs", "photoCaption", "videoTitle", "videoBlurb", "affiliateBlurb"],
+} as const;
+
+interface Translated {
+  subject: string; letterTitle: string; letter: string; quickHits: string[]; bookingHeadline: string; bookingBody: string;
+  sunnySide: string; pps: string; agencyPs: string; photoCaption: string; videoTitle: string; videoBlurb: string; affiliateBlurb: string;
+}
+
+/** The English quick hit's story link, moved to the Spanish site (same slug under /es/news/). */
+function spanishStoryUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  return url.replace(`${SITE}/news/`, `${SITE}/es/news/`);
+}
+
+export async function buildSpanishEdition(en: NewsletterDraft): Promise<NewsletterDraft> {
+  const [stories, video, commentary] = await Promise.all([
+    approvedStoriesById(en.storyIds ?? [], "es"),
+    gatherFeaturedVideo("es"),
+    en.commentary ? commentaryById(en.commentary.id) : Promise.resolve(null),
+  ]);
+  const hits = (en.quickHits ?? []).map((h) => (typeof h === "string" ? { text: h, url: undefined } : h));
+  const source = {
+    subject: en.subject ?? "", letterTitle: en.letterTitle ?? "", letter: en.letter ?? en.intro ?? "",
+    quickHits: hits.map((h) => h.text), bookingHeadline: en.booking?.headline ?? "", bookingBody: en.booking?.body ?? "",
+    sunnySide: en.sunnySide ?? "", pps: en.pps ?? "", agencyPs: en.agencyPs ?? "", photoCaption: en.photoCaption ?? "",
+    videoTitle: en.video?.title ?? "", videoBlurb: en.video?.blurb ?? "", affiliateBlurb: en.affiliate?.blurb ?? "",
+  };
+  const tr = await llmJson<Translated>({
+    job: "newsletter.write",
+    system: TRANSLATE_SYSTEM,
+    user: `Translate every field of this English issue into Latin American Spanish:\n\n${JSON.stringify(source, null, 2)}`,
+    schema: TRANSLATE_SCHEMA as unknown as Record<string, unknown>,
+    cheap: true,
+    maxTokens: 3000,
+  });
+  const t = (v: unknown, fallback: string): string => (typeof v === "string" && v.trim() ? v.trim() : fallback);
+  const trHits = Array.isArray(tr.quickHits) ? tr.quickHits : [];
+  const draft: NewsletterDraft = {
+    subject: t(tr.subject, en.subject),
+    intro: "",
+    letterTitle: t(tr.letterTitle, en.letterTitle ?? ""),
+    letter: t(tr.letter, en.letter ?? ""),
+    quickHits: hits.map((h, i) => ({ text: t(trHits[i], h.text), url: spanishStoryUrl(h.url) })).filter((h) => h.text),
+    storyIds: [...(en.storyIds ?? [])],
+    stories,
+    agencyPs: t(tr.agencyPs, en.agencyPs),
+    lang: "es",
+    generatedAt: new Date().toISOString(),
+    builtFrom: en.generatedAt,
+    status: "pending",
+  };
+  if (en.booking) draft.booking = { headline: t(tr.bookingHeadline, en.booking.headline), body: t(tr.bookingBody, en.booking.body) };
+  if (en.sunnySide) draft.sunnySide = t(tr.sunnySide, en.sunnySide);
+  if (en.pps) draft.pps = t(tr.pps, en.pps);
+  if (en.photo) { draft.photo = en.photo; if (en.photoCaption) draft.photoCaption = t(tr.photoCaption, en.photoCaption); }
+  if (en.video) {
+    // The Spanish channel's own featured video when there is one; else the English one, blurb translated.
+    draft.video = video
+      ? { id: video.id, title: video.title, blurb: t(tr.videoBlurb, en.video.blurb), url: utm(`https://www.youtube.com/watch?v=${video.id}`, "video"), thumbnail: video.thumbnail }
+      : { ...en.video, title: t(tr.videoTitle, en.video.title), blurb: t(tr.videoBlurb, en.video.blurb) };
+  }
+  if (en.affiliate) {
+    draft.affiliate = { ...en.affiliate, blurb: t(tr.affiliateBlurb, en.affiliate.blurb), link: en.affiliate.link.replace("&l=en", "&l=es").replace("?l=en", "?l=es") };
+  }
+  if (en.commentary) {
+    const c = commentary ?? { id: en.commentary.id, title: en.commentary.title, excerpt: en.commentary.excerpt, url: `${SITE}/es/commentary-post.html?id=${encodeURIComponent(en.commentary.id)}` };
+    draft.commentary = { id: c.id, title: c.title, excerpt: c.excerpt, url: utm(c.url, "commentary"), blurb: "" };
+  }
+  logger.info({ builtFrom: en.generatedAt, stories: stories.length, quickHits: draft.quickHits?.length ?? 0, hasCommentary: !!draft.commentary }, "Built the Spanish edition from the English issue");
+  return draft;
 }
 
 export { gatherApprovedStories };

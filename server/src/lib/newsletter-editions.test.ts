@@ -9,15 +9,15 @@ const thisWeek = "2026-10-16T04:55:24Z";
 const lastWeek = "2026-10-07T13:03:00Z";
 const ed = (status: EditionState["status"], hasStories = true, generatedAt = thisWeek): EditionState => ({ status, hasStories, generatedAt });
 
-test("approving English sends English and the drafted Spanish edition together", () => {
+test("approving English sends English and a Spanish edition BUILT from it, together", () => {
   const p = planWeeklySend(ed("pending"), ed("pending"), NOW, true);
-  assert.equal(p.sendEn, true); assert.equal(p.es, "send"); assert.equal(p.englishProblem, undefined);
+  assert.equal(p.sendEn, true); assert.equal(p.es, "build-then-send"); assert.equal(p.englishProblem, undefined);
 });
 
-test("no Spanish draft (or an empty one) → draft it first, then send it with English", () => {
-  assert.equal(planWeeklySend(ed("pending"), null, NOW, true).es, "draft-then-send");
-  assert.equal(planWeeklySend(ed("pending"), ed("pending", false), NOW, true).es, "draft-then-send");
-  assert.equal(planWeeklySend(ed("pending"), ed("pending", true, lastWeek), NOW, true).es, "draft-then-send");
+test("whatever Spanish preview exists (none, empty, last week's, pending) → rebuilt from the final English", () => {
+  for (const es of [null, ed("pending", false), ed("pending", true, lastWeek), ed("pending")]) {
+    assert.equal(planWeeklySend(ed("pending"), es, NOW, true).es, "build-then-send");
+  }
 });
 
 test("nobody on the Spanish list → English only", () => {
@@ -35,9 +35,9 @@ test("no English issue, or last week's, sends nothing", () => {
   assert.equal(planWeeklySend(ed("pending", true, lastWeek), ed("pending"), NOW, true).englishProblem, "stale");
 });
 
-test("Friday catch-up: English already went out this week but Spanish is still pending → Spanish goes", () => {
+test("Friday catch-up: English already went out this week but Spanish did not → Spanish is built and goes", () => {
   const p = planWeeklySend(ed("sent"), ed("pending"), NOW, true);
-  assert.equal(p.sendEn, false); assert.equal(p.es, "send");
+  assert.equal(p.sendEn, false); assert.equal(p.es, "build-then-send");
 });
 
 test("2026-10-16: Spanish already out, English pending → English goes, Spanish is not sent twice", () => {

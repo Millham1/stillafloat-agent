@@ -7,7 +7,11 @@
 // a day and a half before he had seen the English one.
 //
 // From now on: approving English (or the Friday fallback) sends English AND Spanish; Spanish is
-// never sent on its own; a Spanish draft that is missing or empty is drafted first, then sent.
+// never sent on its own. Mark 2026-10-16 07:30Z: "the ES site is a mirror of the EN site so it
+// should be an identical ES newsletter… built from ES versions of commentary and news stories that
+// already exist and it is just a build." So the Spanish edition is BUILT from the final English
+// issue at send time — same stories (their Spanish versions), the Spanish commentary, his edited
+// English text translated — never drafted as a separate issue.
 
 export type EditionStatus = "pending" | "sending" | "sent";
 
@@ -17,7 +21,7 @@ export interface EditionState {
   generatedAt: string; // ISO
 }
 
-export type SpanishAction = "send" | "draft-then-send" | "skip";
+export type SpanishAction = "build-then-send" | "skip";
 
 export interface WeeklySendPlan {
   sendEn: boolean;
@@ -57,10 +61,10 @@ export function planWeeklySend(
     esAction = "skip"; why = "no confirmed Spanish subscribers";
   } else if (es && fresh(es, nowMs) && (es.status === "sending" || es.status === "sent")) {
     esAction = "skip"; why = "the Spanish edition already went out this week";
-  } else if (es && fresh(es, nowMs) && es.status === "pending" && es.hasStories) {
-    esAction = "send"; why = "the Spanish edition is drafted and goes with it";
   } else {
-    esAction = "draft-then-send"; why = es ? "the Spanish draft is empty or from a previous week — drafting a fresh one first" : "no Spanish draft yet — drafting one first";
+    // Always rebuilt from the FINAL English issue, so Mark's edits carry over. A Spanish preview
+    // built earlier in the week is just that — a preview.
+    esAction = "build-then-send"; why = "the Spanish edition is built from the English issue and goes right behind it";
   }
   if (!sendEn && esAction === "skip") {
     return { sendEn: false, es: "skip", reason: `nothing to send: English already ${en.status}; ${why}` };
@@ -70,4 +74,7 @@ export function planWeeklySend(
 
 /** The sentence the Spanish page, the Spanish send route and the skipped nudge all use. */
 export const SPANISH_FOLLOWS_ENGLISH =
-  "The Spanish edition is built from the English issue and goes out automatically when the English one is approved — nothing to approve here.";
+  "The Spanish edition is a build of the English issue — the same stories in their Spanish versions, the Spanish commentary, and your letter translated — and goes out automatically right behind the English one. Nothing to approve here.";
+
+/** Said when someone asks for a Spanish edition before there is an English issue to build it from. */
+export const SPANISH_NEEDS_ENGLISH = "Draft the English issue first — the Spanish edition is built from it.";
