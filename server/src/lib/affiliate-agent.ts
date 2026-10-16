@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { anthropicConfigured, llmJson } from "./llm";
 import { logger } from "./logger";
+import { blurbProblems, scrubBlurb } from "./affiliate-blurb-rules";
 import { readJson, writeJson, PATHS } from "./persistence";
 
 // Amazon → gear ingestion. Products come from Mark's "Still Afloat Gear" wishlist
@@ -74,13 +75,14 @@ function asinOf(url: string): string {
   return m ? m[1]! : "";
 }
 
-const SYSTEM_PROMPT = `You are Mark, the cruiser behind "Still Afloat." Write each blurb the way you'd recommend the thing to a friend at a bar — warm, plain-spoken, specific, a little wry. First person is welcome ("the one I actually pack", "saved me on embarkation day"). Lead with the honest, concrete reason a cruiser wants it — the real use on the ship or on a travel day — and you can land a small laugh. "Cruise smarter, laugh more."
+const SYSTEM_PROMPT = `You write the gear-page blurbs for "Still Afloat," in Mark's voice: the way he'd recommend the thing to a friend at a bar — warm, plain-spoken, specific, a little wry. Write about the product and the cruiser, NOT about Mark: no first person ("I", "my", "me") — you do not know what he packs or uses, and an invented habit in his name is a lie with his face on it. Lead with the honest, concrete reason a cruiser wants it — the real use on the ship or on a travel day — and you can land a small laugh. "Cruise smarter, laugh more."
 
 HARD RULES — do NOT write like a product listing or an ad:
 - BANNED words/phrases (and anything like them): "perfect for", "must-have", "game changer", "elevate", "effortless", "make a splash", "stay charged/fresh/protected", "for your adventures", "wherever you roam", "across the globe", "featuring", "ultimate", "amazing", "sleek", "level up", "say goodbye to", any empty superlative, and any fake urgency.
 - Do NOT echo the Amazon title or spec-sheet phrasing. Rewrite it as a real human recommendation.
 - No "40 years" or invented backstory. Be specific instead of salesy.
-- Honest: if it's a cheap-and-cheerful pick, say so plainly.
+- Mark's absolute bans: never "actually" or "genuinely"; never "cheap"/"cheaper" (say "less expensive"). In the Spanish blurb never "realmente" or "barato" (say "económico"), and no first person there either.
+- Honest: if it's a low-cost, simple pick, say so plainly.
 
 For each product, return: a 1–2 sentence description (specific + useful, ~20–40 words) and a category from EXACTLY this list:
 - "clothing" = anything you wear: swimwear, rash guards, cover-ups, linen shirts/pants, dresses, footwear, hats, sunglasses
@@ -141,8 +143,44 @@ export async function describeAndCategorize(products: RawProduct[]): Promise<Map
       : "great-ideas";
     out.set(it.idx, { description: (it.description ?? "").trim(), descriptionEs: (it.descriptionEs ?? "").trim(), category });
   }
+
+  // The prompt states the bans; this enforces them. One rewrite for any blurb that broke a
+  // rule, then a deterministic scrub so nothing banned can reach Mark's review queue.
+  const bad = [...out.entries()].filter(([, v]) => blurbProblems(v.description, v.descriptionEs).length > 0);
+  if (bad.length > 0) {
+    const redo = bad.map(([idx, v]) => ({
+      idx,
+      title: products[idx]?.title ?? "",
+      previous: { description: v.description, descriptionEs: v.descriptionEs },
+      problems: blurbProblems(v.description, v.descriptionEs),
+    }));
+    try {
+      const again = await llmJson<{ items?: LlmItem[] }>({
+        job: "affiliate.describe",
+        system: SYSTEM_PROMPT,
+        user: `These blurbs broke the rules listed in "problems". Rewrite each one (English + Spanish) so it breaks none of them, same facts, same category:\n\n${JSON.stringify(redo, null, 2)}`,
+        schema: ITEMS_SCHEMA as unknown as Record<string, unknown>,
+        cheap: true,
+        maxTokens: 3000,
+      });
+      for (const it of again.items ?? []) {
+        const prev = typeof it.idx === "number" ? out.get(it.idx) : undefined;
+        if (!prev) continue;
+        out.set(it.idx, { ...prev, description: (it.description ?? "").trim(), descriptionEs: (it.descriptionEs ?? "").trim() });
+      }
+    } catch (err) {
+      logger.warn({ err }, "affiliate blurb rewrite failed — scrubbing instead");
+    }
+    for (const [idx, v] of out) {
+      const left = blurbProblems(v.description, v.descriptionEs);
+      if (left.length === 0) continue;
+      logger.info({ idx, left }, "affiliate blurb still broke a rule after rewrite — scrubbed");
+      out.set(idx, { ...v, description: scrubBlurb(v.description, "en"), descriptionEs: scrubBlurb(v.descriptionEs, "es") });
+    }
+  }
   return out;
 }
+
 
 // Ingest raw wishlist products → dedupe vs published + already-pending → describe →
 // queue. Returns { added, skipped }.

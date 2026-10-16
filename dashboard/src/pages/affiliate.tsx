@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Trash2, Star, Plus, X, ExternalLink } from "lucide-react";
+import { ShoppingBag, Trash2, Star, Plus, X, ExternalLink, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { authHeaders } from "@/lib/auth-token";
 
@@ -11,6 +11,8 @@ const CATEGORIES = [
   { value: "cabin-essentials", label: "Cruise Cabin Essentials", icon: "🛏️" },
   { value: "cruise-fun", label: "Cruise Fun!", icon: "🏖️" },
   { value: "great-ideas", label: "Generally Great Ideas", icon: "💡" },
+  // Was missing until 2026-10-15, so the nine motion-sickness items never showed here at all.
+  { value: "health-at-sea", label: "Health at Sea", icon: "💊" },
 ];
 
 const CATEGORY_PAGES: Record<string, string> = {
@@ -19,14 +21,17 @@ const CATEGORY_PAGES: Record<string, string> = {
   "cabin-essentials": "/affiliate/cabin-essentials.html",
   "cruise-fun": "/affiliate/cruise-fun.html",
   "great-ideas": "/affiliate/great-ideas.html",
+  "health-at-sea": "/affiliate/health-at-sea.html",
 };
 
 interface AffiliateItem {
   id: string;
   title: string;
   description: string;
+  descriptionEs?: string;
   category: string;
   smartStrip: string;
+  affiliateLink?: string;
   imageUrl: string;
   featured: boolean;
   createdAt: string;
@@ -38,6 +43,7 @@ const API_BASE = "";
 const EMPTY_FORM = {
   title: "",
   description: "",
+  descriptionEs: "",
   category: "air-travel",
   smartStrip: "",
   affiliateLink: "",
@@ -51,7 +57,41 @@ export default function AffiliateManager() {
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  // Set while the form is showing an existing item (Edit), null while adding a new one.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Opens the same form, filled with everything stored for this item. The address bar gets
+  // ?edit=<id> so a link can open one item directly (how Mark checks what an agent entered).
+  function startEdit(item: AffiliateItem) {
+    setForm({
+      title: item.title ?? "",
+      description: item.description ?? "",
+      descriptionEs: item.descriptionEs ?? "",
+      category: item.category,
+      smartStrip: item.smartStrip ?? "",
+      affiliateLink: item.affiliateLink ?? "",
+      imageUrl: item.imageUrl ?? "",
+      featured: Boolean(item.featured),
+    });
+    setEditingId(item.id);
+    setShowForm(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set("edit", item.id);
+    window.history.replaceState(null, "", url);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function closeForm() {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setShowForm(false);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("edit")) {
+      url.searchParams.delete("edit");
+      window.history.replaceState(null, "", url);
+    }
+  }
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -68,21 +108,34 @@ export default function AffiliateManager() {
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
+  // A link ending in ?edit=<id> opens that item in the form once the list has loaded.
+  useEffect(() => {
+    if (loading || editingId) return;
+    const id = new URLSearchParams(window.location.search).get("edit");
+    const item = id ? items.find(i => i.id === id) : undefined;
+    if (item) startEdit(item);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, items]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) return;
     setSaving(true);
     try {
-      const resp = await fetch(`${API_BASE}/api/affiliate-items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify(form),
-      });
+      const resp = await fetch(
+        editingId ? `${API_BASE}/api/affiliate-items/${editingId}` : `${API_BASE}/api/affiliate-items`,
+        {
+          method: editingId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify(form),
+        },
+      );
       const data = await resp.json();
       if (!data.success) throw new Error(data.error);
-      toast({ title: "Item added", description: `"${form.title}" added to ${CATEGORIES.find(c => c.value === form.category)?.label}.` });
-      setForm(EMPTY_FORM);
-      setShowForm(false);
+      toast(editingId
+        ? { title: "Changes saved", description: `"${form.title}" is updated on the website.` }
+        : { title: "Item added", description: `"${form.title}" added to ${CATEGORIES.find(c => c.value === form.category)?.label}.` });
+      closeForm();
       loadItems();
     } catch (err) {
       toast({ variant: "destructive", title: "Save failed", description: (err as Error).message });
@@ -159,7 +212,7 @@ export default function AffiliateManager() {
           )}
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => (showForm ? closeForm() : setShowForm(true))}
           className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors flex-shrink-0"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
@@ -171,7 +224,7 @@ export default function AffiliateManager() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4" /> New Affiliate Item
+              <ShoppingBag className="w-4 h-4" /> {editingId ? "Edit Affiliate Item" : "New Affiliate Item"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -207,8 +260,19 @@ export default function AffiliateManager() {
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="One or two sentences about why this is worth picking up."
-                  rows={2}
-                  className="w-full px-3 py-2 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Description (Spanish)</label>
+                <textarea
+                  value={form.descriptionEs}
+                  onChange={e => setForm(f => ({ ...f, descriptionEs: e.target.value }))}
+                  placeholder="La misma descripción en español — es lo que muestran las páginas /es/."
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary resize-y"
                 />
               </div>
 
@@ -221,6 +285,14 @@ export default function AffiliateManager() {
                   className="w-full px-3 py-2 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-muted-foreground">Direct link to a product image (Amazon image URL, your own hosted photo, etc.)</p>
+                {/^https?:\/\//.test(form.imageUrl) && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <img src={form.imageUrl} alt="" className="w-20 h-20 rounded-md object-contain border bg-white" />
+                    <a href={form.imageUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                      <ExternalLink className="w-3 h-3" /> Open image
+                    </a>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -232,6 +304,11 @@ export default function AffiliateManager() {
                   className="w-full px-3 py-2 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <p className="text-xs text-muted-foreground">Your tagged Amazon affiliate URL — this is what the "More Info" button links to.</p>
+                {/^https?:\/\//.test(form.affiliateLink) && (
+                  <a href={form.affiliateLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                    <ExternalLink className="w-3 h-3" /> Open this link
+                  </a>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -244,8 +321,13 @@ export default function AffiliateManager() {
                   className="w-full px-3 py-2 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary font-mono resize-y"
                 />
                 <p className="text-xs text-muted-foreground">
-                  From Amazon Associates → Product Linking → Link Builder. Copy the full embed code and paste it here.
+                  From Amazon Associates → Product Linking → Link Builder. Copy the full embed code and paste it here — or a plain tagged Amazon link, which shows as the Buy button.
                 </p>
+                {/^https?:\/\/\S+$/.test(form.smartStrip.trim()) && (
+                  <a href={form.smartStrip.trim()} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                    <ExternalLink className="w-3 h-3" /> Open this link (the Buy button)
+                  </a>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -267,7 +349,7 @@ export default function AffiliateManager() {
                   disabled={saving || !form.title.trim()}
                   className="flex items-center gap-2 px-5 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold disabled:opacity-60 transition-colors"
                 >
-                  {saving ? "Saving…" : "Add to Website"}
+                  {saving ? "Saving…" : editingId ? "Save Changes" : "Add to Website"}
                 </button>
               </div>
             </form>
@@ -316,7 +398,14 @@ export default function AffiliateManager() {
                                 <Star className="w-2.5 h-2.5 fill-current" /> Featured
                               </Badge>
                             )}
-                            <span className="font-semibold text-sm truncate">{item.title}</span>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(item)}
+                              title="Open this item in the form"
+                              className="font-semibold text-sm truncate text-left hover:underline"
+                            >
+                              {item.title}
+                            </button>
                           </div>
                           {item.description && (
                             <p className="text-xs text-muted-foreground line-clamp-2 mb-1">{item.description}</p>
@@ -338,6 +427,13 @@ export default function AffiliateManager() {
                           </select>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => startEdit(item)}
+                            title="Edit — see and change every field"
+                            className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => toggleFeatured(item)}
                             title={item.featured ? "Remove from featured" : "Feature on Gear page"}
