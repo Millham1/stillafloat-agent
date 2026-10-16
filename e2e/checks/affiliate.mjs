@@ -56,7 +56,7 @@ import { CheckFailure, keysOf } from "../lib/harness.mjs";
 import * as H from "../lib/html.mjs";
 
 const TAG = "stillafloatcr-20";
-const CATEGORIES = ["air-travel", "cabin-essentials", "clothing", "cruise-fun", "great-ideas", "health-at-sea"];
+const CATEGORIES = ["air-travel", "cabin-essentials", "clothing", "cruise-fun", "great-ideas", "health-at-sea", "featured-on-youtube"];
 // The review agent may only file into these (lib/affiliate-agent.ts CATEGORIES).
 const AGENT_CATEGORIES = ["air-travel", "cabin-essentials", "clothing", "cruise-fun", "great-ideas"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

@@ -20,7 +20,7 @@
   // Pages that have a Spanish (/es/) counterpart
   // Root-relative paths of the English pages that have a Spanish twin at /es + the same path
   // (so /affiliate/clothing.html → /es/affiliate/clothing.html). The release gate reads this list.
-  const ES_PAGES = new Set(['/index.html', '/news.html', '/weather.html', '/webcams.html', '/wheres-my-ship.html', '/room-concierge.html', '/cabin-request.html', '/affiliate.html', '/story.html', '/commentary.html', '/commentary-post.html', '/work-with-mark.html', '/track-ship.html', '/subscribe-verified.html', '/subscribe.html', '/privacy.html', '/terms.html', '/favorites.html', '/affiliate/air-travel.html', '/affiliate/cabin-essentials.html', '/affiliate/clothing.html', '/affiliate/cruise-fun.html', '/affiliate/great-ideas.html', '/affiliate/health-at-sea.html']);
+  const ES_PAGES = new Set(['/index.html', '/news.html', '/weather.html', '/webcams.html', '/wheres-my-ship.html', '/room-concierge.html', '/cabin-request.html', '/affiliate.html', '/story.html', '/commentary.html', '/commentary-post.html', '/work-with-mark.html', '/track-ship.html', '/subscribe-verified.html', '/subscribe.html', '/privacy.html', '/terms.html', '/favorites.html', '/affiliate/air-travel.html', '/affiliate/cabin-essentials.html', '/affiliate/clothing.html', '/affiliate/cruise-fun.html', '/affiliate/great-ideas.html', '/affiliate/health-at-sea.html', '/affiliate/featured-on-youtube.html']);
   // The Spanish twin of an English path, or null when there is none.
   const esTwinOf = (p) => {
     if (p === '/' || p === '' || p === '/index.html') return '/es/index.html';

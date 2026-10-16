@@ -87,7 +87,7 @@ const PAGES = [
   // gear
   { path: "/affiliate.html", lang: "en", kind: "customer" },
   { path: "/es/affiliate.html", lang: "es", kind: "customer" },
-  ...["air-travel", "cabin-essentials", "clothing", "cruise-fun", "great-ideas", "health-at-sea"].flatMap((c) => [
+  ...["air-travel", "cabin-essentials", "clothing", "cruise-fun", "great-ideas", "health-at-sea", "featured-on-youtube"].flatMap((c) => [
     { path: `/affiliate/${c}.html`, lang: "en", kind: "customer" },
     { path: `/es/affiliate/${c}.html`, lang: "es", kind: "customer" },
   ]),
@@ -151,7 +151,7 @@ const APIS = {
   "/subscribe.html": ["/api/subscribe", "/api/public-config"],
   "/subscribe-pending.html": ["/api/resend-verification"],
   "/affiliate.html": [GEAR],
-  ...Object.fromEntries(["air-travel", "cabin-essentials", "clothing", "cruise-fun", "great-ideas", "health-at-sea"].map((c) => [`/affiliate/${c}.html`, [GEAR]])),
+  ...Object.fromEntries(["air-travel", "cabin-essentials", "clothing", "cruise-fun", "great-ideas", "health-at-sea", "featured-on-youtube"].map((c) => [`/affiliate/${c}.html`, [GEAR]])),
   "/forecast.html": ["/api/weather"],
   "/webcams.html": ["/api/webcams"],
   "/favorites.html": ["/api/favorites"],
@@ -619,8 +619,8 @@ export default [
     ["/affiliate.html", "/es/affiliate.html", "/affiliate/air-travel.html", "/es/affiliate/air-travel.html", "/affiliate/cabin-essentials.html", "/es/affiliate/cabin-essentials.html"],
     { covers: ["ext:file /components/affiliate-page.js"] }),
   crawlCheck("gear-categories", "the remaining gear categories",
-    "The clothing, fun, great-ideas and health-at-sea gear pages open in English and Spanish with a heading, and search engines can find each language",
-    ["/affiliate/clothing.html", "/es/affiliate/clothing.html", "/affiliate/cruise-fun.html", "/es/affiliate/cruise-fun.html", "/affiliate/great-ideas.html", "/es/affiliate/great-ideas.html", "/affiliate/health-at-sea.html", "/es/affiliate/health-at-sea.html"]),
+    "The clothing, fun, great-ideas, health-at-sea and featured-on-YouTube gear pages open in English and Spanish with a heading, and search engines can find each language",
+    ["/affiliate/clothing.html", "/es/affiliate/clothing.html", "/affiliate/cruise-fun.html", "/es/affiliate/cruise-fun.html", "/affiliate/great-ideas.html", "/es/affiliate/great-ideas.html", "/affiliate/health-at-sea.html", "/es/affiliate/health-at-sea.html", "/affiliate/featured-on-youtube.html", "/es/affiliate/featured-on-youtube.html"]),
   crawlCheck("weather-cams-favorites", "the weather, forecast, live-cam and favorites pages",
     "The weather, forecast, live cams and Mark's Favorites pages open with everything on them working, and each has a Spanish version",
     ["/weather.html", "/es/weather.html", "/forecast.html", "/webcams.html", "/es/webcams.html", "/favorites.html"]),

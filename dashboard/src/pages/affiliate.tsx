@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { authHeaders } from "@/lib/auth-token";
 
 const CATEGORIES = [
+  // Mark 2026-10-16: the items shown in a YouTube video live here, in on-screen order (curated by hand, never by the review agent).
+  { value: "featured-on-youtube", label: "Featured on YouTube", icon: "▶️" },
   { value: "clothing", label: "Clothing & Swimwear", icon: "👕" },
   { value: "air-travel", label: "Air Travel", icon: "✈️" },
   { value: "cabin-essentials", label: "Cruise Cabin Essentials", icon: "🛏️" },
@@ -16,6 +18,7 @@ const CATEGORIES = [
 ];
 
 const CATEGORY_PAGES: Record<string, string> = {
+  "featured-on-youtube": "/affiliate/featured-on-youtube.html",
   "clothing": "/affiliate/clothing.html",
   "air-travel": "/affiliate/air-travel.html",
   "cabin-essentials": "/affiliate/cabin-essentials.html",
