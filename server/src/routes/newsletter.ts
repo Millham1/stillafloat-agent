@@ -9,7 +9,9 @@ import {
   renderEnrichedNewsletter,
   gatherApprovedStories,
   type NewsletterDraft,
+  sendWeeklyIssue,
 } from "../lib/newsletter";
+import { SPANISH_FOLLOWS_ENGLISH } from "../lib/newsletter-editions";
 import { issueHasStories, EMPTY_ISSUE_MESSAGE } from "../lib/newsletter-freshness";
 import { deliveryCounts } from "../lib/newsletter-delivery";
 import type { Lang } from "../lib/social-agent";
@@ -35,6 +37,7 @@ router.post("/newsletter/draft", requireToken, async (req: Request, res: Respons
     const draft = await draftNewsletter(lang);
     await saveDraft(draft);
     res.json({ success: true, draft });
+    if (lang !== "en") return; // Spanish is never put in front of Mark (2026-10-08 rule)
     void notifyMark({
       title: `📨 Newsletter draft ready (${lang.toUpperCase()})`,
       body: [draft.subject, `${draft.storyIds.length} stories${draft.video ? " + video" : ""}${draft.affiliate ? " + affiliate" : ""}`].join("\n"),
@@ -165,6 +168,11 @@ router.post("/newsletter/draft/update", requireToken, async (req: Request, res: 
 router.post("/newsletter/send", requireToken, async (req: Request, res: Response) => {
   try {
     const lang = editionLang(req);
+    if (lang === "es") {
+      // 2026-10-16 06:38Z: the Spanish issue went out alone, before Mark saw the English one. Never again.
+      res.status(409).json({ success: false, error: SPANISH_FOLLOWS_ENGLISH });
+      return;
+    }
     const draft = await loadDraft(lang);
     if (!draft) {
       res.status(404).json({ success: false, error: "No draft to send" });
@@ -179,9 +187,10 @@ router.post("/newsletter/send", requireToken, async (req: Request, res: Response
       return;
     }
     // Returns at once: the emails go out one every 45s in the background, then a push reports
-    // the true delivered count after the bounce check.
-    const started = await startNewsletterSend(draft);
-    res.json({ success: true, lang, started: true, ...started });
+    // the true delivered count after the bounce check. The Spanish edition goes right behind
+    // the English one (drafted first if it has to be) — one issue, two editions.
+    const issue = await sendWeeklyIssue();
+    res.json({ success: true, lang, started: true, total: issue.en?.total ?? 0, minutes: issue.en?.minutes ?? 0, es: issue.es, plan: issue.plan.reason });
   } catch (error) {
     res.status(500).json({ success: false, error: (error as Error).message });
   }
@@ -190,6 +199,10 @@ router.post("/newsletter/send", requireToken, async (req: Request, res: Response
 // POST /api/newsletter/notify — review nudge for the current draft (manual/test).
 router.post("/newsletter/notify", requireToken, async (req: Request, res: Response) => {
   const lang = editionLang(req);
+  if (lang === "es") {
+    res.json({ success: false, skipped: true, reason: SPANISH_FOLLOWS_ENGLISH });
+    return;
+  }
   const draft = await loadDraft(lang);
   if (!draft) {
     res.status(404).json({ success: false, error: "No draft to notify about" });
@@ -211,6 +224,8 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
   const draft = await loadDraft(lang);
   const t = JSON.stringify(token);
   const other: Lang = lang === "es" ? "en" : "es";
+  // Spanish is a preview only: it is built from the English issue and goes out behind it.
+  const readOnly = lang === "es";
 
   const meta = draft
     ? `<div class="meta">
@@ -235,7 +250,7 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
     })
     .join("");
 
-  const editPanel = draft && draft.status !== "sent"
+  const editPanel = draft && draft.status !== "sent" && !readOnly
     ? `<details id="edit">
       <summary>✏️ Edit this issue</summary>
       <div class="card">
@@ -312,12 +327,13 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
     <a class="${lang === "en" ? "on" : "off"}" href="/api/newsletter/review?lang=en&token=${encodeURIComponent(token)}">English</a>
     <a class="${lang === "es" ? "on" : "off"}" href="/api/newsletter/review?lang=es&token=${encodeURIComponent(token)}">Español</a>
   </div>
-  <div class="btns">
-    <button class="gen" onclick="gen()">↻ Generate ${lang.toUpperCase()}</button>
-    <button class="send" onclick="send()">✅ Approve &amp; Send</button>
-  </div>
+  ${readOnly ? "" : `<div class="btns">
+    <button class="gen" onclick="gen()">↻ Generate EN</button>
+    <button class="send" onclick="send()">✅ Approve &amp; Send (English + Spanish)</button>
+  </div>`}
 </header>
 <div class="wrap">
+  ${readOnly ? `<div class="card" style="margin:0 0 12px;background:#fef3c7;border-color:#fde68a;color:#92400e;font-size:14px;font-weight:600">${SPANISH_FOLLOWS_ENGLISH}</div>` : ""}
   ${meta}
   <div id="msg"></div>
   ${editPanel}
@@ -363,7 +379,7 @@ router.get("/newsletter/review", requireToken, async (req: Request, res: Respons
      .catch(()=>document.getElementById('msg').textContent='Network error');
  }
  function send(){
-   if(!confirm('Send this '+LANG.toUpperCase()+' newsletter to all confirmed '+LANG.toUpperCase()+' subscribers now?')) return;
+   if(!confirm('Send this week\'s issue now? English goes to every confirmed English subscriber, and the Spanish edition goes to the Spanish list right behind it.')) return;
    document.getElementById('msg').textContent='Sending…';
    fetch('/api/newsletter/send?lang='+LANG,{method:'POST',headers:{'x-affiliate-token':TOKEN}})
      .then(r=>r.json()).then(j=>{ document.getElementById('msg').textContent = j.success ? ('Sending to '+j.total+' subscriber'+(j.total===1?'':'s')+', one every 45 seconds (about '+j.minutes+' min). You will get a notification with the delivered count; refresh this page to watch it.') : ('Failed: '+(j.error||'error')); })

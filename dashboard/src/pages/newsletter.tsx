@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Eye, EyeOff, CheckSquare, Square, Newspaper, AlertTriangle } from "lucide-react";
-import { authHeaders } from "@/lib/auth-token";
+import { Send, Eye, EyeOff, CheckSquare, Square, Newspaper, AlertTriangle, ExternalLink, Mail } from "lucide-react";
+import { authHeaders, getStoredToken } from "@/lib/auth-token";
 
 type Story = {
   id: string;
@@ -20,6 +20,18 @@ type Story = {
 
 type ApprovedResponse = { stories: Story[] };
 
+// This week's AI-drafted issue (the thing Mark actually approves). The review page is where the
+// letter, stories, video and gear pick are previewed, edited and sent — English only; the Spanish
+// edition goes out behind it automatically (2026-10-16).
+type WeeklyDraft = {
+  subject: string;
+  letterTitle?: string;
+  storyIds: string[];
+  status: "pending" | "sending" | "sent";
+  generatedAt: string;
+  sentAt?: string;
+};
+
 const IMPACT_COLORS: Record<string, string> = {
   critical: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300",
   high:     "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300",
@@ -34,6 +46,14 @@ export default function Newsletter() {
   const [sending, setSending]     = useState(false);
   const [showPreview, setPreview] = useState(false);
   const [sendResult, setResult]   = useState<{ sent: number; failed: number; total: number } | null>(null);
+
+  const { data: weekly } = useQuery<{ draft: WeeklyDraft | null }>({
+    queryKey: ["newsletter-draft-en"],
+    queryFn:  () => fetch("/api/newsletter/draft?lang=en", { headers: { ...authHeaders() } }).then((r) => r.json()),
+    staleTime: 30_000,
+  });
+  const issue = weekly?.draft ?? null;
+  const reviewUrl = `/api/newsletter/review?lang=en&token=${encodeURIComponent(getStoredToken())}`;
 
   const { data, isLoading } = useQuery<ApprovedResponse>({
     queryKey: ["approved-stories-list"],
@@ -96,11 +116,49 @@ export default function Newsletter() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold tracking-tight">Send Newsletter</h2>
+        <h2 className="text-xl font-bold tracking-tight">Newsletter</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Pick approved stories below, write a subject line, and send to all confirmed subscribers.
+          This week's issue is drafted for you on Wednesday and goes out Friday at 9 AM ET unless you approve it sooner. Approving the English issue sends the Spanish edition too.
         </p>
       </div>
+
+      {/* This week's issue — the one to review and approve */}
+      <Card className="border-primary/40">
+        <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+          <Mail className="w-6 h-6 text-primary flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">This week's issue (English)</p>
+            {issue ? (
+              <>
+                <p className="font-semibold truncate">{issue.subject}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {issue.storyIds.length} {issue.storyIds.length === 1 ? "story" : "stories"} ·{" "}
+                  {issue.status === "pending" ? "waiting for your approval" : issue.status === "sending" ? "going out now" : `sent ${issue.sentAt ? new Date(issue.sentAt).toLocaleString() : ""}`}
+                  {" "}· drafted {new Date(issue.generatedAt).toLocaleString()}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No issue drafted yet this week.</p>
+            )}
+          </div>
+          <a
+            href={reviewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold flex-shrink-0"
+          >
+            <ExternalLink className="w-4 h-4" /> Open the review page
+          </a>
+        </CardContent>
+      </Card>
+
+      {/* Everything below is the old hand-picked sender. It mails the ticked stories to the whole
+          list at once, outside the weekly issue and its safeguards — kept, but out of the way. */}
+      <details className="rounded-lg border border-amber-300/60 bg-amber-50/40 dark:bg-amber-900/10">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-600" /> Manual send (legacy) — sends hand-picked stories to every subscriber immediately, outside the weekly issue
+        </summary>
+        <div className="px-4 pb-4 space-y-6">
 
       {/* Send result banner */}
       {sendResult && (
@@ -280,6 +338,8 @@ export default function Newsletter() {
           )}
         </div>
       </div>
+        </div>
+      </details>
     </div>
   );
 }

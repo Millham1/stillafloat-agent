@@ -14,6 +14,7 @@ import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
 import { buildUtm, fetchChannelVideos, type Lang } from "./social-agent";
 import { storySlug } from "./prerender-news";
 import { selectFreshStories, issueHasStories, EMPTY_ISSUE_MESSAGE } from "./newsletter-freshness";
+import { planWeeklySend, type EditionState, type WeeklySendPlan } from "./newsletter-editions";
 import { unsubscribeUrl } from "../routes/subscribe";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -874,6 +875,50 @@ export function previewStories(draft: NewsletterDraft, stories: Story[]): Story[
   if (draft.stories && draft.stories.length) return draft.stories;
   const byId = new Map(stories.map((s) => [s.id, s]));
   return draft.storyIds.map((id) => byId.get(id)).filter((s): s is Story => Boolean(s));
+}
+
+function editionState(d: NewsletterDraft | null): EditionState | null {
+  return d ? { status: d.status, hasStories: issueHasStories(d), generatedAt: d.generatedAt } : null;
+}
+
+export interface WeeklyIssueResult {
+  plan: WeeklySendPlan;
+  en: { total: number; minutes: number } | null;
+  es: { total: number; minutes: number; drafted: boolean } | null;
+}
+
+/**
+ * Send this week's issue as ONE thing: English first, the Spanish edition right behind it — drafted
+ * on the spot when it is missing or empty. Spanish is never sent alone (Mark's rule, 2026-10-08;
+ * the 2026-10-16 early Spanish send is why this exists). Both the review page's Approve & Send and
+ * the Friday fallback come through here. The rule itself lives, tested, in lib/newsletter-editions.ts.
+ */
+export async function sendWeeklyIssue(opts: { auto?: boolean } = {}): Promise<WeeklyIssueResult> {
+  const [en, es] = await Promise.all([loadDraft("en"), loadDraft("es")]);
+  const esHasSubscribers = (await confirmedSubscriberCount("es")) > 0;
+  const plan = planWeeklySend(editionState(en), editionState(es), Date.now(), esHasSubscribers);
+  const result: WeeklyIssueResult = { plan, en: null, es: null };
+  if (plan.englishProblem) return result;
+  if (plan.sendEn && en) result.en = await startNewsletterSend(en, opts);
+  if (plan.es === "skip") return result;
+  try {
+    let esDraft = es;
+    let drafted = false;
+    if (plan.es === "draft-then-send") {
+      esDraft = await draftNewsletter("es");
+      await saveDraft(esDraft);
+      drafted = true;
+    }
+    if (esDraft && issueHasStories(esDraft)) {
+      result.es = { ...(await startNewsletterSend(esDraft, opts)), drafted };
+    } else {
+      logger.warn({ drafted }, "Spanish edition not sent: no stories even after drafting");
+    }
+  } catch (err) {
+    // English is already on its way; a Spanish failure is logged and reported, never a 500 to Mark.
+    logger.error({ err }, "Spanish edition failed to draft or send behind the English issue");
+  }
+  return result;
 }
 
 export { gatherApprovedStories };

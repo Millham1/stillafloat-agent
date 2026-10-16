@@ -8,8 +8,8 @@ import { runAndDeliverBrief } from "./lib/brief";
 import { parseBriefHours, dueBriefHour, slotKey } from "./lib/brief-schedule";
 import { runStormScan } from "./lib/storm-agent";
 import { scanAndQueue } from "./lib/social-agent";
-import { draftNewsletter, saveDraft, loadDraft, startNewsletterSend, resumeNewsletterDeliveries, deliveryOpen, confirmedSubscriberCount } from "./lib/newsletter";
-import { issueHasStories, EMPTY_ISSUE_MESSAGE } from "./lib/newsletter-freshness";
+import { draftNewsletter, saveDraft, loadDraft, sendWeeklyIssue, resumeNewsletterDeliveries, deliveryOpen, confirmedSubscriberCount } from "./lib/newsletter";
+import { EMPTY_ISSUE_MESSAGE } from "./lib/newsletter-freshness";
 import { notifyMark, reviewUrl } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
 import { setSeaRouteLogger } from "./lib/sea-route";
@@ -488,26 +488,19 @@ function scheduleWeeklyMarketing() {
         // cron-clobbers-edits hazard). Already sent → no-op. Disable with
         // NEWSLETTER_AUTOSEND=0.
         if (process.env["NEWSLETTER_AUTOSEND"] !== "0") {
-          for (const lang of ["en", "es"] as const) {
-            const draft = await loadDraft(lang);
-            const freshEnough = draft && Date.now() - Date.parse(draft.generatedAt) < 8 * 86_400_000;
-            if (draft && draft.status === "pending" && freshEnough && !issueHasStories(draft)) {
-              // 2026-10-15: both drafts had zero stories; this would have mailed them anyway.
-              logger.warn({ subject: draft.subject, lang }, "Weekly newsletter NOT auto-sent: the issue has no stories");
-              void notifyMark({
-                title: `📨 Newsletter NOT sent (${lang.toUpperCase()}): no stories in this week's issue`,
-                body: EMPTY_ISSUE_MESSAGE,
-                url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
-                tag: "newsletter-review",
-              });
-              continue;
-            }
-            if (draft && draft.status === "pending" && freshEnough) {
-              // Paced + bounce-checked in the background; the delivery worker pushes Mark the
-              // TRUE delivered count (the old "sent/total" here counted bounced mail as sent).
-              const started = await startNewsletterSend(draft, { auto: true });
-              logger.info({ subject: draft.subject, lang, ...started }, "Weekly newsletter AUTO-SEND started (Friday fallback)");
-            }
+          // One issue, two editions (2026-10-16): English first, Spanish right behind it, never alone.
+          // The decision table is lib/newsletter-editions.ts; an empty English issue sends nothing.
+          const issue = await sendWeeklyIssue({ auto: true });
+          if (issue.plan.englishProblem === "empty") {
+            logger.warn({ reason: issue.plan.reason }, "Weekly newsletter NOT auto-sent: the issue has no stories");
+            void notifyMark({
+              title: "📨 Newsletter NOT sent: no stories in this week's issue",
+              body: EMPTY_ISSUE_MESSAGE,
+              url: reviewUrl("/api/newsletter/review?lang=en"),
+              tag: "newsletter-review",
+            });
+          } else {
+            logger.info({ plan: issue.plan.reason, en: issue.en, es: issue.es }, "Weekly newsletter Friday fallback");
           }
         }
       } else {
@@ -519,6 +512,7 @@ function scheduleWeeklyMarketing() {
           const draft = await draftNewsletter(lang);
           await saveDraft(draft);
           logger.info({ subject: draft.subject, lang }, "Weekly newsletter draft complete");
+          if (lang !== "en") continue; // the Spanish edition is never put in front of Mark
           void notifyMark({
             title: `📨 Newsletter draft ready (${lang.toUpperCase()}) (weekly)`,
             body: draft.subject,
