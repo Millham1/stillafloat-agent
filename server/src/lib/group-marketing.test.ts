@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
-  normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt } from "./group-marketing";
+  normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
+  ANSWER_MAX, HOUSE_VOICE_RULES, PITCH_FIRST, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -159,7 +160,8 @@ test("interview answers are normalised with defaults, and the three core answers
   assert.equal("mark_sailing" in a, false, "the advisor-sailing question is gone (Mark 2026-10-10: leave me out of it)");
   assert.equal("junk" in a, false);
   assert.equal(Object.keys(a).length, INTERVIEW.length);
-  assert.deepEqual(missingAnswers(a), ["occasion", "why_sailing"]);
+  assert.deepEqual(missingAnswers(a), ["pitch", "occasion", "why_sailing"]);
+  assert.deepEqual(missingAnswers(normalizeAnswers({ pitch: "Come along.", audience: "a", occasion: "b", why_sailing: "c" })), []);
 });
 
 test("the prompt hides prices and the score when Mark switches them off", () => {
@@ -223,6 +225,151 @@ test("perks shown to guests come from the fare inclusions, never the organizer's
   assert.match(prompt, /919-346-6127/);
   assert.doesNotMatch(prompt, /sailing with the group/);
   const sys = systemPrompt("en");
-  assert.match(sys, /never a person/); assert.match(sys, /scan the QR to join the fun/); assert.match(sys, /cabin upgrades are available/i);
+  assert.match(sys, /never a person/); assert.match(sys, /Scan the QR to join the fun/); assert.match(sys, /cabin upgrades are available/i);
   assert.doesNotMatch(sys, /Mark Millham/);
+});
+
+
+// ── Mark's pitch (2026-10-11): the copy is built around it, sentence for sentence ─────────────────────────
+
+const PITCH = "Four nights out of Miami with the people you already like. Sunset on the beach, then a light show. Reply or scan the code and we will hold you a cabin.";
+const withPitch = (extra: Partial<GroupCopy> = {}): GroupCopy => ({ ...goodCopy(), intro: PITCH, ...extra });
+
+test("the interview opens with the pitch (required), the picture, the occasion line and a reference; every old key is still there", () => {
+  assert.deepEqual(INTERVIEW.slice(0, 4).map((q) => q.key), ["pitch", "picture", "occasion_line", "reference"]);
+  const [pitch, picture, occasionLine, reference] = INTERVIEW;
+  assert.equal(pitch!.type, "long"); assert.equal(pitch!.required, true);
+  assert.equal(pitch!.label, "Your pitch, as you would say it to them");
+  assert.equal(picture!.label, "What should the reader see?"); assert.equal(picture!.type, "long");
+  assert.equal(occasionLine!.label, "The occasion, in the group's own words"); assert.equal(occasionLine!.type, "text");
+  assert.equal(reference!.label, "A piece you like"); assert.equal(reference!.type, "text"); assert.notEqual(reference!.required, true);
+  for (const k of ["audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "tone", "show_prices", "show_rating"]) assert.ok(INTERVIEW.some((q) => q.key === k), k);
+  assert.deepEqual(INTERVIEW.filter((q) => q.required).map((q) => q.key), ["pitch", "audience", "occasion", "why_sailing"]);
+});
+
+test("the write routes' gate: no pitch, no copy — whitespace is no pitch", () => {
+  assert.equal(PITCH_FIRST, "Write Mark's pitch first (interview question 1) — the copy is built around it.");
+  assert.equal(pitchGate(normalizeAnswers({})), PITCH_FIRST);
+  assert.equal(pitchGate(normalizeAnswers({ pitch: "   \n " })), PITCH_FIRST);
+  assert.equal(pitchGate(normalizeAnswers({ pitch: "Come along." })), null);
+});
+
+test("a pitch is kept whole: answers are cut at the limit for every other question, never silently for a short pitch", () => {
+  assert.equal(normalizeAnswers({ pitch: "x".repeat(ANSWER_MAX) })["pitch"], "x".repeat(ANSWER_MAX));
+  assert.equal((normalizeAnswers({ pitch: PITCH })["pitch"] as string), PITCH);
+});
+
+test("pitchSentences splits on . ! ? and line breaks, keeps abbreviations and decimals whole", () => {
+  assert.deepEqual(pitchSentences(PITCH), [
+    "Four nights out of Miami with the people you already like.", "Sunset on the beach, then a light show.", "Reply or scan the code and we will hold you a cabin."]);
+  assert.deepEqual(pitchSentences("Come along!  Bring the family?\nShoes optional"), ["Come along!", "Bring the family?", "Shoes optional"]);
+  assert.deepEqual(pitchSentences("Dr. Reyes leads the group. Rooms start at 3.5 stars."), ["Dr. Reyes leads the group.", "Rooms start at 3.5 stars."]);
+  assert.deepEqual(pitchSentences('He said "go." Then we went.'), ['He said "go."', "Then we went."]);
+  assert.deepEqual(pitchSentences("   "), []);
+  assert.deepEqual(pitchSentences(null), []);
+});
+
+test("pitchCoverage: the share of pitch sentences found word for word; case, spacing, curly quotes and end punctuation do not count", () => {
+  assert.equal(pitchCoverage(PITCH, `Hello.\n${PITCH}\nBye.`), 1);
+  assert.equal(pitchCoverage(PITCH, "FOUR  nights out of Miami with the people you already like!\nSunset on the beach, then a light show\nReply or scan the code and we will hold you a cabin"), 1);
+  assert.equal(pitchCoverage("We'll hold you a cabin.", "We\u2019ll hold you a cabin."), 1);
+  assert.equal(pitchCoverage(PITCH, "Four nights out of Miami with the people you already like. Sunset on the beach, then a light show."), 2 / 3);
+  assert.equal(pitchCoverage(PITCH, "Four nights out of Miami with people you like. A sunset and a light show. Reply and we will hold a cabin."), 0);
+  assert.equal(pitchCoverage(PITCH, ""), 0);
+  assert.equal(pitchCoverage("", "anything"), 1, "no pitch, nothing to keep");
+  assert.equal(pitchCoverage("   ", "anything"), 1);
+  assert.deepEqual(missingPitchSentences(PITCH, "Sunset on the beach, then a light show."), ["Four nights out of Miami with the people you already like.", "Reply or scan the code and we will hold you a cabin."]);
+});
+
+test("a changed word is a missing sentence: tightening Mark's pitch is caught", () => {
+  assert.equal(pitchCoverage("Dinner is on us.", "Dinner is on the house."), 0);
+  assert.equal(pitchCoverage("Dinner is on us.", "Dinner is on us tonight."), 1, "extra words around a kept sentence are not a cut");
+  assert.equal(pitchCoverage("Dinner is on us tonight.", "Dinner is on us."), 0, "a cut sentence is");
+  assert.equal(pitchCoverage("Dinner is on us.", "Dinner is on usher duty."), 0, "whole words only");
+  assert.equal(pitchCoverage("Dinner is on us.", "Dinner is on us, always."), 1);
+});
+
+test("validateCopy reports each pitch sentence that was not kept, on the intro; kept in the intro or the paragraphs after it, it passes", () => {
+  const f = buildFacts(file(), rating, "en");
+  const answers = { pitch: PITCH };
+  assert.deepEqual(validateCopy(withPitch(), f, answers), []);
+  // the pitch may run on into why_ship and who_for
+  assert.deepEqual(validateCopy(withPitch({ intro: "Four nights out of Miami with the people you already like.", why_ship: "Sunset on the beach, then a light show.", who_for: "Reply or scan the code and we will hold you a cabin." }), f, answers), []);
+  const p = validateCopy(withPitch({ intro: "Four nights out of Miami with the people you already like. A sunset, a show." }), f, answers);
+  assert.deepEqual(p.map((x) => [x.field, x.problem]), [
+    ["intro", "Pitch sentence not kept: 'Sunset on the beach, then a light show.'"],
+    ["intro", "Pitch sentence not kept: 'Reply or scan the code and we will hold you a cabin.'"],
+  ]);
+  // a sentence sitting only in the email or the post does not count as the page carrying the pitch
+  assert.equal(validateCopy(withPitch({ intro: "Hello there.", email_body: PITCH, social_post: PITCH }), f, answers).length, 3);
+  // no pitch given (copy written before the rule): nothing to check
+  assert.deepEqual(validateCopy(withPitch({ intro: "Hello there." }), f, {}), []);
+});
+
+test("the Spanish copy is a translation of Mark's English pitch, so it is not matched by sentence", () => {
+  const es = buildFacts(file(), rating, "es");
+  assert.deepEqual(validateCopy({ ...goodCopy(), intro: "Cuatro noches desde Miami con la gente que ya quiere." }, es, { pitch: PITCH }), []);
+});
+
+test("Mark's pitch is fact-checked: a number the group file does not have is reported on the pitch, once; his other answers can vouch for it", () => {
+  const f = buildFacts(file(), rating, "en");
+  const answers = { pitch: "Seven nights out of Miami. Bus leaves the Post at 6. Bring 40 friends. Bus is at 6 sharp." };
+  const bad = pitchNumberProblems(answers, f);
+  assert.deepEqual(bad.map((x) => [x.field, x.problem]), [
+    ["pitch", "Mark's pitch states a number that is not in the group file: 6"],
+    ["pitch", "Mark's pitch states a number that is not in the group file: 40"],
+  ]);
+  assert.deepEqual(pitchNumberProblems({ ...answers, extras: "Bus leaves the Post at 6 and we are 40 strong" }, f), []);
+  assert.deepEqual(pitchNumberProblems({ pitch: "Seven nights, from $849 per person. Call 919-346-6127." }, f), [], "nights, a quoted price and the phone are all in the file");
+  assert.deepEqual(pitchNumberProblems({}, f), []);
+  // validateCopy reports it once, on 'pitch', and does not also blame the copy for repeating Mark's own number
+  const p = validateCopy(withPitch({ intro: "Bus leaves the Post at 6." }), f, { pitch: "Bus leaves the Post at 6." });
+  assert.deepEqual(p.map((x) => x.field), ["pitch"]);
+});
+
+test("exclamation marks, 'Join Mark' and amenity points fail every field, in both languages", () => {
+  const en = buildFacts(file(), rating, "en");
+  for (const [field, text, want] of [
+    ["headline", "Sunset. Light show. Sunrise!", /exclamation/],
+    ["cta_blurb", "Scan the QR to join the fun!", /exclamation/],
+    ["subhead", "Join Mark on the Celebration", /Join Mark/],
+    ["why_ship", "We have 3 amenity points to spend.", /amenity points/],
+    ["who_for", "One amenity point goes to the group.", /amenity points/],
+  ] as const) {
+    const p = validateCopy({ ...goodCopy(), [field]: text }, en);
+    assert.ok(p.some((x) => x.field === field && want.test(x.problem)), `${field}: ${text} -> ${JSON.stringify(p)}`);
+  }
+  const es = buildFacts(file(), rating, "es");
+  for (const text of ["¡Zarpamos en marzo!", "Únase a Mark en el barco", "Tenemos 3 puntos de beneficios", "Join Mark"]) {
+    assert.ok(validateCopy({ ...goodCopy(), intro: text }, es).some((x) => x.field === "intro"), text);
+  }
+  // Mark as the contact is fine
+  assert.deepEqual(validateCopy({ ...goodCopy(), cta_blurb: "Scan the QR to join the fun, or call Mark at 919-346-6127." }, en), []);
+});
+
+test("both prompts carry the approved house voice verbatim, the exact call to action and the pitch rules", () => {
+  const sys = systemPrompt("en");
+  for (const rule of HOUSE_VOICE_RULES) assert.ok(sys.includes(rule), rule);
+  assert.match(sys, /"Sunset\. Light show\. Sunrise\. Same beach\. Same cruise\."/);
+  assert.match(sys, /"Four nights of camaraderie and relaxation\. Shoes optional\."/);
+  assert.match(sys, /The only hard decision all week is when to sleep\./);
+  assert.match(sys, /"Scan the QR to join the fun" \(exact words\), then the link, then the phone 919-346-6127/);
+  assert.match(sys, /Never "Join Mark" as the hook/);
+  assert.match(sys, /never "amenity points"/);
+  assert.match(sys, /every sentence of it into the intro, word for word, in his order, and cut nothing/);
+  assert.match(sys, /closing exclamation mark becoming a full stop/);
+  assert.match(systemPrompt("es"), /sentence for sentence/, "Spanish is a faithful translation of the pitch");
+  assert.doesNotMatch(systemPrompt("es"), /every sentence of it into the intro, word for word/);
+  assert.ok(pitchRules("email 1", "x").some((r) => r.includes("email 1")));
+});
+
+test("the writer is shown Mark's pitch sentence by sentence, with the picture, the occasion line and the reference; empty fields say so", () => {
+  const f = buildFacts(file(), rating, "en");
+  const p = userPrompt(f, normalizeAnswers({ pitch: PITCH, picture: "Sunset from the beach chairs", occasion_line: "Post 12 reunion", reference: "the MSC poster", audience: "a", occasion: "b", why_sailing: "c" }));
+  assert.match(p, /1\. Four nights out of Miami with the people you already like\.\n2\. Sunset on the beach, then a light show\.\n3\. Reply or scan the code/);
+  assert.match(p, /The picture the reader should see: Sunset from the beach chairs/);
+  assert.match(p, /The occasion, in the group's own words: Post 12 reunion/);
+  assert.match(p, /A piece Mark likes \(taste only\): the MSC poster/);
+  const bare = userPrompt(f, normalizeAnswers({ audience: "a", occasion: "b", why_sailing: "c" }));
+  assert.match(bare, /Mark's pitch: \(not given\)/);
 });

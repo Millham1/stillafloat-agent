@@ -9,7 +9,7 @@ import { notifyMark } from "../lib/notify";
 import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
-  COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, missingAnswers, newShareCode, normalizeAnswers, retryNote,
+  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, missingAnswers, newShareCode, normalizeAnswers, pitchGate, pitchNumberProblems, retryNote,
   shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
@@ -136,6 +136,11 @@ router.get("/groups/:id/marketing", requireToken, async (req: Request, res: Resp
 
 router.put("/groups/:id/marketing/answers", requireToken, async (req: Request, res: Response) => {
   try {
+    // The pitch is kept word for word, so it is never cut to fit: too long is refused, not trimmed.
+    const rawPitch = (req.body as Row | undefined)?.["pitch"];
+    if (typeof rawPitch === "string" && rawPitch.trim().length > ANSWER_MAX) {
+      return res.status(400).json({ success: false, error: `Mark's pitch is ${rawPitch.trim().length} characters; the most that can be kept word for word is ${ANSWER_MAX}. Shorten it — nothing is cut silently.` });
+    }
     const answers = normalizeAnswers(req.body);
     const { data, error } = await db().from("groups")
       .update({ marketing: answers, updated_at: new Date().toISOString() })
@@ -157,11 +162,16 @@ router.post("/groups/:id/marketing/write", requireToken, async (req: Request, re
     const lang: Lang = (req.body as Row)?.["lang"] === "es" ? "es" : "en";
     if (!langsFor(group).includes(lang)) return res.status(400).json({ success: false, error: "This group is not set to that language" });
     const answers = normalizeAnswers(group.marketing);
+    const gate = pitchGate(answers);
+    if (gate) return res.status(400).json({ success: false, error: gate });
     const missing = missingAnswers(answers);
-    if (missing.length) return res.status(400).json({ success: false, error: "Answer the first three interview questions before writing the copy" });
+    if (missing.length) return res.status(400).json({ success: false, error: "Answer the questions marked required in the interview before writing the copy" });
     if (!group.ship_name || !group.sail_date) return res.status(400).json({ success: false, error: "The group file needs a ship and a sail date first" });
 
     const facts = buildFacts({ group, cabins, travel }, rating, lang);
+    // The pitch is fact-checked before any paid call: a number in it that the file does not have is Mark's to fix.
+    const badPitch = pitchNumberProblems(answers, facts);
+    if (badPitch.length) return res.status(400).json({ success: false, error: `${badPitch.map((p) => p.problem).join(". ")}. Fix the pitch or the group file first.`, problems: badPitch });
     const base = { job: "groups.marketing" as const, system: systemPrompt(lang), schema: COPY_SCHEMA, maxTokens: 2500, timeoutMs: 180_000 };
     let copy = tidyCopy(await llmJson<Row>({ ...base, user: userPrompt(facts, answers) }));
     let problems = validateCopy(copy, facts, answers);
@@ -506,8 +516,12 @@ router.post("/groups/:id/marketing/campaign/write", requireToken, async (req: Re
     const { group, cabins, travel, rating } = loaded;
     const lang = langsFor(group)[0]!;
     const answers = normalizeAnswers(group.marketing);
-    if (missingAnswers(answers).length) return res.status(400).json({ success: false, error: "Answer the first three interview questions first" });
+    const gate = pitchGate(answers);
+    if (gate) return res.status(400).json({ success: false, error: gate });
+    if (missingAnswers(answers).length) return res.status(400).json({ success: false, error: "Answer the questions marked required in the interview first" });
     const facts = buildFacts({ group, cabins, travel }, rating, lang);
+    const badPitch = pitchNumberProblems(answers, facts);
+    if (badPitch.length) return res.status(400).json({ success: false, error: `${badPitch.map((p) => p.problem).join(". ")}. Fix the pitch or the group file first.`, problems: badPitch });
     const url = `${publicSite()}/group.html?g=${await shareCodeFor(group)}`;
     const base = { job: "groups.marketing" as const, system: campaignSystemPrompt(lang), schema: CAMPAIGN_SCHEMA, maxTokens: 4000, timeoutMs: 180_000 };
     let campaign = tidyCampaign(await llmJson<Row>({ ...base, user: campaignUserPrompt(facts, answers, url) }));
