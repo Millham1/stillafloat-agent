@@ -9,6 +9,7 @@ import { parseBriefHours, dueBriefHour, slotKey } from "./lib/brief-schedule";
 import { runStormScan } from "./lib/storm-agent";
 import { scanAndQueue } from "./lib/social-agent";
 import { draftNewsletter, saveDraft, loadDraft, startNewsletterSend, resumeNewsletterDeliveries, deliveryOpen, confirmedSubscriberCount } from "./lib/newsletter";
+import { issueHasStories, EMPTY_ISSUE_MESSAGE } from "./lib/newsletter-freshness";
 import { notifyMark, reviewUrl } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
 import { setSeaRouteLogger } from "./lib/sea-route";
@@ -490,6 +491,17 @@ function scheduleWeeklyMarketing() {
           for (const lang of ["en", "es"] as const) {
             const draft = await loadDraft(lang);
             const freshEnough = draft && Date.now() - Date.parse(draft.generatedAt) < 8 * 86_400_000;
+            if (draft && draft.status === "pending" && freshEnough && !issueHasStories(draft)) {
+              // 2026-10-15: both drafts had zero stories; this would have mailed them anyway.
+              logger.warn({ subject: draft.subject, lang }, "Weekly newsletter NOT auto-sent: the issue has no stories");
+              void notifyMark({
+                title: `📨 Newsletter NOT sent (${lang.toUpperCase()}): no stories in this week's issue`,
+                body: EMPTY_ISSUE_MESSAGE,
+                url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
+                tag: "newsletter-review",
+              });
+              continue;
+            }
             if (draft && draft.status === "pending" && freshEnough) {
               // Paced + bounce-checked in the background; the delivery worker pushes Mark the
               // TRUE delivered count (the old "sent/total" here counted bounced mail as sent).

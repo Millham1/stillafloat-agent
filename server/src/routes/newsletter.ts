@@ -10,6 +10,7 @@ import {
   gatherApprovedStories,
   type NewsletterDraft,
 } from "../lib/newsletter";
+import { issueHasStories, EMPTY_ISSUE_MESSAGE } from "../lib/newsletter-freshness";
 import { deliveryCounts } from "../lib/newsletter-delivery";
 import type { Lang } from "../lib/social-agent";
 import { notifyMark, reviewUrl } from "../lib/notify";
@@ -171,6 +172,10 @@ router.post("/newsletter/send", requireToken, async (req: Request, res: Response
     }
     if (draft.status !== "pending") {
       res.status(409).json({ success: false, error: draft.status === "sending" ? "This issue is already going out." : "This issue was already sent — generate a new one first." });
+      return;
+    }
+    if (!issueHasStories(draft)) {
+      res.status(409).json({ success: false, error: EMPTY_ISSUE_MESSAGE });
       return;
     }
     // Returns at once: the emails go out one every 45s in the background, then a push reports

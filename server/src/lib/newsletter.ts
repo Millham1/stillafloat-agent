@@ -13,6 +13,7 @@ import {
 import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
 import { buildUtm, fetchChannelVideos, type Lang } from "./social-agent";
 import { storySlug } from "./prerender-news";
+import { selectFreshStories, issueHasStories, EMPTY_ISSUE_MESSAGE } from "./newsletter-freshness";
 import { unsubscribeUrl } from "../routes/subscribe";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,16 +153,15 @@ function utm(base: string, content: string): string {
 // Only offer stories fresh enough to still be news at send time (Mark,
 // 2026-08-29: "it's useless to send a storm story if the storm has already
 // dissipated" — the pool held 119 approved stories, 3 of them under 48h).
-// A story with no parseable timestamp is treated as stale, never grandfathered.
+// The moment that counts is the LATER of written and approved (2026-10-15: the
+// week's stories were written 49 h before the draft but approved 33 h before it;
+// publishedAt-only left both editions with zero stories). Rules + tests live in
+// lib/newsletter-freshness.ts.
 const STORY_MAX_AGE_HOURS = Number(process.env["NEWSLETTER_STORY_MAX_AGE_HOURS"] ?? "48");
 
 async function gatherApprovedStories(lang: Lang = "en"): Promise<Story[]> {
   const data = await readJson<{ stories?: Record<string, unknown>[] }>(PATHS.approved, { stories: [] });
-  const cutoff = Date.now() - STORY_MAX_AGE_HOURS * 3_600_000;
-  return (data.stories ?? []).filter((s) => {
-    const ts = Date.parse(String(s["publishedAt"] ?? s["approvedAt"] ?? ""));
-    return Number.isFinite(ts) && ts >= cutoff;
-  }).map((s) => ({
+  return selectFreshStories(data.stories ?? [], Date.now(), STORY_MAX_AGE_HOURS).map((s) => ({
     id: String(s.id ?? ""),
     // ES uses the Spanish cliffnote/title when present, else falls back to EN.
     title: String((lang === "es" && s["title_es"]) || s.title || ""),
@@ -821,6 +821,9 @@ export async function startNewsletterSend(
   const lang: Lang = draft.lang ?? "en";
   if (draft.status === "sending") throw new Error("This issue is going out right now.");
   if (draft.status === "sent") throw new Error("This issue was already sent — generate a new one first.");
+  // 2026-10-15: both drafts were saved with no stories and nothing stood between them and the
+  // Friday auto-send. An empty issue never leaves here, whichever path asked.
+  if (!issueHasStories(draft)) throw new Error(EMPTY_ISSUE_MESSAGE);
   const supabase = getSupabase();
   const { data: subscribers, error } = await supabase
     .from("subscribers")
