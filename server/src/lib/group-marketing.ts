@@ -28,13 +28,21 @@ export interface InterviewQuestion {
   type: "text" | "long" | "yesno" | "choice";
   choices?: Array<{ value: string; label: string }>;
   fallback?: string | boolean;
+  /** The copy is not written until this is answered (the dashboard marks it and the write routes refuse without it). */
+  required?: boolean;
 }
 
 /** What the contract cannot tell us. Short on purpose — Mark fills this in once per group. */
 export const INTERVIEW: InterviewQuestion[] = [
-  { key: "audience", type: "text", label: "Who is this group?", hint: "For example: members of the Post and their families, or Abuela's children, grandchildren and close friends." },
-  { key: "occasion", type: "text", label: "What is the occasion?", hint: "A reunion, a milestone birthday, an annual trip. One line." },
-  { key: "why_sailing", type: "long", label: "Why this ship and this sailing?", hint: "Your honest reasons, in your own words. This is the heart of the page." },
+  // Mark 2026-10-11: no group creative is drafted without HIS pitch, his picture and a piece he likes. The copy is
+  // built around the pitch word for word (validateCopy / validateCampaign check every sentence is still there).
+  { key: "pitch", type: "long", required: true, label: "Your pitch, as you would say it to them", hint: "What the trip is, who it is for, why come, what they get, what to do next. Your words — the copy is built around them and nothing is cut." },
+  { key: "picture", type: "long", label: "What should the reader see?", hint: "The moment, not the ship. One or two sentences." },
+  { key: "occasion_line", type: "text", label: "The occasion, in the group's own words", hint: "One line. We add the wink." },
+  { key: "reference", type: "text", label: "A piece you like", hint: "A link or a name, so the piece matches your taste." },
+  { key: "audience", type: "text", required: true, label: "Who is this group?", hint: "For example: members of the Post and their families, or Abuela's children, grandchildren and close friends." },
+  { key: "occasion", type: "text", required: true, label: "What is the occasion?", hint: "A reunion, a milestone birthday, an annual trip. One line." },
+  { key: "why_sailing", type: "long", required: true, label: "Why this ship and this sailing?", hint: "Your honest reasons, in your own words. This is the heart of the page." },
   { key: "who_fits", type: "long", label: "Who is this trip right for, and who should think twice?", hint: "Mobility, budget, first-timers, kids. The honest version builds trust." },
   { key: "organizer_quote", type: "long", label: "A line from the organizer (optional)", hint: "Their words, as they said them. Leave blank if you have none." },
   { key: "extras", type: "long", label: "Anything else planned around the cruise? (optional)", hint: "A group dinner, a bus to the port, a hotel the night before." },
@@ -48,6 +56,9 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "show_rating", type: "yesno", label: "Show the ship's Conga Line score and note?", fallback: true },
 ];
 
+/** The longest answer kept. The pitch is never cut to fit: the answers route refuses a longer one. */
+export const ANSWER_MAX = 2000;
+
 export function normalizeAnswers(raw: unknown): Record<string, string | boolean> {
   const src = (raw && typeof raw === "object" ? raw : {}) as Row;
   const out: Record<string, string | boolean> = {};
@@ -55,14 +66,22 @@ export function normalizeAnswers(raw: unknown): Record<string, string | boolean>
     const v = src[q.key];
     if (q.type === "yesno") out[q.key] = typeof v === "boolean" ? v : (q.fallback as boolean) ?? false;
     else if (q.type === "choice") out[q.key] = q.choices!.some((c) => c.value === v) ? (v as string) : ((q.fallback as string) ?? q.choices![0]!.value);
-    else out[q.key] = typeof v === "string" ? v.trim().slice(0, 2000) : "";
+    else out[q.key] = typeof v === "string" ? v.trim().slice(0, ANSWER_MAX) : "";
   }
   return out;
 }
 
-/** The interview is ready to write from once the three core answers exist. */
+/** The interview is ready to write from once every required answer exists (the pitch first). */
 export function missingAnswers(answers: Record<string, string | boolean>): string[] {
-  return ["audience", "occasion", "why_sailing"].filter((k) => !answers[k]);
+  return INTERVIEW.filter((q) => q.required && !answers[q.key]).map((q) => q.key);
+}
+
+/** What the write routes say when Mark's pitch is empty: nothing is drafted without it. */
+export const PITCH_FIRST = "Write Mark's pitch first (interview question 1) — the copy is built around it.";
+
+/** null when the pitch exists; otherwise the plain message the write routes refuse with. */
+export function pitchGate(answers: Record<string, string | boolean>): string | null {
+  return typeof answers["pitch"] === "string" && answers["pitch"].trim() ? null : PITCH_FIRST;
 }
 
 // ── Names ─────────────────────────────────────────────────────────────────────
@@ -393,6 +412,88 @@ export const COPY_SCHEMA: Record<string, unknown> = {
   required: COPY_FIELDS.map((f) => f.key),
 };
 
+// ── Mark's pitch ──────────────────────────────────────────────────────────────
+// The copy is built around the pitch Mark wrote, sentence for sentence. These helpers are how the validators
+// prove it: every sentence of the pitch must appear in the copy word for word (case, spacing and the full stop
+// or exclamation mark at the end may differ, nothing else).
+
+const ABBREVIATION = /\b(?:Mr|Mrs|Ms|Dr|St|Mt|Ft|Sr|Jr|vs|Inc|U\.S|a\.m|p\.m)\.$/i;
+
+/** The pitch as its sentences, as Mark wrote them (trimmed). Line breaks end a sentence too. */
+export function pitchSentences(pitch: string | null | undefined): string[] {
+  const out: string[] = [];
+  for (const line of String(pitch ?? "").split(/\n+/)) {
+    let buf = "";
+    for (const piece of line.split(/(?<=[.!?…]["')\]”’]*)\s+/).map((x) => x.trim()).filter(Boolean)) {
+      buf = buf ? `${buf} ${piece}` : piece;
+      if (!ABBREVIATION.test(buf)) { out.push(buf); buf = ""; }
+    }
+    if (buf) out.push(buf);
+  }
+  return out;
+}
+
+/** Straight quotes, one space between words, lower case. */
+function squash(s: string): string {
+  return s.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, " ").trim().toLowerCase();
+}
+/** A sentence as it is looked for: squashed, with whatever closes it (. ! ? … quotes, brackets) dropped. */
+function needle(sentence: string): string {
+  return squash(sentence).replace(/[\s.!?…"')\]]+$/, "");
+}
+
+/** `needle` is in `hay` as whole words: "us" is not found inside "usher". */
+function hasPhrase(hay: string, n: string): boolean {
+  const isWord = (ch: string | undefined) => ch !== undefined && /[\p{L}\p{N}]/u.test(ch);
+  for (let at = hay.indexOf(n); at !== -1; at = hay.indexOf(n, at + 1)) {
+    if (!isWord(hay[at - 1]) && !isWord(hay[at + n.length])) return true;
+  }
+  return false;
+}
+
+/** The pitch sentences that are NOT in the text word for word, as Mark wrote them. */
+export function missingPitchSentences(pitch: string | null | undefined, text: string | null | undefined): string[] {
+  const hay = squash(String(text ?? ""));
+  return pitchSentences(pitch).filter((sent) => { const n = needle(sent); return n !== "" && !hasPhrase(hay, n); });
+}
+
+/** The fraction (0 to 1) of the pitch's sentences found word for word in the text. No pitch = 1. */
+export function pitchCoverage(pitch: string | null | undefined, text: string | null | undefined): number {
+  const all = pitchSentences(pitch).filter((sent) => needle(sent) !== "");
+  if (!all.length) return 1;
+  return (all.length - missingPitchSentences(pitch, text).length) / all.length;
+}
+
+/** The answers' text apart from the pitch: the numbers in it are Mark's to state without a second source. */
+function otherAnswersText(answers: Record<string, string | boolean>): string {
+  return Object.entries(answers).filter(([k, v]) => k !== "pitch" && typeof v === "string").map(([, v]) => v).join(" ");
+}
+
+/**
+ * Mark's pitch is fact-checked like everything else: a number in it must be in the group file (or in another
+ * of his answers, or in `extra`). The copy may repeat the pitch's numbers because they are reported here.
+ */
+export function pitchNumberProblems(answers: Record<string, string | boolean>, facts: GroupFacts, extra: readonly string[] = []): CopyProblem[] {
+  const pitch = typeof answers["pitch"] === "string" ? answers["pitch"] : "";
+  const known = new Set([...facts.allowedNumbers, ...numbersIn(otherAnswersText(answers)), ...extra]);
+  return [...new Set(numbersIn(pitch))].filter((n) => !known.has(n))
+    .map((n) => ({ field: "pitch", problem: `Mark's pitch states a number that is not in the group file: ${n}` }));
+}
+
+/** Marketing rules Mark has set that hold in every piece and every language (2026-10-11 / 2026-10-12). */
+export const HOUSE_BANNED: Record<Lang, Array<{ re: RegExp; problem: string }>> = {
+  en: [
+    { re: /!/, problem: "has an exclamation mark" },
+    { re: /\bjoin mark\b/i, problem: 'uses "Join Mark" (Mark is the contact, never the hook)' },
+    { re: /\bamenity points?\b/i, problem: "mentions amenity points (show what the fare includes)" },
+  ],
+  es: [
+    { re: /!/, problem: "has an exclamation mark" },
+    { re: /(?<!\p{L})(?:join mark|[uú]nase a mark|[uú]nete a mark|sum[aá]te a mark|s[uú]mese a mark)(?!\p{L})/iu, problem: 'uses "Join Mark" (Mark is the contact, never the hook)' },
+    { re: /\b(?:amenity points?|puntos? de (?:beneficios|amenidades))\b/i, problem: "mentions amenity points (show what the fare includes)" },
+  ],
+};
+
 // Never hype, never promise (brand voice + liability posture). Checked per language.
 const BANNED: Record<Lang, RegExp[]> = {
   en: [
@@ -410,11 +511,15 @@ const BANNED: Record<Lang, RegExp[]> = {
 
 export interface CopyProblem { field: string; problem: string }
 
+/** The part of the page copy that carries the pitch: the intro, then the paragraphs after it. */
+const PITCH_FIELDS: Array<keyof GroupCopy> = ["intro", "why_ship", "who_for"];
+
 /** Everything wrong with a piece of copy. Empty array = fit to show Mark. */
 export function validateCopy(copy: unknown, facts: GroupFacts, answers: Record<string, string | boolean> = {}): CopyProblem[] {
   const problems: CopyProblem[] = [];
   const c = (copy && typeof copy === "object" ? copy : {}) as Row;
-  // Numbers Mark himself wrote in the interview are his to state.
+  const pitch = typeof answers["pitch"] === "string" ? answers["pitch"].trim() : "";
+  // Numbers Mark himself wrote in the interview are his to state; the pitch's own numbers are checked by pitchNumberProblems.
   const allowed = new Set([...facts.allowedNumbers, ...numbersIn(Object.values(answers).filter((v) => typeof v === "string").join(" "))]);
   for (const f of COPY_FIELDS) {
     const v = c[f.key];
@@ -428,10 +533,20 @@ export function validateCopy(copy: unknown, facts: GroupFacts, answers: Record<s
       const m = v.match(re);
       if (m) problems.push({ field: f.key, problem: `uses "${m[0]}"` });
     }
+    for (const h of HOUSE_BANNED[facts.lang]) if (h.re.test(v)) problems.push({ field: f.key, problem: h.problem });
     for (const n of numbersIn(v)) {
       if (!allowed.has(n)) problems.push({ field: f.key, problem: `states a number that is not in the group file: ${n}` });
     }
     if (/[<>]/.test(v)) problems.push({ field: f.key, problem: "contains markup" });
+  }
+  // Built around the pitch: every sentence of it is in the opening copy, word for word. Mark writes in English,
+  // so only the English copy can be checked sentence by sentence; the Spanish copy is told to translate it whole.
+  if (pitch) {
+    if (facts.lang === "en") {
+      const body = PITCH_FIELDS.map((k) => (typeof c[k] === "string" ? (c[k] as string) : "")).join("\n");
+      for (const sent of missingPitchSentences(pitch, body)) problems.push({ field: "intro", problem: `Pitch sentence not kept: '${sent}'` });
+    }
+    problems.push(...pitchNumberProblems(answers, facts));
   }
   return problems;
 }
@@ -454,6 +569,35 @@ const TONE: Record<string, string> = {
   formal: "Respectful and formal, suited to an organization writing to its members. No jokes.",
 };
 
+/**
+ * The approved house voice for every group piece (Mark 2026-10-12, from the approved poster). Shared by the page
+ * copy and the campaign so the two cannot drift apart. The examples show the SHAPE; they are another group's moment.
+ */
+export const HOUSE_VOICE_RULES: string[] = [
+  '- Hook = the experience in 4–6 words, full stops, no exclamation marks. Example: "Sunset. Light show. Sunrise. Same beach. Same cruise."',
+  '- One sentence that walks the reader through the moment, ending on a dry beat. Example: "Watch a Caribbean sunset, dance under a lighthouse light show, then walk that same beach at sunrise. The only hard decision all week is when to sleep."',
+  '- One line for the occasion in the group\'s own words, plus a wink. Example: "Four nights of camaraderie and relaxation. Shoes optional."',
+  '- Never "Join Mark" as the hook. Mark appears as the contact only, never in first person. No hype words, no superlatives, no emojis, no exclamation marks.',
+  '- Perks shown = what the fare includes, from the quote (drinks package, Wi-Fi, overnight at Ocean Cay...), never "amenity points".',
+  `- Primary CTA in every piece: "Scan the QR to join the fun" (exact words), then the link, then the phone ${BUSINESS.phone}.`,
+  "- The examples above show the shape only. Never copy their words or details into another group's piece; use this group's own picture and facts.",
+];
+
+/** How a piece is built around Mark's pitch. `where` names the place that must carry it. */
+export function pitchRules(where: string, spill: string, lang: Lang = "en"): string[] {
+  return [
+    lang === "es"
+      ? `- Mark's pitch (in <advisor_interview>, written in English) is the spine and it is MARK'S, not yours: carry every sentence of it into ${where} in natural Latin American Spanish, sentence for sentence, in his order. Translate faithfully: cut nothing, add nothing, merge nothing, keep every number exactly. ${spill}`
+      : `- Mark's pitch (in <advisor_interview>) is the spine and it is MARK'S, not yours: put every sentence of it into ${where}, word for word, in his order, and cut nothing. ${spill}`,
+    lang === "es"
+      ? "- Do not tighten, 'improve', brand-voice or reorder the pitch, even where it says 'I'. Add no number of your own."
+      : "- Do not paraphrase, tighten, translate into 'brand voice' or reorder the pitch, even where it says 'I'. The only change allowed is a closing exclamation mark becoming a full stop. Add no number of your own.",
+    "- The 'picture' answer is what the reader should SEE (the moment, never the ship): it steers the imagery and scene words you write around the pitch.",
+    "- The 'occasion line' answer, in the group's own words, is the first half of the wink line; you add the dry wink.",
+    "- A 'piece Mark likes' is a taste reference only. You cannot open it: never guess what is in it and never copy it.",
+  ];
+}
+
 export function systemPrompt(lang: Lang): string {
   return [
     `You write the public invitation for a group cruise, in the voice of ${BUSINESS.tradeName}: a seasoned cruiser and trusted friend who tells the truth about cruising. Tagline: "Cruise smarter, laugh more."`,
@@ -466,14 +610,18 @@ export function systemPrompt(lang: Lang): string {
     "- Use only the facts given. Do not state any number, date, price, port, perk, deadline or ship feature that is not in the facts block. Prices, dates and the itinerary are shown on the page by the system; when you mention one it must match the facts exactly.",
     "- Perks are the guest's own: what the fare includes (the 'Included for every guest' facts). Never mention amenity points or anything the organizer receives.",
     "- Say that cabin upgrades are available (balcony and up, by request) in a natural line in the intro or who_for; it is a fact of every group.",
-    "- The call to action is the QR code / the info sheet link: readers scan the QR or open the link to see everything and say they are in — 'scan the QR to join the fun' or a close variant appears in the cta_blurb, the email and the social post. The phone number is second, for people who would rather call or text.",
+    "- The call to action is the QR code / the info sheet link: readers scan the QR or open the link to see everything and say they are in. The exact words 'Scan the QR to join the fun' appear in the cta_blurb, the email_body and the social_post, followed by the link, then the phone number for people who would rather call or text.",
     "- No hype and no sales pressure: no superlatives, no urgency, nothing called amazing, ultimate, unforgettable, luxury or paradise. Be specific instead.",
     "- Never promise or guarantee anything about prices, availability, weather, ports or the experience. Say what is planned and what is included.",
     "- Never say \"cheaper\"; say \"less expensive\". Never use the word \"actually\". No brochure words: boasts, offers, features, delivers.",
     "- Do not speak against the cruise line or any other line.",
-    "- The interview answers are the spine: keep the reasons and the honest caveats; tighten, do not embellish. Rewrite any first-person line from the advisor into the brand's voice.",
+    "- Apart from the pitch, the other interview answers feed the copy: keep the reasons and the honest caveats; tighten, do not embellish. Rewrite any first-person line from the advisor in those answers into the brand's voice (never in the pitch).",
     "- organizer_note: only the organizer's own line, lightly tidied, or null when none was given. Never invent a quote.",
-    "- Plain text only. No markdown, no emoji, no hashtags, no exclamation marks in the headline.",
+    "- Plain text only. No markdown, no emoji, no hashtags, no exclamation marks anywhere.",
+    "House voice (every piece), then how this page is laid out:",
+    ...HOUSE_VOICE_RULES,
+    ...pitchRules("the intro", "If the pitch is too long for the intro, continue it in why_ship and then who_for, still in his order.", lang),
+    "- Layout: headline = the hook. subhead = the walk-through sentence ending on a dry beat. intro = Mark's pitch, verbatim. cta_blurb = the occasion line plus its wink, then 'Scan the QR to join the fun'.",
     `- email_body: two or three short paragraphs separated by blank lines, ending with "${BUSINESS.tradeName}" on its own line. It may refer to "the link below" for details; do not write a web address.`,
   ].join("\n");
 }
@@ -504,6 +652,13 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
   }
   lines.push("</facts>");
   lines.push("<advisor_interview>");
+  const pitchLines = pitchSentences(typeof answers["pitch"] === "string" ? answers["pitch"] : "");
+  lines.push(pitchLines.length
+    ? `Mark's pitch — his words, every sentence kept word for word:\n${pitchLines.map((x, i) => `${i + 1}. ${x}`).join("\n")}`
+    : "Mark's pitch: (not given)");
+  lines.push(`The picture the reader should see: ${answers["picture"] || "(not given)"}`);
+  lines.push(`The occasion, in the group's own words: ${answers["occasion_line"] || "(not given)"}`);
+  lines.push(`A piece Mark likes (taste only): ${answers["reference"] || "(none)"}`);
   lines.push(`Who the group is: ${answers["audience"] || "(not given)"}`);
   lines.push(`Occasion: ${answers["occasion"] || "(not given)"}`);
   lines.push(`Why this ship and sailing: ${answers["why_sailing"] || "(not given)"}`);

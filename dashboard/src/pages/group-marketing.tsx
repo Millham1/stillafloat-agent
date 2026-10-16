@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 // from the group file, so the words can never contradict the booking.
 
 type Row = Record<string, any>;
-type Question = { key: string; label: string; hint?: string; type: "text" | "long" | "yesno" | "choice"; choices?: Array<{ value: string; label: string }> };
+type Question = { key: string; label: string; hint?: string; type: "text" | "long" | "yesno" | "choice"; required?: boolean; choices?: Array<{ value: string; label: string }> };
 type Field = { key: string; label: string; max: number; long?: boolean; optional?: boolean };
 type Problem = { field: string; problem: string };
 type Asset = { id: string; subject: string; title: string | null; license: string | null; share_alike: boolean; attribution: string | null; public_url: string; width: number | null; height: number | null };
@@ -37,6 +37,8 @@ async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> 
 }
 
 const LANG_NAME = { en: "English", es: "Spanish" } as const;
+/** Same words the server refuses with (PITCH_FIRST in server/src/lib/group-marketing.ts): nothing is written without Mark's pitch. */
+const PITCH_FIRST = "Write Mark's pitch first (interview question 1) — the copy is built around it.";
 const input = "mt-1 w-full px-3 py-2 text-base rounded-md border bg-card text-foreground";
 
 /** The public site's address. The dashboard calls the API on the main site, so its origin is the page origin. */
@@ -128,6 +130,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
   const facts = data.perLang[lang]?.facts ?? {};
   const fieldProblems = (k: string) => problems.filter((p) => p.field === k);
   const live = !!data.approvedAt;
+  const pitchWritten = (answers["pitch"] ?? "").toString().trim() !== "";
 
   return (
     <Card>
@@ -146,7 +149,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
           <div className="grid md:grid-cols-2 gap-4">
             {data.interview.map((q) => (
               <label key={q.key} className={`text-sm ${q.type === "long" ? "md:col-span-2" : ""}`}>
-                <span className="font-medium">{q.label}</span>{data.missing.includes(q.key) && !answers[q.key] && <span className="text-amber-600"> · needed</span>}
+                <span className="font-medium">{q.label}</span>{q.required && (answers[q.key] ?? "").toString().trim() === "" ? <span className="text-amber-600"> · required, needed</span> : q.required ? <span className="text-muted-foreground"> · required</span> : null}
                 {q.hint && <span className="block text-muted-foreground text-xs mt-0.5">{q.hint}</span>}
                 {q.type === "text" && <input className={input} value={answers[q.key] ?? ""} onChange={(e) => setAnswers({ ...answers, [q.key]: e.target.value })} />}
                 {q.type === "long" && <textarea className={input} rows={3} value={answers[q.key] ?? ""} onChange={(e) => setAnswers({ ...answers, [q.key]: e.target.value })} />}
@@ -183,11 +186,12 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
             Every number is checked against the file, and hype words are refused. Writing uses the AI box; Claude is only the backup.
           </p>
           <div className="flex gap-2 flex-wrap mb-4">
-            <button onClick={write} disabled={!!busy} className="flex items-center gap-1.5 text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50">
+            <button onClick={write} disabled={!!busy || !pitchWritten} title={pitchWritten ? "" : PITCH_FIRST} className="flex items-center gap-1.5 text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50">
               {busy === "write" && <Loader2 className="w-4 h-4 animate-spin" />}
               {data.perLang[lang]?.copy ? `Rewrite the ${LANG_NAME[lang]} copy` : `Write the ${LANG_NAME[lang]} copy`}
             </button>
             {busy === "write" && <span className="text-sm text-muted-foreground self-center">This takes a minute or two.</span>}
+            {!pitchWritten && <span className="text-sm text-amber-600 self-center">{PITCH_FIRST}</span>}
           </div>
 
           {Object.keys(draft).length > 0 && (
@@ -335,7 +339,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
                 <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
                   <div className="text-sm font-medium flex items-center gap-2"><Mail className="w-4 h-4" /> Email campaign and <Facebook className="w-4 h-4" /> Facebook posts</div>
                   <div className="flex gap-2">
-                    <button className="px-3 py-1.5 rounded-md border text-sm" onClick={writeCampaign} disabled={!!busy || data.missing.length > 0}>{busy === "Writing the campaign" ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} {pkg.campaign ? "Rewrite" : "Write the campaign"}</button>
+                    <button className="px-3 py-1.5 rounded-md border text-sm" onClick={writeCampaign} disabled={!!busy || data.missing.length > 0} title={data.missing.includes("pitch") ? PITCH_FIRST : ""}>{busy === "Writing the campaign" ? <Loader2 className="w-4 h-4 animate-spin inline" /> : null} {pkg.campaign ? "Rewrite" : "Write the campaign"}</button>
                     {campaignDraft && <button className="px-3 py-1.5 rounded-md border text-sm" onClick={() => saveCampaign()} disabled={!!busy}>Save edits</button>}
                     {campaignDraft && <button className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm" onClick={() => saveCampaign(true)} disabled={!!busy || pkg.campaignProblems.length > 0}>Approve</button>}
                   </div>
