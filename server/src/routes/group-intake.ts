@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
-import { CHILDREN, GROUP_COLUMNS, missingSchedule, pickWritable, slugify } from "../lib/group-file";
+import { CHILDREN, GROUP_COLUMNS, missingSchedule, pickWritable, publicGroupRow, slugify } from "../lib/group-file";
 import {
   MAX_PDF_BYTES, cabinRowsFromExtraction, travelRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
   type BookingExtraction, type ReaderProvider,
@@ -255,7 +255,7 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
     if (de) throw new Error(`group_documents: ${de.message}`);
 
     await setStatus(id, { status: "accepted", group_id: group.id });
-    return res.status(201).json({ success: true, group, cabins: cabinRows.length, payments: schedule.length, travel: travel.length });
+    return res.status(201).json({ success: true, group: publicGroupRow(group), cabins: cabinRows.length, payments: schedule.length, travel: travel.length });
   } catch (err) {
     return fail(req, res, err, "booking intake accept failed");
   }

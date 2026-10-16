@@ -33,6 +33,7 @@ import aiVisibilityRouter from "./ai-visibility";
 import groupsRouter from "./groups";
 import groupIntakeRouter from "./group-intake";
 import groupMarketingRouter from "./group-marketing";
+import groupFormsRouter from "./group-forms";
 
 const router: IRouter = Router();
 
@@ -69,6 +70,7 @@ router.use(congaLineRouter);
 router.use(aiVisibilityRouter);
 router.use(groupIntakeRouter);
 router.use(groupMarketingRouter);
+router.use(groupFormsRouter); // before groupsRouter: its /groups/:id/:child routes would otherwise answer first
 router.use(groupsRouter);
 
 export default router;

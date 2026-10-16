@@ -11,18 +11,32 @@ export const GROUP_COLUMNS = [
   "embark_port", "itinerary", "group_number", "cabins_held", "amenities", "inclusions",
   "deposit_per_person", "deposit_due", "names_due", "final_payment_due",
   "recall_date", "lang", "notes",
+  // Mark's own entry, {} by default: a fee appears on a client's documents only when he enters one here (Mark 2026-10-03).
+  "fees",
 ] as const;
 
 type ChildSpec = { table: string; columns: readonly string[]; select: string; order: string };
 
 // Travelers: the API never selects passport_enc, form_token_hash or
-// consent_ip_hash, and never accepts passport/consent fields from the dashboard —
-// those are written only by the traveler's own signed-link form.
+// consent_ip_hash, and never accepts passport/consent/form_data fields from the dashboard —
+// those are written only by the traveler's own signed-link form. form_data (address, second
+// emergency contact, optional medical notes) and the newsletter box ARE read back so Mark can
+// use what the traveler told him; they are never writable here.
 const TRAVELER_READ =
   "id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, dob, gender, citizenship, " +
   "email, phone, lang, loyalty_number, passport_last4, passport_country, passport_expiry, " +
   "emergency_name, emergency_phone, special_needs, form_sent_at, form_submitted_at, " +
-  "consent_name, consent_signed_at, notes, created_at, updated_at";
+  "consent_name, consent_signed_at, form_data, newsletter_opt_in, notes, created_at, updated_at";
+
+/** Columns of a group row that no API response may carry (the organizer's link is a secret). */
+export const GROUP_SECRET_COLUMNS = ["organizer_token_hash"] as const;
+
+/** A group row without its secrets. */
+export function publicGroupRow<T extends Record<string, any>>(row: T): T {
+  const out: Record<string, any> = { ...row };
+  for (const k of GROUP_SECRET_COLUMNS) delete out[k];
+  return out as T;
+}
 
 export const CHILDREN: Record<string, ChildSpec> = {
   cabins: {
