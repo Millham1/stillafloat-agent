@@ -415,6 +415,8 @@ const BOOKING_12: DocSpec = {
   signerRole: "lead",
   sigStart: /^\*\*Primary Guest:\*\*$/,
   cancellationHeading: /^CRUISE LINE CANCELLATION POLICY$/,
+  // TODO(group-signing): the pre/post-cruise hotel, air and transfer boxes and the scope-of-services boxes print as the
+  // template has them (unticked): the group's own air / hotel / transfer offer is not wired into this document yet.
   rules: [
     { after: "Date:", today: true },
     ...CLIENT_LINES("Primary Guest (Full Legal Name as on Passport/ID):**"),
@@ -511,6 +513,9 @@ const CONTRACT_09: DocSpec = {
   // rendered; recording Mark's countersignature on this contract is a later dashboard step
   // (group_signatures signer_role = 'agent', same doc_key and content hash).
   agentCountersign: true,
+  // TODO(group-signing): "Full Group Cancellation" below is Cornerstone's own typical table for the ORGANIZER cancelling
+  // the whole trip (percent of group total). Mark's ruling replaces the typical cruise-line tables in 04 and 12 with the
+  // line's own schedule; this one is left as the template prints it until Mark / Cornerstone say whether it should follow.
   sigStart: /^\*\*Group Organizer:\*\*$/,
   feeLines: [/retainer fee/i, /substitution processing fee/i],
   rules: [

@@ -29,6 +29,10 @@ import {
 //   GET    /api/forms/:token                               the packet: documents, their inputs, what is signed
 //   POST   /api/forms/:token/sign                          { doc_key, answers, signer_name, agreed, content_sha256, newsletter_opt_in, website }
 //
+// Environment: GROUP_PII_KEY (64 hex characters; without it no passport number is taken), PUBLIC_URL (the site the
+// emailed link points at), and on the DEV box GROUP_FORMS_MAIL_ALLOW = a comma list of test addresses or "@domain"
+// suffixes the send route may email (unset = any address on a traveler's row, which is how prod runs).
+//
 // The rules live in lib/group-forms.ts (unit-tested with its I/O injected); this file only wires them to
 // Supabase, the mailer and the notifier, and holds the per-address limits.
 //
