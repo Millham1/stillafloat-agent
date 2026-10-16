@@ -477,6 +477,13 @@ function blocksToHtml(blocks: Block[], env: Env): string {
   }).join("\n");
 }
 
+/** Markdown (as the connector wrote it, or already clean) → the page html. Tokens like {{in:name}} become the
+ * inputs of the fields named in `fields`; a plain ____ stays a printed blank. */
+export function markdownToHtml(md: string, opts: { fields?: FieldSpec[]; now?: Date } = {}): string {
+  const env: Env = { fields: new Map((opts.fields ?? []).map((f) => [f.name, f])), ctx: { now: opts.now ?? new Date() } as DocCtx };
+  return blocksToHtml(parseBlocks(separateGluedHeadings(unescapeConnectorMarkdown(md))), env);
+}
+
 const TOKEN_NAMES = /\{\{(?:in|ta|ck|ch):([a-z0-9_]+)/g;
 
 function tokenFields(blocks: Block[], spec: DocSpec): FieldSpec[] {

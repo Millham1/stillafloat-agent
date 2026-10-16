@@ -135,6 +135,8 @@ const PAGES = [
   // /es/group.html); a bilingual group shows its own language link (#gp-lang) built from the group's languages.
   { path: "/group.html", lang: "en", kind: "template", h1: { client: "the group's name is written into the <h1> from the ?g= code" }, navbarSwitch: "home" },
   { path: "/es/group.html", lang: "es", kind: "template", h1: { client: "the group's name is written into the <h1> from the ?g= code" } },
+  // client paperwork — NEW IN THIS RELEASE: a traveler's private link (?t=), English only until Cornerstone has Spanish templates.
+  { path: "/forms.html", lang: "en", kind: "utility", noTwin: "a private paperwork page opened from a link emailed to one traveler; English only until Cornerstone has Spanish templates (the page's strings are structured for an es twin)" },
 ];
 const BY_PATH = new Map(PAGES.map((p) => [p.path, p]));
 
@@ -164,6 +166,7 @@ const APIS = {
   "/commentary.html": ["/api/commentary"],
   "/commentary-post.html": ["/api/commentary"],
   "/group.html": ["/api/group-page/"],
+  "/forms.html": ["/api/forms/"],
   "/translate-loading.html": ["/api/translate-article"],
 };
 const apisFor = (p) => APIS[p.lang === "es" ? p.path.replace(/^\/es(\/.*)$/, "$1") : p.path] || [];
@@ -593,7 +596,8 @@ const CRAWL_BASIS = {
   "cabins": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
   "commentary-and-stories": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
   "policies-and-owner": "ruling: stillafloat-es-first-class.md — privacy and terms ship in both languages; Mark's own review pages and placeholders stay out of search; Search Console's ownership file stays in place",
-  "group-cruise": "ruling: stillafloat-group-bookings.md — a group cruise page is shared by private link and must never be indexed (noindex), in English and Spanish, with its scripts and links working"
+  "group-cruise": "ruling: stillafloat-group-bookings.md — a group cruise page is shared by private link and must never be indexed (noindex), in English and Spanish, with its scripts and links working",
+  "paperwork": "ruling: stillafloat-group-bookings.md — Mark 2026-10-03: a traveler signs on their own private link, so the paperwork page must never be indexed and must open with its scripts, stylesheets and pictures working"
 };
 
 const crawlCheck = (id, label, title, paths, extra = {}) => ({
@@ -641,6 +645,10 @@ export default [
   crawlCheck("group-cruise", "the group cruise pages",
     "The group cruise page opens in English and Spanish and stays out of search results (it is shared by private link)",
     ["/group.html", "/es/group.html"]),
+  // New in the release that adds client paperwork (server/public/forms.html): prod has no such page until the promotion.
+  crawlCheck("paperwork", "the client paperwork page",
+    "The private paperwork page opens with its pictures and scripts working, calls its own address for the documents, and stays out of search results",
+    ["/forms.html"]),
 
   {
     id: "pages.sitemap",

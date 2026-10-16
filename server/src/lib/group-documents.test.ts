@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DOC_SPECS, TEMPLATE_VERSION_DATE, applyAnswers, blocksToText, buildCtx, fillBlocks, getPath, packetFor, parseBlocks,
+  DOC_SPECS, TEMPLATE_VERSION_DATE, applyAnswers, blocksToText, buildCtx, fillBlocks, getPath, markdownToHtml, packetFor, parseBlocks,
   prefillValue, publicField, renderDocument, separateGluedHeadings, unescapeConnectorMarkdown,
 } from "./group-documents";
 import { BUSINESS } from "./group-secure";
@@ -60,6 +60,19 @@ test("the markdown dialect parses to blocks: headings, rules, lists that the con
   assert.deepEqual(blocks[4], { t: "ul", items: ["a", "b"] });
   assert.deepEqual(blocks[5], { t: "ol", items: ["x", "y"] });
   assert.deepEqual(blocks[6], { t: "table", header: ["Name", "Rel"], rows: [["", ""], ["", ""]] });
+});
+
+test("markdown becomes html: headings, bold, italic, lists, tables, boxes, printed blanks, and inputs only where a field is named", () => {
+  const html = markdownToHtml("## 1\\. TERMS\n\n**Name:** {{in:name}} and *more* ☐ Yes ____\n\n  - one <b>\n\n|  |  |\n| :-: | :-: |\n| A | B |\n| x | y |", {
+    fields: [{ name: "name", label: "Your name", kind: "text" }],
+  });
+  assert.ok(html.includes('<h3 class="doc-h">1. TERMS</h3>'), html);
+  assert.ok(html.includes("<strong>Name:</strong>") && html.includes("<em>more</em>"));
+  assert.ok(html.includes('<input class="doc-in" type="text" name="name" data-field="name"') && html.includes('aria-label="Your name"'));
+  assert.ok(html.includes('<span class="box">☐</span>') && html.includes('<span class="blank"></span>'));
+  assert.ok(html.includes("<li>one &lt;b&gt;</li>"), "text is escaped");
+  assert.ok(html.includes("<th>A</th><th>B</th>") && html.includes("<td>x</td><td>y</td>"));
+  assert.ok(!markdownToHtml("Name: ____").includes("<input"), "a blank no field names is only printed");
 });
 
 // ── every template renders, and carries Mark's rulings ────────────────────────

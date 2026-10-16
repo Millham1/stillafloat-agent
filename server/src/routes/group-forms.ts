@@ -253,7 +253,7 @@ router.post("/groups/:id/travelers/:tid/form-link/send", requireToken, async (re
       group_id: groupId, cabin_id: t.cabin_id ?? null, traveler_id: t.id, audience: "client", template: "paperwork-link",
       to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? new Date().toISOString() : null, error: ok ? null : "mail sender refused or was unreachable",
     });
-    logger.info({ group: groupId, traveler: t.id, sent: ok }, "paperwork link emailed to the traveler's own address on the file");
+    logger.info({ group: groupId, traveler: t.id, sent: ok }, "paperwork link email to the traveler's own address on the file (sent=false means the mail sender refused it)");
     if (!ok) {
       await store.updateTraveler(t.id, { form_token_hash: t.form_token_hash ?? null, form_sent_at: t.form_sent_at ?? null });
       return res.status(502).json({ success: false, error: "The email did not go out, and the traveler's earlier link still works. Try again, or make a link and send it yourself." });
