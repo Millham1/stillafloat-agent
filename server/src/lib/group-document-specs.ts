@@ -1,0 +1,668 @@
+// group-document-specs.ts — the data behind each Cornerstone template: which blank is which fact,
+// which blanks and ☐ boxes become the traveler's inputs, where each answer is kept, and the
+// structural edits (tables built from the group file, the sections Mark's rulings change).
+// The engine is group-documents.ts. Every rule's `after` text is matched against the template, in
+// document order, and group-documents.test.ts renders every document so a template that drifts from
+// its spec fails the build instead of printing a wrong page.
+//
+// WHO SIGNS WHAT (Mark 2026-10-03, from the templates):
+//   every traveler        15 traveler information, 01 terms, 05 waiver, 07 insurance choice, 16 passport checklist
+//   the cabin's lead      + 12 cruise booking agreement (lists the cabin's other travelers; passport LAST 4 only)
+//   the group organizer   09 group travel contract (the agent's countersignature is a later dashboard step)
+//   only with fees on file 02 travel planning agreement, 03 service fee agreement
+//   in no packet          04 cancellation policy, 06 card authorization (clients pay the line directly),
+//                         13 and 14 questionnaires
+//
+// The language is English only in v1; templates are keyed by document, and docSource() prefers
+// "<key>.es" when Cornerstone sends Spanish versions.
+
+import {
+  amountText, bookingReference, cabinTotal, cleanValue, depositPerPerson, destinationText, fee, finalPaymentDays,
+  fmtLong, fmtMoney, fullName, mapTable, perPersonPrice, TEMPLATE_VERSION_DATE,
+  type Answers, type Block, type DocCtx, type DocSpec, type FieldSpec, type Option, type Row,
+} from "./group-document-kit";
+
+// ── small lookups ─────────────────────────────────────────────────────────────
+
+const formText = (ctx: DocCtx, path: string): string => {
+  let node: unknown = ctx.traveler?.form_data;
+  for (const p of path.split(".")) node = node && typeof node === "object" ? (node as Row)[p] : undefined;
+  return typeof node === "string" ? cleanValue(node) : "";
+};
+
+/** The name as the traveler wrote it on form 15, else the name on the file. */
+const legalName = (ctx: DocCtx): string => formText(ctx, "legal_name") || fullName(ctx.traveler);
+
+const dobText = (ctx: DocCtx) => fmtLong(ctx.traveler?.dob);
+const mateNames = (ctx: DocCtx) => ctx.mates.map(fullName).filter(Boolean);
+
+function nights(group: Row): number | null {
+  const n = Number(group.nights);
+  if (Number.isInteger(n) && n > 0) return n;
+  const a = Date.parse(`${String(group.sail_date ?? "").slice(0, 10)}T00:00:00Z`);
+  const b = Date.parse(`${String(group.return_date ?? "").slice(0, 10)}T00:00:00Z`);
+  return Number.isFinite(a) && Number.isFinite(b) && b > a ? Math.round((b - a) / 86_400_000) : null;
+}
+
+const opt = (value: string, label: string, match?: string): Option => ({ value, label, ...(match ? { match } : {}) });
+const YES_NO = [opt("yes", "Yes"), opt("no", "No")];
+
+const text = (name: string, label: string, extra: Partial<FieldSpec> = {}): FieldSpec => ({ name, label, kind: "text", ...extra });
+
+/** The common top lines of the client-information blocks (05, 12): name, birth date, address, phone, email. */
+const CLIENT_LINES = (nameAnchor: string) => [
+  { after: nameAnchor, fill: legalName, label: "Full legal name" },
+  { after: "Date of Birth:", fill: dobText, label: "Date of birth" },
+  { after: "Address:", fill: (c: DocCtx) => formText(c, "address"), label: "Address" },
+  { after: "City, State, ZIP:", fill: (c: DocCtx) => formText(c, "city_state_zip"), label: "City, state, ZIP" },
+  { after: "Phone:", fill: (c: DocCtx) => cleanValue(c.traveler?.phone), label: "Phone" },
+  { after: "Email:", fill: (c: DocCtx) => cleanValue(c.traveler?.email), label: "Email" },
+];
+
+const TRIP_LINES = [
+  { after: "Destination(s):", fill: (c: DocCtx) => destinationText(c.group), label: "Destination" },
+  { after: "Travel Dates:** From", fill: (c: DocCtx) => fmtLong(c.group.sail_date), label: "Sail date" },
+  { after: " To ", fill: (c: DocCtx) => fmtLong(c.group.return_date), label: "Return date" },
+];
+
+/** Rewrite a table whose rows are empty (the Google tables arrive with blank rows to fill by hand). */
+const withRows = (headerFirstCell: string, rows: (ctx: DocCtx) => string[][]) =>
+  (blocks: Block[], ctx: DocCtx): Block[] =>
+    mapTable(blocks, (t) => t.header[0] === headerFirstCell, (t) => [{ ...t, rows: rows(ctx) }]);
+
+// ── 15 — emergency contact and traveler information ───────────────────────────
+
+const GENDER = [opt("male", "Male"), opt("female", "Female"), opt("nonbinary", "Non-binary / Other"), opt("na", "Prefer not to say")];
+const NONE_YES = (none = "None") => [opt("none", none), opt("yes", "Yes", "Yes")];
+const PROGRAMS = [opt("none", "No", "No"), opt("tsa", "TSA PreCheck"), opt("global", "Global Entry"), opt("nexus", "NEXUS"), opt("clear", "CLEAR")];
+
+const contactFields = (n: 1 | 2): FieldSpec[] => {
+  const k = n === 1 ? "primary" : "secondary";
+  const p = `ec${n}_`;
+  return [
+    text(`${p}name`, `${n === 1 ? "Primary" : "Secondary"} emergency contact: full name`, { required: true, form: `emergency.${k}.name`, ...(n === 1 ? { col: "emergency_name" } : {}) }),
+    text(`${p}relationship`, "Relationship to you", { required: true, form: `emergency.${k}.relationship` }),
+    { name: `${p}home_phone`, label: "Home phone", kind: "tel", form: `emergency.${k}.home_phone` },
+    { name: `${p}cell_phone`, label: "Cell phone", kind: "tel", form: `emergency.${k}.cell_phone` },
+    { name: `${p}work_phone`, label: "Work phone", kind: "tel", form: `emergency.${k}.work_phone` },
+    { name: `${p}email`, label: "Email", kind: "email", form: `emergency.${k}.email` },
+    text(`${p}address`, "Address", { form: `emergency.${k}.address` }),
+    text(`${p}city_state_zip`, "City, state, ZIP", { form: `emergency.${k}.city_state_zip` }),
+    ...(n === 1 ? [{ name: "ec1_poa", label: "Has your power of attorney", kind: "choice" as const, options: YES_NO, form: "emergency.primary.poa" }] : []),
+  ];
+};
+
+const contactRules = (n: 1 | 2) => {
+  const p = `ec${n}_`;
+  return [
+    { after: "**Full Name:**", slot: `${p}name` },
+    { after: "**Relationship to Traveler:**", slot: `${p}relationship` },
+    { after: "**Home Phone:**", slot: `${p}home_phone` },
+    { after: "**Cell Phone:**", slot: `${p}cell_phone` },
+    { after: "**Work Phone:**", slot: `${p}work_phone` },
+    { after: "**Email Address:**", slot: `${p}email` },
+    { after: "**Address:**", slot: `${p}address` },
+    { after: "**City, State, ZIP:**", slot: `${p}city_state_zip` },
+    ...(n === 1 ? [{ after: "Does this person have your power of attorney", choice: "ec1_poa" }] : []),
+  ];
+};
+
+const noneYes = (name: string, label: string, form: string, textName: string, noneLabel = "None") => ([
+  { name, label, kind: "choice" as const, options: NONE_YES(noneLabel), form: `${form}.choice` },
+  text(textName, `${label} — details`, { form: `${form}.details` }),
+] as FieldSpec[]);
+
+const LOYALTY = [1, 2, 3].flatMap((i) => [
+  text(`loyalty_${i}_program`, `Loyalty program ${i}`, { form: `loyalty.${i}.program` }),
+  text(`loyalty_${i}_number`, `Membership number ${i}`, { form: `loyalty.${i}.number` }),
+]);
+const RX = [1, 2, 3].flatMap((i) => [
+  text(`rx_${i}_name`, `Medication ${i}`, { form: `prescriptions.${i}.name` }),
+  text(`rx_${i}_dose`, `Dosage ${i}`, { form: `prescriptions.${i}.dosage` }),
+  text(`rx_${i}_condition`, `Condition treated ${i}`, { form: `prescriptions.${i}.condition` }),
+  text(`rx_${i}_physician`, `Prescribing physician ${i}`, { form: `prescriptions.${i}.physician` }),
+]);
+
+const phones = (a: Answers, p: string) => ["home_phone", "cell_phone", "work_phone"].some((k) => typeof a[`${p}${k}`] === "string");
+
+// Rules run in document order (the cursor in applyRules moves forward only), so this list reads top to bottom like the form.
+const RULES_15: DocSpec["rules"] = [
+  { after: "Date Completed:", today: true },
+  { after: "**Full Legal Name:**", slot: "legal_name" },
+  { after: "**Date of Birth:**", slot: "dob" },
+  { after: "**Gender:**", choice: "gender" },
+  { after: "**U.S. Citizen?**", choice: "us_citizen" },
+  { after: "Citizenship:", slot: "citizenship" },
+  { after: "**Home Address:**", slot: "address" },
+  { after: "**City, State, ZIP:**", slot: "city_state_zip" },
+  { after: "**Personal Cell Phone:**", slot: "phone" },
+  { after: "**Email Address:**", slot: "email" },
+  { after: "**Passport Number:**", slot: "passport_number" },
+  { after: "**Country of Issue:**", slot: "passport_country" },
+  { after: "**Issue Date:**", slot: "passport_issue" },
+  { after: "**Expiration Date:**", slot: "passport_expiry" },
+  { after: "**Place of Issue (City):**", slot: "passport_place" },
+  { after: "Do you have Global Entry / TSA PreCheck?", choice: "trusted_programs" },
+  { after: "(KTN):", slot: "ktn" },
+  { after: "Membership Number:", slot: "global_entry_number" },
+  ...contactRules(1),
+  ...contactRules(2),
+  { after: "**Blood Type:**", slot: "blood_type" },
+  { after: "**Known Allergies", choice: "allergies" },
+  { after: "Yes:", slot: "allergies_text" },
+  { after: "**Current Medications", choice: "medications" },
+  { after: "Yes:", slot: "medications_text" },
+  { after: "**Medical Conditions or Diagnoses", choice: "conditions" },
+  { after: "Yes:", slot: "conditions_text" },
+  { after: "**Mobility Limitations", choice: "mobility" },
+  { after: "Yes:", slot: "mobility_text" },
+  { after: "**Do you require any medical equipment", choice: "equipment" },
+  { after: "Please describe:", slot: "equipment_text" },
+  { after: "**Do you have a Do Not Resuscitate", choice: "dnr" },
+  { after: "Location of document:", slot: "dnr_text" },
+  { after: "**Primary Health Insurance Provider:**", slot: "hi_provider" },
+  { after: "**Policy Number:**", slot: "hi_policy" },
+  { after: "**Group Number:**", slot: "hi_group" },
+  { after: "**Customer Service Phone:**", slot: "hi_phone" },
+  { after: "**Does your health insurance cover international", choice: "hi_international" },
+  { after: "**Travel Insurance Provider:**", slot: "ti_provider" },
+  { after: "**Policy Number:**", slot: "ti_policy" },
+  { after: "**Coverage Dates:** From", slot: "ti_from" },
+  { after: " To ", slot: "ti_to" },
+  { after: "**24/7 Emergency Assistance Phone (from your policy):**", slot: "ti_phone" },
+  { after: "**Do you carry an EpiPen?**", choice: "epipen" },
+  { after: "**Do you carry a medical alert card", choice: "medical_alert" },
+  { after: "(Different from general preferences — list only medically relevant restrictions)*", choice: "dietary" },
+  { after: "Yes:", slot: "dietary_text" },
+];
+
+const FIELDS_15: FieldSpec[] = [
+  text("legal_name", "Full legal name (as on your passport or ID)", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined }),
+  { name: "dob", label: "Date of birth", kind: "date", required: true, date: "dob", col: "dob" },
+  { name: "gender", label: "Gender", kind: "choice", required: true, options: GENDER, col: "gender" },
+  { name: "us_citizen", label: "U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen" },
+  text("citizenship", "Citizenship", { required: (a) => a["us_citizen"] === "no", col: "citizenship" }),
+  text("address", "Home address", { required: true, form: "address" }),
+  text("city_state_zip", "City, state, ZIP", { required: true, form: "city_state_zip" }),
+  { name: "phone", label: "Personal cell phone", kind: "tel", required: true, col: "phone" },
+  { name: "email", label: "Email address", kind: "email", required: true, col: "email" },
+  // The passport is optional (a closed-loop cruise may not need one); if a number is given, its country and expiry are required.
+  { name: "passport_number", label: "Passport number", kind: "passport" },
+  text("passport_country", "Passport country of issue", { required: (a) => typeof a["passport_number"] === "string", col: "passport_country" }),
+  { name: "passport_issue", label: "Passport issue date", kind: "date", date: "past", form: "passport.issue_date" },
+  { name: "passport_expiry", label: "Passport expiration date", kind: "date", date: "future", required: (a) => typeof a["passport_number"] === "string", col: "passport_expiry" },
+  text("passport_place", "Passport place of issue (city)", { form: "passport.place_of_issue" }),
+  { name: "trusted_programs", label: "Global Entry / TSA PreCheck", kind: "multi", options: PROGRAMS, form: "trusted.programs" },
+  text("ktn", "Known Traveler Number (KTN)", { form: "trusted.ktn" }),
+  text("global_entry_number", "Global Entry membership number", { form: "trusted.global_entry_number" }),
+  ...LOYALTY,
+  ...contactFields(1),
+  ...contactFields(2),
+  text("blood_type", "Blood type", { maxLength: 12, form: "medical.blood_type" }),
+  ...noneYes("allergies", "Known allergies", "medical.allergies", "allergies_text", "None known"),
+  ...noneYes("medications", "Current medications", "medical.medications", "medications_text"),
+  ...noneYes("conditions", "Medical conditions relevant to travel", "medical.conditions", "conditions_text"),
+  ...noneYes("mobility", "Mobility limitations or accessibility needs", "medical.mobility", "mobility_text"),
+  { name: "equipment", label: "Medical equipment while traveling", kind: "choice", options: [opt("no", "No"), opt("yes", "Yes")], form: "medical.equipment.choice" },
+  text("equipment_text", "Medical equipment — description", { form: "medical.equipment.details" }),
+  { name: "dnr", label: "DNR order or medical directive", kind: "choice", options: [opt("no", "No"), opt("yes", "Yes")], form: "medical.dnr.choice" },
+  text("dnr_text", "Where the document is kept", { form: "medical.dnr.details" }),
+  text("hi_provider", "Health insurance provider", { form: "health_insurance.provider" }),
+  text("hi_policy", "Health insurance policy number", { form: "health_insurance.policy" }),
+  text("hi_group", "Health insurance group number", { form: "health_insurance.group" }),
+  { name: "hi_phone", label: "Health insurance customer service phone", kind: "tel", form: "health_insurance.phone" },
+  { name: "hi_international", label: "Covers international medical care", kind: "choice", options: [opt("yes", "Yes"), opt("no", "No"), opt("unknown", "Unknown"), opt("na", "N/A (domestic travel only)", "N/A")], form: "health_insurance.international" },
+  text("ti_provider", "Travel insurance provider", { form: "travel_insurance.provider" }),
+  text("ti_policy", "Travel insurance policy number", { form: "travel_insurance.policy" }),
+  { name: "ti_from", label: "Travel insurance coverage from", kind: "date", form: "travel_insurance.from" },
+  { name: "ti_to", label: "Travel insurance coverage to", kind: "date", form: "travel_insurance.to" },
+  { name: "ti_phone", label: "24/7 emergency assistance phone", kind: "tel", form: "travel_insurance.phone" },
+  ...RX,
+  { name: "epipen", label: "Carries an EpiPen", kind: "choice", options: YES_NO, form: "medical.epipen" },
+  { name: "medical_alert", label: "Medical alert card or bracelet", kind: "choice", options: YES_NO, form: "medical.alert" },
+  ...noneYes("dietary", "Medically relevant dietary restrictions", "medical.dietary", "dietary_text"),
+  { name: "notes", label: "Anything else your agent or emergency contacts should know", kind: "textarea", form: "notes" },
+];
+
+const EDITS_15: NonNullable<DocSpec["edits"]> = [
+  withRows("Program", () => [1, 2, 3].map((i) => [`{{in:loyalty_${i}_program}}`, `{{in:loyalty_${i}_number}}`])),
+  withRows("Medication Name", () => [1, 2, 3].map((i) => [`{{in:rx_${i}_name}}`, `{{in:rx_${i}_dose}}`, `{{in:rx_${i}_condition}}`, `{{in:rx_${i}_physician}}`])),
+  // "ADDITIONAL NOTES" was four rules to write between: one box instead
+  (blocks) => {
+    const h = blocks.findIndex((b) => b.t === "h" && b.text === "ADDITIONAL NOTES");
+    if (h < 0) throw new Error("client document 15 no longer matches its spec: ADDITIONAL NOTES not found");
+    let j = h + 2; // heading, the italic prompt
+    while (blocks[j]?.t === "hr" && blocks[j + 1]?.t === "hr") j++;
+    return [...blocks.slice(0, h + 2), { t: "p", text: "{{ta:notes}}" }, ...blocks.slice(j)];
+  },
+];
+
+const VALIDATE_15: NonNullable<DocSpec["validate"]> = (a) => {
+  const errors: Record<string, string> = {};
+  if (!phones(a, "ec1_")) errors["ec1_cell_phone"] = "Please give at least one phone number for your primary emergency contact.";
+  if (!phones(a, "ec2_")) errors["ec2_cell_phone"] = "Please give at least one phone number for your second emergency contact.";
+  return errors;
+};
+
+const DERIVE_15: NonNullable<DocSpec["derive"]> = (a, ctx) => {
+  const patch: Row = {};
+  const phone = ["ec1_cell_phone", "ec1_home_phone", "ec1_work_phone"].map((k) => a[k]).find((v) => typeof v === "string");
+  if (phone) patch["emergency_phone"] = phone;
+  if (a["us_citizen"] === "yes" && typeof a["citizenship"] !== "string") patch["citizenship"] = "United States";
+  // The file's name columns are Mark's to edit: fill them from the form only when they are empty.
+  const t = ctx.traveler;
+  const legal = typeof a["legal_name"] === "string" ? a["legal_name"] : "";
+  if (legal && !t?.first_name && !t?.last_name) {
+    const parts = legal.split(/\s+/);
+    patch["first_name"] = parts[0];
+    if (parts.length > 1) patch["last_name"] = parts[parts.length - 1];
+    if (parts.length > 2) patch["middle_name"] = parts.slice(1, -1).join(" ");
+  }
+  if (!t?.special_needs) {
+    const bits: string[] = [];
+    const add = (label: string, choice: unknown, details: unknown) => { if (choice === "yes" && typeof details === "string") bits.push(`${label}: ${details}`); };
+    add("Mobility / accessibility", a["mobility"], a["mobility_text"]);
+    add("Medical equipment", a["equipment"], a["equipment_text"]);
+    add("Dietary", a["dietary"], a["dietary_text"]);
+    if (bits.length) patch["special_needs"] = bits.join("; ").slice(0, 500);
+  }
+  return patch;
+};
+
+const FORM_15: DocSpec = {
+  key: "15-emergency-contact-form",
+  title: "Traveler information and emergency contacts",
+  signerRole: "traveler",
+  sigStart: /^\*\*Traveler Signature:\*\*/,
+  rules: RULES_15,
+  fields: FIELDS_15,
+  edits: EDITS_15,
+  validate: VALIDATE_15,
+  derive: DERIVE_15,
+};
+
+// ── 01 — terms and conditions ─────────────────────────────────────────────────
+
+const TERMS_01: DocSpec = {
+  key: "01-terms-and-conditions",
+  title: "Terms and Conditions of Travel Services",
+  signerRole: "traveler",
+  sigStart: /^\*\*Client Signature:\*\*/,
+  feesAfter: /^\*\*3\.4 Service Fees\*\*/,
+  rules: [{ after: "Last Updated:", fill: () => fmtLong(TEMPLATE_VERSION_DATE), label: "Last updated" }],
+  fields: [],
+};
+
+// ── 04 — cancellation policy (in no packet; renders for the day it is switched on) ────
+
+const CANCELLATION_04: DocSpec = {
+  key: "04-cancellation-policy",
+  title: "Cancellation Policy",
+  signerRole: "traveler",
+  sigStart: /^\*\*Client Signature:\*\*/,
+  cancellationHeading: /^CRUISE LINES$/,
+  rules: [{ after: "Effective Date:", fill: () => fmtLong(TEMPLATE_VERSION_DATE), label: "Effective date" }],
+  fields: [],
+};
+
+// ── 05 — liability waiver ─────────────────────────────────────────────────────
+
+const WAIVER_05: DocSpec = {
+  key: "05-liability-waiver",
+  title: "Liability Waiver and Release",
+  signerRole: "traveler",
+  sigStart: /^\*\*Primary Traveler:\*\*$/,
+  rules: [
+    { after: "Date:", today: true },
+    ...CLIENT_LINES("**Full Name:**"),
+    ...TRIP_LINES,
+    { after: "Booking Reference Number:", fill: bookingReference, label: "Booking reference" },
+    { after: "Current Advisory Level:", choice: "advisory_level" },
+    { after: "I/We understand that purchasing comprehensive travel insurance", choice: "insurance_status" },
+    { after: "Policy Provider:", slot: "ins_provider" },
+    { after: "Policy Number:", slot: "ins_policy" },
+    { after: "HEALTH DECLARATION", choice: "health_ack" },
+  ],
+  fields: [
+    { name: "advisory_level", label: "Current travel advisory level", kind: "choice", options: [opt("1", "Level 1", "Level 1"), opt("2", "Level 2", "Level 2"), opt("3", "Level 3", "Level 3"), opt("4", "Level 4", "Level 4"), opt("unknown", "Unknown", "Unknown")] },
+    { name: "insurance_status", label: "Travel insurance", kind: "choice", options: [opt("have", "I have purchased travel insurance", "**I/We HAVE purchased"), opt("declined", "I have declined travel insurance", "**I/We have DECLINED")] },
+    text("ins_provider", "Insurance provider"),
+    text("ins_policy", "Policy number"),
+    { name: "health_ack", label: "I am aware of and accept the health-related risks", kind: "check", required: true },
+  ],
+  edits: [
+    // The traveler's cabin-mates, by name; the waiver does not need anyone else's birth date.
+    (blocks, ctx) => mapTable(blocks, (t) => t.header[0] === "Name" && t.header[1] === "Date of Birth", (t) => [{
+      ...t,
+      rows: mateNames(ctx).length ? mateNames(ctx).map((n) => [n, "—", "—"]) : [["No other travelers are listed on this cabin", "—", "—"]],
+    }]),
+  ],
+};
+
+// ── 07 — travel insurance: a quote, or a declination ──────────────────────────
+
+const INSURANCE_07: DocSpec = {
+  key: "07-travel-insurance-declination",
+  title: "Travel Insurance: Your Choice",
+  signerRole: "traveler",
+  sigStart: /^\*\*Primary Traveler:\*\*$/,
+  rules: [
+    { after: "Date:", today: true },
+    { after: "Primary Traveler Name:", fill: legalName, label: "Traveler name" },
+    { sub: "**Additional Traveler(s):**", with: (c) => `**Additional Traveler(s):** ${mateNames(c).join(", ") || "None on this cabin"}` },
+    ...TRIP_LINES,
+    { after: "**Total Trip Cost (approximate):**", fill: (c) => (cabinTotal(c) ? amountText(cabinTotal(c)!) : ""), label: "Trip cost" },
+    { after: "Booking Reference Number:", fill: bookingReference, label: "Booking reference" },
+    { after: "REASONS FOR DECLINATION", choice: "decline_reasons" },
+    { after: "Other:", slot: "decline_other" },
+  ],
+  fields: [
+    {
+      name: "insurance_choice", label: "Your travel insurance choice", kind: "choice", required: true, form: "insurance.choice",
+      options: [opt("quote", "Yes, please send me an Allianz travel insurance quote"), opt("decline", "No, I decline travel insurance for this trip")],
+    },
+    {
+      name: "decline_reasons", label: "Reasons for declining (optional)", kind: "multi", form: "insurance.reasons",
+      options: [
+        opt("existing", "I have existing coverage through another policy", "I have existing coverage"),
+        opt("not_concerned", "I am not concerned about the financial risks", "I am not concerned"),
+        opt("premium", "The insurance premium cost is a concern", "The insurance premium"),
+        opt("traveled", "I have traveled without insurance before", "I have traveled without"),
+        opt("refundable", "My trip is fully refundable", "My trip is fully refundable"),
+        opt("other", "Other", "Other:"),
+      ],
+    },
+    text("decline_other", "Other reason", { form: "insurance.other_reason" }),
+  ],
+  edits: [
+    // The choice goes first: the Declination Statement and Acknowledgment apply only to someone who declines.
+    (blocks) => {
+      const at = blocks.findIndex((b) => b.t === "h" && /^CLIENT AND TRIP INFORMATION/.test(b.text));
+      if (at < 0) throw new Error("client document 07 no longer matches its spec: CLIENT AND TRIP INFORMATION not found");
+      const choice: Block[] = [
+        { t: "h", level: 2, text: "YOUR CHOICE" },
+        { t: "p", text: "Please choose one before you sign. The Declination Statement, the reasons and the Acknowledgment further down apply only if you choose to decline." },
+        { t: "p", text: "{{ch:insurance_choice:quote}} **Yes.** Please send me an Allianz travel insurance quote for this trip. I am not declining insurance, and the Declination Statement below does not apply to me." },
+        { t: "p", text: "{{ch:insurance_choice:decline}} **No.** I decline travel insurance for this trip. The Declination Statement and the Acknowledgment below apply to me." },
+        { t: "hr" },
+      ];
+      return [...blocks.slice(0, at), ...choice, ...blocks.slice(at)];
+    },
+  ],
+};
+
+// ── 16 — passport and travel document checklist (read, then acknowledge) ──────
+
+const CHECKLIST_16: DocSpec = {
+  key: "16-passport-document-checklist",
+  title: "Passport and Travel Document Checklist",
+  signerRole: "traveler",
+  rules: [
+    { after: "Client Name:", fill: legalName, label: "Traveler name" },
+    { after: "Destination(s):", fill: (c) => destinationText(c.group), label: "Destination" },
+    { after: "Travel Dates:** From", fill: (c) => fmtLong(c.group.sail_date), label: "Sail date" },
+    { after: " To ", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
+    { after: "Date Checklist Completed:", today: true },
+  ],
+  fields: [],
+};
+
+// ── 12 — cruise booking agreement (the cabin's lead signs) ────────────────────
+
+const BOOKING_12: DocSpec = {
+  key: "12-cruise-booking-agreement",
+  title: "Cruise Booking Agreement",
+  signerRole: "lead",
+  sigStart: /^\*\*Primary Guest:\*\*$/,
+  cancellationHeading: /^CRUISE LINE CANCELLATION POLICY$/,
+  rules: [
+    { after: "Date:", today: true },
+    ...CLIENT_LINES("Primary Guest (Full Legal Name as on Passport/ID):**"),
+    { after: "Cruise Line:", fill: (c) => cleanValue(c.group.cruise_line), label: "Cruise line" },
+    { after: "Ship Name:", fill: (c) => cleanValue(c.group.ship_name), label: "Ship" },
+    { after: "Sailing Date:", fill: (c) => fmtLong(c.group.sail_date), label: "Sail date" },
+    { after: "Return Date:", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
+    { after: "Departure Port:", fill: (c) => cleanValue(c.group.embark_port), label: "Departure port" },
+    { after: "Itinerary / Destination(s):", fill: (c) => destinationText(c.group), label: "Itinerary" },
+    { after: "Cruise Line Booking Number:", fill: (c) => cleanValue(c.cabin?.booking_number) || cleanValue(c.group.group_number), label: "Booking number" },
+    { after: "Cabin Category:", fill: (c) => [c.cabin?.category, c.cabin?.category_code ? `(${c.cabin.category_code})` : ""].map(cleanValue).filter(Boolean).join(" "), label: "Cabin category" },
+    { after: "Cabin Number (if assigned):", fill: (c) => cleanValue(c.cabin?.cabin_num), label: "Cabin number" },
+    { after: "Number of Nights:", fill: (c) => (nights(c.group) ? String(nights(c.group)) : ""), label: "Nights" },
+    { after: "Dining Preference:", choice: "dining" },
+    { after: "Special Occasions:", choice: "occasions" },
+    { after: "Other:", slot: "occasion_other" },
+    { after: "Date of Occasion:", slot: "occasion_date" },
+    { after: "Special Needs / Accessibility Requirements:", area: "special_needs" },
+    { after: "Dietary Restrictions:", area: "dietary" },
+    { after: "Final payment is due no later than", fill: (c) => (finalPaymentDays(c.group) ? String(finalPaymentDays(c.group)) : ""), label: "Final payment days" },
+    {
+      sub: "The following are typical cruise line cancellation penalties.",
+      with: (c) => (c.group.terms?.cancellation_schedule?.length || c.group.cancellation_schedule?.length)
+        ? "The following is the cruise line's own cancellation schedule for this sailing."
+        : "The following are typical cruise line cancellation penalties.",
+    },
+    { after: "Agent Cancellation/Processing Fee:", fill: (c) => (fee(c, "cancellation_fee") ? amountText(fee(c, "cancellation_fee")!.amount) : ""), label: "Cancellation processing fee" },
+  ],
+  fields: [
+    { name: "dining", label: "Dining preference", kind: "choice", options: [opt("early", "Early Seating"), opt("late", "Late Seating"), opt("anytime", "Anytime Dining"), opt("none", "No Preference")], form: "cabin_preferences.dining" },
+    { name: "occasions", label: "Special occasions", kind: "multi", options: [opt("honeymoon", "Honeymoon"), opt("anniversary", "Anniversary"), opt("birthday", "Birthday"), opt("other", "Other", "Other:")], form: "cabin_preferences.occasions" },
+    text("occasion_other", "Other occasion", { form: "cabin_preferences.occasion_other" }),
+    { name: "occasion_date", label: "Date of the occasion", kind: "date", form: "cabin_preferences.occasion_date" },
+    { name: "special_needs", label: "Special needs and accessibility requirements", kind: "textarea", form: "cabin_preferences.special_needs" },
+    { name: "dietary", label: "Dietary restrictions", kind: "textarea", form: "cabin_preferences.dietary" },
+  ],
+  edits: [
+    // Additional guests: the cabin's other travelers from the file. Passport shows its LAST FOUR only, never the number.
+    (blocks, ctx) => mapTable(blocks, (t) => t.header[0].startsWith("Full Legal Name"), (t) => [{
+      ...t,
+      rows: ctx.mates.length
+        ? ctx.mates.map((m) => [
+          fullName(m) || "—",
+          fmtLong(m.dob) || "—",
+          m.passport_last4 ? `ending ${cleanValue(m.passport_last4)}` : "—",
+          fmtLong(m.passport_expiry) || "—",
+          "—",
+        ])
+        : [["No other guests are listed on this cabin", "—", "—", "—", "—"]],
+    }]),
+    // Estimated cost: only the amounts the quote on the file gives; a row with no known amount is left out.
+    (blocks, ctx) => mapTable(blocks, (t) => t.header[0] === "Component", (t) => {
+      const rows: string[][] = [];
+      const perPerson = perPersonPrice(ctx);
+      if (perPerson) rows.push(["Cruise Fare (per person, taxes and fees as quoted)", fmtMoney(perPerson)]);
+      const f = fee(ctx, "planning_fee") ?? fee(ctx, "service_fee");
+      if (f) rows.push(["Agent Planning / Service Fee", fmtMoney(f.amount)]);
+      const total = cabinTotal(ctx);
+      if (total) rows.push(["**Estimated Total (this cabin)**", `**${fmtMoney(total)}**`]);
+      if (!rows.length) return [{ t: "p", text: "*The amounts for this cabin are shown on your cruise line booking confirmation.*" }];
+      return [{ ...t, rows }];
+    }),
+    (blocks, ctx) => mapTable(blocks, (t) => t.header[0] === "Payment" && t.header[2] === "Due Date", (t) => {
+      const deposit = depositPerPerson(ctx);
+      const depositDue = fmtLong(ctx.group.deposit_due) || (ctx.group.terms?.deposit_timing === "at_booking" ? "At booking" : "—");
+      return [{
+        ...t,
+        rows: [
+          ["Cruise deposit (per person)", deposit ? fmtMoney(deposit) : "As shown on your quote", depositDue],
+          ["Final payment", "The balance, as invoiced by the cruise line", fmtLong(ctx.group.final_payment_due) || "—"],
+        ],
+      }];
+    }),
+    // The two onboard-credit lines print only what the file's own amenity list says.
+    (blocks, ctx) => {
+      const amenities: unknown[] = Array.isArray(ctx.group.amenities) ? ctx.group.amenities : [];
+      const credit = amenities.find((a): a is string => typeof a === "string" && /onboard credit|\bOBC\b/i.test(a));
+      const kept = blocks.filter((b) => !(b.t === "p" && /^(\*\*Confirmed Onboard Credit|\(OBC from:)/.test(b.text)));
+      if (!credit) return kept;
+      const at = kept.findIndex((b) => b.t === "h" && /ONBOARD CREDITS AND PERKS/.test(b.text));
+      const after = at < 0 ? kept.length : at + 2;
+      return [...kept.slice(0, after), { t: "p", text: `**Confirmed on this group's file:** ${cleanValue(credit)}` }, ...kept.slice(after)];
+    },
+  ],
+};
+
+// ── 09 — group travel contract (the organizer signs; the agent countersigns later) ────
+
+const CONTRACT_09: DocSpec = {
+  key: "09-group-travel-contract",
+  title: "Group Travel Contract",
+  signerRole: "organizer",
+  // TODO(group-signing): the agent's countersignature. The template's agent signature lines are not
+  // rendered; recording Mark's countersignature on this contract is a later dashboard step
+  // (group_signatures signer_role = 'agent', same doc_key and content hash).
+  agentCountersign: true,
+  sigStart: /^\*\*Group Organizer:\*\*$/,
+  feeLines: [/retainer fee/i, /substitution processing fee/i],
+  rules: [
+    { after: "Date:", today: true },
+    { after: "Name:", fill: (c) => cleanValue(c.group.organizer_name), label: "Organizer name" },
+    { after: "Organization / Group Name:", fill: (c) => cleanValue(c.group.name), label: "Group name" },
+    { after: "Address:", slot: "org_address" },
+    { after: "City, State, ZIP:", slot: "org_city_state_zip" },
+    { after: "Phone:", slot: "org_phone" },
+    { after: "Email:", slot: "org_email" },
+    { after: "Name:", slot: "sec_name" },
+    { after: "Phone:", slot: "sec_phone" },
+    { after: "Email:", slot: "sec_email" },
+    { after: "**Destination(s):**", fill: (c) => destinationText(c.group), label: "Destination" },
+    { after: "Departure:", fill: (c) => fmtLong(c.group.sail_date), label: "Sail date" },
+    { after: "Return:", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
+    { after: "**Trip Duration:**", fill: (c) => (nights(c.group) ? String(nights(c.group)) : ""), label: "Nights" },
+    { after: "nights / ", fill: (c) => (nights(c.group) ? String(nights(c.group)! + 1) : ""), label: "Days" },
+    { after: "**Group Type:**", choice: "group_type" },
+    { after: "Other:", slot: "group_type_other" },
+    { after: "**Minimum Group Size for This Contract:**", fill: () => "", label: "Minimum group size" },
+    { after: "**Current Confirmed Travelers:**", fill: (c) => (c.counts.travelers ? String(c.counts.travelers) : ""), label: "Confirmed travelers" },
+    { after: "**Maximum Capacity:**", fill: (c) => (Number(c.group.cabins_held) > 0 ? String(Number(c.group.cabins_held) * 2) : ""), label: "Maximum capacity" },
+    { after: "**Accommodation Preference:**", choice: "accommodation" },
+    { after: "**Transportation Preference:**", choice: "transportation" },
+    { after: "**Overall Group Budget (approximate per person):**", slot: "budget_pp" },
+    { after: "a minimum of", fill: () => "", label: "Minimum group size" },
+    { after: "**Group Booking Deadline:**", fill: (c) => fmtLong(c.group.deposit_due), label: "Group booking deadline" },
+    {
+      after: "**Per-Person Estimated Cost:**",
+      fill: (c) => {
+        const prices: number[] = (Array.isArray(c.group.terms?.cabin_categories) ? c.group.terms.cabin_categories : [])
+          .map((l: Row) => Number(l.price_per_person)).filter((n: number) => Number.isFinite(n) && n > 0);
+        return prices.length ? amountText(Math.min(...prices)) : "";
+      },
+      label: "Per-person estimated cost",
+    },
+    { after: "**4.3 Agent Planning Fee**", fill: (c) => (fee(c, "planning_fee") ? amountText(fee(c, "planning_fee")!.amount) : ""), label: "Planning fee" },
+    { after: "one complimentary berth or accommodation for every", fill: () => "", label: "Complimentary berth ratio" },
+    { after: "A substitution processing fee of", fill: (c) => (fee(c, "substitution_fee") ? amountText(fee(c, "substitution_fee")!.amount) : ""), label: "Substitution fee" },
+  ],
+  fields: [
+    text("org_address", "Your address", { required: true }),
+    text("org_city_state_zip", "City, state, ZIP", { required: true }),
+    { name: "org_phone", label: "Your phone", kind: "tel", required: true, prefill: (c) => cleanValue(c.group.organizer_phone) || undefined },
+    { name: "org_email", label: "Your email", kind: "email", required: true, prefill: (c) => cleanValue(c.group.organizer_email) || undefined },
+    text("sec_name", "Secondary contact: name"),
+    { name: "sec_phone", label: "Secondary contact: phone", kind: "tel" },
+    { name: "sec_email", label: "Secondary contact: email", kind: "email" },
+    {
+      name: "group_type", label: "Group type", kind: "choice",
+      options: [
+        opt("family", "Family Reunion"), opt("faith", "Church / Faith Group"), opt("social", "Social Group / Club"), opt("corporate", "Corporate Retreat"),
+        opt("celebration", "Birthday / Anniversary Celebration"), opt("sports", "Sports Team"), opt("school", "School / Educational"),
+        opt("trip", "Girls’ / Guys’ Trip"), opt("incentive", "Incentive Travel"), opt("other", "Other", "Other:"),
+      ],
+    },
+    text("group_type_other", "Other group type"),
+    { name: "accommodation", label: "Accommodation preference", kind: "choice", options: [opt("resort", "All-Inclusive Resort"), opt("cruise", "Cruise"), opt("hotel", "Hotel"), opt("rentals", "Vacation Rentals"), opt("mix", "Mix"), opt("tbd", "TBD")], prefill: () => "cruise" },
+    { name: "transportation", label: "Transportation preference", kind: "choice", options: [opt("flights", "Commercial Flights"), opt("charter", "Charter"), opt("self", "Self-Arranged"), opt("ground", "Ground Transport Only"), opt("tbd", "TBD")] },
+    text("budget_pp", "Overall group budget, approximate per person ($)", { maxLength: 20 }),
+  ],
+  edits: [
+    // 4.2: the amounts and dates the file holds; the second payment is not part of a group quote.
+    (blocks, ctx) => mapTable(blocks, (t) => t.header[0] === "Payment" && t.header[2] === "Due Date", (t) => {
+      const deposit = depositPerPerson(ctx);
+      const depositDue = fmtLong(ctx.group.deposit_due) || (ctx.group.terms?.deposit_timing === "at_booking" ? "At booking" : "—");
+      const retainer = fee(ctx, "retainer_fee");
+      const rows: string[][] = [];
+      if (retainer) rows.push(["Group organizer retainer fee", fmtMoney(retainer.amount), "Upon signing"]);
+      rows.push(["Individual traveler deposits (per person)", deposit ? fmtMoney(deposit) : "As shown on the cruise line quote", depositDue]);
+      rows.push(["Final payment (per person)", "The balance, as invoiced by the cruise line", fmtLong(ctx.group.final_payment_due) || "—"]);
+      return [{ ...t, rows }];
+    }),
+  ],
+};
+
+// ── 06 — credit card authorization: kept working, in NO packet ────────────────
+// Clients pay the cruise line or supplier directly (Mark 2026-10-03); whether Cornerstone's card form is ever
+// needed is an open question for them. No route offers this document and no card number is ever an input.
+
+const CARD_06: DocSpec = {
+  key: "06-credit-card-authorization",
+  title: "Credit Card Authorization",
+  signerRole: "traveler",
+  sigStart: /^\*\*Cardholder Signature:\*\*/,
+  rules: [{ after: "Date:", today: true }],
+  fields: [],
+};
+
+// ── 02 and 03 — only when Mark has entered a fee on the file ──────────────────
+// TODO(group-signing): untested against a real fee arrangement (Mark: no fees by default). They render from the
+// file's own fees; blanks the file cannot fill stay blank and are reported, and Cornerstone should confirm the wording.
+
+const PLANNING_02: DocSpec = {
+  key: "02-travel-planning-agreement",
+  title: "Travel Planning Agreement",
+  signerRole: "traveler",
+  requiresFees: true,
+  sigStart: /^\*\*CLIENT:\*\*$/,
+  rules: [
+    { after: "This agreement is entered into on:", today: true },
+    { sub: "**Client:**", with: () => "**Client:**" },
+    { after: "Name:", fill: legalName, label: "Client name" },
+    { after: "Address:", fill: (c) => formText(c, "address"), label: "Address" },
+    { after: "City, State, ZIP:", fill: (c) => formText(c, "city_state_zip"), label: "City, state, ZIP" },
+    { after: "Phone:", fill: (c) => cleanValue(c.traveler?.phone), label: "Phone" },
+    { after: "Email:", fill: (c) => cleanValue(c.traveler?.email), label: "Email" },
+    { after: "**Destination(s):**", fill: (c) => destinationText(c.group), label: "Destination" },
+    { after: "**Estimated Travel Dates:** From:", fill: (c) => fmtLong(c.group.sail_date), label: "Sail date" },
+    { after: " To:", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
+    { after: "**Number of Travelers:**", fill: (c) => String(1 + c.mates.length), label: "Number of travelers" },
+    { after: "**6.1 Planning Fee**", fill: (c) => (fee(c, "planning_fee") ? amountText(fee(c, "planning_fee")!.amount) : ""), label: "Planning fee" },
+    { after: "**6.3 Change/Rebooking Fees**", fill: (c) => (fee(c, "change_fee") ? amountText(fee(c, "change_fee")!.amount) : ""), label: "Change fee" },
+  ],
+  fields: [],
+};
+
+const FEE_03: DocSpec = {
+  key: "03-service-fee-planning-fee-agreement",
+  title: "Service Fee / Planning Fee Agreement",
+  signerRole: "traveler",
+  requiresFees: true,
+  sigStart: /^\*\*Client:\*\*$/,
+  rules: [
+    { after: "Date:", today: true },
+    { after: "**Client Name(s):**", fill: legalName, label: "Client name" },
+    { after: "**Address:**", fill: (c) => formText(c, "address"), label: "Address" },
+    { after: "**City, State, ZIP:**", fill: (c) => formText(c, "city_state_zip"), label: "City, state, ZIP" },
+    { after: "**Phone:**", fill: (c) => cleanValue(c.traveler?.phone), label: "Phone" },
+    { after: "**Email:**", fill: (c) => cleanValue(c.traveler?.email), label: "Email" },
+    { after: "**Trip Destination(s):**", fill: (c) => destinationText(c.group), label: "Destination" },
+    { after: "**Travel Dates:** From", fill: (c) => fmtLong(c.group.sail_date), label: "Sail date" },
+    { after: " To ", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
+    { after: "**Number of Travelers:**", fill: (c) => String(1 + c.mates.length), label: "Number of travelers" },
+  ],
+  fields: [],
+  edits: [
+    // The template's three blank fee tables become the fees Mark entered on the file.
+    (blocks, ctx) => {
+      const h = blocks.findIndex((b) => b.t === "h" && b.text === "FEE SCHEDULE");
+      if (h < 0) throw new Error("client document 03 no longer matches its spec: FEE SCHEDULE not found");
+      let j = h + 1;
+      while (j < blocks.length && blocks[j]!.t !== "hr") j++;
+      const table: Block = { t: "table", header: ["Fee", "Amount", "Applies to"], rows: ctx.fees.map((f) => [f.label, fmtMoney(f.amount), f.per ?? f.note ?? "—"]) };
+      return [...blocks.slice(0, h + 1), table, ...blocks.slice(j)];
+    },
+    // Fee Type / Amount / Due Date / Payment Method are the schedule above; the bare lines would only print blanks.
+    (blocks) => blocks.filter((b) => !(b.t === "p" && /^\*\*(Fee Type|Fee Amount|Payment Due Date|Payment Method):\*\*/.test(b.text))),
+  ],
+};
+
+export const DOC_SPECS: Record<string, DocSpec> = Object.fromEntries(
+  [FORM_15, TERMS_01, PLANNING_02, FEE_03, CANCELLATION_04, WAIVER_05, CARD_06, INSURANCE_07, CONTRACT_09, BOOKING_12, CHECKLIST_16].map((s) => [s.key, s]),
+);

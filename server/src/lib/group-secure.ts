@@ -26,6 +26,10 @@ export const BUSINESS = {
   /** Terms §14 venue (Mark 2026-10-03: pending Cornerstone's answer on the Texas governing-law line). */
   arbitrationCity: "Raleigh, North Carolina",
   paymentMethods: "Payments are made directly to the cruise line or supplier by the client.",
+  /** What replaces [AGENT CONTACT INFORMATION] on every client document (Mark 2026-10-03). */
+  contactLine: "Mark Millham · mark@stillafloatcruising.com · 919-346-6127 · Raleigh, North Carolina",
+  /** The logo for white backgrounds (the file carries its own navy outline, so it also reads on pale panels). */
+  logoPath: "/assets/images/still_afloat_logo.png",
 } as const;
 
 // ── Traveler link tokens ──────────────────────────────────────────────────────
