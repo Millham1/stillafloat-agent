@@ -6,6 +6,7 @@ import {
   GROUP_COLUMNS,
   missingSchedule,
   pickWritable,
+  publicGroupRow,
   slugify,
   summarize,
   type GroupFile,
@@ -57,7 +58,7 @@ async function loadFile(groupId: string): Promise<GroupFile & { travel: Row[]; m
     .limit(500);
   if (me) throw new Error(`group_messages: ${me.message}`);
 
-  return { group, cabins, travelers, documents, payments, travel, checklist, messages: (messages ?? []) as Row[] };
+  return { group: publicGroupRow(group), cabins, travelers, documents, payments, travel, checklist, messages: (messages ?? []) as Row[] };
 }
 
 function fail(req: Request, res: Response, err: unknown, what: string) {
@@ -78,7 +79,7 @@ router.get("/groups", requireToken, async (req: Request, res: Response) => {
     const out = [];
     for (const g of groups ?? []) {
       const file = await loadFile(g.id);
-      if (file) out.push({ ...g, summary: summarize(file, today()) });
+      if (file) out.push({ ...publicGroupRow(g), summary: summarize(file, today()) });
     }
     return res.json({ success: true, groups: out });
   } catch (err) {
@@ -110,7 +111,7 @@ router.post("/groups", requireToken, async (req: Request, res: Response) => {
       const { error: ce } = await supabase.from("group_cabins").insert(rows);
       if (ce) throw new Error(`group_cabins: ${ce.message}`);
     }
-    return res.status(201).json({ success: true, group: data });
+    return res.status(201).json({ success: true, group: publicGroupRow(data) });
   } catch (err) {
     return fail(req, res, err, "group create failed");
   }
@@ -147,7 +148,7 @@ router.patch("/groups/:id", requireToken, async (req: Request, res: Response) =>
       .maybeSingle();
     if (error) return res.status(400).json({ success: false, error: error.message });
     if (!data) return res.status(404).json({ success: false, error: "Group not found" });
-    return res.json({ success: true, group: data });
+    return res.json({ success: true, group: publicGroupRow(data) });
   } catch (err) {
     return fail(req, res, err, "group update failed");
   }

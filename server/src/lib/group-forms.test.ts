@@ -1,0 +1,455 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
+  type FormsDeps, type FormsStore,
+} from "./group-forms";
+import { decryptPii, hashForAudit } from "./group-secure";
+import type { SignedCopyInput } from "./group-signature-pdf";
+import { blocksToText } from "./group-documents";
+
+const KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+type Row = Record<string, any>;
+
+function groupRow(): Row {
+  return {
+    id: "g1", name: "American Legion Post 12", status: "booking", cruise_line: "MSC Cruises", ship_name: "MSC Seascape", sail_date: "2027-03-14", return_date: "2027-03-21",
+    nights: 7, embark_port: "Port Canaveral", itinerary: [{ port: "Port Canaveral" }, { port: "Nassau" }], group_number: "GRP1", cabins_held: 16, deposit_per_person: 250,
+    deposit_due: "2026-12-01", final_payment_due: "2027-01-12", organizer_name: "Pat Organizer", organizer_email: "pat@example.com", organizer_phone: "555-123-4567",
+    organizer_token_hash: null, fees: {}, terms: {}, amenities: [],
+  };
+}
+
+/** An in-memory FormsStore that behaves like the tables: unique signatures, hashed tokens, no passport_enc readback. */
+function makeStore() {
+  const state = {
+    group: groupRow(),
+    cabins: [{ id: "c1", cabin_num: "8214", category: "Balcony", category_code: "8C", booking_number: "BK77", price_total: 2598 }] as Row[],
+    travelers: [
+      { id: "t1", group_id: "g1", cabin_id: "c1", is_lead: true, first_name: "Jane", last_name: "Public", dob: "1960-05-04", email: "jane@example.com", phone: "555-111-2222", lang: "en", form_data: {}, passport_last4: null, newsletter_opt_in: false, form_token_hash: null },
+      { id: "t2", group_id: "g1", cabin_id: "c1", is_lead: false, first_name: "John", last_name: "Public", dob: "1958-01-09", email: "john@example.com", lang: "en", form_data: {}, passport_last4: "4321", passport_expiry: "2030-01-01", newsletter_opt_in: false, form_token_hash: null, passport_enc: "v1:SECRET" },
+    ] as Row[],
+    signatures: [] as Row[],
+    prospects: [] as Row[],
+    uploads: [] as Array<{ path: string; bytes: number }>,
+    deleted: [] as string[],
+    failUpdate: false,
+    failUpload: false,
+    duplicate: false,
+  };
+  let seq = 0;
+  const strip = (t: Row) => { const { passport_enc: _p, ...rest } = t; return { ...rest }; };
+  const store: FormsStore = {
+    async travelerByTokenHash(hash) { const t = state.travelers.find((x) => x.form_token_hash === hash); return t ? strip(t) : null; },
+    async groupByOrganizerHash(hash) { return state.group.organizer_token_hash === hash ? { ...state.group } : null; },
+    async group(id) { return id === state.group.id ? { ...state.group } : null; },
+    async cabins() { return state.cabins.map((c) => ({ ...c })); },
+    async travelers() { return state.travelers.map(strip); },
+    async signaturesFor({ travelerId }) { return state.signatures.filter((s) => (travelerId ? s.traveler_id === travelerId : !s.traveler_id && s.signer_role === "organizer")).map((s) => ({ ...s })); },
+    async insertSignature(row) {
+      if (state.duplicate || state.signatures.some((s) => s.traveler_id && s.traveler_id === row["traveler_id"] && s.doc_key === row["doc_key"] && s.signer_role === row["signer_role"])
+        || state.signatures.some((s) => !row["traveler_id"] && !s.traveler_id && s.doc_key === row["doc_key"] && s.signer_role === "organizer")) return "duplicate";
+      const id = `sig${++seq}`;
+      state.signatures.push({ ...row, id });
+      return { id };
+    },
+    async deleteSignature(id) { state.deleted.push(id); state.signatures = state.signatures.filter((s) => s.id !== id); },
+    async updateTraveler(id, patch) {
+      if (state.failUpdate) throw new Error("database is down");
+      Object.assign(state.travelers.find((t) => t.id === id)!, patch);
+    },
+    async uploadPdf(path, bytes) { if (state.failUpload) throw new Error("storage is down"); state.uploads.push({ path, bytes: bytes.length }); },
+    async setSignaturePdf(id, path) { state.signatures.find((s) => s.id === id)!.pdf_path = path; },
+    async upsertProspect(row) {
+      const found = state.prospects.find((p) => p.email.toLowerCase() === String(row["email"]).toLowerCase());
+      if (found) return found.id;
+      const id = `pr${state.prospects.length + 1}`;
+      state.prospects.push({ ...row, id });
+      return id;
+    },
+  };
+  return { state, store };
+}
+
+function setup(over: Partial<FormsDeps> = {}) {
+  const { state, store } = makeStore();
+  const pdfs: SignedCopyInput[] = [];
+  const notices: Array<{ title: string; body: string; groupId: string }> = [];
+  const warnings: string[] = [];
+  const clock = { now: new Date("2026-10-16T15:30:12Z") };
+  const deps: FormsDeps = {
+    store, now: () => clock.now, piiKey: KEY, logo: null,
+    renderPdf: async (input) => { pdfs.push(input); return Buffer.from("%PDF-1.4 test"); },
+    notify: async (n) => { notices.push(n); },
+    warn: (_o, msg) => { warnings.push(msg); },
+    ...over,
+  };
+  const link = (travelerId: string) => { const { token, hash } = issueToken(); state.travelers.find((t) => t.id === travelerId)!.form_token_hash = hash; return token; };
+  const orgLink = () => { const { token, hash } = issueToken(); state.group.organizer_token_hash = hash; return token; };
+  return { state, deps, pdfs, notices, warnings, link, orgLink, clock };
+}
+
+const pkt = (r: { json: Record<string, unknown> }) => r.json as { docs: Array<{ key: string; status: string; text_sha256: string; html: string; fields: Array<Record<string, any>> }>; complete: boolean; traveler: Row; mates: string[]; group: Row; cabin: Row | null; pii_ready: boolean; kind: string };
+const NAME = "Jane Public";
+
+async function signKey(t: ReturnType<typeof setup>, token: string, key: string, extra: Record<string, unknown> = {}, name = NAME) {
+  const p = pkt(await getPacket(t.deps, token));
+  const doc = p.docs.find((d) => d.key === key)!;
+  return signDocument(t.deps, token, { doc_key: key, signer_name: name, agreed: true, content_sha256: doc.text_sha256, ...extra }, { ip: "203.0.113.9", ua: "Mozilla/5.0 test" });
+}
+
+const GOOD_15 = {
+  legal_name: "Jane Public", dob: "1960-05-04", gender: "female", us_citizen: "yes", address: "1 Main St", city_state_zip: "Raleigh, NC 27601", phone: "919-555-0100", email: "jane@example.com",
+  passport_number: "A12345678", passport_country: "United States", passport_expiry: "2031-02-03", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
+  ec2_name: "Lee Public", ec2_relationship: "Daughter", ec2_home_phone: "919-555-0188", health_note: "ignored",
+};
+
+// ── links ─────────────────────────────────────────────────────────────────────
+
+test("an unknown, malformed, replaced or cancelled link all get the same neutral 404", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  const unknown = issueToken().token;
+  const answers = await Promise.all([getPacket(t.deps, "short"), getPacket(t.deps, unknown), getPacket(t.deps, undefined), getPacket(t.deps, "../../etc/passwd")]);
+  for (const a of answers) { assert.equal(a.status, 404); assert.deepEqual(a.json, answers[0]!.json); }
+  assert.match(String(answers[0]!.json["error"]), /not valid/);
+  assert.equal((await getPacket(t.deps, token)).status, 200);
+  t.link("t1"); // a new link replaces the old one
+  assert.equal((await getPacket(t.deps, token)).status, 404, "the old link must stop working");
+  const fresh = t.link("t1");
+  t.state.group.status = "cancelled";
+  assert.equal((await getPacket(t.deps, fresh)).status, 404);
+});
+
+test("a traveler's packet lists their documents in order, with their own inputs, and nothing private", async () => {
+  const t = setup();
+  const r = await getPacket(t.deps, t.link("t2"));
+  assert.equal(r.status, 200);
+  const p = pkt(r);
+  assert.equal(p.kind, "traveler");
+  assert.deepEqual(p.docs.map((d) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
+  assert.ok(p.docs.every((d) => d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.includes("<")));
+  assert.equal(p.docs[0]!.fields.length, 80);
+  assert.deepEqual(p.mates, ["Jane Public"]);
+  assert.equal(p.traveler.passport_on_file, "ending 4321");
+  assert.equal(p.pii_ready, true);
+  const raw = JSON.stringify(r.json);
+  for (const secret of ["SECRET", "passport_enc", "form_token_hash", "consent_ip_hash", "organizer_email", "pat@example.com", "1960-05-04", "jane@example.com", "organizer_token_hash"]) {
+    assert.ok(!raw.includes(secret), `the packet leaks ${secret}`);
+  }
+  const lead = pkt(await getPacket(t.deps, t.link("t1")));
+  assert.equal(lead.docs.length, 6);
+  assert.equal(lead.docs[5]!.key, "12-cruise-booking-agreement");
+  assert.equal(lead.docs[5]!.html.includes("ending 4321"), true, "the lead's cabin agreement lists the mate's passport by last four");
+  assert.ok(!JSON.stringify(lead).includes("SECRET"));
+});
+
+// ── signing ───────────────────────────────────────────────────────────────────
+
+test("signing records a typed name, the hash of the text, hashed audit data and a signed copy in the private bucket", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  const r = await signKey(t, token, "16-passport-document-checklist");
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json["signed"], "16-passport-document-checklist");
+  const [sig] = t.state.signatures;
+  assert.ok(sig);
+  assert.equal(t.state.signatures.length, 1);
+  assert.deepEqual(
+    { traveler_id: sig!.traveler_id, cabin_id: sig!.cabin_id, group_id: sig!.group_id, role: sig!.signer_role, name: sig!.signer_name, lang: sig!.lang, answers: sig!.answers, at: sig!.signed_at },
+    { traveler_id: "t1", cabin_id: "c1", group_id: "g1", role: "traveler", name: "Jane Public", lang: "en", answers: { _agreed: true }, at: "2026-10-16T15:30:12.000Z" },
+  );
+  assert.equal(sig!.doc_version, "16-passport-document-checklist@2026-10-03");
+  assert.match(sig!.content_sha256, /^[0-9a-f]{64}$/);
+  assert.equal(sig!.ip_hash, hashForAudit("203.0.113.9"));
+  assert.ok(sig!.ip_hash && sig!.ua_hash && !JSON.stringify(sig).includes("203.0.113.9") && !JSON.stringify(sig).includes("Mozilla"), "ip and user agent are stored only as hashes");
+  assert.equal(sig!.pdf_path, `signatures/g1/${sig!.id}.pdf`);
+  assert.deepEqual(t.state.uploads.map((u) => u.path), [`signatures/g1/${sig!.id}.pdf`]);
+  assert.equal(t.pdfs.length, 1);
+  assert.equal(t.pdfs[0]!.businessName, "Still Afloat LLC dba Still Afloat Cruising");
+  assert.equal(t.pdfs[0]!.signerName, "Jane Public");
+  assert.equal(t.pdfs[0]!.contentSha256, sig!.content_sha256);
+  const again = r.json["packet"] as ReturnType<typeof pkt>;
+  assert.equal(again.docs.find((d) => d.key === "16-passport-document-checklist")!.status, "signed");
+  assert.equal(r.json["complete"], false);
+  assert.equal(t.state.travelers[0]!.form_submitted_at, undefined);
+});
+
+test("a signature is refused without agreement, a full name, a matching hash, a real document, and only once", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  const doc = pkt(await getPacket(t.deps, token)).docs.find((d) => d.key === "16-passport-document-checklist")!;
+  const base = { doc_key: "16-passport-document-checklist", signer_name: NAME, agreed: true, content_sha256: doc.text_sha256 };
+  const meta = { ip: "1.2.3.4" };
+  assert.equal((await signDocument(t.deps, token, { ...base, agreed: false }, meta)).status, 400);
+  assert.equal((await signDocument(t.deps, token, { ...base, agreed: "true" }, meta)).status, 400);
+  for (const bad of ["", "Jane", "J", "123 456", "<b>Jane</b> Public", "Jane\u0000 Public"]) assert.equal((await signDocument(t.deps, token, { ...base, signer_name: bad }, meta)).status, 400, `name ${JSON.stringify(bad)}`);
+  assert.equal((await signDocument(t.deps, token, { ...base, content_sha256: "abc" }, meta)).status, 400);
+  const stale = await signDocument(t.deps, token, { ...base, content_sha256: "0".repeat(64) }, meta);
+  assert.equal(stale.status, 409);
+  assert.equal(stale.json["code"], "document-changed");
+  assert.equal((await signDocument(t.deps, token, { ...base, doc_key: "06-credit-card-authorization" }, meta)).status, 404, "the card form is in no packet");
+  const mateToken = t.link("t2");
+  assert.equal((await signDocument(t.deps, mateToken, { ...base, doc_key: "12-cruise-booking-agreement", signer_name: "John Public" }, { ip: "1" })).status, 404, "a traveler who is not the lead has no cabin agreement");
+  assert.equal((await signDocument(t.deps, token, { ...base, doc_key: "09-group-travel-contract" }, meta)).status, 404);
+  assert.equal((await signDocument(t.deps, issueToken().token, base, meta)).status, 404);
+  assert.equal(t.state.signatures.length, 0, "nothing was stored by any refusal");
+  for (const ok of ["José Núñez", "Mary-Ann O'Neil", "Wei Chen", "Jane Q. Public"]) {
+    const t2 = setup();
+    const tok = t2.link("t1");
+    const d = pkt(await getPacket(t2.deps, tok)).docs.find((x) => x.key === base.doc_key)!;
+    assert.equal((await signDocument(t2.deps, tok, { ...base, content_sha256: d.text_sha256, signer_name: ok }, meta)).status, 200, ok);
+  }
+  assert.equal((await signDocument(t.deps, token, base, meta)).status, 200);
+  const second = await signDocument(t.deps, token, base, meta);
+  assert.equal(second.status, 409);
+  assert.equal(second.json["code"], "already-signed");
+  assert.equal(t.state.signatures.length, 1, "one signature per traveler, document and role");
+});
+
+test("a file that changed after the page loaded cannot be signed on the old text", async () => {
+  const t = setup();
+  const token = t.link("t2");
+  const doc = pkt(await getPacket(t.deps, token)).docs.find((d) => d.key === "05-liability-waiver")!;
+  t.state.group.sail_date = "2027-03-15";
+  const r = await signDocument(t.deps, token, { doc_key: "05-liability-waiver", signer_name: "John Public", agreed: true, content_sha256: doc.text_sha256, answers: { health_ack: true } }, {});
+  assert.equal(r.status, 409);
+  assert.equal(r.json["code"], "document-changed");
+  assert.equal(t.state.signatures.length, 0);
+});
+
+test("form 15 files the answers on the traveler, encrypts the passport, and keeps the number out of everything else", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  const r = await signKey(t, token, "15-emergency-contact-form", { answers: GOOD_15 });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const tr = t.state.travelers[0]!;
+  assert.equal(tr.passport_last4, "5678");
+  assert.equal(decryptPii(tr.passport_enc, KEY), "A12345678");
+  assert.ok(!tr.passport_enc.includes("A12345678"));
+  assert.equal(tr.passport_country, "United States");
+  assert.equal(tr.passport_expiry, "2031-02-03");
+  assert.equal(tr.phone, "919-555-0100");
+  assert.equal(tr.emergency_name, "Sam Public");
+  assert.equal(tr.emergency_phone, "919-555-0199");
+  assert.equal(tr.gender, "Female");
+  assert.equal(tr.form_data.address, "1 Main St");
+  assert.equal(tr.form_data.emergency.secondary.relationship, "Daughter");
+  const sig = t.state.signatures[0]!;
+  assert.equal(sig.answers.passport_number, "ending 5678");
+  for (const where of [JSON.stringify(sig), JSON.stringify(t.state.travelers[0]!.form_data), JSON.stringify(r.json), JSON.stringify(t.pdfs.map((p) => blocksToText(p.blocks)))]) {
+    assert.ok(!where.includes("A12345678"), "the passport number appears in plaintext somewhere it must not");
+  }
+  assert.ok(blocksToText(t.pdfs[0]!.blocks).includes("Passport Number: ending 5678"), "the signed copy shows the last four only");
+  assert.ok(blocksToText(t.pdfs[0]!.blocks).includes("Home Address: 1 Main St"), "the signed copy carries the answers");
+  // the next document now shows the address the traveler gave, so its hash moved: the page reloads on the response
+  const next = (r.json["packet"] as ReturnType<typeof pkt>).docs.find((d) => d.key === "05-liability-waiver")!;
+  assert.ok(next.html.includes("1 Main St"));
+});
+
+test("the page reloads between documents: a stale hash for a document that now shows the new address is refused", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  const before = pkt(await getPacket(t.deps, token)).docs.find((d) => d.key === "05-liability-waiver")!.text_sha256;
+  assert.equal((await signKey(t, token, "15-emergency-contact-form", { answers: GOOD_15 })).status, 200);
+  const stale = await signDocument(t.deps, token, { doc_key: "05-liability-waiver", signer_name: NAME, agreed: true, content_sha256: before, answers: { health_ack: true } }, {});
+  assert.equal(stale.status, 409);
+  assert.equal((await signKey(t, token, "05-liability-waiver", { answers: { health_ack: true } })).status, 200);
+});
+
+test("bad answers are refused field by field and nothing is stored", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  const r = await signKey(t, token, "15-emergency-contact-form", { answers: { ...GOOD_15, dob: "2999-01-01", email: "nope", passport_expiry: "2001-01-01", notes: "card 4111 1111 1111 1111" } });
+  assert.equal(r.status, 400);
+  assert.deepEqual(Object.keys(r.json["fields"] as object).sort(), ["dob", "email", "notes", "passport_expiry"]);
+  assert.equal(t.state.signatures.length, 0);
+  assert.equal(t.state.travelers[0]!.dob, "1960-05-04");
+  assert.equal(t.state.travelers[0]!.passport_enc, undefined);
+});
+
+test("no GROUP_PII_KEY: the passport step is refused with a plain message and nothing is saved; leaving it empty still works", async () => {
+  const t = setup({ piiKey: undefined });
+  const token = t.link("t1");
+  assert.equal(pkt(await getPacket(t.deps, token)).pii_ready, false);
+  const r = await signKey(t, token, "15-emergency-contact-form", { answers: GOOD_15 });
+  assert.equal(r.status, 503);
+  assert.equal(r.json["code"], "passport-unavailable");
+  assert.match(String(r.json["error"]), /leave that line empty/);
+  assert.equal(t.state.signatures.length, 0);
+  assert.equal(t.state.travelers[0]!.phone, "555-111-2222", "nothing was written");
+  const { passport_number: _n, passport_country: _c, passport_expiry: _e, ...noPassport } = GOOD_15;
+  const ok = await signKey(t, token, "15-emergency-contact-form", { answers: noPassport });
+  assert.equal(ok.status, 200, JSON.stringify(ok.json));
+  assert.equal(t.state.travelers[0]!.passport_enc, undefined);
+  const bad = setup({ piiKey: "not-a-key" });
+  assert.equal((await signKey(bad, bad.link("t1"), "15-emergency-contact-form", { answers: GOOD_15 })).status, 503, "a malformed key fails closed too");
+});
+
+test("signing the terms records consent; the last signature completes the packet and tells Mark once", async () => {
+  const t = setup();
+  const token = t.link("t2");
+  const mate = "John Public";
+  const order = ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"];
+  const answers: Record<string, unknown> = {
+    "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", passport_number: "B99887766" },
+    "05-liability-waiver": { health_ack: true },
+    "07-travel-insurance-declination": { insurance_choice: "quote" },
+  };
+  for (const [i, key] of order.entries()) {
+    const r = await signKey(t, token, key, { answers: answers[key] ?? {} }, mate);
+    assert.equal(r.status, 200, `${key}: ${JSON.stringify(r.json)}`);
+    const tr = t.state.travelers[1]!;
+    if (key === "01-terms-and-conditions") {
+      assert.equal(tr.consent_name, "John Public");
+      assert.equal(tr.consent_signed_at, "2026-10-16T15:30:12.000Z");
+      assert.equal(tr.consent_ip_hash, hashForAudit("203.0.113.9"));
+    }
+    assert.equal(r.json["complete"], i === order.length - 1);
+    assert.equal(tr.form_submitted_at ?? null, i === order.length - 1 ? "2026-10-16T15:30:12.000Z" : null);
+    assert.equal(t.notices.length, i === order.length - 1 ? 1 : 0);
+  }
+  assert.equal(t.notices[0]!.title, "Paperwork returned: John Public");
+  assert.equal(t.notices[0]!.groupId, "g1");
+  assert.equal(t.state.signatures.length, 5);
+  assert.equal(t.state.signatures.find((s) => s.doc_key.startsWith("07"))!.answers.insurance_choice, "quote");
+  assert.equal(t.state.travelers[1]!.form_data.insurance.choice, "quote");
+  assert.equal(((await getPacket(t.deps, token)).json as { complete: boolean }).complete, true);
+});
+
+test("the cabin's lead signs the cruise agreement as 'lead'", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  const r = await signKey(t, token, "12-cruise-booking-agreement", { answers: { dining: "late" } });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(t.state.signatures[0]!.signer_role, "lead");
+  assert.equal(t.state.travelers[0]!.form_data.cabin_preferences.dining, "late");
+  assert.ok(blocksToText(t.pdfs[0]!.blocks).includes("☒ Late Seating"));
+  assert.ok(blocksToText(t.pdfs[0]!.blocks).includes("John Q") === false);
+});
+
+test("the newsletter box records the choice and a prospect, sends no email, and reuses an existing prospect", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  assert.equal((await signKey(t, token, "16-passport-document-checklist", { newsletter_opt_in: true })).status, 200);
+  assert.equal(t.state.travelers[0]!.newsletter_opt_in, true);
+  assert.equal(t.state.travelers[0]!.prospect_id, "pr1");
+  assert.deepEqual(t.state.prospects.map((p) => ({ e: p.email, f: p.first_name, l: p.last_name, src: p.referral_source, s: p.status })), [{ e: "jane@example.com", f: "Jane", l: "Public", src: "group-paperwork", s: "new" }]);
+  assert.match(t.state.prospects[0]!.notes, /American Legion Post 12/);
+  assert.equal(t.state.prospects[0]!.destination, "MSC Seascape — American Legion Post 12");
+  // an unticked box (or anything but true) writes nothing
+  const u = setup();
+  assert.equal((await signKey(u, u.link("t1"), "16-passport-document-checklist", { newsletter_opt_in: "yes" })).status, 200);
+  assert.equal(u.state.prospects.length, 0);
+  assert.equal(u.state.travelers[0]!.newsletter_opt_in, false);
+  // the same email already on the contact list is reused, not duplicated
+  const v = setup();
+  v.state.prospects.push({ id: "pr0", email: "JANE@example.com" });
+  assert.equal((await signKey(v, v.link("t1"), "16-passport-document-checklist", { newsletter_opt_in: true })).status, 200);
+  assert.equal(v.state.prospects.length, 1);
+  assert.equal(v.state.travelers[0]!.prospect_id, "pr0");
+});
+
+test("a failed save of the traveler's answers removes the signature; a failed PDF copy keeps it and says so", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  t.state.failUpdate = true;
+  const r = await signKey(t, token, "15-emergency-contact-form", { answers: GOOD_15 });
+  assert.equal(r.status, 500);
+  assert.match(String(r.json["error"]), /nothing was saved/);
+  assert.equal(t.state.signatures.length, 0, "a signature without its data cannot stay");
+  assert.equal(t.state.deleted.length, 1);
+  assert.equal(t.pdfs.length, 0);
+  assert.ok(t.warnings.some((w) => /signature was removed/.test(w)));
+
+  const u = setup();
+  u.state.failUpload = true;
+  const ok = await signKey(u, u.link("t1"), "16-passport-document-checklist");
+  assert.equal(ok.status, 200);
+  assert.equal(ok.json["pdf_saved"], false);
+  assert.equal(u.state.signatures.length, 1, "the signature itself is recorded");
+  assert.equal(u.state.signatures[0]!.pdf_path, undefined);
+  assert.ok(u.warnings.some((w) => /signed copy could not be saved/.test(w)));
+});
+
+test("a signature that loses the race to an identical one stores nothing else", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  t.state.duplicate = true;
+  const r = await signKey(t, token, "15-emergency-contact-form", { answers: GOOD_15 });
+  assert.equal(r.status, 409);
+  assert.equal(t.state.travelers[0]!.phone, "555-111-2222");
+  assert.equal(t.pdfs.length, 0);
+});
+
+// ── the organizer ─────────────────────────────────────────────────────────────
+
+test("the organizer's link opens the group contract only; signing it is recorded without a traveler and Mark is told to countersign", async () => {
+  const t = setup();
+  const token = t.orgLink();
+  const r = await getPacket(t.deps, token);
+  assert.equal(r.status, 200);
+  const p = pkt(r);
+  assert.equal(p.kind, "organizer");
+  assert.deepEqual(p.docs.map((d) => d.key), ["09-group-travel-contract"]);
+  assert.equal(p.docs[0]!.fields.find((f) => f.name === "org_phone")!.value, "555-123-4567");
+  assert.equal(p.docs[0]!.fields.find((f) => f.name === "accommodation")!.value, "cruise");
+  assert.equal(p.docs[0]!.fields.find((f) => f.name === "org_address")!.required, true);
+  assert.ok(!JSON.stringify(r.json).includes("organizer_token_hash"));
+  const bad = await signKey(t, token, "09-group-travel-contract", { answers: {} }, "Pat Organizer");
+  assert.equal(bad.status, 400);
+  const ok = await signKey(t, token, "09-group-travel-contract", { answers: { org_address: "5 Elm", org_city_state_zip: "Cary, NC 27511", org_phone: "555-123-4567", org_email: "pat@example.com", group_type: "family" } }, "Pat Organizer");
+  assert.equal(ok.status, 200, JSON.stringify(ok.json));
+  const sig = t.state.signatures[0]!;
+  assert.equal(sig.signer_role, "organizer");
+  assert.equal(sig.traveler_id, null);
+  assert.equal(sig.cabin_id, null);
+  assert.equal(t.pdfs[0]!.agentCountersignPending, true);
+  assert.equal(t.notices.length, 1);
+  assert.match(t.notices[0]!.title, /Group contract signed: Pat Organizer/);
+  assert.match(t.notices[0]!.body, /countersignature is still to do/);
+  assert.equal((await signKey(t, token, "09-group-travel-contract", { answers: {} }, "Pat Organizer")).status, 409);
+  // a traveler's own link cannot open the contract
+  const tl = t.link("t1");
+  assert.equal((await signDocument(t.deps, tl, { doc_key: "09-group-travel-contract", signer_name: NAME, agreed: true, content_sha256: sig.content_sha256 }, {})).status, 404);
+});
+
+// ── the dashboard's helpers ───────────────────────────────────────────────────
+
+test("the emailed link is plain and short, carries the business signature, and mail goes only where the box allows", () => {
+  const url = formUrl("https://stillafloatcruising.com/", "T".repeat(43));
+  assert.equal(url, `https://stillafloatcruising.com/forms.html?t=${"T".repeat(43)}`);
+  const m = linkEmail({ firstName: "Jane", groupName: "American Legion Post 12", ship: "MSC Seascape", sailDate: "2027-03-14", url });
+  assert.equal(m.subject, "Your travel paperwork for American Legion Post 12");
+  assert.ok(m.text.startsWith("Hello Jane,"));
+  assert.ok(m.text.includes(url) && m.html.includes(`href="${url}"`));
+  assert.ok(m.text.includes("MSC Seascape, sailing March 14, 2027"));
+  assert.ok(m.text.includes("Still Afloat LLC dba Still Afloat Cruising") && m.text.includes("mark@stillafloatcruising.com"));
+  assert.ok(!/actually/i.test(m.text), "Mark's banned word");
+  assert.ok(m.text.length < 900, "short");
+  assert.ok(linkEmail({ firstName: "", groupName: "G", ship: null, sailDate: null, url }).text.startsWith("Hello,\n"));
+  assert.equal(mailAllowed("jane@real.com", undefined), true);
+  assert.equal(mailAllowed("jane@real.com", ""), true);
+  assert.equal(mailAllowed("test@stillafloatcruising.com", "@stillafloatcruising.com, mmillham1@gmail.com"), true);
+  assert.equal(mailAllowed("MMillham1@gmail.com", "@stillafloatcruising.com, mmillham1@gmail.com"), true);
+  assert.equal(mailAllowed("jane@real.com", "@stillafloatcruising.com, mmillham1@gmail.com"), false);
+  assert.equal(mailAllowed("jane@stillafloatcruising.com.evil.com", "@stillafloatcruising.com"), false);
+});
+
+test("each traveler's progress is the documents asked for against the ones signed, and the organizer's is separate", () => {
+  const g = groupRow();
+  const cabins = [{ id: "c1" }];
+  const travelers = [{ id: "t1", cabin_id: "c1", is_lead: true }, { id: "t2", cabin_id: "c1", is_lead: false }];
+  const signatures = [
+    { traveler_id: "t2", doc_key: "01-terms-and-conditions", signer_role: "traveler" },
+    { traveler_id: "t2", doc_key: "16-passport-document-checklist", signer_role: "traveler" },
+    { traveler_id: null, doc_key: "09-group-travel-contract", signer_role: "organizer" },
+  ];
+  const s = packetStatuses({ group: g, cabins, travelers, signatures });
+  assert.equal(s.travelers["t1"]!.required.length, 6);
+  assert.equal(s.travelers["t1"]!.signed.length, 0);
+  assert.deepEqual(s.travelers["t2"]!.signed, ["01-terms-and-conditions", "16-passport-document-checklist"]);
+  assert.equal(s.travelers["t2"]!.complete, false);
+  assert.deepEqual(s.organizer, { required: ["09-group-travel-contract"], signed: ["09-group-travel-contract"], complete: true });
+  assert.deepEqual(organizerBlanks(g, cabins, travelers, new Date()).sort(), ["Complimentary berth ratio", "Minimum group size", "Per-person estimated cost"]);
+});

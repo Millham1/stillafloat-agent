@@ -13,6 +13,12 @@ test("the legal name is written exactly as Mark specified", () => {
   assert.equal(BUSINESS.tradeName, "Still Afloat Cruising");
 });
 
+test("the contact line and logo that fill every client document are Mark's wording and a file that exists", async () => {
+  assert.equal(BUSINESS.contactLine, `${BUSINESS.agentName} · ${BUSINESS.email} · ${BUSINESS.phone} · ${BUSINESS.arbitrationCity}`);
+  const { existsSync } = await import("node:fs");
+  assert.ok(existsSync(`${process.cwd()}/public${BUSINESS.logoPath}`), "the logo file the documents point at must exist in server/public");
+});
+
 test("link tokens are random, well-formed, and stored only as a hash", () => {
   const a = newLinkToken();
   const b = newLinkToken();

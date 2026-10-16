@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Travel Paperwork | Still Afloat Cruising</title>
+<!-- Private link, shared with one person at a time: never indexed, and the address (which carries the link) is never sent on to another site. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Page: the dark ocean gradient of the group page. The documents sit on a cloud-white sheet with navy text. */
+:root{--navy:#07183f;--cloud:#f7fbff;--line:#9db1cf;--gold:#ffca4f}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:var(--navy);line-height:1.55}
+h1,h2,h3,h4{font-family:'Bree Serif',Georgia,serif;font-weight:400;color:var(--navy)}
+
+/* Branded banner + plaque — the group page pattern */
+.fm-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;background:url('/assets/images/wheres-my-ship-hero.png') center 46%/cover no-repeat;height:clamp(210px,24vw,330px)}
+.fm-banner::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(6,17,31,.30) 0%,rgba(6,17,31,.05) 30%,rgba(6,17,31,.05) 60%,rgba(6,17,31,.88) 100%)}
+.fm-lockup{position:absolute;left:0;right:0;bottom:18px;z-index:4;display:flex;justify-content:center;padding:0 16px}
+.fm-plaque{display:inline-flex;align-items:center;gap:13px;background:rgba(4,14,28,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:9px 22px;max-width:94vw}
+.fm-plaque .dash{width:20px;height:3px;border-radius:2px;background:rgba(255,211,0,.7);flex:none}
+.fm-plaque .txt{color:rgba(255,255,255,.96);font-weight:600;letter-spacing:.18em;text-transform:uppercase;font-size:clamp(16px,1.5vw,19px);text-align:center}
+
+.shell{max-width:920px;margin:0 auto;padding:30px 16px 70px}
+.sheet{background:var(--cloud);color:var(--navy);border-radius:20px;padding:26px 24px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.sheet h1{font-size:clamp(30px,4.4vw,42px);line-height:1.15;margin:0 0 8px}
+.sheet h2{font-size:clamp(25px,3.2vw,31px);margin:0 0 10px}
+.lead{font-size:20px;margin:0 0 16px}
+.trip{border:2px solid var(--navy);border-radius:14px;padding:14px 16px;margin:0 0 20px;background:#fff}
+.trip b{font-size:20px}
+.state{padding:34px 8px;text-align:center;font-size:21px}
+.note{background:#eaf3ff;border-left:5px solid var(--navy);border-radius:10px;padding:12px 16px;margin:0 0 18px}
+.err-box{background:#fff3f0;border:2px solid #8a1c0e;color:#5c0f06;border-radius:12px;padding:12px 16px;margin:14px 0}
+
+/* progress */
+ol.progress{list-style:none;margin:0 0 22px;padding:0;display:grid;gap:8px}
+ol.progress li{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:2px solid var(--line);border-radius:12px;padding:10px 14px;background:#fff}
+ol.progress li.now{border-color:var(--navy)}
+ol.progress .t{font-weight:700}
+.chip{display:inline-block;border-radius:999px;padding:2px 12px;font-weight:700;font-size:18px;background:#e3ebf8;color:var(--navy)}
+.chip.done{background:var(--navy);color:#fff}
+.linkbtn{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--navy);text-decoration:underline;cursor:pointer}
+
+/* the document itself */
+.doc{border:2px solid var(--line);border-radius:14px;padding:20px 18px;background:#fff;overflow-wrap:anywhere}
+.doc p{margin:0 0 12px}
+.doc h3.doc-h,.doc h2.doc-h{font-size:24px;margin:20px 0 8px}
+.doc h4.doc-h{font-size:21px;margin:16px 0 6px}
+.doc hr{border:0;border-top:2px solid #dbe5f4;margin:20px 0}
+.doc ul,.doc ol{margin:0 0 14px;padding-left:26px}
+.doc li{margin:0 0 6px}
+.doc-logo{display:block;margin:0 auto 6px;max-width:220px;height:auto}
+.doc-table{overflow-x:auto;margin:0 0 14px}
+.doc table{border-collapse:collapse;width:100%;font-size:18px}
+.doc th,.doc td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+.doc th{background:#eaf3ff;font-weight:700}
+.blank{display:inline-block;min-width:7ch;border-bottom:1.5px solid var(--navy);height:1.1em;vertical-align:baseline}
+.box{font-size:1.1em}
+.doc-today{font-weight:700}
+.doc-in,.doc-ta{font:inherit;font-size:18px;color:var(--navy);background:#fff;border:1.5px solid var(--line);border-bottom:2px solid var(--navy);border-radius:8px;padding:6px 10px;max-width:100%}
+.doc-in{width:min(100%,21rem);min-width:9rem}
+.doc td .doc-in{width:100%;min-width:8rem}
+.doc-ta{display:block;width:100%;min-height:96px;resize:vertical}
+.doc-in.req,.doc-ta.req{border-color:var(--navy);border-width:2px;background:#fbfdff}
+.doc-in[aria-invalid=true],.doc-ta[aria-invalid=true]{border-color:#8a1c0e;background:#fff3f0}
+.doc-in:disabled{background:#eef2f8;color:#42526e}
+.doc-box{width:24px;height:24px;vertical-align:middle;margin:0 4px 0 2px;accent-color:var(--navy)}
+.field-err{display:block;color:#8a1c0e;font-weight:700;margin:4px 0 6px}
+.passport-note{margin:6px 0 10px;font-weight:600}
+
+/* signature block */
+.sign{margin-top:22px;border:2px solid var(--navy);border-radius:14px;padding:18px;background:#fff}
+.sign h3{margin:0 0 10px;font-size:23px}
+.agree{display:flex;gap:12px;align-items:flex-start;margin:0 0 14px;font-weight:600}
+.agree input{width:26px;height:26px;flex:none;margin-top:3px;accent-color:var(--navy)}
+.sign label.nm{display:block;font-weight:700;margin:0 0 4px}
+.sign input[type=text]{width:100%;font:inherit;font-size:22px;color:var(--navy);background:#fff;border:2px solid var(--navy);border-radius:10px;padding:10px 12px;margin:0 0 6px}
+.sign .hint{margin:0 0 14px}
+.btn{display:inline-block;cursor:pointer;border:2px solid var(--navy);border-radius:14px;background:var(--gold);color:var(--navy);font:inherit;font-weight:800;font-size:22px;padding:12px 30px}
+.btn:disabled{opacity:.55;cursor:default}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.fine{font-size:18px}
+footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;color:rgba(255,255,255,.85);font-size:18px}
+@media(max-width:640px){.sheet{padding:20px 14px}.doc{padding:14px 10px}.btn{width:100%}.doc-in{width:100%}}
+</style>
+</head>
+<body>
+<div class="fm-banner"><div class="fm-lockup"><span class="fm-plaque"><span class="dash"></span><span class="txt">Travel Paperwork</span><span class="dash"></span></span></div></div>
+
+<main class="shell">
+  <div class="sheet">
+    <h1 id="fm-h1">Your travel paperwork</h1>
+    <div id="fm-state" class="state" role="status" aria-live="polite">Opening your paperwork…</div>
+    <noscript><p class="err-box">This page needs JavaScript to show and sign your documents. Please turn it on, or email <a href="mailto:mark@stillafloatcruising.com">mark@stillafloatcruising.com</a>.</p></noscript>
+    <div id="fm-intro" hidden></div>
+    <section id="fm-doc" hidden aria-labelledby="fm-doc-title">
+      <p><button type="button" class="linkbtn" id="fm-back">&larr; All documents</button></p>
+      <h2 id="fm-doc-title" tabindex="-1"></h2>
+      <p class="note" id="fm-legend">Lines with a dark outline are required. Everything else is optional.</p>
+      <div class="doc" id="fm-doc-body"></div>
+      <div class="sign" id="fm-sign">
+        <h3>Sign this document</h3>
+        <div id="fm-extra"></div>
+        <label class="agree"><input type="checkbox" id="fm-agree"><span>I have read this document and I agree to it. I understand that typing my name below is my legal signature.</span></label>
+        <label class="nm" for="fm-name">Type your full name</label>
+        <input type="text" id="fm-name" autocomplete="name" maxlength="120" placeholder="First and last name">
+        <p class="hint fine">Your signature, the date and time, and the exact text you agreed to are saved with us, and a signed copy is kept on file.</p>
+        <div class="hp" aria-hidden="true"><label>Website <input type="text" id="fm-website" name="website" tabindex="-1" autocomplete="off"></label></div>
+        <div id="fm-err" class="err-box" role="alert" hidden></div>
+        <button type="button" class="btn" id="fm-go">Sign and continue</button>
+      </div>
+    </section>
+    <div id="fm-done" hidden></div>
+  </div>
+</main>
+<footer id="fm-foot">Still Afloat LLC dba Still Afloat Cruising</footer>
+
+<script src="/js/forms.js?v=20261016"></script>
+
+</body>
+</html>

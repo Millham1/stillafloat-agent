@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CHILDREN, GROUP_COLUMNS, looksLikeCardNumber, missingSchedule, pickWritable, slugify, summarize, type GroupFile } from "./group-file";
+import { CHILDREN, GROUP_COLUMNS, looksLikeCardNumber, missingSchedule, pickWritable, publicGroupRow, slugify, summarize, type GroupFile } from "./group-file";
 
 test("slugify makes a url-safe slug", () => {
   assert.equal(slugify("American Legion Post 12 — Alaska 2027"), "american-legion-post-12-alaska-2027");
@@ -159,4 +159,23 @@ test("the final payment and the last review date are not listed twice", () => {
   const labels = summarize(f, "2026-10-06", 3650).attention.map((a) => a.label);
   assert.equal(labels.filter((l) => /final payment/i.test(l)).length, 1);
   assert.equal(labels.filter((l) => /review|go back/i.test(l)).length, 1);
+});
+
+test("the traveler rows the API reads carry what the form collected, never a secret, and the dashboard cannot write the form's fields", () => {
+  const read = CHILDREN["travelers"]!.select.split(",").map((c) => c.trim());
+  for (const secret of ["passport_enc", "form_token_hash", "consent_ip_hash", "prospect_id"]) assert.ok(!read.includes(secret), `${secret} must never be selected`);
+  assert.ok(read.includes("form_data") && read.includes("newsletter_opt_in") && read.includes("passport_last4"));
+  const writable = CHILDREN["travelers"]!.columns;
+  for (const owned of ["form_data", "newsletter_opt_in", "prospect_id", "passport_enc", "passport_last4", "passport_country", "passport_expiry", "form_token_hash", "form_sent_at", "form_submitted_at", "consent_name", "consent_signed_at", "consent_ip_hash"]) {
+    assert.ok(!writable.includes(owned), `${owned} is written only by the traveler's own form`);
+  }
+});
+
+test("fees are Mark's own entry on the group file; the organizer's link hash never leaves the server", () => {
+  assert.ok(GROUP_COLUMNS.includes("fees"));
+  assert.equal(pickWritable(GROUP_COLUMNS, { fees: { planning_fee: 150 }, organizer_token_hash: "x", organizer_link_sent_at: "x", terms: {} }).ok && true, true);
+  const picked = pickWritable(GROUP_COLUMNS, { fees: { planning_fee: 150 }, organizer_token_hash: "x", organizer_link_sent_at: "2026-10-16", terms: { a: 1 } });
+  assert.deepEqual(picked, { ok: true, row: { fees: { planning_fee: 150 } } });
+  assert.deepEqual(publicGroupRow({ id: "g", name: "n", organizer_token_hash: "secret", organizer_link_sent_at: "2026-10-16" }), { id: "g", name: "n", organizer_link_sent_at: "2026-10-16" });
+  assert.equal(pickWritable(GROUP_COLUMNS, { fees: { note: "pay 4111 1111 1111 1111" } }).ok, false, "the card guard covers the fees too");
 });

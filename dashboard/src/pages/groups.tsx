@@ -8,6 +8,7 @@ import { authHeaders } from "@/lib/auth-token";
 import { useToast } from "@/hooks/use-toast";
 import { GroupMarketing } from "./group-marketing";
 import { GroupTerms } from "./group-terms";
+import { ClientPaperwork, TravelerPaperwork, type PaperworkData } from "./group-paperwork";
 
 // Group bookings — one file per group (cabins, travelers, paperwork, payments,
 // travel, checklist). Every cell saves when you leave it. Card numbers are
@@ -130,10 +131,12 @@ function Cell({ col, value, onSave }: { col: Col; value: unknown; onSave: (v: un
 }
 
 function Section({
-  title, hint, groupId, child, cols, rows, newRow, onChanged, extra,
+  title, hint, groupId, child, cols, rows, newRow, onChanged, extra, rowActions, rowActionsLabel,
 }: {
   title: string; hint?: string; groupId: string; child: string; cols: Col[]; rows: Row[];
   newRow: Row; onChanged: () => void; extra?: React.ReactNode;
+  /** Per-row buttons or status, shown in an extra column before the remove button. */
+  rowActions?: (row: Row) => React.ReactNode; rowActionsLabel?: string;
 }) {
   const { toast } = useToast();
   const run = async (fn: () => Promise<unknown>) => {
@@ -164,12 +167,13 @@ function Section({
               {cols.map((c) => (
                 <th key={c.key} className="text-left px-2 py-2 font-semibold text-muted-foreground whitespace-nowrap" style={{ minWidth: c.width ?? "7rem" }}>{c.label}</th>
               ))}
+              {rowActions && <th className="text-left px-2 py-2 font-semibold text-muted-foreground whitespace-nowrap" style={{ minWidth: "13rem" }}>{rowActionsLabel ?? ""}</th>}
               <th className="w-8" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {rows.length === 0 && (
-              <tr><td colSpan={cols.length + 1} className="px-4 py-6 text-center text-muted-foreground">Nothing here yet.</td></tr>
+              <tr><td colSpan={cols.length + 1 + (rowActions ? 1 : 0)} className="px-4 py-6 text-center text-muted-foreground">Nothing here yet.</td></tr>
             )}
             {rows.map((r) => (
               <tr key={r.id} className="hover:bg-muted/20">
@@ -178,6 +182,7 @@ function Section({
                     <Cell col={c} value={r[c.key]} onSave={(v) => run(() => api(`/groups/${groupId}/${child}/${r.id}`, "PATCH", { [c.key]: v }))} />
                   </td>
                 ))}
+                {rowActions && <td className="py-1 align-top">{rowActions(r)}</td>}
                 <td className="pr-2">
                   <button
                     title="Remove this row"
@@ -321,7 +326,8 @@ function GroupDetail({ id }: { id: string }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { data, isLoading, error } = useQuery<GroupFile>({ queryKey: ["group", id], queryFn: () => api(`/groups/${id}?horizon=3650`) });
-  const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); };
+  const { data: paperwork } = useQuery<PaperworkData & { success: boolean }>({ queryKey: ["group-signatures", id], queryFn: () => api(`/groups/${id}/signatures`) });
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-signatures", id] }); };
 
   if (isLoading) return <p className="text-muted-foreground">Loading…</p>;
   if (error || !data) return <p className="text-destructive">Could not load this group: {(error as Error)?.message}</p>;
@@ -415,7 +421,8 @@ function GroupDetail({ id }: { id: string }) {
           { key: "notes", label: "Notes", width: "12rem" },
         ]} />
 
-      <Section title="Travelers" hint="Passport numbers are entered only by the traveler on their private form; the last 4 show here." groupId={id} child="travelers" rows={data.travelers} newRow={{}} onChanged={refresh}
+      <Section title="Travelers" hint="Passport numbers are entered only by the traveler on their private form; the last 4 show here. Each traveler gets their own private paperwork link." groupId={id} child="travelers" rows={data.travelers} newRow={{}} onChanged={refresh}
+        rowActionsLabel="Paperwork" rowActions={(r) => <TravelerPaperwork api={api} groupId={id} row={r} status={paperwork?.packets?.[r.id]} onChanged={refresh} />}
         cols={[
           cabinCol,
           { key: "is_lead", label: "Lead", type: "check", width: "3rem" },
@@ -444,6 +451,8 @@ function GroupDetail({ id }: { id: string }) {
           { key: "confirmation_ref", label: "Receipt reference" },
           { key: "method_note", label: "How it was paid", width: "12rem" },
         ]} />
+
+      <ClientPaperwork api={api} groupId={id} group={g} data={paperwork} onChanged={refresh} />
 
       <Section title="Paperwork" groupId={id} child="documents" rows={data.documents} newRow={{ title: "New item" }} onChanged={refresh}
         cols={[
