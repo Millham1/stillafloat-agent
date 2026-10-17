@@ -43,6 +43,12 @@
 import { keysOf } from "../lib/harness.mjs";
 import * as H from "../lib/html.mjs";
 
+/** The lines of a journey message that quote a video from Mark's YouTube channel (title + link). The title is his,
+ *  published as it is; the house-voice tests are for the sentences WE write, so these lines are left out of them. */
+function withoutVideoLines(text) {
+  return String(text).split("\n").filter((line) => !/youtube\.com\/watch|youtu\.be\//i.test(line)).join("\n");
+}
+
 const ZERO = "00000000-0000-4000-8000-000000000000";
 const FIXTURE_TITLE = "e2e-fixture release gate checklist row (safe to delete)";
 const CARDLIKE = "0000 0000 0000 0000"; // Luhn-valid by construction, obviously not a card
@@ -1596,8 +1602,11 @@ export default [
             t.matches(p.subject, lang === "es" ? /^(Su reserva está confirmada|Faltan? \d+ días?|Pago con vencimiento|Algunos datos)/ : /^(You are booked|\d+ days? to go|Payment due|A few details)/, `${where}: its subject`);
             const all = `${p.subject}\n${p.text}`;
             t.ok(!BAD_TEXT.test(all), `${where}: has a blank or placeholder (${BAD_TEXT.exec(all)?.[0]})`);
-            t.ok(!/!/.test(all) && !/\bactually\b|\bcheap(er|est)?\b|\bbarat[oa]s?\b/i.test(all), `${where}: breaks the house voice (an exclamation mark or a banned word)`);
-            t.ok(!/\p{Extended_Pictographic}/u.test(all), `${where}: has an emoji`);
+            // The house voice is OUR prose. A video line quotes one of Mark's own published titles as it is
+            // ("¡Nunca reserves un camarote a ciegas!" is his title, not our sentence), so those lines are left out.
+            const ours = withoutVideoLines(all);
+            t.ok(!/!/.test(ours) && !/\bactually\b|\bcheap(er|est)?\b|\bbarat[oa]s?\b/i.test(ours), `${where}: breaks the house voice (an exclamation mark or a banned word)`);
+            t.ok(!/\p{Extended_Pictographic}/u.test(ours), `${where}: has an emoji`);
             t.ok(!cardShaped(all), `${where}: contains something shaped like a card number`);
           }
         }
@@ -1838,7 +1847,8 @@ export default [
             t.ok(Array.isArray(m.sections) && m.sections.length >= 1 && m.sections.every((s) => /^[a-z-]+$/.test(s)), `${where}: its section names`);
             const all = `${m.subject}\n${m.text}`;
             t.ok(!BAD_TEXT.test(all), `${where}: has a blank or placeholder (${BAD_TEXT.exec(all)?.[0]})`);
-            t.ok(!/!/.test(all) && !/\p{Extended_Pictographic}/u.test(all), `${where}: has an exclamation mark or an emoji`);
+            const ours = withoutVideoLines(all); // video titles are Mark's own, quoted as published (see the plan-and-preview check)
+            t.ok(!/!/.test(ours) && !/\p{Extended_Pictographic}/u.test(ours), `${where}: has an exclamation mark or an emoji`);
             t.ok(m.text.includes("/my-cruise.html?t="), `${where}: the link to the cruise page is missing`);
             t.equal(m.text.trimEnd().split("\n").pop(), "Still Afloat Cruising", `${where}: the last line`);
             // nothing is emailed unless the box's test list names this address: a reserved address never is
