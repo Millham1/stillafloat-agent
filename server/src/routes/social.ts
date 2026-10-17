@@ -17,9 +17,10 @@ import {
 } from "../lib/social-agent";
 import { logger } from "../lib/logger";
 import { notifyMark, reviewUrl } from "../lib/notify";
-import { publishBatch, loadMediaMap, setMedia } from "../lib/social-publish";
+import { loadMediaMap, setMedia } from "../lib/social-publish";
 import {
   scheduleApprovedBatch,
+  postBatchNow,
   listSchedule,
   loadScheduleConfig,
   saveScheduleConfig,
@@ -149,10 +150,9 @@ router.post("/social/queue/:id/:action", requireToken, async (req: Request, res:
     // (the old behavior) for an urgent/test push.
     const mode = String(req.query["mode"] ?? "");
     if (mode === "now") {
-      const publish = await publishBatch(batch);
-      const anyPosted = publish.some((p) => p.ok);
-      const finalBatch = anyPosted ? await setBatchStatus(batch.id, "posted") : batch;
-      res.json({ success: true, id: batch.id, status: finalBatch?.status ?? "approved", mode: "now", publish });
+      // Every post's outcome is recorded; the batch is "posted" only when none is left pending.
+      const publish = await postBatchNow(batch);
+      res.json({ success: true, id: batch.id, status: batch.status, mode: "now", publish });
       return;
     }
     const scheduled = await scheduleApprovedBatch(batch);
