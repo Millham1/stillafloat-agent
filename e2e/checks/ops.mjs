@@ -122,6 +122,28 @@ async function groupsList(t) {
   return body.groups;
 }
 
+/**
+ * One group read three times: the list's row for it, the file, and the list's row again. The list and the file are separate reads of
+ * a group's roll-up, and other checks put fixture rows on the draft group (a checklist row, a traveler) and take them off again while a
+ * sweep runs (three checks are in flight at once, and a group cannot be deleted through the site, so a check cannot keep a group of its
+ * own). Two roll-ups read at different moments can honestly differ, so they are compared only when the list's roll-up is the same
+ * before and after the file was read, which means nothing moved in between. When it did move, wait and read again. A real difference
+ * between the list and the file shows on every try; only a group that keeps changing for several tries is reported as such.
+ */
+async function settledGroup(t, id) {
+  let last = null;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const before = (await groupsList(t)).find((x) => x.id === id);
+    const file = t.success(await t.get(`/api/groups/${id}?horizon=3650`, { auth: true }));
+    const after = (await groupsList(t)).find((x) => x.id === id);
+    t.ok(before && after, `group ${id}: the group list no longer holds a group it listed a moment ago`);
+    last = { listed: after, file, attempts: attempt, settled: JSON.stringify(before.summary) === JSON.stringify(after.summary) };
+    if (last.settled) return last;
+    await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+  }
+  return last;
+}
+
 export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
@@ -815,12 +837,12 @@ export default [
       t.ok(!cardShaped(JSON.stringify(groups)), "the group list contains something shaped like a payment card number");
 
       let intakes = 0;
-      for (const g of spread(groups)) {
-        const f = t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
+      for (const g0 of spread(groups)) {
+        const { listed: g, file: f, settled, attempts } = await settledGroup(t, g0.id);
         t.equal(f.group?.id, g.id, `group ${g.id}: the file opened is a different group`);
         for (const k of ["cabins", "travelers", "documents", "payments", "travel", "checklist", "messages"]) t.ok(Array.isArray(f[k]), `group ${g.id}: the file has no ${k} list`);
         for (const k of ["cabins", "travelers", "payments", "deposits", "emails", "documents", "checklist"]) {
-          t.equal(JSON.stringify(f.summary?.[k]), JSON.stringify(g.summary[k]), `group ${g.id}: ${k} — the group list and the group file disagree`);
+          t.equal(JSON.stringify(f.summary?.[k]), JSON.stringify(g.summary[k]), `group ${g.id}: ${k} — the group list and the group file disagree${settled ? "" : ` (and the group kept changing for ${attempts} tries, so this may be another check's fixture row)`}`);
         }
         t.ok(f.cabins.length <= f.summary.cabins.total, `group ${g.id}: more cabin rows than the block size`);
         for (const tr of f.travelers) {
@@ -871,8 +893,9 @@ export default [
       const del = (rowId) => t.send("DELETE", `/api/groups/${g.id}/checklist/${rowId}`, { auth: true });
 
       let file = await open();
-      // a run that crashed before its finally block leaves a fixture: clear it first
-      const leftovers = file.checklist.filter((r) => String(r.title || "").startsWith("e2e-fixture"));
+      // a run that crashed before its finally block leaves a fixture: clear it first (only this check's own row: another check's
+      // fixture row may be on this group right now, and removing it would fail that check)
+      const leftovers = file.checklist.filter((r) => r.title === FIXTURE_TITLE);
       for (const r of leftovers) t.success(await del(r.id));
       if (leftovers.length) { t.note(`removed ${leftovers.length} fixture row(s) left by an earlier run`); file = await open(); }
       const before = file.summary.checklist.open;
