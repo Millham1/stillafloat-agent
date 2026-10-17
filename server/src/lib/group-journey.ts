@@ -164,6 +164,7 @@ export function planJourney(input: JourneyInput, now: Date, opts: PlanOptions = 
   else if (days! < 0) liveReason = "The sailing has passed.";
   const live = liveReason === null;
 
+  // TODO(group-journey): the group's organizer (groups.organizer_email) is not a traveler row, so the journey writes to travelers only; Mark writes to the organizer himself.
   const travelers: TravelerPlan[] = input.travelers.map((t) => {
     const cabin = cabinOf(input, t);
     const email = emailOf(t);
@@ -220,6 +221,8 @@ export function planJourney(input: JourneyInput, now: Date, opts: PlanOptions = 
           if (!(Number(p.amount) > 0)) { add({ ...common, status: "skipped", reason: "no amount on file for this payment" }); continue; }
           if (base) { add({ ...common, status: "skipped", reason: base }); continue; }
           if (date > today) { add({ ...common, status: "planned" }); continue; }
+          // TODO(group-journey): a notice for a payment that is already late. Today a date that has passed is skipped; the cruise page and the
+          // payments list say "was due" and Mark chases it himself.
           if (today > due) { add({ ...common, status: "skipped", reason: "the date has passed" }); continue; }
           if (stage === 14 && today >= addDays(due, -3)) { add({ ...common, status: "skipped", reason: "superseded by the 3-day message" }); continue; }
           add({ ...common, status: "due" });
@@ -353,7 +356,6 @@ export function sectionsFor(kind: MilestoneKind, ctx: Ctx, o: RenderOptions = {}
     case "t-2": return intoSections([sec.sailing(ctx), sec.checkin(ctx, "closes"), sec.embark2(ctx), sec.documents(ctx), sec.emergency(ctx), sec.videos(ctx, ["embark"])]);
     case "payment-due": {
       // no amount or no date on the payment means there is nothing to announce
-      // TODO(group-journey): a notice for a payment that is already late (today a date that has passed is skipped; the cruise page and the 120-day list say "was due", and Mark chases it himself)
       const one = o.payment ? sec.paymentOne(ctx, o.payment) : null;
       return one && o.payment ? intoSections([one, sec.howToPay(ctx, o.payment)]) : [];
     }
