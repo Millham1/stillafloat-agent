@@ -21,6 +21,9 @@ import { runWatchSweep } from "./lib/wms-alerts";
 import { sendPendingReminders, archiveStaleUnconfirmed, purgeBounced } from "./lib/subscriber-hygiene";
 import { checkPushHealth } from "./lib/push-health";
 import { registerJob, runJob, loadJobHealth } from "./lib/job-health";
+import { tick as groupJourneyTick } from "./lib/group-journey-run";
+import { journeyDeps } from "./lib/group-journey-wire";
+import { localToday } from "./lib/group-journey-facts";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -47,6 +50,7 @@ app.listen(port, "0.0.0.0", () => {
   registerJob("scheduleWmsAlerts", { every: "hourly (first run 15 min after boot)", everyMs: 3_600_000, disabled: Boolean(off("DISABLE_WMS_ALERTS")), disabledWhy: off("DISABLE_WMS_ALERTS") });
   registerJob("scheduleLiveAisCredits", { every: "on boot + every 4h", everyMs: 4 * 3_600_000, disabled: !liveAisEnabled(), disabledWhy: liveAisEnabled() ? undefined : "no LIVEAIS_API_KEY on this box" });
   registerJob("scheduleSubscriberHygiene", { every: "daily at SUBSCRIBER_HYGIENE_HOUR (polled every 5 min)", everyMs: 24 * 3_600_000, disabled: Boolean(off("DISABLE_SUBSCRIBER_HYGIENE")), disabledWhy: off("DISABLE_SUBSCRIBER_HYGIENE") });
+  registerJob("scheduleGroupJourney", { every: "daily at GROUP_JOURNEY_HOUR (polled every 5 min)", everyMs: 24 * 3_600_000, disabled: Boolean(off("DISABLE_GROUP_JOURNEY")), disabledWhy: off("DISABLE_GROUP_JOURNEY") });
   void loadJobHealth();
   // Editorial/news is owned entirely by the standalone news agent
   // (:3003, stillafloat-newsagent). The monorepo no longer contains or runs any
@@ -134,6 +138,11 @@ app.listen(port, "0.0.0.0", () => {
   } else {
     scheduleSubscriberHygiene();
   }
+  if (process.env["DISABLE_GROUP_JOURNEY"] === "1") {
+    logger.info("Group journey emails DISABLED (DISABLE_GROUP_JOURNEY=1)");
+  } else {
+    scheduleGroupJourney();
+  }
 });
 
 // ── WMS watch-alert scheduler ─────────────────────────────────────────────────
@@ -184,6 +193,43 @@ function scheduleSubscriberHygiene() {
 
   setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
   logger.info({ runHour, tz: TZ }, "Subscriber hygiene scheduler active — daily reminder + archive + purge sweep");
+}
+
+// ── Group journey scheduler ───────────────────────────────────────────────────
+// The emails after the paperwork (migration 0053, lib/group-journey*.ts): the booking confirmation, the 120 / 90 / 45 / 20 / 10 / 5 / 2-day
+// messages, payment notices and the nudge for missing details. Once per local day at GROUP_JOURNEY_HOUR (default 9am, in TIMEZONE), and
+// again on the same day if the server was down at that hour (hour >= the run hour and today not yet done). The run is safe to repeat: a
+// message is claimed by its dedupe key before it is sent, so nothing goes out twice. Only APPROVED templates are sent (Mark 2026-10-02);
+// the dev box emails only its test addresses (GROUP_FORMS_MAIL_ALLOW). Off with DISABLE_GROUP_JOURNEY=1.
+function scheduleGroupJourney() {
+  const TZ = process.env["TIMEZONE"] || "America/New_York";
+  const runHour = Number(process.env["GROUP_JOURNEY_HOUR"] ?? "9");
+  let lastRunDate: string | null = null;
+  let running = false;
+
+  const hourNow = (): number => Number(new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour12: false, hour: "2-digit" }).format(new Date())) % 24;
+
+  const tick = async () => {
+    const date = localToday(new Date(), TZ);
+    if (running || lastRunDate === date) return;
+    const hour = hourNow();
+    if (hour < runHour || hour >= 20) return;   // not before the run hour, and a late restart does not mail people at night
+    running = true;
+    lastRunDate = date;
+    try {
+      await runJob("scheduleGroupJourney", async () => {
+        const r = await groupJourneyTick(journeyDeps());
+        logger.info({ groups: r.groups, sent: r.sent, failed: r.failed, held: r.held, waiting: r.waiting.length }, "Group journey tick complete");
+        if (r.errors.length) throw new Error(r.errors.join("; ").slice(0, 400));
+        return { groups: r.groups, sent: r.sent, failed: r.failed, held: r.held, waitingOnApproval: r.waiting.length };
+      }, { logFail: "Group journey tick failed" });
+    } finally {
+      running = false;
+    }
+  };
+
+  setInterval(() => { tick().catch(() => {}); }, 5 * 60 * 1000);
+  logger.info({ runHour, tz: TZ }, "Group journey scheduler active — daily, checks every 5m");
 }
 
 // ── News pre-render scheduler ─────────────────────────────────────────────────

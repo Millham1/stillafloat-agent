@@ -346,6 +346,15 @@ export function simMailAllowed(to: string, allow: string | undefined): boolean {
   return !!allow && allow.trim().length > 0 && mailAllowed(to, allow);
 }
 
+const PRODUCTION_HOST = /(^|[/.])stillafloatcruising\.com(?=[/:]|$)/i;
+
+/** The dry-run route exists only on a box that asks for it (GROUP_JOURNEY_SIM=1) and is not the production site, like the dev storm fixture. */
+export function journeySimEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  if (env["GROUP_JOURNEY_SIM"] !== "1") return false;
+  const url = env["PUBLIC_URL"] ?? "";
+  return url.length > 0 && !PRODUCTION_HOST.test(url);
+}
+
 export const SIM_SEQUENCE: MilestoneKind[] = ["confirmation", ...DAY_MILESTONES.map(dayKind)];
 
 /**

@@ -461,7 +461,7 @@ export function renderHub(page: Ctx): HubView {
     sec.insurance(ctx, { video: true }),
     sec.videos(ctx, ["embark", "packing"]),
   ]);
-  const order = ["notice", "sailing", "missing", "details", "paperwork", "payments", "checklist", "travel", "ship", "storm", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"];
+  const order = ["notice", "sailing", "missing", "details", "paperwork", "payments", "checklist", "travel", "travel-needed", "ship", "storm", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"];
   sections.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 
   const first = plain(ctx.traveler.first_name, 60);

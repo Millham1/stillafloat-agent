@@ -67,7 +67,7 @@ export interface Ctx {
 }
 
 export interface SectionItem { text: string; url?: string }
-export interface ChecklistEntry { id: string; title: string; detail: string | null; url: string | null; due: string | null; done: boolean }
+export interface ChecklistEntry { id: string; title: string; detail: string | null; url: string | null; due: string | null; /** "by March 3, 2027", in the page's language */ dueText?: string | null; done: boolean }
 export interface Section {
   key: string;
   title: string;

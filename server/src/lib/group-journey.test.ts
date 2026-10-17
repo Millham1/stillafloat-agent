@@ -272,7 +272,7 @@ test("the 120-day message: sailing, payment schedule, paperwork, passport, insur
 test("the 90-day message: what is open, the line's dates before the 45-day mark, and how the traveler is getting there", () => {
   const input = fixtureInput();
   const r = renderEmail("t-90", ctx(input, "t1", before(90)))!;
-  assert.deepEqual(r.sections, ["sailing", "payments", "deadlines", "travel", "checklist"]);
+  assert.deepEqual(r.sections, ["sailing", "payments", "deadlines", "travel", "travel-needed", "checklist"]);
   assert.match(r.text, /Final payment: \$2,800, due January 5, 2027\./);
   assert.ok(!/Deposit:/.test(r.text), "the paid deposit is not repeated in the open list");
   assert.match(r.text, /passenger names by December 15, 2026/);
@@ -470,7 +470,7 @@ test("a section the file cannot support is left out, not printed blank", () => {
   bare.payments = []; bare.travel = []; bare.checklist = [];
   const c = (n: number, id = "t1") => ctx(bare, id, before(n), { videos: [], rating: null, shipInfo: null, storm: null, weather: null });
   assert.deepEqual(renderEmail("t-120", c(120))!.sections, ["sailing", "paperwork", "passport", "insurance"]);
-  assert.deepEqual(renderEmail("t-90", c(90))!.sections, ["sailing", "travel"]);
+  assert.deepEqual(renderEmail("t-90", c(90))!.sections, ["sailing", "travel"]);   // nothing on file: one list, what is needed
   assert.deepEqual(renderEmail("t-45", c(45))!.sections, ["sailing", "dining", "missing"]);
   assert.deepEqual(renderEmail("t-20", c(20))!.sections, ["sailing", "checkin", "documents", "packing"]);
   assert.deepEqual(renderEmail("t-10", c(10))!.sections, ["sailing", "ship", "embark"]);
@@ -552,7 +552,7 @@ test("the cruise page carries every part of the journey for the traveler, in the
   assert.equal(h.lang, "en");
   assert.equal(h.hello, "Hello Ann.");
   assert.deepEqual(h.countdown, { days: 5, text: "5 days to go." });
-  assert.deepEqual(h.sections.map((s) => s.key), ["notice", "sailing", "missing", "details", "paperwork", "payments", "checklist", "travel", "ship", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"]);
+  assert.deepEqual(h.sections.map((s) => s.key), ["notice", "sailing", "missing", "details", "paperwork", "payments", "checklist", "travel", "travel-needed", "ship", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"]);
   assert.equal(h.sections[0]!.title, "November 2, 2026");
   assert.equal(h.sections.find((s) => s.key === "details")!.form, "details");
   assert.equal(h.sections.find((s) => s.key === "checklist")!.checklist!.length, 5);

@@ -180,7 +180,7 @@ function whatOf(r: Row, lang: Ctx["lang"]): string {
   return [bits, route, when, conf ? `${lang === "es" ? "confirmación" : "confirmation"} ${conf}` : ""].filter(Boolean).join(", ");
 }
 
-export function travel(ctx: Ctx): Section | null {
+export function travel(ctx: Ctx): Section[] {
   const S = strings(ctx.lang).s;
   const tv = travelState(ctx.input, ctx.traveler, ctx.cabin);
   const kindLabel: Record<string, string> = { flight: S.travelFlightIn, hotel: S.travelHotel, transfer: S.travelTransfer };
@@ -207,14 +207,24 @@ export function travel(ctx: Ctx): Section | null {
   const needed: SectionItem[] = [];
   if (!tv.flightIn) needed.push({ text: S.travelFlightInNeed });
   if (!tv.flightOut) needed.push({ text: S.travelFlightOutNeed });
-  const lines: string[] = [];
-  const items: SectionItem[] = [];
-  if (onFile.length) { lines.push(S.travelOnFile); items.push(...onFile); }
-  if (needed.length) { lines.push(S.travelNeeded); items.push(...needed); }
   const hasHotelOrTransfer = tv.rows.some((r) => r.kind === "hotel" || r.kind === "transfer") || plain(told["hotel_name"]) || plain(told["transfer_note"]);
-  if (needed.length || !hasHotelOrTransfer) lines.push(S.travelOptional);
-  if (!items.length && !lines.length) return null;
-  return { key: "travel", title: S.travel, lines, items, links: [{ label: S.travelAdd, url: `${ctx.hubUrl}#details` }] };
+  const optional = needed.length || !hasHotelOrTransfer ? S.travelOptional : null;
+  const link = [{ label: S.travelAdd, url: `${ctx.hubUrl}#details` }];
+  if (!onFile.length && !needed.length && !optional) return [];
+  // what is on file and what is still needed are two lists, each under its own words
+  if (onFile.length && needed.length) {
+    return [
+      { key: "travel", title: S.travel, lines: [S.travelOnFile], items: onFile },
+      { key: "travel-needed", title: S.travelNeeded.replace(/:$/, ""), lines: clean([optional]), items: needed, links: link },
+    ];
+  }
+  return [{
+    key: "travel", title: S.travel,
+    lines: clean([onFile.length ? S.travelOnFile : needed.length ? S.travelNeeded : null]),
+    items: [...onFile, ...needed],
+    ...(optional ? { lines: clean([onFile.length ? S.travelOnFile : needed.length ? S.travelNeeded : null, optional]) } : {}),
+    links: link,
+  }];
 }
 
 export function missing(ctx: Ctx): Section | null {
@@ -514,6 +524,9 @@ export function checklistAll(ctx: Ctx): Section | null {
   const S = strings(ctx.lang).s;
   const rows = clientChecklist(ctx.input, ctx.traveler, ctx.cabin);
   if (!rows.length) return null;
-  return { key: "checklist", title: S.checklist, lines: [], checklist: rows.map((r) => checklistEntry(r, ctx.traveler)) };
+  return {
+    key: "checklist", title: S.checklist, lines: [],
+    checklist: rows.map((r) => { const e = checklistEntry(r, ctx.traveler); return { ...e, dueText: e.due ? S.checklistBy(fmtDate(e.due, ctx.lang)) : null }; }),
+  };
 }
 
