@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Route, Eye, Check, Send, Plus, Trash2, FlaskConical } from "lucide-react";
+import { Route, Eye, Check, Send, Plus, Trash2, FlaskConical, Link2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { ApiFn } from "./group-paperwork";
 
@@ -197,6 +197,7 @@ export function GroupJourney({ api, groupId }: { api: ApiFn; groupId: string }) 
   const [asDefault, setAsDefault] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showMatrix, setShowMatrix] = useState(false);
+  const [link, setLink] = useState<{ name: string; url: string } | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["group-journey", groupId] });
 
   const show = async (m: Milestone, lang?: "en" | "es", travelerId?: string) => {
@@ -208,11 +209,15 @@ export function GroupJourney({ api, groupId }: { api: ApiFn; groupId: string }) 
     } catch (e) { toast({ variant: "destructive", title: "No preview", description: (e as Error).message }); }
     setBusy(false);
   };
-  const approve = async (kinds: string[], approved: boolean) => {
+  const makeLink = async (t: PlanTraveler) => {
+    try { const r = await api<{ url: string }>(`/groups/${groupId}/travelers/${t.id}/cruise-link`, "POST", {}); setLink({ name: t.name, url: r.url }); }
+    catch (e) { toast({ variant: "destructive", title: "Could not make the link", description: (e as Error).message }); }
+  };
+  const approve = async (kinds: string[], approved: boolean | null) => {
     setBusy(true);
     try {
       await api(`/groups/${groupId}/journey/approve`, "PUT", { kinds, approved, as_default: asDefault });
-      toast({ title: approved ? (kinds.length > 1 ? "All approved" : "Approved") : "Approval withdrawn", description: asDefault ? "For every group that has not decided otherwise." : "For this group." });
+      toast({ title: approved === null ? "Following the site default again" : approved ? (kinds.length > 1 ? "All approved" : "Approved") : "Approval withdrawn", description: approved === null ? undefined : asDefault ? "For every group that has not decided otherwise." : "For this group." });
       refresh();
     } catch (e) { toast({ variant: "destructive", title: "Not saved", description: (e as Error).message }); }
     setBusy(false);
@@ -263,6 +268,7 @@ export function GroupJourney({ api, groupId }: { api: ApiFn; groupId: string }) 
                         {m.approval.approved
                           ? <button className={btn} disabled={busy} onClick={() => approve([m.kind], false)}>Withdraw</button>
                           : <button className={btn} disabled={busy} onClick={() => approve([m.kind], true)}><Check className="w-3 h-3" /> Approve</button>}
+                        {m.approval.source === "group" && <button className={btn} disabled={busy} onClick={() => approve([m.kind], null)} title="Drop this group's own decision and follow the site default">Use default</button>}
                       </div>
                     )}
                   </td>
@@ -280,12 +286,22 @@ export function GroupJourney({ api, groupId }: { api: ApiFn; groupId: string }) 
 
       {showMatrix && (
         <div className="overflow-x-auto border-t">
+          {link && (
+            <div className="m-3 p-2 border rounded bg-muted/30 space-y-1 text-xs">
+              <div className="font-semibold">Cruise page link for {link.name} (the same link every time; it also opens their paperwork)</div>
+              <div className="flex gap-1">
+                <input readOnly value={link.url} onFocus={(e) => e.currentTarget.select()} className="flex-1 min-w-0 px-2 py-1 rounded border bg-card" aria-label="Cruise page link" />
+                <button className={btn} onClick={async () => { try { await navigator.clipboard.writeText(link.url); toast({ title: "Link copied" }); } catch { toast({ variant: "destructive", title: "Select the link and copy it" }); } }}><Copy className="w-3 h-3" /> Copy</button>
+              </div>
+            </div>
+          )}
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Traveler</th>
                 {MATRIX.map((k) => <th key={k} className="px-2 py-2 font-semibold text-muted-foreground">{SHORT[k]}</th>)}
                 <th className="px-2 py-2 font-semibold text-muted-foreground">Pay / nudge</th>
+                <th className="px-2 py-2 font-semibold text-muted-foreground">Cruise page</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -299,6 +315,7 @@ export function GroupJourney({ api, groupId }: { api: ApiFn; groupId: string }) 
                   <td className="px-2 py-1 text-center whitespace-nowrap">
                     {t.items.filter((x) => x.kind === "payment-due" || x.kind === "data-needed").map((x, n) => <Badge key={n} variant="outline" className={`${STATUS_CLS[x.status] ?? ""} text-[10px] px-1 mr-0.5`} title={[x.kind, x.date ? fmtDate(x.date) : "", x.reason ?? ""].filter(Boolean).join(" · ")}>{SHORT[x.kind]} {x.status}</Badge>)}
                   </td>
+                  <td className="px-2 py-1 text-center"><button className={btn} onClick={() => makeLink(t)} title="Make the traveler's private cruise page link"><Link2 className="w-3 h-3" /> Link</button></td>
                 </tr>
               ))}
             </tbody>
