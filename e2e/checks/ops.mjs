@@ -36,6 +36,9 @@
 //     used: a malformed code, the bot honeypot (answers success and stores nothing) and a body
 //     with no name and no email. TURNSTILE is not enforced on dev, so a request carrying a name
 //     and an email WOULD be stored and e-mailed — never send one.
+//   • ops.group-journey-plan-and-preview runs on both boxes and is the one such check that writes, on dev only and only when no group
+//     there has a real traveler: it adds one throwaway "E2E Gate Preview" traveler (undeliverable address) so a message can be
+//     previewed, and removes it in a finally block. Prod never writes; it opens other groups' files (GET) to find a traveler.
 //   • Every write that could, if a guard regressed, change a real row also carries an invalid
 //     enum value, so the database's own check constraint refuses it as a second line of defence.
 //   • No personal data in failures or observations: groups are named by id, travellers and
@@ -52,6 +55,8 @@ function withoutVideoLines(text) {
 const ZERO = "00000000-0000-4000-8000-000000000000";
 const FIXTURE_TITLE = "e2e-fixture release gate checklist row (safe to delete)";
 const CARDLIKE = "0000 0000 0000 0000"; // Luhn-valid by construction, obviously not a card
+const TEST_ADDRESS = "e2e-fixture-nobody@example.invalid"; // a reserved name that can never be delivered; the gate's convention (ships.mjs)
+const PREVIEW_LAST = "Gate Preview"; // surname of the throwaway traveler the journey preview check adds when dev has no real one
 const PROD_DASHBOARD = "https://dashboard.stillafloatcruising.com";
 const GROUP_STATUSES = ["draft", "marketing", "booking", "final-paid", "sailed", "closed", "cancelled"];
 const BATCH_STATUSES = ["pending", "approved", "rejected", "scheduled", "posted"];
@@ -1572,69 +1577,120 @@ export default [
       const KINDS = ["confirmation", "t-120", "t-90", "t-45", "t-20", "t-10", "t-5", "t-2", "payment-due", "data-needed", "change-notice"];
       const BAD_TEXT = /undefined|\bnull\b|NaN|\$0(?![\d,.])|\{\{|\[object/;
       let previewed = 0;
-      for (const g of spread(groups)) {
-        const file = t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
-        const j = t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true }));
-        t.equal(j.milestones.map((m) => m.kind).join(","), KINDS.join(","), `group ${g.id}: the messages in the plan`);
-        t.matches(j.template_version, /^\d{4}-\d{2}-\d{2}\.\d+$/, "the template version");
-        t.equal(typeof j.sim_enabled, "boolean", "whether this box can run the dry run");
-        if (t.mode === "prod") t.equal(j.sim_enabled, false, "the dry run must never be switched on at the production site");
-        t.ok(typeof j.link_key_set === "boolean" && typeof j.test_list_set === "boolean" && typeof j.live === "boolean", `group ${g.id}: the plan does not say whether this box can write links, has a test list, or is live`);
-        let items = 0;
-        for (const m of j.milestones) {
-          t.fields(m, ["kind", "label", "counts", "approval"], `plan line ${m.kind}`);
-          t.ok(["group", "default", "none"].includes(m.approval.source) && typeof m.approval.approved === "boolean" && typeof m.approval.stale === "boolean", `plan line ${m.kind}: its approval is not readable`);
-          const n = /^t-(\d+)$/.exec(m.kind)?.[1];
-          if (n && g.sail_date) {
-            const want = new Date(Date.parse(`${String(g.sail_date).slice(0, 10)}T00:00:00Z`) - Number(n) * DAY).toISOString().slice(0, 10);
-            t.equal(m.date, want, `group ${g.id}: the day the ${n}-day message goes out`);
-          }
-          items += Object.values(m.counts).reduce((a, b) => a + b, 0) - m.counts.blocked;   // blocked is a count inside due
-        }
-        // (a release-gate fixture traveler may come and go in this group while the sweep runs: only the real travelers are compared)
-        const realIds = file.travelers.filter((x) => x.first_name !== "E2E").map((x) => x.id);
-        t.ok(realIds.every((id) => j.travelers.some((x) => x.id === id)), `group ${g.id}: a traveler on the file is missing from the plan`);
-        t.equal(j.travelers.filter((x) => !x.name.startsWith("E2E ")).length, realIds.length, `group ${g.id}: travelers in the plan vs the group file`);
-        const inTravelers = j.travelers.reduce((a, x) => a + x.items.length, 0);
-        t.equal(items, inTravelers, `group ${g.id}: the counts per message add up to the items per traveler`);
-        for (const x of j.travelers) t.ok(x.items.every((i) => ["planned", "due", "sent", "failed", "skipped"].includes(i.status)), `group ${g.id}: a plan item has an unknown state`);
-        const raw = JSON.stringify(j);
-        for (const secret of ["hub_token_hash", "form_token_hash", "passport_enc", "organizer_token_hash", "consent_ip_hash", '"form_data"', "my-cruise.html?t="]) t.ok(!raw.includes(secret), `group ${g.id}: the journey plan carries ${secret}`);
-        t.ok(!cardShaped(raw), `group ${g.id}: the journey plan contains something shaped like a card number`);
-
-        // every message, written for a real traveler of this group, in both languages
-        if (!realIds.length || previewed >= (t.mode === "prod" ? 1 : 3)) continue;   // (a fixture traveler of another check may be here for a moment: a preview needs a real one)
-        previewed++;
-        const kinds = previewed === 1 ? KINDS.filter((k) => k !== "change-notice") : ["t-120", "t-5"];
-        for (const kind of kinds) {
-          for (const lang of ["en", "es"]) {
-            const res = await t.get(`/api/groups/${g.id}/journey/preview/${kind}?lang=${lang}`, { auth: true });
-            if ((kind === "payment-due" || kind === "data-needed") && res.status === 400) {
-              refused(t, res, 400, `the ${kind} preview of group ${g.id} when there is nothing to say`, /no unpaid payment|missing nothing|does not hold enough/i);
-              continue;
+      // The groups walked: a spread of the list. A preview needs a traveler, and a real one is a traveler row that is not a gate fixture ("E2E …":
+      // another check's fixture may come and go in the same group, so it is never counted). The list cannot say which groups have one (its
+      // traveler count is the expected one, two to a cabin), so the files are opened.
+      const walk = [...spread(groups)];
+      const realTravelers = (f) => f.travelers.filter((x) => x.first_name !== "E2E");
+      const openFile = async (g) => t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
+      let seed = null;   // the throwaway traveler this check adds when no group walked has a real one (dev only), { groupId, id }
+      let travelersExist = false;
+      try {
+        let real = 0;
+        for (const g of walk) {
+          const f = await openFile(g);
+          if (t.mode === "dev") {
+            // one left by an earlier run that crashed before its finally block
+            for (const left of f.travelers.filter((x) => x.first_name === "E2E" && x.last_name === PREVIEW_LAST)) {
+              await t.send("DELETE", `/api/groups/${g.id}/travelers/${left.id}`, { auth: true });
+              t.note("removed a preview traveler left by an earlier run");
             }
-            const p = t.success(res);
-            const where = `the ${kind} message of group ${g.id} in ${lang}`;
-            t.equal(p.lang, lang, `${where}: its language`);
-            t.fields(p, ["subject", "html", "text", "sections", "traveler.id"], where);
-            t.ok(Array.isArray(p.sections) && p.sections.length >= 1, `${where}: no sections`);
-            t.equal((p.html.match(/data-cta="1"/g) || []).length, 1, `${where}: buttons in the email`);
-            t.ok(p.html.includes("/my-cruise.html?t="), `${where}: the button does not open the cruise page`);
-            t.matches(p.text, lang === "es" ? /¿Preguntas\? Mark Millham · 919-346-6127 · mark@stillafloatcruising\.com/ : /Questions\? Mark Millham · 919-346-6127 · mark@stillafloatcruising\.com/, `${where}: Mark's contact line`);
-            t.equal(p.text.trimEnd().split("\n").pop(), "Still Afloat Cruising", `${where}: the last line`);
-            t.matches(p.subject, lang === "es" ? /^(Su reserva está confirmada|Faltan? \d+ días?|Pago con vencimiento|Algunos datos)/ : /^(You are booked|\d+ days? to go|Payment due|A few details)/, `${where}: its subject`);
-            const all = `${p.subject}\n${p.text}`;
-            t.ok(!BAD_TEXT.test(all), `${where}: has a blank or placeholder (${BAD_TEXT.exec(all)?.[0]})`);
-            // The house voice is OUR prose. A video line quotes one of Mark's own published titles as it is
-            // ("¡Nunca reserves un camarote a ciegas!" is his title, not our sentence), so those lines are left out.
-            const ours = withoutVideoLines(all);
-            t.ok(!/!/.test(ours) && !/\bactually\b|\bcheap(er|est)?\b|\bbarat[oa]s?\b/i.test(ours), `${where}: breaks the house voice (an exclamation mark or a banned word)`);
-            t.ok(!/\p{Extended_Pictographic}/u.test(ours), `${where}: has an emoji`);
-            t.ok(!cardShaped(all), `${where}: contains something shaped like a card number`);
+          }
+          real += realTravelers(f).length;
+        }
+        if (t.mode === "prod" && real === 0) {
+          // Prod is read-only, so nothing can be added there: look at the other groups until one has a traveler, and walk that one too.
+          // "Nothing was previewed" is then acceptable only when no group on prod has a traveler at all.
+          for (const g of groups.filter((x) => !walk.includes(x))) {
+            if (realTravelers(await openFile(g)).length) { walk.push(g); real = 1; break; }
           }
         }
+        // Dev's test data has no real traveler whenever its walkthrough was reset (that deletes them), and then no message can be previewed
+        // and nothing about the messages is tested. So the check brings its own: one throwaway traveler on a group of the walk, named like
+        // every gate fixture ("E2E …": the checks that compare a group's travelers with its plan, and Mark's change-notice preview, leave those
+        // out), with the gate's undeliverable address, removed in the finally block.
+        if (t.mode === "dev" && real === 0) {
+          const home = walk.find((x) => x.sail_date) || walk[0];
+          const add = await t.send("POST", `/api/groups/${home.id}/travelers`, { auth: true, body: { first_name: "E2E", last_name: PREVIEW_LAST, email: TEST_ADDRESS, notes: "Created and deleted by the whole-site release gate." } });
+          seed = { groupId: home.id, id: add.json?.row?.id || null };   // taken first, so the finally block can always remove it
+          t.status(add, 201);
+          t.ok(seed.id, "the preview traveler has no id");
+          real = 1;
+        }
+        travelersExist = real > 0;
+        for (const g of walk) {
+          const file = t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
+          const j = t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true }));
+          t.equal(j.milestones.map((m) => m.kind).join(","), KINDS.join(","), `group ${g.id}: the messages in the plan`);
+          t.matches(j.template_version, /^\d{4}-\d{2}-\d{2}\.\d+$/, "the template version");
+          t.equal(typeof j.sim_enabled, "boolean", "whether this box can run the dry run");
+          if (t.mode === "prod") t.equal(j.sim_enabled, false, "the dry run must never be switched on at the production site");
+          t.ok(typeof j.link_key_set === "boolean" && typeof j.test_list_set === "boolean" && typeof j.live === "boolean", `group ${g.id}: the plan does not say whether this box can write links, has a test list, or is live`);
+          let items = 0;
+          for (const m of j.milestones) {
+            t.fields(m, ["kind", "label", "counts", "approval"], `plan line ${m.kind}`);
+            t.ok(["group", "default", "none"].includes(m.approval.source) && typeof m.approval.approved === "boolean" && typeof m.approval.stale === "boolean", `plan line ${m.kind}: its approval is not readable`);
+            const n = /^t-(\d+)$/.exec(m.kind)?.[1];
+            if (n && g.sail_date) {
+              const want = new Date(Date.parse(`${String(g.sail_date).slice(0, 10)}T00:00:00Z`) - Number(n) * DAY).toISOString().slice(0, 10);
+              t.equal(m.date, want, `group ${g.id}: the day the ${n}-day message goes out`);
+            }
+            items += Object.values(m.counts).reduce((a, b) => a + b, 0) - m.counts.blocked;   // blocked is a count inside due
+          }
+          // (a release-gate fixture traveler may come and go in this group while the sweep runs: only the real travelers are compared)
+          const realIds = file.travelers.filter((x) => x.first_name !== "E2E").map((x) => x.id);
+          t.ok(realIds.every((id) => j.travelers.some((x) => x.id === id)), `group ${g.id}: a traveler on the file is missing from the plan`);
+          t.equal(j.travelers.filter((x) => !x.name.startsWith("E2E ")).length, realIds.length, `group ${g.id}: travelers in the plan vs the group file`);
+          const inTravelers = j.travelers.reduce((a, x) => a + x.items.length, 0);
+          t.equal(items, inTravelers, `group ${g.id}: the counts per message add up to the items per traveler`);
+          for (const x of j.travelers) t.ok(x.items.every((i) => ["planned", "due", "sent", "failed", "skipped"].includes(i.status)), `group ${g.id}: a plan item has an unknown state`);
+          const raw = JSON.stringify(j);
+          for (const secret of ["hub_token_hash", "form_token_hash", "passport_enc", "organizer_token_hash", "consent_ip_hash", '"form_data"', "my-cruise.html?t="]) t.ok(!raw.includes(secret), `group ${g.id}: the journey plan carries ${secret}`);
+          t.ok(!cardShaped(raw), `group ${g.id}: the journey plan contains something shaped like a card number`);
+
+          // every message, written for a real traveler of this group (or the throwaway one this check added), in both languages
+          const asSeed = !realIds.length && seed?.id && seed.groupId === g.id;
+          if ((!realIds.length && !asSeed) || previewed >= (t.mode === "prod" ? 1 : 3)) continue;   // (a fixture traveler of another check may be here for a moment: a preview needs a real one)
+          previewed++;
+          const kinds = previewed === 1 ? KINDS.filter((k) => k !== "change-notice") : ["t-120", "t-5"];
+          for (const kind of kinds) {
+            for (const lang of ["en", "es"]) {
+              const res = await t.get(`/api/groups/${g.id}/journey/preview/${kind}?lang=${lang}${asSeed ? `&traveler_id=${seed.id}` : ""}`, { auth: true });
+              if ((kind === "payment-due" || kind === "data-needed") && res.status === 400) {
+                refused(t, res, 400, `the ${kind} preview of group ${g.id} when there is nothing to say`, /no unpaid payment|missing nothing|does not hold enough/i);
+                continue;
+              }
+              const p = t.success(res);
+              const where = `the ${kind} message of group ${g.id} in ${lang}`;
+              t.equal(p.lang, lang, `${where}: its language`);
+              t.fields(p, ["subject", "html", "text", "sections", "traveler.id"], where);
+              t.ok(Array.isArray(p.sections) && p.sections.length >= 1, `${where}: no sections`);
+              t.equal((p.html.match(/data-cta="1"/g) || []).length, 1, `${where}: buttons in the email`);
+              t.ok(p.html.includes("/my-cruise.html?t="), `${where}: the button does not open the cruise page`);
+              t.matches(p.text, lang === "es" ? /¿Preguntas\? Mark Millham · 919-346-6127 · mark@stillafloatcruising\.com/ : /Questions\? Mark Millham · 919-346-6127 · mark@stillafloatcruising\.com/, `${where}: Mark's contact line`);
+              t.equal(p.text.trimEnd().split("\n").pop(), "Still Afloat Cruising", `${where}: the last line`);
+              t.matches(p.subject, lang === "es" ? /^(Su reserva está confirmada|Faltan? \d+ días?|Pago con vencimiento|Algunos datos)/ : /^(You are booked|\d+ days? to go|Payment due|A few details)/, `${where}: its subject`);
+              const all = `${p.subject}\n${p.text}`;
+              t.ok(!BAD_TEXT.test(all), `${where}: has a blank or placeholder (${BAD_TEXT.exec(all)?.[0]})`);
+              // The house voice is OUR prose. A video line quotes one of Mark's own published titles as it is
+              // ("¡Nunca reserves un camarote a ciegas!" is his title, not our sentence), so those lines are left out.
+              const ours = withoutVideoLines(all);
+              t.ok(!/!/.test(ours) && !/\bactually\b|\bcheap(er|est)?\b|\bbarat[oa]s?\b/i.test(ours), `${where}: breaks the house voice (an exclamation mark or a banned word)`);
+              t.ok(!/\p{Extended_Pictographic}/u.test(ours), `${where}: has an emoji`);
+              t.ok(!cardShaped(all), `${where}: contains something shaped like a card number`);
+            }
+          }
+        }
+      } finally {
+        if (seed?.id) await t.send("DELETE", `/api/groups/${seed.groupId}/travelers/${seed.id}`, { auth: true }).catch(() => {});
       }
-      t.atLeast(previewed, t.mode === "dev" ? 1 : 0, "groups whose messages were previewed");
+      if (seed) {
+        const after = t.success(await t.get(`/api/groups/${seed.groupId}?horizon=3650`, { auth: true }));
+        t.ok(!after.travelers.some((x) => x.id === seed.id), "the throwaway preview traveler is still in the group file");
+      }
+      // Dev always has one to preview (its own, if need be). On prod nothing can be added, so no preview is acceptable only when no group
+      // there has a traveler (every group file was opened above, or the check would have stopped).
+      t.atLeast(previewed, t.mode === "dev" || travelersExist ? 1 : 0, "groups whose messages were previewed");
       t.observe("groups checked for the journey plan", Math.min(groups.length, 3), "info");
     },
   },
@@ -1840,7 +1896,6 @@ export default [
       t.require(g, "no group file on dev has a sail date, which the countdown needs");
       const plan = async () => t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true }));
       t.require((await plan()).sim_enabled === true, "the dry run is off on this box: add GROUP_JOURNEY_SIM=1 to this box's shared.env (it is never allowed on the production site)");
-      const TEST_ADDRESS = "e2e-fixture-nobody@example.invalid";   // a reserved name that can never be delivered; the gate's convention (ships.mjs)
       const open = async () => t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
       let file = await open();
       for (const left of file.travelers.filter((x) => x.first_name === "E2E" && /^Sim Fixture/.test(x.last_name || ""))) { await t.send("DELETE", `/api/groups/${g.id}/travelers/${left.id}`, { auth: true }); t.note("removed a fixture traveler left by an earlier run"); }
