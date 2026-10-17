@@ -2,6 +2,9 @@
 // The link in the address is the only credential: it is read once, sent only to our own API
 // (/api/forms/<link>), and never logged, stored or echoed. All rules (what is shown, what is
 // accepted, what a signature pins) live on the server in lib/group-forms.ts.
+// The page declares where it talks to (main[data-api]); the check in e2e/checks/ops.mjs reads the same attribute.
+var API_BASE = (function () { var m = document.querySelector('main[data-api]'); return (m && m.getAttribute('data-api')) || '/api/forms/'; })();
+
 (function () {
   'use strict';
   // The link is the credential: it is read once from the address, sent only to our own API, and never logged or echoed.
@@ -14,7 +17,7 @@
   function show(id, on) { $(id).hidden = !on; }
   function setState(msg) { $('fm-state').textContent = msg || ''; show('fm-state', !!msg); }
   function api(path, opts) {
-    return fetch('/api/forms/' + encodeURIComponent(token) + (path || ''), opts).then(function (r) {
+    return fetch(API_BASE + encodeURIComponent(token) + (path || ''), opts).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, json: j }; });
     });
   }
