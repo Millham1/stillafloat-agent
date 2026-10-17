@@ -41,7 +41,13 @@ export async function loadJourneyInput(groupId: string, o: { messages?: boolean 
     by("group_checklist", "*", "sort"),
     db().from("group_signatures").select("traveler_id, doc_key, signer_role, signed_at").eq("group_id", groupId),
   ]);
-  const messages = o.messages === false ? { data: [], error: null } : await db().from("group_messages").select(MESSAGE_COLS).eq("group_id", groupId).order("created_at", { ascending: false }).limit(3000);
+  // The plan needs every journey key (a missed one would be sent twice), so those are asked for by their prefix and not cut off by a
+  // global row limit; the dry run's and the change notices' rows are only for Mark's list, so a few are enough.
+  const log = (like: string, n: number) => db().from("group_messages").select(MESSAGE_COLS).eq("group_id", groupId).like("dedupe_key", like).order("created_at", { ascending: false }).limit(n);
+  const messages = o.messages === false ? { data: [], error: null } : await Promise.all([log("journey:%", 1000), log("sim:%", 120), log("change:%", 120)]).then((parts) => {
+    const bad = parts.find((p) => p.error);
+    return bad ? { data: null, error: bad.error } : { data: parts.flatMap((p) => p.data ?? []).sort((a: Row, b: Row) => String(b.created_at).localeCompare(String(a.created_at))), error: null };
+  });
   return {
     group: g.data as Row, cabins: must<Row[]>(cabins, "group_cabins"), travelers: must<Row[]>(travelers, "group_travelers"),
     payments: must<Row[]>(payments, "group_payments"), travel: must<Row[]>(travel, "group_travel"), checklist: must<Row[]>(checklist, "group_checklist"),

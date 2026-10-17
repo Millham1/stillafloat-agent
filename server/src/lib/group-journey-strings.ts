@@ -83,6 +83,7 @@ const en = {
       `Your cabin: ${[p.category, p.num ? `cabin ${p.num}` : "", p.deck ? `deck ${p.deck}` : ""].filter(Boolean).join(", ")}.`,
     bookingNumber: (n: string) => `Booking number: ${n}.`,
     sharing: (names: string) => `Sharing the cabin with ${names}.`,
+    cabin: "Your cabin",
     cabinRef: (num: string) => `cabin ${num}`,
 
     payments: "Payments",
@@ -348,6 +349,7 @@ const es: Strings = {
       `Su cabina: ${[p.category, p.num ? `cabina ${p.num}` : "", p.deck ? `cubierta ${p.deck}` : ""].filter(Boolean).join(", ")}.`,
     bookingNumber: (n) => `Número de reserva: ${n}.`,
     sharing: (names) => `Comparte la cabina con ${names}.`,
+    cabin: "Su cabina",
     cabinRef: (num) => `la cabina ${num}`,
 
     payments: "Pagos",

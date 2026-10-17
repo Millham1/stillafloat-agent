@@ -1,11 +1,14 @@
 // group-journey.test.ts — the plan, the approvals and every rendered message, in both languages, against a synthetic file.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import {
   ALL_KINDS, APPROVABLE_KINDS, DAY_MILESTONES, JOURNEY_TEMPLATE_VERSION, approvalFor, dayKind, dedupeKey, planJourney, renderEmail, renderHub,
   summarizePlan, validateDetails, mergeJourneyAnswers, withApproval, withChecklistTick, videoSourcesFor, type MilestoneKind,
 } from "./group-journey";
-import { addDays, ctxFor, type Extras, type JourneyInput, type Row } from "./group-journey-facts";
+import { addDays, ctxFor, localToday, ymd, dayDiff, type Extras, type JourneyInput, type Row } from "./group-journey-facts";
+import { SITE_PAGES } from "./group-journey-sections";
 import { looksLikeCardNumber } from "./group-file";
 import { HOUSE_BANNED } from "./group-marketing";
 import { fixtureInput, fullExtras, SAIL, VIDEOS } from "./group-journey.fixture";
@@ -556,8 +559,9 @@ test("the cruise page carries every part of the journey for the traveler, in the
   assert.equal(h.lang, "en");
   assert.equal(h.hello, "Hello Ann.");
   assert.deepEqual(h.countdown, { days: 5, text: "5 days to go." });
-  assert.deepEqual(h.sections.map((s) => s.key), ["notice", "sailing", "missing", "details", "paperwork", "payments", "checklist", "travel", "travel-needed", "ship", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"]);
+  assert.deepEqual(h.sections.map((s) => s.key), ["notice", "sailing", "cabin", "missing", "details", "paperwork", "payments", "checklist", "travel", "travel-needed", "ship", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"]);
   assert.equal(h.sections[0]!.title, "November 2, 2026");
+  assert.deepEqual(h.sections.find((s) => s.key === "cabin")!.lines, ["Your cabin: Balcony, cabin 8123, deck 8.", "Booking number: 7781234.", "Sharing the cabin with Bob."]);
   assert.equal(h.sections.find((s) => s.key === "details")!.form, "details");
   assert.equal(h.sections.find((s) => s.key === "checklist")!.checklist!.length, 5);
   assert.deepEqual(h.details.values["emergency_name"], "Sam Alpha");
@@ -613,4 +617,21 @@ test("the cruise page's tick is kept per traveler and can be taken back", () => 
   const a = withChecklistTick({ journey: { getting_there: "flying" } }, "k1", true, new Date("2026-11-01T00:00:00Z"));
   assert.deepEqual(a, { journey: { getting_there: "flying", checklist_done: { k1: "2026-11-01T00:00:00.000Z" } } });
   assert.deepEqual(withChecklistTick(a, "k1", false, new Date())["journey"]["checklist_done"], {});
+});
+
+// ── odds and ends the whole thing leans on ────────────────────────────────────
+
+test("every page of our own site the journey links to exists, in both languages", () => {
+  const root = [path.join(process.cwd(), "public"), path.join(process.cwd(), "server", "public")].find((d) => existsSync(path.join(d, "index.html")));
+  assert.ok(root, "server/public not found from the test's working directory");
+  for (const [name, p] of Object.entries(SITE_PAGES)) for (const lang of ["en", "es"] as const) assert.ok(existsSync(path.join(root!, p[lang])), `${name} (${lang}): ${p[lang]} is not a page of the site`);
+});
+
+test("'today' is the business's calendar day, not the server's", () => {
+  assert.equal(localToday(new Date("2027-03-01T03:30:00Z"), "America/New_York"), "2027-02-28");
+  assert.equal(localToday(new Date("2027-03-01T15:00:00Z"), "America/New_York"), "2027-03-01");
+  assert.equal(localToday(new Date("2027-03-01T03:30:00Z"), "UTC"), "2027-03-01");
+  assert.equal(ymd("2027-02-30"), null);
+  assert.equal(ymd("2027-03-01T10:00:00Z"), "2027-03-01");
+  assert.equal(dayDiff("2027-02-27", "2027-03-02"), 3);
 });

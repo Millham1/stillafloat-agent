@@ -27,6 +27,8 @@ import * as sec from "./group-journey-sections";
 import { DAY_MILESTONES, dayKind, kindDays, milestoneDate, type ChangeNotice } from "./group-journey-sections";
 import { strings, type Lang, type MilestoneKind } from "./group-journey-strings";
 
+/** The days before sailing at which the countdown messages go out. */
+export const MILESTONES = DAY_MILESTONES;
 export { DAY_MILESTONES, dayKind, kindDays };
 export type { ChangeNotice, MilestoneKind };
 
@@ -349,6 +351,7 @@ export function sectionsFor(kind: MilestoneKind, ctx: Ctx, o: RenderOptions = {}
     case "t-2": return intoSections([sec.sailing(ctx), sec.checkin(ctx, "closes"), sec.embark2(ctx), sec.documents(ctx), sec.emergency(ctx), sec.videos(ctx, ["embark"])]);
     case "payment-due": {
       // no amount or no date on the payment means there is nothing to announce
+      // TODO(group-journey): a notice for a payment that is already late (today a date that has passed is skipped; the cruise page and the 120-day list say "was due", and Mark chases it himself)
       const one = o.payment ? sec.paymentOne(ctx, o.payment) : null;
       return one && o.payment ? intoSections([one, sec.howToPay(ctx, o.payment)]) : [];
     }
@@ -381,7 +384,7 @@ export function renderEmail(kind: MilestoneKind, ctx: Ctx, o: RenderOptions = {}
   const hello = S.hello(plain(ctx.traveler.first_name, 60));
   const intro = S.intro[kind] ?? "";
   const closing = S.closing[kind] ?? "";
-  const subject = subjectFor(kind, ctx, o);
+  const subject = subjectFor(kind, ctx, o).replace(/[\r\n]+/g, " ").trim();   // a subject is one line, whatever the file holds
 
   const p = (t: string) => `<p style="margin:0 0 14px">${esc(t)}</p>`;
   const html =
@@ -448,6 +451,7 @@ export function renderHub(page: Ctx): HubView {
   const sections = intoSections([
     sec.noticeSections(ctx),
     sec.sailing(ctx),
+    sec.cabinInfo(ctx),
     sec.missing(ctx),
     sec.detailsSection(ctx),
     pw,
@@ -464,7 +468,7 @@ export function renderHub(page: Ctx): HubView {
     sec.insurance(ctx, { video: true }),
     sec.videos(ctx, ["embark", "packing"]),
   ]);
-  const order = ["notice", "sailing", "missing", "details", "paperwork", "payments", "checklist", "travel", "travel-needed", "ship", "storm", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"];
+  const order = ["notice", "sailing", "cabin", "missing", "details", "paperwork", "payments", "checklist", "travel", "travel-needed", "ship", "storm", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"];
   sections.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 
   const first = plain(ctx.traveler.first_name, 60);

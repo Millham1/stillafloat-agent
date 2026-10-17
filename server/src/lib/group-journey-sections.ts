@@ -466,6 +466,19 @@ export function booked(ctx: Ctx): Section | null {
   return lines.length ? { key: "booked", title: S.booked, lines } : null;
 }
 
+/** The cruise page's own cabin block: the cabin, the booking number and who shares it (first names only). */
+export function cabinInfo(ctx: Ctx): Section | null {
+  const S = strings(ctx.lang).s;
+  const cab = ctx.cabin;
+  if (!cab) return null;
+  const lines: string[] = [];
+  if (plain(cab.category) || plain(cab.cabin_num)) lines.push(S.cabinLine({ category: displayName(cab.category), num: plain(cab.cabin_num, 20), deck: plain(cab.deck, 10) }));
+  if (plain(cab.booking_number)) lines.push(S.bookingNumber(plain(cab.booking_number, 60)));
+  const mates = ctx.mates.map(firstName).filter(Boolean);
+  if (mates.length) lines.push(S.sharing(mates.join(", ")));
+  return lines.length ? { key: "cabin", title: S.cabin, lines } : null;
+}
+
 export function signed(ctx: Ctx): Section | null {
   const S = strings(ctx.lang).s;
   const pw = paperworkState(ctx.input, ctx.traveler, ctx.cabin);

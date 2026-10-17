@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SIM_SEQUENCE, journeyView, pickItem, preview, setApproval, simMailAllowed, simulate, sendChangeNotice, noticeId, noticeRecipients, tick, needsFor,
+  SIM_SEQUENCE, journeySimEnabled, journeyView, pickItem, preview, setApproval, simMailAllowed, simulate, sendChangeNotice, noticeId, noticeRecipients, tick, needsFor,
   type JourneyStore, type RunDeps,
 } from "./group-journey-run";
 import { JOURNEY_TEMPLATE_VERSION, MAX_ATTEMPTS, dedupeKey, planJourney, type JourneyDefaults, type PlanItem } from "./group-journey";
@@ -418,4 +418,14 @@ test("the plan the dashboard shows agrees with what the tick does", async () => 
   const due = planJourney(await t.store.load(), t.clock.now, { isApproved: (k) => k === "confirmation" }).travelers.flatMap((x) => x.items).filter((i) => i.status === "due" && !i.blocked);
   assert.equal(due.length, 4);
   assert.equal((await tick(t.deps)).sent, 4);
+});
+
+test("the dry run exists only where the box asks for it and is not the production site", () => {
+  assert.equal(journeySimEnabled({}), false);
+  assert.equal(journeySimEnabled({ GROUP_JOURNEY_SIM: "1" }), false, "no address, no dry run");
+  assert.equal(journeySimEnabled({ GROUP_JOURNEY_SIM: "1", PUBLIC_URL: "https://dev.example.test" }), true);
+  assert.equal(journeySimEnabled({ GROUP_JOURNEY_SIM: "0", PUBLIC_URL: "https://dev.example.test" }), false);
+  for (const url of ["https://stillafloatcruising.com", "https://www.stillafloatcruising.com/", "http://dashboard.stillafloatcruising.com"]) {
+    assert.equal(journeySimEnabled({ GROUP_JOURNEY_SIM: "1", PUBLIC_URL: url }), false, url);
+  }
 });
