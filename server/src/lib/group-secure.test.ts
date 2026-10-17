@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  BUSINESS, decryptPii, encryptPii, hashForAudit, hashLinkToken, last4, looksLikeLinkToken, newLinkToken,
+  BUSINESS, decryptPii, deriveHubToken, encryptPii, hashForAudit, hashLinkToken, hubKey, last4, looksLikeLinkToken, newLinkToken,
   normalizePassport, passportLooksValid, piiConfigured,
 } from "./group-secure";
 
@@ -75,4 +75,25 @@ test("audit hashes are stable, salted and short", () => {
   assert.notEqual(h, hashForAudit("203.0.113.9", "t"));
   assert.equal(h!.length, 32);
   assert.ok(!h!.includes("203"));
+});
+
+// ── the cruise-page link (migration 0053) ─────────────────────────────────────
+
+test("a traveler's cruise-page link is derived: the same every time, different for each traveler and key, and shaped like every other link", () => {
+  const a = deriveHubToken("11111111-1111-4111-8111-111111111111", KEY);
+  assert.ok(looksLikeLinkToken(a));
+  assert.equal(deriveHubToken("11111111-1111-4111-8111-111111111111", KEY), a);
+  assert.notEqual(deriveHubToken("22222222-2222-4222-8222-222222222222", KEY), a);
+  assert.notEqual(deriveHubToken("11111111-1111-4111-8111-111111111111", OTHER), a);
+  // only the hash is ever kept, and it finds the traveler the way a paperwork link's hash does
+  assert.match(hashLinkToken(a), /^[0-9a-f]{64}$/);
+  assert.throws(() => deriveHubToken("x", "short"), /link key is not set/);
+});
+
+test("the link key is GROUP_LINK_KEY when set and GROUP_PII_KEY otherwise; anything malformed is no key", () => {
+  assert.equal(hubKey({ GROUP_LINK_KEY: KEY, GROUP_PII_KEY: OTHER }), KEY);
+  assert.equal(hubKey({ GROUP_PII_KEY: OTHER }), OTHER);
+  assert.equal(hubKey({ GROUP_LINK_KEY: "nope", GROUP_PII_KEY: OTHER }), OTHER);
+  assert.equal(hubKey({}), null);
+  assert.equal(hubKey({ GROUP_PII_KEY: "zz" }), null);
 });
