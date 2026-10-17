@@ -15,6 +15,25 @@ import { readAllRows } from "./read-all";
 import { specificallyRequested } from "./ship-tracker";
 import { isDevFixtureAlert, fixtureSailings } from "./dev-storm-fixture";
 
+/** One spelling per port, wherever a sailing's `depart_port` came from. The three feeds name
+ *  the same harbour three ways — ship_deployments.homeport "Los Angeles, Long Beach-San Pedro,
+ *  California", the CruiseMapper itinerary "Los Angeles (San Pedro)", the gazetteer "Los
+ *  Angeles / San Pedro, CA" — so the same ship read differently under two storms at once
+ *  (Carnival Panorama under Simon and Trudy, prod sweep 2026-10-17). The curated gazetteer
+ *  name wins when the port resolves; an unknown port keeps its own wording rather than
+ *  vanishing. (Mark 2026-10-17: normalize the port names.) */
+export function canonicalPortName(raw: string | null | undefined): string | null {
+  const s = raw?.trim();
+  if (!s) return null;
+  const r = resolvePortName(s);
+  if (!r) return s;
+  // The world-ports table carries its own "Los Angeles (San Pedro)" row, so a name that matches
+  // it never reaches the gazetteer by lookup. Snap to the curated entry on the same harbour.
+  const gaz = CRUISE_LOCATIONS.find((p) => p.slug === r.slug) ??
+    CRUISE_LOCATIONS.find((p) => distanceKm(p.lat, p.lon, r.lat, r.lon) <= 8);
+  return gaz?.name ?? r.name;
+}
+
 /** Forward-looking deployments whose region overlaps the storm's grounds and
  *  whose season contains any part of the forecast window. Complements the
  *  AIS-derived current sailings — this is the "real itinerary feed" follow-up
@@ -35,7 +54,7 @@ export async function deploymentsForStorm(
   return (data ?? []).map((d: { ship_name: string; cruise_line: string | null; homeport: string | null; region: string; season_start: string; season_end: string }) => ({
     ship_name: d.ship_name,
     cruise_line: d.cruise_line ?? "",
-    depart_port: d.homeport,
+    depart_port: canonicalPortName(d.homeport),
     start_date: d.season_start,
     end_date: d.season_end,
     regions: [d.region],
@@ -121,9 +140,9 @@ export async function sailingsForStorm(
     .lte("start_date", windowEnd)
     .gte("end_date", windowStart);
   if (error) throw new Error(`sailingsForStorm: ${error.message}`);
-  return ((data ?? []) as unknown as Sailing[]).sort(
-    (a, b) => a.start_date.localeCompare(b.start_date) || a.ship_name.localeCompare(b.ship_name),
-  );
+  return ((data ?? []) as unknown as Sailing[])
+    .map((s) => ({ ...s, depart_port: canonicalPortName(s.depart_port) }))
+    .sort((a, b) => a.start_date.localeCompare(b.start_date) || a.ship_name.localeCompare(b.ship_name));
 }
 
 // ── Published itineraries → impacted ships (2026-09-26, with the NWS source) ──
@@ -199,7 +218,7 @@ export function plannedRowsInGrounds(
     byShip.set(key, {
       ship_name: row.ship_name.trim(),
       cruise_line: row.operator ?? "",
-      depart_port: first,
+      depart_port: canonicalPortName(first),
       start_date: row.start_date,
       end_date: row.end_date ?? row.start_date,
       regions: [...regions].sort(),
@@ -325,7 +344,7 @@ export function plannedRowsNearPath(
     byShip.set(key, {
       ship_name: row.ship_name.trim(),
       cruise_line: row.operator ?? "",
-      depart_port: first,
+      depart_port: canonicalPortName(first),
       start_date: row.start_date,
       end_date: row.end_date ?? row.start_date,
       regions: [],

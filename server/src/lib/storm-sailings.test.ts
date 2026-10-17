@@ -175,3 +175,19 @@ describe("mainstream lines only, unless specifically requested (Mark 2026-10-09)
     assert.deepEqual(kept, ["AIDAdiva"]);
   });
 });
+
+import { canonicalPortName } from "./storm-sailings";
+describe("canonicalPortName — one spelling per port (Mark 2026-10-17)", () => {
+  it("reads the three feeds' spellings of Los Angeles as the gazetteer's one", () => {
+    const want = "Los Angeles / San Pedro, CA";
+    assert.equal(canonicalPortName("Los Angeles, Long Beach-San Pedro, California"), want); // ship_deployments.homeport
+    assert.equal(canonicalPortName("Los Angeles (San Pedro)"), want);                      // CruiseMapper itinerary
+    assert.equal(canonicalPortName("Los Angeles / San Pedro, CA"), want);                  // gazetteer, unchanged
+    assert.equal(canonicalPortName("  long beach "), want);
+  });
+  it("keeps an unknown port's own wording and drops an empty one", () => {
+    assert.equal(canonicalPortName("Port of Nowhere, Atlantis"), "Port of Nowhere, Atlantis");
+    assert.equal(canonicalPortName("   "), null);
+    assert.equal(canonicalPortName(null), null);
+  });
+});

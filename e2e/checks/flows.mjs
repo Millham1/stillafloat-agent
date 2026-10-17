@@ -832,7 +832,11 @@ export default [
           if (a.s.id === b.s.id) continue;
           L.check(lineKey(a.v.cruise_line) === lineKey(b.v.cruise_line), `"${a.v.ship_name}" sails for ${a.v.cruise_line} on "${a.s.name}" but ${b.v.cruise_line} on "${b.s.name}"`);
           const overlapDays = (Math.min(day(a.v.end_date), day(b.v.end_date)) - Math.max(day(a.v.start_date), day(b.v.start_date))) / 86_400_000;
-          const same = a.v.start_date === b.v.start_date && a.v.end_date === b.v.end_date && (a.v.depart_port || "") === (b.v.depart_port || "");
+          // Same dates = same sailing. The port is NOT part of the identity: each storm's record
+          // spells it its own way ("Los Angeles, Long Beach-San Pedro, California" under Simon,
+          // "Los Angeles / San Pedro, CA" under Trudy — prod sweep red 2026-10-17 04:36Z for one
+          // Carnival Panorama sailing), and a wording difference is not a ship in two places.
+          const same = a.v.start_date === b.v.start_date && a.v.end_date === b.v.end_date;
           // unreadable dates make the overlap NaN, which must not read as "no overlap"
           L.check(same || Number.isFinite(overlapDays), `"${a.v.ship_name}" is listed under "${a.s.name}" and "${b.s.name}" with dates that cannot be compared`);
           L.check(same || !(overlapDays > 1),
