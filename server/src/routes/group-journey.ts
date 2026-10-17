@@ -1,5 +1,7 @@
 import { Router, type IRouter, type NextFunction, type Request, type Response } from "express";
 import { requireToken } from "../lib/http-auth";
+import { getSupabase } from "../lib/persistence";
+import { deriveHubToken, hashLinkToken, hubKey } from "../lib/group-secure";
 import { looksLikeCardNumber } from "../lib/group-file";
 import { journeyDeps } from "../lib/group-journey-wire";
 import {
@@ -8,7 +10,7 @@ import {
 import {
   ALL_KINDS, APPROVABLE_KINDS, DETAIL_FIELDS, JOURNEY_TEMPLATE_VERSION, summarizePlan, videoSourcesFor, type ChangeNotice, type MilestoneKind,
 } from "../lib/group-journey";
-import { journeyAnswers, personName, plain, type Row } from "../lib/group-journey-facts";
+import { HUB_SITE, journeyAnswers, personName, plain, type Row } from "../lib/group-journey-facts";
 import { loadJourneyInput } from "../lib/group-journey-store";
 import type { Lang } from "../lib/group-journey-strings";
 
@@ -16,8 +18,9 @@ import type { Lang } from "../lib/group-journey-strings";
 //
 //   GET    /api/groups/:id/journey                       the plan: each message kind with its approval and counts, each traveler's items,
 //                                                         the recent journey emails, what travelers told us, and whether this box can simulate
-//   PUT    /api/groups/:id/journey/approve               { kinds: [...], approved: true|false, as_default?: true } approve (or withdraw) templates
+//   PUT    /api/groups/:id/journey/approve               { kinds: [...], approved: true|false|null, as_default?: true } approve, withdraw, or (null) follow the site default again
 //   GET    /api/groups/:id/journey/preview/:kind         ?lang=en|es&traveler_id=  one message rendered for a sample traveler (html, text, sections)
+//   POST   /api/groups/:id/travelers/:tid/cruise-link   the traveler's private cruise-page link (derived from the traveler, so it is the same link every time)
 //   POST   /api/groups/:id/journey/change-notice         { text, text_es?, fields: [{label, before, after}] }  ?preview=1 shows it, otherwise sends it
 //   POST   /api/groups/:id/journey/simulate              { traveler_id, to_email, lang?, kinds? } DEV ONLY (GROUP_JOURNEY_SIM=1): the whole sequence now
 //   DELETE /api/groups/:id/journey/simulate              ?traveler_id=  DEV ONLY: remove the simulated messages from the log
@@ -84,6 +87,24 @@ router.get("/groups/:id/journey", requireToken, async (req: Request, res: Respon
   }
 });
 
+router.post("/groups/:id/travelers/:tid/cruise-link", requireToken, async (req: Request, res: Response) => {
+  try {
+    const tid = String(req.params["tid"]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (getSupabase() as any).from("group_travelers").select("id").eq("id", tid).eq("group_id", String(req.params["id"])).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return res.status(404).json({ success: false, error: "Traveler not found" });
+    const key = hubKey();
+    if (!key) return res.status(409).json({ success: false, error: "This box has no link key (GROUP_LINK_KEY or GROUP_PII_KEY), so it cannot make a cruise-page link." });
+    const token = deriveHubToken(tid, key);
+    // The link works from this moment: the hash that finds the traveler is stored with it (the token itself never is).
+    await journeyDeps().store.setHubHash(tid, hashLinkToken(token));
+    return res.status(201).json({ success: true, url: `${HUB_SITE()}/my-cruise.html?t=${token}` });
+  } catch (err) {
+    return fail(req, res, err, "cruise link failed");
+  }
+});
+
 router.put("/groups/:id/journey/approve", requireToken, async (req: Request, res: Response) => {
   try {
     const body = (req.body ?? {}) as Row;
@@ -91,8 +112,8 @@ router.put("/groups/:id/journey/approve", requireToken, async (req: Request, res
     if (!Array.isArray(kinds) || !kinds.length || kinds.length > 20 || kinds.some((k) => typeof k !== "string" || !(APPROVABLE_KINDS as string[]).includes(k))) {
       return res.status(400).json({ success: false, error: `kinds must be a list of: ${APPROVABLE_KINDS.join(", ")}` });
     }
-    if (typeof body["approved"] !== "boolean") return res.status(400).json({ success: false, error: "approved must be true or false" });
-    const out = await setApproval(journeyDeps(), String(req.params["id"]), kinds as string[], body["approved"], body["as_default"] === true);
+    if (typeof body["approved"] !== "boolean" && body["approved"] !== null) return res.status(400).json({ success: false, error: "approved must be true, false or null (null = follow the site default again)" });
+    const out = await setApproval(journeyDeps(), String(req.params["id"]), kinds as string[], body["approved"] as boolean | null, body["as_default"] === true);
     if (!out) return res.status(404).json({ success: false, error: "Group not found" });
     return res.json({ success: true, version: JOURNEY_TEMPLATE_VERSION, kinds, approved: body["approved"], as_default: body["as_default"] === true });
   } catch (err) {
@@ -177,7 +198,7 @@ router.post("/groups/:id/journey/simulate", simGate, requireToken, async (req: R
     return res.status(201).json({
       success: true, traveler_id: traveler.id, to_email: to, count: out.length,
       sent: out.filter((x) => x.status === "sent").length,
-      messages: out.map((x) => ({ kind: x.kind, subject: x.subject, sections: x.sections, status: x.status, reason: x.reason })),
+      messages: out.map((x) => ({ kind: x.kind, subject: x.subject, sections: x.sections, text: x.text, status: x.status, reason: x.reason })),
     });
   } catch (err) {
     return fail(req, res, err, "journey simulation failed");

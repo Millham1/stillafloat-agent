@@ -321,25 +321,25 @@ export async function preview(deps: RunDeps, input: JourneyInput, kind: Mileston
 }
 
 /** Approve (or withdraw) kinds for the group, and for the whole site when asked. */
-export async function setApproval(deps: RunDeps, groupId: string, kinds: readonly string[], approved: boolean, asDefault: boolean): Promise<{ journey: Row; defaults: JourneyDefaults } | null> {
+export async function setApproval(deps: RunDeps, groupId: string, kinds: readonly string[], approved: boolean | null, asDefault: boolean): Promise<{ journey: Row; defaults: JourneyDefaults } | null> {
   const input = await deps.store.load(groupId);
   if (!input) return null;
   const now = deps.now();
   const journey = withApproval(input.group.journey, kinds, approved, now);
   await deps.store.saveJourney(groupId, journey);
   let defaults = await deps.store.defaults();
-  if (asDefault) {
+  if (asDefault && approved !== null) {
     const next = withApproval({ approved: defaults.approved }, kinds, approved, now);
     defaults = { ...defaults, approved: next["approved"] };
     await deps.store.saveDefaults(defaults);
   }
-  if (approved) await deps.clearApproval(groupId, [...kinds]).catch(() => undefined);
+  if (approved === true) await deps.clearApproval(groupId, [...kinds]).catch(() => undefined);
   return { journey, defaults };
 }
 
 // ── The dry run ───────────────────────────────────────────────────────────────
 
-export interface SimLine { kind: MilestoneKind; subject: string; sections: string[]; status: "sent" | "failed" | "skipped"; reason: string | null }
+export interface SimLine { kind: MilestoneKind; subject: string; sections: string[]; /** The plain-text body, so a dry run can be read (and checked) without opening the mail. */ text: string; status: "sent" | "failed" | "skipped"; reason: string | null }
 
 /** The simulation sends only to a test address the box has been told about. */
 export function simMailAllowed(to: string, allow: string | undefined): boolean {
@@ -374,7 +374,7 @@ export async function simulate(deps: RunDeps, input: JourneyInput, o: { traveler
   for (const kind of (o.kinds?.length ? SIM_SEQUENCE.filter((k) => o.kinds!.includes(k)) : SIM_SEQUENCE)) {
     const n = kindDays(kind);
     const p = await prepare(deps, input, traveler.id, kind, { simNow: n !== null ? milestoneNow(sail, n) : undefined, lang: o.lang, defaults });
-    if (!p) { lines.push({ kind, subject: "(not written)", sections: [], status: "skipped", reason: "the file does not hold enough to write this one" }); continue; }
+    if (!p) { lines.push({ kind, subject: "(not written)", sections: [], text: "", status: "skipped", reason: "the file does not hold enough to write this one" }); continue; }
     const allowed = simMailAllowed(o.toEmail, deps.allow);
     let status: SimLine["status"] = "skipped";
     let reason: string | null = allowed ? null : "this box only emails its test addresses, and that address is not on the list (nothing was sent)";
@@ -392,7 +392,7 @@ export async function simulate(deps: RunDeps, input: JourneyInput, o: { traveler
       status, sent_at: status === "sent" ? deps.now().toISOString() : null, error: error ?? reason,
       dedupe_key: `${SIM_PREFIX}${stamp}:${kind}:${traveler.id}`, meta: { sim: true, sections: p.rendered.sections, lang: p.rendered.lang },
     });
-    lines.push({ kind, subject: p.rendered.subject, sections: p.rendered.sections, status, reason });
+    lines.push({ kind, subject: p.rendered.subject, sections: p.rendered.sections, text: p.rendered.text, status, reason });
   }
   return lines;
 }

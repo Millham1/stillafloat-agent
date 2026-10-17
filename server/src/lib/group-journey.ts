@@ -79,11 +79,14 @@ export function approvalFor(kind: MilestoneKind, groupJourney: unknown, defaults
   return { approved: e.approved && !stale, source: own ? "group" : "default", at: e.at ?? null, stale: e.approved && stale };
 }
 
-/** The group's journey object with these kinds approved (or withdrawn). */
-export function withApproval(journey: unknown, kinds: readonly string[], approved: boolean, now: Date, version = JOURNEY_TEMPLATE_VERSION): Row {
+/** The group's journey object with these kinds approved or withdrawn; `null` takes the group's own decision away so it follows the site default again. */
+export function withApproval(journey: unknown, kinds: readonly string[], approved: boolean | null, now: Date, version = JOURNEY_TEMPLATE_VERSION): Row {
   const base: Row = journey && typeof journey === "object" && !Array.isArray(journey) ? { ...(journey as Row) } : {};
   const map: Row = { ...(base["approved"] ?? {}) };
-  for (const k of kinds) if ((APPROVABLE_KINDS as string[]).includes(k)) map[k] = { approved, at: now.toISOString(), version };
+  for (const k of kinds) {
+    if (!(APPROVABLE_KINDS as string[]).includes(k)) continue;
+    if (approved === null) delete map[k]; else map[k] = { approved, at: now.toISOString(), version };
+  }
   base["approved"] = map;
   return base;
 }

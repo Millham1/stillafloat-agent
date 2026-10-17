@@ -48,6 +48,10 @@ test("a template is approved by the group, or by the site default, and only at t
   const old = { approved: { "t-120": { approved: true, at: "2026-09-01T00:00:00Z", version: "2026-01-01.0" } } };
   assert.deepEqual(approvalFor("t-120", old, null), { approved: false, source: "group", at: "2026-09-01T00:00:00Z", stale: true });
   assert.deepEqual(approvalFor("t-120", {}, old), { approved: false, source: "default", at: "2026-09-01T00:00:00Z", stale: true });
+  // taking the group's own decision away makes it follow the default again
+  const cleared = withApproval(own, ["t-120"], null, now);
+  assert.deepEqual([approvalFor("t-120", cleared, def).approved, approvalFor("t-120", cleared, def).source], [true, "default"]);
+  assert.deepEqual(withApproval({}, ["t-120"], null, now), { approved: {} });
   // only real kinds are stored
   assert.deepEqual(Object.keys(withApproval({}, ["t-120", "change-notice", "nonsense"], true, now)["approved"]), ["t-120"]);
 });

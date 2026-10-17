@@ -60,7 +60,7 @@ const ZERO = "00000000-0000-4000-8000-000000000000";
 test("every journey route needs Mark's token", async () => {
   for (const [m, p] of [
     ["GET", `/groups/${ZERO}/journey`], ["PUT", `/groups/${ZERO}/journey/approve`], ["GET", `/groups/${ZERO}/journey/preview/t-120`],
-    ["POST", `/groups/${ZERO}/journey/change-notice`],
+    ["POST", `/groups/${ZERO}/journey/change-notice`], ["POST", `/groups/${ZERO}/travelers/${ZERO}/cruise-link`],
   ] as const) {
     const r = await call(journey, m, p, { body: m === "GET" ? undefined : {} });
     assert.equal(r.status, 401, `${m} ${p}`);
@@ -73,9 +73,9 @@ test("approving takes real kinds and a real yes or no, and nothing else", async 
   assert.equal((await put({ kinds: ["t-120", "nonsense"], approved: true })).status, 400);
   assert.equal((await put({ kinds: ["change-notice"], approved: true })).status, 400, "a change notice is approved by sending it, not here");
   assert.equal((await put({ kinds: ["t-120"], approved: "yes" })).status, 400);
+  assert.equal((await put({ kinds: ["t-120"] })).status, 400, "no answer is not an answer");
   assert.equal((await put({ kinds: "t-120", approved: true })).status, 400);
-  const ok = await put({ kinds: ["t-120"], approved: true });
-  assert.equal(ok.status, 500, "a valid request reaches the database (absent here)");
+  for (const approved of [true, false, null]) assert.equal((await put({ kinds: ["t-120"], approved })).status, 500, `approved=${approved} reaches the database (absent here)`);
 });
 
 test("a preview asks for a message that exists", async () => {
