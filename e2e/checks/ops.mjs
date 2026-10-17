@@ -1472,4 +1472,399 @@ export default [
       t.ok(!file.travelers.some((x) => x.first_name === "E2E" && x.last_name === "Fixture"), "the fixture traveler is still in the group file");
     },
   },
+  // ───────────────────────────────────────────────────────────────────────────────────────────
+  // The group journey (migration 0053; server/src/lib/group-journey*.ts, routes/group-journey.ts and routes/my-cruise.ts).
+  // NEW IN THE RELEASE THAT ADDS IT: prod has none of these addresses before the promotion, so these FAIL there until
+  // then — correct (the same note as ops.paperwork-link-page). Prod runs the read-only ones: a prod sweep sends nothing and writes nothing.
+  {
+    id: "ops.cruise-page-private-link",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-16: \"a customer CTA / adding info ... embarkation what to know\": every journey email's one button opens the traveler's private cruise page; like the paperwork link it is the only credential, a wrong link of any kind gets one neutral answer in both languages that says nothing about whether it ever existed, and the page is never cached or indexed",
+    title: "The private cruise page opens and stays out of search, its script calls only its own address, and every kind of wrong link gets the same 'not valid' answer in English and Spanish",
+    covers: ["page /my-cruise.html", "GET /api/my-cruise/:token"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      const html = t.html(await t.get("/my-cruise.html"), { mustContain: ["/js/my-cruise.js", 'id="mc-body"', 'id="mc-state"', 'id="mc-lang"'] });
+      t.matches(H.metaContent(html, "robots"), /noindex/, "robots meta of the cruise page (a private link must never be indexed)");
+      t.matches(H.metaContent(html, "referrer"), /no-referrer/, "referrer policy of the cruise page (its address carries the link)");
+      const js = await t.get("/js/my-cruise.js");
+      t.status(js, 200);
+      for (const needle of ["/api/my-cruise/", "/details", "/checklist/", "data-tick"]) t.ok(js.text.includes(needle), `the cruise page's script no longer contains ${needle}`);
+      t.ok(!/https?:\/\/(?!www\.youtube)/.test(js.text.replace(/\/\/ .*$/gm, "").replace(/\^https\?:\\\/\\\//g, "")), "the cruise page's script talks to an address other than its own");
+
+      // Every kind of wrong link: the same answer, never a hint about which part was wrong, never cached or indexed.
+      const bodies = new Set();
+      for (const token of ["short", "A".repeat(43), "A".repeat(44), "../../etc/passwd"]) {
+        for (const q of ["", "?lang=es"]) {
+          const res = await t.get(`/api/my-cruise/${encodeURIComponent(token)}${q}`);
+          refused(t, res, 404, `a wrong cruise-page link (${token.length} characters${q})`, /not valid/i);
+          t.matches(res.json.error, /no es v[aá]lido/i, "the Spanish half of the neutral answer");
+          t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the cruise-page answer");
+          t.matches(res.headers.get("x-robots-tag") || "", /noindex/, "X-Robots-Tag of the cruise-page answer");
+          bodies.add(res.text);
+        }
+      }
+      t.equal(bodies.size, 1, "different wrong links must all get the identical answer (number of distinct answers)");
+    },
+  },
+  {
+    id: "ops.cruise-page-writes-refuse",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-16: travelers add their own details and tick their own checklist on their private cruise page; with no valid link nothing is stored (unknown link: the same neutral 404), the bot trap stores nothing and says nothing, and no card number is ever taken",
+    title: "Ticking a checklist item or saving details without a valid link is refused with the neutral answer, the bot trap answers as if it had saved, and an oversized body is refused before any lookup",
+    covers: ["POST /api/my-cruise/:token/checklist/:id/done", "POST /api/my-cruise/:token/details"],
+    modes: ["dev"],
+    devOnlyBecause: "it sends POST requests (refusal paths only: nothing is stored and no email is sent); prod sweeps are read-only",
+    run: async (t) => {
+      const send = (p, body) => t.send("POST", p, { body });
+      for (const token of ["short", "A".repeat(43)]) {
+        refused(t, await send(`/api/my-cruise/${token}/checklist/${ZERO}/done`, { done: true }), 404, `ticking with a wrong link (${token.length} characters)`, /not valid/i);
+        refused(t, await send(`/api/my-cruise/${token}/details`, { getting_there: "flying" }), 404, `saving details with a wrong link (${token.length} characters)`, /not valid/i);
+      }
+      const trap = await send(`/api/my-cruise/${"A".repeat(43)}/details`, { website: "e2e-fixture-honeypot", hotel_name: "e2e-fixture" });
+      t.ok(trap.status === 200 && trap.json?.success === true, `the cruise page's bot trap should answer as if it had saved: ${trap.describe()}`);
+      t.ok(!("message" in (trap.json || {})), "the bot trap must not pretend something was saved");
+      const big = await send(`/api/my-cruise/${"A".repeat(43)}/details`, { hotel_name: "x".repeat(30_000) });
+      t.equal(big.status, 413, "an oversized details body");
+    },
+  },
+  {
+    id: "ops.group-journey-plan-and-preview",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-16: \"the follow up emails for 120,90,45,20, 10, 5 and 2 days before ... the whole package top to bottom\"; Mark 2026-10-02: templates are approved ONCE after he previews them, in both languages — so the plan lists every message with its approval, and every message renders for a real traveler in English and Spanish with one button, Mark's contact line, the business signature and no blank or invented value",
+    title: "Mark's journey plan (every message, its day, its approval and each traveler's state) and the preview of every message in English and Spanish work under his token, are refused without it, and never print a blank, a hidden detail or a hurried tone",
+    covers: ["GET /api/groups/:id/journey", "GET /api/groups/:id/journey/preview/:kind"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      unauthorized(t, await t.get(`/api/groups/${ZERO}/journey`), "GET /api/groups/:id/journey");
+      unauthorized(t, await t.get(`/api/groups/${ZERO}/journey/preview/t-120`), "GET /api/groups/:id/journey/preview/:kind");
+      refused(t, await t.get(`/api/groups/${ZERO}/journey`, { auth: true }), 404, "the journey of a group that does not exist", /group not found/i);
+      refused(t, await t.get(`/api/groups/${ZERO}/journey/preview/t-120`, { auth: true }), 404, "a preview for a group that does not exist", /group not found/i);
+
+      const groups = await groupsList(t);
+      if (t.mode === "dev") t.require(groups.length > 0, "there are no group files on dev, so the journey plan cannot be tested");
+      const KINDS = ["confirmation", "t-120", "t-90", "t-45", "t-20", "t-10", "t-5", "t-2", "payment-due", "data-needed", "change-notice"];
+      const BAD_TEXT = /undefined|\bnull\b|NaN|\$0(?![\d,.])|\{\{|\[object/;
+      let previewed = 0;
+      for (const g of spread(groups)) {
+        const file = t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
+        const j = t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true }));
+        t.equal(j.milestones.map((m) => m.kind).join(","), KINDS.join(","), `group ${g.id}: the messages in the plan`);
+        t.matches(j.template_version, /^\d{4}-\d{2}-\d{2}\.\d+$/, "the template version");
+        t.equal(typeof j.sim_enabled, "boolean", "whether this box can run the dry run");
+        if (t.mode === "prod") t.equal(j.sim_enabled, false, "the dry run must never be switched on at the production site");
+        t.ok(typeof j.link_key_set === "boolean" && typeof j.test_list_set === "boolean" && typeof j.live === "boolean", `group ${g.id}: the plan does not say whether this box can write links, has a test list, or is live`);
+        let items = 0;
+        for (const m of j.milestones) {
+          t.fields(m, ["kind", "label", "counts", "approval"], `plan line ${m.kind}`);
+          t.ok(["group", "default", "none"].includes(m.approval.source) && typeof m.approval.approved === "boolean" && typeof m.approval.stale === "boolean", `plan line ${m.kind}: its approval is not readable`);
+          const n = /^t-(\d+)$/.exec(m.kind)?.[1];
+          if (n && g.sail_date) {
+            const want = new Date(Date.parse(`${String(g.sail_date).slice(0, 10)}T00:00:00Z`) - Number(n) * DAY).toISOString().slice(0, 10);
+            t.equal(m.date, want, `group ${g.id}: the day the ${n}-day message goes out`);
+          }
+          items += Object.values(m.counts).reduce((a, b) => a + b, 0) - m.counts.blocked;   // blocked is a count inside due
+        }
+        // (a release-gate fixture traveler may come and go in this group while the sweep runs: only the real travelers are compared)
+        const realIds = file.travelers.filter((x) => x.first_name !== "E2E").map((x) => x.id);
+        t.ok(realIds.every((id) => j.travelers.some((x) => x.id === id)), `group ${g.id}: a traveler on the file is missing from the plan`);
+        t.equal(j.travelers.filter((x) => !x.name.startsWith("E2E ")).length, realIds.length, `group ${g.id}: travelers in the plan vs the group file`);
+        const inTravelers = j.travelers.reduce((a, x) => a + x.items.length, 0);
+        t.equal(items, inTravelers, `group ${g.id}: the counts per message add up to the items per traveler`);
+        for (const x of j.travelers) t.ok(x.items.every((i) => ["planned", "due", "sent", "failed", "skipped"].includes(i.status)), `group ${g.id}: a plan item has an unknown state`);
+        const raw = JSON.stringify(j);
+        for (const secret of ["hub_token_hash", "form_token_hash", "passport_enc", "organizer_token_hash", "consent_ip_hash", '"form_data"', "my-cruise.html?t="]) t.ok(!raw.includes(secret), `group ${g.id}: the journey plan carries ${secret}`);
+        t.ok(!cardShaped(raw), `group ${g.id}: the journey plan contains something shaped like a card number`);
+
+        // every message, written for a real traveler of this group, in both languages
+        if (!realIds.length || previewed >= (t.mode === "prod" ? 1 : 3)) continue;   // (a fixture traveler of another check may be here for a moment: a preview needs a real one)
+        previewed++;
+        const kinds = previewed === 1 ? KINDS.filter((k) => k !== "change-notice") : ["t-120", "t-5"];
+        for (const kind of kinds) {
+          for (const lang of ["en", "es"]) {
+            const res = await t.get(`/api/groups/${g.id}/journey/preview/${kind}?lang=${lang}`, { auth: true });
+            if ((kind === "payment-due" || kind === "data-needed") && res.status === 400) {
+              refused(t, res, 400, `the ${kind} preview of group ${g.id} when there is nothing to say`, /no unpaid payment|missing nothing|does not hold enough/i);
+              continue;
+            }
+            const p = t.success(res);
+            const where = `the ${kind} message of group ${g.id} in ${lang}`;
+            t.equal(p.lang, lang, `${where}: its language`);
+            t.fields(p, ["subject", "html", "text", "sections", "traveler.id"], where);
+            t.ok(Array.isArray(p.sections) && p.sections.length >= 1, `${where}: no sections`);
+            t.equal((p.html.match(/data-cta="1"/g) || []).length, 1, `${where}: buttons in the email`);
+            t.ok(p.html.includes("/my-cruise.html?t="), `${where}: the button does not open the cruise page`);
+            t.matches(p.text, lang === "es" ? /¿Preguntas\? Mark Millham · 919-346-6127 · mark@stillafloatcruising\.com/ : /Questions\? Mark Millham · 919-346-6127 · mark@stillafloatcruising\.com/, `${where}: Mark's contact line`);
+            t.equal(p.text.trimEnd().split("\n").pop(), "Still Afloat Cruising", `${where}: the last line`);
+            t.matches(p.subject, lang === "es" ? /^(Su reserva está confirmada|Faltan? \d+ días?|Pago con vencimiento|Algunos datos)/ : /^(You are booked|\d+ days? to go|Payment due|A few details)/, `${where}: its subject`);
+            const all = `${p.subject}\n${p.text}`;
+            t.ok(!BAD_TEXT.test(all), `${where}: has a blank or placeholder (${BAD_TEXT.exec(all)?.[0]})`);
+            t.ok(!/!/.test(all) && !/\bactually\b|\bcheap(er|est)?\b|\bbarat[oa]s?\b/i.test(all), `${where}: breaks the house voice (an exclamation mark or a banned word)`);
+            t.ok(!/\p{Extended_Pictographic}/u.test(all), `${where}: has an emoji`);
+            t.ok(!cardShaped(all), `${where}: contains something shaped like a card number`);
+          }
+        }
+      }
+      t.atLeast(previewed, t.mode === "dev" ? 1 : 0, "groups whose messages were previewed");
+      t.observe("groups checked for the journey plan", Math.min(groups.length, 3), "info");
+    },
+  },
+  {
+    id: "ops.group-journey-writes-refuse",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02: a template is approved by him, once; Mark 2026-10-16: change notices and the dry run are his and his alone — so approving, a change notice, a cruise-page link and the dry run refuse a visitor without his token, an unknown group or traveler, a bad kind, a card number and a hopeless notice, and a previewed notice sends and stores nothing (dev never emails real people, Mark 2026-10-08)",
+    title: "Approving a template, sending or previewing a change notice, making a cruise-page link and the dry run refuse a visitor without Mark's token and bad requests, and previewing a change notice sends and stores nothing",
+    covers: ["PUT /api/groups/:id/journey/approve", "POST /api/groups/:id/journey/change-notice", "POST /api/groups/:id/travelers/:tid/cruise-link", "POST /api/groups/:id/journey/simulate", "DELETE /api/groups/:id/journey/simulate", "GET /api/groups/:id/journey"],
+    modes: ["dev"],
+    devOnlyBecause: "it sends PUT/POST/DELETE requests (refusal paths and one preview that writes nothing); prod sweeps are read-only",
+    run: async (t) => {
+      const groups = await groupsList(t);
+      t.require(groups.length > 0, "there are no group files on dev to aim the refusals at");
+      const g = groups[0];
+      const before = t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true }));
+      const send = (m, p, body, auth = true) => t.send(m, p, { auth, body });
+      const simOn = before.sim_enabled === true;
+      for (const [m, p] of [
+        ["PUT", `/api/groups/${g.id}/journey/approve`], ["POST", `/api/groups/${g.id}/journey/change-notice`], ["POST", `/api/groups/${g.id}/travelers/${ZERO}/cruise-link`],
+      ]) unauthorized(t, await send(m, p, {}, false), `${m} ${p.replace(g.id, ":id").replace(ZERO, ":tid")}`);
+      // the dry run answers like a page that does not exist unless the box asks for it; asked, it wants Mark's token
+      for (const m of ["POST", "DELETE"]) {
+        const r = await send(m, `/api/groups/${g.id}/journey/simulate`, m === "POST" ? { traveler_id: ZERO, to_email: "e2e-fixture-nobody@example.invalid" } : undefined, false);
+        if (simOn) unauthorized(t, r, `${m} /api/groups/:id/journey/simulate`);
+        else refused(t, r, 404, `the dry run on a box that does not ask for it (${m})`, /not found/i);
+      }
+
+      const approve = (body, gid = g.id) => send("PUT", `/api/groups/${gid}/journey/approve`, body);
+      refused(t, await approve({ kinds: [], approved: true }), 400, "approving no message", /kinds must be/i);
+      refused(t, await approve({ kinds: ["t-121"], approved: true }), 400, "approving a message that does not exist", /kinds must be/i);
+      refused(t, await approve({ kinds: ["change-notice"], approved: true }), 400, "approving a change notice (sending it is its approval)", /kinds must be/i);
+      refused(t, await approve({ kinds: ["t-5"], approved: "yes" }), 400, "approving with something that is not yes or no", /approved must be/i);
+      refused(t, await approve({ kinds: ["t-5"], approved: true }, ZERO), 404, "approving for a group that does not exist", /group not found/i);
+
+      const notice = (body, q = "", gid = g.id) => send("POST", `/api/groups/${gid}/journey/change-notice${q}`, body);
+      refused(t, await notice({}), 400, "a change notice with no text", /Write what changed/i);
+      refused(t, await notice({ text: "x".repeat(4001) }), 400, "a change notice that is too long", /too long/i);
+      refused(t, await notice({ text: "e2e-fixture", fields: Array.from({ length: 13 }, () => ({ label: "a", before: "b", after: "c" })) }), 400, "a change notice with 13 changed items", /at most 12/i);
+      refused(t, await notice({ text: `e2e-fixture ${CARDLIKE}` }), 400, "a change notice holding a card-shaped number", /card number/i);
+      refused(t, await notice({ text: "e2e-fixture" }, "", ZERO), 404, "a change notice for a group that does not exist", /group not found/i);
+      refused(t, await send("POST", `/api/groups/${g.id}/travelers/${ZERO}/cruise-link`, {}), 404, "a cruise-page link for a traveler who does not exist", /traveler not found/i);
+      refused(t, await send("GET", `/api/groups/${g.id}/journey/preview/t-121`), 404, "a preview of a message that does not exist", /unknown message kind/i);
+      refused(t, await send("GET", `/api/groups/${g.id}/journey/preview/change-notice`), 404, "a preview of a change notice through the template route", /unknown message kind/i);
+
+      // a previewed notice shows what would go out and to whom, and sends and stores nothing
+      const file = t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
+      if (file.travelers.length) {
+        const pv = await notice({ text: "e2e-fixture preview only", fields: [{ label: "Ship", before: "A", after: "B" }] }, "?preview=1");
+        const body = t.success(pv);
+        t.fields(body, ["subject", "html", "text", "recipients"], "the change notice preview");
+        t.ok(Array.isArray(body.recipients) && file.travelers.filter((x) => x.first_name !== "E2E").every((x) => body.recipients.some((r) => r.id === x.id)), "the preview's recipients vs the travelers on file");
+        t.ok(body.recipients.every((r) => typeof r.willSend === "boolean" && (r.willSend || r.reason)), "a recipient who will not be written to has no reason");
+        t.equal(body.sections.join(","), "notice,change", "the sections of a change notice with a changed item");
+        t.ok(body.html.includes("e2e-fixture preview only"), "the preview does not show Mark's text");
+        const after = t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true }));
+        const real = (r) => r.messages.filter((m) => !m.sim);   // a dry run of the same sweep may add and remove simulated rows meanwhile
+        t.equal(real(after).length, real(before).length, "journey emails in the log before and after a previewed notice");
+        t.equal(real(after).filter((m) => m.template === "change-notice").length, real(before).filter((m) => m.template === "change-notice").length, "change notices on record before and after a preview");
+      }
+
+      // an approval round trip on a real group, put back exactly as it was: approve, see it, hand the decision back to the site default
+      const pick = before.milestones.find((m) => m.kind === "t-5" && m.approval.source !== "group") ?? before.milestones.find((m) => m.kind !== "change-notice" && m.approval.source !== "group");
+      t.require(pick, "every message on the test group already has a decision of its own, so an approval cannot be tried and put back");
+      try {
+        t.success(await approve({ kinds: [pick.kind], approved: true }));
+        const on = t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true })).milestones.find((m) => m.kind === pick.kind);
+        t.ok(on.approval.approved === true && on.approval.source === "group", `after approving ${pick.kind} it is not shown as approved for the group`);
+        t.fresh(on.approval.at, 1, "the approval's own timestamp");
+      } finally {
+        t.success(await approve({ kinds: [pick.kind], approved: null }));
+      }
+      const back = t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true })).milestones.find((m) => m.kind === pick.kind);
+      t.equal(back.approval.source, pick.approval.source, `where the ${pick.kind} approval comes from, before and after the round trip`);
+      t.equal(back.approval.approved, pick.approval.approved, `whether ${pick.kind} is approved, before and after the round trip`);
+    },
+  },
+  {
+    id: "ops.cruise-page-roundtrip",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-16: \"a customer CTA / adding info\": a traveler opens their private cruise page (one link, derived so every email can carry it, and it opens their paperwork too), sees their cruise in their language, ticks their checklist and tells us how they are getting there; what they say lands on their file, a bad answer or a card number is refused, and the page never carries a passport, a token or a hash",
+    title: "A throwaway traveler gets a cruise-page link, opens the page in English and Spanish, ticks and unticks a checklist item, saves and then corrects their flight and emergency contact, and Mark sees it on the file; the same link opens their paperwork; all of it is removed afterwards",
+    covers: ["POST /api/groups/:id/travelers/:tid/cruise-link", "GET /api/my-cruise/:token", "POST /api/my-cruise/:token/checklist/:id/done", "POST /api/my-cruise/:token/details", "GET /api/forms/:token", "GET /api/groups/:id/journey", "GET /api/groups/:id", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId"],
+    modes: ["dev"],
+    devOnlyBecause: "it creates a fixture traveler and checklist row, writes to them through the public cruise-page routes, then deletes both (dev database only; removed in a finally block)",
+    run: async (t) => {
+      const groups = await groupsList(t);
+      t.require(groups.length > 0, "there are no group files on dev to attach the fixture traveler to");
+      const g = groups.find((x) => x.status === "draft") || groups[0];
+      const open = async () => t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
+      const ROW = "e2e-fixture journey checklist row (safe to delete)";
+      // a run that crashed before its finally block leaves fixtures: clear them first
+      let file = await open();
+      for (const left of file.travelers.filter((x) => x.first_name === "E2E" && x.last_name === "Journey Fixture")) { await t.send("DELETE", `/api/groups/${g.id}/travelers/${left.id}`, { auth: true }); t.note("removed a fixture traveler left by an earlier run"); }
+      for (const left of file.checklist.filter((x) => x.title === ROW)) await t.send("DELETE", `/api/groups/${g.id}/checklist/${left.id}`, { auth: true });
+
+      let travelerId = null; let rowId = null;
+      try {
+        const add = await t.send("POST", `/api/groups/${g.id}/travelers`, { auth: true, body: { first_name: "E2E", last_name: "Journey Fixture", notes: "Created and deleted by the whole-site release gate." } });
+        travelerId = add.json?.row?.id || null;
+        t.status(add, 201);
+        const mk = await t.send("POST", `/api/groups/${g.id}/checklist`, { auth: true, body: { title: ROW, audience: "client", kind: "task", detail: "Written by the release gate." } });
+        rowId = mk.json?.row?.id || null;
+        t.status(mk, 201);
+        t.ok(travelerId && rowId, "the fixture traveler or checklist row has no id");
+
+        // the link: derived, so asking again gives the same one
+        const made = await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/cruise-link`, { auth: true, body: {} });
+        t.status(made, 201);
+        t.matches(made.json.url, /^https?:\/\/[^/]+\/my-cruise\.html\?t=[A-Za-z0-9_-]{43}$/, "the cruise-page link's shape");
+        const token = new URL(made.json.url).searchParams.get("t");
+        const again = await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/cruise-link`, { auth: true, body: {} });
+        t.equal(again.json?.url, made.json.url, "asking for the cruise-page link a second time (it is derived, so it never changes)");
+        file = await open();
+        const row = file.travelers.find((x) => x.id === travelerId);
+        t.ok(!JSON.stringify(row).includes(token), "the traveler row carries the cruise-page link itself");
+        for (const secret of ["hub_token_hash", "form_token_hash", "passport_enc"]) t.ok(!(secret in row), `the traveler row exposes ${secret}`);
+
+        // what the traveler sees, in English and in Spanish
+        const res = await t.get(`/api/my-cruise/${token}`);
+        const p = t.success(res);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the cruise page");
+        t.equal(p.lang, "en", "language of the cruise page");
+        t.equal(p.hello, "Hello E2E.", "the greeting");
+        t.fields(p, ["ui.save", "business.contact", "sections", "details.fields"], "the cruise page");
+        const keys = p.sections.map((s) => s.key);
+        for (const k of ["details", "checklist", "embark", "documents", "passport"]) t.ok(keys.includes(k), `the cruise page has no ${k} section (has: ${keys.join(", ")})`);
+        if (file.group.sail_date) {
+          const days = Math.round((Date.parse(`${String(file.group.sail_date).slice(0, 10)}T00:00:00Z`) - Date.parse(`${new Date(t.now()).toISOString().slice(0, 10)}T00:00:00Z`)) / DAY);
+          if (days >= 0) t.ok(p.countdown && Math.abs(p.countdown.days - days) <= 1, `the countdown (${p.countdown?.days}) is not the days to sailing (${days})`);
+        }
+        const item = p.sections.find((s) => s.key === "checklist").checklist.find((x) => x.id === rowId);
+        t.ok(item && item.done === false, "the fixture checklist row is not on the page, or already done");
+        const raw = JSON.stringify(p);
+        for (const secret of ["passport_enc", "form_token_hash", "hub_token_hash", "organizer_token_hash", "prospect_id"]) t.ok(!raw.includes(secret), `the cruise page carries ${secret}`);
+        t.ok(!cardShaped(raw), "the cruise page contains something shaped like a card number");
+        const es = t.success(await t.get(`/api/my-cruise/${token}?lang=es`));
+        t.equal(es.lang, "es", "language of the Spanish cruise page");
+        t.equal(es.hello, "Hola E2E.", "the Spanish greeting");
+        t.equal(es.ui.save, "Guardar", "a Spanish button");
+        for (const k of ["details", "checklist", "embark", "documents", "passport"]) t.ok(es.sections.some((s) => s.key === k), `the Spanish page has no ${k} section`);
+
+        // the same link opens the paperwork page's data
+        const forms = t.success(await t.get(`/api/forms/${token}`));
+        t.equal(forms.kind, "traveler", "the cruise-page link opening the paperwork");
+        t.equal(forms.traveler.first_name, "E2E", "whose paperwork the cruise-page link opens");
+
+        // ticking, and taking it back
+        const tick = (done) => t.send("POST", `/api/my-cruise/${token}/checklist/${rowId}/done`, { body: { done } });
+        const doneNow = async () => t.success(await t.get(`/api/my-cruise/${token}`)).sections.find((s) => s.key === "checklist").checklist.find((x) => x.id === rowId).done;
+        t.success(await tick(true));
+        t.equal(await doneNow(), true, "the fixture item after the traveler ticked it");
+        refused(t, await t.send("POST", `/api/my-cruise/${token}/checklist/${ZERO}/done`, { body: {} }), 404, "ticking an item that is not on the traveler's list", /not on your list/i);
+        t.success(await tick(false));
+        t.equal(await doneNow(), false, "the fixture item after the traveler took the tick back");
+
+        // telling us how they are getting there
+        const save = (body, q = "") => t.send("POST", `/api/my-cruise/${token}/details${q}`, { body });
+        const bad = await save({ getting_there: "teleport", flight_in_date: "2099-02-30", flight_in_time: "25:00", hotel_name: CARDLIKE, emergency_name: "E2E Contact" });
+        refused(t, bad, 400, "saving details with wrong answers", /check the lines marked/i);
+        t.equal(Object.keys(bad.json.fields).sort().join(","), "emergency_phone,flight_in_date,flight_in_time,getting_there,hotel_name", "which answers were marked");
+        t.matches(bad.json.fields.hotel_name, /Card numbers are never collected/i, "the card refusal");
+        file = await open();
+        const stored = file.travelers.find((x) => x.id === travelerId)?.form_data?.journey || {};
+        t.ok(!["getting_there", "flight_in_date", "flight_in_time", "hotel_name"].some((k) => k in stored), "a refused save stored something");
+        const ok = await save({ getting_there: "flying", flight_in_flight: "E2E 100", flight_in_date: "2099-03-05", flight_in_time: "14:30", port_arrival_time: "11:00", emergency_name: "E2E Contact", emergency_phone: "919-555-0100" });
+        t.success(ok);
+        const saved = t.success(await t.get(`/api/my-cruise/${token}`));
+        t.equal(saved.details.values.flight_in_flight, "E2E 100", "the flight the traveler saved, read back on their page");
+        t.equal(saved.details.values.emergency_phone, "919-555-0100", "the emergency phone, read back on their page");
+        t.ok(!saved.sections.some((s) => s.key === "missing" && s.items.some((i) => /How you are getting to the port/.test(i.text))), "the page still asks how they are getting to the port after they said");
+        t.ok(JSON.stringify(saved.sections.find((s) => s.key === "travel")).includes("E2E 100"), "the page's own list of travel plans does not show the flight");
+        file = await open();
+        const mine = file.travelers.find((x) => x.id === travelerId);
+        t.equal(mine.form_data.journey.flight_in_flight, "E2E 100", "the flight on the group file");
+        t.equal(mine.emergency_name, "E2E Contact", "the emergency contact on the group file");
+        // correcting it clears what is blanked and keeps the rest
+        t.success(await save({ flight_in_flight: "", flight_in_time: "" }));
+        file = await open();
+        const fixed = file.travelers.find((x) => x.id === travelerId).form_data.journey;
+        t.ok(!("flight_in_flight" in fixed) && !("flight_in_time" in fixed) && fixed.flight_in_date === "2099-03-05" && fixed.getting_there === "flying", "a blanked answer is cleared and the others are kept");
+        // Mark sees it too
+        const told = t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true })).told.find((x) => x.traveler_id === travelerId);
+        t.ok(told && told.answers.getting_there === "flying", "what the traveler told us is not on Mark's journey card");
+      } finally {
+        if (rowId) await t.send("DELETE", `/api/groups/${g.id}/checklist/${rowId}`, { auth: true }).catch(() => {});
+        if (travelerId) await t.send("DELETE", `/api/groups/${g.id}/travelers/${travelerId}`, { auth: true }).catch(() => {});
+      }
+      file = await open();
+      t.ok(!file.travelers.some((x) => x.first_name === "E2E" && x.last_name === "Journey Fixture"), "the fixture traveler is still in the group file");
+      t.ok(!file.checklist.some((x) => x.title === ROW), "the fixture checklist row is still in the group file");
+    },
+  },
+  {
+    id: "ops.group-journey-simulate",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-16: \"simulate the entire process ... the follow up emails for 120,90,45,20, 10, 5 and 2 days before ... the whole package top to bottom\"; Mark 2026-10-08: dev never emails real people — so the dry run writes the whole sequence for a throwaway traveler in either language, to a test address only if the box's list names it, logs it under simulation keys and removes cleanly",
+    title: "The dry run writes the booking confirmation and the 120, 90, 45, 20, 10, 5 and 2-day emails for a throwaway traveler in English and in Spanish, each with its sections and no blank or placeholder, emails no one it should not, and its log is removed afterwards",
+    covers: ["POST /api/groups/:id/journey/simulate", "DELETE /api/groups/:id/journey/simulate", "GET /api/groups/:id/journey", "GET /api/groups/:id", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId"],
+    modes: ["dev"],
+    devOnlyBecause: "it exists only on a box that asks for it (GROUP_JOURNEY_SIM=1, never the production site), creates throwaway travelers and simulated log rows, and deletes them all (dev database only; removed in a finally block)",
+    run: async (t) => {
+      const groups = await groupsList(t);
+      t.require(groups.length > 0, "there are no group files on dev to run the dry run on");
+      const g = groups.find((x) => x.sail_date && x.status === "draft") || groups.find((x) => x.sail_date);
+      t.require(g, "no group file on dev has a sail date, which the countdown needs");
+      const plan = async () => t.success(await t.get(`/api/groups/${g.id}/journey`, { auth: true }));
+      t.require((await plan()).sim_enabled === true, "the dry run is off on this box: add GROUP_JOURNEY_SIM=1 to this box's shared.env (it is never allowed on the production site)");
+      const TEST_ADDRESS = "e2e-fixture-nobody@example.invalid";   // a reserved name that can never be delivered; the gate's convention (ships.mjs)
+      const open = async () => t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
+      let file = await open();
+      for (const left of file.travelers.filter((x) => x.first_name === "E2E" && /^Sim Fixture/.test(x.last_name || ""))) { await t.send("DELETE", `/api/groups/${g.id}/travelers/${left.id}`, { auth: true }); t.note("removed a fixture traveler left by an earlier run"); }
+      await t.send("DELETE", `/api/groups/${g.id}/journey/simulate`, { auth: true });
+
+      const SUBJECTS = {
+        en: [/^You are booked/, /^\d+ days to go: payments, paperwork/, /^\d+ days to go: final payment/, /^\d+ days to go: excursions/, /^\d+ days to go: check-in, documents and packing/, /^\d+ days to go: your ship/, /^\d+ days to go: the forecast/, /^\d+ days? to go: check-in, boarding/],
+        es: [/^Su reserva está confirmada/, /^Faltan \d+ días: pagos/, /^Faltan \d+ días: pago final/, /^Faltan \d+ días: excursiones/, /^Faltan \d+ días: registro, documentos/, /^Faltan \d+ días: su barco/, /^Faltan \d+ días: el pronóstico/, /^Faltan? \d+ días?: registro, embarque/],
+      };
+      const KINDS = ["confirmation", "t-120", "t-90", "t-45", "t-20", "t-10", "t-5", "t-2"];
+      const BAD_TEXT = /undefined|\bnull\b|NaN|\$0(?![\d,.])|\{\{|\[object/;
+      const made = [];
+      try {
+        for (const [lang, last] of [["en", "Sim Fixture"], ["es", "Sim Fixture ES"]]) {
+          const add = await t.send("POST", `/api/groups/${g.id}/travelers`, { auth: true, body: { first_name: "E2E", last_name: last, email: TEST_ADDRESS, lang, notes: "Created and deleted by the whole-site release gate." } });
+          t.status(add, 201);
+          const tid = add.json?.row?.id; t.ok(tid, "the fixture traveler has no id");
+          made.push(tid);
+          const run = await t.send("POST", `/api/groups/${g.id}/journey/simulate`, { auth: true, body: { traveler_id: tid, to_email: TEST_ADDRESS } });
+          t.status(run, 201);
+          t.ok(run.json?.success === true, `the dry run was not reported as a success: ${run.describe()}`);
+          t.equal(run.json.count, 8, `messages written by the dry run (${lang})`);
+          t.equal(run.json.messages.map((m) => m.kind).join(","), KINDS.join(","), `the order of the dry run (${lang})`);
+          run.json.messages.forEach((m, i) => {
+            const where = `the ${m.kind} message in ${lang}`;
+            t.matches(m.subject, SUBJECTS[lang][i], `${where}: its subject`);
+            t.ok(Array.isArray(m.sections) && m.sections.length >= 1 && m.sections.every((s) => /^[a-z-]+$/.test(s)), `${where}: its section names`);
+            const all = `${m.subject}\n${m.text}`;
+            t.ok(!BAD_TEXT.test(all), `${where}: has a blank or placeholder (${BAD_TEXT.exec(all)?.[0]})`);
+            t.ok(!/!/.test(all) && !/\p{Extended_Pictographic}/u.test(all), `${where}: has an exclamation mark or an emoji`);
+            t.ok(m.text.includes("/my-cruise.html?t="), `${where}: the link to the cruise page is missing`);
+            t.equal(m.text.trimEnd().split("\n").pop(), "Still Afloat Cruising", `${where}: the last line`);
+            // nothing is emailed unless the box's test list names this address: a reserved address never is
+            t.ok(m.status === "skipped" || m.status === "sent", `${where}: was ${m.status} (${m.reason})`);
+            if (m.status === "skipped") t.matches(m.reason, /test address/i, `${where}: why it was not sent`);
+          });
+          t.equal(run.json.messages.filter((m) => m.kind === "t-5").every((m) => m.sections.includes("sailing")), true, `the 5-day message keeps its sailing section (${lang})`);
+          // Mark's log shows them, marked as simulated, for this traveler only
+          const log = (await plan()).messages.filter((m) => m.traveler_id === tid);
+          t.equal(log.length, 8, `simulated messages in the log (${lang})`);
+          t.ok(log.every((m) => m.sim === true && m.to_email === TEST_ADDRESS), `a simulated message in the log is not marked as simulated (${lang})`);
+          // and none of them blocks or counts as a real send
+          const mine = (await plan()).travelers.find((x) => x.id === tid);
+          t.ok(mine && !mine.items.some((i) => i.status === "sent"), `a simulated message counted as sent in the plan (${lang})`);
+          const gone = await t.send("DELETE", `/api/groups/${g.id}/journey/simulate?traveler_id=${tid}`, { auth: true });
+          t.equal(t.success(gone).removed, 8, `simulated messages removed (${lang})`);
+        }
+        refused(t, await t.send("POST", `/api/groups/${g.id}/journey/simulate`, { auth: true, body: { traveler_id: ZERO, to_email: TEST_ADDRESS } }), 404, "a dry run for a traveler that does not exist", /traveler not found/i);
+        refused(t, await t.send("POST", `/api/groups/${g.id}/journey/simulate`, { auth: true, body: { traveler_id: made[0], to_email: "not-an-address" } }), 400, "a dry run to something that is not an address", /test address/i);
+      } finally {
+        await t.send("DELETE", `/api/groups/${g.id}/journey/simulate`, { auth: true }).catch(() => {});
+        for (const tid of made) await t.send("DELETE", `/api/groups/${g.id}/travelers/${tid}`, { auth: true }).catch(() => {});
+      }
+      file = await open();
+      t.ok(!file.travelers.some((x) => x.first_name === "E2E" && /^Sim Fixture/.test(x.last_name || "")), "a fixture traveler is still in the group file");
+      t.equal((await plan()).messages.filter((m) => m.sim).length, 0, "simulated messages left in the log");
+    },
+  },
 ];

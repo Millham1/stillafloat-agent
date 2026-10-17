@@ -137,6 +137,8 @@ const PAGES = [
   { path: "/es/group.html", lang: "es", kind: "template", h1: { client: "the group's name is written into the <h1> from the ?g= code" } },
   // client paperwork — NEW IN THIS RELEASE: a traveler's private link (?t=), English only until Cornerstone has Spanish templates.
   { path: "/forms.html", lang: "en", kind: "utility", noTwin: "a private paperwork page opened from a link emailed to one traveler; English only until Cornerstone has Spanish templates (the page's strings are structured for an es twin)" },
+  // the traveler's cruise page — NEW IN THE RELEASE THAT ADDS THE GROUP JOURNEY: one page for both languages (the traveler's own, or ?lang=es), every word from the API
+  { path: "/my-cruise.html", lang: "en", kind: "utility", noTwin: "a private cruise page opened from a link emailed to one traveler; ONE page for both languages: the server writes every word in the traveler's language (or ?lang=es) and the page's script only lays it out, so there is no separate /es/ copy to drift" },
 ];
 const BY_PATH = new Map(PAGES.map((p) => [p.path, p]));
 
@@ -167,6 +169,7 @@ const APIS = {
   "/commentary-post.html": ["/api/commentary"],
   "/group.html": ["/api/group-page/"],
   "/forms.html": ["/api/forms/"],
+  "/my-cruise.html": ["/api/my-cruise/"],
   "/translate-loading.html": ["/api/translate-article"],
 };
 const apisFor = (p) => APIS[p.lang === "es" ? p.path.replace(/^\/es(\/.*)$/, "$1") : p.path] || [];
@@ -597,7 +600,8 @@ const CRAWL_BASIS = {
   "commentary-and-stories": "ruling: stillafloat-search-collapse-2026-09.md — Mark 9/9 'i need presence to be successful': every public page opens with its assets, names itself as the address search engines should use, and its Spanish twin is paired both ways (Spanish is a core market; 9/29 foreign domains served our pages)",
   "policies-and-owner": "ruling: stillafloat-es-first-class.md — privacy and terms ship in both languages; Mark's own review pages and placeholders stay out of search; Search Console's ownership file stays in place",
   "group-cruise": "ruling: stillafloat-group-bookings.md — a group cruise page is shared by private link and must never be indexed (noindex), in English and Spanish, with its scripts and links working",
-  "paperwork": "ruling: stillafloat-group-bookings.md — Mark 2026-10-03: a traveler signs on their own private link, so the paperwork page must never be indexed and must open with its scripts, stylesheets and pictures working"
+  "paperwork": "ruling: stillafloat-group-bookings.md — Mark 2026-10-03: a traveler signs on their own private link, so the paperwork page must never be indexed and must open with its scripts, stylesheets and pictures working",
+  "my-cruise": "ruling: stillafloat-group-bookings.md — Mark 2026-10-16: 'simulate the entire process ... a customer CTA/ adding info ... embarkation what to know': every journey email's one button opens the traveler's private cruise page, which must never be indexed and must open with its scripts, stylesheets and pictures working (Spanish is first-class: stillafloat-es-first-class.md)"
 };
 
 const crawlCheck = (id, label, title, paths, extra = {}) => ({
@@ -649,6 +653,10 @@ export default [
   crawlCheck("paperwork", "the client paperwork page",
     "The private paperwork page opens with its pictures and scripts working, calls its own address for the documents, and stays out of search results",
     ["/forms.html"]),
+  // New in the release that adds the group journey (server/public/my-cruise.html): prod has no such page until the promotion.
+  crawlCheck("my-cruise", "the traveler's cruise page",
+    "The private cruise page every journey email links to opens with its pictures and scripts working, calls its own address for the traveler's page, and stays out of search results",
+    ["/my-cruise.html"]),
 
   {
     id: "pages.sitemap",
