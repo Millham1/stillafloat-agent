@@ -293,6 +293,7 @@ function sectionHtml(sx: Section): string {
     const cell = (tag: "th" | "td", v: string) => `<${tag} style="border:1px solid ${RULE};padding:7px 9px;text-align:left;vertical-align:top;font-size:17px${tag === "th" ? ";background:#eaf3ff" : ""}">${esc(v)}</${tag}>`;
     out.push(`<table role="presentation" style="border-collapse:collapse;width:100%;margin:0 0 14px"><tr>${sx.table.head.map((h) => cell("th", h)).join("")}</tr>${sx.table.rows.map((r) => `<tr>${r.map((c) => cell("td", c)).join("")}</tr>`).join("")}</table>`);
   }
+  for (const l of sx.after ?? []) out.push(`<p style="margin:0 0 12px">${esc(l)}</p>`);
   for (const l of sx.links ?? []) out.push(`<p style="margin:0 0 12px"><a href="${esc(httpUrl(l.url))}" style="color:${NAVY};font-weight:bold">${esc(l.label)}</a></p>`);
   return out.join("");
 }
@@ -303,6 +304,7 @@ function sectionText(sx: Section): string {
   out.push(...sx.lines);
   for (const i of sx.items ?? []) out.push(`- ${i.text}${i.url ? ` (${i.url})` : ""}`);
   if (sx.table) { out.push(sx.table.head.join(" | ")); for (const r of sx.table.rows) out.push(r.join(" | ")); }
+  out.push(...(sx.after ?? []));
   for (const l of sx.links ?? []) out.push(`${l.label}: ${l.url}`);
   return out.join("\n");
 }
@@ -321,7 +323,7 @@ export interface Rendered {
 export interface RenderOptions { payment?: Row; notice?: ChangeNotice }
 
 function intoSections(list: Array<Section | Section[] | null | undefined>): Section[] {
-  return list.flat().filter((x): x is Section => !!x && (x.lines.length > 0 || !!x.items?.length || !!x.table || !!x.links?.length || !!x.checklist?.length || !!x.form));
+  return list.flat().filter((x): x is Section => !!x && (x.lines.length > 0 || !!x.items?.length || !!x.after?.length || !!x.table || !!x.links?.length || !!x.checklist?.length || !!x.form));
 }
 
 /** The sections of each message, in order. A builder that returns null is a section the file cannot support. */

@@ -291,6 +291,8 @@ test("the 90-day message: what is open, the line's dates before the 45-day mark,
   assert.match(r.text, /Book your flights \(by December 15, 2026\) — Fly in the day before\./);
   assert.match(r.text, new RegExp(`${SITE}/my-cruise\\.html\\?t=${TOKEN}#details`));
   assert.ok(!/Group offer hotel/.test(r.text), "the group's own offer is not a booking");
+  assert.match(r.text, /On file for you:\n- Flight to the port city: American/, "a list's label sits right above the list");
+  assert.match(r.text, /Your flight home, or a note[^\n]*\nIf you have a hotel before the cruise|Your flight home, or a note[^\n]*\n\nIf you have a hotel before the cruise/, "the note about hotels comes after the list, not before it");
 });
 
 test("the 45-day message: excursions, dining and change windows, and what is still missing", () => {
@@ -312,6 +314,7 @@ test("the 20-day message: web check-in from the terms, documents, packing from t
   assert.match(r.text, /Your booking number: 7781234/);
   assert.match(r.text, /Hotel before the cruise: Hotel Example Miami/);
   assert.match(r.text, /Power strip without surge protection — Ships ban the surge kind\. \(https:\/\/example\.test\/strip\)/);
+  assert.match(r.text, /From your list:\n- Power strip/, "a list's label sits right above the list");
   assert.match(r.text, new RegExp(`What to wear: ${SITE}/affiliate/clothing\\.html`));
   assert.match(r.text, /What to Pack for a Cruise/);
   assert.match(r.text, /Print your boarding passes \(by February 20, 2027\)/);

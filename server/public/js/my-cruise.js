@@ -68,6 +68,7 @@
       h += '<ul>' + sx.items.map(function (i) { return '<li>' + (i.url ? '<a href="' + esc(safe(i.url)) + '" rel="noopener noreferrer" target="_blank">' + esc(i.text) + '</a>' : esc(i.text)) + '</li>'; }).join('') + '</ul>';
     }
     if (sx.table) h += table(sx.table);
+    (sx.after || []).forEach(function (l) { h += '<p>' + esc(l) + '</p>'; });
     if (sx.checklist) h += checklist(sx.checklist);
     if (sx.form === 'details') h += form(sx);
     if (sx.links && sx.links.length) {

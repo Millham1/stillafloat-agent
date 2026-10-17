@@ -73,6 +73,8 @@ export interface Section {
   title: string;
   lines: string[];
   items?: SectionItem[];
+  /** Paragraphs that come after the list or table (a note about the list, not an introduction to it). */
+  after?: string[];
   table?: { head: string[]; rows: string[][] };
   links?: Array<{ label: string; url: string }>;
   /** Cruise page only. */

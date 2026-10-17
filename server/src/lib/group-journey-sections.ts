@@ -215,14 +215,14 @@ export function travel(ctx: Ctx): Section[] {
   if (onFile.length && needed.length) {
     return [
       { key: "travel", title: S.travel, lines: [S.travelOnFile], items: onFile },
-      { key: "travel-needed", title: S.travelNeeded.replace(/:$/, ""), lines: clean([optional]), items: needed, links: link },
+      { key: "travel-needed", title: S.travelNeeded.replace(/:$/, ""), lines: [], items: needed, after: clean([optional]), links: link },
     ];
   }
   return [{
     key: "travel", title: S.travel,
     lines: clean([onFile.length ? S.travelOnFile : needed.length ? S.travelNeeded : null]),
     items: [...onFile, ...needed],
-    ...(optional ? { lines: clean([onFile.length ? S.travelOnFile : needed.length ? S.travelNeeded : null, optional]) } : {}),
+    after: clean([optional]),
     links: link,
   }];
 }
@@ -320,7 +320,7 @@ export function packing(ctx: Ctx): Section {
   });
   return {
     key: "packing", title: S.packing,
-    lines: clean([S.packingLead, items.length ? S.packingItems : null, S.packingBag]),
+    lines: clean([S.packingLead, S.packingBag, items.length ? S.packingItems : null]),
     items,
     links: [{ label: S.packingWear, url: page(ctx, "clothing") }, { label: S.packingCabin, url: page(ctx, "cabinEssentials") }],
   };
