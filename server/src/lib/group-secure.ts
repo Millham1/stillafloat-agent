@@ -12,7 +12,7 @@
 //     FAILS CLOSED: no key → no write, never a plaintext fallback.
 //   * hashForAudit: IP / user agent are stored only as salted hashes.
 
-import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export const BUSINESS = {
   legalName: "Still Afloat LLC dba Still Afloat Cruising",
@@ -45,6 +45,29 @@ export function hashLinkToken(token: string): string {
 /** A token is 43 base64url characters; reject anything else before it reaches the database. */
 export function looksLikeLinkToken(token: unknown): token is string {
   return typeof token === "string" && /^[A-Za-z0-9_-]{43}$/.test(token);
+}
+
+// ── The traveler's cruise-page link (migration 0053) ──────────────────────────
+//
+// Every journey email carries the traveler's link to /my-cruise.html, long after the first one went out, so the
+// link cannot be a random token that only its hash remembers (the paperwork link is: it is shown once). It is
+// DERIVED instead: HMAC-SHA256 of the traveler's id under a server key, 43 base64url characters like every other
+// link token. Nothing secret is stored — group_travelers.hub_token_hash holds only the sha256 that finds the
+// traveler, exactly as form_token_hash does — and without the key a database read cannot rebuild a link.
+// The key is GROUP_LINK_KEY (64 hex characters) when set, else GROUP_PII_KEY; the label keeps it from ever
+// colliding with any other use of that key (passport encryption uses AES-GCM, not HMAC).
+// TODO(group-journey): rotating one traveler's cruise-page link (a per-traveler epoch mixed into the label).
+
+const HUB_LABEL = "saf-hub-link-v1:";
+
+export function hubKey(env: Record<string, string | undefined> = process.env): string | null {
+  for (const v of [env["GROUP_LINK_KEY"], env["GROUP_PII_KEY"]]) if (v && /^[0-9a-fA-F]{64}$/.test(v)) return v;
+  return null;
+}
+
+export function deriveHubToken(travelerId: string, keyHex: string): string {
+  if (!/^[0-9a-fA-F]{64}$/.test(keyHex)) throw new Error("the cruise-page link key is not set (GROUP_LINK_KEY or GROUP_PII_KEY, 64 hex characters)");
+  return createHmac("sha256", Buffer.from(keyHex, "hex")).update(`${HUB_LABEL}${travelerId}`).digest("base64url");
 }
 
 // ── Passport encryption ───────────────────────────────────────────────────────

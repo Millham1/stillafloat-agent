@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { GroupMarketing } from "./group-marketing";
 import { GroupTerms } from "./group-terms";
 import { ClientPaperwork, TravelerPaperwork, type PaperworkData } from "./group-paperwork";
+import { GroupJourney } from "./group-journey";
 
 // Group bookings — one file per group (cabins, travelers, paperwork, payments,
 // travel, checklist). Every cell saves when you leave it. Card numbers are
@@ -453,6 +454,8 @@ function GroupDetail({ id }: { id: string }) {
         ]} />
 
       <ClientPaperwork api={api} groupId={id} group={g} data={paperwork} onChanged={refresh} />
+
+      <GroupJourney api={api} groupId={id} />
 
       <Section title="Paperwork" groupId={id} child="documents" rows={data.documents} newRow={{ title: "New item" }} onChanged={refresh}
         cols={[

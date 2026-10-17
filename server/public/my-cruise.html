@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Cruise | Still Afloat Cruising</title>
+<!-- Private link, shared with one person at a time: never indexed, and the address (which carries the link) is never sent on to another site. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Page: the dark ocean gradient of the group page. Everything sits on a cloud-white sheet with navy text; gold marks the one action. */
+:root{--navy:#07183f;--cloud:#f7fbff;--line:#9db1cf;--gold:#ffca4f}
+*{box-sizing:border-box}
+input,select,button,textarea{font-size:18px}
+body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:var(--navy);line-height:1.55}
+h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;color:var(--navy)}
+
+/* Branded banner + plaque — the group page pattern */
+.mc-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;background:url('/assets/images/wheres-my-ship-hero.png') center 46%/cover no-repeat;height:clamp(210px,24vw,330px)}
+.mc-banner::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(6,17,31,.30) 0%,rgba(6,17,31,.05) 30%,rgba(6,17,31,.05) 60%,rgba(6,17,31,.88) 100%)}
+.mc-lockup{position:absolute;left:0;right:0;bottom:18px;z-index:4;display:flex;justify-content:center;padding:0 16px}
+.mc-plaque{display:inline-flex;align-items:center;gap:13px;background:rgba(4,14,28,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:9px 22px;max-width:94vw}
+.mc-plaque .dash{width:20px;height:3px;border-radius:2px;background:rgba(255,211,0,.7);flex:none}
+.mc-plaque .txt{color:rgba(255,255,255,.96);font-weight:600;letter-spacing:.18em;text-transform:uppercase;font-size:clamp(16px,1.5vw,19px);text-align:center}
+
+.shell{max-width:920px;margin:0 auto;padding:30px 16px 70px}
+.sheet{background:var(--cloud);color:var(--navy);border-radius:20px;padding:26px 24px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.sheet h1{font-size:clamp(30px,4.4vw,42px);line-height:1.15;margin:0 0 6px}
+.top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.langsw{font:inherit;font-weight:700;color:var(--navy);text-decoration:underline;background:none;border:0;padding:6px 0;cursor:pointer}
+.count{display:inline-block;border:2px solid var(--navy);border-radius:14px;background:#fff;padding:6px 16px;font-weight:800;font-size:22px;margin:4px 0 8px}
+.state{padding:34px 8px;text-align:center;font-size:21px}
+.err-box{background:#fff3f0;border:2px solid #8a1c0e;color:#5c0f06;border-radius:12px;padding:12px 16px;margin:14px 0}
+.ok-box{background:#eef9f0;border:2px solid #1c6b34;color:#0f3d1d;border-radius:12px;padding:12px 16px;margin:14px 0}
+
+/* sections */
+.card{border:2px solid var(--line);border-radius:16px;background:#fff;padding:16px 18px;margin:0 0 16px;overflow-wrap:anywhere}
+.card h2{font-size:clamp(23px,3vw,28px);margin:0 0 8px;line-height:1.2}
+.card p{margin:0 0 10px}
+.card ul{margin:0 0 12px;padding-left:24px}
+.card li{margin:0 0 6px}
+.card a{color:var(--navy);font-weight:700}
+.card.notice{border-color:var(--navy);border-left-width:8px;background:#eaf3ff}
+.tbl{overflow-x:auto;margin:0 0 12px}
+.tbl table{border-collapse:collapse;width:100%;font-size:18px}
+.tbl th,.tbl td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;overflow-wrap:normal;min-width:4.6rem}
+.tbl th{background:#eaf3ff;font-weight:700}
+.links a{display:block;margin:0 0 8px}
+
+/* checklist */
+.ck{list-style:none;padding:0!important;margin:0 0 6px!important}
+.ck li{display:flex;gap:12px;align-items:flex-start;border:2px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 8px;background:#fff}
+.ck li.done{background:#eef2f8}
+.ck li.done .t{text-decoration:line-through}
+.ck input{width:28px;height:28px;flex:none;margin-top:2px;accent-color:var(--navy)}
+.ck .t{font-weight:700}
+.ck .d{display:block;font-weight:400}
+
+/* the form */
+.fld{margin:0 0 14px}
+.fld label{display:block;font-weight:700;margin:0 0 4px}
+.fld input,.fld select{width:100%;max-width:26rem;font:inherit;font-size:18px;color:var(--navy);background:#fff;border:2px solid var(--line);border-bottom-color:var(--navy);border-radius:10px;padding:9px 12px}
+.fld input[aria-invalid=true],.fld select[aria-invalid=true]{border-color:#8a1c0e;background:#fff3f0}
+.field-err{display:block;color:#8a1c0e;font-weight:700;margin:4px 0 0}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.btn{display:inline-block;cursor:pointer;border:2px solid var(--navy);border-radius:14px;background:var(--gold);color:var(--navy);font:inherit;font-weight:800;font-size:22px;padding:12px 30px;text-decoration:none}
+.btn:disabled{opacity:.55;cursor:default}
+.contact{margin-top:8px}
+footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;color:rgba(255,255,255,.85);font-size:18px}
+@media(max-width:640px){.sheet{padding:20px 14px}.card{padding:14px 12px}.btn{width:100%;text-align:center}.fld input,.fld select{max-width:none}}
+</style>
+</head>
+<body>
+<div class="mc-banner"><div class="mc-lockup"><span class="mc-plaque"><span class="dash"></span><span class="txt" id="mc-plaque">Your Cruise</span><span class="dash"></span></span></div></div>
+
+<main class="shell">
+  <div class="sheet">
+    <div class="top">
+      <div>
+        <h1 id="mc-h1">Your cruise</h1>
+        <div id="mc-count" class="count" hidden></div>
+      </div>
+      <button type="button" class="langsw" id="mc-lang" hidden></button>
+    </div>
+    <div id="mc-state" class="state" role="status" aria-live="polite">Opening your cruise page… / Abriendo la página de su crucero…</div>
+    <noscript><p class="err-box">This page needs JavaScript. Please turn it on, or email <a href="mailto:mark@stillafloatcruising.com">mark@stillafloatcruising.com</a>. / Esta página necesita JavaScript.</p></noscript>
+    <div id="mc-body" hidden></div>
+    <p class="contact" id="mc-contact" hidden></p>
+  </div>
+</main>
+<footer id="mc-foot">Still Afloat LLC dba Still Afloat Cruising</footer>
+
+<script src="/js/my-cruise.js?v=20261017"></script>
+
+</body>
+</html>

@@ -12,7 +12,7 @@ import { BUSINESS } from "../lib/group-secure";
 import { renderSignedPdf } from "../lib/group-signature-pdf";
 import { DOC_SPECS } from "../lib/group-documents";
 import {
-  formUrl, getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument,
+  TRAVELER_COLS, formUrl, getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument,
   type FormsDeps, type FormsStore,
 } from "../lib/group-forms";
 
@@ -54,20 +54,18 @@ function publicSite(): string {
   return (process.env["PUBLIC_URL"] || "https://stillafloatcruising.com").replace(/\/$/, "");
 }
 
-// Never read passport_enc, form_token_hash or consent_ip_hash into this flow: the answers a traveler needs
-// from the file are the columns below, and a passport number is never read back at all.
-const TRAVELER_COLS =
-  "id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, dob, gender, citizenship, email, phone, lang, " +
-  "passport_last4, passport_country, passport_expiry, emergency_name, emergency_phone, special_needs, form_data, " +
-  "newsletter_opt_in, prospect_id, form_sent_at, form_submitted_at, consent_name, consent_signed_at";
-
 const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
-const store: FormsStore = {
+export const store: FormsStore = {
   async travelerByTokenHash(hash) {
     const { data, error } = await db().from("group_travelers").select(TRAVELER_COLS).eq("form_token_hash", hash).maybeSingle();
     if (error) throw new Error(error.message);
-    return data ?? null;
+    if (data) return data;
+    // The traveler's cruise-page link (migration 0053) opens this page too: one link, one person, both pages. A box that
+    // has not applied 0053 yet has no such column; the paperwork link must keep working there, so that error is not fatal.
+    const hub = await db().from("group_travelers").select(TRAVELER_COLS).eq("hub_token_hash", hash).maybeSingle();
+    if (hub.error) return null;
+    return hub.data ?? null;
   },
   async groupByOrganizerHash(hash) {
     const { data, error } = await db().from("groups").select("*").eq("organizer_token_hash", hash).maybeSingle();

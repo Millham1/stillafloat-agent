@@ -584,6 +584,42 @@ export default [
   },
 
   // ───────────────────────────────────────────────────────────────────────────────────────────
+  // scheduleGroupJourney: once a day at GROUP_JOURNEY_HOUR (default 9:00 Eastern; a restart later the same day catches up before 20:00)
+  // writes the group journey's emails — the booking confirmation, the 120 / 90 / 45 / 20 / 10 / 5 / 2-day messages, payment notices and
+  // the nudge for missing details — but only for templates Mark approved, and on the dev box only to its test addresses. What it sent is
+  // visible per group (ops.group-journey-plan-and-preview); this check reads the job's own record.
+  {
+    id: "jobs.group-journey-daily-tick",
+    basis: "code: server/src/index.ts — scheduleGroupJourney runs once a day at GROUP_JOURNEY_HOUR (default 9:00 America/New_York) and sends only approved journey emails; DISABLE_GROUP_JOURNEY=1 turns it off and the job-health ledger says so",
+    title: "The daily group-journey job is on the box's job ledger, and where it is switched on it has not failed in a row and has succeeded within the last day",
+    covers: ["job scheduleGroupJourney", "GET /api/healthz/jobs"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      const ledgerRes = await t.get("/api/healthz/jobs", { auth: true });
+      t.ok(ledgerRes.status === 200 || ledgerRes.status === 503, `the job ledger answered ${ledgerRes.describe()}`);
+      const ledger = ledgerRes.json && typeof ledgerRes.json === "object" ? ledgerRes.json : t.json(ledgerRes);
+      const job = (ledger.jobs || []).find((j) => j.name === "scheduleGroupJourney");
+      t.ok(job, "the job-health ledger has no entry for scheduleGroupJourney");
+      t.matches(job.every, /GROUP_JOURNEY_HOUR/, "the cadence the ledger gives for the group journey job");
+      t.equal(job.everyMs, 24 * HOUR, "the longest normal gap between runs of the group journey job (ms)");
+      if (!job.disabled) {
+        if (job.lastOkAt) {
+          t.fresh(job.lastOkAt, 28, "the group journey job's last successful run");
+          t.ok(job.consecutiveFailures === 0, `the group journey job has failed ${job.consecutiveFailures} time(s) in a row: ${job.lastError}`);
+          t.observe("group journey last result", job.lastResult || "", "info");
+        } else {
+          const bootedH = (t.now() - Date.parse(ledger.bootedAt)) / HOUR;
+          t.require(bootedH > 28, `the group journey job has not run yet on this box (up ${bootedH.toFixed(1)} h; it runs daily from GROUP_JOURNEY_HOUR) — nothing to judge until it has`);
+          t.ok(false, `the daily group journey job has never succeeded on a box that has been up ${bootedH.toFixed(0)} hours${job.lastError ? ` — last error: ${job.lastError}` : ""}`);
+        }
+      } else {
+        t.ok(typeof job.disabledWhy === "string" && job.disabledWhy.length > 5, "the group journey job is disabled with no reason");
+        t.observe("group journey job disabled on this box", job.disabledWhy);
+      }
+    },
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────────────────────
   // News agent (port 3003, stillafloat-newsagent): its own scheduler POSTs /api/scan-news at
   // 08:00 Eastern daily. The scan REPLACES the editorial queue (generatedAt is written only by a
   // scan — approve/reject keep it) and first runs the 21-day archive sweep, which moves every

@@ -64,6 +64,12 @@ export interface FormsDeps {
 
 // ── Loading a link ────────────────────────────────────────────────────────────
 
+/** The traveler columns any private page may read. Never passport_enc, form_token_hash, hub_token_hash or consent_ip_hash. */
+export const TRAVELER_COLS =
+  "id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, dob, gender, citizenship, email, phone, lang, " +
+  "passport_last4, passport_country, passport_expiry, emergency_name, emergency_phone, special_needs, form_data, " +
+  "newsletter_opt_in, prospect_id, form_sent_at, form_submitted_at, consent_name, consent_signed_at";
+
 export interface Loaded {
   kind: "traveler" | "organizer";
   group: Row;
@@ -77,7 +83,7 @@ export interface Loaded {
 }
 
 /** Look a link up. null for every kind of failure: malformed, unknown, replaced, or a group that was cancelled. */
-export async function loadByToken(deps: FormsDeps, token: unknown): Promise<Loaded | null> {
+export async function loadByToken(deps: Pick<FormsDeps, "store" | "now">, token: unknown): Promise<Loaded | null> {
   if (!looksLikeLinkToken(token)) return null;
   const hash = hashLinkToken(token);
   const { store } = deps;
