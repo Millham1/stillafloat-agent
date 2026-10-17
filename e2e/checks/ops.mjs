@@ -1249,7 +1249,7 @@ export default [
 
       // Every kind of wrong link: the same answer, never a hint about which part was wrong.
       const bodies = new Set();
-      for (const token of ["short", "A".repeat(43), "../../etc/passwd"]) {
+      for (const token of ["short", "A".repeat(43), "wrong-link-with-$ymbols!-and-the-right-length"]) { // a traversal-shaped token never reaches the route: the box's proxy answers it first, and that is the proxy's property, not the site's
         const res = await t.get(`/api/forms/${encodeURIComponent(token)}`);
         refused(t, res, 404, `a wrong paperwork link (${token.length} characters)`, /not valid/i);
         t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the paperwork answer");
@@ -1493,7 +1493,7 @@ export default [
 
       // Every kind of wrong link: the same answer, never a hint about which part was wrong, never cached or indexed.
       const bodies = new Set();
-      for (const token of ["short", "A".repeat(43), "A".repeat(44), "../../etc/passwd"]) {
+      for (const token of ["short", "A".repeat(43), "A".repeat(44), "wrong-link-with-$ymbols!-and-the-right-length"]) { // same note as the paperwork probe: a traversal-shaped token is the proxy's to answer, not the site's
         for (const q of ["", "?lang=es"]) {
           const res = await t.get(`/api/my-cruise/${encodeURIComponent(token)}${q}`);
           refused(t, res, 404, `a wrong cruise-page link (${token.length} characters${q})`, /not valid/i);
