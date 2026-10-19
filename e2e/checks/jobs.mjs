@@ -43,6 +43,7 @@ const SITE = "https://stillafloatcruising.com";
 
 const DEV_OFF = {
   weekly: "the weekly marketing job is switched off on the dev box (DISABLE_WEEKLY_MARKETING=1), so the release candidate cannot show it still writes the newsletter and commentary drafts",
+  posterOff: "Mark ruled on 2026-10-09 that dev runs the poster in sink mode (SOCIAL_POSTER_SINK=1: nothing leaves the box), so the release candidate cannot show the poster still handles due posts until it is switched on (DISABLE_SOCIAL_POSTER=0)",
   poster: "the social poster has handled no post on the dev box in the last 7 days (it runs there in sink mode, SOCIAL_POSTER_SINK=1, with a feeder that approves pending test batches), so the release candidate cannot show the poster still handles due posts — check that the poster is switched on (DISABLE_SOCIAL_POSTER=0) and that dev has pending batches to feed it",
 };
 
@@ -323,14 +324,16 @@ export default [
   // slot has passed — posted, failed, or skipped (language off / manual-only) — except "retry"
   // reasons (platform not configured, no Instagram clip), which stay scheduled for up to 7 days
   // and are then skipped as stale. Observable consequence of a running poster:
-  //   • nothing due more than 7 days + 30 minutes ago is still unresolved;
+  //   • nothing that was already more than 7 days past its slot when the poster last finished a run is still
+  //     unresolved (the poster's own record, GET /api/healthz/jobs, says when that was: a post that crossed the
+  //     7-day line a minute ago, or while the box restarted, has not had its next tick yet);
   //   • the newest due slot that was resolved is within 24 hours of the newest due slot (slots
   //     are three a day; one retry slot cannot open a 24-hour hole, a stopped poster does).
   {
     id: "jobs.social-poster-handles-due-posts",
     basis: "master-ref: §6 PA SOCIAL POSTING PIPELINE — approved posts go out through the Make Facebook scenario at their scheduled slot; the poster ticks every 10 minutes and skips retry-forever items after seven days (scheduleSocialPoster, server/src/index.ts); 9/6 incident",
     title: "The social poster handles posts when their time comes: any that fell due this week were handled, Facebook posts went out within the hour, none failed, and nothing due is left waiting past its slot or the seven-day retry limit",
-    covers: ["job scheduleSocialPoster", "GET /api/social/schedule"],
+    covers: ["job scheduleSocialPoster", "GET /api/social/schedule", "GET /api/healthz/jobs"],
     modes: ["dev", "prod"],
     incident: "2026-09-06: Instagram items sat \"scheduled\" indefinitely and the calendar promised posts that never went out",
     run: async (t) => {
@@ -339,6 +342,22 @@ export default [
       const s = t.success(await t.get("/api/social/schedule?format=json", { auth: true }));
       t.ok(Array.isArray(s.items), "the posting calendar has no items array");
       t.equal(s.count, s.items.length, "posting calendar count");
+      // The poster's own record. (503 is the ledger's verdict that SOME job is overdue and still carries the report: read it
+      // as such; whether another job is overdue is vitals.jobs-ran-on-time's finding, not this check's.)
+      const ledgerRes = await t.get("/api/healthz/jobs", { auth: true });
+      t.ok(ledgerRes.status === 200 || ledgerRes.status === 503, `the job ledger answered ${ledgerRes.describe()}`);
+      const ledger = ledgerRes.json && typeof ledgerRes.json === "object" ? ledgerRes.json : t.json(ledgerRes);
+      const job = (ledger.jobs || []).find((j) => j.name === "scheduleSocialPoster");
+      t.ok(job, "the job-health ledger has no entry for scheduleSocialPoster");
+      // Switched off on this box. Mark ruled on 2026-10-09 that dev runs the poster ("turn the poster on in dev") in sink mode: same
+      // schedule and rules, the last hop goes to a test sink and nothing can leave the box. So an off poster on dev is a dev-mirror gap
+      // to fix by switching it on (UNTESTABLE fails the run, README rule 3), never a way for the release candidate to skip the poster's
+      // rules; on production it means every approved post waits forever.
+      if (job.disabled) {
+        t.ok(typeof job.disabledWhy === "string" && job.disabledWhy.length > 5, "the social poster is switched off with no reason on the job ledger");
+        t.ok(t.mode === "dev", `the social poster is switched off on the production box (${job.disabledWhy}), so no approved post will ever go out`);
+        t.require(false, `the social poster is switched off on the dev box (${job.disabledWhy}): ${DEV_OFF.posterOff}`);
+      }
       const now = t.now();
       const at = (i) => Date.parse(i.scheduledFor || "");
       const unresolved = (i) => !i.postedAt && (!i.postState || i.postState === "scheduled");
@@ -346,13 +365,31 @@ export default [
       const recent = due.filter((i) => at(i) >= now - 7 * DAY);
       // Whether a post fell due this week depends on whether Mark approved a batch (his cadence, not the
       // site's — 2026-10-09 grounding pass), so prod with nothing due is not a failure: the stale-post rule
-      // below still holds and the timing rules apply to whatever did fall due. Dev, with the poster switched
-      // off on purpose, cannot show the poster working (Mark's 2026-10-08 dev-mirror ruling: decide which
-      // disabled jobs must run for parity).
+      // below still holds and the timing rules apply to whatever did fall due. Dev has its own supply: the sink-mode
+      // poster's feeder approves pending test batches, so a dev calendar with nothing due means the supply or the poster is broken.
       if (t.mode === "dev" && recent.length === 0) t.require(false, DEV_OFF.poster);
       for (const i of recent) t.fields(i, ["platform", "surface", "scheduledFor"], "a due social post");
-      const overdue = due.filter((i) => unresolved(i) && at(i) < now - 7 * DAY - 30 * 60_000);
-      t.ok(overdue.length === 0, `${overdue.length} social posts due more than 7 days ago are still waiting (oldest slot ${overdue.map((i) => i.scheduledFor).sort()[0]}) — the poster skips those as stale on its next run, so it has not run`);
+      // A post is stale for the poster once 7 days have passed since its slot, and the poster settles it at its next tick. So the
+      // question is not "what time is it now" but "what had the poster already had its chance to settle": everything that was more than
+      // 7 days past its slot when the poster last finished a run (a few minutes of slack for the run's own length). Judged against
+      // the clock alone, a post that crossed the line while the box restarted failed the sweep for a poster that had not yet had a tick
+      // (2026-10-17 21:45Z: the 10 October 21:00Z slot, 45 minutes after the line).
+      const lastRun = Date.parse(job.lastOkAt || "");
+      let overdue = [];
+      if (Number.isFinite(lastRun)) {
+        const settled = Math.min(lastRun, now) - 7 * DAY - 5 * 60_000;
+        overdue = due.filter((i) => unresolved(i) && at(i) < settled);
+      } else {
+        // no finished run on the ledger: the first tick comes 20 seconds after boot, so a box up for a quarter of an hour has no excuse
+        t.ok(ledger.uptimeSec < 15 * 60, `the social poster has not finished a single run on a box that has been up ${Math.round(ledger.uptimeSec / 60)} minutes (it ticks 20 seconds after boot and every 10 minutes)`);
+      }
+      let where = "";
+      if (overdue.length) {
+        // say where they sit: the poster only visits batches whose status is "scheduled"
+        const q = t.success(await t.get("/api/social/queue", { auth: true }));
+        where = [...new Set(overdue.map((i) => `${i.platform}, state ${i.postState || "none"}, in a "${(q.batches || []).find((b) => b.id === i.batchId)?.status ?? "missing"}" batch`))].join("; ");
+      }
+      t.ok(overdue.length === 0, overdue.length ? `${overdue.length} social post(s) were more than 7 days past their slot when the poster last finished a run (${new Date(lastRun).toISOString()}) and are still waiting (oldest slot ${overdue.map((i) => i.scheduledFor).sort()[0]}; ${where}) — a running poster skips those as stale at its next tick, so it is not reaching them` : "");
       if (recent.length) {
         const newestDue = maxTime(recent.map(at));
         const newestResolved = maxTime(recent.filter((i) => !unresolved(i)).map(at));
