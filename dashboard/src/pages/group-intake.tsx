@@ -142,19 +142,24 @@ export default function GroupIntake() {
     window.history.replaceState(null, "", url);
   };
   const [form, setForm] = useState<Row>({});
+  // The intake's updated_at when the form was filled from it: a later one means the server read the quote again.
+  const [seededAt, setSeededAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // What Save answered: the opened group (a link to it stays on the page if the jump to it does not happen) or the server's refusal.
   const [saved, setSaved] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { data } = useQuery<{ intake: Intake; found: string[]; group_name?: string | null }>({
+  const { data, refetch } = useQuery<{ intake: Intake; found: string[]; group_name?: string | null }>({
     queryKey: ["group-intake", intakeId],
     queryFn: () => api(`/groups/intake/${intakeId}`),
     enabled: !!intakeId,
     refetchInterval: (q) => {
       const s = q.state.data?.intake.status;
-      return saved || s === "ready" || s === "failed" || s === "accepted" ? false : 2500;
+      // A read that is finished is still checked every 10 seconds: the server can re-read the quote (the retry route) while the
+      // form is open, and the form would keep the old values (Mark's Millham F/F 2027 quote, 2026-10-19).
+      if (saved || s === "failed" || s === "accepted") return false;
+      return s === "ready" ? 10_000 : 2500;
     },
     refetchIntervalInBackground: true,
   });
@@ -167,6 +172,7 @@ export default function GroupIntake() {
   useEffect(() => {
     if (intake?.status === "ready" && intake.extracted && Object.keys(form).length === 0) {
       setForm(seedForm(intake.extracted, data?.group_name));
+      setSeededAt(intake.updated_at);
     }
   }, [intake?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -183,6 +189,7 @@ export default function GroupIntake() {
       });
       const res = await api<{ intake: Intake }>("/groups/intake", "POST", { booking_kind: kind, lang, filename: file.name, data: b64 });
       setForm({});
+      setSeededAt(null);
       setSaved(null);
       setSaveError(null);
       setIntakeId(res.intake.id);
@@ -241,12 +248,24 @@ export default function GroupIntake() {
 
   const retry = async () => {
     if (!intakeId) return;
-    try { await api(`/groups/intake/${intakeId}/retry`, "POST", {}); setForm({}); }
+    try { await api(`/groups/intake/${intakeId}/retry`, "POST", {}); setForm({}); setSeededAt(null); await refetch(); }
     catch (e) { toast({ variant: "destructive", title: "Could not retry", description: (e as Error).message }); }
   };
 
   // Save needs a name; when the button is faded the reason is written beside it.
   const canSave = !saving && !!String(form.name ?? "").trim();
+  // The quote was read again on the server after this form was filled (another tab, the retry route): the form still holds the old read.
+  const rereadAt = intake?.status === "ready" && seededAt && intake.updated_at !== seededAt ? new Date(intake.updated_at) : null;
+  const reload = async () => {
+    const r = await refetch();
+    const d = r.data;
+    if (d?.intake.status === "ready" && d.intake.extracted) {
+      setForm(seedForm(d.intake.extracted, d.group_name));
+      setSeededAt(d.intake.updated_at);
+    } else {
+      toast({ variant: "destructive", title: "Not ready yet", description: "The server is still reading this quote. Try again in a moment." });
+    }
+  };
   const busy = intake && (intake.status === "queued" || intake.status === "reading" || intake.status === "extracting");
   // Minutes since the upload, so a long read shows progress instead of a bare spinner.
   const [, tick] = useState(0);
@@ -327,7 +346,7 @@ export default function GroupIntake() {
                 </>
               )}
               {intake.status === "accepted" && intake.group_id && <Link href={`/groups/${intake.group_id}`}><span className="text-sm text-primary underline cursor-pointer">Open the group file</span></Link>}
-              {!busy && <button onClick={() => { setIntakeId(null); setForm({}); setSaved(null); setSaveError(null); }} className="ml-auto text-xs px-2 py-1 rounded border">Start over</button>}
+              {!busy && <button onClick={() => { setIntakeId(null); setForm({}); setSeededAt(null); setSaved(null); setSaveError(null); }} className="ml-auto text-xs px-2 py-1 rounded border">Start over</button>}
             </div>
           )}
         </CardContent>
@@ -335,6 +354,17 @@ export default function GroupIntake() {
 
       {intake?.status === "ready" && Object.keys(form).length > 0 && (
         <>
+          {rereadAt && !Number.isNaN(rereadAt.getTime()) && (
+            <Card className="border-amber-500/60">
+              <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 text-sm">
+                  <RotateCw className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span>This quote was re-read on the server at {rereadAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })} — reload to see the new values (your unsaved edits would be lost)</span>
+                </div>
+                <button onClick={() => void reload()} className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground">Reload</button>
+              </div>
+            </Card>
+          )}
           {warnings.length > 0 && (
             <Card className="border-amber-500/60">
               <div className="px-4 py-3 border-b flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-amber-500" /><h3 className="font-semibold">Check these against the PDF</h3></div>
