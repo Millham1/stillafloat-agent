@@ -2,7 +2,7 @@
 // Mark's interview + the file's facts (never the other way round), validated the same way as the
 // group page copy: every number must exist in the group file or in Mark's own answers.
 import type { GroupFacts, Lang } from "./group-marketing";
-import { HOUSE_BANNED, HOUSE_VOICE_RULES, missingPitchSentences, numbersIn, pitchNumberProblems, pitchRules, userPrompt } from "./group-marketing";
+import { HOUSE_BANNED, HOUSE_VOICE_RULES, missingPitchSentences, numbersIn, pitchIsHis, pitchNumberProblems, pitchRules, tooLong, userPrompt, withoutPitch } from "./group-marketing";
 import { MARK_PHONE } from "./group-package-spec";
 
 export type Row = Record<string, unknown>;
@@ -46,7 +46,7 @@ export function campaignSystemPrompt(lang: Lang): string {
     ...pitchRules("the body of email 1 (the announcement)", "The other emails and the Facebook texts are written in the house voice around the same pitch; they may quote its sentences but do not have to.", lang),
     "- Layout of email 1: the hook as the opening line, the walk-through sentence ending on a dry beat, then Mark's pitch verbatim, then the occasion line with its wink, then what the fare includes, then the call to action.",
     "- The three emails: announcement (the invitation), reminder (a few weeks before the reserve-by date; what is still open), last call (the final days before the reserve-by date). Facebook: an announcement post, a shorter reminder post, an event title and description, and a 300-character boosted-post text.",
-    "- No emojis, no exclamation marks, no all-caps, no superlatives, no urgency words. Never 'cheaper' (say 'less expensive'), never 'actually'. Plain text, short paragraphs. Emails end with 'Still Afloat Cruising' on its own line.",
+    `- No emojis, no exclamation marks, no all-caps, no superlatives, no urgency words in the words we write. Never 'cheaper' (say 'less expensive'), never 'actually'. Plain text, short paragraphs. Emails end with 'Still Afloat Cruising' on its own line.${pitchIsHis(lang)}`,
   ].join("\n");
 }
 
@@ -60,12 +60,15 @@ const BANNED: Record<Lang, RegExp[]> = { en: [/\bactually\b/i, /\bguarantee[ds]?
 export function validateCampaign(c: unknown, facts: GroupFacts, answers: Record<string, string | boolean>, pageUrl: string): CampaignProblem[] {
   const problems: CampaignProblem[] = [];
   const x = (c && typeof c === "object" ? c : {}) as Row;
+  const pitch = typeof answers["pitch"] === "string" ? answers["pitch"].trim() : "";
   const allowed = new Set([...facts.allowedNumbers, ...numbersIn(Object.values(answers).filter((v) => typeof v === "string").join(" ")), ...numbersIn(MARK_PHONE), ...numbersIn(pageUrl)]);
   const check = (field: string, v: unknown, max: number) => {
     if (typeof v !== "string" || !v.trim()) { problems.push({ field, problem: "missing" }); return; }
-    if (v.length > max) problems.push({ field, problem: `too long (${v.length} of ${max} characters)` });
-    for (const re of BANNED[facts.lang]) { const m = v.match(re); if (m) problems.push({ field, problem: `uses "${m[0]}"` }); }
-    for (const h of HOUSE_BANNED[facts.lang]) if (h.re.test(v)) problems.push({ field, problem: h.problem });
+    if (v.length > max) problems.push({ field, problem: tooLong(v.length, max) });
+    // The house-voice bans are for our words: Mark's pitch sentences (his "!" and his word choices) are taken out first.
+    const ours = withoutPitch(pitch, v);
+    for (const re of BANNED[facts.lang]) { const m = ours.match(re); if (m) problems.push({ field, problem: `uses "${m[0]}"` }); }
+    for (const h of HOUSE_BANNED[facts.lang]) if (h.re.test(ours)) problems.push({ field, problem: h.problem });
     for (const n of numbersIn(v)) if (!allowed.has(n)) problems.push({ field, problem: `states a number that is not in the group file: ${n}` });
     if (/[<>]/.test(v)) problems.push({ field, problem: "contains markup" });
   };
@@ -74,7 +77,6 @@ export function validateCampaign(c: unknown, facts: GroupFacts, answers: Record<
   emails.forEach((e, i) => { check(`emails[${i}].subject`, e["subject"], 80); check(`emails[${i}].preheader`, e["preheader"], 120); check(`emails[${i}].body`, e["body"], 1800); });
   // Built around Mark's pitch: every sentence of it is in the announcement email, word for word. Mark writes in
   // English, so only an English campaign can be matched by sentence; a Spanish one carries a translation.
-  const pitch = typeof answers["pitch"] === "string" ? answers["pitch"].trim() : "";
   if (pitch) {
     if (facts.lang === "en") {
       const at = Math.max(0, emails.findIndex((e) => e["slot"] === "announcement"));
