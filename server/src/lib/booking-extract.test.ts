@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BOOKING_SCHEMA, cabinRowsFromExtraction, foundFields, normalizeDate, normalizeExtraction, normalizeMoney, travelRowsFromExtraction } from "./booking-extract";
+import { BOOKING_SCHEMA, cabinRowsFromExtraction, foundFields, looksLikeCategoryCode, normalizeDate, normalizeExtraction, normalizeMoney, travelRowsFromExtraction } from "./booking-extract";
 
 test("normalizeDate accepts the formats quotes print and rejects junk", () => {
   assert.equal(normalizeDate("2027-03-01"), "2027-03-01");
@@ -447,4 +447,35 @@ test("a dollar-sign quote reads as before: rows by the sums, no quotator rules",
   assert.ok(!x.warnings.some((w) => /prints the double rate/.test(w)));
   assert.equal(x.notes, null, "no total rate line, no note");
   assert.equal(x.sail_date, "2027-05-10");
+});
+
+
+test("normalizeExtraction: a category whose code and name were filled the wrong way round is put right (MSC quotator, 2026-10-19)", () => {
+  const x = normalizeExtraction({ cabin_categories: [
+    { code: "Interior Bella", category: "IB", count: 0, commissionable_fare: 328.79 },
+    { code: "BB", category: "Balcony Bella", count: 10, commissionable_fare: 468.79 },
+    { code: "MSC Yacht Club Deluxe Suite", category: "YC1", count: 0 },
+  ] });
+  assert.deepEqual(x.cabin_categories.map((c) => [c.code, c.category]), [["IB", "Interior Bella"], ["BB", "Balcony Bella"], ["YC1", "MSC Yacht Club Deluxe Suite"]]);
+  assert.equal(looksLikeCategoryCode("BR2"), true);
+  assert.equal(looksLikeCategoryCode("Interior Bella"), false);
+  assert.equal(looksLikeCategoryCode("8C"), true);
+});
+
+test("normalizeExtraction: 'Cruise Only' is a package type and dining is a group setting — neither is a perk; the group NAME is not a group number", () => {
+  const x = normalizeExtraction({
+    group_number: "Millham F/F 2027",
+    amenities: ["Group Dining: Early Dining", "Champagne toast"],
+    guest_inclusions: ["Cruise Only", "Cruise Only", "Wi-Fi for two"],
+    notes: "Rates include NCF.",
+  });
+  assert.equal(x.group_number, null);
+  assert.deepEqual(x.amenities, ["Champagne toast"]);
+  assert.deepEqual(x.guest_inclusions, ["Wi-Fi for two"]);
+  assert.match(x.notes ?? "", /Group name on the quote: Millham F\/F 2027\./);
+  assert.match(x.notes ?? "", /Group Dining: Early Dining/);
+  assert.match(x.notes ?? "", /^Rates include NCF\./);
+  const real = normalizeExtraction({ group_number: "665450", guest_inclusions: ["Premium Extra drinks package"] });
+  assert.equal(real.group_number, "665450");
+  assert.deepEqual(real.guest_inclusions, ["Premium Extra drinks package"]);
 });

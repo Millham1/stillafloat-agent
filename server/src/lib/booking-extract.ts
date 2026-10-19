@@ -288,6 +288,13 @@ function str(v: unknown): string | null {
 }
 
 /** Tidy a raw model answer into the exact shape the review form expects. */
+/** "IB", "BR2", "YC1", "8C": short, no spaces, mostly capitals and digits. "Interior Bella" is not a code. */
+export function looksLikeCategoryCode(v: string | null | undefined): boolean {
+  if (!v) return false;
+  const t = v.trim();
+  return t.length >= 1 && t.length <= 5 && !/\s/.test(t) && /^[A-Z0-9]+$/.test(t);
+}
+
 export function normalizeExtraction(raw: unknown): BookingExtraction {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
@@ -316,13 +323,29 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
       price_child: normalizeMoney(x["price_child"]),
       price_junior_child: normalizeMoney(x["price_junior_child"]),
     }))
-    .filter((x) => x.category || x.code);
+    .filter((x) => x.category || x.code)
+    // A model sometimes fills the two labels the wrong way round ("code": "Interior Bella", "category": "IB" —
+    // Mark's MSC quotator, 2026-10-19). A code is short, mostly capitals and digits, and has no spaces; a name is not.
+    .map((x) => (looksLikeCategoryCode(x.category) && !looksLikeCategoryCode(x.code) && (x.code ?? "").includes(" ")
+      ? { ...x, category: x.code, code: x.category }
+      : x));
   const travelers = list(r["travelers"])
     .map((x) => (x && typeof x === "object" ? (x as Record<string, unknown>) : {}))
     .map((x) => ({ first_name: str(x["first_name"]), last_name: str(x["last_name"]) }))
     .filter((x) => x.first_name || x.last_name);
-  const amenities = list(r["amenities"]).map(str).filter((x): x is string => !!x);
-  const guest_inclusions = list(r["guest_inclusions"]).map(str).filter((x): x is string => !!x && !/amenity point/i.test(x));
+  // "Cruise Only" is the package type, not something the guest gets; "Group Dining: Early Dining" is a group setting,
+  // not a perk — both go to the notes instead (Mark's MSC quotator, 2026-10-19).
+  const isPackageType = (x: string) => /^\s*cruise[- ]only\s*$/i.test(x);
+  const isDiningSetting = (x: string) => /\b(group )?dining\b/i.test(x) && !/package|specialty/i.test(x);
+  const amenitiesRaw = list(r["amenities"]).map(str).filter((x): x is string => !!x);
+  const amenities = amenitiesRaw.filter((x) => !isDiningSetting(x) && !isPackageType(x));
+  const guest_inclusions = [...new Set(list(r["guest_inclusions"]).map(str).filter((x): x is string => !!x && !/amenity point/i.test(x) && !isPackageType(x)))];
+  const extraNotes: string[] = amenitiesRaw.filter(isDiningSetting).map((x) => x.replace(/\s+/g, " ").trim());
+  // A group NUMBER is assigned by the line; a quote often prints only the group NAME ("Millham F/F 2027"). Words with
+  // spaces are a name, never a number: keep it in the notes for Mark and leave the number blank.
+  const groupNumberRaw = str(r["group_number"]);
+  const groupNumberIsName = !!groupNumberRaw && /\s/.test(groupNumberRaw.trim()) && /[a-z]/i.test(groupNumberRaw) && !/^(grp|group|id|no\.?|#)\s*[:#]?\s*[\w-]+$/i.test(groupNumberRaw.trim());
+  if (groupNumberIsName) extraNotes.unshift(`Group name on the quote: ${groupNumberRaw.trim()}.`);
   const obj = (x: unknown) => (x && typeof x === "object" ? (x as Record<string, unknown>) : {});
   const allotment_reviews: AllotmentReview[] = list(r["allotment_reviews"]).map(obj)
     .map((x) => ({ date: normalizeDate(x["date"]), days_before: normalizeInt(x["days_before"]), percent_retaken: normalizeInt(x["percent_retaken"]), note: str(x["note"]) }))
@@ -377,7 +400,7 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     nights,
     embark_port: str(r["embark_port"]),
     itinerary,
-    group_number: str(r["group_number"]),
+    group_number: groupNumberIsName ? null : groupNumberRaw,
     booking_number: str(r["booking_number"]),
     cabins_held,
     cabin_categories,
@@ -390,7 +413,7 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     organizer_name: str(r["organizer_name"]),
     travelers,
     total_price: normalizeMoney(r["total_price"]),
-    notes: str(r["notes"]),
+    notes: [str(r["notes"]), ...extraNotes].filter((x): x is string => !!x).join(" ") || null,
     deposit_timing: timing === "at_booking" || timing === "by_date" ? timing : null,
     final_payment_days_before: normalizeInt(r["final_payment_days_before"]),
     allotment_reviews,
