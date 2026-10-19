@@ -16,6 +16,12 @@
 //   2026-09     Search collapse (see stillafloat-search-collapse-2026-09): Spanish is a core
 //               market, and a Spanish page that names the English page as its canonical address,
 //               or has no hreflang pair, is dropped from Spanish search results.
+//   2026-10-19  A tab opened on the dev box at /dashboard/groups stayed blank. nginx sent the dashboard page (index.html)
+//               with no Cache-Control, so the browser kept a copy from before four deploys; that copy named hashed
+//               script files the deploys had replaced, and the catch-all answered each missing file with the dashboard
+//               page itself (HTTP 200, text/html), which a browser refuses as a script. No API check noticed: every
+//               endpoint was fine. The dashboard page must be revalidated on every load, its hashed files must load
+//               as scripts and styles, and a file that is not there must be a 404 (pages.dashboard-shell-fresh).
 //   always      The site falls back to nothing helpful when a link breaks: nginx answers 404. A
 //               page whose picture, script or stylesheet moved shows a broken layout to every
 //               visitor while every API check stays green.
@@ -59,6 +65,7 @@ import vm from "node:vm";
 import * as H from "../lib/html.mjs";
 
 const PROD = "https://stillafloatcruising.com";
+const PROD_DASHBOARD = "https://dashboard.stillafloatcruising.com"; // prod only: behind a password, except /sw.js (nginx: auth_basic off)
 const MAX_REQUESTS = 42; // per crawl check — the sweep must stay gentle on the small prod box
 
 // kinds:
@@ -912,6 +919,80 @@ export default [
         if (r.status !== 404) problems.push(`${p} answered HTTP ${r.status} instead of 404${r.status === 200 && H.title(r.text) === H.title(home) ? " — the home page is served for an address that does not exist" : ""}`);
       }
       t.ok(problems.length === 0, `${problems.length} address(es) that do not exist did not answer 'not found': ${problems.join(" | ")}`);
+    },
+  },
+
+  {
+    id: "pages.dashboard-shell-fresh",
+    basis: "ruling: mark-dev-is-a-working-website-not-a-repo.md — Mark 2026-10-19: dev is a working website top to bottom; a deploy must never leave the dashboard shell stale or a missing asset answered as HTML",
+    title: "Mark's dashboard page is never kept stale by a browser, its script and style files load as such, and a file that is not there is a 'not found' instead of the dashboard page",
+    covers: ["ext:file /dashboard/", "ext:file /dashboard/assets/", "ext:file /sw.js"],
+    modes: ["dev", "prod"],
+    incident: "2026-10-19: Mark's /dashboard/groups link opened a blank tab on the dev box. index.html had no Cache-Control, so the browser kept a copy from before four deploys; it named hashed script files the deploys had replaced, and nginx answered every missing /dashboard/assets/ file with the dashboard page itself (HTTP 200, text/html) — the browser refused HTML as a script and nothing mounted, while every API check stayed green",
+    run: async (t) => {
+      // Every request is a GET. The dashboard page and its files are read where THIS box serves them:
+      // <site>/dashboard/ (dev, and prod through the same alias that ops.dashboard-app reads). On prod the real dashboard
+      // address (dashboard.stillafloatcruising.com) asks for a password, so only its /sw.js, which nginx leaves open, is read there.
+      const problems = [];
+      const cacheOf = (r) => String(r.headers?.get?.("cache-control") || "");
+      const revalidates = (cc) => /\b(no-cache|no-store)\b|\bmax-age=0(?!\d)/i.test(cc);
+      const longLived = (cc) => /\bimmutable\b/i.test(cc) || Number(/\bmax-age=(\d+)/i.exec(cc)?.[1] ?? 0) >= 86_400;
+      const said = (cc) => (cc ? `Cache-Control "${cc}"` : "no Cache-Control");
+
+      // 1. The page (and a deep link, the way Mark opened it) is sent so a browser asks again every time it is opened.
+      //    Positive control first: it must really be the dashboard page, so a box answering 404 to everything fails here.
+      const shell = await t.get("/dashboard/");
+      const html = t.html(shell, { mustContain: [/<div id="root"/] });
+      if (!/text\/html/i.test(ctype(shell))) problems.push(`/dashboard/ is sent as ${ctype(shell) || "no type"}, not as a web page`);
+      if (!revalidates(cacheOf(shell))) problems.push(`/dashboard/ is sent with ${said(cacheOf(shell))} — a browser may keep today's page and keep asking for files a later deploy has replaced`);
+      const deep = await t.get("/dashboard/groups");
+      if (deep.status !== 200 || !/<div id="root"/.test(deep.text)) problems.push(`the deep link /dashboard/groups does not open the dashboard page: ${deep.describe()}`);
+      else if (!revalidates(cacheOf(deep))) problems.push(`the deep link /dashboard/groups is sent with ${said(cacheOf(deep))} — the page a visitor lands on from a link can be kept stale`);
+
+      // 2. Every script and stylesheet the page names under /assets/ loads as that, and is kept long (the names carry a hash).
+      //    On prod the build is made for the dashboard address and names /assets/…; through the site's /dashboard/ alias they sit under /dashboard/assets/.
+      const host = new URL(shell.url).host;
+      const refs = [...new Set([...H.scripts(html), ...(html.match(/<link\b[^>]*>/gi) || []).map((l) => /\bhref\s*=\s*["']([^"']*)["']/i.exec(l)?.[1]).filter(Boolean)])];
+      const assets = [...new Set(refs.map((r) => H.resolve(r, shell.url)).filter(Boolean).map((u) => new URL(u))
+        .filter((u) => u.host === host && /^\/(dashboard\/)?assets\//.test(u.pathname))
+        .map((u) => (u.pathname.startsWith("/dashboard/") ? u.pathname : `/dashboard${u.pathname}`)))];
+      t.ok(assets.some((a) => /\.m?js$/.test(a)), `the dashboard page names no script under /assets/ (found ${refs.length} script and link address(es), none of them under /assets/)`);
+      for (const a of spread(assets, 8)) {
+        const r = await t.get(a);
+        const type = ctype(r);
+        const want = /\.m?js$/.test(a) ? [/javascript/i, "JavaScript"] : /\.css$/.test(a) ? [/text\/css/i, "a stylesheet"] : null;
+        if (r.status !== 200) problems.push(`${a} → HTTP ${r.status}, the dashboard page names it`);
+        else if (/text\/html/i.test(type) || (want && /^\s*</.test(r.text))) problems.push(`${a} is sent as ${type || "no type"} — the browser refuses a web page as ${want ? want[1] : "a file"}`);
+        else if (want && !want[0].test(type)) problems.push(`${a} is sent as ${type || "no type"}, not as ${want[1]}`);
+        else if (!longLived(cacheOf(r))) problems.push(`${a} is sent with ${said(cacheOf(r))} — its name carries a hash, so it should be kept for a long time`);
+      }
+
+      // 3. A file that is not there (what a kept old page asks for after a deploy) is a plain 404 — never the dashboard page with HTTP 200.
+      const dir = (assets.find((a) => /\.m?js$/.test(a)) || "/dashboard/assets/x").replace(/\/[^/]*$/, "");
+      const stamp = Math.random().toString(36).slice(2, 10);
+      for (const ext of ["js", "css"]) {
+        const gone = `${dir}/gate-missing-${stamp}.${ext}`;
+        const r = await t.get(gone);
+        if (r.status !== 404) problems.push(`${gone}, a file that does not exist, answered HTTP ${r.status} ${ctype(r) || "with no type"}${r.status === 200 && /<div id="root"/.test(r.text) ? " — the dashboard page itself" : ""} instead of 404`);
+      }
+
+      // 4. The service worker. The dashboard page registers /sw.js. On the site's own address nginx deliberately has none
+      //    (site.dev.conf and site.prod.conf: "Deliberately NO sw.js" — a worker must never register against the website origin),
+      //    so it is a 404 on both boxes. On prod's dashboard address the worker is served, and revalidated on every load so a
+      //    new one is picked up (dashboard.stillafloatcruising.com.conf: location = /sw.js, no password, no-cache).
+      const sw = await t.get("/sw.js");
+      if (sw.status !== 404) problems.push(`/sw.js on the site's own address answered HTTP ${sw.status} ${ctype(sw) || "with no type"} — nginx deliberately serves no service worker there`);
+      if (t.mode === "prod") {
+        const dsw = await t.get(`${PROD_DASHBOARD}/sw.js`);
+        if (dsw.status !== 200 || !/javascript/i.test(ctype(dsw)) || /^\s*</.test(dsw.text)) problems.push(`${dsw.describe()} (${ctype(dsw) || "no type"}) — the dashboard's service worker must load as JavaScript`);
+        else if (!revalidates(cacheOf(dsw))) problems.push(`${PROD_DASHBOARD}/sw.js is sent with ${said(cacheOf(dsw))} — a new service worker would not be picked up`);
+      } else {
+        t.note("the dashboard address (dashboard.stillafloatcruising.com) exists only on prod; dev serves the dashboard under /dashboard/ and, by design, no service worker");
+      }
+
+      t.observe("dashboard page Cache-Control", cacheOf(shell));
+      t.observe("dashboard files named by the page", assets.length, "min");
+      t.ok(problems.length === 0, `${problems.length} problem(s) with the dashboard page and its files: ${problems.join(" | ")}`);
     },
   },
 ];
