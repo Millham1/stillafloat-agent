@@ -18,6 +18,11 @@ type Intake = {
   model: string | null; created_at: string; updated_at: string;
 };
 
+/** A refused request: the server's own words as the message, and its whole answer (e.g. group_id on "Already accepted") on `body`. */
+class ApiError extends Error {
+  constructor(message: string, readonly body: Row = {}) { super(message); }
+}
+
 async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const r = await fetch(`/api${path}`, {
     method,
@@ -26,7 +31,7 @@ async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> 
   });
   const json = await r.json().catch(() => ({}));
   if (r.status === 401) throw new Error("This browser's access token was not accepted. Open the sign-in link again.");
-  if (!r.ok) throw new Error(json?.error || `Request failed (${r.status})`);
+  if (!r.ok) throw new ApiError(json?.error || `Request failed (${r.status})`, json && typeof json === "object" ? json : {});
   return json as T;
 }
 
@@ -58,6 +63,16 @@ const FIELDS: Field[] = [
 ];
 
 const inputCls = "mt-1 w-full px-3 py-1.5 text-sm rounded-md border bg-card text-foreground";
+
+/**
+ * The confirmation form's starting values from a read. The file's name is offered from the group name the quote prints
+ * ("Millham F/F 2027"), else built from the organizer, the ship and the sail month, as before. Mark can type over either.
+ */
+function seedForm(x: Row, printedName: string | null | undefined): Row {
+  const printed = (printedName ?? "").trim() || (typeof x.group_name === "string" ? x.group_name.trim() : "");
+  const guess = [x.organizer_name, x.ship_name, x.sail_date ? String(x.sail_date).slice(0, 7) : null].filter(Boolean).join(" — ");
+  return { ...x, name: printed || guess };
+}
 
 type TransferRoute = "airport_to_hotel" | "hotel_to_port" | "port_to_airport";
 const TRANSFER_ROUTES: Array<{ route: TransferRoute; label: string; direction: "pre" | "post"; from: string; to: string }> = [
@@ -127,16 +142,24 @@ export default function GroupIntake() {
     window.history.replaceState(null, "", url);
   };
   const [form, setForm] = useState<Row>({});
+  // The intake's updated_at when the form was filled from it: a later one means the server read the quote again.
+  const [seededAt, setSeededAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // What Save answered: the opened group (a link to it stays on the page if the jump to it does not happen) or the server's refusal.
+  const [saved, setSaved] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { data } = useQuery<{ intake: Intake; found: string[] }>({
+  const { data, refetch } = useQuery<{ intake: Intake; found: string[]; group_name?: string | null }>({
     queryKey: ["group-intake", intakeId],
     queryFn: () => api(`/groups/intake/${intakeId}`),
     enabled: !!intakeId,
     refetchInterval: (q) => {
       const s = q.state.data?.intake.status;
-      return s === "ready" || s === "failed" || s === "accepted" ? false : 2500;
+      // A read that is finished is still checked every 10 seconds: the server can re-read the quote (the retry route) while the
+      // form is open, and the form would keep the old values (Mark's Millham F/F 2027 quote, 2026-10-19).
+      if (saved || s === "failed" || s === "accepted") return false;
+      return s === "ready" ? 10_000 : 2500;
     },
     refetchIntervalInBackground: true,
   });
@@ -148,9 +171,8 @@ export default function GroupIntake() {
   // When the reader finishes, seed the form from what it read.
   useEffect(() => {
     if (intake?.status === "ready" && intake.extracted && Object.keys(form).length === 0) {
-      const x = intake.extracted;
-      const guess = [x.organizer_name, x.ship_name, x.sail_date ? String(x.sail_date).slice(0, 7) : null].filter(Boolean).join(" — ");
-      setForm({ name: guess, ...x });
+      setForm(seedForm(intake.extracted, data?.group_name));
+      setSeededAt(intake.updated_at);
     }
   }, [intake?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -167,6 +189,9 @@ export default function GroupIntake() {
       });
       const res = await api<{ intake: Intake }>("/groups/intake", "POST", { booking_kind: kind, lang, filename: file.name, data: b64 });
       setForm({});
+      setSeededAt(null);
+      setSaved(null);
+      setSaveError(null);
       setIntakeId(res.intake.id);
     } catch (e) {
       toast({ variant: "destructive", title: "Upload failed", description: (e as Error).message });
@@ -188,6 +213,7 @@ export default function GroupIntake() {
   const save = async () => {
     if (!intakeId) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const group: Row = { name: form.name, lang: form.lang ?? lang };
       for (const f of FIELDS) {
@@ -200,10 +226,21 @@ export default function GroupIntake() {
       group.inclusions = form.guest_inclusions ?? [];
       const travel = travelRows(tp);
       const r = await api<{ group: Row; cabins: number; payments: number; travel: number }>(`/groups/intake/${intakeId}/accept`, "POST", { group, travel });
+      // The group exists from here on. Keep a link to it on the page, then go there; if the jump does not happen the link is what is left.
+      setSaved(String(r.group.id));
       toast({ title: "Group file opened", description: `${r.cabins} cabin${r.cabins === 1 ? "" : "s"} and ${r.payments} payment line${r.payments === 1 ? "" : "s"} created.` });
       navigate(`/groups/${r.group.id}`);
     } catch (e) {
-      toast({ variant: "destructive", title: "Not saved", description: (e as Error).message });
+      const already = (e as ApiError).body?.group_id;
+      if (already) {
+        // "Already accepted": an earlier Save did create the group (the page never showed it). Offer it instead of an error.
+        setSaved(String(already));
+        navigate(`/groups/${already}`);
+      } else {
+        const message = (e as Error).message;
+        setSaveError(message);
+        toast({ variant: "destructive", title: "Not saved", description: message });
+      }
     } finally {
       setSaving(false);
     }
@@ -211,10 +248,24 @@ export default function GroupIntake() {
 
   const retry = async () => {
     if (!intakeId) return;
-    try { await api(`/groups/intake/${intakeId}/retry`, "POST", {}); setForm({}); }
+    try { await api(`/groups/intake/${intakeId}/retry`, "POST", {}); setForm({}); setSeededAt(null); await refetch(); }
     catch (e) { toast({ variant: "destructive", title: "Could not retry", description: (e as Error).message }); }
   };
 
+  // Save needs a name; when the button is faded the reason is written beside it.
+  const canSave = !saving && !!String(form.name ?? "").trim();
+  // The quote was read again on the server after this form was filled (another tab, the retry route): the form still holds the old read.
+  const rereadAt = intake?.status === "ready" && seededAt && intake.updated_at !== seededAt ? new Date(intake.updated_at) : null;
+  const reload = async () => {
+    const r = await refetch();
+    const d = r.data;
+    if (d?.intake.status === "ready" && d.intake.extracted) {
+      setForm(seedForm(d.intake.extracted, d.group_name));
+      setSeededAt(d.intake.updated_at);
+    } else {
+      toast({ variant: "destructive", title: "Not ready yet", description: "The server is still reading this quote. Try again in a moment." });
+    }
+  };
   const busy = intake && (intake.status === "queued" || intake.status === "reading" || intake.status === "extracting");
   // Minutes since the upload, so a long read shows progress instead of a bare spinner.
   const [, tick] = useState(0);
@@ -294,7 +345,8 @@ export default function GroupIntake() {
                   <button onClick={retry} className="ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded border"><RotateCw className="w-3 h-3" /> Try again</button>
                 </>
               )}
-              {!busy && <button onClick={() => { setIntakeId(null); setForm({}); }} className="ml-auto text-xs px-2 py-1 rounded border">Start over</button>}
+              {intake.status === "accepted" && intake.group_id && <Link href={`/groups/${intake.group_id}`}><span className="text-sm text-primary underline cursor-pointer">Open the group file</span></Link>}
+              {!busy && <button onClick={() => { setIntakeId(null); setForm({}); setSeededAt(null); setSaved(null); setSaveError(null); }} className="ml-auto text-xs px-2 py-1 rounded border">Start over</button>}
             </div>
           )}
         </CardContent>
@@ -302,6 +354,17 @@ export default function GroupIntake() {
 
       {intake?.status === "ready" && Object.keys(form).length > 0 && (
         <>
+          {rereadAt && !Number.isNaN(rereadAt.getTime()) && (
+            <Card className="border-amber-500/60">
+              <div className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 text-sm">
+                  <RotateCw className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span>This quote was re-read on the server at {rereadAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })} — reload to see the new values (your unsaved edits would be lost)</span>
+                </div>
+                <button onClick={() => void reload()} className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground">Reload</button>
+              </div>
+            </Card>
+          )}
           {warnings.length > 0 && (
             <Card className="border-amber-500/60">
               <div className="px-4 py-3 border-b flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-amber-500" /><h3 className="font-semibold">Check these against the PDF</h3></div>
@@ -314,14 +377,26 @@ export default function GroupIntake() {
                 <h3 className="font-semibold">What the document says</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">{foundShown} of {shownKeys.length} fields found. Anything marked "not found" is blank on purpose — fill it in if you know it.</p>
               </div>
-              <button onClick={save} disabled={saving || !String(form.name ?? "").trim()}
-                className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50">
-                {saving ? "Saving…" : "Save and open the group file"}
-              </button>
+              <div className="flex flex-col items-end gap-1 max-w-md">
+                {saved ? (
+                  <Link href={`/groups/${saved}`}>
+                    <span className="inline-block text-sm px-4 py-1.5 rounded-md bg-green-600 text-white cursor-pointer">Saved — open the group file</span>
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    {!canSave && <span className="text-xs text-muted-foreground">{saving ? "Saving…" : "Type a group file name first"}</span>}
+                    <button onClick={save} disabled={!canSave}
+                      className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50">
+                      Save and open the group file
+                    </button>
+                  </div>
+                )}
+                {saveError && <p className="text-xs text-red-600 text-right" role="alert">Not saved: {saveError}</p>}
+              </div>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 p-4">
               <label className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
-                Group file name <span className="text-amber-600">(you choose)</span>
+                Group file name {data?.group_name ? <span className="text-green-600">· offered from the quote's group name; change it if you like</span> : <span className="text-amber-600">(you choose)</span>}
                 <input className={inputCls} value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="Type a name for this file" />
               </label>
               {FIELDS.map((f) => (

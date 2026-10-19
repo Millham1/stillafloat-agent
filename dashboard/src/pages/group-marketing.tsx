@@ -68,6 +68,13 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
     setProblems(pl?.problems ?? []);
   }, [data, lang]);
 
+  // Every hook sits ABOVE the early returns: the package query, its draft and its effect used to come after
+  // "Loading…" returned, so the card called more hooks once the data arrived and React threw error #310 — the
+  // whole group file page went blank (Mark's Millham F/F 2027 file, 2026-10-19).
+  const { data: pkg } = useQuery<Pkg>({ queryKey: ["group-package", groupId], queryFn: () => api(`/groups/${groupId}/marketing/package`) });
+  const [campaignDraft, setCampaignDraft] = useState<Campaign | null>(null);
+  useEffect(() => { if (pkg?.campaign && !campaignDraft) setCampaignDraft(pkg.campaign); }, [pkg?.campaign]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (isLoading) return <Card className="p-4"><p className="text-muted-foreground">Loading marketing…</p></Card>;
   if (error || !data) return <Card className="p-4"><p className="text-destructive">Could not load marketing: {(error as Error)?.message}</p></Card>;
 
@@ -113,10 +120,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
   });
 
   const shareUrl = (l: "en" | "es") => data.shareCode ? `${siteOrigin()}${l === "es" ? "/es/group.html" : "/group.html"}?g=${data.shareCode}` : "";
-  // ── The package (poster, Facebook images, email + Facebook campaign) ──
-  const { data: pkg } = useQuery<Pkg>({ queryKey: ["group-package", groupId], queryFn: () => api(`/groups/${groupId}/marketing/package`) });
-  const [campaignDraft, setCampaignDraft] = useState<Campaign | null>(null);
-  useEffect(() => { if (pkg?.campaign && !campaignDraft) setCampaignDraft(pkg.campaign); }, [pkg?.campaign]);
+  // (the package query, its draft and its effect sit above the early returns with the other hooks)
   const refreshPkg = () => qc.invalidateQueries({ queryKey: ["group-package", groupId] });
   const fetchPhotos = () => run("Fetching photographs", async () => { const r = await api<{ fetched: number; notes: string[] }>(`/groups/${groupId}/marketing/assets/fetch`, "POST", {}); toast({ title: `${r.fetched} photo${r.fetched === 1 ? "" : "s"} filed`, description: r.notes.slice(0, 2).join(" ") }); refreshPkg(); });
   const choose = (id: string) => run("Choosing", async () => { const cur = pkg?.chosen ?? []; const next = cur.includes(id) ? cur.filter((x) => x !== id) : [id, ...cur].slice(0, 4); await api(`/groups/${groupId}/marketing/package/choose`, "PUT", { assetIds: next }); refreshPkg(); });

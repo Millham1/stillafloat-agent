@@ -340,6 +340,20 @@ export function summarize(file: GroupFile, today: string, horizonDays = 30): Gro
   };
 }
 
+/**
+ * Cabins to open on a group, each with the deposit it owes. A cabin whose row carries no deposit takes the group's
+ * deposit per person × 2 (a cabin is sold double occupancy — the file's standing assumption), so the payment schedule
+ * gets a deposit row per cabin even when the quote printed no deposit and the amount was typed on the confirmation
+ * form (Mark's Millham F/F 2027 quote, 2026-10-19: $50 a person typed, 12 cabins opened with no deposit, a schedule
+ * of final payments only). A cabin that has its own deposit keeps it; no deposit per person means nothing is filled.
+ */
+export function withGroupDeposit<T extends Record<string, any>>(cabins: T[], depositPerPerson: unknown): T[] {
+  const perPerson = depositPerPerson === null || depositPerPerson === undefined || depositPerPerson === "" ? NaN : Number(depositPerPerson);
+  if (!Number.isFinite(perPerson) || perPerson <= 0) return cabins;
+  const perCabin = Math.round(perPerson * 2 * 100) / 100;
+  return cabins.map((c) => (c["deposit_amount"] === null || c["deposit_amount"] === undefined || c["deposit_amount"] === "" ? { ...c, deposit_amount: perCabin } : c));
+}
+
 /** Deposit + final payment rows a cabin should have, given the group's dates.
  * Returns only the rows that are missing, so the call is safe to repeat. */
 export function missingSchedule(file: Pick<GroupFile, "group" | "cabins" | "payments">): Row[] {

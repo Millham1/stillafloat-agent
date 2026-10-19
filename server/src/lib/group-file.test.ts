@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CHILDREN, GROUP_COLUMNS, looksLikeCardNumber, missingSchedule, pickWritable, publicGroupRow, slugify, summarize, type GroupFile } from "./group-file";
+import { CHILDREN, GROUP_COLUMNS, looksLikeCardNumber, missingSchedule, pickWritable, publicGroupRow, slugify, summarize, withGroupDeposit, type GroupFile } from "./group-file";
 
 test("slugify makes a url-safe slug", () => {
   assert.equal(slugify("American Legion Post 12 — Alaska 2027"), "american-legion-post-12-alaska-2027");
@@ -178,4 +178,31 @@ test("fees are Mark's own entry on the group file; the organizer's link hash nev
   assert.deepEqual(picked, { ok: true, row: { fees: { planning_fee: 150 } } });
   assert.deepEqual(publicGroupRow({ id: "g", name: "n", organizer_token_hash: "secret", organizer_link_sent_at: "2026-10-16" }), { id: "g", name: "n", organizer_link_sent_at: "2026-10-16" });
   assert.equal(pickWritable(GROUP_COLUMNS, { fees: { note: "pay 4111 1111 1111 1111" } }).ok, false, "the card guard covers the fees too");
+});
+
+test("withGroupDeposit: a cabin with no deposit takes the group's deposit per person x 2, so every cabin gets a deposit row (Mark's Millham F/F 2027 quote, 2026-10-19)", () => {
+  // 12 cabins opened from a quote that printed no deposit; $50 a person typed on the confirmation form.
+  const opened = Array.from({ length: 12 }, () => ({ category: "Balcony Bella", price_total: 1073.58, deposit_amount: null as number | null, status: "held" }));
+  const filled = withGroupDeposit(opened, 50);
+  assert.ok(filled.every((c) => c.deposit_amount === 100));
+  assert.equal(opened[0]!.deposit_amount, null, "the input rows are not changed");
+  // The numeric column may come back from the database as text.
+  assert.equal(withGroupDeposit([{ deposit_amount: null }], "49.50")[0]!.deposit_amount, 99);
+  // A cabin with its own deposit keeps it; one with none beside it is filled.
+  assert.deepEqual(withGroupDeposit([{ deposit_amount: 136 }, { deposit_amount: null }, {}], 50).map((c) => c.deposit_amount), [136, 100, 100]);
+  // No deposit per person on the group: nothing is made up.
+  for (const none of [null, undefined, "", 0, "x"]) assert.deepEqual(withGroupDeposit([{ deposit_amount: null }], none), [{ deposit_amount: null }]);
+
+  // And the schedule that follows has a deposit row per cabin, due "at booking" (no date) when the group has no deposit date.
+  const cabins = filled.map((c, i) => ({ ...c, id: `c${i}` }));
+  const atBooking = missingSchedule({ group: { id: "g", deposit_due: null, final_payment_due: "2027-03-01" } as any, cabins, payments: [] });
+  assert.equal(atBooking.filter((r) => r["kind"] === "deposit").length, 12);
+  assert.ok(atBooking.filter((r) => r["kind"] === "deposit").every((r) => r["amount"] === 100 && r["due_date"] === null));
+  const finals = atBooking.filter((r) => r["kind"] === "final");
+  assert.equal(finals.length, 12);
+  assert.ok(finals.every((r) => r["amount"] === 973.58), "final = cabin total less the deposit");
+  const dated = missingSchedule({ group: { id: "g", deposit_due: "2026-12-01", final_payment_due: null } as any, cabins, payments: [] });
+  assert.ok(dated.length === 12 && dated.every((r) => r["kind"] === "deposit" && r["due_date"] === "2026-12-01"));
+  // Without the fill (the old behaviour) a quote with no deposit and no deposit date made no deposit rows at all.
+  assert.equal(missingSchedule({ group: { id: "g", deposit_due: null, final_payment_due: "2027-03-01" } as any, cabins: opened.map((c, i) => ({ ...c, id: `o${i}` })), payments: [] }).filter((r) => r["kind"] === "deposit").length, 0);
 });

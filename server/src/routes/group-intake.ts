@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
-import { CHILDREN, GROUP_COLUMNS, missingSchedule, pickWritable, publicGroupRow, slugify } from "../lib/group-file";
+import { CHILDREN, GROUP_COLUMNS, missingSchedule, pickWritable, publicGroupRow, slugify, withGroupDeposit } from "../lib/group-file";
 import {
   MAX_PDF_BYTES, cabinRowsFromExtraction, travelRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
   type BookingExtraction, type ReaderProvider,
@@ -14,7 +14,7 @@ import {
 // the group as its contract document on accept.
 //
 //   POST /api/groups/intake            { booking_kind, lang, filename, data (base64 PDF) } → { intake }
-//   GET  /api/groups/intake/:id        → { intake } (poll until status ready | failed)
+//   GET  /api/groups/intake/:id        → { intake, found, group_name } (poll until status ready | failed)
 //   POST /api/groups/intake/:id/retry  → re-run the reader
 //   POST /api/groups/intake/:id/accept { group: {...}, cabins?: [...] } → { group }
 //   GET  /api/groups/intake/:id/file   → short-lived signed URL to the PDF
@@ -120,8 +120,9 @@ router.get("/groups/intake/:id", requireToken, async (req: Request, res: Respons
     const { data, error } = await db().from("group_intakes").select("*").eq("id", String(req.params["id"])).maybeSingle();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ success: false, error: "Intake not found" });
-    const found = data.extracted ? foundFields(normalizeExtraction(data.extracted)) : [];
-    return res.json({ success: true, intake: data, found });
+    const read = data.extracted ? normalizeExtraction(data.extracted) : null;
+    // group_name: the name the quote prints, for the form to offer as the file's name (also for a read made before the reader had a field for it).
+    return res.json({ success: true, intake: data, found: read ? foundFields(read) : [], group_name: read?.group_name ?? null });
   } catch (err) {
     return fail(req, res, err, "booking intake read failed");
   }
@@ -206,7 +207,8 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
       const p = pickWritable(CHILDREN["cabins"]!.columns, c);
       return p.ok ? p.row : null;
     }).filter((x): x is Row => !!x) : cabinRowsFromExtraction(extracted, intake.booking_kind);
-    cabins = cabins.map((c) => ({ ...c, group_id: group.id }));
+    // A cabin the quote gave no deposit takes the group's deposit per person × 2, so each cabin gets a deposit row below.
+    cabins = withGroupDeposit(cabins, group.deposit_per_person).map((c) => ({ ...c, group_id: group.id }));
     let cabinRows: Row[] = [];
     if (cabins.length) {
       const { data: inserted, error: ce } = await db().from("group_cabins").insert(cabins).select("*");

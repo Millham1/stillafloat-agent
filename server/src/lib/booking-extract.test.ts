@@ -276,7 +276,7 @@ test("cutSections finds the air / hotel / transfer lines of a quote", () => {
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { countMoneyFigures, isDoubleRateTable, quoteTotals } from "./booking-terms";
+import { countMoneyFigures, isDoubleRateTable, joinNotes, quoteTotals } from "./booking-terms";
 
 const QUOTATOR = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "__fixtures__/msc-quotator.txt"), "utf8");
 
@@ -478,4 +478,67 @@ test("normalizeExtraction: 'Cruise Only' is a package type and dining is a group
   const real = normalizeExtraction({ group_number: "665450", guest_inclusions: ["Premium Extra drinks package"] });
   assert.equal(real.group_number, "665450");
   assert.deepEqual(real.guest_inclusions, ["Premium Extra drinks package"]);
+});
+
+test("notes: fragments read as sentences — a period between them, never doubled (Mark's MSC quotator read, 2026-10-19)", () => {
+  assert.equal(joinNotes(["Group Dining: Early Dining", "Group total rate $11,850.96, as printed on the quote."]),
+    "Group Dining: Early Dining. Group total rate $11,850.96, as printed on the quote.");
+  assert.equal(joinNotes(["Rates include NCF.", "Names due at booking"]), "Rates include NCF. Names due at booking");
+  assert.equal(joinNotes(["First.", ".. Second", "", null, undefined, "  ", "Third?", "Fourth"]), "First. Second. Third? Fourth");
+  assert.equal(joinNotes([null, " ", ""]), null);
+  // The reader's own notes with no full stop, the dining setting, then the total the program adds from the printed summary.
+  const x = verifyExtraction(quotatorAnswer({ sail_date: "2027-05-09", notes: "Early Dining requested", amenities: ["Group Dining: Early Dining"] }), QUOTATOR);
+  assert.match(x.notes ?? "", /^Early Dining requested\. Group Dining: Early Dining\. Group total rate \$11,850\.96/);
+  assert.ok(!/\.\./.test(x.notes ?? ""), x.notes ?? "");
+  assert.ok(!/Dining Group/.test(x.notes ?? ""));
+});
+
+test("normalizeExtraction: the quote's header lines are not amenities — packages and classification go to the notes, the rest are dropped (Mark's MSC quotator, 2026-10-19)", () => {
+  const x = normalizeExtraction({
+    amenities: [
+      "Packages: Cruise Only", "Group Classification: Affinity", "Group Dining: Early Dining", "Group Name: Millham F/F 2027",
+      "Cabins: 12", "Cabins 12", "Total rate $11,850.96", "Total rate", "Agency: Still Afloat Cruising", "Cruise Only",
+      "Champagne toast", "1 free berth per 16 cabins",
+    ],
+    guest_inclusions: ["Packages: Cruise Only", "Group Classification: Affinity", "Wi-Fi for two"],
+    notes: "Rates include NCF.",
+  });
+  assert.deepEqual(x.amenities, ["Champagne toast", "1 free berth per 16 cabins"]);
+  assert.deepEqual(x.guest_inclusions, ["Wi-Fi for two"]);
+  assert.match(x.notes ?? "", /^Rates include NCF\. /);
+  assert.match(x.notes ?? "", /Packages: Cruise Only/);
+  assert.match(x.notes ?? "", /Group Classification: Affinity/);
+  assert.match(x.notes ?? "", /Group Dining: Early Dining/);
+  assert.equal((x.notes ?? "").split("Packages: Cruise Only").length, 2, "said once although both lists carried it");
+  assert.ok(!/Cabins|Total rate|Agency/.test(x.notes ?? ""), "cabin count, total and agency are not copied into the notes");
+  // A real perk that only begins with a header word stays a perk.
+  const keep = normalizeExtraction({ amenities: ["Packages of drinks for the organizer", "Cabins upgraded for the leader", "Agency staff cocktail party"] });
+  assert.equal(keep.amenities.length, 3);
+});
+
+test("group_name: the quote's printed group name is offered for the file name, whichever way the box wrote it (Mark's MSC quotator, 2026-10-19)", () => {
+  // The box filled the new field.
+  assert.equal(normalizeExtraction({ group_name: "Group Name Millham F/F 2027." }).group_name, "Millham F/F 2027");
+  assert.equal(normalizeExtraction({ group_name: "  Millham F/F 2027 " }).group_name, "Millham F/F 2027");
+  // It wrote the name where the number goes: the number stays blank, the name is kept and noted.
+  const a = normalizeExtraction({ group_number: "Millham F/F 2027" });
+  assert.deepEqual([a.group_number, a.group_name], [null, "Millham F/F 2027"]);
+  assert.match(a.notes ?? "", /Group name on the quote: Millham F\/F 2027\./);
+  // It wrote it as an amenity.
+  const b = normalizeExtraction({ amenities: ["Group Name: Millham F/F 2027", "Champagne toast"] });
+  assert.equal(b.group_name, "Millham F/F 2027");
+  assert.deepEqual(b.amenities, ["Champagne toast"]);
+  // An intake read before the field existed keeps the name only in its notes — and the notes sentence ends at its own full stop.
+  const old = normalizeExtraction({ group_number: null, notes: "Group name on the quote: Millham F/F 2027. Group Dining: Early Dining. Group total rate $11,850.96." });
+  assert.equal(old.group_name, "Millham F/F 2027");
+  // A real group number is never taken for a name, and no name means null.
+  const real = normalizeExtraction({ group_number: "665450" });
+  assert.deepEqual([real.group_number, real.group_name], ["665450", null]);
+  assert.equal(normalizeExtraction({}).group_name, null);
+  assert.ok(foundFields(a).includes("group_name"));
+  assert.ok(!foundFields(real).includes("group_name"));
+  // The reader may fill it, and the schema asks for it like every other field.
+  const props = (BOOKING_SCHEMA as { properties: Record<string, { description?: string }>; required: string[] });
+  assert.ok(props.properties["group_name"]?.description?.includes("NAME"));
+  assert.ok(props.required.includes("group_name"));
 });
