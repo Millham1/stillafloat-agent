@@ -287,6 +287,10 @@ function str(v: unknown): string | null {
   return s ? s : null;
 }
 
+/** A line from the top of a quote ("Packages: Cruise Only", "Group Classification: Affinity", "Group Name: …", "Cabins 12",
+ * "Total rate $11,850.96", "Agency: …"): the label, then a colon or dash, the end of the line, or a figure. Not a perk. */
+const HEADER_LINE = /^\s*(packages?|(?:group )?classification|group name|cabins(?: held)?|(?:group )?total rate|agency)\s*(?::|[-–—]\s|(?=\s*$|\s+[\d$]))/i;
+
 /** Tidy a raw model answer into the exact shape the review form expects. */
 /** "IB", "BR2", "YC1", "8C": short, no spaces, mostly capitals and digits. "Interior Bella" is not a code. */
 export function looksLikeCategoryCode(v: string | null | undefined): boolean {
@@ -334,13 +338,22 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     .map((x) => ({ first_name: str(x["first_name"]), last_name: str(x["last_name"]) }))
     .filter((x) => x.first_name || x.last_name);
   // "Cruise Only" is the package type, not something the guest gets; "Group Dining: Early Dining" is a group setting,
-  // not a perk — both go to the notes instead (Mark's MSC quotator, 2026-10-19).
-  const isPackageType = (x: string) => /^\s*cruise[- ]only\s*$/i.test(x);
+  // not a perk — both go to the notes instead (Mark's MSC quotator, 2026-10-19). The quote's header block is no perk list
+  // either: the box also wrote "Packages: Cruise Only" and "Group Classification: Affinity" as amenities, and could as well
+  // write the group name, the cabin count, the total rate or the agency as one. Packages and classification are kept in the
+  // notes like the dining line; the others are fields the form already has, so they are dropped.
+  const isPackageType = (x: string) => /^\s*(?:packages?\s*[:\-–—]\s*)?cruise[- ]only\s*$/i.test(x);
   const isDiningSetting = (x: string) => /\b(group )?dining\b/i.test(x) && !/package|specialty/i.test(x);
+  const headerLabel = (x: string): string | null => HEADER_LINE.exec(x)?.[1]?.toLowerCase().replace(/^group /, "") ?? null;
+  const isNoteHeader = (x: string) => ["package", "packages", "classification"].includes(headerLabel(x) ?? "");
   const amenitiesRaw = list(r["amenities"]).map(str).filter((x): x is string => !!x);
-  const amenities = amenitiesRaw.filter((x) => !isDiningSetting(x) && !isPackageType(x));
-  const guest_inclusions = [...new Set(list(r["guest_inclusions"]).map(str).filter((x): x is string => !!x && !/amenity point/i.test(x) && !isPackageType(x)))];
-  const extraNotes: string[] = amenitiesRaw.filter(isDiningSetting).map((x) => x.replace(/\s+/g, " ").trim());
+  const guestRaw = list(r["guest_inclusions"]).map(str).filter((x): x is string => !!x);
+  const amenities = amenitiesRaw.filter((x) => !isDiningSetting(x) && !isPackageType(x) && !headerLabel(x));
+  const guest_inclusions = [...new Set(guestRaw.filter((x) => !/amenity point/i.test(x) && !isPackageType(x) && !headerLabel(x)))];
+  const extraNotes: string[] = [...new Set([
+    ...amenitiesRaw.filter((x) => isDiningSetting(x) || isNoteHeader(x)),
+    ...guestRaw.filter(isNoteHeader),
+  ].map((x) => x.replace(/\s+/g, " ").trim()))];
   // A group NUMBER is assigned by the line; a quote often prints only the group NAME ("Millham F/F 2027"). Words with
   // spaces are a name, never a number: keep it in the notes for Mark and leave the number blank.
   const groupNumberRaw = str(r["group_number"]);

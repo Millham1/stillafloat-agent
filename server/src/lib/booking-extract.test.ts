@@ -492,3 +492,26 @@ test("notes: fragments read as sentences — a period between them, never double
   assert.ok(!/\.\./.test(x.notes ?? ""), x.notes ?? "");
   assert.ok(!/Dining Group/.test(x.notes ?? ""));
 });
+
+test("normalizeExtraction: the quote's header lines are not amenities — packages and classification go to the notes, the rest are dropped (Mark's MSC quotator, 2026-10-19)", () => {
+  const x = normalizeExtraction({
+    amenities: [
+      "Packages: Cruise Only", "Group Classification: Affinity", "Group Dining: Early Dining", "Group Name: Millham F/F 2027",
+      "Cabins: 12", "Cabins 12", "Total rate $11,850.96", "Total rate", "Agency: Still Afloat Cruising", "Cruise Only",
+      "Champagne toast", "1 free berth per 16 cabins",
+    ],
+    guest_inclusions: ["Packages: Cruise Only", "Group Classification: Affinity", "Wi-Fi for two"],
+    notes: "Rates include NCF.",
+  });
+  assert.deepEqual(x.amenities, ["Champagne toast", "1 free berth per 16 cabins"]);
+  assert.deepEqual(x.guest_inclusions, ["Wi-Fi for two"]);
+  assert.match(x.notes ?? "", /^Rates include NCF\. /);
+  assert.match(x.notes ?? "", /Packages: Cruise Only/);
+  assert.match(x.notes ?? "", /Group Classification: Affinity/);
+  assert.match(x.notes ?? "", /Group Dining: Early Dining/);
+  assert.equal((x.notes ?? "").split("Packages: Cruise Only").length, 2, "said once although both lists carried it");
+  assert.ok(!/Cabins|Total rate|Agency/.test(x.notes ?? ""), "cabin count, total and agency are not copied into the notes");
+  // A real perk that only begins with a header word stays a perk.
+  const keep = normalizeExtraction({ amenities: ["Packages of drinks for the organizer", "Cabins upgraded for the leader", "Agency staff cocktail party"] });
+  assert.equal(keep.amenities.length, 3);
+});
