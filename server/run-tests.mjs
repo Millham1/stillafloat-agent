@@ -27,7 +27,24 @@ if (!entryPoints.length) {
   process.exit(0);
 }
 
+// The dashboard's own rules (filters, cross-filters, the numbers on the Group Bookings Workspace) are plain TypeScript with no React in
+// it, tested in dashboard/src/lib. They are bundled on their own into dist-test/dashboard-tests, because their files are not under src/
+// and would otherwise change the common base esbuild lays this suite's output out from.
+const dashboardSrc = path.resolve(here, "..", "dashboard", "src");
+const dashboardTests = await findTests(dashboardSrc).catch(() => []);
+
 await rm(outDir, { recursive: true, force: true });
+if (dashboardTests.length) {
+  await esbuild({
+    entryPoints: dashboardTests,
+    platform: "node",
+    bundle: true,
+    format: "esm",
+    outdir: path.join(outDir, "dashboard-tests"),
+    outExtension: { ".js": ".mjs" },
+    logLevel: "warning",
+  });
+}
 await esbuild({
   entryPoints,
   platform: "node",
@@ -79,7 +96,7 @@ async function builtTests(dir) {
   return out;
 }
 const built = await builtTests(outDir);
-await copyFixturesBesideBuilds([...new Set(built.map((f) => path.dirname(f)))]);
+await copyFixturesBesideBuilds([...new Set(built.filter((f) => !f.startsWith(path.join(outDir, "dashboard-tests"))).map((f) => path.dirname(f)))]); // the dashboard tests read no fixtures
 if (!built.length) { console.error("build produced no test files"); process.exit(1); }
 
 // NODE_ENV=production keeps the logger on the plain pino path (no pino-pretty
