@@ -394,9 +394,12 @@ export interface GroupCopy {
 export const COPY_FIELDS: Array<{ key: keyof GroupCopy; label: string; max: number; long?: boolean; optional?: boolean }> = [
   { key: "headline", label: "Headline", max: 90 },
   { key: "subhead", label: "Line under the headline", max: 160 },
-  { key: "intro", label: "Opening paragraph", max: 700, long: true },
-  { key: "why_ship", label: "Why this ship and sailing", max: 700, long: true },
-  { key: "who_for", label: "Who it suits (and who should think twice)", max: 600, long: true },
+  // The three paragraphs that carry Mark's own words (the pitch runs on through all three, his extras and caveats land in
+  // who_for) are 900 each: 600 refused a who_for with his air/hotel package and a theme-park day in it (716 characters,
+  // Millham F/F 2027, 2026-10-19). The short display fields (button, headline, subject) and the channel texts stay as they were.
+  { key: "intro", label: "Opening paragraph", max: 900, long: true },
+  { key: "why_ship", label: "Why this ship and sailing", max: 900, long: true },
+  { key: "who_for", label: "Who it suits (and who should think twice)", max: 900, long: true },
   { key: "organizer_note", label: "Organizer's line", max: 400, long: true, optional: true },
   { key: "cta_label", label: "Button text", max: 40 },
   { key: "cta_blurb", label: "Line beside the button", max: 220 },
@@ -416,6 +419,11 @@ export const COPY_SCHEMA: Record<string, unknown> = {
 // The copy is built around the pitch Mark wrote, sentence for sentence. These helpers are how the validators
 // prove it: every sentence of the pitch must appear in the copy word for word (case, spacing and the full stop
 // or exclamation mark at the end may differ, nothing else).
+//
+// The pitch is HIS, not ours (Mark 2026-10-11 pitch first, 2026-10-12 keep his words): his exclamation marks and
+// his adjectives ("incredible", "amazing") go in exactly as he wrote them. The house-voice bans (no "!", no hype
+// words, no "Join Mark", no "amenity points", no "actually", no "cheaper") are for the words WE write around it,
+// so the validators take his sentences out of a field (`withoutPitch`) before they look for banned words.
 
 const ABBREVIATION = /\b(?:Mr|Mrs|Ms|Dr|St|Mt|Ft|Sr|Jr|vs|Inc|U\.S|a\.m|p\.m)\.$/i;
 
@@ -462,6 +470,28 @@ export function pitchCoverage(pitch: string | null | undefined, text: string | n
   const all = pitchSentences(pitch).filter((sent) => needle(sent) !== "");
   if (!all.length) return 1;
   return (all.length - missingPitchSentences(pitch, text).length) / all.length;
+}
+
+/** One pitch sentence as a pattern that finds it in the copy exactly where `missingPitchSentences` accepts it as kept: the
+ *  same words whatever the case, spacing, quote style or closing mark, whole words only. The closing mark in the copy is part of the
+ *  match, so a "!" Mark wrote (or one the copy has in its place) is his and goes with the sentence. */
+function sentencePattern(sentence: string): RegExp | null {
+  const n = needle(sentence);
+  if (n === "") return null;
+  const body = [...n].map((ch) => (/\s/.test(ch) ? "\\s+" : ch === "'" ? "['‘’]" : ch === '"' ? '["“”]' : ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))).join("");
+  return new RegExp(`(?<![\\p{L}\\p{N}])${body}(?![\\p{L}\\p{N}])[.!?…"'‘’“”)\\]]*`, "giu");
+}
+
+/**
+ * The text with Mark's pitch sentences taken out (each replaced by a space), the same way `missingPitchSentences` finds them.
+ * What is left is the words WE wrote, which is all the house-voice bans (exclamation marks, hype words, "Join Mark" ...) apply to.
+ * No pitch = the text as it is.
+ */
+export function withoutPitch(pitch: string | null | undefined, text: string): string {
+  let out = text;
+  const sentences = pitchSentences(pitch).map((x) => ({ x, n: needle(x) })).filter((x) => x.n !== "").sort((a, b) => b.n.length - a.n.length);
+  for (const { x } of sentences) { const re = sentencePattern(x); if (re) out = out.replace(re, " "); }
+  return out;
 }
 
 /** The answers' text apart from the pitch: the numbers in it are Mark's to state without a second source. */
@@ -511,6 +541,11 @@ const BANNED: Record<Lang, RegExp[]> = {
 
 export interface CopyProblem { field: string; problem: string }
 
+/** The one wording of a field that is over its limit, so the dashboard says what to do about it. */
+export function tooLong(length: number, max: number): string {
+  return `too long: ${length} of ${max} characters — shorten it, or ask Mark`;
+}
+
 /** The part of the page copy that carries the pitch: the intro, then the paragraphs after it. */
 const PITCH_FIELDS: Array<keyof GroupCopy> = ["intro", "why_ship", "who_for"];
 
@@ -528,12 +563,14 @@ export function validateCopy(copy: unknown, facts: GroupFacts, answers: Record<s
       continue;
     }
     if (typeof v !== "string") { problems.push({ field: f.key, problem: "not text" }); continue; }
-    if (v.length > f.max) problems.push({ field: f.key, problem: `too long (${v.length} of ${f.max} characters)` });
+    if (v.length > f.max) problems.push({ field: f.key, problem: tooLong(v.length, f.max) });
+    // The house-voice bans are for our words: Mark's pitch sentences (his "!" and his "incredible") are taken out first.
+    const ours = withoutPitch(pitch, v);
     for (const re of BANNED[facts.lang]) {
-      const m = v.match(re);
+      const m = ours.match(re);
       if (m) problems.push({ field: f.key, problem: `uses "${m[0]}"` });
     }
-    for (const h of HOUSE_BANNED[facts.lang]) if (h.re.test(v)) problems.push({ field: f.key, problem: h.problem });
+    for (const h of HOUSE_BANNED[facts.lang]) if (h.re.test(ours)) problems.push({ field: f.key, problem: h.problem });
     for (const n of numbersIn(v)) {
       if (!allowed.has(n)) problems.push({ field: f.key, problem: `states a number that is not in the group file: ${n}` });
     }
@@ -577,7 +614,7 @@ export const HOUSE_VOICE_RULES: string[] = [
   '- Hook = the experience in 4–6 words, full stops, no exclamation marks. Example: "Sunset. Light show. Sunrise. Same beach. Same cruise."',
   '- One sentence that walks the reader through the moment, ending on a dry beat. Example: "Watch a Caribbean sunset, dance under a lighthouse light show, then walk that same beach at sunrise. The only hard decision all week is when to sleep."',
   '- One line for the occasion in the group\'s own words, plus a wink. Example: "Four nights of camaraderie and relaxation. Shoes optional."',
-  '- Never "Join Mark" as the hook. Mark appears as the contact only, never in first person. No hype words, no superlatives, no emojis, no exclamation marks.',
+  '- Never "Join Mark" as the hook. Mark appears as the contact only, never in first person. In the words we write: no hype words, no superlatives, no emojis, no exclamation marks.',
   '- Perks shown = what the fare includes, from the quote (drinks package, Wi-Fi, overnight at Ocean Cay...), never "amenity points".',
   `- Primary CTA in every piece: "Scan the QR to join the fun" (exact words), then the link, then the phone ${BUSINESS.phone}.`,
   "- The examples above show the shape only. Never copy their words or details into another group's piece; use this group's own picture and facts.",
@@ -591,11 +628,17 @@ export function pitchRules(where: string, spill: string, lang: Lang = "en"): str
       : `- Mark's pitch (in <advisor_interview>) is the spine and it is MARK'S, not yours: put every sentence of it into ${where}, word for word, in his order, and cut nothing. ${spill}`,
     lang === "es"
       ? "- Do not tighten, 'improve', brand-voice or reorder the pitch, even where it says 'I'. Add no number of your own."
-      : "- Do not paraphrase, tighten, translate into 'brand voice' or reorder the pitch, even where it says 'I'. The only change allowed is a closing exclamation mark becoming a full stop. Add no number of your own.",
+      : "- Copy each pitch sentence character for character: his punctuation and his word choices stay exactly as he wrote them. If he wrote an exclamation mark, keep it; if he wrote 'incredible' or 'amazing', keep it. Do not paraphrase, swap a word for a synonym, tighten, translate into 'brand voice' or reorder the pitch, even where it says 'I' or 'Join us'. No change is allowed, not even a closing exclamation mark becoming a full stop. Add no number of your own.",
+    ...(lang === "es" ? [] : ["- The house-voice rules (no exclamation marks, no hype words or superlatives, no 'Join Mark', no 'amenity points', no 'actually', no 'cheaper') are for the words WE write around the pitch. They never apply inside his sentences, and they never change a word of them."]),
     "- The 'picture' answer is what the reader should SEE (the moment, never the ship): it steers the imagery and scene words you write around the pitch.",
     "- The 'occasion line' answer, in the group's own words, is the first half of the wink line; you add the dry wink.",
     "- A 'piece Mark likes' is a taste reference only. You cannot open it: never guess what is in it and never copy it.",
   ];
+}
+
+/** The English prompts' reminder that the bans cover our words only; Mark's pitch sentences keep his own punctuation and words. */
+export function pitchIsHis(lang: Lang): string {
+  return lang === "es" ? "" : " Mark's pitch sentences are his own words and keep his punctuation and word choices (see the pitch rules below).";
 }
 
 export function systemPrompt(lang: Lang): string {
@@ -611,13 +654,13 @@ export function systemPrompt(lang: Lang): string {
     "- Perks are the guest's own: what the fare includes (the 'Included for every guest' facts). Never mention amenity points or anything the organizer receives.",
     "- Say that cabin upgrades are available (balcony and up, by request) in a natural line in the intro or who_for; it is a fact of every group.",
     "- The call to action is the QR code / the info sheet link: readers scan the QR or open the link to see everything and say they are in. The exact words 'Scan the QR to join the fun' appear in the cta_blurb, the email_body and the social_post, followed by the link, then the phone number for people who would rather call or text.",
-    "- No hype and no sales pressure: no superlatives, no urgency, nothing called amazing, ultimate, unforgettable, luxury or paradise. Be specific instead.",
+    `- No hype and no sales pressure in the words we write: no superlatives, no urgency, nothing called amazing, ultimate, unforgettable, luxury or paradise. Be specific instead.${pitchIsHis(lang)}`,
     "- Never promise or guarantee anything about prices, availability, weather, ports or the experience. Say what is planned and what is included.",
     "- Never say \"cheaper\"; say \"less expensive\". Never use the word \"actually\". No brochure words: boasts, offers, features, delivers.",
     "- Do not speak against the cruise line or any other line.",
     "- Apart from the pitch, the other interview answers feed the copy: keep the reasons and the honest caveats; tighten, do not embellish. Rewrite any first-person line from the advisor in those answers into the brand's voice (never in the pitch).",
     "- organizer_note: only the organizer's own line, lightly tidied, or null when none was given. Never invent a quote.",
-    "- Plain text only. No markdown, no emoji, no hashtags, no exclamation marks anywhere.",
+    `- Plain text only. No markdown, no emoji, no hashtags, no exclamation marks anywhere in the words we write.${pitchIsHis(lang)}`,
     "House voice (every piece), then how this page is laid out:",
     ...HOUSE_VOICE_RULES,
     ...pitchRules("the intro", "If the pitch is too long for the intro, continue it in why_ship and then who_for, still in his order.", lang),
@@ -654,7 +697,7 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
   lines.push("<advisor_interview>");
   const pitchLines = pitchSentences(typeof answers["pitch"] === "string" ? answers["pitch"] : "");
   lines.push(pitchLines.length
-    ? `Mark's pitch — his words, every sentence kept word for word:\n${pitchLines.map((x, i) => `${i + 1}. ${x}`).join("\n")}`
+    ? `Mark's pitch — his words, every sentence kept word for word, with his punctuation and word choices exactly as written:\n${pitchLines.map((x, i) => `${i + 1}. ${x}`).join("\n")}`
     : "Mark's pitch: (not given)");
   lines.push(`The picture the reader should see: ${answers["picture"] || "(not given)"}`);
   lines.push(`The occasion, in the group's own words: ${answers["occasion_line"] || "(not given)"}`);
@@ -674,5 +717,6 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
 /** Feedback for one retry when the first draft breaks a rule. */
 export function retryNote(problems: CopyProblem[]): string {
   return "Your draft broke these rules. Fix exactly these and change nothing else:\n" +
-    problems.slice(0, 12).map((p) => `- ${p.field}: ${p.problem}`).join("\n");
+    problems.slice(0, 12).map((p) => `- ${p.field}: ${p.problem}`).join("\n") +
+    (problems.some((p) => p.problem.startsWith("Pitch sentence not kept")) ? "\nA pitch sentence is copied character for character as Mark wrote it, with his punctuation and his words; the no-exclamation and no-hype rules never apply inside it." : "");
 }

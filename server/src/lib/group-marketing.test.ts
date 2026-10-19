@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
-  ANSWER_MAX, HOUSE_VOICE_RULES, PITCH_FIRST, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences } from "./group-marketing";
+  ANSWER_MAX, HOUSE_VOICE_RULES, PITCH_FIRST, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -142,6 +142,25 @@ test("missing, over-long and marked-up fields are reported; the organizer line m
   const p = validateCopy({ ...goodCopy(), headline: "", cta_label: "x".repeat(60), intro: "Hello <b>there</b>" }, f);
   assert.deepEqual(p.map((x) => x.field).sort(), ["cta_label", "headline", "intro"]);
   assert.deepEqual(validateCopy({ ...goodCopy(), organizer_note: null }, f), []);
+});
+
+test("who_for may run to 900 characters (Mark's air/hotel and theme-park day made 716); a longer one is told how to fix itself", () => {
+  const f = buildFacts(file(), rating, "en");
+  const para = (n: number) => "Good for first-timers. ".repeat(Math.ceil(n / 23)).slice(0, n);
+  assert.deepEqual(validateCopy({ ...goodCopy(), who_for: para(716) }, f), [], "716 was refused at 600");
+  assert.deepEqual(validateCopy({ ...goodCopy(), who_for: para(900) }, f), []);
+  assert.deepEqual(validateCopy({ ...goodCopy(), who_for: para(901) }, f), [{ field: "who_for", problem: "too long: 901 of 900 characters — shorten it, or ask Mark" }]);
+  // every "too long" reads the same, whatever the field and its limit
+  assert.deepEqual(validateCopy({ ...goodCopy(), headline: "x".repeat(91) }, f), [{ field: "headline", problem: "too long: 91 of 90 characters — shorten it, or ask Mark" }]);
+  assert.equal(tooLong(716, 600), "too long: 716 of 600 characters — shorten it, or ask Mark");
+  assert.ok(!validateCopy({ ...goodCopy(), cta_label: "x".repeat(60) }, f).some((x) => /too long \(/.test(x.problem)), "the old wording is gone");
+});
+
+test("the character limits of each copy field", () => {
+  assert.deepEqual(Object.fromEntries(COPY_FIELDS.map((x) => [x.key, x.max])), {
+    headline: 90, subhead: 160, intro: 900, why_ship: 900, who_for: 900, organizer_note: 400,
+    cta_label: 40, cta_blurb: 220, email_subject: 90, email_body: 1400, social_post: 500,
+  });
 });
 
 test("tidyCopy trims, nulls the optional field, and never returns undefined", () => {
@@ -357,16 +376,100 @@ test("both prompts carry the approved house voice verbatim, the exact call to ac
   assert.match(sys, /Never "Join Mark" as the hook/);
   assert.match(sys, /never "amenity points"/);
   assert.match(sys, /every sentence of it into the intro, word for word, in his order, and cut nothing/);
-  assert.match(sys, /closing exclamation mark becoming a full stop/);
+  assert.match(sys, /character for character/);
+  assert.match(sys, /If he wrote an exclamation mark, keep it; if he wrote 'incredible' or 'amazing', keep it/);
+  assert.match(sys, /not even a closing exclamation mark becoming a full stop/);
+  assert.match(sys, /are for the words WE write around the pitch\. They never apply inside his sentences/);
+  assert.doesNotMatch(sys, /The only change allowed is a closing exclamation mark/);
+  assert.match(sys, /no exclamation marks anywhere in the words we write\. Mark's pitch sentences are his own words/);
   assert.match(systemPrompt("es"), /sentence for sentence/, "Spanish is a faithful translation of the pitch");
   assert.doesNotMatch(systemPrompt("es"), /every sentence of it into the intro, word for word/);
   assert.ok(pitchRules("email 1", "x").some((r) => r.includes("email 1")));
+});
+
+// ── Mark's pitch is verbatim: the house-voice bans are for the words WE write (Mark 2026-10-19, Millham F/F 2027) ────────────
+
+const MARK_PITCH = "Join us for our first Friends and Family cruise to the Bahamas! Enjoy  all that Nassau has to offer, then spend two incredible days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse!";
+// what the writer produced from the old prompt: no "!", "incredible" swapped for "amazing", full stops for his marks
+const SOFTENED = "Join us for our first Friends and Family cruise to the Bahamas. Enjoy all that Nassau has to offer, then spend two amazing days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse.";
+const VERBATIM = "Join us for our first Friends and Family cruise to the Bahamas! Enjoy all that Nassau has to offer, then spend two incredible days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse!";
+
+test("Mark's pitch verbatim passes: his exclamation marks, 'incredible', 'amazing' and 'Join us' are his, not flagged", () => {
+  const f = buildFacts(file(), rating, "en");
+  const answers = { pitch: MARK_PITCH };
+  assert.deepEqual(validateCopy(withPitch({ intro: VERBATIM }), f, answers), []);
+  // the same sentences with the curly quotes a word processor makes, an upper-case start and one more space
+  assert.deepEqual(validateCopy(withPitch({ intro: VERBATIM.replace(/'/g, "\u2019").replace("Enjoy all", "ENJOY  ALL") }), f, answers), []);
+  // the pitch running on into the next paragraph, "!" and all
+  assert.deepEqual(validateCopy(withPitch({ intro: "Join us for our first Friends and Family cruise to the Bahamas!", why_ship: VERBATIM.split("! ")[1]! }), f, answers), []);
+  // Mark's words in the email and the post are his too
+  assert.deepEqual(validateCopy(withPitch({ intro: VERBATIM, email_body: `${VERBATIM}\n\nStill Afloat Cruising`, social_post: VERBATIM }), f, answers), []);
+});
+
+test("the same words with only the closing mark changed are still his sentences: a softened copy is not failed on '!' versus '.'", () => {
+  const f = buildFacts(file(), rating, "en");
+  const answers = { pitch: MARK_PITCH.replace("incredible", "amazing") };
+  assert.deepEqual(validateCopy(withPitch({ intro: SOFTENED }), f, answers), []);
+  assert.deepEqual(missingPitchSentences(answers.pitch, SOFTENED), []);
+});
+
+test("a paraphrase is not his sentence: 'two amazing days' for 'two incredible days' is reported as not kept", () => {
+  const f = buildFacts(file(), rating, "en");
+  const p = validateCopy(withPitch({ intro: SOFTENED }), f, { pitch: MARK_PITCH });
+  // only his second sentence is reported (the first has the same words, only its closing mark differs)...
+  assert.deepEqual(p.filter((x) => x.problem.startsWith("Pitch sentence not kept")).map((x) => [x.field, x.problem]), [[
+    "intro", "Pitch sentence not kept: 'Enjoy  all that Nassau has to offer, then spend two incredible days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse!'"]]);
+  // ...and the paraphrase is the writer's words, not his: its "amazing" is ours to answer for, the first sentence is not touched
+  assert.deepEqual(p.filter((x) => !x.problem.startsWith("Pitch sentence not kept")).map((x) => x.problem), ['uses "amazing"']);
+  // it is the words that count, not just the banned ones: his 'incredible' dropped for a plain 'two days' is a cut too
+  assert.equal(validateCopy(withPitch({ intro: VERBATIM.replace("two incredible days", "two days") }), f, { pitch: MARK_PITCH }).filter((x) => x.problem.startsWith("Pitch sentence not kept")).length, 1);
+});
+
+test("the house-voice bans still apply to the words WE write outside the pitch", () => {
+  const f = buildFacts(file(), rating, "en");
+  const answers = { pitch: MARK_PITCH };
+  const p = validateCopy(withPitch({
+    intro: `${VERBATIM} What an amazing week!`,
+    why_ship: "An unforgettable week, cheaper than you think. Join Mark on the Seaside.",
+    cta_blurb: "Scan the QR to join the fun!",
+    social_post: `${VERBATIM}\nThree amenity points for the group.`,
+  }), f, answers);
+  const has = (field: string, re: RegExp) => p.some((x) => x.field === field && re.test(x.problem));
+  assert.ok(has("intro", /uses "amazing"/), "our amazing after his pitch");
+  assert.ok(has("intro", /exclamation/), "our '!' after his pitch");
+  assert.ok(has("why_ship", /unforgettable/) && has("why_ship", /cheaper/) && has("why_ship", /Join Mark/));
+  assert.ok(has("cta_blurb", /exclamation/));
+  assert.ok(has("social_post", /amenity points/));
+  assert.ok(!p.some((x) => x.problem.startsWith("Pitch sentence not kept")), JSON.stringify(p));
+  // his "amazing" only counts as his while it sits inside his sentence: the same word beside it is ours
+  assert.ok(validateCopy(withPitch({ intro: `${VERBATIM} It will be amazing.` }), f, answers).some((x) => /uses "amazing"/.test(x.problem)));
+  // no pitch on the interview: nothing is his, every ban applies as before
+  assert.ok(validateCopy(withPitch({ intro: VERBATIM }), f, {}).some((x) => /exclamation/.test(x.problem)));
+});
+
+test("withoutPitch takes out each pitch sentence where it is kept, and nothing else", () => {
+  assert.equal(withoutPitch("Come along! Bring friends.", "Hello. Come along! Bring friends. Bye!").replace(/\s+/g, " ").trim(), "Hello. Bye!");
+  assert.equal(withoutPitch("Come along!", "come   ALONG. Bring friends!").replace(/\s+/g, " ").trim(), "Bring friends!");
+  assert.equal(withoutPitch("Come along!", "Come alongside us!"), "Come alongside us!", "whole words only");
+  assert.equal(withoutPitch("", "Hello!"), "Hello!");
+  assert.equal(withoutPitch(null, "Hello!"), "Hello!");
+  assert.equal(withoutPitch("   ", "Hello!"), "Hello!");
+  // one pitch sentence inside another: the longer is taken out whole, not left in pieces
+  assert.equal(withoutPitch("Come along. Come along and bring us!", "Come along and bring us!").trim(), "");
+  // characters that mean something in a pattern are just characters
+  assert.equal(withoutPitch("Rooms from $849 (per person)?", "Rooms from $849 (per person)? Yes.").trim(), "Yes.");
+});
+
+test("a retry after a not-kept pitch sentence is told to copy it character for character", () => {
+  assert.match(retryNote([{ field: "intro", problem: "Pitch sentence not kept: 'Come along!'" }]), /character for character as Mark wrote it/);
+  assert.doesNotMatch(retryNote([{ field: "intro", problem: 'uses "amazing"' }]), /character for character/);
 });
 
 test("the writer is shown Mark's pitch sentence by sentence, with the picture, the occasion line and the reference; empty fields say so", () => {
   const f = buildFacts(file(), rating, "en");
   const p = userPrompt(f, normalizeAnswers({ pitch: PITCH, picture: "Sunset from the beach chairs", occasion_line: "Post 12 reunion", reference: "the MSC poster", audience: "a", occasion: "b", why_sailing: "c" }));
   assert.match(p, /1\. Four nights out of Miami with the people you already like\.\n2\. Sunset on the beach, then a light show\.\n3\. Reply or scan the code/);
+  assert.match(p, /his words, every sentence kept word for word, with his punctuation and word choices exactly as written:/);
   assert.match(p, /The picture the reader should see: Sunset from the beach chairs/);
   assert.match(p, /The occasion, in the group's own words: Post 12 reunion/);
   assert.match(p, /A piece Mark likes \(taste only\): the MSC poster/);

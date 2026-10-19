@@ -28,6 +28,16 @@ test("an invented number, a banned word and a missing email are reported by fiel
   assert.ok(p.some((x) => x.field === "emails" && /expected 3 emails, got 2/.test(x.problem)));
 });
 
+test("a piece over its limit says how much and what to do, in the same words as the page copy", () => {
+  const c = good();
+  c.emails[0]!.subject = "x".repeat(81);
+  c.facebook.event_title = "y".repeat(71);
+  assert.deepEqual(validateCampaign(c, facts, {}, url), [
+    { field: "emails[0].subject", problem: "too long: 81 of 80 characters — shorten it, or ask Mark" },
+    { field: "facebook.event_title", problem: "too long: 71 of 70 characters — shorten it, or ask Mark" },
+  ]);
+});
+
 test("a number Mark wrote in the interview is his to state", () => {
   const c = good();
   c.facebook.boosted += " Bus leaves the Post at 6.";
@@ -95,6 +105,50 @@ test("exclamation marks, 'Join Mark' and amenity points fail every campaign piec
   assert.ok(p.some((x) => x.field === "emails[0].subject" && /exclamation/.test(x.problem)));
   assert.ok(p.some((x) => x.field === "emails[1].body" && /Join Mark/.test(x.problem)));
   assert.ok(p.some((x) => x.field === "facebook.reminder" && /amenity points/.test(x.problem)));
+});
+
+// ── Mark's pitch is verbatim here too: his "!" and his word choices are his (Mark 2026-10-19) ─────────────────────────────
+
+const MARK_PITCH = "Join us for our first Friends and Family cruise to the Bahamas! Enjoy  all that Nassau has to offer, then spend two incredible days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse!";
+const VERBATIM = "Join us for our first Friends and Family cruise to the Bahamas! Enjoy all that Nassau has to offer, then spend two incredible days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse!";
+
+test("an announcement that carries Mark's pitch verbatim, '!' and 'incredible' included, passes; the other pieces may quote it", () => {
+  const c = good();
+  c.emails[0]!.body = `${VERBATIM}\n\nCall or text Mark at 919-346-6127.`;
+  c.facebook.announcement = VERBATIM;
+  assert.deepEqual(validateCampaign(c, facts, { pitch: MARK_PITCH }, url), []);
+});
+
+test("the same words with the closing marks softened are kept; a paraphrase ('two amazing days') is not", () => {
+  const c = good();
+  c.emails[0]!.body = VERBATIM.replace(/!/g, ".");
+  assert.deepEqual(validateCampaign(c, facts, { pitch: MARK_PITCH }, url), []);
+  c.emails[0]!.body = VERBATIM.replace("two incredible days", "two amazing days");
+  const p = validateCampaign(c, facts, { pitch: MARK_PITCH }, url);
+  assert.deepEqual(p.map((x) => x.field), ["emails[0].body", "emails[0].body"]);
+  assert.match(p.find((x) => x.problem.startsWith("Pitch sentence not kept"))!.problem, /^Pitch sentence not kept: 'Enjoy  all that Nassau has to offer/);
+  assert.equal(p.filter((x) => x.problem.startsWith("Pitch sentence not kept")).length, 1, "only his second sentence; the first has his words");
+  // the paraphrase is the writer's words, not his, so its closing "!" is ours to answer for; the first sentence is untouched
+  assert.deepEqual(p.filter((x) => !x.problem.startsWith("Pitch sentence not kept")).map((x) => x.problem), ["has an exclamation mark"]);
+});
+
+test("the bans still apply to our own words around his pitch, in every piece", () => {
+  const c = good();
+  c.emails[0]!.body = `${VERBATIM} An amazing week, guaranteed!`;
+  c.facebook.reminder += " Join Mark on the Seaside!";
+  const p = validateCampaign(c, facts, { pitch: MARK_PITCH }, url);
+  assert.ok(p.some((x) => x.field === "emails[0].body" && /exclamation/.test(x.problem)));
+  assert.ok(p.some((x) => x.field === "emails[0].body" && /Guaranteed|guaranteed/.test(x.problem)));
+  assert.ok(p.some((x) => x.field === "facebook.reminder" && /Join Mark/.test(x.problem)));
+  assert.ok(!p.some((x) => /Pitch sentence not kept/.test(x.problem)), JSON.stringify(p));
+});
+
+test("the campaign prompt says the pitch is copied character for character and the bans are for our words", () => {
+  const sys = campaignSystemPrompt("en");
+  assert.match(sys, /character for character: his punctuation and his word choices stay exactly as he wrote them/);
+  assert.match(sys, /not even a closing exclamation mark becoming a full stop/);
+  assert.match(sys, /no urgency words in the words we write\. .*Mark's pitch sentences are his own words/);
+  assert.doesNotMatch(sys, /The only change allowed is a closing exclamation mark/);
 });
 
 test("the campaign prompt carries the house voice verbatim and puts the pitch in email 1", () => {
