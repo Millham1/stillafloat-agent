@@ -14,7 +14,7 @@
 
 import { llmJson } from "./llm";
 import {
-  WHOLE_DOCUMENT_CHARS, cutSections, isDoubleRateTable, rateRowCount, verifyExtraction,
+  WHOLE_DOCUMENT_CHARS, cutSections, isDoubleRateTable, joinNotes, rateRowCount, verifyExtraction,
   type AllotmentReview, type CancellationRow, type Deadline,
 } from "./booking-terms";
 
@@ -413,7 +413,7 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     organizer_name: str(r["organizer_name"]),
     travelers,
     total_price: normalizeMoney(r["total_price"]),
-    notes: [str(r["notes"]), ...extraNotes].filter((x): x is string => !!x).join(" ") || null,
+    notes: joinNotes([str(r["notes"]), ...extraNotes]),
     deposit_timing: timing === "at_booking" || timing === "by_date" ? timing : null,
     final_payment_days_before: normalizeInt(r["final_payment_days_before"]),
     allotment_reviews,

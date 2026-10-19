@@ -49,6 +49,21 @@ export function collapse(text: string): string {
 }
 
 /**
+ * Note fragments joined into sentences: a fragment that does not already end in . ! or ? gets ". "
+ * before the next one, and a period is never doubled ("Early Dining Group total rate $…" ran together
+ * on Mark's MSC quotator read, 2026-10-19). Blank fragments are skipped; null when nothing is left.
+ */
+export function joinNotes(parts: ReadonlyArray<string | null | undefined>): string | null {
+  let out = "";
+  for (const part of parts) {
+    const t = (part ?? "").trim().replace(/^\.+\s*/, "");
+    if (!t) continue;
+    out = out ? `${out}${/[.!?]$/.test(out) ? " " : ". "}${t}` : t;
+  }
+  return out || null;
+}
+
+/**
  * A money figure as quotes print it: "$1,234.56", "$403", or a bare "468.79" — MSC's group
  * quotator prints no dollar signs at all (Mark's Millham F/F 2027 quote, 2026-10-18). A bare
  * figure counts only with two decimals and at least two digits before the point, so a date,
@@ -641,7 +656,7 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
     noted.push(`Group total rate $${totals.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, as printed on the quote.`);
   }
   if (totals.commission && !/commission/i.test(out.notes ?? "")) noted.push(`Commission ${totals.commission}, printed on its own line under the total rate.`);
-  if (noted.length) out.notes = [out.notes, ...noted].filter(Boolean).join(" ");
+  if (noted.length) out.notes = joinNotes([out.notes, ...noted]);
 
   out.warnings = [...new Set(warnings)];
   return out;

@@ -276,7 +276,7 @@ test("cutSections finds the air / hotel / transfer lines of a quote", () => {
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { countMoneyFigures, isDoubleRateTable, quoteTotals } from "./booking-terms";
+import { countMoneyFigures, isDoubleRateTable, joinNotes, quoteTotals } from "./booking-terms";
 
 const QUOTATOR = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "__fixtures__/msc-quotator.txt"), "utf8");
 
@@ -478,4 +478,17 @@ test("normalizeExtraction: 'Cruise Only' is a package type and dining is a group
   const real = normalizeExtraction({ group_number: "665450", guest_inclusions: ["Premium Extra drinks package"] });
   assert.equal(real.group_number, "665450");
   assert.deepEqual(real.guest_inclusions, ["Premium Extra drinks package"]);
+});
+
+test("notes: fragments read as sentences — a period between them, never doubled (Mark's MSC quotator read, 2026-10-19)", () => {
+  assert.equal(joinNotes(["Group Dining: Early Dining", "Group total rate $11,850.96, as printed on the quote."]),
+    "Group Dining: Early Dining. Group total rate $11,850.96, as printed on the quote.");
+  assert.equal(joinNotes(["Rates include NCF.", "Names due at booking"]), "Rates include NCF. Names due at booking");
+  assert.equal(joinNotes(["First.", ".. Second", "", null, undefined, "  ", "Third?", "Fourth"]), "First. Second. Third? Fourth");
+  assert.equal(joinNotes([null, " ", ""]), null);
+  // The reader's own notes with no full stop, the dining setting, then the total the program adds from the printed summary.
+  const x = verifyExtraction(quotatorAnswer({ sail_date: "2027-05-09", notes: "Early Dining requested", amenities: ["Group Dining: Early Dining"] }), QUOTATOR);
+  assert.match(x.notes ?? "", /^Early Dining requested\. Group Dining: Early Dining\. Group total rate \$11,850\.96/);
+  assert.ok(!/\.\./.test(x.notes ?? ""), x.notes ?? "");
+  assert.ok(!/Dining Group/.test(x.notes ?? ""));
 });
