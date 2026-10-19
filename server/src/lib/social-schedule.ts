@@ -1,7 +1,7 @@
 import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
 import { loadQueue, saveQueue, setBatchStatus, type QueuedBatch, type SocialPost } from "./social-agent";
-import { publishOnePost, isPersonalSurface } from "./social-publish";
+import { publishOnePost, isPersonalSurface, type PublishResult } from "./social-publish";
 import { sinkEnabled, pickBatchToFeed } from "./social-sink";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,6 +87,23 @@ function* upcomingSlots(cfg: ScheduleConfig, from: Date): Generator<Date> {
 // (Share Kit) — neither ever gets a posting slot.
 const schedulable = (p: SocialPost): boolean => p.platform !== "youtube" && !isPersonalSurface(p);
 
+// Why a post that can never be posted is marked skipped (the reason is stored, so a skipped post
+// always says why).
+const unschedulableReason = (p: SocialPost): string => (p.platform === "youtube" ? "youtube-source" : "personal-manual");
+
+// A post is PENDING while it has no outcome at all: not posted, no error or skip reason, and still
+// "scheduled" (or never given a state). Posts that can never be posted (YouTube, personal profiles)
+// are resolved by definition. This is the same test the release gate applies to the calendar
+// (e2e/checks/jobs.mjs: no postedAt and a state that is absent or "scheduled").
+export function isPending(p: SocialPost): boolean {
+  return schedulable(p) && !p.postedAt && !p.postError && (!p.postState || p.postState === "scheduled");
+}
+
+// A batch is DONE (and only then "posted") when no post in it is pending. Before 2026-10-17 the
+// approve-now route marked a batch "posted" as soon as ANY post went out, leaving the rest with no
+// outcome in a batch the poster never looked at again.
+export const batchIsDone = (batch: { posts: SocialPost[] }): boolean => !batch.posts.some(isPending);
+
 // Assign each schedulable post in `batch` the next free upcoming slot (not
 // colliding with posts already scheduled elsewhere in the queue). Mutates the
 // batch in place and flips its status to "scheduled". Returns the batch.
@@ -119,6 +136,7 @@ export async function scheduleApprovedBatch(batch: QueuedBatch): Promise<QueuedB
   for (const post of batch.posts) {
     if (!schedulable(post)) {
       post.postState = "skipped";
+      post.postError = unschedulableReason(post);
       delete post.scheduledFor;
       continue;
     }
@@ -201,22 +219,82 @@ export async function feedSinkQueue(): Promise<string | null> {
   return pick.id;
 }
 
-// Post everything that's due. Throttled per tick. Returns count posted.
-export async function runDuePosts(maxPerTick = 5): Promise<number> {
-  const queue = await loadQueue();
-  const now = Date.now();
+// Reasons stored on a pending post the poster resolves without trying to publish it.
+export const STALE_UNRESOLVED = "stale:closed-without-outcome"; // slot older than the stale window
+export const NO_SLOT = "no-slot"; // never given a posting time, so there is nothing to wait for
+
+export interface HealResult {
+  reopened: string[]; // ids of "posted" batches put back to "scheduled" because a post is still due
+  skippedStale: number;
+  skippedNoSlot: number;
+}
+
+// Self-healing for batches marked "posted" while a post in them has no outcome (see batchIsDone).
+// The poster visits only "scheduled" batches, so such a post would wait forever. For each one:
+//   • no usable slot  → skipped, reason NO_SLOT
+//   • slot older than the stale window (the same isStale() the retry reasons use) → skipped,
+//     reason STALE_UNRESOLVED — the "skipped as stale" the release gate expects
+//   • slot in the future or inside the window → the batch goes back to "scheduled" and the normal
+//     pass posts the post when its time comes.
+// Mutates the batches in place.
+export function healClosedBatches(batches: QueuedBatch[], nowMs: number, staleAfterDays: number): HealResult {
+  const out: HealResult = { reopened: [], skippedStale: 0, skippedNoSlot: 0 };
+  for (const batch of batches) {
+    if (batch.status !== "posted") continue;
+    let waiting = false;
+    for (const post of batch.posts) {
+      if (!isPending(post)) continue;
+      const slot = post.scheduledFor ? Date.parse(post.scheduledFor) : NaN;
+      if (!Number.isFinite(slot)) {
+        post.postState = "skipped";
+        post.postError = NO_SLOT;
+        out.skippedNoSlot++;
+      } else if (isStale(post.scheduledFor, nowMs, staleAfterDays)) {
+        post.postState = "skipped";
+        post.postError = STALE_UNRESOLVED;
+        out.skippedStale++;
+      } else {
+        waiting = true;
+      }
+    }
+    if (waiting) {
+      batch.status = "scheduled";
+      out.reopened.push(batch.id);
+    }
+  }
+  return out;
+}
+
+export interface TickResult {
+  posted: number;
+  changed: boolean;
+  healed: HealResult;
+}
+
+// One poster pass over an in-memory queue (no I/O of its own — `publish` is injected so the
+// whole pass is tested directly). Heals closed batches first, then posts everything due,
+// throttled per tick. Mutates the queue; the caller saves it when `changed`.
+export async function processQueue(
+  queue: { batches: QueuedBatch[] },
+  nowMs: number,
+  publish: (post: SocialPost) => Promise<PublishResult>,
+  opts: { maxPerTick?: number; staleAfterDays?: number } = {},
+): Promise<TickResult> {
+  const maxPerTick = opts.maxPerTick ?? 5;
+  const days = opts.staleAfterDays ?? staleDays();
+  const healed = healClosedBatches(queue.batches, nowMs, days);
   let posted = 0;
-  let changed = false;
+  let changed = healed.reopened.length > 0 || healed.skippedStale > 0 || healed.skippedNoSlot > 0;
 
   for (const batch of queue.batches) {
     if (batch.status !== "scheduled") continue;
     for (const post of batch.posts) {
       if (posted >= maxPerTick) break;
       if (post.postedAt || post.postState === "skipped" || post.postState === "failed") continue;
-      if (!post.scheduledFor || new Date(post.scheduledFor).getTime() > now) continue;
+      if (!post.scheduledFor || new Date(post.scheduledFor).getTime() > nowMs) continue;
 
-      const res = await publishOnePost(post);
-      const out = decideOutcome(res, post.scheduledFor, now, staleDays());
+      const res = await publish(post);
+      const out = decideOutcome(res, post.scheduledFor, nowMs, days);
       if (out.kind === "posted") {
         post.postedAt = new Date().toISOString();
         post.postState = "posted";
@@ -235,21 +313,78 @@ export async function runDuePosts(maxPerTick = 5): Promise<number> {
         }
       }
     }
-    // A batch is done when every schedulable post is resolved (posted/failed).
-    const open = batch.posts.some(
-      (p) => schedulable(p) && !p.postedAt && p.postState !== "failed" && p.postState !== "skipped",
-    );
-    // (status is already narrowed to "scheduled" by the guard at the top of the loop)
-    if (!open) {
+    // A batch is done only when EVERY post in it has an outcome (batchIsDone).
+    if (batchIsDone(batch)) {
       batch.status = "posted";
       changed = true;
     }
     if (posted >= maxPerTick) break;
   }
+  return { posted, changed, healed };
+}
 
+// Post everything that's due. Throttled per tick. Returns count posted.
+export async function runDuePosts(maxPerTick = 5): Promise<number> {
+  const queue = await loadQueue();
+  const { posted, changed, healed } = await processQueue(queue, Date.now(), publishOnePost, { maxPerTick });
   if (changed) await saveQueue(queue);
+  if (healed.reopened.length || healed.skippedStale || healed.skippedNoSlot) {
+    logger.warn(healed, "social poster: resolved posts left without an outcome in batches already marked posted");
+  }
   if (posted > 0) logger.info({ posted }, "social poster: posted due items");
   return posted;
+}
+
+// "Approve and post now" for one batch, with every outcome recorded on its posts. Each post that
+// is still pending is published at once (its slot becomes now); the ones that cannot go yet
+// (platform not configured, no Instagram clip) stay "scheduled" for the poster's retry — they are
+// not forgotten. The batch becomes "posted" only when no post is left pending. Mutates the batch
+// in place; returns what each attempted post's publish step said. No I/O of its own.
+export async function applyPostNow(
+  batch: QueuedBatch,
+  nowMs: number,
+  publish: (post: SocialPost) => Promise<PublishResult>,
+  staleAfterDays: number = staleDays(),
+): Promise<PublishResult[]> {
+  const nowIso = new Date(nowMs).toISOString();
+  const results: PublishResult[] = [];
+  for (const post of batch.posts) {
+    if (!schedulable(post)) {
+      const reason = unschedulableReason(post);
+      post.postState = "skipped";
+      post.postError = reason;
+      delete post.scheduledFor;
+      results.push({ surface: post.surface, platform: post.platform, ok: false, reason });
+      continue;
+    }
+    if (!isPending(post)) continue; // already posted / failed / skipped — never published twice
+    post.scheduledFor = nowIso;
+    post.postState = "scheduled";
+    const res = await publish(post);
+    results.push(res);
+    const out = decideOutcome(res, nowIso, nowMs, staleAfterDays);
+    if (out.kind === "posted") {
+      post.postedAt = new Date().toISOString();
+      post.postState = "posted";
+    } else if (out.kind !== "retry") {
+      post.postState = out.kind;
+      post.postError = out.error;
+    }
+  }
+  batch.status = batchIsDone(batch) ? "posted" : "scheduled";
+  batch.decidedAt = nowIso;
+  return results;
+}
+
+// applyPostNow + save, replacing the batch inside the live queue.
+export async function postBatchNow(batch: QueuedBatch): Promise<PublishResult[]> {
+  const results = await applyPostNow(batch, Date.now(), publishOnePost);
+  const queue = await loadQueue();
+  const idx = queue.batches.findIndex((b) => b.id === batch.id);
+  if (idx >= 0) queue.batches[idx] = batch;
+  await saveQueue(queue);
+  logger.info({ batch: batch.id, results }, "social poster: approve-now");
+  return results;
 }
 
 // Flat, chronological view of everything scheduled or already posted (calendar).

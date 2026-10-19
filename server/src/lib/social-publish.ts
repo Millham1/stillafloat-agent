@@ -1,8 +1,7 @@
-import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
 import { composeCaption } from "./hashtags";
 import { sinkEnabled, sinkPost } from "./social-sink";
-import type { QueuedBatch, SocialPost } from "./social-agent";
+import type { SocialPost } from "./social-agent";
 
 // Posting actuator. On batch approval the backend pushes each post to its
 // platform via Make.
@@ -59,9 +58,9 @@ export interface PublishResult {
 // via the Share Kit and must never be routed to the Page webhook.
 export const isPersonalSurface = (post: SocialPost): boolean => /personal/i.test(post.surface);
 
-// Publish ONE post to its platform. Used both by publishBatch (post-now) and the
-// social poster cron (scheduled drip). Special reasons the caller may want to
-// treat as "retry later" rather than a hard failure: "youtube-source",
+// Publish ONE post to its platform. Used by the social poster cron (scheduled drip) and by
+// approve-now (postBatchNow, lib/social-schedule.ts) — both record each post's outcome.
+// Special reasons the caller may want to treat as "retry later" rather than a hard failure: "youtube-source",
 // "fb-not-configured", "ig-not-configured", "ig-no-clip". "personal-manual"
 // and "ig-lang-off" are terminal: resolve the post as skipped.
 
@@ -107,15 +106,6 @@ export async function publishOnePost(post: SocialPost): Promise<PublishResult> {
   const caption = composeCaption(post.caption, post.hashtags, post.link);
   const image_url = `https://i.ytimg.com/vi/${post.videoId}/hqdefault.jpg`;
   return postWebhook(fbWebhook, { image_url, caption }, post.surface, "facebook");
-}
-
-export async function publishBatch(batch: QueuedBatch): Promise<PublishResult[]> {
-  const results: PublishResult[] = [];
-  for (const post of batch.posts) {
-    results.push(await publishOnePost(post));
-  }
-  logger.info({ batch: batch.id, results }, "publishBatch");
-  return results;
 }
 
 async function postWebhook(

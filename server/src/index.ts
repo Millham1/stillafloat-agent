@@ -321,7 +321,8 @@ function scheduleLiveAisCredits() {
 }
 
 // ── Social poster scheduler ───────────────────────────────────────────────────
-// Every 10 minutes, post any scheduled social items whose time has arrived. No-op
+// Every 10 minutes, post any scheduled social items whose time has arrived, and resolve any post
+// left without an outcome in a batch already marked posted (lib/social-schedule.ts). No-op
 // (and harmless) until the Make webhooks are configured — unconfigured posts stay
 // scheduled and go out once the env vars land. On the dev mirror SOCIAL_POSTER_SINK=1 sends
 // to a test sink instead of Make and keeps its calendar supplied (lib/social-sink.ts).
