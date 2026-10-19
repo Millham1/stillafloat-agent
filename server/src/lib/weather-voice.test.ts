@@ -62,3 +62,14 @@ test("hasBanned covers Mark's list", () => {
   assert.equal(hasBanned("This is actually fine"), "actually");
   assert.ok(BANNED.includes("cheaper"));
 });
+
+test("cache:false (a note written from an earlier copy of the forecast) is not kept, and a normal call afterwards writes a fresh one", async () => {
+  let n = 0;
+  const gen = async () => { n++; return "Shorts and a hat; the showers pass by lunch."; };
+  await weatherSynopsis(loc, rows, "en", gen, undefined, { cache: false });
+  await weatherSynopsis(loc, rows, "en", gen, undefined, { cache: false });
+  assert.equal(n, 2, "nothing was cached by the uncached calls");
+  await weatherSynopsis(loc, rows, "en", gen);
+  await weatherSynopsis(loc, rows, "en", gen);
+  assert.equal(n, 3, "a normal call caches as before");
+});

@@ -14,6 +14,8 @@ export type FetchLike<R extends Resp = Response> = (url: string, init?: RequestI
 
 export interface BackoffOptions {
   attempts?: number;
+  /** Stop after this many attempts that THREW (a timeout, a dropped connection) — a 429/5xx answer still gets all `attempts`. Default: `attempts`. */
+  attemptsOnThrow?: number;
   sleep?: (ms: number) => Promise<void>;
   random?: () => number;
   maxWaitMs?: number;
@@ -33,6 +35,8 @@ export async function fetchWithBackoff<R extends Resp>(
   fetchImpl: FetchLike<R>, url: string, init: RequestInit | undefined, opts: BackoffOptions = {},
 ): Promise<R> {
   const attempts = opts.attempts ?? 3;
+  const throwLimit = opts.attemptsOnThrow ?? attempts;
+  let thrown = 0;
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   let last: R | undefined;
   let lastErr: unknown;
@@ -46,6 +50,7 @@ export async function fetchWithBackoff<R extends Resp>(
     } catch (err) {
       lastErr = err;
       last = undefined;
+      if (++thrown >= throwLimit) break;
       if (attempt < attempts - 1) await sleep(backoffMs(attempt, null, opts.random, opts.maxWaitMs));
     }
   }
@@ -60,33 +65,50 @@ export interface LoaderCacheOptions {
   now?: () => number;
 }
 
+/** The promise's value, or null if it has not settled within `ms` (it keeps running; a rejection inside the window still rejects). */
+export function raceWithin<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), ms); timer.unref?.(); });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
+
+/** What a cache lookup hands back: the value, when it was loaded, and whether it is the old copy standing in for a refresh that failed. */
+export interface Loaded<T> { value: T; at: number; stale: boolean }
+
 export function loaderCache<T>(opts: LoaderCacheOptions) {
   const now = opts.now ?? Date.now;
   const max = opts.max ?? 500;
   const store = new Map<string, { value: T; at: number }>();
-  const inflight = new Map<string, Promise<T>>();
+  const inflight = new Map<string, Promise<Loaded<T>>>();
+  // getMeta is get() that also says whether the answer is the stale stand-in — callers that must tell a
+  // reader "this is an earlier forecast" (the weather route) need that; everyone else uses get().
+  function getMeta(key: string, load: () => Promise<T>): Promise<Loaded<T>> {
+    const hit = store.get(key);
+    if (hit && now() - hit.at < opts.ttlMs) return Promise.resolve({ value: hit.value, at: hit.at, stale: false });
+    const running = inflight.get(key);
+    if (running) return running;
+    const p = (async (): Promise<Loaded<T>> => {
+      try {
+        const value = await load();
+        if (store.size >= max) store.clear();
+        const at = now();
+        store.set(key, { value, at });
+        return { value, at, stale: false };
+      } catch (err) {
+        if (hit && now() - hit.at < opts.ttlMs + opts.staleMs) return { value: hit.value, at: hit.at, stale: true };
+        throw err;
+      } finally {
+        inflight.delete(key);
+      }
+    })();
+    inflight.set(key, p);
+    return p;
+  }
   return {
     async get(key: string, load: () => Promise<T>): Promise<T> {
-      const hit = store.get(key);
-      if (hit && now() - hit.at < opts.ttlMs) return hit.value;
-      const running = inflight.get(key);
-      if (running) return running;
-      const p = (async () => {
-        try {
-          const value = await load();
-          if (store.size >= max) store.clear();
-          store.set(key, { value, at: now() });
-          return value;
-        } catch (err) {
-          if (hit && now() - hit.at < opts.ttlMs + opts.staleMs) return hit.value;
-          throw err;
-        } finally {
-          inflight.delete(key);
-        }
-      })();
-      inflight.set(key, p);
-      return p;
+      return (await getMeta(key, load)).value;
     },
+    getMeta,
     clear() { store.clear(); inflight.clear(); },
     size() { return store.size; },
   };

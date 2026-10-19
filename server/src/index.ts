@@ -24,6 +24,7 @@ import { registerJob, runJob, loadJobHealth } from "./lib/job-health";
 import { tick as groupJourneyTick } from "./lib/group-journey-run";
 import { journeyDeps } from "./lib/group-journey-wire";
 import { localToday } from "./lib/group-journey-facts";
+import { primeWeatherOnBoot, warmWeatherTiles } from "./lib/weather-tiles";
 
 const rawPort = process.env["PORT"] ?? "8080";
 const port = Number(rawPort);
@@ -32,8 +33,22 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+// The weather tiles and forecasts keep a saved copy of their last good answers (lib/weather-tiles.ts,
+// lib/weather-forecast.ts); start reading it now so it is in memory before the first request is answered
+// (a request that arrives sooner waits for it, at most a couple of seconds). Never throws, never blocks boot.
+void primeWeatherOnBoot().catch((err: unknown) => logger.warn({ err }, "weather: could not prime from the saved copy"));
+
 app.listen(port, "0.0.0.0", () => {
   logger.info({ port }, "Server listening on 0.0.0.0");
+  // Build the homepage weather tiles once, a few seconds after boot and off the request path, so the first
+  // visitor — and the release gate's settle window after a deploy — finds a fresh payload instead of starting
+  // the 24 Open-Meteo calls itself. Not a scheduled job: it runs once, and a failure only means the first
+  // visitor's request does it. (index.ts is not loaded by the tests, so tests never start it.)
+  setTimeout(() => {
+    warmWeatherTiles()
+      .then((what) => logger.info({ what }, "weather: boot warm-up done"))
+      .catch((err: unknown) => logger.warn({ err }, "weather: boot warm-up failed"));
+  }, 3_000).unref();
   // Job-health ledger (lib/job-health.ts): every schedule…() below registers its cadence and
   // runs its tick through runJob(), so GET /api/healthz/jobs can say what last ran and when.
   // Jobs switched off on this box register as disabled with the flag that did it.

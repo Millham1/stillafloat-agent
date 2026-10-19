@@ -48,6 +48,23 @@ describe("fetchWithBackoff", () => {
   });
 });
 
+describe("fetchWithBackoff: a thrown attempt (timeout, dropped connection) can have its own, lower limit", () => {
+  it("with attemptsOnThrow 2, a timeout is retried once and then given up — not three times", async () => {
+    let n = 0;
+    await assert.rejects(fetchWithBackoff(async () => { n++; throw new Error("timeout"); }, "u", undefined, { sleep: noSleep, attempts: 3, attemptsOnThrow: 2 }), /timeout/);
+    assert.equal(n, 2);
+  });
+  it("still gives a 429/5xx answer all `attempts` tries, and a timeout followed by a good answer succeeds", async () => {
+    let n = 0;
+    const r = await fetchWithBackoff(async () => { n++; return res(503); }, "u", undefined, { sleep: noSleep, attempts: 3, attemptsOnThrow: 2 });
+    assert.equal(r.status, 503);
+    assert.equal(n, 3);
+    let k = 0;
+    const r2 = await fetchWithBackoff(async () => { if (k++ === 0) throw new Error("timeout"); return res(200); }, "u", undefined, { sleep: noSleep, attempts: 3, attemptsOnThrow: 2 });
+    assert.equal(r2.status, 200);
+  });
+});
+
 describe("loader cache", () => {
   it("serves a fresh answer without loading again, and asks again once it has expired", async () => {
     let t = 0, loads = 0;
@@ -80,5 +97,13 @@ describe("loader cache", () => {
     const c = loaderCache<number>({ ttlMs: 1000, staleMs: 0, max: 2 });
     await c.get("a", async () => 1); await c.get("b", async () => 2); await c.get("c", async () => 3);
     assert.equal(c.size(), 1);
+  });
+  it("getMeta says whether the answer is the old copy standing in for a failed refresh, and when it was loaded", async () => {
+    let t = 100;
+    const c = loaderCache<string>({ ttlMs: 1000, staleMs: 5000, now: () => t });
+    assert.deepEqual(await c.getMeta("p", async () => "good"), { value: "good", at: 100, stale: false });
+    t = 600; assert.deepEqual(await c.getMeta("p", async () => "unused"), { value: "good", at: 100, stale: false });
+    t = 2000; assert.deepEqual(await c.getMeta("p", async () => { throw new Error("429"); }), { value: "good", at: 100, stale: true });
+    t = 2100; assert.deepEqual(await c.getMeta("p", async () => "newer"), { value: "newer", at: 2100, stale: false });
   });
 });

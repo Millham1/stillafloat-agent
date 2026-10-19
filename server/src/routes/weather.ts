@@ -1,24 +1,16 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { CRUISE_LOCATIONS, type CruiseLocation } from "../lib/ports";
 import { weatherSynopsis, type Lang } from "../lib/weather-voice";
-import { fetchForecast, publicLocation, _resetForecastCache } from "../lib/weather-forecast";
+import { fetchForecastOrLastGood, publicLocation, _resetForecastCache } from "../lib/weather-forecast";
+import { getWeatherTiles, lastKnownWeatherTiles, fillThinLists, MIN_CARDS_PER_TYPE } from "../lib/weather-tiles";
 
-// The forecast fetch itself (Open-Meteo, cached) lives in lib/weather-forecast.ts since 2026-10-17 so the group journey can use it; unchanged.
-export { _resetForecastCache };
+// The forecast fetch itself (Open-Meteo, cached, with its saved last-good copy) lives in lib/weather-forecast.ts since
+// 2026-10-17 so the group journey can use it; the homepage tiles (the cache, the thin-list top-up, the saved payload) live
+// in lib/weather-tiles.ts since 2026-10-19. Both re-exported here as before.
+export { _resetForecastCache, fillThinLists, MIN_CARDS_PER_TYPE };
 
 const router: IRouter = Router();
 
-
-function featuredByType(type: string, limit = 12) {
-  const typed = CRUISE_LOCATIONS.filter((l) => l.type === type);
-  const featured = typed.filter((l) => l.featured);
-  const rest = typed.filter((l) => !l.featured);
-  const combined = [...featured, ...rest];
-  const seen = new Set<string>();
-  return combined
-    .filter((l) => { if (seen.has(l.slug)) return false; seen.add(l.slug); return true; })
-    .slice(0, limit);
-}
 
 // forecast.html can arrive with raw coordinates (the weather page's search dropdown, and the
 // Spanish tiles) instead of a port slug. Those visits used to fetch Open-Meteo straight from the
@@ -105,35 +97,6 @@ router.get("/weather/hero", async (req: Request, res: Response) => {
   res.json({ ok: true, url });
 });
 
-// 15-minute in-memory cache for the all-ports response (avoids 24 parallel fetches on every page load)
-type WeatherCard = { slug: string; type: string; [k: string]: unknown };
-type WeatherPayload = { embarkation: WeatherCard[]; destinations: WeatherCard[]; [k: string]: unknown };
-let allPortsCache: { payload: WeatherPayload; expiresAt: number } | null = null;
-
-// The homepage shows up to 12 departure ports and 12 destinations; fewer than 6 of either reads as
-// broken. open-meteo fails in bursts, and 2026-10-09 14:21Z the release gate caught the dev homepage
-// with 5 destination cards cached for 15 min: 7 of 12 destination fetches had failed while the
-// embarkation side was fine, so the old "at least half of ALL cards" guard let the thin set through.
-// Judge each list on its own: a list short of MIN_CARDS_PER_TYPE is topped up from the last good
-// payload (same slugs never twice), and a payload that needed topping up is cached only briefly.
-export const MIN_CARDS_PER_TYPE = 6;
-export function fillThinLists<T extends { slug: string; type: string }>(
-  fresh: T[], cached: T[] | null | undefined, min = MIN_CARDS_PER_TYPE,
-): { cards: T[]; fullyFresh: boolean } {
-  const out = [...fresh];
-  let fullyFresh = true;
-  for (const type of ["embarkation", "destination"]) {
-    const have = fresh.filter((c) => c.type === type);
-    if (have.length >= min) continue;
-    fullyFresh = false;
-    const seen = new Set(have.map((c) => c.slug));
-    for (const c of cached ?? []) {
-      if (c.type === type && !seen.has(c.slug)) { out.push(c); seen.add(c.slug); }
-    }
-  }
-  return { cards: out, fullyFresh };
-}
-
 router.get("/weather", async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=1800");
   try {
@@ -148,12 +111,16 @@ router.get("/weather", async (req: Request, res: Response) => {
         res.status(byCoords ? 400 : 404).json({ ok: false, error: byCoords ? "Bad coordinates" : "Destination not found" });
         return;
       }
-      const forecast = await fetchForecast(loc);
+      // Open-Meteo slow or refusing → the last good forecast of this place (this run's, or the one saved before the
+      // last restart), flagged `stale` with the time it was good; only a place nothing is known about is a 500.
+      const { forecast, staleSince } = await fetchForecastOrLastGood(loc);
       // The synopsis is Mark's read of the week (lib/weather-voice.ts): written in his voice,
-      // cached per place+language for six hours, never a restatement of the table.
+      // cached per place+language for six hours, never a restatement of the table. Written from an earlier
+      // copy of the forecast it is not cached, so it does not outlive the copy.
       const lang: Lang = String(req.query.lang || "").toLowerCase() === "es" ? "es" : "en";
-      const synopsis = await weatherSynopsis(loc, forecast.forecast, lang);
-      res.json({ ok: true, forecast: { ...forecast, synopsis } });
+      const synopsis = await weatherSynopsis(loc, forecast.forecast, lang, undefined, undefined, { cache: !staleSince });
+      if (staleSince) res.setHeader("Cache-Control", "s-maxage=60");   // a shared cache must not pin an earlier copy for 15 minutes
+      res.json({ ok: true, forecast: { ...forecast, synopsis, ...(staleSince ? { stale: true, staleSince } : {}) } });
       return;
     }
 
@@ -171,51 +138,20 @@ router.get("/weather", async (req: Request, res: Response) => {
       return;
     }
 
-    // Return cached response if still fresh
-    if (allPortsCache && Date.now() < allPortsCache.expiresAt) {
-      res.json(allPortsCache.payload);
-      return;
+    // The homepage tiles (lib/weather-tiles.ts): cached 15 minutes, topped up from the last good payload — which
+    // survives a restart — and, if that was topped up, sent with a short cache life and `stale: true`.
+    try {
+      const { payload, settled } = await getWeatherTiles();
+      if (!settled) res.setHeader("Cache-Control", "s-maxage=60");
+      res.json(payload);
+    } catch (error) {
+      // Last resort: serve what this process holds instead of blanking the homepage.
+      const known = lastKnownWeatherTiles();
+      if (!known) throw error;
+      res.setHeader("Cache-Control", "s-maxage=60");
+      res.json(known);
     }
-
-    const targets = [...featuredByType("embarkation", 12), ...featuredByType("destination", 12)];
-    // Tolerate partial upstream failures: a single bad open-meteo fetch must
-    // never blank the whole homepage. Keep whatever cards succeeded.
-    const settled = await Promise.allSettled(targets.map(fetchForecast));
-    const freshCards = settled.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
-
-    // A thin list (fewer than MIN_CARDS_PER_TYPE departure ports OR destinations) is topped up from
-    // the last good payload instead of being shown — or cached — as is. See fillThinLists.
-    const lastGood = allPortsCache ? [...allPortsCache.payload.embarkation, ...allPortsCache.payload.destinations] : null;
-    const { cards, fullyFresh } = fillThinLists(freshCards, lastGood);
-    const minOk = Math.ceil(targets.length / 2);
-    if (cards.length < minOk && allPortsCache) {
-      res.json(allPortsCache.payload);
-      return;
-    }
-
-    const payload: WeatherPayload = {
-      ok: true,
-      generatedAt: new Date().toISOString(),
-      embarkation: cards.filter((c) => c.type === "embarkation"),
-      destinations: cards.filter((c) => c.type === "destination"),
-      allEmbarkationPorts: CRUISE_LOCATIONS
-        .filter((l) => l.type === "embarkation")
-        .map(publicLocation)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-      allDestinations: CRUISE_LOCATIONS
-        .filter((l) => l.type === "destination")
-        .map(publicLocation)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    };
-    // Only cache a healthy payload so we never pin an empty result for 15 min; a payload that had
-    // to be topped up from the last good one is cached for 3 min only, so the next fetch retries soon.
-    if (cards.length >= minOk) {
-      allPortsCache = { payload, expiresAt: Date.now() + (fullyFresh ? 15 : 3) * 60 * 1000 };
-    }
-    res.json(payload);
   } catch (error) {
-    // Last resort: serve stale cache instead of blanking the homepage.
-    if (allPortsCache) { res.json(allPortsCache.payload); return; }
     res.status(500).json({ ok: false, error: (error as Error).message, embarkation: [], destinations: [] });
   }
 });

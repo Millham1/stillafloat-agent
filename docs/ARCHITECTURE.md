@@ -95,7 +95,12 @@ service boundary.
   (`server/src/app.ts`, added 2026-06-30). Binds `0.0.0.0:3002` (**IPv4 only** —
   see the 127.0.0.1 note under Edge). `/api/weather` fans out ~24 open-meteo
   fetches with retry + `allSettled` + last-good cache so one upstream hiccup can't
-  blank the homepage.
+  blank the homepage. The last good tiles payload and the last good forecast of
+  every place are also saved to `platform_state` (`weather-tiles-last-good`,
+  `weather-forecasts-last-good`; `server/src/lib/last-good-store.ts`) and read
+  back on boot, and the tiles are rebuilt once ~3 s after listen — so a deploy
+  restart with a slow open-meteo serves the saved copy (JSON `stale: true`,
+  short cache life) instead of an empty list or a 500 (2026-10-19).
 - **News / editorial agent** (`:3003`) — standalone service (`stillafloat-newsagent`
   repo): scan -> AI commentary -> daily digest (email + Telegram) -> inline
   `/review` approve loop -> self-scheduler (08:00 ET).
