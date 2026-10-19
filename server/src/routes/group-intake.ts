@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
-import { CHILDREN, GROUP_COLUMNS, missingSchedule, pickWritable, publicGroupRow, slugify } from "../lib/group-file";
+import { CHILDREN, GROUP_COLUMNS, missingSchedule, pickWritable, publicGroupRow, slugify, withGroupDeposit } from "../lib/group-file";
 import {
   MAX_PDF_BYTES, cabinRowsFromExtraction, travelRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
   type BookingExtraction, type ReaderProvider,
@@ -207,7 +207,8 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
       const p = pickWritable(CHILDREN["cabins"]!.columns, c);
       return p.ok ? p.row : null;
     }).filter((x): x is Row => !!x) : cabinRowsFromExtraction(extracted, intake.booking_kind);
-    cabins = cabins.map((c) => ({ ...c, group_id: group.id }));
+    // A cabin the quote gave no deposit takes the group's deposit per person × 2, so each cabin gets a deposit row below.
+    cabins = withGroupDeposit(cabins, group.deposit_per_person).map((c) => ({ ...c, group_id: group.id }));
     let cabinRows: Row[] = [];
     if (cabins.length) {
       const { data: inserted, error: ce } = await db().from("group_cabins").insert(cabins).select("*");
