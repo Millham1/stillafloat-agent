@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ACTIVE_STATUSES, activeFilterCount, applyFilters, bigPicture, computeKpis, crossLabel, csvCell, defaultFilters, funnel, gridRows, hasFilterParams,
-  isDefaultFilters, journeyBars, moneyByWeek, nextDeadlines, paperworkMatrix, parseFilters, parseTab, removeCross, serializeFilters, shipKey, timeline,
+  isDefaultFilters, journeyBars, missable, moneyByWeek, nextDeadlines, paperworkMatrix, parseFilters, parseTab, removeCross, serializeFilters, shipKey, timeline,
   toCsv, toggleCross, toggleGroup, weekStart, type WGroup, type WPayment, type WorkspaceData,
 } from "./group-workspace";
 
@@ -345,6 +345,11 @@ test("paperwork matrix: travelers by documents, 'n/a' where a document is not th
 test("next deadlines skip met ones, emails and the sailing, put a missed one first, and stop at five", () => {
   const n = nextDeadlines(slice());
   assert.deepEqual(n.map((d) => [d.groupName, d.daysOut]), [["Group a", -7], ["Group a", 10], ["Bravo", 27], ["Group a", 120]]);
+  const past = data();
+  past.deadlines.push({ groupId: "b", groupName: "Bravo", kind: "recall", label: "Cabins go back", date: "2026-10-12", daysOut: -7, done: false, state: null, detail: null });
+  assert.equal(nextDeadlines(applyFilters(past, defaultFilters())).some((d) => d.label === "Cabins go back"), false, "a passed recall date is history, not a missed deadline");
+  assert.equal(missable("deposit") && missable("final") && missable("names"), true);
+  assert.equal(missable("recall") || missable("line") || missable("journey") || missable("sail"), false);
   const d = data();
   for (let i = 0; i < 8; i++) d.deadlines.push({ groupId: "b", groupName: "Bravo", kind: "line", label: `L${i}`, date: "2026-12-01", daysOut: 50 + i, done: false, state: null, detail: null });
   assert.equal(nextDeadlines(applyFilters(d, defaultFilters())).length, 5);

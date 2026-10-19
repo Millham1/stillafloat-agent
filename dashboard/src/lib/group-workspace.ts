@@ -294,15 +294,15 @@ export function computeKpis(s: Slice): Kpis {
 
 // ── Pipeline funnel ───────────────────────────────────────────────────────────
 
-export interface FunnelStep { key: string; label: string; unit: string; value: number; tab: Tab; cross: Cross | null }
+export interface FunnelStep { key: string; label: string; unit: string; unitOne: string; value: number; tab: Tab; cross: Cross | null }
 
 export function funnel(s: Slice): FunnelStep[] {
   return [
-    { key: "interests", label: "Interests", unit: "replies", value: s.interests.length, tab: "interests", cross: null },
-    { key: "booked", label: "Cabins booked", unit: "cabins", value: sum(s.groups.map((g) => g.cabinsBooked)), tab: "cabins", cross: { dim: "cab", value: "booked" } },
-    { key: "onfile", label: "Travelers on file", unit: "people", value: s.travelers.length, tab: "travelers", cross: null },
-    { key: "signed", label: "Paperwork complete", unit: "people", value: s.travelers.filter((t) => t.fullySigned).length, tab: "travelers", cross: { dim: "tf", value: "signed" } },
-    { key: "final", label: "Final payment paid", unit: "cabins", value: s.payments.filter((p) => p.kind === "final" && p.status === "paid").length, tab: "payments", cross: { dim: "pay", value: "paid" } },
+    { key: "interests", label: "Interests", unit: "replies", unitOne: "reply", value: s.interests.length, tab: "interests", cross: null },
+    { key: "booked", label: "Cabins booked", unit: "cabins", unitOne: "cabin", value: sum(s.groups.map((g) => g.cabinsBooked)), tab: "cabins", cross: { dim: "cab", value: "booked" } },
+    { key: "onfile", label: "Travelers on file", unit: "people", unitOne: "person", value: s.travelers.length, tab: "travelers", cross: null },
+    { key: "signed", label: "Paperwork complete", unit: "people", unitOne: "person", value: s.travelers.filter((t) => t.fullySigned).length, tab: "travelers", cross: { dim: "tf", value: "signed" } },
+    { key: "final", label: "Final payment paid", unit: "cabins", unitOne: "cabin", value: s.payments.filter((p) => p.kind === "final" && p.status === "paid").length, tab: "payments", cross: { dim: "pay", value: "paid" } },
   ];
 }
 
@@ -417,10 +417,13 @@ export function paperworkMatrix(s: Slice): MatrixModel {
 
 export interface NextDeadline { groupId: string; groupName: string; label: string; date: string; daysOut: number }
 
-/** The next dated things to do across groups: not already met, not an email, not the sailing; one that just passed comes first. */
+/** The kinds of deadline a person can miss (the group's own deposit, final-payment and names dates). The others (the line taking cabins back, a date in the quote) are events: once they pass they are history, not a failure. */
+export const missable = (kind: DeadlineKind): boolean => kind === "deposit" || kind === "final" || kind === "names";
+
+/** The next dated things to do across groups: not already met, not an email, not the sailing; a missed one (up to two weeks back) comes first. */
 export function nextDeadlines(s: Slice, n = 5): NextDeadline[] {
   return s.deadlines
-    .filter((d) => !d.done && d.kind !== "journey" && d.kind !== "sail" && d.daysOut >= -TIMELINE_LOOKBACK)
+    .filter((d) => !d.done && d.kind !== "journey" && d.kind !== "sail" && (d.daysOut >= 0 || (missable(d.kind) && d.daysOut >= -TIMELINE_LOOKBACK)))
     .sort((a, b) => a.daysOut - b.daysOut || a.groupName.localeCompare(b.groupName))
     .slice(0, n)
     .map((d) => ({ groupId: d.groupId, groupName: d.groupName, label: d.label, date: d.date, daysOut: d.daysOut }));
