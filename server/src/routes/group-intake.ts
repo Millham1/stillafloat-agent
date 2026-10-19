@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
-import { CHILDREN, GROUP_COLUMNS, missingSchedule, pickWritable, publicGroupRow, slugify, withGroupDeposit } from "../lib/group-file";
+import { CHILDREN, GROUP_COLUMNS, groupDateProblem, missingSchedule, pickWritable, publicGroupRow, slugify, withGroupDeposit } from "../lib/group-file";
 import {
   MAX_PDF_BYTES, cabinRowsFromExtraction, travelRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
   type BookingExtraction, type ReaderProvider,
@@ -197,6 +197,9 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
       const v = (extracted as unknown as Row)[k];
       if ((groupRow[k] === undefined || groupRow[k] === null || groupRow[k] === "") && v !== null && v !== undefined) groupRow[k] = v;
     }
+    // The dates the file will hold (typed on the form, or read from the document) must all come before the sailing.
+    const dateProblem = groupDateProblem(groupRow);
+    if (dateProblem) return res.status(400).json({ success: false, ...dateProblem });
     const { data: group, error: ge } = await db().from("groups").insert(groupRow).select("*").single();
     if (ge) {
       return res.status(ge.code === "23505" ? 409 : 400).json({ success: false, error: ge.code === "23505" ? "A group with that name already exists" : ge.message });

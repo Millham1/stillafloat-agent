@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CHILDREN, GROUP_COLUMNS, looksLikeCardNumber, missingSchedule, pickWritable, publicGroupRow, slugify, summarize, withGroupDeposit, type GroupFile } from "./group-file";
+import { CHILDREN, GROUP_COLUMNS, groupDateProblem, looksLikeCardNumber, missingSchedule, pickWritable, publicGroupRow, slugify, summarize, withGroupDeposit, type GroupFile } from "./group-file";
 
 test("slugify makes a url-safe slug", () => {
   assert.equal(slugify("American Legion Post 12 — Alaska 2027"), "american-legion-post-12-alaska-2027");
@@ -205,4 +205,58 @@ test("withGroupDeposit: a cabin with no deposit takes the group's deposit per pe
   assert.ok(dated.length === 12 && dated.every((r) => r["kind"] === "deposit" && r["due_date"] === "2026-12-01"));
   // Without the fill (the old behaviour) a quote with no deposit and no deposit date made no deposit rows at all.
   assert.equal(missingSchedule({ group: { id: "g", deposit_due: null, final_payment_due: "2027-03-01" } as any, cabins: opened.map((c, i) => ({ ...c, id: `o${i}` })), payments: [] }).filter((r) => r["kind"] === "deposit").length, 0);
+});
+
+// ── Group dates come before the sailing (Mark 2026-10-19) ─────────────────────
+
+test("a date after the sailing is refused in plain words, naming the field and the sail date", () => {
+  // Mark's file: unsold cabins go back Dec 1, 2027 for a sailing on May 9, 2027.
+  assert.deepEqual(groupDateProblem({ sail_date: "2027-05-09", recall_date: "2027-12-01" }), {
+    field: "recall_date",
+    error: "Unsold cabins go back must be on or before the sailing, May 9, 2027",
+  });
+  assert.deepEqual(groupDateProblem({ sail_date: "2027-05-09", deposit_due: "2027-05-10" }), {
+    field: "deposit_due",
+    error: "Deposit deadline must be on or before the sailing, May 9, 2027",
+  });
+  assert.equal(groupDateProblem({ sail_date: "2027-05-09", names_due: "2027-06-01" })?.error, "Names due to the line must be on or before the sailing, May 9, 2027");
+  assert.equal(groupDateProblem({ sail_date: "2027-05-09", final_payment_due: "2028-01-01" })?.error, "Final payment deadline must be on or before the sailing, May 9, 2027");
+});
+
+test("a date on the sailing day or earlier, a blank date, or no sail date passes", () => {
+  assert.equal(groupDateProblem({ sail_date: "2027-05-09", recall_date: "2027-05-09", final_payment_due: "2027-03-10", deposit_due: null, names_due: "" }), null);
+  assert.equal(groupDateProblem({ recall_date: "2027-12-01" }), null, "no sail date on the file: nothing to compare with");
+  assert.equal(groupDateProblem({ sail_date: "not a date", recall_date: "2027-12-01" }), null);
+  assert.equal(groupDateProblem({ sail_date: "2027-05-09", recall_date: "soon" }), null);
+  assert.equal(groupDateProblem({ sail_date: "2027-05-09T00:00:00Z", recall_date: "2027-05-09T12:00:00Z" }), null, "only the day counts");
+});
+
+test("a change to part of a saved group is checked against the sail date already on the file", () => {
+  const saved = { sail_date: "2027-05-09", deposit_due: "2026-12-01", names_due: "2027-02-01", final_payment_due: "2027-03-10", recall_date: "2027-01-15" };
+  assert.equal(groupDateProblem({ recall_date: "2027-12-01" }, saved)?.error, "Unsold cabins go back must be on or before the sailing, May 9, 2027");
+  assert.equal(groupDateProblem({ recall_date: "2027-02-01" }, saved), null);
+  assert.equal(groupDateProblem({ recall_date: null }, saved), null);
+  assert.equal(groupDateProblem({ names_due: "2027-05-09" }, saved), null);
+});
+
+test("moving the sail date earlier than a date on the file is refused; moving it later, or leaving it alone, is not", () => {
+  const saved = { sail_date: "2027-05-09", deposit_due: "2026-12-01", names_due: "2027-02-01", final_payment_due: "2027-03-10", recall_date: "2027-04-01" };
+  assert.deepEqual(groupDateProblem({ sail_date: "2027-03-20" }, saved), {
+    field: "recall_date",
+    error: "Unsold cabins go back must be on or before the sailing, March 20, 2027",
+  });
+  assert.equal(groupDateProblem({ sail_date: "2027-01-01" }, saved)?.field, "names_due", "the first date on the file that is now too late");
+  assert.equal(groupDateProblem({ sail_date: "2027-06-01" }, saved), null);
+  assert.equal(groupDateProblem({ sail_date: "2027-05-09" }, saved), null);
+  assert.equal(groupDateProblem({ sail_date: null }, saved), null);
+  // Changed together: the new dates are what count.
+  assert.equal(groupDateProblem({ sail_date: "2027-03-05", recall_date: "2027-03-01" }, saved)?.field, "final_payment_due");
+});
+
+test("a file that already holds a wrong date can still have its other fields edited, and the wrong date fixed", () => {
+  const bad = { sail_date: "2027-05-09", recall_date: "2027-12-01" };
+  assert.equal(groupDateProblem({ notes: "x" }, bad), null);
+  assert.equal(groupDateProblem({ names_due: "2027-02-01" }, bad), null, "only what is being written is checked");
+  assert.equal(groupDateProblem({ sail_date: "2027-05-09", recall_date: "2027-04-01" }, bad), null, "same sail date re-saved while the fix goes in");
+  assert.equal(groupDateProblem({ recall_date: "2027-04-01" }, bad), null);
 });

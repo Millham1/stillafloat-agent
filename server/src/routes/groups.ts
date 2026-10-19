@@ -3,7 +3,9 @@ import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import {
   CHILDREN,
+  BEFORE_SAILING_DATES,
   GROUP_COLUMNS,
+  groupDateProblem,
   missingSchedule,
   pickWritable,
   publicGroupRow,
@@ -96,6 +98,8 @@ router.post("/groups", requireToken, async (req: Request, res: Response) => {
     if (!name) return res.status(400).json({ success: false, error: "A group needs a name" });
     const slug = slugify(typeof picked.row["slug"] === "string" ? picked.row["slug"] : name);
     if (!slug) return res.status(400).json({ success: false, error: "Could not make a web address from that name" });
+    const dateProblem = groupDateProblem(picked.row);
+    if (dateProblem) return res.status(400).json({ success: false, ...dateProblem });
 
     const supabase = db();
     const { data, error } = await supabase.from("groups").insert({ ...picked.row, slug }).select("*").single();
@@ -140,6 +144,14 @@ router.patch("/groups/:id", requireToken, async (req: Request, res: Response) =>
     }
     if (!Object.keys(picked.row).length) return res.status(400).json({ success: false, error: "Nothing to update" });
     const supabase = db();
+    // A date later than the sailing is refused, and so is a sail date moved earlier than a date already on the file.
+    if (["sail_date", ...BEFORE_SAILING_DATES.map(([k]) => k)].some((k) => k in picked.row)) {
+      const { data: current, error: ce } = await supabase.from("groups").select("sail_date, deposit_due, names_due, final_payment_due, recall_date").eq("id", String(req.params["id"])).maybeSingle();
+      if (ce) return res.status(400).json({ success: false, error: ce.message });
+      if (!current) return res.status(404).json({ success: false, error: "Group not found" });
+      const dateProblem = groupDateProblem(picked.row, current);
+      if (dateProblem) return res.status(400).json({ success: false, ...dateProblem });
+    }
     const { data, error } = await supabase
       .from("groups")
       .update({ ...picked.row, updated_at: new Date().toISOString() })

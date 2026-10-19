@@ -88,35 +88,42 @@ function toInput(col: Col, v: unknown): string {
   return String(v);
 }
 
-function Cell({ col, value, onSave }: { col: Col; value: unknown; onSave: (v: unknown) => void }) {
+/**
+ * One editable value. `onSave` may answer `false` when the server refused the change: the box then goes back to the
+ * saved value instead of keeping the refused one. `onEdit` is called when the person types or picks a new value.
+ */
+function Cell({ col, value, onSave, onEdit }: { col: Col; value: unknown; onSave: (v: unknown) => void | boolean | Promise<void | boolean>; onEdit?: () => void }) {
   const [draft, setDraft] = useState(toInput(col, value));
   React.useEffect(() => setDraft(toInput(col, value)), [col, value]);
+  const save = async (v: unknown) => {
+    if ((await onSave(v)) === false) setDraft(toInput(col, value));
+  };
 
   if (col.type === "readonly") return <span className="px-2 text-sm text-muted-foreground">{toInput(col, value) || "—"}</span>;
   if (col.type === "check") {
-    return <input type="checkbox" className="ml-2 h-4 w-4" checked={!!value} onChange={(e) => onSave(e.target.checked)} />;
+    return <input type="checkbox" className="ml-2 h-4 w-4" checked={!!value} onChange={(e) => void save(e.target.checked)} />;
   }
   // A "stamp" is a done/not-done box backed by a timestamp column (paid_at, done_at).
   if (col.type === "stamp") {
     return (
       <label className="flex items-center gap-2 px-2 text-sm">
-        <input type="checkbox" className="h-4 w-4" checked={!!value} onChange={(e) => onSave(e.target.checked ? new Date().toISOString() : null)} />
+        <input type="checkbox" className="h-4 w-4" checked={!!value} onChange={(e) => void save(e.target.checked ? new Date().toISOString() : null)} />
         <span className="text-muted-foreground">{value ? fmtDate(String(value)) : ""}</span>
       </label>
     );
   }
   if (col.type === "select") {
     return (
-      <select className={inputCls} value={draft} onChange={(e) => { setDraft(e.target.value); onSave(e.target.value === "" ? null : e.target.value); }}>
+      <select className={inputCls} value={draft} onChange={(e) => { setDraft(e.target.value); onEdit?.(); void save(e.target.value === "" ? null : e.target.value); }}>
         {col.options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     );
   }
   const commit = () => {
     if (draft === toInput(col, value)) return;
-    if (col.type === "number") onSave(draft === "" ? null : Number(draft));
-    else if (col.type === "datetime") onSave(draft === "" ? null : new Date(draft).toISOString());
-    else onSave(draft);
+    if (col.type === "number") void save(draft === "" ? null : Number(draft));
+    else if (col.type === "datetime") void save(draft === "" ? null : new Date(draft).toISOString());
+    else void save(draft);
   };
   return (
     <input
@@ -124,7 +131,7 @@ function Cell({ col, value, onSave }: { col: Col; value: unknown; onSave: (v: un
       type={col.type === "number" ? "number" : col.type === "date" ? "date" : col.type === "datetime" ? "datetime-local" : "text"}
       step={col.type === "number" ? "0.01" : undefined}
       value={draft}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => { setDraft(e.target.value); onEdit?.(); }}
       onBlur={commit}
       onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
     />
@@ -329,6 +336,8 @@ function GroupDetail({ id }: { id: string }) {
   const { data, isLoading, error } = useQuery<GroupFile>({ queryKey: ["group", id], queryFn: () => api(`/groups/${id}?horizon=3650`) });
   const { data: paperwork } = useQuery<PaperworkData & { success: boolean }>({ queryKey: ["group-signatures", id], queryFn: () => api(`/groups/${id}/signatures`) });
   const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-signatures", id] }); };
+  // The server's refusal of a Group details change (a date later than the sailing), written under the field that was edited. Above the early returns so every render calls the same hooks.
+  const [fieldError, setFieldError] = useState<{ key: string; message: string } | null>(null);
 
   if (isLoading) return <p className="text-muted-foreground">Loading…</p>;
   if (error || !data) return <p className="text-destructive">Could not load this group: {(error as Error)?.message}</p>;
@@ -338,10 +347,17 @@ function GroupDetail({ id }: { id: string }) {
   const travelerOptions = [{ value: "", label: "—" }, ...data.travelers.map((t) => ({ value: t.id, label: [t.first_name, t.last_name].filter(Boolean).join(" ") || "Unnamed traveler" }))];
   const cabinCol: Col = { key: "cabin_id", label: "Cabin", type: "select", options: cabinOptions };
 
-  const saveGroup = async (key: string, v: unknown) => {
-    try { await api(`/groups/${id}`, "PATCH", { [key]: v }); }
-    catch (e) { toast({ variant: "destructive", title: "Not saved", description: (e as Error).message }); }
-    refresh();
+  // True when saved; false when the server refused (its words go under the field and in a toast, and the box keeps the saved value).
+  const saveGroup = async (key: string, v: unknown): Promise<boolean> => {
+    setFieldError(null);
+    try { await api(`/groups/${id}`, "PATCH", { [key]: v }); refresh(); return true; }
+    catch (e) {
+      const message = (e as Error).message;
+      setFieldError({ key, message });
+      toast({ variant: "destructive", title: "Not saved", description: message });
+      refresh();
+      return false;
+    }
   };
   const buildSchedule = async () => {
     try {
@@ -397,7 +413,10 @@ function GroupDetail({ id }: { id: string }) {
           {GROUP_FIELDS.map((f) => (
             <label key={f.key} className="text-xs text-muted-foreground">
               {f.label}
-              <div className="border rounded-md mt-1 bg-card text-foreground"><Cell col={f} value={g[f.key]} onSave={(v) => saveGroup(f.key, v)} /></div>
+              <div className={`border rounded-md mt-1 bg-card text-foreground${fieldError?.key === f.key ? " border-red-500" : ""}`}>
+                <Cell col={f} value={g[f.key]} onSave={(v) => saveGroup(f.key, v)} onEdit={() => setFieldError((fe) => (fe?.key === f.key ? null : fe))} />
+              </div>
+              {fieldError?.key === f.key && <span role="alert" className="block mt-1 text-xs text-red-600">{fieldError.message}</span>}
             </label>
           ))}
         </div>
