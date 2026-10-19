@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Ship, Plus, Trash2, ArrowLeft, AlertTriangle, CalendarClock, FileText, BarChart3 } from "lucide-react";
-import { api } from "@/lib/group-api";
+import { ANALYTICS_KEY, api } from "@/lib/group-api";
 import { useToast } from "@/hooks/use-toast";
 import { GroupMarketing } from "./group-marketing";
 import { GroupTerms } from "./group-terms";
@@ -216,6 +216,7 @@ function GroupList() {
       await api("/groups", "POST", { name, cabins_held: Number(cabins) || 0 });
       setName("");
       qc.invalidateQueries({ queryKey: ["groups"] });
+      qc.invalidateQueries({ queryKey: ANALYTICS_KEY });
     } catch (e) {
       toast({ variant: "destructive", title: "Could not open the group", description: (e as Error).message });
     }
@@ -327,7 +328,8 @@ function GroupDetail({ id }: { id: string }) {
   const { toast } = useToast();
   const { data, isLoading, error } = useQuery<GroupFile>({ queryKey: ["group", id], queryFn: () => api(`/groups/${id}?horizon=3650`) });
   const { data: paperwork } = useQuery<PaperworkData & { success: boolean }>({ queryKey: ["group-signatures", id], queryFn: () => api(`/groups/${id}/signatures`) });
-  const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-signatures", id] }); };
+  // The workspace and the big picture read the same figures from one request; a change on the file makes them stale too.
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-signatures", id] }); qc.invalidateQueries({ queryKey: ANALYTICS_KEY }); };
   // The server's refusal of a Group details change (a date later than the sailing), written under the field that was edited. Above the early returns so every render calls the same hooks.
   const [fieldError, setFieldError] = useState<{ key: string; message: string } | null>(null);
   // A link from the Group Bookings Workspace ends in #section (cabins, payments…): once the file has loaded, scroll to it. Above the early returns, like every hook here.
