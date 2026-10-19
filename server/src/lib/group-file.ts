@@ -1,7 +1,9 @@
 // group-file.ts — pure helpers for the group-bookings file (migration 0041).
 // No I/O here so the rules below are unit-testable: which columns a caller may
-// write, the "no card numbers, ever" guard, and the roll-up that tells Mark what
-// needs attention on a group.
+// write, the "no card numbers, ever" guard, the dates-before-sailing guard, and the
+// roll-up that tells Mark what needs attention on a group.
+
+import { fmtLong } from "./group-document-kit";
 
 export const GROUP_STATUSES = ["draft", "marketing", "booking", "final-paid", "sailed", "closed", "cancelled"] as const;
 
@@ -152,6 +154,45 @@ export function pickWritable(columns: readonly string[], body: unknown): Picked 
     }
   }
   return { ok: true, row };
+}
+
+// ── Group dates must come before the sailing ──────────────────────────────────
+
+/** The group-level dates that fall on or before the day the ship sails, with the words the dashboard uses for them. */
+export const BEFORE_SAILING_DATES = [
+  ["deposit_due", "Deposit deadline"],
+  ["names_due", "Names due to the line"],
+  ["final_payment_due", "Final payment deadline"],
+  ["recall_date", "Unsold cabins go back"],
+] as const;
+
+export type DateProblem = { field: string; error: string };
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
+const dayOf = (v: unknown): string | null => (typeof v === "string" && ISO_DAY.test(v.trim()) ? v.trim().slice(0, 10) : null);
+
+/**
+ * A deposit deadline, names-due date, final payment deadline or "unsold cabins go back" date later than the sail date is
+ * refused (Mark 2026-10-19: he typed Dec 1, 2027 for a May 9, 2027 sailing, the file took it, and the Needs-attention
+ * list showed it as due in 408 days, after the cruise).
+ *
+ * `next` is what is being written. `current` is the saved group, for a change to part of it (PATCH); leave it out when
+ * `next` is the whole row (a new file). Only dates being written are checked against the sail date, so a file that
+ * already holds a wrong date can still have its other fields edited; when the sail date itself moves earlier, every
+ * date on the file is checked against the new one. Returns the first problem in plain words, with the field it names.
+ */
+export function groupDateProblem(next: Record<string, unknown>, current: Record<string, unknown> = {}): DateProblem | null {
+  const sailChanged = "sail_date" in next && dayOf(next["sail_date"]) !== dayOf(current["sail_date"]);
+  const sail = dayOf("sail_date" in next ? next["sail_date"] : current["sail_date"]);
+  if (!sail) return null;
+  for (const [field, label] of BEFORE_SAILING_DATES) {
+    if (!(field in next) && !sailChanged) continue;
+    const day = dayOf(field in next ? next[field] : current[field]);
+    if (day && day > sail) {
+      return { field, error: `${label} must be on or before the sailing, ${fmtLong(sail)}` };
+    }
+  }
+  return null;
 }
 
 // ── Roll-up ───────────────────────────────────────────────────────────────────

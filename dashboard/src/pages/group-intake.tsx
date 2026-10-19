@@ -148,6 +148,8 @@ export default function GroupIntake() {
   // What Save answered: the opened group (a link to it stays on the page if the jump to it does not happen) or the server's refusal.
   const [saved, setSaved] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // The form field the server's refusal names (a date later than the sailing): the message is written under that field as well.
+  const [saveField, setSaveField] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, refetch } = useQuery<{ intake: Intake; found: string[]; group_name?: string | null }>({
@@ -201,7 +203,7 @@ export default function GroupIntake() {
     }
   };
 
-  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: string, v: unknown) => { setForm((f) => ({ ...f, [k]: v })); setSaveField((f) => (f === k ? null : f)); };
   // Air, hotel before and transfers (Mark 2026-10-10): prefilled from the quote when it prints them, typed in otherwise.
   const tp: TravelForm = normalizeTravelForm(form.travel_package);
   const setTp = (next: TravelForm) => set("travel_package", next);
@@ -238,6 +240,8 @@ export default function GroupIntake() {
         navigate(`/groups/${already}`);
       } else {
         const message = (e as Error).message;
+        const field = (e as ApiError).body?.field;
+        setSaveField(typeof field === "string" && FIELDS.some((f) => f.key === field) ? field : null);
         setSaveError(message);
         toast({ variant: "destructive", title: "Not saved", description: message });
       }
@@ -403,8 +407,9 @@ export default function GroupIntake() {
                 <label key={f.key} className="text-xs text-muted-foreground">
                   {f.label} {found.has(f.key) ? <span className="text-green-600">· from the document{hint(f.key) ? ` (${hint(f.key)})` : ""}</span>
                     : hint(f.key) ? <span className="text-sky-600">· {hint(f.key)}</span> : <span className="text-amber-600">· not found</span>}
-                  <input className={inputCls} type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
+                  <input className={`${inputCls}${saveError && saveField === f.key ? " border-red-500" : ""}`} type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
                     value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />
+                  {saveError && saveField === f.key && <span role="alert" className="block mt-1 text-xs text-red-600">{saveError}</span>}
                 </label>
               ))}
               <label className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">

@@ -943,7 +943,7 @@ export default [
   {
     id: "ops.group-writes-refuse",
     basis: "ruling: stillafloat-group-bookings.md — Mark 10/2: never store card numbers; group and booking-intake writes refuse card-shaped input, missing names, unknown groups and already-accepted documents",
-    title: "Group-file and booking-intake writes refuse card numbers, missing names, unknown groups and already-accepted documents (nothing is created)",
+    title: "Group-file and booking-intake writes refuse card numbers, missing names, dates after the sailing, unknown groups and already-accepted documents (nothing is created)",
     covers: ["GET /api/groups"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST/PATCH/DELETE requests (refusal paths only); prod sweeps are read-only",
@@ -956,6 +956,7 @@ export default [
       // database's check constraint refuses it as well — a regression fails the check, not the data.
       refused(t, await send("POST", "/api/groups", {}), 400, "opening a group with no name", /needs a name/i);
       refused(t, await send("POST", "/api/groups", { name: "e2e-fixture never saved", status: "e2e-invalid", notes: CARDLIKE }), 400, "opening a group whose notes hold a card-shaped number", /card number/i);
+      refused(t, await send("POST", "/api/groups", { name: "e2e-fixture never saved", status: "e2e-invalid", sail_date: "2027-05-09", recall_date: "2027-12-01" }), 400, "opening a group whose unsold-cabins date is after the sailing", /Unsold cabins go back must be on or before the sailing, May 9, 2027/i);
       refused(t, await send("PATCH", `/api/groups/${g.id}`, {}), 400, "an empty group edit", /nothing to update/i);
       refused(t, await send("PATCH", `/api/groups/${g.id}`, { status: "e2e-invalid", notes: CARDLIKE }), 400, "a group edit holding a card-shaped number", /card number/i);
       refused(t, await send("PATCH", `/api/groups/${ZERO}`, { notes: "e2e-fixture" }), 404, "editing a group that does not exist", /not found/i);
