@@ -539,6 +539,144 @@ const BANNED: Record<Lang, RegExp[]> = {
   ],
 };
 
+// ── The moments Mark named ────────────────────────────────────────────────────
+// Mark 2026-10-19 (Millham F/F 2027, MSC Seashore: Nassau, then two days at Ocean Cay with an evening beach party and a
+// light show from the island's lighthouse): the copy "doesn't highlight the sunset to sunrise or properly identify the
+// light show / beach party as an exciting activity". The writer had his words but no order: it opened on the port, hung the
+// party on the end of a clause and spent the energy on a dry beat. These helpers read the moments out of his answers (what
+// the reader should see, the pitch, why this sailing) so the prompt can say what to lead with, in what order, and so the
+// walk-through line can be checked against it. Pure code: a lexicon of plain nouns, no model, no numbers.
+
+interface Lex { term: string; re: string }
+/** A term and the pattern that finds it (whole words, any case). A space in the pattern is any run of white space. */
+const lex = (term: string, re: string = term): Lex => ({ term, re: re.replace(/ /g, "\\s+") });
+const wordsOf = (l: Lex, flags = "iu") => new RegExp(`(?<![\\p{L}\\p{N}])(?:${l.re})(?![\\p{L}\\p{N}])`, flags);
+
+/** Things people DO together. Compounds come before the bare noun so "beach party" is one event, not "party". */
+const EVENT_LEX: Lex[] = [
+  lex("beach party", "beach part(?:y|ies)"), lex("pool party", "pool part(?:y|ies)"), lex("dance party", "dance part(?:y|ies)"),
+  lex("sail-away party", "sail[-\\s]?away part(?:y|ies)"), lex("cocktail party", "cocktail part(?:y|ies)"), lex("welcome party", "welcome part(?:y|ies)"),
+  lex("light show", "light shows?"), lex("laser show", "laser shows?"), lex("drone show", "drone shows?"), lex("talent show", "talent shows?"), lex("magic show", "magic shows?"),
+  lex("live music"), lex("silent disco"), lex("movie night", "movie nights?"),
+  lex("party", "part(?:y|ies)"), lex("concert", "concerts?"), lex("bonfire", "bonfires?"), lex("fireworks", "fireworks?"), lex("luau", "luaus?"),
+  lex("cookout", "cookouts?"), lex("barbecue", "barbecues?|bbqs?"), lex("feast", "feasts?"), lex("dinner", "dinners?"), lex("parade", "parades?"),
+  lex("festival", "festivals?"), lex("tasting", "tastings?"), lex("karaoke"), lex("regatta", "regattas?"), lex("excursion", "excursions?"), lex("tour", "tours?"),
+];
+const SUNSET = lex("sunset", "sunsets?|sundown|dusk");
+const SUNRISE = lex("sunrise", "sunrises?|sunup|daybreak|dawn");
+/** Concrete things a person sees or does, which give the copy its energy without an adjective. */
+const SCENE_LEX: Lex[] = [
+  lex("lighthouse", "lighthouses?"), lex("hammock", "hammocks?"), lex("island breezes", "(?:(?:island|ocean|sea|warm) )?breezes?"),
+  lex("walking the beach", "walk(?:s|ing)? (?:(?:on|along|down|the) )*(?:beach|sand)"), lex("sand"), lex("music"),
+  lex("dancing", "danc(?:e|es|ing)"), lex("swimming", "swim(?:s|ming)?"), lex("snorkeling", "snorkel(?:s|l?ing)?"), lex("kayaking", "kayak(?:s|ing)?"),
+];
+
+interface Hit { term: string; text: string; start: number; end: number }
+/** Every lexicon term in the text, in the order written; a span already taken (by a compound, or `taken`) is not found twice. */
+function scan(text: string, lexicon: readonly Lex[], taken: ReadonlyArray<readonly [number, number]> = []): Hit[] {
+  const hits: Hit[] = [];
+  const clash = (s: number, e: number) => hits.some((h) => s < h.end && e > h.start) || taken.some(([a, b]) => s < b && e > a);
+  for (const l of lexicon) {
+    for (const m of text.matchAll(wordsOf(l, "giu"))) {
+      const s = m.index ?? 0, e = s + m[0].length;
+      if (!clash(s, e)) hits.push({ term: l.term, text: m[0].toLowerCase().replace(/\s+/g, " "), start: s, end: e });
+    }
+  }
+  return hits.sort((a, b) => a.start - b.start);
+}
+const mentions = (text: string, l: Lex) => wordsOf(l).test(text);
+const uniq = <T,>(xs: readonly T[]): T[] => [...new Set(xs)];
+
+export interface LeadWith {
+  /** The headline activity: the words that name it (at most three), in the order Mark gives them, and where he says it. */
+  event: { terms: string[]; from: string[] } | null;
+  /** Sunset and sunrise, when he names both: the arc from the first to the last light of the same place. */
+  arc: { terms: ["sunset", "sunrise"]; from: string[] } | null;
+  /** Ports of call he names: the ones in the picture, else the ones in the pitch and his reasons. */
+  ports: { names: string[]; from: string[] } | null;
+  /** Other concrete things in his words (other events, the lighthouse, the hammock, walking the beach). */
+  scenes: string[];
+}
+
+/** The places an answer is read from, in the order the reader should meet them: the picture, the pitch sentence by sentence, then why this sailing. */
+function momentUnits(answers: Record<string, string | boolean>): Array<{ src: string; text: string }> {
+  const s = (k: string) => (typeof answers[k] === "string" ? (answers[k] as string).trim() : "");
+  const out: Array<{ src: string; text: string }> = [];
+  if (s("picture")) out.push({ src: "picture", text: s("picture") });
+  pitchSentences(s("pitch")).forEach((text, i) => out.push({ src: `pitch sentence ${i + 1}`, text }));
+  for (const text of pitchSentences(s("why_sailing"))) out.push({ src: "why_sailing", text });
+  return out;
+}
+
+/** A port as it may be written: its name, and its first two words when the name runs long ("Ocean Cay MSC Marine Reserve" is "Ocean Cay"). */
+function portNames(port: string): string[] {
+  const w = port.trim().split(/\s+/);
+  return uniq([port.trim(), ...(w.length >= 3 ? [w.slice(0, 2).join(" ")] : [])]).filter(Boolean);
+}
+
+/**
+ * The moments to lead with, read from Mark's own answers (the picture, the pitch and why this sailing), in the order the copy uses them:
+ * the headline activity, then the sunset-to-sunrise arc, then the port. Nothing is invented: every word here is one he wrote.
+ */
+export function leadWith(answers: Record<string, string | boolean>, facts: Pick<GroupFacts, "ports">): LeadWith {
+  const units = momentUnits(answers);
+  const eventSpans = units.map((u) => scan(u.text, EVENT_LEX));
+  // The headline activity is the first event he names (the picture first), plus every event named alongside it: a sentence of
+  // his that shares a term with it ("beach party" in the picture, "beach party and light show" in the pitch) is the same event.
+  const named = units.map((u, i) => ({ src: u.src, terms: uniq(eventSpans[i]!.map((h) => h.term)) })).filter((e) => e.terms.length);
+  let event: LeadWith["event"] = null;
+  const otherEvents: string[] = [];
+  if (named.length) {
+    const head = new Set(named[0]!.terms);
+    const from = new Set([named[0]!.src]);
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const e of named) {
+        if (from.has(e.src) || !e.terms.some((t) => head.has(t))) continue;
+        e.terms.forEach((t) => head.add(t)); from.add(e.src); grew = true;
+      }
+    }
+    const terms = [...head];
+    event = { terms: terms.slice(0, 3), from: units.map((u) => u.src).filter((src, i, all) => from.has(src) && all.indexOf(src) === i) };
+    otherEvents.push(...terms.slice(3), ...uniq(named.flatMap((e) => e.terms)).filter((t) => !head.has(t)));
+  }
+
+  const has = (l: Lex) => units.filter((u) => mentions(u.text, l)).map((u) => u.src);
+  const sunsetFrom = has(SUNSET), sunriseFrom = has(SUNRISE);
+  const arc: LeadWith["arc"] = sunsetFrom.length && sunriseFrom.length ? { terms: ["sunset", "sunrise"], from: uniq([...sunsetFrom, ...sunriseFrom]) } : null;
+
+  const portsIn = (text: string) => facts.ports.filter((p) => portNames(p).some((n) => hasPhrase(squash(text), squash(n))));
+  let ports: LeadWith["ports"] = null;
+  const pictureUnit = units.find((u) => u.src === "picture");
+  const inPicture = pictureUnit ? portsIn(pictureUnit.text) : [];
+  const portUnits = inPicture.length ? [pictureUnit!] : units;
+  const names = facts.ports.filter((p) => portUnits.some((u) => portsIn(u.text).includes(p)));
+  if (names.length) ports = { names, from: uniq(portUnits.filter((u) => portsIn(u.text).length).map((u) => u.src)) };
+
+  const taken = units.map((_, i) => eventSpans[i]!.map((h) => [h.start, h.end] as const));
+  const scenes = new Map<string, string>();
+  units.forEach((u, i) => { for (const h of scan(u.text, SCENE_LEX, taken[i])) if (!scenes.has(h.term)) scenes.set(h.term, h.text); });
+  if (!arc) { if (sunsetFrom.length) scenes.set("sunset", "sunset"); if (sunriseFrom.length) scenes.set("sunrise", "sunrise"); }
+  return { event, arc, ports, scenes: [...otherEvents, ...scenes.values()].slice(0, 6) };
+}
+
+/** What the writer is told to lead with, as the lines of the `<lead_with>` block (the numbered list is the order to use). */
+export function leadWithLines(lw: LeadWith): string[] {
+  const src = (from: string[]) => (from.length ? ` (${from.join("; ")})` : "");
+  const items: string[] = [];
+  if (lw.event) items.push(`The headline activity, named as an event people do: ${lw.event.terms.join(", ")}${src(lw.event.from)}`);
+  if (lw.arc) items.push(`The arc, sunset to sunrise in the one place: sunset, then sunrise${src(lw.arc.from)}`);
+  if (lw.ports) items.push(`The port${lw.ports.names.length > 1 ? "s" : ""}: ${lw.ports.names.join(", ")}${src(lw.ports.from)}`);
+  if (!items.length) {
+    return ["Nothing in his answers names an event, a sunset-to-sunrise arc or a port of call. Lead with the first image in \"The picture the reader should see\", then the next, in his order; if the picture is empty, lead with the most physical moment in the pitch."];
+  }
+  return [
+    "Lead with these, in this order. They are the moments Mark gave you in the picture, the pitch and his reasons. The hook and the walk-through sentence are built from them, the dry beat comes last, and the page copy and the campaign open on the first of them.",
+    ...items.map((x, i) => `${i + 1}. ${x}`),
+    ...(lw.scenes.length ? [`Scene details in his words (use them to make the moments physical): ${lw.scenes.join(", ")}`] : []),
+  ];
+}
+
 export interface CopyProblem { field: string; problem: string }
 
 /** The one wording of a field that is over its limit, so the dashboard says what to do about it. */
@@ -588,6 +726,31 @@ export function validateCopy(copy: unknown, facts: GroupFacts, answers: Record<s
   return problems;
 }
 
+/**
+ * What Mark should see but what does not stop him approving (a "note", where a problem blocks): the walk-through line (the
+ * subhead) does not carry the moments his answers name. Mark 2026-10-19: the writer's subhead had the light show but not the beach
+ * party, and the sunrise but not the sunset, so the event read as an aside. It is a nudge to read the line again, never a rule
+ * the copy fails: only English is checked (Mark writes in English; the Spanish copy is a translation), and a field that is
+ * missing is already a problem.
+ */
+export function copyNotes(copy: unknown, facts: Pick<GroupFacts, "lang" | "ports">, answers: Record<string, string | boolean> = {}): CopyProblem[] {
+  if (facts.lang !== "en") return [];
+  const c = (copy && typeof copy === "object" ? copy : {}) as Row;
+  const line = typeof c["subhead"] === "string" ? c["subhead"] : "";
+  if (!line.trim()) return [];
+  const lw = leadWith(answers, facts);
+  const notes: CopyProblem[] = [];
+  if (lw.event) {
+    const lacking = lw.event.terms.filter((t) => !mentions(line, EVENT_LEX.find((l) => l.term === t)!));
+    if (lacking.length) notes.push({ field: "subhead", problem: `the walk-through line does not mention the ${lacking.join(" / ")} the ${lw.event.from.some((f) => f.startsWith("pitch")) ? "pitch" : "picture"} names` });
+  }
+  if (lw.arc && !(mentions(line, SUNSET) && mentions(line, SUNRISE))) {
+    const where = lw.arc.from.includes("why_sailing") ? "why-sailing answer" : lw.arc.from[0]!.startsWith("pitch") ? "pitch" : "picture";
+    notes.push({ field: "subhead", problem: `the walk-through line does not carry the sunset-to-sunrise arc the ${where} names (it needs both "sunset" and "sunrise")` });
+  }
+  return notes;
+}
+
 export function tidyCopy(raw: unknown): GroupCopy {
   const c = (raw && typeof raw === "object" ? raw : {}) as Row;
   const out: Row = {};
@@ -618,6 +781,18 @@ export const HOUSE_VOICE_RULES: string[] = [
   '- Perks shown = what the fare includes, from the quote (drinks package, Wi-Fi, overnight at Ocean Cay...), never "amenity points".',
   `- Primary CTA in every piece: "Scan the QR to join the fun" (exact words), then the link, then the phone ${BUSINESS.phone}.`,
   "- The examples above show the shape only. Never copy their words or details into another group's piece; use this group's own picture and facts.",
+];
+
+/**
+ * What to lead with (Mark 2026-10-19). The picture, the pitch and his reasons name the moments; `<lead_with>` in the user prompt
+ * lists them in order. Shared by the page copy and the campaign so the two cannot drift apart. The brackets show the SHAPE only.
+ */
+export const LEAD_WITH_RULES: string[] = [
+  "- What to lead with: <lead_with> in the user message lists the moments Mark himself named, in the order to use them. Lead with them, in that order. His 'picture' answer and the concrete moments in his pitch and reasons are THE story: the headline activity first, named as an event people do (the evening beach party under the light show), then the sunset-to-sunrise arc in the one place, then the port. Never open on the port, the ship, the schedule or a verb like 'browse'. Mark's pitch keeps its own order (it is copied word for word); this order is for the words we write around it. Spanish copy names the same moments in natural Spanish. The examples in these rules are another group's moments and show the shape only: use this group's moments from <lead_with>.",
+  "- The hook (4–6 words, full stops) and the walk-through sentence are BUILT FROM those moments. The hook names the headline activity in its first words. The walk-through sentence makes the event its subject (never a clause tucked after 'browse', 'watch' or 'enjoy'), uses the words that name it (for example 'beach party', 'light show') and the words 'sunset' and 'sunrise' when <lead_with> has the arc, and fits in 160 characters; the port goes in the intro or why_ship when it will not fit. Shape: [the event, as something people do, in its setting], [sunset to sunrise in the one place]. [the dry beat].",
+  "- The dry beat comes LAST and is about the schedule, the sleeping or the shrug, never about the event: state the event plainly and fully first, then the beat. It must not undercut the event: no 'allegedly', no 'supposedly', no joke at the event's expense.",
+  "- Energy comes from concrete, physical, present-tense moments (the sand, the music, the lighthouse lighting the beach, walking back at sunrise), never from adjectives: no 'amazing', 'incredible', 'unforgettable' or exclamation marks in the words we write. Use the scene details Mark gave in <lead_with>.",
+  "- Where the 'picture' answer names images, why_ship and who_for echo them as scenes (what a person sees or does, in the present tense), in the same order. email_body and the social post (social_post, and the campaign's email 1 and Facebook announcement) open on the headline activity: the first sentence names the event as something people do.",
 ];
 
 /** How a piece is built around Mark's pitch. `where` names the place that must carry it. */
@@ -663,8 +838,9 @@ export function systemPrompt(lang: Lang): string {
     `- Plain text only. No markdown, no emoji, no hashtags, no exclamation marks anywhere in the words we write.${pitchIsHis(lang)}`,
     "House voice (every piece), then how this page is laid out:",
     ...HOUSE_VOICE_RULES,
+    ...LEAD_WITH_RULES,
     ...pitchRules("the intro", "If the pitch is too long for the intro, continue it in why_ship and then who_for, still in his order.", lang),
-    "- Layout: headline = the hook. subhead = the walk-through sentence ending on a dry beat. intro = Mark's pitch, verbatim. cta_blurb = the occasion line plus its wink, then 'Scan the QR to join the fun'.",
+    "- Layout: headline = the hook, built from <lead_with> (the headline activity first). subhead = the walk-through sentence: the event, the sunset-to-sunrise arc, then the dry beat last. intro = Mark's pitch, verbatim. why_ship and who_for echo the picture's images as scenes. social_post and email_body open on the headline activity. cta_blurb = the occasion line plus its wink, then 'Scan the QR to join the fun'.",
     `- email_body: two or three short paragraphs separated by blank lines, ending with "${BUSINESS.tradeName}" on its own line. It may refer to "the link below" for details; do not write a web address.`,
   ].join("\n");
 }
@@ -709,14 +885,16 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
   lines.push(`Organizer's line: ${answers["organizer_quote"] || "(none)"}`);
   lines.push(`Also planned: ${answers["extras"] || "(nothing extra)"}`);
   lines.push("</advisor_interview>");
+  lines.push("<lead_with>", ...leadWithLines(leadWith(answers, facts)), "</lead_with>");
   lines.push(`Tone: ${TONE[String(answers["tone"])] ?? TONE["warm-humor"]}`);
   lines.push("Write the invitation copy. The button asks the reader to say they are interested; it does not take a payment. The QR code on printed pieces opens the same page.");
   return lines.join("\n");
 }
 
-/** Feedback for one retry when the first draft breaks a rule. */
-export function retryNote(problems: CopyProblem[]): string {
+/** Feedback for one retry when the first draft breaks a rule. Notes (the gentle checks) ride along: they never cause a retry on their own. */
+export function retryNote(problems: CopyProblem[], notes: CopyProblem[] = []): string {
   return "Your draft broke these rules. Fix exactly these and change nothing else:\n" +
     problems.slice(0, 12).map((p) => `- ${p.field}: ${p.problem}`).join("\n") +
-    (problems.some((p) => p.problem.startsWith("Pitch sentence not kept")) ? "\nA pitch sentence is copied character for character as Mark wrote it, with his punctuation and his words; the no-exclamation and no-hype rules never apply inside it." : "");
+    (problems.some((p) => p.problem.startsWith("Pitch sentence not kept")) ? "\nA pitch sentence is copied character for character as Mark wrote it, with his punctuation and his words; the no-exclamation and no-hype rules never apply inside it." : "") +
+    (notes.length ? "\nAnd fix these too (Mark wants them, though they do not block approval); lead with the moments in <lead_with>:\n" + notes.slice(0, 4).map((p) => `- ${p.field}: ${p.problem}`).join("\n") : "");
 }

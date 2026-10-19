@@ -2,7 +2,7 @@
 // Mark's interview + the file's facts (never the other way round), validated the same way as the
 // group page copy: every number must exist in the group file or in Mark's own answers.
 import type { GroupFacts, Lang } from "./group-marketing";
-import { HOUSE_BANNED, HOUSE_VOICE_RULES, missingPitchSentences, numbersIn, pitchIsHis, pitchNumberProblems, pitchRules, tooLong, userPrompt, withoutPitch } from "./group-marketing";
+import { HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, missingPitchSentences, numbersIn, pitchIsHis, pitchNumberProblems, pitchRules, tooLong, userPrompt, withoutPitch } from "./group-marketing";
 import { MARK_PHONE } from "./group-package-spec";
 
 export type Row = Record<string, unknown>;
@@ -43,8 +43,9 @@ export function campaignSystemPrompt(lang: Lang): string {
     "- The primary call to action in EVERY piece is the QR code: write 'Scan the QR to join the fun' (every email and every Facebook text carries the QR image beside it), followed by the info-sheet link for people reading on a phone. The phone number is third, for people who would rather call or text.",
     "House voice (every email and every Facebook text):",
     ...HOUSE_VOICE_RULES,
+    ...LEAD_WITH_RULES,
     ...pitchRules("the body of email 1 (the announcement)", "The other emails and the Facebook texts are written in the house voice around the same pitch; they may quote its sentences but do not have to.", lang),
-    "- Layout of email 1: the hook as the opening line, the walk-through sentence ending on a dry beat, then Mark's pitch verbatim, then the occasion line with its wink, then what the fare includes, then the call to action.",
+    "- Layout of email 1: the hook as the opening line, then the walk-through sentence (both built from <lead_with>: the headline activity first, the event and the sunset-to-sunrise arc named in it, the dry beat last), then Mark's pitch verbatim, then the occasion line with its wink, then what the fare includes, then the call to action.",
     "- The three emails: announcement (the invitation), reminder (a few weeks before the reserve-by date; what is still open), last call (the final days before the reserve-by date). Facebook: an announcement post, a shorter reminder post, an event title and description, and a 300-character boosted-post text.",
     `- No emojis, no exclamation marks, no all-caps, no superlatives, no urgency words in the words we write. Never 'cheaper' (say 'less expensive'), never 'actually'. Plain text, short paragraphs. Emails end with 'Still Afloat Cruising' on its own line.${pitchIsHis(lang)}`,
   ].join("\n");
