@@ -20,7 +20,7 @@ type Campaign = { emails: CampaignEmail[]; facebook: { announcement: string; rem
 type Pkg = { assets: Asset[]; chosen: string[]; renders: Row | null; campaign: Campaign | null; campaignProblems: Problem[]; notes: string[]; hasCopy: boolean; shareCode: string | null };
 type Marketing = {
   interview: Question[]; answers: Row; missing: string[]; copyFields: Field[]; langs: Array<"en" | "es">;
-  perLang: Record<string, { facts: Row; copy: Row | null; problems: Problem[] }>;
+  perLang: Record<string, { facts: Row; copy: Row | null; problems: Problem[]; notes?: Problem[] }>;
   shareCode: string | null; approvedAt: string | null; writtenAt: string | null;
 };
 
@@ -59,6 +59,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
   const [draft, setDraft] = useState<Row>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [problems, setProblems] = useState<Problem[]>([]);
+  const [notes, setNotes] = useState<Problem[]>([]);   // gentle: the writer's line misses a moment Mark named; never blocks approval
 
   useEffect(() => { if (data) setAnswers(data.answers); }, [data?.answers]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (data && !data.langs.includes(lang)) setLang(data.langs[0]!); }, [data?.langs]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -66,6 +67,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
     const pl = data?.perLang[lang];
     setDraft(pl?.copy ?? {});
     setProblems(pl?.problems ?? []);
+    setNotes(pl?.notes ?? []);
   }, [data, lang]);
 
   // Every hook sits ABOVE the early returns: the package query, its draft and its effect used to come after
@@ -95,14 +97,14 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
   });
   const write = () => run("write", async () => {
     await api(`/groups/${groupId}/marketing/answers`, "PUT", answers);
-    const r = await api<{ copy: Row; problems: Problem[] }>(`/groups/${groupId}/marketing/write`, "POST", { lang });
-    setDraft(r.copy); setProblems(r.problems);
+    const r = await api<{ copy: Row; problems: Problem[]; notes?: Problem[] }>(`/groups/${groupId}/marketing/write`, "POST", { lang });
+    setDraft(r.copy); setProblems(r.problems); setNotes(r.notes ?? []);
     toast({ title: r.problems.length ? `Written, with ${r.problems.length} thing(s) to fix` : `${LANG_NAME[lang]} copy written`, description: "Read it through, edit anything, then approve." });
     refresh();
   });
   const saveCopy = () => run("copy", async () => {
-    const r = await api<{ problems: Problem[] }>(`/groups/${groupId}/marketing/copy`, "PUT", { lang, copy: draft });
-    setProblems(r.problems);
+    const r = await api<{ problems: Problem[]; notes?: Problem[] }>(`/groups/${groupId}/marketing/copy`, "PUT", { lang, copy: draft });
+    setProblems(r.problems); setNotes(r.notes ?? []);
     toast({ title: r.problems.length ? `Saved, with ${r.problems.length} thing(s) to fix` : "Copy saved" });
     refresh();
   });
@@ -204,6 +206,12 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
                 <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
                   <div className="flex items-center gap-1.5 font-semibold"><AlertTriangle className="w-4 h-4 text-amber-500" /> Fix these before approving</div>
                   <ul className="list-disc pl-5 mt-1">{problems.map((p, i) => <li key={i}>{data.copyFields.find((f) => f.key === p.field)?.label ?? p.field}: {p.problem}</li>)}</ul>
+                </div>
+              )}
+              {notes.length > 0 && (
+                <div className="rounded-md border border-sky-500/50 bg-sky-500/10 p-3 text-sm">
+                  <div className="font-semibold">Worth a second look (does not stop you approving)</div>
+                  <ul className="list-disc pl-5 mt-1">{notes.map((p, i) => <li key={i}>{data.copyFields.find((f) => f.key === p.field)?.label ?? p.field}: {p.problem}</li>)}</ul>
                 </div>
               )}
               {data.copyFields.map((f) => (

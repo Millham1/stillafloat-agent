@@ -1,9 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { campaignSystemPrompt, campaignUserPrompt } from "./group-campaign";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
-  ANSWER_MAX, HOUSE_VOICE_RULES, PITCH_FIRST, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch } from "./group-marketing";
+  ANSWER_MAX, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -475,4 +476,128 @@ test("the writer is shown Mark's pitch sentence by sentence, with the picture, t
   assert.match(p, /A piece Mark likes \(taste only\): the MSC poster/);
   const bare = userPrompt(f, normalizeAnswers({ audience: "a", occasion: "b", why_sailing: "c" }));
   assert.match(bare, /Mark's pitch: \(not given\)/);
+});
+
+// ── Lead with the moments Mark named (Mark 2026-10-19, Millham F/F 2027) ─────────────────────────────────────────
+// "it doesn't highlight the sunset to sunrise or properly identify the light show / beach party as an exciting activity"
+
+/** Millham F/F 2027: MSC Seashore out of Port Canaveral, Nassau, then Ocean Cay overnight. */
+function seashoreFacts(lang: "en" | "es" = "en") {
+  return buildFacts({
+    group: {
+      id: "g2", name: "Millham F/F 2027", organizer_name: "Mark Millham", cruise_line: "MSC CRUISES", ship_name: "MSC SEASHORE", sail_date: "2027-05-09", return_date: "2027-05-13", nights: 4,
+      embark_port: "PCV", deposit_due: "2026-12-01", amenities: [], inclusions: ["Overnight at Ocean Cay"],
+      itinerary: [
+        { day: 1, date: "2027-05-09", port: "Port Canaveral, Florida", arrive: null, depart: "17:00" },
+        { day: 2, date: "2027-05-10", port: "Nassau, Bahamas", arrive: "09:00", depart: "17:00" },
+        { day: 3, date: "2027-05-11", port: "Ocean Cay MSC Marine Reserve, Bahamas", arrive: "08:00", depart: null },
+        { day: 4, date: "2027-05-12", port: "Ocean Cay MSC Marine Reserve, Bahamas", arrive: null, depart: "15:00" },
+        { day: 5, date: "2027-05-13", port: "Port Canaveral, Florida", arrive: "07:00", depart: null },
+      ],
+    },
+    cabins: [],
+  }, null, lang);
+}
+const MARK_ANSWERS = normalizeAnswers({
+  pitch: MARK_PITCH,
+  picture: "The image of the lighthouse beach party, with the insets of the sunset/sunrise beach images, and an image of Nassau.",
+  why_sailing: "Ocean Cay is a private island, and we sleep next to it. Watch the sunset and the sunrise from the same island while walking the beach or relax in a hammock with island breezes.",
+  audience: "Friends and family", occasion: "First Friends and Family cruise",
+  reference: "https://www.youtube.com/watch?v=msc-seashore",
+});
+// what the writer produced from the old prompt: the light show but not the beach party, the sunrise but not the sunset
+const OLD_SUBHEAD = "Browse Nassau, then watch a lighthouse light show over the beach at Ocean Cay and catch the sunrise from the same sand. Only the ship keeps a schedule.";
+const NEW_SUBHEAD = "An evening beach party under a lighthouse light show, then sunset to sunrise on one island. Only the ship keeps a schedule.";
+
+test("Mark's answers give the moments in the order to lead with: the beach party and light show, then sunset to sunrise, then Nassau", () => {
+  const lw = leadWith(MARK_ANSWERS, seashoreFacts());
+  assert.deepEqual(lw.event, { terms: ["beach party", "light show"], from: ["picture", "pitch sentence 2"] });
+  assert.deepEqual(lw.arc, { terms: ["sunset", "sunrise"], from: ["picture", "why_sailing"] });
+  assert.deepEqual(lw.ports, { names: ["Nassau"], from: ["picture"] }, "the picture's port; Ocean Cay is where the event is, not a second item");
+  assert.deepEqual(lw.scenes, ["lighthouse", "walking the beach", "hammock", "island breezes"]);
+});
+
+test("the writer's prompt carries the moments list in that order, with the instruction to lead with them", () => {
+  const p = userPrompt(seashoreFacts(), MARK_ANSWERS);
+  const block = p.slice(p.indexOf("<lead_with>"), p.indexOf("</lead_with>"));
+  assert.match(block, /Lead with these, in this order\./);
+  assert.match(block, /the dry beat comes last/);
+  const at = (re: RegExp) => { const m = re.exec(block); assert.ok(m, String(re)); return m!.index; };
+  const first = at(/1\. The headline activity, named as an event people do: beach party, light show \(picture; pitch sentence 2\)/);
+  const second = at(/2\. The arc, sunset to sunrise in the one place: sunset, then sunrise \(picture; why_sailing\)/);
+  const third = at(/3\. The port: Nassau \(picture\)/);
+  assert.ok(first < second && second < third, "event, then the arc, then the port");
+  assert.match(block, /Scene details in his words .*: lighthouse, walking the beach, hammock, island breezes/);
+  assert.ok(p.indexOf("</advisor_interview>") < p.indexOf("<lead_with>"), "after his answers, so the numbers refer to them");
+  assert.match(p, /2\. Enjoy\s+all that Nassau has to offer, then spend two incredible days/, "his pitch is still shown sentence by sentence");
+});
+
+test("both system prompts (page copy and campaign) say what to lead with, in the same words", () => {
+  for (const sys of [systemPrompt("en"), systemPrompt("es"), campaignSystemPrompt("en"), campaignSystemPrompt("es")]) {
+    for (const rule of LEAD_WITH_RULES) assert.ok(sys.includes(rule), rule.slice(0, 60));
+  }
+  const sys = systemPrompt("en");
+  assert.match(sys, /the headline activity first, named as an event people do \(the evening beach party under the light show\), then the sunset-to-sunrise arc in the one place, then the port/);
+  assert.match(sys, /The hook \(4–6 words, full stops\) and the walk-through sentence are BUILT FROM those moments/);
+  assert.match(sys, /The dry beat comes LAST and is about the schedule, the sleeping or the shrug, never about the event/);
+  assert.match(sys, /Energy comes from concrete, physical, present-tense moments .*never from adjectives/);
+  assert.match(sys, /why_ship and who_for echo them as scenes/);
+  assert.match(campaignSystemPrompt("en"), /Layout of email 1: the hook as the opening line, then the walk-through sentence \(both built from <lead_with>/);
+  assert.match(campaignSystemPrompt("en"), /the campaign's email 1 and Facebook announcement\) open on the headline activity/);
+  // the campaign writer sees the same moments list
+  const user = campaignUserPrompt(seashoreFacts(), MARK_ANSWERS, "https://stillafloatcruising.com/group.html?g=x");
+  assert.match(user, /1\. The headline activity, named as an event people do: beach party, light show/);
+  // the bans for our own words are unchanged
+  assert.match(sys, /no 'amazing', 'incredible', 'unforgettable' or exclamation marks in the words we write/);
+});
+
+test("nothing named in his answers: the writer is told to lead with the picture in his order, not handed an invented list", () => {
+  const p = userPrompt(seashoreFacts(), normalizeAnswers({ pitch: "Four nights out of Port Canaveral with the people you already like.", audience: "a", occasion: "b", why_sailing: "c" }));
+  assert.match(p, /<lead_with>\nNothing in his answers names an event, a sunset-to-sunrise arc or a port of call\. Lead with the first image/);
+  assert.deepEqual(leadWith({}, seashoreFacts()), { event: null, arc: null, ports: null, scenes: [] });
+});
+
+test("one half of the arc is a scene detail, not the arc; a port in the pitch alone is found when the picture names none", () => {
+  const lw = leadWith(normalizeAnswers({ pitch: "A bonfire on the sand at Ocean Cay. Dinner in Nassau.", why_sailing: "Sunrise from the deck." }), seashoreFacts());
+  assert.deepEqual(lw.event, { terms: ["bonfire"], from: ["pitch sentence 1"] }, "the first event he names is the headline; a second one in another sentence is a scene");
+  assert.equal(lw.arc, null);
+  assert.deepEqual(lw.scenes, ["dinner", "sand", "sunrise"]);
+  assert.deepEqual(lw.ports, { names: ["Nassau", "Ocean Cay MSC Marine Reserve"], from: ["pitch sentence 1", "pitch sentence 2"] });
+});
+
+test("the gentle check fires on the old subhead (no beach party, no sunset) and stays quiet on one that names the event and the arc", () => {
+  const f = seashoreFacts();
+  const old = copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, f, MARK_ANSWERS);
+  assert.deepEqual(old, [
+    { field: "subhead", problem: "the walk-through line does not mention the beach party the pitch names" },
+    { field: "subhead", problem: 'the walk-through line does not carry the sunset-to-sunrise arc the why-sailing answer names (it needs both "sunset" and "sunrise")' },
+  ]);
+  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: NEW_SUBHEAD }, f, MARK_ANSWERS), []);
+  // each of the event's words is looked for: the party without the light show names the light show
+  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: "A beach party, then sunset and sunrise on one island." }, f, MARK_ANSWERS).map((n) => n.problem),
+    ["the walk-through line does not mention the light show the pitch names"]);
+});
+
+test("the gentle check is a note, never a problem: the old subhead still passes validateCopy, so approval is not blocked", () => {
+  const f = seashoreFacts();
+  const copy = { ...goodCopy(), intro: VERBATIM, subhead: OLD_SUBHEAD, why_ship: "Sunset on the beach, a light show from the lighthouse, sunrise on the same sand.", email_body: `${VERBATIM}\n\nStill Afloat Cruising` };
+  assert.deepEqual(validateCopy(copy, f, MARK_ANSWERS), []);
+  assert.equal(copyNotes(copy, f, MARK_ANSWERS).length, 2);
+});
+
+test("the gentle check asks only what his answers name: no pitch moments, no note; Spanish and an empty subhead are not checked", () => {
+  const f = seashoreFacts();
+  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, f, normalizeAnswers({ pitch: "Four nights out of Port Canaveral with the people you already like.", audience: "a", occasion: "b", why_sailing: "c" })), []);
+  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, f, {}), []);
+  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, seashoreFacts("es"), MARK_ANSWERS), [], "Mark writes in English; the Spanish copy is a translation");
+  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: "" }, f, MARK_ANSWERS), [], "a missing subhead is already a problem");
+  assert.deepEqual(copyNotes(null, f, MARK_ANSWERS), []);
+});
+
+test("a retry that happens anyway carries the notes; a note alone never reads as a broken rule", () => {
+  const notes = copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, seashoreFacts(), MARK_ANSWERS);
+  const withNotes = retryNote([{ field: "who_for", problem: "too long: 901 of 900 characters — shorten it, or ask Mark" }], notes);
+  assert.match(withNotes, /Fix exactly these and change nothing else:\n- who_for: too long/);
+  assert.match(withNotes, /And fix these too \(Mark wants them, though they do not block approval\); lead with the moments in <lead_with>:\n- subhead: the walk-through line does not mention the beach party/);
+  assert.doesNotMatch(retryNote([{ field: "who_for", problem: "missing" }]), /And fix these too/);
 });

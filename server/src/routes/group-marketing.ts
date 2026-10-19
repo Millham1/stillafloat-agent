@@ -9,7 +9,7 @@ import { notifyMark } from "../lib/notify";
 import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
-  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, missingAnswers, newShareCode, normalizeAnswers, pitchGate, pitchNumberProblems, retryNote,
+  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, missingAnswers, newShareCode, normalizeAnswers, pitchGate, pitchNumberProblems, retryNote,
   shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
@@ -121,7 +121,7 @@ router.get("/groups/:id/marketing", requireToken, async (req: Request, res: Resp
     for (const lang of langs) {
       const facts = buildFacts({ group, cabins, travel }, rating, lang);
       const copy = copyFor(group, lang);
-      perLang[lang] = { facts, copy, problems: copy ? validateCopy(copy, facts, answers) : [] };
+      perLang[lang] = { facts, copy, problems: copy ? validateCopy(copy, facts, answers) : [], notes: copy ? copyNotes(copy, facts, answers) : [] };
     }
     return res.json({
       success: true,
@@ -176,12 +176,14 @@ router.post("/groups/:id/marketing/write", requireToken, async (req: Request, re
     let copy = tidyCopy(await llmJson<Row>({ ...base, user: userPrompt(facts, answers) }));
     let problems = validateCopy(copy, facts, answers);
     if (problems.length) {
+      // The notes (the walk-through line misses the moments Mark named) ride along on a retry that happens anyway; they never cause one.
       copy = tidyCopy(await llmJson<Row>({
         ...base,
-        user: `${userPrompt(facts, answers)}\n\n<previous_draft>\n${JSON.stringify(copy)}\n</previous_draft>\n\n${retryNote(problems)}`,
+        user: `${userPrompt(facts, answers)}\n\n<previous_draft>\n${JSON.stringify(copy)}\n</previous_draft>\n\n${retryNote(problems, copyNotes(copy, facts, answers))}`,
       }));
       problems = validateCopy(copy, facts, answers);
     }
+    const notes = copyNotes(copy, facts, answers);
 
     // New words are unapproved words: writing takes the page down until Mark approves again.
     const next = { ...(group.marketing_copy ?? {}), [lang]: copy, written_at: new Date().toISOString() };
@@ -189,8 +191,8 @@ router.post("/groups/:id/marketing/write", requireToken, async (req: Request, re
       .update({ marketing_copy: next, marketing_approved_at: null, updated_at: new Date().toISOString() })
       .eq("id", group.id);
     if (error) throw new Error(error.message);
-    logger.info({ group: group.id, lang, problems: problems.length }, "group marketing copy written");
-    return res.json({ success: true, lang, copy, problems });
+    logger.info({ group: group.id, lang, problems: problems.length, notes: notes.length }, "group marketing copy written");
+    return res.json({ success: true, lang, copy, problems, notes });
   } catch (err) {
     return fail(req, res, err, "group marketing write failed");
   }
@@ -205,7 +207,9 @@ router.put("/groups/:id/marketing/copy", requireToken, async (req: Request, res:
     const lang: Lang = body["lang"] === "es" ? "es" : "en";
     const copy = tidyCopy(body["copy"]);
     const facts = buildFacts({ group, cabins, travel }, rating, lang);
-    const problems = validateCopy(copy, facts, normalizeAnswers(group.marketing));
+    const answers = normalizeAnswers(group.marketing);
+    const problems = validateCopy(copy, facts, answers);
+    const notes = copyNotes(copy, facts, answers);   // gentle: shown to Mark, never blocks approval
     const next = { ...(group.marketing_copy ?? {}), [lang]: copy };
     // An edit to approved copy that introduces a problem takes the page down;
     // a clean edit keeps the approval (Mark is the one editing).
@@ -213,7 +217,7 @@ router.put("/groups/:id/marketing/copy", requireToken, async (req: Request, res:
     if (problems.length) patch["marketing_approved_at"] = null;
     const { error } = await db().from("groups").update(patch).eq("id", group.id);
     if (error) throw new Error(error.message);
-    return res.json({ success: true, lang, copy, problems, approvedAt: problems.length ? null : group.marketing_approved_at ?? null });
+    return res.json({ success: true, lang, copy, problems, notes, approvedAt: problems.length ? null : group.marketing_approved_at ?? null });
   } catch (err) {
     return fail(req, res, err, "group marketing copy save failed");
   }
