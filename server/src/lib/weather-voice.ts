@@ -81,6 +81,9 @@ export async function weatherSynopsis(
   lang: Lang = "en",
   gen: Gen = (args) => llmText({ job: "weather.synopsis", ...args }),
   now: () => number = Date.now,
+  // cache:false — the table is an earlier copy of the forecast (Open-Meteo would not answer), so the note
+  // written from it must not stand for six hours after the real forecast is back (routes/weather.ts).
+  opts: { cache?: boolean } = {},
 ): Promise<string> {
   const key = `${loc.slug}|${lang}`;
   const hit = cache.get(key);
@@ -100,6 +103,6 @@ export async function weatherSynopsis(
   } catch {
     text = "";                                // any model failure degrades to no synopsis (page hides the box)
   }
-  if (text) cache.set(key, { text, expiresAt: now() + TTL_MS });
+  if (text && opts.cache !== false) cache.set(key, { text, expiresAt: now() + TTL_MS });
   return text;
 }
