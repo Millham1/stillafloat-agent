@@ -249,10 +249,12 @@ describe("the poster resolves pending posts inside batches already marked posted
 });
 
 describe("the release gate's stale rule agrees with the poster's", () => {
-  // e2e/checks/jobs.mjs flags a due post still waiting after 7 days + 30 minutes. The poster's
+  // e2e/checks/jobs.mjs (2026-10-17) flags a due post that was already more than 7 days past its slot when the
+  // poster LAST FINISHED A RUN (5 minutes of slack for the run's own length) — judged against the poster's ledger,
+  // not the wall clock, so a post that crosses the line while the box restarts is not a failure. The poster's
   // window is staleDays() (7 by default) and it ticks every 10 minutes.
   const GATE_DAYS = 7;
-  const GATE_GRACE_MS = 30 * 60_000;
+  const GATE_GRACE_MS = 5 * 60_000;
   const TICK_MS = 10 * 60_000;
   const gateFlags = (slot: number, now: number) => slot < now - GATE_DAYS * 24 * HOUR - GATE_GRACE_MS;
 
@@ -265,13 +267,16 @@ describe("the release gate's stale rule agrees with the poster's", () => {
       d = path.dirname(d);
     }
     assert.ok(src, `e2e/checks/jobs.mjs not found above ${process.cwd()} — run the tests from server/ inside the monorepo`);
-    assert.ok(src.includes("at(i) < now - 7 * DAY - 30 * 60_000"), "the gate's overdue rule changed — update this test and the poster together");
+    assert.ok(src.includes("Math.min(lastRun, now) - 7 * DAY - 5 * 60_000"), "the gate's overdue rule changed — update this test and the poster together");
+    assert.ok(src.includes("overdue = due.filter((i) => unresolved(i) && at(i) < settled)"), "the gate's overdue rule changed — update this test and the poster together");
     assert.ok(src.includes('!i.postedAt && (!i.postState || i.postState === "scheduled")'), "the gate's definition of an unresolved post changed");
   });
 
-  it("the poster's window is the gate's seven days, and the gate's grace covers a poster tick", () => {
+  it("the poster's window is the gate's seven days, and the gate judges against the poster's own last run", () => {
     assert.equal(STALE_DAYS_DEFAULT, GATE_DAYS);
-    assert.ok(GATE_GRACE_MS >= 2 * TICK_MS, "the gate must wait longer than a tick or two before calling a post overdue");
+    // The gate's reference point is the poster's last finished run, so its slack only has to cover a run's own
+    // length (seconds), never a whole tick: anything the poster had its chance to settle and did not is a failure.
+    assert.ok(GATE_GRACE_MS > 0 && GATE_GRACE_MS < TICK_MS, "the gate's slack is for a run's own length, not a tick");
   });
 
   it("after one poster pass nothing the gate would flag is left pending, at any age around the boundary", async () => {
