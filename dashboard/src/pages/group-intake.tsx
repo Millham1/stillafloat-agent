@@ -18,6 +18,11 @@ type Intake = {
   model: string | null; created_at: string; updated_at: string;
 };
 
+/** A refused request: the server's own words as the message, and its whole answer (e.g. group_id on "Already accepted") on `body`. */
+class ApiError extends Error {
+  constructor(message: string, readonly body: Row = {}) { super(message); }
+}
+
 async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const r = await fetch(`/api${path}`, {
     method,
@@ -26,7 +31,7 @@ async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> 
   });
   const json = await r.json().catch(() => ({}));
   if (r.status === 401) throw new Error("This browser's access token was not accepted. Open the sign-in link again.");
-  if (!r.ok) throw new Error(json?.error || `Request failed (${r.status})`);
+  if (!r.ok) throw new ApiError(json?.error || `Request failed (${r.status})`, json && typeof json === "object" ? json : {});
   return json as T;
 }
 
@@ -128,6 +133,9 @@ export default function GroupIntake() {
   };
   const [form, setForm] = useState<Row>({});
   const [saving, setSaving] = useState(false);
+  // What Save answered: the opened group (a link to it stays on the page if the jump to it does not happen) or the server's refusal.
+  const [saved, setSaved] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data } = useQuery<{ intake: Intake; found: string[] }>({
@@ -136,7 +144,7 @@ export default function GroupIntake() {
     enabled: !!intakeId,
     refetchInterval: (q) => {
       const s = q.state.data?.intake.status;
-      return s === "ready" || s === "failed" || s === "accepted" ? false : 2500;
+      return saved || s === "ready" || s === "failed" || s === "accepted" ? false : 2500;
     },
     refetchIntervalInBackground: true,
   });
@@ -167,6 +175,8 @@ export default function GroupIntake() {
       });
       const res = await api<{ intake: Intake }>("/groups/intake", "POST", { booking_kind: kind, lang, filename: file.name, data: b64 });
       setForm({});
+      setSaved(null);
+      setSaveError(null);
       setIntakeId(res.intake.id);
     } catch (e) {
       toast({ variant: "destructive", title: "Upload failed", description: (e as Error).message });
@@ -188,6 +198,7 @@ export default function GroupIntake() {
   const save = async () => {
     if (!intakeId) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const group: Row = { name: form.name, lang: form.lang ?? lang };
       for (const f of FIELDS) {
@@ -200,10 +211,21 @@ export default function GroupIntake() {
       group.inclusions = form.guest_inclusions ?? [];
       const travel = travelRows(tp);
       const r = await api<{ group: Row; cabins: number; payments: number; travel: number }>(`/groups/intake/${intakeId}/accept`, "POST", { group, travel });
+      // The group exists from here on. Keep a link to it on the page, then go there; if the jump does not happen the link is what is left.
+      setSaved(String(r.group.id));
       toast({ title: "Group file opened", description: `${r.cabins} cabin${r.cabins === 1 ? "" : "s"} and ${r.payments} payment line${r.payments === 1 ? "" : "s"} created.` });
       navigate(`/groups/${r.group.id}`);
     } catch (e) {
-      toast({ variant: "destructive", title: "Not saved", description: (e as Error).message });
+      const already = (e as ApiError).body?.group_id;
+      if (already) {
+        // "Already accepted": an earlier Save did create the group (the page never showed it). Offer it instead of an error.
+        setSaved(String(already));
+        navigate(`/groups/${already}`);
+      } else {
+        const message = (e as Error).message;
+        setSaveError(message);
+        toast({ variant: "destructive", title: "Not saved", description: message });
+      }
     } finally {
       setSaving(false);
     }
@@ -294,7 +316,8 @@ export default function GroupIntake() {
                   <button onClick={retry} className="ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded border"><RotateCw className="w-3 h-3" /> Try again</button>
                 </>
               )}
-              {!busy && <button onClick={() => { setIntakeId(null); setForm({}); }} className="ml-auto text-xs px-2 py-1 rounded border">Start over</button>}
+              {intake.status === "accepted" && intake.group_id && <Link href={`/groups/${intake.group_id}`}><span className="text-sm text-primary underline cursor-pointer">Open the group file</span></Link>}
+              {!busy && <button onClick={() => { setIntakeId(null); setForm({}); setSaved(null); setSaveError(null); }} className="ml-auto text-xs px-2 py-1 rounded border">Start over</button>}
             </div>
           )}
         </CardContent>
@@ -314,10 +337,22 @@ export default function GroupIntake() {
                 <h3 className="font-semibold">What the document says</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">{foundShown} of {shownKeys.length} fields found. Anything marked "not found" is blank on purpose — fill it in if you know it.</p>
               </div>
-              <button onClick={save} disabled={saving || !String(form.name ?? "").trim()}
-                className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50">
-                {saving ? "Saving…" : "Save and open the group file"}
-              </button>
+              <div className="flex flex-col items-end gap-1 max-w-md">
+                {saved ? (
+                  <Link href={`/groups/${saved}`}>
+                    <span className="inline-block text-sm px-4 py-1.5 rounded-md bg-green-600 text-white cursor-pointer">Saved — open the group file</span>
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    {saving && <span className="text-xs text-muted-foreground">Saving…</span>}
+                    <button onClick={save} disabled={saving || !String(form.name ?? "").trim()}
+                      className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50">
+                      Save and open the group file
+                    </button>
+                  </div>
+                )}
+                {saveError && <p className="text-xs text-red-600 text-right" role="alert">Not saved: {saveError}</p>}
+              </div>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 p-4">
               <label className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
