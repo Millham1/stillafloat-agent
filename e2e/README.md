@@ -5,7 +5,7 @@ tested end to end very thoroughly… think of the website holistically, not as s
 This folder is that test, and the tools around it make it the only road to prod.
 
 ## What it is
-- `checks/*.mjs` — 162 checks over 14 areas (news, commentary, affiliate, ships, cabins, audience,
+- `checks/*.mjs` — 163 checks over 14 areas (news, commentary, affiliate, ships, cabins, audience,
   editorial, ops, pages, flows, jobs, vitals, weather, storm). Each check requests real pages and endpoints of a
   running box and asserts what a visitor or Mark would see. One check may cover many routes.
 - `run.mjs` — the runner. `--mode dev|prod`, `--site/--news/--ops` base addresses, `--only a,b`

@@ -23,6 +23,9 @@
 //               anything card-shaped, and the card guard is proven to refuse on every write path.
 //   2026-10-07  Group marketing (dev only until the 2026-10-08 promotion): the public page must
 //               show exactly the approved copy, never an unapproved group, never contact details.
+//   2026-10-19  Group Bookings Workspace: Mark asked for a Power BI style page, and the page and the big-picture band on the
+//               Group Bookings tab read ONE dataset (GET /api/groups/analytics). It must agree with the group list and must
+//               never carry a passport, a link hash, a signature answer, a message body or a plain email address.
 //
 // SAFETY NOTES (read before adding a request here):
 //   • Prod is read-only. GET /api/ops/conflicts PRUNES stale conflicts in the ops-manager's pending
@@ -149,6 +152,64 @@ async function settledGroup(t, id) {
   return last;
 }
 
+/**
+ * The workspace's dataset read between two reads of the group list. The dataset and the list are separate reads of every group's
+ * roll-up, and other checks put fixture rows on the draft group and take them off again while a sweep runs (see settledGroup), so the
+ * two are compared only when the list did not move while the dataset was being read. A real difference shows on every try.
+ */
+async function settledAnalytics(t) {
+  let last = null;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const before = await groupsList(t);
+    const body = t.success(await t.get("/api/groups/analytics", { auth: true }));
+    const after = await groupsList(t);
+    const rolls = (list) => JSON.stringify(list.map((g) => [g.id, g.summary]));
+    last = { body, listed: after, attempts: attempt, settled: rolls(before) === rolls(after) };
+    if (last.settled) return last;
+    await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+  }
+  return last;
+}
+
+/** Field → type for every row of each dataset the Group Bookings Workspace slices. "x?" may also be null. */
+const ANALYTICS_SHAPE = {
+  groups: { id: "string", name: "string", status: "string", lang: "string", cruiseLine: "string?", shipName: "string?", sailDate: "string?", daysToSail: "number?",
+    cabinsTotal: "number", cabinsHeld: "number", cabinsOffered: "number", cabinsBooked: "number", cabinsReleased: "number",
+    travelersExpected: "number", travelersOnFile: "number", formsSent: "number", formsReturned: "number", fullySigned: "number",
+    depositsTotal: "number", depositsPaid: "number", paymentsOpen: "number", paymentsPaid: "number", paymentsOverdue: "number",
+    amountDue: "number", amountPaid: "number", amountOverdue: "number", interestsTotal: "number", interestsNew: "number", interestsConverted: "number",
+    journeyQueued: "number", journeySent: "number", journeyFailed: "number", nextDeadlineLabel: "string?", nextDeadlineDate: "string?", nextDeadlineDaysOut: "number?",
+    marketingApproved: "boolean", needsAttention: "boolean", attentionReasons: "array" },
+  cabins: { id: "string", groupId: "string", groupName: "string", cabinNum: "string?", category: "string?", status: "string", bookingNumber: "string?", priceTotal: "number?", depositAmount: "number?", travelerCount: "number", travelers: "string" },
+  travelers: { id: "string", groupId: "string", groupName: "string", name: "string", email: "string?", lang: "string", isLead: "boolean", formStatus: "string", docsRequired: "number", docsSigned: "number", fullySigned: "boolean", passportOnFile: "boolean" },
+  payments: { id: "string", groupId: "string", groupName: "string", kind: "string", status: "string", amount: "number?", dueDate: "string?", daysOut: "number?" },
+  paperwork: { groupId: "string", groupName: "string", travelerId: "string", travelerName: "string", docKey: "string", docTitle: "string", status: "string" },
+  messages: { id: "string", groupId: "string", groupName: "string", kind: "string", status: "string", to: "string?", journey: "boolean" },
+  interests: { id: "string", groupId: "string", groupName: "string", status: "string", name: "string", lang: "string", email: "string?", daysAgo: "number?" },
+  deadlines: { groupId: "string", groupName: "string", kind: "string", label: "string", date: "string", daysOut: "number", done: "boolean" },
+  journey: { groupId: "string", groupName: "string", kind: "string", label: "string", planned: "number", due: "number", sent: "number", failed: "number", skipped: "number", blocked: "number" },
+  docs: { key: "string", title: "string" },
+};
+/** Keys that may appear nowhere in the workspace's data, at any depth. */
+const ANALYTICS_FORBIDDEN_KEYS = ["passport_enc", "passport_number", "passport_last4", "form_token_hash", "hub_token_hash", "organizer_token_hash", "ip_hash", "ua_hash", "consent_ip_hash", "answers", "body_html", "pdf_path", "token"];
+function analyticsKeys(value, out = new Set()) {
+  if (Array.isArray(value)) for (const v of value) analyticsKeys(v, out);
+  else if (value && typeof value === "object") for (const [k, v] of Object.entries(value)) { out.add(k); analyticsKeys(v, out); }
+  return out;
+}
+function typedRow(t, row, shape, what) {
+  t.ok(row && typeof row === "object" && !Array.isArray(row), `${what} is not an object`);
+  for (const [field, type] of Object.entries(shape)) {
+    t.ok(field in row, `${what} has no "${field}"`);
+    const v = row[field];
+    const nullable = type.endsWith("?");
+    const base = nullable ? type.slice(0, -1) : type;
+    if (v === null && nullable) continue;
+    const okType = base === "array" ? Array.isArray(v) : base === "number" ? typeof v === "number" && Number.isFinite(v) : typeof v === base;
+    t.ok(okType, `${what}: "${field}" should be ${base}${nullable ? " or empty" : ""}, got ${v === null ? "null" : Array.isArray(v) ? "a list" : typeof v}`);
+  }
+}
+
 export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
@@ -230,7 +291,8 @@ export default [
       // 2026-10-08 promotion.)
       for (const needle of ["/api/auth-check", "x-affiliate-token", "/api/ai-visibility", "/api/social-analytics",
         "/api/ops/finance/summary", "/api/ops/finance/cashflow", "/api/ops/finance/transactions", "/api/ops/finance/subscriptions",
-        "/api/ops/youtube-analytics", "/api/ops/gsc/analytics", "/api/ops/seo-proposals", "/groups/intake", "/payment-schedule", "horizon=3650"]) {
+        "/api/ops/youtube-analytics", "/api/ops/gsc/analytics", "/api/ops/seo-proposals", "/groups/intake", "/payment-schedule", "horizon=3650",
+        "/groups/analytics", "/groups/workspace"]) {
         t.ok(js.text.includes(needle), `the dashboard program no longer mentions ${needle} — a page of the dashboard is unwired`);
       }
       t.observe("dashboard title", H.title(html));
@@ -879,6 +941,106 @@ export default [
       refused(t, await t.get(`/api/groups/intake/${ZERO}/file`, { auth: true }), 404, "the filed document of a booking intake that does not exist", /not found/i);
       if (groups[0]) { t.observe("group keys", keysOf(groups[0])); t.observe("summary keys", keysOf(groups[0].summary)); }
       t.observe("groups", groups.length, "min");
+    },
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: "ops.group-analytics",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-19: \"I need a link to open a power BI style dashboard to track this. the group booking tab in the business dashboard should give the 'big picture', the power BI should be the workhorse\" — the workspace and the big-picture band read ONE dataset, so its figures must agree with the group list, and it must never carry a passport, a link hash, a signature answer, a message body or a plain email address",
+    title: "The Group Bookings Workspace's data answers only to Mark's token, carries every dataset the page slices, agrees with the group list, and holds no passport, link hash, signature answer, message body or plain email address; its page address opens the dashboard",
+    covers: ["GET /api/groups/analytics", "GET /api/groups"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      unauthorized(t, await t.get("/api/groups/analytics"), "GET /api/groups/analytics");
+      refused(t, await t.get("/api/groups/analytics", { headers: { "x-affiliate-token": "e2e-wrong-token" } }), 401, "the workspace's data with a wrong token", /unauthori[sz]ed/i);
+
+      const { body, listed, settled, attempts } = await settledAnalytics(t);
+      // Whether Mark has opened any group file is his business, so prod is only compared when it has some; dev holds the seeded test groups.
+      if (t.mode === "dev") t.require(listed.length > 0, "there are no group files on dev (the seeded test groups should be there), so the workspace cannot be tested");
+      t.matches(body.generatedAt, /^\d{4}-\d{2}-\d{2}T/, "the time the data was made");
+      t.matches(body.today, /^\d{4}-\d{2}-\d{2}$/, "the day the data was counted for");
+      t.ok(Array.isArray(body.warnings), "the dataset has no warnings list");
+      t.equal(body.warnings.length, 0, `things the dataset could not work out: ${body.warnings.join(" | ").slice(0, 300)}`);
+
+      // Every dataset is there, and every row has the fields (and types) the page reads.
+      for (const [set, shape] of Object.entries(ANALYTICS_SHAPE)) {
+        t.ok(Array.isArray(body[set]), `the dataset has no "${set}" list`);
+        for (const [i, row] of body[set].entries()) typedRow(t, row, shape, `${set}[${i}]`);
+      }
+      const groupIds = new Set(body.groups.map((g) => g.id));
+      t.equal(groupIds.size, body.groups.length, "a group appears twice in the dataset");
+      t.equal(body.groups.length, listed.length, "groups in the dataset vs groups in the group list");
+      for (const set of ["cabins", "travelers", "payments", "paperwork", "messages", "interests", "deadlines", "journey"]) {
+        for (const row of body[set]) t.ok(groupIds.has(row.groupId), `a ${set} row belongs to a group that is not in the dataset`);
+      }
+      const travelerIds = new Set(body.travelers.map((x) => x.id));
+      for (const p of body.paperwork) t.ok(travelerIds.has(p.travelerId), "a paperwork row belongs to a traveler that is not in the dataset");
+      for (const g of body.groups) t.ok(GROUP_STATUSES.includes(g.status), `group ${g.id} has an unknown status "${g.status}"`);
+      for (const p of body.payments) t.ok(["paid", "due", "overdue", "no date"].includes(p.status), `payment ${p.id}: unknown status "${p.status}"`);
+      for (const x of body.paperwork) t.ok(["signed", "pending"].includes(x.status), `a paperwork row has an unknown status "${x.status}"`);
+      for (const d of body.deadlines) t.ok(["deposit", "names", "final", "recall", "line", "journey", "sail"].includes(d.kind), `a deadline has an unknown kind "${d.kind}"`);
+      for (const d of body.deadlines) t.matches(d.date, /^\d{4}-\d{2}-\d{2}$/, "a deadline's date");
+      t.ok(body.deadlines.every((d, i, all) => i === 0 || all[i - 1].daysOut <= d.daysOut || all[i - 1].groupId !== d.groupId), "a group's deadlines are not in date order");
+
+      // Each group row agrees with the rows under it, whatever the group list says.
+      for (const g of body.groups) {
+        const mine = (set) => body[set].filter((r) => r.groupId === g.id);
+        const pay = mine("payments");
+        t.equal(pay.filter((p) => p.status === "overdue").length, g.paymentsOverdue, `group ${g.id}: overdue payments, row count vs group figure`);
+        t.equal(pay.filter((p) => p.status === "paid").length, g.paymentsPaid, `group ${g.id}: paid payments, row count vs group figure`);
+        t.equal(pay.filter((p) => p.status !== "paid").length, g.paymentsOpen, `group ${g.id}: open payments, row count vs group figure`);
+        t.equal(mine("travelers").length, g.travelersOnFile, `group ${g.id}: travelers on file, row count vs group figure`);
+        t.equal(mine("travelers").filter((x) => x.fullySigned).length, g.fullySigned, `group ${g.id}: fully signed travelers, row count vs group figure`);
+        t.equal(mine("interests").length, g.interestsTotal, `group ${g.id}: leads, row count vs group figure`);
+        t.ok(mine("cabins").length <= g.cabinsTotal, `group ${g.id}: more cabin rows than the block size`);
+        const journeyMail = mine("messages").filter((m) => m.journey);
+        for (const [status, field] of [["queued", "journeyQueued"], ["sent", "journeySent"], ["failed", "journeyFailed"]]) {
+          t.equal(journeyMail.filter((m) => m.status === status).length, g[field], `group ${g.id}: ${status} journey emails, row count vs group figure`);
+        }
+      }
+
+      // Nothing secret, nothing card-shaped, no plain email address — at any depth.
+      const keys = analyticsKeys(body);
+      for (const k of ANALYTICS_FORBIDDEN_KEYS) t.ok(!keys.has(k), `the workspace's data carries "${k}"`);
+      const text = JSON.stringify(body);
+      const plain = text.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/);
+      t.ok(!plain, `the workspace's data holds an email address that is not masked (it starts "${plain ? plain[0].slice(0, 2) : ""}…")`);
+      t.ok(!cardShaped(text), "the workspace's data contains something shaped like a payment card number");
+      for (const row of [...body.travelers, ...body.messages, ...body.interests]) {
+        const masked = row.email ?? row.to;
+        if (masked) t.matches(masked, /^.•••@.+\..+$/, "an email address in the dataset");
+      }
+
+      // The same figures as the group list, group by group (compared when the list did not move while the dataset was read).
+      if (settled) {
+        const near = (a, b, what) => t.ok(Math.abs(a - b) < 0.005, `${what}: the dataset says ${a}, the group list says ${b}`);
+        for (const g of listed) {
+          const row = body.groups.find((x) => x.id === g.id);
+          t.ok(row, `group ${g.id} is in the group list but not in the dataset`);
+          const s = g.summary;
+          for (const k of ["total", "held", "offered", "booked", "released"]) t.equal(row["cabins" + k[0].toUpperCase() + k.slice(1)], s.cabins[k], `group ${g.id}: cabins ${k}, dataset vs group list`);
+          t.equal(row.travelersExpected, s.travelers.total, `group ${g.id}: travelers expected, dataset vs group list`);
+          t.equal(row.formsReturned, s.travelers.formsIn, `group ${g.id}: forms returned, dataset vs group list`);
+          t.equal(row.paymentsOverdue, s.payments.overdueCount, `group ${g.id}: overdue payments, dataset vs group list`);
+          t.equal(row.daysToSail, s.daysToSail, `group ${g.id}: days to sail, dataset vs group list`);
+          near(row.amountDue, s.payments.dueTotal, `group ${g.id}: dollars still due`);
+          near(row.amountPaid, s.payments.paidTotal, `group ${g.id}: dollars paid`);
+          near(row.depositsTotal, s.deposits.total, `group ${g.id}: deposits for the block`);
+          near(row.depositsPaid, s.deposits.paid, `group ${g.id}: deposits paid`);
+          t.equal(row.name, g.name, `group ${g.id}: name, dataset vs group list`);
+          t.equal(row.status, g.status, `group ${g.id}: status, dataset vs group list`);
+        }
+      } else {
+        t.ok(false, `the group list kept changing for ${attempts} tries while the dataset was read, so the two could not be compared (another check's fixture row?)`);
+      }
+
+      // The page's own address opens the dashboard (the shell is served for any path under /dashboard/).
+      t.html(await t.get("/dashboard/groups/workspace"), { mustContain: [/<div id="root"/] });
+
+      t.observe("analytics keys", keysOf(body));
+      if (body.groups[0]) t.observe("analytics group fields", keysOf(body.groups[0]));
+      t.observe("analytics groups", body.groups.length, "min");
     },
   },
 
