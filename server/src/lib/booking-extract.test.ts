@@ -515,3 +515,30 @@ test("normalizeExtraction: the quote's header lines are not amenities — packag
   const keep = normalizeExtraction({ amenities: ["Packages of drinks for the organizer", "Cabins upgraded for the leader", "Agency staff cocktail party"] });
   assert.equal(keep.amenities.length, 3);
 });
+
+test("group_name: the quote's printed group name is offered for the file name, whichever way the box wrote it (Mark's MSC quotator, 2026-10-19)", () => {
+  // The box filled the new field.
+  assert.equal(normalizeExtraction({ group_name: "Group Name Millham F/F 2027." }).group_name, "Millham F/F 2027");
+  assert.equal(normalizeExtraction({ group_name: "  Millham F/F 2027 " }).group_name, "Millham F/F 2027");
+  // It wrote the name where the number goes: the number stays blank, the name is kept and noted.
+  const a = normalizeExtraction({ group_number: "Millham F/F 2027" });
+  assert.deepEqual([a.group_number, a.group_name], [null, "Millham F/F 2027"]);
+  assert.match(a.notes ?? "", /Group name on the quote: Millham F\/F 2027\./);
+  // It wrote it as an amenity.
+  const b = normalizeExtraction({ amenities: ["Group Name: Millham F/F 2027", "Champagne toast"] });
+  assert.equal(b.group_name, "Millham F/F 2027");
+  assert.deepEqual(b.amenities, ["Champagne toast"]);
+  // An intake read before the field existed keeps the name only in its notes — and the notes sentence ends at its own full stop.
+  const old = normalizeExtraction({ group_number: null, notes: "Group name on the quote: Millham F/F 2027. Group Dining: Early Dining. Group total rate $11,850.96." });
+  assert.equal(old.group_name, "Millham F/F 2027");
+  // A real group number is never taken for a name, and no name means null.
+  const real = normalizeExtraction({ group_number: "665450" });
+  assert.deepEqual([real.group_number, real.group_name], ["665450", null]);
+  assert.equal(normalizeExtraction({}).group_name, null);
+  assert.ok(foundFields(a).includes("group_name"));
+  assert.ok(!foundFields(real).includes("group_name"));
+  // The reader may fill it, and the schema asks for it like every other field.
+  const props = (BOOKING_SCHEMA as { properties: Record<string, { description?: string }>; required: string[] });
+  assert.ok(props.properties["group_name"]?.description?.includes("NAME"));
+  assert.ok(props.required.includes("group_name"));
+});

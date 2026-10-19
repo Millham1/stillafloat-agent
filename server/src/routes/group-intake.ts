@@ -14,7 +14,7 @@ import {
 // the group as its contract document on accept.
 //
 //   POST /api/groups/intake            { booking_kind, lang, filename, data (base64 PDF) } → { intake }
-//   GET  /api/groups/intake/:id        → { intake } (poll until status ready | failed)
+//   GET  /api/groups/intake/:id        → { intake, found, group_name } (poll until status ready | failed)
 //   POST /api/groups/intake/:id/retry  → re-run the reader
 //   POST /api/groups/intake/:id/accept { group: {...}, cabins?: [...] } → { group }
 //   GET  /api/groups/intake/:id/file   → short-lived signed URL to the PDF
@@ -120,8 +120,9 @@ router.get("/groups/intake/:id", requireToken, async (req: Request, res: Respons
     const { data, error } = await db().from("group_intakes").select("*").eq("id", String(req.params["id"])).maybeSingle();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ success: false, error: "Intake not found" });
-    const found = data.extracted ? foundFields(normalizeExtraction(data.extracted)) : [];
-    return res.json({ success: true, intake: data, found });
+    const read = data.extracted ? normalizeExtraction(data.extracted) : null;
+    // group_name: the name the quote prints, for the form to offer as the file's name (also for a read made before the reader had a field for it).
+    return res.json({ success: true, intake: data, found: read ? foundFields(read) : [], group_name: read?.group_name ?? null });
   } catch (err) {
     return fail(req, res, err, "booking intake read failed");
   }

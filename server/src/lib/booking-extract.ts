@@ -53,6 +53,8 @@ export interface BookingExtraction {
   embark_port: string | null;
   itinerary: ItineraryStop[];
   group_number: string | null;
+  /** The group's NAME as the quote prints it ("Millham F/F 2027") — what the confirmation form offers as the file's name. Not the line's number. */
+  group_name: string | null;
   booking_number: string | null;
   cabins_held: number | null;
   cabin_categories: CabinCategoryLine[];
@@ -164,6 +166,7 @@ export const BOOKING_SCHEMA: Record<string, unknown> = {
       },
     },
     group_number: { ...nullable("string"), description: "The cruise line's group id / group booking number" },
+    group_name: { ...nullable("string"), description: "The group's NAME as printed on the quote (for example the text after \"Group Name\"), not the line's group number. Null when none is printed." },
     booking_number: { ...nullable("string"), description: "Individual booking / reservation number, if this is one booking" },
     cabins_held: { ...nullable("integer"), description: "Total cabins held in the group block" },
     cabin_categories: {
@@ -215,7 +218,7 @@ export const BOOKING_SCHEMA: Record<string, unknown> = {
   },
   required: [
     "cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary",
-    "group_number", "booking_number", "cabins_held", "cabin_categories", "deposit_per_person",
+    "group_number", "group_name", "booking_number", "cabins_held", "cabin_categories", "deposit_per_person",
     "deposit_due", "names_due", "final_payment_due", "recall_date", "amenities", "guest_inclusions", "organizer_name",
     "travelers", "total_price", "notes",
     "deposit_timing", "final_payment_days_before", "allotment_reviews", "cancellation_schedule", "cancellation_note", "travel_package",
@@ -291,6 +294,13 @@ function str(v: unknown): string | null {
  * "Total rate $11,850.96", "Agency: …"): the label, then a colon or dash, the end of the line, or a figure. Not a perk. */
 const HEADER_LINE = /^\s*(packages?|(?:group )?classification|group name|cabins(?: held)?|(?:group )?total rate|agency)\s*(?::|[-–—]\s|(?=\s*$|\s+[\d$]))/i;
 
+/** "Group Name: Millham F/F 2027." → "Millham F/F 2027". */
+function cleanGroupName(v: string | null): string | null {
+  if (!v) return null;
+  const t = v.replace(/^\s*group name\s*[:\-–—]?\s*/i, "").replace(/\s+/g, " ").replace(/\.+$/, "").trim();
+  return t || null;
+}
+
 /** Tidy a raw model answer into the exact shape the review form expects. */
 /** "IB", "BR2", "YC1", "8C": short, no spaces, mostly capitals and digits. "Interior Bella" is not a code. */
 export function looksLikeCategoryCode(v: string | null | undefined): boolean {
@@ -358,7 +368,14 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
   // spaces are a name, never a number: keep it in the notes for Mark and leave the number blank.
   const groupNumberRaw = str(r["group_number"]);
   const groupNumberIsName = !!groupNumberRaw && /\s/.test(groupNumberRaw.trim()) && /[a-z]/i.test(groupNumberRaw) && !/^(grp|group|id|no\.?|#)\s*[:#]?\s*[\w-]+$/i.test(groupNumberRaw.trim());
-  if (groupNumberIsName) extraNotes.unshift(`Group name on the quote: ${groupNumberRaw.trim()}.`);
+  if (groupNumberIsName) extraNotes.unshift(`Group name on the quote: ${groupNumberRaw.trim().replace(/\.+$/, "")}.`);
+  // The group's name for the confirmation form: the field the box filled, else the name it wrote where the number goes, else a
+  // "Group Name: …" line it wrote as an amenity, else the sentence an earlier read left in the notes (an intake read before
+  // this field existed keeps its name only there).
+  const groupName = cleanGroupName(str(r["group_name"]))
+    ?? (groupNumberIsName ? cleanGroupName(groupNumberRaw) : null)
+    ?? cleanGroupName(amenitiesRaw.map((x) => /^\s*group name\s*[:\-–—]\s*(.+)$/i.exec(x)?.[1] ?? null).find((x) => !!x) ?? null)
+    ?? cleanGroupName(/Group name on the quote:\s*(.+?)\.(?=\s|$)/i.exec(str(r["notes"]) ?? "")?.[1] ?? null);
   const obj = (x: unknown) => (x && typeof x === "object" ? (x as Record<string, unknown>) : {});
   const allotment_reviews: AllotmentReview[] = list(r["allotment_reviews"]).map(obj)
     .map((x) => ({ date: normalizeDate(x["date"]), days_before: normalizeInt(x["days_before"]), percent_retaken: normalizeInt(x["percent_retaken"]), note: str(x["note"]) }))
@@ -414,6 +431,7 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
     embark_port: str(r["embark_port"]),
     itinerary,
     group_number: groupNumberIsName ? null : groupNumberRaw,
+    group_name: groupName,
     booking_number: str(r["booking_number"]),
     cabins_held,
     cabin_categories,
@@ -595,10 +613,10 @@ async function readBySection(text: string, kind: "group" | "individual", ask: As
     `sail_date (the day the ship leaves its first port: the Departure date, or day 1 of the itinerary. NEVER the date a quote was created or expires, and never a "Create on" or "Expire on" date), ` +
     `return_date (the Arrival date, or the last day of the itinerary), nights (the Duration), embark_port, ` +
     `itinerary (one entry per day listed: day number, date, port, arrive and depart as 24-hour HH:MM times; a "--:--" or a missing time is null), ` +
-    `group_number (the line's group id), booking_number, organizer_name (the group's own leader; the travel agency and the advisor named after \"Attention\" are not the organizer), ` +
+    `group_number (the line's group id, a number), group_name (the group's NAME as printed, e.g. the text after \"Group Name\"; null if none), booking_number, organizer_name (the group's own leader; the travel agency and the advisor named after \"Attention\" are not the organizer), ` +
     `travelers (guests named, else an empty list), amenities (the group's perks as written, one per entry; else an empty list). ` +
     `Where a row of labels (Destination, Departure, Arrival, Ship, Duration) is followed by their values, the values come in the same order.`,
-    pick(BOOKING_SCHEMA, ["cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary", "group_number", "booking_number", "organizer_name", "travelers", "amenities"]), 1200) : null;
+    pick(BOOKING_SCHEMA, ["cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary", "group_number", "group_name", "booking_number", "organizer_name", "travelers", "amenities"]), 1200) : null;
 
   // MSC's group quotator: no dollar signs, no total column. The program reads every figure off the printed row
   // (booking-terms checkCategory), so the box only names the rows — a third of the words, and exact numbers.
