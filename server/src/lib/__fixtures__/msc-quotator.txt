@@ -1,0 +1,58 @@
+▼ Itinerary: Port Canaveral,Nassau,Ocean Cay,Port Canaveral
+▼ Manage Allocation
+ 
+  Destination: Departure: Arrival: Ship: Duration (Nights):
+  CAR Port Canaveral (Orlando),
+Florida 9 May 2027
+Port Canaveral (Orlando),
+Florida 13 May 2027
+MSC SEASHORE 4
+ITINERARY DETAIL
+category double Rates 3rd/4th Adult Rate 3rd/4th Child Rate 3rd/4th Jr Child Rate
+IB Interior Bella 0 328.79 238.79 238.79 149.79 149.79 149.79 149.79 68/68/68/0
+IR1 Deluxe Interior (low deck) 0 358.79 248.79 248.79 149.79 149.79 149.79 149.79 68/68/68/0
+IR2 Deluxe Interior 0 368.79 258.79 258.79 149.79 149.79 149.79 149.79 68/68/68/0
+OB Ocean View Bella 0 418.79 278.79 278.79 149.79 149.79 149.79 149.79 68/68/68/0
+OR1 Deluxe Ocean View 0 448.79 298.79 298.79 149.79 149.79 149.79 149.79 68/68/68/0
+BB Balcony Bella 10 468.79 308.79 308.79 149.79 149.79 149.79 149.79 68/68/68/0
+BR1 Deluxe Balcony (low deck) 0 488.79 318.79 318.79 149.79 149.79 149.79 149.79 68/68/68/0
+BR2 Deluxe Balcony 0 498.79 318.79 318.79 149.79 149.79 149.79 149.79 68/68/68/0
+BR3 Deluxe Balcony (high deck) 0 518.79 328.79 328.79 149.79 149.79 149.79 149.79 68/68/68/0
+BR4 Deluxe Balcony (top deck) 0 528.79 338.79 338.79 149.79 149.79 149.79 149.79 68/68/68/0
+SUMMARY
+Expire on 03 Nov 2026
+Group Name Sample F/F 2027
+Packages Cruise Only
+Group Classification Affinity
+Group Dining Early Dining
+Cabins 12
+Total rate $11,850.96
+Create on 18 Oct 2026
+17 %
+Agency Contact Name Agency Contact
+Agency Contact Email agency@example.invalid
+Additional Remarks
+Relevant to Your Group
+possible 1 accessible room, Possible grp
+space champagne toast
+Day Date Port Arrival time Departure time
+1 Sun 9 May 2027 Port Canaveral (Orlando), Florida 16:00
+2 Mon 10 May 2027 Nassau, Bahamas 09:00 18:00
+3 Tue 11 May 2027 Ocean Cay MSC Marine Reserve, Bahamas 08:00 --:--
+4 Wed 12 May 2027 Ocean Cay MSC Marine Reserve, Bahamas --:-- 12:00
+5 Thu 13 May 2027 Port Canaveral (Orlando), Florida 07:00
+10/18/26, 6:43 PM .:msc book:. group quotator
+https://www.mscbook.com/shop/TAPortalFullFramedView?storeId=10757&langId=-1004&marketCode=USA&catalogId=10001&loginRequired=true&taportalIfram… 1/2
+category double Rates 3rd/4th Adult Rate 3rd/4th Child Rate 3rd/4th Jr Child Rate
+BA Balcony Aurea 2 618.79 378.79 378.79 149.79 149.79 149.79 149.79 68/68/68/0
+YC1 MSC Yacht Club Deluxe Suite 0 2228.79 1721.79 1721.79 1088.79 1088.79 1088.79 1088.79 92/92/92/0
+1. All group rates are cruise only, per person in US dollars and include applicable NCF charges. Space offered is based on double occupancy. Taxes, fees and
+other charges are per person for all passengers. The above is subject to change without notice. NCF charges are included in the Total Guest fare.
+2. Single, Triple & Quad occupancy are on on a request basis only. Names and full deposits are required at time of booking confirmation.
+3. To calculate the single passenger fare you must multiply the commissionable fare by the single supplement percentage. Then add the non-
+commissionable fare and the government fees and taxes.
+4. Rates are only guaranteed based on the allocated space outlined above under “Number of cabins”. Any other Category not referenced above may be
+added based on availability and may be at prevailing rate.
+DISCLAIMER
+10/18/26, 6:43 PM .:msc book:. group quotator
+https://www.mscbook.com/shop/TAPortalFullFramedView?storeId=10757&langId=-1004&marketCode=USA&catalogId=10001&loginRequired=true&taportalIfram… 2/2

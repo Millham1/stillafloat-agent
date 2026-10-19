@@ -14,7 +14,7 @@
 
 import { llmJson } from "./llm";
 import {
-  WHOLE_DOCUMENT_CHARS, cutSections, verifyExtraction,
+  WHOLE_DOCUMENT_CHARS, cutSections, isDoubleRateTable, rateRowCount, verifyExtraction,
   type AllotmentReview, type CancellationRow, type Deadline,
 } from "./booking-terms";
 
@@ -529,26 +529,60 @@ const pick = (schema: Record<string, unknown>, keys: string[]): Record<string, u
   return { type: "object", additionalProperties: false, properties: Object.fromEntries(keys.map((k) => [k, props[k]])), required: keys };
 };
 
+/** The quotator's rate rows: the box names them, the program reads the figures. */
+const NAMED_ROWS_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    cabin_categories: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { category: nullable("string"), code: nullable("string"), count: nullable("integer") },
+        required: ["category", "code", "count"],
+      },
+    },
+    guest_inclusions: (BOOKING_SCHEMA["properties"] as Record<string, unknown>)["guest_inclusions"],
+  },
+  required: ["cabin_categories", "guest_inclusions"],
+};
+
 type Ask = <T>(what: string, section: string, question: string, schema: Record<string, unknown>, maxTokens: number) => Promise<T | null>;
 
 /** A long document, one short section per question, each answered in seconds by the box. */
 async function readBySection(text: string, kind: "group" | "individual", ask: Ask): Promise<Record<string, unknown>> {
   const s = cutSections(text);
   const what = kind === "group" ? "a GROUP contract or group quote" : "an INDIVIDUAL booking confirmation or quote";
-  const basics = await ask<Record<string, unknown>>("the ship and sailing details", s.basics,
-    `These lines come from ${what}. Fill in: cruise_line, ship_name, sail_date, return_date, nights, embark_port, itinerary (one entry per day listed), ` +
+  const basics = s.basics ? await ask<Record<string, unknown>>("the ship and sailing details", s.basics,
+    `These lines come from ${what}. Fill in: cruise_line, ship_name, ` +
+    `sail_date (the day the ship leaves its first port: the Departure date, or day 1 of the itinerary. NEVER the date a quote was created or expires, and never a "Create on" or "Expire on" date), ` +
+    `return_date (the Arrival date, or the last day of the itinerary), nights (the Duration), embark_port, ` +
+    `itinerary (one entry per day listed: day number, date, port, arrive and depart as 24-hour HH:MM times; a "--:--" or a missing time is null), ` +
     `group_number (the line's group id), booking_number, organizer_name (the group's own leader; the travel agency and the advisor named after \"Attention\" are not the organizer), ` +
-    `travelers (guests named, else an empty list), amenities (the group's perks as written, one per entry; else an empty list).`,
-    pick(BOOKING_SCHEMA, ["cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary", "group_number", "booking_number", "organizer_name", "travelers", "amenities"]), 1200);
+    `travelers (guests named, else an empty list), amenities (the group's perks as written, one per entry; else an empty list). ` +
+    `Where a row of labels (Destination, Departure, Arrival, Ship, Duration) is followed by their values, the values come in the same order.`,
+    pick(BOOKING_SCHEMA, ["cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary", "group_number", "booking_number", "organizer_name", "travelers", "amenities"]), 1200) : null;
 
+  // MSC's group quotator: no dollar signs, no total column. The program reads every figure off the printed row
+  // (booking-terms checkCategory), so the box only names the rows — a third of the words, and exact numbers.
+  const doubleRate = isDoubleRateTable(s.rates);
   const rates = s.rates ? await ask<Record<string, unknown>>("the price table", s.rates,
-    `In a rate table the total price a guest pays is the largest per-person figure for that guest type: it equals the commissionable fare plus the ` +
-    `non-commissionable fare plus the government tax. The numbers in each row follow the order of the column headers.\n\n` +
-    `Fill in cabin_categories: one entry per cabin category row, with category (its name), code, count (cabins in the block), ` +
-    `commissionable_fare (1st/2nd guest), ncf, taxes, price_per_person (total price, 1st/2nd guest), price_third_fourth_adult, price_child, ` +
-    `price_junior_child (total prices), deposit_per_person (only if the row prints one). Also fill guest_inclusions: what the ` +
-    `guest's price INCLUDES for the guest as printed near the table (a drinks package, Wi-Fi, gratuities …); never amenity points, taxes or fees; else an empty list.`,
-    pick(BOOKING_SCHEMA, ["cabin_categories", "guest_inclusions"]), 1000) : null;
+    doubleRate
+      ? `The table's header reads "double Rates, 3rd/4th Adult Rate, 3rd/4th Child Rate, 3rd/4th Jr Child Rate". Each row is: category code, category name, ` +
+        `the number of cabins held in the block (a whole number right after the name; 0 is a real answer), then the rates, then taxes and fees for guests 1 to 4.\n\n` +
+        `Fill in cabin_categories: one entry per row of the table, every row, with code (the row's first word), category (its name) and count (cabins held). ` +
+        `Do not copy any price: the program reads the prices from the printed row. Also fill guest_inclusions: what the guest's price INCLUDES for the guest as printed ` +
+        `(a drinks package, Wi-Fi, gratuities …); never amenity points, taxes or fees. "Cruise Only" means nothing is included beyond the cruise: an empty list.`
+      : `In a rate table the total price a guest pays is the largest per-person figure for that guest type: it equals the commissionable fare plus the ` +
+        `non-commissionable fare plus the government tax. The numbers in each row follow the order of the column headers.\n\n` +
+        `Fill in cabin_categories: one entry per cabin category row, with category (its name), code, count (cabins in the block), ` +
+        `commissionable_fare (1st/2nd guest), ncf, taxes, price_per_person (total price, 1st/2nd guest), price_third_fourth_adult, price_child, ` +
+        `price_junior_child (total prices), deposit_per_person (only if the row prints one). Also fill guest_inclusions: what the ` +
+        `guest's price INCLUDES for the guest as printed near the table (a drinks package, Wi-Fi, gratuities …); never amenity points, taxes or fees; else an empty list.`,
+    doubleRate ? NAMED_ROWS_SCHEMA : pick(BOOKING_SCHEMA, ["cabin_categories", "guest_inclusions"]),
+    // About 100 tokens a row with every price, 45 with only the name; a 12-row table must not be cut off mid-answer.
+    doubleRate ? Math.min(3000, Math.max(800, 250 + rateRowCount(s.rates) * 45)) : Math.min(3000, Math.max(1000, 250 + rateRowCount(s.rates) * 110))) : null;
 
   const cats = Array.isArray(rates?.["cabin_categories"]) ? (rates!["cabin_categories"] as Array<Record<string, unknown>>) : [];
   const held = cats.reduce((n, c) => n + (typeof c["count"] === "number" ? c["count"] : 0), 0);
@@ -594,7 +628,7 @@ export async function extractBooking(
       job: "groups.extract",
       system: SYSTEM_PROMPT,
       user:
-        `This document is ${kind === "group" ? "a GROUP contract or group quote" : "an INDIVIDUAL booking confirmation or quote"}. ` +
+        `This document is an INDIVIDUAL booking confirmation or quote. ` +
         `Fill in the booking record from it.\n\n<document>\n${text}\n</document>`,
       schema: BOOKING_SCHEMA,
       maxTokens: 4000,

@@ -268,3 +268,183 @@ test("cutSections finds the air / hotel / transfer lines of a quote", () => {
   assert.match(s.travel, /Transfers hotel to pier/);
   assert.doesNotMatch(s.travel, /Deluxe Balcony/);
 });
+
+
+// ── MSC's group quotator: no dollar signs, 24-hour times (Mark's Millham F/F 2027 quote, 2026-10-18) ──────────────
+// The anonymised text of the real printout (2 pages). The reader found nothing in it: the price table was found by
+// counting "$" figures, the header block by am/pm times, and the sail date came out as the day the quote was created.
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { countMoneyFigures, isDoubleRateTable, quoteTotals } from "./booking-terms";
+
+const QUOTATOR = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "__fixtures__/msc-quotator.txt"), "utf8");
+
+test("a money figure is a $ figure or a bare two-decimal one; dates, times, percentages and fee columns are not", () => {
+  assert.equal(countMoneyFigures("$403   $313   $52.00   468.79   1,234.56   $ 7"), 6);
+  assert.equal(countMoneyFigures("BB Balcony Bella 10 468.79 308.79 308.79 149.79 149.79 149.79 149.79 68/68/68/0"), 7);
+  assert.equal(countMoneyFigures("Sun 9 May 2027 16:00 --:-- 17 % 4 nights 68/68/68/0 10/18/26 6:43 PM 1/2 7.5 0.50 2027.05.09 149 12:30"), 0);
+  assert.ok(moneyAppears(QUOTATOR, 468.79), "a bare figure is printed");
+  assert.ok(moneyAppears(QUOTATOR, 2228.79));
+  assert.ok(moneyAppears(QUOTATOR, 68), "the taxes column");
+  assert.ok(!moneyAppears(QUOTATOR, 536.79), "rate + taxes is not printed");
+  assert.ok(!moneyAppears(QUOTATOR, 46.8), "inside 468.79");
+  assert.ok(isDoubleRateTable(QUOTATOR));
+  assert.ok(!isDoubleRateTable(QUOTE));
+});
+
+test("cutSections cuts the quotator: the rate rows with their header, the header block, the itinerary rows, the summary", () => {
+  const s = cutSections(QUOTATOR);
+  assert.match(s.rates, /category double Rates 3rd\/4th Adult Rate[^\n]*\nIB Interior Bella 0 328\.79/, "the header sits right above the first row");
+  assert.match(s.rates, /BB Balcony Bella 10 468\.79 308\.79 308\.79 149\.79 149\.79 149\.79 149\.79 68\/68\/68\/0/);
+  assert.match(s.rates, /BA Balcony Aurea 2 618\.79/, "the row on page 2 is in the section too");
+  assert.match(s.rates, /YC1 MSC Yacht Club Deluxe Suite 0 2228\.79/);
+  for (const k of ["MSC SEASHORE", "Florida 9 May 2027", "Florida 13 May 2027", "Duration (Nights)", "Cabins 12", "Expire on 03 Nov 2026", "Create on 18 Oct 2026",
+    "Total rate $11,850.96", "Group Name", "Packages Cruise Only", "Group Classification", "Group Dining",
+    "1 Sun 9 May 2027 Port Canaveral (Orlando), Florida 16:00", "3 Tue 11 May 2027 Ocean Cay MSC Marine Reserve, Bahamas 08:00 --:--", "5 Thu 13 May 2027"]) {
+    assert.ok(s.basics.includes(k), `basics should hold "${k}"`);
+  }
+  assert.doesNotMatch(s.basics, /Interior Bella 0 328/, "the rate rows are the other section's");
+  assert.match(s.payments, /Names and full deposits are required at time of booking confirmation/);
+  for (const [name, v] of Object.entries(s)) assert.doesNotMatch(v, /mscbook\.com|6:43 PM/, `${name}: the browser's stamp and address line are not the quote`);
+  assert.equal(s.cancellation, "", "the quote says nothing about cancelling: not asked");
+  assert.equal(s.travel, "", "the quote says nothing about air or hotels: not asked");
+});
+
+test("a short document is its own section: a header, price or payment section under 200 characters becomes the whole text", () => {
+  const tiny = "Booking confirmation\nMSC SEASIDE\nSailing 10 May 2027";
+  const t = cutSections(tiny);
+  assert.equal(t.basics, tiny);
+  assert.equal(t.rates, tiny, "no price table found: the box reads the whole confirmation");
+  assert.equal(t.payments, tiny);
+  assert.equal(t.cancellation, "", "an absent optional section is skipped, not widened");
+  assert.equal(t.travel, "");
+  // A section that said enough keeps its own cut.
+  assert.notEqual(cutSections(QUOTE).basics, QUOTE);
+  // A long document is cut, never replaced by its whole text.
+  const long = `${"Filler sentence about nothing in particular. ".repeat(250)}\nShip: MSC SEASIDE`;
+  assert.ok(long.length > 8_000);
+  assert.equal(cutSections(long).basics, "Ship: MSC SEASIDE");
+  assert.equal(cutSections(long).rates, "");
+});
+
+test("the rate block always keeps its header, even when the rows alone fill the section", () => {
+  const rows = Array.from({ length: 70 }, (_, i) => `C${i} Cabin type number ${i} ${i % 9 + 1} 468.79 308.79 308.79 149.79 149.79 149.79 149.79 68/68/68/0`);
+  const text = ["lots of lines above", ...Array(60).fill("an unrelated line of text above the table"), "category double Rates 3rd/4th Adult Rate 3rd/4th Child Rate 3rd/4th Jr Child Rate", ...rows].join("\n");
+  assert.ok(text.length > 8_000);
+  const s = cutSections(text);
+  assert.match(s.rates, /^category double Rates/, "the header is the first line of the block, the 60 lines above it were trimmed");
+  assert.match(s.rates, /C69 Cabin type number 69/);
+});
+
+// What a plausible box answer looks like for the quotator: right rows, but the wrong sail date (the day the quote was created),
+// the double rate in the price box, a wrong cabin count on one row and a deposit taken from the taxes column.
+function quotatorAnswer(over: Record<string, unknown> = {}) {
+  return normalizeExtraction({
+    cruise_line: "MSC Cruises", ship_name: "MSC SEASHORE", sail_date: "2026-10-18", return_date: "2027-05-13", nights: 4,
+    embark_port: "Port Canaveral (Orlando), Florida",
+    itinerary: [
+      { day: 1, date: "2027-05-09", port: "Port Canaveral (Orlando), Florida", arrive: "16:00", depart: null },
+      { day: 2, date: "2027-05-10", port: "Nassau, Bahamas", arrive: "09:00", depart: "18:00" },
+      { day: 3, date: "2027-05-11", port: "Ocean Cay MSC Marine Reserve, Bahamas", arrive: "08:00", depart: "--:--" },
+      { day: 4, date: "2027-05-12", port: "Ocean Cay MSC Marine Reserve, Bahamas", arrive: "--:--", depart: "12:00" },
+      { day: 5, date: "2027-05-13", port: "Port Canaveral (Orlando), Florida", arrive: "07:00", depart: null },
+    ],
+    cabin_categories: [
+      { category: "Balcony Bella", code: "BB", count: 10, price_per_person: 468.79, commissionable_fare: 468.79, taxes: 68, deposit_per_person: 68 },
+      { category: "Balcony Aurea", code: "BA", count: 3, price_per_person: 618.79 },
+      { category: "MSC Yacht Club Deluxe Suite", code: "YC1", count: 0 },
+      { category: "Interior Bella", code: "IB", count: 0, ncf: 149.79 },
+    ],
+    deposit_per_person: 68, deposit_timing: "at_booking",
+    ...over,
+  });
+}
+
+test("verifyExtraction reads the quotator: rows from the printed lines, sail date never the day the quote was made", () => {
+  const x = verifyExtraction(quotatorAnswer(), QUOTATOR);
+  // Dates: "Create on 18 Oct 2026" is not a sailing date; day 1 of the printed itinerary is.
+  assert.ok(x.warnings.some((w) => /Sail date was read as 2026-10-18.*Create on 18 Oct 2026.*Left blank/.test(w)), x.warnings.join(" | "));
+  assert.equal(x.sail_date, "2027-05-09");
+  assert.ok(x.warnings.some((w) => /sail date was blank; day 1 of the itinerary \(2027-05-09\)/i.test(w)));
+  assert.equal(x.return_date, "2027-05-13");
+  assert.equal(x.nights, 4);
+  // Times straight off the rows: one time on the first row is the departure, one on the last is the arrival, "--:--" is none.
+  assert.deepEqual(x.itinerary.map((s) => [s.arrive, s.depart]), [[null, "16:00"], ["09:00", "18:00"], ["08:00", null], [null, "12:00"], ["07:00", null]]);
+  // BB: every figure from the printed row, the price per person worked out from the two printed pieces.
+  const bb = x.cabin_categories[0]!;
+  assert.deepEqual([bb.count, bb.commissionable_fare, bb.taxes, bb.ncf, bb.price_per_person, bb.deposit_per_person],
+    [10, 468.79, 68, null, 536.79, null]);
+  assert.deepEqual([bb.price_third_fourth_adult, bb.price_child, bb.price_junior_child], [308.79, 149.79, 149.79]);
+  // BA is found by its own code, not as "ba" inside "Balcony Bella"; the model's count of 3 is corrected to the row's 2.
+  const ba = x.cabin_categories[1]!;
+  assert.deepEqual([ba.count, ba.commissionable_fare, ba.taxes, ba.price_per_person, ba.price_third_fourth_adult], [2, 618.79, 68, 686.79, 378.79]);
+  assert.ok(x.warnings.some((w) => /BA Balcony Aurea: the number of cabins held was read as 3, but the printed row has 2/.test(w)));
+  // A category the model left empty is filled from its row; the suite has its own taxes column.
+  const yc = x.cabin_categories[2]!;
+  assert.deepEqual([yc.commissionable_fare, yc.taxes, yc.price_per_person, yc.price_child], [2228.79, 92, 2320.79, 1088.79]);
+  const ib = x.cabin_categories[3]!;
+  assert.deepEqual([ib.commissionable_fare, ib.ncf, ib.price_per_person], [328.79, null, 396.79], "no NCF column in this layout");
+  // The deposit was never printed; 68 is the taxes column.
+  assert.equal(x.deposit_per_person, null);
+  assert.ok(x.warnings.some((w) => /Deposit per person was read as 68, but no line about the deposit prints that amount/.test(w)));
+  assert.ok(x.warnings.some((w) => /BB Balcony Bella: the deposit per person was read as 68, but the quote prints no deposit/.test(w)));
+  assert.equal(x.deposit_timing, "at_booking");
+  // The one-off sentence about adding the rate and the taxes up appears once, however many rows there are.
+  assert.equal(x.warnings.filter((w) => /prints the double rate and the taxes and fees apart/.test(w)).length, 1);
+  // The group total and the commission have no field: they ride in the notes.
+  assert.match(x.notes ?? "", /Group total rate \$11,850\.96/);
+  assert.match(x.notes ?? "", /Commission 17 %/);
+  assert.equal(x.cabins_held, 12, "the model's rows added up to 13 until the count of one row was corrected from the printed line");
+});
+
+test("verifyExtraction: the cabins held come from the printed rows and match the quote's 'Cabins 12'", () => {
+  const x = verifyExtraction(quotatorAnswer({ sail_date: "2027-05-09" }), QUOTATOR);
+  assert.equal(x.sail_date, "2027-05-09");
+  assert.ok(!x.warnings.some((w) => /Sail date/.test(w)));
+  assert.equal(x.cabin_categories.reduce((n, c) => n + (c.count ?? 0), 0), 12);
+  assert.ok(!x.warnings.some((w) => /The quote says Cabins/.test(w)));
+  // Rows that do not add up to the printed total are reported.
+  const short = verifyExtraction(quotatorAnswer({ sail_date: "2027-05-09", cabin_categories: [{ category: "Balcony Bella", code: "BB", count: 10 }] }), QUOTATOR);
+  assert.equal(short.cabin_categories[0]!.count, 10);
+  assert.ok(short.warnings.some((w) => /The quote says Cabins 12, but the category rows add up to 10/.test(w)));
+  assert.equal(short.cabins_held, 12, "the block's size is the printed one");
+});
+
+test("verifyExtraction: no itinerary to fall back on, a sail date equal to the day the quote was made or expires is left blank", () => {
+  for (const [bad, label] of [["2026-10-18", "Create on 18 Oct 2026"], ["2026-11-03", "Expire on 03 Nov 2026"]] as const) {
+    const x = verifyExtraction(quotatorAnswer({ sail_date: bad, itinerary: [] }), QUOTATOR);
+    assert.equal(x.sail_date, null);
+    assert.ok(x.warnings.some((w) => w.includes(`Sail date was read as ${bad}`) && w.includes(label)), x.warnings.join(" | "));
+    assert.equal(x.return_date, "2027-05-13");
+  }
+  // An itinerary day dated with the day the quote was made is not a port call either.
+  const odd = verifyExtraction(quotatorAnswer({ sail_date: "2027-05-09", itinerary: [{ day: 1, date: "2026-10-18", port: "Port Canaveral (Orlando), Florida", arrive: null, depart: "16:00" }] }), QUOTATOR);
+  assert.equal(odd.itinerary[0]!.date, null);
+  // The same guard on the return date.
+  const r = verifyExtraction(quotatorAnswer({ sail_date: "2027-05-09", return_date: "2026-11-03" }), QUOTATOR);
+  assert.ok(r.warnings.some((w) => /Return date was read as 2026-11-03/.test(w)));
+  assert.equal(r.return_date, "2027-05-13", "worked out from the sail date and the 4 nights");
+});
+
+test("quoteTotals and the notes: the printed total and commission are added once, to whatever the notes already say", () => {
+  assert.deepEqual(quoteTotals(QUOTATOR), { total: 11850.96, commission: "17 %" });
+  assert.deepEqual(quoteTotals(QUOTE), { total: null, commission: null });
+  const again = verifyExtraction(quotatorAnswer({ sail_date: "2027-05-09", notes: "Group total rate $11,850.96. Commission 17 %. Names due at booking." }), QUOTATOR);
+  assert.equal(again.notes, "Group total rate $11,850.96. Commission 17 %. Names due at booking.");
+  const withOwn = verifyExtraction(quotatorAnswer({ sail_date: "2027-05-09", notes: "Champagne toast requested." }), QUOTATOR);
+  assert.match(withOwn.notes ?? "", /^Champagne toast requested\. Group total rate \$11,850\.96/);
+});
+
+test("a dollar-sign quote reads as before: rows by the sums, no quotator rules", () => {
+  const model = normalizeExtraction({
+    ship_name: "MSC SEASIDE", sail_date: "2027-05-10", nights: 4,
+    cabin_categories: [{ category: "Deluxe Balcony", code: "BR2", count: 14, price_per_person: 695.8, commissionable_fare: 523, ncf: 373, taxes: 52 }],
+  });
+  const x = verifyExtraction(model, QUOTE);
+  const b = x.cabin_categories[0]!;
+  assert.deepEqual([b.price_per_person, b.ncf, b.taxes], [695.8, 88, 84.8]);
+  assert.ok(!x.warnings.some((w) => /prints the double rate/.test(w)));
+  assert.equal(x.notes, null, "no total rate line, no note");
+  assert.equal(x.sail_date, "2027-05-10");
+});
