@@ -9,7 +9,7 @@ import { notifyMark } from "../lib/notify";
 import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
-  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, missingAnswers, newShareCode, normalizeAnswers, pitchGate, pitchNumberProblems, retryNote,
+  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, ctaLine, missingAnswers, newShareCode, normalizeAnswers, pitchGate, pitchNumberProblems, retryNote,
   shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
@@ -172,7 +172,7 @@ router.post("/groups/:id/marketing/write", requireToken, async (req: Request, re
     // The pitch is fact-checked before any paid call: a number in it that the file does not have is Mark's to fix.
     const badPitch = pitchNumberProblems(answers, facts);
     if (badPitch.length) return res.status(400).json({ success: false, error: `${badPitch.map((p) => p.problem).join(". ")}. Fix the pitch or the group file first.`, problems: badPitch });
-    const base = { job: "groups.marketing" as const, system: systemPrompt(lang), schema: COPY_SCHEMA, maxTokens: 2500, timeoutMs: 180_000 };
+    const base = { job: "groups.marketing" as const, system: systemPrompt(lang, answers), schema: COPY_SCHEMA, maxTokens: 2500, timeoutMs: 180_000 };
     let copy = tidyCopy(await llmJson<Row>({ ...base, user: userPrompt(facts, answers) }));
     let problems = validateCopy(copy, facts, answers);
     if (problems.length) {
@@ -492,7 +492,7 @@ router.post("/groups/:id/marketing/package/render", requireToken, async (req: Re
     if (!hero) return res.status(400).json({ success: false, error: "No photo on file yet — fetch photographs first" });
     const code = await shareCodeFor(group);
     const url = `${publicSite()}/group.html?g=${code}`;
-    const spec = posterSpec(facts, copy, { url, credits, lang });
+    const spec = posterSpec(facts, copy, { url, credits, lang, cta: ctaLine(normalizeAnswers(group.marketing), lang).text });
     const get = async (a: AssetRow) => Buffer.from(await (await fetch(a.public_url, { signal: AbortSignal.timeout(30_000) })).arrayBuffer());
     const heroBytes = await get(hero);
     const secondBytes = second ? await get(second) : null;
@@ -527,7 +527,7 @@ router.post("/groups/:id/marketing/campaign/write", requireToken, async (req: Re
     const badPitch = pitchNumberProblems(answers, facts);
     if (badPitch.length) return res.status(400).json({ success: false, error: `${badPitch.map((p) => p.problem).join(". ")}. Fix the pitch or the group file first.`, problems: badPitch });
     const url = `${publicSite()}/group.html?g=${await shareCodeFor(group)}`;
-    const base = { job: "groups.marketing" as const, system: campaignSystemPrompt(lang), schema: CAMPAIGN_SCHEMA, maxTokens: 4000, timeoutMs: 180_000 };
+    const base = { job: "groups.marketing" as const, system: campaignSystemPrompt(lang, answers), schema: CAMPAIGN_SCHEMA, maxTokens: 4000, timeoutMs: 180_000 };
     let campaign = tidyCampaign(await llmJson<Row>({ ...base, user: campaignUserPrompt(facts, answers, url) }));
     let problems = validateCampaign(campaign, facts, answers, url);
     if (problems.length) {

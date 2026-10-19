@@ -4,7 +4,7 @@ import { campaignSystemPrompt, campaignUserPrompt } from "./group-campaign";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
-  ANSWER_MAX, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch } from "./group-marketing";
+  ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -127,15 +127,28 @@ test("a number that is not in the group file fails the copy", () => {
   assert.equal(validateCopy({ ...goodCopy(), intro: "Abuela turns 91 this year." }, f).length, 1);
 });
 
-test("hype, promises and banned words fail the copy, in English and Spanish", () => {
+test("promises, sales pressure and banned words fail the copy, in English and Spanish", () => {
   const f = buildFacts(file(), rating, "en");
-  for (const phrase of ["an amazing week", "the ultimate escape", "guaranteed sunshine", "cheaper than you think", "it is actually great", "hurry, cabins are selling fast", "perfect for families", "pure luxury"]) {
+  for (const phrase of ["guaranteed sunshine", "cheaper than you think", "it is actually great", "hurry, cabins are selling fast", "perfect for families", "pure luxury", "a once-in-a-lifetime week", "the best price on the sea"]) {
     assert.ok(validateCopy({ ...goodCopy(), intro: phrase }, f).length >= 1, phrase);
   }
   const es = buildFacts(file(), rating, "es");
-  for (const phrase of ["una semana increíble", "se lo garantizamos", "más barato de lo que cree", "un viaje inolvidable", "apúrese, se agotan"]) {
+  for (const phrase of ["se lo garantizamos", "más barato de lo que cree", "apúrese, se agotan", "puro lujo"]) {
     assert.ok(validateCopy({ ...goodCopy(), intro: phrase }, es).length >= 1, phrase);
   }
+});
+
+test("Mark's register is not banned: his adjectives and exclamation marks pass in the words we write, in English and Spanish (Mark 2026-10-19)", () => {
+  const f = buildFacts(file(), rating, "en");
+  for (const phrase of ["an amazing week", "two incredible days", "the most beautiful sunrise!", "an unforgettable, breathtaking, world-class ultimate week", "ALL ON THE SAME CRUISE!"]) {
+    assert.deepEqual(validateCopy({ ...goodCopy(), intro: phrase }, f), [], phrase);
+  }
+  const es = buildFacts(file(), rating, "es");
+  for (const phrase of ["una semana increíble", "un viaje inolvidable e impresionante", "¡TODO EN EL MISMO CRUCERO!", "¡Zarpamos en marzo!"]) {
+    assert.deepEqual(validateCopy({ ...goodCopy(), intro: phrase }, es), [], phrase);
+  }
+  // no exclamation-mark ban is left in the group-piece rules, in either language
+  for (const lang of ["en", "es"] as const) assert.ok(!HOUSE_BANNED[lang].some((b) => b.re.test("Sunset!")), `${lang}: exclamation ban`);
 });
 
 test("missing, over-long and marked-up fields are reported; the organizer line may be empty", () => {
@@ -152,14 +165,15 @@ test("who_for may run to 900 characters (Mark's air/hotel and theme-park day mad
   assert.deepEqual(validateCopy({ ...goodCopy(), who_for: para(900) }, f), []);
   assert.deepEqual(validateCopy({ ...goodCopy(), who_for: para(901) }, f), [{ field: "who_for", problem: "too long: 901 of 900 characters — shorten it, or ask Mark" }]);
   // every "too long" reads the same, whatever the field and its limit
-  assert.deepEqual(validateCopy({ ...goodCopy(), headline: "x".repeat(91) }, f), [{ field: "headline", problem: "too long: 91 of 90 characters — shorten it, or ask Mark" }]);
+  assert.deepEqual(validateCopy({ ...goodCopy(), headline: "x".repeat(221) }, f), [{ field: "headline", problem: "too long: 221 of 220 characters — shorten it, or ask Mark" }]);
+  assert.deepEqual(validateCopy({ ...goodCopy(), headline: "x".repeat(220) }, f), [], "the one rising sentence may run to 220");
   assert.equal(tooLong(716, 600), "too long: 716 of 600 characters — shorten it, or ask Mark");
   assert.ok(!validateCopy({ ...goodCopy(), cta_label: "x".repeat(60) }, f).some((x) => /too long \(/.test(x.problem)), "the old wording is gone");
 });
 
 test("the character limits of each copy field", () => {
   assert.deepEqual(Object.fromEntries(COPY_FIELDS.map((x) => [x.key, x.max])), {
-    headline: 90, subhead: 160, intro: 900, why_ship: 900, who_for: 900, organizer_note: 400,
+    headline: 220, subhead: 160, intro: 900, why_ship: 900, who_for: 900, organizer_note: 400,
     cta_label: 40, cta_blurb: 220, email_subject: 90, email_body: 1400, social_post: 500,
   });
 });
@@ -245,7 +259,7 @@ test("perks shown to guests come from the fare inclusions, never the organizer's
   assert.match(prompt, /919-346-6127/);
   assert.doesNotMatch(prompt, /sailing with the group/);
   const sys = systemPrompt("en");
-  assert.match(sys, /never a person/); assert.match(sys, /Scan the QR to join the fun/); assert.match(sys, /cabin upgrades are available/i);
+  assert.match(sys, /never a person/); assert.match(sys, /the exact words "Use the QR code to book your spot!"/); assert.match(sys, /cabin upgrades are available/i);
   assert.doesNotMatch(sys, /Mark Millham/);
 });
 
@@ -347,11 +361,11 @@ test("Mark's pitch is fact-checked: a number the group file does not have is rep
   assert.deepEqual(p.map((x) => x.field), ["pitch"]);
 });
 
-test("exclamation marks, 'Join Mark' and amenity points fail every field, in both languages", () => {
+test("'Join Mark' and amenity points fail every field, in both languages; an exclamation mark does not", () => {
   const en = buildFacts(file(), rating, "en");
   for (const [field, text, want] of [
-    ["headline", "Sunset. Light show. Sunrise!", /exclamation/],
-    ["cta_blurb", "Scan the QR to join the fun!", /exclamation/],
+    ["headline", "Imagine joining us at sea. Join Mark on the Celebration", /Join Mark/],
+    ["cta_blurb", "Use the QR code to book your spot! Join Mark!", /Join Mark/],
     ["subhead", "Join Mark on the Celebration", /Join Mark/],
     ["why_ship", "We have 3 amenity points to spend.", /amenity points/],
     ["who_for", "One amenity point goes to the group.", /amenity points/],
@@ -360,35 +374,48 @@ test("exclamation marks, 'Join Mark' and amenity points fail every field, in bot
     assert.ok(p.some((x) => x.field === field && want.test(x.problem)), `${field}: ${text} -> ${JSON.stringify(p)}`);
   }
   const es = buildFacts(file(), rating, "es");
-  for (const text of ["¡Zarpamos en marzo!", "Únase a Mark en el barco", "Tenemos 3 puntos de beneficios", "Join Mark"]) {
+  for (const text of ["Únase a Mark en el barco", "Tenemos 3 puntos de beneficios", "Join Mark"]) {
     assert.ok(validateCopy({ ...goodCopy(), intro: text }, es).some((x) => x.field === "intro"), text);
   }
-  // Mark as the contact is fine
-  assert.deepEqual(validateCopy({ ...goodCopy(), cta_blurb: "Scan the QR to join the fun, or call Mark at 919-346-6127." }, en), []);
+  // Mark as the contact is fine, and so is the "!" (the call to action and the payoff end on one)
+  assert.deepEqual(validateCopy({ ...goodCopy(), cta_blurb: "Use the QR code to book your spot! Or call or text Mark at 919-346-6127." }, en), []);
+  assert.deepEqual(validateCopy({ ...goodCopy(), subhead: "ALL ON THE SAME CRUISE!" }, en), []);
 });
 
-test("both prompts carry the approved house voice verbatim, the exact call to action and the pitch rules", () => {
+test("both prompts carry Mark's register verbatim, the exact call to action and the pitch rules", () => {
   const sys = systemPrompt("en");
   for (const rule of HOUSE_VOICE_RULES) assert.ok(sys.includes(rule), rule);
-  assert.match(sys, /"Sunset\. Light show\. Sunrise\. Same beach\. Same cruise\."/);
-  assert.match(sys, /"Four nights of camaraderie and relaxation\. Shoes optional\."/);
-  assert.match(sys, /The only hard decision all week is when to sleep\./);
-  assert.match(sys, /"Scan the QR to join the fun" \(exact words\), then the link, then the phone 919-346-6127/);
+  assert.match(sys, /the hook is ONE flowing sentence that starts "Imagine…"/);
+  assert.match(sys, /lands on a short capitalised payoff that ends in an exclamation mark/);
+  assert.match(sys, /"Imagine, watching a Caribbean sunset, dancing to an amazing light show on the beach, then walking the beach to the most beautiful sunrise\.\.\.\.\. ALL ON THE SAME CRUISE!"/);
+  assert.match(sys, /Never a chain of two-word sentences\. No fragments/);
+  assert.match(sys, /no dry beat, no wink/);
+  assert.match(sys, /never invent a superlative or an adjective he did not use/);
+  assert.match(sys, /the occasion line is used exactly as he wrote it in the interview, with nothing added/);
+  assert.match(sys, /the exact words "Use the QR code to book your spot!", then the link, then the phone 919-346-6127/);
   assert.match(sys, /Never "Join Mark" as the hook/);
   assert.match(sys, /never "amenity points"/);
+  // the old house voice is gone: no four-word hook, no dry beat, no wink, no "Scan the QR to join the fun"
+  assert.doesNotMatch(sys, /Sunset\. Light show\. Sunrise\. Same beach\. Same cruise\./);
+  assert.doesNotMatch(sys, /The only hard decision all week is when to sleep/);
+  assert.doesNotMatch(sys, /Shoes optional/);
+  assert.doesNotMatch(sys, /Scan the QR to join the fun/);
+  assert.doesNotMatch(sys, /no exclamation marks anywhere/);
+  assert.doesNotMatch(sys, /Dry, understated humor/);
   assert.match(sys, /every sentence of it into the intro, word for word, in his order, and cut nothing/);
   assert.match(sys, /character for character/);
   assert.match(sys, /If he wrote an exclamation mark, keep it; if he wrote 'incredible' or 'amazing', keep it/);
   assert.match(sys, /not even a closing exclamation mark becoming a full stop/);
   assert.match(sys, /are for the words WE write around the pitch\. They never apply inside his sentences/);
   assert.doesNotMatch(sys, /The only change allowed is a closing exclamation mark/);
-  assert.match(sys, /no exclamation marks anywhere in the words we write\. Mark's pitch sentences are his own words/);
+  assert.match(sys, /Exclamation marks and the capitalised payoff are part of the register \(below\), in every piece\. Mark's pitch sentences are his own words/);
   assert.match(systemPrompt("es"), /sentence for sentence/, "Spanish is a faithful translation of the pitch");
+  assert.match(systemPrompt("es"), /the exact words "¡Use el código QR para reservar su lugar!"/, "the Spanish call to action");
   assert.doesNotMatch(systemPrompt("es"), /every sentence of it into the intro, word for word/);
   assert.ok(pitchRules("email 1", "x").some((r) => r.includes("email 1")));
 });
 
-// ── Mark's pitch is verbatim: the house-voice bans are for the words WE write (Mark 2026-10-19, Millham F/F 2027) ────────────
+// ── Mark's pitch is verbatim: the bans that remain are for the words WE write (Mark 2026-10-19, Millham F/F 2027) ────────────
 
 const MARK_PITCH = "Join us for our first Friends and Family cruise to the Bahamas! Enjoy  all that Nassau has to offer, then spend two incredible days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse!";
 // what the writer produced from the old prompt: no "!", "incredible" swapped for "amazing", full stops for his marks
@@ -414,38 +441,39 @@ test("the same words with only the closing mark changed are still his sentences:
   assert.deepEqual(missingPitchSentences(answers.pitch, SOFTENED), []);
 });
 
-test("a paraphrase is not his sentence: 'two amazing days' for 'two incredible days' is reported as not kept", () => {
+test("a paraphrase is not his sentence: 'two amazing days' for 'two incredible days' is reported as not kept, and only that", () => {
   const f = buildFacts(file(), rating, "en");
   const p = validateCopy(withPitch({ intro: SOFTENED }), f, { pitch: MARK_PITCH });
   // only his second sentence is reported (the first has the same words, only its closing mark differs)...
   assert.deepEqual(p.filter((x) => x.problem.startsWith("Pitch sentence not kept")).map((x) => [x.field, x.problem]), [[
     "intro", "Pitch sentence not kept: 'Enjoy  all that Nassau has to offer, then spend two incredible days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse!'"]]);
-  // ...and the paraphrase is the writer's words, not his: its "amazing" is ours to answer for, the first sentence is not touched
-  assert.deepEqual(p.filter((x) => !x.problem.startsWith("Pitch sentence not kept")).map((x) => x.problem), ['uses "amazing"']);
+  // ...and nothing else: "amazing" and the closing marks are the register now, so the paraphrase is a cut, not a banned word
+  assert.deepEqual(p.filter((x) => !x.problem.startsWith("Pitch sentence not kept")).map((x) => x.problem), []);
   // it is the words that count, not just the banned ones: his 'incredible' dropped for a plain 'two days' is a cut too
   assert.equal(validateCopy(withPitch({ intro: VERBATIM.replace("two incredible days", "two days") }), f, { pitch: MARK_PITCH }).filter((x) => x.problem.startsWith("Pitch sentence not kept")).length, 1);
 });
 
-test("the house-voice bans still apply to the words WE write outside the pitch", () => {
+test("the bans that remain still apply to the words WE write outside the pitch; his adjectives and marks do not trip them", () => {
   const f = buildFacts(file(), rating, "en");
   const answers = { pitch: MARK_PITCH };
   const p = validateCopy(withPitch({
     intro: `${VERBATIM} What an amazing week!`,
     why_ship: "An unforgettable week, cheaper than you think. Join Mark on the Seaside.",
-    cta_blurb: "Scan the QR to join the fun!",
-    social_post: `${VERBATIM}\nThree amenity points for the group.`,
+    cta_blurb: "Use the QR code to book your spot!",
+    social_post: `${VERBATIM}\nThree amenity points for the group. Guaranteed.`,
   }), f, answers);
   const has = (field: string, re: RegExp) => p.some((x) => x.field === field && re.test(x.problem));
-  assert.ok(has("intro", /uses "amazing"/), "our amazing after his pitch");
-  assert.ok(has("intro", /exclamation/), "our '!' after his pitch");
-  assert.ok(has("why_ship", /unforgettable/) && has("why_ship", /cheaper/) && has("why_ship", /Join Mark/));
-  assert.ok(has("cta_blurb", /exclamation/));
-  assert.ok(has("social_post", /amenity points/));
+  assert.ok(!has("intro", /./), "our amazing and our '!' after his pitch are the register now");
+  assert.ok(has("why_ship", /cheaper/) && has("why_ship", /Join Mark/) && !has("why_ship", /unforgettable/));
+  assert.ok(!has("cta_blurb", /./));
+  assert.ok(has("social_post", /amenity points/) && has("social_post", /Guaranteed/i));
   assert.ok(!p.some((x) => x.problem.startsWith("Pitch sentence not kept")), JSON.stringify(p));
-  // his "amazing" only counts as his while it sits inside his sentence: the same word beside it is ours
-  assert.ok(validateCopy(withPitch({ intro: `${VERBATIM} It will be amazing.` }), f, answers).some((x) => /uses "amazing"/.test(x.problem)));
-  // no pitch on the interview: nothing is his, every ban applies as before
-  assert.ok(validateCopy(withPitch({ intro: VERBATIM }), f, {}).some((x) => /exclamation/.test(x.problem)));
+  // the pitch is still taken out first: "actually" in his sentence is his, the same word beside it is ours
+  assert.deepEqual(validateCopy(withPitch({ intro: "We actually love it here." }), f, { pitch: "We actually love it here." }), []);
+  assert.ok(validateCopy(withPitch({ intro: "We actually love it here. It is actually great." }), f, { pitch: "We actually love it here." }).some((x) => /uses "actually"/.test(x.problem)));
+  // no pitch on the interview: nothing is his, and the bans that remain apply to every word
+  assert.ok(validateCopy(withPitch({ intro: "Join Mark for a week. We actually mean it." }), f, {}).length >= 2);
+  assert.deepEqual(validateCopy(withPitch({ intro: VERBATIM }), f, {}).filter((x) => !x.problem.startsWith("Pitch sentence not kept")), []);
 });
 
 test("withoutPitch takes out each pitch sentence where it is kept, and nothing else", () => {
@@ -508,6 +536,26 @@ const MARK_ANSWERS = normalizeAnswers({
 // what the writer produced from the old prompt: the light show but not the beach party, the sunrise but not the sunset
 const OLD_SUBHEAD = "Browse Nassau, then watch a lighthouse light show over the beach at Ocean Cay and catch the sunrise from the same sand. Only the ship keeps a schedule.";
 const NEW_SUBHEAD = "An evening beach party under a lighthouse light show, then sunset to sunrise on one island. Only the ship keeps a schedule.";
+// the hand-made sample Mark was shown (2026-10-19): one rising sentence, then the payoff
+const SAMPLE_HEADLINE = "Imagine shopping Nassau in the morning, dancing under the Ocean Cay lighthouse light show at the beach party that night, then walking that same beach into a Bahamas sunrise… ALL ON THE SAME CRUISE!";
+// the same walk-through with the sunset in it, as the writer should now produce it (headline = the sentence, subhead = the payoff)
+const WALK = "Imagine shopping Nassau in the morning, watching the sunset from the beach at Ocean Cay, dancing under the lighthouse light show at the beach party that night, then walking that same beach into a Bahamas sunrise…";
+/** Page copy for the Millham F/F 2027 file in Mark's register: no numbers but the file's, his pitch verbatim in the intro. */
+function seashoreCopy(): GroupCopy {
+  return {
+    headline: WALK,
+    subhead: "ALL ON THE SAME CRUISE!",
+    intro: `${VERBATIM} Sailing May 9, 2027 on MSC Seashore from Port Canaveral, with the overnight at Ocean Cay.`,
+    why_ship: "Ocean Cay is a private island, and we sleep next to it. Watch the sunset and the sunrise from the same island while walking the beach, or relax in a hammock with island breezes.",
+    who_for: "Friends and family, first-timers welcome. Cabin upgrades are available, balcony and up, by request.",
+    organizer_note: null,
+    cta_label: "Tell us you're in",
+    cta_blurb: "Use the QR code to book your spot!",
+    email_subject: "A beach party under the lighthouse, then sunrise on the same beach",
+    email_body: `${WALK} ALL ON THE SAME CRUISE!\n\n${VERBATIM}\n\nUse the QR code to book your spot!\n\nStill Afloat Cruising`,
+    social_post: `${WALK} ALL ON THE SAME CRUISE! Use the QR code to book your spot!`,
+  };
+}
 
 test("Mark's answers give the moments in the order to lead with: the beach party and light show, then sunset to sunrise, then Nassau", () => {
   const lw = leadWith(MARK_ANSWERS, seashoreFacts());
@@ -520,8 +568,9 @@ test("Mark's answers give the moments in the order to lead with: the beach party
 test("the writer's prompt carries the moments list in that order, with the instruction to lead with them", () => {
   const p = userPrompt(seashoreFacts(), MARK_ANSWERS);
   const block = p.slice(p.indexOf("<lead_with>"), p.indexOf("</lead_with>"));
-  assert.match(block, /Lead with these, in this order\./);
-  assert.match(block, /the dry beat comes last/);
+  assert.match(block, /String these moments, in this order, into ONE rising sentence, then the payoff\./);
+  assert.match(block, /The headline is that sentence, the payoff is the line under it, and the email and the posts open with the same sentence\./);
+  assert.doesNotMatch(block, /dry beat/);
   const at = (re: RegExp) => { const m = re.exec(block); assert.ok(m, String(re)); return m!.index; };
   const first = at(/1\. The headline activity, named as an event people do: beach party, light show \(picture; pitch sentence 2\)/);
   const second = at(/2\. The arc, sunset to sunrise in the one place: sunset, then sunrise \(picture; why_sailing\)/);
@@ -538,22 +587,24 @@ test("both system prompts (page copy and campaign) say what to lead with, in the
   }
   const sys = systemPrompt("en");
   assert.match(sys, /the headline activity first, named as an event people do \(the evening beach party under the light show\), then the sunset-to-sunrise arc in the one place, then the port/);
-  assert.match(sys, /The hook \(4–6 words, full stops\) and the walk-through sentence are BUILT FROM those moments/);
-  assert.match(sys, /The dry beat comes LAST and is about the schedule, the sleeping or the shrug, never about the event/);
-  assert.match(sys, /Energy comes from concrete, physical, present-tense moments .*never from adjectives/);
+  assert.match(sys, /String these moments, in this order, into ONE rising sentence, then the payoff/);
+  assert.match(sys, /The sentence starts 'Imagine…', every moment is a phrase of the one sentence \(never a sentence of its own\), the energy rises to the last moment/);
+  assert.match(sys, /the sentence carries both words 'sunset' and 'sunrise'/);
+  assert.match(sys, /The payoff never undercuts the event: no 'allegedly', no 'supposedly', no joke about the schedule or about sleeping/);
+  assert.match(sys, /Energy comes from Mark's moments and his own words: concrete, present-tense things .*the adjectives and exclamation marks he used/);
   assert.match(sys, /why_ship and who_for echo them as scenes/);
-  assert.match(campaignSystemPrompt("en"), /Layout of email 1: the hook as the opening line, then the walk-through sentence \(both built from <lead_with>/);
-  assert.match(campaignSystemPrompt("en"), /the campaign's email 1 and Facebook announcement\) open on the headline activity/);
+  assert.match(campaignSystemPrompt("en"), /Layout of email 1: the 'Imagine…' sentence and its payoff as the opening \(built from <lead_with>/);
+  assert.match(campaignSystemPrompt("en"), /the campaign's email 1 and Facebook announcement\) open with the same 'Imagine…' sentence and its payoff/);
   // the campaign writer sees the same moments list
   const user = campaignUserPrompt(seashoreFacts(), MARK_ANSWERS, "https://stillafloatcruising.com/group.html?g=x");
   assert.match(user, /1\. The headline activity, named as an event people do: beach party, light show/);
-  // the bans for our own words are unchanged
-  assert.match(sys, /no 'amazing', 'incredible', 'unforgettable' or exclamation marks in the words we write/);
+  // the old ban on adjectives and exclamation marks in our own words is gone
+  assert.doesNotMatch(sys, /no 'amazing', 'incredible', 'unforgettable' or exclamation marks/);
 });
 
 test("nothing named in his answers: the writer is told to lead with the picture in his order, not handed an invented list", () => {
   const p = userPrompt(seashoreFacts(), normalizeAnswers({ pitch: "Four nights out of Port Canaveral with the people you already like.", audience: "a", occasion: "b", why_sailing: "c" }));
-  assert.match(p, /<lead_with>\nNothing in his answers names an event, a sunset-to-sunrise arc or a port of call\. Lead with the first image/);
+  assert.match(p, /<lead_with>\nNothing in his answers names an event, a sunset-to-sunrise arc or a port of call\. String the first image in "The picture the reader should see", then the next, in his order, into ONE rising sentence, then the payoff/);
   assert.deepEqual(leadWith({}, seashoreFacts()), { event: null, arc: null, ports: null, scenes: [] });
 });
 
@@ -565,39 +616,121 @@ test("one half of the arc is a scene detail, not the arc; a port in the pitch al
   assert.deepEqual(lw.ports, { names: ["Nassau", "Ocean Cay MSC Marine Reserve"], from: ["pitch sentence 1", "pitch sentence 2"] });
 });
 
-test("the gentle check fires on the old subhead (no beach party, no sunset) and stays quiet on one that names the event and the arc", () => {
+test("the gentle check fires on the old walk-through (no beach party, no sunset) and stays quiet on a headline that names the event and the arc", () => {
   const f = seashoreFacts();
-  const old = copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, f, MARK_ANSWERS);
+  const old = copyNotes({ ...goodCopy(), headline: OLD_SUBHEAD, subhead: "" }, f, MARK_ANSWERS);
   assert.deepEqual(old, [
-    { field: "subhead", problem: "the walk-through line does not mention the beach party the pitch names" },
-    { field: "subhead", problem: 'the walk-through line does not carry the sunset-to-sunrise arc the why-sailing answer names (it needs both "sunset" and "sunrise")' },
+    { field: "headline", problem: "the walk-through sentence does not mention the beach party the pitch names" },
+    { field: "headline", problem: 'the walk-through sentence does not carry the sunset-to-sunrise arc the why-sailing answer names (it needs both "sunset" and "sunrise")' },
   ]);
-  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: NEW_SUBHEAD }, f, MARK_ANSWERS), []);
+  assert.deepEqual(copyNotes({ ...goodCopy(), headline: NEW_SUBHEAD }, f, MARK_ANSWERS), []);
+  assert.deepEqual(copyNotes(seashoreCopy(), f, MARK_ANSWERS), [], "the walk-through the writer should now produce, with its payoff under it");
+  // the payoff line under the headline counts as part of the lead
+  assert.deepEqual(copyNotes({ ...goodCopy(), headline: "Imagine an evening beach party under a lighthouse light show…", subhead: "Sunset to sunrise on one island!" }, f, MARK_ANSWERS), []);
   // each of the event's words is looked for: the party without the light show names the light show
-  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: "A beach party, then sunset and sunrise on one island." }, f, MARK_ANSWERS).map((n) => n.problem),
-    ["the walk-through line does not mention the light show the pitch names"]);
+  assert.deepEqual(copyNotes({ ...goodCopy(), headline: "A beach party, then sunset and sunrise on one island." }, f, MARK_ANSWERS).map((n) => n.problem),
+    ["the walk-through sentence does not mention the light show the pitch names"]);
+  // the hand-made sample as written has the sunrise but not the sunset, so the gentle check says so (a note, never a block)
+  assert.deepEqual(copyNotes({ ...goodCopy(), headline: SAMPLE_HEADLINE, subhead: "ALL ON THE SAME CRUISE!" }, f, MARK_ANSWERS).map((n) => n.field), ["headline"]);
 });
 
-test("the gentle check is a note, never a problem: the old subhead still passes validateCopy, so approval is not blocked", () => {
+test("the gentle check is a note, never a problem: the old walk-through still passes validateCopy, so approval is not blocked", () => {
   const f = seashoreFacts();
-  const copy = { ...goodCopy(), intro: VERBATIM, subhead: OLD_SUBHEAD, why_ship: "Sunset on the beach, a light show from the lighthouse, sunrise on the same sand.", email_body: `${VERBATIM}\n\nStill Afloat Cruising` };
+  const copy = { ...goodCopy(), headline: OLD_SUBHEAD, intro: VERBATIM, why_ship: "Sunset on the beach, a light show from the lighthouse, sunrise on the same sand.", email_body: `${VERBATIM}\n\nStill Afloat Cruising` };
   assert.deepEqual(validateCopy(copy, f, MARK_ANSWERS), []);
   assert.equal(copyNotes(copy, f, MARK_ANSWERS).length, 2);
 });
 
-test("the gentle check asks only what his answers name: no pitch moments, no note; Spanish and an empty subhead are not checked", () => {
+test("the gentle check asks only what his answers name: no pitch moments, no note; Spanish and an empty headline are not checked", () => {
   const f = seashoreFacts();
-  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, f, normalizeAnswers({ pitch: "Four nights out of Port Canaveral with the people you already like.", audience: "a", occasion: "b", why_sailing: "c" })), []);
-  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, f, {}), []);
-  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, seashoreFacts("es"), MARK_ANSWERS), [], "Mark writes in English; the Spanish copy is a translation");
-  assert.deepEqual(copyNotes({ ...goodCopy(), subhead: "" }, f, MARK_ANSWERS), [], "a missing subhead is already a problem");
+  assert.deepEqual(copyNotes({ ...goodCopy(), headline: OLD_SUBHEAD }, f, normalizeAnswers({ pitch: "Four nights out of Port Canaveral with the people you already like.", audience: "a", occasion: "b", why_sailing: "c" })), []);
+  assert.deepEqual(copyNotes({ ...goodCopy(), headline: OLD_SUBHEAD }, f, {}), []);
+  assert.deepEqual(copyNotes({ ...goodCopy(), headline: OLD_SUBHEAD }, seashoreFacts("es"), MARK_ANSWERS), [], "Mark writes in English; the Spanish copy is a translation");
+  assert.deepEqual(copyNotes({ ...goodCopy(), headline: "" }, f, MARK_ANSWERS), [], "a missing headline is already a problem");
   assert.deepEqual(copyNotes(null, f, MARK_ANSWERS), []);
 });
 
 test("a retry that happens anyway carries the notes; a note alone never reads as a broken rule", () => {
-  const notes = copyNotes({ ...goodCopy(), subhead: OLD_SUBHEAD }, seashoreFacts(), MARK_ANSWERS);
+  const notes = copyNotes({ ...goodCopy(), headline: OLD_SUBHEAD }, seashoreFacts(), MARK_ANSWERS);
   const withNotes = retryNote([{ field: "who_for", problem: "too long: 901 of 900 characters — shorten it, or ask Mark" }], notes);
   assert.match(withNotes, /Fix exactly these and change nothing else:\n- who_for: too long/);
-  assert.match(withNotes, /And fix these too \(Mark wants them, though they do not block approval\); lead with the moments in <lead_with>:\n- subhead: the walk-through line does not mention the beach party/);
+  assert.match(withNotes, /And fix these too \(Mark wants them, though they do not block approval\); string the moments in <lead_with> into the one rising sentence:\n- headline: the walk-through sentence does not mention the beach party/);
   assert.doesNotMatch(retryNote([{ field: "who_for", problem: "missing" }]), /And fix these too/);
+});
+
+// ── Mark's register (Mark 2026-10-19: "it is not my voice or style, you have concatenated meaningful phrases so they have no impact") ────
+
+test("with Mark's own answers the writer's prompt carries the register: one rising sentence through his moments, the payoff, never a chain of two-word sentences", () => {
+  const sys = systemPrompt("en", MARK_ANSWERS), user = userPrompt(seashoreFacts(), MARK_ANSWERS);
+  // the register rules, the moments list in his order, and the instruction that joins them
+  assert.ok(HOUSE_VOICE_RULES.every((r) => sys.includes(r)));
+  assert.ok(LEAD_WITH_RULES.every((r) => sys.includes(r)));
+  assert.match(sys, /String these moments, in this order, into ONE rising sentence, then the payoff/);
+  assert.match(user, /String these moments, in this order, into ONE rising sentence, then the payoff\./);
+  assert.match(user, /1\. The headline activity, named as an event people do: beach party, light show/);
+  assert.match(user, /2\. The arc, sunset to sunrise in the one place: sunset, then sunrise/);
+  assert.match(user, /3\. The port: Nassau/);
+  assert.match(user, /The picture the reader should see: The image of the lighthouse beach party, with the insets of the sunset\/sunrise beach images, and an image of Nassau\./);
+  assert.match(user, /Watch the sunset and the sunrise from the same island while walking the beach or relax in a hammock with island breezes/);
+  assert.match(user, /the headline is ONE rising sentence through the <lead_with> moments in that order, the subhead is its capitalised payoff, and never a chain of two-word sentences/);
+  // the headline is the sentence, the subhead its payoff; intro = his pitch verbatim, then the facts
+  assert.match(sys, /headline = the one rising 'Imagine…' sentence built from <lead_with> \(about 200 characters at most\)\. subhead = the payoff alone, a short capitalised line ending in '!'\. intro = Mark's pitch, verbatim, then the facts that matter/);
+  assert.match(sys, /The headline IS that sentence and the subhead is its payoff\. The sentence starts 'Imagine…', every moment is a phrase of the one sentence \(never a sentence of its own\)/);
+  // fragments are forbidden by the prompt, in so many words (and the examples never model them)
+  assert.match(sys, /Never a chain of two-word sentences\. No fragments, no lists of nouns with full stops \("Beach party\. Light show\. Sunrise\."\)/);
+  assert.doesNotMatch(sys, /Hook = the experience in 4–6 words/);
+  assert.doesNotMatch(sys, /full stops, no exclamation marks/);
+  // his adjectives and his exclamation marks are the register, and the energy is taken from his words
+  assert.match(sys, /his adjectives \("amazing", "incredible", "most beautiful"\) and his exclamation marks are part of the register and are allowed in the words we write, in every piece/);
+  assert.match(sys, /Never an invented superlative, never a stack of adjectives he did not use/);
+  assert.doesNotMatch(sys, /never from adjectives/);
+  assert.match(sys, /Humor only where he wrote it/);
+  assert.match(sys, /nothing added, no wink/);
+});
+
+test("the validator accepts the hand-made sample (its '!' and its capitals) as a headline and his pitch verbatim as the intro, and rejects 'Join Mark'", () => {
+  const f = seashoreFacts();
+  const copy = seashoreCopy();
+  assert.deepEqual(validateCopy(copy, f, MARK_ANSWERS), []);
+  assert.deepEqual(validateCopy({ ...copy, headline: SAMPLE_HEADLINE, subhead: "Four nights. Ocean Cay overnight." }, f, MARK_ANSWERS), [], "the whole sample, payoff included, as the headline");
+  assert.ok(SAMPLE_HEADLINE.length <= 220 && SAMPLE_HEADLINE.includes("!") && SAMPLE_HEADLINE.includes("ALL ON THE SAME CRUISE!"));
+  assert.ok(validateCopy({ ...copy, headline: "Join Mark for a beach party under a lighthouse light show… ALL ON THE SAME CRUISE!" }, f, MARK_ANSWERS).some((x) => x.field === "headline" && /Join Mark/.test(x.problem)));
+  assert.ok(validateCopy({ ...copy, email_body: `Join Mark on the Seashore.\n\n${VERBATIM}\n\nStill Afloat Cruising` }, f, MARK_ANSWERS).some((x) => x.field === "email_body" && /Join Mark/.test(x.problem)));
+  assert.ok(validateCopy({ ...copy, why_ship: "Amenity points pay for the party." }, f, MARK_ANSWERS).some((x) => x.field === "why_ship" && /amenity points/.test(x.problem)));
+  // numbers still come only from the file or his answers, whatever the register
+  assert.ok(validateCopy({ ...copy, headline: `${SAMPLE_HEADLINE} Only 38 cabins!` }, f, MARK_ANSWERS).some((x) => /not in the group file: 38/.test(x.problem)));
+});
+
+test("a fragment chain is not banned by a rule (a model may still write it), and the prompt forbids it in so many words; the gentle check still sees what it names", () => {
+  const f = seashoreFacts();
+  const fragments = { ...seashoreCopy(), headline: "Beach party. Light show. Sunrise. One island.", subhead: "Same cruise." };
+  assert.deepEqual(validateCopy(fragments, f, MARK_ANSWERS), [], "no validator rule against fragments");
+  assert.match(systemPrompt("en", MARK_ANSWERS), /Never a chain of two-word sentences/);
+  assert.match(campaignSystemPrompt("en", MARK_ANSWERS), /Never a chain of two-word sentences/);
+  assert.match(systemPrompt("en", MARK_ANSWERS), /Each moment keeps its meaning because it sits inside the one sentence with the moments around it; chopped into fragments it has no impact/);
+});
+
+test("the call to action is 'Use the QR code to book your spot!' on every piece; the interview's cta_line chooses another per group", () => {
+  assert.equal(DEFAULT_CTA.en, "Use the QR code to book your spot!");
+  assert.deepEqual(ctaLine({}, "en"), { text: "Use the QR code to book your spot!", custom: false });
+  assert.deepEqual(ctaLine({ cta_line: "   " }, "en"), { text: "Use the QR code to book your spot!", custom: false });
+  assert.deepEqual(ctaLine({}, "es"), { text: "¡Use el código QR para reservar su lugar!", custom: false });
+  assert.deepEqual(ctaLine({ cta_line: " Scan the QR to join the fun " }, "en"), { text: "Scan the QR to join the fun", custom: true });
+  // the question is on the interview, optional, and stays a text answer
+  const q = INTERVIEW.find((x) => x.key === "cta_line")!;
+  assert.equal(q.type, "text"); assert.notEqual(q.required, true); assert.match(q.hint ?? "", /Use the QR code to book your spot!/);
+  assert.equal(normalizeAnswers({ cta_line: "  Scan the QR to join the fun  " })["cta_line"], "Scan the QR to join the fun");
+  assert.equal(normalizeAnswers({})["cta_line"], "");
+  // the page prompt and the campaign prompt name it, with the link, then the phone
+  const rule = ctaRule({}, "en", "in every piece");
+  assert.match(rule, /the exact words "Use the QR code to book your spot!", then the link, then the phone 919-346-6127/);
+  assert.ok(systemPrompt("en").includes(rule.replace("in every piece", "in the cta_blurb, the email_body and the social_post")));
+  assert.ok(campaignSystemPrompt("en").includes(ctaRule({}, "en", "in EVERY piece (every email and every Facebook text carries the QR image beside it; the link is the info sheet, for people reading on a phone)")));
+  // another line, chosen for the group, replaces it everywhere and never leaves the default behind
+  const own = { cta_line: "Scan the QR to join the fun" };
+  for (const sys of [systemPrompt("en", own), campaignSystemPrompt("en", own)]) {
+    assert.match(sys, /the exact words "Scan the QR to join the fun", then the link, then the phone/);
+    assert.doesNotMatch(sys, /Use the QR code to book your spot!/);
+  }
+  assert.match(systemPrompt("es", own), /the line "Scan the QR to join the fun", translated into natural Latin American Spanish, then the link/);
 });

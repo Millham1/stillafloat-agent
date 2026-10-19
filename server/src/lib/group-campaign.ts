@@ -2,7 +2,7 @@
 // Mark's interview + the file's facts (never the other way round), validated the same way as the
 // group page copy: every number must exist in the group file or in Mark's own answers.
 import type { GroupFacts, Lang } from "./group-marketing";
-import { HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, missingPitchSentences, numbersIn, pitchIsHis, pitchNumberProblems, pitchRules, tooLong, userPrompt, withoutPitch } from "./group-marketing";
+import { HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, ctaRule, missingPitchSentences, numbersIn, pitchIsHis, pitchNumberProblems, pitchRules, tooLong, userPrompt, withoutPitch } from "./group-marketing";
 import { MARK_PHONE } from "./group-package-spec";
 
 export type Row = Record<string, unknown>;
@@ -30,32 +30,33 @@ export const CAMPAIGN_SCHEMA: Record<string, unknown> = {
   required: ["emails", "facebook"],
 };
 
-export function campaignSystemPrompt(lang: Lang): string {
+export function campaignSystemPrompt(lang: Lang, answers: Record<string, string | boolean> = {}): string {
   const base = lang === "es"
-    ? `Escribes, en la voz de Still Afloat Cruising ("Cruise smarter, laugh more": experto conversacional, humor seco y contenido, honesto, sin hype), una campaña de correo de tres mensajes y una campaña de Facebook que invita a un grupo a un crucero.`
-    : `You write, in the voice of Still Afloat Cruising ("Cruise smarter, laugh more": conversational expert, dry understated humor aimed at situations, honest, never hype), a three-email campaign and a Facebook campaign inviting a group to a cruise.`;
+    ? `Escribes, en el registro propio de Mark (Still Afloat Cruising, "Cruise smarter, laugh more": experto conversacional, cálido, entusiasta, honesto, sin presión de venta), una campaña de correo de tres mensajes y una campaña de Facebook que invita a un grupo a un crucero.`
+    : `You write, in Mark's own register (Still Afloat Cruising, "Cruise smarter, laugh more": a conversational expert, warm, enthusiastic, honest, never pushy), a three-email campaign and a Facebook campaign inviting a group to a cruise.`;
   return [base,
     "Rules that are never broken:",
-    "- The pieces sell the EXPERIENCE: the overnight, the beach at night, the short escape, the company. No person is named and nobody speaks in the first person singular; the brand says 'we' or nothing. Never 'join Mark', never 'I'll be sailing'.",
+    "- The pieces sell the EXPERIENCE (the moments in <lead_with>) and the company. No person is named and nobody speaks in the first person singular; the brand says 'we' or nothing. Never 'join Mark', never 'I'll be sailing'.",
     "- Use ONLY the facts in the group file and the interview answers. Never invent prices, dates, perks or promises; never promise an entitlement.",
     "- Perks are what the fare includes for the guest ('Included for every guest'). Never mention amenity points or what the organizer receives.",
     "- Every piece says that cabin upgrades are available (balcony and up, by request).",
-    "- The primary call to action in EVERY piece is the QR code: write 'Scan the QR to join the fun' (every email and every Facebook text carries the QR image beside it), followed by the info-sheet link for people reading on a phone. The phone number is third, for people who would rather call or text.",
-    "House voice (every email and every Facebook text):",
+    ctaRule(answers, lang, "in EVERY piece (every email and every Facebook text carries the QR image beside it; the link is the info sheet, for people reading on a phone)"),
+    "Mark's register (every email and every Facebook text):",
     ...HOUSE_VOICE_RULES,
     ...LEAD_WITH_RULES,
-    ...pitchRules("the body of email 1 (the announcement)", "The other emails and the Facebook texts are written in the house voice around the same pitch; they may quote its sentences but do not have to.", lang),
-    "- Layout of email 1: the hook as the opening line, then the walk-through sentence (both built from <lead_with>: the headline activity first, the event and the sunset-to-sunrise arc named in it, the dry beat last), then Mark's pitch verbatim, then the occasion line with its wink, then what the fare includes, then the call to action.",
-    "- The three emails: announcement (the invitation), reminder (a few weeks before the reserve-by date; what is still open), last call (the final days before the reserve-by date). Facebook: an announcement post, a shorter reminder post, an event title and description, and a 300-character boosted-post text.",
-    `- No emojis, no exclamation marks, no all-caps, no superlatives, no urgency words in the words we write. Never 'cheaper' (say 'less expensive'), never 'actually'. Plain text, short paragraphs. Emails end with 'Still Afloat Cruising' on its own line.${pitchIsHis(lang)}`,
+    ...pitchRules("the body of email 1 (the announcement)", "The other emails and the Facebook texts are written in the same register around the same pitch; they may quote its sentences but do not have to.", lang),
+    "- Layout of email 1: the 'Imagine…' sentence and its payoff as the opening (built from <lead_with>: the headline activity first, the event and the sunset-to-sunrise arc named in it), then Mark's pitch verbatim, then the facts (the ship, the sailing, the ports, what the fare includes, the from-price and deposit, the reserve-by date), the upgrades line, the occasion line exactly as he wrote it (when he gave one), then the call to action, then the phone.",
+    "- The three emails: announcement (the invitation), reminder (a few weeks before the reserve-by date; what is still open), last call (the final days before the reserve-by date). Emails 2 and 3 keep his register too: full flowing sentences, never fragments; their reminders stay fact-based (what is still open, the price, the deposit, the reserve-by date), with no urgency words and nothing new about the experience.",
+    "- Facebook: the announcement is the 'Imagine…' sentence and its payoff, then the facts, then the call to action; the reminder is shorter, one flowing sentence and the facts, then the call to action; the event title is a short line (70 characters at most) that names the headline activity as an event; the event description is the sentence, its payoff and the facts; the boosted-post text (300 characters at most) is the sentence trimmed to the moments that fit, its payoff and the call to action.",
+    `- No emojis. Exclamation marks and the capitalised payoff are part of the register. No urgency words, no promises. Never 'cheaper' (say 'less expensive'), never 'actually'. Plain text; the rising sentence stays ONE sentence, the paragraphs around it short. Emails end with 'Still Afloat Cruising' on its own line.${pitchIsHis(lang)}`,
   ].join("\n");
 }
 
 export function campaignUserPrompt(facts: GroupFacts, answers: Record<string, string | boolean>, pageUrl: string): string {
-  return `${userPrompt(facts, answers)}\n\nInfo-sheet link (the primary call to action; on print it is a QR code to this page): ${pageUrl}\nPhone (second contact): ${MARK_PHONE}\n\nWrite the campaign now.`;
+  return `${userPrompt(facts, answers, "")}\n\nInfo-sheet link (the call to action; on print it is a QR code to this page): ${pageUrl}\nPhone (second contact): ${MARK_PHONE}\n\nWrite the campaign now, in Mark's register: email 1 and the Facebook announcement open with ONE rising sentence through the <lead_with> moments in that order and its capitalised payoff, and never a chain of two-word sentences.`;
 }
 
-const BANNED: Record<Lang, RegExp[]> = { en: [/\bactually\b/i, /\bguarantee[ds]?\b/i, /\bfree\b(?! berths)/i], es: [/\bgarantiza/i] };   // exclamation marks: HOUSE_BANNED
+const BANNED: Record<Lang, RegExp[]> = { en: [/\bactually\b/i, /\bguarantee[ds]?\b/i, /\bfree\b(?! berths)/i], es: [/\bgarantiza/i] };   // exclamation marks are Mark's register (2026-10-19): not banned
 
 /** Every number in the campaign must come from the file, Mark's answers, the phone or the link. */
 export function validateCampaign(c: unknown, facts: GroupFacts, answers: Record<string, string | boolean>, pageUrl: string): CampaignProblem[] {
@@ -66,7 +67,7 @@ export function validateCampaign(c: unknown, facts: GroupFacts, answers: Record<
   const check = (field: string, v: unknown, max: number) => {
     if (typeof v !== "string" || !v.trim()) { problems.push({ field, problem: "missing" }); return; }
     if (v.length > max) problems.push({ field, problem: tooLong(v.length, max) });
-    // The house-voice bans are for our words: Mark's pitch sentences (his "!" and his word choices) are taken out first.
+    // The bans are for our words: Mark's pitch sentences (his "!" and his word choices) are taken out first.
     const ours = withoutPitch(pitch, v);
     for (const re of BANNED[facts.lang]) { const m = ours.match(re); if (m) problems.push({ field, problem: `uses "${m[0]}"` }); }
     for (const h of HOUSE_BANNED[facts.lang]) if (h.re.test(ours)) problems.push({ field, problem: h.problem });

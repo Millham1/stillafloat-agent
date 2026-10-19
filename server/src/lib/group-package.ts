@@ -7,7 +7,7 @@ const FONT = "DejaVu Sans, Helvetica Neue, Helvetica, Arial, sans-serif";
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
-import { wrap, type PosterSpec } from "./group-package-spec";
+import { fitHeadline, wrap, type PosterSpec } from "./group-package-spec";
 import { BUSINESS } from "./group-secure";
 export { MARK_PHONE, posterSpec, wrap, pickPhotos, type PosterSpec, type Line } from "./group-package-spec";
 
@@ -24,9 +24,11 @@ export async function renderPoster(spec: PosterSpec, photo: Buffer, photo2: Buff
   const W = 2550, H = 3300, PH = 1750;
   const hero = await cover(photo, W, PH);
   const qr = await QRCode.toBuffer(`https://${spec.url}`, { width: 520, margin: 1, color: { dark: NAVY, light: WHITE } });
-  const hlSize = spec.headline.length > 2 ? 118 : 136, hlLh = hlSize * 1.12;
+  const hlSize = spec.headlineSize, hlLh = hlSize * 1.12;   // fitted to Mark's one rising sentence by posterSpec
   const hlTop = PH - 120 - (spec.headline.length - 1) * hlLh - 110;
   // The facts column sits left of the second photo (1000 px wide at the right edge), so it wraps narrow.
+  // The call to action sits left of the QR code (it starts 640 px from the right edge): the type shrinks so a longer line never runs into it.
+  const ctaSize = Math.min(78, Math.floor((W - 640 - 120 - 40) / (spec.cta.length * 0.66)));
   const colChars = photo2 ? 34 : 54;
   const factsLines = spec.facts.flatMap((t) => wrap(t, colChars)).slice(0, 10);
   const travelLines = spec.travel.flatMap((t) => wrap(t, colChars)).slice(0, 4);
@@ -38,10 +40,10 @@ export async function renderPoster(spec: PosterSpec, photo: Buffer, photo2: Buff
     <text x="120" y="${hlTop - 40}" font-family="${FONT}" font-size="54" font-weight="700" fill="${GOLD}" letter-spacing="6">${esc(spec.dates.toUpperCase())}</text>
     ${tspans(spec.headline, 120, hlTop + hlSize, hlLh, hlSize, 700, WHITE)}
     ${tspans(factsLines, 120, PH + 190, 92, 66, 400, NAVY)}
-    ${travelLines.length ? `<text x="120" y="${PH + 190 + factsLines.length * 92 + 60}" font-family="${FONT}" font-size="48" font-weight="700" fill="${NAVY}">${esc(spec.travel.length && spec.cta.startsWith("Llame") ? "CÓMO LLEGAR" : "GETTING THERE")}</text>${tspans(travelLines, 120, PH + 190 + factsLines.length * 92 + 140, 70, 50, 400, NAVY)}` : ""}
+    ${travelLines.length ? `<text x="120" y="${PH + 190 + factsLines.length * 92 + 60}" font-family="${FONT}" font-size="48" font-weight="700" fill="${NAVY}">${esc(spec.lang === "es" ? "CÓMO LLEGAR" : "GETTING THERE")}</text>${tspans(travelLines, 120, PH + 190 + factsLines.length * 92 + 140, 70, 50, 400, NAVY)}` : ""}
     <rect x="0" y="${H - 560}" width="${W}" height="560" fill="${NAVY}"/>
-    <text x="120" y="${H - 330}" font-family="${FONT}" font-size="78" font-weight="700" fill="${WHITE}">${esc(spec.cta)}</text>
-    <text x="120" y="${H - 215}" font-family="${FONT}" font-size="64" font-weight="700" fill="${GOLD}">${esc(spec.cta.startsWith("Escanee") ? "o llame o escriba al" : "or call or text")} ${esc(spec.phone)}</text>
+    <text x="120" y="${H - 330}" font-family="${FONT}" font-size="${ctaSize}" font-weight="700" fill="${WHITE}">${esc(spec.cta)}</text>
+    <text x="120" y="${H - 215}" font-family="${FONT}" font-size="64" font-weight="700" fill="${GOLD}">${esc(spec.lang === "es" ? "o llame o escriba al" : "or call or text")} ${esc(spec.phone)}</text>
     <text x="120" y="${H - 120}" font-family="${FONT}" font-size="48" fill="${WHITE}">${esc(spec.url)}</text>
     <text x="120" y="${H - 62}" font-family="${FONT}" font-size="26" fill="${WHITE}" opacity="0.85">${esc(spec.footer)}</text>
     <text x="120" y="${H - 24}" font-family="${FONT}" font-size="22" fill="${WHITE}" opacity="0.7">${esc(spec.credit)}</text>
@@ -70,8 +72,11 @@ export async function posterPdf(png: Buffer): Promise<Buffer> {
 export async function renderSocial(spec: PosterSpec, photo: Buffer, size: "landscape" | "square"): Promise<Buffer> {
   const W = size === "landscape" ? 1200 : 1080, H = size === "landscape" ? 628 : 1080;
   const hero = await cover(photo, W, H);
-  const hl = wrap(spec.headline.join(" "), size === "landscape" ? 30 : 24);
-  const hlSize = size === "landscape" ? 58 : 66, lh = hlSize * 1.12;
+  // Mark's one rising sentence is long: fit the type to the picture instead of a fixed size (5 lines at most on the wide image, 7 on the square).
+  const { size: hlSize, lines: hl } = size === "landscape"
+    ? fitHeadline(spec.headline.join(" "), W - 96, [58, 50, 44, 38, 34], 5)
+    : fitHeadline(spec.headline.join(" "), W - 96, [66, 56, 48, 42, 38], 7);
+  const lh = hlSize * 1.12;
   const band = size === "landscape" ? 110 : 150;
   const top = H - band - 40 - hl.length * lh - 70;
   const price = spec.facts.find((f) => /^(From|Desde) /.test(f)) ?? "";
@@ -82,7 +87,7 @@ export async function renderSocial(spec: PosterSpec, photo: Buffer, size: "lands
     ${tspans(hl, 48, top + hlSize + 10, lh, hlSize, 700, WHITE)}
     ${price ? `<text x="48" y="${H - band - 24}" font-family="${FONT}" font-size="34" fill="${WHITE}">${esc(price)}</text>` : ""}
     <rect x="0" y="${H - band}" width="${W}" height="${band}" fill="${NAVY}"/>
-    <text x="48" y="${H - band / 2 + 14}" font-family="${FONT}" font-size="${size === "landscape" ? 34 : 40}" font-weight="700" fill="${WHITE}">${esc(spec.cta.startsWith("Escanee") ? "Abra el enlace para unirse a la diversión" : "Open the link to join the fun")} <tspan fill="${GOLD}" font-size="${size === "landscape" ? 26 : 30}">· ${esc(spec.phone)}</tspan></text>
+    <text x="48" y="${H - band / 2 + 14}" font-family="${FONT}" font-size="${size === "landscape" ? 34 : 40}" font-weight="700" fill="${WHITE}">${esc(spec.linkCta)} <tspan fill="${GOLD}" font-size="${size === "landscape" ? 26 : 30}">· ${esc(spec.phone)}</tspan></text>
     <text x="${W - 36}" y="${H - 14}" font-family="${FONT}" font-size="16" fill="${WHITE}" opacity="0.7" text-anchor="end">${esc(spec.credit)}</text>
   </svg>`;
   return sharp(hero).composite([{ input: Buffer.from(svg), top: 0, left: 0 }]).jpeg({ quality: 90 }).toBuffer();

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateCampaign, tidyCampaign, campaignSystemPrompt } from "./group-campaign";
-import { HOUSE_VOICE_RULES, type GroupFacts } from "./group-marketing";
+import { validateCampaign, tidyCampaign, campaignSystemPrompt, campaignUserPrompt } from "./group-campaign";
+import { HOUSE_VOICE_RULES, LEAD_WITH_RULES, buildFacts, ctaRule, normalizeAnswers, type GroupFacts } from "./group-marketing";
 
 const facts = { lang: "en", allowedNumbers: ["575.8", "99", "2027", "10", "14", "4"] } as unknown as GroupFacts;
 const url = "https://stillafloatcruising.com/group.html?g=rj4qhy2xft";
@@ -96,13 +96,13 @@ test("the pitch's numbers are fact-checked once, on the pitch, with the phone an
   assert.deepEqual(validateCampaign(withPitchInFirstEmail(), facts, { pitch: `${PITCH} Call 919-346-6127.` }, url).filter((x) => x.field === "pitch"), []);
 });
 
-test("exclamation marks, 'Join Mark' and amenity points fail every campaign piece", () => {
+test("'Join Mark' and amenity points fail every campaign piece; an exclamation mark does not", () => {
   const c = good();
   c.emails[0]!.subject = "Sail with us!";
   c.emails[1]!.body += " Join Mark on the Seaside.";
   c.facebook.reminder += " Three amenity points for the group.";
   const p = validateCampaign(c, facts, {}, url);
-  assert.ok(p.some((x) => x.field === "emails[0].subject" && /exclamation/.test(x.problem)));
+  assert.ok(!p.some((x) => x.field === "emails[0].subject"), "the '!' is the register");
   assert.ok(p.some((x) => x.field === "emails[1].body" && /Join Mark/.test(x.problem)));
   assert.ok(p.some((x) => x.field === "facebook.reminder" && /amenity points/.test(x.problem)));
 });
@@ -125,19 +125,19 @@ test("the same words with the closing marks softened are kept; a paraphrase ('tw
   assert.deepEqual(validateCampaign(c, facts, { pitch: MARK_PITCH }, url), []);
   c.emails[0]!.body = VERBATIM.replace("two incredible days", "two amazing days");
   const p = validateCampaign(c, facts, { pitch: MARK_PITCH }, url);
-  assert.deepEqual(p.map((x) => x.field), ["emails[0].body", "emails[0].body"]);
+  assert.deepEqual(p.map((x) => x.field), ["emails[0].body"]);
   assert.match(p.find((x) => x.problem.startsWith("Pitch sentence not kept"))!.problem, /^Pitch sentence not kept: 'Enjoy  all that Nassau has to offer/);
   assert.equal(p.filter((x) => x.problem.startsWith("Pitch sentence not kept")).length, 1, "only his second sentence; the first has his words");
-  // the paraphrase is the writer's words, not his, so its closing "!" is ours to answer for; the first sentence is untouched
-  assert.deepEqual(p.filter((x) => !x.problem.startsWith("Pitch sentence not kept")).map((x) => x.problem), ["has an exclamation mark"]);
+  // nothing else is wrong with the paraphrase: his "!" and his adjectives are the register, so it is a cut and no more
+  assert.deepEqual(p.filter((x) => !x.problem.startsWith("Pitch sentence not kept")).map((x) => x.problem), []);
 });
 
-test("the bans still apply to our own words around his pitch, in every piece", () => {
+test("the bans that remain still apply to our own words around his pitch, in every piece", () => {
   const c = good();
   c.emails[0]!.body = `${VERBATIM} An amazing week, guaranteed!`;
   c.facebook.reminder += " Join Mark on the Seaside!";
   const p = validateCampaign(c, facts, { pitch: MARK_PITCH }, url);
-  assert.ok(p.some((x) => x.field === "emails[0].body" && /exclamation/.test(x.problem)));
+  assert.ok(!p.some((x) => /exclamation|amazing/.test(x.problem)), "the '!' and 'amazing' are the register");
   assert.ok(p.some((x) => x.field === "emails[0].body" && /Guaranteed|guaranteed/.test(x.problem)));
   assert.ok(p.some((x) => x.field === "facebook.reminder" && /Join Mark/.test(x.problem)));
   assert.ok(!p.some((x) => /Pitch sentence not kept/.test(x.problem)), JSON.stringify(p));
@@ -147,7 +147,7 @@ test("the campaign prompt says the pitch is copied character for character and t
   const sys = campaignSystemPrompt("en");
   assert.match(sys, /character for character: his punctuation and his word choices stay exactly as he wrote them/);
   assert.match(sys, /not even a closing exclamation mark becoming a full stop/);
-  assert.match(sys, /no urgency words in the words we write\. .*Mark's pitch sentences are his own words/);
+  assert.match(sys, /No urgency words, no promises\. .*Mark's pitch sentences are his own words/);
   assert.doesNotMatch(sys, /The only change allowed is a closing exclamation mark/);
 });
 
@@ -155,6 +155,54 @@ test("the campaign prompt carries the house voice verbatim and puts the pitch in
   const sys = campaignSystemPrompt("en");
   for (const rule of HOUSE_VOICE_RULES) assert.ok(sys.includes(rule), rule);
   assert.match(sys, /every sentence of it into the body of email 1 \(the announcement\), word for word, in his order, and cut nothing/);
-  assert.match(sys, /no exclamation marks/);
+  assert.match(sys, /Exclamation marks and the capitalised payoff are part of the register/);
+  assert.doesNotMatch(sys, /no exclamation marks/);
+  assert.doesNotMatch(sys, /no all-caps/);
   assert.doesNotMatch(sys, /stacked exclamation/);
+});
+
+// ── Mark's register in the campaign (Mark 2026-10-19) ────────────────────────────────────────────────────────
+
+const SENTENCE = "Imagine shopping Nassau in the morning, watching the sunset from the beach at Ocean Cay, dancing under the lighthouse light show at the beach party that night, then walking that same beach into a Bahamas sunrise… ALL ON THE SAME CRUISE!";
+
+test("email 1 opens with the 'Imagine…' sentence and its payoff, then his pitch verbatim; emails 2 and 3 keep his register; the Facebook announcement is the sentence, the facts and the call to action", () => {
+  const sys = campaignSystemPrompt("en", normalizeAnswers({ pitch: MARK_PITCH }));
+  assert.match(sys, /Layout of email 1: the 'Imagine…' sentence and its payoff as the opening \(built from <lead_with>: the headline activity first, the event and the sunset-to-sunrise arc named in it\), then Mark's pitch verbatim, then the facts/);
+  assert.match(sys, /Emails 2 and 3 keep his register too: full flowing sentences, never fragments; their reminders stay fact-based/);
+  assert.match(sys, /Facebook: the announcement is the 'Imagine…' sentence and its payoff, then the facts, then the call to action/);
+  assert.match(sys, /the event title is a short line \(70 characters at most\)/);
+  assert.match(sys, /the boosted-post text \(300 characters at most\) is the sentence trimmed to the moments that fit, its payoff and the call to action/);
+  assert.match(sys, /Never a chain of two-word sentences\. No fragments/);
+  assert.match(sys, /the hook is ONE flowing sentence that starts "Imagine…"/);
+  assert.ok(LEAD_WITH_RULES.every((r) => sys.includes(r)));
+  assert.doesNotMatch(sys, /dry understated humor|the hook as the opening line, then the walk-through sentence/);
+  assert.doesNotMatch(sys, /Scan the QR to join the fun/);
+  // the user message asks for the sentence in email 1 and the announcement, and carries the info-sheet link and the phone
+  const real = buildFacts({ group: { name: "Millham F/F 2027", ship_name: "MSC SEASHORE", cruise_line: "MSC CRUISES", sail_date: "2027-05-09", nights: 4, embark_port: "PCV", itinerary: [{ day: 2, port: "Nassau, Bahamas" }] }, cabins: [] }, null, "en");
+  const user = campaignUserPrompt(real, normalizeAnswers({ pitch: MARK_PITCH, picture: "The lighthouse beach party, the sunset and the sunrise" }), url);
+  assert.match(user, /email 1 and the Facebook announcement open with ONE rising sentence through the <lead_with> moments in that order and its capitalised payoff, and never a chain of two-word sentences/);
+  assert.ok(user.includes(url) && user.includes("919-346-6127"));
+  assert.doesNotMatch(user, /The button asks the reader/, "the campaign has no button");
+});
+
+test("the call to action is 'Use the QR code to book your spot!' in every campaign piece, or the group's own cta_line", () => {
+  const rule = ctaRule({}, "en", "in EVERY piece (every email and every Facebook text carries the QR image beside it; the link is the info sheet, for people reading on a phone)");
+  assert.ok(campaignSystemPrompt("en").includes(rule));
+  assert.match(rule, /the exact words "Use the QR code to book your spot!", then the link, then the phone 919-346-6127/);
+  assert.match(campaignSystemPrompt("es"), /the exact words "¡Use el código QR para reservar su lugar!"/);
+  const own = campaignSystemPrompt("en", { cta_line: "Scan the QR to join the fun" });
+  assert.match(own, /the exact words "Scan the QR to join the fun", then the link/);
+  assert.doesNotMatch(own, /Use the QR code to book your spot!/);
+});
+
+test("a campaign in Mark's register passes: the sentence and its payoff open email 1 and the announcement, his pitch follows, '!' and capitals included", () => {
+  const c = good();
+  c.emails[0]!.body = `${SENTENCE}\n\n${VERBATIM}\n\nUse the QR code to book your spot!\n\nStill Afloat Cruising`;
+  c.emails[1]!.body = "Imagine the beach party under the lighthouse light show, with a few cabins still open and the deposit at $99 per person. Use the QR code to book your spot!";
+  c.facebook.announcement = `${SENTENCE}\n\nUse the QR code to book your spot!`;
+  c.facebook.boosted = "Imagine the lighthouse light show at the beach party, then a Bahamas sunrise… ALL ON THE SAME CRUISE! Use the QR code to book your spot!";
+  assert.deepEqual(validateCampaign(c, facts, { pitch: MARK_PITCH }, url), []);
+  // the "Join Mark" hook is still refused in any of them
+  c.facebook.announcement = `Join Mark! ${SENTENCE}`;
+  assert.ok(validateCampaign(c, facts, { pitch: MARK_PITCH }, url).some((x) => x.field === "facebook.announcement" && /Join Mark/.test(x.problem)));
 });

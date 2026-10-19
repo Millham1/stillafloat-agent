@@ -33,6 +33,9 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400}
 .hint{color:rgba(255,255,255,.72);font-size:18px}
 .lead h1{font-size:clamp(34px,4.4vw,54px);margin:0 0 10px;line-height:1.12}
 .lead .sub{font-size:clamp(20px,2vw,24px);color:rgba(255,255,255,.88);margin:0 0 22px}
+/* Mark's register (2026-10-19): the headline is one long rising sentence, so its type gives way to it; the line under it is the capitalised payoff. */
+.lead h1.long{font-size:clamp(26px,3vw,40px);line-height:1.25}
+.lead .sub.payoff{font-size:clamp(24px,2.8vw,34px);font-weight:700;color:#ffd21f;letter-spacing:.02em;line-height:1.2}
 
 .preview-bar{background:#ffd21f;color:#07183f;text-align:center;font-weight:700;padding:10px 16px;font-size:18px}
 .langswitch{text-align:right;margin:-14px 0 18px}
@@ -238,7 +241,7 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
   function render(d){
     var f = d.facts, c = d.copy;
     state.hidden = true; show('gp-main');
-    document.title = c.headline + ' | Still Afloat Cruising';
+    document.title = (c.headline.length > 70 ? f.groupName : c.headline) + ' | Still Afloat Cruising';
     $('gp-plaque').textContent = f.groupName;
     if(d.preview){ var pb=$('gp-preview'); pb.textContent=T.preview; pb.hidden=false; }
     if(d.langs && d.langs.length > 1){
@@ -246,7 +249,9 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
       $('gp-lang').innerHTML = '<a href="'+other+'?g='+code+location.hash+'">'+esc(T.other)+'</a>'; show('gp-lang');
     }
     $('gp-headline').textContent = c.headline;
+    $('gp-headline').className = c.headline.length > 90 ? 'long' : '';
     $('gp-subhead').textContent = c.subhead;
+    $('gp-subhead').className = 'sub' + (c.subhead.length <= 60 ? ' payoff' : '');
     $('gp-stats').innerHTML = stat(T.ship, f.ship) + stat(T.sails, f.sailDateText) + stat(T.nights, f.nights) + stat(T.from, f.embarkPort)
       + (f.fromPerPersonText ? stat(T.price_from, f.fromPerPersonText + ' ' + T.pp) : '');
     $('gp-intro').textContent = c.intro;

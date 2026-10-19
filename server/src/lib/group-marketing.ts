@@ -6,9 +6,11 @@
 //            Line score. Built here from the group file by code. Never written,
 //            rounded or restated by a model, and never stored inside the copy.
 //   WORDS  — headline, the why, who it suits, the invitation email. Written from
-//            Mark's interview answers + the facts, then checked by validateCopy:
-//            any number that is not one of the file's own numbers, any hype
-//            phrase, any promise, fails the copy before Mark ever sees it.
+//            Mark's interview answers + the facts, in HIS register (one rising
+//            sentence through his moments, his adjectives and exclamation marks,
+//            a capitalised payoff), then checked by validateCopy: any number that
+//            is not one of the file's own numbers, any promise or sales pressure,
+//            "Join Mark" or amenity points fails the copy before Mark sees it.
 // The public page shows facts from the file and words from the approved copy,
 // so a price change on the file changes the page and can never contradict it.
 //
@@ -32,13 +34,16 @@ export interface InterviewQuestion {
   required?: boolean;
 }
 
+/** The call to action every group piece ends on (Mark 2026-10-19), unless the group's interview chooses another line (`cta_line`). */
+export const DEFAULT_CTA: Record<Lang, string> = { en: "Use the QR code to book your spot!", es: "¡Use el código QR para reservar su lugar!" };
+
 /** What the contract cannot tell us. Short on purpose — Mark fills this in once per group. */
 export const INTERVIEW: InterviewQuestion[] = [
   // Mark 2026-10-11: no group creative is drafted without HIS pitch, his picture and a piece he likes. The copy is
   // built around the pitch word for word (validateCopy / validateCampaign check every sentence is still there).
   { key: "pitch", type: "long", required: true, label: "Your pitch, as you would say it to them", hint: "What the trip is, who it is for, why come, what they get, what to do next. Your words — the copy is built around them and nothing is cut." },
   { key: "picture", type: "long", label: "What should the reader see?", hint: "The moment, not the ship. One or two sentences." },
-  { key: "occasion_line", type: "text", label: "The occasion, in the group's own words", hint: "One line. We add the wink." },
+  { key: "occasion_line", type: "text", label: "The occasion, in the group's own words", hint: "One line, as you want it read. It is used exactly as you write it: nothing is added." },
   { key: "reference", type: "text", label: "A piece you like", hint: "A link or a name, so the piece matches your taste." },
   { key: "audience", type: "text", required: true, label: "Who is this group?", hint: "For example: members of the Post and their families, or Abuela's children, grandchildren and close friends." },
   { key: "occasion", type: "text", required: true, label: "What is the occasion?", hint: "A reunion, a milestone birthday, an annual trip. One line." },
@@ -46,6 +51,8 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "who_fits", type: "long", label: "Who is this trip right for, and who should think twice?", hint: "Mobility, budget, first-timers, kids. The honest version builds trust." },
   { key: "organizer_quote", type: "long", label: "A line from the organizer (optional)", hint: "Their words, as they said them. Leave blank if you have none." },
   { key: "extras", type: "long", label: "Anything else planned around the cruise? (optional)", hint: "A group dinner, a bus to the port, a hotel the night before." },
+  // Mark 2026-10-19: every piece ends on "Use the QR code to book your spot!"; another line (his earlier "Scan the QR to join the fun") can be chosen per group here.
+  { key: "cta_line", type: "text", label: "The call to action, as it should read (optional)", hint: `Left blank, every piece says "${DEFAULT_CTA.en}". Type another line, for example "Scan the QR to join the fun", to use it on every piece instead.` },
   { key: "tone", type: "choice", label: "Tone", fallback: "warm-humor",
     choices: [
       { value: "warm-humor", label: "Warm, with a little humor (the usual)" },
@@ -55,6 +62,12 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "show_prices", type: "yesno", label: "Show prices on the page?", fallback: true },
   { key: "show_rating", type: "yesno", label: "Show the ship's Conga Line score and note?", fallback: true },
 ];
+
+/** The call-to-action line for this group: the interview's `cta_line` as Mark typed it, else the default. `custom` is true when it is his own line. */
+export function ctaLine(answers: Record<string, string | boolean>, lang: Lang): { text: string; custom: boolean } {
+  const own = typeof answers["cta_line"] === "string" ? answers["cta_line"].trim() : "";
+  return own ? { text: own, custom: true } : { text: DEFAULT_CTA[lang], custom: false };
+}
 
 /** The longest answer kept. The pitch is never cut to fit: the answers route refuses a longer one. */
 export const ANSWER_MAX = 2000;
@@ -392,8 +405,10 @@ export interface GroupCopy {
 }
 
 export const COPY_FIELDS: Array<{ key: keyof GroupCopy; label: string; max: number; long?: boolean; optional?: boolean }> = [
-  { key: "headline", label: "Headline", max: 90 },
-  { key: "subhead", label: "Line under the headline", max: 160 },
+  // Mark 2026-10-19: the headline IS the walk-through sentence ("Imagine ... then ... sunrise…"), one rising sentence through his moments, so it is
+  // long (220, was 90 for a four-word hook); the line under it is the capitalised payoff ("ALL ON THE SAME CRUISE!").
+  { key: "headline", label: "Headline (the one rising sentence through the moments)", max: 220 },
+  { key: "subhead", label: "Payoff line under the headline", max: 160 },
   // The three paragraphs that carry Mark's own words (the pitch runs on through all three, his extras and caveats land in
   // who_for) are 900 each: 600 refused a who_for with his air/hotel package and a theme-park day in it (716 characters,
   // Millham F/F 2027, 2026-10-19). The short display fields (button, headline, subject) and the channel texts stay as they were.
@@ -421,8 +436,8 @@ export const COPY_SCHEMA: Record<string, unknown> = {
 // or exclamation mark at the end may differ, nothing else).
 //
 // The pitch is HIS, not ours (Mark 2026-10-11 pitch first, 2026-10-12 keep his words): his exclamation marks and
-// his adjectives ("incredible", "amazing") go in exactly as he wrote them. The house-voice bans (no "!", no hype
-// words, no "Join Mark", no "amenity points", no "actually", no "cheaper") are for the words WE write around it,
+// his adjectives ("incredible", "amazing") go in exactly as he wrote them. The bans that remain (no "Join Mark",
+// no "amenity points", no promises or sales pressure, no "actually", no "cheaper") are for the words WE write around it,
 // so the validators take his sentences out of a field (`withoutPitch`) before they look for banned words.
 
 const ABBREVIATION = /\b(?:Mr|Mrs|Ms|Dr|St|Mt|Ft|Sr|Jr|vs|Inc|U\.S|a\.m|p\.m)\.$/i;
@@ -484,7 +499,7 @@ function sentencePattern(sentence: string): RegExp | null {
 
 /**
  * The text with Mark's pitch sentences taken out (each replaced by a space), the same way `missingPitchSentences` finds them.
- * What is left is the words WE wrote, which is all the house-voice bans (exclamation marks, hype words, "Join Mark" ...) apply to.
+ * What is left is the words WE wrote, which is all the bans ("Join Mark", amenity points, promises, "actually" ...) apply to.
  * No pitch = the text as it is.
  */
 export function withoutPitch(pitch: string | null | undefined, text: string): string {
@@ -510,32 +525,37 @@ export function pitchNumberProblems(answers: Record<string, string | boolean>, f
     .map((n) => ({ field: "pitch", problem: `Mark's pitch states a number that is not in the group file: ${n}` }));
 }
 
-/** Marketing rules Mark has set that hold in every piece and every language (2026-10-11 / 2026-10-12). */
+/**
+ * Marketing rules Mark has set that hold in every group piece and every language (2026-10-11 / 2026-10-12).
+ * Mark 2026-10-19 ("it is not my voice or style"): the exclamation-mark ban is gone, because his register has exclamation marks
+ * (the capitalised payoff, "amazing", "incredible"); the two that stay are the ones about people and perks.
+ */
 export const HOUSE_BANNED: Record<Lang, Array<{ re: RegExp; problem: string }>> = {
   en: [
-    { re: /!/, problem: "has an exclamation mark" },
     { re: /\bjoin mark\b/i, problem: 'uses "Join Mark" (Mark is the contact, never the hook)' },
     { re: /\bamenity points?\b/i, problem: "mentions amenity points (show what the fare includes)" },
   ],
   es: [
-    { re: /!/, problem: "has an exclamation mark" },
     { re: /(?<!\p{L})(?:join mark|[uú]nase a mark|[uú]nete a mark|sum[aá]te a mark|s[uú]mese a mark)(?!\p{L})/iu, problem: 'uses "Join Mark" (Mark is the contact, never the hook)' },
     { re: /\b(?:amenity points?|puntos? de (?:beneficios|amenidades))\b/i, problem: "mentions amenity points (show what the fare includes)" },
   ],
 };
 
-// Never hype, never promise (brand voice + liability posture). Checked per language.
+// Never promise, never pressure (brand voice + liability posture). Checked per language. Mark 2026-10-19: his adjectives are part of
+// his register, so the energy adjectives (amazing, unforgettable, ultimate, breathtaking, world-class and their Spanish twins) are no longer
+// banned; what stays is what promises, pressures or claims a product tier (guarantee, once in a lifetime, best price, hurry, selling fast,
+// luxury, paradise) and the brand's own words ("actually", "cheaper").
 const BANNED: Record<Lang, RegExp[]> = {
   en: [
-    /\bactually\b/i, /\bcheap(er|est)?\b/i, /\bguarantee[ds]?\b/i, /\bonce[- ]in[- ]a[- ]lifetime\b/i, /\bultimate\b/i,
-    /\bamazing\b/i, /\bunforgettable\b/i, /\bescape to\b/i, /\byou won'?t believe\b/i, /\bparadise\b/i, /\bluxur(y|ious)\b/i,
+    /\bactually\b/i, /\bcheap(er|est)?\b/i, /\bguarantee[ds]?\b/i, /\bonce[- ]in[- ]a[- ]lifetime\b/i,
+    /\bescape to\b/i, /\byou won'?t believe\b/i, /\bparadise\b/i, /\bluxur(y|ious)\b/i,
     /\bbest (price|deal|rate)\b/i, /\blowest (price|rate|fare)\b/i, /\bhurry\b/i, /\bdon'?t miss( out)?\b/i, /\bact now\b/i,
-    /\bboasts?\b/i, /\bperfect for\b/i, /\bwill sell out\b/i, /\bselling fast\b/i, /\bworld[- ]class\b/i, /\bbreathtaking\b/i,
+    /\bboasts?\b/i, /\bperfect for\b/i, /\bwill sell out\b/i, /\bselling fast\b/i,
   ],
   es: [
-    /\bgarantiz/i, /\b(m[aá]s )?barat[oa]s?\b/i, /\b[uú]nic[oa] en la vida\b/i, /\binolvidable/i, /\bincre[ií]ble/i, /\bpara[ií]so\b/i,
+    /\bgarantiz/i, /\b(m[aá]s )?barat[oa]s?\b/i, /\b[uú]nic[oa] en la vida\b/i, /\bpara[ií]so\b/i,
     /\blujo(s|so|sa)?\b/i, /\bmejor (precio|oferta|tarifa)\b/i, /\bprecio m[aá]s bajo\b/i, /\bap[uú]r(ate|ese|ense)\b/i,
-    /\bno te lo pierdas\b/i, /\bno se lo pierda/i, /\bse agota/i, /\bde clase mundial\b/i, /\bimpresionante/i, /\bperfect[oa] para\b/i,
+    /\bno te lo pierdas\b/i, /\bno se lo pierda/i, /\bse agota/i, /\bperfect[oa] para\b/i,
   ],
 };
 
@@ -668,10 +688,10 @@ export function leadWithLines(lw: LeadWith): string[] {
   if (lw.arc) items.push(`The arc, sunset to sunrise in the one place: sunset, then sunrise${src(lw.arc.from)}`);
   if (lw.ports) items.push(`The port${lw.ports.names.length > 1 ? "s" : ""}: ${lw.ports.names.join(", ")}${src(lw.ports.from)}`);
   if (!items.length) {
-    return ["Nothing in his answers names an event, a sunset-to-sunrise arc or a port of call. Lead with the first image in \"The picture the reader should see\", then the next, in his order; if the picture is empty, lead with the most physical moment in the pitch."];
+    return ["Nothing in his answers names an event, a sunset-to-sunrise arc or a port of call. String the first image in \"The picture the reader should see\", then the next, in his order, into ONE rising sentence, then the payoff; if the picture is empty, build the sentence from the most physical moments in the pitch."];
   }
   return [
-    "Lead with these, in this order. They are the moments Mark gave you in the picture, the pitch and his reasons. The hook and the walk-through sentence are built from them, the dry beat comes last, and the page copy and the campaign open on the first of them.",
+    "String these moments, in this order, into ONE rising sentence, then the payoff. They are the moments Mark gave you in the picture, the pitch and his reasons. The headline is that sentence, the payoff is the line under it, and the email and the posts open with the same sentence.",
     ...items.map((x, i) => `${i + 1}. ${x}`),
     ...(lw.scenes.length ? [`Scene details in his words (use them to make the moments physical): ${lw.scenes.join(", ")}`] : []),
   ];
@@ -727,26 +747,27 @@ export function validateCopy(copy: unknown, facts: GroupFacts, answers: Record<s
 }
 
 /**
- * What Mark should see but what does not stop him approving (a "note", where a problem blocks): the walk-through line (the
- * subhead) does not carry the moments his answers name. Mark 2026-10-19: the writer's subhead had the light show but not the beach
- * party, and the sunrise but not the sunset, so the event read as an aside. It is a nudge to read the line again, never a rule
- * the copy fails: only English is checked (Mark writes in English; the Spanish copy is a translation), and a field that is
- * missing is already a problem.
+ * What Mark should see but what does not stop him approving (a "note", where a problem blocks): the walk-through sentence (the
+ * headline, with the payoff line under it) does not carry the moments his answers name. Mark 2026-10-19: the writer's line had the light show
+ * but not the beach party, and the sunrise but not the sunset, so the event read as an aside. It is a nudge to read the line again,
+ * never a rule the copy fails: only English is checked (Mark writes in English; the Spanish copy is a translation), and a field
+ * that is missing is already a problem.
  */
 export function copyNotes(copy: unknown, facts: Pick<GroupFacts, "lang" | "ports">, answers: Record<string, string | boolean> = {}): CopyProblem[] {
   if (facts.lang !== "en") return [];
   const c = (copy && typeof copy === "object" ? copy : {}) as Row;
-  const line = typeof c["subhead"] === "string" ? c["subhead"] : "";
-  if (!line.trim()) return [];
+  const str = (k: string) => (typeof c[k] === "string" ? (c[k] as string) : "");
+  const line = [str("headline"), str("subhead")].filter((x) => x.trim()).join(" ");
+  if (!str("headline").trim()) return [];
   const lw = leadWith(answers, facts);
   const notes: CopyProblem[] = [];
   if (lw.event) {
     const lacking = lw.event.terms.filter((t) => !mentions(line, EVENT_LEX.find((l) => l.term === t)!));
-    if (lacking.length) notes.push({ field: "subhead", problem: `the walk-through line does not mention the ${lacking.join(" / ")} the ${lw.event.from.some((f) => f.startsWith("pitch")) ? "pitch" : "picture"} names` });
+    if (lacking.length) notes.push({ field: "headline", problem: `the walk-through sentence does not mention the ${lacking.join(" / ")} the ${lw.event.from.some((f) => f.startsWith("pitch")) ? "pitch" : "picture"} names` });
   }
   if (lw.arc && !(mentions(line, SUNSET) && mentions(line, SUNRISE))) {
     const where = lw.arc.from.includes("why_sailing") ? "why-sailing answer" : lw.arc.from[0]!.startsWith("pitch") ? "pitch" : "picture";
-    notes.push({ field: "subhead", problem: `the walk-through line does not carry the sunset-to-sunrise arc the ${where} names (it needs both "sunset" and "sunrise")` });
+    notes.push({ field: "headline", problem: `the walk-through sentence does not carry the sunset-to-sunrise arc the ${where} names (it needs both "sunset" and "sunrise")` });
   }
   return notes;
 }
@@ -764,35 +785,49 @@ export function tidyCopy(raw: unknown): GroupCopy {
 // ── Prompts ───────────────────────────────────────────────────────────────────
 
 const TONE: Record<string, string> = {
-  "warm-humor": "Warm, told to a friend, with one or two light, dry touches of humor aimed at situations and never at the traveler.",
-  warm: "Warm, plain and direct. No jokes.",
-  formal: "Respectful and formal, suited to an organization writing to its members. No jokes.",
+  "warm-humor": "Warm and enthusiastic, told to a friend, in Mark's own register: long rising sentences and his own adjectives. No humor of your own; a joke appears only where Mark wrote it.",
+  warm: "Warm, plain and direct. Keep the one rising sentence and the payoff; no extra enthusiasm beyond Mark's own words. No jokes.",
+  formal: "Respectful and formal, suited to an organization writing to its members. Keep the one rising sentence and the payoff; no jokes.",
 };
 
 /**
- * The approved house voice for every group piece (Mark 2026-10-12, from the approved poster). Shared by the page
- * copy and the campaign so the two cannot drift apart. The examples show the SHAPE; they are another group's moment.
+ * Mark's register for every group piece (Mark 2026-10-19, after he rejected the whole set the writer produced for his own group: "it is not my
+ * voice or style, you have concatenated meaningful phrases so they have no impact"). It is HIS own: the pitch he wrote and his 10/12 markup of the
+ * approved poster ("Imagine, watching a Caribbean sunset, dancing to an amazing light show on the beach, then walking the beach to the most
+ * beautiful sunrise..... ALL ON THE SAME CRUISE!"): one rising sentence through the moments in his order that lands on a short capitalised payoff
+ * with an exclamation mark, his adjectives and exclamation marks, no fragments, no dry beats. Shared by the page copy and the campaign so the two
+ * cannot drift apart. The examples show the SHAPE; they are another group's moment.
  */
 export const HOUSE_VOICE_RULES: string[] = [
-  '- Hook = the experience in 4–6 words, full stops, no exclamation marks. Example: "Sunset. Light show. Sunrise. Same beach. Same cruise."',
-  '- One sentence that walks the reader through the moment, ending on a dry beat. Example: "Watch a Caribbean sunset, dance under a lighthouse light show, then walk that same beach at sunrise. The only hard decision all week is when to sleep."',
-  '- One line for the occasion in the group\'s own words, plus a wink. Example: "Four nights of camaraderie and relaxation. Shoes optional."',
-  '- Never "Join Mark" as the hook. Mark appears as the contact only, never in first person. In the words we write: no hype words, no superlatives, no emojis, no exclamation marks.',
-  '- Perks shown = what the fare includes, from the quote (drinks package, Wi-Fi, overnight at Ocean Cay...), never "amenity points".',
-  `- Primary CTA in every piece: "Scan the QR to join the fun" (exact words), then the link, then the phone ${BUSINESS.phone}.`,
-  "- The examples above show the shape only. Never copy their words or details into another group's piece; use this group's own picture and facts.",
+  "- Mark's register (the model for every group piece is his own pitch and his own markup of the approved poster): the hook is ONE flowing sentence that starts \"Imagine…\" (or opens in an equally flowing way), walks the reader through the moments in <lead_with> in his order, one after another inside that same sentence with the energy rising as it goes, and lands on a short capitalised payoff that ends in an exclamation mark. Shape (another group's moments): \"Imagine, watching a Caribbean sunset, dancing to an amazing light show on the beach, then walking the beach to the most beautiful sunrise..... ALL ON THE SAME CRUISE!\" In Spanish write the same sentence in natural Latin American Spanish (\"¡TODO EN EL MISMO CRUCERO!\").",
+  "- The payoff is a short capitalised line ending in an exclamation mark that says what the moments add up to, in his words (\"ALL ON THE SAME CRUISE!\" when they all happen on the one sailing). It comes last and stands on its own: on the page it is the subhead; in an email or a post it follows the sentence.",
+  "- Never a chain of two-word sentences. No fragments, no lists of nouns with full stops (\"Beach party. Light show. Sunrise.\"), no short sentence tacked on for effect, no dry beat, no wink. Each moment keeps its meaning because it sits inside the one sentence with the moments around it; chopped into fragments it has no impact.",
+  "- Warmth and energy are Mark's: his adjectives (\"amazing\", \"incredible\", \"most beautiful\") and his exclamation marks are part of the register and are allowed in the words we write, in every piece. Take them from his answers (the pitch, the picture, why this sailing) and reuse his own; the energy comes from his moments in his order and from his words, so never invent a superlative or an adjective he did not use. Humor only where he wrote it: the occasion line is used exactly as he wrote it in the interview, with nothing added; with no answer there is no occasion line.",
+  "- Never \"Join Mark\" as the hook (his own \"Join us\" is fine). Mark appears as the contact only, never in first person in the words we write. No emojis.",
+  "- Perks shown = what the fare includes, from the quote (drinks package, Wi-Fi, overnight at Ocean Cay...), never \"amenity points\".",
+  "- The examples above show the shape only. Never copy their words or details into another group's piece; use this group's own picture, moments and facts.",
 ];
+
+/**
+ * The call to action, as one rule, for both prompts (Mark 2026-10-19: "Use the QR code to book your spot!" on every piece; the interview's
+ * `cta_line` chooses another line for a group). The link is the info sheet; the phone is the third contact.
+ */
+export function ctaRule(answers: Record<string, string | boolean>, lang: Lang, pieces: string): string {
+  const cta = ctaLine(answers, lang);
+  const words = lang === "es" && cta.custom ? `the line "${cta.text}", translated into natural Latin American Spanish` : `the exact words "${cta.text}"`;
+  return `- Call to action, ${pieces}: ${words}, then the link, then the phone ${BUSINESS.phone} for people who would rather call or text. Readers scan the QR code (printed on the pieces) or open the link to see everything and say they are in. It closes the piece, before an email's sign-off.`;
+}
 
 /**
  * What to lead with (Mark 2026-10-19). The picture, the pitch and his reasons name the moments; `<lead_with>` in the user prompt
  * lists them in order. Shared by the page copy and the campaign so the two cannot drift apart. The brackets show the SHAPE only.
  */
 export const LEAD_WITH_RULES: string[] = [
-  "- What to lead with: <lead_with> in the user message lists the moments Mark himself named, in the order to use them. Lead with them, in that order. His 'picture' answer and the concrete moments in his pitch and reasons are THE story: the headline activity first, named as an event people do (the evening beach party under the light show), then the sunset-to-sunrise arc in the one place, then the port. Never open on the port, the ship, the schedule or a verb like 'browse'. Mark's pitch keeps its own order (it is copied word for word); this order is for the words we write around it. Spanish copy names the same moments in natural Spanish. The examples in these rules are another group's moments and show the shape only: use this group's moments from <lead_with>.",
-  "- The hook (4–6 words, full stops) and the walk-through sentence are BUILT FROM those moments. The hook names the headline activity in its first words. The walk-through sentence makes the event its subject (never a clause tucked after 'browse', 'watch' or 'enjoy'), uses the words that name it (for example 'beach party', 'light show') and the words 'sunset' and 'sunrise' when <lead_with> has the arc, and fits in 160 characters; the port goes in the intro or why_ship when it will not fit. Shape: [the event, as something people do, in its setting], [sunset to sunrise in the one place]. [the dry beat].",
-  "- The dry beat comes LAST and is about the schedule, the sleeping or the shrug, never about the event: state the event plainly and fully first, then the beat. It must not undercut the event: no 'allegedly', no 'supposedly', no joke at the event's expense.",
-  "- Energy comes from concrete, physical, present-tense moments (the sand, the music, the lighthouse lighting the beach, walking back at sunrise), never from adjectives: no 'amazing', 'incredible', 'unforgettable' or exclamation marks in the words we write. Use the scene details Mark gave in <lead_with>.",
-  "- Where the 'picture' answer names images, why_ship and who_for echo them as scenes (what a person sees or does, in the present tense), in the same order. email_body and the social post (social_post, and the campaign's email 1 and Facebook announcement) open on the headline activity: the first sentence names the event as something people do.",
+  "- What to lead with: <lead_with> in the user message lists the moments Mark himself named, in the order to use them. String these moments, in this order, into ONE rising sentence, then the payoff. His 'picture' answer and the concrete moments in his pitch and reasons are THE story: the headline activity first, named as an event people do (the evening beach party under the light show), then the sunset-to-sunrise arc in the one place, then the port. Never open on the ship, the schedule or a verb like 'browse'. Mark's pitch keeps its own order (it is copied word for word); this order is for the words we write around it. Spanish copy names the same moments in natural Spanish. The examples in these rules are another group's moments and show the shape only: use this group's moments from <lead_with>.",
+  "- The headline IS that sentence and the subhead is its payoff. The sentence starts 'Imagine…', every moment is a phrase of the one sentence (never a sentence of its own), the energy rises to the last moment, and it fits in about 200 characters. The headline activity is named with the words Mark used (for example 'beach party', 'light show') and is the subject of its phrase, never a clause tucked after 'browse', 'watch' or 'enjoy'; when <lead_with> has the arc, the sentence carries both words 'sunset' and 'sunrise'; the port goes in as the place a moment happens ('shopping Nassau in the morning') and may sit wherever it reads most naturally. If the moments will not fit, keep the headline activity and the arc and put the rest in the intro or why_ship.",
+  "- The payoff never undercuts the event: no 'allegedly', no 'supposedly', no joke about the schedule or about sleeping, no joke at the event's expense.",
+  "- Energy comes from Mark's moments and his own words: concrete, present-tense things (the sand, the music, the lighthouse lighting the beach, walking back at sunrise) and the adjectives and exclamation marks he used ('amazing', 'incredible', 'most beautiful'), reused as he wrote them. Never an invented superlative, never a stack of adjectives he did not use. Use the scene details Mark gave in <lead_with>.",
+  "- Where the 'picture' answer names images, why_ship and who_for echo them as scenes (what a person sees or does, in the present tense), in the same order. email_body and the social post (social_post, and the campaign's email 1 and Facebook announcement) open with the same 'Imagine…' sentence and its payoff.",
 ];
 
 /** How a piece is built around Mark's pitch. `where` names the place that must carry it. */
@@ -804,9 +839,9 @@ export function pitchRules(where: string, spill: string, lang: Lang = "en"): str
     lang === "es"
       ? "- Do not tighten, 'improve', brand-voice or reorder the pitch, even where it says 'I'. Add no number of your own."
       : "- Copy each pitch sentence character for character: his punctuation and his word choices stay exactly as he wrote them. If he wrote an exclamation mark, keep it; if he wrote 'incredible' or 'amazing', keep it. Do not paraphrase, swap a word for a synonym, tighten, translate into 'brand voice' or reorder the pitch, even where it says 'I' or 'Join us'. No change is allowed, not even a closing exclamation mark becoming a full stop. Add no number of your own.",
-    ...(lang === "es" ? [] : ["- The house-voice rules (no exclamation marks, no hype words or superlatives, no 'Join Mark', no 'amenity points', no 'actually', no 'cheaper') are for the words WE write around the pitch. They never apply inside his sentences, and they never change a word of them."]),
-    "- The 'picture' answer is what the reader should SEE (the moment, never the ship): it steers the imagery and scene words you write around the pitch.",
-    "- The 'occasion line' answer, in the group's own words, is the first half of the wink line; you add the dry wink.",
+    ...(lang === "es" ? [] : ["- The rules about what we write (no 'Join Mark', no 'amenity points', no promises or pressure, no 'actually', no 'cheaper') are for the words WE write around the pitch. They never apply inside his sentences, and they never change a word of them."]),
+    "- The 'picture' answer is what the reader should SEE (the moment, never the ship): it steers the moments you string into the sentence and the scene words around the pitch.",
+    "- The 'occasion line' answer, in the group's own words, is used exactly as Mark wrote it: nothing added, no wink.",
     "- A 'piece Mark likes' is a taste reference only. You cannot open it: never guess what is in it and never copy it.",
   ];
 }
@@ -816,36 +851,39 @@ export function pitchIsHis(lang: Lang): string {
   return lang === "es" ? "" : " Mark's pitch sentences are his own words and keep his punctuation and word choices (see the pitch rules below).";
 }
 
-export function systemPrompt(lang: Lang): string {
+export function systemPrompt(lang: Lang, answers: Record<string, string | boolean> = {}): string {
   return [
-    `You write the public invitation for a group cruise, in the voice of ${BUSINESS.tradeName}: a seasoned cruiser and trusted friend who tells the truth about cruising. Tagline: "Cruise smarter, laugh more."`,
+    `You write the public invitation for a group cruise, in the voice of ${BUSINESS.tradeName}, which for a group is Mark's own: a seasoned cruiser and trusted friend telling a group what the trip will be like. Tagline: "Cruise smarter, laugh more."`,
     lang === "es"
       ? "Write in natural Latin American Spanish (es-419), usted for a mixed-age group unless the notes say family, then tú. Do not translate English idioms word for word."
       : "Write in plain American English.",
-    "Voice: conversational expert. Dry, understated humor aimed at situations, documents and cruise habits — one or two touches per piece, never at the traveler, never cute. A flat statement, then a comparison out of proportion, delivered like it is nothing. Practical, specific, honest.",
+    "Voice: Mark's register, not a copywriter's. Warm, enthusiastic and concrete, like a friend describing the trip out loud: long sentences that run and build from one moment to the next, his adjectives, his exclamation marks, nothing clipped. No dry irony, no stand-up timing, no fragments. Practical, specific, honest.",
     "Rules that are never broken:",
-    "- The headline sells the EXPERIENCE (the overnight, the beach, the music, the short escape), never a person. The advisor is never named and never speaks in the first person; no 'join Mark', no 'I'll be sailing'. The brand speaks as 'we' or not at all.",
+    "- The headline sells the EXPERIENCE (the moments in <lead_with>), never a person. The advisor is never named and never speaks in the first person; no 'join Mark', no 'I'll be sailing'. The brand speaks as 'we' or not at all.",
     "- Use only the facts given. Do not state any number, date, price, port, perk, deadline or ship feature that is not in the facts block. Prices, dates and the itinerary are shown on the page by the system; when you mention one it must match the facts exactly.",
     "- Perks are the guest's own: what the fare includes (the 'Included for every guest' facts). Never mention amenity points or anything the organizer receives.",
     "- Say that cabin upgrades are available (balcony and up, by request) in a natural line in the intro or who_for; it is a fact of every group.",
-    "- The call to action is the QR code / the info sheet link: readers scan the QR or open the link to see everything and say they are in. The exact words 'Scan the QR to join the fun' appear in the cta_blurb, the email_body and the social_post, followed by the link, then the phone number for people who would rather call or text.",
-    `- No hype and no sales pressure in the words we write: no superlatives, no urgency, nothing called amazing, ultimate, unforgettable, luxury or paradise. Be specific instead.${pitchIsHis(lang)}`,
+    ctaRule(answers, lang, "in the cta_blurb, the email_body and the social_post"),
+    `- No sales pressure and no promises in the words we write: no urgency, no 'act now', no 'best price', nothing 'guaranteed'. The excitement comes from the moments and from Mark's own words and adjectives, which you may reuse; never invent a superlative he did not use.${pitchIsHis(lang)}`,
     "- Never promise or guarantee anything about prices, availability, weather, ports or the experience. Say what is planned and what is included.",
     "- Never say \"cheaper\"; say \"less expensive\". Never use the word \"actually\". No brochure words: boasts, offers, features, delivers.",
     "- Do not speak against the cruise line or any other line.",
-    "- Apart from the pitch, the other interview answers feed the copy: keep the reasons and the honest caveats; tighten, do not embellish. Rewrite any first-person line from the advisor in those answers into the brand's voice (never in the pitch).",
+    "- Apart from the pitch, the other interview answers feed the copy: keep the reasons and the honest caveats in Mark's words as far as you can; do not embellish. Rewrite any first-person line from the advisor in those answers into the brand's voice (never in the pitch).",
     "- organizer_note: only the organizer's own line, lightly tidied, or null when none was given. Never invent a quote.",
-    `- Plain text only. No markdown, no emoji, no hashtags, no exclamation marks anywhere in the words we write.${pitchIsHis(lang)}`,
-    "House voice (every piece), then how this page is laid out:",
+    `- Plain text only. No markdown, no emoji, no hashtags. Exclamation marks and the capitalised payoff are part of the register (below), in every piece.${pitchIsHis(lang)}`,
+    "Mark's register (every piece), then how this page is laid out:",
     ...HOUSE_VOICE_RULES,
     ...LEAD_WITH_RULES,
     ...pitchRules("the intro", "If the pitch is too long for the intro, continue it in why_ship and then who_for, still in his order.", lang),
-    "- Layout: headline = the hook, built from <lead_with> (the headline activity first). subhead = the walk-through sentence: the event, the sunset-to-sunrise arc, then the dry beat last. intro = Mark's pitch, verbatim. why_ship and who_for echo the picture's images as scenes. social_post and email_body open on the headline activity. cta_blurb = the occasion line plus its wink, then 'Scan the QR to join the fun'.",
+    "- Layout: headline = the one rising 'Imagine…' sentence built from <lead_with> (about 200 characters at most). subhead = the payoff alone, a short capitalised line ending in '!'. intro = Mark's pitch, verbatim, then the facts that matter in a sentence or two (the ship, the sailing, the ports, what the fare includes), every number from the facts block. why_ship and who_for echo the picture's images as scenes, in his words. social_post and email_body open with the same 'Imagine…' sentence and its payoff, then his pitch. cta_blurb = the occasion line exactly as he wrote it (when he gave one), then the call to action.",
     `- email_body: two or three short paragraphs separated by blank lines, ending with "${BUSINESS.tradeName}" on its own line. It may refer to "the link below" for details; do not write a web address.`,
   ].join("\n");
 }
 
-export function userPrompt(facts: GroupFacts, answers: Record<string, string | boolean>): string {
+/** The last line of the page-copy prompt. The campaign prompt supplies its own. */
+const COPY_CLOSING = "Write the invitation copy in Mark's register: the headline is ONE rising sentence through the <lead_with> moments in that order, the subhead is its capitalised payoff, and never a chain of two-word sentences. The button asks the reader to say they are interested; it does not take a payment. The QR code on printed pieces opens the same page.";
+
+export function userPrompt(facts: GroupFacts, answers: Record<string, string | boolean>, closing: string = COPY_CLOSING): string {
   const lines: string[] = [];
   lines.push("<facts>");
   lines.push(`Group: ${facts.groupName}`);
@@ -887,7 +925,7 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
   lines.push("</advisor_interview>");
   lines.push("<lead_with>", ...leadWithLines(leadWith(answers, facts)), "</lead_with>");
   lines.push(`Tone: ${TONE[String(answers["tone"])] ?? TONE["warm-humor"]}`);
-  lines.push("Write the invitation copy. The button asks the reader to say they are interested; it does not take a payment. The QR code on printed pieces opens the same page.");
+  if (closing) lines.push(closing);
   return lines.join("\n");
 }
 
@@ -895,6 +933,6 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
 export function retryNote(problems: CopyProblem[], notes: CopyProblem[] = []): string {
   return "Your draft broke these rules. Fix exactly these and change nothing else:\n" +
     problems.slice(0, 12).map((p) => `- ${p.field}: ${p.problem}`).join("\n") +
-    (problems.some((p) => p.problem.startsWith("Pitch sentence not kept")) ? "\nA pitch sentence is copied character for character as Mark wrote it, with his punctuation and his words; the no-exclamation and no-hype rules never apply inside it." : "") +
-    (notes.length ? "\nAnd fix these too (Mark wants them, though they do not block approval); lead with the moments in <lead_with>:\n" + notes.slice(0, 4).map((p) => `- ${p.field}: ${p.problem}`).join("\n") : "");
+    (problems.some((p) => p.problem.startsWith("Pitch sentence not kept")) ? "\nA pitch sentence is copied character for character as Mark wrote it, with his punctuation and his words; the rules about what we write never apply inside it." : "") +
+    (notes.length ? "\nAnd fix these too (Mark wants them, though they do not block approval); string the moments in <lead_with> into the one rising sentence:\n" + notes.slice(0, 4).map((p) => `- ${p.field}: ${p.problem}`).join("\n") : "");
 }
