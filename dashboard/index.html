@@ -3,6 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <!-- Stale-shell guard. A deploy replaces the hashed bundle files; a page whose
+         index.html was kept from before the deploy asks for a file that is gone,
+         and the page stays blank. When the app's own script or stylesheet fails to
+         load, reload once (a reload revalidates index.html, which then names the
+         current files). The sessionStorage stamp stops it looping on a real outage. -->
+    <script>
+      window.addEventListener('error', function (e) {
+        var t = e && e.target;
+        if (!t || t === window || !t.tagName) return;
+        var u = t.src || t.href || '';
+        if (!/\/assets\//.test(u)) return;
+        if (t.tagName !== 'SCRIPT' && t.tagName !== 'LINK') return;
+        try {
+          var last = Number(sessionStorage.getItem('saf-stale-reload') || 0);
+          if (Date.now() - last < 60000) return;
+          sessionStorage.setItem('saf-stale-reload', String(Date.now()));
+        } catch (_e) { return; }
+        window.location.reload();
+      }, true);
+    </script>
     <title>Still Afloat Editorial</title>
     <meta name="description" content="AI-powered editorial command center for stillafloatcruising.com" />
     <meta name="robots" content="noindex, nofollow" />
