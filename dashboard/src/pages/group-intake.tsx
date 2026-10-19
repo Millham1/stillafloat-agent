@@ -64,6 +64,16 @@ const FIELDS: Field[] = [
 
 const inputCls = "mt-1 w-full px-3 py-1.5 text-sm rounded-md border bg-card text-foreground";
 
+/**
+ * The confirmation form's starting values from a read. The file's name is offered from the group name the quote prints
+ * ("Millham F/F 2027"), else built from the organizer, the ship and the sail month, as before. Mark can type over either.
+ */
+function seedForm(x: Row, printedName: string | null | undefined): Row {
+  const printed = (printedName ?? "").trim() || (typeof x.group_name === "string" ? x.group_name.trim() : "");
+  const guess = [x.organizer_name, x.ship_name, x.sail_date ? String(x.sail_date).slice(0, 7) : null].filter(Boolean).join(" — ");
+  return { ...x, name: printed || guess };
+}
+
 type TransferRoute = "airport_to_hotel" | "hotel_to_port" | "port_to_airport";
 const TRANSFER_ROUTES: Array<{ route: TransferRoute; label: string; direction: "pre" | "post"; from: string; to: string }> = [
   { route: "airport_to_hotel", label: "Airport → hotel", direction: "pre", from: "Airport", to: "Hotel" },
@@ -138,7 +148,7 @@ export default function GroupIntake() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { data } = useQuery<{ intake: Intake; found: string[] }>({
+  const { data } = useQuery<{ intake: Intake; found: string[]; group_name?: string | null }>({
     queryKey: ["group-intake", intakeId],
     queryFn: () => api(`/groups/intake/${intakeId}`),
     enabled: !!intakeId,
@@ -156,9 +166,7 @@ export default function GroupIntake() {
   // When the reader finishes, seed the form from what it read.
   useEffect(() => {
     if (intake?.status === "ready" && intake.extracted && Object.keys(form).length === 0) {
-      const x = intake.extracted;
-      const guess = [x.organizer_name, x.ship_name, x.sail_date ? String(x.sail_date).slice(0, 7) : null].filter(Boolean).join(" — ");
-      setForm({ name: guess, ...x });
+      setForm(seedForm(intake.extracted, data?.group_name));
     }
   }, [intake?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -237,6 +245,8 @@ export default function GroupIntake() {
     catch (e) { toast({ variant: "destructive", title: "Could not retry", description: (e as Error).message }); }
   };
 
+  // Save needs a name; when the button is faded the reason is written beside it.
+  const canSave = !saving && !!String(form.name ?? "").trim();
   const busy = intake && (intake.status === "queued" || intake.status === "reading" || intake.status === "extracting");
   // Minutes since the upload, so a long read shows progress instead of a bare spinner.
   const [, tick] = useState(0);
@@ -344,8 +354,8 @@ export default function GroupIntake() {
                   </Link>
                 ) : (
                   <div className="flex items-center gap-3">
-                    {saving && <span className="text-xs text-muted-foreground">Saving…</span>}
-                    <button onClick={save} disabled={saving || !String(form.name ?? "").trim()}
+                    {!canSave && <span className="text-xs text-muted-foreground">{saving ? "Saving…" : "Type a group file name first"}</span>}
+                    <button onClick={save} disabled={!canSave}
                       className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50">
                       Save and open the group file
                     </button>
@@ -356,7 +366,7 @@ export default function GroupIntake() {
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 p-4">
               <label className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-3">
-                Group file name <span className="text-amber-600">(you choose)</span>
+                Group file name {data?.group_name ? <span className="text-green-600">· offered from the quote's group name; change it if you like</span> : <span className="text-amber-600">(you choose)</span>}
                 <input className={inputCls} value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="Type a name for this file" />
               </label>
               {FIELDS.map((f) => (
