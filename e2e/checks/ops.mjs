@@ -1004,8 +1004,7 @@ export default [
       const keys = analyticsKeys(body);
       for (const k of ANALYTICS_FORBIDDEN_KEYS) t.ok(!keys.has(k), `the workspace's data carries "${k}"`);
       const text = JSON.stringify(body);
-      const plain = text.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/);
-      t.ok(!plain, `the workspace's data holds an email address that is not masked (it starts "${plain ? plain[0].slice(0, 2) : ""}…")`);
+      t.ok(!/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/.test(text), "the workspace's data holds an email address that is not masked");
       t.ok(!cardShaped(text), "the workspace's data contains something shaped like a payment card number");
       for (const row of [...body.travelers, ...body.messages, ...body.interests]) {
         const masked = row.email ?? row.to;
