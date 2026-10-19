@@ -35,6 +35,7 @@ import groupIntakeRouter from "./group-intake";
 import groupMarketingRouter from "./group-marketing";
 import groupFormsRouter from "./group-forms";
 import groupJourneyRouter from "./group-journey";
+import groupAnalyticsRouter from "./group-analytics";
 import myCruiseRouter from "./my-cruise";
 
 const router: IRouter = Router();
@@ -74,6 +75,7 @@ router.use(groupIntakeRouter);
 router.use(groupMarketingRouter);
 router.use(groupFormsRouter); // before groupsRouter: its /groups/:id/:child routes would otherwise answer first
 router.use(groupJourneyRouter); // likewise: its DELETE /groups/:id/journey/simulate would match groupsRouter's /groups/:id/:child/:rowId
+router.use(groupAnalyticsRouter); // before groupsRouter: its GET /groups/:id would read "analytics" as a group id
 router.use(myCruiseRouter);
 router.use(groupsRouter);
 

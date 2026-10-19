@@ -3,13 +3,14 @@ import { Link, useRoute } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Ship, Plus, Trash2, ArrowLeft, AlertTriangle, CalendarClock, FileText } from "lucide-react";
-import { authHeaders } from "@/lib/auth-token";
+import { Ship, Plus, Trash2, ArrowLeft, AlertTriangle, CalendarClock, FileText, BarChart3 } from "lucide-react";
+import { ANALYTICS_KEY, api } from "@/lib/group-api";
 import { useToast } from "@/hooks/use-toast";
 import { GroupMarketing } from "./group-marketing";
 import { GroupTerms } from "./group-terms";
 import { ClientPaperwork, TravelerPaperwork, type PaperworkData } from "./group-paperwork";
 import { GroupJourney } from "./group-journey";
+import { GroupBigPicture } from "./group-big-picture";
 
 // Group bookings — one file per group (cabins, travelers, paperwork, payments,
 // travel, checklist). Every cell saves when you leave it. Card numbers are
@@ -34,18 +35,6 @@ type GroupFile = {
   group: Row; cabins: Row[]; travelers: Row[]; documents: Row[]; payments: Row[];
   travel: Row[]; checklist: Row[]; messages: Row[]; summary: Summary;
 };
-
-async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
-  const r = await fetch(`/api${path}`, {
-    method,
-    headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...authHeaders() },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  const json = await r.json().catch(() => ({}));
-  if (r.status === 401) throw new Error("This browser's access token was not accepted. Open the sign-in link again.");
-  if (!r.ok) throw new Error(json?.error || `Request failed (${r.status})`);
-  return json as T;
-}
 
 const money = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtDate = (d: string | null | undefined) =>
@@ -152,7 +141,8 @@ function Section({
     catch (e) { toast({ variant: "destructive", title: "Not saved", description: (e as Error).message }); onChanged(); }
   };
   return (
-    <Card>
+    // The id is what the Group Bookings Workspace's "#section" links land on (cabins, travelers, payments, documents, travel, checklist).
+    <Card id={child} className="scroll-mt-4">
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b flex-wrap">
         <div>
           <h3 className="font-semibold">{title} <span className="text-muted-foreground font-normal">({rows.length})</span></h3>
@@ -226,6 +216,7 @@ function GroupList() {
       await api("/groups", "POST", { name, cabins_held: Number(cabins) || 0 });
       setName("");
       qc.invalidateQueries({ queryKey: ["groups"] });
+      qc.invalidateQueries({ queryKey: ANALYTICS_KEY });
     } catch (e) {
       toast({ variant: "destructive", title: "Could not open the group", description: (e as Error).message });
     }
@@ -242,6 +233,8 @@ function GroupList() {
           <span className="flex items-center gap-1 text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground cursor-pointer"><FileText className="w-4 h-4" /> Enter a booking (drop a PDF)</span>
         </Link>
       </div>
+
+      <GroupBigPicture />
 
       <Card className="p-4">
         <CardContent className="p-0 flex items-end gap-3 flex-wrap">
@@ -335,9 +328,18 @@ function GroupDetail({ id }: { id: string }) {
   const { toast } = useToast();
   const { data, isLoading, error } = useQuery<GroupFile>({ queryKey: ["group", id], queryFn: () => api(`/groups/${id}?horizon=3650`) });
   const { data: paperwork } = useQuery<PaperworkData & { success: boolean }>({ queryKey: ["group-signatures", id], queryFn: () => api(`/groups/${id}/signatures`) });
-  const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-signatures", id] }); };
+  // The workspace and the big picture read the same figures from one request; a change on the file makes them stale too.
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["group", id] }); qc.invalidateQueries({ queryKey: ["groups"] }); qc.invalidateQueries({ queryKey: ["group-signatures", id] }); qc.invalidateQueries({ queryKey: ANALYTICS_KEY }); };
   // The server's refusal of a Group details change (a date later than the sailing), written under the field that was edited. Above the early returns so every render calls the same hooks.
   const [fieldError, setFieldError] = useState<{ key: string; message: string } | null>(null);
+  // A link from the Group Bookings Workspace ends in #section (cabins, payments…): once the file has loaded, scroll to it. Above the early returns, like every hook here.
+  const loadedId = data?.group?.id;
+  React.useEffect(() => {
+    const target = window.location.hash.slice(1);
+    if (!loadedId || !target) return;
+    const t = window.setTimeout(() => document.getElementById(target)?.scrollIntoView({ block: "start" }), 50);
+    return () => window.clearTimeout(t);
+  }, [loadedId]);
 
   if (isLoading) return <p className="text-muted-foreground">Loading…</p>;
   if (error || !data) return <p className="text-destructive">Could not load this group: {(error as Error)?.message}</p>;
@@ -378,7 +380,12 @@ function GroupDetail({ id }: { id: string }) {
             {s.daysToSail !== null && s.daysToSail >= 0 ? ` · ${s.daysToSail} days to go` : ""}
           </p>
         </div>
-        <Badge variant="outline" className={STATUS_STYLE[g.status] ?? ""}>{g.status}</Badge>
+        <div className="flex items-center gap-2">
+          <Link href={`/groups/workspace?g=${g.id}&status=all`}>
+            <span className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-md border bg-card cursor-pointer hover:border-foreground/30" title="Open the Group Bookings Workspace with only this group"><BarChart3 className="w-3.5 h-3.5" /> Workspace</span>
+          </Link>
+          <Badge variant="outline" className={STATUS_STYLE[g.status] ?? ""}>{g.status}</Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -392,7 +399,7 @@ function GroupDetail({ id }: { id: string }) {
         ))}
       </div>
 
-      <Card>
+      <Card id="attention" className="scroll-mt-4">
         <div className="px-4 py-3 border-b flex items-center gap-2"><CalendarClock className="w-4 h-4" /><h3 className="font-semibold">Needs attention</h3></div>
         <div className="divide-y divide-border">
           {s.attention.length === 0 && <p className="px-4 py-4 text-sm text-muted-foreground">Nothing open.</p>}
@@ -407,7 +414,7 @@ function GroupDetail({ id }: { id: string }) {
         </div>
       </Card>
 
-      <Card>
+      <Card id="details" className="scroll-mt-4">
         <div className="px-4 py-3 border-b"><h3 className="font-semibold">Group details</h3></div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 p-4">
           {GROUP_FIELDS.map((f) => (
@@ -424,7 +431,7 @@ function GroupDetail({ id }: { id: string }) {
 
       <GroupTerms terms={g.terms} sailDate={g.sail_date} />
 
-      <GroupMarketing groupId={id} />
+      <div id="marketing" className="scroll-mt-4"><GroupMarketing groupId={id} /></div>
 
       <Section title="Cabins" groupId={id} child="cabins" rows={data.cabins} newRow={{}} onChanged={refresh}
         cols={[
@@ -472,9 +479,9 @@ function GroupDetail({ id }: { id: string }) {
           { key: "method_note", label: "How it was paid", width: "12rem" },
         ]} />
 
-      <ClientPaperwork api={api} groupId={id} group={g} data={paperwork} onChanged={refresh} />
+      <div id="paperwork" className="scroll-mt-4"><ClientPaperwork api={api} groupId={id} group={g} data={paperwork} onChanged={refresh} /></div>
 
-      <GroupJourney api={api} groupId={id} />
+      <div id="journey" className="scroll-mt-4"><GroupJourney api={api} groupId={id} /></div>
 
       <Section title="Paperwork" groupId={id} child="documents" rows={data.documents} newRow={{ title: "New item" }} onChanged={refresh}
         cols={[
@@ -516,7 +523,7 @@ function GroupDetail({ id }: { id: string }) {
           { key: "detail", label: "Detail", width: "14rem" },
         ]} />
 
-      <Card>
+      <Card id="emails" className="scroll-mt-4">
         <div className="px-4 py-3 border-b"><h3 className="font-semibold">Email log <span className="text-muted-foreground font-normal">({data.messages.length})</span></h3></div>
         <div className="divide-y divide-border">
           {data.messages.length === 0 && <p className="px-4 py-4 text-sm text-muted-foreground">No emails yet. Reminders and invitations will be listed here once they are switched on.</p>}
