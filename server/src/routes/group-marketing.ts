@@ -172,7 +172,7 @@ router.post("/groups/:id/marketing/write", requireToken, async (req: Request, re
     // The pitch is fact-checked before any paid call: a number in it that the file does not have is Mark's to fix.
     const badPitch = pitchNumberProblems(answers, facts);
     if (badPitch.length) return res.status(400).json({ success: false, error: `${badPitch.map((p) => p.problem).join(". ")}. Fix the pitch or the group file first.`, problems: badPitch });
-    const base = { job: "groups.marketing" as const, system: systemPrompt(lang, answers), schema: COPY_SCHEMA, maxTokens: 2500, timeoutMs: 180_000 };
+    const base = { job: "groups.marketing" as const, system: systemPrompt(lang, answers), schema: COPY_SCHEMA, maxTokens: 4500, timeoutMs: 180_000 };
     let copy = tidyCopy(await llmJson<Row>({ ...base, user: userPrompt(facts, answers) }));
     let problems = validateCopy(copy, facts, answers);
     if (problems.length) {
