@@ -585,7 +585,11 @@ export async function extractBooking(
   const providers: ReaderProvider[] = [];
   const warnings: string[] = [];
   let raw: Record<string, unknown>;
-  if (text.length <= WHOLE_DOCUMENT_CHARS) {
+  // A GROUP quote is always read by section (2026-10-18/19: Mark's real MSC quotator — 2 pages, 3,433 characters, 12 rate
+  // rows — asked whole produced a ~2,000-token answer that the AI box writes at ~10 tokens/s; our 240-second patience
+  // cut it at 85% and the Claude fallback had no balance). Focused questions keep every answer short; only a short
+  // INDIVIDUAL confirmation is read in one call.
+  if (kind !== "group" && text.length <= WHOLE_DOCUMENT_CHARS) {
     raw = await llmJson<Record<string, unknown>>({
       job: "groups.extract",
       system: SYSTEM_PROMPT,
