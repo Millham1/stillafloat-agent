@@ -9,7 +9,7 @@ import { notifyMark } from "../lib/notify";
 import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
-  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, ctaLine, missingAnswers, newShareCode, normalizeAnswers, pitchGate, pitchNumberProblems, retryNote,
+  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, retryNote,
   publicFacts, shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
@@ -126,7 +126,8 @@ router.put("/groups/:id/marketing/answers", requireToken, async (req: Request, r
       .eq("id", String(req.params["id"])).select("id").maybeSingle();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ success: false, error: "Group not found" });
-    return res.json({ success: true, answers, missing: missingAnswers(answers) });
+    // `ignored`: a picture link that was typed but is not on one of our hosts, so the page will not show it.
+    return res.json({ success: true, answers, missing: missingAnswers(answers), ignored: ignoredPictureAnswers(answers) });
   } catch (err) {
     return fail(req, res, err, "group marketing answers failed");
   }
@@ -305,6 +306,8 @@ router.get("/group-page/:code", async (req: Request, res: Response) => {
     return res.json({
       success: true, live, preview: preview && !live, langs,
       facts: publicFacts(facts, answers),
+      // How the page looks (the interview's picture links and taxes answer): only validated values, nulls when absent or refused.
+      look: pageLook(answers),
       copy: { headline: copy.headline, subhead: copy.subhead, intro: copy.intro, why_ship: copy.why_ship, who_for: copy.who_for, organizer_note: copy.organizer_note, cta_label: copy.cta_label, cta_blurb: copy.cta_blurb },
       turnstileSiteKey: process.env["TURNSTILE_SITE_KEY"] || "",
     });

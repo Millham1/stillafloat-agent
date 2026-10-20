@@ -4,7 +4,8 @@ import { campaignSystemPrompt, campaignUserPrompt } from "./group-campaign";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
-  ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts, DIGITAL_CTA, QR_PROBLEM, ctaForFacebook, mentionsQr, withDisplayNames } from "./group-marketing";
+  ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts, DIGITAL_CTA, QR_PROBLEM, ctaForFacebook, mentionsQr, withDisplayNames,
+  IMAGE_URL_MAX, ignoredPictureAnswers, pageLook, safeImageUrl } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -815,4 +816,141 @@ test("a new file is saved with the ship and the line in display case, and nothin
   assert.deepEqual(withDisplayNames({ ship_name: "Carnival Celebration", cruise_line: null }), { ship_name: "Carnival Celebration", cruise_line: null });
   assert.deepEqual(withDisplayNames({ name: "x" }), { name: "x" });
   assert.equal(row.ship_name, "MSC SEASHORE", "the input is not changed");
+});
+
+
+// ── The look of the public page (Mark 2026-10-20: every group page looks like the approved marketing) ──────────────────
+
+const SUPABASE_BASE = "https://abcd1234efgh.supabase.co";
+/** Run `fn` with SUPABASE_URL set (or unset) and put it back, so no test sees another's value. */
+function withSupabaseUrl<T>(url: string | undefined, fn: () => T): T {
+  const before = process.env["SUPABASE_URL"];
+  if (url === undefined) delete process.env["SUPABASE_URL"]; else process.env["SUPABASE_URL"] = url;
+  try { return fn(); } finally { if (before === undefined) delete process.env["SUPABASE_URL"]; else process.env["SUPABASE_URL"] = before; }
+}
+
+test("the interview has three optional look questions right after the call to action, and the old questions keep their order", () => {
+  const keys = INTERVIEW.map((q) => q.key);
+  const i = keys.indexOf("cta_line");
+  assert.deepEqual(keys.slice(i + 1, i + 4), ["taxes_included", "hero_photo", "host_photo"]);
+  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "tone", "show_prices", "show_rating"]);
+  const [taxes, hero, host] = [INTERVIEW[i + 1]!, INTERVIEW[i + 2]!, INTERVIEW[i + 3]!];
+  assert.equal(taxes.type, "yesno"); assert.equal(taxes.fallback, false);
+  assert.equal(taxes.label, "Do the quoted cabin prices include taxes and port fees?");
+  assert.equal(hero.type, "text"); assert.equal(hero.label, "Top picture for the group page (link, optional)");
+  assert.match(hero.hint ?? "", /replaces the site's generic picture/i);
+  assert.equal(host.type, "text"); assert.equal(host.label, "Photo of the hosts, shown small in the top-right corner (link, optional)");
+  for (const q of [taxes, hero, host]) assert.notEqual(q.required, true, `${q.key} is optional`);
+  assert.deepEqual(INTERVIEW.filter((q) => q.required).map((q) => q.key), ["pitch", "audience", "occasion", "why_sailing"], "no new required question");
+});
+
+test("normalizeAnswers keeps the three look answers, and an empty interview leaves them off", () => {
+  const a = normalizeAnswers({ taxes_included: true, hero_photo: "  https://stillafloatcruising.com/assets/images/x.jpg  ", host_photo: "https://stillafloatcruising.com/h.png" });
+  assert.equal(a["taxes_included"], true);
+  assert.equal(a["hero_photo"], "https://stillafloatcruising.com/assets/images/x.jpg", "trimmed like every text answer");
+  assert.equal(a["host_photo"], "https://stillafloatcruising.com/h.png");
+  const blank = normalizeAnswers({});
+  assert.equal(blank["taxes_included"], false); assert.equal(blank["hero_photo"], ""); assert.equal(blank["host_photo"], "");
+  assert.equal(normalizeAnswers({ taxes_included: "yes" })["taxes_included"], false, "only a real boolean counts as yes");
+  assert.deepEqual(missingAnswers(blank), ["pitch", "audience", "occasion", "why_sailing"], "the look answers never block writing");
+});
+
+test("safeImageUrl accepts https pictures on stillafloatcruising.com and on the project's public storage, and nothing else", () => {
+  withSupabaseUrl(SUPABASE_BASE, () => {
+    assert.equal(safeImageUrl("https://stillafloatcruising.com/assets/images/hero.png"), "https://stillafloatcruising.com/assets/images/hero.png");
+    assert.equal(safeImageUrl("  https://stillafloatcruising.com/a.jpg  "), "https://stillafloatcruising.com/a.jpg", "surrounding space is trimmed");
+    assert.equal(safeImageUrl("https://STILLAFLOATCRUISING.com/a.jpg"), "https://stillafloatcruising.com/a.jpg", "the host is compared case-blind and returned normalised");
+    assert.equal(safeImageUrl(`${SUPABASE_BASE}/storage/v1/object/public/group-assets/g1/hero.jpg`), `${SUPABASE_BASE}/storage/v1/object/public/group-assets/g1/hero.jpg`);
+    // the project's host, but not its public storage path (the REST API, the auth API, a private object)
+    for (const path of ["/rest/v1/groups", "/auth/v1/user", "/storage/v1/object/sign/group-assets/x.jpg", "/storage/v1/object/authenticated/x.jpg", "/storage/v1/objects/public/x", "/"]) {
+      assert.equal(safeImageUrl(`${SUPABASE_BASE}${path}`), null, path);
+    }
+    // not on our hosts
+    for (const u of ["https://example.com/a.jpg", "https://stillafloatcruising.com.evil.example/a.jpg", "https://evilstillafloatcruising.com/a.jpg", "https://notstillafloatcruising.com/a.jpg",
+      "https://stillafloatcruising.org/a.jpg", "https://www.stillafloatcruising.com/a.jpg", "https://other-project.supabase.co/storage/v1/object/public/x/y.jpg",
+      "https://drive.google.com/file/d/abc/view", "https://i.imgur.com/a.jpg", "//stillafloatcruising.com/a.jpg", "/assets/images/a.jpg", "stillafloatcruising.com/a.jpg"]) {
+      assert.equal(safeImageUrl(u), null, u);
+    }
+  });
+});
+
+test("safeImageUrl refuses http, script and data links, and any link that could break out of where it is written", () => {
+  withSupabaseUrl(SUPABASE_BASE, () => {
+    assert.equal(safeImageUrl("http://stillafloatcruising.com/a.jpg"), null, "http");
+    assert.equal(safeImageUrl(`http://abcd1234efgh.supabase.co/storage/v1/object/public/x/a.jpg`), null, "http on the project host");
+    for (const u of ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:image/png;base64,AAAA", "data:text/html,<script>alert(1)</script>", "blob:https://stillafloatcruising.com/abc", "ftp://stillafloatcruising.com/a.jpg", "file:///etc/passwd"]) {
+      assert.equal(safeImageUrl(u), null, u);
+    }
+    // quotes, parentheses, brackets, spaces, backslashes and control characters — in the path, the query or the fragment
+    for (const bad of ['"', "'", "(", ")", "<", ">", "`", "{", "}", " ", "\t", "\n", "\\", "|", "^", "\u0000", "\u007f"]) {
+      assert.equal(safeImageUrl(`https://stillafloatcruising.com/a${bad}b.jpg`), null, JSON.stringify(bad) + " in the path");
+      assert.equal(safeImageUrl(`https://stillafloatcruising.com/a.jpg?x=${bad}y`), null, JSON.stringify(bad) + " in the query");
+    }
+    assert.equal(safeImageUrl('https://stillafloatcruising.com/a.jpg");background:url(//evil.example/x'), null, "a CSS break-out");
+    assert.equal(safeImageUrl("https://stillafloatcruising.com/a.jpg' onerror='alert(1)"), null, "an attribute break-out");
+    assert.equal(safeImageUrl("https://stillafloatcruising.com/a.jpg url(x)"), null, "css url()");
+    // a login, a port or a look-alike host written with an @
+    assert.equal(safeImageUrl("https://user:pass@stillafloatcruising.com/a.jpg"), null, "credentials");
+    assert.equal(safeImageUrl("https://stillafloatcruising.com@evil.example/a.jpg"), null, "the real host is after the @");
+    assert.equal(safeImageUrl("https://evil.example@stillafloatcruising.com/a.jpg"), null, "a login in front of our host");
+    assert.equal(safeImageUrl("https://stillafloatcruising.com:8443/a.jpg"), null, "a port");
+    assert.equal(safeImageUrl("https://stillafloatcruising.com\\@evil.example/a.jpg"), null, "a backslash");
+    // not a link at all
+    for (const v of [null, undefined, 42, true, {}, [], "", "   ", "not a url", "https://", "https:///a.jpg"]) assert.equal(safeImageUrl(v), null, JSON.stringify(v));
+    assert.equal(safeImageUrl(`https://stillafloatcruising.com/${"a".repeat(IMAGE_URL_MAX)}.jpg`), null, "a very long link");
+  });
+});
+
+test("safeImageUrl takes the storage host from SUPABASE_URL, and falls back to the project the site is wired to when it is unset", () => {
+  const other = "https://zzzz9999.supabase.co/storage/v1/object/public/b/x.jpg";
+  withSupabaseUrl(SUPABASE_BASE, () => assert.equal(safeImageUrl(other), null, "another project is refused"));
+  withSupabaseUrl("https://zzzz9999.supabase.co", () => {
+    assert.equal(safeImageUrl(other), other);
+    assert.equal(safeImageUrl(`${SUPABASE_BASE}/storage/v1/object/public/b/x.jpg`), null, "the project that is not configured is refused");
+  });
+  withSupabaseUrl("https://zzzz9999.supabase.co/", () => assert.equal(safeImageUrl(other), other, "a trailing slash on SUPABASE_URL does not matter"));
+  // unset (or still the template value): the project persistence.ts falls back to
+  const fallback = "https://gbjfrnrkkjnutmogdzln.supabase.co/storage/v1/object/public/b/x.jpg";
+  withSupabaseUrl(undefined, () => { assert.equal(safeImageUrl(fallback), fallback); assert.equal(safeImageUrl(other), null); });
+  withSupabaseUrl("https://aBcDe.supabase.co", () => { assert.equal(safeImageUrl(fallback), fallback); assert.equal(safeImageUrl("https://aBcDe.supabase.co/storage/v1/object/public/b/x.jpg"), null); });
+  // a SUPABASE_URL that is not https (a local stack) never lets a picture through on that host
+  withSupabaseUrl("http://127.0.0.1:54321", () => assert.equal(safeImageUrl("http://127.0.0.1:54321/storage/v1/object/public/b/x.jpg"), null));
+  withSupabaseUrl("not a url", () => { assert.equal(safeImageUrl(other), null); assert.equal(safeImageUrl("https://stillafloatcruising.com/a.jpg"), "https://stillafloatcruising.com/a.jpg", "our own host still works"); });
+});
+
+test("pageLook passes only validated values: nulls for anything absent or refused, a real boolean for taxes", () => {
+  withSupabaseUrl(SUPABASE_BASE, () => {
+    const good = pageLook(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxes_included: true }));
+    assert.deepEqual(good, { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxesIncluded: true });
+    assert.deepEqual(pageLook(normalizeAnswers({})), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false }, "nothing answered: nothing changes on the page");
+    assert.deepEqual(pageLook({}), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false }, "answers that were never normalised");
+    // each value stands on its own: a bad hero does not cost the hosts' photo, and the reverse
+    const mixed = pageLook(normalizeAnswers({ hero_photo: "javascript:alert(1)", host_photo: "https://stillafloatcruising.com/h.jpg", taxes_included: true }));
+    assert.deepEqual(mixed, { heroUrl: null, hostPhotoUrl: "https://stillafloatcruising.com/h.jpg", taxesIncluded: true });
+    assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: "http://stillafloatcruising.com/h.jpg" })),
+      { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: null, taxesIncluded: false });
+    for (const bad of ["https://example.com/h.jpg", 'https://stillafloatcruising.com/h.jpg")', "data:image/png;base64,AAAA", "https://stillafloatcruising.com/h (1).jpg"]) {
+      assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: bad, host_photo: bad })), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false }, bad);
+    }
+    assert.deepEqual(Object.keys(pageLook({})).sort(), ["heroUrl", "hostPhotoUrl", "taxesIncluded"], "nothing else about the answers leaks into the look");
+    assert.equal(typeof pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, "boolean");
+    assert.equal(pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, false);
+  });
+});
+
+test("a picture link typed in the interview but refused is reported, so the page's silence is explained", () => {
+  withSupabaseUrl(SUPABASE_BASE, () => {
+    assert.deepEqual(ignoredPictureAnswers(normalizeAnswers({})), []);
+    assert.deepEqual(ignoredPictureAnswers(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg" })), []);
+    assert.deepEqual(ignoredPictureAnswers(normalizeAnswers({ hero_photo: "https://drive.google.com/x", host_photo: "https://stillafloatcruising.com/h.jpg" })), ["hero_photo"]);
+    assert.deepEqual(ignoredPictureAnswers(normalizeAnswers({ hero_photo: "nope", host_photo: "http://stillafloatcruising.com/h.jpg" })), ["hero_photo", "host_photo"]);
+  });
+});
+
+test("the digits in a picture link are not Mark's numbers: they never make a number in his pitch 'known'", () => {
+  const f = buildFacts(file(), rating, "en");
+  const pitch = "Come along for $777 a head.";
+  assert.equal(pitchNumberProblems({ pitch }, f).length, 1);
+  assert.equal(pitchNumberProblems(normalizeAnswers({ pitch, hero_photo: "https://stillafloatcruising.com/assets/images/777.jpg", host_photo: "https://stillafloatcruising.com/h-777.png" }), f).length, 1, "a link with 777 in it does not vouch for the price");
+  assert.deepEqual(pitchNumberProblems(normalizeAnswers({ pitch, extras: "The bus costs $777 to hire." }), f), [], "his own words still do");
 });

@@ -65,6 +65,11 @@ export const INTERVIEW: InterviewQuestion[] = [
   // Mark 2026-10-19: the poster says "Use the QR code to book your spot!" and every digital piece (email, Facebook, the page) says "Tap here to book your spot!";
   // another line can be chosen per group here and is then used on every piece.
   { key: "cta_line", type: "text", label: "The call to action, as it should read (optional)", hint: `Left blank, the poster says "${DEFAULT_CTA.en}" and every digital piece (the page, the emails, the Facebook posts) says "${DIGITAL_CTA.en}" with a link, because a QR code is for paper. Type another line to use it on every piece instead.` },
+  // The look of the public page (Mark 2026-10-20: every group page looks like the approved marketing). All three are optional; a link that is
+  // not on our own hosts is ignored (safeImageUrl), never shown.
+  { key: "taxes_included", type: "yesno", label: "Do the quoted cabin prices include taxes and port fees?", fallback: false, hint: "Yes: the page says the price is per person with taxes and port fees included. No: the page keeps its usual line, that the price, taxes, fees and port expenses are confirmed in writing when they book." },
+  { key: "hero_photo", type: "text", label: "Top picture for the group page (link, optional)", hint: "Replaces the site's generic picture at the top of the page. Paste the link of a picture kept on stillafloatcruising.com or in the site's own storage; a link anywhere else is ignored. Left blank, the page keeps the usual picture." },
+  { key: "host_photo", type: "text", label: "Photo of the hosts, shown small in the top-right corner (link, optional)", hint: "A small framed photo of the hosts in the top-right corner of the top picture. Same rule: a link on stillafloatcruising.com or in the site's own storage. Left blank, no photo is shown." },
   { key: "tone", type: "choice", label: "Tone", fallback: "warm-humor",
     choices: [
       { value: "warm-humor", label: "Warm, with a little humor (the usual)" },
@@ -122,6 +127,53 @@ export function plannedForGroup(answers: Record<string, string | boolean>): stri
     }
   }
   return out;
+}
+
+// ── The look of the public page (hero picture, hosts' photo, taxes line) ──────────────────────────────────────────
+
+/** The Supabase project the site stores its own files in (persistence.ts uses the same fallback when SUPABASE_URL is unset or still the template value). */
+const DEFAULT_SUPABASE_URL = "https://gbjfrnrkkjnutmogdzln.supabase.co";
+/** The site's own host, the only other place a page picture may live. */
+const SITE_IMAGE_HOST = "stillafloatcruising.com";
+/** The longest picture link kept. */
+export const IMAGE_URL_MAX = 600;
+
+function supabaseHost(): string | null {
+  const raw = process.env["SUPABASE_URL"];
+  const url = raw && !raw.includes("aBcDe") ? raw : DEFAULT_SUPABASE_URL;
+  try { return new URL(url).host; } catch { return null; }
+}
+
+/**
+ * A picture link the public page may show, or null. Only an https link to a file on OUR hosts is accepted: the project's own storage
+ * (the SUPABASE_URL host, path /storage/v1/object/public/) or stillafloatcruising.com. Anything else — another host, http, a
+ * `javascript:` or `data:` link, a link with a login or a port in it, or one with a quote, bracket, space or backslash that could break out
+ * of the place it is written into — is refused, so what is returned is safe to hand to an <img src> as it stands.
+ */
+export function safeImageUrl(u: unknown): string | null {
+  if (typeof u !== "string") return null;
+  const raw = u.trim();
+  if (!raw || raw.length > IMAGE_URL_MAX) return null;
+  if (/[\s"'`()<>\\{}|^\u0000-\u001f\u007f]/.test(raw)) return null;
+  let url: URL;
+  try { url = new URL(raw); } catch { return null; }
+  if (url.protocol !== "https:" || url.username || url.password || url.port) return null;
+  if (url.hostname === SITE_IMAGE_HOST) return url.href;
+  const own = supabaseHost();
+  if (own && url.host === own && url.pathname.startsWith("/storage/v1/object/public/")) return url.href;
+  return null;
+}
+
+export interface PageLook { heroUrl: string | null; hostPhotoUrl: string | null; taxesIncluded: boolean }
+
+/** What the interview says about how the public page looks, reduced to values the page may use: validated picture links (null when absent or refused) and a real boolean. */
+export function pageLook(answers: Record<string, string | boolean>): PageLook {
+  return { heroUrl: safeImageUrl(answers["hero_photo"]), hostPhotoUrl: safeImageUrl(answers["host_photo"]), taxesIncluded: answers["taxes_included"] === true };
+}
+
+/** The picture-link answers that are filled in but are not accepted (the dashboard says so, because the page quietly shows nothing for them). */
+export function ignoredPictureAnswers(answers: Record<string, string | boolean>): string[] {
+  return (["hero_photo", "host_photo"] as const).filter((k) => typeof answers[k] === "string" && answers[k] !== "" && safeImageUrl(answers[k]) === null);
 }
 
 /** The longest answer kept. The pitch is never cut to fit: the answers route refuses a longer one. */
@@ -596,9 +648,11 @@ export function withoutPitch(pitch: string | null | undefined, text: string): st
   return out;
 }
 
-/** The answers' text apart from the pitch: the numbers in it are Mark's to state without a second source. */
+const PICTURE_ANSWERS = new Set(["hero_photo", "host_photo"]);
+
+/** The answers' text apart from the pitch: the numbers in it are Mark's to state without a second source (a picture link's digits are not his words). */
 function otherAnswersText(answers: Record<string, string | boolean>): string {
-  return Object.entries(answers).filter(([k, v]) => k !== "pitch" && typeof v === "string").map(([, v]) => v).join(" ");
+  return Object.entries(answers).filter(([k, v]) => k !== "pitch" && !PICTURE_ANSWERS.has(k) && typeof v === "string").map(([, v]) => v).join(" ");
 }
 
 /**
