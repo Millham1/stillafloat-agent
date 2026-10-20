@@ -9,6 +9,7 @@ import {
 } from "./group-journey";
 import { addDays, ctxFor, localToday, ymd, dayDiff, pickVideos, videoFitOf, videoFitsGroup, type Extras, type JourneyInput, type Row } from "./group-journey-facts";
 import { SITE_PAGES } from "./group-journey-sections";
+import { strings } from "./group-journey-strings";
 import { looksLikeCardNumber } from "./group-file";
 import { HOUSE_BANNED } from "./group-marketing";
 import { fixtureInput, fullExtras, SAIL, VIDEOS } from "./group-journey.fixture";
@@ -304,6 +305,81 @@ test("the 45-day message: excursions, dining and change windows, and what is sti
   assert.match(r.text, /January 20, 2027: Name changes carry a fee after this date\./);
   assert.match(r.text, /Paperwork: 4 documents still to sign/);
   assert.match(r.text, /How you are getting home/);
+});
+
+test("the 45-day subject and opening line name only the sections the message really has", () => {
+  const sayOf = (input: JourneyInput, id = "t1") => { const r = renderEmail("t-45", ctx(input, id, before(45)))!; return { r, subject: r.subject.replace(/^[^:]*: /, "") }; };
+  const intro = (r: { text: string }) => r.text.split("\n\n")[1];
+  // the file has excursions, dining and open items: all three are promised, and all three are there
+  const both = sayOf(fixtureInput());
+  assert.equal(both.subject, "excursions, dining and what is still open");
+  assert.equal(intro(both.r), "This is the time to settle excursions and dining, and to send us anything still missing.");
+  // no excursion rows on the file: the message does not promise any
+  const noEx = fixtureInput(); noEx.checklist = noEx.checklist.filter((r) => r.kind !== "excursion");
+  const a = sayOf(noEx);
+  assert.ok(!a.r.sections.includes("excursions"));
+  assert.equal(a.subject, "dining and what is still open");
+  assert.equal(intro(a.r), "This is the time to settle dining, and to send us anything still missing.");
+  assert.ok(!/excursion/i.test(a.r.subject + intro(a.r)));
+  // no dining on the file (no seating, and none of the line's dates is about dining or name changes): no promise of dining
+  const noDin = fixtureInput(); noDin.cabins[0]!.dining = null; (noDin.group["terms"] as Row)["deadlines"] = [];
+  const b = sayOf(noDin);
+  assert.ok(!b.r.sections.includes("dining"));
+  assert.equal(b.subject, "excursions and what is still open");
+  assert.equal(intro(b.r), "This is the time to settle excursions, and to send us anything still missing.");
+  // neither: only the open items are promised
+  const neither = fixtureInput(); neither.checklist = neither.checklist.filter((r) => r.kind !== "excursion"); neither.cabins[0]!.dining = null; (neither.group["terms"] as Row)["deadlines"] = [];
+  const c = sayOf(neither);
+  assert.deepEqual(c.r.sections, ["sailing", "missing", "checklist"]);
+  assert.equal(c.subject, "what is still open");
+  assert.equal(intro(c.r), "This is the time to send us anything still missing.");
+  assert.ok(!/excursion|dining/i.test(c.r.subject + c.r.text));
+  // the Spanish twin says the same things
+  const es = sayOf(noEx, "t3");
+  assert.equal(es.subject, "comidas y lo que sigue pendiente");
+  assert.equal(intro(es.r), "Este es el momento de decidir las comidas, y de enviarnos lo que todavía falta.");
+  // and with nothing but the sailing, no promise at all
+  const E = strings("en"), S = strings("es");
+  assert.equal(E.topicFor("t-45", () => false), "where your cruise stands");
+  assert.equal(E.introFor("t-45", () => false), "Here is where your cruise stands.");
+  assert.equal(S.topicFor("t-45", () => false), "cómo va su crucero");
+  assert.equal(S.introFor("t-45", () => false), "Aquí está cómo va su crucero.");
+  // a kind whose words do not depend on its sections keeps its fixed words
+  assert.equal(E.topicFor("t-2", () => true), null);
+  assert.equal(E.introFor("t-2", () => true), null);
+});
+
+test("the other countdown messages also name only the sections they have, in both languages", () => {
+  const E = strings("en"), S = strings("es");
+  const has = (...keys: string[]) => (k: string) => keys.includes(k);
+  assert.equal(E.topicFor("t-120", has("payments", "paperwork")), "payments, paperwork and what to do first");
+  assert.equal(E.topicFor("t-120", has("paperwork")), "paperwork and what to do first");
+  assert.equal(E.topicFor("t-120", has()), "what to do first");
+  assert.equal(E.topicFor("t-90", has("payments", "deadlines", "travel")), "final payment, line deadlines and getting to the ship");
+  assert.equal(E.topicFor("t-90", has("travel-needed")), "getting to the ship");
+  assert.equal(E.topicFor("t-90", has()), "what is open on your file");
+  assert.equal(E.introFor("t-90", has("deadlines", "travel")), "This is when the dates that matter start to show up: deadlines from the cruise line and how you are getting to the ship.");
+  assert.equal(E.introFor("t-90", has()), "Here is where your cruise stands.");
+  assert.equal(E.topicFor("t-10", has("ship")), "your ship and how boarding day works");
+  assert.equal(E.topicFor("t-10", has()), "how boarding day works");
+  assert.equal(E.introFor("t-10", has()), "Here is how boarding day works.");
+  assert.equal(E.topicFor("t-5", has("weather", "pack-tweaks")), "the forecast for your cruise");
+  assert.equal(E.topicFor("t-5", has("storm")), "Storm Watch and your cruise");
+  assert.equal(E.topicFor("t-5", has()), "a last note before you sail");
+  assert.equal(E.introFor("t-5", has("weather")), "The forecast for your cruise.");
+  assert.equal(S.topicFor("t-120", has("payments", "paperwork")), "pagos, documentos y qué hacer primero");
+  assert.equal(S.topicFor("t-90", has("payments", "deadlines", "travel")), "pago final, fechas de la naviera y cómo llegar al barco");
+  assert.equal(S.topicFor("t-45", has("excursions", "dining", "missing")), "excursiones, comidas y lo que sigue pendiente");
+  assert.equal(S.topicFor("t-10", has("ship")), "su barco y cómo funciona el día de embarque");
+  assert.equal(S.introFor("t-5", has()), "Una última nota antes de zarpar.");
+  // the 5-day message in the file that cannot give a forecast no longer promises one
+  const none = renderEmail("t-5", ctx(fixtureInput(), "t1", before(5), fullExtras({ weather: null })))!;
+  assert.deepEqual(none.sections, ["sailing"]);
+  assert.equal(none.subject, "5 days to go: a last note before you sail");
+  assert.ok(!/forecast/i.test(none.subject + none.text.split("\n\n")[1]));
+  // and a message with its ship and the forecast keeps the words it always had
+  assert.equal(renderEmail("t-5", ctx(fixtureInput(), "t1", before(5)))!.subject, "5 days to go: the forecast for your cruise");
+  assert.equal(renderEmail("t-10", ctx(fixtureInput(), "t1", before(10)))!.subject, "10 days to go: your ship and how boarding day works");
 });
 
 test("the 20-day message: web check-in from the terms, documents, packing from the checklist and the site, and the packing video", () => {
