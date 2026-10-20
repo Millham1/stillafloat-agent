@@ -530,6 +530,26 @@
     .brand-img    { height: 44px;  width: auto; vertical-align: middle; display: inline-block; }
     .brand-img-sm { height: 30px;  width: auto; vertical-align: middle; display: inline-block; }
 
+    /* Mark 2026-10-20: "The header is not centered and is cutting off the logo" — the page-centred pill grew into the
+       corner logo on mid-size windows (at 960px it covered 24px of it). The pill stays centred on the page with the
+       logo's width reserved on BOTH sides; between 961 and 1079px it uses compact buttons (585px wide instead of 678);
+       at 960px and below the hamburger takes over instead of letting the pill wrap into the logo. */
+    @media (min-width: 769px) {
+      .sa-site-nav { max-width: min(1100px, calc(100vw - 352px)); }
+    }
+    @media (min-width: 961px) and (max-width: 1079px) {
+      .sa-site-nav { padding: 8px 10px; }
+      .sa-nav-row { gap: 5px; }
+      .sa-nav-link { font-size: 12px; padding: 7px 10px; }
+    }
+    @media (max-width: 960px) {
+      .sa-navbar-host { padding-top: 90px; }
+      .sa-site-nav  { display: none; }
+      .sa-lang-pill { display: none; }
+      .sa-hamburger { display: flex; }
+      .sa-logo-img  { height: 60px; }
+    }
+
     /* ── Mobile breakpoint ── */
     @media (max-width: 768px) {
       .sa-navbar-host { padding-top: 90px; }

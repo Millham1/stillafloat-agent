@@ -299,7 +299,7 @@ test("the group's top picture and hosts' photo still go to the banner, and a lin
   await p.ready();
   const banner = p.el("query:.gp-banner");
   assert.deepEqual(banner.kids.map((k) => [k.className, k.src]), [["gp-hero", "https://stillafloatcruising.com/h.jpg"], ["gp-host", "https://stillafloatcruising.com/hosts.jpg"]]);
-  const bad = visit("en", { ...answerFor("en"), look: { heroUrl: "javascript:alert(1)", hostPhotoUrl: "http://stillafloatcruising.com/x.jpg", taxesIncluded: false, hostNames: "Mark" } });
+  const bad = visit("en", { ...answerFor("en"), look: { heroUrl: "javascript:alert(1)", hostPhotoUrl: "http://stillafloatcruising.com/x.jpg", taxesIncluded: false, hostNames: "Mark", label: null } });
   await bad.ready();
   assert.deepEqual(bad.el("query:.gp-banner").kids, [], "neither picture is used");
 });

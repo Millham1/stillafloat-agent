@@ -72,6 +72,8 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "host_photo", type: "text", label: "Photo of the hosts, shown small in the top-right corner (link, optional)", hint: "A small framed photo of the hosts in the top-right corner of the top picture. Same rule: a link on stillafloatcruising.com or in the site's own storage. Left blank, no photo is shown." },
   // Mark 2026-10-20 ("we already had this discussion"): the page opens on a short personal welcome from the hosts, signed with these names.
   { key: "host_names", type: "text", label: "Who is the invitation from? (e.g. Mark & Ceci)", hint: "Signs the short welcome note at the top of the group page, exactly as you type it. Left blank, it is signed Mark." },
+  // Mark 2026-10-20: "the Millham F/F label is horrible. Label it \"Friends and Family 2027\"" — the group file's own name is for the office, not for guests.
+  { key: "page_label", type: "text", label: "The name guests see on the group page (optional)", hint: "Shown on the picture and in the browser tab exactly as you type it, for example: Friends and Family 2027. Left blank, the group's name from the file is used." },
   { key: "tone", type: "choice", label: "Tone", fallback: "warm-humor",
     choices: [
       { value: "warm-humor", label: "Warm, with a little humor (the usual)" },
@@ -166,7 +168,7 @@ export function safeImageUrl(u: unknown): string | null {
   return null;
 }
 
-export interface PageLook { heroUrl: string | null; hostPhotoUrl: string | null; taxesIncluded: boolean; hostNames: string }
+export interface PageLook { heroUrl: string | null; hostPhotoUrl: string | null; taxesIncluded: boolean; hostNames: string; label: string | null }
 
 /** Who signs the welcome note when the interview does not say. */
 export const DEFAULT_HOST_NAMES = "Mark";
@@ -180,9 +182,19 @@ export function hostNames(answers: Record<string, string | boolean>): string {
   return clean || DEFAULT_HOST_NAMES;
 }
 
+/** The longest guest-facing page name kept. */
+export const PAGE_LABEL_MAX = 60;
+
+/** The name guests see on the page (picture label + browser tab): the interview's `page_label` as typed (one line, no markup characters), else null so the page uses the group's own name. */
+export function pageLabel(answers: Record<string, string | boolean>): string | null {
+  const raw = typeof answers["page_label"] === "string" ? answers["page_label"] : "";
+  const clean = raw.replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, PAGE_LABEL_MAX).trim();
+  return clean || null;
+}
+
 /** What the interview says about how the public page looks, reduced to values the page may use: validated picture links (null when absent or refused), a real boolean, and the signature. */
 export function pageLook(answers: Record<string, string | boolean>): PageLook {
-  return { heroUrl: safeImageUrl(answers["hero_photo"]), hostPhotoUrl: safeImageUrl(answers["host_photo"]), taxesIncluded: answers["taxes_included"] === true, hostNames: hostNames(answers) };
+  return { heroUrl: safeImageUrl(answers["hero_photo"]), hostPhotoUrl: safeImageUrl(answers["host_photo"]), taxesIncluded: answers["taxes_included"] === true, hostNames: hostNames(answers), label: pageLabel(answers) };
 }
 
 /** The picture-link answers that are filled in but are not accepted (the dashboard says so, because the page quietly shows nothing for them). */
