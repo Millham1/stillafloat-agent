@@ -7,6 +7,7 @@ import { getSupabase, readJson, writeJson, PATHS } from "./persistence";
 import { logger } from "./logger";
 import { TRAVELER_COLS } from "./group-forms";
 import { shipSlugCandidate } from "./group-marketing";
+import { firstRealStorm } from "./dev-storm-fixture";
 import { fetchForecast } from "./weather-forecast";
 import { ACTIVE_GROUP_STATUSES, type JourneyDefaults } from "./group-journey";
 import { dayDiff, stopsInHorizon, type Extras, type FleetShip, type ForecastDay, type JourneyInput, type Row, type ScanVideo, type StormNote } from "./group-journey-facts";
@@ -86,15 +87,17 @@ export async function loadShip(group: Row): Promise<{ rating: Row | null; shipIn
   return { shipInfo: hull.data ?? null, rating: rating.data ?? null };
 }
 
-/** An active storm that lists this ship (read-only: a pinned ship on a live, public storm alert). */
+/**
+ * An active storm that lists this ship (read-only: a pinned ship on a live, public storm alert). The dev box's permanent test storm is never one:
+ * it pins MSC ships all the time, and a client must not be told about weather that is not real.
+ */
 export async function loadStorm(shipName: string): Promise<StormNote | null> {
   const name = (shipName ?? "").trim();
   if (!name) return null;
   const pins = await db().from("storm_tracked_ships").select("alert_id").ilike("ship_name", likeEscape(name)).limit(20);
   if (pins.error || !pins.data?.length) return null;
-  const alerts = await db().from("storm_alerts").select("id, name, classification, headline, status, ended_at").in("id", pins.data.map((p: Row) => p.alert_id)).in("status", ["approved", "sent"]).is("ended_at", null).order("last_updated", { ascending: false }).limit(1);
-  const a = alerts.data?.[0];
-  return a ? { name: a.name ?? null, classification: a.classification ?? null, headline: a.headline ?? null } : null;
+  const alerts = await db().from("storm_alerts").select("id, nhc_id, raw, name, classification, headline, status, ended_at").in("id", pins.data.map((p: Row) => p.alert_id)).in("status", ["approved", "sent"]).is("ended_at", null).order("last_updated", { ascending: false }).limit(10);
+  return firstRealStorm(alerts.data ?? []);
 }
 
 /** Forecasts for the stops inside the ten-day horizon. A place whose forecast fails is left out (its row is not shown), never faked. */

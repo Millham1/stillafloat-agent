@@ -44,6 +44,24 @@ export function isDevFixtureAlert(a: { raw?: unknown }, env: Record<string, stri
   return raw?.source === FIXTURE_SOURCE && devStormFixtureEnabled(env);
 }
 
+/**
+ * Is this storm_alerts row the permanent dev test storm? Unlike isDevFixtureAlert this does not ask which box it is on: a row marked as the fixture is
+ * never real weather, wherever it is read. A client's email or cruise page must never name it (Mark 2026-10-19: the 5-day email of a test group
+ * named the dev box's "Gate Fixture").
+ */
+export function isFixtureAlertRow(a: { nhc_id?: unknown; raw?: unknown } | null | undefined): boolean {
+  const raw = a?.raw as { source?: unknown } | null | undefined;
+  return a?.nhc_id === FIXTURE_NHC_ID || raw?.source === FIXTURE_SOURCE;
+}
+
+/** The first of the alerts (newest first) that is real weather: the fixture is skipped, and an alert with nothing to say is not a storm. */
+export function firstRealStorm(alerts: ReadonlyArray<{ nhc_id?: unknown; raw?: unknown; name?: unknown; classification?: unknown; headline?: unknown }>): { name: string | null; classification: string | null; headline: string | null } | null {
+  const a = alerts.find((x) => !isFixtureAlertRow(x));
+  if (!a) return null;
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v : null);
+  return { name: text(a.name), classification: text(a.classification), headline: text(a.headline) };
+}
+
 const day = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
 
 /** The rolling sailing every fixture ship is "on": it started 2 days ago and ends in 10 (12 days, well inside the 120-day sanity limit). */
