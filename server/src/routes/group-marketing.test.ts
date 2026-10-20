@@ -115,7 +115,7 @@ async function call(method: string, path: string, o: { body?: unknown; token?: b
 }
 
 const pageOf = (lang: "en" | "es" = "en") => call("GET", `/group-page/${CODE}?lang=${lang}`);
-const NO_LOOK = { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" };
+const NO_LOOK = { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null };
 
 test("a group that says nothing about its look gets a look block of nulls and false: the page is unchanged", async () => {
   marketing = { pitch: "Come along.", audience: "a", occasion: "b", why_sailing: "c" };
@@ -135,7 +135,7 @@ test("valid links on our own hosts and a yes to taxes come through, in English a
   for (const lang of ["en", "es"] as const) {
     const r = await pageOf(lang);
     assert.equal(r.status, 200, lang);
-    assert.deepEqual(r.json["look"], { heroUrl: hero, hostPhotoUrl: host, taxesIncluded: true, hostNames: "Mark" }, lang);
+    assert.deepEqual(r.json["look"], { heroUrl: hero, hostPhotoUrl: host, taxesIncluded: true, hostNames: "Mark", label: null }, lang);
   }
 });
 
@@ -150,11 +150,11 @@ test("a link that is not https on our own hosts is null; one bad link does not c
     marketing = { pitch: "Come along.", hero_photo: bad, host_photo: good, taxes_included: false };
     const r = await pageOf();
     assert.equal(r.status, 200, bad);
-    assert.deepEqual(r.json["look"], { heroUrl: null, hostPhotoUrl: good, taxesIncluded: false, hostNames: "Mark" }, bad);
+    assert.deepEqual(r.json["look"], { heroUrl: null, hostPhotoUrl: good, taxesIncluded: false, hostNames: "Mark", label: null }, bad);
     // what was refused is not echoed anywhere in the answer
     assert.ok(!r.text.includes(bad), `the refused link is in the page's answer: ${bad}`);
     marketing = { pitch: "Come along.", hero_photo: good, host_photo: bad };
-    assert.deepEqual((await pageOf()).json["look"], { heroUrl: good, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" }, bad);
+    assert.deepEqual((await pageOf()).json["look"], { heroUrl: good, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null }, bad);
   }
 });
 
@@ -167,11 +167,11 @@ test("taxes_included is a boolean on the page whatever the interview holds", asy
   }
 });
 
-test("the look block holds exactly four names, and the raw answers are not in the public answer", async () => {
+test("the look block holds exactly five names, and the raw answers are not in the public answer", async () => {
   marketing = { pitch: "Come along.", hero_photo: "https://stillafloatcruising.com/a.jpg", host_photo: "https://stillafloatcruising.com/b.jpg", taxes_included: true, cta_line: "Join the fun!", reference: "a private note" };
   const r = await pageOf();
-  assert.deepEqual(Object.keys(r.json["look"]).sort(), ["heroUrl", "hostNames", "hostPhotoUrl", "taxesIncluded"]);
-  for (const k of ["hero_photo", "host_photo", "taxes_included", "host_names", "reference", "pitch"]) {
+  assert.deepEqual(Object.keys(r.json["look"]).sort(), ["heroUrl", "hostNames", "hostPhotoUrl", "label", "taxesIncluded"]);
+  for (const k of ["hero_photo", "host_photo", "taxes_included", "host_names", "page_label", "reference", "pitch"]) {
     assert.ok(!(k in r.json["facts"]) && !(k in r.json["look"]) && !(k in r.json), `${k} leaks into the public answer`);
   }
   assert.ok(!r.text.includes("a private note"));

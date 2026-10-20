@@ -23,8 +23,8 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400}
 /* The group's own top picture (look.heroUrl) replaces the generic one; it fills the hero and fades in once it has loaded. */
 .gp-banner.custom{background-image:none}
 .gp-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 46%;z-index:0;opacity:0;transition:opacity .5s ease}
-/* The hosts' photo (look.hostPhotoUrl): small, framed, top-right, under the site menu; never near the centre of the hero. */
-.gp-host{position:absolute;top:132px;right:22px;z-index:5;box-sizing:border-box;width:clamp(120px,28%,300px);aspect-ratio:4/3;object-fit:cover;object-position:center 30%;
+/* The hosts' photo (look.hostPhotoUrl): small, framed, in the TOP-RIGHT corner of the picture (the site menu sits above the picture, not on it — Mark 2026-10-20: "the inset is not in the correct place"); never near the centre of the hero. */
+.gp-host{position:absolute;top:18px;right:22px;z-index:5;box-sizing:border-box;width:clamp(120px,28%,300px);aspect-ratio:4/3;object-fit:cover;object-position:center 30%;
   background:#fff;border:6px solid #fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.38);opacity:0;transition:opacity .5s ease}
 .gp-hero.on,.gp-host.on{opacity:1}
 .gp-lockup{position:absolute;left:0;right:0;bottom:22px;z-index:4;display:flex;justify-content:center;padding:0 20px}
@@ -105,7 +105,7 @@ select option{color:#07183f}
 .mark p{flex:1;min-width:260px}
 footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font-size:16px}
 #gp-state{padding:80px 22px;text-align:center;font-size:22px;color:rgba(255,255,255,.85)}
-@media(max-width:768px){.gp-host{top:84px;right:14px}}
+@media(max-width:768px){.gp-host{top:12px;right:12px}}
 @media(max-width:640px){.form-grid{grid-template-columns:1fr}table{font-size:17px}td,th{padding:9px 6px}.shell{padding:30px 16px 70px}.btn{display:block;width:100%;padding:16px 24px}}
 </style>
 </head>
@@ -294,8 +294,9 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
   function render(d){
     var f = d.facts, c = d.copy, look = d.look || {};
     state.hidden = true; show('gp-main');
-    document.title = f.groupName + ' | Still Afloat Cruising';
-    $('gp-plaque').textContent = f.groupName;
+    var pageName = (look && look.label) || f.groupName;   // the guest-facing name (interview page_label), else the file's name
+    document.title = pageName + ' | Still Afloat Cruising';
+    $('gp-plaque').textContent = pageName;
     if(d.preview){ var pb=$('gp-preview'); pb.textContent=T.preview; pb.hidden=false; }
     if(d.langs && d.langs.length > 1){
       var other = ES ? '/group.html' : '/es/group.html';
@@ -391,6 +392,6 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
   });
 })();
 </script>
-<script src="/components/navbar.js?v=20260915-trackship"></script>
+<script src="/components/navbar.js?v=20261020-headerfit"></script>
 </body>
 </html>

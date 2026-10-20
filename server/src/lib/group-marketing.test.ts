@@ -5,7 +5,7 @@ import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
   ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts, DIGITAL_CTA, QR_PROBLEM, ctaForFacebook, mentionsQr, withDisplayNames,
-  IMAGE_URL_MAX, ignoredPictureAnswers, pageLook, safeImageUrl, DEFAULT_HOST_NAMES, HOST_NAMES_MAX, PITCH_NOTE, WELCOME_RULES, cabinPrices, hostNames, priceUnitOf, priceUnitText, travelLabel } from "./group-marketing";
+  IMAGE_URL_MAX, ignoredPictureAnswers, pageLook, safeImageUrl, DEFAULT_HOST_NAMES, HOST_NAMES_MAX, PITCH_NOTE, WELCOME_RULES, cabinPrices, hostNames, priceUnitOf, priceUnitText, travelLabel, pageLabel, PAGE_LABEL_MAX } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -902,7 +902,7 @@ test("the interview has three optional look questions right after the call to ac
   const keys = INTERVIEW.map((q) => q.key);
   const i = keys.indexOf("cta_line");
   assert.deepEqual(keys.slice(i + 1, i + 4), ["taxes_included", "hero_photo", "host_photo"]);
-  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "host_names", "tone", "show_prices", "show_rating"]);
+  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "host_names", "page_label", "tone", "show_prices", "show_rating"]);
   const [taxes, hero, host] = [INTERVIEW[i + 1]!, INTERVIEW[i + 2]!, INTERVIEW[i + 3]!];
   assert.equal(taxes.type, "yesno"); assert.equal(taxes.fallback, false);
   assert.equal(taxes.label, "Do the quoted cabin prices include taxes and port fees?");
@@ -990,18 +990,18 @@ test("safeImageUrl takes the storage host from SUPABASE_URL, and falls back to t
 test("pageLook passes only validated values: nulls for anything absent or refused, a real boolean for taxes", () => {
   withSupabaseUrl(SUPABASE_BASE, () => {
     const good = pageLook(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxes_included: true }));
-    assert.deepEqual(good, { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxesIncluded: true, hostNames: "Mark" });
-    assert.deepEqual(pageLook(normalizeAnswers({})), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" }, "nothing answered: nothing changes on the page");
-    assert.deepEqual(pageLook({}), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" }, "answers that were never normalised");
+    assert.deepEqual(good, { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxesIncluded: true, hostNames: "Mark", label: null });
+    assert.deepEqual(pageLook(normalizeAnswers({})), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null }, "nothing answered: nothing changes on the page");
+    assert.deepEqual(pageLook({}), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null }, "answers that were never normalised");
     // each value stands on its own: a bad hero does not cost the hosts' photo, and the reverse
     const mixed = pageLook(normalizeAnswers({ hero_photo: "javascript:alert(1)", host_photo: "https://stillafloatcruising.com/h.jpg", taxes_included: true }));
-    assert.deepEqual(mixed, { heroUrl: null, hostPhotoUrl: "https://stillafloatcruising.com/h.jpg", taxesIncluded: true, hostNames: "Mark" });
+    assert.deepEqual(mixed, { heroUrl: null, hostPhotoUrl: "https://stillafloatcruising.com/h.jpg", taxesIncluded: true, hostNames: "Mark", label: null });
     assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: "http://stillafloatcruising.com/h.jpg" })),
-      { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" });
+      { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null });
     for (const bad of ["https://example.com/h.jpg", 'https://stillafloatcruising.com/h.jpg")', "data:image/png;base64,AAAA", "https://stillafloatcruising.com/h (1).jpg"]) {
-      assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: bad, host_photo: bad })), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" }, bad);
+      assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: bad, host_photo: bad })), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null }, bad);
     }
-    assert.deepEqual(Object.keys(pageLook({})).sort(), ["heroUrl", "hostNames", "hostPhotoUrl", "taxesIncluded"], "nothing else about the answers leaks into the look");
+    assert.deepEqual(Object.keys(pageLook({})).sort(), ["heroUrl", "hostNames", "hostPhotoUrl", "label", "taxesIncluded"], "nothing else about the answers leaks into the look");
     assert.equal(typeof pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, "boolean");
     assert.equal(pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, false);
   });
@@ -1176,4 +1176,13 @@ test("the interview asks who the invitation is from, optional, after the look qu
   assert.equal(normalizeAnswers({ host_names: " Mark & Ceci " })["host_names"], "Mark & Ceci");
   assert.equal(normalizeAnswers({})["host_names"], "");
   assert.deepEqual(missingAnswers(normalizeAnswers({ pitch: "Come along.", audience: "a", occasion: "b", why_sailing: "c" })), [], "no new required question");
+});
+
+test("pageLabel: the guest-facing page name as typed, one line, no markup, at most PAGE_LABEL_MAX; null when blank (Mark 2026-10-20)", () => {
+  assert.equal(pageLabel(normalizeAnswers({ page_label: "Friends and Family 2027" })), "Friends and Family 2027");
+  assert.equal(pageLabel(normalizeAnswers({ page_label: "  Friends <b>and</b>\n Family  2027 " })), "Friends band/b Family 2027");
+  assert.equal(pageLabel(normalizeAnswers({})), null, "blank: the page falls back to the group's own name");
+  assert.equal(pageLabel({ page_label: "x".repeat(200) })!.length, PAGE_LABEL_MAX);
+  assert.equal(pageLook(normalizeAnswers({ page_label: "Friends and Family 2027" })).label, "Friends and Family 2027", "pageLook carries it to the public page");
+  assert.ok(INTERVIEW.some((q) => q.key === "page_label"), "the dashboard interview asks for it");
 });
