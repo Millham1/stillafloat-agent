@@ -187,6 +187,37 @@ router.post("/social/media", requireToken, async (req: Request, res: Response) =
 // Scoped token: the Mac publisher holds SOCIAL_CLIP_TOKEN only (x-social-clip-token).
 const requireClipToken = requireScopedToken("SOCIAL_CLIP_TOKEN", "x-social-clip-token");
 
+// POST /api/social/published — the Mac publisher (publish_youtube.py) queues an upload's social batch the
+// moment it is live: { videoId, title, lang, format, transcript? }. The language is the publish spec's (the
+// same one stamped on YouTube), the track follows from it (es → A, en → B), and an upload that already has
+// its batch is left alone. The batch lands pending like any other — this only generates, never posts.
+// (Mark 2026-10-20: social posts come from the social-hooks step at publish, not from the daily scan.)
+router.post("/social/published", requireClipToken, async (req: Request, res: Response) => {
+  const { videoId, title, lang, format, transcript } = req.body as {
+    videoId?: unknown; title?: unknown; lang?: unknown; format?: unknown; transcript?: unknown;
+  };
+  if (!isValidVideoId(videoId) || !isClipLang(lang) || typeof title !== "string" || !title.trim() || title.length > 200
+    || (format !== "short" && format !== "long") || (transcript !== undefined && (typeof transcript !== "string" || transcript.length > 50_000))) {
+    res.status(400).json({ success: false, error: "videoId (YouTube id), title, lang (en|es) and format (short|long) are required; transcript is optional text" });
+    return;
+  }
+  try {
+    const track: Track = lang === "es" ? "A" : "B";
+    const queue = await loadQueue();
+    const existing = queue.batches.find((b) => b.videoId === videoId && b.track === track);
+    if (existing) {
+      res.json({ success: true, existing: true, id: existing.id, track, status: existing.status });
+      return;
+    }
+    const video: SocialVideo = { id: videoId, title: title.trim(), lang, format };
+    const queued = await enqueueBatch(await generateSocialBatch(video, track, transcript || undefined));
+    res.json({ success: true, existing: false, id: queued.id, track, transcriptChars: queued.transcriptChars ?? 0 });
+  } catch (err) {
+    logger.error({ err, videoId }, "social/published: batch generation failed");
+    res.status(500).json({ success: false, error: (err as Error).message });
+  }
+});
+
 // POST /api/social/clip/sign — { videoId, lang } → one-time signed upload URL.
 router.post("/social/clip/sign", requireClipToken, async (req: Request, res: Response) => {
   const { videoId, lang } = req.body as { videoId?: unknown; lang?: unknown };

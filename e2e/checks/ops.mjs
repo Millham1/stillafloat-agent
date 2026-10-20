@@ -844,7 +844,7 @@ export default [
     id: "ops.social-writes-refuse",
     basis: "code: server/src/routes/social.ts — the social and AI-visibility write routes are token-gated (the Mac publisher and Make use their own narrow keys) and refuse bad input before generating, posting or sending anything",
     title: "The social and AI-visibility write addresses refuse bad input and missing tokens, and a clip upload can be signed (nothing is posted, sent or generated)",
-    covers: ["POST /api/social/clip/sign"],
+    covers: ["POST /api/social/clip/sign", "POST /api/social/published"],
     modes: ["dev"],
     devOnlyBecause: "it sends POSTs (refusal paths only); prod sweeps are read-only",
     run: async (t) => {
@@ -866,6 +866,18 @@ export default [
         "signing a clip upload with a wrong publisher key", /unauthori[sz]ed/i);
       refused(t, await t.send("POST", "/api/social/ingest", { headers: { "x-social-stats-token": "e2e-wrong-key-not-a-secret" }, body: [] }), 401,
         "a stats snapshot with a wrong Make key", /unauthori[sz]ed/i);
+      // The publisher's "queue this upload's posts" call: bad input and wrong keys are refused before any
+      // generation; an upload that already has its batch answers that batch and generates nothing.
+      refused(t, await post("/api/social/published", { videoId: "e2eFixture01", title: "x", lang: "fr", format: "short" }), 400, "queueing posts for an upload with no en/es language", /lang/i);
+      refused(t, await post("/api/social/published", { videoId: "e2eFixture01", title: "x", lang: "en" }), 400, "queueing posts for an upload with no format", /format/i);
+      unauthorized(t, await post("/api/social/published", { videoId: "e2eFixture01", title: "x", lang: "en", format: "short" }, false), "POST /api/social/published");
+      refused(t, await t.send("POST", "/api/social/published", { headers: { "x-social-clip-token": "e2e-wrong-key-not-a-secret" }, body: { videoId: "e2eFixture01", title: "x", lang: "en", format: "short" } }), 401,
+        "queueing posts with a wrong publisher key", /unauthori[sz]ed/i);
+      const had = q.batches.find((b) => (b.track === "A" || b.track === "B") && /^[\w-]{11}$/.test(String(b.videoId)));
+      t.require(had, "no queued batch with a YouTube id on this box, so the publisher's no-duplicate answer cannot be checked");
+      const again = t.success(await post("/api/social/published", { videoId: had.videoId, title: had.title || "e2e", lang: had.track === "A" ? "es" : "en", format: "short" }));
+      t.ok(again.existing === true && again.id === had.id, `re-queueing ${had.videoId} (Track ${had.track}) should answer its existing batch ${had.id}, got ${JSON.stringify(again).slice(0, 160)}`);
+      t.equal(again.track, had.track, "the track the publisher call derives from the language");
       // Signing creates nothing: it returns a one-time upload address (never recorded).
       const signed = t.success(await post("/api/social/clip/sign", { videoId: "e2eFixture01", lang: "en" }));
       t.equal(signed.bucket, "social-clips", "the bucket a clip upload is signed for");
