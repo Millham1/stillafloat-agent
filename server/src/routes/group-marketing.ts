@@ -15,7 +15,7 @@ import {
 } from "../lib/group-marketing";
 import { assetsFor, fetchAssets, putPublic, type AssetRow } from "../lib/group-assets";
 import { pickPhotos, posterPdf, posterSpec, renderPoster, renderSocial } from "../lib/group-package";
-import { CAMPAIGN_SCHEMA, campaignSystemPrompt, campaignUserPrompt, tidyCampaign, validateCampaign, type Campaign } from "../lib/group-campaign";
+import { CAMPAIGN_SCHEMA, campaignSystemPrompt, campaignUserPrompt, facebookPostText, renderCampaignEmails, tidyCampaign, validateCampaign, type Campaign } from "../lib/group-campaign";
 
 // Group marketing (migration 0045).
 //
@@ -424,7 +424,17 @@ router.get("/groups/:id/marketing/package", requireToken, async (req: Request, r
     const facts = buildFacts({ group, cabins, travel }, rating, langsFor(group)[0]!);
     const assets = group.ship_name ? await assetsFor(String(group.ship_name), ["ship", ...subjectsFor(facts).map((d) => `destination:${d}`)]) : [];
     const pkg = pkgOf(group);
-    return res.json({ success: true, assets, chosen: Array.isArray(pkg["chosen"]) ? pkg["chosen"] : [], renders: pkg["renders"] ?? null, campaign: pkg["campaign"] ?? null,
+    // The campaign as it is sent or posted: each email as HTML with a "Tap here" button and the plain link (no QR code: that is for the poster), and each
+    // Facebook text with its tap-the-link line. Read-only, so a group with no share code yet simply has no link to draw.
+    const lang = langsFor(group)[0]!;
+    const campaign = pkg["campaign"] && typeof pkg["campaign"] === "object" ? tidyCampaign(pkg["campaign"]) : null;
+    const url = group.share_code ? `${publicSite()}/group.html?g=${group.share_code}` : null;
+    const answers = normalizeAnswers(group.marketing);
+    const rendered = campaign && url
+      ? { emails: renderCampaignEmails(campaign, { url, lang, answers }),
+          facebook: Object.fromEntries((["announcement", "reminder", "event_description", "boosted"] as const).map((k) => [k, facebookPostText(campaign.facebook[k], { url, lang, answers })])) }
+      : null;
+    return res.json({ success: true, assets, chosen: Array.isArray(pkg["chosen"]) ? pkg["chosen"] : [], renders: pkg["renders"] ?? null, campaign: pkg["campaign"] ?? null, rendered,
       campaignProblems: pkg["campaign_problems"] ?? [], notes: pkg["notes"] ?? [], hasCopy: !!copyFor(group, langsFor(group)[0]!), shareCode: group.share_code ?? null });
   } catch (err) { return fail(req, res, err, "group package read failed"); }
 });
@@ -471,7 +481,7 @@ router.post("/groups/:id/marketing/package/render", requireToken, async (req: Re
     if (!hero) return res.status(400).json({ success: false, error: "No photo on file yet — fetch photographs first" });
     const code = await shareCodeFor(group);
     const url = `${publicSite()}/group.html?g=${code}`;
-    const spec = posterSpec(facts, copy, { url, credits, lang, cta: ctaLine(normalizeAnswers(group.marketing), lang).text });
+    const spec = posterSpec(facts, copy, { url, credits, lang, cta: ctaLine(normalizeAnswers(group.marketing), lang, "print").text });
     const get = async (a: AssetRow) => Buffer.from(await (await fetch(a.public_url, { signal: AbortSignal.timeout(30_000) })).arrayBuffer());
     const heroBytes = await get(hero);
     const secondBytes = second ? await get(second) : null;

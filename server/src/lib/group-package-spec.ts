@@ -1,6 +1,6 @@
 // group-package-spec.ts — the WORDS and choices of a group's poster, with no image library
 // involved: pure and unit-tested. group-package.ts draws what this decides.
-import { DEFAULT_CTA, type GroupFacts, type GroupCopy } from "./group-marketing";
+import { DEFAULT_CTA, DIGITAL_CTA, type GroupFacts, type GroupCopy } from "./group-marketing";
 import type { AssetRow } from "./group-assets";
 import { BUSINESS } from "./group-secure";
 
@@ -15,7 +15,7 @@ export interface PosterSpec {
   facts: string[];         // the short facts column
   travel: string[];        // air / hotel / transfers lines, if any
   cta: string;             // "Use the QR code to book your spot!" (the group's own line when its interview has one)
-  linkCta: string;         // the same call for a picture with no QR code on it ("Use the link to book your spot!")
+  linkCta: string;         // the call for a picture shown on a screen, where a QR code cannot be scanned: the link twin ("Tap here to book your spot!")
   phone: string;
   url: string;             // the group page
   credit: string;          // photo credit line(s)
@@ -49,10 +49,10 @@ export function fitHeadline(text: string, width: number, sizes: readonly number[
   return { size, lines: at(size) };
 }
 
-/** The old "scan the QR" line and the new one each have a link twin for the Facebook pictures, which cannot be scanned. */
+/** The printed lines each have a tap-the-link twin for the Facebook pictures, which are seen on a screen (a link post's picture opens the link) and cannot be scanned. */
 const LINK_CTA: Record<string, string> = {
-  [DEFAULT_CTA.en]: "Use the link to book your spot!",
-  [DEFAULT_CTA.es]: "¡Use el enlace para reservar su lugar!",
+  [DEFAULT_CTA.en]: DIGITAL_CTA.en,
+  [DEFAULT_CTA.es]: DIGITAL_CTA.es,
   "Scan the QR to join the fun": "Open the link to join the fun",
   "Escanee el código para unirse a la diversión": "Abra el enlace para unirse a la diversión",
 };

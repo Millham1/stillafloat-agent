@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateCampaign, tidyCampaign, campaignSystemPrompt, campaignUserPrompt } from "./group-campaign";
-import { HOUSE_VOICE_RULES, LEAD_WITH_RULES, buildFacts, ctaRule, normalizeAnswers, type GroupFacts } from "./group-marketing";
+import { validateCampaign, tidyCampaign, campaignSystemPrompt, campaignUserPrompt, facebookPostText, renderCampaignEmail, renderCampaignEmails } from "./group-campaign";
+import { HOUSE_VOICE_RULES, LEAD_WITH_RULES, QR_PROBLEM, buildFacts, ctaRule, normalizeAnswers, type GroupFacts } from "./group-marketing";
 
 const facts = { lang: "en", allowedNumbers: ["575.8", "99", "2027", "10", "14", "4"] } as unknown as GroupFacts;
 const url = "https://stillafloatcruising.com/group.html?g=rj4qhy2xft";
@@ -185,22 +185,81 @@ test("email 1 opens with the 'Imagine…' sentence and its payoff, then his pitc
   assert.doesNotMatch(user, /The button asks the reader/, "the campaign has no button");
 });
 
-test("the call to action is 'Use the QR code to book your spot!' in every campaign piece, or the group's own cta_line", () => {
-  const rule = ctaRule({}, "en", "in EVERY piece (every email and every Facebook text carries the QR image beside it; the link is the info sheet, for people reading on a phone)");
+test("the call to action is 'Tap here to book your spot!' in every campaign piece (no QR code), or the group's own cta_line", () => {
+  const rule = ctaRule({}, "en", "in EVERY piece (every email and every Facebook text: the link is the info sheet, tapped on a phone or a computer; no piece carries a QR code, which is printed on the poster only)");
   assert.ok(campaignSystemPrompt("en").includes(rule));
-  assert.match(rule, /the exact words "Use the QR code to book your spot!", then the link, then the phone 919-346-6127/);
-  assert.match(campaignSystemPrompt("es"), /the exact words "¡Use el código QR para reservar su lugar!"/);
+  assert.match(rule, /the exact words "Tap here to book your spot!" \(in a Facebook text the same words end in a colon, "Tap here to book your spot:", and the link follows on the next line\), then the link, then the phone 919-346-6127/);
+  assert.match(rule, /Never mention a QR code: a QR code is for the printed poster only/);
+  assert.match(campaignSystemPrompt("es"), /the exact words "¡Toque aquí para reservar su lugar!"/);
+  assert.doesNotMatch(campaignSystemPrompt("en"), /Use the QR code to book your spot!|carries the QR image/);
   const own = campaignSystemPrompt("en", { cta_line: "Scan the QR to join the fun" });
   assert.match(own, /the exact words "Scan the QR to join the fun", then the link/);
-  assert.doesNotMatch(own, /Use the QR code to book your spot!/);
+  assert.doesNotMatch(own, /Use the QR code to book your spot!|Tap here to book your spot!/);
+});
+
+test("a campaign piece that mentions a QR code is refused; Mark's pitch sentence and his own cta_line may", () => {
+  const c = good();
+  c.emails[0]!.body += " Use the QR code to book your spot!";
+  c.facebook.reminder += " Scan the QR to book.";
+  const p = validateCampaign(c, facts, {}, url);
+  assert.deepEqual(p.filter((x) => x.problem === QR_PROBLEM).map((x) => x.field), ["emails[0].body", "facebook.reminder"]);
+  // a pitch sentence of his that names the QR is his word; so is a cta_line he typed
+  const c2 = good();
+  c2.emails[0]!.body = `${PITCH}\n\nTap here to book your spot!\n\nStill Afloat Cruising`;
+  assert.ok(!validateCampaign(c2, facts, { pitch: PITCH }, url).some((x) => x.problem === QR_PROBLEM));
+  const c3 = good();
+  c3.facebook.boosted = "Scan the QR to join the fun";
+  assert.ok(!validateCampaign(c3, facts, { cta_line: "Scan the QR to join the fun" }, url).some((x) => x.problem === QR_PROBLEM));
+});
+
+// ── The email as it is sent or previewed: a button to tap, never a QR code ───────────────────────────────────────
+
+test("a campaign email is drawn with a 'Tap here' button, the plain link under it, the phone and the signature, and no QR code", () => {
+  const e = { slot: "announcement" as const, subject: "A group cruise for the Post", preheader: "Four nights on MSC Seaside", body: `We sail May 10, 2027 & the cabins start at $575.80 per person.\n\nTap here to book your spot!\n${url}\n\nCall or text Mark at 919-346-6127.\n\nStill Afloat Cruising` };
+  const r = renderCampaignEmail(e, { url, lang: "en" });
+  assert.equal((r.html.match(/data-cta="1"/g) ?? []).length, 1, "exactly one button");
+  assert.match(r.html, new RegExp(`<a data-cta="1" href="${url.replace(/[?]/g, "\\?")}"[^>]*>Tap here to book your spot!</a>`));
+  assert.ok(r.html.includes(`<a href="${url}"`), "the plain link is under the button");
+  assert.doesNotMatch(r.html, /<img|qr/i, "no QR image and no mention of one");
+  assert.equal((r.html.match(/Tap here to book your spot!/g) ?? []).length, 1, "the call to action is said once, as the button");
+  assert.equal((r.html.match(/919-346-6127/g) ?? []).length, 1, "the phone the writer gave is not repeated");
+  assert.ok(r.html.indexOf("We sail May 10, 2027 &amp;") < r.html.indexOf('data-cta="1"') && r.html.indexOf('data-cta="1"') < r.html.indexOf("Call or text Mark"), "the button sits where the writer put the call to action");
+  assert.ok(r.html.endsWith("<p style=\"margin:0\">Still Afloat Cruising</p></div>"));
+  assert.equal((r.html.match(/Still Afloat Cruising/g) ?? []).length, 1);
+  assert.equal(r.text, `We sail May 10, 2027 & the cabins start at $575.80 per person.\n\nTap here to book your spot!\n${url}\n\nCall or text Mark at 919-346-6127.\n\nStill Afloat Cruising\n`);
+  assert.match(r.html, /display:none[^>]*>Four nights on MSC Seaside</, "the preview line is carried");
+});
+
+test("a campaign email whose writer put the call to action at the end of a sentence, or left it out, still gets one button and the phone", () => {
+  const inline = renderCampaignEmail({ slot: "reminder", subject: "s", preheader: "", body: `A few balconies are left. Tap here to book your spot! ${url}` }, { url, lang: "en" });
+  assert.match(inline.html, />A few balconies are left\.</);
+  assert.equal((inline.html.match(/Tap here to book your spot!/g) ?? []).length, 1);
+  assert.equal((inline.html.match(/href="https:\/\/stillafloatcruising\.com\/group\.html\?g=rj4qhy2xft"/g) ?? []).length, 2, "the button and the plain link, nothing else");
+  assert.match(inline.html, /Prefer to call or text\? Reach us at 919-346-6127\./, "no phone in the body: the email adds its own line");
+  const none = renderCampaignEmail({ slot: "last_call", subject: "s", preheader: "", body: "Last days to reserve." }, { url, lang: "en" });
+  assert.ok(none.html.indexOf("Last days to reserve.") < none.html.indexOf('data-cta="1"'), "no call to action in the body: the button follows the body");
+  // Spanish and the group's own line
+  const es = renderCampaignEmail({ slot: "announcement", subject: "s", preheader: "", body: "Zarpamos el 10 de mayo de 2027." }, { url, lang: "es" });
+  assert.match(es.html, />¡Toque aquí para reservar su lugar!</);
+  assert.match(es.html, /¿Prefiere llamar o escribir\?/);
+  const own = renderCampaignEmail({ slot: "announcement", subject: "s", preheader: "", body: "Hello." }, { url, lang: "en", answers: { cta_line: "Count us in" } });
+  assert.match(own.html, />Count us in</);
+  assert.equal(renderCampaignEmails(good() as never, { url, lang: "en" }).length, 3);
+});
+
+test("a Facebook text gets 'Tap here to book your spot:' and the link, unless the writer already gave the link", () => {
+  assert.equal(facebookPostText("Group cruise for veterans.", { url, lang: "en" }), `Group cruise for veterans.\n\nTap here to book your spot:\n${url}`);
+  assert.equal(facebookPostText("Group cruise.\n\nTap here to book your spot:\n" + url, { url, lang: "en" }), `Group cruise.\n\nTap here to book your spot:\n${url}`);
+  assert.equal(facebookPostText("Crucero en grupo.", { url, lang: "es" }), `Crucero en grupo.\n\n¡Toque aquí para reservar su lugar:\n${url}`);
+  assert.equal(facebookPostText("Hello.", { url, lang: "en", answers: { cta_line: "Count us in" } }), `Hello.\n\nCount us in\n${url}`);
 });
 
 test("a campaign in Mark's register passes: the sentence and its payoff open email 1 and the announcement, his pitch follows, '!' and capitals included", () => {
   const c = good();
-  c.emails[0]!.body = `${SENTENCE}\n\n${VERBATIM}\n\nUse the QR code to book your spot!\n\nStill Afloat Cruising`;
-  c.emails[1]!.body = "Imagine the beach party under the lighthouse light show, with a few cabins still open and the deposit at $99 per person. Use the QR code to book your spot!";
-  c.facebook.announcement = `${SENTENCE}\n\nUse the QR code to book your spot!`;
-  c.facebook.boosted = "Imagine the lighthouse light show at the beach party, then a Bahamas sunrise… ALL ON THE SAME CRUISE! Use the QR code to book your spot!";
+  c.emails[0]!.body = `${SENTENCE}\n\n${VERBATIM}\n\nTap here to book your spot!\n\nStill Afloat Cruising`;
+  c.emails[1]!.body = "Imagine the beach party under the lighthouse light show, with a few cabins still open and the deposit at $99 per person. Tap here to book your spot!";
+  c.facebook.announcement = `${SENTENCE}\n\nTap here to book your spot:\n${url}`;
+  c.facebook.boosted = "Imagine the lighthouse light show at the beach party, then a Bahamas sunrise… ALL ON THE SAME CRUISE! Tap here to book your spot!";
   assert.deepEqual(validateCampaign(c, facts, { pitch: MARK_PITCH }, url), []);
   // the "Join Mark" hook is still refused in any of them
   c.facebook.announcement = `Join Mark! ${SENTENCE}`;
