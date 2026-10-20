@@ -2065,8 +2065,10 @@ export default [
       await t.send("DELETE", `/api/groups/${g.id}/journey/simulate`, { auth: true });
 
       const SUBJECTS = {
-        en: [/^You are booked/, /^\d+ days to go: payments, paperwork/, /^\d+ days to go: final payment/, /^\d+ days to go: excursions/, /^\d+ days to go: check-in, documents and packing/, /^\d+ days to go: your ship/, /^\d+ days to go: the forecast/, /^\d+ days? to go: check-in, boarding/],
-        es: [/^Su reserva está confirmada/, /^Faltan \d+ días: pagos/, /^Faltan \d+ días: pago final/, /^Faltan \d+ días: excursiones/, /^Faltan \d+ días: registro, documentos/, /^Faltan \d+ días: su barco/, /^Faltan \d+ días: el pronóstico/, /^Faltan? \d+ días?: registro, embarque/],
+        // A countdown subject names only the sections that message carries (Mark 2026-10-19: the 45-day message promised excursions and dining
+        // the file did not hold), so each may open with any of its topics, or with its fallback when it has none (group-journey-strings topicFor).
+        en: [/^You are booked/, /^\d+ days to go: (payments|paperwork|what to do first)/, /^\d+ days to go: (final payment|line deadlines|getting to the ship|what is open on your file)/, /^\d+ days to go: (excursions|dining|what is still open|where your cruise stands)/, /^\d+ days to go: check-in, documents and packing/, /^\d+ days to go: (your ship|how boarding day works)/, /^\d+ days to go: (the forecast for your cruise|Storm Watch and your cruise|a last note before you sail)/, /^\d+ days? to go: check-in, boarding/],
+        es: [/^Su reserva está confirmada/, /^Faltan \d+ días: (pagos|documentos|qué hacer primero)/, /^Faltan \d+ días: (pago final|fechas de la naviera|cómo llegar al barco|lo que está pendiente en su archivo)/, /^Faltan \d+ días: (excursiones|comidas|lo que sigue pendiente|cómo va su crucero)/, /^Faltan \d+ días: registro, documentos/, /^Faltan \d+ días: (su barco|cómo funciona el día de embarque)/, /^Faltan \d+ días: (el pronóstico del tiempo para su crucero|Storm Watch y su crucero|una última nota antes de zarpar)/, /^Faltan? \d+ días?: registro, embarque/],
       };
       const KINDS = ["confirmation", "t-120", "t-90", "t-45", "t-20", "t-10", "t-5", "t-2"];
       const BAD_TEXT = /undefined|\bnull\b|NaN|\$0(?![\d,.])|\{\{|\[object/;
