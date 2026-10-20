@@ -106,6 +106,20 @@ const GOOD_15 = {
 
 // ── links ─────────────────────────────────────────────────────────────────────
 
+test("a contract's capital letters never reach a client: the paperwork page and the paperwork email show 'MSC Seashore'", async () => {
+  const t = setup();
+  t.state.group.cruise_line = "MSC CRUISES"; t.state.group.ship_name = "MSC SEASHORE";
+  const r = await getPacket(t.deps, t.link("t2"));
+  const p = r.json as { group: { cruise_line: string; ship_name: string } };
+  assert.equal(p.group.cruise_line, "MSC Cruises");
+  assert.equal(p.group.ship_name, "MSC Seashore");
+  const m = linkEmail({ firstName: "Jane", groupName: "American Legion Post 12", ship: "MSC SEASHORE", sailDate: "2027-03-14", url: "https://x.test/forms.html?t=T" });
+  assert.ok(m.text.includes("MSC Seashore, sailing March 14, 2027") && !m.text.includes("SEASHORE") && !m.html.includes("SEASHORE"));
+  // a file that already reads right is left as it is
+  t.state.group.ship_name = "MSC Seascape";
+  assert.equal(((await getPacket(t.deps, t.link("t2"))).json as { group: { ship_name: string } }).group.ship_name, "MSC Seascape");
+});
+
 test("an unknown, malformed, replaced or cancelled link all get the same neutral 404", async () => {
   const t = setup();
   const token = t.link("t1");

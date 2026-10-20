@@ -4,7 +4,7 @@ import { campaignSystemPrompt, campaignUserPrompt } from "./group-campaign";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
-  ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts, DIGITAL_CTA, QR_PROBLEM, ctaForFacebook, mentionsQr } from "./group-marketing";
+  ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts, DIGITAL_CTA, QR_PROBLEM, ctaForFacebook, mentionsQr, withDisplayNames } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -782,4 +782,37 @@ test("'planned for the group' is copied from Mark's own words and never composed
   assert.deepEqual(plannedForGroup({ pitch: "A sunset-to-sunrise party and a group dinner." }), []);
   assert.deepEqual(plannedForGroup({ pitch: "Onboard credit is possible", extras: "no numbers here" }), []);   // no amount named: nothing to print
   assert.deepEqual(plannedForGroup({ audience: "$25 onboard credit", cta_line: "$25 onboard credit" }), []);   // only the answers that describe the trip
+});
+
+// ── Names print in capitals on a contract; clients read them as names (Mark 2026-10-19: "MSC SEASHORE") ────────────
+
+test("displayName: ship and line names in title case, acronyms and roman numerals kept upper, a name with lower case left alone", () => {
+  assert.equal(displayName("MSC SEASHORE"), "MSC Seashore");
+  assert.equal(displayName("MSC SEASCAPE"), "MSC Seascape");
+  assert.equal(displayName("NCL JADE"), "NCL Jade");
+  assert.equal(displayName("RCI ALLURE OF THE SEAS"), "RCI Allure of the Seas");
+  assert.equal(displayName("NORWEGIAN CRUISE LINE"), "Norwegian Cruise Line");
+  assert.equal(displayName("ROYAL CARIBBEAN INTERNATIONAL"), "Royal Caribbean International");
+  assert.equal(displayName("HOLLAND AMERICA LINE"), "Holland America Line");
+  assert.equal(displayName("CARNIVAL CELEBRATION II"), "Carnival Celebration II");
+  assert.equal(displayName("QUEEN MARY IV"), "Queen Mary IV");
+  assert.equal(displayName("EXPLORER VII"), "Explorer VII");
+  assert.equal(displayName("P&O ARVIA"), "P&O Arvia");
+  assert.equal(displayName("COSTA FAVOLOSA"), "Costa Favolosa");
+  assert.equal(displayName("MARDI GRAS"), "Mardi Gras");
+  assert.equal(displayName("  MSC   SEASHORE "), "MSC   Seashore");
+  assert.equal(displayName("Norwegian Prima"), "Norwegian Prima");
+  assert.equal(displayName("MSC Seashore"), "MSC Seashore");
+  assert.equal(displayName("AIDAnova"), "AIDAnova", "a mixed-case spelling is the line's own");
+  assert.equal(displayName("MIX"), "Mix", "only real roman numerals stay upper");
+  assert.equal(displayName("CIVIC"), "Civic");
+  assert.equal(displayName(undefined), "");
+});
+
+test("a new file is saved with the ship and the line in display case, and nothing else touched", () => {
+  const row = { name: "Post 12 Cruise", cruise_line: "MSC CRUISES", ship_name: "MSC SEASHORE", embark_port: "PCV", nights: 4 };
+  assert.deepEqual(withDisplayNames(row), { name: "Post 12 Cruise", cruise_line: "MSC Cruises", ship_name: "MSC Seashore", embark_port: "PCV", nights: 4 });
+  assert.deepEqual(withDisplayNames({ ship_name: "Carnival Celebration", cruise_line: null }), { ship_name: "Carnival Celebration", cruise_line: null });
+  assert.deepEqual(withDisplayNames({ name: "x" }), { name: "x" });
+  assert.equal(row.ship_name, "MSC SEASHORE", "the input is not changed");
 });

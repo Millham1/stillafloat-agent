@@ -154,10 +154,16 @@ export function pitchGate(answers: Record<string, string | boolean>): string | n
 
 // ── Names ─────────────────────────────────────────────────────────────────────
 
-const KEEP_UPPER = new Set(["MSC", "NCL", "RCI", "USA", "US", "UK", "II", "III", "IV"]);
+const KEEP_UPPER = new Set(["MSC", "NCL", "RCI", "USA", "US", "UK", "TUI", "AIDA", "MV", "MS", "SS", "P&O"]);
 const SMALL_WORDS = new Set(["OF", "THE", "AND", "DE", "DEL", "LA", "AT"]);
+/** A roman numeral of two letters or more ("II", "IV", "VII"): part of a ship's name, never a word. */
+const ROMAN = /^(?=[IVXLC]{2,}$)C{0,3}(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})$/;
 
-/** Contracts print names in capitals ("MSC SEASIDE"). Show them the way people write them. */
+/**
+ * Contracts print names in capitals ("MSC SEASHORE"). Show them the way people write them: "MSC Seashore", "Icon of the Seas", "Norwegian Prima".
+ * Acronyms (MSC, NCL, RCI …) and roman numerals ("Carnival Celebration II") stay upper; a name that already has lower case is Mark's or the line's
+ * own spelling and is left alone. Everything a client reads (the pages, the paperwork email, the journey emails, the cruise page) goes through this.
+ */
 export function displayName(name: string | null | undefined): string {
   const s = (name ?? "").trim();
   if (!s) return "";
@@ -165,11 +171,18 @@ export function displayName(name: string | null | undefined): string {
   return s
     .split(/(\s+|-)/)
     .map((w, i) => {
-      if (/^\s+$|^-$/.test(w) || KEEP_UPPER.has(w)) return w;
+      if (/^\s+$|^-$/.test(w) || KEEP_UPPER.has(w) || ROMAN.test(w)) return w;
       if (i > 0 && SMALL_WORDS.has(w)) return w.toLowerCase();
       return w.charAt(0) + w.slice(1).toLowerCase();
     })
     .join("");
+}
+
+/** A group row with its cruise line and ship in display case: what a new file is saved with (the contract prints capitals; a file reads like a name). */
+export function withDisplayNames<T extends Record<string, unknown>>(row: T): T {
+  const out: Record<string, unknown> = { ...row };
+  for (const k of ["cruise_line", "ship_name"]) if (typeof out[k] === "string" && (out[k] as string).trim()) out[k] = displayName(out[k] as string);
+  return out as T;
 }
 
 /** Candidate cabin_ships.slug for a ship name; the caller checks it exists. */
