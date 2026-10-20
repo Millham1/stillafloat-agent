@@ -12,6 +12,7 @@ import {
 } from "./newsletter-delivery";
 import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
 import { buildUtm, fetchChannelVideos, type Lang } from "./social-agent";
+import { fetchVideoLanguages } from "./youtube-api";
 import { storySlug } from "./prerender-news";
 import { selectFreshStories, issueHasStories, EMPTY_ISSUE_MESSAGE } from "./newsletter-freshness";
 import { planWeeklySend, SPANISH_NEEDS_ENGLISH, type EditionState, type WeeklySendPlan } from "./newsletter-editions";
@@ -190,41 +191,43 @@ async function approvedStoriesById(ids: string[], lang: Lang): Promise<Story[]> 
   })).filter((s) => s.id && s.title);
 }
 
-// Spanish-title heuristic: accented/inverted characters are a reliable tell on
-// this channel (EN titles don't use them; the ES localizations always do —
-// that's also how the site routes them to /es/).
-const SPANISH_TITLE = /[¡¿áéíóúñÁÉÍÓÚÑ]/;
-
 async function gatherFeaturedVideo(lang: Lang): Promise<{ id: string; title: string; thumbnail: string } | null> {
   // Prefer the manually featured video; else the latest upload IN THIS
   // EDITION'S LANGUAGE (the 2026-07-09 EN issue featured the Spanish site-tour
-  // video because "latest upload" was language-blind).
+  // video because "latest upload" was language-blind). The language is the one
+  // YouTube has on record (lib/youtube-api.ts), never read from the title — an
+  // accent-free Spanish title used to pass as English (2026-10-20).
   const ch = await readJson<{ featuredId?: string; videos?: Array<Record<string, unknown>> }>(
     "youtube-channel",
     {},
   );
-  const vids = ch.videos ?? [];
-  const langMatch = (title: string): boolean =>
-    lang === "es" ? SPANISH_TITLE.test(title) : !SPANISH_TITLE.test(title);
-  // Mark's pin wins only in the edition whose language it matches (2026-10-08: a pinned video
-  // used to feature in BOTH editions, so a Spanish pin led the English letter and vice versa).
-  if (ch.featuredId) {
-    const v = vids.find((x) => String(x["id"]) === ch.featuredId);
-    if (v && langMatch(String(v["title"] ?? ""))) return { id: ch.featuredId, title: String(v["title"] ?? ""), thumbnail: String(v["thumbnail"] ?? "") };
-  }
-  const pickFrom = (list: Array<{ id: string; title: string; thumbnail: string }>): { id: string; title: string; thumbnail: string } | null =>
-    list.find((v) => v.id && langMatch(v.title)) ?? list[0] ?? null;
-
-  const stored = vids.map((v) => ({
+  type Pick = { id: string; title: string; thumbnail: string; lang?: unknown };
+  const strip = (v: Pick): { id: string; title: string; thumbnail: string } => ({ id: v.id, title: v.title, thumbnail: v.thumbnail });
+  const stored: Pick[] = (ch.videos ?? []).map((v) => ({
     id: String(v["id"] ?? ""),
     title: String(v["title"] ?? ""),
     thumbnail: String(v["thumbnail"] ?? ""),
+    lang: v["lang"],
   }));
+  // Mark's pin wins only in the edition whose language it matches (2026-10-08: a pinned video
+  // used to feature in BOTH editions, so a Spanish pin led the English letter and vice versa).
+  if (ch.featuredId) {
+    const v = stored.find((x) => x.id === ch.featuredId);
+    if (v && v.lang === lang) return strip(v);
+  }
+  // A video with no recorded language is never featured: the wrong language is worse than none.
+  const pickFrom = (list: Pick[]) => {
+    const v = list.find((x) => x.id && x.lang === lang);
+    return v ? strip(v) : null;
+  };
   const fromStore = pickFrom(stored);
   if (fromStore) return fromStore;
   try {
+    const apiKey = process.env["YOUTUBE_API_KEY"];
+    if (!apiKey) return null;
     const latest = await fetchChannelVideos(5);
-    return pickFrom(latest.map((v) => ({ id: v.id, title: v.title, thumbnail: `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg` })));
+    const langs = await fetchVideoLanguages(latest.map((v) => v.id), apiKey);
+    return pickFrom(latest.map((v) => ({ id: v.id, title: v.title, thumbnail: `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`, lang: langs.get(v.id) })));
   } catch (err) {
     logger.warn({ err }, "newsletter: channel video fetch failed");
   }

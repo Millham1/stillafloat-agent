@@ -630,7 +630,7 @@ test("videos: Mark's own channel only, the right language, long-form first, noth
 });
 
 test("videos: a title that names a cruise line or a ship is shown only to a group on that line or ship; a line-neutral topic video fits everyone; nothing that fits, no section", () => {
-  const v = (id: string, title: string, views = 1000) => ({ id, title, views, published: "2026-01-01T00:00:00Z" });
+  const v = (id: string, title: string, views = 1000) => ({ id, title, views, published: "2026-01-01T00:00:00Z", lang: "en" as const });
   const NCL = v("NNNNNNNNN01", "Norwegian Bliss Cabin Tour: Balcony vs Mini-Suite", 90000);
   const MSC = v("MMMMMMMMM01", "MSC Seaside Balcony Cabin Tour", 2000);
   const ROYAL = v("RRRRRRRRR01", "Wonder of the Seas Cabin Tour", 80000);

@@ -50,8 +50,8 @@ import * as H from "../lib/html.mjs";
 
 const NO_SUCH_ID = "00000000-0000-4000-8000-000000000000";
 const YT_ID = /^[A-Za-z0-9_-]{11}$/;
-// The server's own rule for "this title is Spanish" (routes/youtube.ts, /api/youtube-top).
-const SPANISH_TITLE = /[¡¿áéíóúüñ]/i;
+// A video's language is the one YouTube has on record (publish_youtube.py stamps every upload); the
+// server carries it as `lang` on every video it answers. Never read from the title (2026-10-20 incident).
 // A Spanish body: accented letters or common Spanish function words.
 const SPANISH_BODY = /[áéíóúñ¿¡]|\b(que|los|las|del|para|una|por)\b/i;
 const stripHtml = (s) => String(s ?? "").replace(/<[^>]*>/g, "");
@@ -102,8 +102,7 @@ function checkVideoRow(t, body, r, what) {
     t.equal(v.url, `https://www.youtube.com/watch?v=${v.id}`, `${what}: link of ${v.id}`);
     t.ok(typeof v.views === "number" && v.views >= 0, `${what}: ${v.id} has no view count`);
     t.nonEmpty(v.title, `${what}: title of ${v.id}`);
-    if (r.lang === "es") t.ok(SPANISH_TITLE.test(v.title), `${what}: ${v.id} is in the Spanish row but its title does not read as Spanish`);
-    else t.ok(!SPANISH_TITLE.test(v.title), `${what}: ${v.id} is in the English row but its title reads as Spanish`);
+    t.equal(v.lang, r.lang, `${what}: the recorded language of ${v.id} ("${String(v.title).slice(0, 50)}")`);
     if (r.type === "long") t.ok(!/#shorts/i.test(v.title), `${what}: ${v.id} is a Short (#shorts) sitting in the Episodes row`);
   }
   t.equal(body.videos.filter((v) => v.isLatest).length, 1, `${what}: number of videos marked "latest"`);
@@ -404,10 +403,11 @@ export default [
   // ── YouTube: homepage rows, cockpit, featured pick ───────────────────────────────────
   {
     id: "commentary.youtube-home-rows",
-    basis: "code: server/src/routes/youtube.ts — /youtube-top fills the homepage Episodes row (4) and Shorts row (6) per language from the six-hourly scan cache, newest in slot one, then most watched",
-    title: "The homepage Episodes and Shorts rows (English and Spanish) are full of real videos with working thumbnails",
+    basis: "code: server/src/routes/youtube.ts — /youtube-top fills the homepage Episodes row (4) and Shorts row (6) per language from the six-hourly scan cache, newest in slot one, then most watched; each video's language is the one YouTube has on record",
+    title: "The homepage Episodes and Shorts rows (English and Spanish) are full of real videos with working thumbnails, each in its row's language",
     covers: ["GET /api/youtube-top", "page /index.html", "page /es/index.html"],
     modes: ["dev", "prod"],
+    incident: "2026-10-20: the Spanish cabin video, retitled without accents, led the English homepage Episodes row (language read from the title)",
     run: async (t) => {
       const seen = { en: new Set(), es: new Set() };
       const rows = {};
@@ -496,7 +496,7 @@ export default [
       // hours trips this — re-run after the next scan before calling it a fault.
       const stale = [];
       const hiddenByRank = (live) => {
-        const lang = SPANISH_TITLE.test(live.title) ? "es" : "en";
+        const lang = live.lang;
         // its kind (Episode or Short) is not in the cockpit's answer, so it is "hidden" when the
         // pool of EITHER kind in its language is full of videos that out-view it
         return ["long", "short"].some((type) => {
@@ -505,8 +505,11 @@ export default [
           return pool.length >= 10 && ranked.length > 0 && Math.min(...ranked.map((v) => v.views)) >= live.views;
         });
       };
+      const unstamped = s.topVideos.filter((v) => v.lang !== "en" && v.lang !== "es").map((v) => v.id);
+      t.ok(unstamped.length === 0, `YouTube has no English/Spanish language on record for ${unstamped.join(", ")} — publish_youtube.py stamps every upload`);
       s.topVideos.slice(0, 12).forEach((live, rank) => {
         const mine = cache.get(live.id);
+        if (mine && mine.lang !== live.lang) stale.push(`${live.id} is ${live.lang} on YouTube but sits in the site's ${mine.lang ?? "unlabelled"} rows`);
         if (!mine) { if (!hiddenByRank(live)) stale.push(`${live.id} (${live.views} views on YouTube) is not in the site's video cache`); return; }
         if (rank < 3 && mine.title !== live.title) stale.push(`${live.id} carries an old title on the site`);
         if (live.views >= 200 && mine.views < live.views * (rank < 3 ? 0.8 : 0.7)) stale.push(`${live.id} shows ${mine.views} views on the site against ${live.views} on YouTube`);
@@ -540,7 +543,7 @@ export default [
         latest[lang] = b.videos[0].id;
       }
       const pinned = f.videoId !== latest.en && f.videoId !== latest.es;
-      const pickLang = SPANISH_TITLE.test(f.title) ? "es" : "en";
+      const pickLang = f.lang;
       t.observe("featured video is a manual pick", pinned, "info");
 
       const problems = [];
@@ -551,11 +554,12 @@ export default [
       for (const lang of ["en", "es"]) {
         const fl = t.json(await t.get(`/api/youtube-featured?lang=${lang}`));
         t.matches(fl.videoId, YT_ID, `the ${lang} featured video id`);
-        const isEs = SPANISH_TITLE.test(String(fl.title || ""));
-        if (isEs !== (lang === "es")) problems.push(`the ${lang} featured video (${fl.videoId}, "${String(fl.title).slice(0, 50)}") is in the other language${fl.manual ? " — Mark's pin leaked into the wrong language" : ""}`);
+        if (fl.lang !== lang) problems.push(`the ${lang} featured video (${fl.videoId}, "${String(fl.title).slice(0, 50)}") is in the other language${fl.manual ? " — Mark's pin leaked into the wrong language" : ""}`);
         if (pinned && pickLang === lang) t.ok(fl.videoId === f.videoId && fl.manual === true, `the ${lang} featured video should be Mark's pin ${f.videoId}, got ${fl.videoId} (manual=${fl.manual})`);
       }
       // the saved drafts (the issue in review or the last one sent) — their video must match the edition
+      const rowLang = new Map();
+      for (const r of HOME_ROWS) for (const v of t.json(await t.get(rowUrl(r, 10))).videos ?? []) rowLang.set(v.id, v.lang);
       let drafts = 0;
       for (const lang of ["en", "es"]) {
         const nd = t.success(await t.get(`/api/newsletter/draft?lang=${lang}`, { auth: true }));
@@ -564,8 +568,10 @@ export default [
         drafts++;
         if (!v) continue;
         t.matches(v.id, YT_ID, `the ${lang} newsletter's featured video id`);
-        const isEs = SPANISH_TITLE.test(String(v.title || ""));
-        if (isEs !== (lang === "es")) problems.push(`the saved ${lang.toUpperCase()} newsletter features video ${v.id}, whose title is in the other language`);
+        // the draft stores id/title only; its language is the one the site's rows record for that id
+        const recorded = rowLang.get(v.id);
+        if (!recorded) t.note(`the ${lang.toUpperCase()} newsletter's video ${v.id} is not in the homepage pools, so its language was not compared`);
+        else if (recorded !== lang) problems.push(`the saved ${lang.toUpperCase()} newsletter features video ${v.id}, which is recorded as ${recorded}`);
       }
       t.require(drafts > 0, "there is no saved newsletter draft in either language on this box, so the newsletter's use of the pick cannot be checked");
 

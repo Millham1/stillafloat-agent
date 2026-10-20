@@ -351,7 +351,7 @@ export function weatherTable(ctx: Ctx): WeatherTable | null {
 
 // ── Mark's videos (his own channel only, for now) ────────────────────────────
 
-export interface ScanVideo { id: string; title: string; published?: string; views?: number; isShort?: boolean; url?: string }
+export interface ScanVideo { id: string; title: string; published?: string; views?: number; isShort?: boolean; url?: string; lang?: "en" | "es" }
 
 export type VideoTopic = "insurance" | "cabin" | "seaday" | "packing" | "embark";
 
@@ -363,8 +363,8 @@ const TOPICS: Record<VideoTopic, { en: RegExp; es: RegExp }> = {
   embark: { en: /embark|boarding|first[- ](?:time )?cruise|muster/i, es: /embarque|abordar|primer crucero|simulacro/i },
 };
 
-/** The channel's Spanish uploads carry accents or inverted marks in the title (routes/youtube.ts uses the same test). */
-export const isSpanishTitle = (t: string): boolean => /[¡¿áéíóúüñ]/i.test(t);
+/** A video's language is the one YouTube has on record (routes/youtube.ts scan → lang), never read from its title. */
+const isSpanishVideo = (v: ScanVideo): boolean => v.lang === "es";
 
 // A video from Mark's own channel that names a cruise line or a ship is about THAT line or ship: an NCL cabin tour is no use to a guest on an
 // MSC ship (Mark 2026-10-19: the cruise page and the 10-day email showed an NCL cabin tour for an MSC Seashore group).
@@ -434,7 +434,7 @@ export function pickVideos(scan: readonly ScanVideo[] | undefined, topic: VideoT
   const rank = (a: ScanVideo, b: ScanVideo) => Number(!!a.isShort) - Number(!!b.isShort) || (b.views ?? 0) - (a.views ?? 0) || String(b.published ?? "").localeCompare(String(a.published ?? ""));
   const usable = scan.filter((v) => v && typeof v.id === "string" && /^[\w-]{11}$/.test(v.id) && typeof v.title === "string" && v.title.trim()
     && videoFitsGroup(v.title, fit ?? { line: null, ship: null }));
-  const pick = (spanish: boolean, re: RegExp) => usable.filter((v) => isSpanishTitle(v.title) === spanish && re.test(v.title)).sort(rank);
+  const pick = (spanish: boolean, re: RegExp) => usable.filter((v) => v.lang !== undefined && isSpanishVideo(v) === spanish && re.test(v.title)).sort(rank);
   let chosen: ScanVideo[]; let inEnglish = false;
   if (lang === "es") {
     chosen = pick(true, TOPICS[topic].es);

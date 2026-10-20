@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { uploadsPlaylistId, parsePlaylistItems, fetchUploads, channelIdForHandle } from "./youtube-api";
+import { uploadsPlaylistId, parsePlaylistItems, fetchUploads, channelIdForHandle, stampedLanguage, fetchVideoLanguages } from "./youtube-api";
 
 const CID = "UC1sZkmM4CezcS5DPIPlrCtA";
 const item = (id: string, title: string, at = "2026-10-01T00:00:00Z") => ({
@@ -71,5 +71,38 @@ describe("channel id for a handle", () => {
     assert.match(urls[0]!, /forHandle=StillAfloatcruising2026/);
     assert.equal(await channelIdForHandle("@x", "KEY", () => ok({ items: [] })), null);
     assert.equal(await channelIdForHandle("@x", "KEY", () => ok({ items: [{ id: "not-a-channel" }] })), null);
+  });
+});
+
+describe("recorded video language", () => {
+  it("reads the title/description language first — older Spanish uploads carry an en-US audio stamp", () => {
+    assert.equal(stampedLanguage({ defaultLanguage: "es", defaultAudioLanguage: "en-US" }), "es");
+    assert.equal(stampedLanguage({ defaultLanguage: "es-419", defaultAudioLanguage: "es-419" }), "es");
+    assert.equal(stampedLanguage({ defaultLanguage: "en", defaultAudioLanguage: "en-US" }), "en");
+  });
+  it("falls back to the audio stamp, and is null when neither names English or Spanish", () => {
+    assert.equal(stampedLanguage({ defaultAudioLanguage: "es" }), "es");
+    assert.equal(stampedLanguage({ defaultLanguage: "fr" }), null);
+    assert.equal(stampedLanguage({}), null);
+    assert.equal(stampedLanguage(undefined), null);
+  });
+  it("never looks at the title: an accent-free Spanish title is still Spanish", async () => {
+    const body = { items: [
+      { id: "L18spl6KxF8", snippet: { title: "7 cosas que debes hacer apenas entras a tu cabina de crucero", defaultLanguage: "es", defaultAudioLanguage: "es" } },
+      { id: "6NeMFj0SYxM", snippet: { title: "The First Hour In Your Cruise Cabin: 7 Moves That Fix The Week", defaultLanguage: "en", defaultAudioLanguage: "en" } },
+      { id: "nostampnost", snippet: { title: "¿Sin sello?" } },
+    ] };
+    const got = await fetchVideoLanguages(["L18spl6KxF8", "6NeMFj0SYxM", "nostampnost"], "KEY", () => ok(body));
+    assert.equal(got.get("L18spl6KxF8"), "es");
+    assert.equal(got.get("6NeMFj0SYxM"), "en");
+    assert.equal(got.has("nostampnost"), false);
+  });
+  it("asks in batches of 50 and throws on an API refusal", async () => {
+    const urls: string[] = [];
+    const ids = Array.from({ length: 51 }, (_, i) => `v${String(i).padStart(10, "0")}`);
+    await fetchVideoLanguages(ids, "KEY", (u) => { urls.push(u); return ok({ items: [] }); });
+    assert.equal(urls.length, 2);
+    assert.match(urls[0]!, /part=snippet/);
+    await assert.rejects(fetchVideoLanguages(["x"], "KEY", () => Promise.resolve({ ok: false, status: 403, json: async () => ({}) })), /videos\.list answered HTTP 403/);
   });
 });

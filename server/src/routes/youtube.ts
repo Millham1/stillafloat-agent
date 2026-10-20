@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { readJson, writeJson } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { tokenOk } from "../lib/http-auth";
-import { fetchUploads, channelIdForHandle } from "../lib/youtube-api";
+import { fetchUploads, channelIdForHandle, stampedLanguage, type VideoLang } from "../lib/youtube-api";
 
 const router: IRouter = Router();
 
@@ -81,6 +81,8 @@ interface YTVideo {
   url: string;
   isShort: boolean;
   views: number;
+  /** The language YouTube has on record (lib/youtube-api.ts stampedLanguage); set by the videos.list refresh. */
+  lang?: VideoLang;
 }
 
 async function fetchChannelVideos(channelId: string): Promise<YTVideo[]> {
@@ -182,7 +184,7 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
     // refresh below fills it) and the Short flag, which keep their last-known values if that refresh fails.
     for (const v of scanned) {
       const prev = byId.get(v.id);
-      byId.set(v.id, prev ? { ...v, views: v.views || prev.views, isShort: prev.isShort || v.isShort } : v);
+      byId.set(v.id, prev ? { ...v, views: v.views || prev.views, isShort: prev.isShort || v.isShort, ...(prev.lang ? { lang: prev.lang } : {}) } : v);
     }
     let videos = [...byId.values()];
 
@@ -211,6 +213,8 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
               snippet?: {
                 title?: string;
                 thumbnails?: Record<string, { url?: string }>;
+                defaultLanguage?: string;
+                defaultAudioLanguage?: string;
               };
             }[];
           };
@@ -228,6 +232,8 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
             const th = item.snippet?.thumbnails;
             const best = th?.["high"]?.url || th?.["medium"]?.url || th?.["default"]?.url;
             if (best) v.thumbnail = best;
+            const lang = stampedLanguage(item.snippet);
+            if (lang) v.lang = lang;
             const iso = item.contentDetails?.duration;
             if (iso) {
               const dm = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso);
@@ -320,16 +326,15 @@ router.post("/youtube-feature", async (req: Request, res: Response) => {
 // ── GET /api/youtube-featured ─────────────────────────────────────────────────
 // Public endpoint used by the homepages (?lang=en|es) and the newsletter to get the
 // currently featured video. `manual: true` means Mark pinned it with "Feature on Homepage".
-// A pin only counts for a page whose language matches the video's title (2026-10-08: the
+// A pin only counts for a page whose language matches the video's recorded language (2026-10-08: the
 // 2026-07-09 English newsletter featured a Spanish video because the pin was language-blind,
-// and the homepages had not read the pick at all since 7e4fd05).
-const SPANISH_TITLE_RE = /[¡¿áéíóúüñ]/i;
+// and the homepages had not read the pick at all since 7e4fd05). Recorded, not read from the title, since 2026-10-20.
 export function pickFeatured(
   data: { featuredId?: string; featuredManual?: boolean; videos?: YTVideo[] } | null,
   lang: "en" | "es" | null,
 ): { video: YTVideo; manual: boolean } | null {
   const videos = data?.videos ?? [];
-  const langOk = (v: YTVideo) => lang === null || (lang === "es") === SPANISH_TITLE_RE.test(String(v.title || ""));
+  const langOk = (v: YTVideo) => lang === null || v.lang === lang;
   // 1. A video Mark explicitly featured wins — as long as it's still in the feed and in this language.
   if (data?.featuredManual && data.featuredId) {
     const pinned = videos.find((v) => v.id === data.featuredId);
@@ -357,6 +362,7 @@ router.get("/youtube-featured", async (req: Request, res: Response) => {
       res.json({
         videoId: v.id,
         title: v.title,
+        lang: v.lang ?? null,
         thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
         channelUrl: CHANNEL_URL,
         manual: picked.manual,
@@ -387,17 +393,16 @@ router.get("/youtube-top", async (req: Request, res: Response) => {
     const lang = String(req.query.lang || "en").toLowerCase() === "es" ? "es" : "en";
     const data = (await readJson("youtube-channel")) as { videos?: YTVideo[] } | null;
 
-    // Classify a video's language from its title: Spanish titles use ¿/¡ or
-    // accented characters (á é í ó ú ü ñ); English titles don't. This keeps the
-    // English site English-only and the Spanish site (/es/) Spanish-only — the
-    // Spanish version "replaces" the English one on /es/ — with no per-video bookkeeping.
-    const isSpanish = (t: unknown) => /[¡¿áéíóúüñ]/i.test(String(t || ""));
+    // The English site shows English videos only and /es/ Spanish only, by the language YouTube
+    // has on record for each video — never by the title (a Spanish title without accents put the
+    // Spanish cabin video on the English homepage, 2026-10-20). A video with no recorded language
+    // is shown on neither until the next scan records it.
 
     // type=long|short|all — lets the homepage split Episodes vs Shorts rows.
     const type = String(req.query.type || "all").toLowerCase();
     const wantShort = (v: YTVideo) => v.isShort || /#shorts/i.test(v.title);
     const pool = (data?.videos ?? [])
-      .filter((v) => (lang === "es" ? isSpanish(v.title) : !isSpanish(v.title)))
+      .filter((v) => v.lang === lang)
       .filter((v) => (type === "short" ? wantShort(v) : type === "long" ? !wantShort(v) : true));
 
     // The newest upload always takes the first slot so fresh videos surface
@@ -415,6 +420,7 @@ router.get("/youtube-top", async (req: Request, res: Response) => {
       thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
       url: v.url || `https://www.youtube.com/watch?v=${v.id}`,
       views: Number(v.views) || 0,
+      lang: v.lang,
       isLatest: latest ? v.id === latest.id : false,
     }));
 
@@ -431,7 +437,7 @@ router.get("/youtube-top", async (req: Request, res: Response) => {
 interface YTStats {
   channel: { title: string; subscribers: number; views: number; videos: number; thumbnail: string };
   avgViews: number;
-  topVideos: { id: string; title: string; views: number; thumbnail: string; url: string }[];
+  topVideos: { id: string; title: string; views: number; thumbnail: string; url: string; lang: VideoLang | null }[];
   fetchedAt: string;
 }
 let statsCache: { at: number; data: YTStats } | null = null;
@@ -479,6 +485,7 @@ router.get("/youtube-stats", async (req: Request, res: Response) => {
             views: Number(v.statistics?.viewCount ?? 0),
             thumbnail: v.snippet?.thumbnails?.medium?.url ?? `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
             url: `https://www.youtube.com/watch?v=${v.id}`,
+            lang: stampedLanguage(v.snippet),
           }))
           .sort((a: any, b: any) => b.views - a.views)
           .slice(0, 12);

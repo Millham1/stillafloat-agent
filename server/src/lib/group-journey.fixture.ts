@@ -75,13 +75,13 @@ export function fixtureInput(over: { group?: Row; extraMessages?: Row[]; noEmail
 }
 
 export const VIDEOS: ScanVideo[] = [
-  { id: "AAAAAAAAAA1", title: "Cruise Travel Insurance: Is It Worth It?", views: 900, published: "2026-09-01T00:00:00Z" },
-  { id: "AAAAAAAAAA2", title: "Your First Cruise: Embarkation Day Step by Step", views: 5000, published: "2026-08-01T00:00:00Z" },
-  { id: "AAAAAAAAAA3", title: "What to Pack for a Cruise (and What to Leave Home)", views: 4000, published: "2026-07-01T00:00:00Z" },
-  { id: "AAAAAAAAAA4", title: "Cruise Cabin Types Explained: Inside, Ocean View, Balcony", views: 3000, published: "2026-06-01T00:00:00Z" },
-  { id: "BBBBBBBBBB1", title: "Seguro de viaje para cruceros: ¿vale la pena?", views: 100, published: "2026-09-10T00:00:00Z" },
-  { id: "BBBBBBBBBB2", title: "Día de embarque: qué esperar en su primer crucero", views: 200, published: "2026-08-10T00:00:00Z" },
-  { id: "CCCCCCCCCC1", title: "Ten Ways to Spend a Sea Day #shorts", views: 90000, isShort: true, published: "2026-05-01T00:00:00Z" },
+  { id: "AAAAAAAAAA1", title: "Cruise Travel Insurance: Is It Worth It?", views: 900, lang: "en", published: "2026-09-01T00:00:00Z" },
+  { id: "AAAAAAAAAA2", title: "Your First Cruise: Embarkation Day Step by Step", views: 5000, lang: "en", published: "2026-08-01T00:00:00Z" },
+  { id: "AAAAAAAAAA3", title: "What to Pack for a Cruise (and What to Leave Home)", views: 4000, lang: "en", published: "2026-07-01T00:00:00Z" },
+  { id: "AAAAAAAAAA4", title: "Cruise Cabin Types Explained: Inside, Ocean View, Balcony", views: 3000, lang: "en", published: "2026-06-01T00:00:00Z" },
+  { id: "BBBBBBBBBB1", title: "Seguro de viaje para cruceros: ¿vale la pena?", views: 100, lang: "es", published: "2026-09-10T00:00:00Z" },
+  { id: "BBBBBBBBBB2", title: "Día de embarque: qué esperar en su primer crucero", views: 200, lang: "es", published: "2026-08-10T00:00:00Z" },
+  { id: "CCCCCCCCCC1", title: "Ten Ways to Spend a Sea Day #shorts", views: 90000, isShort: true, lang: "en", published: "2026-05-01T00:00:00Z" },
 ];
 
 export const RATING: Row = {

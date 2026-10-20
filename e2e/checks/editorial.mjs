@@ -60,7 +60,6 @@ const LIVE = ["draft", "approved", "sending", "sent"];
 const ms = (v) => Date.parse(String(v ?? ""));
 const dec = (u) => String(u).replace(/&amp;/g, "&");
 const SPANISH = /[áéíóúñ¿¡]| (el|la|los|las|que|con|para|por|una?|tu|tus) /i;
-const SPANISH_TITLE = /[¡¿áéíóúñÁÉÍÓÚÑ]/; // lib/newsletter.ts gatherFeaturedVideo's language test
 // Same ladder as lib/storm-escalation.ts severityRank (2 = depression / gale and up = pins ships).
 const rankOf = (c) => { const s = String(c || ""); return /major hurricane/i.test(s) ? 5 : /hurricane/i.test(s) ? 4 : /storm/i.test(s) ? 3 : /depression|gale/i.test(s) ? 2 : /potential tropical cyclone/i.test(s) ? 1 : 0; };
 const namedStorm = (a) => Boolean(a.name) && !/unnamed|area\(s\)/i.test(a.name);
@@ -239,9 +238,18 @@ function newsletterCheck(lang) {
             t.observe(`${name} email video is public with embedding off`, true);
           }
           // the video is in the edition's language (2026-07-09: the English issue featured the Spanish
-          // site-tour video; newsletter.ts picks by a Spanish-title test, the same test used here)
+          // site-tour video). Its language is the one YouTube has on record, as the site's video answers
+          // carry it (`lang`) — never read from the title (2026-10-20: an accent-free Spanish title passed as English).
           t.ok(vt.length > 0, `no title could be read for the ${name} email's video`);
-          t.ok(lang === "es" ? SPANISH_TITLE.test(vt) : !SPANISH_TITLE.test(vt), `the ${name} email features a video whose title is in the other language`);
+          let recorded = null;
+          for (const l of ["en", "es"]) {
+            const pick = t.json(await t.get(`/api/youtube-featured?lang=${l}`));
+            if (pick?.videoId === v) recorded = pick.lang;
+            const hit = (t.json(await t.get(`/api/youtube-top?limit=10&lang=${l}&type=all`)).videos || []).find((x) => x.id === v);
+            if (hit) recorded = hit.lang;
+          }
+          if (!recorded) t.note(`the ${name} email's video ${v} is not in the site's featured pick or top ten, so its language was not compared`);
+          else t.equal(recorded, lang, `the recorded language of the ${name} email's video ${v}`);
           continue;
         }
         if (/^www\.pexels\.com$/.test(u.host)) { t.matches(u.pathname, /^\/@[\w.-]+/, `the ${name} email's photographer credit link`); continue; } // Pexels blocks robots; format only

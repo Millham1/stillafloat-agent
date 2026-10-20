@@ -3,6 +3,7 @@ import { llmJson } from "./llm";
 import { logger } from "./logger";
 import { readJson, writeJson } from "./persistence";
 import { normalizeHashtags } from "./hashtags";
+import { fetchVideoLanguages } from "./youtube-api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Still Afloat social content engine.
@@ -458,8 +459,11 @@ export async function regenerateQueue(): Promise<QueuedBatch[]> {
   return fresh;
 }
 
+// A channel upload before its language is attached (see scanAndQueue).
+export type ChannelVideo = Omit<SocialVideo, "lang">;
+
 // Pull recent uploads from the public channel RSS (no API key needed).
-export async function fetchChannelVideos(limit = 15): Promise<SocialVideo[]> {
+export async function fetchChannelVideos(limit = 15): Promise<ChannelVideo[]> {
   const res = await fetch(
     `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`,
     { signal: AbortSignal.timeout(15_000) },
@@ -467,7 +471,7 @@ export async function fetchChannelVideos(limit = 15): Promise<SocialVideo[]> {
   if (!res.ok) throw new Error(`Channel feed HTTP ${res.status}`);
   const xml = await res.text();
 
-  const videos: SocialVideo[] = [];
+  const videos: ChannelVideo[] = [];
   const entryRe = /<entry>([\s\S]*?)<\/entry>/g;
   let m: RegExpExecArray | null;
   while ((m = entryRe.exec(xml)) && videos.length < limit) {
@@ -481,10 +485,8 @@ export async function fetchChannelVideos(limit = 15): Promise<SocialVideo[]> {
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'");
-    // EN/ES routing: Spanish punctuation/accents → es, else en.
-    const lang: Lang = /[¡¿áéíóúüñ]/i.test(title) ? "es" : "en";
     const format: "short" | "long" = /#short/i.test(title) ? "short" : "long";
-    videos.push({ id, title, lang, format });
+    videos.push({ id, title, format });
   }
   return videos;
 }
@@ -492,13 +494,27 @@ export async function fetchChannelVideos(limit = 15): Promise<SocialVideo[]> {
 // Generate + enqueue batches for recent uploads that aren't already queued
 // (de-duped by videoId+track). Returns the newly created batches.
 export async function scanAndQueue(maxNew = 4): Promise<QueuedBatch[]> {
-  const [videos, queue] = await Promise.all([fetchChannelVideos(12), loadQueue()]);
+  const [listed, queue] = await Promise.all([fetchChannelVideos(12), loadQueue()]);
+  // The language is the one publish_youtube.py recorded on YouTube — never read from the title
+  // (lib/youtube-api.ts). No key or no stamp → the video is left for the social-hooks skill.
+  const apiKey = process.env["YOUTUBE_API_KEY"];
+  if (!apiKey) {
+    logger.warn("scanAndQueue: YOUTUBE_API_KEY not set — cannot read video languages, nothing queued");
+    return [];
+  }
+  const langs = await fetchVideoLanguages(listed.map((v) => v.id), apiKey);
   const existing = new Set(queue.batches.map((b) => `${b.videoId}:${b.track}`));
   const created: QueuedBatch[] = [];
 
-  for (const video of videos) {
+  for (const listedVideo of listed) {
     if (created.length >= maxNew) break;
-    const track: Track = video.lang === "es" ? "A" : "B";
+    const lang = langs.get(listedVideo.id);
+    if (!lang) {
+      logger.warn({ videoId: listedVideo.id, title: listedVideo.title }, "scanAndQueue: no language recorded on YouTube, skipping");
+      continue;
+    }
+    const video: SocialVideo = { ...listedVideo, lang };
+    const track: Track = lang === "es" ? "A" : "B";
     if (existing.has(`${video.id}:${track}`)) continue;
     try {
       const batch = await generateSocialBatch(video, track);
