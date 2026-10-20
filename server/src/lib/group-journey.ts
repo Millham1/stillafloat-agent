@@ -471,7 +471,7 @@ export function renderHub(page: Ctx): HubView {
     sec.embark1(ctx),
     sec.documents(ctx),
     sec.passport(ctx),
-    sec.insurance(ctx, { video: true }),
+    sec.insurance(ctx, { video: true, page: true }),
     sec.videos(ctx, ["embark", "packing"]),
   ]);
   const order = ["notice", "sailing", "cabin", "missing", "details", "paperwork", "payments", "checklist", "travel", "travel-needed", "ship", "storm", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"];

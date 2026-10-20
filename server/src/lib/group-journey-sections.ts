@@ -11,6 +11,7 @@ import {
   type Ctx, type Row, type Section, type SectionItem, type VideoTopic,
 } from "./group-journey-facts";
 import { strings, stormKind, type MilestoneKind } from "./group-journey-strings";
+import { BUSINESS } from "./group-secure";
 
 /** Days before sailing at which the milestone emails go. */
 export const DAY_MILESTONES = [120, 90, 45, 20, 10, 5, 2] as const;
@@ -139,15 +140,25 @@ export function passport(ctx: Ctx): Section {
   return { key: "passport", title: S.passport, lines: clean([S.passportGeneral, specific]) };
 }
 
-export function insurance(ctx: Ctx, o: { video?: boolean } = {}): Section | null {
+/** The tel: link that dials a phone number written 919-346-6127. */
+export const telLink = (phone: string): string => `tel:+1${phone.replace(/\D/g, "")}`;
+
+/**
+ * `page: true` is the cruise page, where there is no email to reply to: the offer points at the phone, with a link that dials.
+ * The emails keep "reply to this email or call".
+ */
+export function insurance(ctx: Ctx, o: { video?: boolean; page?: boolean } = {}): Section | null {
   const S = strings(ctx.lang).s;
   const status = ctx.cabin?.insurance;
   if (status === "declined") return null;
-  const lines = [status === "accepted" ? S.insuranceHave : S.insuranceOffer];
+  const offer = o.page ? S.insuranceOfferPage : S.insuranceOffer;
+  const lines = [status === "accepted" ? S.insuranceHave : offer];
   const v = o.video && status !== "accepted" ? videosFor(ctx, "insurance", 1)[0] : undefined;
+  const call = o.page && status !== "accepted" ? { links: [{ label: S.callMark, url: telLink(BUSINESS.phone) }] } : {};
   return {
     key: "insurance", title: S.insurance, lines,
     ...(v ? { lines: [...lines, S.insuranceVideo], items: [{ text: v.inEnglish ? `${v.title} ${strings(ctx.lang).inEnglishNote}` : v.title, url: v.url }] } : {}),
+    ...call,
   };
 }
 

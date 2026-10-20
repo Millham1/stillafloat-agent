@@ -11,7 +11,7 @@
   var view = null, busy = false;
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  function safe(u) { return /^https?:\/\//i.test(u) || /^#/.test(u) ? u : '#'; }
+  function safe(u) { return /^https?:\/\//i.test(u) || /^tel:\+?[0-9]+$/i.test(u) || /^#/.test(u) ? u : '#'; }
   function show(id, on) { $(id).hidden = !on; }
   function setState(msg) { $('mc-state').textContent = msg || ''; show('mc-state', !!msg); }
   function api(path, opts) {
@@ -74,7 +74,7 @@
     if (sx.links && sx.links.length) {
       h += '<div class="links">' + sx.links.map(function (l) {
         var primary = sx.key === 'paperwork' && l.url === view.paperworkUrl;
-        return '<a ' + (primary ? 'class="btn" ' : '') + 'href="' + esc(safe(l.url)) + '"' + (/^#/.test(l.url) ? '' : ' rel="noopener noreferrer"') + '>' + esc(l.label) + '</a>';
+        return '<a ' + (primary ? 'class="btn" ' : '') + 'href="' + esc(safe(l.url)) + '"' + (/^(#|tel:)/i.test(l.url) ? '' : ' rel="noopener noreferrer"') + '>' + esc(l.label) + '</a>';
       }).join('') + '</div>';
     }
     return h + '</section>';

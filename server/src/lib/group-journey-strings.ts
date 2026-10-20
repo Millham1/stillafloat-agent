@@ -160,6 +160,9 @@ const en = {
 
     insurance: "Travel insurance",
     insuranceOffer: `Travel insurance is optional. Mark offers Allianz plans. Reply to this email or call ${BUSINESS.phone} if you would like a quote or have questions.`,
+    // On the cruise page there is no email to reply to: the offer points at the phone, with a link that dials (Mark 2026-10-19).
+    insuranceOfferPage: "Travel insurance is optional. Mark offers Allianz plans. For a quote, or if you have questions:",
+    callMark: `Call or text Mark at ${BUSINESS.phone}`,
     insuranceHave: "Travel insurance is on file for your cabin as accepted.",
     insuranceVideo: "A short video on how it works:",
 
@@ -459,6 +462,8 @@ const es: Strings = {
 
     insurance: "Seguro de viaje",
     insuranceOffer: `El seguro de viaje es opcional. Mark ofrece planes de Allianz. Responda este correo o llame al ${BUSINESS.phone} si desea una cotización o tiene preguntas.`,
+    insuranceOfferPage: "El seguro de viaje es opcional. Mark ofrece planes de Allianz. Para una cotización, o si tiene preguntas:",
+    callMark: `Llame o envíe un mensaje de texto a Mark al ${BUSINESS.phone}`,
     insuranceHave: "El seguro de viaje de su cabina figura como aceptado.",
     insuranceVideo: "Un video corto sobre cómo funciona:",
 

@@ -1,7 +1,7 @@
 // group-journey.test.ts — the plan, the approvals and every rendered message, in both languages, against a synthetic file.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import {
   ALL_KINDS, APPROVABLE_KINDS, DAY_MILESTONES, JOURNEY_TEMPLATE_VERSION, approvalFor, dayKind, dedupeKey, planJourney, renderEmail, renderHub,
@@ -687,6 +687,32 @@ test("no message carries a link that is not http(s) and every link goes to our s
     for (const m of r.html.matchAll(/href="([^"]+)"/g)) assert.match(m[1]!, /^(https?:\/\/|#)/, `${n}: ${m[1]}`);
     assert.ok(!/<script/i.test(r.html));
   }
+});
+
+test("the insurance box on the cruise page says 'Call or text Mark at 919-346-6127' with a link that dials; the email keeps 'reply to this email'", () => {
+  const input = fixtureInput();
+  const sec = (lang: "en" | "es", id = "t1") => renderHub(ctx(input, id, before(100), fullExtras(), lang)).sections.find((x) => x.key === "insurance")!;
+  const en = sec("en");
+  assert.ok(!/reply|this email/i.test(en.lines.join(" ")), "a web page has no email to reply to");
+  assert.match(en.lines.join(" "), /Travel insurance is optional\. Mark offers Allianz plans\./);
+  assert.deepEqual(en.links, [{ label: "Call or text Mark at 919-346-6127", url: "tel:+19193466127" }]);
+  const es = sec("es");
+  assert.ok(!/correo|responda/i.test(es.lines.join(" ")));
+  assert.deepEqual(es.links, [{ label: "Llame o envíe un mensaje de texto a Mark al 919-346-6127", url: "tel:+19193466127" }]);
+  // a cabin that already has insurance, and one that declined it, get no call to action
+  assert.equal(sec("en", "t3").links, undefined);
+  const declined = fixtureInput(); declined.cabins[0]!.insurance = "declined";
+  assert.ok(!renderHub(ctx(declined, "t1", before(100))).sections.some((x) => x.key === "insurance"));
+  // the email is unchanged: it can be replied to
+  const mail = renderEmail("t-120", ctx(input, "t1", before(120)))!;
+  assert.match(mail.text, /Reply to this email or call 919-346-6127 if you would like a quote/);
+  assert.ok(!mail.html.includes("tel:"));
+  // the page's script lets a tel: link through and nothing else odd
+  const root = [path.join(process.cwd(), "public"), path.join(process.cwd(), "server", "public")].find((d) => existsSync(path.join(d, "index.html")));
+  assert.ok(root, "the site's public folder");
+  const js = readFileSync(path.join(root!, "js", "my-cruise.js"), "utf8");
+  assert.match(js, /function safe\(u\) \{[^\n]*\^tel:/, "the cruise page's script lets a tel: link through");
+  assert.match(readFileSync(path.join(root!, "my-cruise.html"), "utf8"), /my-cruise\.js\?v=20261019/, "the script's cache stamp moved with the change");
 });
 
 test("text from the file is escaped in the html", () => {
