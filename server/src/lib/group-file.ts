@@ -74,7 +74,7 @@ export const CHILDREN: Record<string, ChildSpec> = {
     table: "group_travel",
     columns: ["cabin_id", "traveler_id", "kind", "direction", "provider", "reference",
       "from_place", "to_place", "starts_at", "ends_at", "confirmation", "notes",
-      "price_per_person", "included", "source"],
+      "price_per_person", "price_unit", "included", "source"],
     select: "*",
     order: "starts_at",
   },
@@ -123,6 +123,22 @@ export function looksLikeCardNumber(text: string): boolean {
 }
 
 export type Picked = { ok: true; row: Record<string, unknown> } | { ok: false; error: string };
+
+/** The units a travel price can be per (migration 0054). */
+export const PRICE_UNITS = ["person", "room"] as const;
+
+/**
+ * A hotel night is priced per room (Mark 2026-10-20), so a travel row saved as a hotel without a price unit of its own is per room — a row Mark
+ * adds as a flight and then switches to "hotel" in the file does not keep the column's default of "person". An unknown unit is refused by name.
+ */
+export function withTravelUnit(child: string, row: Record<string, unknown>): { ok: true; row: Record<string, unknown> } | { ok: false; error: string } {
+  if (child !== "travel") return { ok: true, row };
+  if ("price_unit" in row && !(PRICE_UNITS as readonly unknown[]).includes(row["price_unit"])) {
+    return { ok: false, error: `The price is per ${PRICE_UNITS.join(" or ")}` };
+  }
+  if (row["kind"] === "hotel" && !("price_unit" in row)) return { ok: true, row: { ...row, price_unit: "room" } };
+  return { ok: true, row };
+}
 
 /** Keep only whitelisted columns; "" becomes null; refuse anything card-shaped. */
 export function pickWritable(columns: readonly string[], body: unknown): Picked {

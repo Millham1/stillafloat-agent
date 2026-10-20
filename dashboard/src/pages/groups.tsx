@@ -508,7 +508,9 @@ function GroupDetail({ id }: { id: string }) {
           { key: "starts_at", label: "Starts", type: "datetime", width: "12rem" },
           { key: "ends_at", label: "Ends", type: "datetime", width: "12rem" },
           { key: "confirmation", label: "Confirmation" },
-          { key: "price_per_person", label: "Price pp ($)" },
+          { key: "price_per_person", label: "Price ($)" },
+          // A hotel night is priced per room, a flight or a transfer per person; the group page says which (Mark 2026-10-20).
+          { key: "price_unit", label: "Price is per", type: "select", options: [{ value: "person", label: "Person" }, { value: "room", label: "Room" }] },
           { key: "included", label: "Included", type: "select", options: [{ value: "false", label: "No" }, { value: "true", label: "Yes" }] },
         ]} />
 

@@ -9,7 +9,7 @@ import { notifyMark } from "../lib/notify";
 import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
-  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, retryNote,
+  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote,
   publicFacts, shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
@@ -306,9 +306,10 @@ router.get("/group-page/:code", async (req: Request, res: Response) => {
     return res.json({
       success: true, live, preview: preview && !live, langs,
       facts: publicFacts(facts, answers),
-      // How the page looks (the interview's picture links and taxes answer): only validated values, nulls when absent or refused.
+      // How the page looks (the interview's picture links and taxes answer, and who signs the welcome): only validated values, nulls when absent or refused.
       look: pageLook(answers),
-      copy: { headline: copy.headline, subhead: copy.subhead, intro: copy.intro, why_ship: copy.why_ship, who_for: copy.who_for, organizer_note: copy.organizer_note, cta_label: copy.cta_label, cta_blurb: copy.cta_blurb },
+      // Only what the page shows: the welcome, the organizer's line and the button's words (publicCopy says why).
+      copy: publicCopy(copy),
       turnstileSiteKey: process.env["TURNSTILE_SITE_KEY"] || "",
     });
   } catch (err) {

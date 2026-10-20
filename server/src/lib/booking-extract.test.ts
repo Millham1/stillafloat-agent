@@ -232,6 +232,10 @@ test("a quote's air / hotel / transfer lines become the group's travel offer, an
   assert.deepEqual(rows.map((r) => [r.kind, r.direction, r.included, r.price_per_person]), [
     ["flight", "pre", false, 412], ["hotel", "pre", false, 89.5], ["transfer", "pre", true, null], ["transfer", "post", false, 29],
   ]);
+  // a hotel night is priced per room, a flight and a transfer per person (Mark 2026-10-20)
+  assert.deepEqual(rows.map((r) => [r.kind, r.price_unit]), [["flight", "person"], ["hotel", "room"], ["transfer", "person"], ["transfer", "person"]]);
+  assert.match(String(rows[1]!.notes), /\$89\.50 per room/);
+  assert.match(String(rows[0]!.notes), /\$412\.00 per person/);
   assert.equal(rows[1]!.reference, "1 night");
   assert.equal(rows[2]!.from_place, "Hotel"); assert.equal(rows[2]!.to_place, "Cruise port");
   assert.ok(rows.every((r) => r.source === "quote"));

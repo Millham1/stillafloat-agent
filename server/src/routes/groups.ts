@@ -11,6 +11,7 @@ import {
   publicGroupRow,
   slugify,
   summarize,
+  withTravelUnit,
   type GroupFile,
 } from "../lib/group-file";
 
@@ -194,13 +195,15 @@ router.post("/groups/:id/:child", requireToken, async (req: Request, res: Respon
     if (!spec) return res.status(404).json({ success: false, error: "Unknown section" });
     const picked = pickWritable(spec.columns, req.body);
     if (!picked.ok) return res.status(400).json({ success: false, error: picked.error });
+    const unit = withTravelUnit(String(req.params["child"]), picked.row);
+    if (!unit.ok) return res.status(400).json({ success: false, error: unit.error });
     const supabase = db();
     const groupId = String(req.params["id"]);
     const { data: group } = await supabase.from("groups").select("id").eq("id", groupId).maybeSingle();
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
     const { data, error } = await supabase
       .from(spec.table)
-      .insert({ ...picked.row, group_id: groupId })
+      .insert({ ...unit.row, group_id: groupId })
       .select(spec.select)
       .single();
     if (error) return res.status(400).json({ success: false, error: error.message });
@@ -217,9 +220,11 @@ router.patch("/groups/:id/:child/:rowId", requireToken, async (req: Request, res
     const picked = pickWritable(spec.columns, req.body);
     if (!picked.ok) return res.status(400).json({ success: false, error: picked.error });
     if (!Object.keys(picked.row).length) return res.status(400).json({ success: false, error: "Nothing to update" });
+    const unit = withTravelUnit(String(req.params["child"]), picked.row);
+    if (!unit.ok) return res.status(400).json({ success: false, error: unit.error });
     const { data, error } = await db()
       .from(spec.table)
-      .update({ ...picked.row, updated_at: new Date().toISOString() })
+      .update({ ...unit.row, updated_at: new Date().toISOString() })
       .eq("id", String(req.params["rowId"]))
       .eq("group_id", String(req.params["id"]))
       .select(spec.select)

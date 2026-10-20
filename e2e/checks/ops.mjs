@@ -1243,8 +1243,8 @@ export default [
   },
   {
     id: "ops.group-page-public",
-    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids, a card number or the cabins still available (Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"); unapproved pages stay hidden",
-    title: "Whenever Mark has a live group page, it shows exactly his approved copy and the group's facts (English and Spanish) with no contact details, ids or cabin availability, and unapproved pages stay hidden",
+    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids, a card number or the cabins still available (Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"); unapproved pages stay hidden; Mark 2026-10-20 \"we already had this discussion\": the page is handed the welcome and the Count me in words, never the poster's headline or pitch",
+    title: "Whenever Mark has a live group page, it shows exactly his approved welcome and Count me in words and the group's facts (English and Spanish) with no contact details, ids or cabin availability and none of the poster's headline or pitch, and unapproved pages stay hidden",
     covers: ["GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/groups/:id/marketing"],
     modes: ["dev", "prod"],
     // New in the 2026-10-08 release: prod has neither the pages nor the address before the promotion,
@@ -1263,7 +1263,11 @@ export default [
         const names = (re) => [...new Set([...html.matchAll(re)].map((m) => m[1]))].sort();
         reads[lang] = { facts: names(/\bf\.([A-Za-z_]+)/g), copy: names(/\bc\.([A-Za-z_]+)/g) };
         t.atLeast(reads[lang].facts.length, 8, `fact names the ${lang} group page reads`);
-        t.atLeast(reads[lang].copy.length, 5, `copy names the ${lang} group page reads`);
+        // The page reads the welcome, the organizer's line and the button's words (Mark 2026-10-20): four names. The poster's headline, payoff, intro,
+        // why-ship and who-for are not among them.
+        t.atLeast(reads[lang].copy.length, 4, `copy names the ${lang} group page reads`);
+        t.ok(reads[lang].copy.includes("welcome"), `the ${lang} group page no longer reads the hosts' welcome`);
+        for (const k of ["headline", "subhead", "intro", "why_ship", "who_for"]) t.ok(!reads[lang].copy.includes(k), `the ${lang} group page reads copy.${k}, which repeats the poster`);
       }
       t.equal(JSON.stringify(reads.es), JSON.stringify(reads.en), "the fields the Spanish and the English group pages read (the twins have drifted apart)");
       t.observe("group page reads", `facts:${reads.en.facts.join(",")} copy:${reads.en.copy.join(",")}`);
@@ -1293,7 +1297,9 @@ export default [
         for (const k of ["cabins", "cabinsAvailable", "cabinsTotal"]) t.ok(!(k in pub.facts), `group ${g.id}: the public page's answer carries "${k}" — a visitor must not see cabin availability before Mark knows they are interested`);
         t.nonEmpty(pub.facts.itinerary, `group ${g.id}: itinerary on the public page`);
         t.equal(String(pub.facts.ship).toLowerCase(), String(g.ship_name).toLowerCase(), `group ${g.id}: ship — public page vs group file`);
-        t.fields(pub.copy, ["headline", "intro", "cta_label"], `group ${g.id}: public copy`);
+        t.fields(pub.copy, ["cta_label", "cta_blurb"], `group ${g.id}: public copy`);
+        for (const k of ["headline", "subhead", "intro", "why_ship", "who_for"]) t.ok(!(k in pub.copy), `group ${g.id}: the public answer carries the poster's "${k}", which the page must not repeat`);
+        t.ok("welcome" in pub.copy, `group ${g.id}: the public copy has no "welcome" (null when the group has none)`);
         // nothing private on a public page (checked without printing it)
         const text = res.text;
         t.ok(!text.includes(g.id), `group ${g.id}: the public page carries the group's internal id`);
@@ -1323,7 +1329,8 @@ export default [
         const es = t.success(await t.get(`/api/group-page/${g.share_code}?lang=es`));
         const esLang = langsFor(g).includes("es") ? "es" : lang0;
         t.equal(es.facts.lang, esLang, `group ${g.id}: language served to ?lang=es`);
-        t.equal(es.copy.headline, m.perLang?.[esLang]?.copy?.headline, `group ${g.id}: headline served to ?lang=es vs Mark's ${esLang} copy`);
+        t.equal(es.copy.cta_label, m.perLang?.[esLang]?.copy?.cta_label, `group ${g.id}: button words served to ?lang=es vs Mark's ${esLang} copy`);
+        t.equal(es.copy.welcome ?? null, m.perLang?.[esLang]?.copy?.welcome ?? null, `group ${g.id}: welcome served to ?lang=es vs Mark's ${esLang} copy`);
         if (langsFor(g).includes("es")) spanishLive++;
         siteKey = pub.turnstileSiteKey || siteKey;
       }
