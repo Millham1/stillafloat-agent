@@ -23,8 +23,8 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400}
 /* The group's own top picture (look.heroUrl) replaces the generic one; it fills the hero and fades in once it has loaded. */
 .gp-banner.custom{background-image:none}
 .gp-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 46%;z-index:0;opacity:0;transition:opacity .5s ease}
-/* The hosts' photo (look.hostPhotoUrl): small, framed, in the TOP-RIGHT corner of the picture (the site menu sits above the picture, not on it — Mark 2026-10-20: "the inset is not in the correct place"); never near the centre of the hero. */
-.gp-host{position:absolute;top:18px;right:22px;z-index:5;box-sizing:border-box;width:clamp(120px,28%,300px);aspect-ratio:4/3;object-fit:cover;object-position:center 30%;
+/* The hosts' photo (look.hostPhotoUrl): small, framed, in the TOP-RIGHT corner of the picture (the site menu sits above the picture, not on it — Mark 2026-10-20: "the inset is not in the correct place"); never near the centre of the hero. At 22% (110–260px) it clears the right third of the picture — measured 10/20 against the Millham hero's lighthouse at 390–1600px wide (Mark: "it is cutting off the lighthouse"). */
+.gp-host{position:absolute;top:16px;right:16px;z-index:5;box-sizing:border-box;width:clamp(110px,22%,260px);aspect-ratio:4/3;object-fit:cover;object-position:center 30%;
   background:#fff;border:6px solid #fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.38);opacity:0;transition:opacity .5s ease}
 .gp-hero.on,.gp-host.on{opacity:1}
 .gp-lockup{position:absolute;left:0;right:0;bottom:22px;z-index:4;display:flex;justify-content:center;padding:0 20px}
