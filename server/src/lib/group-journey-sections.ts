@@ -81,7 +81,7 @@ export function payments(ctx: Ctx, o: { mode: "schedule" | "open"; howTo?: boole
     }
     if (!amount && !due) continue;                       // nothing we can say about it
     openRows++;
-    lines.push(!due ? S.payNoDate({ kind, amount }) : due < ctx.today ? S.payOverdue({ kind, amount, date: fmtDate(due, ctx.lang) }) : S.payDue({ kind, amount, date: fmtDate(due, ctx.lang) }));
+    lines.push(!due ? (p.kind === "deposit" ? S.payAtBooking({ kind, amount }) : S.payNoDate({ kind, amount })) : due < ctx.today ? S.payOverdue({ kind, amount, date: fmtDate(due, ctx.lang) }) : S.payDue({ kind, amount, date: fmtDate(due, ctx.lang) }));
   }
   const hasKind = (k: string) => rows.some((p) => p.kind === k);
   const finalDue = ymd(ctx.group.final_payment_due);

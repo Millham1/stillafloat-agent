@@ -382,6 +382,25 @@ test("the other countdown messages also name only the sections they have, in bot
   assert.equal(renderEmail("t-10", ctx(fixtureInput(), "t1", before(10)))!.subject, "10 days to go: your ship and how boarding day works");
 });
 
+test("a deposit with no date is 'due when you book' ('se paga al reservar'), never 'date to be confirmed'; other payments with no date keep that wording", () => {
+  const input = fixtureInput({ group: { deposit_due: null, terms: { deposit_timing: "at_booking", deadlines: [] } } });
+  const dep = input.payments.find((p) => p.id === "p3")!; dep.paid_at = null; dep.due_date = null;       // Carlos and Dulce's cabin: deposit due at booking
+  const fin = input.payments.find((p) => p.id === "p4")!; fin.due_date = null;                           // and a final payment with no date yet
+  const en = renderEmail("t-120", ctx(input, "t3", before(120), fullExtras(), "en"))!;
+  assert.match(en.text, /Deposit: \$400, due when you book\./);
+  assert.match(en.text, /Final payment: \$2,200, date to be confirmed\./);
+  assert.ok(!/Deposit: \$400, date to be confirmed/.test(en.text));
+  const es = renderEmail("t-120", ctx(input, "t3", before(120)))!;
+  assert.match(es.text, /Depósito: \$400, se paga al reservar\./);
+  assert.match(es.text, /Pago final: \$2,200, fecha por confirmar\./);
+  assert.ok(!/Depósito: \$400, fecha por confirmar/.test(es.text));
+  // the cruise page says the same
+  const hub = renderHub(ctx(input, "t3", before(120), fullExtras(), "en"));
+  assert.ok(hub.sections.find((x) => x.key === "payments")!.lines.includes("Deposit: $400, due when you book."));
+  // a deposit that has a date, or is paid, is unchanged
+  assert.match(renderEmail("t-120", ctx(fixtureInput(), "t1", before(120)))!.text, /Deposit: \$400, paid on October 20, 2026\./);
+});
+
 test("the 20-day message: web check-in from the terms, documents, packing from the checklist and the site, and the packing video", () => {
   const input = fixtureInput();
   const r = renderEmail("t-20", ctx(input, "t1", before(20)))!;

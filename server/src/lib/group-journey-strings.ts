@@ -138,6 +138,8 @@ const en = {
     payDue: (p: { kind: string; amount: string; date: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, due ${p.date}.`,
     payOverdue: (p: { kind: string; amount: string; date: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, was due ${p.date}. Please reply or call so we can sort it out.`,
     payNoDate: (p: { kind: string; amount: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, date to be confirmed.`,
+    // A deposit with no calendar date is due when the cabin is booked (the line sets no date): never "date to be confirmed".
+    payAtBooking: (p: { kind: string; amount: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, due when you book.`,
     payAllPaid: "Every payment on file is paid. Thank you.",
     payGroupFinal: (date: string) => `The final payment is due ${date}.`,
     payGroupDeposit: (date: string) => `The deposit deadline is ${date}.`,
@@ -436,6 +438,7 @@ const es: Strings = {
     payDue: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, vence el ${p.date}.`,
     payOverdue: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, venció el ${p.date}. Responda este correo o llame para resolverlo.`,
     payNoDate: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, fecha por confirmar.`,
+    payAtBooking: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, se paga al reservar.`,
     payAllPaid: "Todos los pagos registrados están al día. Gracias.",
     payGroupFinal: (date) => `El pago final vence el ${date}.`,
     payGroupDeposit: (date) => `El plazo del depósito es el ${date}.`,
