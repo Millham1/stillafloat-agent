@@ -18,8 +18,15 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400}
 /* Branded banner + plaque — the Weather / Where's My Ship pattern */
 .gp-banner{position:relative;overflow:hidden;border-bottom:5px solid #5dff9a;
   background:url('/assets/images/wheres-my-ship-hero.png') center 46%/cover no-repeat;height:clamp(380px,40vw,600px)}
-.gp-banner::before{content:'';position:absolute;inset:0;pointer-events:none;
+.gp-banner::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:1;
   background:linear-gradient(180deg,rgba(6,17,31,.30) 0%,rgba(6,17,31,.05) 24%,rgba(6,17,31,.05) 60%,rgba(6,17,31,.88) 100%)}
+/* The group's own top picture (look.heroUrl) replaces the generic one; it fills the hero and fades in once it has loaded. */
+.gp-banner.custom{background-image:none}
+.gp-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 46%;z-index:0;opacity:0;transition:opacity .5s ease}
+/* The hosts' photo (look.hostPhotoUrl): small, framed, top-right, under the site menu; never near the centre of the hero. */
+.gp-host{position:absolute;top:132px;right:22px;z-index:5;box-sizing:border-box;width:clamp(120px,28%,300px);aspect-ratio:4/3;object-fit:cover;object-position:center 30%;
+  background:#fff;border:6px solid #fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.38);opacity:0;transition:opacity .5s ease}
+.gp-hero.on,.gp-host.on{opacity:1}
 .gp-lockup{position:absolute;left:0;right:0;bottom:22px;z-index:4;display:flex;justify-content:center;padding:0 20px}
 .gp-plaque{display:inline-flex;align-items:center;gap:13px;background:rgba(4,14,28,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
   border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:9px 24px;max-width:92vw}
@@ -70,18 +77,27 @@ textarea{min-height:96px;resize:vertical}
 select option{color:#07183f}
 .check{display:flex;gap:10px;align-items:flex-start;font-size:18px;color:rgba(255,255,255,.86)}
 .check input{width:20px;height:20px;margin-top:4px;flex:none}
-.btn{display:inline-block;cursor:pointer;border:1px solid rgba(93,255,154,.3);border-radius:14px;background:linear-gradient(135deg,#07183f,#0077b6);
-  color:#5dff9a;font:inherit;font-weight:700;font-size:21px;padding:13px 30px}
+/* The call to action: a yellow pill, navy bold type (the approved marketing's button). */
+.btn{display:inline-block;cursor:pointer;border:0;border-radius:999px;background:#f5c33b;color:#07183f;
+  font:inherit;font-weight:800;font-size:23px;line-height:1.2;padding:16px 52px;box-shadow:0 5px 16px rgba(0,0,0,.35);transition:transform .15s ease,box-shadow .15s ease}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.4)}
+.btn:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .btn:disabled{opacity:.55;cursor:default}
 .msg{margin-top:14px;font-size:19px}
 .msg.ok{color:#5dff9a}.msg.err{color:#ffd21f}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .fine,.section p.fine{font-size:17px;color:rgba(255,255,255,.7)}
+/* FlexPay: the logo is dark green and the page is dark navy, so it sits on a small white chip (smaller than the Still Afloat logo in the header). */
+.flexpay{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 10px}
+.flexpay .chip{display:inline-flex;align-items:center;flex:none;background:#fff;border-radius:10px;padding:3px 10px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.flexpay .chip img{display:block;height:28px;width:auto}
+.flexpay .words{font-size:19px;font-weight:600;color:rgba(255,255,255,.94)}
 .mark{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
 .mark p{flex:1;min-width:260px}
 footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font-size:16px}
 #gp-state{padding:80px 22px;text-align:center;font-size:22px;color:rgba(255,255,255,.85)}
-@media(max-width:640px){.form-grid{grid-template-columns:1fr}table{font-size:17px}td,th{padding:9px 6px}.shell{padding:30px 16px 70px}}
+@media(max-width:768px){.gp-host{top:84px;right:14px}}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}table{font-size:17px}td,th{padding:9px 6px}.shell{padding:30px 16px 70px}.btn{display:block;width:100%;padding:16px 24px}}
 </style>
 </head>
 <body>
@@ -99,6 +115,9 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     <p class="sub" id="gp-subhead"></p>
     <div class="stats" id="gp-stats"></div>
     <p class="fine" id="gp-fine" style="margin-top:10px"></p>
+    <!-- Every group is enrolled with FlexPay (the business is): the plans line sits directly under the price note on every page. -->
+    <div class="flexpay" id="gp-flex"><span class="chip"><img src="/assets/images/flexpay-logo.png" alt="FlexPay" height="28"></span><span class="words" data-t="flex"></span></div>
+    <p class="fine" id="gp-upgrades" style="margin:0"></p>
   </section>
 
   <section class="section"><p id="gp-intro"></p></section>
@@ -186,6 +205,7 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     itinerary:'El itinerario', day:'Día', date:'Fecha', port:'Puerto', inport:'En puerto', sea:'Día en el mar',
     itin_note:'Los horarios y puertos los fija la naviera y pueden cambiar.',
     included:'Incluido para cada huésped', travel:'Cómo llegar', planned:'Planeado para el grupo:', upgrades:'Mejoras de cabina disponibles — pregunte a Mark', price_note:'Precio por persona, con dos huéspedes por cabina. El precio, los impuestos, las tasas y los cargos portuarios se confirman por escrito al reservar.',
+    price_note_tax:'Precio por persona, con dos huéspedes por cabina, con impuestos y cargos portuarios incluidos.', flex:'Planes de pago flexibles disponibles', hosts:'Sus anfitriones',
     why:'Por qué este barco', score_label:'Puntaje Conga Line', score_hint:'Lo que dicen los cruceristas, resumido por Still Afloat.',
     who:'Para quién es este viaje', dates:'Fechas que importan', book_by:'Reserve antes de', final_pay:'Pago final', sail_day:'Día de salida',
     first:'Nombre', last:'Apellido', email:'Correo electrónico', phone:'Teléfono (opcional)', party:'¿Cuántas personas en su grupo?', count_me_in:'¡Cuenten conmigo!',
@@ -201,9 +221,10 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     itinerary:'The itinerary', day:'Day', date:'Date', port:'Port', inport:'In port', sea:'Day at sea',
     itin_note:'Times and ports are set by the cruise line and can change.',
     included:'Included for every guest', travel:'Getting there', planned:'Planned for the group:', upgrades:'Cabin upgrades available — ask Mark', price_note:'Price is per person, based on two guests per cabin. The price, taxes, fees and port expenses are confirmed in writing when you book.',
+    price_note_tax:'Price is per person, based on two guests per cabin, with taxes and port fees included.', flex:'Flexible Payment Plans Available', hosts:'Your hosts',
     why:'Why this ship', score_label:'Conga Line score', score_hint:'What cruisers say, summed up by Still Afloat.',
     who:'Who this trip suits', dates:'Dates that matter', book_by:'Reserve by', final_pay:'Final payment', sail_day:'Sailing day',
-    first:'First name', last:'Last name', email:'Email', phone:'Phone (optional)', party:'How many in your party', count_me_in:'Count me in',
+    first:'First name', last:'Last name', email:'Email', phone:'Phone (optional)', party:'How many in your party', count_me_in:'Count me in!',
     note:'Questions or needs (mobility, diet, who is traveling with you)', news:'Also send me the Still Afloat newsletter. We will email you to confirm.',
     no_payment:'Nothing is paid here and no card is asked for. We reply personally, usually the same day.',
     sent:'Got it. We will be in touch soon.', sending:'Sending…', err:'That did not go through. Email mark@stillafloatcruising.com.',
@@ -233,6 +254,25 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
 
   var turnstileToken = null, siteKey = '';
 
+  // The group's own look (the API has already refused any picture that is not on our own hosts; the page checks it is https once more).
+  // The pictures are set as an <img> source, never written into markup. A picture that does not load is dropped and the usual page shows.
+  function lookImage(url, cls, alt, onShow){
+    if(typeof url !== 'string' || !/^https:\/\//i.test(url)) return null;
+    var img = document.createElement('img');
+    img.className = cls; img.alt = alt; img.decoding = 'async';
+    img.onload = function(){ img.className = cls + ' on'; if(onShow) onShow(); };
+    img.onerror = function(){ if(img.parentNode) img.parentNode.removeChild(img); };
+    img.src = url;
+    return img;
+  }
+  function applyLook(look){
+    var banner = document.querySelector('.gp-banner');
+    var hero = lookImage(look.heroUrl, 'gp-hero', '', function(){ banner.className = 'gp-banner custom'; });
+    if(hero) banner.insertBefore(hero, banner.firstChild);
+    var host = lookImage(look.hostPhotoUrl, 'gp-host', T.hosts);
+    if(host) banner.appendChild(host);
+  }
+
   function stat(k, v){ return v ? '<div class="stat"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div></div>' : ''; }
 
   function render(d){
@@ -251,7 +291,11 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     $('gp-subhead').className = 'sub' + (c.subhead.length <= 60 ? ' payoff' : '');
     $('gp-stats').innerHTML = stat(T.ship, f.ship) + stat(T.sails, f.sailDateText) + stat(T.nights, f.nights) + stat(T.from, f.embarkPort)
       + (f.fromPerPersonText ? stat(T.price_from, f.fromPerPersonText + ' ' + T.pp) : '');
-    $('gp-fine').textContent = [f.fromPerPersonText ? T.price_note : '', T.upgrades].filter(Boolean).join('\n');
+    var look = d.look || {};
+    $('gp-fine').textContent = f.fromPerPersonText ? (look.taxesIncluded === true ? T.price_note_tax : T.price_note) : '';
+    $('gp-fine').hidden = !f.fromPerPersonText;
+    $('gp-upgrades').textContent = T.upgrades;
+    applyLook(look);
     $('gp-intro').textContent = c.intro;
 
     if(f.itinerary && f.itinerary.length){

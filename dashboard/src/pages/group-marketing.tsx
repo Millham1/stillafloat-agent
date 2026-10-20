@@ -91,8 +91,10 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
   };
 
   const saveAnswers = () => run("answers", async () => {
-    await api(`/groups/${groupId}/marketing/answers`, "PUT", answers);
-    toast({ title: "Interview saved" });
+    const r = await api<{ ignored?: string[] }>(`/groups/${groupId}/marketing/answers`, "PUT", answers);
+    // A picture link that is not on the site's own hosts is kept in the interview but the page will never show it: say so instead of failing silently.
+    if (r.ignored?.length) toast({ variant: "destructive", title: "Interview saved, but a picture link will not be shown", description: "Only a link on stillafloatcruising.com or in the site's own storage is shown on the group page. Until it is replaced, the page keeps its usual top picture (or shows no hosts' photo)." });
+    else toast({ title: "Interview saved" });
     refresh();
   });
   const write = () => run("write", async () => {

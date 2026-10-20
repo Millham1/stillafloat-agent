@@ -60,6 +60,16 @@ const spread = (arr, n) => {
   return [...idx].sort((a, b) => a - b).map((i) => arr[i]);
 };
 const pathOf = (u) => { try { const x = new URL(u, SITE); return x.pathname + x.search; } catch { return String(u); } };
+/** A picture link the group page may show: https, no login or port, no character that could break out of markup, on stillafloatcruising.com or the project's public storage. */
+const ownImageUrl = (u) => {
+  if (typeof u !== "string" || /[\s"'`()<>\\]/.test(u)) return false;
+  try {
+    const x = new URL(u);
+    if (x.protocol !== "https:" || x.username || x.password || x.port) return false;
+    return x.hostname === "stillafloatcruising.com" || (x.hostname.endsWith(".supabase.co") && x.pathname.startsWith("/storage/v1/object/public/"));
+  } catch { return false; }
+};
+const safeHref = (u) => { try { return new URL(u).href; } catch { return ""; } };
 const langOfPath = (p) => (String(p).startsWith("/es/") ? "es" : "en");
 const ES_WORDS = /\b(el|la|los|las|del|que|con|para|por|una|está|están|tormenta|huracán|barcos|cruceros|puede|podría|sobre|hacia|millas|oeste|norte|tu|su)\b/gi;
 const EN_WORDS = /\b(the|and|of|with|for|is|are|storm|hurricane|ships|cruise|could|may|about|toward|miles|west|north|your|its)\b/gi;
@@ -974,12 +984,18 @@ export default [
   //      same share codes as the English page.
   // Two agreeing views can both be blank, so the facts a visitor decides on (ship, dates, nights,
   // itinerary, the business named in the footer) must be present.
+  //   7. The page wears the look of Mark's approved group marketing on EVERY group page: a yellow
+  //      "Count me in!" pill, and the FlexPay line ("Flexible Payment Plans Available" with the
+  //      FlexPay logo) under the price note, in both languages. A group may also have a top
+  //      picture and a photo of the hosts (interview answers); the answer hands the page only
+  //      validated links — https, on our own hosts — and a real yes/no for "taxes included", and
+  //      each agrees with the dashboard's interview answer.
   // Group pages are in the release candidate only: prod has no approved group page until the
   // 2026-10-08 promotion, so this check is UNTESTABLE on prod until then (dev: 4a5fg8ypac, EN).
   {
     id: "flows.group-page-journey",
-    basis: "ruling: stillafloat-group-bookings.md — a group page Mark approves is what the public sees (same words, ship, dates, the from-price, the business named, no payment or card), and it only asks \"I'm interested\" — Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"",
-    title: "Whenever Mark has approved a group page, it is what visitors see: same words, same ship, dates and from-price, and the ship's real Conga Line score, with no cabin list or availability; the group page itself loads, asks only 'I'm interested' and refuses a made-up code",
+    basis: "ruling: stillafloat-group-bookings.md — a group page Mark approves is what the public sees (same words, ship, dates, the from-price, the business named, no payment or card), and it only asks \"I'm interested\" — Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"; every group page also carries the look of his approved group marketing (stillafloat-group-poster-template-mark-2026-10-12.md: the yellow Count me in pill, a FlexPay plans line, an optional top picture and hosts' photo that may only come from our own hosts over https)",
+    title: "Whenever Mark has approved a group page, it is what visitors see: same words, same ship, dates and from-price, and the ship's real Conga Line score, with no cabin list or availability; the page carries the FlexPay line and the yellow Count me in button, any top picture or hosts' photo it shows is an https link on our own hosts, and it asks only 'I'm interested' and refuses a made-up code",
     covers: ["flow:group-page-journey", "GET /api/groups", "GET /api/groups/:id/marketing", "GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/ships/ratings"],
     modes: ["dev", "prod"],
     incident: "release candidate 2026-10-08: group marketing pages (dev only until the promotion)",
@@ -1036,6 +1052,20 @@ export default [
           L.check(JSON.stringify(pub.facts?.perks ?? null) === JSON.stringify(mine.facts.perks ?? null), `group ${g.share_code} (${lang}): what the fare includes differs from the dashboard`);
           L.check(Array.isArray(pub.facts?.planned), `group ${g.share_code} (${lang}): the page's "planned for the group" list is missing`);
           L.check(pub.facts?.fromPerPersonText === (showPrices ? mine.facts.fromPerPersonText : null), `group ${g.share_code} (${lang}): the "from" price differs from the dashboard`);
+          // The page's look (group.html applyLook): a top picture and a hosts' photo are links on OUR hosts over https or null, taxes is a real yes/no,
+          // and each agrees with the interview answer Mark saved (nothing typed -> nothing shown). Link values are not printed.
+          const look = pub.look;
+          if (L.check(look && typeof look === "object" && !Array.isArray(look), `group ${g.share_code} (${lang}): the public answer has no "look" block, so the page cannot show the group's top picture, hosts' photo or taxes line`)) {
+            L.check(typeof look.taxesIncluded === "boolean", `group ${g.share_code} (${lang}): look.taxesIncluded is not a yes/no`);
+            L.check(look.taxesIncluded === (m.answers?.taxes_included === true), `group ${g.share_code} (${lang}): the page says taxes are ${look.taxesIncluded ? "" : "not "}included but the dashboard's interview answer says otherwise`);
+            for (const [k, answer] of [["heroUrl", "hero_photo"], ["hostPhotoUrl", "host_photo"]]) {
+              const url = look[k];
+              L.check(url === null || ownImageUrl(url), `group ${g.share_code} (${lang}): look.${k} is not an https link on our own hosts (stillafloatcruising.com or the project's public storage)`);
+              const typed = String(m.answers?.[answer] ?? "").trim();
+              if (!typed) L.check(url === null, `group ${g.share_code} (${lang}): look.${k} is set although the interview has no ${answer}`);
+              else if (url !== null && ownImageUrl(url)) L.check(new URL(url).href === safeHref(typed), `group ${g.share_code} (${lang}): look.${k} is not the link Mark typed as ${answer}`);
+            }
+          }
           // the ship's score: shown unless Mark turned it off, and then it must be the published one
           const shipSlug = lc(pub.facts?.ship).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
           if (m.answers?.show_rating === false) L.check(!pub.facts?.rating, `group ${g.share_code} (${lang}): the page shows a cruiser score although Mark turned it off`);
@@ -1056,6 +1086,15 @@ export default [
       }
       const page = t.html(await t.get(`/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'", "Count me in"] });
       t.equal(H.htmlLang(page).slice(0, 2), "en", "the group page language");
+      // Every group page: the FlexPay plans line with the logo on its white chip, the yellow pill button, and the page reading the look block.
+      L.check(/Flexible Payment Plans Available/.test(page), "the English group page no longer says 'Flexible Payment Plans Available'");
+      L.check(H.images(page).includes("/assets/images/flexpay-logo.png") && /alt="FlexPay"/.test(page), "the English group page no longer shows the FlexPay logo");
+      L.check(/\.flexpay \.chip\{[^}]*background:#fff/.test(page), "the FlexPay logo is no longer on its white chip (it is dark green on a dark navy page)");
+      L.check(/\.btn\{[^}]*background:#f5c33b[^}]*color:#07183f/.test(page) && !/linear-gradient\(135deg,#07183f,#0077b6\)/.test(page), "the English group page's button is no longer the yellow pill");
+      L.check(/look\.heroUrl/.test(page) && /look\.hostPhotoUrl/.test(page) && /look\.taxesIncluded/.test(page), "the English group page no longer reads the look block (top picture, hosts' photo, taxes line)");
+      L.check(/with taxes and port fees included/.test(page), "the English group page has lost its 'taxes and port fees included' price note");
+      const logo = await t.get("/assets/images/flexpay-logo.png");
+      L.check(logo.status === 200 && /^image\/png/i.test(logo.headers.get("content-type") || ""), `the FlexPay logo file is not served as a PNG: ${logo.describe()}`);
       // The page is the "I'm interested" page only: no cabin table, no cabin picker, and the party size replaces "guests in your cabin".
       L.check(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(page), "the English group page still has the cabin table or the cabin picker");
       L.check(/id="f-guests"/.test(page) && /How many in your party/.test(page), "the English group page's form no longer asks how many are in the party");
@@ -1066,6 +1105,11 @@ export default [
       // language switch links there): it must be Spanish, ask for lang=es and accept the same codes
       const es = t.html(await t.get(`/es/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'", "Cuenten conmigo"] });
       t.equal(H.htmlLang(es).slice(0, 2), "es", "the Spanish group page language");
+      L.check(/Planes de pago flexibles disponibles/.test(es), "the Spanish group page no longer says 'Planes de pago flexibles disponibles'");
+      L.check(H.images(es).includes("/assets/images/flexpay-logo.png") && /alt="FlexPay"/.test(es), "the Spanish group page no longer shows the FlexPay logo");
+      L.check(/\.btn\{[^}]*background:#f5c33b[^}]*color:#07183f/.test(es) && !/linear-gradient\(135deg,#07183f,#0077b6\)/.test(es), "the Spanish group page's button is no longer the yellow pill");
+      L.check(/look\.heroUrl/.test(es) && /look\.hostPhotoUrl/.test(es) && /look\.taxesIncluded/.test(es), "the Spanish group page no longer reads the look block");
+      L.check(/con impuestos y cargos portuarios incluidos/.test(es), "the Spanish group page has lost its 'impuestos y cargos portuarios incluidos' price note");
       L.check(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(es), "the Spanish group page still has the cabin table or the cabin picker");
       L.check(/id="f-guests"/.test(es) && /Cuántas personas en su grupo/.test(es), "the Spanish group page's form no longer asks how many are in the party");
       L.check(/var ES = document\.documentElement\.lang === 'es'/.test(es) && /'\?lang=' \+ \(ES \? 'es' : 'en'\)/.test(es), "the Spanish group page does not ask for the Spanish copy (lang=es)");
