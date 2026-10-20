@@ -108,12 +108,13 @@ function travelRows(tp: TravelForm): Row[] {
   const num = (s: string) => (s.trim() === "" ? null : Number(s));
   const inc = (t: Tri) => t === "yes";
   const rows: Row[] = [];
-  if (tp.air.offered) rows.push({ kind: "flight", direction: "pre", provider: tp.air.description || null, from_place: tp.air.from_city || null, price_per_person: num(tp.air.price_per_person), included: inc(tp.air.included), source: "quote" });
-  if (tp.hotel_before.offered) rows.push({ kind: "hotel", direction: "pre", provider: tp.hotel_before.name || null, from_place: tp.hotel_before.city || null, reference: tp.hotel_before.nights ? `${tp.hotel_before.nights} night${tp.hotel_before.nights === "1" ? "" : "s"}` : null, price_per_person: num(tp.hotel_before.price_per_person), included: inc(tp.hotel_before.included), source: "quote" });
+  // A hotel night is priced per room, a flight and a transfer per person; the group page says which (Mark 2026-10-20).
+  if (tp.air.offered) rows.push({ kind: "flight", direction: "pre", provider: tp.air.description || null, from_place: tp.air.from_city || null, price_per_person: num(tp.air.price_per_person), price_unit: "person", included: inc(tp.air.included), source: "quote" });
+  if (tp.hotel_before.offered) rows.push({ kind: "hotel", direction: "pre", provider: tp.hotel_before.name || null, from_place: tp.hotel_before.city || null, reference: tp.hotel_before.nights ? `${tp.hotel_before.nights} night${tp.hotel_before.nights === "1" ? "" : "s"}` : null, price_per_person: num(tp.hotel_before.price_per_person), price_unit: "room", included: inc(tp.hotel_before.included), source: "quote" });
   for (const t of tp.transfers) {
     if (!t.offered) continue;
     const r = TRANSFER_ROUTES.find((x) => x.route === t.route)!;
-    rows.push({ kind: "transfer", direction: r.direction, provider: t.provider || null, from_place: r.from, to_place: r.to, price_per_person: num(t.price_per_person), included: inc(t.included), source: "quote" });
+    rows.push({ kind: "transfer", direction: r.direction, provider: t.provider || null, from_place: r.from, to_place: r.to, price_per_person: num(t.price_per_person), price_unit: "person", included: inc(t.included), source: "quote" });
   }
   return rows;
 }
@@ -467,7 +468,7 @@ export default function GroupIntake() {
                       <label className="text-xs text-muted-foreground">Hotel<input className={inputCls} value={tp.hotel_before.name} onChange={(e) => setHotel("name", e.target.value)} /></label>
                       <label className="text-xs text-muted-foreground">City<input className={inputCls} value={tp.hotel_before.city} onChange={(e) => setHotel("city", e.target.value)} /></label>
                       <label className="text-xs text-muted-foreground">Nights<input className={inputCls} type="number" min="1" value={tp.hotel_before.nights} onChange={(e) => setHotel("nights", e.target.value)} /></label>
-                      <label className="text-xs text-muted-foreground">Price per person ($)<input className={inputCls} type="number" step="0.01" value={tp.hotel_before.price_per_person} onChange={(e) => setHotel("price_per_person", e.target.value)} /></label>
+                      <label className="text-xs text-muted-foreground">Price per room ($)<input className={inputCls} type="number" step="0.01" value={tp.hotel_before.price_per_person} onChange={(e) => setHotel("price_per_person", e.target.value)} /></label>
                     </div>
                     <label className="text-xs text-muted-foreground">Included in the cruise price?<select className={inputCls} value={tp.hotel_before.included} onChange={(e) => setHotel("included", e.target.value)}><option value="">—</option><option value="yes">Yes, included</option><option value="no">No, add-on</option></select></label>
                   </>}

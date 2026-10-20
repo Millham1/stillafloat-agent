@@ -5,7 +5,7 @@ import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
   ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts, DIGITAL_CTA, QR_PROBLEM, ctaForFacebook, mentionsQr, withDisplayNames,
-  IMAGE_URL_MAX, ignoredPictureAnswers, pageLook, safeImageUrl } from "./group-marketing";
+  IMAGE_URL_MAX, ignoredPictureAnswers, pageLook, safeImageUrl, DEFAULT_HOST_NAMES, HOST_NAMES_MAX, PITCH_NOTE, WELCOME_RULES, cabinPrices, hostNames, priceUnitOf, priceUnitText, travelLabel } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -97,6 +97,7 @@ test("an unpublished rating never reaches the page", () => {
 
 function goodCopy(): GroupCopy {
   return {
+    welcome: "We put this week together for the Post, and we would love to sail it with you. Have a look around, then tell us you are in…",
     headline: "Post 12 goes to sea",
     subhead: "Seven nights out of Miami on Carnival Celebration, with the people you already like.",
     intro: "Robert asked me to put a week together for the Post, and this is the one I would pick.",
@@ -174,7 +175,7 @@ test("who_for may run to 900 characters (Mark's air/hotel and theme-park day mad
 
 test("the character limits of each copy field", () => {
   assert.deepEqual(Object.fromEntries(COPY_FIELDS.map((x) => [x.key, x.max])), {
-    headline: 220, subhead: 160, intro: 900, why_ship: 900, who_for: 900, organizer_note: 400,
+    welcome: 420, headline: 220, subhead: 160, intro: 900, why_ship: 900, who_for: 900, organizer_note: 400,
     cta_label: 40, cta_blurb: 220, email_subject: 90, email_body: 1400, social_post: 500,
   });
 });
@@ -231,7 +232,7 @@ test("a quote's '3 AMENITY POINTS' shorthand becomes a plain sentence on the pag
 });
 
 
-test("the group's air / hotel / transfer offer reads as plain lines (EN and ES); per-traveler rows are not the group's offer", () => {
+test("the group's air / hotel / transfer offer reads as plain lines (EN and ES) without a vendor name; per-traveler rows are not the group's offer", () => {
   const rows = [
     { kind: "flight", direction: "pre", provider: "Round trip from RDU", from_place: "Raleigh-Durham", price_per_person: 412, included: false, traveler_id: null, cabin_id: null },
     { kind: "hotel", direction: "pre", provider: "Hampton Inn Miami Airport", from_place: "Miami", reference: "1 night", price_per_person: "89.5", included: false, traveler_id: null, cabin_id: null },
@@ -240,14 +241,80 @@ test("the group's air / hotel / transfer offer reads as plain lines (EN and ES);
   ];
   const en = travelLines(rows, "en");
   assert.equal(en.length, 3, "the traveler's own flight is not the group's offer");
-  assert.equal(en[0]!.text, "Airfare from Raleigh-Durham (Round trip from RDU): $412 per person");
-  assert.equal(en[1]!.text, "Hotel the night before in Miami (Hampton Inn Miami Airport, 1 night): $89.50 per person");
-  assert.equal(en[2]!.text, "Transfer Hotel → Cruise port (MSC motorcoach): included in the cruise price");
+  assert.equal(en[0]!.text, "Flight from Raleigh-Durham: $412 per person");
+  assert.equal(en[1]!.text, "Hotel the night before in Miami (1 night): $89.50 per room", "a hotel with no unit of its own is per room");
+  assert.equal(en[2]!.text, "Hotel to Cruise port: included in the cruise price");
   const es = travelLines(rows, "es");
-  assert.match(es[0]!.text, /^Vuelos desde Raleigh-Durham/);
-  assert.match(es[2]!.text, /incluido en el precio del crucero$/);
+  assert.equal(es[0]!.text, "Vuelo desde Raleigh-Durham: $412 por persona");
+  assert.equal(es[1]!.text, "Hotel la noche anterior en Miami (1 noche): $89.50 por habitación");
+  assert.equal(es[2]!.text, "Hotel a puerto de cruceros: incluido en el precio del crucero");
+  // never the vendor: not the airline, the hotel or the transfer company, in either language, in any field of the line
+  for (const line of [...en, ...es]) for (const vendor of ["Round trip", "Hampton", "MSC motorcoach", "motorcoach"]) assert.ok(!JSON.stringify(line).includes(vendor), `${vendor} must not reach a client: ${JSON.stringify(line)}`);
+  assert.deepEqual(en.map((t) => [t.kind, t.label, t.priceText, t.priceUnit]), [
+    ["flight", "Flight from Raleigh-Durham", "$412", "person"], ["hotel", "Hotel the night before in Miami (1 night)", "$89.50", "room"], ["transfer", "Hotel to Cruise port", null, "person"]]);
 });
 
+test("travel labels: every kind and direction, with and without places, in both languages; a flight may name where it lands", () => {
+  const L = (r: Record<string, unknown>, lang: "en" | "es" = "en") => travelLabel(r, lang);
+  // flights
+  assert.equal(L({ kind: "flight", from_place: "Raleigh-Durham" }), "Flight from Raleigh-Durham");
+  assert.equal(L({ kind: "flight", from_place: "Raleigh-Durham", to_place: "Miami" }), "Flight from Raleigh-Durham to Miami");
+  assert.equal(L({ kind: "flight", to_place: "Miami" }), "Flight to Miami");
+  assert.equal(L({ kind: "flight" }), "Flight");
+  assert.equal(L({ kind: "flight", from_place: "Raleigh-Durham", to_place: "Miami" }, "es"), "Vuelo desde Raleigh-Durham a Miami");
+  assert.equal(L({ kind: "flight" }, "es"), "Vuelo");
+  // hotels: the night before is the default, after the cruise when the row says post
+  assert.equal(L({ kind: "hotel", direction: "pre", from_place: "Miami" }), "Hotel the night before in Miami");
+  assert.equal(L({ kind: "hotel", from_place: "Miami" }), "Hotel the night before in Miami", "no direction: the offer is the night before");
+  assert.equal(L({ kind: "hotel", direction: "post", from_place: "Miami", reference: "2 nights" }), "Hotel after the cruise in Miami (2 nights)");
+  assert.equal(L({ kind: "hotel", direction: "pre" }), "Hotel the night before");
+  assert.equal(L({ kind: "hotel", direction: "post", from_place: "Miami", reference: "1 night" }, "es"), "Hotel después del crucero en Miami (1 noche)");
+  assert.equal(L({ kind: "hotel", direction: "pre", from_place: "Miami", reference: "2 nights" }, "es"), "Hotel la noche anterior en Miami (2 noches)");
+  assert.equal(L({ kind: "hotel", direction: "pre", from_place: "Miami", reference: "Pool view" }, "es"), "Hotel la noche anterior en Miami (Pool view)", "Mark's own words are left as he typed them");
+  // transfers
+  assert.equal(L({ kind: "transfer", from_place: "Hotel", to_place: "Cruise port" }), "Hotel to Cruise port");
+  assert.equal(L({ kind: "transfer", from_place: "Cruise port", to_place: "Airport" }), "Cruise port to Airport");
+  assert.equal(L({ kind: "transfer", from_place: "Cruise port", to_place: "Airport" }, "es"), "Puerto de cruceros a aeropuerto");
+  assert.equal(L({ kind: "transfer", from_place: "Hotel", to_place: "Cruise port" }, "es"), "Hotel a puerto de cruceros");
+  assert.equal(L({ kind: "transfer", from_place: "Gran Hotel", to_place: "Muelle 4" }, "es"), "Gran Hotel a Muelle 4", "Mark's own place names are left as typed");
+  assert.equal(L({ kind: "transfer", from_place: "Hotel" }), "Transfer", "one end only: just the word");
+  assert.equal(L({ kind: "transfer" }, "es"), "Traslado");
+  // the provider is never read, whatever the kind
+  for (const kind of ["flight", "hotel", "transfer"]) {
+    for (const lang of ["en", "es"] as const) assert.ok(!L({ kind, provider: "Zzyzx Airways", from_place: "A", to_place: "B", reference: "x" }, lang).includes("Zzyzx"), `${kind} ${lang}`);
+  }
+});
+
+test("a travel price says what it is per: a hotel is per room, a flight and a transfer per person, an explicit unit wins (EN and ES)", () => {
+  assert.equal(priceUnitOf({ kind: "hotel" }), "room");
+  assert.equal(priceUnitOf({ kind: "flight" }), "person");
+  assert.equal(priceUnitOf({ kind: "transfer", price_unit: "person" }), "person");
+  assert.equal(priceUnitOf({ kind: "hotel", price_unit: "person" }), "person", "Mark can set a hotel back to per person");
+  assert.equal(priceUnitOf({ kind: "flight", price_unit: "room" }), "room");
+  assert.equal(priceUnitOf({ kind: "hotel", price_unit: "bogus" }), "room", "an unknown unit falls back to the kind's own");
+  assert.deepEqual(["person", "room"].flatMap((u) => (["en", "es"] as const).map((l) => priceUnitText(u as "person" | "room", l))), ["per person", "por persona", "per room", "por habitación"]);
+  const rows = [
+    { kind: "hotel", price_per_person: 125, price_unit: "room", included: false, from_place: "Miami", reference: "1 night" },
+    { kind: "transfer", price_per_person: 45, price_unit: "person", included: false, from_place: "Hotel", to_place: "Cruise port" },
+    { kind: "flight", price_per_person: 350, included: false, from_place: "Raleigh-Durham" },
+    { kind: "hotel", price_per_person: 99, included: false, from_place: "Fort Lauderdale" },
+    { kind: "hotel", price_per_person: null, included: false, from_place: "Tampa" },
+  ];
+  assert.deepEqual(travelLines(rows, "en").map((t) => t.text), [
+    "Hotel the night before in Miami (1 night): $125 per room",
+    "Hotel to Cruise port: $45 per person",
+    "Flight from Raleigh-Durham: $350 per person",
+    "Hotel the night before in Fort Lauderdale: $99 per room",
+    "Hotel the night before in Tampa: available, price on request",
+  ]);
+  assert.deepEqual(travelLines(rows.slice(0, 3), "es").map((t) => t.text), [
+    "Hotel la noche anterior en Miami (1 noche): $125 por habitación",
+    "Hotel a puerto de cruceros: $45 por persona",
+    "Vuelo desde Raleigh-Durham: $350 por persona",
+  ]);
+  // included wins over a price: nothing is "per" anything
+  assert.equal(travelLines([{ kind: "hotel", price_per_person: 125, included: true, from_place: "Miami" }], "en")[0]!.text, "Hotel the night before in Miami: included in the cruise price");
+});
 
 test("perks shown to guests come from the fare inclusions, never the organizer's amenities; the prompt names the tap-the-link call to action and the upgrades line and never the advisor", () => {
   const f = buildFacts({ group: { ...file().group, inclusions: ["Premium drinks package", " Wi-Fi, one device, first two guests "] }, cabins: [] }, null, "en");
@@ -324,21 +391,29 @@ test("a changed word is a missing sentence: tightening Mark's pitch is caught", 
   assert.equal(pitchCoverage("Dinner is on us.", "Dinner is on us, always."), 1);
 });
 
-test("validateCopy reports each pitch sentence that was not kept, on the intro; kept in the intro or the paragraphs after it, it passes", () => {
+test("a pitch sentence missing from the intro is a NOTE, never a problem: the page no longer shows the pitch, so it cannot stop approval (Mark 2026-10-20)", () => {
   const f = buildFacts(file(), rating, "en");
   const answers = { pitch: PITCH };
+  const pitchNotes = (copy: GroupCopy, a: Parameters<typeof copyNotes>[2] = answers) => copyNotes(copy, f, a).filter((n) => n.problem.startsWith(PITCH_NOTE));
   assert.deepEqual(validateCopy(withPitch(), f, answers), []);
+  assert.deepEqual(pitchNotes(withPitch()), [], "kept whole: nothing to say");
   // the pitch may run on into why_ship and who_for
-  assert.deepEqual(validateCopy(withPitch({ intro: "Four nights out of Miami with the people you already like.", why_ship: "Sunset on the beach, then a light show.", who_for: "Reply or scan the code and we will hold you a cabin." }), f, answers), []);
-  const p = validateCopy(withPitch({ intro: "Four nights out of Miami with the people you already like. A sunset, a show." }), f, answers);
-  assert.deepEqual(p.map((x) => [x.field, x.problem]), [
-    ["intro", "Pitch sentence not kept: 'Sunset on the beach, then a light show.'"],
-    ["intro", "Pitch sentence not kept: 'Reply or scan the code and we will hold you a cabin.'"],
-  ]);
-  // a sentence sitting only in the email or the post does not count as the page carrying the pitch
-  assert.equal(validateCopy(withPitch({ intro: "Hello there.", email_body: PITCH, social_post: PITCH }), f, answers).length, 3);
+  const spread = withPitch({ intro: "Four nights out of Miami with the people you already like.", why_ship: "Sunset on the beach, then a light show.", who_for: "Reply or scan the code and we will hold you a cabin." });
+  assert.deepEqual(validateCopy(spread, f, answers), []);
+  assert.deepEqual(pitchNotes(spread), []);
+  // sentences cut: no problem (approval is not blocked) and one note each, naming the sentence
+  const cut = withPitch({ intro: "Four nights out of Miami with the people you already like. A sunset, a show." });
+  assert.deepEqual(validateCopy(cut, f, answers), [], "a missing pitch sentence must not make the page unapprovable");
+  assert.deepEqual(pitchNotes(cut).map((x) => [x.field, x.problem.startsWith(`${PITCH_NOTE}: 'Sunset on the beach, then a light show.'`) || x.problem.startsWith(`${PITCH_NOTE}: 'Reply or scan the code and we will hold you a cabin.'`)]), [["intro", true], ["intro", true]]);
+  assert.ok(pitchNotes(cut).every((n) => /does not stop approval/.test(n.problem)));
+  // a sentence sitting only in the email or the post does not count as the paragraphs carrying the pitch (it is noted)
+  assert.equal(validateCopy(withPitch({ intro: "Hello there.", email_body: PITCH, social_post: PITCH }), f, answers).length, 0);
+  assert.equal(pitchNotes(withPitch({ intro: "Hello there.", email_body: PITCH, social_post: PITCH })).length, 3);
   // no pitch given (copy written before the rule): nothing to check
   assert.deepEqual(validateCopy(withPitch({ intro: "Hello there." }), f, {}), []);
+  assert.deepEqual(pitchNotes(withPitch({ intro: "Hello there." }), {}), []);
+  // every OTHER check still blocks on the same copy: the pitch's own numbers are still fact-checked
+  assert.deepEqual(validateCopy(withPitch({ intro: "Hello there." }), f, { pitch: "Bus leaves the Post at 6." }).map((x) => x.field), ["pitch"]);
 });
 
 test("the Spanish copy is a translation of Mark's English pitch, so it is not matched by sentence", () => {
@@ -442,16 +517,17 @@ test("the same words with only the closing mark changed are still his sentences:
   assert.deepEqual(missingPitchSentences(answers.pitch, SOFTENED), []);
 });
 
-test("a paraphrase is not his sentence: 'two amazing days' for 'two incredible days' is reported as not kept, and only that", () => {
+test("a paraphrase is not his sentence: 'two amazing days' for 'two incredible days' is noted as not kept, and only that; nothing blocks", () => {
   const f = buildFacts(file(), rating, "en");
-  const p = validateCopy(withPitch({ intro: SOFTENED }), f, { pitch: MARK_PITCH });
-  // only his second sentence is reported (the first has the same words, only its closing mark differs)...
-  assert.deepEqual(p.filter((x) => x.problem.startsWith("Pitch sentence not kept")).map((x) => [x.field, x.problem]), [[
-    "intro", "Pitch sentence not kept: 'Enjoy  all that Nassau has to offer, then spend two incredible days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse!'"]]);
-  // ...and nothing else: "amazing" and the closing marks are the register now, so the paraphrase is a cut, not a banned word
-  assert.deepEqual(p.filter((x) => !x.problem.startsWith("Pitch sentence not kept")).map((x) => x.problem), []);
+  const copy = withPitch({ intro: SOFTENED });
+  const p = validateCopy(copy, f, { pitch: MARK_PITCH });
+  assert.deepEqual(p, [], "the page does not show the pitch, so a paraphrase of it is not a problem");
+  // only his second sentence is noted (the first has the same words, only its closing mark differs)...
+  assert.deepEqual(copyNotes(copy, f, { pitch: MARK_PITCH }).filter((x) => x.problem.startsWith(PITCH_NOTE)).map((x) => [x.field, x.problem.split(" (the group page")[0]]), [[
+    "intro", `${PITCH_NOTE}: 'Enjoy  all that Nassau has to offer, then spend two incredible days at MSC's Ocean Cay, including an amazing evening beach party and light show from the island's lighthouse!'`]]);
   // it is the words that count, not just the banned ones: his 'incredible' dropped for a plain 'two days' is a cut too
-  assert.equal(validateCopy(withPitch({ intro: VERBATIM.replace("two incredible days", "two days") }), f, { pitch: MARK_PITCH }).filter((x) => x.problem.startsWith("Pitch sentence not kept")).length, 1);
+  assert.equal(copyNotes(withPitch({ intro: VERBATIM.replace("two incredible days", "two days") }), f, { pitch: MARK_PITCH }).filter((x) => x.problem.startsWith(PITCH_NOTE)).length, 1);
+  assert.equal(missingPitchSentences(MARK_PITCH, SOFTENED).length, 1, "the helper the campaign validator uses is unchanged");
 });
 
 test("the bans that remain still apply to the words WE write outside the pitch; his adjectives and marks do not trip them", () => {
@@ -544,6 +620,7 @@ const WALK = "Imagine shopping Nassau in the morning, watching the sunset from t
 /** Page copy for the Millham F/F 2027 file in Mark's register: no numbers but the file's, his pitch verbatim in the intro. */
 function seashoreCopy(): GroupCopy {
   return {
+    welcome: "We have wanted to sail this one together for a long time, and we hope you will be there with us. Look it over, then say you are in!",
     headline: WALK,
     subhead: "ALL ON THE SAME CRUISE!",
     intro: `${VERBATIM} Sailing May 9, 2027 on MSC Seashore from Port Canaveral, with the overnight at Ocean Cay.`,
@@ -617,22 +694,25 @@ test("one half of the arc is a scene detail, not the arc; a port in the pitch al
   assert.deepEqual(lw.ports, { names: ["Nassau", "Ocean Cay MSC Marine Reserve"], from: ["pitch sentence 1", "pitch sentence 2"] });
 });
 
+/** Only the notes about the walk-through sentence (the headline and its payoff). */
+const walkNotes = (copy: unknown, facts: Parameters<typeof copyNotes>[1], answers: Parameters<typeof copyNotes>[2]) => copyNotes(copy, facts, answers).filter((n) => n.field === "headline");
+
 test("the gentle check fires on the old walk-through (no beach party, no sunset) and stays quiet on a headline that names the event and the arc", () => {
   const f = seashoreFacts();
-  const old = copyNotes({ ...goodCopy(), headline: OLD_SUBHEAD, subhead: "" }, f, MARK_ANSWERS);
+  const old = walkNotes({ ...goodCopy(), headline: OLD_SUBHEAD, subhead: "" }, f, MARK_ANSWERS);
   assert.deepEqual(old, [
     { field: "headline", problem: "the walk-through sentence does not mention the beach party the pitch names" },
     { field: "headline", problem: 'the walk-through sentence does not carry the sunset-to-sunrise arc the why-sailing answer names (it needs both "sunset" and "sunrise")' },
   ]);
-  assert.deepEqual(copyNotes({ ...goodCopy(), headline: NEW_SUBHEAD }, f, MARK_ANSWERS), []);
-  assert.deepEqual(copyNotes(seashoreCopy(), f, MARK_ANSWERS), [], "the walk-through the writer should now produce, with its payoff under it");
+  assert.deepEqual(walkNotes({ ...goodCopy(), headline: NEW_SUBHEAD }, f, MARK_ANSWERS), []);
+  assert.deepEqual(walkNotes(seashoreCopy(), f, MARK_ANSWERS), [], "the walk-through the writer should now produce, with its payoff under it");
   // the payoff line under the headline counts as part of the lead
-  assert.deepEqual(copyNotes({ ...goodCopy(), headline: "Imagine an evening beach party under a lighthouse light show…", subhead: "Sunset to sunrise on one island!" }, f, MARK_ANSWERS), []);
+  assert.deepEqual(walkNotes({ ...goodCopy(), headline: "Imagine an evening beach party under a lighthouse light show…", subhead: "Sunset to sunrise on one island!" }, f, MARK_ANSWERS), []);
   // each of the event's words is looked for: the party without the light show names the light show
-  assert.deepEqual(copyNotes({ ...goodCopy(), headline: "A beach party, then sunset and sunrise on one island." }, f, MARK_ANSWERS).map((n) => n.problem),
+  assert.deepEqual(walkNotes({ ...goodCopy(), headline: "A beach party, then sunset and sunrise on one island." }, f, MARK_ANSWERS).map((n) => n.problem),
     ["the walk-through sentence does not mention the light show the pitch names"]);
   // the hand-made sample as written has the sunrise but not the sunset, so the gentle check says so (a note, never a block)
-  assert.deepEqual(copyNotes({ ...goodCopy(), headline: SAMPLE_HEADLINE, subhead: "ALL ON THE SAME CRUISE!" }, f, MARK_ANSWERS).map((n) => n.field), ["headline"]);
+  assert.deepEqual(walkNotes({ ...goodCopy(), headline: SAMPLE_HEADLINE, subhead: "ALL ON THE SAME CRUISE!" }, f, MARK_ANSWERS).map((n) => n.field), ["headline"]);
 });
 
 test("the gentle check is a note, never a problem: the old walk-through still passes validateCopy, so approval is not blocked", () => {
@@ -644,10 +724,11 @@ test("the gentle check is a note, never a problem: the old walk-through still pa
 
 test("the gentle check asks only what his answers name: no pitch moments, no note; Spanish and an empty headline are not checked", () => {
   const f = seashoreFacts();
-  assert.deepEqual(copyNotes({ ...goodCopy(), headline: OLD_SUBHEAD }, f, normalizeAnswers({ pitch: "Four nights out of Port Canaveral with the people you already like.", audience: "a", occasion: "b", why_sailing: "c" })), []);
-  assert.deepEqual(copyNotes({ ...goodCopy(), headline: OLD_SUBHEAD }, f, {}), []);
+  const walk = (copy: unknown, facts: ReturnType<typeof seashoreFacts>, answers: Parameters<typeof copyNotes>[2]) => copyNotes(copy, facts, answers).filter((n) => n.field === "headline");
+  assert.deepEqual(walk({ ...goodCopy(), headline: OLD_SUBHEAD }, f, normalizeAnswers({ pitch: "Four nights out of Port Canaveral with the people you already like.", audience: "a", occasion: "b", why_sailing: "c" })), []);
+  assert.deepEqual(walk({ ...goodCopy(), headline: OLD_SUBHEAD }, f, {}), []);
   assert.deepEqual(copyNotes({ ...goodCopy(), headline: OLD_SUBHEAD }, seashoreFacts("es"), MARK_ANSWERS), [], "Mark writes in English; the Spanish copy is a translation");
-  assert.deepEqual(copyNotes({ ...goodCopy(), headline: "" }, f, MARK_ANSWERS), [], "a missing headline is already a problem");
+  assert.deepEqual(walk({ ...goodCopy(), headline: "" }, f, MARK_ANSWERS), [], "a missing headline is already a problem");
   assert.deepEqual(copyNotes(null, f, MARK_ANSWERS), []);
 });
 
@@ -764,18 +845,6 @@ test("a digital piece that names a QR code fails; Mark's own pitch sentences and
 
 // ── The info page asks one thing: "I'm interested" (Mark 2026-10-19) ──────────
 
-test("the public facts carry no cabin list, no cabin count and no per-category price, only the single from-price", () => {
-  const facts = buildFacts({ ...file(), group: { ...file().group, inclusions: ["Drinks package"] } }, rating, "en");
-  const pub = publicFacts(facts, {});
-  for (const k of ["cabins", "cabinsAvailable", "cabinsTotal"]) assert.ok(!(k in pub), `the public facts must not carry ${k}`);
-  assert.equal(pub["fromPerPersonText"], "$849");
-  assert.deepEqual(pub["perks"], ["Drinks package"]);
-  assert.deepEqual(pub["planned"], []);
-  assert.ok(!JSON.stringify(pub).includes("$1,249"), "a per-category price leaked into the public facts");
-  assert.equal(publicFacts(facts, { show_prices: false })["fromPerPersonText"], null);
-  assert.equal(publicFacts(facts, { show_rating: false })["rating"], null);
-});
-
 test("'planned for the group' is copied from Mark's own words and never composed", () => {
   assert.deepEqual(plannedForGroup({ pitch: "Everyone gets a $25 onboard credit and a toast." }), ["$25 onboard credit"]);
   assert.deepEqual(plannedForGroup({ extras: "Each cabin gets an onboard credit of $50 per cabin." }), ["onboard credit of $50 per cabin"]);
@@ -829,11 +898,11 @@ function withSupabaseUrl<T>(url: string | undefined, fn: () => T): T {
   try { return fn(); } finally { if (before === undefined) delete process.env["SUPABASE_URL"]; else process.env["SUPABASE_URL"] = before; }
 }
 
-test("the interview has three optional look questions right after the call to action, and the old questions keep their order", () => {
+test("the interview has three optional look questions right after the call to action, then who the invitation is from, and the old questions keep their order", () => {
   const keys = INTERVIEW.map((q) => q.key);
   const i = keys.indexOf("cta_line");
   assert.deepEqual(keys.slice(i + 1, i + 4), ["taxes_included", "hero_photo", "host_photo"]);
-  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "tone", "show_prices", "show_rating"]);
+  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "host_names", "tone", "show_prices", "show_rating"]);
   const [taxes, hero, host] = [INTERVIEW[i + 1]!, INTERVIEW[i + 2]!, INTERVIEW[i + 3]!];
   assert.equal(taxes.type, "yesno"); assert.equal(taxes.fallback, false);
   assert.equal(taxes.label, "Do the quoted cabin prices include taxes and port fees?");
@@ -921,18 +990,18 @@ test("safeImageUrl takes the storage host from SUPABASE_URL, and falls back to t
 test("pageLook passes only validated values: nulls for anything absent or refused, a real boolean for taxes", () => {
   withSupabaseUrl(SUPABASE_BASE, () => {
     const good = pageLook(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxes_included: true }));
-    assert.deepEqual(good, { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxesIncluded: true });
-    assert.deepEqual(pageLook(normalizeAnswers({})), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false }, "nothing answered: nothing changes on the page");
-    assert.deepEqual(pageLook({}), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false }, "answers that were never normalised");
+    assert.deepEqual(good, { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxesIncluded: true, hostNames: "Mark" });
+    assert.deepEqual(pageLook(normalizeAnswers({})), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" }, "nothing answered: nothing changes on the page");
+    assert.deepEqual(pageLook({}), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" }, "answers that were never normalised");
     // each value stands on its own: a bad hero does not cost the hosts' photo, and the reverse
     const mixed = pageLook(normalizeAnswers({ hero_photo: "javascript:alert(1)", host_photo: "https://stillafloatcruising.com/h.jpg", taxes_included: true }));
-    assert.deepEqual(mixed, { heroUrl: null, hostPhotoUrl: "https://stillafloatcruising.com/h.jpg", taxesIncluded: true });
+    assert.deepEqual(mixed, { heroUrl: null, hostPhotoUrl: "https://stillafloatcruising.com/h.jpg", taxesIncluded: true, hostNames: "Mark" });
     assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: "http://stillafloatcruising.com/h.jpg" })),
-      { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: null, taxesIncluded: false });
+      { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" });
     for (const bad of ["https://example.com/h.jpg", 'https://stillafloatcruising.com/h.jpg")', "data:image/png;base64,AAAA", "https://stillafloatcruising.com/h (1).jpg"]) {
-      assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: bad, host_photo: bad })), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false }, bad);
+      assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: bad, host_photo: bad })), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark" }, bad);
     }
-    assert.deepEqual(Object.keys(pageLook({})).sort(), ["heroUrl", "hostPhotoUrl", "taxesIncluded"], "nothing else about the answers leaks into the look");
+    assert.deepEqual(Object.keys(pageLook({})).sort(), ["heroUrl", "hostNames", "hostPhotoUrl", "taxesIncluded"], "nothing else about the answers leaks into the look");
     assert.equal(typeof pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, "boolean");
     assert.equal(pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, false);
   });
@@ -953,4 +1022,158 @@ test("the digits in a picture link are not Mark's numbers: they never make a num
   assert.equal(pitchNumberProblems({ pitch }, f).length, 1);
   assert.equal(pitchNumberProblems(normalizeAnswers({ pitch, hero_photo: "https://stillafloatcruising.com/assets/images/777.jpg", host_photo: "https://stillafloatcruising.com/h-777.png" }), f).length, 1, "a link with 777 in it does not vouch for the price");
   assert.deepEqual(pitchNumberProblems(normalizeAnswers({ pitch, extras: "The bus costs $777 to hire." }), f), [], "his own words still do");
+});
+
+
+// ── The page opens on a short personal welcome (Mark 2026-10-20: "we already had this discussion") ────────────────────
+
+test("the welcome is a copy field: first, optional (copy written before it has none), at most 420 characters, plain text", () => {
+  const w = COPY_FIELDS.find((x) => x.key === "welcome")!;
+  assert.ok(w, "welcome is in COPY_FIELDS, so the dashboard's copy editor lists it");
+  assert.equal(w.max, 420); assert.equal(w.optional, true); assert.equal(w.long, true);
+  assert.equal(COPY_FIELDS[0]!.key, "welcome", "the first thing the page says is the first thing Mark reads");
+  const props = (COPY_SCHEMA as { properties: Record<string, { type: unknown }> }).properties;
+  assert.equal(props["welcome"]!.type, "string", "a new draft always carries one");
+  assert.deepEqual(props["organizer_note"]!.type, ["string", "null"], "the organizer's line is still optional");
+  const t = tidyCopy({ headline: "Hi", welcome: "  We are glad you are here.  \nSee you aboard…  " });
+  assert.equal(t.welcome, "We are glad you are here.\nSee you aboard…", "a line break is kept; a trailing space is not");
+  assert.equal(tidyCopy({ headline: "Hi" }).welcome, null, "old copy has none");
+  assert.equal(tidyCopy({ welcome: "   " }).welcome, null);
+});
+
+test("validateCopy: no welcome is fine (old copy); the welcome is held to the same length, markup, QR, number and banned-word rules as every other field", () => {
+  const f = buildFacts(file(), rating, "en");
+  assert.deepEqual(validateCopy({ ...goodCopy(), welcome: null }, f), [], "old copy has no welcome");
+  assert.deepEqual(validateCopy({ ...goodCopy(), welcome: "x".repeat(420) }, f), []);
+  assert.deepEqual(validateCopy({ ...goodCopy(), welcome: "x".repeat(421) }, f), [{ field: "welcome", problem: "too long: 421 of 420 characters — shorten it, or ask Mark" }]);
+  assert.deepEqual(validateCopy({ ...goodCopy(), welcome: "We are glad you are here.\nSee you aboard!" }, f), [], "line breaks and a closing ! are fine");
+  const bad = (welcome: string) => validateCopy({ ...goodCopy(), welcome }, f).filter((x) => x.field === "welcome").map((x) => x.problem);
+  assert.ok(bad("Say <b>hello</b>").includes("contains markup"));
+  assert.ok(bad("Scan the QR code and we will save you a spot").includes(QR_PROBLEM));
+  assert.ok(bad("We found a cabin for $799 a head").some((p) => /799/.test(p)), "a number that is not in the file");
+  assert.ok(bad("It is actually the best week of the year").some((p) => /actually/.test(p)));
+  assert.ok(bad("Join Mark for a week").some((p) => /Join Mark/.test(p)));
+  const es = buildFacts(file(), rating, "es");
+  assert.ok(validateCopy({ ...goodCopy(), welcome: "Únase a Mark en el barco" }, es).some((x) => x.field === "welcome"));
+  assert.deepEqual(validateCopy({ ...goodCopy(), welcome: "Nos encantaría navegar con usted… ¡Cuenten con nosotros!" }, es), []);
+});
+
+test("copyNotes on the welcome: missing, the headline or payoff again, a sentence of the pitch again, a price. Notes only, never problems", () => {
+  const f = buildFacts(file(), rating, "en");
+  const notes = (copy: Partial<GroupCopy>, answers: Parameters<typeof copyNotes>[2] = {}) => copyNotes({ ...goodCopy(), ...copy }, f, answers).filter((n) => n.field === "welcome").map((n) => n.problem);
+  assert.deepEqual(notes({}), [], "a welcome in new words says nothing");
+  assert.match(notes({ welcome: null })[0]!, /^there is no welcome note yet: the group page opens straight on the Count me in form/);
+  assert.match(notes({ welcome: "" })[0]!, /no welcome note yet/);
+  assert.match(notes({ welcome: "Hello, Post 12 goes to sea, and we are glad." })[0]!, /^repeats the headline/);
+  assert.match(notes({ subhead: "ALL ON THE SAME CRUISE!", welcome: "Come along for it all on the same cruise! We are glad." })[0]!, /^repeats the payoff line/);
+  assert.match(notes({ welcome: `Hi! ${PITCH.split(". ")[1]!}. Come along.` }, { pitch: PITCH })[0]!, /^repeats a sentence of Mark's pitch/);
+  assert.deepEqual(notes({ welcome: `Hi! ${PITCH.split(". ")[1]!}. Come along.` }, {}), [], "no pitch on the interview, nothing to repeat");
+  assert.match(notes({ welcome: "Cabins start at $849, so come along." })[0]!, /^names a price/);
+  // none of it blocks: the same copy validates
+  for (const welcome of [null, "Hello, Post 12 goes to sea, and we are glad.", "Cabins start at $849, so come along."]) assert.deepEqual(validateCopy({ ...goodCopy(), welcome }, f), [], String(welcome));
+  assert.deepEqual(copyNotes({ ...goodCopy(), welcome: null }, buildFacts(file(), rating, "es"), {}).map((n) => n.field), ["welcome"], "Spanish copy gets the missing-welcome note too");
+});
+
+test("the copy writer is told to write the welcome: first-person plural, Mark's register, new words, no price, no QR, 420 characters", () => {
+  const sys = systemPrompt("en");
+  for (const rule of WELCOME_RULES) assert.ok(sys.includes(rule), "the welcome rule is in the system prompt");
+  assert.ok(systemPrompt("es").includes(WELCOME_RULES[0]!), "and in the Spanish one");
+  const rule = WELCOME_RULES.join("\n");
+  assert.match(rule, /at most 420 characters/);
+  assert.match(rule, /First-person plural/);
+  assert.match(rule, /a capitalised payoff with \"!\" allowed/);
+  assert.match(rule, /these are NEW words: never the headline sentence, never the payoff line, never a sentence of Mark's pitch/);
+  assert.match(rule, /No prices/);
+  assert.match(rule, /no QR code/);
+  assert.match(userPrompt(buildFacts(file(), rating, "en"), {}), /The welcome is a short note in new words, not the headline or the pitch again/);
+});
+
+test("retryNote keeps the moments hint for the walk-through notes and says plainly what the other notes are", () => {
+  const r = retryNote([{ field: "who_for", problem: "missing" }], [
+    { field: "headline", problem: "the walk-through sentence does not mention the beach party the pitch names" },
+    { field: "welcome", problem: "names a price (prices are under Your cabin on the page)" },
+  ]);
+  assert.match(r, /And fix these too \(Mark wants them, though they do not block approval\); string the moments in <lead_with> into the one rising sentence:\n- headline: the walk-through/);
+  assert.match(r, /And these too \(Mark wants them, though they do not block approval\):\n- welcome: names a price/);
+  assert.doesNotMatch(retryNote([{ field: "who_for", problem: "missing" }], [{ field: "welcome", problem: "x" }]), /<lead_with>/);
+});
+
+// ── "Your cabin": the categories and what each starts at, names and prices only ─────────────────────────────
+
+test("cabinPrices: one line per category at its lowest per-person price among the cabins still open, cheapest first; names and prices only", () => {
+  const facts = buildFacts({ ...file(), cabins: [
+    ...file().cabins,
+    { status: "held", category: "Balcony", category_code: "8D", price_total: 2698, deposit_amount: 500 },                 // same category, dearer
+    { status: "held", category: "Suite", category_code: "S1", price_total: 4000, deposit_amount: 500 },
+    { status: "booked", category: "Suite", category_code: "S2", price_total: 3000, deposit_amount: 500 },                 // booked: not on offer
+    { status: "booked", category: "Oceanview", category_code: "6A", price_total: 1900, deposit_amount: 500 },             // all booked: category not listed
+    { status: "held", category: "Unpriced", category_code: "U1", price_total: null, deposit_amount: null },
+  ] }, rating, "en");
+  assert.deepEqual(cabinPrices(facts.cabins), [
+    { category: "Interior", perPersonText: "$849" }, { category: "Balcony", perPersonText: "$1,249" }, { category: "Suite", perPersonText: "$2,000" },
+  ]);
+  assert.deepEqual(cabinPrices([]), []);
+});
+
+test("the public facts carry the cabin categories and their from-prices, and still no cabin count, availability, code or deposit (Mark 2026-10-19 / 2026-10-20)", () => {
+  const facts = buildFacts({ ...file(), group: { ...file().group, inclusions: ["Drinks package"] } }, rating, "en");
+  const pub = publicFacts(facts, {});
+  for (const k of ["cabins", "cabinsAvailable", "cabinsTotal"]) assert.ok(!(k in pub), `the public facts must not carry ${k}`);
+  assert.deepEqual(pub["cabinPrices"], [{ category: "Interior", perPersonText: "$849" }, { category: "Balcony", perPersonText: "$1,249" }]);
+  assert.deepEqual((pub["cabinPrices"] as Array<Record<string, unknown>>).map((x) => Object.keys(x).sort()), [["category", "perPersonText"], ["category", "perPersonText"]], "names and prices, nothing else");
+  const json = JSON.stringify(pub);
+  for (const leak of ["8C", "4B", "deposit", "available", "$250", "$500"]) assert.ok(!json.includes(leak), `${leak} leaked into the public facts`);
+  assert.equal(pub["fromPerPersonText"], "$849");
+  assert.deepEqual(pub["perks"], ["Drinks package"]);
+  assert.deepEqual(pub["planned"], []);
+  // show_prices off: neither the from-price nor the category prices
+  const hidden = publicFacts(facts, { show_prices: false });
+  assert.equal(hidden["fromPerPersonText"], null); assert.deepEqual(hidden["cabinPrices"], []);
+  assert.equal(publicFacts(facts, { show_rating: false })["rating"], null);
+});
+
+test("the public travel lines carry the guest's wording and the price unit, and no provider anywhere", () => {
+  const facts = buildFacts({ ...file(), travel: [
+    { kind: "hotel", direction: "pre", provider: "Marriott Courtyard", from_place: "Miami", reference: "1 night", price_per_person: 125, price_unit: "room", included: false, traveler_id: null, cabin_id: null },
+    { kind: "transfer", direction: "pre", provider: "Limopedia", from_place: "Hotel", to_place: "Cruise port", price_per_person: 45, price_unit: "person", included: false, traveler_id: null, cabin_id: null },
+    { kind: "flight", direction: "pre", provider: "American", from_place: "RDU", price_per_person: 350, included: false, traveler_id: null, cabin_id: null },
+  ] }, rating, "en");
+  const pub = publicFacts(facts, {});
+  assert.deepEqual((pub["travel"] as Array<{ text: string }>).map((t) => t.text), [
+    "Hotel the night before in Miami (1 night): $125 per room", "Hotel to Cruise port: $45 per person", "Flight from RDU: $350 per person"]);
+  for (const vendor of ["Marriott", "Courtyard", "Limopedia", "American"]) {
+    assert.ok(!JSON.stringify(pub).includes(vendor), `${vendor} reached the public facts`);
+    assert.ok(!userPrompt(facts, {}).includes(vendor), `${vendor} reached the copy writer's prompt`);
+    assert.ok(!campaignUserPrompt(facts, {}, "https://stillafloatcruising.com/group.html?g=x").includes(vendor), `${vendor} reached the campaign writer's prompt`);
+  }
+  assert.match(userPrompt(facts, {}), /Getting there \(air, hotel before, transfers\): Hotel the night before in Miami \(1 night\): \$125 per room; Hotel to Cruise port: \$45 per person; Flight from RDU: \$350 per person/);
+  // the numbers the copy may state still include the travel prices
+  assert.ok(facts.allowedNumbers.includes("125") && facts.allowedNumbers.includes("45") && facts.allowedNumbers.includes("350"));
+});
+
+// ── The signature under the welcome ──────────────────────────────────────────────────────────────────────────
+
+test("hostNames: the interview's names as typed, one line, no markup characters, at most 80 characters; Mark when blank", () => {
+  assert.equal(DEFAULT_HOST_NAMES, "Mark");
+  assert.equal(hostNames({}), "Mark");
+  assert.equal(hostNames(normalizeAnswers({})), "Mark");
+  assert.equal(hostNames({ host_names: "   " }), "Mark");
+  assert.equal(hostNames({ host_names: "Mark & Ceci" }), "Mark & Ceci");
+  assert.equal(hostNames({ host_names: "  Mark   &\n Ceci " }), "Mark & Ceci", "one line");
+  assert.equal(hostNames({ host_names: "Mark <b>& Ceci</b>" }), "Mark b& Ceci/b");   // the page writes it as text; < and > are dropped anyway
+  assert.equal(hostNames({ host_names: "x".repeat(200) }).length, HOST_NAMES_MAX);
+  assert.equal(hostNames({ host_names: true }), "Mark", "not text: Mark");
+  assert.equal(pageLook(normalizeAnswers({ host_names: "Mark & Ceci" })).hostNames, "Mark & Ceci");
+});
+
+test("the interview asks who the invitation is from, optional, after the look questions", () => {
+  const q = INTERVIEW.find((x) => x.key === "host_names")!;
+  assert.ok(q, "host_names is in the interview");
+  assert.equal(q.type, "text"); assert.notEqual(q.required, true);
+  assert.equal(q.label, "Who is the invitation from? (e.g. Mark & Ceci)");
+  assert.match(q.hint ?? "", /Signs the short welcome note/);
+  assert.match(q.hint ?? "", /Left blank, it is signed Mark/);
+  assert.equal(normalizeAnswers({ host_names: " Mark & Ceci " })["host_names"], "Mark & Ceci");
+  assert.equal(normalizeAnswers({})["host_names"], "");
+  assert.deepEqual(missingAnswers(normalizeAnswers({ pitch: "Come along.", audience: "a", occasion: "b", why_sailing: "c" })), [], "no new required question");
 });

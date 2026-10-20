@@ -131,7 +131,8 @@ const TRAVEL_SCHEMA = {
       properties: { included: { type: ["boolean", "null"] }, description: nullable("string"), from_city: nullable("string"), price_per_person: nullable("number") },
       required: ["included", "description", "from_city", "price_per_person"] },
     hotel_before: { type: ["object", "null"], additionalProperties: false,
-      properties: { included: { type: ["boolean", "null"] }, name: nullable("string"), city: nullable("string"), nights: nullable("integer"), price_per_person: nullable("number") },
+      properties: { included: { type: ["boolean", "null"] }, name: nullable("string"), city: nullable("string"), nights: nullable("integer"),
+        price_per_person: { ...nullable("number"), description: "The hotel price exactly as printed. A hotel is priced per ROOM, not per guest: do not divide it by the number of guests" } },
       required: ["included", "name", "city", "nights", "price_per_person"] },
     transfers: { type: "array", items: { type: "object", additionalProperties: false,
       properties: { route: { type: "string", enum: TRANSFER_ROUTES }, included: { type: ["boolean", "null"] }, provider: nullable("string"), price_per_person: nullable("number") },
@@ -470,18 +471,19 @@ export function travelRowsFromExtraction(x: BookingExtraction): Array<Record<str
   const tp = x.travel_package;
   if (!tp) return [];
   const rows: Array<Record<string, unknown>> = [];
-  const money = (n: number | null) => (n === null ? "" : ` · $${n.toFixed(2)} per person`);
+  // A hotel night is priced per room (Mark 2026-10-20), a flight and a transfer per person.
+  const money = (n: number | null, unit: "person" | "room" = "person") => (n === null ? "" : ` · $${n.toFixed(2)} per ${unit}`);
   const incl = (b: boolean | null) => (b === true ? "included in the quote" : b === false ? "offered, not included" : "see the quote");
   if (tp.air) rows.push({ kind: "flight", direction: "pre", provider: tp.air.description, from_place: tp.air.from_city, to_place: null,
-    price_per_person: tp.air.price_per_person, included: tp.air.included === true, source: "quote", notes: `Air: ${incl(tp.air.included)}${money(tp.air.price_per_person)}` });
+    price_per_person: tp.air.price_per_person, price_unit: "person", included: tp.air.included === true, source: "quote", notes: `Air: ${incl(tp.air.included)}${money(tp.air.price_per_person)}` });
   if (tp.hotel_before) rows.push({ kind: "hotel", direction: "pre", provider: tp.hotel_before.name, from_place: tp.hotel_before.city, to_place: null,
     reference: tp.hotel_before.nights ? `${tp.hotel_before.nights} night${tp.hotel_before.nights === 1 ? "" : "s"}` : null,
-    price_per_person: tp.hotel_before.price_per_person, included: tp.hotel_before.included === true, source: "quote", notes: `Hotel before the cruise: ${incl(tp.hotel_before.included)}${money(tp.hotel_before.price_per_person)}` });
+    price_per_person: tp.hotel_before.price_per_person, price_unit: "room", included: tp.hotel_before.included === true, source: "quote", notes: `Hotel before the cruise: ${incl(tp.hotel_before.included)}${money(tp.hotel_before.price_per_person, "room")}` });
   const place = (p: string) => ({ airport: "Airport", hotel: "Hotel", port: "Cruise port" }[p] ?? p);
   for (const t of tp.transfers) {
     const [from, to] = t.route.split("_to_") as [string, string];
     rows.push({ kind: "transfer", direction: from === "port" ? "post" : "pre", provider: t.provider, from_place: place(from), to_place: place(to),
-      price_per_person: t.price_per_person, included: t.included === true, source: "quote", notes: `Transfer ${place(from).toLowerCase()} → ${place(to).toLowerCase()}: ${incl(t.included)}${money(t.price_per_person)}` });
+      price_per_person: t.price_per_person, price_unit: "person", included: t.included === true, source: "quote", notes: `Transfer ${place(from).toLowerCase()} → ${place(to).toLowerCase()}: ${incl(t.included)}${money(t.price_per_person)}` });
   }
   return rows;
 }
@@ -656,7 +658,7 @@ async function readBySection(text: string, kind: "group" | "individual", ask: As
   // Air, hotel before, transfers — only asked when the document has lines about them.
   const travel = s.travel ? await ask<Record<string, unknown>>("air, hotel and transfers", s.travel,
     `Fill in travel_package from these lines: air (included true/false when the document says so, description as printed, from_city, price_per_person), ` +
-    `hotel_before (the hotel the night before the cruise: name, city, nights, price_per_person, included), transfers (one entry per transfer the document offers: ` +
+    `hotel_before (the hotel the night before the cruise: name, city, nights, price_per_person, included; a hotel is priced per ROOM, so give the price as printed and never divide it by the guests), transfers (one entry per transfer the document offers: ` +
     `route one of airport_to_hotel, hotel_to_port, airport_to_port, port_to_airport, port_to_hotel; included; provider; price_per_person). ` +
     `If the lines do not describe air, a hotel or transfers, return travel_package as null.`,
     pick(BOOKING_SCHEMA, ["travel_package"]), 500) : null;

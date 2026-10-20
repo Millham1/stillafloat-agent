@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CHILDREN, GROUP_COLUMNS, groupDateProblem, looksLikeCardNumber, missingSchedule, pickWritable, publicGroupRow, slugify, summarize, withGroupDeposit, type GroupFile } from "./group-file";
+import { CHILDREN, GROUP_COLUMNS, groupDateProblem, looksLikeCardNumber, missingSchedule, pickWritable, publicGroupRow, slugify, summarize, withGroupDeposit, withTravelUnit, PRICE_UNITS, type GroupFile } from "./group-file";
 
 test("slugify makes a url-safe slug", () => {
   assert.equal(slugify("American Legion Post 12 — Alaska 2027"), "american-legion-post-12-alaska-2027");
@@ -259,4 +259,27 @@ test("a file that already holds a wrong date can still have its other fields edi
   assert.equal(groupDateProblem({ names_due: "2027-02-01" }, bad), null, "only what is being written is checked");
   assert.equal(groupDateProblem({ sail_date: "2027-05-09", recall_date: "2027-04-01" }, bad), null, "same sail date re-saved while the fix goes in");
   assert.equal(groupDateProblem({ recall_date: "2027-04-01" }, bad), null);
+});
+
+
+test("a travel price says what it is per: price_unit is writable, a hotel defaults to per room, an unknown unit is refused (Mark 2026-10-20: hotel prices are per room)", () => {
+  const cols = CHILDREN["travel"]!.columns;
+  assert.ok(cols.includes("price_unit"), "the dashboard's travel editor can set the unit");
+  assert.deepEqual([...PRICE_UNITS], ["person", "room"]);
+  const picked = pickWritable(cols, { kind: "hotel", price_per_person: 125, price_unit: "room", provider: "Marriott Courtyard", hacked: 1 });
+  assert.ok(picked.ok && picked.row["price_unit"] === "room" && !("hacked" in picked.row));
+  // a row saved as a hotel with no unit of its own is per room; a flight or a transfer is left to the column's default (person)
+  assert.deepEqual(withTravelUnit("travel", { kind: "hotel", from_place: "Miami" }), { ok: true, row: { kind: "hotel", from_place: "Miami", price_unit: "room" } });
+  assert.deepEqual(withTravelUnit("travel", { kind: "flight" }), { ok: true, row: { kind: "flight" } });
+  assert.deepEqual(withTravelUnit("travel", { price_per_person: 99 }), { ok: true, row: { price_per_person: 99 } }, "a price edit alone does not touch the unit");
+  // Mark's own choice wins, even for a hotel
+  assert.deepEqual(withTravelUnit("travel", { kind: "hotel", price_unit: "person" }), { ok: true, row: { kind: "hotel", price_unit: "person" } });
+  assert.deepEqual(withTravelUnit("travel", { price_unit: "room" }), { ok: true, row: { price_unit: "room" } });
+  // anything that is not a unit is refused by name instead of reaching the database's check constraint
+  const bad = withTravelUnit("travel", { kind: "hotel", price_unit: "night" });
+  assert.equal(bad.ok, false);
+  assert.match((bad as { error: string }).error, /person or room/);
+  assert.equal(withTravelUnit("travel", { price_unit: null }).ok, false, "the column is never empty");
+  // other sections are never touched
+  assert.deepEqual(withTravelUnit("cabins", { kind: "hotel" }), { ok: true, row: { kind: "hotel" } });
 });

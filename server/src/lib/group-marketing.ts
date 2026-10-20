@@ -70,6 +70,8 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "taxes_included", type: "yesno", label: "Do the quoted cabin prices include taxes and port fees?", fallback: false, hint: "Yes: the page says the price is per person with taxes and port fees included. No: the page keeps its usual line, that the price, taxes, fees and port expenses are confirmed in writing when they book." },
   { key: "hero_photo", type: "text", label: "Top picture for the group page (link, optional)", hint: "Replaces the site's generic picture at the top of the page. Paste the link of a picture kept on stillafloatcruising.com or in the site's own storage; a link anywhere else is ignored. Left blank, the page keeps the usual picture." },
   { key: "host_photo", type: "text", label: "Photo of the hosts, shown small in the top-right corner (link, optional)", hint: "A small framed photo of the hosts in the top-right corner of the top picture. Same rule: a link on stillafloatcruising.com or in the site's own storage. Left blank, no photo is shown." },
+  // Mark 2026-10-20 ("we already had this discussion"): the page opens on a short personal welcome from the hosts, signed with these names.
+  { key: "host_names", type: "text", label: "Who is the invitation from? (e.g. Mark & Ceci)", hint: "Signs the short welcome note at the top of the group page, exactly as you type it. Left blank, it is signed Mark." },
   { key: "tone", type: "choice", label: "Tone", fallback: "warm-humor",
     choices: [
       { value: "warm-humor", label: "Warm, with a little humor (the usual)" },
@@ -164,11 +166,23 @@ export function safeImageUrl(u: unknown): string | null {
   return null;
 }
 
-export interface PageLook { heroUrl: string | null; hostPhotoUrl: string | null; taxesIncluded: boolean }
+export interface PageLook { heroUrl: string | null; hostPhotoUrl: string | null; taxesIncluded: boolean; hostNames: string }
 
-/** What the interview says about how the public page looks, reduced to values the page may use: validated picture links (null when absent or refused) and a real boolean. */
+/** Who signs the welcome note when the interview does not say. */
+export const DEFAULT_HOST_NAMES = "Mark";
+/** The longest signature kept. */
+export const HOST_NAMES_MAX = 80;
+
+/** The signature under the welcome note: the interview's `host_names` as typed (one line, no markup characters), else "Mark". */
+export function hostNames(answers: Record<string, string | boolean>): string {
+  const raw = typeof answers["host_names"] === "string" ? answers["host_names"] : "";
+  const clean = raw.replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, HOST_NAMES_MAX).trim();
+  return clean || DEFAULT_HOST_NAMES;
+}
+
+/** What the interview says about how the public page looks, reduced to values the page may use: validated picture links (null when absent or refused), a real boolean, and the signature. */
 export function pageLook(answers: Record<string, string | boolean>): PageLook {
-  return { heroUrl: safeImageUrl(answers["hero_photo"]), hostPhotoUrl: safeImageUrl(answers["host_photo"]), taxesIncluded: answers["taxes_included"] === true };
+  return { heroUrl: safeImageUrl(answers["hero_photo"]), hostPhotoUrl: safeImageUrl(answers["host_photo"]), taxesIncluded: answers["taxes_included"] === true, hostNames: hostNames(answers) };
 }
 
 /** The picture-link answers that are filled in but are not accepted (the dashboard says so, because the page quietly shows nothing for them). */
@@ -328,7 +342,65 @@ export interface GroupFacts {
   allowedNumbers: string[];
 }
 
-export interface TravelLine { kind: "flight" | "hotel" | "transfer"; text: string; included: boolean; priceText: string | null }
+/** What a travel price is per. A hotel night is priced per room (Mark 2026-10-20); a flight or a transfer is per person. */
+export type PriceUnit = "person" | "room";
+
+export interface TravelLine {
+  kind: "flight" | "hotel" | "transfer";
+  /** The whole line a guest reads: the label, then the price (or "included in the cruise price"). */
+  text: string;
+  /** The line without its price: what it is and where, never the vendor (Mark 2026-10-20: no vendor names on client pieces). */
+  label: string;
+  included: boolean;
+  priceText: string | null;
+  priceUnit: PriceUnit;
+}
+
+/** The unit a travel row's price is per: its own `price_unit` when it has one, else per room for a hotel and per person for anything else. */
+export function priceUnitOf(r: Row): PriceUnit {
+  if (r.price_unit === "room" || r.price_unit === "person") return r.price_unit;
+  return r.kind === "hotel" ? "room" : "person";
+}
+
+/** "per person" / "per room" (ES "por persona" / "por habitación"). */
+export function priceUnitText(unit: PriceUnit, lang: Lang): string {
+  if (lang === "es") return unit === "room" ? "por habitación" : "por persona";
+  return unit === "room" ? "per room" : "per person";
+}
+
+/** The reader and the dashboard write these three places in English ("Airport", "Hotel", "Cruise port"); the Spanish page says them in Spanish. Anything else is Mark's own text and is left as typed. */
+const PLACE_ES: Record<string, string> = { airport: "Aeropuerto", hotel: "Hotel", "cruise port": "Puerto de cruceros" };
+function placeText(place: unknown, lang: Lang, midLine = false): string {
+  const p = typeof place === "string" ? place.trim() : "";
+  const known = lang === "es" ? PLACE_ES[p.toLowerCase()] : undefined;
+  return known ? (midLine ? known.toLowerCase() : known) : p;   // "Hotel a puerto de cruceros": a place we name ourselves is not capitalised after "a"
+}
+
+/** "1 night" is how the reader and the dashboard write a hotel stay; the Spanish page says "1 noche". */
+function stayText(reference: unknown, lang: Lang): string {
+  const ref = typeof reference === "string" ? reference.trim() : "";
+  const m = lang === "es" ? /^(\d+)\s+nights?$/i.exec(ref) : null;
+  return m ? `${m[1]} ${m[1] === "1" ? "noche" : "noches"}` : ref;
+}
+
+/**
+ * What a travel row is, in the guest's words and without the vendor: never the airline, hotel or transfer company in `provider`
+ * (Mark 2026-10-20: "no vendor names on client pieces"). A flight is "Flight from {from}" (and " to {to}"), a hotel is "Hotel the night
+ * before in {city}" or "Hotel after the cruise in {city}" (with its stay, "1 night", when the row has one), a transfer is "{from} to {to}".
+ */
+export function travelLabel(r: Row, lang: Lang): string {
+  const es = lang === "es";
+  const from = placeText(r.from_place, lang), to = placeText(r.to_place, lang, true);
+  if (r.kind === "flight") {
+    return (es ? "Vuelo" : "Flight") + (from ? ` ${es ? "desde" : "from"} ${from}` : "") + (to ? ` ${es ? "a" : "to"} ${to}` : "");
+  }
+  if (r.kind === "hotel") {
+    const when = r.direction === "post" ? (es ? "Hotel después del crucero" : "Hotel after the cruise") : (es ? "Hotel la noche anterior" : "Hotel the night before");
+    const stay = stayText(r.reference, lang);
+    return when + (from ? ` ${es ? "en" : "in"} ${from}` : "") + (stay ? ` (${stay})` : "");
+  }
+  return from && to ? `${from} ${es ? "a" : "to"} ${to}` : es ? "Traslado" : "Transfer";
+}
 
 /** Plain lines for the group's air / hotel / transfer offer, from group_travel rows with no traveler or cabin. */
 export function travelLines(rows: readonly Row[], lang: Lang): TravelLine[] {
@@ -341,12 +413,10 @@ export function travelLines(rows: readonly Row[], lang: Lang): TravelLine[] {
     const price = typeof r.price_per_person === "number" ? r.price_per_person : (typeof r.price_per_person === "string" && r.price_per_person !== "" ? Number(r.price_per_person) : null);
     const priceText = price !== null && Number.isFinite(price) ? formatMoney(price) : null;
     const included = r.included === true;
-    const tail = included ? (es ? "incluido en el precio del crucero" : "included in the cruise price") : priceText ? (es ? `${priceText} por persona` : `${priceText} per person`) : (es ? "disponible, precio a confirmar" : "available, price on request");
-    let text: string;
-    if (kind === "flight") text = (es ? "Vuelos" : "Airfare") + (r.from_place ? ` ${es ? "desde" : "from"} ${r.from_place}` : "") + (r.provider ? ` (${r.provider})` : "") + `: ${tail}`;
-    else if (kind === "hotel") text = (es ? "Hotel la noche anterior" : "Hotel the night before") + (r.from_place ? ` ${es ? "en" : "in"} ${r.from_place}` : "") + (r.provider ? ` (${r.provider}${r.reference ? `, ${r.reference}` : ""})` : r.reference ? ` (${r.reference})` : "") + `: ${tail}`;
-    else text = (es ? "Traslado" : "Transfer") + (r.from_place && r.to_place ? ` ${r.from_place} → ${r.to_place}` : "") + (r.provider ? ` (${r.provider})` : "") + `: ${tail}`;
-    out.push({ kind, text, included, priceText });
+    const priceUnit = priceUnitOf(r);
+    const tail = included ? (es ? "incluido en el precio del crucero" : "included in the cruise price") : priceText ? `${priceText} ${priceUnitText(priceUnit, lang)}` : (es ? "disponible, precio a confirmar" : "available, price on request");
+    const label = travelLabel(r, lang);
+    out.push({ kind, text: `${label}: ${tail}`, label, included, priceText, priceUnit });
   }
   return out;
 }
@@ -509,9 +579,24 @@ function collectNumbers(f: GroupFacts, g: Row): string[] {
 }
 
 /**
- * What the public page may see. No ids, no organizer contact, no internal notes, and no cabin availability or per-category
- * prices: the page only asks "I'm interested", and Mark decides which cabin once he has spoken to them (Mark 2026-10-19:
- * "why would they see the available cabins before I know they are interested").
+ * The cabin categories a visitor sees under "Your cabin" (Mark 2026-10-20: the page shows the categories and what each starts at): one line per
+ * category with the lowest per-person price (double occupancy) of the cabins still open in it. Names and prices only. Never a count of cabins
+ * left or booked, a cabin number, a code or a deposit: Mark chooses the cabin once he has spoken to them (Mark 2026-10-19: "why would they see
+ * the available cabins before I know they are interested").
+ */
+export function cabinPrices(cabins: readonly CabinOffer[]): Array<{ category: string; perPersonText: string }> {
+  const best = new Map<string, CabinOffer>();
+  for (const c of cabins) {
+    if (c.perPerson === null || !c.perPersonText || c.available < 1) continue;
+    const have = best.get(c.category);
+    if (!have || c.perPerson < have.perPerson!) best.set(c.category, c);
+  }
+  return [...best.values()].sort((a, b) => a.perPerson! - b.perPerson!).map((c) => ({ category: c.category, perPersonText: c.perPersonText! }));
+}
+
+/**
+ * What the public page may see. No ids, no organizer contact, no internal notes, and no cabin availability: the categories and their
+ * from-prices (`cabinPrices`, names and prices only) are shown under "Your cabin", and Mark decides which cabin once he has spoken to them.
  */
 export function publicFacts(f: GroupFacts, answers: Record<string, string | boolean>): Row {
   const showPrices = answers["show_prices"] !== false;
@@ -521,6 +606,7 @@ export function publicFacts(f: GroupFacts, answers: Record<string, string | bool
     travel: f.travel, perks: f.perks, planned: plannedForGroup(answers),
     ports: f.ports, itinerary: f.itinerary, amenities: f.amenities,
     fromPerPersonText: showPrices ? f.fromPerPersonText : null,
+    cabinPrices: showPrices ? cabinPrices(f.cabins) : [],
     bookByText: f.bookByText, finalPaymentText: f.finalPaymentText,
     rating: answers["show_rating"] !== false ? f.rating : null,
     markSailing: answers["mark_sailing"] === true,
@@ -530,6 +616,8 @@ export function publicFacts(f: GroupFacts, answers: Record<string, string | bool
 // ── Copy ──────────────────────────────────────────────────────────────────────
 
 export interface GroupCopy {
+  /** The short personal note from the hosts that opens the group page (Mark 2026-10-20). Null on copy written before it existed. */
+  welcome: string | null;
   headline: string;
   subhead: string;
   intro: string;
@@ -544,6 +632,10 @@ export interface GroupCopy {
 }
 
 export const COPY_FIELDS: Array<{ key: keyof GroupCopy; label: string; max: number; long?: boolean; optional?: boolean }> = [
+  // Mark 2026-10-20 ("we already had this discussion"): the person who opens the group page has just read the poster, the Facebook post or the
+  // email, so the page opens on a short personal welcome from the hosts, then the Count me in form. The headline, subhead, intro, why_ship and
+  // who_for stay in the file (the poster and the other pieces use them) but the page does not show them.
+  { key: "welcome", label: "Welcome note from the hosts (opens the group page)", max: 420, long: true, optional: true },
   // Mark 2026-10-19: the headline IS the walk-through sentence ("Imagine ... then ... sunrise…"), one rising sentence through his moments, so it is
   // long (220, was 90 for a four-word hook); the line under it is the capitalised payoff ("ALL ON THE SAME CRUISE!").
   { key: "headline", label: "Headline (the one rising sentence through the moments)", max: 220 },
@@ -562,10 +654,20 @@ export const COPY_FIELDS: Array<{ key: keyof GroupCopy; label: string; max: numb
   { key: "social_post", label: "Post for the group's own Facebook or chat", max: 500, long: true },
 ];
 
+/**
+ * The words the public group page is handed: the welcome, the organizer's line and the button's words. Never the headline, the payoff, the intro,
+ * why_ship or who_for (Mark 2026-10-20: the person arriving has just read them on the poster, the post or the email, so the page does not repeat
+ * them). They stay in the file for the poster and the other pieces; the page is simply not given them, so it cannot show them.
+ */
+export function publicCopy(copy: GroupCopy): Pick<GroupCopy, "welcome" | "organizer_note" | "cta_label" | "cta_blurb"> {
+  return { welcome: copy.welcome, organizer_note: copy.organizer_note, cta_label: copy.cta_label, cta_blurb: copy.cta_blurb };
+}
+
 export const COPY_SCHEMA: Record<string, unknown> = {
   type: "object",
   additionalProperties: false,
-  properties: Object.fromEntries(COPY_FIELDS.map((f) => [f.key, f.optional ? { type: ["string", "null"] } : { type: "string" }])),
+  // `welcome` is optional only for copy written before it existed; a new draft always carries one.
+  properties: Object.fromEntries(COPY_FIELDS.map((f) => [f.key, f.optional && f.key !== "welcome" ? { type: ["string", "null"] } : { type: "string" }])),
   required: COPY_FIELDS.map((f) => f.key),
 };
 
@@ -878,33 +980,57 @@ export function validateCopy(copy: unknown, facts: GroupFacts, answers: Record<s
     }
     if (/[<>]/.test(v)) problems.push({ field: f.key, problem: "contains markup" });
   }
-  // Built around the pitch: every sentence of it is in the opening copy, word for word. Mark writes in English,
-  // so only the English copy can be checked sentence by sentence; the Spanish copy is told to translate it whole.
-  if (pitch) {
-    if (facts.lang === "en") {
-      const body = PITCH_FIELDS.map((k) => (typeof c[k] === "string" ? (c[k] as string) : "")).join("\n");
-      for (const sent of missingPitchSentences(pitch, body)) problems.push({ field: "intro", problem: `Pitch sentence not kept: '${sent}'` });
-    }
-    problems.push(...pitchNumberProblems(answers, facts));
-  }
+  // Mark's pitch is fact-checked like everything else. Whether every sentence of it is word for word in the intro, why_ship and who_for is no
+  // longer a problem: the group page does not show those paragraphs any more (Mark 2026-10-20: the person arriving has just read the pitch on
+  // the poster, the post or the email), so it cannot stop the page being approved. It is a note now (`copyNotes`); the campaign keeps its own rule.
+  if (pitch) problems.push(...pitchNumberProblems(answers, facts));
   return problems;
 }
 
+/** The wording of a pitch sentence that is not in the paragraphs, so the dashboard and the retry recognise it. */
+export const PITCH_NOTE = "Pitch sentence not kept";
+
 /**
- * What Mark should see but what does not stop him approving (a "note", where a problem blocks): the walk-through sentence (the
- * headline, with the payoff line under it) does not carry the moments his answers name. Mark 2026-10-19: the writer's line had the light show
- * but not the beach party, and the sunrise but not the sunset, so the event read as an aside. It is a nudge to read the line again,
- * never a rule the copy fails: only English is checked (Mark writes in English; the Spanish copy is a translation), and a field
- * that is missing is already a problem.
+ * What Mark should see but what does not stop him approving (a "note", where a problem blocks):
+ *  - the welcome note is missing, or repeats the headline, the payoff or a sentence of his pitch, or names a price: the reader has just read all
+ *    of those on the poster, the post or the email, so the welcome is new words and the prices are under "Your cabin" (Mark 2026-10-20);
+ *  - a sentence of his pitch is not word for word in the intro / why_ship / who_for. The page no longer shows those paragraphs, so this cannot
+ *    stop it going live, but the writer was told to keep them whole and he may want to know (English only: Mark writes in English and the
+ *    Spanish copy is a translation);
+ *  - the walk-through sentence (the headline, with the payoff line under it) does not carry the moments his answers name. Mark 2026-10-19: the
+ *    writer's line had the light show but not the beach party, and the sunrise but not the sunset, so the event read as an aside.
+ * A note is a nudge to read the line again, never a rule the copy fails; a field that is missing is already a problem.
  */
 export function copyNotes(copy: unknown, facts: Pick<GroupFacts, "lang" | "ports">, answers: Record<string, string | boolean> = {}): CopyProblem[] {
-  if (facts.lang !== "en") return [];
-  const c = (copy && typeof copy === "object" ? copy : {}) as Row;
+  if (!copy || typeof copy !== "object") return [];
+  const c = copy as Row;
   const str = (k: string) => (typeof c[k] === "string" ? (c[k] as string) : "");
-  const line = [str("headline"), str("subhead")].filter((x) => x.trim()).join(" ");
-  if (!str("headline").trim()) return [];
-  const lw = leadWith(answers, facts);
   const notes: CopyProblem[] = [];
+  const pitch = typeof answers["pitch"] === "string" ? answers["pitch"].trim() : "";
+
+  const welcome = str("welcome").trim();
+  if (!welcome) {
+    notes.push({ field: "welcome", problem: "there is no welcome note yet: the group page opens straight on the Count me in form. Write one, or rewrite the copy" });
+  } else {
+    const hay = squash(welcome);
+    for (const k of ["headline", "subhead"] as const) {
+      const n = needle(str(k));
+      if (n.length >= 12 && hasPhrase(hay, n)) notes.push({ field: "welcome", problem: `repeats the ${k === "headline" ? "headline" : "payoff line"}, which the reader has just seen on the poster, the post or the email: use new words` });
+    }
+    if (pitch && pitchSentences(pitch).some((sent) => { const n = needle(sent); return n.length >= 12 && hasPhrase(hay, n); })) {
+      notes.push({ field: "welcome", problem: "repeats a sentence of Mark's pitch, which the reader has just seen: use new words" });
+    }
+    if (/[$€£]/.test(welcome)) notes.push({ field: "welcome", problem: "names a price (prices are under Your cabin on the page)" });
+  }
+
+  if (facts.lang !== "en") return notes;
+  if (pitch) {
+    const body = PITCH_FIELDS.map((k) => str(k)).join("\n");
+    for (const sent of missingPitchSentences(pitch, body)) notes.push({ field: "intro", problem: `${PITCH_NOTE}: '${sent}' (the group page no longer shows the intro, so this does not stop approval)` });
+  }
+  const line = [str("headline"), str("subhead")].filter((x) => x.trim()).join(" ");
+  if (!str("headline").trim()) return notes;
+  const lw = leadWith(answers, facts);
   if (lw.event) {
     const lacking = lw.event.terms.filter((t) => !mentions(line, EVENT_LEX.find((l) => l.term === t)!));
     if (lacking.length) notes.push({ field: "headline", problem: `the walk-through sentence does not mention the ${lacking.join(" / ")} the ${lw.event.from.some((f) => f.startsWith("pitch")) ? "pitch" : "picture"} names` });
@@ -997,6 +1123,14 @@ export function pitchIsHis(lang: Lang): string {
   return lang === "es" ? "" : " Mark's pitch sentences are his own words and keep his punctuation and word choices (see the pitch rules below).";
 }
 
+/**
+ * The welcome note that opens the group page (Mark 2026-10-20: "we already had this discussion"). The person arriving has just read the poster, the Facebook
+ * post or the email, so the page does not repeat them: it opens on a short personal note from the hosts, then the Count me in form.
+ */
+export const WELCOME_RULES: string[] = [
+  "- welcome: the short personal note that opens the group page, from the hosts to the reader, at most 420 characters (one to three sentences; a line break is fine). First-person plural (\"we\"), warm, in Mark's register: a \"…\" where he would pause, a capitalised payoff with \"!\" allowed, his adjectives. The reader has JUST read the poster, the Facebook post or the email, so these are NEW words: never the headline sentence, never the payoff line, never a sentence of Mark's pitch. No prices, no dates or numbers, no QR code and no call to action (the Count me in form sits directly under the note). Plain text, no names or signature (the system signs it).",
+];
+
 export function systemPrompt(lang: Lang, answers: Record<string, string | boolean> = {}): string {
   return [
     `You write the public invitation for a group cruise, in the voice of ${BUSINESS.tradeName}, which for a group is Mark's own: a seasoned cruiser and trusted friend telling a group what the trip will be like. Tagline: "Cruise smarter, laugh more."`,
@@ -1022,12 +1156,13 @@ export function systemPrompt(lang: Lang, answers: Record<string, string | boolea
     ...LEAD_WITH_RULES,
     ...pitchRules("the intro", "If the pitch is too long for the intro, continue it in why_ship and then who_for, still in his order.", lang),
     "- Layout: headline = the one rising 'Imagine…' sentence built from <lead_with> (about 200 characters at most). subhead = the payoff alone, a short capitalised line ending in '!'. intro = Mark's pitch, verbatim, then the facts that matter in a sentence or two (the ship, the sailing, the ports, what the fare includes), every number from the facts block. why_ship and who_for echo the picture's images as scenes, in his words. social_post and email_body open with the same 'Imagine…' sentence and its payoff, then his pitch. cta_blurb = the occasion line exactly as he wrote it (when he gave one), then the call to action.",
+    ...WELCOME_RULES,
     `- email_body: two or three short paragraphs separated by blank lines, ending with "${BUSINESS.tradeName}" on its own line. It may refer to "the link below" for details; do not write a web address.`,
   ].join("\n");
 }
 
 /** The last line of the page-copy prompt. The campaign prompt supplies its own. */
-const COPY_CLOSING = "Write the invitation copy in Mark's register: the headline is ONE rising sentence through the <lead_with> moments in that order, the subhead is its capitalised payoff, and never a chain of two-word sentences. The button asks the reader to say they are interested; it does not take a payment. The QR code on printed pieces opens the same page.";
+const COPY_CLOSING = "Write the invitation copy in Mark's register: the headline is ONE rising sentence through the <lead_with> moments in that order, the subhead is its capitalised payoff, and never a chain of two-word sentences. The welcome is a short note in new words, not the headline or the pitch again. The button asks the reader to say they are interested; it does not take a payment. The QR code on printed pieces opens the same page.";
 
 export function userPrompt(facts: GroupFacts, answers: Record<string, string | boolean>, closing: string = COPY_CLOSING): string {
   const lines: string[] = [];
@@ -1077,8 +1212,10 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
 
 /** Feedback for one retry when the first draft breaks a rule. Notes (the gentle checks) ride along: they never cause a retry on their own. */
 export function retryNote(problems: CopyProblem[], notes: CopyProblem[] = []): string {
+  const moments = notes.filter((p) => p.field === "headline"), others = notes.filter((p) => p.field !== "headline");
   return "Your draft broke these rules. Fix exactly these and change nothing else:\n" +
     problems.slice(0, 12).map((p) => `- ${p.field}: ${p.problem}`).join("\n") +
     (problems.some((p) => p.problem.startsWith("Pitch sentence not kept")) ? "\nA pitch sentence is copied character for character as Mark wrote it, with his punctuation and his words; the rules about what we write never apply inside it." : "") +
-    (notes.length ? "\nAnd fix these too (Mark wants them, though they do not block approval); string the moments in <lead_with> into the one rising sentence:\n" + notes.slice(0, 4).map((p) => `- ${p.field}: ${p.problem}`).join("\n") : "");
+    (moments.length ? "\nAnd fix these too (Mark wants them, though they do not block approval); string the moments in <lead_with> into the one rising sentence:\n" + moments.slice(0, 4).map((p) => `- ${p.field}: ${p.problem}`).join("\n") : "") +
+    (others.length ? "\nAnd these too (Mark wants them, though they do not block approval):\n" + others.slice(0, 4).map((p) => `- ${p.field}: ${p.problem}`).join("\n") : "");
 }

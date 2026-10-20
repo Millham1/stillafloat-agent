@@ -990,13 +990,17 @@ export default [
   //      picture and a photo of the hosts (interview answers); the answer hands the page only
   //      validated links — https, on our own hosts — and a real yes/no for "taxes included", and
   //      each agrees with the dashboard's interview answer.
+  //   8. The page opens on a short personal WELCOME from the hosts, then Count me in, then the details (Mark 2026-10-20, "we already had this
+  //      discussion"): the person arriving has just read the poster, the post or the email, so the page never repeats the headline, the payoff or the
+  //      pitch (the public answer does not even carry them), never prints a vendor name (airline, hotel, transfer company) and prices a hotel PER ROOM.
+  //      Read from the served page (section order, what its script reads) and from the public answer compared with the group file.
   // Group pages are in the release candidate only: prod has no approved group page until the
   // 2026-10-08 promotion, so this check is UNTESTABLE on prod until then (dev: 4a5fg8ypac, EN).
   {
     id: "flows.group-page-journey",
-    basis: "ruling: stillafloat-group-bookings.md — a group page Mark approves is what the public sees (same words, ship, dates, the from-price, the business named, no payment or card), and it only asks \"I'm interested\" — Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"; every group page also carries the look of his approved group marketing (stillafloat-group-poster-template-mark-2026-10-12.md: the yellow Count me in pill, a FlexPay plans line, an optional top picture and hosts' photo that may only come from our own hosts over https)",
-    title: "Whenever Mark has approved a group page, it is what visitors see: same words, same ship, dates and from-price, and the ship's real Conga Line score, with no cabin list or availability; the page carries the FlexPay line and the yellow Count me in button, any top picture or hosts' photo it shows is an https link on our own hosts, and it asks only 'I'm interested' and refuses a made-up code",
-    covers: ["flow:group-page-journey", "GET /api/groups", "GET /api/groups/:id/marketing", "GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/ships/ratings"],
+    basis: "ruling: stillafloat-group-bookings.md — a group page Mark approves is what the public sees (same words, ship, dates, the from-price, the business named, no payment or card), and it only asks \"I'm interested\" — Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"; every group page also carries the look of his approved group marketing (stillafloat-group-poster-template-mark-2026-10-12.md: the yellow Count me in pill, a FlexPay plans line, an optional top picture and hosts' photo that may only come from our own hosts over https); Mark 2026-10-20 \"we already had this discussion\": the page opens on a short personal welcome from the hosts, then Count me in, then the details, and never repeats the poster's headline or pitch, never shows a vendor name, and prices a hotel per room",
+    title: "Whenever Mark has approved a group page, it is what visitors see: the hosts' welcome first and the Count me in form right after it, then the plan, the cabin categories and from-prices, and the way to get there, with the same ship, dates and from-price and the ship's real Conga Line score and no cabin availability; it never repeats the poster's headline or pitch, never names an airline, hotel or transfer company, prices a hotel per room, carries the FlexPay line and the yellow button, uses only https pictures on our own hosts, and refuses a made-up code",
+    covers: ["flow:group-page-journey", "GET /api/groups", "GET /api/groups/:id", "GET /api/groups/:id/marketing", "GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/ships/ratings"],
     modes: ["dev", "prod"],
     incident: "release candidate 2026-10-08: group marketing pages (dev only until the promotion)",
     run: async (t) => {
@@ -1010,7 +1014,10 @@ export default [
       const ratings = t.success(await t.get("/api/ships/ratings"), "ok");
       t.ok(Array.isArray(ratings.ratings) && ratings.ratings.length > 0, "the published Conga Line ratings list is empty");
       const bySlug = new Map(ratings.ratings.map((r) => [r.ship_slug, r]));
-      const COPY = ["headline", "subhead", "intro", "why_ship", "who_for", "organizer_note", "cta_label", "cta_blurb"];
+      // What the page is handed (Mark 2026-10-20): the welcome, the organizer's line and the button's words. The poster's words are not.
+      const COPY = ["welcome", "organizer_note", "cta_label", "cta_blurb"];
+      const POSTER_WORDS = ["headline", "subhead", "intro", "why_ship", "who_for"];
+      let welcomeSeen = 0; let hotelRows = 0; let groupFilesRead = 0;
       const FACTS = ["groupName", "line", "ship", "sailDateText", "returnDateText", "nights", "embarkPort", "bookByText", "finalPaymentText"];
       let pageCode = null; let lastPub = null;
       for (const g of spread(live, 2)) {
@@ -1018,6 +1025,10 @@ export default [
         t.ok(Array.isArray(m.langs) && m.langs.length > 0, `group ${g.share_code}: the dashboard lists no languages for its page`);
         L.check(m.shareCode === g.share_code, `group ${g.share_code}: the marketing view has a different share code`);
         L.check(Boolean(m.approvedAt), `group ${g.share_code}: the marketing view does not show the approval`);
+        // the group file (token) is read for its flight / hotel / transfer offer only; no value of it is recorded
+        const file = t.success(await t.get(`/api/groups/${encodeURIComponent(g.id)}`, { auth: true }));
+        groupFilesRead++;
+        const offer = (Array.isArray(file.travel) ? file.travel : []).filter((r) => !r.traveler_id && !r.cabin_id && ["flight", "hotel", "transfer"].includes(r.kind));
         for (const lang of m.langs) {
           const mine = m.perLang?.[lang];
           t.ok(mine && mine.copy && mine.facts, `group ${g.share_code}: the dashboard has no ${lang} copy for an approved page`);
@@ -1027,7 +1038,16 @@ export default [
           L.check(pub.live === true && pub.preview === false, `group ${g.share_code} (${lang}): a visitor does not get the live page`);
           L.check(JSON.stringify(pub.langs) === JSON.stringify(m.langs), `group ${g.share_code}: the public page offers ${pub.langs} but the dashboard ${m.langs}`);
           for (const k of COPY) L.check((pub.copy?.[k] ?? "") === (mine.copy[k] ?? ""), `group ${g.share_code} (${lang}): the public page's "${k}" is not the copy Mark approved`);
-          t.fields(pub.copy, ["headline", "intro", "cta_label"], `group ${g.share_code} (${lang}) public copy`);
+          t.fields(pub.copy, ["cta_label", "cta_blurb"], `group ${g.share_code} (${lang}) public copy`);
+          // the poster's words stay in the file; the page is not handed them, so it cannot repeat them
+          for (const k of POSTER_WORDS) L.check(!(k in (pub.copy || {})), `group ${g.share_code} (${lang}): the public answer still carries the poster's "${k}", which the page must not repeat`);
+          // the welcome: old copy has none (null); a written one is plain text of at most 420 characters, signed with the hosts' names (at most 80)
+          L.check(pub.copy?.welcome === null || typeof pub.copy?.welcome === "string", `group ${g.share_code} (${lang}): the public copy has no "welcome" field (null when the group has none)`);
+          if (typeof pub.copy?.welcome === "string" && pub.copy.welcome.trim()) {
+            welcomeSeen++;
+            L.check(pub.copy.welcome.length <= 420, `group ${g.share_code} (${lang}): the welcome note is ${pub.copy.welcome.length} characters (at most 420)`);
+            L.check(!/[<>]/.test(pub.copy.welcome), `group ${g.share_code} (${lang}): the welcome note carries markup`);
+          }
           // values are printed only for public sailing facts — a group's NAME can carry a person's
           // name ("the Smith reunion"), so a groupName mismatch is reported without its values
           for (const k of FACTS) L.check(JSON.stringify(pub.facts?.[k] ?? null) === JSON.stringify(mine.facts[k] ?? null),
@@ -1049,6 +1069,38 @@ export default [
           // The page asks one thing, "I'm interested" (Mark 2026-10-19): a visitor is never handed the cabin list, a count of cabins left
           // or a per-category price, in the page's answer any more than on its face.
           for (const k of ["cabins", "cabinsAvailable", "cabinsTotal"]) L.check(!(k in (pub.facts || {})), `group ${g.share_code} (${lang}): the public page's answer carries "${k}" — a visitor must not see cabin availability before Mark knows they are interested`);
+          // "Your cabin" (Mark 2026-10-20): the categories and what each starts at, names and prices only — the lowest per-person price of the cabins
+          // still open in each category, cheapest first — or nothing when Mark turned prices off.
+          const open = new Map();
+          for (const c of mine.facts.cabins || []) {
+            if (c.perPerson == null || !c.perPersonText || !(c.available >= 1)) continue;
+            if (!open.has(c.category) || c.perPerson < open.get(c.category).perPerson) open.set(c.category, c);
+          }
+          const wantPrices = showPrices ? [...open.values()].sort((a, b) => a.perPerson - b.perPerson).map((c) => ({ category: c.category, perPersonText: c.perPersonText })) : [];
+          L.check(JSON.stringify(pub.facts?.cabinPrices ?? null) === JSON.stringify(wantPrices), `group ${g.share_code} (${lang}): the cabin categories and from-prices on the page are not the file's (${(pub.facts?.cabinPrices || []).length} shown, ${wantPrices.length} expected)`);
+          for (const row of pub.facts?.cabinPrices || []) L.check(JSON.stringify(Object.keys(row).sort()) === '["category","perPersonText"]', `group ${g.share_code} (${lang}): a cabin line on the page carries more than a category and a price`);
+          // "Getting there": the guest's words, never the vendor (the airline, hotel or transfer company on the group file), a hotel per room, the rest per person.
+          const lines = Array.isArray(pub.facts?.travel) ? pub.facts.travel : [];
+          L.check(lines.length === offer.length, `group ${g.share_code} (${lang}): the page lists ${lines.length} flight / hotel / transfer line(s) but the group file offers ${offer.length}`);
+          for (const r of offer) {
+            const vendor = lc(r.provider);
+            // a vendor name that is only the row's own city, place or stay ("Miami") is not a vendor leak
+            const own = lc([r.from_place, r.to_place, r.reference].join(" "));
+            if (vendor.length >= 3 && !own.includes(vendor)) {
+              L.check(!lc(JSON.stringify(lines)).includes(vendor), `group ${g.share_code} (${lang}): a ${r.kind} line on the public page names the vendor on the file`);
+              L.check(!lc(JSON.stringify(mine.facts?.travel ?? [])).includes(vendor), `group ${g.share_code} (${lang}): a ${r.kind} line in the dashboard's marketing facts names the vendor on the file`);
+            }
+          }
+          const perRoom = lang === "es" ? "por habitación" : "per room", perPerson = lang === "es" ? "por persona" : "per person";
+          const priced = offer.filter((r) => r.included !== true && r.price_per_person !== null && r.price_per_person !== undefined && r.price_per_person !== "" && Number.isFinite(Number(r.price_per_person)));
+          const wantRoom = priced.filter((r) => (r.price_unit === "room" || r.price_unit === "person" ? r.price_unit : (r.kind === "hotel" ? "room" : "person")) === "room").length;
+          const gotRoom = lines.filter((l) => !l.included && l.priceText && String(l.text).includes(`${l.priceText} ${perRoom}`)).length;
+          const gotPerson = lines.filter((l) => !l.included && l.priceText && String(l.text).includes(`${l.priceText} ${perPerson}`)).length;
+          L.check(gotRoom === wantRoom && gotRoom + gotPerson === priced.length, `group ${g.share_code} (${lang}): the page prices ${gotRoom} line(s) ${perRoom} and ${gotPerson} ${perPerson}; the file's units say ${wantRoom} ${perRoom} and ${priced.length - wantRoom} ${perPerson}`);
+          for (const l of lines.filter((x) => x.kind === "hotel" && x.priceText && !x.included && x.priceUnit !== "person")) {
+            hotelRows++;
+            L.check(String(l.text).includes(perRoom) && !String(l.text).includes(perPerson), `group ${g.share_code} (${lang}): a hotel line is not priced ${perRoom}`);
+          }
           L.check(JSON.stringify(pub.facts?.perks ?? null) === JSON.stringify(mine.facts.perks ?? null), `group ${g.share_code} (${lang}): what the fare includes differs from the dashboard`);
           L.check(Array.isArray(pub.facts?.planned), `group ${g.share_code} (${lang}): the page's "planned for the group" list is missing`);
           L.check(pub.facts?.fromPerPersonText === (showPrices ? mine.facts.fromPerPersonText : null), `group ${g.share_code} (${lang}): the "from" price differs from the dashboard`);
@@ -1057,6 +1109,10 @@ export default [
           const look = pub.look;
           if (L.check(look && typeof look === "object" && !Array.isArray(look), `group ${g.share_code} (${lang}): the public answer has no "look" block, so the page cannot show the group's top picture, hosts' photo or taxes line`)) {
             L.check(typeof look.taxesIncluded === "boolean", `group ${g.share_code} (${lang}): look.taxesIncluded is not a yes/no`);
+            // who signs the welcome: the interview's "Who is the invitation from?" as typed (one line, at most 80 characters), else Mark
+            L.check(typeof look.hostNames === "string" && look.hostNames.trim() !== "" && look.hostNames.length <= 80 && !/[<>]/.test(look.hostNames), `group ${g.share_code} (${lang}): look.hostNames is not a short signature for the welcome note`);
+            const typedNames = String(m.answers?.host_names ?? "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 80).trim();
+            L.check(look.hostNames === (typedNames || "Mark"), `group ${g.share_code} (${lang}): the welcome is signed differently from the interview's answer`);
             L.check(look.taxesIncluded === (m.answers?.taxes_included === true), `group ${g.share_code} (${lang}): the page says taxes are ${look.taxesIncluded ? "" : "not "}included but the dashboard's interview answer says otherwise`);
             for (const [k, answer] of [["heroUrl", "hero_photo"], ["hostPhotoUrl", "host_photo"]]) {
               const url = look[k];
@@ -1114,10 +1170,31 @@ export default [
       L.check(/id="f-guests"/.test(es) && /Cuántas personas en su grupo/.test(es), "the Spanish group page's form no longer asks how many are in the party");
       L.check(/var ES = document\.documentElement\.lang === 'es'/.test(es) && /'\?lang=' \+ \(ES \? 'es' : 'en'\)/.test(es), "the Spanish group page does not ask for the Spanish copy (lang=es)");
       L.check(/if\(!\/(\^[^/]+\$)\/\.test\(code\)\)/.exec(es)?.[1] === rule, "the Spanish group page accepts different share codes than the English one");
+      // The order of the page and what it will and will not say (Mark 2026-10-20), read from both served pages: the hosts' welcome, then Count me in,
+      // then the plan, your cabin, getting there, the score, the dates and the advisor; the poster's headline, payoff and pitch are not on it.
+      const ORDER = ['id="sec-welcome"', 'id="interest"', 'id="gp-form"', 'id="sec-itin"', 'id="sec-cabin"', 'id="sec-travel"', 'id="sec-rating"', 'id="sec-dates"', 'data-t="about"'];
+      for (const [name, h] of [["English", page], ["Spanish", es]]) {
+        const at = ORDER.map((needle) => h.indexOf(needle));
+        const lost = ORDER.filter((_, i) => at[i] < 0);
+        L.check(lost.length === 0, `the ${name} group page has lost ${lost.join(", ")}`);
+        L.check(lost.length > 0 || at.every((i, k) => k === 0 || i > at[k - 1]), `the ${name} group page's sections are out of order: it must run welcome, Count me in, the plan, your cabin, getting there, the score, the dates, the advisor`);
+        L.check(h.indexOf('id="sec-welcome"') >= 0 && h.indexOf('id="sec-welcome"') < h.indexOf('id="gp-form"'), `the ${name} group page does not put the hosts' welcome before the Count me in form`);
+        for (const word of ["headline", "subhead", "intro", "why_ship", "who_for"]) L.check(!new RegExp(`\\bc\\.${word}\\b`).test(h), `the ${name} group page's script still reads copy.${word}, the poster's words`);
+        for (const id of ["gp-headline", "gp-subhead", "gp-intro", "gp-why", "gp-who"]) L.check(!h.includes(`id="${id}"`), `the ${name} group page still has the ${id} block that repeats the poster`);
+        L.check(/\bc\.welcome\b/.test(h) && /\blook\.hostNames\b/.test(h), `the ${name} group page no longer reads the welcome and the hosts' signature`);
+        L.check(/\bf\.cabinPrices\b/.test(h), `the ${name} group page no longer reads the cabin categories and their prices`);
+        L.check(/\.welcome \.sig\{[^}]*color:#ffca4f/.test(h), `the ${name} group page's welcome signature is no longer in the gold accent`);
+        L.check(Number(/\.welcome \.note\{[^}]*font-size:clamp\((\d+)px/.exec(h)?.[1] ?? 0) >= 20, `the ${name} group page's welcome text is smaller than 20px`);
+      }
+      L.check(/itinerary:'The plan, day by day'/.test(page) && /cabin:'Your cabin'/.test(page), "the English group page's headings are not 'The plan, day by day' and 'Your cabin'");
+      L.check(/itinerary:'El plan, día a día'/.test(es) && /cabin:'Su cabina'/.test(es), "the Spanish group page's headings are not 'El plan, día a día' and 'Su cabina'");
       const gone = await t.get("/api/group-page/zzzzzzzzzz");
       L.check(gone.status === 404, `a made-up group code should be a clean 404: ${gone.describe()}`);
       L.done("the group page journey");
       t.observe("live group pages", live.length, "info");
+      t.observe("live group pages with a welcome note", welcomeSeen, "info");
+      t.observe("group files read for their travel offer", groupFilesRead, "info");
+      t.observe("hotel lines priced per room", hotelRows, "info");
       if (lastPub) {
         t.observe("public group page keys", keysOf(lastPub));
         t.observe("public group page fact keys", keysOf(lastPub.facts));

@@ -3,7 +3,7 @@ import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
 import { withDisplayNames } from "../lib/group-marketing";
-import { CHILDREN, GROUP_COLUMNS, groupDateProblem, missingSchedule, pickWritable, publicGroupRow, slugify, withGroupDeposit } from "../lib/group-file";
+import { CHILDREN, GROUP_COLUMNS, groupDateProblem, missingSchedule, pickWritable, publicGroupRow, slugify, withGroupDeposit, withTravelUnit } from "../lib/group-file";
 import {
   MAX_PDF_BYTES, cabinRowsFromExtraction, travelRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
   type BookingExtraction, type ReaderProvider,
@@ -235,7 +235,9 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
     // Air, hotel before and transfers: what the confirmation form sent back, else what the quote printed.
     const travel: Row[] = (Array.isArray(body["travel"]) ? (body["travel"] as unknown[]).map((t) => {
       const p = pickWritable(CHILDREN["travel"]!.columns, t);
-      return p.ok ? p.row : null;
+      if (!p.ok) return null;
+      const u = withTravelUnit("travel", p.row);   // a hotel night is priced per room (Mark 2026-10-20)
+      return u.ok ? u.row : null;
     }).filter((x): x is Row => !!x) : travelRowsFromExtraction(extracted)).map((t) => ({ ...t, group_id: group.id }));
     if (travel.length) {
       const { error: tre } = await db().from("group_travel").insert(travel);

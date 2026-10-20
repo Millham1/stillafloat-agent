@@ -31,18 +31,19 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400}
 .gp-plaque{display:inline-flex;align-items:center;gap:13px;background:rgba(4,14,28,.62);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
   border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:9px 24px;max-width:92vw}
 .gp-plaque .dash{width:20px;height:3px;border-radius:2px;background:rgba(255,211,0,.7);flex:none}
-.gp-plaque .txt{color:rgba(255,255,255,.96);font-weight:600;letter-spacing:.2em;text-transform:uppercase;font-size:clamp(15px,1.5vw,19px);text-align:center}
+.gp-plaque .txt{margin:0;font-family:inherit;color:rgba(255,255,255,.96);font-weight:600;letter-spacing:.2em;text-transform:uppercase;font-size:clamp(15px,1.5vw,19px);line-height:1.5;text-align:center}
 
 .shell{max-width:1100px;margin:auto;padding:44px 22px 90px}
 .section{margin-bottom:54px}
 .section h2{font-size:clamp(28px,3vw,36px);margin:0 0 12px;color:#fff}
+.section h3{font-size:clamp(22px,2.4vw,27px);margin:28px 0 10px;color:#fff}
 .section p{margin:0 0 14px;color:rgba(255,255,255,.9);font-size:20px;white-space:pre-line}
 .hint{color:rgba(255,255,255,.72);font-size:18px}
-.lead h1{font-size:clamp(34px,4.4vw,54px);margin:0 0 10px;line-height:1.12}
-.lead .sub{font-size:clamp(20px,2vw,24px);color:rgba(255,255,255,.88);margin:0 0 22px}
-/* Mark's register (2026-10-19): the headline is one long rising sentence, so its type gives way to it; the line under it is the capitalised payoff. */
-.lead h1.long{font-size:clamp(26px,3vw,40px);line-height:1.25}
-.lead .sub.payoff{font-size:clamp(24px,2.8vw,34px);font-weight:700;color:#ffd21f;letter-spacing:.02em;line-height:1.2}
+/* The welcome (Mark 2026-10-20: the person arriving has just read the poster, the post or the email, so the page opens on a short personal note
+   from the hosts and then the form, and never repeats the headline or the pitch). Large, warm type; the signature in the gold accent. */
+.welcome{margin-bottom:38px}
+.welcome .note{font-size:clamp(21px,2.3vw,27px);line-height:1.55;color:#fff;margin:0 0 14px;white-space:pre-line}
+.welcome .sig{font-family:'Bree Serif',Georgia,serif;font-size:clamp(23px,2.5vw,30px);line-height:1.25;color:#ffca4f;margin:0}
 
 .preview-bar{background:#ffd21f;color:#07183f;text-align:center;font-weight:700;padding:10px 16px;font-size:18px}
 .langswitch{text-align:right;margin:-14px 0 18px}
@@ -62,6 +63,14 @@ tr:last-child td{border-bottom:none}
 ul.perks{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 ul.perks li{display:flex;gap:12px;align-items:flex-start;font-size:20px}
 ul.perks li i{color:#5dff9a;margin-top:6px}
+/* Your cabin: each category and what it starts at, per person. Names and prices only; never a count of cabins left. */
+ul.cabins{list-style:none;margin:0;padding:0}
+ul.cabins li{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:21px}
+ul.cabins li:last-child{border-bottom:none}
+ul.cabins .cat{font-weight:700}
+ul.cabins .amt{color:#ffd21f;font-weight:700}
+ul.cabins .amt small{font-size:17px;font-weight:400;color:rgba(255,255,255,.72)}
+.fromline{font-size:22px;font-weight:700;color:#ffd21f;margin:0 0 6px}
 .score{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
 .score .n{font-family:'Bree Serif',serif;font-size:46px;color:#ffd21f;line-height:1}
 .score .n small{font-size:20px;color:rgba(255,255,255,.7)}
@@ -104,25 +113,20 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
 <div id="navbar-container"></div>
 
 <div id="gp-preview" class="preview-bar" hidden></div>
-<div class="gp-banner"><div class="gp-lockup"><span class="gp-plaque"><span class="dash"></span><span class="txt" id="gp-plaque">Group Cruise</span><span class="dash"></span></span></div></div>
+<div class="gp-banner"><div class="gp-lockup"><div class="gp-plaque"><span class="dash"></span><h1 class="txt" id="gp-plaque">Group Cruise</h1><span class="dash"></span></div></div></div>
 
 <div id="gp-state"></div>
 <main class="shell" id="gp-main" hidden>
   <div class="langswitch" id="gp-lang" hidden></div>
 
-  <section class="section lead">
-    <h1 id="gp-headline"></h1>
-    <p class="sub" id="gp-subhead"></p>
-    <div class="stats" id="gp-stats"></div>
-    <p class="fine" id="gp-fine" style="margin-top:10px"></p>
-    <!-- Every group is enrolled with FlexPay (the business is): the plans line sits directly under the price note on every page. -->
-    <div class="flexpay" id="gp-flex"><span class="chip"><img src="/assets/images/flexpay-logo.png" alt="FlexPay" height="34"></span><span class="words" data-t="flex"></span></div>
-    <p class="fine" id="gp-upgrades" style="margin:0"></p>
+  <!-- 1. The welcome: a short personal note from the hosts (Mark 2026-10-20). The poster, the post and the email already made the pitch, so the
+       page does not: no headline, no payoff, no intro. Hidden for a group whose copy was written before the welcome existed. -->
+  <section class="section welcome" id="sec-welcome" hidden>
+    <p class="note" id="gp-welcome"></p>
+    <p class="sig" id="gp-sig"></p>
   </section>
 
-  <section class="section"><p id="gp-intro"></p></section>
-
-  <!-- The page asks one thing: "I'm interested". No cabin list, no availability, no cabin picker: Mark talks to them first and chooses the cabin
+  <!-- 2. Count me in, directly under the welcome. The page asks one thing, "I'm interested": no cabin picker, no availability, no cabin count
        (Mark 2026-10-19: "why would they see the available cabins before I know they are interested"). -->
   <section class="section" id="interest">
     <h2 id="gp-cta-title"></h2>
@@ -146,38 +150,50 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     <p class="fine" style="margin-top:12px" data-t="no_payment"></p>
   </section>
 
-  <section class="section" id="sec-itin" hidden>
+  <!-- 3. The plan, day by day: the sailing at a glance, then the itinerary. -->
+  <section class="section" id="sec-itin">
     <h2 data-t="itinerary"></h2>
-    <div class="card"><table><thead><tr><th data-t="day"></th><th data-t="date"></th><th data-t="port"></th><th data-t="inport"></th></tr></thead><tbody id="gp-itin"></tbody></table></div>
-    <p class="fine" style="margin-top:12px" data-t="itin_note"></p>
+    <div class="stats" id="gp-stats" style="margin-bottom:18px"></div>
+    <div id="gp-itin-wrap" hidden>
+      <div class="card"><table><thead><tr><th data-t="day"></th><th data-t="date"></th><th data-t="port"></th><th data-t="inport"></th></tr></thead><tbody id="gp-itin"></tbody></table></div>
+      <p class="fine" style="margin-top:12px" data-t="itin_note"></p>
+    </div>
   </section>
 
-  <!-- Only what the fare really includes (the group file's inclusions) and what Mark's own interview answers say is planned; never a filler line. -->
-  <section class="section" id="sec-perks" hidden>
-    <h2 data-t="included"></h2>
-    <div class="card"><ul class="perks" id="gp-perks"></ul></div>
+  <!-- 4. Your cabin: the categories and what each starts at, the price note, the FlexPay plans line, the upgrade offer and what the fare includes.
+       Only what the fare really includes (the group file's inclusions) and what Mark's own interview answers say is planned; never a filler line. -->
+  <section class="section" id="sec-cabin">
+    <h2 data-t="cabin"></h2>
+    <div class="card" id="gp-cabin-card" hidden><ul class="cabins" id="gp-cabin-prices"></ul></div>
+    <p class="fromline" id="gp-from" hidden></p>
+    <p class="fine" id="gp-fine" style="margin-top:10px"></p>
+    <!-- Every group is enrolled with FlexPay (the business is): the plans line sits directly under the price note on every page. -->
+    <div class="flexpay" id="gp-flex"><span class="chip"><img src="/assets/images/flexpay-logo.png" alt="FlexPay" height="34"></span><span class="words" data-t="flex"></span></div>
+    <p class="fine" id="gp-upgrades" style="margin:0"></p>
+    <div id="sec-perks" hidden>
+      <h3 data-t="included"></h3>
+      <div class="card"><ul class="perks" id="gp-perks"></ul></div>
+    </div>
+    <div id="sec-planned" hidden>
+      <p class="fine" style="margin:18px 0 0"><strong data-t="planned"></strong> <span id="gp-planned"></span></p>
+    </div>
   </section>
 
-  <section class="section" id="sec-planned" hidden>
-    <p class="fine" style="margin:0"><strong data-t="planned"></strong> <span id="gp-planned"></span></p>
-  </section>
-
+  <!-- 5. Getting there: flights, hotel and transfers, in the guest's words. Never the airline, hotel or transfer company (Mark 2026-10-20);
+       a hotel is priced per room, the rest per person. -->
   <section class="section" id="sec-travel" hidden>
     <h2 data-t="travel"></h2>
     <div class="card"><ul class="perks" id="gp-travel"></ul></div>
   </section>
 
-  <section class="section">
-    <h2 data-t="why"></h2>
-    <p id="gp-why"></p>
-    <div class="card" id="gp-rating" hidden>
+  <!-- 6. The ship's Conga Line score, compact, only when the group shows it. -->
+  <section class="section" id="sec-rating" hidden>
+    <div class="card" id="gp-rating">
       <div class="score"><div class="n"><span id="gp-score"></span><small> / 5</small></div><div><div style="font-weight:700" data-t="score_label"></div><div class="hint" data-t="score_hint"></div></div></div>
-      <p id="gp-score-comment" style="margin:14px 0 0"></p>
-      <p id="gp-score-salty" class="hint" style="margin:10px 0 0"></p>
+      <p id="gp-score-comment" style="margin:12px 0 0"></p>
+      <p id="gp-score-salty" class="hint" style="margin:8px 0 0"></p>
     </div>
   </section>
-
-  <section class="section"><h2 data-t="who"></h2><p id="gp-who"></p></section>
 
   <section class="section" id="sec-org" hidden><blockquote><span id="gp-org"></span><cite id="gp-org-cite"></cite></blockquote></section>
 
@@ -202,12 +218,12 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     loading:'Cargando la invitación…', gone:'Esta página no está disponible. Si recibió el enlace de su grupo, escriba a mark@stillafloatcruising.com.',
     preview:'VISTA PREVIA — solo usted puede ver esta página hasta que la apruebe.',
     ship:'Barco', sails:'Zarpa', returns:'Regresa', nights:'Noches', from:'Sale de', price_from:'Desde', pp:'por persona',
-    itinerary:'El itinerario', day:'Día', date:'Fecha', port:'Puerto', inport:'En puerto', sea:'Día en el mar',
+    itinerary:'El plan, día a día', cabin:'Su cabina', from_lc:'desde', day:'Día', date:'Fecha', port:'Puerto', inport:'En puerto', sea:'Día en el mar',
     itin_note:'Los horarios y puertos los fija la naviera y pueden cambiar.',
     included:'Incluido para cada huésped', travel:'Cómo llegar', planned:'Planeado para el grupo:', upgrades:'Mejoras de cabina disponibles — pregunte a Mark', price_note:'Precio por persona, con dos huéspedes por cabina. El precio, los impuestos, las tasas y los cargos portuarios se confirman por escrito al reservar.',
     price_note_tax:'Precio por persona, con dos huéspedes por cabina, con impuestos y cargos portuarios incluidos.', flex:'Planes de pago flexibles disponibles', hosts:'Sus anfitriones',
-    why:'Por qué este barco', score_label:'Puntaje Conga Line', score_hint:'Lo que dicen los cruceristas, resumido por Still Afloat.',
-    who:'Para quién es este viaje', dates:'Fechas que importan', book_by:'Reserve antes de', final_pay:'Pago final', sail_day:'Día de salida',
+    score_label:'Puntaje Conga Line', score_hint:'Lo que dicen los cruceristas, resumido por Still Afloat.',
+    dates:'Fechas que importan', book_by:'Reserve antes de', final_pay:'Pago final', sail_day:'Día de salida',
     first:'Nombre', last:'Apellido', email:'Correo electrónico', phone:'Teléfono (opcional)', party:'¿Cuántas personas en su grupo?', count_me_in:'¡Cuenten conmigo!',
     note:'Preguntas o necesidades (movilidad, dieta, quién viaja con usted)', news:'Quiero recibir también el boletín de Still Afloat. Le enviaremos un correo para confirmarlo.',
     no_payment:'Aquí no se paga nada ni se pide tarjeta. Le respondemos personalmente, por lo general el mismo día.',
@@ -218,12 +234,12 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     loading:'Loading the invitation…', gone:'This page is not available. If your group sent you the link, email mark@stillafloatcruising.com.',
     preview:'PREVIEW — only you can see this page until you approve it.',
     ship:'Ship', sails:'Sails', returns:'Returns', nights:'Nights', from:'Sails from', price_from:'From', pp:'per person',
-    itinerary:'The itinerary', day:'Day', date:'Date', port:'Port', inport:'In port', sea:'Day at sea',
+    itinerary:'The plan, day by day', cabin:'Your cabin', from_lc:'from', day:'Day', date:'Date', port:'Port', inport:'In port', sea:'Day at sea',
     itin_note:'Times and ports are set by the cruise line and can change.',
     included:'Included for every guest', travel:'Getting there', planned:'Planned for the group:', upgrades:'Cabin upgrades available — ask Mark', price_note:'Price is per person, based on two guests per cabin. The price, taxes, fees and port expenses are confirmed in writing when you book.',
     price_note_tax:'Price is per person, based on two guests per cabin, with taxes and port fees included.', flex:'Flexible Payment Plans Available', hosts:'Your hosts',
-    why:'Why this ship', score_label:'Conga Line score', score_hint:'What cruisers say, summed up by Still Afloat.',
-    who:'Who this trip suits', dates:'Dates that matter', book_by:'Reserve by', final_pay:'Final payment', sail_day:'Sailing day',
+    score_label:'Conga Line score', score_hint:'What cruisers say, summed up by Still Afloat.',
+    dates:'Dates that matter', book_by:'Reserve by', final_pay:'Final payment', sail_day:'Sailing day',
     first:'First name', last:'Last name', email:'Email', phone:'Phone (optional)', party:'How many in your party', count_me_in:'Count me in!',
     note:'Questions or needs (mobility, diet, who is traveling with you)', news:'Also send me the Still Afloat newsletter. We will email you to confirm.',
     no_payment:'Nothing is paid here and no card is asked for. We reply personally, usually the same day.',
@@ -276,59 +292,72 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
   function stat(k, v){ return v ? '<div class="stat"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div></div>' : ''; }
 
   function render(d){
-    var f = d.facts, c = d.copy;
+    var f = d.facts, c = d.copy, look = d.look || {};
     state.hidden = true; show('gp-main');
-    document.title = (c.headline.length > 70 ? f.groupName : c.headline) + ' | Still Afloat Cruising';
+    document.title = f.groupName + ' | Still Afloat Cruising';
     $('gp-plaque').textContent = f.groupName;
     if(d.preview){ var pb=$('gp-preview'); pb.textContent=T.preview; pb.hidden=false; }
     if(d.langs && d.langs.length > 1){
       var other = ES ? '/group.html' : '/es/group.html';
       $('gp-lang').innerHTML = '<a href="'+other+'?g='+code+location.hash+'">'+esc(T.other)+'</a>'; show('gp-lang');
     }
-    $('gp-headline').textContent = c.headline;
-    $('gp-headline').className = c.headline.length > 90 ? 'long' : '';
-    $('gp-subhead').textContent = c.subhead;
-    $('gp-subhead').className = 'sub' + (c.subhead.length <= 60 ? ' payoff' : '');
-    $('gp-stats').innerHTML = stat(T.ship, f.ship) + stat(T.sails, f.sailDateText) + stat(T.nights, f.nights) + stat(T.from, f.embarkPort)
-      + (f.fromPerPersonText ? stat(T.price_from, f.fromPerPersonText + ' ' + T.pp) : '');
-    var look = d.look || {};
-    $('gp-fine').textContent = f.fromPerPersonText ? (look.taxesIncluded === true ? T.price_note_tax : T.price_note) : '';
-    $('gp-fine').hidden = !f.fromPerPersonText;
-    $('gp-upgrades').textContent = T.upgrades;
     applyLook(look);
-    $('gp-intro').textContent = c.intro;
 
+    // 1. The welcome: the hosts' short note, signed. A group whose copy has none opens straight on the form.
+    var welcome = typeof c.welcome === 'string' ? c.welcome.trim() : '';
+    if(welcome){ $('gp-welcome').textContent = welcome; $('gp-sig').textContent = look.hostNames || 'Mark'; show('sec-welcome'); }
+
+    // 2. Count me in.
+    $('gp-cta-title').textContent = c.cta_label;
+    $('gp-cta-blurb').textContent = c.cta_blurb;
+    $('gp-submit').textContent = T.count_me_in;
+    var gs = ''; for(var n=1;n<=12;n++) gs += '<option value="'+n+'"'+(n===2?' selected':'')+'>'+n+'</option>'; $('f-guests').innerHTML = gs;
+
+    // 3. The plan: the sailing at a glance, then day by day.
+    $('gp-stats').innerHTML = stat(T.ship, f.ship) + stat(T.sails, f.sailDateText) + stat(T.nights, f.nights) + stat(T.from, f.embarkPort);
     if(f.itinerary && f.itinerary.length){
       $('gp-itin').innerHTML = f.itinerary.map(function(s){
         return '<tr><td>'+esc(s.day == null ? '' : s.day)+'</td><td>'+esc(s.dateText||'')+'</td><td class="'+(s.seaDay?'sea':'')+'">'+esc(s.seaDay ? T.sea : s.port)+'</td><td>'+esc(s.timesText||'')+'</td></tr>';
-      }).join(''); show('sec-itin');
+      }).join(''); show('gp-itin-wrap');
     }
-    // The box is for what the fare really includes; the upgrade offer is its own line under the facts, never a filler line in the box.
+
+    // 4. Your cabin: each category and what it starts at (names and prices only), the price note, the FlexPay line, the upgrade offer, what the fare includes.
+    var cabins = (f.cabinPrices || []).filter(function(x){ return x && x.category && x.perPersonText; });
+    if(cabins.length){
+      $('gp-cabin-prices').innerHTML = cabins.map(function(x){
+        return '<li><span class="cat">'+esc(x.category)+'</span><span class="amt">'+esc(T.from_lc)+' '+esc(x.perPersonText)+' <small>'+esc(T.pp)+'</small></span></li>';
+      }).join(''); show('gp-cabin-card');
+    } else if(f.fromPerPersonText){
+      $('gp-from').textContent = T.price_from + ' ' + f.fromPerPersonText + ' ' + T.pp; show('gp-from');
+    }
+    $('gp-fine').textContent = f.fromPerPersonText ? (look.taxesIncluded === true ? T.price_note_tax : T.price_note) : '';
+    $('gp-fine').hidden = !f.fromPerPersonText;
+    $('gp-upgrades').textContent = T.upgrades;
+    // The box is for what the fare really includes; the upgrade offer is its own line, never a filler line in the box.
     var perks = (f.perks || []).filter(Boolean);
     if(perks.length){
       $('gp-perks').innerHTML = perks.map(function(a){ return '<li><i class="fa-solid fa-check"></i><span>'+esc(a)+'</span></li>'; }).join(''); show('sec-perks');
     }
     // What Mark's own words say is planned for the group (an onboard credit he named). Never composed here.
     if(f.planned && f.planned.length){ $('gp-planned').textContent = f.planned.join('; '); show('sec-planned'); }
+
+    // 5. Getting there: the server writes each line without the vendor and with its price unit ("per person", "per room").
     if(f.travel && f.travel.length){
       $('gp-travel').innerHTML = f.travel.map(function(t){ return '<li><i class="fa-solid fa-'+(t.kind==='flight'?'plane':t.kind==='hotel'?'bed':'van-shuttle')+'"></i><span>'+esc(t.text)+'</span></li>'; }).join(''); show('sec-travel');
     }
-    $('gp-why').textContent = c.why_ship;
+
+    // 6. The Conga Line score, only when the group shows it (the API sends no rating otherwise).
     if(f.rating){
       $('gp-score').textContent = f.rating.scoreText;
       $('gp-score-comment').textContent = f.rating.comment || '';
       $('gp-score-salty').textContent = f.rating.saltyTake || '';
-      show('gp-rating');
+      show('sec-rating');
     }
-    $('gp-who').textContent = c.who_for;
+
     if(c.organizer_note){ $('gp-org').textContent = c.organizer_note; show('sec-org'); }
     var dates = stat(T.book_by, f.bookByText) + stat(T.final_pay, f.finalPaymentText) + stat(T.sail_day, f.sailDateText);
     if(f.bookByText || f.finalPaymentText){ $('gp-dates').innerHTML = dates; show('sec-dates'); }
 
-    $('gp-cta-title').textContent = c.cta_label;
-    $('gp-cta-blurb').textContent = c.cta_blurb;
-    $('gp-submit').textContent = T.count_me_in;
-    var gs = ''; for(var n=1;n<=12;n++) gs += '<option value="'+n+'"'+(n===2?' selected':'')+'>'+n+'</option>'; $('f-guests').innerHTML = gs;
     document.querySelector('[data-t="bio"]').textContent = T.bio + (f.markSailing ? T.sailing_too : '');
     $('gp-legal').textContent = f.business.legalName + ' · ' + T.legal_a + ' ' + f.business.host + ' · ' + f.business.email;
 
