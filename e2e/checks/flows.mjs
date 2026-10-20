@@ -1005,7 +1005,7 @@ export default [
         for (const lang of m.langs) {
           const mine = m.perLang?.[lang];
           t.ok(mine && mine.copy && mine.facts, `group ${g.share_code}: the dashboard has no ${lang} copy for an approved page`);
-          L.check((mine.problems || []).length === 0, `group ${g.share_code} (${lang}): the approved copy fails its own checks: ${(mine.problems || []).slice(0, 3).join("; ")}`);
+          L.check((mine.problems || []).length === 0, `group ${g.share_code} (${lang}): the approved copy fails its own checks: ${(mine.problems || []).slice(0, 3).map((p) => (p && typeof p === "object" ? `${p.field}: ${p.problem}` : String(p))).join("; ")}`);
           const pub = t.success(await t.get(`/api/group-page/${encodeURIComponent(g.share_code)}?lang=${lang}`));
           lastPub = pub;
           L.check(pub.live === true && pub.preview === false, `group ${g.share_code} (${lang}): a visitor does not get the live page`);
