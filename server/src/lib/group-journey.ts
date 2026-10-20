@@ -25,7 +25,7 @@ import {
 } from "./group-journey-facts";
 import * as sec from "./group-journey-sections";
 import { DAY_MILESTONES, dayKind, kindDays, milestoneDate, type ChangeNotice } from "./group-journey-sections";
-import { strings, type Lang, type MilestoneKind } from "./group-journey-strings";
+import { strings, type Has, type Lang, type MilestoneKind } from "./group-journey-strings";
 
 /** The days before sailing at which the countdown messages go out. */
 export const MILESTONES = DAY_MILESTONES;
@@ -364,7 +364,7 @@ export function sectionsFor(kind: MilestoneKind, ctx: Ctx, o: RenderOptions = {}
   }
 }
 
-function subjectFor(kind: MilestoneKind, ctx: Ctx, o: RenderOptions): string {
+function subjectFor(kind: MilestoneKind, ctx: Ctx, o: RenderOptions, has: Has): string {
   const S = strings(ctx.lang);
   const g = ctx.group;
   const ship = displayName(g.ship_name);
@@ -375,7 +375,7 @@ function subjectFor(kind: MilestoneKind, ctx: Ctx, o: RenderOptions): string {
     case "data-needed": return S.subject.dataNeeded({ ship });
     default: {
       const n = kindDays(kind) ?? 0;
-      return S.subject.days({ days: ctx.daysToSail !== null && ctx.daysToSail >= 0 ? ctx.daysToSail : n, topic: S.topic[kind] ?? "" });
+      return S.subject.days({ days: ctx.daysToSail !== null && ctx.daysToSail >= 0 ? ctx.daysToSail : n, topic: S.topicFor(kind, has) ?? S.topic[kind] ?? "" });
     }
   }
 }
@@ -386,9 +386,11 @@ export function renderEmail(kind: MilestoneKind, ctx: Ctx, o: RenderOptions = {}
   const blocks = sectionsFor(kind, ctx, o);
   if (!blocks.length) return null;
   const hello = S.hello(plain(ctx.traveler.first_name, 60));
-  const intro = S.intro[kind] ?? "";
+  // The words that open the message are built from the sections it really has, never from the ones the file could not support.
+  const has: Has = (key) => blocks.some((b) => b.key === key);
+  const intro = S.introFor(kind, has) ?? S.intro[kind] ?? "";
   const closing = S.closing[kind] ?? "";
-  const subject = subjectFor(kind, ctx, o).replace(/[\r\n]+/g, " ").trim();   // a subject is one line, whatever the file holds
+  const subject = subjectFor(kind, ctx, o, has).replace(/[\r\n]+/g, " ").trim();   // a subject is one line, whatever the file holds
 
   const p = (t: string) => `<p style="margin:0 0 14px">${esc(t)}</p>`;
   const html =
@@ -469,7 +471,7 @@ export function renderHub(page: Ctx): HubView {
     sec.embark1(ctx),
     sec.documents(ctx),
     sec.passport(ctx),
-    sec.insurance(ctx, { video: true }),
+    sec.insurance(ctx, { video: true, page: true }),
     sec.videos(ctx, ["embark", "packing"]),
   ]);
   const order = ["notice", "sailing", "cabin", "missing", "details", "paperwork", "payments", "checklist", "travel", "travel-needed", "ship", "storm", "weather", "pack-tweaks", "embark", "documents", "passport", "insurance", "videos"];

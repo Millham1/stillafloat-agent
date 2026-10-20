@@ -1,14 +1,15 @@
 // group-journey.test.ts — the plan, the approvals and every rendered message, in both languages, against a synthetic file.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import {
   ALL_KINDS, APPROVABLE_KINDS, DAY_MILESTONES, JOURNEY_TEMPLATE_VERSION, approvalFor, dayKind, dedupeKey, planJourney, renderEmail, renderHub,
   summarizePlan, validateDetails, mergeJourneyAnswers, withApproval, withChecklistTick, videoSourcesFor, type MilestoneKind,
 } from "./group-journey";
-import { addDays, ctxFor, localToday, ymd, dayDiff, type Extras, type JourneyInput, type Row } from "./group-journey-facts";
+import { addDays, ctxFor, localToday, ymd, dayDiff, pickVideos, videoFitOf, videoFitsGroup, type Extras, type JourneyInput, type Row } from "./group-journey-facts";
 import { SITE_PAGES } from "./group-journey-sections";
+import { strings } from "./group-journey-strings";
 import { looksLikeCardNumber } from "./group-file";
 import { HOUSE_BANNED } from "./group-marketing";
 import { fixtureInput, fullExtras, SAIL, VIDEOS } from "./group-journey.fixture";
@@ -306,6 +307,100 @@ test("the 45-day message: excursions, dining and change windows, and what is sti
   assert.match(r.text, /How you are getting home/);
 });
 
+test("the 45-day subject and opening line name only the sections the message really has", () => {
+  const sayOf = (input: JourneyInput, id = "t1") => { const r = renderEmail("t-45", ctx(input, id, before(45)))!; return { r, subject: r.subject.replace(/^[^:]*: /, "") }; };
+  const intro = (r: { text: string }) => r.text.split("\n\n")[1];
+  // the file has excursions, dining and open items: all three are promised, and all three are there
+  const both = sayOf(fixtureInput());
+  assert.equal(both.subject, "excursions, dining and what is still open");
+  assert.equal(intro(both.r), "This is the time to settle excursions and dining, and to send us anything still missing.");
+  // no excursion rows on the file: the message does not promise any
+  const noEx = fixtureInput(); noEx.checklist = noEx.checklist.filter((r) => r.kind !== "excursion");
+  const a = sayOf(noEx);
+  assert.ok(!a.r.sections.includes("excursions"));
+  assert.equal(a.subject, "dining and what is still open");
+  assert.equal(intro(a.r), "This is the time to settle dining, and to send us anything still missing.");
+  assert.ok(!/excursion/i.test(a.r.subject + intro(a.r)));
+  // no dining on the file (no seating, and none of the line's dates is about dining or name changes): no promise of dining
+  const noDin = fixtureInput(); noDin.cabins[0]!.dining = null; (noDin.group["terms"] as Row)["deadlines"] = [];
+  const b = sayOf(noDin);
+  assert.ok(!b.r.sections.includes("dining"));
+  assert.equal(b.subject, "excursions and what is still open");
+  assert.equal(intro(b.r), "This is the time to settle excursions, and to send us anything still missing.");
+  // neither: only the open items are promised
+  const neither = fixtureInput(); neither.checklist = neither.checklist.filter((r) => r.kind !== "excursion"); neither.cabins[0]!.dining = null; (neither.group["terms"] as Row)["deadlines"] = [];
+  const c = sayOf(neither);
+  assert.deepEqual(c.r.sections, ["sailing", "missing", "checklist"]);
+  assert.equal(c.subject, "what is still open");
+  assert.equal(intro(c.r), "This is the time to send us anything still missing.");
+  assert.ok(!/excursion|dining/i.test(c.r.subject + c.r.text));
+  // the Spanish twin says the same things
+  const es = sayOf(noEx, "t3");
+  assert.equal(es.subject, "comidas y lo que sigue pendiente");
+  assert.equal(intro(es.r), "Este es el momento de decidir las comidas, y de enviarnos lo que todavía falta.");
+  // and with nothing but the sailing, no promise at all
+  const E = strings("en"), S = strings("es");
+  assert.equal(E.topicFor("t-45", () => false), "where your cruise stands");
+  assert.equal(E.introFor("t-45", () => false), "Here is where your cruise stands.");
+  assert.equal(S.topicFor("t-45", () => false), "cómo va su crucero");
+  assert.equal(S.introFor("t-45", () => false), "Aquí está cómo va su crucero.");
+  // a kind whose words do not depend on its sections keeps its fixed words
+  assert.equal(E.topicFor("t-2", () => true), null);
+  assert.equal(E.introFor("t-2", () => true), null);
+});
+
+test("the other countdown messages also name only the sections they have, in both languages", () => {
+  const E = strings("en"), S = strings("es");
+  const has = (...keys: string[]) => (k: string) => keys.includes(k);
+  assert.equal(E.topicFor("t-120", has("payments", "paperwork")), "payments, paperwork and what to do first");
+  assert.equal(E.topicFor("t-120", has("paperwork")), "paperwork and what to do first");
+  assert.equal(E.topicFor("t-120", has()), "what to do first");
+  assert.equal(E.topicFor("t-90", has("payments", "deadlines", "travel")), "final payment, line deadlines and getting to the ship");
+  assert.equal(E.topicFor("t-90", has("travel-needed")), "getting to the ship");
+  assert.equal(E.topicFor("t-90", has()), "what is open on your file");
+  assert.equal(E.introFor("t-90", has("deadlines", "travel")), "This is when the dates that matter start to show up: deadlines from the cruise line and how you are getting to the ship.");
+  assert.equal(E.introFor("t-90", has()), "Here is where your cruise stands.");
+  assert.equal(E.topicFor("t-10", has("ship")), "your ship and how boarding day works");
+  assert.equal(E.topicFor("t-10", has()), "how boarding day works");
+  assert.equal(E.introFor("t-10", has()), "Here is how boarding day works.");
+  assert.equal(E.topicFor("t-5", has("weather", "pack-tweaks")), "the forecast for your cruise");
+  assert.equal(E.topicFor("t-5", has("storm")), "Storm Watch and your cruise");
+  assert.equal(E.topicFor("t-5", has()), "a last note before you sail");
+  assert.equal(E.introFor("t-5", has("weather")), "The forecast for your cruise.");
+  assert.equal(S.topicFor("t-120", has("payments", "paperwork")), "pagos, documentos y qué hacer primero");
+  assert.equal(S.topicFor("t-90", has("payments", "deadlines", "travel")), "pago final, fechas de la naviera y cómo llegar al barco");
+  assert.equal(S.topicFor("t-45", has("excursions", "dining", "missing")), "excursiones, comidas y lo que sigue pendiente");
+  assert.equal(S.topicFor("t-10", has("ship")), "su barco y cómo funciona el día de embarque");
+  assert.equal(S.introFor("t-5", has()), "Una última nota antes de zarpar.");
+  // the 5-day message in the file that cannot give a forecast no longer promises one
+  const none = renderEmail("t-5", ctx(fixtureInput(), "t1", before(5), fullExtras({ weather: null })))!;
+  assert.deepEqual(none.sections, ["sailing"]);
+  assert.equal(none.subject, "5 days to go: a last note before you sail");
+  assert.ok(!/forecast/i.test(none.subject + none.text.split("\n\n")[1]));
+  // and a message with its ship and the forecast keeps the words it always had
+  assert.equal(renderEmail("t-5", ctx(fixtureInput(), "t1", before(5)))!.subject, "5 days to go: the forecast for your cruise");
+  assert.equal(renderEmail("t-10", ctx(fixtureInput(), "t1", before(10)))!.subject, "10 days to go: your ship and how boarding day works");
+});
+
+test("a deposit with no date is 'due when you book' ('se paga al reservar'), never 'date to be confirmed'; other payments with no date keep that wording", () => {
+  const input = fixtureInput({ group: { deposit_due: null, terms: { deposit_timing: "at_booking", deadlines: [] } } });
+  const dep = input.payments.find((p) => p.id === "p3")!; dep.paid_at = null; dep.due_date = null;       // Carlos and Dulce's cabin: deposit due at booking
+  const fin = input.payments.find((p) => p.id === "p4")!; fin.due_date = null;                           // and a final payment with no date yet
+  const en = renderEmail("t-120", ctx(input, "t3", before(120), fullExtras(), "en"))!;
+  assert.match(en.text, /Deposit: \$400, due when you book\./);
+  assert.match(en.text, /Final payment: \$2,200, date to be confirmed\./);
+  assert.ok(!/Deposit: \$400, date to be confirmed/.test(en.text));
+  const es = renderEmail("t-120", ctx(input, "t3", before(120)))!;
+  assert.match(es.text, /Depósito: \$400, se paga al reservar\./);
+  assert.match(es.text, /Pago final: \$2,200, fecha por confirmar\./);
+  assert.ok(!/Depósito: \$400, fecha por confirmar/.test(es.text));
+  // the cruise page says the same
+  const hub = renderHub(ctx(input, "t3", before(120), fullExtras(), "en"));
+  assert.ok(hub.sections.find((x) => x.key === "payments")!.lines.includes("Deposit: $400, due when you book."));
+  // a deposit that has a date, or is paid, is unchanged
+  assert.match(renderEmail("t-120", ctx(fixtureInput(), "t1", before(120)))!.text, /Deposit: \$400, paid on October 20, 2026\./);
+});
+
 test("the 20-day message: web check-in from the terms, documents, packing from the checklist and the site, and the packing video", () => {
   const input = fixtureInput();
   const r = renderEmail("t-20", ctx(input, "t1", before(20)))!;
@@ -534,6 +629,55 @@ test("videos: Mark's own channel only, the right language, long-form first, noth
   assert.ok(!renderEmail("t-10", seaDay)!.sections.includes("videos"), "no topic match, no video");
 });
 
+test("videos: a title that names a cruise line or a ship is shown only to a group on that line or ship; a line-neutral topic video fits everyone; nothing that fits, no section", () => {
+  const v = (id: string, title: string, views = 1000) => ({ id, title, views, published: "2026-01-01T00:00:00Z" });
+  const NCL = v("NNNNNNNNN01", "Norwegian Bliss Cabin Tour: Balcony vs Mini-Suite", 90000);
+  const MSC = v("MMMMMMMMM01", "MSC Seaside Balcony Cabin Tour", 2000);
+  const ROYAL = v("RRRRRRRRR01", "Wonder of the Seas Cabin Tour", 80000);
+  const MARDI = v("CCCCCCCCC01", "Mardi Gras Cabin Tour: Is the Balcony Worth It?", 70000);
+  const BOTH = v("BBBBBBBBB01", "MSC vs Norwegian: Which Cabin Is Better?", 60000);
+  const NEUTRAL = v("NEUTRALCAB1", "Cruise Cabin Types Explained: Inside, Ocean View, Balcony", 3000);
+  const fleet = [{ ship: "Mardi Gras", line: "Carnival Cruise Line" }, { ship: "Joy", line: "Carnival Cruise Line" }, { ship: "Wonder of the Seas", line: "Royal Caribbean International" }];
+  const all = [NCL, MSC, ROYAL, MARDI, BOTH, NEUTRAL];
+  const ids = (group: Row) => pickVideos(all, "cabin", "en", ["own"], 9, videoFitOf(group, fleet)).map((x) => x.id);
+
+  // an MSC group (MSC Seaside / MSC Cruises, as the file prints them) gets its own line's video and the neutral one, never the NCL, Royal or Carnival tours
+  assert.deepEqual(ids({ cruise_line: "MSC Cruises", ship_name: "MSC SEASIDE" }).sort(), [MSC.id, NEUTRAL.id].sort());
+  assert.deepEqual(ids({ cruise_line: "MSC CRUISES", ship_name: "MSC SEASHORE" }).sort(), [MSC.id, NEUTRAL.id].sort(), "another MSC ship still gets an MSC line video");
+  // an NCL group gets the NCL tour; a Carnival group gets the Carnival hull's tour (named without its line); nobody gets the video that names two lines
+  assert.deepEqual(ids({ cruise_line: "Norwegian Cruise Line", ship_name: "Norwegian Bliss" }).sort(), [NCL.id, NEUTRAL.id].sort());
+  assert.deepEqual(ids({ cruise_line: "Carnival Cruise Line", ship_name: "Mardi Gras" }).sort(), [MARDI.id, NEUTRAL.id].sort());
+  assert.deepEqual(ids({ cruise_line: "Royal Caribbean International", ship_name: "Wonder of the Seas" }).sort(), [NEUTRAL.id, ROYAL.id].sort());
+  // a group whose line cannot be read is shown only the line-neutral videos
+  assert.deepEqual(ids({ cruise_line: "", ship_name: "" }), [NEUTRAL.id]);
+  assert.deepEqual(ids({ cruise_line: "Some Small Line", ship_name: "Nobody" }), [NEUTRAL.id]);
+  // the group's own ship named in a title is a match even when the line is not on the file; "Virgin Islands" is a place, not a line; "Joy" alone is not a ship
+  assert.equal(videoFitsGroup("Mardi Gras Cabin Tour", { line: null, ship: "Mardi Gras" }), true);
+  assert.equal(videoFitsGroup("A Week in the US Virgin Islands: What to Pack", { line: "MSC Cruises", ship: "MSC Seaside" }), true);
+  assert.equal(videoFitsGroup("The Joy of Your First Cruise", { line: "MSC Cruises", ship: "MSC Seaside", fleet }), true);
+  assert.equal(videoFitsGroup("Virgin Voyages Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Princess Cruises Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Celebrity Edge Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Holland America Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Disney Cruise Line Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Margaritaville at Sea Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+
+  // in the messages: the NCL tour that used to show for an MSC Seashore group is gone from the 10-day email, the cruise page and the insurance box
+  const input = fixtureInput({ group: { ship_name: "MSC SEASHORE", cruise_line: "MSC CRUISES" } });
+  const ncl = { ...fullExtras(), videos: [NCL], fleet };
+  const ten = renderEmail("t-10", ctx(input, "t1", before(10), ncl))!;
+  assert.ok(!/NNNNNNNNN01|Norwegian Bliss/.test(ten.text + ten.html), "the NCL cabin tour is not in the 10-day email");
+  assert.ok(!ten.sections.includes("videos"));
+  const hub = renderHub(ctx(input, "t1", before(10), ncl));
+  assert.ok(!JSON.stringify(hub).includes("NNNNNNNNN01"), "the NCL cabin tour is not on the cruise page");
+  assert.ok(!hub.sections.some((x) => x.key === "videos"), "nothing fits: the videos section is omitted");
+  const insurance = ctx(input, "t3", before(120), { ...fullExtras(), videos: [v("IIIIIIIII01", "Norwegian Cruise Line Travel Insurance: Is It Worth It?")], fleet });
+  assert.ok(!renderEmail("t-120", insurance)!.text.includes("IIIIIIIII01"));
+  // the same video does reach an NCL group
+  const nclInput = fixtureInput({ group: { ship_name: "NORWEGIAN BLISS", cruise_line: "Norwegian Cruise Line" } });
+  assert.match(renderEmail("t-10", ctx(nclInput, "t1", before(10), { ...fullExtras(), videos: [v("NNNNNNNNN02", "Norwegian Bliss Embarkation Day, Start to Finish")], fleet }))!.text, /Norwegian Bliss Embarkation Day, Start to Finish \(https:\/\/www\.youtube\.com\/watch\?v=NNNNNNNNN02\)/);
+});
+
 test("no message carries a link that is not http(s) and every link goes to our site, YouTube or a row Mark entered", () => {
   const input = fixtureInput();
   input.checklist[0]!.link_url = "javascript:alert(1)";
@@ -543,6 +687,32 @@ test("no message carries a link that is not http(s) and every link goes to our s
     for (const m of r.html.matchAll(/href="([^"]+)"/g)) assert.match(m[1]!, /^(https?:\/\/|#)/, `${n}: ${m[1]}`);
     assert.ok(!/<script/i.test(r.html));
   }
+});
+
+test("the insurance box on the cruise page says 'Call or text Mark at 919-346-6127' with a link that dials; the email keeps 'reply to this email'", () => {
+  const input = fixtureInput();
+  const sec = (lang: "en" | "es", id = "t1") => renderHub(ctx(input, id, before(100), fullExtras(), lang)).sections.find((x) => x.key === "insurance")!;
+  const en = sec("en");
+  assert.ok(!/reply|this email/i.test(en.lines.join(" ")), "a web page has no email to reply to");
+  assert.match(en.lines.join(" "), /Travel insurance is optional\. Mark offers Allianz plans\./);
+  assert.deepEqual(en.links, [{ label: "Call or text Mark at 919-346-6127", url: "tel:+19193466127" }]);
+  const es = sec("es");
+  assert.ok(!/correo|responda/i.test(es.lines.join(" ")));
+  assert.deepEqual(es.links, [{ label: "Llame o envíe un mensaje de texto a Mark al 919-346-6127", url: "tel:+19193466127" }]);
+  // a cabin that already has insurance, and one that declined it, get no call to action
+  assert.equal(sec("en", "t3").links, undefined);
+  const declined = fixtureInput(); declined.cabins[0]!.insurance = "declined";
+  assert.ok(!renderHub(ctx(declined, "t1", before(100))).sections.some((x) => x.key === "insurance"));
+  // the email is unchanged: it can be replied to
+  const mail = renderEmail("t-120", ctx(input, "t1", before(120)))!;
+  assert.match(mail.text, /Reply to this email or call 919-346-6127 if you would like a quote/);
+  assert.ok(!mail.html.includes("tel:"));
+  // the page's script lets a tel: link through and nothing else odd
+  const root = [path.join(process.cwd(), "public"), path.join(process.cwd(), "server", "public")].find((d) => existsSync(path.join(d, "index.html")));
+  assert.ok(root, "the site's public folder");
+  const js = readFileSync(path.join(root!, "js", "my-cruise.js"), "utf8");
+  assert.match(js, /function safe\(u\) \{[^\n]*\^tel:/, "the cruise page's script lets a tel: link through");
+  assert.match(readFileSync(path.join(root!, "my-cruise.html"), "utf8"), /my-cruise\.js\?v=20261019/, "the script's cache stamp moved with the change");
 });
 
 test("text from the file is escaped in the html", () => {

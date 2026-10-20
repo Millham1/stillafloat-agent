@@ -25,6 +25,17 @@ function shipWithLine(ship: string, line: string): string {
   return ship.toLowerCase().startsWith(lead) ? ship : `${line} ${ship}`;
 }
 
+/** Which sections made it into a message: the words that introduce a message are built from these, so an email never promises a section it does not have. */
+export type Has = (sectionKey: string) => boolean;
+
+/** "a", "a and b", "a, b and c" (English); the Spanish twin joins with "y" (or "e" before an i-sound). */
+const listEn = (items: string[]): string => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
+const listEs = (items: string[]): string => {
+  if (items.length <= 1) return items.join("");
+  const last = items[items.length - 1]!;
+  return `${items.slice(0, -1).join(", ")} ${/^h?i(?![aeou])/i.test(last) ? "e" : "y"} ${last}`;
+};
+
 const contactBits = `${BUSINESS.agentName} · ${BUSINESS.phone} · ${BUSINESS.email}`;
 
 const en = {
@@ -71,6 +82,40 @@ const en = {
     "t-2": "See you aboard.",
   } as Record<string, string>,
 
+  // What a countdown message is about, said from the sections it really has (Mark 2026-10-19: the 45-day message promised excursions and dining
+  // that the file did not hold). null for a message whose words do not depend on its sections: the fixed `topic` and `intro` above are used.
+  topicFor: (kind: string, has: Has): string | null => {
+    const open = has("missing") || has("checklist");
+    switch (kind) {
+      case "t-120": return listEn([has("payments") ? "payments" : "", has("paperwork") ? "paperwork" : "", "what to do first"].filter(Boolean));
+      case "t-90": return listEn([has("payments") ? "final payment" : "", has("deadlines") ? "line deadlines" : "", has("travel") || has("travel-needed") ? "getting to the ship" : ""].filter(Boolean)) || "what is open on your file";
+      case "t-45": return listEn([has("excursions") ? "excursions" : "", has("dining") ? "dining" : "", open ? "what is still open" : ""].filter(Boolean)) || "where your cruise stands";
+      case "t-10": return listEn([has("ship") ? "your ship" : "", "how boarding day works"].filter(Boolean));
+      case "t-5": return has("weather") || has("pack-tweaks") ? "the forecast for your cruise" : has("storm") ? "Storm Watch and your cruise" : "a last note before you sail";
+      default: return null;
+    }
+  },
+  introFor: (kind: string, has: Has): string | null => {
+    switch (kind) {
+      case "t-90": {
+        const items = [has("payments") ? "payments" : "", has("deadlines") ? "deadlines from the cruise line" : "", has("travel") || has("travel-needed") ? "how you are getting to the ship" : ""].filter(Boolean);
+        return items.length ? `This is when the dates that matter start to show up: ${listEn(items)}.` : "Here is where your cruise stands.";
+      }
+      case "t-45": {
+        const lead = listEn([has("excursions") ? "excursions" : "", has("dining") ? "dining" : ""].filter(Boolean));
+        const tail = has("missing") ? "send us anything still missing" : has("checklist") ? "look over what is still on your list" : "";
+        if (lead && tail) return `This is the time to settle ${lead}, and to ${tail}.`;
+        if (lead) return `This is the time to settle ${lead}.`;
+        if (tail) return `This is the time to ${tail}.`;
+        return "Here is where your cruise stands.";
+      }
+      case "t-10": return has("ship") ? "Here is your ship, and how boarding day works." : "Here is how boarding day works.";
+      case "t-5": return has("weather") || has("pack-tweaks") ? (has("pack-tweaks") ? "The forecast for your cruise, and a last look at the bag." : "The forecast for your cruise.")
+        : has("storm") ? "A note from our Storm Watch about your cruise." : "A last note before you sail.";
+      default: return null;
+    }
+  },
+
   // sections ------------------------------------------------------------------------------------
   s: {
     sailing: "Your sailing",
@@ -93,6 +138,8 @@ const en = {
     payDue: (p: { kind: string; amount: string; date: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, due ${p.date}.`,
     payOverdue: (p: { kind: string; amount: string; date: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, was due ${p.date}. Please reply or call so we can sort it out.`,
     payNoDate: (p: { kind: string; amount: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, date to be confirmed.`,
+    // A deposit with no calendar date is due when the cabin is booked (the line sets no date): never "date to be confirmed".
+    payAtBooking: (p: { kind: string; amount: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, due when you book.`,
     payAllPaid: "Every payment on file is paid. Thank you.",
     payGroupFinal: (date: string) => `The final payment is due ${date}.`,
     payGroupDeposit: (date: string) => `The deposit deadline is ${date}.`,
@@ -113,6 +160,9 @@ const en = {
 
     insurance: "Travel insurance",
     insuranceOffer: `Travel insurance is optional. Mark offers Allianz plans. Reply to this email or call ${BUSINESS.phone} if you would like a quote or have questions.`,
+    // On the cruise page there is no email to reply to: the offer points at the phone, with a link that dials (Mark 2026-10-19).
+    insuranceOfferPage: "Travel insurance is optional. Mark offers Allianz plans. For a quote, or if you have questions:",
+    callMark: `Call or text Mark at ${BUSINESS.phone}`,
     insuranceHave: "Travel insurance is on file for your cabin as accepted.",
     insuranceVideo: "A short video on how it works:",
 
@@ -338,6 +388,38 @@ const es: Strings = {
     "t-2": "Nos vemos a bordo.",
   },
 
+  topicFor: (kind, has) => {
+    const open = has("missing") || has("checklist");
+    switch (kind) {
+      case "t-120": return listEs([has("payments") ? "pagos" : "", has("paperwork") ? "documentos" : "", "qué hacer primero"].filter(Boolean));
+      case "t-90": return listEs([has("payments") ? "pago final" : "", has("deadlines") ? "fechas de la naviera" : "", has("travel") || has("travel-needed") ? "cómo llegar al barco" : ""].filter(Boolean)) || "lo que está pendiente en su archivo";
+      case "t-45": return listEs([has("excursions") ? "excursiones" : "", has("dining") ? "comidas" : "", open ? "lo que sigue pendiente" : ""].filter(Boolean)) || "cómo va su crucero";
+      case "t-10": return listEs([has("ship") ? "su barco" : "", "cómo funciona el día de embarque"].filter(Boolean));
+      case "t-5": return has("weather") || has("pack-tweaks") ? "el pronóstico del tiempo para su crucero" : has("storm") ? "Storm Watch y su crucero" : "una última nota antes de zarpar";
+      default: return null;
+    }
+  },
+  introFor: (kind, has) => {
+    switch (kind) {
+      case "t-90": {
+        const items = [has("payments") ? "pagos" : "", has("deadlines") ? "plazos de la naviera" : "", has("travel") || has("travel-needed") ? "cómo va a llegar al barco" : ""].filter(Boolean);
+        return items.length ? `Ahora empiezan a aparecer las fechas que importan: ${listEs(items)}.` : "Aquí está cómo va su crucero.";
+      }
+      case "t-45": {
+        const lead = listEs([has("excursions") ? "las excursiones" : "", has("dining") ? "las comidas" : ""].filter(Boolean));
+        const tail = has("missing") ? "enviarnos lo que todavía falta" : has("checklist") ? "revisar lo que sigue en su lista" : "";
+        if (lead && tail) return `Este es el momento de decidir ${lead}, y de ${tail}.`;
+        if (lead) return `Este es el momento de decidir ${lead}.`;
+        if (tail) return `Este es el momento de ${tail}.`;
+        return "Aquí está cómo va su crucero.";
+      }
+      case "t-10": return has("ship") ? "Aquí está su barco, y cómo funciona el día de embarque." : "Aquí está cómo funciona el día de embarque.";
+      case "t-5": return has("weather") || has("pack-tweaks") ? (has("pack-tweaks") ? "El pronóstico del tiempo para su crucero, y una última mirada a la maleta." : "El pronóstico del tiempo para su crucero.")
+        : has("storm") ? "Una nota de nuestro Storm Watch sobre su crucero." : "Una última nota antes de zarpar.";
+      default: return null;
+    }
+  },
+
   s: {
     sailing: "Su viaje",
     daysToGo: (n) => (n > 1 ? `Faltan ${n} días.` : n === 1 ? "Falta 1 día." : n === 0 ? "Hoy zarpa." : ""),
@@ -359,6 +441,7 @@ const es: Strings = {
     payDue: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, vence el ${p.date}.`,
     payOverdue: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, venció el ${p.date}. Responda este correo o llame para resolverlo.`,
     payNoDate: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, fecha por confirmar.`,
+    payAtBooking: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, se paga al reservar.`,
     payAllPaid: "Todos los pagos registrados están al día. Gracias.",
     payGroupFinal: (date) => `El pago final vence el ${date}.`,
     payGroupDeposit: (date) => `El plazo del depósito es el ${date}.`,
@@ -379,6 +462,8 @@ const es: Strings = {
 
     insurance: "Seguro de viaje",
     insuranceOffer: `El seguro de viaje es opcional. Mark ofrece planes de Allianz. Responda este correo o llame al ${BUSINESS.phone} si desea una cotización o tiene preguntas.`,
+    insuranceOfferPage: "El seguro de viaje es opcional. Mark ofrece planes de Allianz. Para una cotización, o si tiene preguntas:",
+    callMark: `Llame o envíe un mensaje de texto a Mark al ${BUSINESS.phone}`,
     insuranceHave: "El seguro de viaje de su cabina figura como aceptado.",
     insuranceVideo: "Un video corto sobre cómo funciona:",
 

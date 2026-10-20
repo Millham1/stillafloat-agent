@@ -7,9 +7,10 @@ import { getSupabase, readJson, writeJson, PATHS } from "./persistence";
 import { logger } from "./logger";
 import { TRAVELER_COLS } from "./group-forms";
 import { shipSlugCandidate } from "./group-marketing";
+import { firstRealStorm } from "./dev-storm-fixture";
 import { fetchForecast } from "./weather-forecast";
 import { ACTIVE_GROUP_STATUSES, type JourneyDefaults } from "./group-journey";
-import { dayDiff, stopsInHorizon, type Extras, type ForecastDay, type JourneyInput, type Row, type ScanVideo, type StormNote } from "./group-journey-facts";
+import { dayDiff, stopsInHorizon, type Extras, type FleetShip, type ForecastDay, type JourneyInput, type Row, type ScanVideo, type StormNote } from "./group-journey-facts";
 import type { Clock, JourneyStore, Needs } from "./group-journey-run";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,6 +68,13 @@ export async function loadVideos(): Promise<ScanVideo[]> {
   return Array.isArray(scan.videos) ? scan.videos : [];
 }
 
+/** The ships the site knows with their lines, so a video that names a ship (and no line) can be tied to the line that sails it. */
+export async function loadFleet(): Promise<FleetShip[]> {
+  const r = await db().from("cabin_ships").select("ship, line").limit(1000);
+  if (r.error) { logger.warn({ err: r.error.message }, "group journey: the ship table could not be read; videos are matched by the line named in their titles only"); return []; }
+  return ((r.data ?? []) as Row[]).filter((h) => typeof h.ship === "string" && h.ship.trim()).map((h) => ({ ship: String(h.ship), line: typeof h.line === "string" ? h.line : null }));
+}
+
 /** The ship's published Conga Line row and its hull record, found by the slug on the file or by the ship's name. Never writes the slug back. */
 export async function loadShip(group: Row): Promise<{ rating: Row | null; shipInfo: Row | null }> {
   let slug: string | null = group.ship_slug ?? null;
@@ -79,15 +87,17 @@ export async function loadShip(group: Row): Promise<{ rating: Row | null; shipIn
   return { shipInfo: hull.data ?? null, rating: rating.data ?? null };
 }
 
-/** An active storm that lists this ship (read-only: a pinned ship on a live, public storm alert). */
+/**
+ * An active storm that lists this ship (read-only: a pinned ship on a live, public storm alert). The dev box's permanent test storm is never one:
+ * it pins MSC ships all the time, and a client must not be told about weather that is not real.
+ */
 export async function loadStorm(shipName: string): Promise<StormNote | null> {
   const name = (shipName ?? "").trim();
   if (!name) return null;
   const pins = await db().from("storm_tracked_ships").select("alert_id").ilike("ship_name", likeEscape(name)).limit(20);
   if (pins.error || !pins.data?.length) return null;
-  const alerts = await db().from("storm_alerts").select("id, name, classification, headline, status, ended_at").in("id", pins.data.map((p: Row) => p.alert_id)).in("status", ["approved", "sent"]).is("ended_at", null).order("last_updated", { ascending: false }).limit(1);
-  const a = alerts.data?.[0];
-  return a ? { name: a.name ?? null, classification: a.classification ?? null, headline: a.headline ?? null } : null;
+  const alerts = await db().from("storm_alerts").select("id, nhc_id, raw, name, classification, headline, status, ended_at").in("id", pins.data.map((p: Row) => p.alert_id)).in("status", ["approved", "sent"]).is("ended_at", null).order("last_updated", { ascending: false }).limit(10);
+  return firstRealStorm(alerts.data ?? []);
 }
 
 /** Forecasts for the stops inside the ten-day horizon. A place whose forecast fails is left out (its row is not shown), never faked. */
@@ -124,7 +134,7 @@ export function supabaseJourneyStore(): JourneyStore {
     async saveDefaults(d) { await writeJson(DEFAULTS_KEY, d); },
     async extras(input, needs: Needs, clock) {
       const e: Extras = {};
-      if (needs.videos) e.videos = await loadVideos();
+      if (needs.videos) { e.videos = await loadVideos(); e.fleet = await loadFleet(); }
       if (needs.rating) Object.assign(e, await loadShip(input.group));
       if (needs.weather) e.weather = await loadWeather(input.group, clock);
       if (needs.storm) e.storm = await loadStorm(String(input.group.ship_name ?? ""));

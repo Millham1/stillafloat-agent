@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
 import {
-  devStormFixtureEnabled, isDevFixtureAlert, fixtureWindow, fixtureSailingRows, fixtureAlertRow, ensureDevStormFixture,
+  devStormFixtureEnabled, isDevFixtureAlert, isFixtureAlertRow, firstRealStorm, fixtureWindow, fixtureSailingRows, fixtureAlertRow, ensureDevStormFixture,
   FIXTURE_NHC_ID, FIXTURE_GROUND, FIXTURE_REGION, FIXTURE_SOURCE, FIXTURE_SHIPS,
 } from "./dev-storm-fixture";
 import { keepsPins, isLiveNamedThreat, manualStillOpen } from "./storm-lifecycle";
@@ -104,4 +104,20 @@ test("with the switch off, keeping the fixture alive touches nothing", async () 
   delete process.env["DEV_STORM_FIXTURE"];
   try { assert.equal(await ensureDevStormFixture(NOW), "off"); }
   finally { if (was !== undefined) process.env["DEV_STORM_FIXTURE"] = was; }
+});
+
+test("a client's journey never hears of the dev test storm: the fixture alert is skipped wherever it is read, a real storm behind it is kept", () => {
+  const fixture = { ...fixtureAlertRow(new Date("2026-10-19T12:00:00Z")), id: "f1" };
+  assert.equal(isFixtureAlertRow(fixture), true);
+  assert.equal(isFixtureAlertRow({ nhc_id: "AL052026", raw: {} }), false);
+  assert.equal(isFixtureAlertRow({ nhc_id: "x", raw: { source: FIXTURE_SOURCE } }), true, "marked by its source even if the id changed");
+  assert.equal(isFixtureAlertRow(null), false);
+  // the fixture is refreshed constantly, so it is always the newest: the real storm after it must still be found
+  assert.equal(firstRealStorm([fixture]), null);
+  assert.deepEqual(firstRealStorm([fixture, { nhc_id: "AL052026", raw: {}, name: "Gonzalo", classification: "Tropical Storm", headline: "Gonzalo nears the Bahamas" }]),
+    { name: "Gonzalo", classification: "Tropical Storm", headline: "Gonzalo nears the Bahamas" });
+  assert.equal(firstRealStorm([]), null);
+  // the same on a box with the fixture switched off: the row is still not real weather
+  assert.equal(devStormFixtureEnabled({ DEV_STORM_FIXTURE: "0", PUBLIC_URL: "https://stillafloatcruising.com" }), false);
+  assert.equal(isFixtureAlertRow(fixture), true);
 });

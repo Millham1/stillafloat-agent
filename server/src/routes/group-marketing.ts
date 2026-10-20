@@ -10,12 +10,12 @@ import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
   ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, ctaLine, missingAnswers, newShareCode, normalizeAnswers, pitchGate, pitchNumberProblems, retryNote,
-  shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
+  publicFacts, shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
 import { assetsFor, fetchAssets, putPublic, type AssetRow } from "../lib/group-assets";
 import { pickPhotos, posterPdf, posterSpec, renderPoster, renderSocial } from "../lib/group-package";
-import { CAMPAIGN_SCHEMA, campaignSystemPrompt, campaignUserPrompt, tidyCampaign, validateCampaign, type Campaign } from "../lib/group-campaign";
+import { CAMPAIGN_SCHEMA, campaignSystemPrompt, campaignUserPrompt, facebookPostText, renderCampaignEmails, tidyCampaign, validateCampaign, type Campaign } from "../lib/group-campaign";
 
 // Group marketing (migration 0045).
 //
@@ -85,27 +85,6 @@ async function loadGroup(where: { id?: string; code?: string }): Promise<{ group
 function copyFor(group: Row, lang: Lang): GroupCopy | null {
   const c = group.marketing_copy?.[lang];
   return c && typeof c === "object" ? tidyCopy(c) : null;
-}
-
-/** What the public page may see. No ids, no organizer contact, no internal notes. */
-function publicFacts(f: GroupFacts, answers: Record<string, string | boolean>): Row {
-  const showPrices = answers["show_prices"] !== false;
-  return {
-    lang: f.lang, business: f.business, groupName: f.groupName, line: f.line, ship: f.ship,
-    sailDateText: f.sailDateText, returnDateText: f.returnDateText, nights: f.nights, embarkPort: f.embarkPort,
-    travel: f.travel, perks: f.perks,
-    ports: f.ports, itinerary: f.itinerary, amenities: f.amenities,
-    cabins: f.cabins.map((c) => ({
-      category: c.category, available: c.available,
-      perPersonText: showPrices ? c.perPersonText : null,
-      depositPerPersonText: showPrices ? c.depositPerPersonText : null,
-    })),
-    cabinsAvailable: f.cabinsAvailable,
-    fromPerPersonText: showPrices ? f.fromPerPersonText : null,
-    bookByText: f.bookByText, finalPaymentText: f.finalPaymentText,
-    rating: answers["show_rating"] !== false ? f.rating : null,
-    markSailing: answers["mark_sailing"] === true,
-  };
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -390,14 +369,14 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
 
     const { error } = await db().from("group_interests").insert({
       group_id: group.id, first_name: first, last_name: last || null, email, phone: phone || null, lang,
-      cabin_type: text(body["cabin_type"], 80) || null, guests, note: text(body["note"], 800) || null,
+      guests, note: text(body["note"], 800) || null,
       newsletter_opt_in: optIn, ip_hash: hashForAudit(ip), prospect_id: prospectId,
     });
     if (error) throw new Error(error.message);
 
     void notifyMark({
       title: `Group reply: ${first}${last ? " " + last : ""}`,
-      body: `${group.name} — ${guests ? guests + " guest(s), " : ""}${text(body["cabin_type"], 80) || "no cabin type picked"}. Reply within a few hours.`,
+      body: `${group.name} — ${guests ? `party of ${guests}` : "party size not given"}. Reply within a few hours.`,
       tag: `group-interest-${group.id}`,
       buttons: [{ label: "Open the group file", href: `/groups/${group.id}` }],
       priority: "lead",
@@ -445,7 +424,17 @@ router.get("/groups/:id/marketing/package", requireToken, async (req: Request, r
     const facts = buildFacts({ group, cabins, travel }, rating, langsFor(group)[0]!);
     const assets = group.ship_name ? await assetsFor(String(group.ship_name), ["ship", ...subjectsFor(facts).map((d) => `destination:${d}`)]) : [];
     const pkg = pkgOf(group);
-    return res.json({ success: true, assets, chosen: Array.isArray(pkg["chosen"]) ? pkg["chosen"] : [], renders: pkg["renders"] ?? null, campaign: pkg["campaign"] ?? null,
+    // The campaign as it is sent or posted: each email as HTML with a "Tap here" button and the plain link (no QR code: that is for the poster), and each
+    // Facebook text with its tap-the-link line. Read-only, so a group with no share code yet simply has no link to draw.
+    const lang = langsFor(group)[0]!;
+    const campaign = pkg["campaign"] && typeof pkg["campaign"] === "object" ? tidyCampaign(pkg["campaign"]) : null;
+    const url = group.share_code ? `${publicSite()}/group.html?g=${group.share_code}` : null;
+    const answers = normalizeAnswers(group.marketing);
+    const rendered = campaign && url
+      ? { emails: renderCampaignEmails(campaign, { url, lang, answers }),
+          facebook: Object.fromEntries((["announcement", "reminder", "event_description", "boosted"] as const).map((k) => [k, facebookPostText(campaign.facebook[k], { url, lang, answers })])) }
+      : null;
+    return res.json({ success: true, assets, chosen: Array.isArray(pkg["chosen"]) ? pkg["chosen"] : [], renders: pkg["renders"] ?? null, campaign: pkg["campaign"] ?? null, rendered,
       campaignProblems: pkg["campaign_problems"] ?? [], notes: pkg["notes"] ?? [], hasCopy: !!copyFor(group, langsFor(group)[0]!), shareCode: group.share_code ?? null });
   } catch (err) { return fail(req, res, err, "group package read failed"); }
 });
@@ -492,7 +481,7 @@ router.post("/groups/:id/marketing/package/render", requireToken, async (req: Re
     if (!hero) return res.status(400).json({ success: false, error: "No photo on file yet — fetch photographs first" });
     const code = await shareCodeFor(group);
     const url = `${publicSite()}/group.html?g=${code}`;
-    const spec = posterSpec(facts, copy, { url, credits, lang, cta: ctaLine(normalizeAnswers(group.marketing), lang).text });
+    const spec = posterSpec(facts, copy, { url, credits, lang, cta: ctaLine(normalizeAnswers(group.marketing), lang, "print").text });
     const get = async (a: AssetRow) => Buffer.from(await (await fetch(a.public_url, { signal: AbortSignal.timeout(30_000) })).arrayBuffer());
     const heroBytes = await get(hero);
     const secondBytes = second ? await get(second) : null;

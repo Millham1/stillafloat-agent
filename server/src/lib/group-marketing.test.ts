@@ -4,7 +4,7 @@ import { campaignSystemPrompt, campaignUserPrompt } from "./group-campaign";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
-  ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch } from "./group-marketing";
+  ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts, DIGITAL_CTA, QR_PROBLEM, ctaForFacebook, mentionsQr, withDisplayNames } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -248,7 +248,7 @@ test("the group's air / hotel / transfer offer reads as plain lines (EN and ES);
 });
 
 
-test("perks shown to guests come from the fare inclusions, never the organizer's amenities; the prompt names the QR and the upgrades line and never the advisor", () => {
+test("perks shown to guests come from the fare inclusions, never the organizer's amenities; the prompt names the tap-the-link call to action and the upgrades line and never the advisor", () => {
   const f = buildFacts({ group: { ...file().group, inclusions: ["Premium drinks package", " Wi-Fi, one device, first two guests "] }, cabins: [] }, null, "en");
   assert.deepEqual(f.perks, ["Premium drinks package", "Wi-Fi, one device, first two guests"]);
   assert.ok(f.amenities.length > 0, "amenities still exist for the dashboard");
@@ -259,7 +259,7 @@ test("perks shown to guests come from the fare inclusions, never the organizer's
   assert.match(prompt, /919-346-6127/);
   assert.doesNotMatch(prompt, /sailing with the group/);
   const sys = systemPrompt("en");
-  assert.match(sys, /never a person/); assert.match(sys, /the exact words "Use the QR code to book your spot!"/); assert.match(sys, /cabin upgrades are available/i);
+  assert.match(sys, /never a person/); assert.match(sys, /the exact words "Tap here to book your spot!"/); assert.match(sys, /cabin upgrades are available/i);
   assert.doesNotMatch(sys, /Mark Millham/);
 });
 
@@ -365,7 +365,7 @@ test("'Join Mark' and amenity points fail every field, in both languages; an exc
   const en = buildFacts(file(), rating, "en");
   for (const [field, text, want] of [
     ["headline", "Imagine joining us at sea. Join Mark on the Celebration", /Join Mark/],
-    ["cta_blurb", "Use the QR code to book your spot! Join Mark!", /Join Mark/],
+    ["cta_blurb", "Tap here to book your spot! Join Mark!", /Join Mark/],
     ["subhead", "Join Mark on the Celebration", /Join Mark/],
     ["why_ship", "We have 3 amenity points to spend.", /amenity points/],
     ["who_for", "One amenity point goes to the group.", /amenity points/],
@@ -378,7 +378,7 @@ test("'Join Mark' and amenity points fail every field, in both languages; an exc
     assert.ok(validateCopy({ ...goodCopy(), intro: text }, es).some((x) => x.field === "intro"), text);
   }
   // Mark as the contact is fine, and so is the "!" (the call to action and the payoff end on one)
-  assert.deepEqual(validateCopy({ ...goodCopy(), cta_blurb: "Use the QR code to book your spot! Or call or text Mark at 919-346-6127." }, en), []);
+  assert.deepEqual(validateCopy({ ...goodCopy(), cta_blurb: "Tap here to book your spot! Or call or text Mark at 919-346-6127." }, en), []);
   assert.deepEqual(validateCopy({ ...goodCopy(), subhead: "ALL ON THE SAME CRUISE!" }, en), []);
 });
 
@@ -392,7 +392,7 @@ test("both prompts carry Mark's register verbatim, the exact call to action and 
   assert.match(sys, /no dry beat, no wink/);
   assert.match(sys, /never invent a superlative or an adjective he did not use/);
   assert.match(sys, /the occasion line is used exactly as he wrote it in the interview, with nothing added/);
-  assert.match(sys, /the exact words "Use the QR code to book your spot!", then the link, then the phone 919-346-6127/);
+  assert.match(sys, /the exact words "Tap here to book your spot!" \(in a Facebook text the same words end in a colon, "Tap here to book your spot:", and the link follows on the next line\), then the link, then the phone 919-346-6127/);
   assert.match(sys, /Never "Join Mark" as the hook/);
   assert.match(sys, /never "amenity points"/);
   // the old house voice is gone: no four-word hook, no dry beat, no wink, no "Scan the QR to join the fun"
@@ -410,7 +410,7 @@ test("both prompts carry Mark's register verbatim, the exact call to action and 
   assert.doesNotMatch(sys, /The only change allowed is a closing exclamation mark/);
   assert.match(sys, /Exclamation marks and the capitalised payoff are part of the register \(below\), in every piece\. Mark's pitch sentences are his own words/);
   assert.match(systemPrompt("es"), /sentence for sentence/, "Spanish is a faithful translation of the pitch");
-  assert.match(systemPrompt("es"), /the exact words "¡Use el código QR para reservar su lugar!"/, "the Spanish call to action");
+  assert.match(systemPrompt("es"), /the exact words "¡Toque aquí para reservar su lugar!"/, "the Spanish call to action");
   assert.doesNotMatch(systemPrompt("es"), /every sentence of it into the intro, word for word/);
   assert.ok(pitchRules("email 1", "x").some((r) => r.includes("email 1")));
 });
@@ -459,7 +459,7 @@ test("the bans that remain still apply to the words WE write outside the pitch; 
   const p = validateCopy(withPitch({
     intro: `${VERBATIM} What an amazing week!`,
     why_ship: "An unforgettable week, cheaper than you think. Join Mark on the Seaside.",
-    cta_blurb: "Use the QR code to book your spot!",
+    cta_blurb: "Tap here to book your spot!",
     social_post: `${VERBATIM}\nThree amenity points for the group. Guaranteed.`,
   }), f, answers);
   const has = (field: string, re: RegExp) => p.some((x) => x.field === field && re.test(x.problem));
@@ -550,10 +550,10 @@ function seashoreCopy(): GroupCopy {
     who_for: "Friends and family, first-timers welcome. Cabin upgrades are available, balcony and up, by request.",
     organizer_note: null,
     cta_label: "Tell us you're in",
-    cta_blurb: "Use the QR code to book your spot!",
+    cta_blurb: "Tap here to book your spot!",
     email_subject: "A beach party under the lighthouse, then sunrise on the same beach",
-    email_body: `${WALK} ALL ON THE SAME CRUISE!\n\n${VERBATIM}\n\nUse the QR code to book your spot!\n\nStill Afloat Cruising`,
-    social_post: `${WALK} ALL ON THE SAME CRUISE! Use the QR code to book your spot!`,
+    email_body: `${WALK} ALL ON THE SAME CRUISE!\n\n${VERBATIM}\n\nTap here to book your spot!\n\nStill Afloat Cruising`,
+    social_post: `${WALK} ALL ON THE SAME CRUISE! Tap here to book your spot!`,
   };
 }
 
@@ -710,27 +710,109 @@ test("a fragment chain is not banned by a rule (a model may still write it), and
   assert.match(systemPrompt("en", MARK_ANSWERS), /Each moment keeps its meaning because it sits inside the one sentence with the moments around it; chopped into fragments it has no impact/);
 });
 
-test("the call to action is 'Use the QR code to book your spot!' on every piece; the interview's cta_line chooses another per group", () => {
+test("the poster says 'Use the QR code to book your spot!'; every digital piece says 'Tap here to book your spot!'; the interview's cta_line chooses another per group", () => {
   assert.equal(DEFAULT_CTA.en, "Use the QR code to book your spot!");
-  assert.deepEqual(ctaLine({}, "en"), { text: "Use the QR code to book your spot!", custom: false });
-  assert.deepEqual(ctaLine({ cta_line: "   " }, "en"), { text: "Use the QR code to book your spot!", custom: false });
-  assert.deepEqual(ctaLine({}, "es"), { text: "¡Use el código QR para reservar su lugar!", custom: false });
-  assert.deepEqual(ctaLine({ cta_line: " Scan the QR to join the fun " }, "en"), { text: "Scan the QR to join the fun", custom: true });
+  assert.equal(DIGITAL_CTA.en, "Tap here to book your spot!");
+  assert.equal(DIGITAL_CTA.es, "¡Toque aquí para reservar su lugar!");
+  assert.deepEqual(ctaLine({}, "en", "print"), { text: "Use the QR code to book your spot!", custom: false });
+  assert.deepEqual(ctaLine({ cta_line: "   " }, "en", "print"), { text: "Use the QR code to book your spot!", custom: false });
+  assert.deepEqual(ctaLine({}, "es", "print"), { text: "¡Use el código QR para reservar su lugar!", custom: false });
+  assert.deepEqual(ctaLine({}, "en", "digital"), { text: "Tap here to book your spot!", custom: false });
+  assert.deepEqual(ctaLine({}, "es", "digital"), { text: "¡Toque aquí para reservar su lugar!", custom: false });
+  for (const medium of ["print", "digital"] as const) assert.deepEqual(ctaLine({ cta_line: " Scan the QR to join the fun " }, "en", medium), { text: "Scan the QR to join the fun", custom: true });
+  // a Facebook text writes the line with a colon, and the link follows
+  assert.equal(ctaForFacebook({}, "en"), "Tap here to book your spot:");
+  assert.equal(ctaForFacebook({}, "es"), "¡Toque aquí para reservar su lugar:");
+  assert.equal(ctaForFacebook({ cta_line: "Join the fun!" }, "en"), "Join the fun!");
   // the question is on the interview, optional, and stays a text answer
   const q = INTERVIEW.find((x) => x.key === "cta_line")!;
-  assert.equal(q.type, "text"); assert.notEqual(q.required, true); assert.match(q.hint ?? "", /Use the QR code to book your spot!/);
+  assert.equal(q.type, "text"); assert.notEqual(q.required, true); assert.match(q.hint ?? "", /Use the QR code to book your spot!/); assert.match(q.hint ?? "", /Tap here to book your spot!/);
   assert.equal(normalizeAnswers({ cta_line: "  Scan the QR to join the fun  " })["cta_line"], "Scan the QR to join the fun");
   assert.equal(normalizeAnswers({})["cta_line"], "");
-  // the page prompt and the campaign prompt name it, with the link, then the phone
+  // the page prompt and the campaign prompt name it, with the link, then the phone, and never a QR code
   const rule = ctaRule({}, "en", "in every piece");
-  assert.match(rule, /the exact words "Use the QR code to book your spot!", then the link, then the phone 919-346-6127/);
+  assert.match(rule, /the exact words "Tap here to book your spot!" \(in a Facebook text the same words end in a colon, "Tap here to book your spot:", and the link follows on the next line\), then the link, then the phone 919-346-6127/);
+  assert.match(rule, /Never mention a QR code: a QR code is for the printed poster only/);
   assert.ok(systemPrompt("en").includes(rule.replace("in every piece", "in the cta_blurb, the email_body and the social_post")));
-  assert.ok(campaignSystemPrompt("en").includes(ctaRule({}, "en", "in EVERY piece (every email and every Facebook text carries the QR image beside it; the link is the info sheet, for people reading on a phone)")));
+  assert.ok(campaignSystemPrompt("en").includes(ctaRule({}, "en", "in EVERY piece (every email and every Facebook text: the link is the info sheet, tapped on a phone or a computer; no piece carries a QR code, which is printed on the poster only)")));
+  assert.doesNotMatch(campaignSystemPrompt("en"), /Use the QR code to book your spot!/);
+  assert.doesNotMatch(campaignUserPrompt(buildFacts(file(), rating, "en"), {}, "https://x.test/group.html?g=abc"), /carries the QR|on print it is a QR/);
   // another line, chosen for the group, replaces it everywhere and never leaves the default behind
   const own = { cta_line: "Scan the QR to join the fun" };
   for (const sys of [systemPrompt("en", own), campaignSystemPrompt("en", own)]) {
     assert.match(sys, /the exact words "Scan the QR to join the fun", then the link, then the phone/);
-    assert.doesNotMatch(sys, /Use the QR code to book your spot!/);
+    assert.doesNotMatch(sys, /Use the QR code to book your spot!|Tap here to book your spot!/);
   }
   assert.match(systemPrompt("es", own), /the line "Scan the QR to join the fun", translated into natural Latin American Spanish, then the link/);
+});
+
+test("a digital piece that names a QR code fails; Mark's own pitch sentences and his own cta_line may", () => {
+  const en = buildFacts(file(), rating, "en");
+  const bad = validateCopy({ ...goodCopy(), cta_blurb: "Use the QR code to book your spot!" }, en);
+  assert.deepEqual(bad.filter((p) => p.field === "cta_blurb").map((p) => p.problem), [QR_PROBLEM]);
+  assert.ok(validateCopy({ ...goodCopy(), social_post: "Scan the QR and you are in." }, en).some((p) => p.field === "social_post" && p.problem === QR_PROBLEM));
+  // an ordinary word that merely contains the letters is not a QR code
+  assert.deepEqual(validateCopy({ ...goodCopy(), cta_blurb: "Tap here to book your spot!" }, en), []);
+  assert.equal(mentionsQr("Sqrt and Qrow", {}, "en"), false);
+  assert.equal(mentionsQr("el código QR", {}, "es"), true);
+  // his own words are his: a pitch sentence and a cta_line he typed are not flagged
+  assert.equal(mentionsQr("Scan the QR to join the fun!", { pitch: "Scan the QR to join the fun!" }, "en"), false);
+  assert.equal(mentionsQr("Scan the QR to join the fun. Call us.", { cta_line: "Scan the QR to join the fun" }, "en"), false);
+  assert.equal(mentionsQr("Scan the QR to join the fun. Also use the QR code.", { cta_line: "Scan the QR to join the fun" }, "en"), true);
+});
+
+// ── The info page asks one thing: "I'm interested" (Mark 2026-10-19) ──────────
+
+test("the public facts carry no cabin list, no cabin count and no per-category price, only the single from-price", () => {
+  const facts = buildFacts({ ...file(), group: { ...file().group, inclusions: ["Drinks package"] } }, rating, "en");
+  const pub = publicFacts(facts, {});
+  for (const k of ["cabins", "cabinsAvailable", "cabinsTotal"]) assert.ok(!(k in pub), `the public facts must not carry ${k}`);
+  assert.equal(pub["fromPerPersonText"], "$849");
+  assert.deepEqual(pub["perks"], ["Drinks package"]);
+  assert.deepEqual(pub["planned"], []);
+  assert.ok(!JSON.stringify(pub).includes("$1,249"), "a per-category price leaked into the public facts");
+  assert.equal(publicFacts(facts, { show_prices: false })["fromPerPersonText"], null);
+  assert.equal(publicFacts(facts, { show_rating: false })["rating"], null);
+});
+
+test("'planned for the group' is copied from Mark's own words and never composed", () => {
+  assert.deepEqual(plannedForGroup({ pitch: "Everyone gets a $25 onboard credit and a toast." }), ["$25 onboard credit"]);
+  assert.deepEqual(plannedForGroup({ extras: "Each cabin gets an onboard credit of $50 per cabin." }), ["onboard credit of $50 per cabin"]);
+  assert.deepEqual(plannedForGroup({ pitch: "$25 on-board credit", why_sailing: "A $25 onboard credit again" }), ["$25 on-board credit", "$25 onboard credit"]);
+  assert.deepEqual(plannedForGroup({ pitch: "A sunset-to-sunrise party and a group dinner." }), []);
+  assert.deepEqual(plannedForGroup({ pitch: "Onboard credit is possible", extras: "no numbers here" }), []);   // no amount named: nothing to print
+  assert.deepEqual(plannedForGroup({ audience: "$25 onboard credit", cta_line: "$25 onboard credit" }), []);   // only the answers that describe the trip
+});
+
+// ── Names print in capitals on a contract; clients read them as names (Mark 2026-10-19: "MSC SEASHORE") ────────────
+
+test("displayName: ship and line names in title case, acronyms and roman numerals kept upper, a name with lower case left alone", () => {
+  assert.equal(displayName("MSC SEASHORE"), "MSC Seashore");
+  assert.equal(displayName("MSC SEASCAPE"), "MSC Seascape");
+  assert.equal(displayName("NCL JADE"), "NCL Jade");
+  assert.equal(displayName("RCI ALLURE OF THE SEAS"), "RCI Allure of the Seas");
+  assert.equal(displayName("NORWEGIAN CRUISE LINE"), "Norwegian Cruise Line");
+  assert.equal(displayName("ROYAL CARIBBEAN INTERNATIONAL"), "Royal Caribbean International");
+  assert.equal(displayName("HOLLAND AMERICA LINE"), "Holland America Line");
+  assert.equal(displayName("CARNIVAL CELEBRATION II"), "Carnival Celebration II");
+  assert.equal(displayName("QUEEN MARY IV"), "Queen Mary IV");
+  assert.equal(displayName("EXPLORER VII"), "Explorer VII");
+  assert.equal(displayName("P&O ARVIA"), "P&O Arvia");
+  assert.equal(displayName("COSTA FAVOLOSA"), "Costa Favolosa");
+  assert.equal(displayName("MARDI GRAS"), "Mardi Gras");
+  assert.equal(displayName("  MSC   SEASHORE "), "MSC   Seashore");
+  assert.equal(displayName("Norwegian Prima"), "Norwegian Prima");
+  assert.equal(displayName("MSC Seashore"), "MSC Seashore");
+  assert.equal(displayName("AIDAnova"), "AIDAnova", "a mixed-case spelling is the line's own");
+  assert.equal(displayName("MIX"), "Mix", "only real roman numerals stay upper");
+  assert.equal(displayName("CIVIC"), "Civic");
+  assert.equal(displayName(undefined), "");
+});
+
+test("a new file is saved with the ship and the line in display case, and nothing else touched", () => {
+  const row = { name: "Post 12 Cruise", cruise_line: "MSC CRUISES", ship_name: "MSC SEASHORE", embark_port: "PCV", nights: 4 };
+  assert.deepEqual(withDisplayNames(row), { name: "Post 12 Cruise", cruise_line: "MSC Cruises", ship_name: "MSC Seashore", embark_port: "PCV", nights: 4 });
+  assert.deepEqual(withDisplayNames({ ship_name: "Carnival Celebration", cruise_line: null }), { ship_name: "Carnival Celebration", cruise_line: null });
+  assert.deepEqual(withDisplayNames({ name: "x" }), { name: "x" });
+  assert.equal(row.ship_name, "MSC SEASHORE", "the input is not changed");
 });

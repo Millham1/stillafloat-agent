@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
+import { withDisplayNames } from "../lib/group-marketing";
 import { CHILDREN, GROUP_COLUMNS, groupDateProblem, missingSchedule, pickWritable, publicGroupRow, slugify, withGroupDeposit } from "../lib/group-file";
 import {
   MAX_PDF_BYTES, cabinRowsFromExtraction, travelRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
@@ -197,6 +198,8 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
       const v = (extracted as unknown as Row)[k];
       if ((groupRow[k] === undefined || groupRow[k] === null || groupRow[k] === "") && v !== null && v !== undefined) groupRow[k] = v;
     }
+    // A contract prints "MSC SEASHORE"; the file holds the name the way people write it, so every page and email that shows it reads "MSC Seashore".
+    Object.assign(groupRow, withDisplayNames(groupRow));
     // The dates the file will hold (typed on the form, or read from the document) must all come before the sailing.
     const dateProblem = groupDateProblem(groupRow);
     if (dateProblem) return res.status(400).json({ success: false, ...dateProblem });

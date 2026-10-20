@@ -51,8 +51,6 @@ table{width:100%;border-collapse:collapse;font-size:19px}
 th{text-align:left;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.66);font-weight:600;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.18)}
 td{padding:11px 10px;border-bottom:1px solid rgba(255,255,255,.09);vertical-align:top;color:rgba(255,255,255,.94)}
 tr:last-child td{border-bottom:none}
-td.num{text-align:right;white-space:nowrap;font-weight:700}
-th.num{text-align:right}
 .sea{color:rgba(255,255,255,.62);font-style:italic}
 ul.perks{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 ul.perks li{display:flex;gap:12px;align-items:flex-start;font-size:20px}
@@ -78,7 +76,7 @@ select option{color:#07183f}
 .msg{margin-top:14px;font-size:19px}
 .msg.ok{color:#5dff9a}.msg.err{color:#ffd21f}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
-.fine{font-size:17px;color:rgba(255,255,255,.7)}
+.fine,.section p.fine{font-size:17px;color:rgba(255,255,255,.7)}
 .mark{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
 .mark p{flex:1;min-width:260px}
 footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font-size:16px}
@@ -100,9 +98,34 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     <h1 id="gp-headline"></h1>
     <p class="sub" id="gp-subhead"></p>
     <div class="stats" id="gp-stats"></div>
+    <p class="fine" id="gp-fine" style="margin-top:10px"></p>
   </section>
 
   <section class="section"><p id="gp-intro"></p></section>
+
+  <!-- The page asks one thing: "I'm interested". No cabin list, no availability, no cabin picker: Mark talks to them first and chooses the cabin
+       (Mark 2026-10-19: "why would they see the available cabins before I know they are interested"). -->
+  <section class="section" id="interest">
+    <h2 id="gp-cta-title"></h2>
+    <p id="gp-cta-blurb"></p>
+    <div class="card">
+      <form id="gp-form" novalidate>
+        <div class="form-grid">
+          <div><label for="f-first" data-t="first"></label><input id="f-first" type="text" autocomplete="given-name" required></div>
+          <div><label for="f-last" data-t="last"></label><input id="f-last" type="text" autocomplete="family-name"></div>
+          <div><label for="f-email" data-t="email"></label><input id="f-email" type="email" autocomplete="email" required></div>
+          <div><label for="f-phone" data-t="phone"></label><input id="f-phone" type="tel" autocomplete="tel"></div>
+          <div><label for="f-guests" data-t="party"></label><select id="f-guests"></select></div>
+          <div class="full"><label for="f-note" data-t="note"></label><textarea id="f-note"></textarea></div>
+          <div class="full"><label class="check"><input type="checkbox" id="f-news"><span data-t="news"></span></label></div>
+          <div class="hp" aria-hidden="true"><label>Website<input type="text" id="f-website" tabindex="-1" autocomplete="off"></label></div>
+          <div class="full" id="gp-turnstile"></div>
+          <div class="full"><button class="btn" type="submit" id="gp-submit"></button><div class="msg" id="gp-msg" role="status"></div></div>
+        </div>
+      </form>
+    </div>
+    <p class="fine" style="margin-top:12px" data-t="no_payment"></p>
+  </section>
 
   <section class="section" id="sec-itin" hidden>
     <h2 data-t="itinerary"></h2>
@@ -110,20 +133,19 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     <p class="fine" style="margin-top:12px" data-t="itin_note"></p>
   </section>
 
+  <!-- Only what the fare really includes (the group file's inclusions) and what Mark's own interview answers say is planned; never a filler line. -->
   <section class="section" id="sec-perks" hidden>
     <h2 data-t="included"></h2>
     <div class="card"><ul class="perks" id="gp-perks"></ul></div>
   </section>
 
+  <section class="section" id="sec-planned" hidden>
+    <p class="fine" style="margin:0"><strong data-t="planned"></strong> <span id="gp-planned"></span></p>
+  </section>
+
   <section class="section" id="sec-travel" hidden>
     <h2 data-t="travel"></h2>
     <div class="card"><ul class="perks" id="gp-travel"></ul></div>
-  </section>
-
-  <section class="section" id="sec-cabins" hidden>
-    <h2 data-t="cabins"></h2>
-    <div class="card"><table><thead><tr><th data-t="cabin_type"></th><th class="num" data-t="per_person"></th><th class="num" data-t="deposit"></th><th class="num" data-t="left"></th></tr></thead><tbody id="gp-cabins"></tbody></table></div>
-    <p class="fine" style="margin-top:12px" data-t="price_note"></p>
   </section>
 
   <section class="section">
@@ -145,29 +167,6 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     <div class="stats" id="gp-dates"></div>
   </section>
 
-  <section class="section" id="interest">
-    <h2 id="gp-cta-title"></h2>
-    <p id="gp-cta-blurb"></p>
-    <div class="card">
-      <form id="gp-form" novalidate>
-        <div class="form-grid">
-          <div><label for="f-first" data-t="first"></label><input id="f-first" type="text" autocomplete="given-name" required></div>
-          <div><label for="f-last" data-t="last"></label><input id="f-last" type="text" autocomplete="family-name"></div>
-          <div><label for="f-email" data-t="email"></label><input id="f-email" type="email" autocomplete="email" required></div>
-          <div><label for="f-phone" data-t="phone"></label><input id="f-phone" type="tel" autocomplete="tel"></div>
-          <div><label for="f-cabin" data-t="cabin_pick"></label><select id="f-cabin"></select></div>
-          <div><label for="f-guests" data-t="guests"></label><select id="f-guests"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
-          <div class="full"><label for="f-note" data-t="note"></label><textarea id="f-note"></textarea></div>
-          <div class="full"><label class="check"><input type="checkbox" id="f-news"><span data-t="news"></span></label></div>
-          <div class="hp" aria-hidden="true"><label>Website<input type="text" id="f-website" tabindex="-1" autocomplete="off"></label></div>
-          <div class="full" id="gp-turnstile"></div>
-          <div class="full"><button class="btn" type="submit" id="gp-submit"></button><div class="msg" id="gp-msg" role="status"></div></div>
-        </div>
-      </form>
-    </div>
-    <p class="fine" style="margin-top:12px" data-t="no_payment"></p>
-  </section>
-
   <section class="section">
     <h2 data-t="about"></h2>
     <div class="mark"><p data-t="bio"></p></div>
@@ -186,13 +185,12 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     ship:'Barco', sails:'Zarpa', returns:'Regresa', nights:'Noches', from:'Sale de', price_from:'Desde', pp:'por persona',
     itinerary:'El itinerario', day:'Día', date:'Fecha', port:'Puerto', inport:'En puerto', sea:'Día en el mar',
     itin_note:'Los horarios y puertos los fija la naviera y pueden cambiar.',
-    included:'Incluido para cada huésped', travel:'Cómo llegar', cabins:'Cabinas y precios', cabin_type:'Tipo de cabina', per_person:'Por persona', deposit:'Depósito', left:'Disponibles',
-    price_note:'Precios por persona, con dos huéspedes por cabina. El precio, los impuestos, las tasas y los cargos portuarios se confirman por escrito al reservar. Los depósitos y pagos se hacen directamente a la naviera.',
+    included:'Incluido para cada huésped', travel:'Cómo llegar', planned:'Planeado para el grupo:', upgrades:'Mejoras de cabina disponibles — pregunte a Mark', price_note:'Precio por persona, con dos huéspedes por cabina. El precio, los impuestos, las tasas y los cargos portuarios se confirman por escrito al reservar.',
     why:'Por qué este barco', score_label:'Puntaje Conga Line', score_hint:'Lo que dicen los cruceristas, resumido por Still Afloat.',
     who:'Para quién es este viaje', dates:'Fechas que importan', book_by:'Reserve antes de', final_pay:'Pago final', sail_day:'Día de salida',
-    first:'Nombre', last:'Apellido', email:'Correo electrónico', phone:'Teléfono (opcional)', cabin_pick:'Cabina que le interesa', guests:'Huéspedes en su cabina',
+    first:'Nombre', last:'Apellido', email:'Correo electrónico', phone:'Teléfono (opcional)', party:'¿Cuántas personas en su grupo?', count_me_in:'¡Cuenten conmigo!',
     note:'Preguntas o necesidades (movilidad, dieta, quién viaja con usted)', news:'Quiero recibir también el boletín de Still Afloat. Le enviaremos un correo para confirmarlo.',
-    not_sure:'Todavía no sé', no_payment:'Aquí no se paga nada ni se pide tarjeta. Le respondemos personalmente, por lo general el mismo día.',
+    no_payment:'Aquí no se paga nada ni se pide tarjeta. Le respondemos personalmente, por lo general el mismo día.',
     sent:'Recibido. Le escribiremos pronto.', sending:'Enviando…', err:'No se pudo enviar. Escriba a mark@stillafloatcruising.com.',
     about:'Su asesor de cruceros', bio:'Soy Mark Millham — veterano de EE. UU., gerente de TI retirado, exmarinero de a bordo y asesor de cruceros independiente con más de 20 años en el agua (Cornerstone Collective).',
     sailing_too:' Yo también viajo con el grupo.', legal_a:'Afiliado de', other:'English', title:'Crucero en grupo'
@@ -202,13 +200,12 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     ship:'Ship', sails:'Sails', returns:'Returns', nights:'Nights', from:'Sails from', price_from:'From', pp:'per person',
     itinerary:'The itinerary', day:'Day', date:'Date', port:'Port', inport:'In port', sea:'Day at sea',
     itin_note:'Times and ports are set by the cruise line and can change.',
-    included:'Included for every guest', travel:'Getting there', cabins:'Cabins and prices', cabin_type:'Cabin type', per_person:'Per person', deposit:'Deposit', left:'Available',
-    price_note:'Prices are per person, based on two guests per cabin. The price, taxes, fees and port expenses are confirmed in writing when you book. Deposits and payments are made directly to the cruise line.',
+    included:'Included for every guest', travel:'Getting there', planned:'Planned for the group:', upgrades:'Cabin upgrades available — ask Mark', price_note:'Price is per person, based on two guests per cabin. The price, taxes, fees and port expenses are confirmed in writing when you book.',
     why:'Why this ship', score_label:'Conga Line score', score_hint:'What cruisers say, summed up by Still Afloat.',
     who:'Who this trip suits', dates:'Dates that matter', book_by:'Reserve by', final_pay:'Final payment', sail_day:'Sailing day',
-    first:'First name', last:'Last name', email:'Email', phone:'Phone (optional)', cabin_pick:'Cabin you are interested in', guests:'Guests in your cabin',
+    first:'First name', last:'Last name', email:'Email', phone:'Phone (optional)', party:'How many in your party', count_me_in:'Count me in',
     note:'Questions or needs (mobility, diet, who is traveling with you)', news:'Also send me the Still Afloat newsletter. We will email you to confirm.',
-    not_sure:'Not sure yet', no_payment:'Nothing is paid here and no card is asked for. We reply personally, usually the same day.',
+    no_payment:'Nothing is paid here and no card is asked for. We reply personally, usually the same day.',
     sent:'Got it. We will be in touch soon.', sending:'Sending…', err:'That did not go through. Email mark@stillafloatcruising.com.',
     about:'Your cruise advisor', bio:"I'm Mark Millham — U.S. veteran, retired senior IT manager, former liveaboard sailor, and independent cruise advisor with 20+ years on the water (Cornerstone Collective).",
     sailing_too:' I am sailing with the group too.', legal_a:'Affiliate of', other:'Español', title:'Group Cruise'
@@ -254,6 +251,7 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
     $('gp-subhead').className = 'sub' + (c.subhead.length <= 60 ? ' payoff' : '');
     $('gp-stats').innerHTML = stat(T.ship, f.ship) + stat(T.sails, f.sailDateText) + stat(T.nights, f.nights) + stat(T.from, f.embarkPort)
       + (f.fromPerPersonText ? stat(T.price_from, f.fromPerPersonText + ' ' + T.pp) : '');
+    $('gp-fine').textContent = [f.fromPerPersonText ? T.price_note : '', T.upgrades].filter(Boolean).join('\n');
     $('gp-intro').textContent = c.intro;
 
     if(f.itinerary && f.itinerary.length){
@@ -261,19 +259,15 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
         return '<tr><td>'+esc(s.day == null ? '' : s.day)+'</td><td>'+esc(s.dateText||'')+'</td><td class="'+(s.seaDay?'sea':'')+'">'+esc(s.seaDay ? T.sea : s.port)+'</td><td>'+esc(s.timesText||'')+'</td></tr>';
       }).join(''); show('sec-itin');
     }
-    var perks = (f.perks || []).slice();
-    perks.push('Cabin upgrades are available: ask about balcony and up');
+    // The box is for what the fare really includes; the upgrade offer is its own line under the facts, never a filler line in the box.
+    var perks = (f.perks || []).filter(Boolean);
     if(perks.length){
       $('gp-perks').innerHTML = perks.map(function(a){ return '<li><i class="fa-solid fa-check"></i><span>'+esc(a)+'</span></li>'; }).join(''); show('sec-perks');
     }
+    // What Mark's own words say is planned for the group (an onboard credit he named). Never composed here.
+    if(f.planned && f.planned.length){ $('gp-planned').textContent = f.planned.join('; '); show('sec-planned'); }
     if(f.travel && f.travel.length){
       $('gp-travel').innerHTML = f.travel.map(function(t){ return '<li><i class="fa-solid fa-'+(t.kind==='flight'?'plane':t.kind==='hotel'?'bed':'van-shuttle')+'"></i><span>'+esc(t.text)+'</span></li>'; }).join(''); show('sec-travel');
-    }
-    var priced = (f.cabins||[]).filter(function(x){ return x.category; });
-    if(priced.length){
-      $('gp-cabins').innerHTML = priced.map(function(x){
-        return '<tr><td>'+esc(x.category)+'</td><td class="num">'+esc(x.perPersonText||'—')+'</td><td class="num">'+esc(x.depositPerPersonText||'—')+'</td><td class="num">'+esc(x.available)+'</td></tr>';
-      }).join(''); show('sec-cabins');
     }
     $('gp-why').textContent = c.why_ship;
     if(f.rating){
@@ -289,8 +283,8 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
 
     $('gp-cta-title').textContent = c.cta_label;
     $('gp-cta-blurb').textContent = c.cta_blurb;
-    $('gp-submit').textContent = c.cta_label;
-    $('f-cabin').innerHTML = '<option value="">'+esc(T.not_sure)+'</option>' + priced.map(function(x){ return '<option>'+esc(x.category)+'</option>'; }).join('');
+    $('gp-submit').textContent = T.count_me_in;
+    var gs = ''; for(var n=1;n<=12;n++) gs += '<option value="'+n+'"'+(n===2?' selected':'')+'>'+n+'</option>'; $('f-guests').innerHTML = gs;
     document.querySelector('[data-t="bio"]').textContent = T.bio + (f.markSailing ? T.sailing_too : '');
     $('gp-legal').textContent = f.business.legalName + ' · ' + T.legal_a + ' ' + f.business.host + ' · ' + f.business.email;
 
@@ -311,7 +305,7 @@ footer{text-align:center;padding:26px 20px 40px;color:rgba(255,255,255,.66);font
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         first_name: $('f-first').value, last_name: $('f-last').value, email: $('f-email').value, phone: $('f-phone').value,
-        cabin_type: $('f-cabin').value, guests: Number($('f-guests').value), note: $('f-note').value,
+        guests: Number($('f-guests').value), note: $('f-note').value,
         newsletter_opt_in: $('f-news').checked, website: $('f-website').value, lang: ES ? 'es' : 'en',
         'cf-turnstile-response': turnstileToken
       })

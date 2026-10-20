@@ -26,6 +26,7 @@ import {
 } from "./group-documents";
 import type { SignedCopyInput } from "./group-signature-pdf";
 import { fmtLong } from "./group-document-kit";
+import { displayName } from "./group-marketing";
 
 export type Reply = { status: number; json: Record<string, unknown> };
 const reply = (status: number, json: Record<string, unknown>): Reply => ({ status, json });
@@ -134,7 +135,7 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey">): R
       ? { first_name: traveler.first_name ?? null, last_name: traveler.last_name ?? null, is_lead: !!traveler.is_lead, passport_on_file: traveler.passport_last4 ? `ending ${traveler.passport_last4}` : null, newsletter_opt_in: !!traveler.newsletter_opt_in }
       : { first_name: group.organizer_name ?? null, last_name: null, is_lead: false, passport_on_file: null, newsletter_opt_in: false },
     group: {
-      name: group.name ?? null, cruise_line: group.cruise_line ?? null, ship_name: group.ship_name ?? null,
+      name: group.name ?? null, cruise_line: displayName(group.cruise_line) || null, ship_name: displayName(group.ship_name) || null,
       sail_date_text: fmtLong(group.sail_date) || null, return_date_text: fmtLong(group.return_date) || null,
       nights: group.nights ?? null, embark_port: group.embark_port ?? null,
     },
@@ -307,7 +308,7 @@ export function issueToken(): { token: string; hash: string } {
 /** The plain, short email that carries a traveler's link. The business signature is the legal name. */
 export function linkEmail(input: { firstName: string; groupName: string; ship: string | null; sailDate: string | null; url: string }): { subject: string; text: string; html: string } {
   const when = fmtLong(input.sailDate);
-  const trip = [input.groupName, [input.ship, when ? `sailing ${when}` : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
+  const trip = [input.groupName, [displayName(input.ship), when ? `sailing ${when}` : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
   const hello = input.firstName ? `Hello ${input.firstName},` : "Hello,";
   const lines = [
     hello,

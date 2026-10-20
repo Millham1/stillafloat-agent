@@ -962,7 +962,9 @@ export default [
   //      its copy has no validation problems, and its share code is the group's;
   //   3. the public answer for that code (GET /api/group-page/:code, NO token — a visitor) is live,
   //      in the same languages, with the SAME copy and the same public facts (ship, dates, nights,
-  //      port, cabins left per category, prices when shown) as the dashboard;
+  //      port, the single "from" price when shown, what the fare includes) as the dashboard — and
+  //      NO cabin list, cabin count or per-category price: the page only asks "I'm interested", and
+  //      Mark chooses the cabin after he has spoken to them (Mark 2026-10-19);
   //   4. the ship's score on the page is the published Conga Line score (GET /api/ships/ratings);
   //   5. /group.html?g=<code> loads, accepts the code by its own rule and asks /api/group-page/;
   //      a made-up code is a clean 404; on prod the interest form has a Turnstile site key (dev
@@ -971,13 +973,13 @@ export default [
   //   6. /es/group.html (the language switch's target) is Spanish, asks for lang=es and accepts the
   //      same share codes as the English page.
   // Two agreeing views can both be blank, so the facts a visitor decides on (ship, dates, nights,
-  // itinerary, cabins with counts and prices, the business named in the footer) must be present.
+  // itinerary, the business named in the footer) must be present.
   // Group pages are in the release candidate only: prod has no approved group page until the
   // 2026-10-08 promotion, so this check is UNTESTABLE on prod until then (dev: 4a5fg8ypac, EN).
   {
     id: "flows.group-page-journey",
-    basis: "ruling: stillafloat-group-bookings.md — a group page Mark approves is what the public sees: same words, ship, dates, cabins and prices, the business named, no payment or card on the page",
-    title: "Whenever Mark has approved a group page, it is what visitors see: same words, same ship, dates, cabins and prices, and the ship's real Conga Line score; the group page itself loads and refuses a made-up code",
+    basis: "ruling: stillafloat-group-bookings.md — a group page Mark approves is what the public sees (same words, ship, dates, the from-price, the business named, no payment or card), and it only asks \"I'm interested\" — Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"",
+    title: "Whenever Mark has approved a group page, it is what visitors see: same words, same ship, dates and from-price, and the ship's real Conga Line score, with no cabin list or availability; the group page itself loads, asks only 'I'm interested' and refuses a made-up code",
     covers: ["flow:group-page-journey", "GET /api/groups", "GET /api/groups/:id/marketing", "GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/ships/ratings"],
     modes: ["dev", "prod"],
     incident: "release candidate 2026-10-08: group marketing pages (dev only until the promotion)",
@@ -993,7 +995,7 @@ export default [
       t.ok(Array.isArray(ratings.ratings) && ratings.ratings.length > 0, "the published Conga Line ratings list is empty");
       const bySlug = new Map(ratings.ratings.map((r) => [r.ship_slug, r]));
       const COPY = ["headline", "subhead", "intro", "why_ship", "who_for", "organizer_note", "cta_label", "cta_blurb"];
-      const FACTS = ["groupName", "line", "ship", "sailDateText", "returnDateText", "nights", "embarkPort", "cabinsAvailable", "bookByText", "finalPaymentText"];
+      const FACTS = ["groupName", "line", "ship", "sailDateText", "returnDateText", "nights", "embarkPort", "bookByText", "finalPaymentText"];
       let pageCode = null; let lastPub = null;
       for (const g of spread(live, 2)) {
         const m = t.success(await t.get(`/api/groups/${encodeURIComponent(g.id)}/marketing`, { auth: true }));
@@ -1028,17 +1030,11 @@ export default [
           const showPrices = m.answers?.show_prices !== false;
           // "Mark is sailing too" is an interview answer, not a fact (publicFacts in group-marketing.ts)
           L.check(pub.facts?.markSailing === (m.answers?.mark_sailing === true), `group ${g.share_code} (${lang}): the page says Mark is ${pub.facts?.markSailing ? "" : "not "}sailing, the dashboard's answer says otherwise`);
-          const pc = pub.facts?.cabins || []; const mc = mine.facts.cabins || [];
-          t.atLeast(pc.length, 1, `group ${g.share_code} (${lang}): cabin categories on the public page`);
-          L.check(pc.length === mc.length, `group ${g.share_code} (${lang}): ${pc.length} cabin categories public, ${mc.length} in the dashboard`);
-          pc.forEach((c, i) => {
-            L.check(c.category === mc[i]?.category && c.available === mc[i]?.available, `group ${g.share_code} (${lang}): cabin "${c.category}" shows ${c.available} left publicly, ${mc[i]?.available} in the dashboard`);
-            L.check(c.perPersonText === (showPrices ? mc[i]?.perPersonText : null), `group ${g.share_code} (${lang}): cabin "${c.category}" price differs from the dashboard`);
-            L.check(c.depositPerPersonText === (showPrices ? mc[i]?.depositPerPersonText : null), `group ${g.share_code} (${lang}): cabin "${c.category}" deposit differs from the dashboard`);
-            L.check(String(c.category || "").trim() && Number.isInteger(c.available) && c.available >= 0, `group ${g.share_code} (${lang}): a cabin row has no category or no count left`);
-            if (showPrices) L.check(/^\$\d/.test(String(c.perPersonText || "")), `group ${g.share_code} (${lang}): cabin "${c.category}" shows no price although prices are on`);
-          });
-          L.check(pub.facts?.cabinsAvailable === pc.reduce((n, c) => n + (Number(c.available) || 0), 0), `group ${g.share_code} (${lang}): "${pub.facts?.cabinsAvailable} cabins left" does not add up the categories`);
+          // The page asks one thing, "I'm interested" (Mark 2026-10-19): a visitor is never handed the cabin list, a count of cabins left
+          // or a per-category price, in the page's answer any more than on its face.
+          for (const k of ["cabins", "cabinsAvailable", "cabinsTotal"]) L.check(!(k in (pub.facts || {})), `group ${g.share_code} (${lang}): the public page's answer carries "${k}" — a visitor must not see cabin availability before Mark knows they are interested`);
+          L.check(JSON.stringify(pub.facts?.perks ?? null) === JSON.stringify(mine.facts.perks ?? null), `group ${g.share_code} (${lang}): what the fare includes differs from the dashboard`);
+          L.check(Array.isArray(pub.facts?.planned), `group ${g.share_code} (${lang}): the page's "planned for the group" list is missing`);
           L.check(pub.facts?.fromPerPersonText === (showPrices ? mine.facts.fromPerPersonText : null), `group ${g.share_code} (${lang}): the "from" price differs from the dashboard`);
           // the ship's score: shown unless Mark turned it off, and then it must be the published one
           const shipSlug = lc(pub.facts?.ship).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -1058,15 +1054,20 @@ export default [
         t.status(await t.get("/api/groups/00000000-0000-4000-8000-000000000000/marketing", { auth: true }), 404);
         pageCode = "zzzzzzzzzz"; // a well-formed share code no group holds
       }
-      const page = t.html(await t.get(`/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'"] });
+      const page = t.html(await t.get(`/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'", "Count me in"] });
       t.equal(H.htmlLang(page).slice(0, 2), "en", "the group page language");
+      // The page is the "I'm interested" page only: no cabin table, no cabin picker, and the party size replaces "guests in your cabin".
+      L.check(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(page), "the English group page still has the cabin table or the cabin picker");
+      L.check(/id="f-guests"/.test(page) && /How many in your party/.test(page), "the English group page's form no longer asks how many are in the party");
       const rule = /if\(!\/(\^[^/]+\$)\/\.test\(code\)\)/.exec(page)?.[1];
       t.ok(rule, "the group page no longer checks the code in its link");
       L.check(new RegExp(rule).test(pageCode), `the group page would refuse its own share code ${pageCode} as "no longer available"`);
       // the Spanish page (a group with Spanish copy is shared as /es/group.html?g=; group.html's
       // language switch links there): it must be Spanish, ask for lang=es and accept the same codes
-      const es = t.html(await t.get(`/es/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'"] });
+      const es = t.html(await t.get(`/es/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'", "Cuenten conmigo"] });
       t.equal(H.htmlLang(es).slice(0, 2), "es", "the Spanish group page language");
+      L.check(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(es), "the Spanish group page still has the cabin table or the cabin picker");
+      L.check(/id="f-guests"/.test(es) && /Cuántas personas en su grupo/.test(es), "the Spanish group page's form no longer asks how many are in the party");
       L.check(/var ES = document\.documentElement\.lang === 'es'/.test(es) && /'\?lang=' \+ \(ES \? 'es' : 'en'\)/.test(es), "the Spanish group page does not ask for the Spanish copy (lang=es)");
       L.check(/if\(!\/(\^[^/]+\$)\/\.test\(code\)\)/.exec(es)?.[1] === rule, "the Spanish group page accepts different share codes than the English one");
       const gone = await t.get("/api/group-page/zzzzzzzzzz");

@@ -34,8 +34,19 @@ export interface InterviewQuestion {
   required?: boolean;
 }
 
-/** The call to action every group piece ends on (Mark 2026-10-19), unless the group's interview chooses another line (`cta_line`). */
+/**
+ * The call to action of a PRINTED piece (the poster), unless the group's interview chooses another line (`cta_line`). A QR code is for paper:
+ * Mark 2026-10-19: "how does one use a QR code that is already showing on their phone or computer".
+ */
 export const DEFAULT_CTA: Record<Lang, string> = { en: "Use the QR code to book your spot!", es: "¡Use el código QR para reservar su lugar!" };
+
+/**
+ * The call to action of every DIGITAL piece (the info page's own line, the campaign emails, the Facebook texts, the journey emails): a tappable
+ * link, never a QR code. In an email it is the button's words; in a Facebook text it is written with a colon and followed by the link.
+ */
+export const DIGITAL_CTA: Record<Lang, string> = { en: "Tap here to book your spot!", es: "¡Toque aquí para reservar su lugar!" };
+
+export type CtaMedium = "print" | "digital";
 
 /** What the contract cannot tell us. Short on purpose — Mark fills this in once per group. */
 export const INTERVIEW: InterviewQuestion[] = [
@@ -51,8 +62,9 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "who_fits", type: "long", label: "Who is this trip right for, and who should think twice?", hint: "Mobility, budget, first-timers, kids. The honest version builds trust." },
   { key: "organizer_quote", type: "long", label: "A line from the organizer (optional)", hint: "Their words, as they said them. Leave blank if you have none." },
   { key: "extras", type: "long", label: "Anything else planned around the cruise? (optional)", hint: "A group dinner, a bus to the port, a hotel the night before." },
-  // Mark 2026-10-19: every piece ends on "Use the QR code to book your spot!"; another line (his earlier "Scan the QR to join the fun") can be chosen per group here.
-  { key: "cta_line", type: "text", label: "The call to action, as it should read (optional)", hint: `Left blank, every piece says "${DEFAULT_CTA.en}". Type another line, for example "Scan the QR to join the fun", to use it on every piece instead.` },
+  // Mark 2026-10-19: the poster says "Use the QR code to book your spot!" and every digital piece (email, Facebook, the page) says "Tap here to book your spot!";
+  // another line can be chosen per group here and is then used on every piece.
+  { key: "cta_line", type: "text", label: "The call to action, as it should read (optional)", hint: `Left blank, the poster says "${DEFAULT_CTA.en}" and every digital piece (the page, the emails, the Facebook posts) says "${DIGITAL_CTA.en}" with a link, because a QR code is for paper. Type another line to use it on every piece instead.` },
   { key: "tone", type: "choice", label: "Tone", fallback: "warm-humor",
     choices: [
       { value: "warm-humor", label: "Warm, with a little humor (the usual)" },
@@ -63,10 +75,53 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "show_rating", type: "yesno", label: "Show the ship's Conga Line score and note?", fallback: true },
 ];
 
-/** The call-to-action line for this group: the interview's `cta_line` as Mark typed it, else the default. `custom` is true when it is his own line. */
-export function ctaLine(answers: Record<string, string | boolean>, lang: Lang): { text: string; custom: boolean } {
+/** The call-to-action line for this group: the interview's `cta_line` as Mark typed it, else the default for the medium. `custom` is true when it is his own line. */
+export function ctaLine(answers: Record<string, string | boolean>, lang: Lang, medium: CtaMedium): { text: string; custom: boolean } {
   const own = typeof answers["cta_line"] === "string" ? answers["cta_line"].trim() : "";
-  return own ? { text: own, custom: true } : { text: DEFAULT_CTA[lang], custom: false };
+  return own ? { text: own, custom: true } : { text: (medium === "print" ? DEFAULT_CTA : DIGITAL_CTA)[lang], custom: false };
+}
+
+/** The same call written for a Facebook text: "Tap here to book your spot:" and then the link (Mark's own line is used as he typed it). */
+export function ctaForFacebook(answers: Record<string, string | boolean>, lang: Lang): string {
+  const c = ctaLine(answers, lang, "digital");
+  return c.custom ? c.text : c.text.replace(/!$/, ":");
+}
+
+/** A QR code is for paper. True when a digital piece names one outside Mark's own pitch sentences and his own `cta_line`. */
+export function mentionsQr(text: string, answers: Record<string, string | boolean>, lang: Lang): boolean {
+  const pitch = typeof answers["pitch"] === "string" ? answers["pitch"].trim() : "";
+  let ours = withoutPitch(pitch, text);
+  const own = ctaLine(answers, lang, "digital");
+  if (own.custom) ours = ours.split(own.text).join(" ");
+  return /(?<![\p{L}\d])QR(?![\p{L}\d])/iu.test(ours);
+}
+
+/** The answers in which Mark may have named something planned for the group (an onboard credit, a dinner …). */
+const PLANNED_FROM = ["pitch", "picture", "occasion_line", "why_sailing", "who_fits", "extras"] as const;
+
+/**
+ * What Mark's own interview answers say is PLANNED for the group beyond what the fare includes — today only an onboard
+ * credit ("$25 onboard credit", "an onboard credit of $50 per cabin"), copied from his words and never composed. Empty when
+ * his answers do not name one: the page never invents a perk (Mark 2026-10-19).
+ */
+export function plannedForGroup(answers: Record<string, string | boolean>): string[] {
+  const money = String.raw`\$\s?\d[\d,]*(?:\.\d{1,2})?`;
+  const unit = String.raw`(?:\s+(?:per|a|each)\s+(?:person|guest|cabin|passenger|traveler|traveller|adult))?`;
+  const patterns = [
+    new RegExp(String.raw`${money}${unit}\s+(?:of\s+)?(?:on-?board|shipboard)\s+(?:spending\s+)?credit`, "i"),
+    new RegExp(String.raw`(?:on-?board|shipboard)\s+(?:spending\s+)?credit\s+(?:of|worth|up to|:)?\s*${money}${unit}`, "i"),
+  ];
+  const out: string[] = [];
+  for (const k of PLANNED_FROM) {
+    const v = answers[k];
+    if (typeof v !== "string") continue;
+    for (const re of patterns) {
+      const m = re.exec(v);
+      const hit = m?.[0].replace(/\s+/g, " ").replace(/[\s:]+$/, "").trim();
+      if (hit && !out.some((x) => x.toLowerCase() === hit.toLowerCase())) out.push(hit);
+    }
+  }
+  return out;
 }
 
 /** The longest answer kept. The pitch is never cut to fit: the answers route refuses a longer one. */
@@ -99,10 +154,16 @@ export function pitchGate(answers: Record<string, string | boolean>): string | n
 
 // ── Names ─────────────────────────────────────────────────────────────────────
 
-const KEEP_UPPER = new Set(["MSC", "NCL", "RCI", "USA", "US", "UK", "II", "III", "IV"]);
+const KEEP_UPPER = new Set(["MSC", "NCL", "RCI", "USA", "US", "UK", "TUI", "AIDA", "MV", "MS", "SS", "P&O"]);
 const SMALL_WORDS = new Set(["OF", "THE", "AND", "DE", "DEL", "LA", "AT"]);
+/** A roman numeral of two letters or more ("II", "IV", "VII"): part of a ship's name, never a word. */
+const ROMAN = /^(?=[IVXLC]{2,}$)C{0,3}(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})$/;
 
-/** Contracts print names in capitals ("MSC SEASIDE"). Show them the way people write them. */
+/**
+ * Contracts print names in capitals ("MSC SEASHORE"). Show them the way people write them: "MSC Seashore", "Icon of the Seas", "Norwegian Prima".
+ * Acronyms (MSC, NCL, RCI …) and roman numerals ("Carnival Celebration II") stay upper; a name that already has lower case is Mark's or the line's
+ * own spelling and is left alone. Everything a client reads (the pages, the paperwork email, the journey emails, the cruise page) goes through this.
+ */
 export function displayName(name: string | null | undefined): string {
   const s = (name ?? "").trim();
   if (!s) return "";
@@ -110,11 +171,18 @@ export function displayName(name: string | null | undefined): string {
   return s
     .split(/(\s+|-)/)
     .map((w, i) => {
-      if (/^\s+$|^-$/.test(w) || KEEP_UPPER.has(w)) return w;
+      if (/^\s+$|^-$/.test(w) || KEEP_UPPER.has(w) || ROMAN.test(w)) return w;
       if (i > 0 && SMALL_WORDS.has(w)) return w.toLowerCase();
       return w.charAt(0) + w.slice(1).toLowerCase();
     })
     .join("");
+}
+
+/** A group row with its cruise line and ship in display case: what a new file is saved with (the contract prints capitals; a file reads like a name). */
+export function withDisplayNames<T extends Record<string, unknown>>(row: T): T {
+  const out: Record<string, unknown> = { ...row };
+  for (const k of ["cruise_line", "ship_name"]) if (typeof out[k] === "string" && (out[k] as string).trim()) out[k] = displayName(out[k] as string);
+  return out as T;
 }
 
 /** Candidate cabin_ships.slug for a ship name; the caller checks it exists. */
@@ -386,6 +454,25 @@ function collectNumbers(f: GroupFacts, g: Row): string[] {
   if (f.rating) { add(f.rating.scoreText); add("5"); }
   add(f.groupName); add(f.ship);
   return [...new Set(pool)];
+}
+
+/**
+ * What the public page may see. No ids, no organizer contact, no internal notes, and no cabin availability or per-category
+ * prices: the page only asks "I'm interested", and Mark decides which cabin once he has spoken to them (Mark 2026-10-19:
+ * "why would they see the available cabins before I know they are interested").
+ */
+export function publicFacts(f: GroupFacts, answers: Record<string, string | boolean>): Row {
+  const showPrices = answers["show_prices"] !== false;
+  return {
+    lang: f.lang, business: f.business, groupName: f.groupName, line: f.line, ship: f.ship,
+    sailDateText: f.sailDateText, returnDateText: f.returnDateText, nights: f.nights, embarkPort: f.embarkPort,
+    travel: f.travel, perks: f.perks, planned: plannedForGroup(answers),
+    ports: f.ports, itinerary: f.itinerary, amenities: f.amenities,
+    fromPerPersonText: showPrices ? f.fromPerPersonText : null,
+    bookByText: f.bookByText, finalPaymentText: f.finalPaymentText,
+    rating: answers["show_rating"] !== false ? f.rating : null,
+    markSailing: answers["mark_sailing"] === true,
+  };
 }
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
@@ -699,6 +786,8 @@ export function leadWithLines(lw: LeadWith): string[] {
 
 export interface CopyProblem { field: string; problem: string }
 
+export const QR_PROBLEM = "mentions a QR code (a digital piece carries a link to tap; the QR code is on the printed poster only)";
+
 /** The one wording of a field that is over its limit, so the dashboard says what to do about it. */
 export function tooLong(length: number, max: number): string {
   return `too long: ${length} of ${max} characters — shorten it, or ask Mark`;
@@ -729,6 +818,7 @@ export function validateCopy(copy: unknown, facts: GroupFacts, answers: Record<s
       if (m) problems.push({ field: f.key, problem: `uses "${m[0]}"` });
     }
     for (const h of HOUSE_BANNED[facts.lang]) if (h.re.test(ours)) problems.push({ field: f.key, problem: h.problem });
+    if (mentionsQr(v, answers, facts.lang)) problems.push({ field: f.key, problem: QR_PROBLEM });
     for (const n of numbersIn(v)) {
       if (!allowed.has(n)) problems.push({ field: f.key, problem: `states a number that is not in the group file: ${n}` });
     }
@@ -809,13 +899,15 @@ export const HOUSE_VOICE_RULES: string[] = [
 ];
 
 /**
- * The call to action, as one rule, for both prompts (Mark 2026-10-19: "Use the QR code to book your spot!" on every piece; the interview's
- * `cta_line` chooses another line for a group). The link is the info sheet; the phone is the third contact.
+ * The call to action of the DIGITAL pieces, as one rule, for both prompts (Mark 2026-10-19: a tappable link, never a QR code, on anything read on a
+ * screen; the interview's `cta_line` chooses another line for a group). The link is the info sheet; the phone is the third contact. In an email the
+ * line is the words of a button, with the plain link under it (the system draws both); in a Facebook text the line ends in a colon and the link follows.
  */
 export function ctaRule(answers: Record<string, string | boolean>, lang: Lang, pieces: string): string {
-  const cta = ctaLine(answers, lang);
+  const cta = ctaLine(answers, lang, "digital");
   const words = lang === "es" && cta.custom ? `the line "${cta.text}", translated into natural Latin American Spanish` : `the exact words "${cta.text}"`;
-  return `- Call to action, ${pieces}: ${words}, then the link, then the phone ${BUSINESS.phone} for people who would rather call or text. Readers scan the QR code (printed on the pieces) or open the link to see everything and say they are in. It closes the piece, before an email's sign-off.`;
+  const facebook = cta.custom ? "" : ` (in a Facebook text the same words end in a colon, "${ctaForFacebook(answers, lang)}", and the link follows on the next line)`;
+  return `- Call to action, ${pieces}: ${words}${facebook}, then the link, then the phone ${BUSINESS.phone} for people who would rather call or text. Readers are on a phone or a computer already, so they tap the link to see everything and say they are in. Never mention a QR code: a QR code is for the printed poster only. It closes the piece, before an email's sign-off.`;
 }
 
 /**
@@ -896,7 +988,7 @@ export function userPrompt(facts: GroupFacts, answers: Record<string, string | b
   if (facts.ports.length) lines.push(`Ports of call: ${facts.ports.join("; ")}`);
   if (facts.perks.length) lines.push(`Included for every guest: ${facts.perks.join("; ")}`);
   lines.push("Cabin upgrades: available by request (balcony and up).");
-  lines.push(`Phone (second contact, after the QR / link): ${BUSINESS.phone}`);
+  lines.push(`Phone (second contact, after the link): ${BUSINESS.phone}`);
   if (facts.travel.length) lines.push(`Getting there (air, hotel before, transfers): ${facts.travel.map((t) => t.text).join("; ")}`);
   if (answers["show_prices"] !== false) {
     for (const c of facts.cabins) if (c.perPersonText) lines.push(`Cabin: ${c.category} from ${c.perPersonText} per person, double occupancy${c.depositPerPersonText ? `, deposit ${c.depositPerPersonText} per person` : ""}`);

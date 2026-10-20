@@ -7,10 +7,11 @@
 import { looksLikeCardNumber } from "./group-file";
 import {
   addDays, cabinPayments, checklistDone, checklistEntry, clientChecklist, displayName, firstName, fmtDate, fmtMoney, fmtTime, journeyAnswers,
-  missingItems, paperworkState, pickVideos, plain, portDisplayName, termsDeadlines, travelState, weatherTable, ymd,
+  missingItems, paperworkState, videosFor, plain, portDisplayName, termsDeadlines, travelState, weatherTable, ymd,
   type Ctx, type Row, type Section, type SectionItem, type VideoTopic,
 } from "./group-journey-facts";
 import { strings, stormKind, type MilestoneKind } from "./group-journey-strings";
+import { BUSINESS } from "./group-secure";
 
 /** Days before sailing at which the milestone emails go. */
 export const DAY_MILESTONES = [120, 90, 45, 20, 10, 5, 2] as const;
@@ -81,7 +82,7 @@ export function payments(ctx: Ctx, o: { mode: "schedule" | "open"; howTo?: boole
     }
     if (!amount && !due) continue;                       // nothing we can say about it
     openRows++;
-    lines.push(!due ? S.payNoDate({ kind, amount }) : due < ctx.today ? S.payOverdue({ kind, amount, date: fmtDate(due, ctx.lang) }) : S.payDue({ kind, amount, date: fmtDate(due, ctx.lang) }));
+    lines.push(!due ? (p.kind === "deposit" ? S.payAtBooking({ kind, amount }) : S.payNoDate({ kind, amount })) : due < ctx.today ? S.payOverdue({ kind, amount, date: fmtDate(due, ctx.lang) }) : S.payDue({ kind, amount, date: fmtDate(due, ctx.lang) }));
   }
   const hasKind = (k: string) => rows.some((p) => p.kind === k);
   const finalDue = ymd(ctx.group.final_payment_due);
@@ -139,15 +140,25 @@ export function passport(ctx: Ctx): Section {
   return { key: "passport", title: S.passport, lines: clean([S.passportGeneral, specific]) };
 }
 
-export function insurance(ctx: Ctx, o: { video?: boolean } = {}): Section | null {
+/** The tel: link that dials a phone number written 919-346-6127. */
+export const telLink = (phone: string): string => `tel:+1${phone.replace(/\D/g, "")}`;
+
+/**
+ * `page: true` is the cruise page, where there is no email to reply to: the offer points at the phone, with a link that dials.
+ * The emails keep "reply to this email or call".
+ */
+export function insurance(ctx: Ctx, o: { video?: boolean; page?: boolean } = {}): Section | null {
   const S = strings(ctx.lang).s;
   const status = ctx.cabin?.insurance;
   if (status === "declined") return null;
-  const lines = [status === "accepted" ? S.insuranceHave : S.insuranceOffer];
-  const v = o.video && status !== "accepted" ? pickVideos(ctx.extras.videos, "insurance", ctx.lang, ctx.videoSources, 1)[0] : undefined;
+  const offer = o.page ? S.insuranceOfferPage : S.insuranceOffer;
+  const lines = [status === "accepted" ? S.insuranceHave : offer];
+  const v = o.video && status !== "accepted" ? videosFor(ctx, "insurance", 1)[0] : undefined;
+  const call = o.page && status !== "accepted" ? { links: [{ label: S.callMark, url: telLink(BUSINESS.phone) }] } : {};
   return {
     key: "insurance", title: S.insurance, lines,
     ...(v ? { lines: [...lines, S.insuranceVideo], items: [{ text: v.inEnglish ? `${v.title} ${strings(ctx.lang).inEnglishNote}` : v.title, url: v.url }] } : {}),
+    ...call,
   };
 }
 
@@ -330,7 +341,7 @@ export function videos(ctx: Ctx, topics: VideoTopic[]): Section | null {
   const S = strings(ctx.lang);
   const seen = new Set<string>();
   const items: SectionItem[] = [];
-  for (const t of topics) for (const v of pickVideos(ctx.extras.videos, t, ctx.lang, ctx.videoSources, 2)) {
+  for (const t of topics) for (const v of videosFor(ctx, t, 2)) {
     if (seen.has(v.id) || items.length >= 3) continue;
     seen.add(v.id);
     items.push({ text: v.inEnglish ? `${v.title} ${S.inEnglishNote}` : v.title, url: v.url });
@@ -361,7 +372,7 @@ export function ship(ctx: Ctx): Section | null {
     lines.push(S.cabinLine({ category: displayName(cab.category), num: plain(cab.cabin_num, 20), deck: plain(cab.deck, 10) }));
     if (plain(cab.bed_config)) lines.push(S.shipBed(plain(cab.bed_config, 60)));
   }
-  for (const v of pickVideos(ctx.extras.videos, "cabin", ctx.lang, ctx.videoSources, 1)) items.push({ text: v.inEnglish ? `${v.title} ${strings(ctx.lang).inEnglishNote}` : v.title, url: v.url });
+  for (const v of videosFor(ctx, "cabin", 1)) items.push({ text: v.inEnglish ? `${v.title} ${strings(ctx.lang).inEnglishNote}` : v.title, url: v.url });
   if (!lines.length && !items.length) return null;
   const links = name ? [{ label: S.shipTracker(name), url: `${page(ctx, "tracker")}?ship=${encodeURIComponent(name)}` }] : [];
   return { key: "ship", title: S.ship, lines, items, links };

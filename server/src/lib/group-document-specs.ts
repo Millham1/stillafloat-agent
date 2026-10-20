@@ -21,6 +21,7 @@ import {
   fmtLong, fmtMoney, fullName, mapTable, perPersonPrice, TEMPLATE_VERSION_DATE,
   type Answers, type Block, type DocCtx, type DocSpec, type FieldSpec, type Option, type Row,
 } from "./group-document-kit";
+import { displayName } from "./group-marketing";
 
 // ── small lookups ─────────────────────────────────────────────────────────────
 
@@ -420,8 +421,8 @@ const BOOKING_12: DocSpec = {
   rules: [
     { after: "Date:", today: true },
     ...CLIENT_LINES("Primary Guest (Full Legal Name as on Passport/ID):**"),
-    { after: "Cruise Line:", fill: (c) => cleanValue(c.group.cruise_line), label: "Cruise line" },
-    { after: "Ship Name:", fill: (c) => cleanValue(c.group.ship_name), label: "Ship" },
+    { after: "Cruise Line:", fill: (c) => cleanValue(displayName(c.group.cruise_line)), label: "Cruise line" },
+    { after: "Ship Name:", fill: (c) => cleanValue(displayName(c.group.ship_name)), label: "Ship" },
     { after: "Sailing Date:", fill: (c) => fmtLong(c.group.sail_date), label: "Sail date" },
     { after: "Return Date:", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
     { after: "Departure Port:", fill: (c) => cleanValue(c.group.embark_port), label: "Departure port" },

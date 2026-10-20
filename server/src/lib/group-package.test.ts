@@ -22,7 +22,7 @@ test("the poster says the dates, the ports, the from-price, the deposit, the res
   assert.equal(spec.dates, "May 10, 2027 – May 14, 2027 · 4 nights · from Miami");
   assert.deepEqual(spec.facts.slice(0, 4), ["Ports: Nassau, Bahamas, Ocean Cay MSC Marine Reserve", "From $575.80 per person", "Deposit $99 per person", "Reserve by January 10, 2027"]);
   assert.deepEqual(spec.travel, ["Airfare from Raleigh-Durham: $412 per person"]);
-  assert.equal(spec.cta, "Use the QR code to book your spot!"); assert.equal(spec.linkCta, "Use the link to book your spot!"); assert.equal(spec.lang, "en"); assert.equal(spec.phone, MARK_PHONE); assert.equal(MARK_PHONE, "919-346-6127");
+  assert.equal(spec.cta, "Use the QR code to book your spot!"); assert.equal(spec.linkCta, "Tap here to book your spot!"); assert.equal(spec.lang, "en"); assert.equal(spec.phone, MARK_PHONE); assert.equal(MARK_PHONE, "919-346-6127");
   assert.ok(spec.facts.includes("Included: Premium drinks package"), "the guest's perk is on the poster");
   assert.ok(spec.facts.includes("Cabin upgrades available"), "the upgrades line is on the poster");
   assert.ok(!spec.facts.some((x) => /amenity point/i.test(x)), "amenity points never reach the poster");
@@ -32,10 +32,10 @@ test("the poster says the dates, the ports, the from-price, the deposit, the res
   assert.ok(spec.headline.length >= 2);
 });
 
-test("the poster's call to action is Mark's line, or the group's own (cta_line), in either language; the pictures with no QR code get its link twin", () => {
+test("the poster's call to action is Mark's line, or the group's own (cta_line), in either language; the Facebook pictures, seen on a screen, get its tap-the-link twin", () => {
   const args = { url: "https://stillafloatcruising.com/group.html?g=rj4qhy2xft", credits: [] as string[] };
   assert.equal(posterSpec(facts, copy, { ...args, lang: "es" }).cta, "¡Use el código QR para reservar su lugar!");
-  assert.equal(posterSpec(facts, copy, { ...args, lang: "es" }).linkCta, "¡Use el enlace para reservar su lugar!");
+  assert.equal(posterSpec(facts, copy, { ...args, lang: "es" }).linkCta, "¡Toque aquí para reservar su lugar!");
   const own = posterSpec(facts, copy, { ...args, cta: " Scan the QR to join the fun " });
   assert.equal(own.cta, "Scan the QR to join the fun"); assert.equal(own.linkCta, "Open the link to join the fun");
   assert.equal(posterSpec(facts, copy, { ...args, cta: "Reserve your cabin today" }).linkCta, "Open the link", "a line we have no link twin for");
