@@ -36,6 +36,8 @@ export interface ForecastDay { day: string; high: number; low: number; code: num
 export interface WeatherBundle { places: Record<string, ForecastDay[]>; shiftDays: number; sample: boolean }
 export interface VideoPick { id: string; title: string; url: string; views: number | null; inEnglish: boolean }
 export interface StormNote { name: string | null; classification: string | null; headline: string | null }
+/** A hull the site knows (cabin_ships): the ship's name and the line that sails it. */
+export interface FleetShip { ship: string; line: string | null }
 
 /** Data that comes from outside the file (the ship tables, the forecast, the channel scan) and is only fetched when a section needs it. */
 export interface Extras {
@@ -44,6 +46,8 @@ export interface Extras {
   storm?: StormNote | null;
   weather?: WeatherBundle | null;
   videos?: ScanVideo[];
+  /** The ships the site knows, so a video that names one (with no line in its title) can be tied to its line. */
+  fleet?: FleetShip[];
   /** Change notices (group-level group_messages rows) for the cruise page. */
   notices?: Row[];
 }
@@ -362,16 +366,74 @@ const TOPICS: Record<VideoTopic, { en: RegExp; es: RegExp }> = {
 /** The channel's Spanish uploads carry accents or inverted marks in the title (routes/youtube.ts uses the same test). */
 export const isSpanishTitle = (t: string): boolean => /[¡¿áéíóúüñ]/i.test(t);
 
+// A video from Mark's own channel that names a cruise line or a ship is about THAT line or ship: an NCL cabin tour is no use to a guest on an
+// MSC ship (Mark 2026-10-19: the cruise page and the 10-day email showed an NCL cabin tour for an MSC Seashore group).
+const LINE_NAMES: ReadonlyArray<{ key: string; re: RegExp }> = [
+  { key: "carnival", re: /\bcarnival\b/i },
+  { key: "royal", re: /\broyal caribbean\b|\brcl\b|\brci\b|\bof the seas\b/i },
+  { key: "ncl", re: /\bncl\b|\bnorwegian\b/i },
+  { key: "msc", re: /\bmsc\b/i },
+  { key: "princess", re: /\bprincess\b/i },
+  { key: "celebrity", re: /\bcelebrity\b/i },
+  { key: "holland", re: /\bholland america\b|\bhal\b/i },
+  { key: "disney", re: /\bdisney\b/i },
+  { key: "virgin", re: /\bvirgin\b(?!\s+islands)|\b(?:scarlet|valiant|resilient|brilliant) lady\b/i },
+  { key: "margaritaville", re: /\bmargaritaville\b/i },
+  { key: "oceania", re: /\boceania\b/i }, { key: "viking", re: /\bviking\b/i }, { key: "cunard", re: /\bcunard\b/i }, { key: "costa", re: /\bcosta\b/i },
+  { key: "seabourn", re: /\bseabourn\b/i }, { key: "regent", re: /\bregent seven seas\b/i }, { key: "silversea", re: /\bsilversea\b/i }, { key: "azamara", re: /\bazamara\b/i },
+];
+
+/** The cruise line a piece of text names (a line's name or one of its ships' tell-tale words), or null. */
+export function lineKeyOf(text: string | null | undefined): string | null {
+  const t = String(text ?? "");
+  return LINE_NAMES.find((l) => l.re.test(t))?.key ?? null;
+}
+
+/** What the group sails: the line and the ship from its file, and the hulls the site knows. */
+export interface VideoFit { line: string | null; ship: string | null; fleet?: readonly FleetShip[] }
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const namesPhrase = (title: string, phrase: string) => new RegExp(`(?<![\\p{L}\\d])${escapeRe(phrase).replace(/\s+/g, "\\s+")}(?![\\p{L}\\d])`, "iu").test(title);
+
+/**
+ * Does a video title belong with this group? A title that names no cruise line and no ship is about the topic and fits everyone (packing, embarkation,
+ * a first cruise, insurance, the muster drill …). A title that names a line or a ship fits only when it is the group's own ship, or every line it names
+ * is the group's line. A line is read from the group's file (cruise_line, else the ship's own name); when it cannot be read, a title that names one is left out.
+ */
+export function videoFitsGroup(title: string, fit: VideoFit): boolean {
+  const ship = displayName(fit.ship).trim();
+  if (ship && namesPhrase(title, ship)) return true;
+  const mine = lineKeyOf(fit.line) ?? lineKeyOf(fit.ship);
+  const named = new Set<string>();
+  const direct = lineKeyOf(title);
+  for (const l of LINE_NAMES) if (l.re.test(title)) named.add(l.key);
+  // a hull named without its line ("Mardi Gras", "Koningsdam"): the fleet table says whose it is. One short word could be anything, so it must be two words or eight letters.
+  for (const h of fit.fleet ?? []) {
+    const name = displayName(h.ship).trim();
+    if (!name || !(/\s/.test(name) || name.length >= 8) || !namesPhrase(title, name)) continue;
+    named.add(lineKeyOf(h.line) ?? lineKeyOf(name) ?? `ship:${name.toLowerCase()}`);
+  }
+  if (!named.size && !direct) return true;
+  return mine !== null && [...named].every((k) => k === mine);
+}
+
+/** The fit of a traveler's cruise, for the videos shown to them. */
+export function videoFitOf(group: Row, fleet?: readonly FleetShip[]): VideoFit {
+  return { line: plain(group.cruise_line, 80) || null, ship: plain(group.ship_name, 80) || null, ...(fleet ? { fleet } : {}) };
+}
+
 /**
  * Up to `max` videos about `topic` from the channel scan. Spanish travelers get the Spanish uploads; if none match, the
- * English ones, marked as such. Only Mark's own channel exists today: `sources` is the setting that will let other
+ * English ones, marked as such. A video whose title names a cruise line or a ship is used only for a group that sails that line or ship
+ * (`fit`); without a `fit` only line-neutral titles are used. Only Mark's own channel exists today: `sources` is the setting that will let other
  * channels in later, and anything but "own" is ignored until a second source is built.
  * TODO(group-journey): selected other channels (videoSources: ["own", "<channel id>"]) — Mark's 2026-10-16 ruling is own channel only for now.
  */
-export function pickVideos(scan: readonly ScanVideo[] | undefined, topic: VideoTopic, lang: Lang, sources: readonly string[] = ["own"], max = 2): VideoPick[] {
+export function pickVideos(scan: readonly ScanVideo[] | undefined, topic: VideoTopic, lang: Lang, sources: readonly string[] = ["own"], max = 2, fit: VideoFit | null = null): VideoPick[] {
   if (!scan?.length || !sources.includes("own")) return [];
   const rank = (a: ScanVideo, b: ScanVideo) => Number(!!a.isShort) - Number(!!b.isShort) || (b.views ?? 0) - (a.views ?? 0) || String(b.published ?? "").localeCompare(String(a.published ?? ""));
-  const usable = scan.filter((v) => v && typeof v.id === "string" && /^[\w-]{11}$/.test(v.id) && typeof v.title === "string" && v.title.trim());
+  const usable = scan.filter((v) => v && typeof v.id === "string" && /^[\w-]{11}$/.test(v.id) && typeof v.title === "string" && v.title.trim()
+    && videoFitsGroup(v.title, fit ?? { line: null, ship: null }));
   const pick = (spanish: boolean, re: RegExp) => usable.filter((v) => isSpanishTitle(v.title) === spanish && re.test(v.title)).sort(rank);
   let chosen: ScanVideo[]; let inEnglish = false;
   if (lang === "es") {
@@ -379,6 +441,11 @@ export function pickVideos(scan: readonly ScanVideo[] | undefined, topic: VideoT
     if (!chosen.length) { chosen = pick(false, TOPICS[topic].en); inEnglish = chosen.length > 0; }
   } else chosen = pick(false, TOPICS[topic].en);
   return chosen.slice(0, max).map((v) => ({ id: v.id, title: plain(v.title, 140), url: `https://www.youtube.com/watch?v=${v.id}`, views: typeof v.views === "number" ? v.views : null, inEnglish }));
+}
+
+/** The videos for one traveler's cruise: the topic's videos that fit the group's line and ship. */
+export function videosFor(ctx: Ctx, topic: VideoTopic, max: number): VideoPick[] {
+  return pickVideos(ctx.extras.videos, topic, ctx.lang, ctx.videoSources, max, videoFitOf(ctx.group, ctx.extras.fleet));
 }
 
 // ── Cruise-page link details (what the hub form accepts) ─────────────────────

@@ -9,7 +9,7 @@ import { TRAVELER_COLS } from "./group-forms";
 import { shipSlugCandidate } from "./group-marketing";
 import { fetchForecast } from "./weather-forecast";
 import { ACTIVE_GROUP_STATUSES, type JourneyDefaults } from "./group-journey";
-import { dayDiff, stopsInHorizon, type Extras, type ForecastDay, type JourneyInput, type Row, type ScanVideo, type StormNote } from "./group-journey-facts";
+import { dayDiff, stopsInHorizon, type Extras, type FleetShip, type ForecastDay, type JourneyInput, type Row, type ScanVideo, type StormNote } from "./group-journey-facts";
 import type { Clock, JourneyStore, Needs } from "./group-journey-run";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,6 +65,13 @@ export async function loadNotices(groupId: string, limit = 5): Promise<Row[]> {
 export async function loadVideos(): Promise<ScanVideo[]> {
   const scan = await readJson<{ videos?: ScanVideo[] }>(PATHS.youtubeChannel, { videos: [] });
   return Array.isArray(scan.videos) ? scan.videos : [];
+}
+
+/** The ships the site knows with their lines, so a video that names a ship (and no line) can be tied to the line that sails it. */
+export async function loadFleet(): Promise<FleetShip[]> {
+  const r = await db().from("cabin_ships").select("ship, line").limit(1000);
+  if (r.error) { logger.warn({ err: r.error.message }, "group journey: the ship table could not be read; videos are matched by the line named in their titles only"); return []; }
+  return ((r.data ?? []) as Row[]).filter((h) => typeof h.ship === "string" && h.ship.trim()).map((h) => ({ ship: String(h.ship), line: typeof h.line === "string" ? h.line : null }));
 }
 
 /** The ship's published Conga Line row and its hull record, found by the slug on the file or by the ship's name. Never writes the slug back. */
@@ -124,7 +131,7 @@ export function supabaseJourneyStore(): JourneyStore {
     async saveDefaults(d) { await writeJson(DEFAULTS_KEY, d); },
     async extras(input, needs: Needs, clock) {
       const e: Extras = {};
-      if (needs.videos) e.videos = await loadVideos();
+      if (needs.videos) { e.videos = await loadVideos(); e.fleet = await loadFleet(); }
       if (needs.rating) Object.assign(e, await loadShip(input.group));
       if (needs.weather) e.weather = await loadWeather(input.group, clock);
       if (needs.storm) e.storm = await loadStorm(String(input.group.ship_name ?? ""));

@@ -7,7 +7,7 @@ import {
   ALL_KINDS, APPROVABLE_KINDS, DAY_MILESTONES, JOURNEY_TEMPLATE_VERSION, approvalFor, dayKind, dedupeKey, planJourney, renderEmail, renderHub,
   summarizePlan, validateDetails, mergeJourneyAnswers, withApproval, withChecklistTick, videoSourcesFor, type MilestoneKind,
 } from "./group-journey";
-import { addDays, ctxFor, localToday, ymd, dayDiff, type Extras, type JourneyInput, type Row } from "./group-journey-facts";
+import { addDays, ctxFor, localToday, ymd, dayDiff, pickVideos, videoFitOf, videoFitsGroup, type Extras, type JourneyInput, type Row } from "./group-journey-facts";
 import { SITE_PAGES } from "./group-journey-sections";
 import { looksLikeCardNumber } from "./group-file";
 import { HOUSE_BANNED } from "./group-marketing";
@@ -532,6 +532,55 @@ test("videos: Mark's own channel only, the right language, long-form first, noth
   // a Short is never chosen over a long video on the same topic
   const seaDay = ctx(input, "t1", before(10), { ...fullExtras(), videos: [VIDEOS[6]!] });
   assert.ok(!renderEmail("t-10", seaDay)!.sections.includes("videos"), "no topic match, no video");
+});
+
+test("videos: a title that names a cruise line or a ship is shown only to a group on that line or ship; a line-neutral topic video fits everyone; nothing that fits, no section", () => {
+  const v = (id: string, title: string, views = 1000) => ({ id, title, views, published: "2026-01-01T00:00:00Z" });
+  const NCL = v("NNNNNNNNN01", "Norwegian Bliss Cabin Tour: Balcony vs Mini-Suite", 90000);
+  const MSC = v("MMMMMMMMM01", "MSC Seaside Balcony Cabin Tour", 2000);
+  const ROYAL = v("RRRRRRRRR01", "Wonder of the Seas Cabin Tour", 80000);
+  const MARDI = v("CCCCCCCCC01", "Mardi Gras Cabin Tour: Is the Balcony Worth It?", 70000);
+  const BOTH = v("BBBBBBBBB01", "MSC vs Norwegian: Which Cabin Is Better?", 60000);
+  const NEUTRAL = v("NEUTRALCAB1", "Cruise Cabin Types Explained: Inside, Ocean View, Balcony", 3000);
+  const fleet = [{ ship: "Mardi Gras", line: "Carnival Cruise Line" }, { ship: "Joy", line: "Carnival Cruise Line" }, { ship: "Wonder of the Seas", line: "Royal Caribbean International" }];
+  const all = [NCL, MSC, ROYAL, MARDI, BOTH, NEUTRAL];
+  const ids = (group: Row) => pickVideos(all, "cabin", "en", ["own"], 9, videoFitOf(group, fleet)).map((x) => x.id);
+
+  // an MSC group (MSC Seaside / MSC Cruises, as the file prints them) gets its own line's video and the neutral one, never the NCL, Royal or Carnival tours
+  assert.deepEqual(ids({ cruise_line: "MSC Cruises", ship_name: "MSC SEASIDE" }).sort(), [MSC.id, NEUTRAL.id].sort());
+  assert.deepEqual(ids({ cruise_line: "MSC CRUISES", ship_name: "MSC SEASHORE" }).sort(), [MSC.id, NEUTRAL.id].sort(), "another MSC ship still gets an MSC line video");
+  // an NCL group gets the NCL tour; a Carnival group gets the Carnival hull's tour (named without its line); nobody gets the video that names two lines
+  assert.deepEqual(ids({ cruise_line: "Norwegian Cruise Line", ship_name: "Norwegian Bliss" }).sort(), [NCL.id, NEUTRAL.id].sort());
+  assert.deepEqual(ids({ cruise_line: "Carnival Cruise Line", ship_name: "Mardi Gras" }).sort(), [MARDI.id, NEUTRAL.id].sort());
+  assert.deepEqual(ids({ cruise_line: "Royal Caribbean International", ship_name: "Wonder of the Seas" }).sort(), [NEUTRAL.id, ROYAL.id].sort());
+  // a group whose line cannot be read is shown only the line-neutral videos
+  assert.deepEqual(ids({ cruise_line: "", ship_name: "" }), [NEUTRAL.id]);
+  assert.deepEqual(ids({ cruise_line: "Some Small Line", ship_name: "Nobody" }), [NEUTRAL.id]);
+  // the group's own ship named in a title is a match even when the line is not on the file; "Virgin Islands" is a place, not a line; "Joy" alone is not a ship
+  assert.equal(videoFitsGroup("Mardi Gras Cabin Tour", { line: null, ship: "Mardi Gras" }), true);
+  assert.equal(videoFitsGroup("A Week in the US Virgin Islands: What to Pack", { line: "MSC Cruises", ship: "MSC Seaside" }), true);
+  assert.equal(videoFitsGroup("The Joy of Your First Cruise", { line: "MSC Cruises", ship: "MSC Seaside", fleet }), true);
+  assert.equal(videoFitsGroup("Virgin Voyages Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Princess Cruises Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Celebrity Edge Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Holland America Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Disney Cruise Line Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+  assert.equal(videoFitsGroup("Margaritaville at Sea Cabin Tour", { line: "MSC Cruises", ship: "MSC Seaside" }), false);
+
+  // in the messages: the NCL tour that used to show for an MSC Seashore group is gone from the 10-day email, the cruise page and the insurance box
+  const input = fixtureInput({ group: { ship_name: "MSC SEASHORE", cruise_line: "MSC CRUISES" } });
+  const ncl = { ...fullExtras(), videos: [NCL], fleet };
+  const ten = renderEmail("t-10", ctx(input, "t1", before(10), ncl))!;
+  assert.ok(!/NNNNNNNNN01|Norwegian Bliss/.test(ten.text + ten.html), "the NCL cabin tour is not in the 10-day email");
+  assert.ok(!ten.sections.includes("videos"));
+  const hub = renderHub(ctx(input, "t1", before(10), ncl));
+  assert.ok(!JSON.stringify(hub).includes("NNNNNNNNN01"), "the NCL cabin tour is not on the cruise page");
+  assert.ok(!hub.sections.some((x) => x.key === "videos"), "nothing fits: the videos section is omitted");
+  const insurance = ctx(input, "t3", before(120), { ...fullExtras(), videos: [v("IIIIIIIII01", "Norwegian Cruise Line Travel Insurance: Is It Worth It?")], fleet });
+  assert.ok(!renderEmail("t-120", insurance)!.text.includes("IIIIIIIII01"));
+  // the same video does reach an NCL group
+  const nclInput = fixtureInput({ group: { ship_name: "NORWEGIAN BLISS", cruise_line: "Norwegian Cruise Line" } });
+  assert.match(renderEmail("t-10", ctx(nclInput, "t1", before(10), { ...fullExtras(), videos: [v("NNNNNNNNN02", "Norwegian Bliss Embarkation Day, Start to Finish")], fleet }))!.text, /Norwegian Bliss Embarkation Day, Start to Finish \(https:\/\/www\.youtube\.com\/watch\?v=NNNNNNNNN02\)/);
 });
 
 test("no message carries a link that is not http(s) and every link goes to our site, YouTube or a row Mark entered", () => {

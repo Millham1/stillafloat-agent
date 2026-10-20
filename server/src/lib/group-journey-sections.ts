@@ -7,7 +7,7 @@
 import { looksLikeCardNumber } from "./group-file";
 import {
   addDays, cabinPayments, checklistDone, checklistEntry, clientChecklist, displayName, firstName, fmtDate, fmtMoney, fmtTime, journeyAnswers,
-  missingItems, paperworkState, pickVideos, plain, portDisplayName, termsDeadlines, travelState, weatherTable, ymd,
+  missingItems, paperworkState, videosFor, plain, portDisplayName, termsDeadlines, travelState, weatherTable, ymd,
   type Ctx, type Row, type Section, type SectionItem, type VideoTopic,
 } from "./group-journey-facts";
 import { strings, stormKind, type MilestoneKind } from "./group-journey-strings";
@@ -144,7 +144,7 @@ export function insurance(ctx: Ctx, o: { video?: boolean } = {}): Section | null
   const status = ctx.cabin?.insurance;
   if (status === "declined") return null;
   const lines = [status === "accepted" ? S.insuranceHave : S.insuranceOffer];
-  const v = o.video && status !== "accepted" ? pickVideos(ctx.extras.videos, "insurance", ctx.lang, ctx.videoSources, 1)[0] : undefined;
+  const v = o.video && status !== "accepted" ? videosFor(ctx, "insurance", 1)[0] : undefined;
   return {
     key: "insurance", title: S.insurance, lines,
     ...(v ? { lines: [...lines, S.insuranceVideo], items: [{ text: v.inEnglish ? `${v.title} ${strings(ctx.lang).inEnglishNote}` : v.title, url: v.url }] } : {}),
@@ -330,7 +330,7 @@ export function videos(ctx: Ctx, topics: VideoTopic[]): Section | null {
   const S = strings(ctx.lang);
   const seen = new Set<string>();
   const items: SectionItem[] = [];
-  for (const t of topics) for (const v of pickVideos(ctx.extras.videos, t, ctx.lang, ctx.videoSources, 2)) {
+  for (const t of topics) for (const v of videosFor(ctx, t, 2)) {
     if (seen.has(v.id) || items.length >= 3) continue;
     seen.add(v.id);
     items.push({ text: v.inEnglish ? `${v.title} ${S.inEnglishNote}` : v.title, url: v.url });
@@ -361,7 +361,7 @@ export function ship(ctx: Ctx): Section | null {
     lines.push(S.cabinLine({ category: displayName(cab.category), num: plain(cab.cabin_num, 20), deck: plain(cab.deck, 10) }));
     if (plain(cab.bed_config)) lines.push(S.shipBed(plain(cab.bed_config, 60)));
   }
-  for (const v of pickVideos(ctx.extras.videos, "cabin", ctx.lang, ctx.videoSources, 1)) items.push({ text: v.inEnglish ? `${v.title} ${strings(ctx.lang).inEnglishNote}` : v.title, url: v.url });
+  for (const v of videosFor(ctx, "cabin", 1)) items.push({ text: v.inEnglish ? `${v.title} ${strings(ctx.lang).inEnglishNote}` : v.title, url: v.url });
   if (!lines.length && !items.length) return null;
   const links = name ? [{ label: S.shipTracker(name), url: `${page(ctx, "tracker")}?ship=${encodeURIComponent(name)}` }] : [];
   return { key: "ship", title: S.ship, lines, items, links };
