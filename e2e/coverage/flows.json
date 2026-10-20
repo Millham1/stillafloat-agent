@@ -10,7 +10,7 @@
     "email:storm-alert-links": "the links in a storm alert / all-clear email (each pinned ship -> tracker, 'Track your ship', 'See all storm warnings'), EN and ES, read from the storm-email template deployed on the box (server/src/lib/storm-email-content.ts) and followed on the box",
     "email:storm-alert-rendered": "the storm alert / all-clear email itself as a subscriber receives it (subject, body language, ship list)",
     "email:newsletter-issue-links": "every link in the weekly newsletter issue (stories, commentary, video, gear, booking, unsubscribe, images), EN and ES, from the issue as mailed (GET /api/newsletter/email)",
-    "flow:group-page-journey": "Mark approves a group's marketing page in the dashboard -> GET /api/group-page/:code (as a visitor) shows the same copy, ship, dates, itinerary, cabins, prices, business footer and the published Conga Line score -> /group.html?g=<code> and its Spanish twin /es/group.html load it"
+    "flow:group-page-journey": "Mark approves a group's marketing page in the dashboard -> GET /api/group-page/:code (as a visitor) shows the same copy, ship, dates, itinerary, from-price, business footer and the published Conga Line score (and no cabin list or availability) -> /group.html?g=<code> and its Spanish twin /es/group.html load it"
   },
   "exempt": {},
   "gaps": {

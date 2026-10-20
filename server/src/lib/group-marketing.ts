@@ -69,6 +69,34 @@ export function ctaLine(answers: Record<string, string | boolean>, lang: Lang): 
   return own ? { text: own, custom: true } : { text: DEFAULT_CTA[lang], custom: false };
 }
 
+/** The answers in which Mark may have named something planned for the group (an onboard credit, a dinner …). */
+const PLANNED_FROM = ["pitch", "picture", "occasion_line", "why_sailing", "who_fits", "extras"] as const;
+
+/**
+ * What Mark's own interview answers say is PLANNED for the group beyond what the fare includes — today only an onboard
+ * credit ("$25 onboard credit", "an onboard credit of $50 per cabin"), copied from his words and never composed. Empty when
+ * his answers do not name one: the page never invents a perk (Mark 2026-10-19).
+ */
+export function plannedForGroup(answers: Record<string, string | boolean>): string[] {
+  const money = String.raw`\$\s?\d[\d,]*(?:\.\d{1,2})?`;
+  const unit = String.raw`(?:\s+(?:per|a|each)\s+(?:person|guest|cabin|passenger|traveler|traveller|adult))?`;
+  const patterns = [
+    new RegExp(String.raw`${money}${unit}\s+(?:of\s+)?(?:on-?board|shipboard)\s+(?:spending\s+)?credit`, "i"),
+    new RegExp(String.raw`(?:on-?board|shipboard)\s+(?:spending\s+)?credit\s+(?:of|worth|up to|:)?\s*${money}${unit}`, "i"),
+  ];
+  const out: string[] = [];
+  for (const k of PLANNED_FROM) {
+    const v = answers[k];
+    if (typeof v !== "string") continue;
+    for (const re of patterns) {
+      const m = re.exec(v);
+      const hit = m?.[0].replace(/\s+/g, " ").replace(/[\s:]+$/, "").trim();
+      if (hit && !out.some((x) => x.toLowerCase() === hit.toLowerCase())) out.push(hit);
+    }
+  }
+  return out;
+}
+
 /** The longest answer kept. The pitch is never cut to fit: the answers route refuses a longer one. */
 export const ANSWER_MAX = 2000;
 
@@ -386,6 +414,25 @@ function collectNumbers(f: GroupFacts, g: Row): string[] {
   if (f.rating) { add(f.rating.scoreText); add("5"); }
   add(f.groupName); add(f.ship);
   return [...new Set(pool)];
+}
+
+/**
+ * What the public page may see. No ids, no organizer contact, no internal notes, and no cabin availability or per-category
+ * prices: the page only asks "I'm interested", and Mark decides which cabin once he has spoken to them (Mark 2026-10-19:
+ * "why would they see the available cabins before I know they are interested").
+ */
+export function publicFacts(f: GroupFacts, answers: Record<string, string | boolean>): Row {
+  const showPrices = answers["show_prices"] !== false;
+  return {
+    lang: f.lang, business: f.business, groupName: f.groupName, line: f.line, ship: f.ship,
+    sailDateText: f.sailDateText, returnDateText: f.returnDateText, nights: f.nights, embarkPort: f.embarkPort,
+    travel: f.travel, perks: f.perks, planned: plannedForGroup(answers),
+    ports: f.ports, itinerary: f.itinerary, amenities: f.amenities,
+    fromPerPersonText: showPrices ? f.fromPerPersonText : null,
+    bookByText: f.bookByText, finalPaymentText: f.finalPaymentText,
+    rating: answers["show_rating"] !== false ? f.rating : null,
+    markSailing: answers["mark_sailing"] === true,
+  };
 }
 
 // ── Copy ──────────────────────────────────────────────────────────────────────

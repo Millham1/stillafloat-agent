@@ -1231,8 +1231,8 @@ export default [
   },
   {
     id: "ops.group-page-public",
-    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids or a card number; unapproved pages stay hidden",
-    title: "Whenever Mark has a live group page, it shows exactly his approved copy and the group's facts (English and Spanish) with no contact details or ids, and unapproved pages stay hidden",
+    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids, a card number or the cabins still available (Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"); unapproved pages stay hidden",
+    title: "Whenever Mark has a live group page, it shows exactly his approved copy and the group's facts (English and Spanish) with no contact details, ids or cabin availability, and unapproved pages stay hidden",
     covers: ["GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/groups/:id/marketing"],
     modes: ["dev", "prod"],
     // New in the 2026-10-08 release: prod has neither the pages nor the address before the promotion,
@@ -1242,8 +1242,10 @@ export default [
       // twin reads, so a field renamed or dropped by the API (or by one twin only) fails below.
       const reads = {};
       for (const [p, lang] of [["/group.html", "en"], ["/es/group.html", "es"]]) {
-        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'id="f-website"', "cf-turnstile-response"] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Cuenten conmigo" : "Count me in"] });
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
+        // The page asks one thing, "I'm interested": no cabin table, no cabin picker (Mark 2026-10-19).
+        t.ok(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(html), `${p} still has the cabin table or the cabin picker`);
         t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a group page must never be indexed)`);
         t.observe(`${p} title`, H.title(html));
         const names = (re) => [...new Set([...html.matchAll(re)].map((m) => m[1]))].sort();
@@ -1276,7 +1278,7 @@ export default [
         t.matches(res.headers.get("cache-control") || "", /no-store/, `group ${g.id}: Cache-Control`);
         t.equal(JSON.stringify(pub.langs), JSON.stringify(langsFor(g)), `group ${g.id}: languages — public page vs group file`);
         t.fields(pub.facts, ["groupName", "line", "ship", "sailDateText", "nights", "embarkPort", "business.email"], `group ${g.id}: public facts`);
-        t.nonEmpty(pub.facts.cabins, `group ${g.id}: cabin categories on the public page`);
+        for (const k of ["cabins", "cabinsAvailable", "cabinsTotal"]) t.ok(!(k in pub.facts), `group ${g.id}: the public page's answer carries "${k}" — a visitor must not see cabin availability before Mark knows they are interested`);
         t.nonEmpty(pub.facts.itinerary, `group ${g.id}: itinerary on the public page`);
         t.equal(String(pub.facts.ship).toLowerCase(), String(g.ship_name).toLowerCase(), `group ${g.id}: ship — public page vs group file`);
         t.fields(pub.copy, ["headline", "intro", "cta_label"], `group ${g.id}: public copy`);
@@ -1293,7 +1295,6 @@ export default [
         const noCopy = reads.en.copy.filter((k) => !(k in pub.copy));
         t.ok(noFact.length === 0 && noCopy.length === 0, `group ${g.id}: the group page reads ${[...noFact.map((k) => `facts.${k}`), ...noCopy.map((k) => `copy.${k}`)].join(", ")}, which the public answer no longer has`);
         t.fields(pub.facts, ["business.legalName", "business.host", "business.email"], `group ${g.id}: the page footer's business details`);
-        for (const c of pub.facts.cabins) t.ok(typeof c.category === "string" && Number.isInteger(c.available), `group ${g.id}: a cabin category on the public page has no name or availability`);
         for (const s of pub.facts.itinerary) t.ok(typeof s.port === "string" && s.port && typeof s.seaDay === "boolean", `group ${g.id}: an itinerary day on the public page has no port`);
         // the dashboard's approved copy and the public copy are the same words, field by field, and the
         // public facts are the dashboard's facts
@@ -1302,7 +1303,7 @@ export default [
         for (const k of Object.keys(pub.copy)) {
           t.equal(pub.copy[k] ?? null, m.perLang?.[lang0]?.copy?.[k] ?? null, `group ${g.id}: copy "${k}" — public page vs Mark's approved copy`);
         }
-        for (const k of ["groupName", "ship", "sailDateText", "nights", "embarkPort", "cabinsAvailable"]) {
+        for (const k of ["groupName", "ship", "sailDateText", "nights", "embarkPort"]) {
           t.equal(JSON.stringify(pub.facts[k]), JSON.stringify(m.perLang?.[lang0]?.facts?.[k]), `group ${g.id}: ${k} — public page vs the marketing screen`);
         }
         // Spanish visitors (/es/group.html asks ?lang=es): a Spanish group answers in Spanish with

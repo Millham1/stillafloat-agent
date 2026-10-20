@@ -4,7 +4,7 @@ import { campaignSystemPrompt, campaignUserPrompt } from "./group-campaign";
 import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
-  ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch } from "./group-marketing";
+  ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -733,4 +733,27 @@ test("the call to action is 'Use the QR code to book your spot!' on every piece;
     assert.doesNotMatch(sys, /Use the QR code to book your spot!/);
   }
   assert.match(systemPrompt("es", own), /the line "Scan the QR to join the fun", translated into natural Latin American Spanish, then the link/);
+});
+
+// ── The info page asks one thing: "I'm interested" (Mark 2026-10-19) ──────────
+
+test("the public facts carry no cabin list, no cabin count and no per-category price, only the single from-price", () => {
+  const facts = buildFacts({ ...file(), group: { ...file().group, inclusions: ["Drinks package"] } }, rating, "en");
+  const pub = publicFacts(facts, {});
+  for (const k of ["cabins", "cabinsAvailable", "cabinsTotal"]) assert.ok(!(k in pub), `the public facts must not carry ${k}`);
+  assert.equal(pub["fromPerPersonText"], "$849");
+  assert.deepEqual(pub["perks"], ["Drinks package"]);
+  assert.deepEqual(pub["planned"], []);
+  assert.ok(!JSON.stringify(pub).includes("$1,249"), "a per-category price leaked into the public facts");
+  assert.equal(publicFacts(facts, { show_prices: false })["fromPerPersonText"], null);
+  assert.equal(publicFacts(facts, { show_rating: false })["rating"], null);
+});
+
+test("'planned for the group' is copied from Mark's own words and never composed", () => {
+  assert.deepEqual(plannedForGroup({ pitch: "Everyone gets a $25 onboard credit and a toast." }), ["$25 onboard credit"]);
+  assert.deepEqual(plannedForGroup({ extras: "Each cabin gets an onboard credit of $50 per cabin." }), ["onboard credit of $50 per cabin"]);
+  assert.deepEqual(plannedForGroup({ pitch: "$25 on-board credit", why_sailing: "A $25 onboard credit again" }), ["$25 on-board credit", "$25 onboard credit"]);
+  assert.deepEqual(plannedForGroup({ pitch: "A sunset-to-sunrise party and a group dinner." }), []);
+  assert.deepEqual(plannedForGroup({ pitch: "Onboard credit is possible", extras: "no numbers here" }), []);   // no amount named: nothing to print
+  assert.deepEqual(plannedForGroup({ audience: "$25 onboard credit", cta_line: "$25 onboard credit" }), []);   // only the answers that describe the trip
 });

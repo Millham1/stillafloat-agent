@@ -10,7 +10,7 @@ import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
   ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, ctaLine, missingAnswers, newShareCode, normalizeAnswers, pitchGate, pitchNumberProblems, retryNote,
-  shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
+  publicFacts, shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
 import { assetsFor, fetchAssets, putPublic, type AssetRow } from "../lib/group-assets";
@@ -85,27 +85,6 @@ async function loadGroup(where: { id?: string; code?: string }): Promise<{ group
 function copyFor(group: Row, lang: Lang): GroupCopy | null {
   const c = group.marketing_copy?.[lang];
   return c && typeof c === "object" ? tidyCopy(c) : null;
-}
-
-/** What the public page may see. No ids, no organizer contact, no internal notes. */
-function publicFacts(f: GroupFacts, answers: Record<string, string | boolean>): Row {
-  const showPrices = answers["show_prices"] !== false;
-  return {
-    lang: f.lang, business: f.business, groupName: f.groupName, line: f.line, ship: f.ship,
-    sailDateText: f.sailDateText, returnDateText: f.returnDateText, nights: f.nights, embarkPort: f.embarkPort,
-    travel: f.travel, perks: f.perks,
-    ports: f.ports, itinerary: f.itinerary, amenities: f.amenities,
-    cabins: f.cabins.map((c) => ({
-      category: c.category, available: c.available,
-      perPersonText: showPrices ? c.perPersonText : null,
-      depositPerPersonText: showPrices ? c.depositPerPersonText : null,
-    })),
-    cabinsAvailable: f.cabinsAvailable,
-    fromPerPersonText: showPrices ? f.fromPerPersonText : null,
-    bookByText: f.bookByText, finalPaymentText: f.finalPaymentText,
-    rating: answers["show_rating"] !== false ? f.rating : null,
-    markSailing: answers["mark_sailing"] === true,
-  };
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -390,14 +369,14 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
 
     const { error } = await db().from("group_interests").insert({
       group_id: group.id, first_name: first, last_name: last || null, email, phone: phone || null, lang,
-      cabin_type: text(body["cabin_type"], 80) || null, guests, note: text(body["note"], 800) || null,
+      guests, note: text(body["note"], 800) || null,
       newsletter_opt_in: optIn, ip_hash: hashForAudit(ip), prospect_id: prospectId,
     });
     if (error) throw new Error(error.message);
 
     void notifyMark({
       title: `Group reply: ${first}${last ? " " + last : ""}`,
-      body: `${group.name} — ${guests ? guests + " guest(s), " : ""}${text(body["cabin_type"], 80) || "no cabin type picked"}. Reply within a few hours.`,
+      body: `${group.name} — ${guests ? `party of ${guests}` : "party size not given"}. Reply within a few hours.`,
       tag: `group-interest-${group.id}`,
       buttons: [{ label: "Open the group file", href: `/groups/${group.id}` }],
       priority: "lead",
