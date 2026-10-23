@@ -104,7 +104,9 @@ export async function checkPushHealth(deps: PushHealthDeps = {}): Promise<PushHe
     // One row per box: today's stays, yesterday's and older close as expired. The daily
     // re-raise is what keeps a dead channel loud; a pile of identical rows is just noise
     // on the brief (2026-10-23: 55 of them on dev).
-    out.expired = await expire("system-fault", "push-channel-empty-", sourceRefForToday());
+    // Prefix without the trailing dash on purpose: the first version of this check (8/27)
+    // used the fixed ref "push-channel-empty" with no date, and that row must expire too.
+    out.expired = await expire("system-fault", "push-channel-empty", sourceRefForToday());
     logger.error({ raised: r.created, expired: out.expired, vapid: out.vapidConfigured },
       "push health: ZERO subscribed devices — agent nudges are going nowhere");
   } catch (err) {

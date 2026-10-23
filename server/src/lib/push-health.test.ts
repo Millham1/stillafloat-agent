@@ -167,7 +167,7 @@ test("raising today's row expires the older ones of the same family, never today
   assert.equal(expire.calls.length, 1);
   const [type, prefix, keep] = expire.calls[0]!;
   assert.equal(type, "system-fault");
-  assert.equal(prefix, "push-channel-empty-");
+  assert.equal(prefix, "push-channel-empty", "no trailing dash: the 8/27 fixed ref \"push-channel-empty\" must expire as well");
   assert.equal(keep, raise.calls[0]!.source_ref, "the row kept is the one just raised");
   assert.match(keep, /^push-channel-empty-\d{4}-\d{2}-\d{2}$/);
 });
