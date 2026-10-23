@@ -6,7 +6,7 @@ import { requireToken } from "../lib/http-auth";
 import { logger } from "../lib/logger";
 import { clientIp } from "../lib/client-ip";
 import { sendMail } from "../lib/mailer";
-import { notifyMark } from "../lib/notify";
+import { createAction } from "../lib/actions";
 import { resolvePublicDir } from "../lib/public-dir";
 import { BUSINESS } from "../lib/group-secure";
 import { renderSignedPdf } from "../lib/group-signature-pdf";
@@ -145,8 +145,12 @@ function deps(): FormsDeps {
     piiKey: process.env["GROUP_PII_KEY"],
     renderPdf: renderSignedPdf,
     logo: logoBytes(),
-    notify: (n) => notifyMark({
-      title: n.title, body: n.body, tag: `group-paperwork-${n.groupId}`,
+    // Signed paperwork is work waiting on Mark: a queue row he clears once processed, and
+    // the one "Waiting on you" notification (Mark, 2026-10-22). One row per submission.
+    notify: (n) => createAction({
+      type: "group-paperwork",
+      source_ref: `${n.groupId}-${Date.now()}`,
+      title: n.title, body: n.body,
       buttons: [{ label: "Open the group file", href: `/groups/${n.groupId}` }],
     }).then(() => undefined),
     warn: (obj, msg) => logger.warn(obj, msg),
