@@ -21,7 +21,13 @@ type Lang = "en" | "es";
 const PAGES: Record<Lang, string> = { en: "details.html", es: "es/details.html" };
 const html = (lang: Lang) => readFileSync(join(PUBLIC, PAGES[lang]), "utf8");
 const script = (lang: Lang) => /<script>\n([\s\S]*?)<\/script>/.exec(html(lang))![1]!;
-const css = (lang: Lang) => /<style>([\s\S]*?)<\/style>/.exec(html(lang))![1]!;
+// The page's look lives in a shared same-site stylesheet under /css/ (2026-10-23: the release gate's crawl counts same-site
+// stylesheets, and both language twins share one look), so the CSS is read from the file the page links.
+const css = (lang: Lang) => {
+  const m = /<link rel="stylesheet" href="\/css\/([a-z-]+\.css)[^"]*">/.exec(html(lang));
+  assert.ok(m, `${lang}: the page links its stylesheet from /css/`);
+  return readFileSync(join(PUBLIC, "css", m![1]!), "utf8");
+};
 
 const TOKEN = "T".repeat(43);
 const HELD = [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }];

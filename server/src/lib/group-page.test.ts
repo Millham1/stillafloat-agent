@@ -24,7 +24,13 @@ const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), "../../public");
 const PAGES: Record<Lang, string> = { en: "group.html", es: "es/group.html" };
 const html = (lang: Lang) => readFileSync(join(PUBLIC, PAGES[lang]), "utf8");
 const script = (lang: Lang) => /<script>\n([\s\S]*?)<\/script>/.exec(html(lang))![1]!;
-const css = (lang: Lang) => /<style>([\s\S]*?)<\/style>/.exec(html(lang))![1]!;
+// The page's look lives in a shared same-site stylesheet under /css/ (2026-10-23: the release gate's crawl counts same-site
+// stylesheets, and both language twins share one look), so the CSS is read from the file the page links.
+const css = (lang: Lang) => {
+  const m = /<link rel="stylesheet" href="\/css\/([a-z-]+\.css)[^"]*">/.exec(html(lang));
+  assert.ok(m, `${lang}: the page links its stylesheet from /css/`);
+  return readFileSync(join(PUBLIC, "css", m![1]!), "utf8");
+};
 
 // ── A group file as the server reads it ──────────────────────────────────────────────────────────────────────
 
@@ -163,7 +169,7 @@ test("both pages (English and Spanish) are the same page: header, hero, welcome,
     for (const k of ["headline", "subhead", "intro", "why_ship", "who_for"]) assert.ok(!new RegExp(`\\bc\\.${k}\\b`).test(s), `${lang}: the script reads copy.${k}`);
     assert.deepEqual([...new Set([...s.matchAll(/\bc\.([A-Za-z_]+)/g)].map((m) => m[1]))].sort(), ["cta_blurb", "cta_label", "organizer_note", "welcome"], `${lang}: the copy names the page reads`);
     // the call to action is still the yellow pill
-    assert.ok(h.includes('id="gp-submit"') && /\.btn\{[^}]*background:#f5c33b;color:#07183f/.test(h));
+    assert.ok(h.includes('id="gp-submit"') && /\.btn\{[^}]*background:#f5c33b;color:#07183f/.test(css(lang)));
     // no cabin picker and no cabin table: the page only asks "I'm interested" (the price list is not a table or a picker)
     assert.ok(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(h), `${lang}: a cabin table or picker is back`);
   }
