@@ -177,14 +177,18 @@ export async function notifyMark(n: Notification, deps: NotifyDeps = {}): Promis
 export async function notifyMarkDetailed(
   n: Notification,
   deps: NotifyDeps = {},
-): Promise<{ channel: NotifyChannel; shaped: Shaped; waiting?: WaitingPushResult }> {
+): Promise<{ channel: NotifyChannel; shaped: Shaped; recorded: boolean; waiting?: WaitingPushResult }> {
   const shaped = shapeNotification(n);
   const record = deps.activity ?? logActivity;
 
+  // Whether the brief page's record was written. Callers that cannot reach a phone from their box
+  // (the news agent on dev: no device, DISABLE_NOTIFY_EMAIL=1) read this to tell "on the brief
+  // page" from "nowhere" — 2026-10-21 the news agent logged a recorded fault as invisible.
+  let recorded = false;
   if (n.kind !== "waiting") {
     // The page is the complete record; the phone is not. Never let the log break the send.
     try {
-      await record({
+      recorded = await record({
         source: n.source ?? "backend",
         title: n.kind === "activity" ? shaped.title : shaped.title.replace(/^Heads-up:\s*/, ""),
         body: n.body,
@@ -196,7 +200,7 @@ export async function notifyMarkDetailed(
     }
   }
 
-  if (n.kind === "activity") return { channel: "activity", shaped };
+  if (n.kind === "activity") return { channel: "activity", shaped, recorded };
 
   if (n.kind === "waiting") {
     const handler = deps.waiting ?? waitingHandler;
@@ -205,7 +209,7 @@ export async function notifyMarkDetailed(
       // waiting tag rather than say nothing. Loud in the log so it gets fixed.
       logger.error({ title: n.title }, "notify: no waiting handler registered — pushing the raw text");
       const channel = await deliver({ ...shaped, title: `Waiting on you: ${plainTitle(n.title)}` }, n, deps);
-      return { channel, shaped };
+      return { channel, shaped, recorded };
     }
     let r: WaitingPushResult | null = null;
     try {
@@ -213,15 +217,15 @@ export async function notifyMarkDetailed(
     } catch (err) {
       logger.error({ err, title: n.title }, "notify: waiting handler threw");
     }
-    if (r && r.pushed && r.sent > 0) return { channel: "webpush", shaped, waiting: r };
-    if (r && !r.pushed) return { channel: "quiet", shaped, waiting: r }; // nothing new — by design
+    if (r && r.pushed && r.sent > 0) return { channel: "webpush", shaped, recorded, waiting: r };
+    if (r && !r.pushed) return { channel: "quiet", shaped, recorded, waiting: r }; // nothing new — by design
     // Pushed to nobody (or the handler failed): the floor for leads and faults, else a logged fault.
     const channel = await emailFloor(n, shaped, deps);
-    return { channel, shaped, ...(r ? { waiting: r } : {}) };
+    return { channel, shaped, recorded, ...(r ? { waiting: r } : {}) };
   }
 
   const channel = await deliver(shaped, n, deps);
-  return { channel, shaped };
+  return { channel, shaped, recorded };
 }
 
 /** ntfy → web push → email floor, for the shapes that buzz. */

@@ -70,7 +70,9 @@ router.post("/push/unsubscribe", requireToken, async (req: Request, res: Respons
 //          caller's "editorial-digest" still means "something to approve"), else "activity".
 //   dryRun true → shape only: no push, no record. The release gate uses this on prod so
 //          the shapes are tested without buzzing Mark's phone.
-// Response: { ok, kind, channel, pushed, sent, pruned, shaped }
+// Response: { ok, kind, channel, pushed, sent, recorded, pruned, shaped }
+//   recorded = the brief page's record was written (every kind but "waiting"), so a caller whose
+//   box has no phone and no email floor (dev) can tell "on the brief page" from "nowhere".
 router.post("/push/notify", async (req: Request, res: Response) => {
   const opsKey = process.env["IDEAS_API_KEY"];
   const viaApiKey = Boolean(opsKey) && req.headers["x-api-key"] === opsKey;
@@ -103,6 +105,7 @@ router.post("/push/notify", async (req: Request, res: Response) => {
       channel: out.channel,
       pushed,
       sent: out.waiting ? out.waiting.sent : (out.channel === "webpush" ? 1 : 0),
+      recorded: out.recorded,
       pruned: out.waiting?.pruned ?? 0,
       ...(out.waiting ? { waiting: { total: out.waiting.total, added: out.waiting.added, title: out.waiting.title } } : {}),
     });
