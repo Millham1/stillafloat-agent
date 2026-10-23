@@ -1149,11 +1149,15 @@ export default [
         pageCode = "zzzzzzzzzz"; // a well-formed share code no group holds
       }
       const page = t.html(await t.get(`/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'", "Count me in"] });
+      // The page's look lives in the same-site stylesheet it links (2026-10-23: /css/group-page.css, shared by both language twins, so the gate's crawl
+      // sees a stylesheet). The style rules below are read from the page AND from what it links; a stylesheet that does not load is a failure of its own.
+      const linkedCss = async (html) => { let out = ""; for (const m of html.matchAll(/<link rel="stylesheet" href="(\/css\/[^"]+)"/g)) { const r = await t.get(m[1]); L.check(r.status === 200, `the group page's stylesheet ${m[1]} does not load (HTTP ${r.status})`); out += "\n" + (r.text || ""); } return out; };
+      const pageStyled = page + (await linkedCss(page));
       t.equal(H.htmlLang(page).slice(0, 2), "en", "the group page language");
       // Every group page: the FlexPay plans line with the logo, the yellow pill button, and the page reading the look block.
       L.check(/Flexible Payment Plans Available/.test(page), "the English group page no longer says 'Flexible Payment Plans Available'");
       L.check(H.images(page).includes("/assets/images/flexpay-logo.png") && /alt="FlexPay"/.test(page), "the English group page no longer shows the FlexPay logo");
-      L.check(/\.btn\{[^}]*background:#f5c33b[^}]*color:#07183f/.test(page) && !/linear-gradient\(135deg,#07183f,#0077b6\)/.test(page), "the English group page's button is no longer the yellow pill");
+      L.check(/\.btn\{[^}]*background:#f5c33b[^}]*color:#07183f/.test(pageStyled) && !/linear-gradient\(135deg,#07183f,#0077b6\)/.test(pageStyled), "the English group page's button is no longer the yellow pill");
       L.check(/look\.heroUrl/.test(page) && /look\.hostPhotoUrl/.test(page) && /look\.planPhotoUrl/.test(page) && /look\.cabinPhotoUrl/.test(page) && /look\.taxesIncluded/.test(page) && /look\.dayNotes/.test(page) && /look\.credits/.test(page), "the English group page no longer reads the look block (pictures, picture bands, taxes line, day notes, photo credits)");
       L.check(/Taxes and port fees included\./.test(page) && /confirmed at booking/.test(page), "the English group page has lost its 'Taxes and port fees included' / 'confirmed at booking' price notes");
       const logo = await t.get("/assets/images/flexpay-logo.png");
@@ -1169,10 +1173,11 @@ export default [
       // the Spanish page (a group with Spanish copy is shared as /es/group.html?g=; group.html's
       // language switch links there): it must be Spanish, ask for lang=es and accept the same codes
       const es = t.html(await t.get(`/es/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'", "Cuenten conmigo"] });
+      const esStyled = es + (await linkedCss(es));
       t.equal(H.htmlLang(es).slice(0, 2), "es", "the Spanish group page language");
       L.check(/Planes de pago flexibles disponibles/.test(es), "the Spanish group page no longer says 'Planes de pago flexibles disponibles'");
       L.check(H.images(es).includes("/assets/images/flexpay-logo.png") && /alt="FlexPay"/.test(es), "the Spanish group page no longer shows the FlexPay logo");
-      L.check(/\.btn\{[^}]*background:#f5c33b[^}]*color:#07183f/.test(es) && !/linear-gradient\(135deg,#07183f,#0077b6\)/.test(es), "the Spanish group page's button is no longer the yellow pill");
+      L.check(/\.btn\{[^}]*background:#f5c33b[^}]*color:#07183f/.test(esStyled) && !/linear-gradient\(135deg,#07183f,#0077b6\)/.test(esStyled), "the Spanish group page's button is no longer the yellow pill");
       L.check(/look\.heroUrl/.test(es) && /look\.hostPhotoUrl/.test(es) && /look\.planPhotoUrl/.test(es) && /look\.cabinPhotoUrl/.test(es) && /look\.taxesIncluded/.test(es) && /look\.dayNotes/.test(es) && /look\.credits/.test(es), "the Spanish group page no longer reads the look block");
       L.check(/Impuestos y cargos portuarios incluidos\./.test(es) && /se confirman al reservar/.test(es), "the Spanish group page has lost its 'Impuestos y cargos portuarios incluidos' / 'se confirman al reservar' price notes");
       L.check(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(es), "the Spanish group page still has the cabin table or the cabin picker");
@@ -1185,7 +1190,7 @@ export default [
       // the hosts' welcome, the one Count me in form, the plan, your cabin, the dates, getting there, the footer; the poster's headline, payoff and pitch are not on it,
       // and neither are the ship's rating, the advisor, the site menu or a second call to action.
       const ORDER = ['class="hdr"', 'id="sec-welcome"', 'id="interest"', 'id="gp-form"', 'id="sec-itin"', 'id="sec-cabin"', 'id="sec-dates"', 'id="sec-travel"', 'class="foot"'];
-      for (const [name, h] of [["English", page], ["Spanish", es]]) {
+      for (const [name, h, hs] of [["English", page, pageStyled], ["Spanish", es, esStyled]]) {
         const at = ORDER.map((needle) => h.indexOf(needle));
         const lost = ORDER.filter((_, i) => at[i] < 0);
         L.check(lost.length === 0, `the ${name} group page has lost ${lost.join(", ")}`);
@@ -1198,9 +1203,9 @@ export default [
         for (const id of ["gp-headline", "gp-subhead", "gp-intro", "gp-why", "gp-who"]) L.check(!h.includes(`id="${id}"`), `the ${name} group page still has the ${id} block that repeats the poster`);
         L.check(/\bc\.welcome\b/.test(h) && /\blook\.hostNames\b/.test(h), `the ${name} group page no longer reads the welcome and the hosts' signature`);
         L.check(/\bf\.cabinPrices\b/.test(h) && /\bf\.itinerary\b/.test(h) && /\bf\.travel\b/.test(h), `the ${name} group page no longer reads the cabin categories, the itinerary and the way to get there`);
-        L.check(/\.welcome \.sig\{[^}]*color:#ffca4f/.test(h), `the ${name} group page's welcome signature is no longer in the gold accent`);
-        L.check(Number(/\.welcome p\{[^}]*font-size:(\d+)px/.exec(h)?.[1] ?? 0) >= 20, `the ${name} group page's welcome text is smaller than 20px`);
-        L.check(/\.wrap\{max-width:640px/.test(h), `the ${name} group page is no longer one centered column of at most 640px`);
+        L.check(/\.welcome \.sig\{[^}]*color:#ffca4f/.test(hs), `the ${name} group page's welcome signature is no longer in the gold accent`);
+        L.check(Number(/\.welcome p\{[^}]*font-size:(\d+)px/.exec(hs)?.[1] ?? 0) >= 20, `the ${name} group page's welcome text is smaller than 20px`);
+        L.check(/\.wrap\{max-width:640px/.test(hs), `the ${name} group page is no longer one centered column of at most 640px`);
       }
       L.check(/itinerary:'The plan, day by day'/.test(page) && /cabin:'Your cabin'/.test(page), "the English group page's headings are not 'The plan, day by day' and 'Your cabin'");
       L.check(/itinerary:'El plan, día a día'/.test(es) && /cabin:'Su cabina'/.test(es), "the Spanish group page's headings are not 'El plan, día a día' and 'Su cabina'");
