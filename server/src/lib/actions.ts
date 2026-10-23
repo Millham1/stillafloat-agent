@@ -106,3 +106,27 @@ export async function resolveActionsForSource(type: string, sourceRef: string, s
     .eq("type", type).eq("source_ref", sourceRef).eq("status", "pending");
   if (error) logger.warn({ error }, "resolveActionsForSource failed");
 }
+
+/**
+ * A fault that re-raises DAILY (push-health writes one row per day while the channel is
+ * dead, so a dead day never hides behind yesterday's row) must not pile up: keep the
+ * current row, expire every older pending row of the same family. 2026-10-23: the dev box,
+ * which has no phone by design, had 55 pending "reaching nobody" rows going back 57 days.
+ * Returns how many rows were expired.
+ */
+export async function expireSupersededActions(type: string, sourceRefPrefix: string, keepRef: string): Promise<number> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("actions")
+    .update({ status: "expired", resolved_at: new Date().toISOString() })
+    .eq("type", type).eq("status", "pending")
+    .like("source_ref", `${sourceRefPrefix}%`)
+    .neq("source_ref", keepRef)
+    .select("id");
+  if (error) {
+    logger.warn({ error, type, sourceRefPrefix }, "expireSupersededActions failed");
+    return 0;
+  }
+  return ((data ?? []) as unknown[]).length;
+}
+

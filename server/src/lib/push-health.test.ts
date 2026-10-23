@@ -25,6 +25,12 @@ function raiseSpy(created = true) {
 
 const VAPID_SET = () => "BFDB7HTn-public-key";
 const NO_NTFY = () => false;
+const NO_EXPIRE = (async () => 0) as never;
+
+function expireSpy(n = 3) {
+  const calls: Array<[string, string, string]> = [];
+  return { calls, fn: (async (type: string, prefix: string, keep: string) => { calls.push([type, prefix, keep]); return n; }) as never };
+}
 
 test("zero devices raises a high-priority action", async () => {
   const raise = raiseSpy();
@@ -33,6 +39,7 @@ test("zero devices raises a high-priority action", async () => {
     vapid: VAPID_SET,
     ntfyLive: NO_NTFY,
     raise: raise.fn,
+    expire: NO_EXPIRE,
   });
 
   assert.equal(out.devices, 0);
@@ -50,6 +57,7 @@ test("the raised action tells Mark how to fix it", async () => {
     vapid: VAPID_SET,
     ntfyLive: NO_NTFY,
     raise: raise.fn,
+    expire: NO_EXPIRE,
   });
 
   assert.match(raise.calls[0]!.body!, /Alerts/, "must name where to re-subscribe");
@@ -62,6 +70,7 @@ test("a healthy channel raises nothing", async () => {
     vapid: VAPID_SET,
     ntfyLive: NO_NTFY,
     raise: raise.fn,
+    expire: NO_EXPIRE,
   });
 
   assert.equal(out.devices, 2);
@@ -76,6 +85,7 @@ test("missing VAPID keys change the remedy, not the alarm", async () => {
     vapid: () => null,
     ntfyLive: NO_NTFY,
     raise: raise.fn,
+    expire: NO_EXPIRE,
   });
 
   assert.equal(out.vapidConfigured, false);
@@ -90,6 +100,7 @@ test("zero devices is not a fault when ntfy is configured", async () => {
     vapid: VAPID_SET,
     ntfyLive: () => true,
     raise: raise.fn,
+    expire: NO_EXPIRE,
   });
 
   assert.equal(out.raised, false);
@@ -103,6 +114,7 @@ test("a same-day repeat check dedups and reports raised:false", async () => {
     vapid: VAPID_SET,
     ntfyLive: NO_NTFY,
     raise: raise.fn,
+    expire: NO_EXPIRE,
   });
 
   // The 6-hourly checks within one day collapse to a single alert. Across days
@@ -118,6 +130,7 @@ test("source_ref carries the day, so a dead channel re-alerts daily", async () =
     vapid: VAPID_SET,
     ntfyLive: NO_NTFY,
     raise: raise.fn,
+    expire: NO_EXPIRE,
   });
 
   const ref = raise.calls[0]!.source_ref!;
@@ -143,3 +156,33 @@ test("the check never throws when its dependencies do", async () => {
 
   assert.equal(out.raised, false);
 });
+
+// 2026-10-23: the dev box (no phone by design) carried 55 pending "reaching nobody" rows,
+// one per day since the daily re-raise shipped. One row per box: today's stays, older expire.
+test("raising today's row expires the older ones of the same family, never today's", async () => {
+  const raise = raiseSpy();
+  const expire = expireSpy(54);
+  const out = await checkPushHealth({ count: async () => 0, vapid: VAPID_SET, ntfyLive: NO_NTFY, raise: raise.fn, expire: expire.fn });
+  assert.equal(out.expired, 54);
+  assert.equal(expire.calls.length, 1);
+  const [type, prefix, keep] = expire.calls[0]!;
+  assert.equal(type, "system-fault");
+  assert.equal(prefix, "push-channel-empty-");
+  assert.equal(keep, raise.calls[0]!.source_ref, "the row kept is the one just raised");
+  assert.match(keep, /^push-channel-empty-\d{4}-\d{2}-\d{2}$/);
+});
+
+test("a deduped raise (today's row already pending) still expires the older ones", async () => {
+  const expire = expireSpy(1);
+  const out = await checkPushHealth({ count: async () => 0, vapid: VAPID_SET, ntfyLive: NO_NTFY, raise: raiseSpy(false).fn, expire: expire.fn });
+  assert.equal(out.raised, false);
+  assert.equal(out.expired, 1);
+});
+
+test("a healthy channel expires nothing (there is nothing to supersede)", async () => {
+  const expire = expireSpy();
+  const out = await checkPushHealth({ count: async () => 1, vapid: VAPID_SET, ntfyLive: NO_NTFY, raise: raiseSpy().fn, expire: expire.fn });
+  assert.equal(out.expired, 0);
+  assert.equal(expire.calls.length, 0);
+});
+

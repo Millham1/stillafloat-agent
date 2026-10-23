@@ -18,7 +18,7 @@
 // reports queue DEPTH but never whether the step that fills a queue still runs.
 
 import { subscriptionCount, getVapidPublicKey } from "./push";
-import { createAction } from "./actions";
+import { createAction, expireSupersededActions } from "./actions";
 import { logger } from "./logger";
 
 /**
@@ -41,6 +41,8 @@ export interface PushHealth {
   devices: number;
   vapidConfigured: boolean;
   raised: boolean;
+  /** Older pending "reaching nobody" rows closed in favour of today's (one row per box). */
+  expired: number;
 }
 
 /**
@@ -52,6 +54,7 @@ export interface PushHealthDeps {
   vapid?: () => string | null;
   ntfyLive?: () => boolean;
   raise?: typeof createAction;
+  expire?: typeof expireSupersededActions;
 }
 
 /**
@@ -62,10 +65,11 @@ export async function checkPushHealth(deps: PushHealthDeps = {}): Promise<PushHe
   const count = deps.count ?? subscriptionCount;
   const vapid = deps.vapid ?? getVapidPublicKey;
   const raise = deps.raise ?? createAction;
+  const expire = deps.expire ?? expireSupersededActions;
   const ntfyConfigured =
     deps.ntfyLive ?? (() => Boolean(process.env["NTFY_URL"] && process.env["NTFY_TOPIC"]));
 
-  const out: PushHealth = { devices: 0, vapidConfigured: false, raised: false };
+  const out: PushHealth = { devices: 0, vapidConfigured: false, raised: false, expired: 0 };
   try {
     out.vapidConfigured = Boolean(vapid());
     out.devices = await count();
@@ -97,7 +101,11 @@ export async function checkPushHealth(deps: PushHealthDeps = {}): Promise<PushHe
       priority: "high",
     });
     out.raised = r.created;
-    logger.error({ raised: r.created, vapid: out.vapidConfigured },
+    // One row per box: today's stays, yesterday's and older close as expired. The daily
+    // re-raise is what keeps a dead channel loud; a pile of identical rows is just noise
+    // on the brief (2026-10-23: 55 of them on dev).
+    out.expired = await expire("system-fault", "push-channel-empty-", sourceRefForToday());
+    logger.error({ raised: r.created, expired: out.expired, vapid: out.vapidConfigured },
       "push health: ZERO subscribed devices — agent nudges are going nowhere");
   } catch (err) {
     logger.error({ err }, "push health check failed");
