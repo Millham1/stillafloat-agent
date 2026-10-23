@@ -5,7 +5,7 @@ import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
   ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts, DIGITAL_CTA, QR_PROBLEM, ctaForFacebook, mentionsQr, withDisplayNames,
-  IMAGE_URL_MAX, creditedPictureLinks, creditsForPictures, ignoredPictureAnswers, pageLook, safeImageUrl, DEFAULT_HOST_NAMES, HOST_NAMES_MAX, PITCH_NOTE, WELCOME_RULES, cabinPrices, hostNames, priceUnitOf, priceUnitText, travelLabel, pageLabel, PAGE_LABEL_MAX } from "./group-marketing";
+  IMAGE_URL_MAX, creditedPictureLinks, creditsForPictures, ignoredPictureAnswers, pageLook, validEmail, validPhone, safeImageUrl, DEFAULT_HOST_NAMES, HOST_NAMES_MAX, PITCH_NOTE, WELCOME_RULES, cabinPrices, hostNames, priceUnitOf, priceUnitText, travelLabel, pageLabel, PAGE_LABEL_MAX } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -1065,6 +1065,13 @@ test("credits: the attribution lines of the pictures shown, in the pictures' ord
   const withCredits = pageLook(normalizeAnswers({ hero_photo: hero }), ["Photo: A · CC BY 2.0 · Wikimedia Commons", " Photo: A · CC BY 2.0 · Wikimedia Commons ", "", "Photo: B <b>· CC0</b>"]);
   assert.deepEqual(withCredits.credits, ["Photo: A · CC BY 2.0 · Wikimedia Commons", "Photo: B b· CC0/b"], "trimmed, de-duplicated, empty lines dropped, markup characters dropped");
   assert.deepEqual(pageLook({}).credits, []);
+});
+
+test("the Count me in form's contact: a real email, or a phone with at least seven digits (spaces, dashes, dots and parentheses allowed), nothing else", () => {
+  for (const ok of ["mary@example.com", "a.b+c@mail.example.org", "m@x.co"]) assert.equal(validEmail(ok), true, ok);
+  for (const bad of ["", "mary", "mary@", "@example.com", "mary@example", "mary@example.c", "mary @example.com", "a@b@c.com"]) assert.equal(validEmail(bad), false, bad);
+  for (const ok of ["919-346-6127", "(919) 346-6127", "919.346.6127", "+1 919 346 6127", "9193466127", "346 6127", "+34 600 123 456"]) assert.equal(validPhone(ok), true, ok);
+  for (const bad of ["", "123456", "12-34-56", "call me", "919-346-612x", "mary@example.com", "+".repeat(8), "1".repeat(16), "()-. "]) assert.equal(validPhone(bad), false, bad);
 });
 
 test("each day of the itinerary carries its ISO date, so the page can print the weekday and the short date", () => {

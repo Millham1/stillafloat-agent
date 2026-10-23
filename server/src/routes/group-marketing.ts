@@ -9,7 +9,7 @@ import { createAction } from "../lib/actions";
 import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
-  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote,
+  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote, validEmail, validPhone,
   publicFacts, shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
@@ -357,31 +357,46 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
     const first = text(body["first_name"], 80);
     const last = text(body["last_name"], 80);
-    const email = text(body["email"], 200).toLowerCase();
-    const phone = text(body["phone"], 40);
     const lang: Lang = body["lang"] === "es" ? "es" : "en";
-    if (!first) return res.status(400).json({ success: false, error: lang === "es" ? "Falta su nombre." : "Please add your first name." });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return res.status(400).json({ success: false, error: lang === "es" ? "Revise su correo electrónico." : "Please check your email address." });
+    if (!first) return res.status(400).json({ success: false, error: lang === "es" ? "Falta su nombre." : "Please add your name." });
+    // One way to reach them is enough (Mark 2026-10-23: one box, "Email or phone"): a valid email, or a phone with at least seven digits. What they typed
+    // is kept as they typed it (the phone is only checked, not rewritten); an email is stored in lower case.
+    const rawEmail = text(body["email"], 200).toLowerCase();
+    const rawPhone = text(body["phone"], 40);
+    const email = validEmail(rawEmail) ? rawEmail : null;
+    const phone = validPhone(rawPhone) ? rawPhone : null;
+    if (!email && !phone) {
+      const error = rawEmail || rawPhone
+        ? (lang === "es" ? "Revise su correo electrónico o su teléfono." : "Please check your email address or phone number.")
+        : (lang === "es" ? "Agregue un correo o un teléfono." : "Please add an email or a phone number.");
+      return res.status(400).json({ success: false, error });
+    }
     const guests = Number.isInteger(Number(body["guests"])) && Number(body["guests"]) > 0 && Number(body["guests"]) <= 12 ? Number(body["guests"]) : null;
     const optIn = body["newsletter_opt_in"] === true;
 
     // Clients also land in the website's contact list (Mark 2026-10-02). The
     // newsletter is NOT implied: opt-in is stored and handled by the normal
     // confirmation flow, never auto-subscribed here.
+    // prospects.email (and last_name) are NOT NULL: a phone-only reply is not added to the contact list (nothing is invented for it), and a one-word
+    // name goes in with an empty last name. The reply itself is always saved below.
     let prospectId: string | null = null;
-    const { data: prospect, error: pe } = await db().from("prospects").insert({
-      first_name: first, last_name: last || null, email, phone: phone || null,
-      destination: `${group.ship_name ?? "Group cruise"} — ${group.name}`,
-      preferred_lang: lang, num_travelers: guests, cruise_line_pref: group.cruise_line ?? null,
-      referral_source: "group-page",
-      notes: `Group: ${group.name}. ${text(body["note"], 800)}`.trim(),
-      status: "new",
-    }).select("id").maybeSingle();
-    if (pe) logger.warn({ err: pe.message }, "group interest: prospects insert failed (interest still saved)");
-    else prospectId = prospect?.id ?? null;
+    if (!email) {
+      logger.warn("group interest: phone-only reply, no email, so no prospects row (interest still saved)");
+    } else {
+      const { data: prospect, error: pe } = await db().from("prospects").insert({
+        first_name: first, last_name: last, email, phone,
+        destination: `${group.ship_name ?? "Group cruise"} — ${group.name}`,
+        preferred_lang: lang, num_travelers: guests, cruise_line_pref: group.cruise_line ?? null,
+        referral_source: "group-page",
+        notes: `Group: ${group.name}. ${text(body["note"], 800)}`.trim(),
+        status: "new",
+      }).select("id").maybeSingle();
+      if (pe) logger.warn({ err: pe.message }, "group interest: prospects insert failed (interest still saved)");
+      else prospectId = prospect?.id ?? null;
+    }
 
     const { error } = await db().from("group_interests").insert({
-      group_id: group.id, first_name: first, last_name: last || null, email, phone: phone || null, lang,
+      group_id: group.id, first_name: first, last_name: last || null, email, phone, lang,
       guests, note: text(body["note"], 800) || null,
       newsletter_opt_in: optIn, ip_hash: hashForAudit(ip), prospect_id: prospectId,
     });

@@ -423,3 +423,104 @@ test("the public answer never carries the ship's rating, whatever the interview 
     assert.deepEqual((r.json["facts"].itinerary as Array<{ isoDate: string }>).map((d) => d.isoDate), ["2027-03-14", "2027-03-15", "2027-03-16"]);
   }
 });
+
+// ── The Count me in form: an email OR a phone (Mark 2026-10-23: one box, "Email or phone") ───────────────────────────
+
+let visitor = 0;
+/** One send of the form from its own address, so the hourly limit of one test never uses up another's. */
+function send(body: Record<string, unknown>, code = CODE) {
+  visitor += 1;
+  return call("POST", `/group-page/${code}/interest`, { body, headers: { "x-forwarded-for": `198.51.100.${visitor}` } });
+}
+function reset() { prospectInserts.length = 0; interestInserts.length = 0; actionInserts.length = 0; }
+/** Every saved reply tells Mark (one waiting item) a moment AFTER the answer is sent, so wait for those before the next test starts counting. */
+async function settle() {
+  for (let i = 0; i < 100 && actionInserts.length < interestInserts.length; i++) await new Promise((r) => setTimeout(r, 10));
+  assert.equal(actionInserts.length, interestInserts.length, "each saved reply puts one item on Mark's waiting list");
+}
+
+test("a reply with an email is saved, and goes on the contact list as before", async () => {
+  reset();
+  const r = await send({ first_name: "Mary", last_name: "Smith", email: " Mary@Example.COM ", phone: "", guests: 3, lang: "en", newsletter_opt_in: false });
+  assert.equal(r.status, 200); assert.equal(r.json["success"], true);
+  assert.equal(interestInserts.length, 1);
+  assert.deepEqual([interestInserts[0]!["first_name"], interestInserts[0]!["last_name"], interestInserts[0]!["email"], interestInserts[0]!["phone"], interestInserts[0]!["guests"], interestInserts[0]!["newsletter_opt_in"]],
+    ["Mary", "Smith", "mary@example.com", null, 3, false]);
+  assert.equal(interestInserts[0]!["prospect_id"], "p-1");
+  assert.equal(prospectInserts.length, 1);
+  assert.equal(prospectInserts[0]!["email"], "mary@example.com"); assert.equal(prospectInserts[0]!["referral_source"], "group-page");
+  await settle();
+  assert.equal(actionInserts.length, 1, "Mark is told: one waiting item per reply");
+  assert.match(String(actionInserts[0]!["title"]), /^Group reply: Mary Smith$/);
+});
+
+test("a reply with only a phone number is saved with no email, as typed, and is not added to the contact list (its email is required); a one-word name is a first name only", async () => {
+  for (const phone of ["(919) 346-6127", "919.346.6127", "+1 919-346-6127", "346 6127"]) {
+    await settle(); reset();
+    const r = await send({ first_name: "Cher", last_name: "", email: "", phone, guests: 2, lang: "en" });
+    assert.equal(r.status, 200, phone); assert.equal(r.json["success"], true);
+    assert.equal(interestInserts.length, 1, phone);
+    assert.deepEqual([interestInserts[0]!["first_name"], interestInserts[0]!["last_name"], interestInserts[0]!["email"], interestInserts[0]!["phone"]], ["Cher", null, null, phone], "the phone is kept exactly as typed");
+    assert.equal(interestInserts[0]!["prospect_id"], null);
+    assert.equal(prospectInserts.length, 0, "nothing is invented for the contact list");
+    await settle();
+    assert.equal(actionInserts.length, 1, "Mark is still told");
+  }
+});
+
+test("a reply with both an email and a phone keeps both; a bad phone next to a good email is dropped, a bad email next to a good phone too", async () => {
+  reset();
+  assert.equal((await send({ first_name: "Pat", last_name: "Lee", email: "pat@example.com", phone: "919-346-6127", lang: "en" })).status, 200);
+  assert.deepEqual([interestInserts[0]!["email"], interestInserts[0]!["phone"]], ["pat@example.com", "919-346-6127"]);
+  assert.equal(prospectInserts[0]!["phone"], "919-346-6127");
+  await settle(); reset();
+  assert.equal((await send({ first_name: "Pat", email: "pat@example.com", phone: "call me", lang: "en" })).status, 200);
+  assert.deepEqual([interestInserts[0]!["email"], interestInserts[0]!["phone"]], ["pat@example.com", null]);
+  await settle(); reset();
+  assert.equal((await send({ first_name: "Pat", email: "not-an-email", phone: "919 346 6127", lang: "en" })).status, 200);
+  assert.deepEqual([interestInserts[0]!["email"], interestInserts[0]!["phone"]], [null, "919 346 6127"]);
+  assert.equal(prospectInserts.length, 0);
+  await settle();
+});
+
+test("a reply with neither a valid email nor a phone of seven digits is refused in plain words, in both languages, and nothing is stored", async () => {
+  reset();
+  const none = { first_name: "Pat", last_name: "Lee", guests: 2 };
+  for (const [lang, want] of [["en", "Please add an email or a phone number."], ["es", "Agregue un correo o un teléfono."]] as const) {
+    for (const contact of [{}, { email: "", phone: "" }, { email: "  ", phone: "  " }]) {
+      const r = await send({ ...none, ...contact, lang });
+      assert.equal(r.status, 400, JSON.stringify(contact)); assert.equal(r.json["success"], false); assert.equal(r.json["error"], want);
+    }
+  }
+  for (const [lang, want] of [["en", "Please check your email address or phone number."], ["es", "Revise su correo electrónico o su teléfono."]] as const) {
+    for (const contact of [{ email: "mary@", phone: "" }, { email: "", phone: "123456" }, { email: "mary", phone: "12-34" }, { email: "", phone: "ask for Mark" }]) {
+      const r = await send({ ...none, ...contact, lang });
+      assert.equal(r.status, 400, JSON.stringify(contact)); assert.equal(r.json["error"], want, JSON.stringify(contact));
+    }
+  }
+  assert.equal(interestInserts.length + prospectInserts.length + actionInserts.length, 0, "a refused reply stores and notifies nothing");
+});
+
+test("a reply with no name is refused first, and the bot trap and an unapproved or unknown page answer as before", async () => {
+  reset();
+  const noName = await send({ first_name: "  ", email: "a@b.co", lang: "en" });
+  assert.equal(noName.status, 400); assert.equal(noName.json["error"], "Please add your name.");
+  assert.equal((await send({ first_name: "", phone: "919-346-6127", lang: "es" })).json["error"], "Falta su nombre.");
+  const trap = await send({ first_name: "Bot", email: "bot@example.com", website: "http://spam.example", lang: "en" });
+  assert.equal(trap.status, 200); assert.equal(trap.json["success"], true);
+  assert.equal(interestInserts.length, 0, "the bot trap stores nothing");
+  const was = approved; approved = null;
+  try { assert.equal((await send({ first_name: "Pat", email: "a@b.co", lang: "en" })).status, 404, "an unapproved page takes no replies"); } finally { approved = was; }
+  assert.equal((await send({ first_name: "Pat", email: "a@b.co" }, "zzzzzzzzzz")).status, 404, "a code no group holds");
+  assert.equal((await send({ first_name: "Pat", email: "a@b.co" }, "NOT-A-CODE")).status, 404);
+  assert.equal(interestInserts.length, 0);
+});
+
+test("the newsletter box is gone from the form: only an explicit true is stored as a yes, and the page sends false", async () => {
+  reset();
+  await send({ first_name: "Pat", email: "a@b.co", newsletter_opt_in: false, lang: "en" });
+  await send({ first_name: "Pat", email: "c@d.co", lang: "en" });
+  await send({ first_name: "Pat", email: "e@f.co", newsletter_opt_in: "true", lang: "en" });
+  assert.deepEqual(interestInserts.map((x) => x["newsletter_opt_in"]), [false, false, false]);
+  await settle();
+});

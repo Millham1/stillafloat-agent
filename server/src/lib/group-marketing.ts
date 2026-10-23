@@ -206,6 +206,16 @@ export function pageLabel(answers: Record<string, string | boolean>): string | n
   return clean || null;
 }
 
+/** A usable email address on the Count me in form: something@something.tld. */
+export function validEmail(v: string): boolean { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+
+/** A usable phone number on the Count me in form: only digits, spaces, dashes, dots, parentheses and a plus sign, with at least seven and at most fifteen digits. The caller keeps what was typed. */
+export function validPhone(v: string): boolean {
+  if (!/^[\d\s().+-]+$/.test(v)) return false;
+  const digits = v.replace(/\D/g, "").length;
+  return digits >= 7 && digits <= 15;
+}
+
 /** The longest note kept for one day of the plan, and the most days that may carry one. */
 export const DAY_NOTE_MAX = 300;
 export const DAY_NOTES_MAX = 20;
