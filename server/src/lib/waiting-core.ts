@@ -140,3 +140,16 @@ export async function pushWaitingWith(
   await deps.save({ keys, at: now.toISOString(), total: opts.items.length, reason: opts.reason });
   return { pushed: true, sent: res.sent, pruned: res.pruned, total: opts.items.length, added: added.length, title, body };
 }
+
+/**
+ * Whether a story in the news agent's editorial queue still waits for Mark's decision.
+ * The queue marks an undecided story "candidate" (older scans: no status at all); a
+ * decision stamps approved / featured / rejected / held. 2026-10-23: the first version
+ * counted only a missing status as undecided and reported 0 news stories to approve while
+ * 14 from that morning's scan sat in the queue — the very miss this list exists to prevent.
+ */
+export function isUndecidedStory(story: { status?: string | null }): boolean {
+  const st = String(story.status ?? "").trim().toLowerCase();
+  return st === "" || st === "candidate" || st === "pending";
+}
+
