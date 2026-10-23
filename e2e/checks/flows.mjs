@@ -979,7 +979,7 @@ export default [
   //      port, the single "from" price when shown, what the fare includes) as the dashboard — and
   //      NO cabin list, cabin count or per-category price: the page only asks "I'm interested", and
   //      Mark chooses the cabin after he has spoken to them (Mark 2026-10-19);
-  //   4. the ship's score on the page is the published Conga Line score (GET /api/ships/ratings);
+  //   4. (Mark 2026-10-23: no ship rating on the invitation page: the public answer carries none, whatever the interview says, and the page has no rating block);
   //   5. /group.html?g=<code> loads, accepts the code by its own rule and asks /api/group-page/;
   //      a made-up code is a clean 404; on prod the interest form has a Turnstile site key (dev
   //      runs without Turnstile by design — lib/turnstile.ts).
@@ -991,20 +991,23 @@ export default [
   //   7. The page wears the look of Mark's approved group marketing on EVERY group page: a yellow
   //      "Count me in!" pill, and the FlexPay line ("Flexible Payment Plans Available" with the
   //      FlexPay logo) under the price note, in both languages. A group may also have a top
-  //      picture and a photo of the hosts (interview answers); the answer hands the page only
-  //      validated links — https, on our own hosts — and a real yes/no for "taxes included", and
-  //      each agrees with the dashboard's interview answer.
-  //   8. The page opens on a short personal WELCOME from the hosts, then Count me in, then the details (Mark 2026-10-20, "we already had this
-  //      discussion"): the person arriving has just read the poster, the post or the email, so the page never repeats the headline, the payoff or the
-  //      pitch (the public answer does not even carry them), never prints a vendor name (airline, hotel, transfer company) and prices a hotel PER ROOM.
-  //      Read from the served page (section order, what its script reads) and from the public answer compared with the group file.
+  //      picture, a photo of the hosts and a picture band above the plan and above the cabin
+  //      prices (interview answers); the answer hands the page only validated links — https, on
+  //      our own hosts — and a real yes/no for "taxes included", each agrees with the dashboard's
+  //      interview answer, and the credit lines of the pictures shown are plain strings.
+  //   8. The page opens on the hosts' WELCOME, then the ONE Count me in form (name, email or phone, how many), then the plan, the cabin prices with the
+  //      taxes note, the dates and the way to get there (Mark 2026-10-20 "we already had this discussion" and Mark 2026-10-23, design v2): the person
+  //      arriving has just read the poster, the post or the email, so the page never repeats the headline, the payoff or the pitch (the public answer
+  //      does not even carry them), never prints a vendor name (airline, hotel, transfer company), prices a hotel PER ROOM, and has no ship rating and
+  //      no advisor bio. The welcome is at most 700 characters. Read from the served page (section order, what its script reads) and from the public
+  //      answer compared with the group file.
   // Group pages are in the release candidate only: prod has no approved group page until the
   // 2026-10-08 promotion, so this check is UNTESTABLE on prod until then (dev: 4a5fg8ypac, EN).
   {
     id: "flows.group-page-journey",
-    basis: "ruling: stillafloat-group-bookings.md — a group page Mark approves is what the public sees (same words, ship, dates, the from-price, the business named, no payment or card), and it only asks \"I'm interested\" — Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"; every group page also carries the look of his approved group marketing (stillafloat-group-poster-template-mark-2026-10-12.md: the yellow Count me in pill, a FlexPay plans line, an optional top picture and hosts' photo that may only come from our own hosts over https); Mark 2026-10-20 \"we already had this discussion\": the page opens on a short personal welcome from the hosts, then Count me in, then the details, and never repeats the poster's headline or pitch, never shows a vendor name, and prices a hotel per room",
-    title: "Whenever Mark has approved a group page, it is what visitors see: the hosts' welcome first and the Count me in form right after it, then the plan, the cabin categories and from-prices, and the way to get there, with the same ship, dates and from-price and the ship's real Conga Line score and no cabin availability; it never repeats the poster's headline or pitch, never names an airline, hotel or transfer company, prices a hotel per room, carries the FlexPay line and the yellow button, uses only https pictures on our own hosts, and refuses a made-up code",
-    covers: ["flow:group-page-journey", "GET /api/groups", "GET /api/groups/:id", "GET /api/groups/:id/marketing", "GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/ships/ratings"],
+    basis: "ruling: stillafloat-group-bookings.md — a group page Mark approves is what the public sees (same words, ship, dates, the from-price, the business named, no payment or card), and it only asks \"I'm interested\" — Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"; every group page also carries the look of his approved group marketing (stillafloat-group-poster-template-mark-2026-10-12.md: the yellow Count me in pill, a FlexPay plans line, an optional top picture and hosts' photo that may only come from our own hosts over https); Mark 2026-10-20 \"we already had this discussion\": the page opens on a short personal welcome from the hosts, then Count me in, then the details, and never repeats the poster's headline or pitch, never shows a vendor name, and prices a hotel per room; ruling: Mark 2026-10-23 (design v2 of the group page): the hosts' welcome (at most 700 characters), then the one Count me in form, then the plan, the cabin prices with the taxes note, the dates and getting there, with no ship rating and no advisor bio",
+    title: "Whenever Mark has approved a group page, it is what visitors see: the hosts' welcome, then the one Count me in form (name, email or phone, how many), then the plan, the cabin categories and from-prices with the taxes note, the dates and the way to get there, with the same ship, dates and from-price and no cabin availability, no ship rating and no advisor bio; it never repeats the poster's headline or pitch, never names an airline, hotel or transfer company, prices a hotel per room, carries the FlexPay line and the yellow button, uses only https pictures on our own hosts, and refuses a made-up code",
+    covers: ["flow:group-page-journey", "GET /api/groups", "GET /api/groups/:id", "GET /api/groups/:id/marketing", "GET /api/group-page/:code", "page /group.html", "page /es/group.html"],
     modes: ["dev", "prod"],
     incident: "release candidate 2026-10-08: group marketing pages (dev only until the promotion)",
     run: async (t) => {
@@ -1015,9 +1018,6 @@ export default [
       // Whether Mark has approved a group page right now is his business (a group he is marketing), not the
       // site's, so prod is only compared when there is one. Dev holds a seeded test group (Mark 2026-10-04).
       if (t.mode === "dev") t.require(live.length > 0, `none of dev's ${list.groups.length} groups has an approved public page (the seeded test group should be approved)`);
-      const ratings = t.success(await t.get("/api/ships/ratings"), "ok");
-      t.ok(Array.isArray(ratings.ratings) && ratings.ratings.length > 0, "the published Conga Line ratings list is empty");
-      const bySlug = new Map(ratings.ratings.map((r) => [r.ship_slug, r]));
       // What the page is handed (Mark 2026-10-20): the welcome, the organizer's line and the button's words. The poster's words are not.
       const COPY = ["welcome", "organizer_note", "cta_label", "cta_blurb"];
       const POSTER_WORDS = ["headline", "subhead", "intro", "why_ship", "who_for"];
@@ -1045,11 +1045,11 @@ export default [
           t.fields(pub.copy, ["cta_label", "cta_blurb"], `group ${g.share_code} (${lang}) public copy`);
           // the poster's words stay in the file; the page is not handed them, so it cannot repeat them
           for (const k of POSTER_WORDS) L.check(!(k in (pub.copy || {})), `group ${g.share_code} (${lang}): the public answer still carries the poster's "${k}", which the page must not repeat`);
-          // the welcome: old copy has none (null); a written one is plain text of at most 420 characters, signed with the hosts' names (at most 80)
+          // the welcome: old copy has none (null); a written one is plain text of at most 700 characters (Mark 2026-10-23, design v2), signed with the hosts' names (at most 80)
           L.check(pub.copy?.welcome === null || typeof pub.copy?.welcome === "string", `group ${g.share_code} (${lang}): the public copy has no "welcome" field (null when the group has none)`);
           if (typeof pub.copy?.welcome === "string" && pub.copy.welcome.trim()) {
             welcomeSeen++;
-            L.check(pub.copy.welcome.length <= 420, `group ${g.share_code} (${lang}): the welcome note is ${pub.copy.welcome.length} characters (at most 420)`);
+            L.check(pub.copy.welcome.length <= 700, `group ${g.share_code} (${lang}): the welcome note is ${pub.copy.welcome.length} characters (at most 700)`);
             L.check(!/[<>]/.test(pub.copy.welcome), `group ${g.share_code} (${lang}): the welcome note carries markup`);
           }
           // values are printed only for public sailing facts — a group's NAME can carry a person's
@@ -1118,23 +1118,23 @@ export default [
             const typedNames = String(m.answers?.host_names ?? "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 80).trim();
             L.check(look.hostNames === (typedNames || "Mark"), `group ${g.share_code} (${lang}): the welcome is signed differently from the interview's answer`);
             L.check(look.taxesIncluded === (m.answers?.taxes_included === true), `group ${g.share_code} (${lang}): the page says taxes are ${look.taxesIncluded ? "" : "not "}included but the dashboard's interview answer says otherwise`);
-            for (const [k, answer] of [["heroUrl", "hero_photo"], ["hostPhotoUrl", "host_photo"]]) {
+            for (const [k, answer] of [["heroUrl", "hero_photo"], ["hostPhotoUrl", "host_photo"], ["planPhotoUrl", "photo_plan"], ["cabinPhotoUrl", "photo_cabin"]]) {
               const url = look[k];
               L.check(url === null || ownImageUrl(url), `group ${g.share_code} (${lang}): look.${k} is not an https link on our own hosts (stillafloatcruising.com or the project's public storage)`);
               const typed = String(m.answers?.[answer] ?? "").trim();
               if (!typed) L.check(url === null, `group ${g.share_code} (${lang}): look.${k} is set although the interview has no ${answer}`);
               else if (url !== null && ownImageUrl(url)) L.check(new URL(url).href === safeHref(typed), `group ${g.share_code} (${lang}): look.${k} is not the link Mark typed as ${answer}`);
             }
+            // Mark's own notes for days of the plan (an object of date -> text), and the pictures' credit lines (plain strings, none when no picture is shown)
+            L.check(look.dayNotes && typeof look.dayNotes === "object" && !Array.isArray(look.dayNotes) && Object.values(look.dayNotes).every((v) => typeof v === "string" && v.trim() && !/[<>]/.test(v)), `group ${g.share_code} (${lang}): look.dayNotes is not an object of plain-text notes`);
+            L.check(Array.isArray(look.credits) && look.credits.every((c) => typeof c === "string" && c.trim() && !/[<>]/.test(c)) && new Set(look.credits).size === look.credits.length, `group ${g.share_code} (${lang}): look.credits is not a list of distinct plain-text credit lines`);
+            L.check(!(look.heroUrl === null && look.planPhotoUrl === null && look.cabinPhotoUrl === null) || look.credits.length === 0, `group ${g.share_code} (${lang}): the page prints photo credits although it shows no credited picture`);
           }
-          // the ship's score: shown unless Mark turned it off, and then it must be the published one
-          const shipSlug = lc(pub.facts?.ship).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-          if (m.answers?.show_rating === false) L.check(!pub.facts?.rating, `group ${g.share_code} (${lang}): the page shows a cruiser score although Mark turned it off`);
-          else if (bySlug.has(shipSlug)) L.check(Boolean(pub.facts?.rating?.scoreText), `group ${g.share_code} (${lang}): ${pub.facts?.ship} has a published Conga Line score but the page shows none`);
-          if (pub.facts?.rating) {
-            const r = bySlug.get(lc(pub.facts.ship).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
-            L.check(r, `group ${g.share_code}: the page shows a cruiser score for ${pub.facts.ship}, which has no published Conga Line rating`);
-            L.check(!r || Number(r.rating).toFixed(1) === pub.facts.rating.scoreText, `group ${g.share_code}: the page scores ${pub.facts.ship} ${pub.facts.rating.scoreText} but the Conga Line says ${r?.rating}`);
-          }
+          // no ship rating on the invitation (Mark 2026-10-23): the public answer carries none, whatever the interview's show_rating says
+          L.check(!("rating" in (pub.facts || {})), `group ${g.share_code} (${lang}): the public answer still carries the ship's rating, which the invitation page no longer shows`);
+          // each day of the plan carries its ISO date (the page prints the weekday and the short date from it), and the sailing date is there for the "We sail" tile
+          L.check(pub.facts.itinerary.every((d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d.isoDate))), `group ${g.share_code} (${lang}): a day of the plan has no ISO date, so the page cannot print its weekday`);
+          L.check(/^\d{4}-\d{2}-\d{2}$/.test(String(pub.facts.sailDate)), `group ${g.share_code} (${lang}): the public answer has no ISO sailing date for the "We sail" tile`);
           if (t.mode === "prod") L.check(Boolean(pub.turnstileSiteKey), `group ${g.share_code}: the interest form has no Turnstile key on prod, so no visitor can send it`);
         }
         pageCode = pageCode || g.share_code;
@@ -1150,18 +1150,19 @@ export default [
       }
       const page = t.html(await t.get(`/group.html?g=${encodeURIComponent(pageCode)}`), { mustContain: ["/api/group-page/", "'/interest'", "Count me in"] });
       t.equal(H.htmlLang(page).slice(0, 2), "en", "the group page language");
-      // Every group page: the FlexPay plans line with the logo on its white chip, the yellow pill button, and the page reading the look block.
+      // Every group page: the FlexPay plans line with the logo, the yellow pill button, and the page reading the look block.
       L.check(/Flexible Payment Plans Available/.test(page), "the English group page no longer says 'Flexible Payment Plans Available'");
       L.check(H.images(page).includes("/assets/images/flexpay-logo.png") && /alt="FlexPay"/.test(page), "the English group page no longer shows the FlexPay logo");
-      L.check(/\.flexpay \.chip\{[^}]*background:#fff/.test(page), "the FlexPay logo is no longer on its white chip (it is dark green on a dark navy page)");
       L.check(/\.btn\{[^}]*background:#f5c33b[^}]*color:#07183f/.test(page) && !/linear-gradient\(135deg,#07183f,#0077b6\)/.test(page), "the English group page's button is no longer the yellow pill");
-      L.check(/look\.heroUrl/.test(page) && /look\.hostPhotoUrl/.test(page) && /look\.taxesIncluded/.test(page), "the English group page no longer reads the look block (top picture, hosts' photo, taxes line)");
-      L.check(/with taxes and port fees included/.test(page), "the English group page has lost its 'taxes and port fees included' price note");
+      L.check(/look\.heroUrl/.test(page) && /look\.hostPhotoUrl/.test(page) && /look\.planPhotoUrl/.test(page) && /look\.cabinPhotoUrl/.test(page) && /look\.taxesIncluded/.test(page) && /look\.dayNotes/.test(page) && /look\.credits/.test(page), "the English group page no longer reads the look block (pictures, picture bands, taxes line, day notes, photo credits)");
+      L.check(/Taxes and port fees included\./.test(page) && /confirmed at booking/.test(page), "the English group page has lost its 'Taxes and port fees included' / 'confirmed at booking' price notes");
       const logo = await t.get("/assets/images/flexpay-logo.png");
       L.check(logo.status === 200 && /^image\/png/i.test(logo.headers.get("content-type") || ""), `the FlexPay logo file is not served as a PNG: ${logo.describe()}`);
-      // The page is the "I'm interested" page only: no cabin table, no cabin picker, and the party size replaces "guests in your cabin".
+      // The page is the "I'm interested" page only: no cabin table, no cabin picker; ONE form of name, email or phone, and how many (Mark 2026-10-23).
       L.check(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(page), "the English group page still has the cabin table or the cabin picker");
-      L.check(/id="f-guests"/.test(page) && /How many in your party/.test(page), "the English group page's form no longer asks how many are in the party");
+      L.check(/id="f-name"/.test(page) && /id="f-contact"/.test(page) && /id="f-guests"/.test(page) && /How many of you/.test(page) && /Email or phone/.test(page), "the English group page's form is no longer the one form of name, email or phone, and how many");
+      L.check(!/id="f-news"|id="f-note"|id="f-first"|id="f-email"|id="f-phone"|type="checkbox"|<textarea/.test(page), "the English group page's form still has the newsletter box, the questions box or the old separate name and contact boxes");
+      L.check(/id="gp-turnstile"[^>]*data-appearance="interaction-only"/.test(page), "the English group page's security check is no longer interaction-only");
       const rule = /if\(!\/(\^[^/]+\$)\/\.test\(code\)\)/.exec(page)?.[1];
       t.ok(rule, "the group page no longer checks the code in its link");
       L.check(new RegExp(rule).test(pageCode), `the group page would refuse its own share code ${pageCode} as "no longer available"`);
@@ -1172,27 +1173,34 @@ export default [
       L.check(/Planes de pago flexibles disponibles/.test(es), "the Spanish group page no longer says 'Planes de pago flexibles disponibles'");
       L.check(H.images(es).includes("/assets/images/flexpay-logo.png") && /alt="FlexPay"/.test(es), "the Spanish group page no longer shows the FlexPay logo");
       L.check(/\.btn\{[^}]*background:#f5c33b[^}]*color:#07183f/.test(es) && !/linear-gradient\(135deg,#07183f,#0077b6\)/.test(es), "the Spanish group page's button is no longer the yellow pill");
-      L.check(/look\.heroUrl/.test(es) && /look\.hostPhotoUrl/.test(es) && /look\.taxesIncluded/.test(es), "the Spanish group page no longer reads the look block");
-      L.check(/con impuestos y cargos portuarios incluidos/.test(es), "the Spanish group page has lost its 'impuestos y cargos portuarios incluidos' price note");
+      L.check(/look\.heroUrl/.test(es) && /look\.hostPhotoUrl/.test(es) && /look\.planPhotoUrl/.test(es) && /look\.cabinPhotoUrl/.test(es) && /look\.taxesIncluded/.test(es) && /look\.dayNotes/.test(es) && /look\.credits/.test(es), "the Spanish group page no longer reads the look block");
+      L.check(/Impuestos y cargos portuarios incluidos\./.test(es) && /se confirman al reservar/.test(es), "the Spanish group page has lost its 'Impuestos y cargos portuarios incluidos' / 'se confirman al reservar' price notes");
       L.check(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(es), "the Spanish group page still has the cabin table or the cabin picker");
-      L.check(/id="f-guests"/.test(es) && /Cuántas personas en su grupo/.test(es), "the Spanish group page's form no longer asks how many are in the party");
+      L.check(/id="f-name"/.test(es) && /id="f-contact"/.test(es) && /id="f-guests"/.test(es) && /¿Cuántos son\?/.test(es) && /Correo electrónico o teléfono/.test(es), "the Spanish group page's form is no longer the one form of name, email or phone, and how many");
+      L.check(!/id="f-news"|id="f-note"|id="f-first"|id="f-email"|id="f-phone"|type="checkbox"|<textarea/.test(es), "the Spanish group page's form still has the newsletter box, the questions box or the old separate name and contact boxes");
+      L.check(/id="gp-turnstile"[^>]*data-appearance="interaction-only"/.test(es), "the Spanish group page's security check is no longer interaction-only");
       L.check(/var ES = document\.documentElement\.lang === 'es'/.test(es) && /'\?lang=' \+ \(ES \? 'es' : 'en'\)/.test(es), "the Spanish group page does not ask for the Spanish copy (lang=es)");
       L.check(/if\(!\/(\^[^/]+\$)\/\.test\(code\)\)/.exec(es)?.[1] === rule, "the Spanish group page accepts different share codes than the English one");
-      // The order of the page and what it will and will not say (Mark 2026-10-20), read from both served pages: the hosts' welcome, then Count me in,
-      // then the plan, your cabin, getting there, the score, the dates and the advisor; the poster's headline, payoff and pitch are not on it.
-      const ORDER = ['id="sec-welcome"', 'id="interest"', 'id="gp-form"', 'id="sec-itin"', 'id="sec-cabin"', 'id="sec-travel"', 'id="sec-rating"', 'id="sec-dates"', 'data-t="about"'];
+      // The order of the page and what it will and will not say (Mark 2026-10-23, design v2), read from both served pages: the header (logo and language link only),
+      // the hosts' welcome, the one Count me in form, the plan, your cabin, the dates, getting there, the footer; the poster's headline, payoff and pitch are not on it,
+      // and neither are the ship's rating, the advisor, the site menu or a second call to action.
+      const ORDER = ['class="hdr"', 'id="sec-welcome"', 'id="interest"', 'id="gp-form"', 'id="sec-itin"', 'id="sec-cabin"', 'id="sec-dates"', 'id="sec-travel"', 'class="foot"'];
       for (const [name, h] of [["English", page], ["Spanish", es]]) {
         const at = ORDER.map((needle) => h.indexOf(needle));
         const lost = ORDER.filter((_, i) => at[i] < 0);
         L.check(lost.length === 0, `the ${name} group page has lost ${lost.join(", ")}`);
-        L.check(lost.length > 0 || at.every((i, k) => k === 0 || i > at[k - 1]), `the ${name} group page's sections are out of order: it must run welcome, Count me in, the plan, your cabin, getting there, the score, the dates, the advisor`);
-        L.check(h.indexOf('id="sec-welcome"') >= 0 && h.indexOf('id="sec-welcome"') < h.indexOf('id="gp-form"'), `the ${name} group page does not put the hosts' welcome before the Count me in form`);
+        L.check(lost.length > 0 || at.every((i, k) => k === 0 || i > at[k - 1]), `the ${name} group page's sections are out of order: it must run the header, the hosts' welcome, Count me in, the plan, your cabin, the dates, getting there, the footer`);
+        L.check(!/id="sec-rating"|Conga|data-t="about"|data-t="bio"/.test(h), `the ${name} group page has the ship rating or the advisor bio back (Mark 2026-10-23: neither is on the invitation page)`);
+        L.check(!/navbar-container|components\/navbar\.js/.test(h), `the ${name} group page has the site menu back (Mark 2026-10-23: the header is the logo and the language link only)`);
+        L.check((h.match(/id="gp-submit"/g) || []).length === 1, `the ${name} group page does not have exactly one Count me in button`);
+        L.check(H.images(h).includes("/assets/images/still_afloat_logo.png") && H.images(h).includes("/assets/images/cornerstone-white.png"), `the ${name} group page has lost the Still Afloat logo or the Cornerstone logo in its footer`);
         for (const word of ["headline", "subhead", "intro", "why_ship", "who_for"]) L.check(!new RegExp(`\\bc\\.${word}\\b`).test(h), `the ${name} group page's script still reads copy.${word}, the poster's words`);
         for (const id of ["gp-headline", "gp-subhead", "gp-intro", "gp-why", "gp-who"]) L.check(!h.includes(`id="${id}"`), `the ${name} group page still has the ${id} block that repeats the poster`);
         L.check(/\bc\.welcome\b/.test(h) && /\blook\.hostNames\b/.test(h), `the ${name} group page no longer reads the welcome and the hosts' signature`);
-        L.check(/\bf\.cabinPrices\b/.test(h), `the ${name} group page no longer reads the cabin categories and their prices`);
+        L.check(/\bf\.cabinPrices\b/.test(h) && /\bf\.itinerary\b/.test(h) && /\bf\.travel\b/.test(h), `the ${name} group page no longer reads the cabin categories, the itinerary and the way to get there`);
         L.check(/\.welcome \.sig\{[^}]*color:#ffca4f/.test(h), `the ${name} group page's welcome signature is no longer in the gold accent`);
-        L.check(Number(/\.welcome \.note\{[^}]*font-size:clamp\((\d+)px/.exec(h)?.[1] ?? 0) >= 20, `the ${name} group page's welcome text is smaller than 20px`);
+        L.check(Number(/\.welcome p\{[^}]*font-size:(\d+)px/.exec(h)?.[1] ?? 0) >= 20, `the ${name} group page's welcome text is smaller than 20px`);
+        L.check(/\.wrap\{max-width:640px/.test(h), `the ${name} group page is no longer one centered column of at most 640px`);
       }
       L.check(/itinerary:'The plan, day by day'/.test(page) && /cabin:'Your cabin'/.test(page), "the English group page's headings are not 'The plan, day by day' and 'Your cabin'");
       L.check(/itinerary:'El plan, día a día'/.test(es) && /cabin:'Su cabina'/.test(es), "the Spanish group page's headings are not 'El plan, día a día' and 'Su cabina'");

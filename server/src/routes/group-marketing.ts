@@ -9,7 +9,7 @@ import { createAction } from "../lib/actions";
 import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
-  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote,
+  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote, validEmail, validPhone,
   publicFacts, shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
@@ -303,11 +303,20 @@ router.get("/group-page/:code", async (req: Request, res: Response) => {
     const facts = buildFacts({ group, cabins, travel }, rating, lang);
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    // The credit lines of the pictures the page shows (Mark 2026-10-23: a small photo-credits line in the footer): one read of group_assets by the
+    // pictures' public addresses. A failed read costs the credit line, never the page.
+    const links = creditedPictureLinks(pageLook(answers));
+    let credits: string[] = [];
+    if (links.length) {
+      const { data: assetRows, error: ae } = await db().from("group_assets").select("public_url, attribution").in("public_url", links);
+      if (ae) logger.warn({ err: ae.message }, "group page: photo credits lookup failed (the page is served without its credit line)");
+      else credits = creditsForPictures(links, (assetRows ?? []) as Row[]);
+    }
     return res.json({
       success: true, live, preview: preview && !live, langs,
       facts: publicFacts(facts, answers),
-      // How the page looks (the interview's picture links and taxes answer, and who signs the welcome): only validated values, nulls when absent or refused.
-      look: pageLook(answers),
+      // How the page looks (the interview's picture links and taxes answer, who signs the welcome, Mark's notes for days of the plan and the pictures' credit lines): only validated values, nulls when absent or refused.
+      look: pageLook(answers, credits),
       // Only what the page shows: the welcome, the organizer's line and the button's words (publicCopy says why).
       copy: publicCopy(copy),
       turnstileSiteKey: process.env["TURNSTILE_SITE_KEY"] || "",
@@ -348,31 +357,46 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
     const first = text(body["first_name"], 80);
     const last = text(body["last_name"], 80);
-    const email = text(body["email"], 200).toLowerCase();
-    const phone = text(body["phone"], 40);
     const lang: Lang = body["lang"] === "es" ? "es" : "en";
-    if (!first) return res.status(400).json({ success: false, error: lang === "es" ? "Falta su nombre." : "Please add your first name." });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return res.status(400).json({ success: false, error: lang === "es" ? "Revise su correo electrónico." : "Please check your email address." });
+    if (!first) return res.status(400).json({ success: false, error: lang === "es" ? "Falta su nombre." : "Please add your name." });
+    // One way to reach them is enough (Mark 2026-10-23: one box, "Email or phone"): a valid email, or a phone with at least seven digits. What they typed
+    // is kept as they typed it (the phone is only checked, not rewritten); an email is stored in lower case.
+    const rawEmail = text(body["email"], 200).toLowerCase();
+    const rawPhone = text(body["phone"], 40);
+    const email = validEmail(rawEmail) ? rawEmail : null;
+    const phone = validPhone(rawPhone) ? rawPhone : null;
+    if (!email && !phone) {
+      const error = rawEmail || rawPhone
+        ? (lang === "es" ? "Revise su correo electrónico o su teléfono." : "Please check your email address or phone number.")
+        : (lang === "es" ? "Agregue un correo o un teléfono." : "Please add an email or a phone number.");
+      return res.status(400).json({ success: false, error });
+    }
     const guests = Number.isInteger(Number(body["guests"])) && Number(body["guests"]) > 0 && Number(body["guests"]) <= 12 ? Number(body["guests"]) : null;
     const optIn = body["newsletter_opt_in"] === true;
 
     // Clients also land in the website's contact list (Mark 2026-10-02). The
     // newsletter is NOT implied: opt-in is stored and handled by the normal
     // confirmation flow, never auto-subscribed here.
+    // prospects.email (and last_name) are NOT NULL: a phone-only reply is not added to the contact list (nothing is invented for it), and a one-word
+    // name goes in with an empty last name. The reply itself is always saved below.
     let prospectId: string | null = null;
-    const { data: prospect, error: pe } = await db().from("prospects").insert({
-      first_name: first, last_name: last || null, email, phone: phone || null,
-      destination: `${group.ship_name ?? "Group cruise"} — ${group.name}`,
-      preferred_lang: lang, num_travelers: guests, cruise_line_pref: group.cruise_line ?? null,
-      referral_source: "group-page",
-      notes: `Group: ${group.name}. ${text(body["note"], 800)}`.trim(),
-      status: "new",
-    }).select("id").maybeSingle();
-    if (pe) logger.warn({ err: pe.message }, "group interest: prospects insert failed (interest still saved)");
-    else prospectId = prospect?.id ?? null;
+    if (!email) {
+      logger.warn("group interest: phone-only reply, no email, so no prospects row (interest still saved)");
+    } else {
+      const { data: prospect, error: pe } = await db().from("prospects").insert({
+        first_name: first, last_name: last, email, phone,
+        destination: `${group.ship_name ?? "Group cruise"} — ${group.name}`,
+        preferred_lang: lang, num_travelers: guests, cruise_line_pref: group.cruise_line ?? null,
+        referral_source: "group-page",
+        notes: `Group: ${group.name}. ${text(body["note"], 800)}`.trim(),
+        status: "new",
+      }).select("id").maybeSingle();
+      if (pe) logger.warn({ err: pe.message }, "group interest: prospects insert failed (interest still saved)");
+      else prospectId = prospect?.id ?? null;
+    }
 
     const { error } = await db().from("group_interests").insert({
-      group_id: group.id, first_name: first, last_name: last || null, email, phone: phone || null, lang,
+      group_id: group.id, first_name: first, last_name: last || null, email, phone, lang,
       guests, note: text(body["note"], 800) || null,
       newsletter_opt_in: optIn, ip_hash: hashForAudit(ip), prospect_id: prospectId,
     });

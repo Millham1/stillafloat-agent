@@ -137,11 +137,11 @@ const PAGES = [
   { path: "/editorial-queue.html", lang: "en", kind: "owner", noTwin: "Mark's own review page" },
   { path: "/google6dc6f027af183f2e.html", lang: "", kind: "verification", noTwin: "Search Console's ownership file" },
   // group cruises — NEW IN THIS RELEASE (dev only until the 2026-10-08 promotion)
-  // navbarSwitch: a group page in English only has no Spanish version, so the navbar's "En Español" link
-  // correctly falls back to the Spanish home page (and Spanish browsers are NOT redirected to an empty
-  // /es/group.html); a bilingual group shows its own language link (#gp-lang) built from the group's languages.
-  { path: "/group.html", lang: "en", kind: "template", h1: { client: "the group's name is written into the <h1> from the ?g= code" }, navbarSwitch: "home" },
-  { path: "/es/group.html", lang: "es", kind: "template", h1: { client: "the group's name is written into the <h1> from the ?g= code" } },
+  // Mark 2026-10-23 (design v2 of the group page): these two pages carry NO site menu (no navbar.js): the header is the logo and the page's own
+  // language link (#gp-lang), shown only for a group in both languages and built from the group's languages. Both twins are menu-free, so the
+  // "menu on both or neither" rule holds and the menu's language switch is not read for them.
+  { path: "/group.html", lang: "en", kind: "template", h1: { client: "the page script writes 'Welcome!' into the <h1> from its language strings" } },
+  { path: "/es/group.html", lang: "es", kind: "template", h1: { client: "the page script writes '¡Bienvenidos!' into the <h1> from its language strings" } },
   // client paperwork — NEW IN THIS RELEASE: a traveler's private link (?t=), English only until Cornerstone has Spanish templates.
   { path: "/forms.html", lang: "en", kind: "utility", noTwin: "a private paperwork page opened from a link emailed to one traveler; English only until Cornerstone has Spanish templates (the page's strings are structured for an es twin)" },
   // the traveler's cruise page — NEW IN THE RELEASE THAT ADDS THE GROUP JOURNEY: one page for both languages (the traveler's own, or ?lang=es), every word from the API

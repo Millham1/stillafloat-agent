@@ -286,7 +286,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
                     {replies!.interests.map((r) => (
                       <tr key={r.id}>
                         <td className="px-2 py-2">{r.first_name} {r.last_name}{r.lang === "es" ? " · ES" : ""}</td>
-                        <td className="px-2 py-2"><a className="underline" href={`mailto:${r.email}`}>{r.email}</a>{r.phone ? <div>{r.phone}</div> : null}</td>
+                        <td className="px-2 py-2">{r.email ? <a className="underline" href={`mailto:${r.email}`}>{r.email}</a> : null}{r.phone ? <div><a className="underline" href={`tel:${String(r.phone).replace(/[^+\d]/g, "")}`}>{r.phone}</a></div> : null}{!r.email && !r.phone ? <span>—</span> : null}</td>
                         <td className="px-2 py-2">{r.cabin_type || "—"} · {r.guests ?? "—"}</td>
                         <td className="px-2 py-2 max-w-xs">{r.note || ""}{r.newsletter_opt_in ? <div className="text-muted-foreground">Wants the newsletter</div> : null}</td>
                         <td className="px-2 py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>

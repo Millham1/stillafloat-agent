@@ -1,5 +1,7 @@
 // group-marketing.test.ts (routes) — the real group-marketing router runs against a small stand-in for the database (an http server that
 // answers the few PostgREST reads the routes make), so no request here can reach Supabase, an AI box or an email.
+// Also (Mark 2026-10-23, design v2 of the group page): the look block's picture bands, day notes and credit lines, and the Count me in form's contact
+// rule: an email OR a phone, with the reply saved either way.
 // What is tested is the page's `look` block (Mark 2026-10-20: every group page looks like the approved marketing): only validated picture links,
 // a real boolean and the welcome's signature leave the server, whatever the interview holds; and the dashboard's interview list carries the look
 // questions. Also what the public answer is made of (Mark 2026-10-20, "we already had this discussion"): the welcome and the Count me in words, never
@@ -29,6 +31,14 @@ let cabinRows: Array<Record<string, unknown>> = [];
 /** When set, the copy the stand-in group holds (to serve copy written before the welcome existed). */
 let copyOverride: Record<string, unknown> | null = null;
 let travelRows: Array<Record<string, unknown>> = [];
+/** What the stand-in holds in group_assets (the pictures' credit lines), and what the page's form wrote to the stand-in's tables. */
+let assetRows: Array<Record<string, unknown>> = [];
+let assetQueries: string[] = [];
+const prospectInserts: Array<Record<string, unknown>> = [];
+const interestInserts: Array<Record<string, unknown>> = [];
+const actionInserts: Array<Record<string, unknown>> = [];
+/** When true the stand-in refuses the group_assets read (the page must still be served). */
+let assetsFail = false;
 
 function groupRow() {
   return {
@@ -62,9 +72,27 @@ before(async () => {
       body = cabinRows;
     } else if (req.method === "GET" && table === "group_travel") {
       body = travelRows;
+    } else if (req.method === "GET" && table === "group_assets") {
+      // PostgREST's in.(a,b,c): supabase-js quotes a value only when it holds a comma or a parenthesis
+      const list = /^in\.\((.*)\)$/.exec(url.searchParams.get("public_url") ?? "")?.[1] ?? "";
+      const wanted = list.includes('"') ? [...list.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]!) : list.split(",").filter(Boolean);
+      assetQueries.push(url.search);
+      if (assetsFail) { res.statusCode = 500; res.setHeader("content-type", "application/json"); res.end(JSON.stringify({ message: "stand-in refuses the read" })); return; }
+      body = assetRows.filter((r) => wanted.includes(String(r["public_url"])));
     } else if (req.method === "PATCH" && table === "groups") {
       patches.push(url.search);
       body = [{ id: GROUP_ID }];
+    } else if (req.method === "POST" && (table === "prospects" || table === "group_interests" || table === "actions")) {
+      let raw = "";
+      req.on("data", (c) => { raw += c; });
+      req.on("end", () => {
+        const row = JSON.parse(raw || "{}") as Record<string, unknown>;
+        res.setHeader("content-type", "application/json");
+        if (table === "prospects") { prospectInserts.push(row); res.statusCode = 201; res.end(JSON.stringify({ id: "p-1" })); }
+        else if (table === "group_interests") { interestInserts.push(row); res.statusCode = 201; res.end("[]"); }
+        else { actionInserts.push(row); res.statusCode = 400; res.end(JSON.stringify({ message: "stand-in: no actions table" })); } // createAction logs it and goes no further: nobody is notified
+      });
+      return;
     }
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify(body));
@@ -91,7 +119,7 @@ after(async () => {
 });
 
 type Res = { status: number; json: Record<string, any>; text: string };
-async function call(method: string, path: string, o: { body?: unknown; token?: boolean } = {}): Promise<Res> {
+async function call(method: string, path: string, o: { body?: unknown; token?: boolean; headers?: Record<string, string> } = {}): Promise<Res> {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => { (req as any).log = { error() {}, warn() {}, info() {} }; next(); });
@@ -102,7 +130,7 @@ async function call(method: string, path: string, o: { body?: unknown; token?: b
   try {
     const res = await fetch(`http://127.0.0.1:${port}/api${path}`, {
       method,
-      headers: { "content-type": "application/json", ...(o.token ? { "x-affiliate-token": TOKEN } : {}) },
+      headers: { "content-type": "application/json", ...(o.token ? { "x-affiliate-token": TOKEN } : {}), ...(o.headers ?? {}) },
       body: o.body === undefined ? undefined : JSON.stringify(o.body),
     });
     const text = await res.text();
@@ -115,7 +143,7 @@ async function call(method: string, path: string, o: { body?: unknown; token?: b
 }
 
 const pageOf = (lang: "en" | "es" = "en") => call("GET", `/group-page/${CODE}?lang=${lang}`);
-const NO_LOOK = { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null };
+const NO_LOOK = { heroUrl: null, hostPhotoUrl: null, planPhotoUrl: null, cabinPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null, dayNotes: {}, credits: [] };
 
 test("a group that says nothing about its look gets a look block of nulls and false: the page is unchanged", async () => {
   marketing = { pitch: "Come along.", audience: "a", occasion: "b", why_sailing: "c" };
@@ -135,7 +163,7 @@ test("valid links on our own hosts and a yes to taxes come through, in English a
   for (const lang of ["en", "es"] as const) {
     const r = await pageOf(lang);
     assert.equal(r.status, 200, lang);
-    assert.deepEqual(r.json["look"], { heroUrl: hero, hostPhotoUrl: host, taxesIncluded: true, hostNames: "Mark", label: null }, lang);
+    assert.deepEqual(r.json["look"], { ...NO_LOOK, heroUrl: hero, hostPhotoUrl: host, taxesIncluded: true }, lang);
   }
 });
 
@@ -150,11 +178,11 @@ test("a link that is not https on our own hosts is null; one bad link does not c
     marketing = { pitch: "Come along.", hero_photo: bad, host_photo: good, taxes_included: false };
     const r = await pageOf();
     assert.equal(r.status, 200, bad);
-    assert.deepEqual(r.json["look"], { heroUrl: null, hostPhotoUrl: good, taxesIncluded: false, hostNames: "Mark", label: null }, bad);
+    assert.deepEqual(r.json["look"], { ...NO_LOOK, hostPhotoUrl: good }, bad);
     // what was refused is not echoed anywhere in the answer
     assert.ok(!r.text.includes(bad), `the refused link is in the page's answer: ${bad}`);
     marketing = { pitch: "Come along.", hero_photo: good, host_photo: bad };
-    assert.deepEqual((await pageOf()).json["look"], { heroUrl: good, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null }, bad);
+    assert.deepEqual((await pageOf()).json["look"], { ...NO_LOOK, heroUrl: good }, bad);
   }
 });
 
@@ -167,11 +195,11 @@ test("taxes_included is a boolean on the page whatever the interview holds", asy
   }
 });
 
-test("the look block holds exactly five names, and the raw answers are not in the public answer", async () => {
-  marketing = { pitch: "Come along.", hero_photo: "https://stillafloatcruising.com/a.jpg", host_photo: "https://stillafloatcruising.com/b.jpg", taxes_included: true, cta_line: "Join the fun!", reference: "a private note" };
+test("the look block holds exactly nine names, and the raw answers are not in the public answer", async () => {
+  marketing = { pitch: "Come along.", hero_photo: "https://stillafloatcruising.com/a.jpg", host_photo: "https://stillafloatcruising.com/b.jpg", taxes_included: true, cta_line: "Join the fun!", reference: "a private note", day_notes: "May 11: a note" };
   const r = await pageOf();
-  assert.deepEqual(Object.keys(r.json["look"]).sort(), ["heroUrl", "hostNames", "hostPhotoUrl", "label", "taxesIncluded"]);
-  for (const k of ["hero_photo", "host_photo", "taxes_included", "host_names", "page_label", "reference", "pitch"]) {
+  assert.deepEqual(Object.keys(r.json["look"]).sort(), ["cabinPhotoUrl", "credits", "dayNotes", "heroUrl", "hostNames", "hostPhotoUrl", "label", "planPhotoUrl", "taxesIncluded"]);
+  for (const k of ["hero_photo", "host_photo", "photo_plan", "photo_cabin", "day_notes", "taxes_included", "host_names", "page_label", "reference", "pitch"]) {
     assert.ok(!(k in r.json["facts"]) && !(k in r.json["look"]) && !(k in r.json), `${k} leaks into the public answer`);
   }
   assert.ok(!r.text.includes("a private note"));
@@ -187,28 +215,34 @@ test("an unapproved page is still hidden, look or no look", async () => {
   } finally { approved = was; }
 });
 
-test("the dashboard's interview list carries the three look questions after the call to action", async () => {
+test("the dashboard's interview list carries the look questions after the call to action, and the day-notes question", async () => {
   marketing = { pitch: "Come along." };
   const r = await call("GET", `/groups/${GROUP_ID}/marketing`, { token: true });
   assert.equal(r.status, 200);
   const keys = (r.json["interview"] as Array<{ key: string }>).map((q) => q.key);
   const i = keys.indexOf("cta_line");
-  assert.deepEqual(keys.slice(i + 1, i + 5), ["taxes_included", "hero_photo", "host_photo", "host_names"]);
+  assert.deepEqual(keys.slice(i + 1, i + 7), ["taxes_included", "hero_photo", "host_photo", "photo_plan", "photo_cabin", "host_names"]);
+  assert.deepEqual(keys.slice(keys.indexOf("page_label"), keys.indexOf("page_label") + 2), ["page_label", "day_notes"]);
   const byKey = Object.fromEntries((r.json["interview"] as Array<{ key: string; type: string; label: string; required?: boolean }>).map((q) => [q.key, q]));
   assert.equal(byKey["taxes_included"].type, "yesno");
   assert.equal(byKey["hero_photo"].type, "text");
   assert.equal(byKey["host_photo"].type, "text");
   assert.equal(byKey["host_names"].type, "text");
   assert.equal(byKey["host_names"].label, "Who is the invitation from? (e.g. Mark & Ceci)");
-  for (const k of ["taxes_included", "hero_photo", "host_photo", "host_names"]) assert.notEqual(byKey[k].required, true);
+  assert.equal(byKey["photo_plan"].label, "Picture above the day-by-day plan (link, optional)");
+  assert.equal(byKey["photo_cabin"].label, "Picture above the cabin prices (link, optional)");
+  assert.equal(byKey["day_notes"].type, "long");
+  assert.equal(byKey["day_notes"].label, "A note for any day of the plan (optional)");
+  for (const k of ["taxes_included", "hero_photo", "host_photo", "photo_plan", "photo_cabin", "host_names", "day_notes"]) assert.notEqual(byKey[k].required, true);
   // the answers the screen starts from carry them too (so the form shows what is saved)
   assert.equal(r.json["answers"].taxes_included, false);
   assert.equal(r.json["answers"].hero_photo, "");
   assert.equal(r.json["answers"].host_photo, "");
   assert.equal(r.json["answers"].host_names, "");
-  // the dashboard's copy editor is told about the welcome field, first, optional, at most 420 characters
+  for (const k of ["photo_plan", "photo_cabin", "day_notes"]) assert.equal(r.json["answers"][k], "");
+  // the dashboard's copy editor is told about the welcome field, first, optional, at most 700 characters (Mark 2026-10-23)
   const fields = r.json["copyFields"] as Array<{ key: string; max: number; optional?: boolean }>;
-  assert.deepEqual([fields[0]!.key, fields[0]!.max, fields[0]!.optional], ["welcome", 420, true]);
+  assert.deepEqual([fields[0]!.key, fields[0]!.max, fields[0]!.optional], ["welcome", 700, true]);
 });
 
 test("saving the interview keeps the look answers and says which picture link will not be shown", async () => {
@@ -222,7 +256,10 @@ test("saving the interview keeps the look answers and says which picture link wi
   assert.equal(bad.status, 200);
   assert.deepEqual(bad.json["ignored"], ["hero_photo"], "the link is kept in the interview but flagged: the page will not show it");
   assert.equal(bad.json["answers"].hero_photo, "https://drive.google.com/file/d/abc/view");
-  assert.equal(patches.length, 2, "both saves reached the database");
+  const bands = await call("PUT", `/groups/${GROUP_ID}/marketing/answers`, { token: true, body: { pitch: "Come along.", photo_plan: "https://example.com/plan.jpg", photo_cabin: "https://stillafloatcruising.com/cabin.jpg", day_notes: "May 11: The beach party." } });
+  assert.deepEqual(bands.json["ignored"], ["photo_plan"], "the picture bands are checked like the others");
+  assert.equal(bands.json["answers"].day_notes, "May 11: The beach party.");
+  assert.equal(patches.length, 3, "all three saves reached the database");
   // the token gate is unchanged
   assert.equal((await call("PUT", `/groups/${GROUP_ID}/marketing/answers`, { body: { pitch: "x" } })).status, 401);
 });
@@ -318,4 +355,172 @@ test("saving copy whose intro lacks Mark's pitch sentences does not take an appr
   const bad = await call("PUT", `/groups/${GROUP_ID}/marketing/copy`, { token: true, body: { lang: "en", copy: { ...copy, welcome: "Scan the QR code to book" } } });
   assert.ok((bad.json["problems"] as Array<{ field: string }>).some((p) => p.field === "welcome"));
   assert.equal(bad.json["approvedAt"], null);
+});
+
+
+// ── The look's new parts: day notes, picture bands and credit lines (Mark 2026-10-23, design v2) ─────────────────────────
+
+test("the public answer carries the picture bands, Mark's day notes and the credit lines of the pictures shown, looked up once by their public addresses", async () => {
+  const hero = `${SUPABASE_HOST}/storage/v1/object/public/group-marketing/assets/msc-seashore/ocean-cay.jpg`;
+  const plan = `${SUPABASE_HOST}/storage/v1/object/public/group-marketing/assets/msc-seashore/nassau.jpg`;
+  const cabin = `${SUPABASE_HOST}/storage/v1/object/public/group-marketing/assets/msc-seashore/ship.jpg`;
+  const host = `${SUPABASE_HOST}/storage/v1/object/public/group-marketing/brand/hosts/mark-ceci.jpg`;
+  assetRows = [
+    { public_url: cabin, attribution: "Photo: Jack Adamenko · CC0 · Wikimedia Commons" }, { public_url: hero, attribution: "Photo: Symbiosis · CC BY 2.0 · Wikimedia Commons" },
+    { public_url: plan, attribution: "Photo: Bluerasberry · CC BY 4.0 · Wikimedia Commons" }, { public_url: host, attribution: "Photo: Hosts · should never print" },
+  ];
+  marketing = { pitch: "Come along.", hero_photo: hero, host_photo: host, photo_plan: plan, photo_cabin: cabin, day_notes: "May 11: The beach party and light show.\nMay 12: Sunrise on the beach." };
+  assetQueries = [];
+  try {
+    for (const lang of ["en", "es"] as const) {
+      const r = await pageOf(lang);
+      assert.equal(r.status, 200, lang);
+      const look = r.json["look"];
+      assert.equal(look.planPhotoUrl, plan); assert.equal(look.cabinPhotoUrl, cabin); assert.equal(look.heroUrl, hero); assert.equal(look.hostPhotoUrl, host);
+      assert.deepEqual(look.dayNotes, { "May 11": "The beach party and light show.", "May 12": "Sunrise on the beach." });
+      assert.deepEqual(look.credits, [
+        "Photo: Symbiosis · CC BY 2.0 · Wikimedia Commons", "Photo: Bluerasberry · CC BY 4.0 · Wikimedia Commons", "Photo: Jack Adamenko · CC0 · Wikimedia Commons"], `${lang}: the credits follow the pictures' order (top, plan, cabin) and the hosts' photo has none`);
+      assert.ok(!r.text.includes("should never print"));
+    }
+    assert.equal(assetQueries.length, 2, "one read per page view");
+    for (const q of assetQueries) assert.ok(!decodeURIComponent(q).includes("mark-ceci.jpg"), "the hosts' photo is not looked up");
+    // a group with no pictures asks for nothing
+    marketing = { pitch: "Come along." };
+    assetQueries = [];
+    const none = await pageOf();
+    assert.deepEqual(none.json["look"], NO_LOOK);
+    assert.equal(assetQueries.length, 0, "no pictures, no lookup");
+    // a picture that is not one of ours is never looked up either
+    marketing = { pitch: "Come along.", photo_plan: "https://example.com/p.jpg" };
+    assert.deepEqual((await pageOf()).json["look"], NO_LOOK);
+    assert.equal(assetQueries.length, 0);
+  } finally { assetRows = []; }
+});
+
+test("a picture with no credit row (one Mark uploaded himself) simply has no credit line, and a failed credits read costs the credit line, never the page", async () => {
+  const hero = "https://stillafloatcruising.com/assets/images/group-hero.jpg";
+  marketing = { pitch: "Come along.", hero_photo: hero, photo_plan: "https://stillafloatcruising.com/p.jpg" };
+  assetRows = [{ public_url: hero, attribution: null }];
+  try {
+    const r = await pageOf();
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.json["look"].credits, []);
+    assert.equal(r.json["look"].heroUrl, hero);
+    assetsFail = true;
+    const down = await pageOf();
+    assert.equal(down.status, 200, "the page is still served");
+    assert.deepEqual(down.json["look"], { ...NO_LOOK, heroUrl: hero, planPhotoUrl: "https://stillafloatcruising.com/p.jpg" });
+    assert.ok(down.json["facts"] && down.json["copy"]);
+  } finally { assetRows = []; assetsFail = false; }
+});
+
+test("the public answer never carries the ship's rating, whatever the interview says, and carries each day's ISO date and the sailing date for the page's weekdays", async () => {
+  for (const show_rating of [true, false]) {
+    marketing = { pitch: "Come along.", show_rating };
+    const r = await pageOf();
+    assert.ok(!("rating" in r.json["facts"]), `show_rating ${show_rating}: the answer carries a rating`);
+    assert.equal(r.json["facts"].sailDate, "2027-03-14");
+    assert.deepEqual((r.json["facts"].itinerary as Array<{ isoDate: string }>).map((d) => d.isoDate), ["2027-03-14", "2027-03-15", "2027-03-16"]);
+  }
+});
+
+// ── The Count me in form: an email OR a phone (Mark 2026-10-23: one box, "Email or phone") ───────────────────────────
+
+let visitor = 0;
+/** One send of the form from its own address, so the hourly limit of one test never uses up another's. */
+function send(body: Record<string, unknown>, code = CODE) {
+  visitor += 1;
+  return call("POST", `/group-page/${code}/interest`, { body, headers: { "x-forwarded-for": `198.51.100.${visitor}` } });
+}
+function reset() { prospectInserts.length = 0; interestInserts.length = 0; actionInserts.length = 0; }
+/** Every saved reply tells Mark (one waiting item) a moment AFTER the answer is sent, so wait for those before the next test starts counting. */
+async function settle() {
+  for (let i = 0; i < 100 && actionInserts.length < interestInserts.length; i++) await new Promise((r) => setTimeout(r, 10));
+  assert.equal(actionInserts.length, interestInserts.length, "each saved reply puts one item on Mark's waiting list");
+}
+
+test("a reply with an email is saved, and goes on the contact list as before", async () => {
+  reset();
+  const r = await send({ first_name: "Mary", last_name: "Smith", email: " Mary@Example.COM ", phone: "", guests: 3, lang: "en", newsletter_opt_in: false });
+  assert.equal(r.status, 200); assert.equal(r.json["success"], true);
+  assert.equal(interestInserts.length, 1);
+  assert.deepEqual([interestInserts[0]!["first_name"], interestInserts[0]!["last_name"], interestInserts[0]!["email"], interestInserts[0]!["phone"], interestInserts[0]!["guests"], interestInserts[0]!["newsletter_opt_in"]],
+    ["Mary", "Smith", "mary@example.com", null, 3, false]);
+  assert.equal(interestInserts[0]!["prospect_id"], "p-1");
+  assert.equal(prospectInserts.length, 1);
+  assert.equal(prospectInserts[0]!["email"], "mary@example.com"); assert.equal(prospectInserts[0]!["referral_source"], "group-page");
+  await settle();
+  assert.equal(actionInserts.length, 1, "Mark is told: one waiting item per reply");
+  assert.match(String(actionInserts[0]!["title"]), /^Group reply: Mary Smith$/);
+});
+
+test("a reply with only a phone number is saved with no email, as typed, and is not added to the contact list (its email is required); a one-word name is a first name only", async () => {
+  for (const phone of ["(919) 346-6127", "919.346.6127", "+1 919-346-6127", "346 6127"]) {
+    await settle(); reset();
+    const r = await send({ first_name: "Cher", last_name: "", email: "", phone, guests: 2, lang: "en" });
+    assert.equal(r.status, 200, phone); assert.equal(r.json["success"], true);
+    assert.equal(interestInserts.length, 1, phone);
+    assert.deepEqual([interestInserts[0]!["first_name"], interestInserts[0]!["last_name"], interestInserts[0]!["email"], interestInserts[0]!["phone"]], ["Cher", null, null, phone], "the phone is kept exactly as typed");
+    assert.equal(interestInserts[0]!["prospect_id"], null);
+    assert.equal(prospectInserts.length, 0, "nothing is invented for the contact list");
+    await settle();
+    assert.equal(actionInserts.length, 1, "Mark is still told");
+  }
+});
+
+test("a reply with both an email and a phone keeps both; a bad phone next to a good email is dropped, a bad email next to a good phone too", async () => {
+  reset();
+  assert.equal((await send({ first_name: "Pat", last_name: "Lee", email: "pat@example.com", phone: "919-346-6127", lang: "en" })).status, 200);
+  assert.deepEqual([interestInserts[0]!["email"], interestInserts[0]!["phone"]], ["pat@example.com", "919-346-6127"]);
+  assert.equal(prospectInserts[0]!["phone"], "919-346-6127");
+  await settle(); reset();
+  assert.equal((await send({ first_name: "Pat", email: "pat@example.com", phone: "call me", lang: "en" })).status, 200);
+  assert.deepEqual([interestInserts[0]!["email"], interestInserts[0]!["phone"]], ["pat@example.com", null]);
+  await settle(); reset();
+  assert.equal((await send({ first_name: "Pat", email: "not-an-email", phone: "919 346 6127", lang: "en" })).status, 200);
+  assert.deepEqual([interestInserts[0]!["email"], interestInserts[0]!["phone"]], [null, "919 346 6127"]);
+  assert.equal(prospectInserts.length, 0);
+  await settle();
+});
+
+test("a reply with neither a valid email nor a phone of seven digits is refused in plain words, in both languages, and nothing is stored", async () => {
+  reset();
+  const none = { first_name: "Pat", last_name: "Lee", guests: 2 };
+  for (const [lang, want] of [["en", "Please add an email or a phone number."], ["es", "Agregue un correo o un teléfono."]] as const) {
+    for (const contact of [{}, { email: "", phone: "" }, { email: "  ", phone: "  " }]) {
+      const r = await send({ ...none, ...contact, lang });
+      assert.equal(r.status, 400, JSON.stringify(contact)); assert.equal(r.json["success"], false); assert.equal(r.json["error"], want);
+    }
+  }
+  for (const [lang, want] of [["en", "Please check your email address or phone number."], ["es", "Revise su correo electrónico o su teléfono."]] as const) {
+    for (const contact of [{ email: "mary@", phone: "" }, { email: "", phone: "123456" }, { email: "mary", phone: "12-34" }, { email: "", phone: "ask for Mark" }]) {
+      const r = await send({ ...none, ...contact, lang });
+      assert.equal(r.status, 400, JSON.stringify(contact)); assert.equal(r.json["error"], want, JSON.stringify(contact));
+    }
+  }
+  assert.equal(interestInserts.length + prospectInserts.length + actionInserts.length, 0, "a refused reply stores and notifies nothing");
+});
+
+test("a reply with no name is refused first, and the bot trap and an unapproved or unknown page answer as before", async () => {
+  reset();
+  const noName = await send({ first_name: "  ", email: "a@b.co", lang: "en" });
+  assert.equal(noName.status, 400); assert.equal(noName.json["error"], "Please add your name.");
+  assert.equal((await send({ first_name: "", phone: "919-346-6127", lang: "es" })).json["error"], "Falta su nombre.");
+  const trap = await send({ first_name: "Bot", email: "bot@example.com", website: "http://spam.example", lang: "en" });
+  assert.equal(trap.status, 200); assert.equal(trap.json["success"], true);
+  assert.equal(interestInserts.length, 0, "the bot trap stores nothing");
+  const was = approved; approved = null;
+  try { assert.equal((await send({ first_name: "Pat", email: "a@b.co", lang: "en" })).status, 404, "an unapproved page takes no replies"); } finally { approved = was; }
+  assert.equal((await send({ first_name: "Pat", email: "a@b.co" }, "zzzzzzzzzz")).status, 404, "a code no group holds");
+  assert.equal((await send({ first_name: "Pat", email: "a@b.co" }, "NOT-A-CODE")).status, 404);
+  assert.equal(interestInserts.length, 0);
+});
+
+test("the newsletter box is gone from the form: only an explicit true is stored as a yes, and the page sends false", async () => {
+  reset();
+  await send({ first_name: "Pat", email: "a@b.co", newsletter_opt_in: false, lang: "en" });
+  await send({ first_name: "Pat", email: "c@d.co", lang: "en" });
+  await send({ first_name: "Pat", email: "e@f.co", newsletter_opt_in: "true", lang: "en" });
+  assert.deepEqual(interestInserts.map((x) => x["newsletter_opt_in"]), [false, false, false]);
+  await settle();
 });

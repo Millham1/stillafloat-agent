@@ -1243,8 +1243,8 @@ export default [
   },
   {
     id: "ops.group-page-public",
-    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids, a card number or the cabins still available (Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"); unapproved pages stay hidden; Mark 2026-10-20 \"we already had this discussion\": the page is handed the welcome and the Count me in words, never the poster's headline or pitch",
-    title: "Whenever Mark has a live group page, it shows exactly his approved welcome and Count me in words and the group's facts (English and Spanish) with no contact details, ids or cabin availability and none of the poster's headline or pitch, and unapproved pages stay hidden",
+    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids, a card number or the cabins still available (Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"); unapproved pages stay hidden; Mark 2026-10-20 \"we already had this discussion\": the page is handed the welcome and the Count me in words, never the poster's headline or pitch; ruling: Mark 2026-10-23 — no ship rating or advisor bio on the invitation page",
+    title: "Whenever Mark has a live group page, it shows exactly his approved welcome and Count me in words and the group's facts (English and Spanish) with no contact details, ids or cabin availability, none of the poster's headline or pitch, no ship rating and no advisor bio, and unapproved pages stay hidden",
     covers: ["GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/groups/:id/marketing"],
     modes: ["dev", "prod"],
     // New in the 2026-10-08 release: prod has neither the pages nor the address before the promotion,
@@ -1258,6 +1258,11 @@ export default [
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         // The page asks one thing, "I'm interested": no cabin table, no cabin picker (Mark 2026-10-19).
         t.ok(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(html), `${p} still has the cabin table or the cabin picker`);
+        // Mark 2026-10-23: no ship rating or advisor bio on the invitation page, and the form is one name, one email-or-phone box and how many (no newsletter box)
+        t.ok(!/id="sec-rating"/.test(html) && !/Conga/i.test(html), `${p} still has the ship rating (the Conga Line score) block, which the invitation page no longer shows`);
+        t.ok(!/data-t="about"|data-t="bio"/.test(html), `${p} still has the advisor bio block, which the invitation page no longer shows`);
+        t.ok(/id="f-name"/.test(html) && /id="f-contact"/.test(html) && /id="f-guests"/.test(html), `${p} no longer has the one form of name, email or phone, and how many`);
+        t.ok(!/id="f-news"|type="checkbox"|<textarea/.test(html), `${p} still has the newsletter box or the questions box in its form`);
         t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a group page must never be indexed)`);
         t.observe(`${p} title`, H.title(html));
         const names = (re) => [...new Set([...html.matchAll(re)].map((m) => m[1]))].sort();
@@ -1351,7 +1356,7 @@ export default [
   {
     id: "ops.group-marketing-writes-refuse",
     basis: "ruling: stillafloat-group-bookings.md — group-marketing writes are token-gated; the interest form's bot trap and validation store nothing and email no one (a real reply emails Mark)",
-    title: "Group-marketing writes refuse unknown groups and bad statuses, the interest form's bot trap and validation store nothing, and asking again for a share code returns the same one",
+    title: "Group-marketing writes refuse unknown groups and bad statuses, the interest form's bot trap and validation (no name, or no email or phone) store nothing, and asking again for a share code returns the same one",
     covers: ["POST /api/groups/:id/marketing/share-code"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST/PUT/PATCH requests (refusal paths and an idempotent share-code read); a successful interest submit would e-mail Mark, so it is never sent",
@@ -1380,9 +1385,13 @@ export default [
       const trap = await send("POST", `/api/group-page/${L.share_code}/interest`, { website: "e2e-fixture-honeypot", lang: "en" }, false);
       if (trap.status === 429) t.note("the interest form's hourly limit was reached (5 per address per hour); the bot trap was not reached this run");
       else t.ok(trap.status === 200 && trap.json?.success === true, `the interest form's bot trap should answer as if accepted: ${trap.describe()}`);
-      const bare = await send("POST", `/api/group-page/${L.share_code}/interest`, { lang: "en" }, false); // no name, no email: can never be stored
-      t.ok(bare.status === 400 || bare.status === 429, `an interest reply with no name and no email was not refused: ${bare.describe()}`);
-      if (bare.status === 400) refused(t, bare, 400, "an interest reply with no name and no email", /first name|complete the check/i);
+      const bare = await send("POST", `/api/group-page/${L.share_code}/interest`, { lang: "en" }, false); // no name and no way to reach them: can never be stored
+      t.ok(bare.status === 400 || bare.status === 429, `an interest reply with no name and no email or phone was not refused: ${bare.describe()}`);
+      if (bare.status === 400) refused(t, bare, 400, "an interest reply with no name and no email or phone", /your name|first name|complete the check/i);
+      // Mark 2026-10-23: one way to reach them is enough (an email OR a phone), but not none: a name alone is refused and stores nothing
+      const noContact = await send("POST", `/api/group-page/${L.share_code}/interest`, { first_name: "E2E Fixture", last_name: "", email: "", phone: "", lang: "en" }, false);
+      t.ok(noContact.status === 400 || noContact.status === 429, `an interest reply with a name but no email or phone was not refused: ${noContact.describe()}`);
+      if (noContact.status === 400) refused(t, noContact, 400, "an interest reply with a name but no email or phone", /email or a phone|complete the check/i);
       const after = t.success(await t.get(`/api/groups/${L.id}/interests`, { auth: true })).interests.length;
       t.equal(after, before, "replies stored by the refused interest submissions");
       // Both answered "too many requests": the limiter works, but neither the bot trap nor the
