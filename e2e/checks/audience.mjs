@@ -730,9 +730,9 @@ export default [
     id: "audience.newsletter-email",
     basis: "ruling: stillafloat-newsletter.md — Still Afloat Weekly: the letter links quick hits to the prerendered /news/ pages, in the reader's language, with a signed unsubscribe link; ES first-class (stillafloat-es-first-class.md)",
     title: "The weekly newsletter email renders for every language that has subscribers, and every link in it opens a real page in the reader's language",
-    covers: ["email:newsletter-weekly", "GET /api/newsletter/email", "GET /api/subscribers", "GET /api/affiliate-items", "GET /api/commentary"],
+    covers: ["email:newsletter-weekly", "GET /api/newsletter/email", "GET /api/newsletter/draft", "GET /api/subscribers", "GET /api/affiliate-items", "GET /api/commentary"],
     modes: ["dev", "prod"],
-    incident: "2026-09-15: unsubscribe links signed with a public default; ES first-class (8 of 11 prod subscribers read Spanish, 2026-10-07)",
+    incident: "2026-09-15: unsubscribe links signed with a public default; ES first-class (8 of 11 prod subscribers read Spanish, 2026-10-07); 2026-10-22: a quiet dev news week drafted both editions with no stories and the flat link counts went red",
     run: async (t) => {
       const conf = t.json(await t.get("/api/subscribers?status=confirmed&limit=200", { auth: true }));
       t.ok(Array.isArray(conf.subscribers), "the confirmed subscriber list is missing");
@@ -774,8 +774,20 @@ export default [
         // pages: every same-site page link is in the reader's language and opens a real page
         const pages = [...new Set(links.map((l) => H.resolve(l.replace(/&amp;/g, "&"), PROD_HOST)).filter((x) => x && H.sameSite(x, PROD_HOST) && !/\/api\//.test(new URL(x).pathname))
           .map((x) => { const v = new URL(x); return `${v.origin}${v.pathname}${v.searchParams.get("id") ? `?id=${v.searchParams.get("id")}` : ""}`; }))];
-        t.atLeast(pages.length, 3, `${lang.toUpperCase()} newsletter links to our own pages`);
-        t.atLeast(pages.filter((p) => /\/news\/[^/]+\.html$/.test(p)).length, 1, `${lang.toUpperCase()} newsletter story links`);
+        // What the email must link is what the saved issue carries — the site's two outputs compared with each other (Mark
+        // 2026-10-09), never a count the week should have: the booking page always; the commentary page when the issue quotes
+        // one; a /news/ story page for every quick hit that names a story. A quiet news week drops the quick hits
+        // (lib/newsletter.ts, Mark 2026-08-29), so a letter with no stories has no story links — and none that lead nowhere.
+        // Dev's story pool is held supplied by the dev news feeder (editorial.approved-stories-for-newsletter).
+        const issue = t.success(await t.get(`/api/newsletter/draft?lang=${lang}`, { auth: true })).draft;
+        t.ok(issue && typeof issue === "object", `the ${lang.toUpperCase()} newsletter email rendered but there is no saved ${lang.toUpperCase()} issue behind it`);
+        const issueStories = ((issue && issue.quickHits) || []).filter((h) => h && h.url).length;
+        const storyLinks = pages.filter((p) => /\/news\/[^/]+\.html$/.test(p)).length;
+        t.ok(pages.some((p) => /\/work-with-mark\.html$/.test(pathOf(p))), `${lang.toUpperCase()} newsletter has no link to the booking page (work-with-mark)`);
+        if (issue && issue.commentary) t.ok(pages.some((p) => /commentary-post\.html/.test(p)), `${lang.toUpperCase()} newsletter quotes Mark's commentary but links no commentary page`);
+        t.equal(storyLinks > 0, issueStories > 0, `${lang.toUpperCase()} newsletter has story links (the saved issue carries ${issueStories} story quick hits)`);
+        t.atLeast(storyLinks, issueStories, `${lang.toUpperCase()} newsletter story links (the saved issue names ${issueStories} stories)`);
+        t.observe(`newsletter ${lang} story quick hits`, issueStories, "info");
         for (const p of pages) {
           const isEs = /^\/es\//.test(pathOf(p));
           t.ok(lang === "es" ? isEs : !isEs, `the ${lang.toUpperCase()} newsletter links to a page in the other language: ${pathOf(p)}`);
