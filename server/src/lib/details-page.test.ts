@@ -245,6 +245,30 @@ test("a phone-only reply shows the phone to reach them; a one-word name fills th
   }
 });
 
+test("the top picture's credit line is in the footer, in the group page's compact form, and only when there is one", async () => {
+  const none = visit("en");
+  await none.ready();
+  assert.equal(none.el("d-credits").hidden, true);
+  const p = visit("en", { get: answer({ credits: ["Photo: Symbiosis · CC BY 2.0 · Wikimedia Commons"] }) });
+  await p.ready();
+  assert.equal(p.el("d-credits").hidden, false);
+  assert.equal(p.el("d-credits").textContent, "Photo: Symbiosis (CC BY 2.0) · Wikimedia Commons");
+  const two = visit("en", { get: answer({ credits: ["Photo: A · CC0 · Wikimedia Commons", "Photo: B · CC BY 4.0 · Wikimedia Commons", "Photo: A · CC0 · Wikimedia Commons"] }) });
+  await two.ready();
+  assert.equal(two.el("d-credits").textContent, "Photos: A (CC0) · B (CC BY 4.0) · Wikimedia Commons");
+  const es = visit("es", { get: answer({ credits: ["Photo: Symbiosis · CC BY 2.0 · Wikimedia Commons"] }) });
+  await es.ready();
+  assert.equal(es.el("d-credits").textContent, "Foto: Symbiosis (CC BY 2.0) · Wikimedia Commons");
+  const other = visit("en", { get: answer({ credits: ["Photo by the cruise line's press office"] }) });
+  await other.ready();
+  assert.equal(other.el("d-credits").textContent, "Photo by the cruise line's press office");
+  // the line is plain text, never markup, and the footer's small print is at least 15px
+  const evil = visit("en", { get: answer({ credits: ["<b>x</b>"] }) });
+  await evil.ready();
+  assert.equal(evil.el("d-credits").textContent, "<b>x</b>");
+  assert.match(css("en"), /\.foot \.credits\{[^}]*font-size:15px/);
+});
+
 test("a picture that is not https is never used, and anything the guest or the file wrote is escaped, never markup", async () => {
   const bad = visit("en", { get: answer({ heroUrl: "javascript:alert(1)" }) });
   await bad.ready();

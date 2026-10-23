@@ -99,7 +99,7 @@ test("Spanish: the same pick in Spanish, addressed as usted, with the price sent
   const p = pickCabin(ANSWERS, MILLHAM, "es", true);
   assert.equal(p.category, "Balcony Bella");
   assert.equal(p.where, "en el centro del barco, en una cubierta baja");
-  assert.equal(p.why, "Estable para quien sienta el movimiento, tranquila, lejos de la cubierta de la piscina y un balcón para ese café. Desde $536.79 por persona, con impuestos y cargos portuarios incluidos.");
+  assert.equal(p.why, "Estable para quien sienta el movimiento, alejada de la cubierta de la piscina y un balcón para ese café. Desde $536.79 por persona, con impuestos y cargos portuarios incluidos.");
   assert.equal(pickCabin(ANSWERS, MILLHAM, "es", false).why.endsWith("Desde $536.79 por persona."), true);
   assert.equal(pickCabin({ ...ANSWERS, motion: "no", priority: "ocean" }, MILLHAM, "es").where, "en una cubierta alta");
 });

@@ -82,6 +82,7 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .foot{padding:26px 22px 24px}
 .foot .sa{height:120px;width:auto;display:block;margin:0 auto 8px}
 .foot p{margin:4px 0;text-align:center;font-size:15px;color:rgba(255,255,255,.88)}
+.foot .credits{font-size:15px;color:rgba(255,255,255,.72);line-height:1.4;margin-top:12px}
 .foot .cs-row{display:flex;justify-content:flex-end;margin-top:14px}
 .foot .cs{height:46px;width:auto;opacity:.95}
 
@@ -158,6 +159,7 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
   <div class="foot">
     <img class="sa" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
     <p>Still Afloat LLC dba Still Afloat Cruising · mark@stillafloatcruising.com</p>
+    <p class="credits" id="d-credits" hidden></p>
     <div class="cs-row"><img class="cs" src="/assets/images/cornerstone-white.png" alt=""></div>
   </div>
 
@@ -185,7 +187,8 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     thanks_h:'¡Su cabina está apartada, {first}!', thanks_p:'Mark la confirma con la naviera y le envía sus documentos a este {kind}: {to}. No se cobra nada.',
     kind_email:'correo', kind_phone:'teléfono', questions:'¿Preguntas? Llame o escriba a Mark al {phone}.',
     call_h:'Listo, {first}.', call_p:'Mark le llamará o le escribirá en un día.', change:'¿Cambió de opinión? Termínelo usted.',
-    err:'No se pudo guardar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.'
+    err:'No se pudo guardar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
+    photo:'Foto:', photos:'Fotos:'
   } : {
     loading:'Loading your details…', bad:'This link is not valid. Please open the whole link from your email, or call or text Mark at ' + PHONE + '.',
     title:'Your details', plaque:'Your details',
@@ -204,7 +207,8 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     thanks_h:'Your cabin is on hold, {first}!', thanks_p:'Mark confirms it with the cruise line and sends your paperwork to this {kind}: {to}. Nothing is charged.',
     kind_email:'email', kind_phone:'phone number', questions:'Questions? Call or text Mark at {phone}.',
     call_h:'Got it, {first}.', call_p:'Mark will call or text you within a day.', change:'Changed your mind? Finish it yourself.',
-    err:'That did not go through. Please try again, or call or text Mark at ' + PHONE + '.'
+    err:'That did not go through. Please try again, or call or text Mark at ' + PHONE + '.',
+    photo:'Photo:', photos:'Photos:'
   };
 
   // The four Room Concierge questions, in the design's words: [label, value] for each answer. The values are the Room Concierge's own (lib/concierge-interview.ts);
@@ -408,12 +412,26 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     banner.insertBefore(img, banner.firstChild);
   }
 
+  // The credit line of the picture shown, as on the group page: "Photo: <artist> (<licence>) · Wikimedia Commons"; any other kind of line is shown as it is.
+  function creditsLine(list){
+    var parts = [], ok = true;
+    list.forEach(function(a){
+      var m = /^Photos?:\s*(.+?)\s*·\s*([^·]+?)\s*·\s*Wikimedia Commons$/i.exec(a);
+      if(!m){ ok = false; return; }
+      var p = m[1] + ' (' + m[2] + ')';
+      if(parts.indexOf(p) < 0) parts.push(p);
+    });
+    return ok ? (parts.length > 1 ? T.photos : T.photo) + ' ' + parts.join(' · ') + ' · Wikimedia Commons' : list.join(' · ');
+  }
+
   function render(d){
     data = d;
     state.hidden = true; show('d-main', true);
     document.title = T.title + ' | ' + d.label;
     $('d-plaque').textContent = d.label;
     applyHero(d.heroUrl);
+    var credits = (Array.isArray(d.credits) ? d.credits : []).filter(function(x){ return typeof x === 'string' && x.trim(); });
+    if(credits.length){ $('d-credits').textContent = creditsLine(credits); show('d-credits', true); }
     $('d-h1').textContent = fill(T.h1, { first: d.firstName || '' });
     $('d-lede').textContent = T.lede;
     $('d-p1').textContent = T.p1; $('d-reach-l').textContent = T.reach; $('d-count-l').textContent = T.howmany;

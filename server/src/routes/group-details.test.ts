@@ -30,6 +30,8 @@ let mailOk = true;
 let actionsAccept = false;
 /** When true the stand-in refuses to write the details link (migration 0056 not applied). */
 let tokenWriteFails = false;
+/** When true the stand-in refuses the group_assets read (the page must still be served). */
+let assetsFail = false;
 let seq = 0;
 
 function group(over: Row = {}): Row {
@@ -96,6 +98,7 @@ before(async () => {
       const sel = (url.searchParams.get("select") ?? "*").trim();
       const project = (r: Row): Row => (sel === "*" ? r : Object.fromEntries(sel.split(",").map((c) => c.trim()).filter((c) => c in r).map((c) => [c, r[c]])));
       const out = (list: Row[]) => (object ? send(200, list[0] ? project(list[0]) : null) : send(200, list.map(project)));
+      if (req.method === "GET" && table === "group_assets" && assetsFail) return send(500, { message: "stand-in refuses the read" });
       if (req.method === "GET") return out(rows.filter((r) => matches(r, url.searchParams)));
       if (req.method === "POST") {
         if (table === "actions" && !actionsAccept) return send(400, { message: "stand-in: actions refuse inserts" });
@@ -137,8 +140,8 @@ after(async () => {
 });
 
 beforeEach(() => {
-  tables = { groups: [group()], group_cabins: cabinRows(), group_interests: [reply()], group_travelers: [], actions: [], group_messages: [], prospects: [] };
-  log = []; mails = []; mailOk = true; actionsAccept = false; tokenWriteFails = false;
+  tables = { groups: [group()], group_cabins: cabinRows(), group_interests: [reply()], group_travelers: [], actions: [], group_messages: [], prospects: [], group_assets: [] };
+  log = []; mails = []; mailOk = true; actionsAccept = false; tokenWriteFails = false; assetsFail = false;
   delete process.env["GROUP_FORMS_MAIL_ALLOW"];
 });
 
@@ -192,6 +195,24 @@ test("a good link answers with what we know, what they entered, and the group's 
   assert.match(r.headers.get("referrer-policy") ?? "", /no-referrer/);
   // nothing internal: no hash, no audit hash, no ids, no other replies, no cabin the group still has
   for (const secret of [hashLinkToken(LINK), "iphash-secret", "prospect-secret", GROUP_ID, REPLY_ID, CABIN_ID, "details_token", "cabinsAvailable"]) assert.ok(!r.text.includes(secret), `the answer carries ${secret}`);
+});
+
+test("the top picture's credit line comes with the answer (a CC BY photo is credited where it is shown); a failed read costs the line, never the page", async () => {
+  const HERO = "https://stillafloatcruising.com/assets/images/hero.jpg";
+  assert.deepEqual((await call("GET", `/group-details/${LINK}`)).json["credits"], [], "no credit row: no credit line");
+  tables["group_assets"]!.push({ id: "a1", public_url: HERO, attribution: "Photo: Symbiosis · CC BY 2.0 · Wikimedia Commons" }, { id: "a2", public_url: "https://stillafloatcruising.com/other.jpg", attribution: "Photo: Someone Else · CC0 · Wikimedia Commons" });
+  const r = await call("GET", `/group-details/${LINK}`);
+  assert.deepEqual(r.json["credits"], ["Photo: Symbiosis · CC BY 2.0 · Wikimedia Commons"], "only the picture this page shows");
+  assert.ok(!r.text.includes("Someone Else"));
+  assetsFail = true;
+  const down = await call("GET", `/group-details/${LINK}`);
+  assert.equal(down.status, 200);
+  assert.deepEqual(down.json["credits"], []);
+  // a group with no top picture reads nothing
+  assetsFail = false; tables["groups"]![0]!["marketing"] = { taxes_included: true };
+  log = [];
+  assert.deepEqual((await call("GET", `/group-details/${LINK}`)).json["credits"], []);
+  assert.equal(log.filter((l) => l.table === "group_assets").length, 0);
 });
 
 test("a Spanish reply is answered in Spanish (dates and phone line), and stored answers come back so the page can fill itself", async () => {

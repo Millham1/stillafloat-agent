@@ -4,7 +4,7 @@ import { logger } from "../lib/logger";
 import { clientIp } from "../lib/client-ip";
 import { createAction, resolveActionsForSource, retitleActionsForSource } from "../lib/actions";
 import { BUSINESS, hashLinkToken, looksLikeLinkToken } from "../lib/group-secure";
-import { tidyCopy, type Lang } from "../lib/group-marketing";
+import { creditsForPictures, tidyCopy, type Lang } from "../lib/group-marketing";
 import { detailsFacts, detailsTokenFresh, pickCabin, storedConcierge, storedPick, storedTravelers, validateDetails } from "../lib/group-details";
 
 // The guest's "Your details" page (migration 0056; Mark 2026-10-23: "I want to give them the ability to just complete the forms rather than have me call
@@ -88,10 +88,17 @@ router.get("/group-details/:token", async (req: Request, res: Response) => {
     }
     const { reply, group, cabins, lang } = loaded;
     const f = detailsFacts({ group, cabins }, lang);
+    // The credit line of the top picture, when the page shows one (a CC BY photo must be credited where it is shown): a failed read costs the line, never the page.
+    let credits: string[] = [];
+    if (f.heroUrl) {
+      const { data: assetRows, error: ae } = await db().from("group_assets").select("public_url, attribution").in("public_url", [f.heroUrl]);
+      if (ae) logger.warn({ err: ae.message }, "group details: photo credits lookup failed (the page is served without its credit line)");
+      else credits = creditsForPictures([f.heroUrl], (assetRows ?? []) as Row[]);
+    }
     const blurb = (tidyCopy(group.marketing_copy?.[lang] ?? group.marketing_copy?.en ?? {}) as { cta_blurb?: string }).cta_blurb;
     return res.json({
       success: true,
-      label: f.label, ship: f.ship, sailDateText: f.sailDateText, returnDateText: f.returnDateText, heroUrl: f.heroUrl,
+      label: f.label, ship: f.ship, sailDateText: f.sailDateText, returnDateText: f.returnDateText, heroUrl: f.heroUrl, credits,
       firstName: reply.first_name ?? "", lastName: reply.last_name ?? "", email: reply.email ?? null, phone: reply.phone ?? null, guests: reply.guests ?? null,
       travelers: storedTravelers(reply.travelers) ?? [], concierge: storedConcierge(reply.concierge), pick: storedPick(reply.pick),
       choice: reply.choice ?? null, holdRequestedAt: reply.hold_requested_at ?? null,

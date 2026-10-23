@@ -151,7 +151,7 @@ const WHERE: Record<"lowerMid" | "mid" | "high", Record<Lang, string>> = {
 
 const CLAUSE = {
   steady: { en: "Steady for whoever feels the motion", es: "Estable para quien sienta el movimiento" },
-  quiet: { en: "quiet away from the pool deck", es: "tranquila, lejos de la cubierta de la piscina" },
+  quiet: { en: "quiet away from the pool deck", es: "alejada de la cubierta de la piscina" },
   balcony: { en: "a balcony for that coffee", es: "un balcón para ese café" },
   allBalconies: { en: "the group's cabins are all balconies, so you get one anyway", es: "todas las cabinas del grupo tienen balcón, así que usted tendrá uno de todos modos" },
   fallback: { en: "Our best fit for what you told us", es: "Lo que mejor se ajusta a lo que nos contó" },
