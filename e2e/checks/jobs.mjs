@@ -688,7 +688,8 @@ export default [
   // non-featured story approved more than 21 days ago out of the live feed.
   //   queue limit 30 hours (24 + 6 for scan time and restarts); a missed day shows as ~48;
   //   live feed: no non-featured story older than 22 days + 2 hours.
-  // On dev the agent process is stopped (2026-10-07), so this check fails there — correctly.
+  // Runs on both boxes: dev's agent scans daily as prod's does (it was found stopped on 2026-10-07,
+  // the incident below, and the check is what says so if it stops again).
   {
     id: "jobs.news-daily-scan-ran",
     basis: "master-ref: §5 NEWS / EDITORIAL AGENT — the news agent self-schedules a daily scan at 08:00 America/New_York that replaces the editorial queue, preceded by the 21-day archive sweep",
@@ -715,6 +716,93 @@ export default [
       t.ok(stale.length === 0, `${stale.length} stories approved more than 22 days ago are still in the live news feed (e.g. ${stale[0]?.id}) — the 21-day archive sweep that runs with the daily scan has not run`);
       t.observe("live stories", feed.stories.length, "info");
       t.observe("queue keys", keysOf(q), "exact");
+    },
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────────────────────
+  // The scan's own last-run record (news agent GET /api/scan-status, lib/scan-status.ts): what the
+  // last scan did, whether its scheduler saw the same thing, whether the Spanish twins arrived, and
+  // where its fault alert landed. The queue check above says whether a scan REPLACED the queue; this
+  // one says whether a scan that did not could be heard. Three things the pm2 log alone knew:
+  //   2026-10-22 (dev; prod has touched the same mark): the scheduler's fetch to its own scan gave
+  //     up at Node's five-minute header ceiling and logged "Scheduled daily scan failed" while the
+  //     scan finished at 12:06:52Z with 15 stories and their twins. Nobody was told either way.
+  //   2026-10-18 / 10-21 (dev): a thin queue (1 story, 6 of 8 refused "source unreachable") raised an
+  //     alert the backend put on the brief page; the agent logged it "could not be delivered — the
+  //     failure is now invisible" because dev has no phone and no email floor, by design.
+  //   The dev news feeder (lib/dev-news-feeder.ts) approves only candidates WITH a Spanish twin, so
+  //     a scan whose twins never arrive starves it silently.
+  // The first sweep after the agent deploys may read a record reconstructed from the queue's own
+  // stamp (`derived`): the scan ran before the record existed, so where its alerts went is unknown
+  // and only the parts the queue can prove are judged. From the next 08:00 scan the record is real.
+  {
+    id: "jobs.news-scan-fails-loudly",
+    basis: "incident: 2026-10-22 — the news agent's scheduler gave up on its own scan at a five-minute fetch ceiling and logged a failure nobody was told about while the scan finished; on 2026-10-18 and 10-21 a thin-queue alert on dev was logged as invisible though the brief page had it. The scan now keeps a last-run record (stillafloat-newsagent lib/scan-status.ts, GET /api/scan-status) that must show a finished scan, a scheduler that saw the same outcome, a Spanish twin for every story it queued, and a delivered fault whenever it produced nothing",
+    title: "The news agent's last daily scan finished (or failed and said so), its scheduler saw the same outcome, every story it queued got its Spanish twin, and any fault it raised reached Mark on the phone, by email or on the brief page — never 'invisible'",
+    covers: ["ext:news job daily scan"],
+    modes: ["dev", "prod"],
+    incident: "2026-10-22: 'Scheduled daily scan failed' logged for a scan that finished; 2026-10-21: a recorded thin-queue alert logged as invisible",
+    run: async (t) => {
+      const s = t.success(await t.get("/api/scan-status", { service: "news", auth: true }));
+      t.fields(s, ["now", "record"], "the news agent's scan-status answer");
+      const r = s.record;
+      t.fields(r, ["startedAt", "outcome", "trigger"], "the daily scan's last-run record");
+      const outcomes = ["running", "ok", "thin", "empty", "error", "interrupted"];
+      t.ok(outcomes.includes(r.outcome), `the scan record has an unknown outcome "${r.outcome}"`);
+      // 08:00 Eastern daily; 6 hours of slack for scan time and restarts (the queue check's limit).
+      t.fresh(r.startedAt, 30, "the last daily scan's start (the agent schedules one every day at 08:00 Eastern)");
+      if (r.derived) t.note(`record reconstructed from the queue (first sweep after the agent deployed): ${String(r.derived).slice(0, 160)}`);
+
+      if (r.outcome === "running") {
+        const runningMin = (t.now() - Date.parse(r.startedAt)) / 60_000;
+        const staleMin = Number(s.runningStaleAfterMs || 30 * 60_000) / 60_000;
+        t.ok(runningMin <= staleMin, `the scan has shown "running" for ${runningMin.toFixed(0)} minutes (limit ${staleMin}) — a scan that never finishes is a failure nobody heard; a restart marks it interrupted`);
+        t.note(`a scan is running now (started ${runningMin.toFixed(0)} min ago); its outcome is judged by the next sweep`);
+        t.observe("scan record keys", keysOf(r), "exact");
+        return;
+      }
+
+      t.ok(Number.isFinite(Date.parse(r.finishedAt || "")), `the scan's outcome is "${r.outcome}" but the record has no finish time`);
+      t.ok(Date.parse(r.finishedAt) >= Date.parse(r.startedAt), "the scan record finishes before it starts");
+
+      // The scheduler and the scan must tell one story. "transport:" is the 2026-10-22 bug: the scan
+      // finished and the scheduler's own call to it did not come back (the ceiling is now 30 min).
+      if (r.trigger === "scheduler" && !r.derived) {
+        t.ok(r.scheduler && (r.scheduler.answeredAt || r.scheduler.error), "a scheduled scan finished but the scheduler never recorded its side of the run (answered, or why not)");
+        t.ok(!/^transport:/.test(String(r.scheduler?.error || "")), `the scheduler lost track of a scan that finished — ${r.scheduler?.error}`);
+      }
+
+      const delivered = ["webpush", "ntfy", "email", "brief", "activity"];
+      if (r.outcome === "ok" || r.outcome === "thin") {
+        t.ok(Number(r.curated) > 0, `outcome "${r.outcome}" with ${r.curated} stories curated`);
+        // Every story the scan queued carries its Spanish twin (ES is first class; the dev feeder
+        // approves only twinned candidates). The pass runs right after the queue is written and
+        // takes a few minutes, so a scan finished under 30 minutes ago may still be translating.
+        const sp = r.spanish;
+        t.ok(sp && typeof sp === "object", "the record says nothing about the Spanish pass");
+        t.ok(!sp.skipped, `no Spanish pass ran: ${sp.skipped}`);
+        t.ok(!sp.error, `the Spanish pass failed: ${sp.error}`);
+        const sinceFinishMin = (t.now() - Date.parse(r.finishedAt)) / 60_000;
+        if (sp.finishedAt) {
+          t.equal(Number(sp.translated), Number(r.curated), `stories in the queue with a Spanish twin (${r.curated} were queued)`);
+        } else {
+          t.ok(sinceFinishMin <= 30, `the scan finished ${sinceFinishMin.toFixed(0)} minutes ago and its Spanish twins never arrived (${sp.translated ?? 0} of ${r.curated})`);
+          t.note(`Spanish pass still running (scan finished ${sinceFinishMin.toFixed(0)} min ago)`);
+        }
+        if (r.outcome === "thin" && !r.derived) {
+          t.ok(r.fault && delivered.includes(r.fault.delivery), `a thin queue (${r.curated} of floor ${r.queueFloor}) ${r.fault ? `was noted nowhere (${r.fault.delivery}: ${r.fault.detail || "no detail"})` : "raised no note at all"} — it belongs on the brief page`);
+          t.note(`thin queue: ${r.curated} stories (floor ${r.queueFloor}); mostly ${r.topRefusalReason || "no grounding refusals"}; noted via ${r.fault.delivery}`);
+        }
+      } else {
+        // empty / error / interrupted: the queue was not replaced (the queue check says so in its own
+        // time); here the promise is that Mark HEARD it, on the phone, by email or on the brief page.
+        t.ok(r.fault && typeof r.fault === "object", `the scan ${r.outcome === "empty" ? "produced no stories" : r.outcome} and raised no fault at all — a failed scan nobody hears about is the 2026-10 incident`);
+        t.ok(delivered.includes(r.fault.delivery) && r.fault.delivery !== "activity", `the scan ${r.outcome} and its fault went nowhere (${r.fault.delivery}: ${r.fault.detail || "no detail"}) — invisible`);
+        t.note(`scan ${r.outcome}: ${String(r.error || "").slice(0, 160)}; fault reached Mark via ${r.fault.delivery}`);
+      }
+      t.observe("scan outcome", r.outcome, "info");
+      t.observe("scan fault channel", r.fault ? r.fault.delivery : "none raised", "info");
+      t.observe("scan record keys", keysOf(r), "exact");
     },
   },
 
