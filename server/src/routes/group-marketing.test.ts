@@ -89,7 +89,7 @@ before(async () => {
         const row = JSON.parse(raw || "{}") as Record<string, unknown>;
         res.setHeader("content-type", "application/json");
         if (table === "prospects") { prospectInserts.push(row); res.statusCode = 201; res.end(JSON.stringify({ id: "p-1" })); }
-        else if (table === "group_interests") { interestInserts.push(row); res.statusCode = 201; res.end("[]"); }
+        else if (table === "group_interests") { interestInserts.push(row); res.statusCode = 201; res.end(JSON.stringify({ id: `i-${interestInserts.length}` })); }
         else { actionInserts.push(row); res.statusCode = 400; res.end(JSON.stringify({ message: "stand-in: no actions table" })); } // createAction logs it and goes no further: nobody is notified
       });
       return;
