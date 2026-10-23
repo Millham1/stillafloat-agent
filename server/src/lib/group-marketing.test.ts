@@ -5,7 +5,7 @@ import {
   COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, displayName, formatDate, formatMoney, missingAnswers, newShareCode,
   normalizeAnswers, numbersIn, shipSlugCandidate, tidyCopy, userPrompt, validateCopy, type GroupCopy, humanizeAmenity, travelLines, portDisplayName, systemPrompt,
   ANSWER_MAX, DEFAULT_CTA, HOUSE_BANNED, HOUSE_VOICE_RULES, LEAD_WITH_RULES, PITCH_FIRST, ctaLine, ctaRule, copyNotes, leadWith, leadWithLines, missingPitchSentences, pitchCoverage, pitchGate, pitchNumberProblems, pitchRules, pitchSentences, retryNote, tooLong, withoutPitch, plannedForGroup, publicFacts, DIGITAL_CTA, QR_PROBLEM, ctaForFacebook, mentionsQr, withDisplayNames,
-  IMAGE_URL_MAX, ignoredPictureAnswers, pageLook, safeImageUrl, DEFAULT_HOST_NAMES, HOST_NAMES_MAX, PITCH_NOTE, WELCOME_RULES, cabinPrices, hostNames, priceUnitOf, priceUnitText, travelLabel, pageLabel, PAGE_LABEL_MAX } from "./group-marketing";
+  IMAGE_URL_MAX, creditedPictureLinks, creditsForPictures, ignoredPictureAnswers, pageLook, safeImageUrl, DEFAULT_HOST_NAMES, HOST_NAMES_MAX, PITCH_NOTE, WELCOME_RULES, cabinPrices, hostNames, priceUnitOf, priceUnitText, travelLabel, pageLabel, PAGE_LABEL_MAX } from "./group-marketing";
 
 test("displayName fixes all-capital contract names and leaves normal ones alone", () => {
   assert.equal(displayName("MSC SEASIDE"), "MSC Seaside");
@@ -175,7 +175,7 @@ test("who_for may run to 900 characters (Mark's air/hotel and theme-park day mad
 
 test("the character limits of each copy field", () => {
   assert.deepEqual(Object.fromEntries(COPY_FIELDS.map((x) => [x.key, x.max])), {
-    welcome: 420, headline: 220, subhead: 160, intro: 900, why_ship: 900, who_for: 900, organizer_note: 400,
+    welcome: 700, headline: 220, subhead: 160, intro: 900, why_ship: 900, who_for: 900, organizer_note: 400,
     cta_label: 40, cta_blurb: 220, email_subject: 90, email_body: 1400, social_post: 500,
   });
 });
@@ -898,11 +898,20 @@ function withSupabaseUrl<T>(url: string | undefined, fn: () => T): T {
   try { return fn(); } finally { if (before === undefined) delete process.env["SUPABASE_URL"]; else process.env["SUPABASE_URL"] = before; }
 }
 
-test("the interview has three optional look questions right after the call to action, then who the invitation is from, and the old questions keep their order", () => {
+test("the interview has the optional look questions right after the call to action (the three pictures and the two new picture bands), then who the invitation is from, the page name and the day notes, and the old questions keep their order", () => {
   const keys = INTERVIEW.map((q) => q.key);
   const i = keys.indexOf("cta_line");
   assert.deepEqual(keys.slice(i + 1, i + 4), ["taxes_included", "hero_photo", "host_photo"]);
-  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "host_names", "page_label", "tone", "show_prices", "show_rating"]);
+  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "photo_plan", "photo_cabin", "host_names", "page_label", "day_notes", "tone", "show_prices", "show_rating"]);
+  // Mark 2026-10-23 (design v2 of the group page): two more picture links and a note for any day of the plan, all optional
+  const byKey = Object.fromEntries(INTERVIEW.map((q) => [q.key, q]));
+  assert.equal(byKey["photo_plan"]!.type, "text"); assert.equal(byKey["photo_plan"]!.label, "Picture above the day-by-day plan (link, optional)");
+  assert.equal(byKey["photo_cabin"]!.type, "text"); assert.equal(byKey["photo_cabin"]!.label, "Picture above the cabin prices (link, optional)");
+  assert.equal(byKey["day_notes"]!.type, "long"); assert.equal(byKey["day_notes"]!.label, "A note for any day of the plan (optional)");
+  assert.equal(byKey["day_notes"]!.hint, "One line per day, starting with the date as the plan prints it, for example: May 11: The beach party and light show at the lighthouse.");
+  for (const k of ["photo_plan", "photo_cabin", "day_notes"]) assert.notEqual(byKey[k]!.required, true, `${k} is optional`);
+  // the rating question stays so stored answers still validate, but the page no longer shows it
+  assert.equal(byKey["show_rating"]!.type, "yesno"); assert.match(byKey["show_rating"]!.hint ?? "", /No longer shown on the group page/);
   const [taxes, hero, host] = [INTERVIEW[i + 1]!, INTERVIEW[i + 2]!, INTERVIEW[i + 3]!];
   assert.equal(taxes.type, "yesno"); assert.equal(taxes.fallback, false);
   assert.equal(taxes.label, "Do the quoted cabin prices include taxes and port fees?");
@@ -922,6 +931,7 @@ test("normalizeAnswers keeps the three look answers, and an empty interview leav
   assert.equal(blank["taxes_included"], false); assert.equal(blank["hero_photo"], ""); assert.equal(blank["host_photo"], "");
   assert.equal(normalizeAnswers({ taxes_included: "yes" })["taxes_included"], false, "only a real boolean counts as yes");
   assert.deepEqual(missingAnswers(blank), ["pitch", "audience", "occasion", "why_sailing"], "the look answers never block writing");
+  for (const k of ["photo_plan", "photo_cabin", "day_notes"]) assert.equal(blank[k], "", `${k} starts empty`);
 });
 
 test("safeImageUrl accepts https pictures on stillafloatcruising.com and on the project's public storage, and nothing else", () => {
@@ -987,24 +997,83 @@ test("safeImageUrl takes the storage host from SUPABASE_URL, and falls back to t
   withSupabaseUrl("not a url", () => { assert.equal(safeImageUrl(other), null); assert.equal(safeImageUrl("https://stillafloatcruising.com/a.jpg"), "https://stillafloatcruising.com/a.jpg", "our own host still works"); });
 });
 
+const NO_LOOK = { heroUrl: null, hostPhotoUrl: null, planPhotoUrl: null, cabinPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null, dayNotes: {}, credits: [] };
+
 test("pageLook passes only validated values: nulls for anything absent or refused, a real boolean for taxes", () => {
   withSupabaseUrl(SUPABASE_BASE, () => {
-    const good = pageLook(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxes_included: true }));
-    assert.deepEqual(good, { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`, taxesIncluded: true, hostNames: "Mark", label: null });
-    assert.deepEqual(pageLook(normalizeAnswers({})), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null }, "nothing answered: nothing changes on the page");
-    assert.deepEqual(pageLook({}), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null }, "answers that were never normalised");
+    const host = `${SUPABASE_BASE}/storage/v1/object/public/g/host.jpg`;
+    const good = pageLook(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: host, taxes_included: true }));
+    assert.deepEqual(good, { ...NO_LOOK, heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: host, taxesIncluded: true });
+    assert.deepEqual(pageLook(normalizeAnswers({})), NO_LOOK, "nothing answered: nothing changes on the page");
+    assert.deepEqual(pageLook({}), NO_LOOK, "answers that were never normalised");
     // each value stands on its own: a bad hero does not cost the hosts' photo, and the reverse
     const mixed = pageLook(normalizeAnswers({ hero_photo: "javascript:alert(1)", host_photo: "https://stillafloatcruising.com/h.jpg", taxes_included: true }));
-    assert.deepEqual(mixed, { heroUrl: null, hostPhotoUrl: "https://stillafloatcruising.com/h.jpg", taxesIncluded: true, hostNames: "Mark", label: null });
+    assert.deepEqual(mixed, { ...NO_LOOK, hostPhotoUrl: "https://stillafloatcruising.com/h.jpg", taxesIncluded: true });
     assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: "http://stillafloatcruising.com/h.jpg" })),
-      { heroUrl: "https://stillafloatcruising.com/h.jpg", hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null });
+      { ...NO_LOOK, heroUrl: "https://stillafloatcruising.com/h.jpg" });
     for (const bad of ["https://example.com/h.jpg", 'https://stillafloatcruising.com/h.jpg")', "data:image/png;base64,AAAA", "https://stillafloatcruising.com/h (1).jpg"]) {
-      assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: bad, host_photo: bad })), { heroUrl: null, hostPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null }, bad);
+      assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: bad, host_photo: bad, photo_plan: bad, photo_cabin: bad })), NO_LOOK, bad);
     }
-    assert.deepEqual(Object.keys(pageLook({})).sort(), ["heroUrl", "hostNames", "hostPhotoUrl", "label", "taxesIncluded"], "nothing else about the answers leaks into the look");
+    assert.deepEqual(Object.keys(pageLook({})).sort(), ["cabinPhotoUrl", "credits", "dayNotes", "heroUrl", "hostNames", "hostPhotoUrl", "label", "planPhotoUrl", "taxesIncluded"], "nothing else about the answers leaks into the look");
     assert.equal(typeof pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, "boolean");
     assert.equal(pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, false);
   });
+});
+
+test("pageLook carries the picture bands above the plan and the cabins, each validated on its own", () => {
+  withSupabaseUrl(SUPABASE_BASE, () => {
+    const plan = `${SUPABASE_BASE}/storage/v1/object/public/group-marketing/assets/p.jpg`, cabin = "https://stillafloatcruising.com/c.jpg";
+    const both = pageLook(normalizeAnswers({ photo_plan: ` ${plan} `, photo_cabin: cabin }));
+    assert.equal(both.planPhotoUrl, plan); assert.equal(both.cabinPhotoUrl, cabin);
+    assert.equal(both.heroUrl, null, "the bands are not the top picture");
+    const one = pageLook(normalizeAnswers({ photo_plan: "https://example.com/p.jpg", photo_cabin: cabin }));
+    assert.equal(one.planPhotoUrl, null, "a link on another host is refused"); assert.equal(one.cabinPhotoUrl, cabin, "and does not cost the other band");
+    assert.deepEqual(pageLook(normalizeAnswers({ photo_plan: "http://stillafloatcruising.com/p.jpg" })).planPhotoUrl, null, "http is refused");
+  });
+});
+
+test("dayNotes: one line per day, keyed by the date before the first colon; lines without a date or a note are skipped, markup is dropped, a later line for the same date wins", () => {
+  const notes = (day_notes: string) => pageLook(normalizeAnswers({ day_notes })).dayNotes;
+  assert.deepEqual(notes("May 11: The beach party and light show at the lighthouse."), { "May 11": "The beach party and light show at the lighthouse." });
+  assert.deepEqual(notes("  May 10 :  Dolphins, beaches: shopping…  \r\nMay 11: Sunrise on the beach.\n"), { "May 10": "Dolphins, beaches: shopping…", "May 11": "Sunrise on the beach." }, "trimmed; only the first colon splits; CRLF is fine");
+  assert.deepEqual(notes("no colon here\n: no date\nMay 12:\nMay 13:   \n\nMay 14: kept"), { "May 14": "kept" });
+  assert.deepEqual(notes("May 11: first\nMay 11: second"), { "May 11": "second" });
+  assert.deepEqual(notes("May 11: <b>Bold</b> & <script>x</script>"), { "May 11": "Bold & x" }, "tags are dropped; the page shows the rest as text");
+  assert.deepEqual(notes("11 de mayo: La fiesta en la playa."), { "11 de mayo": "La fiesta en la playa." });
+  assert.deepEqual(notes(""), {}); assert.deepEqual(pageLook({}).dayNotes, {});
+  assert.equal(notes(`May 11: ${"x".repeat(500)}`)["May 11"]!.length, 300, "one note is cut at 300 characters");
+  const many = notes(Array.from({ length: 30 }, (_, i) => `Day ${i + 1}: note ${i + 1}`).join("\n"));
+  assert.equal(Object.keys(many).length, 20, "at most twenty days carry a note");
+  assert.deepEqual(notes("__proto__: nope"), JSON.parse('{"__proto__":"nope"}'), "an odd date is just a key");
+  assert.equal(({} as Record<string, unknown>)["polluted"], undefined);
+});
+
+test("credits: the attribution lines of the pictures shown, in the pictures' order, de-duplicated; a picture with no row or no attribution has none; the hosts' photo never has one", () => {
+  const hero = "https://stillafloatcruising.com/h.jpg", plan = "https://stillafloatcruising.com/p.jpg", cabin = "https://stillafloatcruising.com/c.jpg", host = "https://stillafloatcruising.com/hosts.jpg";
+  const look = pageLook(normalizeAnswers({ hero_photo: hero, host_photo: host, photo_plan: plan, photo_cabin: cabin }));
+  const links = creditedPictureLinks(look);
+  assert.deepEqual(links, [hero, plan, cabin], "the hosts' photo is not looked up");
+  const rows = [
+    { public_url: cabin, attribution: "Photo: C · CC0 · Wikimedia Commons" }, { public_url: hero, attribution: "Photo: A · CC BY 2.0 · Wikimedia Commons" },
+    { public_url: plan, attribution: "  " }, { public_url: host, attribution: "Photo: Hosts · CC0" }, { public_url: "https://stillafloatcruising.com/other.jpg", attribution: "x" },
+  ];
+  assert.deepEqual(creditsForPictures(links, rows), ["Photo: A · CC BY 2.0 · Wikimedia Commons", "Photo: C · CC0 · Wikimedia Commons"]);
+  assert.deepEqual(creditsForPictures(links, []), []);
+  assert.deepEqual(creditsForPictures([], rows), []);
+  assert.deepEqual(creditedPictureLinks(pageLook(normalizeAnswers({ hero_photo: hero, photo_plan: hero }))), [hero], "one picture used twice is looked up once");
+  assert.deepEqual(creditedPictureLinks(pageLook({})), []);
+  const withCredits = pageLook(normalizeAnswers({ hero_photo: hero }), ["Photo: A · CC BY 2.0 · Wikimedia Commons", " Photo: A · CC BY 2.0 · Wikimedia Commons ", "", "Photo: B <b>· CC0</b>"]);
+  assert.deepEqual(withCredits.credits, ["Photo: A · CC BY 2.0 · Wikimedia Commons", "Photo: B b· CC0/b"], "trimmed, de-duplicated, empty lines dropped, markup characters dropped");
+  assert.deepEqual(pageLook({}).credits, []);
+});
+
+test("each day of the itinerary carries its ISO date, so the page can print the weekday and the short date", () => {
+  const f = buildFacts(file(), rating, "en");
+  assert.deepEqual(f.itinerary.map((d) => d.isoDate), ["2027-03-14", "2027-03-15", "2027-03-16", "2027-03-17", "2027-03-21"]);
+  assert.equal(f.itinerary[0]!.dateText, "March 14, 2027");
+  const none = buildFacts({ ...file(), group: { ...file().group, itinerary: [{ day: 1, date: "soon", port: "Miami, Florida", arrive: null, depart: null }] } }, rating, "en");
+  assert.equal(none.itinerary[0]!.isoDate, null, "a date that is not a date has none");
+  assert.deepEqual(buildFacts(file(), rating, "es").itinerary.map((d) => d.isoDate), f.itinerary.map((d) => d.isoDate), "the same in Spanish");
 });
 
 test("a picture link typed in the interview but refused is reported, so the page's silence is explained", () => {
@@ -1013,6 +1082,8 @@ test("a picture link typed in the interview but refused is reported, so the page
     assert.deepEqual(ignoredPictureAnswers(normalizeAnswers({ hero_photo: "https://stillafloatcruising.com/h.jpg" })), []);
     assert.deepEqual(ignoredPictureAnswers(normalizeAnswers({ hero_photo: "https://drive.google.com/x", host_photo: "https://stillafloatcruising.com/h.jpg" })), ["hero_photo"]);
     assert.deepEqual(ignoredPictureAnswers(normalizeAnswers({ hero_photo: "nope", host_photo: "http://stillafloatcruising.com/h.jpg" })), ["hero_photo", "host_photo"]);
+    assert.deepEqual(ignoredPictureAnswers(normalizeAnswers({ photo_plan: "https://drive.google.com/x", photo_cabin: "https://stillafloatcruising.com/c.jpg" })), ["photo_plan"], "the two picture bands are checked too");
+    assert.deepEqual(ignoredPictureAnswers(normalizeAnswers({ photo_cabin: "ftp://x" })), ["photo_cabin"]);
   });
 });
 
@@ -1020,17 +1091,17 @@ test("the digits in a picture link are not Mark's numbers: they never make a num
   const f = buildFacts(file(), rating, "en");
   const pitch = "Come along for $777 a head.";
   assert.equal(pitchNumberProblems({ pitch }, f).length, 1);
-  assert.equal(pitchNumberProblems(normalizeAnswers({ pitch, hero_photo: "https://stillafloatcruising.com/assets/images/777.jpg", host_photo: "https://stillafloatcruising.com/h-777.png" }), f).length, 1, "a link with 777 in it does not vouch for the price");
+  assert.equal(pitchNumberProblems(normalizeAnswers({ pitch, hero_photo: "https://stillafloatcruising.com/assets/images/777.jpg", host_photo: "https://stillafloatcruising.com/h-777.png", photo_plan: "https://stillafloatcruising.com/p-777.png", photo_cabin: "https://stillafloatcruising.com/c-777.png" }), f).length, 1, "a link with 777 in it does not vouch for the price");
   assert.deepEqual(pitchNumberProblems(normalizeAnswers({ pitch, extras: "The bus costs $777 to hire." }), f), [], "his own words still do");
 });
 
 
 // ── The page opens on a short personal welcome (Mark 2026-10-20: "we already had this discussion") ────────────────────
 
-test("the welcome is a copy field: first, optional (copy written before it has none), at most 420 characters, plain text", () => {
+test("the welcome is a copy field: first, optional (copy written before it has none), at most 700 characters (Mark 2026-10-23), plain text", () => {
   const w = COPY_FIELDS.find((x) => x.key === "welcome")!;
   assert.ok(w, "welcome is in COPY_FIELDS, so the dashboard's copy editor lists it");
-  assert.equal(w.max, 420); assert.equal(w.optional, true); assert.equal(w.long, true);
+  assert.equal(w.max, 700); assert.equal(w.optional, true); assert.equal(w.long, true);
   assert.equal(COPY_FIELDS[0]!.key, "welcome", "the first thing the page says is the first thing Mark reads");
   const props = (COPY_SCHEMA as { properties: Record<string, { type: unknown }> }).properties;
   assert.equal(props["welcome"]!.type, "string", "a new draft always carries one");
@@ -1044,8 +1115,8 @@ test("the welcome is a copy field: first, optional (copy written before it has n
 test("validateCopy: no welcome is fine (old copy); the welcome is held to the same length, markup, QR, number and banned-word rules as every other field", () => {
   const f = buildFacts(file(), rating, "en");
   assert.deepEqual(validateCopy({ ...goodCopy(), welcome: null }, f), [], "old copy has no welcome");
-  assert.deepEqual(validateCopy({ ...goodCopy(), welcome: "x".repeat(420) }, f), []);
-  assert.deepEqual(validateCopy({ ...goodCopy(), welcome: "x".repeat(421) }, f), [{ field: "welcome", problem: "too long: 421 of 420 characters — shorten it, or ask Mark" }]);
+  assert.deepEqual(validateCopy({ ...goodCopy(), welcome: "x".repeat(700) }, f), [], "the design's four short paragraphs fit");
+  assert.deepEqual(validateCopy({ ...goodCopy(), welcome: "x".repeat(701) }, f), [{ field: "welcome", problem: "too long: 701 of 700 characters — shorten it, or ask Mark" }]);
   assert.deepEqual(validateCopy({ ...goodCopy(), welcome: "We are glad you are here.\nSee you aboard!" }, f), [], "line breaks and a closing ! are fine");
   const bad = (welcome: string) => validateCopy({ ...goodCopy(), welcome }, f).filter((x) => x.field === "welcome").map((x) => x.problem);
   assert.ok(bad("Say <b>hello</b>").includes("contains markup"));
@@ -1074,12 +1145,13 @@ test("copyNotes on the welcome: missing, the headline or payoff again, a sentenc
   assert.deepEqual(copyNotes({ ...goodCopy(), welcome: null }, buildFacts(file(), rating, "es"), {}).map((n) => n.field), ["welcome"], "Spanish copy gets the missing-welcome note too");
 });
 
-test("the copy writer is told to write the welcome: first-person plural, Mark's register, new words, no price, no QR, 420 characters", () => {
+test("the copy writer is told to write the welcome: first-person plural, Mark's register, new words, no price, no QR, 700 characters", () => {
   const sys = systemPrompt("en");
   for (const rule of WELCOME_RULES) assert.ok(sys.includes(rule), "the welcome rule is in the system prompt");
   assert.ok(systemPrompt("es").includes(WELCOME_RULES[0]!), "and in the Spanish one");
   const rule = WELCOME_RULES.join("\n");
-  assert.match(rule, /at most 420 characters/);
+  assert.match(rule, /at most 700 characters/);
+  assert.match(rule, /a line that is all capitals and ends with "!" is shown in bold as the payoff/);
   assert.match(rule, /First-person plural/);
   assert.match(rule, /a capitalised payoff with \"!\" allowed/);
   assert.match(rule, /these are NEW words: never the headline sentence, never the payoff line, never a sentence of Mark's pitch/);
@@ -1129,7 +1201,10 @@ test("the public facts carry the cabin categories and their from-prices, and sti
   // show_prices off: neither the from-price nor the category prices
   const hidden = publicFacts(facts, { show_prices: false });
   assert.equal(hidden["fromPerPersonText"], null); assert.deepEqual(hidden["cabinPrices"], []);
-  assert.equal(publicFacts(facts, { show_rating: false })["rating"], null);
+  // Mark 2026-10-23: no ship rating on the invitation page, whatever the interview says; the sailing date (ISO) is there for the weekday
+  for (const show_rating of [true, false]) assert.ok(!("rating" in publicFacts(facts, { show_rating })), "the public facts never carry the ship's rating");
+  assert.equal(pub["sailDate"], "2027-03-14");
+  assert.deepEqual((pub["itinerary"] as Array<{ isoDate: string | null }>).map((d) => d.isoDate).slice(0, 2), ["2027-03-14", "2027-03-15"], "each day carries its ISO date for the page's weekday");
 });
 
 test("the public travel lines carry the guest's wording and the price unit, and no provider anywhere", () => {

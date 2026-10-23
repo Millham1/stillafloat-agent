@@ -70,10 +70,15 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "taxes_included", type: "yesno", label: "Do the quoted cabin prices include taxes and port fees?", fallback: false, hint: "Yes: the page says the price is per person with taxes and port fees included. No: the page keeps its usual line, that the price, taxes, fees and port expenses are confirmed in writing when they book." },
   { key: "hero_photo", type: "text", label: "Top picture for the group page (link, optional)", hint: "Replaces the site's generic picture at the top of the page. Paste the link of a picture kept on stillafloatcruising.com or in the site's own storage; a link anywhere else is ignored. Left blank, the page keeps the usual picture." },
   { key: "host_photo", type: "text", label: "Photo of the hosts, shown small in the top-right corner (link, optional)", hint: "A small framed photo of the hosts in the top-right corner of the top picture. Same rule: a link on stillafloatcruising.com or in the site's own storage. Left blank, no photo is shown." },
+  // Mark 2026-10-23 (design v2 of the group page): a picture band above the day-by-day plan and another above the cabin prices. Optional; the same own-hosts rule.
+  { key: "photo_plan", type: "text", label: "Picture above the day-by-day plan (link, optional)", hint: "A wide picture shown above the plan. Same rule as the others: a link on stillafloatcruising.com or in the site's own storage; a link anywhere else is ignored. Left blank, no picture is shown there." },
+  { key: "photo_cabin", type: "text", label: "Picture above the cabin prices (link, optional)", hint: "A wide picture shown above the cabin prices. Same rule: a link on stillafloatcruising.com or in the site's own storage. Left blank, no picture is shown there." },
   // Mark 2026-10-20 ("we already had this discussion"): the page opens on a short personal welcome from the hosts, signed with these names.
   { key: "host_names", type: "text", label: "Who is the invitation from? (e.g. Mark & Ceci)", hint: "Signs the short welcome note at the top of the group page, exactly as you type it. Left blank, it is signed Mark." },
   // Mark 2026-10-20: "the Millham F/F label is horrible. Label it \"Friends and Family 2027\"" — the group file's own name is for the office, not for guests.
   { key: "page_label", type: "text", label: "The name guests see on the group page (optional)", hint: "Shown on the picture and in the browser tab exactly as you type it, for example: Friends and Family 2027. Left blank, the group's name from the file is used." },
+  // Mark 2026-10-23: the day-by-day plan on the page is built from the itinerary; a line here adds a sentence of his own to one day.
+  { key: "day_notes", type: "long", label: "A note for any day of the plan (optional)", hint: "One line per day, starting with the date as the plan prints it, for example: May 11: The beach party and light show at the lighthouse." },
   { key: "tone", type: "choice", label: "Tone", fallback: "warm-humor",
     choices: [
       { value: "warm-humor", label: "Warm, with a little humor (the usual)" },
@@ -81,7 +86,7 @@ export const INTERVIEW: InterviewQuestion[] = [
       { value: "formal", label: "Respectful and formal" },
     ] },
   { key: "show_prices", type: "yesno", label: "Show prices on the page?", fallback: true },
-  { key: "show_rating", type: "yesno", label: "Show the ship's Conga Line score and note?", fallback: true },
+  { key: "show_rating", type: "yesno", label: "Show the ship's Conga Line score and note?", fallback: true, hint: "No longer shown on the group page (Mark 2026-10-23: no ship rating on the invitation). It only decides whether the copywriter may mention the score in the poster, post and email words." },
 ];
 
 /** The call-to-action line for this group: the interview's `cta_line` as Mark typed it, else the default for the medium. `custom` is true when it is his own line. */
@@ -168,7 +173,16 @@ export function safeImageUrl(u: unknown): string | null {
   return null;
 }
 
-export interface PageLook { heroUrl: string | null; hostPhotoUrl: string | null; taxesIncluded: boolean; hostNames: string; label: string | null }
+export interface PageLook {
+  heroUrl: string | null; hostPhotoUrl: string | null;
+  /** The picture band above the day-by-day plan, and the one above the cabin prices (Mark 2026-10-23); null when not given or refused. */
+  planPhotoUrl: string | null; cabinPhotoUrl: string | null;
+  taxesIncluded: boolean; hostNames: string; label: string | null;
+  /** Mark's own sentence for a day of the plan, keyed by the date as the plan prints it ("May 11"). */
+  dayNotes: Record<string, string>;
+  /** The credit lines (attribution) of the pictures shown, de-duplicated; the hosts' photo has none. */
+  credits: string[];
+}
 
 /** Who signs the welcome note when the interview does not say. */
 export const DEFAULT_HOST_NAMES = "Mark";
@@ -192,14 +206,60 @@ export function pageLabel(answers: Record<string, string | boolean>): string | n
   return clean || null;
 }
 
-/** What the interview says about how the public page looks, reduced to values the page may use: validated picture links (null when absent or refused), a real boolean, and the signature. */
-export function pageLook(answers: Record<string, string | boolean>): PageLook {
-  return { heroUrl: safeImageUrl(answers["hero_photo"]), hostPhotoUrl: safeImageUrl(answers["host_photo"]), taxesIncluded: answers["taxes_included"] === true, hostNames: hostNames(answers), label: pageLabel(answers) };
+/** The longest note kept for one day of the plan, and the most days that may carry one. */
+export const DAY_NOTE_MAX = 300;
+export const DAY_NOTES_MAX = 20;
+
+/**
+ * The interview's `day_notes` (one line per day, "May 11: The beach party…") as an object keyed by the text before the first colon (trimmed) with the
+ * rest of the line (trimmed) as the note. A line with no colon, an empty date or an empty note is skipped; the second note for a date replaces the
+ * first; tags and markup characters are dropped and a note is cut at DAY_NOTE_MAX characters. The page matches the key against the date it prints for each day.
+ */
+export function dayNotes(answers: Record<string, string | boolean>): Record<string, string> {
+  const raw = typeof answers["day_notes"] === "string" ? answers["day_notes"] : "";
+  const out = new Map<string, string>();
+  for (const line of raw.split(/\r?\n/)) {
+    const i = line.indexOf(":");
+    if (i < 0) continue;
+    const key = line.slice(0, i).replace(/<[^>]*>/g, "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
+    const note = line.slice(i + 1).replace(/<[^>]*>/g, "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, DAY_NOTE_MAX).trim();
+    if (!key || !note) continue;
+    if (!out.has(key) && out.size >= DAY_NOTES_MAX) continue;
+    out.set(key, note);
+  }
+  return Object.fromEntries(out);
+}
+
+/**
+ * What the interview says about how the public page looks, reduced to values the page may use: validated picture links (null when absent or refused),
+ * a real boolean, the signature, Mark's per-day notes and the credit lines of the pictures. `credits` are the attribution strings the caller looked up
+ * for `creditedPictureLinks(...)` (the lookup is a database read, so it stays out of this pure function); they are trimmed and de-duplicated here.
+ */
+export function pageLook(answers: Record<string, string | boolean>, attributions: readonly string[] = []): PageLook {
+  return {
+    heroUrl: safeImageUrl(answers["hero_photo"]), hostPhotoUrl: safeImageUrl(answers["host_photo"]),
+    planPhotoUrl: safeImageUrl(answers["photo_plan"]), cabinPhotoUrl: safeImageUrl(answers["photo_cabin"]),
+    taxesIncluded: answers["taxes_included"] === true, hostNames: hostNames(answers), label: pageLabel(answers),
+    dayNotes: dayNotes(answers),
+    credits: [...new Set(attributions.filter((a): a is string => typeof a === "string").map((a) => a.replace(/[<>]/g, "").replace(/\s+/g, " ").trim()).filter(Boolean))],
+  };
+}
+
+/** The pictures of the page that carry a credit: the top picture, then the one above the plan, then the one above the cabins (the hosts' photo has none). Null links are left out. */
+export function creditedPictureLinks(look: Pick<PageLook, "heroUrl" | "planPhotoUrl" | "cabinPhotoUrl">): string[] {
+  return [...new Set([look.heroUrl, look.planPhotoUrl, look.cabinPhotoUrl].filter((u): u is string => !!u))];
+}
+
+/** The credit lines for those pictures, in the pictures' order, from the `group_assets` rows found for them (a picture with no row, or no attribution, has no credit). */
+export function creditsForPictures(links: readonly string[], rows: ReadonlyArray<{ public_url?: unknown; attribution?: unknown }>): string[] {
+  const byUrl = new Map<string, string>();
+  for (const r of rows) if (typeof r.public_url === "string" && typeof r.attribution === "string" && r.attribution.trim()) byUrl.set(r.public_url, r.attribution);
+  return links.map((u) => byUrl.get(u)).filter((a): a is string => !!a);
 }
 
 /** The picture-link answers that are filled in but are not accepted (the dashboard says so, because the page quietly shows nothing for them). */
 export function ignoredPictureAnswers(answers: Record<string, string | boolean>): string[] {
-  return (["hero_photo", "host_photo"] as const).filter((k) => typeof answers[k] === "string" && answers[k] !== "" && safeImageUrl(answers[k]) === null);
+  return (["hero_photo", "host_photo", "photo_plan", "photo_cabin"] as const).filter((k) => typeof answers[k] === "string" && answers[k] !== "" && safeImageUrl(answers[k]) === null);
 }
 
 /** The longest answer kept. The pitch is never cut to fit: the answers route refuses a longer one. */
@@ -315,6 +375,8 @@ export interface CabinOffer {
 
 export interface ItineraryLine {
   day: number | null;
+  /** The day's date as YYYY-MM-DD (the page prints the weekday and the short date from it); null when the file has none. */
+  isoDate: string | null;
   dateText: string | null;
   port: string;
   timesText: string | null;
@@ -481,7 +543,7 @@ export function buildFacts(
     const times = arrive && depart ? `${arrive} – ${depart}`
       : arrive ? (lang === "es" ? `llegada ${arrive}` : `arrive ${arrive}`)
       : depart ? (lang === "es" ? `salida ${depart}` : `depart ${depart}`) : null;
-    return { day: Number.isInteger(s.day) ? s.day : null, dateText: formatDate(s.date, lang), port, timesText: times, seaDay: SEA_DAY.test(port) };
+    return { day: Number.isInteger(s.day) ? s.day : null, isoDate: typeof s.date === "string" && /^\d{4}-\d{2}-\d{2}/.test(s.date) ? s.date.slice(0, 10) : null, dateText: formatDate(s.date, lang), port, timesText: times, seaDay: SEA_DAY.test(port) };
   }).filter((s: ItineraryLine) => s.port);
 
   // A quote often prints the home port as a code ("MIA"); the page and poster say the city, and the
@@ -614,13 +676,12 @@ export function publicFacts(f: GroupFacts, answers: Record<string, string | bool
   const showPrices = answers["show_prices"] !== false;
   return {
     lang: f.lang, business: f.business, groupName: f.groupName, line: f.line, ship: f.ship,
-    sailDateText: f.sailDateText, returnDateText: f.returnDateText, nights: f.nights, embarkPort: f.embarkPort,
+    sailDate: f.sailDate, sailDateText: f.sailDateText, returnDateText: f.returnDateText, nights: f.nights, embarkPort: f.embarkPort,
     travel: f.travel, perks: f.perks, planned: plannedForGroup(answers),
     ports: f.ports, itinerary: f.itinerary, amenities: f.amenities,
     fromPerPersonText: showPrices ? f.fromPerPersonText : null,
     cabinPrices: showPrices ? cabinPrices(f.cabins) : [],
     bookByText: f.bookByText, finalPaymentText: f.finalPaymentText,
-    rating: answers["show_rating"] !== false ? f.rating : null,
     markSailing: answers["mark_sailing"] === true,
   };
 }
@@ -647,7 +708,7 @@ export const COPY_FIELDS: Array<{ key: keyof GroupCopy; label: string; max: numb
   // Mark 2026-10-20 ("we already had this discussion"): the person who opens the group page has just read the poster, the Facebook post or the
   // email, so the page opens on a short personal welcome from the hosts, then the Count me in form. The headline, subhead, intro, why_ship and
   // who_for stay in the file (the poster and the other pieces use them) but the page does not show them.
-  { key: "welcome", label: "Welcome note from the hosts (opens the group page)", max: 420, long: true, optional: true },
+  { key: "welcome", label: "Welcome note from the hosts (opens the group page)", max: 700, long: true, optional: true },
   // Mark 2026-10-19: the headline IS the walk-through sentence ("Imagine ... then ... sunrise…"), one rising sentence through his moments, so it is
   // long (220, was 90 for a four-word hook); the line under it is the capitalised payoff ("ALL ON THE SAME CRUISE!").
   { key: "headline", label: "Headline (the one rising sentence through the moments)", max: 220 },
@@ -762,7 +823,7 @@ export function withoutPitch(pitch: string | null | undefined, text: string): st
   return out;
 }
 
-const PICTURE_ANSWERS = new Set(["hero_photo", "host_photo"]);
+const PICTURE_ANSWERS = new Set(["hero_photo", "host_photo", "photo_plan", "photo_cabin"]);
 
 /** The answers' text apart from the pitch: the numbers in it are Mark's to state without a second source (a picture link's digits are not his words). */
 function otherAnswersText(answers: Record<string, string | boolean>): string {
@@ -1140,7 +1201,7 @@ export function pitchIsHis(lang: Lang): string {
  * post or the email, so the page does not repeat them: it opens on a short personal note from the hosts, then the Count me in form.
  */
 export const WELCOME_RULES: string[] = [
-  "- welcome: the short personal note that opens the group page, from the hosts to the reader, at most 420 characters (one to three sentences; a line break is fine). First-person plural (\"we\"), warm, in Mark's register: a \"…\" where he would pause, a capitalised payoff with \"!\" allowed, his adjectives. The reader has JUST read the poster, the Facebook post or the email, so these are NEW words: never the headline sentence, never the payoff line, never a sentence of Mark's pitch. No prices, no dates or numbers, no QR code and no call to action (the Count me in form sits directly under the note). Plain text, no names or signature (the system signs it).",
+  "- welcome: the short personal note that opens the group page, from the hosts to the reader, at most 700 characters (a few short paragraphs, each on its own line; a line that is all capitals and ends with \"!\" is shown in bold as the payoff). First-person plural (\"we\"), warm, in Mark's register: a \"…\" where he would pause, a capitalised payoff with \"!\" allowed, his adjectives. The reader has JUST read the poster, the Facebook post or the email, so these are NEW words: never the headline sentence, never the payoff line, never a sentence of Mark's pitch. No prices, no dates or numbers, no QR code and no call to action (the Count me in form sits directly under the note). Plain text, no names or signature (the system signs it).",
 ];
 
 export function systemPrompt(lang: Lang, answers: Record<string, string | boolean> = {}): string {

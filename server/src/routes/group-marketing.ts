@@ -9,7 +9,7 @@ import { createAction } from "../lib/actions";
 import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
-  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote,
+  ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote,
   publicFacts, shipSlugCandidate, systemPrompt, tidyCopy, userPrompt, validateCopy,
   type GroupCopy, type GroupFacts, type Lang,
 } from "../lib/group-marketing";
@@ -303,11 +303,20 @@ router.get("/group-page/:code", async (req: Request, res: Response) => {
     const facts = buildFacts({ group, cabins, travel }, rating, lang);
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Robots-Tag", "noindex, nofollow");
+    // The credit lines of the pictures the page shows (Mark 2026-10-23: a small photo-credits line in the footer): one read of group_assets by the
+    // pictures' public addresses. A failed read costs the credit line, never the page.
+    const links = creditedPictureLinks(pageLook(answers));
+    let credits: string[] = [];
+    if (links.length) {
+      const { data: assetRows, error: ae } = await db().from("group_assets").select("public_url, attribution").in("public_url", links);
+      if (ae) logger.warn({ err: ae.message }, "group page: photo credits lookup failed (the page is served without its credit line)");
+      else credits = creditsForPictures(links, (assetRows ?? []) as Row[]);
+    }
     return res.json({
       success: true, live, preview: preview && !live, langs,
       facts: publicFacts(facts, answers),
-      // How the page looks (the interview's picture links and taxes answer, and who signs the welcome): only validated values, nulls when absent or refused.
-      look: pageLook(answers),
+      // How the page looks (the interview's picture links and taxes answer, who signs the welcome, Mark's notes for days of the plan and the pictures' credit lines): only validated values, nulls when absent or refused.
+      look: pageLook(answers, credits),
       // Only what the page shows: the welcome, the organizer's line and the button's words (publicCopy says why).
       copy: publicCopy(copy),
       turnstileSiteKey: process.env["TURNSTILE_SITE_KEY"] || "",
