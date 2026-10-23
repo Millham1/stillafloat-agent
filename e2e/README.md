@@ -26,6 +26,12 @@ This folder is that test, and the tools around it make it the only road to prod.
 2. **Partial never passes.** `--only` runs are recorded as partial and never open the gate.
 3. **Dev is the mirror.** Every check runs on dev unless it says why not (`prodOnlyBecause`). A
    failure that exists only on dev is a dev-mirror gap to FIX on dev (seed/enable), not to waive.
+   Dev's standing supplies (each switched on in its shared.env, each refusing to run on the production
+   host): the labelled test storm (`DEV_STORM_FIXTURE=1`, lib/dev-storm-fixture.ts), the sink-mode social
+   poster and its feeder (`SOCIAL_POSTER_SINK=1`, lib/social-sink.ts), the news feeder that keeps three
+   approved stories inside the newsletter's window by approving candidates through the news agent
+   (`DEV_NEWS_FEEDER=1`, lib/dev-news-feeder.ts — 2026-10-22: an empty pool drafted both editions with no
+   stories), one confirmed test subscriber per language, and the weekly marketing job running as on prod.
 4. **Prod is read-only.** In prod mode the harness refuses writes; only refusal paths are probed.
 5. **Covers must be real.** A check that claims to cover a route it never requested fails.
 6. **No cooldown between sweeps (Mark, 2026-10-11).** Every request the gate makes carries its own client

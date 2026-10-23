@@ -667,7 +667,10 @@ export default [
   //        unsubscribe /api/unsubscribe?email=&sig=       → NOT requested (it unsubscribes)
   //        images     /assets/…                           → load
   //   3. every quick-hit, video, gear and commentary in the saved issue is in the email.
-  // A missing Spanish issue on dev (prod has one) is UNTESTABLE: dev does not mirror prod.
+  // Both boxes draft both editions every Thursday (dev runs the weekly job like prod); a missing issue means that job
+  // did not write it. Story links are the saved issue's quick hits — a quiet news week has none (lib/newsletter.ts,
+  // Mark 2026-08-29) — so the email and the issue are compared with each other, never with a count the week should have;
+  // dev's pool is held supplied by editorial.approved-stories-for-newsletter (the dev news feeder).
   {
     id: "flows.newsletter-links",
     basis: "ruling: stillafloat-newsletter.md — every story, commentary, video, gear and booking link in the weekly letter opens live content in the issue's language; unsubscribe and gear links are checked by form, never followed",
@@ -680,7 +683,7 @@ export default [
       let itemById = null; // the gear list, read only when an issue carries a gear link
       for (const lang of ["en", "es"]) {
         const draft = t.success(await t.get(`/api/newsletter/draft?lang=${lang}`, { auth: true })).draft;
-        t.require(draft && draft.subject, `there is no ${lang === "es" ? "Spanish" : "English"} newsletter issue on this box, so its links cannot be followed${t.mode === "dev" ? " (prod has one: dev does not mirror prod's newsletter)" : ""}`);
+        t.require(draft && draft.subject, `there is no ${lang === "es" ? "Spanish" : "English"} newsletter issue on this box, so its links cannot be followed${t.mode === "dev" ? " (dev drafts its own issue every Thursday like prod; the Thursday job did not write one)" : ""}`);
         t.equal(draft.lang || "en", lang, `the ${lang} issue's language`);
         const res = await t.get(`/api/newsletter/email?lang=${lang}`, { auth: true });
         const html = t.html(res);
@@ -700,7 +703,8 @@ export default [
         }
         L.check(unsub === 1, `the ${lang} issue has ${unsub} unsubscribe links (must be exactly 1)`);
         L.check(booking >= 1, `the ${lang} issue has no Work-with-Mark link`);
-        t.atLeast(story.length, 1, `story links in the ${lang} issue`);
+        const hits = (draft.quickHits || []).filter((h) => h && h.url).length;
+        L.check((story.length > 0) === (hits > 0) && story.length >= hits, `the ${lang} issue carries ${hits} story quick hits but its email has ${story.length} story links`);
         // the saved issue's pieces are all in the email
         for (const h of draft.quickHits || []) if (h && h.url) L.check(story.some((u) => u.pathname === new URL(h.url).pathname), `the ${lang} issue's quick hit "${String(h.text).slice(0, 40)}" lost its story link in the email`);
         L.check(!draft.video || (video === draft.video.id && hrefs.includes(draft.video.url)), `the ${lang} issue features video ${draft.video?.id} but the email links ${video}`);

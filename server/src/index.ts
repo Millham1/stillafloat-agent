@@ -12,6 +12,7 @@ import { draftNewsletter, saveDraft, loadDraft, sendWeeklyIssue, resumeNewslette
 import { EMPTY_ISSUE_MESSAGE } from "./lib/newsletter-freshness";
 import { notifyMark, reviewUrl } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
+import { feedDevNewsPool } from "./lib/dev-news-feeder";
 import { setSeaRouteLogger } from "./lib/sea-route";
 import { runGuidesPrerender } from "./lib/prerender-guides";
 import { writeLlmsTxt } from "./lib/llms-txt";
@@ -193,7 +194,13 @@ function scheduleSubscriberHygiene() {
 setSeaRouteLogger((meta, msg) => logger.warn(meta, msg));
 
 function scheduleNewsPrerender() {
-  const tick = () => runJob("scheduleNewsPrerender", () => runNewsPrerender(), { logFail: "News prerender tick failed" });
+  const tick = () => runJob("scheduleNewsPrerender", async () => {
+    // On the dev mirror DEV_NEWS_FEEDER=1 keeps the approved-story pool supplied — when fewer than three
+    // approved stories are inside the newsletter's window it approves candidates through the news agent,
+    // right before the pages are written, so Thursday's draft always has stories (lib/dev-news-feeder.ts).
+    await feedDevNewsPool().catch((err) => logger.warn({ err }, "dev news feeder: could not feed the story pool"));
+    return runNewsPrerender();
+  }, { logFail: "News prerender tick failed" });
   setTimeout(() => { tick().catch(() => {}); }, 40_000);
   setInterval(() => { tick().catch(() => {}); }, 60 * 60 * 1000);
   logger.info("News prerender scheduler active — on boot + hourly");

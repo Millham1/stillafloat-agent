@@ -114,7 +114,7 @@ async function refusesWithoutKey(t, method, path, body = {}) {
 // Cited source for each language's issue check (Mark 2026-10-09: a gate check tests a property of the site, never a state of the world).
 const NEWSLETTER_BASIS = {
   "en": "ruling: stillafloat-newsletter.md — Still Afloat Weekly drafts every Thursday; the review page wraps the exact email, every link opens a real page in the reader's language, the unsubscribe link is signed, and the featured video is in the edition's own language",
-  "es": "ruling: stillafloat-es-first-class.md — the Spanish issue is first-class: drafted the same week as the English one, Spanish links and video, no English fallback (7/9 and 10/3 incidents)"
+  "es": "ruling: stillafloat-es-first-class.md — the Spanish issue is first-class: drafted the same week as the English one, Spanish links and video, no English fallback (7/9 and 10/3 incidents); it is a build of the English issue that goes out right behind it and is never put in front of Mark (mark-en-approval-implies-es-translation.md, 10/8 and 10/16), so its review page is a preview with no edit panel and no send button"
 };
 
 function newsletterCheck(lang) {
@@ -133,7 +133,7 @@ function newsletterCheck(lang) {
       const d = t.success(await t.get(`/api/newsletter/draft${q}`, { auth: true })).draft;
       t.require(d && typeof d === "object",
         `there is no ${name} newsletter issue on this box, so its email preview and links cannot be tested` +
-        (t.mode === "dev" ? " — the weekly draft job is switched off on dev (DISABLE_WEEKLY_MARKETING); copy prod's current issue into dev's newsletter-draft" + (lang === "es" ? "-es" : "") + " store (no model call needed)" : ""));
+        (t.mode === "dev" ? " — dev drafts its own issue every Thursday 09:00 Eastern like prod (DISABLE_WEEKLY_MARKETING=0, Mark's 2026-10-04 mirror ruling), so the Thursday job did not write one" : ""));
       t.fields(d, ["subject", "lang", "status", "generatedAt"], `the ${name} issue`);
       t.equal(d.lang, lang, `the ${name} issue's language`);
       t.ok(["pending", "sending", "sent"].includes(d.status), `the ${name} issue has an unknown status "${d.status}"`);
@@ -256,7 +256,17 @@ function newsletterCheck(lang) {
       // Mark's review page wraps the same preview, with the language tabs
       const review = t.html(await t.get(`/api/newsletter/review${q}`, { auth: true }),
         { mustContain: [`Newsletter Review (${LANG})`, `/api/newsletter/email?lang=${lang}`, "/api/newsletter/review?lang=en", "/api/newsletter/review?lang=es"] });
-      if (d.status === "pending") t.ok(review.includes('id="edit"'), `the ${name} review page has no edit panel for an issue that has not gone out`);
+      // Editing lives on the English page only: the Spanish edition is built from the English issue and goes out behind it
+      // (routes/newsletter.ts readOnly; Mark 2026-10-08 and 2026-10-16), so its page is a preview that says so, with no edit
+      // panel and no Generate / Approve & Send buttons. The English page keeps its edit panel until the issue has gone out.
+      if (lang === "en") {
+        t.equal(review.includes('id="edit"'), d.status !== "sent", d.status === "sent" ? "the English review page still offers to edit an issue that has gone out" : "the English review page has no edit panel for an issue that has not gone out");
+        t.ok(review.includes("Approve &amp; Send"), "the English review page has no Approve & Send button");
+      } else {
+        t.ok(!review.includes('id="edit"'), "the Spanish review page offers an edit panel, but the Spanish edition is built from the English issue and is never edited on its own");
+        t.ok(!review.includes("Approve &amp; Send") && !review.includes("Generate EN"), "the Spanish review page offers Generate or Approve & Send buttons — the Spanish edition goes out behind the English one, never on its own");
+        t.ok(/build of the English issue/i.test(review), "the Spanish review page does not say that the Spanish edition is built from the English issue");
+      }
       // the review page describes the same issue (its pills are built from the draft)
       t.ok(review.includes(`${(d.quickHits || []).length} quick hits`), `the ${name} review page shows a different number of quick hits than the issue has`);
       t.ok(review.includes(`>${d.status}</span>`), `the ${name} review page does not show the issue's status (${d.status})`);
@@ -276,11 +286,9 @@ function newsletterCheck(lang) {
       t.observe(`${lang} email links`, hrefs.length, "info");
       t.observe(`${lang} email sections`, ["letterTitle", "booking", "quickHits", "video", "affiliate", "photo", "commentary"].filter((k) => d[k] && (!Array.isArray(d[k]) || d[k].length)).join(","), "info");
 
-      // last: the issue must be current. Prod drafts every Thursday; a box whose issue is weeks old is
-      // previewing something no subscriber will get.
-      const ageDays = (Date.now() - ms(d.generatedAt)) / 86_400_000;
-      if (t.mode === "prod") t.fresh(d.generatedAt, 8 * 24, `the ${name} newsletter issue (drafted weekly on Thursday)`);
-      else t.require(ageDays <= 8, `dev's ${name} newsletter issue is ${Math.round(ageDays)} days old (prod drafts weekly; the job is off on dev), so the preview does not test what subscribers get — copy prod's current issue into dev`);
+      // last: the issue must be current. Both boxes draft every Thursday (dev runs the weekly job like prod); a box
+      // whose issue is weeks old is previewing something no subscriber will get.
+      t.fresh(d.generatedAt, 8 * 24, `the ${name} newsletter issue (drafted weekly on Thursday)`);
     },
   };
 }
@@ -656,8 +664,18 @@ export default [
       }
       t.equal(noSpanish, 0, "approved stories with no Spanish title or summary (the Spanish issue falls back to English for them)");
       t.ok(badSpanish.length === 0, `${badSpanish.length} approved stories have a broken Spanish twin (${[...new Set(badSpanish)].join(", ")})`);
+      // Dev keeps its own supply (Mark's 2026-10-04 mirror ruling, like the storm fixture and the sink poster's feeder): the
+      // dev news feeder approves candidates through the news agent whenever fewer than three approved stories are inside the
+      // newsletter's 48-hour window (lib/dev-news-feeder.ts, DEV_NEWS_FEEDER=1, with the hourly news prerender), so every
+      // Thursday draft carries stories. 2026-10-22: the pool had none inside the window and both editions were drafted empty.
+      // The moment that counts is the later of written and approved (lib/newsletter-freshness.ts). On prod the count is
+      // Mark's own cadence: observed, never required.
+      const moment = (s) => { const ts = [ms(s.publishedAt), ms(s.approvedAt)].filter(Number.isFinite); return ts.length ? Math.max(...ts) : NaN; };
+      const fresh = body.stories.filter((s) => { const m = moment(s); return Number.isFinite(m) && t.now() - m <= 48 * 3_600_000; }).length;
+      if (t.mode === "dev") t.require(fresh >= 1, `dev has ${fresh} approved stories inside the newsletter's 48-hour window, so a Thursday draft would carry no stories (the 2026-10-22 failure): the dev news feeder (DEV_NEWS_FEEDER=1, lib/dev-news-feeder.ts, runs with the hourly news prerender) is off, or the news agent's queue has no candidates with a Spanish twin to approve`);
       if (body.stories[0]) t.observe("story keys", keysOf(body.stories[0]), "info");
       t.observe("approved stories", body.stories.length, "info");
+      t.observe("approved stories inside the newsletter's 48-hour window", fresh, "info");
     },
   },
 

@@ -42,7 +42,7 @@ const DAY = 24 * HOUR;
 const SITE = "https://stillafloatcruising.com";
 
 const DEV_OFF = {
-  weekly: "the weekly marketing job is switched off on the dev box (DISABLE_WEEKLY_MARKETING=1), so the release candidate cannot show it still writes the newsletter and commentary drafts",
+  weekly: "the weekly marketing job is switched off on this dev box (DISABLE_WEEKLY_MARKETING=1), so the release candidate cannot show it still writes the newsletter and commentary drafts — dev runs it like prod (Mark's 2026-10-04 mirror ruling): switch it on (DISABLE_WEEKLY_MARKETING=0)",
   poster: "the social poster has handled no post on the dev box in the last 7 days (it runs there in sink mode, SOCIAL_POSTER_SINK=1, with a feeder that approves pending test batches), so the release candidate cannot show the poster still handles due posts — check that the poster is switched on (DISABLE_SOCIAL_POSTER=0) and that dev has pending batches to feed it",
 };
 
@@ -400,7 +400,7 @@ export default [
     id: "jobs.weekly-marketing-drafts-current",
     basis: "ruling: stillafloat-newsletter.md — the newsletter is drafted Thursday 09:00 Eastern (English always, Spanish once a Spanish subscriber is confirmed) and the weekly commentary is staged Tuesday (scheduleWeeklyMarketing, server/src/index.ts)",
     title: "This week's newsletter draft (English, and Spanish once a Spanish subscriber exists) was written at Thursday's 9am run, this week's commentary at Tuesday's, and no draft is left unsent after Friday's auto-send",
-    covers: ["job scheduleWeeklyMarketing", "GET /api/newsletter/draft", "GET /api/commentary/draft", "GET /api/subscribers"],
+    covers: ["job scheduleWeeklyMarketing", "GET /api/newsletter/draft", "GET /api/commentary/draft", "GET /api/subscribers", "GET /api/healthz/jobs"],
     modes: ["dev", "prod"],
     run: async (t) => {
       const anon = await t.get("/api/commentary/draft");
@@ -411,10 +411,20 @@ export default [
       const fri = lastWeeklySlot(now, "Fri", 9);
       t.ok(Number.isFinite(thu) && Number.isFinite(tue) && Number.isFinite(fri), "could not work out the job's weekly slots");
       const iso = (ms) => new Date(ms).toISOString();
-      /** The draft is at least as new as the slot; on dev (job switched off) a miss is UNTESTABLE. */
+      // The job's own switch, from the job-health ledger (503 = some job is overdue; the report is still there). Dev runs the
+      // weekly job like prod (DISABLE_WEEKLY_MARKETING=0 since 2026-10), so a missed slot is a plain failure on both boxes;
+      // only a box that has the job switched OFF cannot show it (UNTESTABLE on dev — a mirror gap to fix; a fault on prod).
+      const ledgerRes = await t.get("/api/healthz/jobs", { auth: true });
+      t.ok(ledgerRes.status === 200 || ledgerRes.status === 503, `the job ledger answered ${ledgerRes.describe()}`);
+      const ledger = ledgerRes.json && typeof ledgerRes.json === "object" ? ledgerRes.json : t.json(ledgerRes);
+      const weeklyJob = (ledger.jobs || []).find((j) => j.name === "scheduleWeeklyMarketing");
+      t.ok(weeklyJob, "the job-health ledger has no entry for scheduleWeeklyMarketing");
+      const weeklyOff = Boolean(weeklyJob && weeklyJob.disabled);
+      if (weeklyOff) t.ok(t.mode === "dev", `the weekly marketing job is switched off on the production box (${weeklyJob.disabledWhy}), so no newsletter or commentary is ever drafted`);
+      /** The draft is at least as new as the slot; a box with the job switched off cannot show it (UNTESTABLE). */
       const sinceSlot = (when, slot, what) => {
         const ok = Date.parse(when || "") >= slot - 60_000;
-        if (!ok && t.mode === "dev") t.require(false, `${what} was written ${when || "never"}, before the ${iso(slot)} run: ${DEV_OFF.weekly}`);
+        if (!ok && weeklyOff) t.require(false, `${what} was written ${when || "never"}, before the ${iso(slot)} run: ${DEV_OFF.weekly}`);
         t.ok(ok, `${what} was written ${when || "never"}, before the job's ${iso(slot)} run — that run did not write it`);
       };
 
@@ -446,10 +456,16 @@ export default [
         // the Thursday run skips an edition whose last issue still owed someone a retry at 09:00
         const openAtSlot = Boolean(d.delivery && (!d.delivery.finishedAt || Date.parse(d.delivery.finishedAt) > thu));
         if (!openAtSlot) sinceSlot(d.generatedAt, thu, `the ${name} newsletter draft (written every Thursday 09:00 New York time)`);
-        // Friday 09:00: a pending draft under 8 days old is sent as saved
+        // Friday 09:00: a pending draft under 8 days old is sent as saved — unless the issue carries no stories: an empty
+        // issue is never sent (lib/newsletter-freshness.ts; 2026-10-15: both editions drafted with zero stories), Mark is
+        // told instead, and the draft stays pending until it is re-drafted with stories. That refusal is the site keeping
+        // its promise, so it is noted, not failed.
         if (d.status === "pending") {
           const g = Date.parse(d.generatedAt);
-          t.ok(!(fri > g && fri - g < 8 * DAY), `the ${name} newsletter draft written ${d.generatedAt} is still pending after the ${iso(fri)} Friday auto-send — the auto-send did not run`);
+          const pastFriday = fri > g && fri - g < 8 * DAY;
+          const hasStories = Array.isArray(d.storyIds) && d.storyIds.length > 0;
+          if (pastFriday && !hasStories) t.note(`the ${name} newsletter draft written ${d.generatedAt} has no stories, so Friday's auto-send refused it (by design) and it is still pending`);
+          else t.ok(!pastFriday, `the ${name} newsletter draft written ${d.generatedAt} is still pending after the ${iso(fri)} Friday auto-send — the auto-send did not run`);
         }
       }
 
@@ -472,7 +488,10 @@ export default [
   //   • queued recipients: the round must finish within queued × 45 s + 2 min settle + 10 min;
   //   • parked for the retry: retryAt may be at most 15 minutes past;
   //   • finished: every recipient is in a final state and the issue is marked sent.
-  // Dev has never sent an issue, so there is nothing to judge there (UNTESTABLE).
+  // Between Thursday's draft and the send the current issue has no ledger yet (the Thursday job writes a fresh draft):
+  // nothing has started, so nothing can be stuck — the honest empty case (Mark 2026-10-09: "a newsletter sent this
+  // week" is a state of the world, never a requirement; until 2026-10-23 this check sat UNTESTABLE for a day every week on
+  // both boxes). A "sending" or "sent" issue with no ledger IS a broken record and fails.
   {
     id: "jobs.newsletter-delivery-never-stuck",
     basis: "ruling: stillafloat-transactional-email.md — the weekly send is paced one email every 45 seconds and resumed by the five-minute delivery job, so no ledger is left half-sent (9/18 incident: 11 emails in 18 seconds)",
@@ -482,11 +501,17 @@ export default [
     incident: "2026-09-18: the Friday auto-send pushed 11 emails in 18 seconds, the relay blocked the mailbox, and the send still logged 11/11",
     run: async (t) => {
       const deliveries = [];
+      let issues = 0;
       for (const lang of ["en", "es"]) {
         const b = t.success(await t.get(`/api/newsletter/draft?lang=${lang}`, { auth: true }));
+        if (b.draft && typeof b.draft === "object") issues++;
         if (b.draft?.delivery) deliveries.push({ lang, draft: b.draft, d: b.draft.delivery });
+        else if (b.draft) t.ok(b.draft.status === "pending", `the ${lang === "es" ? "Spanish" : "English"} issue is "${b.draft.status}" but has no delivery ledger — a send that left no record (the ledger is written as each email goes)`);
       }
-      t.require(deliveries.length > 0, "no newsletter has ever been sent from this box (no delivery ledger on either edition), so the delivery job has nothing to show");
+      // empty ≠ pass: a box with no issue in either language has no record to judge (the Thursday job writes one every week)
+      t.ok(issues > 0, "there is no newsletter issue in either language, so there is no delivery record to judge — the Thursday job has never written one on this box");
+      t.observe("editions with a delivery ledger", deliveries.map((x) => x.lang).join(",") || "(none)", "info");
+      if (deliveries.length === 0) t.note("no send has started on either current issue (the Thursday draft is newer than the last send), so there is no delivery that could be stuck");
       const now = t.now();
       for (const { lang, draft, d } of deliveries) {
         const what = `the ${lang === "es" ? "Spanish" : "English"} newsletter delivery`;
