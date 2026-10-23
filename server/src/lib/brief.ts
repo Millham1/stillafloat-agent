@@ -1,6 +1,6 @@
 import { readJson, writeJson } from "./persistence";
 import { loadQueue } from "./social-agent";
-import { collectWaiting, pushWaiting, summarizeWaiting, type WaitingItem } from "./waiting";
+import { collectWaiting, pushWaiting, type WaitingItem } from "./waiting";
 import { listActivity, pruneActivity, type ActivityItem } from "./activity";
 import { logger } from "./logger";
 import { recentClickTotal } from "./affiliate-clicks";
@@ -211,9 +211,21 @@ export async function getStoredBrief(): Promise<Brief | null> {
   return readJson<Brief | null>(BRIEF_KEY, null);
 }
 
-/** One-line summary: the same words the "Waiting on you" notification uses. */
+/**
+ * The email's summary line: the phone's number first, then the brief's own counts in the
+ * words the release gate reads back (editorial.daily-brief-and-its-email). The phone itself
+ * gets the "Waiting on you" wording from lib/waiting-core.ts.
+ */
 function pushBody(brief: Brief): string {
-  return summarizeWaiting(brief.sections.waiting, { events: brief.counts.events, morning: true }).body.replace(/\n/g, " · ");
+  if (brief.nothingToDo) return "Nothing needs you today. Enjoy it. ⚓";
+  const c = brief.counts;
+  const bits: string[] = [];
+  if (c.waiting) bits.push(`${c.waiting} waiting on you`);
+  if (c.actions) bits.push(`${c.actions} to reply to`);
+  if (c.events) bits.push(`${c.events} on the calendar`);
+  if (c.socialPending) bits.push(`${c.socialPending} posts to review`);
+  if (c.tasks) bits.push(`${c.tasks} open tasks`);
+  return bits.join(" · ") || "Open your brief.";
 }
 
 function money(amount?: number, currency = "USD"): string {
