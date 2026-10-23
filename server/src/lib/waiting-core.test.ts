@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
-import { summarizeWaiting, describe, pushWaitingWith, WAITING_TAG, type WaitingItem, type WaitingState } from "./waiting-core";
+import { summarizeWaiting, describe, pushWaitingWith, isUndecidedStory, WAITING_TAG, type WaitingItem, type WaitingState } from "./waiting-core";
 
 const item = (key: string, group: WaitingItem["group"], label = key): WaitingItem => ({ key, group, label });
 const OCT22: WaitingItem[] = [
@@ -101,3 +101,10 @@ test("a state that cannot be read is treated as empty, so the first ever run pus
   assert.equal(r.pushed, true);
   assert.equal(r.added, 4);
 });
+
+// 2026-10-23: 14 "candidate" stories counted as 0 news stories to approve on prod.
+test("a news story waits for Mark while it is a candidate or has no status; a decision removes it", () => {
+  for (const status of ["candidate", "", undefined, null, "pending", "Candidate"]) assert.equal(isUndecidedStory({ status }), true, `status ${JSON.stringify(status)} should still be waiting`);
+  for (const status of ["approved", "featured", "rejected", "held", "published"]) assert.equal(isUndecidedStory({ status }), false, `status ${status} was decided`);
+});
+

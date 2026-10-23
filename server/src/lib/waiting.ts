@@ -28,7 +28,7 @@ import { sendPush } from "./push";
 import { reviewUrl } from "./notify";
 import { logger } from "./logger";
 import {
-  pushWaitingWith, type WaitingItem, type WaitingPushResult, type WaitingState,
+  pushWaitingWith, isUndecidedStory, type WaitingItem, type WaitingPushResult, type WaitingState,
 } from "./waiting-core";
 
 export type { WaitingItem, WaitingGroup, WaitingPushResult } from "./waiting-core";
@@ -74,7 +74,7 @@ async function newsPending(): Promise<WaitingItem[]> {
   if (!j.success || !Array.isArray(j.stories)) throw new Error("newsagent editorial-queue: no stories array");
   const url = newsReviewUrl();
   return j.stories
-    .filter((s) => !s.status) // a decided story (approved/featured/held/rejected) carries its status
+    .filter(isUndecidedStory) // "candidate" or no status = waiting; approved/featured/held/rejected = decided
     .map((s) => ({ key: `news:${s.id ?? s.title ?? ""}`, group: "news" as const, label: String(s.title ?? "Untitled"), url }));
 }
 
