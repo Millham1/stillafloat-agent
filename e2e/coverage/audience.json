@@ -23,7 +23,8 @@
     "flow:subscriber-admin-writes": "The successful paths of the subscriber admin actions: changing a subscriber's newsletter language, marking an address bounced (ops-manager bounce scanner), resending a confirmation.",
     "push:device-registration": "Registering and removing a push device for Mark's alerts (POST /api/push/subscribe and /unsubscribe) and the device count they report.",
     "push:alert-delivery": "A push notification actually reaching Mark's devices (POST /api/push/test, /api/push/notify, notifyMark).",
-    "push:operator-devices": "How many of Mark's devices are registered for alerts on each box, as the other box's watchdog reads it from GET /api/healthz/alerts with the canary token."
+    "push:operator-devices": "How many of Mark's devices are registered for alerts on each box, as the other box's watchdog reads it from GET /api/healthz/alerts with the canary token.",
+    "push:notification-shapes": "The two notification shapes Mark's phone shows (Waiting on you / Heads-up) and the no-push activity record: how POST /api/push/notify and lib/notify.ts shape every agent message (Mark, 2026-10-22)."
   },
   "exempt": {},
   "gaps": {

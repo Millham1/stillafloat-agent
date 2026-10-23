@@ -1323,6 +1323,8 @@ export async function stageWeeklyCommentary(options?: {
 
   if (options?.notify !== false) {
     void notifyMark({
+      kind: "waiting",
+      source: "commentary",
       title: "🗣️ This week's commentary is written — approve, add your thoughts, or reject",
       body: [written.suggestedTitle, subject.traction ? `📈 ${subject.traction.basis}` : ""]
         .filter(Boolean)
@@ -1628,6 +1630,8 @@ export async function synthesizeCommentary(markTake: string | null): Promise<Com
         // attributions were NOT checked against the live web — Mark must know before
         // he approves. 2026-09-06 this failed silently and stale terms shipped.
         void notifyMark({
+          kind: "fault",
+          source: "commentary",
           title: "Commentary verification DEGRADED — web search failed",
           body: `"${title}" was checked against its source articles only (${why.slice(0, 120)}). Dates, deadlines and attributions are unverified until a search-backed pass runs.`,
           url: reviewUrl("/api/commentary/review"),

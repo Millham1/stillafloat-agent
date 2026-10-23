@@ -1,9 +1,9 @@
 // actions.ts — the unified action queue (public.actions).
 //
 // One pipeline for everything that needs Mark's attention: an agent calls
-// createAction() → one row + exactly one notification (via notifyMark). The
-// brief renders pending rows with working inline buttons; resolving closes the
-// row. Dedup: one PENDING row per (type, source_ref) — re-creating an action
+// createAction() → one row + the one "Waiting on you: N" notification (via
+// notifyMark, kind "waiting"). The brief renders pending rows with working inline
+// buttons; resolving closes the row. Dedup: one PENDING row per (type, source_ref) — re-creating an action
 // for the same source while one is pending is a no-op (no notification spam).
 
 import { getSupabase } from "./persistence";
@@ -27,13 +27,14 @@ export async function createAction(a: {
   body?: string;
   buttons?: NotifyButton[];
   source_ref?: string;
-  /** Extra notification tag (defaults to type+source_ref). */
+  /** Legacy; the "Waiting on you" notification carries one fixed tag now. */
   tag?: string;
   /**
    * "high" lets the notification fall through to email when push delivers
    * nothing. For FAULTS only — a review queue filling up is not a fault.
+   * "lead": a customer waiting on Mark gets the same floor (2026-10-07).
    */
-  priority?: "high" | "normal";
+  priority?: "high" | "lead" | "normal";
 }): Promise<{ created: boolean; id?: string }> {
   const supabase = getSupabase();
 
@@ -63,10 +64,13 @@ export async function createAction(a: {
   }
 
   const id = (data as { id?: string } | null)?.id ?? "";
+  // The row IS the waiting item. The notification is the one "Waiting on you: N" list,
+  // recomputed live, which now includes this row (Mark, 2026-10-22).
   await notifyMark({
+    kind: "waiting",
+    source: a.type,
     title: a.title,
     body: a.body ?? "Open the brief to act.",
-    tag: a.tag ?? `${a.type}-${a.source_ref ?? id}`,
     buttons: a.buttons ?? [],
     priority: a.priority ?? "normal",
   });

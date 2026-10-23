@@ -562,7 +562,21 @@ export default [
       t.ok(Number.isInteger(s.tasksTotal) && s.tasksTotal >= s.tasks.length, "the brief lists more tasks than its total");
       // (How many tasks Mark has open is his workload, not the site's; opsReachable above proves the read worked.)
       t.ok(Number.isInteger(c.affiliateClicks28d) && c.affiliateClicks28d >= 0, "the brief's affiliate-click count is not a number");
-      t.equal(b.nothingToDo, c.actions === 0 && c.tasks === 0 && c.ideasNew === 0 && c.socialPending === 0, "the brief's \"nothing to do\" flag vs its counts");
+      // Two notification shapes (Mark, 2026-10-22): the brief carries the LIVE list of everything
+      // waiting on him — the number the phone's "Waiting on you: N" shows — the sources it could not
+      // read, the news queue, and the agents' activity record (the kinds that never push).
+      for (const k of ["waiting", "waitingDown", "activity"]) t.ok(Array.isArray(s[k]), `the brief's ${k} section is missing`);
+      t.equal(c.waiting, s.waiting.length, "brief count of items waiting on Mark vs its list");
+      t.equal(c.news, s.waiting.filter((w) => w.group === "news").length, "brief count of news stories to approve vs its list");
+      t.equal(s.news?.pending, c.news, "the brief's news section vs its count");
+      t.ok(c.waiting >= c.actions + c.socialPending, "mail needing a reply and social drafts are part of what is waiting on Mark");
+      t.equal(s.waitingDown.length, 0, `the brief could not read these sources, so their items are not counted: ${s.waitingDown.join(", ")}`);
+      for (const w of spread(s.waiting, 6)) t.fields(w, ["key", "group", "label"], "an item waiting on Mark");
+      for (const a of spread(s.activity, 4)) {
+        t.fields(a, ["at", "source", "title", "level"], "an entry in what the agents did today");
+        t.ok(["info", "fault"].includes(a.level), `an activity entry's level is "${a.level}"`);
+      }
+      t.equal(b.nothingToDo, c.waiting === 0 && c.tasks === 0 && c.ideasNew === 0, "the brief's \"nothing to do\" flag vs what is waiting on Mark");
       t.equal(s.social?.reviewPath, "/api/social/review", "the brief's social-review link");
       // "Waiting on you" is only the real action labels (ops-manager brief_feed ACTION_RULES, max 15):
       // 2026-07 the @Review catch-all leaked marketing and surveys into it.

@@ -573,6 +573,42 @@ export default [
 
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
+    id: "audience.notification-shapes",
+    basis: "ruling: stillafloat-inhouse-brief.md — Mark, 2026-10-22: two notification shapes only — one \"Waiting on you: N\" list that updates in place, and \"Heads-up: …\" for a meeting or a fault; everything else goes onto the brief page under \"What the agents did today\", never the phone",
+    title: "Every agent message is shaped into one of Mark's two notifications or the brief's activity record: a waiting trigger carries the one list tag and opens the brief, a heads-up and a fault carry the Heads-up prefix with different tags, an activity never buzzes, and a caller from before the shapes existed still means what it meant",
+    covers: ["POST /api/push/notify", "push:notification-shapes"],
+    modes: ["dev"],
+    devOnlyBecause: "a POST (dry-run: shapes the message, pushes and records nothing); prod sweeps are read-only",
+    incident: "2026-10-22: 12 pushes in a day from four agents in eight title styles; the 2-story news nudge was lost among them",
+    run: async (t) => {
+      const dry = async (body) => t.success(await post(t, "/api/push/notify", { ...body, dryRun: true }, { auth: true }), "ok");
+      const w = await dry({ kind: "waiting", source: "e2e", title: "📰 2 stories ready for review", body: "1. A\n2. B" });
+      t.equal(w.dryRun, true, "a dry run must say it was one (otherwise it pushed)");
+      t.equal(w.kind, "waiting", "the kind the backend resolved");
+      t.equal(w.shaped?.tag, "waiting-on-you", "the one tag every waiting notification carries");
+      t.matches(String(w.shaped?.url || ""), /\/brief\.html$/, "a waiting notification opens the brief, whatever the caller asked for");
+      t.equal(w.shaped?.pushes, true, "a waiting trigger can buzz (when the list grew)");
+      const h = await dry({ kind: "headsup", source: "e2e", title: "⏰ Meeting in ~60 min", body: "One Source webinar at 11:30" });
+      t.equal(h.shaped?.title, "Heads-up: Meeting in ~60 min", "the heads-up title: fixed prefix, caller's emoji dropped");
+      t.equal(h.shaped?.tag, "heads-up", "the heads-up tag");
+      const f = await dry({ kind: "fault", source: "e2e", title: "⚠️ AI unreachable", body: "Triage degraded." });
+      t.equal(f.shaped?.title, "Heads-up: ⚠️ AI unreachable", "the fault title");
+      t.equal(f.shaped?.priority, "high", "a fault keeps the email floor");
+      t.ok(f.shaped?.tag && f.shaped.tag !== h.shaped?.tag, "a fault shares the heads-up tag — a meeting reminder would replace it on the phone");
+      const a = await dry({ kind: "activity", source: "e2e", title: "🧹 cleared 12 promo emails", body: "" });
+      t.equal(a.shaped?.pushes, false, "an activity must never buzz the phone");
+      t.equal(a.shaped?.title, "cleared 12 promo emails", "an activity title is recorded plain, without the caller's emoji");
+      // Callers deployed before kinds existed sent only a tag.
+      t.equal((await dry({ title: "📰 3 stories ready", body: "x", tag: "editorial-digest" })).kind, "waiting", "the old news nudge still asks for a decision");
+      t.equal((await dry({ title: "Thin news queue", body: "x", tag: "editorial-scan-fault" })).kind, "fault", "the old scan-fault alert is still a fault");
+      t.equal((await dry({ title: "🗓️ Event added", body: "x", tag: "ops-alert" })).kind, "activity", "the ops-manager's old catch-all tag stops pushing");
+      t.equal((await dry({ title: "whatever", body: "x" })).kind, "activity", "a message that says nothing about itself is activity");
+      t.equal((await dry({ kind: "not-a-kind", title: "x", body: "x" })).kind, "activity", "an unknown kind is activity, never a push");
+    },
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────────────────────
+  {
     id: "audience.push-device-roundtrip",
     basis: "ruling: stillafloat-inhouse-brief.md — agent alerts go over Web Push to the Still Afloat app; a device can register and be removed, and the push-health sweep must flag a box with none (incident 2026-08-26)",
     title: "A device can register for Mark's push alerts and be removed again, sending refuses visitors and empty messages, and the push-health sweep flags a box with no device",

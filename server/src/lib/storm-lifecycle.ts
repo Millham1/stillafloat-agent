@@ -397,6 +397,8 @@ async function endAlert(row: LifecycleRow): Promise<void> {
         last_updated: new Date().toISOString(),
       }).eq("id", row.id);
       await notifyMark({
+        kind: "activity",
+        source: "storm",
         title: `🟢 All-clear sent: ${row.name ?? row.nhc_id} → ${counts.sent} subscriber${counts.sent === 1 ? "" : "s"}`,
         body: `${draft.headline}\nSent automatically when the feed dropped the system` +
           (counts.failed ? ` (${counts.failed} failed — see the dashboard).` : ". Nothing to do."),

@@ -127,6 +127,8 @@ async function warnIfEsMissing(post: { id: string; title: string; body_en: strin
   if (!missing && post.title_es) return false;
   logger.error({ id: post.id, missingBody: missing, missingTitle: !post.title_es }, "commentary: published without a complete Spanish twin");
   void notifyMark({
+    kind: "fault",
+    source: "commentary",
     title: "Commentary published WITHOUT its Spanish twin",
     body: `"${post.title}" has ${missing ? "no Spanish body" : "a Spanish body"}${post.title_es ? "" : " and no Spanish title"}. Translate and PATCH body_es/title_es.`,
     url: `${process.env["PUBLIC_URL"] || "https://stillafloatcruising.com"}/commentary.html?id=${post.id}`,

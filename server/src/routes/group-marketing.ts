@@ -5,7 +5,7 @@ import { requireToken, tokenOk } from "../lib/http-auth";
 import { logger } from "../lib/logger";
 import { llmJson } from "../lib/llm";
 import { verifyTurnstile } from "../lib/turnstile";
-import { notifyMark } from "../lib/notify";
+import { createAction } from "../lib/actions";
 import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
@@ -381,10 +381,15 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     });
     if (error) throw new Error(error.message);
 
-    void notifyMark({
+    // A lead is a decision waiting on Mark: one row in the queue (he clears it once he has
+    // replied) and the one "Waiting on you" notification, keeping the email floor a lead
+    // has had since 2026-10-07. Each enquiry is its own row, so two people interested in
+    // the same group never collapse into one.
+    void createAction({
+      type: "lead",
+      source_ref: `group-interest-${group.id}-${Date.now()}`,
       title: `Group reply: ${first}${last ? " " + last : ""}`,
       body: `${group.name} — ${guests ? guests + " guest(s), " : ""}${text(body["cabin_type"], 80) || "no cabin type picked"}. Reply within a few hours.`,
-      tag: `group-interest-${group.id}`,
       buttons: [{ label: "Open the group file", href: `/groups/${group.id}` }],
       priority: "lead",
     }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest notify failed"));
