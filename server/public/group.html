@@ -53,6 +53,7 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .panel h2{font-size:34px;line-height:1.1;color:var(--ink);margin-bottom:8px}
 .panel p{margin:0 0 10px;font-size:19px;color:var(--ink)}
 .panel .small{font-size:16px;color:var(--muted)}
+.panel .small.center{text-align:center}
 .field{margin:14px 0 0}
 .field label{display:block;font-size:16px;font-weight:700;color:var(--muted);margin-bottom:4px}
 .field input,.field select{display:block;width:100%;height:54px;border:2px solid #c9d6ea;border-radius:12px;background:#fff;padding:0 14px;font:inherit;font-size:19px;color:var(--ink)}
@@ -65,6 +66,15 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.25)}
 .btn:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
 .btn:disabled{opacity:.55;cursor:default}
+a.btn{text-decoration:none}
+/* After Count me in: the choice that replaces the form (Mark 2026-10-23). Two ways from here: finish it now (the yellow pill) or Mark calls (the outlined one). */
+.choice-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.choice-head h2{margin:0}
+.tick{flex:none;width:54px;height:54px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font:800 32px/1 'Baloo 2',sans-serif;color:var(--ink)}
+.btn-out{display:block;width:100%;cursor:pointer;border:2px solid var(--ink);border-radius:999px;background:transparent;color:var(--ink);font:800 22px/1 'Baloo 2',sans-serif;padding:16px 10px;text-align:center}
+.btn-out:hover:not(:disabled){background:rgba(7,24,63,.06)}
+.btn-out:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
+.btn-out:disabled{opacity:.55;cursor:default}
 .msg{margin:6px 0 0;font-size:19px;text-align:center}
 .msg.ok{color:#0b6b3a}.msg.err{color:#a12116}
 .panel .phone{font-size:17px;color:var(--muted);text-align:center;margin:0}
@@ -149,18 +159,32 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     <!-- 2. The one call to action. The page asks one thing, "I'm interested": no cabin picker, no availability, no cabin count
          (Mark 2026-10-19: "why would they see the available cabins before I know they are interested"). -->
     <section class="panel" id="interest">
-      <h2 data-t="put_name"></h2>
-      <p class="small" data-t="only_step"></p>
-      <form id="gp-form" novalidate>
-        <div class="field"><label for="f-name" data-t="f_name"></label><input id="f-name" type="text" autocomplete="name" data-ph="ph_name"></div>
-        <div class="field"><label for="f-contact" data-t="f_contact"></label><input id="f-contact" type="text" autocomplete="email" data-ph="ph_contact"></div>
-        <div class="field"><label for="f-guests" data-t="f_guests"></label><select id="f-guests"></select></div>
-        <div class="hp" aria-hidden="true"><label>Website<input type="text" id="f-website" tabindex="-1" autocomplete="off"></label></div>
-        <div id="gp-turnstile" data-appearance="interaction-only"></div>
-        <button class="btn" type="submit" id="gp-submit"></button>
-        <div class="msg" id="gp-msg" role="status"></div>
-      </form>
-      <p class="phone" id="gp-cta-blurb"></p>
+      <div id="gp-ask">
+        <h2 data-t="put_name"></h2>
+        <p class="small" data-t="only_step"></p>
+        <form id="gp-form" novalidate>
+          <div class="field"><label for="f-name" data-t="f_name"></label><input id="f-name" type="text" autocomplete="name" data-ph="ph_name"></div>
+          <div class="field"><label for="f-contact" data-t="f_contact"></label><input id="f-contact" type="text" autocomplete="email" data-ph="ph_contact"></div>
+          <div class="field"><label for="f-guests" data-t="f_guests"></label><select id="f-guests"></select></div>
+          <div class="hp" aria-hidden="true"><label>Website<input type="text" id="f-website" tabindex="-1" autocomplete="off"></label></div>
+          <div id="gp-turnstile" data-appearance="interaction-only"></div>
+          <button class="btn" type="submit" id="gp-submit"></button>
+          <div class="msg" id="gp-msg" role="status"></div>
+        </form>
+        <p class="phone" id="gp-cta-blurb"></p>
+      </div>
+
+      <!-- What the form becomes once they have counted themselves in (Mark 2026-10-23, design 5a): two ways from here, and the guest picks. -->
+      <div id="gp-choice" hidden>
+        <div class="choice-head"><div class="tick">&#10003;</div><h2 id="gp-choice-h"></h2></div>
+        <p id="gp-choice-lead"></p>
+        <a class="btn" id="gp-finish" href="#" style="margin:12px 0 6px"></a>
+        <p class="small center" id="gp-finish-note" style="margin:0 0 16px"></p>
+        <button type="button" class="btn-out" id="gp-call"></button>
+        <p class="small center" id="gp-call-note" style="margin:8px 0 14px"></p>
+        <p class="small" id="gp-choice-foot"></p>
+        <div class="msg" id="gp-choice-msg" role="status"></div>
+      </div>
     </section>
 
     <!-- 3. The plan, day by day: a picture band, then one sentence a day built from the itinerary (plus Mark's own note for a day). -->
@@ -229,7 +253,12 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     flex:'Planes de pago flexibles disponibles', upgrades:'Mejoras de cabina disponibles. Pregunte a Mark.', planned:'Planeado para el grupo:',
     dates:'Fechas que importan', book_by:'Reserve antes de', final_pay:'Pago final', we_sail:'Zarpamos', we_sail_from:'desde',
     travel:'Cómo llegar', travel_note:'¿Quiere algo de esto? Dígaselo a Mark cuando llame y él se encarga.',
-    photo:'Foto:', photos:'Fotos:'
+    photo:'Foto:', photos:'Fotos:',
+    choice_h:'¡Ya está en la lista, {first}!', choice_lead:'Dos caminos desde aquí. Usted decide.',
+    finish:'Lo termino ahora', finish_note:'Nombres, fechas de nacimiento y cuatro preguntas rápidas para elegir la cabina correcta. Unos tres minutos, y su cabina queda apartada.',
+    call:'Mark, llámeme', call_note:'Mark le llama o le escribe en un día y lo hace con usted.',
+    choice_foot:'Aquí no se paga nada y todavía no se firma nada. ¿No quería tocar? Llame o escriba a Mark al 919-346-6127 y lo quitamos de la lista.',
+    got_it_h:'Listo, {first}.', got_it_p:'Mark le llamará o le escribirá en un día.', err_call:'No se pudo enviar. Llame o escriba a Mark al 919-346-6127.'
   } : {
     loading:'Loading the invitation…', gone:'This page is not available. If your group sent you the link, email mark@stillafloatcruising.com.',
     preview:'PREVIEW — only you can see this page until you approve it.',
@@ -249,7 +278,12 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     flex:'Flexible Payment Plans Available', upgrades:'Cabin upgrades available. Ask Mark.', planned:'Planned for the group:',
     dates:'Dates that matter', book_by:'Reserve by', final_pay:'Final payment', we_sail:'We sail', we_sail_from:'from',
     travel:'Getting there', travel_note:"Want any of it? Say so when Mark calls and he'll line it up.",
-    photo:'Photo:', photos:'Photos:'
+    photo:'Photo:', photos:'Photos:',
+    choice_h:"You're on the list, {first}!", choice_lead:'Two ways from here. Your call.',
+    finish:"I'll finish it now", finish_note:'Names, birthdays and four quick questions so we pick the right cabin. About three minutes, and your cabin is held.',
+    call:'Mark, call me', call_note:'Mark calls or texts you within a day and does it with you.',
+    choice_foot:"Nothing to pay here, nothing to sign yet. Didn't mean to tap? Call or text Mark at 919-346-6127 and we'll take you off.",
+    got_it_h:'Got it, {first}.', got_it_p:'Mark will call or text you within a day.', err_call:'That did not go through. Call or text Mark at 919-346-6127.'
   };
   var LOCALE = ES ? 'es-419' : 'en-US';
 
@@ -420,6 +454,40 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     }
   }
 
+  // ── After Count me in: the choice that takes the form's place (Mark 2026-10-23). The answer carries the guest's own two links; "I'll finish it now" is a plain link
+  // to their details page, and "Mark, call me" tells us (the same route the email's button reaches) and swaps the panel's words. No links in the answer (an older server): the old thank-you.
+  var pendingCall = null;
+  function choiceToken(url){ var m = /[?&]t=([A-Za-z0-9_-]{43})/.exec(String(url || '')); return m ? m[1] : ''; }
+  function showChoice(first, links){
+    var link = String(links.detailsUrl || ''), tok = choiceToken(links.callUrl);
+    if(!/^https?:\/\//i.test(link) || !tok) return false;
+    pendingCall = { first: first, token: tok };
+    $('gp-choice-h').textContent = fill(T.choice_h, { first: first });
+    $('gp-choice-lead').textContent = T.choice_lead;
+    var go = $('gp-finish'); go.textContent = T.finish; go.href = link;
+    $('gp-finish-note').textContent = T.finish_note;
+    var callBtn = $('gp-call'); callBtn.textContent = T.call; callBtn.disabled = false;
+    $('gp-call-note').textContent = T.call_note;
+    $('gp-choice-foot').textContent = T.choice_foot;
+    $('gp-choice-msg').textContent = '';
+    $('gp-ask').hidden = true; $('gp-choice').hidden = false;
+    return true;
+  }
+  $('gp-call').addEventListener('click', function(){
+    if(!pendingCall) return;
+    var btn = $('gp-call'), note = $('gp-choice-msg'), who = pendingCall;
+    btn.disabled = true; note.className = 'msg'; note.textContent = T.sending;
+    fetch('/api/group-details/' + who.token + '/choice', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ choice: 'call', website: '' }) })
+      .then(function(r){ return r.ok; }, function(){ return false; })
+      .then(function(ok){
+        if(!ok){ btn.disabled = false; note.className = 'msg err'; note.textContent = T.err_call; return; }
+        note.textContent = '';
+        $('gp-choice-h').textContent = fill(T.got_it_h, { first: who.first });
+        $('gp-choice-lead').textContent = T.got_it_p;
+        ['gp-finish', 'gp-finish-note', 'gp-call', 'gp-call-note'].forEach(function(id){ $(id).hidden = true; });
+      });
+  });
+
   $('gp-form').addEventListener('submit', function(e){
     e.preventDefault();
     var msg = $('gp-msg'), btn = $('gp-submit');
@@ -430,19 +498,24 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     if(!name) return refuse(T.need_name);
     if(!contact) return refuse(T.need_contact);
     var cut = name.lastIndexOf(' ');
+    var firstName = cut < 0 ? name : name.slice(0, cut);
     var isEmail = contact.indexOf('@') >= 0;
     msg.className = 'msg'; msg.textContent = T.sending; btn.disabled = true;
     fetch('/api/group-page/' + code + '/interest', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        first_name: cut < 0 ? name : name.slice(0, cut), last_name: cut < 0 ? '' : name.slice(cut + 1),
+        first_name: firstName, last_name: cut < 0 ? '' : name.slice(cut + 1),
         email: isEmail ? contact : '', phone: isEmail ? '' : contact,
         guests: Number($('f-guests').value), newsletter_opt_in: false, website: $('f-website').value, lang: ES ? 'es' : 'en',
         'cf-turnstile-response': turnstileToken
       })
     }).then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
       .then(function(x){
-        if(x.ok){ msg.className = 'msg ok'; msg.textContent = T.sent; $('gp-form').reset(); }
+        if(x.ok){
+          $('gp-form').reset();
+          if(x.j && x.j.detailsUrl && showChoice(firstName, x.j)){ msg.className = 'msg'; msg.textContent = ''; }
+          else { msg.className = 'msg ok'; msg.textContent = T.sent; }
+        }
         else { msg.className = 'msg err'; msg.textContent = (x.j && x.j.error) || T.err; btn.disabled = false; }
       })
       .catch(function(){ msg.className = 'msg err'; msg.textContent = T.err; btn.disabled = false; })
