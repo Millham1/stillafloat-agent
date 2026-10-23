@@ -24,7 +24,13 @@ const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), "../../public");
 const PAGES: Record<Lang, string> = { en: "group.html", es: "es/group.html" };
 const html = (lang: Lang) => readFileSync(join(PUBLIC, PAGES[lang]), "utf8");
 const script = (lang: Lang) => /<script>\n([\s\S]*?)<\/script>/.exec(html(lang))![1]!;
-const css = (lang: Lang) => /<style>([\s\S]*?)<\/style>/.exec(html(lang))![1]!;
+// The page's look lives in a shared same-site stylesheet under /css/ (2026-10-23: the release gate's crawl counts same-site
+// stylesheets, and both language twins share one look), so the CSS is read from the file the page links.
+const css = (lang: Lang) => {
+  const m = /<link rel="stylesheet" href="\/css\/([a-z-]+\.css)[^"]*">/.exec(html(lang));
+  assert.ok(m, `${lang}: the page links its stylesheet from /css/`);
+  return readFileSync(join(PUBLIC, "css", m![1]!), "utf8");
+};
 
 // ── A group file as the server reads it ──────────────────────────────────────────────────────────────────────
 
@@ -84,7 +90,7 @@ function answerFor(lang: Lang, over: { answers?: Record<string, unknown>; copy?:
 // ── The browser stand-in ─────────────────────────────────────────────────────────────────────────────────────
 
 class El {
-  textContent = ""; innerHTML = ""; hidden = false; className = ""; value = ""; checked = false; disabled = false; alt = ""; decoding = ""; src = ""; placeholder = "";
+  textContent = ""; innerHTML = ""; hidden = false; className = ""; value = ""; checked = false; disabled = false; alt = ""; decoding = ""; src = ""; placeholder = ""; href = "";
   onload: (() => void) | null = null; onerror: (() => void) | null = null; parentNode: El | null = null; firstChild: El | null = null;
   private attrs: Record<string, string> = {};
   handlers: Record<string, (e: { preventDefault(): void }) => void> = {};
@@ -100,7 +106,10 @@ class El {
 
 type Sent = { url: string; method: string; body: Record<string, unknown> };
 
-function visit(lang: Lang, answer: unknown, search = "?g=abcdefghjk") {
+/** What the stand-in server answers a POST with (the default is a plain success, as before). */
+type PostReply = (url: string, body: Record<string, unknown>) => { ok: boolean; json?: unknown };
+
+function visit(lang: Lang, answer: unknown, search = "?g=abcdefghjk", postReply?: PostReply) {
   const els = new Map<string, El>();
   const el = (id: string) => { let e = els.get(id); if (!e) els.set(id, (e = new El(id))); return e; };
   const doc = {
@@ -120,7 +129,12 @@ function visit(lang: Lang, answer: unknown, search = "?g=abcdefghjk") {
   const sandbox = {
     document: doc, window: {}, location: { search, hash: "" }, URLSearchParams, decodeURIComponent, encodeURIComponent, setTimeout, console,
     fetch: (url: string, init?: { method?: string; body?: string }) => {
-      if (init?.method === "POST") { sent.push({ url, method: "POST", body: JSON.parse(init.body ?? "{}") as Record<string, unknown> }); return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) }); }
+      if (init?.method === "POST") {
+        const body = JSON.parse(init.body ?? "{}") as Record<string, unknown>;
+        sent.push({ url, method: "POST", body });
+        const r = postReply ? postReply(url, body) : { ok: true, json: { success: true } };
+        return Promise.resolve({ ok: r.ok, json: () => Promise.resolve(r.json ?? { success: r.ok }) });
+      }
       requested.push(url); return Promise.resolve({ ok: true, json: () => Promise.resolve(answer) });
     },
   };
@@ -155,7 +169,7 @@ test("both pages (English and Spanish) are the same page: header, hero, welcome,
     for (const k of ["headline", "subhead", "intro", "why_ship", "who_for"]) assert.ok(!new RegExp(`\\bc\\.${k}\\b`).test(s), `${lang}: the script reads copy.${k}`);
     assert.deepEqual([...new Set([...s.matchAll(/\bc\.([A-Za-z_]+)/g)].map((m) => m[1]))].sort(), ["cta_blurb", "cta_label", "organizer_note", "welcome"], `${lang}: the copy names the page reads`);
     // the call to action is still the yellow pill
-    assert.ok(h.includes('id="gp-submit"') && /\.btn\{[^}]*background:#f5c33b;color:#07183f/.test(h));
+    assert.ok(h.includes('id="gp-submit"') && /\.btn\{[^}]*background:#f5c33b;color:#07183f/.test(css(lang)));
     // no cabin picker and no cabin table: the page only asks "I'm interested" (the price list is not a table or a picker)
     assert.ok(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(h), `${lang}: a cabin table or picker is back`);
   }
@@ -600,4 +614,111 @@ test("sending the form with no name or no way to reach them is refused on the pa
   // a robot that fills the hidden field is sent as it filled it (the server answers it as if accepted and stores nothing)
   await p.submit({ name: "Bot Bot", contact: "bot@example.com", website: "http://spam.example" });
   assert.equal(p.sent[0]!.body["website"], "http://spam.example");
+});
+
+
+// ── After Count me in: the choice (Mark 2026-10-23, design 5a) ─────────────────────────────────────────────────
+
+const LINK = "L".repeat(43);
+const LINKS = { success: true, detailsUrl: `https://stillafloatcruising.com/details.html?t=${LINK}`, callUrl: `https://stillafloatcruising.com/details.html?t=${LINK}&choice=call` };
+const WITH_LINKS: PostReply = (url) => (url.endsWith("/interest") ? { ok: true, json: LINKS } : { ok: true, json: { success: true } });
+
+test("after Count me in the form is replaced by the choice: 'You're on the list, {first}!', two ways from here, a yellow 'I'll finish it now' that is a link to their details page, and an outlined 'Mark, call me' (English and Spanish)", async () => {
+  const p = visit("en", answerFor("en"), "?g=abcdefghjk", WITH_LINKS);
+  await p.ready();
+  assert.equal(p.el("gp-choice").hidden, true, "the choice is not there before they count themselves in");
+  await p.submit({ name: "Pat Lee", contact: "pat@example.com" });
+  assert.equal(p.el("gp-ask").hidden, true, "the form is gone");
+  assert.equal(p.el("gp-choice").hidden, false);
+  assert.equal(p.el("gp-choice-h").textContent, "You're on the list, Pat!");
+  assert.equal(p.el("gp-choice-lead").textContent, "Two ways from here. Your call.");
+  assert.equal(p.el("gp-finish").textContent, "I'll finish it now");
+  assert.equal(p.el("gp-finish").href, LINKS.detailsUrl, "a plain link to their own details page");
+  assert.equal(p.el("gp-finish-note").textContent, "Names, birthdays and four quick questions so we pick the right cabin. About three minutes, and your cabin is held.");
+  assert.equal(p.el("gp-call").textContent, "Mark, call me");
+  assert.equal(p.el("gp-call-note").textContent, "Mark calls or texts you within a day and does it with you.");
+  assert.equal(p.el("gp-choice-foot").textContent, "Nothing to pay here, nothing to sign yet. Didn't mean to tap? Call or text Mark at 919-346-6127 and we'll take you off.");
+  assert.equal(p.el("gp-msg").textContent, "", "the old thank-you line is not shown beside it");
+
+  const es = visit("es", answerFor("es"), "?g=abcdefghjk", WITH_LINKS);
+  await es.ready();
+  await es.submit({ name: "Ana Pérez", contact: "ana@example.com" });
+  assert.equal(es.el("gp-choice-h").textContent, "¡Ya está en la lista, Ana!");
+  assert.equal(es.el("gp-choice-lead").textContent, "Dos caminos desde aquí. Usted decide.");
+  assert.equal(es.el("gp-finish").textContent, "Lo termino ahora");
+  assert.equal(es.el("gp-call").textContent, "Mark, llámeme");
+  assert.match(es.el("gp-choice-foot").textContent, /Llame o escriba a Mark al 919-346-6127/);
+});
+
+test("'Mark, call me' tells the server (the choice route of their own link), then the panel says Mark will call within a day; the other button and notes go", async () => {
+  const p = visit("en", answerFor("en"), "?g=abcdefghjk", WITH_LINKS);
+  await p.ready();
+  await p.submit({ name: "Pat Lee", contact: "pat@example.com" });
+  p.el("gp-call").handlers["click"]!({ preventDefault() { /* a button */ } });
+  await p.ready();
+  const call = p.sent.find((x) => x.url.includes("/api/group-details/"))!;
+  assert.equal(call.url, `/api/group-details/${LINK}/choice`);
+  assert.deepEqual(call.body, { choice: "call", website: "" });
+  assert.equal(p.el("gp-choice-h").textContent, "Got it, Pat.");
+  assert.equal(p.el("gp-choice-lead").textContent, "Mark will call or text you within a day.");
+  for (const id of ["gp-finish", "gp-finish-note", "gp-call", "gp-call-note"]) assert.equal(p.el(id).hidden, true, id);
+  // pressing it again does not ask twice
+  const before = p.sent.length;
+  p.el("gp-call").handlers["click"]!({ preventDefault() { /* a button */ } });
+  await p.ready();
+  assert.equal(p.sent.length, before + 1, "a second press is another request only if the button was still there (it is hidden, a person cannot press it)");
+
+  const es = visit("es", answerFor("es"), "?g=abcdefghjk", WITH_LINKS);
+  await es.ready();
+  await es.submit({ name: "Ana Pérez", contact: "ana@example.com" });
+  es.el("gp-call").handlers["click"]!({ preventDefault() { /* a button */ } });
+  await es.ready();
+  assert.equal(es.el("gp-choice-h").textContent, "Listo, Ana.");
+  assert.equal(es.el("gp-choice-lead").textContent, "Mark le llamará o le escribirá en un día.");
+});
+
+test("if 'Mark, call me' does not go through, nothing is promised: the words stay, the button comes back and says to call or text Mark", async () => {
+  const p = visit("en", answerFor("en"), "?g=abcdefghjk", (url) => (url.endsWith("/interest") ? { ok: true, json: LINKS } : { ok: false, json: { success: false } }));
+  await p.ready();
+  await p.submit({ name: "Pat Lee", contact: "pat@example.com" });
+  p.el("gp-call").handlers["click"]!({ preventDefault() { /* a button */ } });
+  await p.ready();
+  assert.equal(p.el("gp-choice-h").textContent, "You're on the list, Pat!");
+  assert.equal(p.el("gp-call").disabled, false);
+  assert.equal(p.el("gp-call").hidden, false);
+  assert.equal(p.el("gp-choice-msg").textContent, "That did not go through. Call or text Mark at 919-346-6127.");
+  assert.equal(p.el("gp-choice-msg").className, "msg err");
+});
+
+test("a server that sends no links (or a link that is not http) gets the old thank-you, and nothing is made of a hostile link", async () => {
+  for (const reply of [{ success: true }, { ...LINKS, detailsUrl: "javascript:alert(1)" }, { ...LINKS, callUrl: "https://stillafloatcruising.com/details.html?t=short" }]) {
+    const p = visit("en", answerFor("en"), "?g=abcdefghjk", (url) => (url.endsWith("/interest") ? { ok: true, json: reply } : { ok: true, json: { success: true } }));
+    await p.ready();
+    await p.submit({ name: "Pat Lee", contact: "pat@example.com" });
+    assert.equal(p.el("gp-msg").textContent, "Got it. We will be in touch soon.", JSON.stringify(reply));
+    assert.equal(p.el("gp-choice").hidden, true);
+    assert.equal(p.el("gp-ask").hidden, false);
+  }
+});
+
+test("a refused reply keeps the form and shows the error where it always did; no choice appears", async () => {
+  const p = visit("en", answerFor("en"), "?g=abcdefghjk", () => ({ ok: false, json: { success: false, error: "Please check your email address or phone number." } }));
+  await p.ready();
+  await p.submit({ name: "Pat Lee", contact: "pat@x" });
+  assert.equal(p.el("gp-msg").textContent, "Please check your email address or phone number.");
+  assert.equal(p.el("gp-choice").hidden, true);
+  assert.equal(p.el("gp-ask").hidden, false);
+  assert.equal(p.el("gp-submit").disabled, false);
+});
+
+test("the choice is inside the same panel as the form, after it, and its call to action is the one link-styled yellow pill and one outlined button", () => {
+  for (const lang of ["en", "es"] as const) {
+    const h = html(lang);
+    const panel = h.slice(h.indexOf('<section class="panel" id="interest">'), h.indexOf("</section>", h.indexOf('id="interest"')));
+    assert.ok(panel.indexOf('id="gp-ask"') < panel.indexOf('id="gp-form"') && panel.indexOf('id="gp-form"') < panel.indexOf('id="gp-choice"'), `${lang}: order inside the panel`);
+    assert.match(panel, /<div id="gp-choice" hidden>/);
+    assert.match(panel, /<a class="btn" id="gp-finish" href="#"/, `${lang}: the finish button is a link`);
+    assert.match(panel, /<button type="button" class="btn-out" id="gp-call">/);
+    assert.match(css(lang), /\.btn-out\{[^}]*border:2px solid var\(--ink\);border-radius:999px;background:transparent/);
+  }
 });

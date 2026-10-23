@@ -1,0 +1,120 @@
+/* group-page.css — the shared stylesheet of /group.html and /es/group.html (moved out of the pages 2026-10-23 so the release gate's crawl sees a same-site stylesheet, and so both languages share one look). */
+/* The group page, design v2 (Mark 2026-10-23): one centered column, a navy page, cloud-white panels. No site menu on this page: the logo and the language link are the whole header. */
+:root{--navy:#07183f;--cloud:#f7fbff;--gold:#ffca4f;--yellow:#f5c33b;--ink:#07183f;--muted:#4a5a7a;--label:#9a6b00;--line:#dde6f3}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--navy)}
+body{font-family:'Baloo 2',system-ui,sans-serif;font-size:20px;line-height:1.5;color:#fff;min-height:100vh}
+h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
+.wrap{max-width:640px;margin:0 auto}
+
+/* header: the logo and the language link, nothing else */
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 10px}
+.hdr .logo{height:64px;width:auto;display:block}
+.langswitch a{color:var(--gold);font-size:18px;font-weight:600;text-decoration:none;border:1px solid rgba(255,202,79,.55);border-radius:999px;padding:5px 16px;white-space:nowrap}
+.preview-bar{background:#ffd21f;color:#07183f;text-align:center;font-weight:700;padding:10px 16px;font-size:18px}
+
+/* hero: the group's own top picture (look.heroUrl) replaces the generic one and fades in once it has loaded. */
+.gp-banner{position:relative;overflow:hidden;height:clamp(300px,76vw,380px);background:url('/assets/images/wheres-my-ship-hero.png') center 46%/cover no-repeat}
+.gp-banner.custom{background-image:none}
+.gp-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 46%;z-index:0;opacity:0;transition:opacity .5s ease}
+/* The hosts' photo (look.hostPhotoUrl): small, framed, in the TOP-RIGHT corner of the picture, never near the centre of the hero (Mark 2026-10-20: "the inset is not in the correct place"; "it is cutting off the lighthouse"). At 22% (110-260px) it clears the right third of the picture. */
+.gp-host{position:absolute;top:16px;right:16px;z-index:5;box-sizing:border-box;width:clamp(110px,22%,260px);aspect-ratio:4/3;object-fit:cover;object-position:center 30%;
+  background:#fff;border:6px solid #fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.38);opacity:0;transition:opacity .5s ease}
+.gp-hero.on,.gp-host.on{opacity:1}
+.gp-lockup{position:absolute;left:0;right:0;bottom:22px;z-index:4;display:flex;justify-content:center;padding:0 12px}
+.plaque{background:rgba(7,24,63,.86);border:1px solid rgba(255,202,79,.6);border-radius:999px;padding:10px 22px;max-width:100%;text-align:center}
+.plaque span{font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:15px;line-height:1.4;color:#fff}
+.plaque span::before,.plaque span::after{content:"";display:inline-block;width:22px;height:2px;background:var(--gold);vertical-align:middle;margin:0 10px}
+
+/* welcome: the hosts' note, one paragraph per line; an all-capitals line ending in "!" is the bold payoff; signed in the gold accent */
+.welcome{padding:26px 22px 8px}
+.welcome h1{font-size:40px;line-height:1.1;color:#fff;margin-bottom:10px}
+.welcome p{margin:0 0 14px;font-size:21px}
+.welcome .payoff{font-weight:800;font-size:22px;letter-spacing:.01em}
+.welcome .sig{font-family:'Bree Serif',Georgia,serif;font-size:30px;color:#ffca4f;margin:6px 0 0}
+.org{margin:6px 22px 8px;padding:4px 0 4px 18px;border-left:4px solid var(--gold);font-size:21px;color:#fff;white-space:pre-line}
+
+/* panels */
+.panel{background:var(--cloud);color:var(--ink);border-radius:18px;margin:18px 16px;padding:22px 20px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.label{font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:14px;color:var(--label);margin:0 0 6px}
+.panel h2{font-size:34px;line-height:1.1;color:var(--ink);margin-bottom:8px}
+.panel p{margin:0 0 10px;font-size:19px;color:var(--ink)}
+.panel .small{font-size:16px;color:var(--muted)}
+.panel .small.center{text-align:center}
+.field{margin:14px 0 0}
+.field label{display:block;font-size:16px;font-weight:700;color:var(--muted);margin-bottom:4px}
+.field input,.field select{display:block;width:100%;height:54px;border:2px solid #c9d6ea;border-radius:12px;background:#fff;padding:0 14px;font:inherit;font-size:19px;color:var(--ink)}
+.field input::placeholder{color:#8a97b3}
+.field input:focus,.field select:focus{outline:3px solid rgba(245,195,59,.7);outline-offset:1px;border-color:#9a6b00}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+#gp-turnstile{margin-top:6px}
+/* The call to action: a yellow pill, navy bold type (the approved marketing's button). */
+.btn{display:block;width:100%;cursor:pointer;margin:20px 0 10px;border:0;border-radius:999px;background:#f5c33b;color:#07183f;font:800 26px/1 'Baloo 2',sans-serif;padding:20px 10px;text-align:center;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.btn:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
+.btn:disabled{opacity:.55;cursor:default}
+a.btn{text-decoration:none}
+/* After Count me in: the choice that replaces the form (Mark 2026-10-23). Two ways from here: finish it now (the yellow pill) or Mark calls (the outlined one). */
+.choice-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.choice-head h2{margin:0}
+.tick{flex:none;width:54px;height:54px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font:800 32px/1 'Baloo 2',sans-serif;color:var(--ink)}
+.btn-out{display:block;width:100%;cursor:pointer;border:2px solid var(--ink);border-radius:999px;background:transparent;color:var(--ink);font:800 22px/1 'Baloo 2',sans-serif;padding:16px 10px;text-align:center}
+.btn-out:hover:not(:disabled){background:rgba(7,24,63,.06)}
+.btn-out:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
+.btn-out:disabled{opacity:.55;cursor:default}
+.msg{margin:6px 0 0;font-size:19px;text-align:center}
+.msg.ok{color:#0b6b3a}.msg.err{color:#a12116}
+.panel .phone{font-size:17px;color:var(--muted);text-align:center;margin:0}
+
+/* picture bands above the plan and the cabin prices (look.planPhotoUrl, look.cabinPhotoUrl) */
+.photo{margin:6px 16px;border-radius:18px;overflow:hidden;height:260px;background:rgba(255,255,255,.06);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.photo img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .5s ease}
+.photo img.on{opacity:1}
+
+/* plan */
+.day{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:19px}
+.day:first-of-type{border-top:0}
+.day b{color:var(--ink);font-weight:800;line-height:1.25}
+.day span{color:var(--ink)}
+
+/* cabins */
+.price{display:flex;justify-content:space-between;align-items:baseline;gap:8px 14px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line);font-size:19px}
+.price:first-of-type{border-top:0}
+.price b{font-weight:800}
+.price .amt{color:var(--label);font-weight:800;font-size:22px}
+.price .amt small{font-size:14px;color:var(--muted);font-weight:700;margin-left:4px}
+.flex{display:flex;align-items:center;gap:12px;margin:14px 0 6px}
+.flex img{height:36px;width:auto}
+.flex b{font-size:19px}
+
+/* dates */
+.dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.date{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.date .label{margin:0 0 2px}
+.date b{font-size:19px}
+.date.wide{grid-column:1/-1}
+
+/* getting there */
+.trip{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:19px}
+.trip:first-of-type{border-top:0}
+
+/* footer */
+.foot{padding:30px 22px 26px}
+.foot .sa{height:140px;width:auto;display:block;margin:0 auto 8px}
+.foot p{margin:4px 0;text-align:center;font-size:15px;color:rgba(255,255,255,.88)}
+.foot .credits{font-size:15px;color:rgba(255,255,255,.72);line-height:1.4;margin-top:12px}
+.foot .cs-row{display:flex;justify-content:flex-end;margin-top:14px}
+.foot .cs{height:46px;width:auto;opacity:.95}
+
+#gp-state{padding:80px 22px;text-align:center;font-size:22px;color:rgba(255,255,255,.9)}
+@media(max-width:480px){
+  .welcome h1{font-size:36px}
+  .plaque{padding:8px 14px}
+  .plaque span{letter-spacing:.12em}
+  .plaque span::before,.plaque span::after{width:12px;margin:0 7px}
+  .panel{padding:20px 16px}
+  .photo{height:200px}
+  .dates{grid-template-columns:minmax(0,1fr)}
+  .day{grid-template-columns:78px 1fr;gap:10px}
+}

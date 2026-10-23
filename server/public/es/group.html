@@ -10,117 +10,7 @@
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
-<style>
-/* The group page, design v2 (Mark 2026-10-23): one centered column, a navy page, cloud-white panels. No site menu on this page: the logo and the language link are the whole header. */
-:root{--navy:#07183f;--cloud:#f7fbff;--gold:#ffca4f;--yellow:#f5c33b;--ink:#07183f;--muted:#4a5a7a;--label:#9a6b00;--line:#dde6f3}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
-html,body{margin:0;background:var(--navy)}
-body{font-family:'Baloo 2',system-ui,sans-serif;font-size:20px;line-height:1.5;color:#fff;min-height:100vh}
-h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
-.wrap{max-width:640px;margin:0 auto}
-
-/* header: the logo and the language link, nothing else */
-.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 10px}
-.hdr .logo{height:64px;width:auto;display:block}
-.langswitch a{color:var(--gold);font-size:18px;font-weight:600;text-decoration:none;border:1px solid rgba(255,202,79,.55);border-radius:999px;padding:5px 16px;white-space:nowrap}
-.preview-bar{background:#ffd21f;color:#07183f;text-align:center;font-weight:700;padding:10px 16px;font-size:18px}
-
-/* hero: the group's own top picture (look.heroUrl) replaces the generic one and fades in once it has loaded. */
-.gp-banner{position:relative;overflow:hidden;height:clamp(300px,76vw,380px);background:url('/assets/images/wheres-my-ship-hero.png') center 46%/cover no-repeat}
-.gp-banner.custom{background-image:none}
-.gp-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 46%;z-index:0;opacity:0;transition:opacity .5s ease}
-/* The hosts' photo (look.hostPhotoUrl): small, framed, in the TOP-RIGHT corner of the picture, never near the centre of the hero (Mark 2026-10-20: "the inset is not in the correct place"; "it is cutting off the lighthouse"). At 22% (110-260px) it clears the right third of the picture. */
-.gp-host{position:absolute;top:16px;right:16px;z-index:5;box-sizing:border-box;width:clamp(110px,22%,260px);aspect-ratio:4/3;object-fit:cover;object-position:center 30%;
-  background:#fff;border:6px solid #fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.38);opacity:0;transition:opacity .5s ease}
-.gp-hero.on,.gp-host.on{opacity:1}
-.gp-lockup{position:absolute;left:0;right:0;bottom:22px;z-index:4;display:flex;justify-content:center;padding:0 12px}
-.plaque{background:rgba(7,24,63,.86);border:1px solid rgba(255,202,79,.6);border-radius:999px;padding:10px 22px;max-width:100%;text-align:center}
-.plaque span{font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:15px;line-height:1.4;color:#fff}
-.plaque span::before,.plaque span::after{content:"";display:inline-block;width:22px;height:2px;background:var(--gold);vertical-align:middle;margin:0 10px}
-
-/* welcome: the hosts' note, one paragraph per line; an all-capitals line ending in "!" is the bold payoff; signed in the gold accent */
-.welcome{padding:26px 22px 8px}
-.welcome h1{font-size:40px;line-height:1.1;color:#fff;margin-bottom:10px}
-.welcome p{margin:0 0 14px;font-size:21px}
-.welcome .payoff{font-weight:800;font-size:22px;letter-spacing:.01em}
-.welcome .sig{font-family:'Bree Serif',Georgia,serif;font-size:30px;color:#ffca4f;margin:6px 0 0}
-.org{margin:6px 22px 8px;padding:4px 0 4px 18px;border-left:4px solid var(--gold);font-size:21px;color:#fff;white-space:pre-line}
-
-/* panels */
-.panel{background:var(--cloud);color:var(--ink);border-radius:18px;margin:18px 16px;padding:22px 20px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.label{font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:14px;color:var(--label);margin:0 0 6px}
-.panel h2{font-size:34px;line-height:1.1;color:var(--ink);margin-bottom:8px}
-.panel p{margin:0 0 10px;font-size:19px;color:var(--ink)}
-.panel .small{font-size:16px;color:var(--muted)}
-.field{margin:14px 0 0}
-.field label{display:block;font-size:16px;font-weight:700;color:var(--muted);margin-bottom:4px}
-.field input,.field select{display:block;width:100%;height:54px;border:2px solid #c9d6ea;border-radius:12px;background:#fff;padding:0 14px;font:inherit;font-size:19px;color:var(--ink)}
-.field input::placeholder{color:#8a97b3}
-.field input:focus,.field select:focus{outline:3px solid rgba(245,195,59,.7);outline-offset:1px;border-color:#9a6b00}
-.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
-#gp-turnstile{margin-top:6px}
-/* The call to action: a yellow pill, navy bold type (the approved marketing's button). */
-.btn{display:block;width:100%;cursor:pointer;margin:20px 0 10px;border:0;border-radius:999px;background:#f5c33b;color:#07183f;font:800 26px/1 'Baloo 2',sans-serif;padding:20px 10px;text-align:center;box-shadow:0 6px 16px rgba(0,0,0,.18)}
-.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,.25)}
-.btn:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
-.btn:disabled{opacity:.55;cursor:default}
-.msg{margin:6px 0 0;font-size:19px;text-align:center}
-.msg.ok{color:#0b6b3a}.msg.err{color:#a12116}
-.panel .phone{font-size:17px;color:var(--muted);text-align:center;margin:0}
-
-/* picture bands above the plan and the cabin prices (look.planPhotoUrl, look.cabinPhotoUrl) */
-.photo{margin:6px 16px;border-radius:18px;overflow:hidden;height:260px;background:rgba(255,255,255,.06);box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.photo img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .5s ease}
-.photo img.on{opacity:1}
-
-/* plan */
-.day{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:19px}
-.day:first-of-type{border-top:0}
-.day b{color:var(--ink);font-weight:800;line-height:1.25}
-.day span{color:var(--ink)}
-
-/* cabins */
-.price{display:flex;justify-content:space-between;align-items:baseline;gap:8px 14px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line);font-size:19px}
-.price:first-of-type{border-top:0}
-.price b{font-weight:800}
-.price .amt{color:var(--label);font-weight:800;font-size:22px}
-.price .amt small{font-size:14px;color:var(--muted);font-weight:700;margin-left:4px}
-.flex{display:flex;align-items:center;gap:12px;margin:14px 0 6px}
-.flex img{height:36px;width:auto}
-.flex b{font-size:19px}
-
-/* dates */
-.dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.date{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
-.date .label{margin:0 0 2px}
-.date b{font-size:19px}
-.date.wide{grid-column:1/-1}
-
-/* getting there */
-.trip{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:19px}
-.trip:first-of-type{border-top:0}
-
-/* footer */
-.foot{padding:30px 22px 26px}
-.foot .sa{height:140px;width:auto;display:block;margin:0 auto 8px}
-.foot p{margin:4px 0;text-align:center;font-size:15px;color:rgba(255,255,255,.88)}
-.foot .credits{font-size:15px;color:rgba(255,255,255,.72);line-height:1.4;margin-top:12px}
-.foot .cs-row{display:flex;justify-content:flex-end;margin-top:14px}
-.foot .cs{height:46px;width:auto;opacity:.95}
-
-#gp-state{padding:80px 22px;text-align:center;font-size:22px;color:rgba(255,255,255,.9)}
-@media(max-width:480px){
-  .welcome h1{font-size:36px}
-  .plaque{padding:8px 14px}
-  .plaque span{letter-spacing:.12em}
-  .plaque span::before,.plaque span::after{width:12px;margin:0 7px}
-  .panel{padding:20px 16px}
-  .photo{height:200px}
-  .dates{grid-template-columns:minmax(0,1fr)}
-  .day{grid-template-columns:78px 1fr;gap:10px}
-}
-</style>
+<link rel="stylesheet" href="/css/group-page.css?v=20261023a">
 </head>
 <body>
 <div class="wrap">
@@ -149,18 +39,32 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     <!-- 2. The one call to action. The page asks one thing, "I'm interested": no cabin picker, no availability, no cabin count
          (Mark 2026-10-19: "why would they see the available cabins before I know they are interested"). -->
     <section class="panel" id="interest">
-      <h2 data-t="put_name"></h2>
-      <p class="small" data-t="only_step"></p>
-      <form id="gp-form" novalidate>
-        <div class="field"><label for="f-name" data-t="f_name"></label><input id="f-name" type="text" autocomplete="name" data-ph="ph_name"></div>
-        <div class="field"><label for="f-contact" data-t="f_contact"></label><input id="f-contact" type="text" autocomplete="email" data-ph="ph_contact"></div>
-        <div class="field"><label for="f-guests" data-t="f_guests"></label><select id="f-guests"></select></div>
-        <div class="hp" aria-hidden="true"><label>Sitio web<input type="text" id="f-website" tabindex="-1" autocomplete="off"></label></div>
-        <div id="gp-turnstile" data-appearance="interaction-only"></div>
-        <button class="btn" type="submit" id="gp-submit"></button>
-        <div class="msg" id="gp-msg" role="status"></div>
-      </form>
-      <p class="phone" id="gp-cta-blurb"></p>
+      <div id="gp-ask">
+        <h2 data-t="put_name"></h2>
+        <p class="small" data-t="only_step"></p>
+        <form id="gp-form" novalidate>
+          <div class="field"><label for="f-name" data-t="f_name"></label><input id="f-name" type="text" autocomplete="name" data-ph="ph_name"></div>
+          <div class="field"><label for="f-contact" data-t="f_contact"></label><input id="f-contact" type="text" autocomplete="email" data-ph="ph_contact"></div>
+          <div class="field"><label for="f-guests" data-t="f_guests"></label><select id="f-guests"></select></div>
+          <div class="hp" aria-hidden="true"><label>Sitio web<input type="text" id="f-website" tabindex="-1" autocomplete="off"></label></div>
+          <div id="gp-turnstile" data-appearance="interaction-only"></div>
+          <button class="btn" type="submit" id="gp-submit"></button>
+          <div class="msg" id="gp-msg" role="status"></div>
+        </form>
+        <p class="phone" id="gp-cta-blurb"></p>
+      </div>
+
+      <!-- What the form becomes once they have counted themselves in (Mark 2026-10-23, design 5a): two ways from here, and the guest picks. -->
+      <div id="gp-choice" hidden>
+        <div class="choice-head"><div class="tick">&#10003;</div><h2 id="gp-choice-h"></h2></div>
+        <p id="gp-choice-lead"></p>
+        <a class="btn" id="gp-finish" href="#" style="margin:12px 0 6px"></a>
+        <p class="small center" id="gp-finish-note" style="margin:0 0 16px"></p>
+        <button type="button" class="btn-out" id="gp-call"></button>
+        <p class="small center" id="gp-call-note" style="margin:8px 0 14px"></p>
+        <p class="small" id="gp-choice-foot"></p>
+        <div class="msg" id="gp-choice-msg" role="status"></div>
+      </div>
     </section>
 
     <!-- 3. The plan, day by day: a picture band, then one sentence a day built from the itinerary (plus Mark's own note for a day). -->
@@ -229,7 +133,12 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     flex:'Planes de pago flexibles disponibles', upgrades:'Mejoras de cabina disponibles. Pregunte a Mark.', planned:'Planeado para el grupo:',
     dates:'Fechas que importan', book_by:'Reserve antes de', final_pay:'Pago final', we_sail:'Zarpamos', we_sail_from:'desde',
     travel:'Cómo llegar', travel_note:'¿Quiere algo de esto? Dígaselo a Mark cuando llame y él se encarga.',
-    photo:'Foto:', photos:'Fotos:'
+    photo:'Foto:', photos:'Fotos:',
+    choice_h:'¡Ya está en la lista, {first}!', choice_lead:'Dos caminos desde aquí. Usted decide.',
+    finish:'Lo termino ahora', finish_note:'Nombres, fechas de nacimiento y cuatro preguntas rápidas para elegir la cabina correcta. Unos tres minutos, y su cabina queda apartada.',
+    call:'Mark, llámeme', call_note:'Mark le llama o le escribe en un día y lo hace con usted.',
+    choice_foot:'Aquí no se paga nada y todavía no se firma nada. ¿No quería tocar? Llame o escriba a Mark al 919-346-6127 y lo quitamos de la lista.',
+    got_it_h:'Listo, {first}.', got_it_p:'Mark le llamará o le escribirá en un día.', err_call:'No se pudo enviar. Llame o escriba a Mark al 919-346-6127.'
   } : {
     loading:'Loading the invitation…', gone:'This page is not available. If your group sent you the link, email mark@stillafloatcruising.com.',
     preview:'PREVIEW — only you can see this page until you approve it.',
@@ -249,7 +158,12 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     flex:'Flexible Payment Plans Available', upgrades:'Cabin upgrades available. Ask Mark.', planned:'Planned for the group:',
     dates:'Dates that matter', book_by:'Reserve by', final_pay:'Final payment', we_sail:'We sail', we_sail_from:'from',
     travel:'Getting there', travel_note:"Want any of it? Say so when Mark calls and he'll line it up.",
-    photo:'Photo:', photos:'Photos:'
+    photo:'Photo:', photos:'Photos:',
+    choice_h:"You're on the list, {first}!", choice_lead:'Two ways from here. Your call.',
+    finish:"I'll finish it now", finish_note:'Names, birthdays and four quick questions so we pick the right cabin. About three minutes, and your cabin is held.',
+    call:'Mark, call me', call_note:'Mark calls or texts you within a day and does it with you.',
+    choice_foot:"Nothing to pay here, nothing to sign yet. Didn't mean to tap? Call or text Mark at 919-346-6127 and we'll take you off.",
+    got_it_h:'Got it, {first}.', got_it_p:'Mark will call or text you within a day.', err_call:'That did not go through. Call or text Mark at 919-346-6127.'
   };
   var LOCALE = ES ? 'es-419' : 'en-US';
 
@@ -420,6 +334,40 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     }
   }
 
+  // ── After Count me in: the choice that takes the form's place (Mark 2026-10-23). The answer carries the guest's own two links; "I'll finish it now" is a plain link
+  // to their details page, and "Mark, call me" tells us (the same route the email's button reaches) and swaps the panel's words. No links in the answer (an older server): the old thank-you.
+  var pendingCall = null;
+  function choiceToken(url){ var m = /[?&]t=([A-Za-z0-9_-]{43})/.exec(String(url || '')); return m ? m[1] : ''; }
+  function showChoice(first, links){
+    var link = String(links.detailsUrl || ''), tok = choiceToken(links.callUrl);
+    if(!/^https?:\/\//i.test(link) || !tok) return false;
+    pendingCall = { first: first, token: tok };
+    $('gp-choice-h').textContent = fill(T.choice_h, { first: first });
+    $('gp-choice-lead').textContent = T.choice_lead;
+    var go = $('gp-finish'); go.textContent = T.finish; go.href = link;
+    $('gp-finish-note').textContent = T.finish_note;
+    var callBtn = $('gp-call'); callBtn.textContent = T.call; callBtn.disabled = false;
+    $('gp-call-note').textContent = T.call_note;
+    $('gp-choice-foot').textContent = T.choice_foot;
+    $('gp-choice-msg').textContent = '';
+    $('gp-ask').hidden = true; $('gp-choice').hidden = false;
+    return true;
+  }
+  $('gp-call').addEventListener('click', function(){
+    if(!pendingCall) return;
+    var btn = $('gp-call'), note = $('gp-choice-msg'), who = pendingCall;
+    btn.disabled = true; note.className = 'msg'; note.textContent = T.sending;
+    fetch('/api/group-details/' + who.token + '/choice', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ choice: 'call', website: '' }) })
+      .then(function(r){ return r.ok; }, function(){ return false; })
+      .then(function(ok){
+        if(!ok){ btn.disabled = false; note.className = 'msg err'; note.textContent = T.err_call; return; }
+        note.textContent = '';
+        $('gp-choice-h').textContent = fill(T.got_it_h, { first: who.first });
+        $('gp-choice-lead').textContent = T.got_it_p;
+        ['gp-finish', 'gp-finish-note', 'gp-call', 'gp-call-note'].forEach(function(id){ $(id).hidden = true; });
+      });
+  });
+
   $('gp-form').addEventListener('submit', function(e){
     e.preventDefault();
     var msg = $('gp-msg'), btn = $('gp-submit');
@@ -430,19 +378,24 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
     if(!name) return refuse(T.need_name);
     if(!contact) return refuse(T.need_contact);
     var cut = name.lastIndexOf(' ');
+    var firstName = cut < 0 ? name : name.slice(0, cut);
     var isEmail = contact.indexOf('@') >= 0;
     msg.className = 'msg'; msg.textContent = T.sending; btn.disabled = true;
     fetch('/api/group-page/' + code + '/interest', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        first_name: cut < 0 ? name : name.slice(0, cut), last_name: cut < 0 ? '' : name.slice(cut + 1),
+        first_name: firstName, last_name: cut < 0 ? '' : name.slice(cut + 1),
         email: isEmail ? contact : '', phone: isEmail ? '' : contact,
         guests: Number($('f-guests').value), newsletter_opt_in: false, website: $('f-website').value, lang: ES ? 'es' : 'en',
         'cf-turnstile-response': turnstileToken
       })
     }).then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
       .then(function(x){
-        if(x.ok){ msg.className = 'msg ok'; msg.textContent = T.sent; $('gp-form').reset(); }
+        if(x.ok){
+          $('gp-form').reset();
+          if(x.j && x.j.detailsUrl && showChoice(firstName, x.j)){ msg.className = 'msg'; msg.textContent = ''; }
+          else { msg.className = 'msg ok'; msg.textContent = T.sent; }
+        }
         else { msg.className = 'msg err'; msg.textContent = (x.j && x.j.error) || T.err; btn.disabled = false; }
       })
       .catch(function(){ msg.className = 'msg err'; msg.textContent = T.err; btn.disabled = false; })
