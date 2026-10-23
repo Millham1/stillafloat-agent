@@ -1141,6 +1141,10 @@ export default [
       }
       if (!live.length) {
         // no approved page: the dashboard's marketing view of a group that does not exist is a clean 404
+        // The group file route is read inside the loop above only when Mark has a page approved (his
+        // business, not the site's — prod had none on 2026-10-23 and the cover went unexercised). An
+        // unknown id is refused on every run, so the route is always asked.
+        t.status(await t.get("/api/groups/00000000-0000-4000-8000-000000000000", { auth: true }), 404);
         t.status(await t.get("/api/groups/00000000-0000-4000-8000-000000000000/marketing", { auth: true }), 404);
         pageCode = "zzzzzzzzzz"; // a well-formed share code no group holds
       }
