@@ -4,13 +4,14 @@ import { logger } from "./lib/logger";
 import { checkLiveAisCredits, liveAisEnabled } from "./lib/live-ais";
 import { scheduleItineraryRefresh } from "./lib/itinerary-refresh";
 import { runDuePosts, feedSinkQueue } from "./lib/social-schedule";
-import { runAndDeliverBrief } from "./lib/brief";
+import { runAndDeliverBrief, assembleBrief } from "./lib/brief";
+import { pushWaiting } from "./lib/waiting";
 import { parseBriefHours, dueBriefHour, slotKey } from "./lib/brief-schedule";
 import { runStormScan } from "./lib/storm-agent";
 import { scanAndQueue } from "./lib/social-agent";
 import { draftNewsletter, saveDraft, loadDraft, sendWeeklyIssue, resumeNewsletterDeliveries, deliveryOpen, confirmedSubscriberCount } from "./lib/newsletter";
 import { EMPTY_ISSUE_MESSAGE } from "./lib/newsletter-freshness";
-import { notifyMark, reviewUrl } from "./lib/notify";
+import { notifyMark, reviewUrl, setWaitingHandler } from "./lib/notify";
 import { runNewsPrerender } from "./lib/prerender-news";
 import { setSeaRouteLogger } from "./lib/sea-route";
 import { runGuidesPrerender } from "./lib/prerender-guides";
@@ -88,6 +89,17 @@ app.listen(port, "0.0.0.0", () => {
   }
   // Daily brief — assemble + push + email once each morning. Disabled on the dev
   // mirror so the brief isn't sent twice (same pattern as the poster).
+  // The "Waiting on you" list is assembled from the brief's sources, which sit above
+  // lib/notify.ts; registering the handler here (not importing it there) avoids a cycle.
+  // Registered whether or not the scheduled brief is on: an agent's "something new is
+  // waiting" must work on every box.
+  setWaitingHandler(async (reason) => {
+    const brief = await assembleBrief();
+    return pushWaiting({ items: brief.sections.waiting, events: brief.counts.events, reason });
+  });
+  // Refresh the stored brief shortly after boot so the page (and the release gate) see the
+  // running build's sections without waiting for the next scheduled slot.
+  setTimeout(() => { assembleBrief().catch((err: unknown) => logger.warn({ err }, "startup brief assembly failed")); }, 15_000);
   if (process.env["DISABLE_DAILY_BRIEF"] === "1") {
     logger.info("Daily brief DISABLED (DISABLE_DAILY_BRIEF=1)");
   } else {
@@ -471,6 +483,8 @@ function scheduleWeeklyMarketing() {
         // fatality stories, and a humour-forward brand must not ship one unseen.
         if (stale && stale.status === "drafted" && stale.sensitive && autopilotH > 0 && ageH > autopilotH) {
           void notifyMark({
+            kind: "waiting",
+            source: "commentary",
             title: "🛑 Commentary held — sensitive subject needs your eyes",
             body: `${stale.suggestedTitle || stale.stories[0]?.title || ""}\nAutopilot will not publish this one.`,
             url: reviewUrl("/api/commentary/review"),
@@ -488,6 +502,8 @@ function scheduleWeeklyMarketing() {
             },
           });
           void notifyMark({
+            kind: r.ok ? "activity" : "fault",
+            source: "commentary",
             title: r.ok
               ? "🗣️ Commentary published (no response in time)"
               : "⚠️ Commentary publish FAILED",
@@ -498,6 +514,8 @@ function scheduleWeeklyMarketing() {
         } else if (stale && (stale.status === "awaiting_take" || stale.status === "drafted")
             && ageH > 20) {
           void notifyMark({
+            kind: "waiting",
+            source: "commentary",
             title: "⏳ Commentary waiting — approve, add your thoughts, or reject",
             body: stale.stories[0]?.title ?? "Staged draft pending",
             url: reviewUrl("/api/commentary/review"),
@@ -516,6 +534,8 @@ function scheduleWeeklyMarketing() {
         if (created.length > 0) {
           logger.info({ created: created.length }, "Daily social scan complete");
           void notifyMark({
+            kind: "waiting",
+            source: "social",
             title: `📱 ${created.length} new social draft(s) ready (daily scan)`,
             body: created.map((b) => `Track ${b.track}: ${b.title}`).join("\n"),
             url: reviewUrl("/api/social/review"),
@@ -556,6 +576,8 @@ function scheduleWeeklyMarketing() {
           if (issue.plan.englishProblem === "empty") {
             logger.warn({ reason: issue.plan.reason }, "Weekly newsletter NOT auto-sent: the issue has no stories");
             void notifyMark({
+              kind: "fault",
+              source: "newsletter",
               title: "📨 Newsletter NOT sent: no stories in this week's issue",
               body: EMPTY_ISSUE_MESSAGE,
               url: reviewUrl("/api/newsletter/review?lang=en"),
@@ -576,6 +598,8 @@ function scheduleWeeklyMarketing() {
           logger.info({ subject: draft.subject, lang }, "Weekly newsletter draft complete");
           if (lang !== "en") continue; // the Spanish edition is never put in front of Mark
           void notifyMark({
+            kind: "waiting",
+            source: "newsletter",
             title: `📨 Newsletter draft ready (${lang.toUpperCase()}) (weekly)`,
             body: draft.subject,
             url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
@@ -596,6 +620,8 @@ function scheduleWeeklyMarketing() {
     }
     retryDate = null;
     void notifyMark({
+      kind: "fault",
+      source: "marketing",
       title: `⚠️ ${work[0]!.toUpperCase()}${work.slice(1)} failed twice today`,
       body: "It did not run. The error is on the dashboard's job health; tell Claude to look at it.",
       url: "/brief.html",

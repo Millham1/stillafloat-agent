@@ -1,6 +1,7 @@
 import { readJson, writeJson } from "./persistence";
 import { loadQueue } from "./social-agent";
-import { sendPush } from "./push";
+import { collectWaiting, pushWaiting, summarizeWaiting, type WaitingItem } from "./waiting";
+import { listActivity, pruneActivity, type ActivityItem } from "./activity";
 import { logger } from "./logger";
 import { recentClickTotal } from "./affiliate-clicks";
 import { reviewUrl } from "./notify";
@@ -72,8 +73,19 @@ export interface Brief {
     bills: BillItem[];
     pulse: Pulse;
     social: SocialBlock;
+    /** Everything waiting on Mark, read live from each source (lib/waiting.ts). The push count. */
+    waiting: WaitingItem[];
+    /** Sources that could not be read when this brief was assembled — shown, never hidden. */
+    waitingDown: string[];
+    /** News stories awaiting approval (also in `waiting`); the page links them to /review. */
+    news: { pending: number; reviewUrl: string };
+    /** What the agents did today — the no-push record (lib/activity.ts). */
+    activity: ActivityItem[];
   };
-  counts: { actions: number; tasks: number; ideasNew: number; socialPending: number; events: number; affiliateClicks28d: number };
+  counts: {
+    actions: number; tasks: number; ideasNew: number; socialPending: number; events: number; affiliateClicks28d: number;
+    waiting: number; news: number;
+  };
 }
 
 interface OpsFeed {
@@ -150,15 +162,35 @@ export async function assembleBrief(): Promise<Brief> {
     if (latest?.instagram) pulse.instagram = snapPulse(latest.instagram, prevSnap?.instagram ?? undefined);
   } catch { /* reach overlay is best-effort */ }
 
+  // Everything waiting on Mark, read live (Mark, 2026-10-22: one list, one notification).
+  const collected = await collectWaiting({
+    inbox: actions.map((a) => ({ thread_id: a.thread_id, subject: a.subject, url: a.url })),
+    social: pending.map((b) => {
+      const q = b as { videoId?: string; lang?: string; track: string; title: string };
+      return { videoId: String(q.videoId ?? q.title), track: String(q.track), lang: String(q.lang ?? "en"), title: q.title };
+    }),
+  });
+  const newsItems = collected.items.filter((i) => i.group === "news");
+  const activity = await listActivity().catch((err: unknown) => {
+    logger.warn({ err }, "brief: activity list unreadable");
+    return [] as ActivityItem[];
+  });
+
   const nothingToDo =
-    actions.length === 0 && tasks.length === 0 && ideas.count === 0 && social.pending === 0;
+    collected.items.length === 0 && tasks.length === 0 && ideas.count === 0;
 
   const brief: Brief = {
     date: localDateLabel(),
     generatedAt: new Date().toISOString(),
     nothingToDo,
     opsReachable: ops !== null,
-    sections: { actions, calendar, tasks, tasksTotal, ideas, bills, pulse, social },
+    sections: {
+      actions, calendar, tasks, tasksTotal, ideas, bills, pulse, social,
+      waiting: collected.items,
+      waitingDown: collected.down,
+      news: { pending: newsItems.length, reviewUrl: newsItems[0]?.url ?? "" },
+      activity,
+    },
     counts: {
       actions: actions.length,
       tasks: tasks.length,
@@ -166,6 +198,8 @@ export async function assembleBrief(): Promise<Brief> {
       socialPending: social.pending,
       events: calendar.length,
       affiliateClicks28d,
+      waiting: collected.items.length,
+      news: newsItems.length,
     },
   };
 
@@ -177,15 +211,9 @@ export async function getStoredBrief(): Promise<Brief | null> {
   return readJson<Brief | null>(BRIEF_KEY, null);
 }
 
-/** One-line summary for the push notification body. */
+/** One-line summary: the same words the "Waiting on you" notification uses. */
 function pushBody(brief: Brief): string {
-  if (brief.nothingToDo) return "Nothing needs you today. Enjoy it. ⚓";
-  const bits: string[] = [];
-  if (brief.counts.actions) bits.push(`${brief.counts.actions} to reply to`);
-  if (brief.counts.events) bits.push(`${brief.counts.events} on the calendar`);
-  if (brief.counts.socialPending) bits.push(`${brief.counts.socialPending} posts to review`);
-  if (brief.counts.tasks) bits.push(`${brief.counts.tasks} open tasks`);
-  return bits.slice(0, 3).join(" · ") || "Open your brief.";
+  return summarizeWaiting(brief.sections.waiting, { events: brief.counts.events, morning: true }).body.replace(/\n/g, " · ");
 }
 
 function money(amount?: number, currency = "USD"): string {
@@ -455,22 +483,25 @@ export function renderBriefPage(brief: Brief, conflicts: ConflictItem[], token: 
 </body></html>`;
 }
 
-/** Assemble, then deliver via Web Push + email. Returns what happened. */
+/**
+ * Assemble, then deliver. The brief's push IS the "Waiting on you" notification (Mark,
+ * 2026-10-22): the 7 AM slot always sends it (with the day's calendar count); the midday and
+ * afternoon slots send only if something new is waiting since the last push, so a quiet day
+ * stays quiet. Returns what happened.
+ */
 export async function runAndDeliverBrief(opts: { update?: boolean } = {}): Promise<{
-  brief: Brief; push: { sent: number; pruned: number }; emailed: boolean;
+  brief: Brief; push: { sent: number; pruned: number; pushed: boolean; added: number }; emailed: boolean;
 }> {
   const brief = await assembleBrief();
-  // Midday and afternoon slots (brief-schedule.ts) say "update", not "daily brief".
-  const title = opts.update
-    ? (brief.nothingToDo ? "📋 Brief update — all clear" : "📋 Brief update")
-    : (brief.nothingToDo ? "📋 Daily Brief — all clear" : "📋 Your daily brief");
-  const push = await sendPush({
-    title,
-    body: pushBody(brief),
-    url: briefViewUrl(),
-    tag: "daily-brief",
+  const r = await pushWaiting({
+    items: brief.sections.waiting,
+    events: brief.counts.events,
+    force: !opts.update,
+    reason: opts.update ? "brief-update" : "morning-brief",
   });
+  if (!opts.update) void pruneActivity().catch(() => {});
+  const push = { sent: r.sent, pruned: r.pruned, pushed: r.pushed, added: r.added };
   const emailed = await emailBrief(brief);
-  logger.info({ counts: brief.counts, push, emailed }, "Daily brief delivered");
+  logger.info({ counts: brief.counts, push, emailed, title: r.title }, "Daily brief delivered");
   return { brief, push, emailed };
 }

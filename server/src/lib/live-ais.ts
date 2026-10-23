@@ -256,6 +256,8 @@ export async function checkLiveAisCredits(
     const left = status.remaining ?? 0;
     logger.warn({ remaining: left, threshold: status.threshold, used: status.used }, "live-ais: LOW CREDITS");
     await notifyMark({
+      kind: "fault",
+      source: "live-ais",
       title: `Live-AIS credits low: ${left} left`,
       body: `${left} of ${status.purchased} credits remain (${status.used} used). When these run out we stop seeing ships at Nassau, Cozumel and the private islands — the gap the free feed cannot cover. Top up: dashboard.live-ais.com → Add Credits.`,
       url: "https://dashboard.live-ais.com/",

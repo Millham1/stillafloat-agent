@@ -43,6 +43,8 @@ router.post("/newsletter/draft", requireToken, async (req: Request, res: Respons
     res.json({ success: true, draft });
     if (lang !== "en") return; // Spanish is never put in front of Mark (2026-10-08 rule)
     void notifyMark({
+      kind: "waiting",
+      source: "newsletter",
       title: `📨 Newsletter draft ready (${lang.toUpperCase()})`,
       body: [draft.subject, `${draft.storyIds.length} stories${draft.video ? " + video" : ""}${draft.affiliate ? " + affiliate" : ""}`].join("\n"),
       url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
@@ -213,6 +215,8 @@ router.post("/newsletter/notify", requireToken, async (req: Request, res: Respon
     return;
   }
   const channel = await notifyMark({
+    kind: "waiting",
+    source: "newsletter",
     title: `📨 Newsletter draft awaiting review (${lang.toUpperCase()})`,
     body: draft.subject,
     url: reviewUrl(`/api/newsletter/review?lang=${lang}`),

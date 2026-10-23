@@ -20,6 +20,8 @@ router.post("/affiliate/ingest", requireToken, async (req: Request, res: Respons
     if (added.length > 0) {
       // Awaited (not fire-and-forget) so the review nudge reliably sends.
       const channel = await notifyMark({
+        kind: "waiting",
+        source: "affiliate",
         title: `🛒 ${added.length} new affiliate pick(s) for review`,
         body: added.slice(0, 10).map((a) => `${a.category}: ${a.title.slice(0, 70)}`).join("\n"),
         url: reviewUrl("/api/affiliate/review"),
@@ -49,6 +51,8 @@ router.post("/affiliate/notify", requireToken, async (_req: Request, res: Respon
   const pending = await loadPending();
   const n = pending.items.length;
   const channel = await notifyMark({
+    kind: "waiting",
+    source: "affiliate",
     title: `🛒 ${n} affiliate pick(s) awaiting review`,
     body: pending.items.slice(0, 10).map((i) => `${i.category}: ${i.title.slice(0, 70)}`).join("\n"),
     url: reviewUrl("/api/affiliate/review"),

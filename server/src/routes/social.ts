@@ -55,6 +55,8 @@ router.post("/social/generate", requireToken, async (req: Request, res: Response
     // single consolidated review nudge at the end (via POST /social/notify).
     if (notify !== false) {
       void notifyMark({
+        kind: "waiting",
+        source: "social",
         title: `📱 1 social draft ready (Track ${queued.track})`,
         body: queued.title,
         url: reviewUrl("/api/social/review"),
@@ -78,6 +80,8 @@ router.post("/social/scan", requireToken, async (req: Request, res: Response) =>
     });
     if (created.length > 0) {
       void notifyMark({
+        kind: "waiting",
+        source: "social",
         title: `📱 ${created.length} new social draft(s) ready`,
         body: created.map((b) => `Track ${b.track}: ${b.title}`).join("\n"),
         url: reviewUrl("/api/social/review"),
@@ -106,6 +110,8 @@ router.post("/social/regenerate", requireToken, async (_req: Request, res: Respo
       const fresh = await regenerateQueue();
       if (fresh.length > 0) {
         await notifyMark({
+          kind: "activity",
+          source: "social",
           title: `♻️ ${fresh.length} hook(s) regenerated`,
           body: fresh.map((b) => `Track ${b.track}: ${b.title}`).join("\n"),
           url: reviewUrl("/api/social/review"),
@@ -420,6 +426,8 @@ router.post("/social/notify", requireToken, async (_req: Request, res: Response)
   const queue = await loadQueue();
   const pending = queue.batches.filter((b) => b.status === "pending");
   const channel = await notifyMark({
+    kind: "waiting",
+    source: "social",
     title: `📱 ${pending.length} social draft(s) awaiting review`,
     body: pending.slice(0, 8).map((b) => `Track ${b.track}: ${b.title}`).join("\n"),
     url: reviewUrl("/api/social/review"),

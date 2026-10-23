@@ -45,6 +45,7 @@
   .tag.med{background:rgba(230,170,60,.2);color:#f3d9a6}
   .tag.unread{background:rgba(90,140,255,.2);color:#aecbff}
   .pos{color:#5ad6a0}.neg{color:#ff8b93}
+  .row.fault{color:#f3d9a6}
   .aitem{border-top:1px solid #24407e;padding:12px 0}
   .aitem:first-of-type{border-top:none}
   .conflict{border-top:1px solid #1a2a4f;padding:12px 0}
@@ -175,9 +176,27 @@
       }).catch(function(e){ alert(String(e)); btns.forEach(function(b){b.disabled=false;}); });
   };
 
-  function renderActions(actions){
-    if(!actions || !actions.length) return "";
-    return section("Waiting on you", actions.length, actions.map(function(a){
+  // Waiting items from sources that have no section of their own on this page (news,
+  // commentary, newsletter, affiliate picks, agent proposals) render as one link row each,
+  // so the page's "Waiting on you" and the phone's "Waiting on you: N" list the same things.
+  // Inbox, social posts and calendar conflicts keep their own sections below.
+  var WAITING_ROWS = { news: "news stories to approve", commentary: "commentary to approve", newsletter: "newsletter draft to approve", affiliate: "affiliate picks to review", proposals: "agent proposals to decide" };
+  function waitingRows(waiting){
+    var by = {};
+    (waiting||[]).forEach(function(w){ if(WAITING_ROWS[w.group]){ (by[w.group] = by[w.group] || []).push(w); } });
+    return Object.keys(WAITING_ROWS).filter(function(g){ return by[g]; }).map(function(g){
+      var list = by[g], n = list.length, url = list[0].url || "";
+      var label = (g==="commentary"||g==="newsletter") ? list[0].label : (n + " " + WAITING_ROWS[g]);
+      var sub = (n>1 && g!=="commentary") ? list.slice(0,4).map(function(w){ return w.label; }).join(" · ") + (n>4 ? " · …" : "") : "";
+      return '<div class="aitem"><div><b>'+esc(label)+'</b></div>'+(sub?'<div class="sub">'+esc(sub)+'</div>':"")+
+        '<div class="btns">'+(url?'<a class="btn-link" href="'+esc(url)+'" target="_blank" rel="noopener">Open</a>':"")+'</div></div>';
+    }).join("");
+  }
+  function renderActions(actions, waiting){
+    var extra = waitingRows(waiting);
+    if((!actions || !actions.length) && !extra) return "";
+    var rows = (actions||[]).length + (extra ? extra.split('<div class="aitem">').length - 1 : 0);
+    return section("Waiting on you", rows, (actions||[]).map(function(a){
       // Three button shapes: API (method+path → do it, then resolve), link (href →
       // just open), and dismiss (an explicit "Ignore" that resolves as dismissed and
       // replaces the generic Clear).
@@ -195,7 +214,20 @@
       return '<div class="aitem"><div><b>'+esc(a.title)+'</b></div>'+
         (a.body?'<div class="sub">'+esc(a.body)+'</div>':"")+
         '<div class="btns">'+btns+'</div></div>';
-    }).join(""), "action");
+    }).join("") + extra, "action");
+  }
+
+  // "What the agents did today" — the no-push record (Mark, 2026-10-22: everything that is
+  // not a decision or a heads-up stops buzzing the phone and lands here instead).
+  function renderActivity(items){
+    if(!items || !items.length) return "";
+    var rows = items.slice().reverse().slice(0,40).map(function(a){
+      var t = ""; try { t = new Date(a.at).toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}); } catch(e) {}
+      return '<div class="row'+(a.level==="fault"?' fault':'')+'"><span class="sub">'+esc(t)+'</span> '+(a.level==="fault"?"⚠️ ":"")+esc(a.title)+
+        (a.pushed?' <span class="tag unread">buzzed</span>':"")+' <span class="sub">— '+esc(a.source)+'</span>'+
+        (a.body?'<div class="sub">'+esc(String(a.body).slice(0,200))+'</div>':"")+'</div>';
+    }).join("");
+    return section("What the agents did today", items.length, rows);
   }
 
   function renderAlerts(){
@@ -285,7 +317,8 @@
     if(!brief.opsReachable) html += '<div class="warn">⚠ Couldn’t reach the ops-manager — some sections may be incomplete.</div>';
 
     // 1) THE action queue — everything agents need from you, buttons included.
-    html += renderActions(actions);
+    html += renderActions(actions, s.waiting);
+    if(s.waitingDown && s.waitingDown.length) html += '<div class="warn">⚠ Could not read: '+esc(s.waitingDown.join(", "))+' — those items are not counted above.</div>';
 
     // 2) Calendar conflicts (decision buttons).
     if(conflicts && conflicts.length){
@@ -343,6 +376,7 @@
       if(s.pulse.instagram) pr+='<div class="row"><b>Instagram '+arrow(s.pulse.instagram.trend)+' '+esc(s.pulse.instagram.trend)+'</b><div class="sub">'+esc(s.pulse.instagram.tip)+'</div></div>';
       html += section("Reach", 0, pr);
     }
+    html += renderActivity(s.activity);
 
     content.innerHTML = html;
     content.appendChild(renderAlerts());
@@ -351,7 +385,7 @@
 
   function summary(b, actions){
     var c=b.counts||{}, bits=[];
-    var act=(actions||[]).length;
+    var act = (c.waiting!=null) ? c.waiting : (actions||[]).length;   // the phone's "Waiting on you: N"
     if(act) bits.push(act+" waiting on you");
     if(c.actions) bits.push(c.actions+" to reply to");
     if(c.events) bits.push(c.events+" on the calendar");

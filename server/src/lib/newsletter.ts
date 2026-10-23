@@ -850,6 +850,8 @@ async function runDelivery(lang: Lang): Promise<void> {
     "Newsletter delivery round complete",
   );
   void notifyMark({
+    kind: "waiting",
+    source: "newsletter",
     ...deliveryNotice(draft.delivery, lang, draft.subject, process.env["TIMEZONE"] || "America/New_York"),
     url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
     tag: "newsletter-review",
