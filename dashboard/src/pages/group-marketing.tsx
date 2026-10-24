@@ -39,6 +39,8 @@ async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> 
 const LANG_NAME = { en: "English", es: "Spanish" } as const;
 /** Same words the server refuses with (PITCH_FIRST in server/src/lib/group-marketing.ts): nothing is written without Mark's pitch. */
 const PITCH_FIRST = "Write Mark's pitch first (interview question 1) — the copy is built around it.";
+/** When a guest said Mark can catch them ("Talk me into it, Mark!"), in the words the dashboard shows. */
+const CALL_WHEN_WORD: Record<string, string> = { morning: "mornings", afternoon: "afternoons", evening: "evenings", anytime: "whenever" };
 const input = "mt-1 w-full px-3 py-2 text-base rounded-md border bg-card text-foreground";
 
 /** The public site's address. The dashboard calls the API on the main site, so its origin is the page origin. */
@@ -275,8 +277,8 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
           )}
         </div>
 
-        {/* 4. Replies */}
-        <div>
+        {/* 4. Replies (the "Add the travelers to a cabin" button on Mark's list links here: #replies) */}
+        <div id="replies" className="scroll-mt-4">
           <h4 className="text-lg font-semibold flex items-center gap-2"><Users className="w-4 h-4" /> Replies from the page ({replies?.interests.length ?? 0})</h4>
           <p className="text-sm text-muted-foreground mb-3">Each reply also lands in your website contact list and pings your phone. Aim to answer within a few hours.</p>
           {(replies?.interests.length ?? 0) === 0
@@ -284,7 +286,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
             : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead><tr className="border-b bg-muted/30 text-muted-foreground"><th className="text-left px-2 py-2">Name</th><th className="text-left px-2 py-2">Contact</th><th className="text-left px-2 py-2">Cabin · guests</th><th className="text-left px-2 py-2">Note</th><th className="text-left px-2 py-2">When</th><th className="text-left px-2 py-2">Choice</th><th className="text-left px-2 py-2">Hold</th><th className="text-left px-2 py-2">Travelers</th><th className="text-left px-2 py-2">Status</th></tr></thead>
+                  <thead><tr className="border-b bg-muted/30 text-muted-foreground"><th className="text-left px-2 py-2">Name</th><th className="text-left px-2 py-2">Contact</th><th className="text-left px-2 py-2">Cabin · guests</th><th className="text-left px-2 py-2">Note</th><th className="text-left px-2 py-2">Saved</th><th className="text-left px-2 py-2">Choice</th><th className="text-left px-2 py-2">When</th><th className="text-left px-2 py-2">Hold</th><th className="text-left px-2 py-2">Travelers</th><th className="text-left px-2 py-2">Address</th><th className="text-left px-2 py-2">Status</th></tr></thead>
                   <tbody className="divide-y divide-border">
                     {replies!.interests.map((r) => (
                       <tr key={r.id}>
@@ -293,7 +295,8 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
                         <td className="px-2 py-2">{r.cabin_type || "—"} · {r.guests ?? "—"}</td>
                         <td className="px-2 py-2 max-w-xs">{r.note || ""}{r.newsletter_opt_in ? <div className="text-muted-foreground">Wants the newsletter</div> : null}</td>
                         <td className="px-2 py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
-                        <td className="px-2 py-2 whitespace-nowrap">{r.choice === "call" ? "call" : r.choice === "finish" ? "finish" : "—"}</td>
+                        <td className="px-2 py-2 whitespace-nowrap">{r.choice === "call" ? "talk" : r.choice === "finish" ? "finish" : "—"}</td>
+                        <td className="px-2 py-2 whitespace-nowrap">{CALL_WHEN_WORD[String(r.call_when)] ?? "—"}</td>
                         <td className="px-2 py-2 whitespace-nowrap">{r.hold_requested_at ? new Date(r.hold_requested_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}</td>
                         <td className="px-2 py-2 min-w-[14rem]">
                           {Array.isArray(r.travelers) && r.travelers.length > 0 ? (
@@ -319,6 +322,9 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
                               )}
                             </div>
                           ) : "—"}
+                        </td>
+                        <td className="px-2 py-2 whitespace-nowrap" title={r.address?.street ? `${r.address.street}, ${r.address.city}, ${r.address.state} ${r.address.zip}` : undefined}>
+                          {r.address?.city ? `${r.address.city}, ${r.address.state}` : "—"}
                         </td>
                         <td className="px-2 py-2">
                           <select className="px-2 py-1 rounded border bg-card" value={r.status}
