@@ -6,10 +6,7 @@ import { logger } from "../lib/logger";
 import { llmJson } from "../lib/llm";
 import { verifyTurnstile } from "../lib/turnstile";
 import { createAction } from "../lib/actions";
-import { BUSINESS, hashForAudit } from "../lib/group-secure";
-import { sendMail } from "../lib/mailer";
-import { issueToken, mailAllowed } from "../lib/group-forms";
-import { ackEmail, callUrl as makeCallUrl, detailsFacts, detailsUrl as makeDetailsUrl, splitLegalName, storedTravelers } from "../lib/group-details";
+import { hashForAudit } from "../lib/group-secure";
 import { clientIp } from "../lib/client-ip";
 import {
   ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote, validEmail, validPhone,
@@ -30,12 +27,9 @@ import { CAMPAIGN_SCHEMA, campaignSystemPrompt, campaignUserPrompt, facebookPost
 //   POST /api/groups/:id/marketing/approve         { approved: true|false } — the page goes live / comes down
 //   GET  /api/groups/:id/interests                 replies from the page
 //   PATCH /api/groups/:id/interests/:rowId         { status }
-//   POST /api/groups/:id/interests/:iid/to-file    { cabin_id } the travelers a reply typed on its details page become travelers on that cabin
 // Public (the group page):
 //   GET  /api/group-page/:code?lang=en|es          facts + approved copy (or with the dashboard token: a preview)
-//   POST /api/group-page/:code/interest            "I'm interested" — stored, Mark is told, no payment, no card; the answer carries the guest's own
-//                                                  {detailsUrl, callUrl} (migration 0056) and, with an email address, the acknowledgement email goes out
-//                                                  (routes/group-details.ts holds the private "Your details" page's API)
+//   POST /api/group-page/:code/interest            "I'm interested" — stored, Mark is told, no payment, no card
 //
 // Facts come from the group file on every request; copy never carries a figure
 // the validator has not matched to the file.
@@ -261,7 +255,7 @@ router.post("/groups/:id/marketing/share-code", requireToken, async (req: Reques
 router.get("/groups/:id/interests", requireToken, async (req: Request, res: Response) => {
   try {
     const { data, error } = await db().from("group_interests")
-      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, travelers, concierge, pick, hold_requested_at, ack_email_status, traveler_id")
+      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at")
       .eq("group_id", String(req.params["id"])).order("created_at", { ascending: false }).order("id", { ascending: true });
     if (error) throw new Error(error.message);
     return res.json({ success: true, interests: data ?? [] });
@@ -282,55 +276,6 @@ router.patch("/groups/:id/interests/:rowId", requireToken, async (req: Request, 
     return res.json({ success: true });
   } catch (err) {
     return fail(req, res, err, "group interest update failed");
-  }
-});
-
-/**
- * What a guest typed on the details page becomes travelers on a cabin of Mark's choosing (Mark 2026-10-23). The legal name splits on the LAST space
- * (first / last), the birthday goes in as typed, and the first person is the cabin's lead (when it has none yet) and carries the reply's email, phone and
- * language. Mark books with the cruise line himself: nothing here changes the cabin's status, charges anything or sends anything. A reply goes into the
- * file once (it remembers the first traveler it made); Mark deletes that traveler to put the reply in again.
- */
-router.post("/groups/:id/interests/:iid/to-file", requireToken, async (req: Request, res: Response) => {
-  try {
-    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
-    const cabinId = String((req.body as Row | undefined)?.["cabin_id"] ?? "");
-    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!UUID.test(groupId) || !UUID.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
-    const { data: reply, error } = await db().from("group_interests")
-      .select("id, group_id, first_name, email, phone, lang, travelers, traveler_id").eq("id", iid).eq("group_id", groupId).maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!reply) return res.status(404).json({ success: false, error: "Reply not found" });
-    const people = storedTravelers(reply.travelers);
-    if (!people) return res.status(400).json({ success: false, error: "This reply has no travelers yet: the guest has not finished the details page." });
-    if (!cabinId) return res.status(400).json({ success: false, error: "Choose a cabin first." });
-    if (!UUID.test(cabinId)) return res.status(404).json({ success: false, error: "That cabin is not on this group." });
-    const { data: cabin, error: ce } = await db().from("group_cabins").select("id").eq("id", cabinId).eq("group_id", groupId).maybeSingle();
-    if (ce) throw new Error(ce.message);
-    if (!cabin) return res.status(404).json({ success: false, error: "That cabin is not on this group." });
-    if (reply.traveler_id) return res.status(409).json({ success: false, error: "These travelers are already in the file. Delete the traveler first if you want to add them again." });
-
-    const { data: onCabin, error: le } = await db().from("group_travelers").select("id, is_lead").eq("cabin_id", cabinId);
-    if (le) throw new Error(le.message);
-    const hasLead = ((onCabin ?? []) as Row[]).some((t) => t["is_lead"] === true);
-    const guestLang = reply.lang === "es" ? "es" : "en";
-    const rows = people.map((p, i) => {
-      const { first, last } = splitLegalName(p.legal_name);
-      return {
-        group_id: groupId, cabin_id: cabinId, is_lead: i === 0 && !hasLead, first_name: first, last_name: last, dob: p.dob, lang: guestLang,
-        ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null } : {}),
-      };
-    });
-    const { data: made, error: me } = await db().from("group_travelers").insert(rows).select("id");
-    if (me) throw new Error(me.message);
-    const ids = ((made ?? []) as Row[]).map((r) => String(r["id"]));
-    if (ids[0]) {
-      const { error: ue } = await db().from("group_interests").update({ traveler_id: ids[0], updated_at: new Date().toISOString() }).eq("id", iid);
-      if (ue) logger.warn({ err: ue.message }, "to-file: the reply could not be marked as added (the travelers are in the file)");
-    }
-    return res.json({ success: true, count: ids.length, ids });
-  } catch (err) {
-    return fail(req, res, err, "group interest to-file failed");
   }
 });
 
@@ -450,13 +395,12 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
       else prospectId = prospect?.id ?? null;
     }
 
-    const { data: created, error } = await db().from("group_interests").insert({
+    const { error } = await db().from("group_interests").insert({
       group_id: group.id, first_name: first, last_name: last || null, email, phone, lang,
       guests, note: text(body["note"], 800) || null,
       newsletter_opt_in: optIn, ip_hash: hashForAudit(ip), prospect_id: prospectId,
-    }).select("id").maybeSingle();
+    });
     if (error) throw new Error(error.message);
-    const interestId: string | null = created?.id ? String(created.id) : null;
 
     // A lead is a decision waiting on Mark: one row in the queue (he clears it once he has
     // replied) and the one "Waiting on you" notification, keeping the email floor a lead
@@ -464,53 +408,14 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     // the same group never collapse into one.
     void createAction({
       type: "lead",
-      source_ref: interestId ? `group-interest-${interestId}` : `group-interest-${group.id}-${Date.now()}`,
+      source_ref: `group-interest-${group.id}-${Date.now()}`,
       title: `Group reply: ${first}${last ? " " + last : ""}`,
       body: `${group.name} — ${guests ? `party of ${guests}` : "party size not given"}. Reply within a few hours.`,
       buttons: [{ label: "Open the group file", href: `/groups/${group.id}` }],
       priority: "lead",
     }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest notify failed"));
 
-    // The guest's own private link (Mark 2026-10-23): "I'll finish it now" opens the details page, "Mark, call me" tells us they want a call. Made
-    // AFTER the reply is safely stored, so a box that has not applied migration 0056 yet still takes every reply (it just has no links to hand back).
-    if (!interestId) return res.json({ success: true });
-    const { token, hash } = issueToken();
-    const { error: te } = await db().from("group_interests").update({ details_token_hash: hash, details_token_issued_at: new Date().toISOString() }).eq("id", interestId);
-    if (te) {
-      logger.warn({ err: te.message }, "group interest: the details link could not be saved (migration 0056 applied?); the reply is kept without one");
-      return res.json({ success: true });
-    }
-    const links = { detailsUrl: makeDetailsUrl(publicSite(), token, lang), callUrl: makeCallUrl(publicSite(), token, lang) };
-    // These are the submitter's own links, handed back to them and to nobody else (they are the credential for their page).
-    res.json({ success: true, ...links });
-
-    // The acknowledgement email goes after the answer, so the guest never waits on the mailer. What happened to it is written on the reply.
-    void (async () => {
-      const set = (patch: Row) => db().from("group_interests").update(patch).eq("id", interestId).then((r: { error?: { message: string } }) => {
-        if (r.error) logger.warn({ err: r.error.message }, "group interest: the email status could not be saved");
-      });
-      if (!email) { await set({ ack_email_status: "no-email" }); return; }
-      if (!mailAllowed(email, process.env["GROUP_FORMS_MAIL_ALLOW"])) { // the dev box emails only its test addresses
-        await set({ ack_email_status: "held" });
-        await db().from("group_messages").insert({ group_id: group.id, audience: "client", template: "interest-ack", to_email: email, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
-        return;
-      }
-      const f = detailsFacts({ group, cabins: loaded.cabins }, lang);
-      const mail = ackEmail({
-        firstName: first, groupLabel: f.label, ship: f.ship, sailDateText: f.sailLongText, returnDateText: f.returnLongText, embarkPort: f.embarkPort, ports: f.ports,
-        cabinPrices: f.held, taxesIncluded: f.taxesIncluded, depositPerPersonText: f.depositPerPersonText,
-        ...links, phone: BUSINESS.phone, hostNames: f.hostNames, lang, publicSite: publicSite(),
-      });
-      const ok = await sendMail({ to: email, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
-      const at = new Date().toISOString();
-      await set({ ack_email_status: ok ? "sent" : "failed", ack_email_at: ok ? at : null });
-      // The email log keeps who and when, never the link.
-      await db().from("group_messages").insert({
-        group_id: group.id, audience: "client", template: "interest-ack", to_email: email, subject: mail.subject,
-        status: ok ? "sent" : "failed", sent_at: ok ? at : null, error: ok ? null : "mail sender refused or was unreachable",
-      });
-    })().catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest: the acknowledgement email step failed"));
-    return;
+    return res.json({ success: true });
   } catch (err) {
     return fail(req, res, err, "group interest failed");
   }

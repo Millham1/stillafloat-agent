@@ -112,26 +112,6 @@ export async function resolveActionsForSource(type: string, sourceRef: string, s
 }
 
 /**
- * Say the same waiting item better: rewrite the title (and body) of the PENDING action tied to a source. The "Waiting on you" list is recomputed from
- * the rows, so the item changes in place and Mark is not pinged twice for one person. Returns how many rows changed (0 when none is pending, and the
- * caller then makes a new item).
- */
-export async function retitleActionsForSource(type: string, sourceRef: string, patch: { title: string; body?: string }): Promise<number> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = getSupabase() as any;
-  const { data, error } = await supabase
-    .from("actions")
-    .update({ title: patch.title.slice(0, 200), ...(patch.body !== undefined ? { body: patch.body } : {}) })
-    .eq("type", type).eq("source_ref", sourceRef).eq("status", "pending")
-    .select("id");
-  if (error) {
-    logger.warn({ error, type }, "retitleActionsForSource failed");
-    return 0;
-  }
-  return ((data ?? []) as unknown[]).length;
-}
-
-/**
  * A fault that re-raises DAILY (push-health writes one row per day while the channel is
  * dead, so a dead day never hides behind yesterday's row) must not pile up: keep the
  * current row, expire every older pending row of the same family. 2026-10-23: the dev box,

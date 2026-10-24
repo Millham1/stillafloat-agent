@@ -52,9 +52,6 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
   const { toast } = useToast();
   const { data, isLoading, error } = useQuery<Marketing>({ queryKey: ["group-marketing", groupId], queryFn: () => api(`/groups/${groupId}/marketing`) });
   const { data: replies } = useQuery<{ interests: Row[] }>({ queryKey: ["group-interests", groupId], queryFn: () => api(`/groups/${groupId}/interests`) });
-  // The group's cabins, for "Add travelers to a cabin…" on a reply whose guest finished the details page (the same read, and cache key, the group file page makes).
-  const { data: groupFile } = useQuery<{ cabins?: Row[] }>({ queryKey: ["group", groupId], queryFn: () => api(`/groups/${groupId}?horizon=3650`) });
-  const [cabinFor, setCabinFor] = useState<Record<string, string>>({});   // reply id → the cabin chosen in its row
   const refresh = () => { qc.invalidateQueries({ queryKey: ["group-marketing", groupId] }); qc.invalidateQueries({ queryKey: ["group"] }); };
 
   const [answers, setAnswers] = useState<Row>({});
@@ -284,7 +281,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
             : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead><tr className="border-b bg-muted/30 text-muted-foreground"><th className="text-left px-2 py-2">Name</th><th className="text-left px-2 py-2">Contact</th><th className="text-left px-2 py-2">Cabin · guests</th><th className="text-left px-2 py-2">Note</th><th className="text-left px-2 py-2">When</th><th className="text-left px-2 py-2">Choice</th><th className="text-left px-2 py-2">Hold</th><th className="text-left px-2 py-2">Travelers</th><th className="text-left px-2 py-2">Status</th></tr></thead>
+                  <thead><tr className="border-b bg-muted/30 text-muted-foreground"><th className="text-left px-2 py-2">Name</th><th className="text-left px-2 py-2">Contact</th><th className="text-left px-2 py-2">Cabin · guests</th><th className="text-left px-2 py-2">Note</th><th className="text-left px-2 py-2">When</th><th className="text-left px-2 py-2">Status</th></tr></thead>
                   <tbody className="divide-y divide-border">
                     {replies!.interests.map((r) => (
                       <tr key={r.id}>
@@ -293,33 +290,6 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
                         <td className="px-2 py-2">{r.cabin_type || "—"} · {r.guests ?? "—"}</td>
                         <td className="px-2 py-2 max-w-xs">{r.note || ""}{r.newsletter_opt_in ? <div className="text-muted-foreground">Wants the newsletter</div> : null}</td>
                         <td className="px-2 py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
-                        <td className="px-2 py-2 whitespace-nowrap">{r.choice === "call" ? "call" : r.choice === "finish" ? "finish" : "—"}</td>
-                        <td className="px-2 py-2 whitespace-nowrap">{r.hold_requested_at ? new Date(r.hold_requested_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}</td>
-                        <td className="px-2 py-2 min-w-[14rem]">
-                          {Array.isArray(r.travelers) && r.travelers.length > 0 ? (
-                            <div>
-                              <div title={r.travelers.map((t: Row) => `${t.legal_name} (${t.dob})`).join("\n")}>{r.travelers.length}</div>
-                              {r.pick?.category ? <div className="text-xs text-muted-foreground">Our pick: {r.pick.category}, {r.pick.where}</div> : null}
-                              {r.traveler_id ? <div className="text-xs text-muted-foreground">In the group file</div> : (
-                                <div className="mt-1 flex flex-col gap-1">
-                                  <select className="px-2 py-1 rounded border bg-card text-xs" aria-label="Cabin for these travelers" value={cabinFor[r.id] ?? ""}
-                                    onChange={(e) => setCabinFor((prev) => ({ ...prev, [r.id]: e.target.value }))}>
-                                    <option value="">Choose a cabin…</option>
-                                    {[...(groupFile?.cabins ?? [])].sort((a, b) => String(a.category ?? "").localeCompare(String(b.category ?? "")) || String(a.cabin_num ?? "").localeCompare(String(b.cabin_num ?? ""))).map((c) => (
-                                      <option key={c.id} value={c.id}>{c.category || "Cabin"}{c.cabin_num ? ` #${c.cabin_num}` : ""} ({c.status})</option>
-                                    ))}
-                                  </select>
-                                  <button className="px-2 py-1 rounded border text-xs disabled:opacity-50" disabled={!cabinFor[r.id] || busy === `to-file-${r.id}`}
-                                    onClick={() => run(`to-file-${r.id}`, async () => {
-                                      const out = await api<{ count: number }>(`/groups/${groupId}/interests/${r.id}/to-file`, "POST", { cabin_id: cabinFor[r.id] });
-                                      toast({ title: `Added ${out.count} traveler${out.count === 1 ? "" : "s"} to the file`, description: "They are on that cabin now. Nothing was booked or changed on the cabin: you book with the cruise line." });
-                                      qc.invalidateQueries({ queryKey: ["group-interests", groupId] }); qc.invalidateQueries({ queryKey: ["group", groupId] });
-                                    })}>Add travelers to a cabin…</button>
-                                </div>
-                              )}
-                            </div>
-                          ) : "—"}
-                        </td>
                         <td className="px-2 py-2">
                           <select className="px-2 py-1 rounded border bg-card" value={r.status}
                             onChange={async (e) => { await api(`/groups/${groupId}/interests/${r.id}`, "PATCH", { status: e.target.value }); qc.invalidateQueries({ queryKey: ["group-interests", groupId] }); }}>
