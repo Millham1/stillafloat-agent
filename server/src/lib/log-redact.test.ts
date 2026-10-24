@@ -11,6 +11,7 @@ test("a paperwork link's token never reaches the request log, whether it is in t
   assert.equal(redactLogUrl(`/api/group-details/${token}`), "/api/group-details/[link]");
   assert.equal(redactLogUrl(`/api/group-details/${token}/choice`), "/api/group-details/[link]/choice");
   assert.equal(redactLogUrl(`/api/group-details/${token}/hold`), "/api/group-details/[link]/hold");
+  assert.equal(redactLogUrl(`/api/group-details/${token}/pick`), "/api/group-details/[link]/pick");
   assert.equal(redactLogUrl(`/details.html?t=${token}&choice=call`), "/details.html");
   assert.equal(redactLogUrl(`/es/details.html?t=${token}`), "/es/details.html");
   assert.equal(redactLogUrl("/api/groups/abc/signatures?x=1"), "/api/groups/abc/signatures");

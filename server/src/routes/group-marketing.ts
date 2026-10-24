@@ -6,10 +6,10 @@ import { logger } from "../lib/logger";
 import { llmJson } from "../lib/llm";
 import { verifyTurnstile } from "../lib/turnstile";
 import { createAction } from "../lib/actions";
-import { BUSINESS, hashForAudit } from "../lib/group-secure";
-import { sendMail } from "../lib/mailer";
-import { issueToken, mailAllowed } from "../lib/group-forms";
-import { ackEmail, callUrl as makeCallUrl, detailsFacts, detailsUrl as makeDetailsUrl, splitLegalName, storedTravelers } from "../lib/group-details";
+import { hashForAudit } from "../lib/group-secure";
+import { issueToken } from "../lib/group-forms";
+import { MSG, callUrl as makeCallUrl, detailsUrl as makeDetailsUrl, firstWord, splitLegalName, storedAddress, storedTravelers, tidyLegalName } from "../lib/group-details";
+import { formatAddress } from "../lib/address-lookup";
 import { clientIp } from "../lib/client-ip";
 import {
   ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote, validEmail, validPhone,
@@ -31,11 +31,12 @@ import { CAMPAIGN_SCHEMA, campaignSystemPrompt, campaignUserPrompt, facebookPost
 //   GET  /api/groups/:id/interests                 replies from the page
 //   PATCH /api/groups/:id/interests/:rowId         { status }
 //   POST /api/groups/:id/interests/:iid/to-file    { cabin_id } the travelers a reply typed on its details page become travelers on that cabin
+//   POST /api/groups/:id/interests/:iid/mark/:how  how = talked | confirmed — the buttons on Mark's list ("We talked", "Confirmed with MSC")
 // Public (the group page):
 //   GET  /api/group-page/:code?lang=en|es          facts + approved copy (or with the dashboard token: a preview)
-//   POST /api/group-page/:code/interest            "I'm interested" — stored, Mark is told, no payment, no card; the answer carries the guest's own
-//                                                  {detailsUrl, callUrl} (migration 0056) and, with an email address, the acknowledgement email goes out
-//                                                  (routes/group-details.ts holds the private "Your details" page's API)
+//   POST /api/group-page/:code/interest            "Save my spot!" — stored, Mark is told, no payment, no card; the answer carries the guest's own
+//                                                  {detailsUrl, callUrl, first} (migration 0056). NO email goes out here: the guest's ONE email is sent when they
+//                                                  choose a road (routes/group-details.ts holds the choice, the details page's API and both emails)
 //
 // Facts come from the group file on every request; copy never carries a figure
 // the validator has not matched to the file.
@@ -261,7 +262,7 @@ router.post("/groups/:id/marketing/share-code", requireToken, async (req: Reques
 router.get("/groups/:id/interests", requireToken, async (req: Request, res: Response) => {
   try {
     const { data, error } = await db().from("group_interests")
-      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, travelers, concierge, pick, hold_requested_at, ack_email_status, traveler_id")
+      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, call_when, travelers, address, concierge, pick, hold_requested_at, ack_email_status, traveler_id")
       .eq("group_id", String(req.params["id"])).order("created_at", { ascending: false }).order("id", { ascending: true });
     if (error) throw new Error(error.message);
     return res.json({ success: true, interests: data ?? [] });
@@ -298,7 +299,7 @@ router.post("/groups/:id/interests/:iid/to-file", requireToken, async (req: Requ
     const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!UUID.test(groupId) || !UUID.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
     const { data: reply, error } = await db().from("group_interests")
-      .select("id, group_id, first_name, email, phone, lang, travelers, traveler_id").eq("id", iid).eq("group_id", groupId).maybeSingle();
+      .select("id, group_id, first_name, email, phone, lang, travelers, address, traveler_id").eq("id", iid).eq("group_id", groupId).maybeSingle();
     if (error) throw new Error(error.message);
     if (!reply) return res.status(404).json({ success: false, error: "Reply not found" });
     const people = storedTravelers(reply.travelers);
@@ -314,11 +315,14 @@ router.post("/groups/:id/interests/:iid/to-file", requireToken, async (req: Requ
     if (le) throw new Error(le.message);
     const hasLead = ((onCabin ?? []) as Row[]).some((t) => t["is_lead"] === true);
     const guestLang = reply.lang === "es" ? "es" : "en";
+    // The one home address for the cabin goes on the first traveler, as one line, where the paperwork already reads it (form_data.address); someone
+    // who lives elsewhere says so on their own paperwork page.
+    const home = storedAddress(reply.address);
     const rows = people.map((p, i) => {
       const { first, last } = splitLegalName(p.legal_name);
       return {
         group_id: groupId, cabin_id: cabinId, is_lead: i === 0 && !hasLead, first_name: first, last_name: last, dob: p.dob, lang: guestLang,
-        ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null } : {}),
+        ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null, ...(home ? { form_data: { address: formatAddress(home) } } : {}) } : {}),
       };
     });
     const { data: made, error: me } = await db().from("group_travelers").insert(rows).select("id");
@@ -331,6 +335,31 @@ router.post("/groups/:id/interests/:iid/to-file", requireToken, async (req: Requ
     return res.json({ success: true, count: ids.length, ids });
   } catch (err) {
     return fail(req, res, err, "group interest to-file failed");
+  }
+});
+
+/**
+ * The two buttons on Mark's list that close a guest's item (the brief calls the path, then clears the item): "We talked" after the call of Road A, and
+ * "Confirmed with MSC" after the hold of Road B. They move the reply along in the replies table (talked = contacted, confirmed = booked) and never
+ * change a reply Mark has already marked declined or spam.
+ */
+router.post("/groups/:id/interests/:iid/mark/:how", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]), how = String(req.params["how"]);
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID.test(groupId) || !UUID.test(iid) || !["talked", "confirmed"].includes(how)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const { data: reply, error } = await db().from("group_interests").select("id, status").eq("id", iid).eq("group_id", groupId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!reply) return res.status(404).json({ success: false, error: "Reply not found" });
+    const status = how === "talked" ? "contacted" : "booked";
+    if (["new", "contacted"].includes(String(reply.status))) {
+      const { error: ue } = await db().from("group_interests").update({ status, updated_at: new Date().toISOString() }).eq("id", iid);
+      if (ue) throw new Error(ue.message);
+      return res.json({ success: true, status });
+    }
+    return res.json({ success: true, status: reply.status });
+  } catch (err) {
+    return fail(req, res, err, "group interest mark failed");
   }
 });
 
@@ -413,7 +442,8 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     const first = text(body["first_name"], 80);
     const last = text(body["last_name"], 80);
     const lang: Lang = body["lang"] === "es" ? "es" : "en";
-    if (!first) return res.status(400).json({ success: false, error: lang === "es" ? "Falta su nombre." : "Please add your name." });
+    // A first AND a last name, letters, spaces, hyphens and apostrophes only, the way the passport has it (Mark 2026-10-24); the page checks the same and says the same.
+    if (!first || !tidyLegalName(`${first} ${last}`)) return res.status(400).json({ success: false, error: MSG.name[lang], field: "name" });
     // One way to reach them is enough (Mark 2026-10-23: one box, "Email or phone"): a valid email, or a phone with at least seven digits. What they typed
     // is kept as they typed it (the phone is only checked, not rewritten); an email is stored in lower case.
     const rawEmail = text(body["email"], 200).toLowerCase();
@@ -421,10 +451,7 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     const email = validEmail(rawEmail) ? rawEmail : null;
     const phone = validPhone(rawPhone) ? rawPhone : null;
     if (!email && !phone) {
-      const error = rawEmail || rawPhone
-        ? (lang === "es" ? "Revise su correo electrónico o su teléfono." : "Please check your email address or phone number.")
-        : (lang === "es" ? "Agregue un correo o un teléfono." : "Please add an email or a phone number.");
-      return res.status(400).json({ success: false, error });
+      return res.status(400).json({ success: false, error: lang === "es" ? "Revise su correo electrónico o su teléfono." : "Please check your email address or phone number.", field: "contact" });
     }
     const guests = Number.isInteger(Number(body["guests"])) && Number(body["guests"]) > 0 && Number(body["guests"]) <= 12 ? Number(body["guests"]) : null;
     const optIn = body["newsletter_opt_in"] === true;
@@ -471,46 +498,19 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
       priority: "lead",
     }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest notify failed"));
 
-    // The guest's own private link (Mark 2026-10-23): "I'll finish it now" opens the details page, "Mark, call me" tells us they want a call. Made
-    // AFTER the reply is safely stored, so a box that has not applied migration 0056 yet still takes every reply (it just has no links to hand back).
-    if (!interestId) return res.json({ success: true });
+    // The guest's own private link, handed back to them and to nobody else (it is the credential for their page). Made AFTER the reply is safely stored, so a
+    // box that has not applied migration 0056 yet still takes every reply (it just has no links to hand back).
+    // NO email goes out now (Mark 2026-10-24: "the client should not get 2"): the one email is sent when they choose a road, "Talk me into it, Mark!" (a call
+    // confirmation) or "I've got this" and then "Hold my cabin!" (a hold confirmation). Until then the status says so.
+    const answer = { success: true as const, first: firstWord(first) };
+    if (!interestId) return res.json(answer);
     const { token, hash } = issueToken();
-    const { error: te } = await db().from("group_interests").update({ details_token_hash: hash, details_token_issued_at: new Date().toISOString() }).eq("id", interestId);
+    const { error: te } = await db().from("group_interests").update({ details_token_hash: hash, details_token_issued_at: new Date().toISOString(), ack_email_status: "awaiting-choice" }).eq("id", interestId);
     if (te) {
       logger.warn({ err: te.message }, "group interest: the details link could not be saved (migration 0056 applied?); the reply is kept without one");
-      return res.json({ success: true });
+      return res.json(answer);
     }
-    const links = { detailsUrl: makeDetailsUrl(publicSite(), token, lang), callUrl: makeCallUrl(publicSite(), token, lang) };
-    // These are the submitter's own links, handed back to them and to nobody else (they are the credential for their page).
-    res.json({ success: true, ...links });
-
-    // The acknowledgement email goes after the answer, so the guest never waits on the mailer. What happened to it is written on the reply.
-    void (async () => {
-      const set = (patch: Row) => db().from("group_interests").update(patch).eq("id", interestId).then((r: { error?: { message: string } }) => {
-        if (r.error) logger.warn({ err: r.error.message }, "group interest: the email status could not be saved");
-      });
-      if (!email) { await set({ ack_email_status: "no-email" }); return; }
-      if (!mailAllowed(email, process.env["GROUP_FORMS_MAIL_ALLOW"])) { // the dev box emails only its test addresses
-        await set({ ack_email_status: "held" });
-        await db().from("group_messages").insert({ group_id: group.id, audience: "client", template: "interest-ack", to_email: email, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
-        return;
-      }
-      const f = detailsFacts({ group, cabins: loaded.cabins }, lang);
-      const mail = ackEmail({
-        firstName: first, groupLabel: f.label, ship: f.ship, sailDateText: f.sailLongText, returnDateText: f.returnLongText, embarkPort: f.embarkPort, ports: f.ports,
-        cabinPrices: f.held, taxesIncluded: f.taxesIncluded, depositPerPersonText: f.depositPerPersonText,
-        ...links, phone: BUSINESS.phone, hostNames: f.hostNames, lang, publicSite: publicSite(),
-      });
-      const ok = await sendMail({ to: email, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
-      const at = new Date().toISOString();
-      await set({ ack_email_status: ok ? "sent" : "failed", ack_email_at: ok ? at : null });
-      // The email log keeps who and when, never the link.
-      await db().from("group_messages").insert({
-        group_id: group.id, audience: "client", template: "interest-ack", to_email: email, subject: mail.subject,
-        status: ok ? "sent" : "failed", sent_at: ok ? at : null, error: ok ? null : "mail sender refused or was unreachable",
-      });
-    })().catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest: the acknowledgement email step failed"));
-    return;
+    return res.json({ ...answer, detailsUrl: makeDetailsUrl(publicSite(), token, lang), callUrl: makeCallUrl(publicSite(), token, lang) });
   } catch (err) {
     return fail(req, res, err, "group interest failed");
   }

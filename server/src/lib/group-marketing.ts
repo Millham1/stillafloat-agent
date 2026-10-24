@@ -79,6 +79,8 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "page_label", type: "text", label: "The name guests see on the group page (optional)", hint: "Shown on the picture and in the browser tab exactly as you type it, for example: Friends and Family 2027. Left blank, the group's name from the file is used." },
   // Mark 2026-10-23: the day-by-day plan on the page is built from the itinerary; a line here adds a sentence of his own to one day.
   { key: "day_notes", type: "long", label: "A note for any day of the plan (optional)", hint: "One line per day, starting with the date as the plan prints it, for example: May 11: The beach party and light show at the lighthouse." },
+  // Mark 2026-10-24 (Road B, Part 3): under "our pick" the details page names the next category up as a hook, built from the three perks that sell it.
+  { key: "upgrade_perks", type: "long", label: "What the higher cabin class adds (optional, one perk per line)", hint: "The details page names the next class up with a hook built from the first three lines, for example: Your own restaurant where you eat when you feel like it / The adults-only thermal spa / A solarium the rest of the ship can't find. Left blank, the page says nothing about an upgrade." },
   { key: "tone", type: "choice", label: "Tone", fallback: "warm-humor",
     choices: [
       { value: "warm-humor", label: "Warm, with a little humor (the usual)" },
@@ -206,10 +208,10 @@ export function pageLabel(answers: Record<string, string | boolean>): string | n
   return clean || null;
 }
 
-/** A usable email address on the Count me in form: something@something.tld. */
+/** A usable email address on the Save my spot! form: something@something.tld. */
 export function validEmail(v: string): boolean { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
 
-/** A usable phone number on the Count me in form: only digits, spaces, dashes, dots, parentheses and a plus sign, with at least seven and at most fifteen digits. The caller keeps what was typed. */
+/** A usable phone number on the Save my spot! form: only digits, spaces, dashes, dots, parentheses and a plus sign, with at least seven and at most fifteen digits. The caller keeps what was typed. */
 export function validPhone(v: string): boolean {
   if (!/^[\d\s().+-]+$/.test(v)) return false;
   const digits = v.replace(/\D/g, "").length;
@@ -716,7 +718,7 @@ export interface GroupCopy {
 
 export const COPY_FIELDS: Array<{ key: keyof GroupCopy; label: string; max: number; long?: boolean; optional?: boolean }> = [
   // Mark 2026-10-20 ("we already had this discussion"): the person who opens the group page has just read the poster, the Facebook post or the
-  // email, so the page opens on a short personal welcome from the hosts, then the Count me in form. The headline, subhead, intro, why_ship and
+  // email, so the page opens on a short personal welcome from the hosts, then the plan, and the Save my spot! form comes last. The headline, subhead, intro, why_ship and
   // who_for stay in the file (the poster and the other pieces use them) but the page does not show them.
   { key: "welcome", label: "Welcome note from the hosts (opens the group page)", max: 700, long: true, optional: true },
   // Mark 2026-10-19: the headline IS the walk-through sentence ("Imagine ... then ... sunrise…"), one rising sentence through his moments, so it is
@@ -1093,7 +1095,7 @@ export function copyNotes(copy: unknown, facts: Pick<GroupFacts, "lang" | "ports
 
   const welcome = str("welcome").trim();
   if (!welcome) {
-    notes.push({ field: "welcome", problem: "there is no welcome note yet: the group page opens straight on the Count me in form. Write one, or rewrite the copy" });
+    notes.push({ field: "welcome", problem: "there is no welcome note yet: the group page opens straight on the plan. Write one, or rewrite the copy" });
   } else {
     const hay = squash(welcome);
     for (const k of ["headline", "subhead"] as const) {
@@ -1208,10 +1210,10 @@ export function pitchIsHis(lang: Lang): string {
 
 /**
  * The welcome note that opens the group page (Mark 2026-10-20: "we already had this discussion"). The person arriving has just read the poster, the Facebook
- * post or the email, so the page does not repeat them: it opens on a short personal note from the hosts, then the Count me in form.
+ * post or the email, so the page does not repeat them: it opens on a short personal note from the hosts, then the plan, and the Save my spot! form comes last.
  */
 export const WELCOME_RULES: string[] = [
-  "- welcome: the short personal note that opens the group page, from the hosts to the reader, at most 700 characters (a few short paragraphs, each on its own line; a line that is all capitals and ends with \"!\" is shown in bold as the payoff). First-person plural (\"we\"), warm, in Mark's register: a \"…\" where he would pause, a capitalised payoff with \"!\" allowed, his adjectives. The reader has JUST read the poster, the Facebook post or the email, so these are NEW words: never the headline sentence, never the payoff line, never a sentence of Mark's pitch. No prices, no dates or numbers, no QR code and no call to action (the Count me in form sits directly under the note). Plain text, no names or signature (the system signs it).",
+  "- welcome: the short personal note that opens the group page, from the hosts to the reader, at most 700 characters (a few short paragraphs, each on its own line; a line that is all capitals and ends with \"!\" is shown in bold as the payoff). First-person plural (\"we\"), warm, in Mark's register: a \"…\" where he would pause, a capitalised payoff with \"!\" allowed, his adjectives. The reader has JUST read the poster, the Facebook post or the email, so these are NEW words: never the headline sentence, never the payoff line, never a sentence of Mark's pitch. No prices, no dates or numbers, no QR code and no call to action (the plan, the cabins and the dates come next, and the form to save a spot sits at the bottom of the page). Plain text, no names or signature (the system signs it).",
 ];
 
 export function systemPrompt(lang: Lang, answers: Record<string, string | boolean> = {}): string {

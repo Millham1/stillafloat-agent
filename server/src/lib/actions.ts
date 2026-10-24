@@ -112,16 +112,16 @@ export async function resolveActionsForSource(type: string, sourceRef: string, s
 }
 
 /**
- * Say the same waiting item better: rewrite the title (and body) of the PENDING action tied to a source. The "Waiting on you" list is recomputed from
+ * Say the same waiting item better: rewrite the title (and body, and buttons) of the PENDING action tied to a source. The "Waiting on you" list is recomputed from
  * the rows, so the item changes in place and Mark is not pinged twice for one person. Returns how many rows changed (0 when none is pending, and the
  * caller then makes a new item).
  */
-export async function retitleActionsForSource(type: string, sourceRef: string, patch: { title: string; body?: string }): Promise<number> {
+export async function retitleActionsForSource(type: string, sourceRef: string, patch: { title: string; body?: string; buttons?: NotifyButton[] }): Promise<number> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabase = getSupabase() as any;
   const { data, error } = await supabase
     .from("actions")
-    .update({ title: patch.title.slice(0, 200), ...(patch.body !== undefined ? { body: patch.body } : {}) })
+    .update({ title: patch.title.slice(0, 200), ...(patch.body !== undefined ? { body: patch.body } : {}), ...(patch.buttons !== undefined ? { buttons: patch.buttons as unknown as object } : {}) })
     .eq("type", type).eq("source_ref", sourceRef).eq("status", "pending")
     .select("id");
   if (error) {

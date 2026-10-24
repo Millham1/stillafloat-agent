@@ -1,6 +1,7 @@
-// group-details.test.ts (routes) — the guest's own "Your details" page API, the Count me in answer that hands out its links, and the dashboard's
-// "add these travelers to a cabin" (Mark 2026-10-23). The real routers run against a small in-memory stand-in for the database (an http server that
-// answers the PostgREST reads and writes the routes make) and for the mail sender, so nothing here can reach Supabase, an inbox or Mark's phone.
+// group-details.test.ts (routes) — the guest's two roads after "Save my spot!" (Mark 2026-10-24): Road A's choice and its ONE email, Road B's pick, save and
+// hold and its ONE email; the answer that hands out the links (and sends NO email); and the dashboard's "add these travelers to a cabin" and the two buttons
+// that close Mark's items. The real routers run against a small in-memory stand-in for the database (an http server that answers the PostgREST reads and
+// writes the routes make) and for the mail sender, so nothing here can reach Supabase, an inbox or Mark's phone.
 
 import { test, before, after, beforeEach } from "node:test";
 import * as assert from "node:assert/strict";
@@ -45,10 +46,10 @@ function group(over: Row = {}): Row {
       { day: 3, date: "2027-05-11", port: "Ocean Cay MSC Marine Reserve, Bahamas", arrive: "08:00", depart: null },
       { day: 4, date: "2027-05-13", port: "Port Canaveral, Florida", arrive: "07:00", depart: null },
     ],
-    marketing: { taxes_included: true, host_names: "Mark & Ceci", page_label: "Friends and Family 2027", hero_photo: "https://stillafloatcruising.com/assets/images/hero.jpg" },
+    marketing: { taxes_included: true, host_names: "Mark & Ceci", page_label: "Friends and Family 2027", hero_photo: "https://stillafloatcruising.com/assets/images/hero.jpg", upgrade_perks: "Your own restaurant where you eat when you feel like it\nthe adults-only thermal spa\na solarium the rest of the ship can't find" },
     marketing_copy: {
-      en: { welcome: "w", headline: "h", subhead: "s", intro: "i", why_ship: "y", who_for: "f", organizer_note: null, cta_label: "Count me in!", cta_blurb: "Questions? Call or text Mark at 919-346-6127.", email_subject: "s", email_body: "b", social_post: "p" },
-      es: { welcome: "w", headline: "h", subhead: "s", intro: "i", why_ship: "y", who_for: "f", organizer_note: null, cta_label: "¡Cuenten conmigo!", cta_blurb: "¿Preguntas? Llame o escriba a Mark al 919-346-6127.", email_subject: "s", email_body: "b", social_post: "p" },
+      en: { welcome: "w", headline: "h", subhead: "s", intro: "i", why_ship: "y", who_for: "f", organizer_note: null, cta_label: "Save my spot!", cta_blurb: "Questions? Call or text Mark at 919-346-6127.", email_subject: "s", email_body: "b", social_post: "p" },
+      es: { welcome: "w", headline: "h", subhead: "s", intro: "i", why_ship: "y", who_for: "f", organizer_note: null, cta_label: "¡Aparte mi lugar!", cta_blurb: "¿Preguntas? Llame o escriba a Mark al 919-346-6127.", email_subject: "s", email_body: "b", social_post: "p" },
     },
     ...over,
   };
@@ -60,9 +61,9 @@ const cabinRows = (): Row[] => [
 ];
 function reply(over: Row = {}): Row {
   return {
-    id: REPLY_ID, group_id: GROUP_ID, first_name: "Mark", last_name: "Millham", email: "mmillham1@gmail.com", phone: null, lang: "en", guests: 2, note: null, status: "new",
+    id: REPLY_ID, group_id: GROUP_ID, first_name: "Mark", last_name: "Millham", email: "mmillham1@gmail.com", phone: null, lang: "en", guests: 2, note: null, status: "new", created_at: new Date().toISOString(),
     ip_hash: "iphash-secret", prospect_id: "prospect-secret", traveler_id: null, details_token_hash: hashLinkToken(LINK), details_token_issued_at: new Date().toISOString(),
-    choice: null, choice_at: null, travelers: null, concierge: null, pick: null, hold_requested_at: null, ack_email_status: null, ack_email_at: null,
+    choice: null, choice_at: null, call_when: null, travelers: null, address: null, concierge: null, pick: null, hold_requested_at: null, ack_email_status: null, ack_email_at: null,
     ...over,
   };
 }
@@ -174,12 +175,21 @@ async function call(method: string, path: string, o: { body?: unknown; token?: b
 const wait = async (cond: () => boolean) => { for (let i = 0; i < 200 && !cond(); i++) await new Promise((r) => setTimeout(r, 10)); };
 const replyRow = () => tables["group_interests"]!.find((r) => r["id"] === REPLY_ID)!;
 const writes = (table: string) => log.filter((l) => l.table === table && l.method !== "GET");
-const GOOD = { travelers: [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }], concierge: { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" } };
-const WHY = "Steady for whoever feels the motion, quiet away from the pool deck, and a balcony for that coffee. From $536.79 per person, taxes and port fees included.";
+const ADDRESS = { street: "123 Main St", city: "Raleigh", state: "NC", zip: "27601", tidied: true };
+const GOOD = {
+  travelers: [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }],
+  address: ADDRESS,
+  concierge: { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" },
+};
+const WHY = "Steady for whoever feels the motion, quiet away from the pool deck, and a balcony for that coffee.";
+const UPGRADE = { category: "Aurea", hook: "Your own restaurant where you eat when you feel like it, the adults-only thermal spa, and a solarium the rest of the ship can't find." };
+const PICK = { category: "Balcony Bella", where: "midship, a lower deck", why: WHY, upgrade: UPGRADE };
+/** The pending item the reply put on Mark's list when it was saved. */
+const pendingItem = () => tables["actions"]!.push({ id: "a-1", type: "lead", source_ref: `group-interest-${REPLY_ID}`, status: "pending", title: "Group reply: Mark Millham", body: "old", buttons: [] });
 
 // ── GET: what the link opens ──────────────────────────────────────────────────
 
-test("a good link answers with what we know, what they entered, and the group's cabin categories; private headers, nothing internal", async () => {
+test("a good link answers with what we know and what they entered; private headers, nothing internal, and NO cabin price", async () => {
   const r = await call("GET", `/group-details/${LINK}`);
   assert.equal(r.status, 200);
   assert.equal(r.json["success"], true);
@@ -187,14 +197,15 @@ test("a good link answers with what we know, what they entered, and the group's 
     { label: r.json["label"], ship: r.json["ship"], sail: r.json["sailDateText"], back: r.json["returnDateText"], first: r.json["firstName"], last: r.json["lastName"], email: r.json["email"], phone: r.json["phone"], guests: r.json["guests"], lang: r.json["lang"] },
     { label: "Friends and Family 2027", ship: "MSC Seashore", sail: "May 9, 2027", back: "May 13, 2027", first: "Mark", last: "Millham", email: "mmillham1@gmail.com", phone: null, guests: 2, lang: "en" },
   );
-  assert.deepEqual(r.json["held"], [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }]);
-  assert.deepEqual([r.json["taxesIncluded"], r.json["depositPerPersonText"], r.json["phoneLine"], r.json["heroUrl"]], [true, "$50", "Questions? Call or text Mark at 919-346-6127.", "https://stillafloatcruising.com/assets/images/hero.jpg"]);
-  assert.deepEqual([r.json["travelers"], r.json["concierge"], r.json["pick"], r.json["choice"], r.json["holdRequestedAt"]], [[], null, null, null, null]);
+  assert.deepEqual([r.json["depositPerPersonText"], r.json["phoneLine"], r.json["businessPhone"], r.json["heroUrl"]], ["$50", "Questions? Call or text Mark at 919-346-6127.", "919-346-6127", "https://stillafloatcruising.com/assets/images/hero.jpg"]);
+  assert.deepEqual([r.json["travelers"], r.json["address"], r.json["concierge"], r.json["pick"], r.json["choice"], r.json["callWhen"], r.json["holdRequestedAt"]], [[], null, null, null, null, null, null]);
   assert.match(r.headers.get("cache-control") ?? "", /no-store/);
   assert.match(r.headers.get("x-robots-tag") ?? "", /noindex/);
   assert.match(r.headers.get("referrer-policy") ?? "", /no-referrer/);
   // nothing internal: no hash, no audit hash, no ids, no other replies, no cabin the group still has
   for (const secret of [hashLinkToken(LINK), "iphash-secret", "prospect-secret", GROUP_ID, REPLY_ID, CABIN_ID, "details_token", "cabinsAvailable"]) assert.ok(!r.text.includes(secret), `the answer carries ${secret}`);
+  // no cabin price and no category list: nothing after the group page repeats them
+  for (const price of ["536.79", "686.79", "1073.58", "Balcony Bella", "held", "taxesIncluded", "perPersonText"]) assert.ok(!r.text.includes(price), `the answer carries ${price}`);
 });
 
 test("the top picture's credit line comes with the answer (a CC BY photo is credited where it is shown); a failed read costs the line, never the page", async () => {
@@ -208,7 +219,6 @@ test("the top picture's credit line comes with the answer (a CC BY photo is cred
   const down = await call("GET", `/group-details/${LINK}`);
   assert.equal(down.status, 200);
   assert.deepEqual(down.json["credits"], []);
-  // a group with no top picture reads nothing
   assetsFail = false; tables["groups"]![0]!["marketing"] = { taxes_included: true };
   log = [];
   assert.deepEqual((await call("GET", `/group-details/${LINK}`)).json["credits"], []);
@@ -216,15 +226,26 @@ test("the top picture's credit line comes with the answer (a CC BY photo is cred
 });
 
 test("a Spanish reply is answered in Spanish (dates and phone line), and stored answers come back so the page can fill itself", async () => {
-  Object.assign(replyRow(), { lang: "es", ...GOOD, pick: { category: "Balcony Bella", where: "midship", why: "x" }, choice: "finish" });
+  Object.assign(replyRow(), { lang: "es", ...GOOD, pick: PICK, choice: "call", call_when: "evening" });
   const r = await call("GET", `/group-details/${LINK}`);
   assert.equal(r.json["lang"], "es");
   assert.equal(r.json["sailDateText"], "9 de mayo de 2027");
   assert.equal(r.json["phoneLine"], "¿Preguntas? Llame o escriba a Mark al 919-346-6127.");
   assert.deepEqual(r.json["travelers"], GOOD.travelers);
+  assert.deepEqual(r.json["address"], ADDRESS);
   assert.deepEqual(r.json["concierge"], GOOD.concierge);
-  assert.deepEqual(r.json["pick"], { category: "Balcony Bella", where: "midship", why: "x" });
-  assert.equal(r.json["choice"], "finish");
+  assert.deepEqual(r.json["pick"], PICK);
+  assert.deepEqual([r.json["choice"], r.json["callWhen"]], ["call", "evening"]);
+  // a pick stored before the upgrade hook existed reads with none
+  Object.assign(replyRow(), { pick: { category: "Balcony Bella", where: "midship", why: "x" } });
+  assert.deepEqual((await call("GET", `/group-details/${LINK}`)).json["pick"], { category: "Balcony Bella", where: "midship", why: "x", upgrade: null });
+});
+
+test("the number a guest is told is the one in the group's own line beside the button, else the business number", async () => {
+  tables["groups"]![0]!["marketing_copy"].en.cta_blurb = "Questions? Call Mark at (704) 555-0100.";
+  assert.equal((await call("GET", `/group-details/${LINK}`)).json["businessPhone"], "(704) 555-0100");
+  tables["groups"]![0]!["marketing_copy"].en.cta_blurb = "Questions? Ask away.";
+  assert.equal((await call("GET", `/group-details/${LINK}`)).json["businessPhone"], "919-346-6127");
 });
 
 test("every wrong link gets the same plain 404: malformed, unknown, older than 90 days, a spam reply, a group that is no longer taking replies", async () => {
@@ -257,171 +278,401 @@ test("guessing links is limited per address: after 40 wrong ones the answer is 4
   assert.equal((await call("GET", `/group-details/${LINK}`, { ip })).status, 200, "a right link still opens for the same address");
 });
 
-// ── POST: the choice ──────────────────────────────────────────────────────────
+// ── Road A: "Talk me into it, Mark!" ──────────────────────────────────────────
 
-test("'Mark, call me': the reply is marked, and the guest's item on Mark's list says they want a call (one person, one item)", async () => {
-  tables["actions"]!.push({ id: "a-1", type: "lead", source_ref: `group-interest-${REPLY_ID}`, status: "pending", title: "Group reply: Mark Millham", body: "old" });
-  const r = await call("POST", `/group-details/${LINK}/choice`, { body: { choice: "call" } });
+const choose = (when: unknown, extra: Row = {}, token = LINK) => call("POST", `/group-details/${token}/choice`, { body: { choice: "call", when, ...extra } });
+
+test("Road A: the time is saved, the guest's item on Mark's list becomes 'Ring …' in place (one person, one item), and the ONE email goes out", async () => {
+  pendingItem();
+  const r = await choose("evening");
   assert.deepEqual([r.status, r.json["success"]], [200, true]);
-  assert.equal(replyRow()["choice"], "call");
-  assert.ok(replyRow()["choice_at"]);
-  assert.equal(tables["actions"]![0]!["title"], "Group reply: Mark Millham wants a call");
-  assert.match(tables["actions"]![0]!["body"], /Millham F\/F 2027\. mmillham1@gmail\.com\. They chose "Mark, call me"/);
-  assert.equal(writes("actions").filter((w) => w.method === "POST").length, 0, "no second item was made");
   assert.match(r.headers.get("cache-control") ?? "", /no-store/);
+  assert.deepEqual([replyRow()["choice"], replyRow()["call_when"]], ["call", "evening"]);
+  assert.ok(replyRow()["choice_at"]);
+  const item = tables["actions"]![0]!;
+  assert.equal(item["title"], "Ring Mark Millham · party of 2 · evenings");
+  assert.match(item["body"], /^Friends and Family 2027 · mmillham1@gmail\.com · saved their spot (today|[A-Z][a-z]{2} \d{1,2}) at \d{1,2}:\d{2} (AM|PM) and said "talk me into it"\.$/);
+  assert.deepEqual(item["buttons"], [
+    { label: "Open the group file", href: `/groups/${GROUP_ID}` },
+    { label: "We talked", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/mark/talked` },
+  ]);
+  assert.equal(writes("actions").filter((w) => w.method === "POST").length, 0, "no second item was made");
+  await wait(() => mails.length > 0);
+  assert.equal(mails.length, 1, "the ONE email");
+  assert.equal(mails[0]!["to"], "mmillham1@gmail.com");
+  assert.equal(mails[0]!["subject"], "Good call… literally! Friends and Family 2027");
+  assert.equal(mails[0]!["from_name"], "Mark Millham");
+  assert.equal(mails[0]!["reply_to"], "mark@stillafloatcruising.com");
+  assert.match(String(mails[0]!["text"]), /Mark will ring you within a day from 919-346-6127… evenings, like you said\./);
+  assert.match(String(mails[0]!["text"]), /^Hi Mark,/);
+  assert.ok(!/\$|Bella|Aurea|per person/.test(String(mails[0]!["text"]) + String(mails[0]!["html"])), "no cabin names or prices");
+  await wait(() => replyRow()["ack_email_status"] === "sent");
+  assert.equal(replyRow()["ack_email_status"], "sent");
+  assert.ok(replyRow()["ack_email_at"]);
+  await wait(() => writes("group_messages").length > 0);
+  const logged = writes("group_messages")[0]!.body;
+  assert.deepEqual([logged.audience, logged.template, logged.to_email, logged.status, logged.subject], ["client", "call-confirmation", "mmillham1@gmail.com", "sent", "Good call… literally! Friends and Family 2027"]);
 });
 
-test("'Mark, call me' with no pending item (Mark already cleared it) makes a new lead item", async () => {
-  const r = await call("POST", `/group-details/${LINK}/choice`, { body: { choice: "call" } });
+test("Road A: each answer is worded for Mark's list and for the email; a missing party size leaves the party out", async () => {
+  const words: Record<string, [string, string]> = { morning: ["mornings", "mornings"], afternoon: ["afternoons", "afternoons"], evening: ["evenings", "evenings"], anytime: ["whenever", "whenever works"] };
+  for (const [when, [listWord, mailWord]] of Object.entries(words)) {
+    tables["actions"]!.length = 0; mails.length = 0; replyRow()["choice_at"] = null; replyRow()["choice"] = null; replyRow()["guests"] = when === "anytime" ? null : 2;
+    pendingItem();
+    assert.equal((await choose(when)).status, 200, when);
+    assert.equal(tables["actions"]![0]!["title"], when === "anytime" ? `Ring Mark Millham · ${listWord}` : `Ring Mark Millham · party of 2 · ${listWord}`);
+    await wait(() => mails.length > 0);
+    assert.match(String(mails[0]!["text"]), new RegExp(`… ${mailWord}, like you said\\.`), when);
+  }
+});
+
+test("Road A with no pending item (Mark already cleared it) makes a new item for the call, with the same buttons", async () => {
+  const r = await choose("morning");
   assert.equal(r.status, 200);
   await wait(() => writes("actions").some((w) => w.method === "POST"));
   const made = writes("actions").find((w) => w.method === "POST")!.body;
-  assert.equal(made.title, "Group reply: Mark Millham wants a call");
+  assert.equal(made.title, "Ring Mark Millham · party of 2 · mornings");
   assert.equal(made.source_ref, `group-call-${REPLY_ID}`);
-  assert.deepEqual(made.buttons, [{ label: "Open the group file", href: `/groups/${GROUP_ID}` }]);
+  assert.deepEqual(made.buttons.map((b: Row) => b["label"]), ["Open the group file", "We talked"]);
+  assert.equal(made.buttons.length, 2, "no 'Later tonight': the actions list has no snooze to hang it on");
 });
 
-test("any other choice is refused, a wrong link is a 404 first, and the bot trap changes nothing", async () => {
+test("Road A: the first press wins. A double tap or a second tab makes no second item and no second email; a later press only changes the time", async () => {
+  pendingItem();
+  await Promise.all([choose("evening"), choose("evening")]);
+  await wait(() => mails.length > 0);
+  await new Promise((r) => setTimeout(r, 80));
+  assert.equal(mails.length, 1, "one email");
+  assert.equal(writes("actions").filter((w) => w.method === "POST").length, 0);
+  const again = await choose("morning");
+  assert.equal(again.status, 200);
+  assert.equal(replyRow()["call_when"], "morning");
+  assert.equal(tables["actions"]![0]!["title"], "Ring Mark Millham · party of 2 · mornings");
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(mails.length, 1, "still one email");
+});
+
+test("Road A refuses what it does not understand: any time but the four, any choice but 'call', a wrong link, a cabin already on hold; the bot trap changes nothing", async () => {
+  for (const when of ["night", "Morning", "", null, undefined, 3, ["morning"], "morning;drop"]) {
+    const r = await choose(when);
+    assert.equal(r.status, 400, JSON.stringify(when));
+    assert.equal(r.json["error"], "Pick a time that suits you.");
+  }
   for (const choice of ["finish", "hold", "", null, undefined, 1, ["call"], "CALL"]) {
-    const r = await call("POST", `/group-details/${LINK}/choice`, { body: { choice } });
+    const r = await call("POST", `/group-details/${LINK}/choice`, { body: { choice, when: "evening" } });
     assert.equal(r.status, 400, JSON.stringify(choice));
     assert.equal(r.json["error"], "Unknown choice.");
   }
-  assert.equal((await call("POST", `/group-details/${"A".repeat(43)}/choice`, { body: { choice: "call" } })).status, 404);
-  assert.equal((await call("POST", `/group-details/not-a-token/choice`, { body: { choice: "call" } })).status, 404);
-  const bot = await call("POST", `/group-details/${LINK}/choice`, { body: { choice: "call", website: "http://spam.example" } });
+  assert.equal((await choose("evening", {}, "A".repeat(43))).status, 404);
+  assert.equal((await choose("evening", {}, "not-a-token")).status, 404);
+  const bot = await choose("evening", { website: "http://spam.example" });
   assert.deepEqual([bot.status, bot.json["success"]], [200, true], "the robot is told yes");
   assert.equal(replyRow()["choice"], null, "and nothing was stored");
-  assert.equal(writes("actions").length + writes("group_interests").length, 0);
+  assert.equal(writes("actions").length + writes("group_interests").length + writes("group_messages").length, 0);
+  assert.equal(mails.length, 0);
+  replyRow()["hold_requested_at"] = "2026-10-24T10:00:00Z";
+  const held = await choose("evening");
+  assert.equal(held.status, 409);
+  assert.match(held.json["error"], /already on hold/);
+  assert.equal(replyRow()["call_when"], null);
+  // and in Spanish
+  const es = await call("POST", `/group-details/${LINK}/choice`, { body: { choice: "call", when: "x", lang: "es" } });
+  assert.equal(es.json["error"], "Elija un horario que le convenga.");
 });
 
-// ── POST: names, birthdays, the four answers ──────────────────────────────────
+test("Road A's email goes only to an address this box may email; a phone-only reply gets none; a failed send is recorded; the Spanish reply gets the Spanish email", async () => {
+  process.env["GROUP_FORMS_MAIL_ALLOW"] = "tester@example.org,@staff.example";
+  assert.equal((await choose("evening")).status, 200);
+  await wait(() => replyRow()["ack_email_status"] === "held");
+  assert.equal(replyRow()["ack_email_status"], "held");
+  assert.equal(mails.length, 0, "nothing was sent to a real address");
+  await wait(() => writes("group_messages").length > 0);
+  assert.deepEqual([writes("group_messages")[0]!.body.status, writes("group_messages")[0]!.body.template], ["skipped", "call-confirmation"]);
 
-test("good details are saved with our pick; the guest's count replaces the party size; the pick is the design's example", async () => {
-  const r = await call("POST", `/group-details/${LINK}`, { body: { ...GOOD, travelers: [...GOOD.travelers, { legal_name: "Pat Lee", dob: "1990-01-01" }] } });
+  // an allowed address
+  Object.assign(replyRow(), { choice: null, choice_at: null, email: "tester@example.org", ack_email_status: null });
+  assert.equal((await choose("evening")).status, 200);
+  await wait(() => mails.length === 1);
+  assert.equal(mails[0]!["to"], "tester@example.org");
+  delete process.env["GROUP_FORMS_MAIL_ALLOW"];
+
+  // a phone-only reply
+  mails.length = 0;
+  Object.assign(replyRow(), { choice: null, choice_at: null, email: null, phone: "919-555-0100", ack_email_status: null });
+  assert.equal((await choose("evening")).status, 200);
+  await wait(() => replyRow()["ack_email_status"] === "no-email");
+  assert.equal(replyRow()["ack_email_status"], "no-email");
+  assert.equal(mails.length, 0, "no email for a phone number");
+  await wait(() => writes("actions").filter((w) => w.method === "POST").length > 1);
+  assert.match(writes("actions").filter((w) => w.method === "POST").pop()!.body.body, /919-555-0100/, "Mark still gets the item, with the phone to ring");
+
+  // a mail sender that is down
+  mailOk = false;
+  Object.assign(replyRow(), { choice: null, choice_at: null, email: "fail@example.com", phone: null, ack_email_status: null, ack_email_at: null });
+  assert.equal((await choose("evening")).status, 200, "a mail sender that is down does not cost the guest their answer");
+  await wait(() => replyRow()["ack_email_status"] === "failed");
+  assert.equal(replyRow()["ack_email_status"], "failed");
+  assert.equal(replyRow()["ack_email_at"], null);
+
+  // Spanish
+  mailOk = true; mails.length = 0;
+  Object.assign(replyRow(), { choice: null, choice_at: null, email: "ana@example.com", lang: "es", first_name: "Ana", ack_email_status: null });
+  assert.equal((await choose("morning")).status, 200);
+  await wait(() => mails.length === 1);
+  assert.equal(mails[0]!["subject"], "Buena decisión… ¡la llamada va en camino! Friends and Family 2027");
+  assert.match(String(mails[0]!["text"]), /Mark le llamará en un día desde el 919-346-6127… por la mañana, como usted dijo\./);
+});
+
+test("Road A rings from the number in the group's own line beside the button", async () => {
+  tables["groups"]![0]!["marketing_copy"].en.cta_blurb = "Questions? Call or text Mark at (704) 555-0100.";
+  assert.equal((await choose("evening")).status, 200);
+  await wait(() => mails.length > 0);
+  assert.match(String(mails[0]!["text"]), /from \(704\) 555-0100… evenings/);
+});
+
+// ── Road B: the pick ──────────────────────────────────────────────────────────
+
+const pickOf = (concierge: unknown, extra: Row = {}) => call("POST", `/group-details/${LINK}/pick`, { body: { concierge, ...extra } });
+
+test("Road B: the four answers alone make the pick (the design's example, with the upgrade hook from the group's perks and NO price) and it is kept on the reply", async () => {
+  const r = await pickOf(GOOD.concierge);
   assert.equal(r.status, 200);
-  assert.deepEqual(r.json["pick"], { category: "Balcony Bella", where: "midship, a lower deck", why: WHY });
-  const row = replyRow();
-  assert.equal(row["travelers"].length, 3);
-  assert.deepEqual(row["concierge"], GOOD.concierge);
-  assert.deepEqual(row["pick"], r.json["pick"]);
-  assert.equal(row["guests"], 3, "people change their minds: three came, so three is the party");
-  assert.equal(row["hold_requested_at"], null, "saving is not holding");
-  // a treat budget picks the higher category, and the answer follows the reply's language
-  const t = await call("POST", `/group-details/${LINK}`, { body: { ...GOOD, concierge: { ...GOOD.concierge, budget: "treat" }, lang: "es" } });
-  assert.equal(t.json["pick"]["category"], "Balcony Aurea");
-  assert.match(t.json["pick"]["why"], /^Estable para quien sienta el movimiento/);
-  assert.match(t.json["pick"]["why"], /Desde \$686\.79 por persona, con impuestos y cargos portuarios incluidos\.$/);
+  assert.deepEqual(r.json["pick"], PICK);
+  assert.deepEqual([replyRow()["concierge"], replyRow()["pick"]], [GOOD.concierge, PICK]);
+  assert.equal(replyRow()["travelers"], null, "the names are not touched");
+  assert.ok(!/\$|per person/.test(JSON.stringify(r.json)));
+  // a higher budget takes the top category, which has nothing above it
+  const top = await pickOf({ ...GOOD.concierge, budget: "sky" });
+  assert.equal(top.json["pick"].category, "Balcony Aurea");
+  assert.equal(top.json["pick"].upgrade, null);
+  // no perks written for the group: no hook
+  tables["groups"]![0]!["marketing"] = { page_label: "Friends and Family 2027" };
+  assert.equal((await pickOf(GOOD.concierge)).json["pick"].upgrade, null);
+  // Spanish
+  tables["groups"]![0]!["marketing"] = { upgrade_perks: "Un restaurante propio\nEl spa" };
+  const es = await pickOf(GOOD.concierge, { lang: "es" });
+  assert.equal(es.json["pick"].where, "en el centro del barco, en una cubierta baja");
+  assert.deepEqual(es.json["pick"].upgrade, { category: "Aurea", hook: "Un restaurante propio y el spa." });
 });
 
-test("details that do not pass are refused in plain words with the field, and nothing is saved", async () => {
-  const bad: Array<[Record<string, unknown>, RegExp, string]> = [
-    [{ ...GOOD, travelers: [] }, /at least one traveler/, "travelers"],
-    [{ ...GOOD, travelers: [{ legal_name: "<b>x</b>", dob: "1990-01-01" }] }, /Traveler 1: please type the name/, "travelers.0.legal_name"],
-    [{ ...GOOD, travelers: [GOOD.travelers[0], { legal_name: "Ceci Millham", dob: "2999-01-01" }] }, /Traveler 2: that date of birth does not look right/, "travelers.1.dob"],
-    [{ ...GOOD, travelers: [{ legal_name: "Mark Millham", dob: "" }] }, /Traveler 1: please add a date of birth/, "travelers.0.dob"],
-    [{ ...GOOD, concierge: { ...GOOD.concierge, motion: "maybe" } }, /one answer for each of the four room questions/, "concierge.motion"],
-    [{ travelers: GOOD.travelers }, /four room questions/, "concierge.room"],
-    [{ ...GOOD, travelers: Array.from({ length: 13 }, () => GOOD.travelers[0]) }, /Up to 12 travelers/, "travelers"],
-  ];
-  for (const [body, error, field] of bad) {
-    const r = await call("POST", `/group-details/${LINK}`, { body });
-    assert.equal(r.status, 400, field);
-    assert.match(r.json["error"], error, field);
-    assert.equal(r.json["field"], field);
+test("Road B: the pick refuses a missing or wrong answer, a wrong link and the bot trap, and a cabin already on hold", async () => {
+  for (const concierge of [undefined, {}, { ...GOOD.concierge, motion: "maybe" }, "balcony"]) {
+    const r = await pickOf(concierge);
+    assert.equal(r.status, 400, JSON.stringify(concierge));
+    assert.equal(r.json["error"], "Please tap one answer for each of the four room questions.");
   }
-  const es = await call("POST", `/group-details/${LINK}`, { body: { ...GOOD, travelers: [], lang: "es" } });
-  assert.equal(es.json["error"], "Agregue al menos un viajero.");
-  assert.equal(writes("group_interests").length, 0, "no refused form wrote anything");
+  assert.equal((await call("POST", `/group-details/${"A".repeat(43)}/pick`, { body: { concierge: GOOD.concierge } })).status, 404);
+  const bot = await pickOf(GOOD.concierge, { website: "http://spam.example" });
+  assert.deepEqual([bot.status, bot.json["success"], "pick" in bot.json], [200, true, false], "the bot trap does not pretend a cabin was picked");
+  assert.equal(replyRow()["pick"], null);
+  replyRow()["hold_requested_at"] = "2026-10-24T10:00:00Z";
+  assert.equal((await pickOf(GOOD.concierge)).status, 409);
+});
+
+test("with the prices hidden the pick names the kind of cabin and has no upgrade", async () => {
+  tables["groups"]![0]!["marketing"] = { show_prices: false, upgrade_perks: "A spa" };
+  const r = await pickOf({ ...GOOD.concierge, room: "oceanview" });
+  assert.equal(r.json["pick"].category, "Oceanview");
+  assert.equal(r.json["pick"].upgrade, null);
+  assert.ok(!/\$/.test(r.json["pick"].why));
+});
+
+// ── Road B: names, birthdays, address, the four answers ───────────────────────
+
+const save = (body: unknown, token = LINK) => call("POST", `/group-details/${token}`, { body });
+
+test("Road B: good details are saved with our pick; the guest's count replaces the party size", async () => {
+  const r = await save(GOOD);
+  assert.equal(r.status, 200);
+  assert.equal(r.json["success"], true);
+  assert.deepEqual(r.json["pick"], PICK);
+  assert.deepEqual(replyRow()["travelers"], GOOD.travelers);
+  assert.deepEqual(replyRow()["address"], ADDRESS);
+  assert.deepEqual(replyRow()["concierge"], GOOD.concierge);
+  assert.deepEqual(replyRow()["pick"], PICK);
+  assert.equal(replyRow()["guests"], 2);
+  const four = await save({ ...GOOD, travelers: Array.from({ length: 4 }, (_, i) => ({ legal_name: `Guest Number${"x".repeat(i)}`, dob: "1990-01-01" })) });
+  assert.equal(four.status, 200);
+  assert.equal(replyRow()["guests"], 4);
+  assert.equal(writes("actions").length, 0, "saving tells Mark nothing: only the hold does");
+  assert.equal(mails.length, 0, "and sends nothing");
+});
+
+test("Road B: details that do not pass are refused in the design's words with the field, and nothing is saved", async () => {
+  const cases: Array<[unknown, string, string]> = [
+    [{ ...GOOD, travelers: [{ legal_name: "Bob", dob: "1965-04-12" }] }, "First AND last name, please… the way the passport has it.", "travelers.0.legal_name"],
+    [{ ...GOOD, travelers: [GOOD.travelers[0], { legal_name: "Ceci Millham", dob: "04/12/1965" }] }, "Month, day and a four-digit year: 03 / 04 / 1965.", "travelers.1.dob"],
+    [{ ...GOOD, travelers: [] }, "Please add at least one traveler.", "travelers"],
+    [{ ...GOOD, travelers: Array.from({ length: 5 }, () => GOOD.travelers[0]) }, "More than four? Mark will set up a second cabin on the call… tap Talk me into it, Mark! on the group page.", "travelers"],
+    [{ ...GOOD, address: undefined }, "A street and number, please… like 123 Main St.", "address.street"],
+    [{ ...GOOD, address: { ...ADDRESS, city: "" } }, "Which city, please?", "address.city"],
+    [{ ...GOOD, address: { ...ADDRESS, state: "ZZ" } }, "The state's two letters, please… like NC.", "address.state"],
+    [{ ...GOOD, address: { ...ADDRESS, zip: "1" } }, "Five digits for the ZIP, please… like 27601.", "address.zip"],
+    [{ ...GOOD, concierge: { ...GOOD.concierge, room: "penthouse" } }, "Please tap one answer for each of the four room questions.", "concierge.room"],
+    [[], "Something went wrong with that form. Please reload the page.", "body"],
+  ];
+  for (const [body, error, field] of cases) {
+    const r = await save(body);
+    assert.equal(r.status, 400, field);
+    assert.deepEqual([r.json["error"], r.json["field"]], [error, field]);
+  }
+  assert.equal(replyRow()["travelers"], null);
+  assert.equal(replyRow()["address"], null);
+  // the Spanish page gets Spanish words
+  const es = await save({ ...GOOD, address: { ...ADDRESS, zip: "1" }, lang: "es" });
+  assert.equal(es.json["error"], "Cinco dígitos para el código postal, por favor… como 27601.");
+});
+
+test("Road B: a wrong link or the bot trap saves nothing, and once the cabin is on hold a change goes through Mark, not a form", async () => {
+  assert.equal((await save(GOOD, "A".repeat(43))).status, 404);
+  assert.equal((await save(GOOD, "not-a-token")).status, 404);
+  const bot = await save({ ...GOOD, website: "http://spam.example" });
+  assert.deepEqual([bot.status, bot.json["success"], "pick" in bot.json], [200, true, false]);
+  assert.equal(replyRow()["travelers"], null);
+  replyRow()["hold_requested_at"] = "2026-10-24T10:00:00Z";
+  const held = await save(GOOD);
+  assert.equal(held.status, 409);
+  assert.equal(held.json["error"], "Your cabin is already on hold. To change anything, call or text Mark at 919-346-6127.");
+  assert.equal((await save({ ...GOOD, lang: "es" })).json["error"], "Su cabina ya está apartada. Para cambiar algo, llame o escriba a Mark al 919-346-6127.");
   assert.equal(replyRow()["travelers"], null);
 });
 
-test("a wrong link or the bot trap saves nothing", async () => {
-  assert.equal((await call("POST", `/group-details/${"A".repeat(43)}`, { body: GOOD })).status, 404);
-  assert.equal((await call("POST", `/group-details/not-a-token`, { body: GOOD })).status, 404);
-  const bot = await call("POST", `/group-details/${LINK}`, { body: { ...GOOD, website: "x" } });
-  assert.deepEqual([bot.status, bot.json["success"], bot.json["pick"]], [200, true, undefined]);
-  assert.equal(writes("group_interests").length, 0);
-});
+// ── Road B: "Hold my cabin!" ──────────────────────────────────────────────────
 
-test("with the prices hidden the pick names the kind of cabin and quotes no price", async () => {
-  tables["groups"]![0]!["marketing"] = { show_prices: false, taxes_included: true };
-  const r = await call("POST", `/group-details/${LINK}`, { body: GOOD });
-  assert.equal(r.status, 200);
-  assert.equal(r.json["pick"]["category"], "Balcony");
-  assert.ok(!/\$|From/.test(r.json["pick"]["why"]), r.json["pick"]["why"]);
-  assert.deepEqual((await call("GET", `/group-details/${LINK}`)).json["held"], []);
-});
+const hold = (token = LINK, body: Row = {}) => call("POST", `/group-details/${token}/hold`, { body });
+const readyToHold = () => Object.assign(replyRow(), { ...GOOD, pick: PICK });
 
-// ── POST: Hold my cabin ───────────────────────────────────────────────────────
-
-test("'Hold my cabin' needs the saved names and pick first", async () => {
-  const r = await call("POST", `/group-details/${LINK}/hold`, { body: {} });
+test("Road B: 'Hold my cabin!' needs the saved names, address and pick first", async () => {
+  const r = await hold();
   assert.equal(r.status, 400);
-  assert.match(r.json["error"], /finish the names and the four questions first/);
+  assert.equal(r.json["error"], "Please finish the names, the address and the four questions first.");
+  Object.assign(replyRow(), { travelers: GOOD.travelers, pick: PICK });          // no address yet
+  assert.equal((await hold()).status, 400);
+  Object.assign(replyRow(), { travelers: null, address: ADDRESS });
+  assert.equal((await hold()).status, 400);
   assert.equal(replyRow()["hold_requested_at"], null);
-  Object.assign(replyRow(), { lang: "es" });
-  assert.equal((await call("POST", `/group-details/${LINK}/hold`, { body: {} })).json["error"], "Primero termine los nombres y las preguntas.");
-  assert.equal((await call("POST", `/group-details/${"A".repeat(43)}/hold`, { body: {} })).status, 404);
-  assert.equal((await call("POST", `/group-details/not-a-token/hold`, { body: {} })).status, 404);
+  assert.equal(writes("actions").length, 0);
+  assert.equal(mails.length, 0);
+  Object.assign(replyRow(), { lang: "es", address: null });
+  assert.equal((await hold()).json["error"], "Primero termine los nombres, la dirección y las preguntas.");
 });
 
-test("'Hold my cabin' records the request, marks the choice, and tells Mark once: name, category, party size, and the button to the group file; nothing is booked", async () => {
-  await call("POST", `/group-details/${LINK}`, { body: GOOD });
-  const r = await call("POST", `/group-details/${LINK}/hold`, { body: {} });
-  assert.deepEqual([r.status, r.json["success"]], [200, true]);
-  const row = replyRow();
-  assert.ok(row["hold_requested_at"]);
-  assert.equal(row["choice"], "finish");
-  await wait(() => writes("actions").some((w) => w.method === "POST"));
-  const made = writes("actions").filter((w) => w.method === "POST");
-  assert.equal(made.length, 1);
-  assert.equal(made[0]!.body.title, "Hold requested: Mark Millham, Balcony Bella, party of 2");
-  assert.deepEqual(made[0]!.body.buttons, [{ label: "Open the group file", href: `/groups/${GROUP_ID}` }]);
-  assert.equal(made[0]!.body.source_ref, `group-hold-${REPLY_ID}`);
-  // a second press (a double tap, a reload) changes nothing and makes no second item
-  const again = await call("POST", `/group-details/${LINK}/hold`, { body: {} });
-  assert.equal(again.json["success"], true);
-  await new Promise((r2) => setTimeout(r2, 50));
-  assert.equal(writes("actions").filter((w) => w.method === "POST").length, 1);
-  // nothing in the group file moved: no cabin touched, no traveler made
-  assert.equal(writes("group_cabins").length + writes("group_travelers").length, 0);
-  // once held, a form change goes through Mark
-  const late = await call("POST", `/group-details/${LINK}`, { body: GOOD });
-  assert.equal(late.status, 409);
-  assert.match(late.json["error"], /already on hold. To change anything, call or text Mark at 919-346-6127/);
-  assert.equal((await call("GET", `/group-details/${LINK}`)).json["holdRequestedAt"], row["hold_requested_at"]);
-});
-
-test("when the hold's item is made, the guest's earlier 'Group reply' item is closed (one person, one item); when it is not, that item stays", async () => {
-  await call("POST", `/group-details/${LINK}`, { body: GOOD });
-  tables["actions"]!.push({ id: "a-1", type: "lead", source_ref: `group-interest-${REPLY_ID}`, status: "pending", title: "Group reply: Mark Millham" });
-  await call("POST", `/group-details/${LINK}/hold`, { body: {} });
-  await new Promise((r) => setTimeout(r, 80));
-  assert.equal(tables["actions"]![0]!["status"], "pending", "the new item could not be made, so the old one is still there");
-
-  tables["group_interests"] = [reply()];
-  log = [];
+test("Road B: the hold records the request, marks the choice, tells Mark once with the design's item, and sends the ONE email; nothing is booked", async () => {
+  readyToHold();
   actionsAccept = true;
-  await call("POST", `/group-details/${LINK}`, { body: GOOD });
-  tables["actions"] = [{ id: "a-1", type: "lead", source_ref: `group-interest-${REPLY_ID}`, status: "pending", title: "Group reply: Mark Millham" }];
-  await call("POST", `/group-details/${LINK}/hold`, { body: {} });
+  pendingItem();
+  const r = await hold();
+  assert.deepEqual([r.status, r.json["success"]], [200, true]);
+  assert.ok(replyRow()["hold_requested_at"]);
+  assert.equal(replyRow()["choice"], "finish");
+  await wait(() => writes("actions").some((w) => w.method === "POST"));
+  const made = writes("actions").find((w) => w.method === "POST")!.body;
+  assert.equal(made.type, "lead");
+  assert.equal(made.source_ref, `group-hold-${REPLY_ID}`);
+  assert.equal(made.title, "Hold requested · Mark Millham · Balcony Bella · party of 2");
+  assert.equal(made.body, "Friends and Family 2027 · mmillham1@gmail.com · midship, a lower deck (feels the motion, wants quiet, balcony). Names, birthdays and the address are on the reply.");
+  assert.deepEqual(made.buttons, [
+    { label: "Add the travelers to a cabin", href: `/groups/${GROUP_ID}#replies` },
+    { label: "Open the group file", href: `/groups/${GROUP_ID}` },
+    { label: "Confirmed with MSC", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/mark/confirmed` },
+  ]);
+  assert.equal(made.buttons[0].label, "Add the travelers to a cabin", "the to-file route is the FIRST button");
+  // the earlier "Group reply" item is closed once the new one exists
   await wait(() => tables["actions"]![0]!["status"] === "done");
   assert.equal(tables["actions"]![0]!["status"], "done");
-  assert.equal(tables["actions"]!.length, 2, "the hold's own item exists");
+  // the ONE email
+  await wait(() => mails.length > 0);
+  assert.equal(mails.length, 1);
+  assert.equal(mails[0]!["to"], "mmillham1@gmail.com");
+  assert.equal(mails[0]!["subject"], "Your cabin is on hold… nicely done! Friends and Family 2027");
+  const text = String(mails[0]!["text"]);
+  assert.match(text, /^Hi Mark,/);
+  assert.match(text, /Here's what you did: Balcony Bella, midship, a lower deck, for Mark and Ceci\. Mark confirms it with the cruise line within a day/);
+  assert.match(text, /dig out both passports/);
+  assert.ok(text.includes(`https://dev.example.test/details.html?t=${LINK}`), "the way back to their details is their own link");
+  assert.ok(!/\$|per person|deposit/i.test(text + String(mails[0]!["html"])), "no price in the email");
+  await wait(() => replyRow()["ack_email_status"] === "sent");
+  await wait(() => writes("group_messages").length > 0);
+  const logged = writes("group_messages")[0]!.body;
+  assert.deepEqual([logged.audience, logged.template, logged.to_email, logged.status], ["client", "hold-confirmation", "mmillham1@gmail.com", "sent"]);
+  assert.ok(!JSON.stringify(logged).includes(LINK), "the link is not in the message log");
+  assert.equal(writes("group_cabins").length + writes("group_travelers").length, 0, "nothing is booked or added to a cabin");
 });
 
-// ── The Count me in answer ────────────────────────────────────────────────────
+test("Road B: a second press (a double tap, a reload) changes nothing, makes no second item and sends no second email", async () => {
+  readyToHold();
+  actionsAccept = true;
+  await Promise.all([hold(), hold()]);
+  const again = await hold();
+  assert.deepEqual([again.status, again.json["success"]], [200, true]);
+  await wait(() => mails.length > 0);
+  await new Promise((r) => setTimeout(r, 80));
+  assert.equal(writes("actions").filter((w) => w.method === "POST").length, 1, "one item for Mark");
+  assert.equal(mails.length, 1, "one email");
+});
+
+test("Road B: when the hold's item is made, the guest's earlier items (the reply, and a 'Ring …' if they asked for a call first) are closed; when it is not, they stay", async () => {
+  readyToHold();
+  tables["actions"]!.push({ id: "a-1", type: "lead", source_ref: `group-interest-${REPLY_ID}`, status: "pending", title: "Ring Mark Millham · party of 2 · evenings", body: "old", buttons: [] });
+  tables["actions"]!.push({ id: "a-2", type: "lead", source_ref: `group-call-${REPLY_ID}`, status: "pending", title: "Ring again", body: "old", buttons: [] });
+  actionsAccept = false;                                       // the stand-in refuses the new item
+  assert.equal((await hold()).status, 200);
+  await new Promise((r) => setTimeout(r, 80));
+  assert.deepEqual(tables["actions"]!.map((a) => a["status"]), ["pending", "pending"], "no new item, so the old ones stay for Mark");
+  Object.assign(replyRow(), { hold_requested_at: null });
+  actionsAccept = true;
+  assert.equal((await hold()).status, 200);
+  await wait(() => tables["actions"]!.every((a) => a["status"] === "done" || a["source_ref"] === `group-hold-${REPLY_ID}`));
+  assert.deepEqual(tables["actions"]!.slice(0, 2).map((a) => a["status"]), ["done", "done"]);
+});
+
+test("Road B's email goes only to an address this box may email; a phone-only reply gets none; a failed send is recorded; Spanish gets the Spanish email", async () => {
+  readyToHold();
+  process.env["GROUP_FORMS_MAIL_ALLOW"] = "tester@example.org";
+  assert.equal((await hold()).status, 200);
+  await wait(() => replyRow()["ack_email_status"] === "held");
+  assert.equal(mails.length, 0);
+  assert.equal(writes("group_messages")[0]!.body.status, "skipped");
+  delete process.env["GROUP_FORMS_MAIL_ALLOW"];
+  Object.assign(replyRow(), { hold_requested_at: null, email: null, phone: "919-555-0100", ack_email_status: null });
+  assert.equal((await hold()).status, 200);
+  await wait(() => replyRow()["ack_email_status"] === "no-email");
+  assert.equal(mails.length, 0);
+  mailOk = false;
+  Object.assign(replyRow(), { hold_requested_at: null, email: "fail@example.com", phone: null, ack_email_status: null });
+  assert.equal((await hold()).status, 200);
+  await wait(() => replyRow()["ack_email_status"] === "failed");
+  mailOk = true; mails.length = 0;
+  Object.assign(replyRow(), { hold_requested_at: null, email: "ana@example.com", lang: "es", first_name: "Ana", ack_email_status: null, pick: { ...PICK, where: "en el centro del barco, en una cubierta baja" } });
+  assert.equal((await hold()).status, 200);
+  await wait(() => mails.length === 1);
+  assert.equal(mails[0]!["subject"], "Su cabina está apartada… ¡bien hecho! Friends and Family 2027");
+  assert.match(String(mails[0]!["text"]), new RegExp(`/es/details\\.html\\?t=${LINK}`));
+});
+
+test("Road B: a wrong link or the bot trap holds nothing", async () => {
+  readyToHold();
+  assert.equal((await hold("A".repeat(43))).status, 404);
+  assert.equal((await hold("not-a-token")).status, 404);
+  const bot = await hold(LINK, { website: "http://spam.example" });
+  assert.deepEqual([bot.status, bot.json["success"]], [200, true]);
+  assert.equal(replyRow()["hold_requested_at"], null);
+  assert.equal(writes("actions").length + writes("group_messages").length, 0);
+  assert.equal(mails.length, 0);
+});
+
+// ── The "Save my spot!" answer ────────────────────────────────────────────────
 
 const INTEREST = (over: Row = {}) => ({ first_name: "Pat", last_name: "Lee", email: "pat@example.com", phone: "", guests: 2, newsletter_opt_in: false, website: "", lang: "en", ...over });
 const interest = (body: Row, ip?: string) => call("POST", `/group-page/${CODE}/interest`, { body, ip });
 const newest = () => tables["group_interests"]![tables["group_interests"]!.length - 1]!;
 
-test("Count me in hands the guest their own two links, stores only the link's hash, and the email goes out with them", async () => {
+test("saving a spot hands the guest their own links and the first word of their name, stores only the link's hash, and sends NO email (the client gets one message, after a road is chosen)", async () => {
   tables["group_interests"] = [];
-  const r = await interest(INTEREST());
+  const r = await interest(INTEREST({ first_name: "Mary Ann", last_name: "van der Berg" }));
   assert.equal(r.status, 200);
   assert.equal(r.json["success"], true);
+  assert.equal(r.json["first"], "Mary", "the first word of the name typed");
   const { detailsUrl, callUrl } = r.json;
   const m = /^https:\/\/dev\.example\.test\/details\.html\?t=([A-Za-z0-9_-]{43})$/.exec(detailsUrl);
   assert.ok(m, detailsUrl);
@@ -430,88 +681,62 @@ test("Count me in hands the guest their own two links, stores only the link's ha
   assert.equal(row["details_token_hash"], hashLinkToken(m![1]!), "the hash of the token in the link is what is stored");
   assert.ok(!JSON.stringify(row).includes(m![1]!), "the token itself is stored nowhere");
   assert.ok(row["details_token_issued_at"]);
+  assert.equal(row["ack_email_status"], "awaiting-choice");
   // and the link opens the page for that very reply
-  assert.equal((await call("GET", `/group-details/${m![1]}`)).json["firstName"], "Pat");
-
-  await wait(() => row["ack_email_status"] === "sent");
-  assert.equal(row["ack_email_status"], "sent");
-  assert.ok(row["ack_email_at"]);
-  assert.equal(mails.length, 1);
-  assert.equal(mails[0]!["to"], "pat@example.com");
-  assert.equal(mails[0]!["subject"], "You're on the list for Friends and Family 2027");
-  assert.equal(mails[0]!["from_name"], "Mark Millham");
-  assert.equal(mails[0]!["reply_to"], "mark@stillafloatcruising.com");
-  assert.ok(String(mails[0]!["text"]).includes(detailsUrl) && String(mails[0]!["html"]).includes(detailsUrl));
-  assert.ok(String(mails[0]!["text"]).includes("Balcony Bella from $536.79 or Balcony Aurea from $686.79 per person, taxes and port fees included… and just $50 per person holds your spot."));
-  assert.ok(String(mails[0]!["text"]).includes("we sail from Port Canaveral, Florida on Sunday, May 9, 2027… stops in Nassau and Ocean Cay… and home Thursday, May 13, 2027."));
-  // the message log keeps who and when, never the link
-  await wait(() => writes("group_messages").length > 0);
-  const logged = writes("group_messages")[0]!.body;
-  assert.deepEqual([logged.audience, logged.template, logged.to_email, logged.status], ["client", "interest-ack", "pat@example.com", "sent"]);
-  assert.ok(!JSON.stringify(logged).includes(m![1]!), "the link is not in the message log");
+  assert.equal((await call("GET", `/group-details/${m![1]}`)).json["firstName"], "Mary Ann");
   // the item on Mark's list is this reply's own
   await wait(() => writes("actions").some((w) => w.method === "POST"));
   assert.equal(writes("actions").find((w) => w.method === "POST")!.body.source_ref, `group-interest-${row["id"]}`);
+  // and NO email went out, now or a moment later
+  await new Promise((r2) => setTimeout(r2, 100));
+  assert.equal(mails.length, 0, "no acknowledgement email");
+  assert.equal(writes("group_messages").length, 0, "nothing in the email log");
 });
 
-test("a Spanish reply gets the Spanish page's links and the Spanish email", async () => {
+test("saving a spot sends nothing on a box that emails real people either, and a phone-only reply still gets its links", async () => {
   tables["group_interests"] = [];
-  const r = await interest(INTEREST({ lang: "es", first_name: "Ana" }));
+  const email = await interest(INTEREST({ email: "pat@example.com" }));
+  assert.ok(email.json["detailsUrl"]);
+  const phone = await interest(INTEREST({ email: "", phone: "919-346-6127", first_name: "Cher", last_name: "Bono" }));
+  assert.ok(phone.json["detailsUrl"] && phone.json["callUrl"], "a phone-only reply still gets its links");
+  assert.equal(phone.json["first"], "Cher");
+  await new Promise((r2) => setTimeout(r2, 100));
+  assert.equal(mails.length, 0);
+  assert.deepEqual(tables["group_interests"]!.map((x) => x["ack_email_status"]), ["awaiting-choice", "awaiting-choice"]);
+});
+
+test("a Spanish reply gets the Spanish page's links", async () => {
+  tables["group_interests"] = [];
+  const r = await interest(INTEREST({ lang: "es", first_name: "Ana", last_name: "Pérez" }));
   assert.match(r.json["detailsUrl"], /^https:\/\/dev\.example\.test\/es\/details\.html\?t=/);
   assert.match(r.json["callUrl"], /^https:\/\/dev\.example\.test\/es\/details\.html\?t=[A-Za-z0-9_-]{43}&choice=call$/);
-  await wait(() => mails.length > 0);
-  assert.equal(mails[0]!["subject"], "Ya está en la lista de Friends and Family 2027");
-  assert.ok(String(mails[0]!["text"]).includes("Lo termino ahora"));
+  assert.equal(r.json["first"], "Ana");
 });
 
-test("a box that only emails its test addresses holds the email; a phone-only reply gets none; a failed send is recorded; every one still gets the links", async () => {
-  tables["group_interests"] = [];
-  process.env["GROUP_FORMS_MAIL_ALLOW"] = "tester@example.org,@staff.example";
-  const held = await interest(INTEREST({ email: "pat@example.com" }));
-  assert.ok(held.json["detailsUrl"]);
-  await wait(() => newest()["ack_email_status"] === "held");
-  assert.equal(newest()["ack_email_status"], "held");
-  assert.equal(mails.length, 0, "nothing was sent to a real address");
-  await wait(() => writes("group_messages").length > 0);
-  assert.equal(writes("group_messages")[0]!.body.status, "skipped");
-
-  const allowed = await interest(INTEREST({ email: "tester@example.org" }));
-  assert.ok(allowed.json["detailsUrl"]);
-  await wait(() => mails.length === 1);
-  assert.equal(mails[0]!["to"], "tester@example.org");
-  delete process.env["GROUP_FORMS_MAIL_ALLOW"];
-
-  const phone = await interest(INTEREST({ email: "", phone: "919-346-6127", first_name: "Cher", last_name: "" }));
-  assert.ok(phone.json["detailsUrl"] && phone.json["callUrl"], "a phone-only reply still gets its links");
-  await wait(() => newest()["ack_email_status"] === "no-email");
-  assert.equal(newest()["ack_email_status"], "no-email");
-  assert.equal(mails.length, 1, "no email for a phone number");
-
-  mailOk = false;
-  const failed = await interest(INTEREST({ email: "fail@example.com" }));
-  assert.ok(failed.json["detailsUrl"], "a mail sender that is down does not cost the guest their links");
-  await wait(() => newest()["ack_email_status"] === "failed");
-  assert.equal(newest()["ack_email_status"], "failed");
-  assert.equal(newest()["ack_email_at"], null);
-});
-
-test("a box that has not applied migration 0056 still takes the reply: success, no links, no email", async () => {
+test("a box that has not applied migration 0056 still takes the reply: success and the name, no links, no email", async () => {
   tables["group_interests"] = [];
   tokenWriteFails = true;
   const r = await interest(INTEREST());
   assert.equal(r.status, 200);
-  assert.deepEqual(r.json, { success: true });
+  assert.deepEqual(r.json, { success: true, first: "Pat" });
   assert.equal(tables["group_interests"]!.length, 1, "the reply is saved");
   await new Promise((r2) => setTimeout(r2, 60));
   assert.equal(mails.length, 0);
 });
 
-test("every refusal the Count me in form already had is unchanged, and none of them hands out a link", async () => {
+test("the form's refusals keep the design's words, and none of them hands out a link", async () => {
   tables["group_interests"] = [];
-  const cases: Array<[Row, number]> = [[INTEREST({ first_name: "" }), 400], [INTEREST({ email: "nope", phone: "" }), 400], [INTEREST({ email: "", phone: "" }), 400]];
-  for (const [body, status] of cases) {
+  const cases: Array<[Row, number, string]> = [
+    [INTEREST({ first_name: "" }), 400, "First AND last name, please… the way the passport has it."],
+    [INTEREST({ last_name: "" }), 400, "First AND last name, please… the way the passport has it."],
+    [INTEREST({ first_name: "R2", last_name: "D2" }), 400, "First AND last name, please… the way the passport has it."],
+    [INTEREST({ email: "nope", phone: "" }), 400, "Please check your email address or phone number."],
+    [INTEREST({ email: "", phone: "" }), 400, "Please check your email address or phone number."],
+  ];
+  for (const [body, status, error] of cases) {
     const r = await interest(body);
     assert.equal(r.status, status);
+    assert.equal(r.json["error"], error);
     assert.ok(!("detailsUrl" in r.json) && !("callUrl" in r.json));
   }
   const bot = await interest(INTEREST({ website: "http://spam.example" }));
@@ -520,7 +745,7 @@ test("every refusal the Count me in form already had is unchanged, and none of t
   assert.equal(tables["group_interests"]!.length, 0);
 });
 
-// ── The dashboard: add the reply's travelers to a cabin ───────────────────────
+// ── The dashboard: add the reply's travelers to a cabin, and the two buttons on Mark's list ──
 
 const toFile = (iid: string, body: unknown, token = true) => call("POST", `/groups/${GROUP_ID}/interests/${iid}/to-file`, { body, token });
 
@@ -530,20 +755,27 @@ test("the dashboard route is Mark's alone", async () => {
   assert.equal(tables["group_travelers"]!.length, 0);
 });
 
-test("the typed travelers become travelers on the chosen cabin: last-space split, the first is the lead and carries the contact; the cabin's status is untouched", async () => {
-  Object.assign(replyRow(), { lang: "es", travelers: [{ legal_name: "Mary Ann Smith", dob: "1965-04-12" }, { legal_name: "Cher", dob: "1980-11-02" }] });
+test("the typed travelers become travelers on the chosen cabin: last-space split, the first is the lead and carries the contact and the home address; the cabin's status is untouched", async () => {
+  Object.assign(replyRow(), { lang: "es", address: ADDRESS, travelers: [{ legal_name: "Mary Ann Smith", dob: "1965-04-12" }, { legal_name: "Cher Bono", dob: "1980-11-02" }] });
   const r = await toFile(REPLY_ID, { cabin_id: CABIN_ID });
   assert.equal(r.status, 200);
   assert.equal(r.json["count"], 2);
   const [a, b] = tables["group_travelers"]!;
   assert.deepEqual([a!["group_id"], a!["cabin_id"], a!["first_name"], a!["last_name"], a!["dob"], a!["is_lead"], a!["email"], a!["phone"], a!["lang"]], [GROUP_ID, CABIN_ID, "Mary Ann", "Smith", "1965-04-12", true, "mmillham1@gmail.com", null, "es"]);
-  assert.deepEqual([b!["first_name"], b!["last_name"], b!["dob"], b!["is_lead"], b!["cabin_id"], "email" in b!], ["Cher", null, "1980-11-02", false, CABIN_ID, false]);
+  assert.deepEqual(a!["form_data"], { address: "123 Main St, Raleigh, NC 27601" }, "the home address goes where the paperwork reads it");
+  assert.deepEqual([b!["first_name"], b!["last_name"], b!["dob"], b!["is_lead"], b!["cabin_id"], "email" in b!, "form_data" in b!], ["Cher", "Bono", "1980-11-02", false, CABIN_ID, false, false]);
   assert.equal(replyRow()["traveler_id"], a!["id"], "the reply remembers it was added");
   assert.equal(writes("group_cabins").length, 0, "the cabin was not touched: Mark books with the cruise line himself");
   // it goes in once
   const again = await toFile(REPLY_ID, { cabin_id: CABIN_ID });
   assert.equal(again.status, 409);
   assert.equal(tables["group_travelers"]!.length, 2);
+});
+
+test("a reply with no address on it (a road that did not ask for one) still goes in, with no address line", async () => {
+  Object.assign(replyRow(), { travelers: GOOD.travelers, address: null });
+  assert.equal((await toFile(REPLY_ID, { cabin_id: CABIN_ID })).status, 200);
+  assert.equal("form_data" in tables["group_travelers"]![0]!, false);
 });
 
 test("a cabin that already has its lead keeps it: the new first traveler is not a second lead", async () => {
@@ -567,12 +799,34 @@ test("refused: a reply with no travelers, no cabin chosen, a cabin that is not o
   assert.equal(tables["group_travelers"]!.length, 0, "no refused request made a traveler");
 });
 
-test("the replies list carries what the table shows: choice, hold, the travelers and the pick", async () => {
-  Object.assign(replyRow(), { ...GOOD, choice: "finish", hold_requested_at: "2026-10-23T18:00:00Z", pick: { category: "Balcony Bella", where: "midship", why: "x" } });
+test("the replies list carries what the table shows: choice, when, hold, the travelers, the address and the pick", async () => {
+  Object.assign(replyRow(), { ...GOOD, choice: "call", call_when: "evening", hold_requested_at: "2026-10-23T18:00:00Z", pick: PICK });
   const r = await call("GET", `/groups/${GROUP_ID}/interests`, { token: true });
   assert.equal(r.status, 200);
   const row = r.json["interests"][0];
-  assert.deepEqual([row["choice"], row["hold_requested_at"], row["travelers"].length, row["pick"]["category"]], ["finish", "2026-10-23T18:00:00Z", 2, "Balcony Bella"]);
+  assert.deepEqual([row["choice"], row["call_when"], row["hold_requested_at"], row["travelers"].length, row["address"]["city"], row["pick"]["category"]], ["call", "evening", "2026-10-23T18:00:00Z", 2, "Raleigh", "Balcony Bella"]);
   assert.ok(!("details_token_hash" in row) && !("ip_hash" in row), "the list never carries the link's hash");
   assert.equal((await call("GET", `/groups/${GROUP_ID}/interests`)).status, 401);
+});
+
+const mark = (how: string, iid = REPLY_ID, token = true) => call("POST", `/groups/${GROUP_ID}/interests/${iid}/mark/${how}`, { token });
+
+test("'We talked' and 'Confirmed with MSC' (the buttons on Mark's list) move the reply along: contacted, then booked; never over a declined or spam reply; Mark's alone", async () => {
+  assert.equal((await mark("talked", REPLY_ID, false)).status, 401);
+  assert.equal(replyRow()["status"], "new");
+  const talked = await mark("talked");
+  assert.deepEqual([talked.status, talked.json["success"], talked.json["status"]], [200, true, "contacted"]);
+  assert.equal(replyRow()["status"], "contacted");
+  const confirmed = await mark("confirmed");
+  assert.deepEqual([confirmed.status, confirmed.json["status"]], [200, "booked"]);
+  assert.equal(replyRow()["status"], "booked");
+  for (const status of ["declined", "spam"]) {
+    replyRow()["status"] = status;
+    const r = await mark("confirmed");
+    assert.deepEqual([r.status, r.json["status"]], [200, status], "left as Mark set it");
+    assert.equal(replyRow()["status"], status);
+  }
+  assert.equal((await mark("later")).status, 404, "only the two buttons exist");
+  assert.equal((await mark("talked", "66666666-6666-4666-8666-666666666666")).status, 404);
+  assert.equal((await mark("talked", "not-an-id")).status, 404);
 });

@@ -1,31 +1,69 @@
-// group-details.test.ts — the rules behind "Count me in" → choice → "Your details" (Mark 2026-10-23), with no database, mailer or clock.
-// The cabin pick, the refusals in plain words (English and Spanish), the acknowledgement email's words and links, the 90-day link and the name split.
+// group-details.test.ts — the rules behind the two roads after "Save my spot!" (Mark 2026-10-23, reshaped 2026-10-24), with no database, mailer or clock.
+// The cabin pick and the upgrade hook, the refusals in plain words (English and Spanish), the two emails' words and links, the 90-day link and the name split.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  ackEmail, callUrl, detailsTokenFresh, detailsUrl, pickCabin, splitLegalName, storedConcierge, storedPick, storedTravelers, validateDetails,
-  type AckInput, type Concierge, type Held,
+  CALL_WHENS, MAX_TRAVELERS, MSG, callEmail, callUrl, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl, firstWord, holdEmail, numberWord, phoneFromBlurb, pickCabin,
+  reasonsInWords, splitLegalName, storedAddress, storedConcierge, storedPick, storedTravelers, tidyLegalName, upgradeHook, upgradeName, upgradePerkLines, validCallWhen,
+  validateAddress, validateConcierge, validateDetails, type CallInput, type Concierge, type HoldInput, type Held,
 } from "./group-details";
 
 const MILLHAM: Held[] = [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }];
 const ANSWERS: Concierge = { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" };
+const PERKS = ["Your own restaurant where you eat when you feel like it", "the adults-only thermal spa", "a solarium the rest of the ship can't find"];
 const NOW = new Date("2026-10-23T15:00:00Z");
+const ADDRESS = { street: "123 Main St", city: "Raleigh", state: "NC", zip: "27601", tidied: true };
 
 // ── pickCabin ─────────────────────────────────────────────────────────────────
 
-test("the design's example: balcony, quiet, a comfortable budget and a steady ship give Balcony Bella, midship on a lower deck, with the approved sentence", () => {
-  const p = pickCabin(ANSWERS, MILLHAM, "en", true);
+test("the design's example: balcony, quiet, a comfortable budget and a steady ship give Balcony Bella, midship on a lower deck, with the approved sentence and NO price", () => {
+  const p = pickCabin(ANSWERS, MILLHAM, "en", PERKS);
   assert.deepEqual(p, {
     category: "Balcony Bella",
     where: "midship, a lower deck",
-    why: "Steady for whoever feels the motion, quiet away from the pool deck, and a balcony for that coffee. From $536.79 per person, taxes and port fees included.",
+    why: "Steady for whoever feels the motion, quiet away from the pool deck, and a balcony for that coffee.",
+    upgrade: { category: "Aurea", hook: "Your own restaurant where you eat when you feel like it, the adults-only thermal spa, and a solarium the rest of the ship can't find." },
   });
+  // nothing after the group page says a price: not in the why, not in the hook, not anywhere in the pick
+  assert.ok(!/\$|per person|\bFrom \d|taxes/i.test(JSON.stringify(p)), JSON.stringify(p));
 });
 
-test("without a taxes-included quote the price sentence stops at 'per person'", () => {
-  assert.equal(pickCabin(ANSWERS, MILLHAM, "en", false).why, "Steady for whoever feels the motion, quiet away from the pool deck, and a balcony for that coffee. From $536.79 per person.");
-  assert.equal(pickCabin(ANSWERS, MILLHAM, "en").why.endsWith("From $536.79 per person."), true, "taxes are not assumed");
+test("with no perks written (the interview's upgrade_perks is empty) the pick has no upgrade hook", () => {
+  assert.equal(pickCabin(ANSWERS, MILLHAM, "en").upgrade, null);
+  assert.equal(pickCabin(ANSWERS, MILLHAM, "en", []).upgrade, null);
+  assert.equal(pickCabin(ANSWERS, MILLHAM, "en", ["", "  "]).upgrade, null);
+});
+
+test("the upgrade is the NEXT category up: none when the pick is already the top, one step for three categories, and the name drops the words the two share", () => {
+  const top = pickCabin({ ...ANSWERS, budget: "sky" }, MILLHAM, "en", PERKS);
+  assert.equal(top.category, "Balcony Aurea");
+  assert.equal(top.upgrade, null, "nothing above the top");
+  assert.equal(pickCabin(ANSWERS, [MILLHAM[0]!], "en", PERKS).upgrade, null, "one category only");
+  const three: Held[] = [{ category: "Interior", perPersonText: "$400" }, { category: "Balcony", perPersonText: "$600" }, { category: "Suite", perPersonText: "$1,200" }];
+  assert.equal(pickCabin({ ...ANSWERS, budget: "lean" }, three, "en", PERKS).upgrade?.category, "Balcony");
+  assert.equal(pickCabin({ ...ANSWERS, budget: "treat" }, three, "en", PERKS).category, "Suite");
+  assert.equal(pickCabin({ ...ANSWERS, budget: "treat" }, three, "en", PERKS).upgrade, null);
+  assert.equal(upgradeName("Balcony Bella", "Balcony Aurea"), "Aurea");
+  assert.equal(upgradeName("Interior", "Balcony"), "Balcony");
+  assert.equal(upgradeName("Balcony", "Balcony"), "Balcony", "never empty");
+  assert.equal(upgradeName("Suite Yacht Club", "Suite Yacht Club Deluxe"), "Deluxe");
+  // with the prices hidden there is nothing to rank, so no upgrade is invented
+  assert.equal(pickCabin(ANSWERS, [], "en", PERKS).upgrade, null);
+});
+
+test("the hook joins the first three perks with commas and 'and' before the last, lower-cases the first letter of each, and starts as a sentence", () => {
+  assert.equal(upgradeHook(PERKS, "en"), "Your own restaurant where you eat when you feel like it, the adults-only thermal spa, and a solarium the rest of the ship can't find.");
+  assert.equal(upgradeHook(["Quiet deck", "A private pool"], "en"), "Quiet deck and a private pool.");
+  assert.equal(upgradeHook(["A private pool"], "en"), "A private pool.");
+  assert.equal(upgradeHook(["One", "Two", "Three", "Four"], "en"), "One, two, and three.", "only the first three");
+  assert.equal(upgradeHook(["MSC Yacht Club lounge", "The Spa"], "en"), "MSC Yacht Club lounge and the Spa.", "an acronym keeps its capitals");
+  assert.equal(upgradeHook([], "en"), "");
+  assert.equal(upgradeHook(["Un restaurante propio", "El spa solo para adultos", "Un solárium escondido"], "es"), "Un restaurante propio, el spa solo para adultos y un solárium escondido.");
+  // the interview answer: one perk a line, bullets and blanks dropped
+  assert.deepEqual(upgradePerkLines("- Your own restaurant\n\n  * The spa  \n• A solarium\n"), ["Your own restaurant", "The spa", "A solarium"]);
+  assert.deepEqual(upgradePerkLines(undefined), []);
+  assert.deepEqual(upgradePerkLines(true), []);
 });
 
 test("a treat or sky budget takes the higher-priced category, a lean or middle budget the lower, whatever order the list comes in", () => {
@@ -33,13 +71,12 @@ test("a treat or sky budget takes the higher-priced category, a lean or middle b
   for (const budget of ["treat", "sky"] as const) {
     assert.equal(pickCabin({ ...ANSWERS, budget }, MILLHAM).category, "Balcony Aurea", budget);
     assert.equal(pickCabin({ ...ANSWERS, budget }, shuffled).category, "Balcony Aurea", `${budget}, list reversed`);
-    assert.match(pickCabin({ ...ANSWERS, budget }, MILLHAM).why, /From \$686\.79 per person/);
   }
   for (const budget of ["lean", "middle"] as const) {
     assert.equal(pickCabin({ ...ANSWERS, budget }, MILLHAM).category, "Balcony Bella", budget);
     assert.equal(pickCabin({ ...ANSWERS, budget }, shuffled).category, "Balcony Bella", `${budget}, list reversed`);
   }
-  // prices compare as numbers, not as text ("$1,000" is more than "$900")
+  // prices compare as numbers, not as text ("$1,000" is more than "$900"); the price only orders them
   const text: Held[] = [{ category: "Suite", perPersonText: "$1,000" }, { category: "Balcony", perPersonText: "$900" }];
   assert.equal(pickCabin({ ...ANSWERS, budget: "sky" }, text).category, "Suite");
   assert.equal(pickCabin({ ...ANSWERS, budget: "lean" }, text).category, "Balcony");
@@ -57,8 +94,8 @@ test("where: the motion outranks everything, then a quiet priority is midship, t
   assert.equal(where({ motion: "no", priority: "space" }), "midship");
 });
 
-test("why is assembled only from what they said: each clause appears for its answer and never otherwise", () => {
-  const why = (o: Partial<Concierge>, held = MILLHAM) => pickCabin({ ...ANSWERS, ...o }, held, "en", true).why;
+test("why is assembled only from what they said: each clause appears for its answer and never otherwise, and ends at a full stop with no price", () => {
+  const why = (o: Partial<Concierge>, held = MILLHAM) => pickCabin({ ...ANSWERS, ...o }, held, "en").why;
   assert.match(why({ motion: "yes" }), /^Steady for whoever feels the motion/);
   assert.ok(!why({ motion: "no" }).includes("Steady"));
   assert.ok(why({ priority: "quiet" }).includes("quiet away from the pool deck"));
@@ -67,262 +104,333 @@ test("why is assembled only from what they said: each clause appears for its ans
   // an inside request: the group's cabins are all balconies, so they get one anyway
   assert.ok(why({ room: "inside" }).includes("the group's cabins are all balconies, so you get one anyway"));
   assert.ok(!why({ room: "inside" }).includes("for that coffee"));
-  // the first clause is a sentence start, two clauses are joined with "and", and the sentence ends with a full stop before the price
-  assert.equal(why({ motion: "no", priority: "quiet", room: "oceanview" }), "Quiet away from the pool deck. From $536.79 per person, taxes and port fees included.");
-  assert.equal(why({ motion: "yes", priority: "ocean", room: "balcony" }), "Steady for whoever feels the motion and a balcony for that coffee. From $536.79 per person, taxes and port fees included.");
-  // nothing to say but the price: still a sentence, never a bare price
-  assert.equal(why({ motion: "no", priority: "action", room: "oceanview" }), "Our best fit for what you told us. From $536.79 per person, taxes and port fees included.");
+  assert.equal(why({ motion: "no", priority: "quiet", room: "oceanview" }), "Quiet away from the pool deck.");
+  assert.equal(why({ motion: "yes", priority: "ocean", room: "balcony" }), "Steady for whoever feels the motion and a balcony for that coffee.");
+  assert.equal(why({ motion: "no", priority: "action", room: "oceanview" }), "Our best fit for what you told us.");
 });
 
 test("a balcony is never promised for a cabin that is not one", () => {
   const mixed: Held[] = [{ category: "Interior", perPersonText: "$400" }, { category: "Balcony", perPersonText: "$600" }];
-  const lowerPick = pickCabin({ ...ANSWERS, budget: "lean" }, mixed, "en", true);
+  const lowerPick = pickCabin({ ...ANSWERS, budget: "lean" }, mixed, "en");
   assert.equal(lowerPick.category, "Interior");
   assert.ok(!/balcon/i.test(lowerPick.why), lowerPick.why);
-  // an inside request is only told "the group's cabins are all balconies" when they all are
   assert.ok(!pickCabin({ ...ANSWERS, room: "inside" }, mixed, "en").why.includes("all balconies"));
   assert.ok(pickCabin({ ...ANSWERS, budget: "sky" }, mixed, "en").why.includes("a balcony for that coffee"));
 });
 
-test("no categories to choose from (prices hidden): it names the kind of cabin they asked for and quotes no price", () => {
-  const p = pickCabin({ ...ANSWERS, room: "oceanview" }, [], "en", true);
+test("no categories to choose from (prices hidden): it names the kind of cabin they asked for", () => {
+  const p = pickCabin({ ...ANSWERS, room: "oceanview" }, [], "en");
   assert.equal(p.category, "Oceanview");
   assert.ok(!/\$|From/.test(p.why), p.why);
   assert.equal(pickCabin({ ...ANSWERS, room: "suite" }, [], "es").category, "Suite");
-  // a category with no readable price is still pickable, and quotes none
   const noPrice = pickCabin(ANSWERS, [{ category: "Balcony Bella", perPersonText: null }], "en");
   assert.equal(noPrice.category, "Balcony Bella");
-  assert.ok(!/From/.test(noPrice.why));
 });
 
-test("Spanish: the same pick in Spanish, addressed as usted, with the price sentence", () => {
-  const p = pickCabin(ANSWERS, MILLHAM, "es", true);
+test("Spanish: the same pick in Spanish, addressed as usted, with no price and the hook in Spanish", () => {
+  const p = pickCabin(ANSWERS, MILLHAM, "es", ["Un restaurante propio", "El spa solo para adultos"]);
   assert.equal(p.category, "Balcony Bella");
   assert.equal(p.where, "en el centro del barco, en una cubierta baja");
-  assert.equal(p.why, "Estable para quien sienta el movimiento, alejada de la cubierta de la piscina y un balcón para ese café. Desde $536.79 por persona, con impuestos y cargos portuarios incluidos.");
-  assert.equal(pickCabin(ANSWERS, MILLHAM, "es", false).why.endsWith("Desde $536.79 por persona."), true);
+  assert.equal(p.why, "Estable para quien sienta el movimiento, alejada de la cubierta de la piscina y un balcón para ese café.");
+  assert.deepEqual(p.upgrade, { category: "Aurea", hook: "Un restaurante propio y el spa solo para adultos." });
   assert.equal(pickCabin({ ...ANSWERS, motion: "no", priority: "ocean" }, MILLHAM, "es").where, "en una cubierta alta");
+});
+
+test("the reasons behind a pick, in words, for Mark's list", () => {
+  assert.equal(reasonsInWords(ANSWERS), "feels the motion, wants quiet, balcony");
+  assert.equal(reasonsInWords({ room: "inside", priority: "action", budget: "lean", motion: "no" }), "wants the action, inside cabin");
+  assert.equal(reasonsInWords({ room: "suite", priority: "ocean", budget: "sky", motion: "yes" }), "feels the motion, wants the ocean, suite");
+  assert.equal(reasonsInWords({ room: "oceanview", priority: "space", budget: "middle", motion: "no" }), "wants room to spread out, oceanview");
+});
+
+// ── What the file says ────────────────────────────────────────────────────────
+
+test("detailsFacts reads the label, the deposit per person and the upgrade perks from the group file", () => {
+  const group = { name: "Millham F/F 2027", deposit_per_person: 50, ship_name: "MSC SEASHORE", marketing: { page_label: "Friends and Family 2027", host_names: "Mark & Ceci", upgrade_perks: "- Your own restaurant\n The spa\n" } };
+  const f = detailsFacts({ group, cabins: [] }, "en");
+  assert.deepEqual([f.label, f.depositPerPersonText, f.hostNames, f.upgradePerks], ["Friends and Family 2027", "$50", "Mark & Ceci", ["Your own restaurant", "The spa"]]);
+  const bare = detailsFacts({ group: { name: "Plain Group" }, cabins: [{ status: "held", category: "Balcony", price_total: 2000, deposit_amount: 100 }] }, "en");
+  assert.equal(bare.label, "Plain Group");
+  assert.deepEqual(bare.upgradePerks, []);
+  assert.equal(bare.depositPerPersonText, "$50", "no deposit of its own: half the lowest cabin deposit, a person's share");
+  assert.equal(detailsFacts({ group: { name: "None" }, cabins: [] }, "en").depositPerPersonText, null);
+});
+
+test("the number Mark rings from: the one in the group's own line beside the button, else the business number", () => {
+  assert.equal(phoneFromBlurb("Questions? Call or text Mark at 919-346-6127."), "919-346-6127");
+  assert.equal(phoneFromBlurb("Call (919) 555-0100 any time"), "(919) 555-0100");
+  assert.equal(phoneFromBlurb("No number here"), null);
+  assert.equal(phoneFromBlurb(undefined), null);
+  assert.equal(callerPhone("Call Mark at 919-555-0111!"), "919-555-0111");
+  assert.equal(callerPhone("Questions?"), "919-346-6127");
+  assert.equal(callerPhone(undefined), "919-346-6127");
+  assert.equal(firstWord("Mary Ann van der Berg"), "Mary");
+  assert.equal(firstWord("  Cher "), "Cher");
+  assert.equal(firstWord(null), "");
 });
 
 // ── validateDetails ───────────────────────────────────────────────────────────
 
-const GOOD = { travelers: [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci  Millham", dob: "1980-11-02" }], concierge: ANSWERS };
+const GOOD = { travelers: [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci  Millham", dob: "1980-11-02" }], address: ADDRESS, concierge: ANSWERS };
 
-test("good details pass, names are tidied, and the count is what came", () => {
+test("good details pass, names are tidied, the address is kept, and the count is what came", () => {
   const v = validateDetails(GOOD, 2, "en", NOW);
   assert.equal(v.ok, true);
   if (!v.ok) return;
   assert.deepEqual(v.travelers, [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }]);
+  assert.deepEqual(v.address, ADDRESS);
   assert.deepEqual(v.concierge, ANSWERS);
   assert.equal(v.count, 2);
 });
 
-test("the number of travelers may differ from the party size they gave (people change their minds), from 1 to 12", () => {
-  const one = validateDetails({ ...GOOD, travelers: [GOOD.travelers[0]] }, 4, "en", NOW);
+test("one to four travelers, whatever the party size they gave; five is refused with the second-cabin words", () => {
+  assert.equal(MAX_TRAVELERS, 4);
+  const one = validateDetails({ ...GOOD, travelers: [GOOD.travelers[0]] }, 6, "en", NOW);
   assert.ok(one.ok && one.count === 1);
-  const twelve = validateDetails({ ...GOOD, travelers: Array.from({ length: 12 }, (_, i) => ({ legal_name: `Person Number${"x".repeat(i % 3)}`, dob: "1990-01-01" })) }, 2, "en", NOW);
-  assert.ok(twelve.ok && twelve.count === 12);
+  const four = validateDetails({ ...GOOD, travelers: Array.from({ length: 4 }, (_, i) => ({ legal_name: `Person Number${"x".repeat(i)}`, dob: "1990-01-01" })) }, 2, "en", NOW);
+  assert.ok(four.ok && four.count === 4);
+  const five = validateDetails({ ...GOOD, travelers: Array.from({ length: 5 }, () => ({ legal_name: "Person Number", dob: "1990-01-01" })) }, 2, "en", NOW);
+  assert.deepEqual(five, { ok: false, error: "More than four? Mark will set up a second cabin on the call… tap Talk me into it, Mark! on the group page.", field: "travelers" });
   const none = validateDetails({ ...GOOD, travelers: [] }, 2, "en", NOW);
-  assert.ok(!none.ok && none.error === "Please add at least one traveler." && none.field === "travelers");
-  const thirteen = validateDetails({ ...GOOD, travelers: Array.from({ length: 13 }, () => GOOD.travelers[0]) }, 2, "en", NOW);
-  assert.ok(!thirteen.ok && /Up to 12 travelers/.test(thirteen.error));
-  assert.ok(!validateDetails({ concierge: ANSWERS }, 2, "en", NOW).ok, "no list at all");
+  assert.deepEqual([none.ok, !none.ok && none.field], [false, "travelers"]);
 });
 
-test("a name must be a plain name of 2 to 80 characters with no markup", () => {
-  const name = (legal_name: unknown) => validateDetails({ ...GOOD, travelers: [{ legal_name, dob: "1965-04-12" }] }, 1, "en", NOW);
-  for (const ok of ["Li", "Mary-Ann O'Brien", "María José Núñez", "Jean-Luc Picard Jr.", "Zoë Ångström", "Ann’s Smith"]) assert.ok(name(ok).ok, ok);
-  for (const bad of ["", " ", "A", "<b>Mark</b>", "Mark <script>", "Mark & Ceci", "Mark123", "12345", "x".repeat(81), "-Mark", null, 12, undefined, {}, ["Mark"]]) {
-    const v = name(bad);
-    assert.ok(!v.ok, JSON.stringify(bad));
-    if (!v.ok) { assert.equal(v.error, "Traveler 1: please type the name as it is on the passport."); assert.equal(v.field, "travelers.0.legal_name"); }
+test("a name is a first AND a last name of letters, spaces, hyphens and apostrophes: the design's words", () => {
+  const NAME = "First AND last name, please… the way the passport has it.";
+  for (const bad of ["Bob", "", "  ", "R2 D2", "Mark <b>Millham</b>", "A", "Mark 3rd", "Mark Millham!", "-- --", "Mark ' '", "x".repeat(81), "Jr. Smith", "Mark_Millham"]) {
+    const v = validateDetails({ ...GOOD, travelers: [{ legal_name: bad, dob: "1965-04-12" }] }, 1, "en", NOW);
+    assert.deepEqual([v.ok, !v.ok && v.error, !v.ok && v.field], [false, NAME, "travelers.0.legal_name"], JSON.stringify(bad));
   }
-  assert.ok(name("x".repeat(80).replace(/x/g, "a")).ok, "exactly 80 is allowed");
-  // the second traveler is named in the message
-  const second = validateDetails({ ...GOOD, travelers: [GOOD.travelers[0], { legal_name: "<i>", dob: "1990-01-01" }] }, 2, "en", NOW);
-  assert.ok(!second.ok && second.error.startsWith("Traveler 2:") && second.field === "travelers.1.legal_name");
+  for (const good of ["Mark Millham", "Mary-Jane O'Brien", "José Pérez", "Ana de la Cruz", "Li Q", "Anne-Marie d’Arcy", "Zoë Müller"]) {
+    assert.ok(validateDetails({ ...GOOD, travelers: [{ legal_name: good, dob: "1965-04-12" }] }, 1, "en", NOW).ok, good);
+  }
+  assert.equal(tidyLegalName("  Mary   Ann   Smith "), "Mary Ann Smith");
+  assert.equal(tidyLegalName(12), null);
+  assert.equal(tidyLegalName("Bob"), null);
+  // the second traveler's problem is named by its own field
+  const v = validateDetails({ ...GOOD, travelers: [GOOD.travelers[0], { legal_name: "Ceci", dob: "1980-11-02" }] }, 2, "en", NOW);
+  assert.deepEqual(!v.ok && v.field, "travelers.1.legal_name");
 });
 
-test("a birthday is a real date, not in the future and under 120 years ago", () => {
-  const dob = (v: unknown) => validateDetails({ ...GOOD, travelers: [{ legal_name: "Mark Millham", dob: v }] }, 1, "en", NOW);
-  for (const ok of ["1965-04-12", "2026-10-23", "1906-10-24", "2000-02-29", "2026-01-01"]) assert.ok(dob(ok).ok, ok);
-  for (const bad of ["2026-10-24", "2027-01-01", "1906-10-23", "1900-01-01", "2001-02-29", "1965-13-01", "1965-00-10", "1965-04-31", "04/12/1965", "1965-4-12", "12/04/65", "yesterday", "", null, 19650412, {}]) {
-    const v = dob(bad);
-    assert.ok(!v.ok, JSON.stringify(bad));
-    if (!v.ok) assert.equal(v.field, "travelers.0.dob");
+test("a birthday is a real date, not in the future and under 120 years ago: one sentence for every way it can be wrong", () => {
+  const DOB = "Month, day and a four-digit year: 03 / 04 / 1965.";
+  for (const dob of ["", "04/12/1965", "1965-4-12", "1965-02-30", "2999-01-01", "2026-10-24", "1900-01-01", "1906-10-23", "not a date", "65-04-12", "1965-13-01"]) {
+    const v = validateDetails({ ...GOOD, travelers: [{ legal_name: "Mark Millham", dob }] }, 1, "en", NOW);
+    assert.deepEqual([v.ok, !v.ok && v.error, !v.ok && v.field], [false, DOB, "travelers.0.dob"], JSON.stringify(dob));
   }
-  const missing = dob("");
-  assert.ok(!missing.ok && missing.error === "Traveler 1: please add a date of birth.");
-  const wrong = dob("2099-01-01");
-  assert.ok(!wrong.ok && wrong.error === "Traveler 1: that date of birth does not look right. Please check it.");
+  for (const dob of ["2026-10-23", "1906-10-24", "2020-02-29", "1965-04-12"]) assert.ok(validateDetails({ ...GOOD, travelers: [{ legal_name: "Mark Millham", dob }] }, 1, "en", NOW).ok, dob);
+});
+
+test("the address: a street and number, a city, a US state and a ZIP, each refused in its own words with its own field", () => {
+  const bad = (a: unknown) => { const v = validateDetails({ ...GOOD, address: a }, 2, "en", NOW); return v.ok ? null : [v.error, v.field]; };
+  assert.deepEqual(bad(undefined), ["A street and number, please… like 123 Main St.", "address.street"]);
+  assert.deepEqual(bad({ ...ADDRESS, street: "12" }), ["A street and number, please… like 123 Main St.", "address.street"]);
+  assert.deepEqual(bad({ ...ADDRESS, street: "<script>" }), ["A street and number, please… like 123 Main St.", "address.street"]);
+  assert.deepEqual(bad({ ...ADDRESS, street: "12345" }), ["A street and number, please… like 123 Main St.", "address.street"], "no letter at all is not a street");
+  assert.deepEqual(bad({ ...ADDRESS, city: "" }), ["Which city, please?", "address.city"]);
+  assert.deepEqual(bad({ ...ADDRESS, city: "R4leigh" }), ["Which city, please?", "address.city"]);
+  assert.deepEqual(bad({ ...ADDRESS, state: "North Carolina" }), ["The state's two letters, please… like NC.", "address.state"]);
+  assert.deepEqual(bad({ ...ADDRESS, state: "ZZ" }), ["The state's two letters, please… like NC.", "address.state"]);
+  assert.deepEqual(bad({ ...ADDRESS, zip: "2760" }), ["Five digits for the ZIP, please… like 27601.", "address.zip"]);
+  assert.deepEqual(bad({ ...ADDRESS, zip: "ABCDE" }), ["Five digits for the ZIP, please… like 27601.", "address.zip"]);
+  assert.equal(bad(ADDRESS), null);
+  // tidied: only a real true counts; a state in lower case and spaces are tidied; ZIP+4 is allowed
+  const a = validateAddress({ street: "  500   E  Davie St ", city: "Raleigh", state: "nc", zip: "27601-1234", tidied: "yes" }, "en");
+  assert.deepEqual(a, { ok: true, address: { street: "500 E Davie St", city: "Raleigh", state: "NC", zip: "27601-1234", tidied: false } });
+  // Spanish twin of every refusal
+  assert.equal(validateAddress({}, "es").ok, false);
+  assert.equal((validateAddress({ ...ADDRESS, zip: "1" }, "es") as { error: string }).error, "Cinco dígitos para el código postal, por favor… como 27601.");
 });
 
 test("each concierge answer must be one of its allowed values", () => {
-  const answers = (o: Record<string, unknown>) => validateDetails({ ...GOOD, concierge: { ...ANSWERS, ...o } }, 2, "en", NOW);
-  assert.ok(answers({}).ok);
-  for (const [k, ok, bad] of [
-    ["room", ["inside", "oceanview", "balcony", "suite"], ["", "Balcony", "penthouse", null, 1]],
-    ["priority", ["ocean", "quiet", "action", "space"], ["", "peace", "QUIET", undefined]],
-    ["budget", ["lean", "middle", "treat", "sky"], ["", "cheap", "treat ", 3]],
-    ["motion", ["yes", "no"], ["", "maybe", true, false, "Yes"]],
-  ] as const) {
-    for (const v of ok) assert.ok(answers({ [k]: v }).ok, `${k}=${v}`);
-    for (const v of bad) {
-      const r = answers({ [k]: v });
-      assert.ok(!r.ok, `${k}=${JSON.stringify(v)}`);
-      if (!r.ok) { assert.equal(r.field, `concierge.${k}`); assert.equal(r.error, "Please tap one answer for each of the four room questions."); }
-    }
+  for (const [key, bad] of [["room", "penthouse"], ["priority", ""], ["budget", 7], ["motion", "maybe"]] as const) {
+    const v = validateDetails({ ...GOOD, concierge: { ...ANSWERS, [key]: bad } }, 2, "en", NOW);
+    assert.deepEqual([v.ok, !v.ok && v.field, !v.ok && v.error], [false, `concierge.${key}`, "Please tap one answer for each of the four room questions."]);
   }
-  assert.ok(!validateDetails({ travelers: GOOD.travelers }, 2, "en", NOW).ok, "no answers at all");
-  assert.ok(!validateDetails({ travelers: GOOD.travelers, concierge: "balcony" }, 2, "en", NOW).ok);
-  for (const junk of [null, undefined, "x", 5, [], true]) assert.ok(!validateDetails(junk, 2, "en", NOW).ok, JSON.stringify(junk));
+  const missing = validateDetails({ ...GOOD, concierge: undefined }, 2, "en", NOW);
+  assert.equal(missing.ok, false);
+  assert.equal(validateDetails("nope", 2, "en", NOW).ok, false);
+  assert.equal(validateDetails([], 2, "en", NOW).ok, false);
+  assert.deepEqual(validateConcierge({ concierge: ANSWERS }), { ok: true, concierge: ANSWERS });
+  assert.deepEqual(validateConcierge({ concierge: { ...ANSWERS, motion: "x" } }, "es"), { ok: false, error: "Toque una respuesta en cada una de las cuatro preguntas sobre la cabina.", field: "concierge" });
+  assert.equal(validateConcierge(undefined).ok, false);
 });
 
 test("every refusal has a Spanish twin in usted, and the message carries nothing the guest typed", () => {
-  const es = (body: unknown) => { const v = validateDetails(body, 2, "es", NOW); assert.ok(!v.ok); return v.ok ? "" : v.error; };
-  assert.equal(es({ ...GOOD, travelers: [] }), "Agregue al menos un viajero.");
-  assert.equal(es({ ...GOOD, travelers: [{ legal_name: "<b>", dob: "1990-01-01" }] }), "Viajero 1: escriba el nombre tal como aparece en el pasaporte.");
-  assert.equal(es({ ...GOOD, travelers: [{ legal_name: "Ana Pérez", dob: "" }] }), "Viajero 1: agregue la fecha de nacimiento.");
-  assert.equal(es({ ...GOOD, travelers: [{ legal_name: "Ana Pérez", dob: "2099-01-01" }] }), "Viajero 1: esa fecha de nacimiento no parece correcta. Revísela.");
-  assert.equal(es({ ...GOOD, concierge: {} }), "Toque una respuesta en cada una de las cuatro preguntas sobre la cabina.");
-  assert.match(es(null), /Recargue la página/);
-  const hostile = "<script>alert(1)</script>";
-  const v = validateDetails({ ...GOOD, travelers: [{ legal_name: hostile, dob: "1990-01-01" }] }, 1, "en", NOW);
-  assert.ok(!v.ok && !v.error.includes("script"));
+  const es = [
+    validateDetails({ ...GOOD, travelers: [{ legal_name: "Bob", dob: "1965-04-12" }] }, 1, "es", NOW),
+    validateDetails({ ...GOOD, travelers: [{ legal_name: "Mark Millham", dob: "x" }] }, 1, "es", NOW),
+    validateDetails({ ...GOOD, address: {} }, 1, "es", NOW),
+    validateDetails({ ...GOOD, travelers: Array.from({ length: 5 }, () => GOOD.travelers[0]) }, 1, "es", NOW),
+    validateDetails({ ...GOOD, concierge: {} }, 1, "es", NOW),
+  ];
+  for (const v of es) {
+    assert.ok(!v.ok);
+    if (v.ok) continue;
+    assert.ok(!/[A-Z][a-z]+ (please|and)\b|\bthe\b|\byour\b/.test(v.error), `English words in ${v.error}`);
+  }
+  assert.equal((es[0] as { error: string }).error, MSG.name.es);
+  const typed = "Zaphod Beeblebrox <b>";
+  const v = validateDetails({ ...GOOD, travelers: [{ legal_name: typed, dob: "1965-04-12" }] }, 1, "en", NOW);
+  assert.ok(!v.ok && !v.error.includes("Zaphod"));
 });
 
-// ── what the database holds ───────────────────────────────────────────────────
-
 test("what was stored reads back, and anything else reads as nothing (a half-saved row never breaks the page)", () => {
-  assert.deepEqual(storedTravelers(GOOD.travelers), GOOD.travelers);
-  assert.equal(storedTravelers([]), null);
-  assert.equal(storedTravelers(null), null);
-  assert.equal(storedTravelers([{ legal_name: "", dob: "1990-01-01" }]), null);
-  assert.equal(storedTravelers([{ legal_name: "A B" }]), null);
+  assert.deepEqual(storedTravelers([{ legal_name: "A B", dob: "1990-01-01" }]), [{ legal_name: "A B", dob: "1990-01-01" }]);
+  for (const bad of [null, undefined, [], "x", [{}], [{ legal_name: "A", dob: 3 }], [{ legal_name: " ", dob: "1990-01-01" }]]) assert.equal(storedTravelers(bad), null);
   assert.deepEqual(storedConcierge(ANSWERS), ANSWERS);
-  assert.equal(storedConcierge({ ...ANSWERS, room: "x" }), null);
-  assert.equal(storedConcierge(null), null);
-  const pick = pickCabin(ANSWERS, MILLHAM);
-  assert.deepEqual(storedPick(pick), pick);
-  assert.equal(storedPick({ category: "x" }), null);
-  assert.equal(storedPick(undefined), null);
+  for (const bad of [null, {}, { ...ANSWERS, room: "x" }, "x", []]) assert.equal(storedConcierge(bad), null);
+  const p = pickCabin(ANSWERS, MILLHAM, "en", PERKS);
+  assert.deepEqual(storedPick(p), p);
+  assert.deepEqual(storedPick({ category: "Balcony", where: "midship", why: "Because." }), { category: "Balcony", where: "midship", why: "Because.", upgrade: null }, "a pick stored before the hook existed");
+  assert.equal(storedPick({ category: "Balcony" }), null);
+  assert.equal(storedPick(null), null);
+  assert.deepEqual(storedAddress(ADDRESS), ADDRESS);
+  assert.deepEqual(storedAddress({ street: "1 A St", city: "X", state: "NC", zip: "27601" }), { street: "1 A St", city: "X", state: "NC", zip: "27601", tidied: false });
+  for (const bad of [null, {}, { street: "1 A St" }, "x"]) assert.equal(storedAddress(bad), null);
 });
 
 test("the legal name splits on the LAST space; one word is a first name only", () => {
-  assert.deepEqual(splitLegalName("Mark Millham"), { first: "Mark", last: "Millham" });
   assert.deepEqual(splitLegalName("Mary Ann Smith"), { first: "Mary Ann", last: "Smith" });
-  assert.deepEqual(splitLegalName("  Cher  "), { first: "Cher", last: null });
-  assert.deepEqual(splitLegalName("Jean Luc  Picard"), { first: "Jean Luc", last: "Picard" });
+  assert.deepEqual(splitLegalName("  Cher "), { first: "Cher", last: null });
+  assert.deepEqual(splitLegalName("Pat   Lee"), { first: "Pat", last: "Lee" });
 });
 
-// ── The links ─────────────────────────────────────────────────────────────────
-
-const TOKEN = "A".repeat(43);
+test("Road A's four times: morning, afternoon, evening or anytime, nothing else", () => {
+  assert.deepEqual([...CALL_WHENS], ["morning", "afternoon", "evening", "anytime"]);
+  for (const w of CALL_WHENS) assert.equal(validCallWhen(w), w);
+  for (const bad of ["Morning", "night", "", null, undefined, 3, ["morning"]]) assert.equal(validCallWhen(bad), null);
+  assert.equal(numberWord(3, "en"), "three");
+  assert.equal(numberWord(3, "es"), "tres");
+  assert.equal(numberWord(40, "en"), "40");
+});
 
 test("the links: details.html?t= for English, /es/details.html?t= for Spanish, and the call link is the same page with &choice=call", () => {
-  assert.equal(detailsUrl("https://stillafloatcruising.com", TOKEN), `https://stillafloatcruising.com/details.html?t=${TOKEN}`);
-  assert.equal(detailsUrl("https://dev.example/", TOKEN), `https://dev.example/details.html?t=${TOKEN}`, "a trailing slash is not doubled");
-  assert.equal(callUrl("https://stillafloatcruising.com", TOKEN), `https://stillafloatcruising.com/details.html?t=${TOKEN}&choice=call`);
-  assert.equal(detailsUrl("https://stillafloatcruising.com", TOKEN, "es"), `https://stillafloatcruising.com/es/details.html?t=${TOKEN}`);
-  assert.equal(callUrl("https://stillafloatcruising.com", TOKEN, "es"), `https://stillafloatcruising.com/es/details.html?t=${TOKEN}&choice=call`);
+  assert.equal(detailsUrl("https://stillafloatcruising.com/", "T".repeat(43)), `https://stillafloatcruising.com/details.html?t=${"T".repeat(43)}`);
+  assert.equal(detailsUrl("https://dev.example.test", "abc", "es"), "https://dev.example.test/es/details.html?t=abc");
+  assert.equal(callUrl("https://dev.example.test", "abc"), "https://dev.example.test/details.html?t=abc&choice=call");
 });
 
 test("a link works for 90 days from when it was made, and a missing or unreadable time never works", () => {
-  const made = new Date(NOW.getTime() - 89 * 86_400_000).toISOString();
-  assert.equal(detailsTokenFresh(made, NOW), true);
-  assert.equal(detailsTokenFresh(NOW.toISOString(), NOW), true);
-  assert.equal(detailsTokenFresh(new Date(NOW.getTime() - 91 * 86_400_000).toISOString(), NOW), false);
-  assert.equal(detailsTokenFresh(new Date(NOW.getTime() + 3_600_000).toISOString(), NOW), false, "from the future");
-  for (const v of [null, undefined, "", "not a date", 12345, {}]) assert.equal(detailsTokenFresh(v, NOW), false, String(v));
+  const DAY = 86_400_000;
+  assert.equal(detailsTokenFresh(new Date(NOW.getTime() - 89 * DAY).toISOString(), NOW), true);
+  assert.equal(detailsTokenFresh(new Date(NOW.getTime() - 91 * DAY).toISOString(), NOW), false);
+  assert.equal(detailsTokenFresh(new Date(NOW.getTime() + 5 * 60_000).toISOString(), NOW), false, "a time in the future never works");
+  for (const bad of [null, undefined, "", "yesterday", 17]) assert.equal(detailsTokenFresh(bad, NOW), false);
 });
 
-// ── The acknowledgement email ─────────────────────────────────────────────────
+// ── Road A's email ────────────────────────────────────────────────────────────
 
-function ack(over: Partial<AckInput> = {}): AckInput {
-  return {
-    firstName: "Mark", groupLabel: "Friends and Family 2027", ship: "MSC Seashore",
-    sailDateText: "Sunday, May 9, 2027", returnDateText: "Thursday, May 13, 2027", embarkPort: "Port Canaveral",
-    ports: ["Nassau", "Ocean Cay MSC Marine Reserve"], cabinPrices: [{ category: "Balcony Bella", perPersonText: "$536.79" }, { category: "Balcony Aurea", perPersonText: "$686.79" }],
-    taxesIncluded: true, depositPerPersonText: "$50",
-    detailsUrl: `https://stillafloatcruising.com/details.html?t=${TOKEN}`, callUrl: `https://stillafloatcruising.com/details.html?t=${TOKEN}&choice=call`,
-    phone: "919-346-6127", hostNames: "Mark & Ceci", lang: "en", publicSite: "https://stillafloatcruising.com",
-    ...over,
-  };
-}
+const CALL: CallInput = { firstName: "Mark", groupLabel: "Friends and Family 2027", hostNames: "Mark & Ceci", lang: "en", publicSite: "https://dev.example.test", when: "evening", phone: "919-346-6127" };
 
-test("the email says the approved words, built from the facts passed in", () => {
-  const m = ackEmail(ack());
-  assert.equal(m.subject, "You're on the list for Friends and Family 2027");
-  for (const line of [
+test("Road A's email says the approved words, built from the facts passed in, with the guest's own answer repeated back", () => {
+  const m = callEmail(CALL);
+  assert.equal(m.subject, "Good call… literally! Friends and Family 2027");
+  assert.deepEqual(m.text.trim().split("\n\n"), [
     "Hi Mark,",
-    "You tapped Count me in! and that's all we needed. Two ways from here, your call:",
-    `1. I'll finish it now: https://stillafloatcruising.com/details.html?t=${TOKEN}`,
-    "Names, birthdays and four quick questions from our Room Concierge. About three minutes, and your cabin is held.",
-    `2. Mark, call me: https://stillafloatcruising.com/details.html?t=${TOKEN}&choice=call`,
-    "Either way, two cabins to choose from: Balcony Bella from $536.79 or Balcony Aurea from $686.79 per person, taxes and port fees included… and just $50 per person holds your spot.",
-    "The plan in one breath: we sail from Port Canaveral on Sunday, May 9, 2027… stops in Nassau and Ocean Cay… and home Thursday, May 13, 2027.",
-    "Questions before then? Call or text Mark at 919-346-6127.",
-    "See you on board!\nMark & Ceci",
-    "Still Afloat LLC dba Still Afloat Cruising\nYou got this email because you tapped Count me in on our Friends and Family 2027 page. Not you? Reply and we'll take you off.",
-  ]) assert.ok(m.text.includes(line), `the text lacks: ${line}`);
-  assert.match(m.html, /You're on the list, Mark!/);
-  assert.match(m.html, /<b>Count me in!<\/b>/);
-  assert.match(m.html, /<b>Balcony Bella from \$536\.79<\/b> or <b>Balcony Aurea from \$686\.79<\/b>/);
-  assert.match(m.html, /<b>\$50 per person<\/b> holds your spot/);
+    "Smart move… the best cruise decisions happen over a phone call, not a scroll bar! Mark will ring you within a day from 919-346-6127… evenings, like you said. Save the number now, or you'll send him to voicemail like everyone does… twice.",
+    "No homework. Bring your questions and your maybes. He'll go over your choices, jot down the names and birthdays, and hold your spot before you hang up. Nothing is charged until you say the word. The only thing to decide tonight: coffee on the balcony, or coffee on the balcony.",
+    "One smart-cruiser move while you wait: dig out everyone's passport and check the expiry date. Renewals take weeks, and your paperwork page will ask for the number later.",
+    "Can't wait? Call or text him first… he'll pretend he wasn't sitting by the phone.",
+    "Cruise smarter, laugh more… and pick up when the 919 number rings!",
+    "Mark & Ceci",
+    "Still Afloat LLC dba Still Afloat Cruising\nYou got this email because you saved your spot on our Friends and Family 2027 page and asked Mark to talk you into it. Not you? Reply and we'll take you off.",
+  ]);
+  assert.match(m.html, /Mark will ring you within a day from <b>919-346-6127<\/b>… evenings, like you said\./);
+  assert.match(m.html, /<h1[^>]*>Good call… literally!<\/h1>/);
+  assert.match(m.html, /FRIENDS AND FAMILY 2027|>Friends and Family 2027</i);
 });
 
-test("the two buttons: the yellow pill goes to the details page, the outlined one to the call link, in that order", () => {
-  const m = ackEmail(ack());
-  const finish = m.html.indexOf("I'll finish it now");
-  const call = m.html.indexOf("Mark, call me");
-  assert.ok(finish > 0 && call > finish);
-  assert.match(m.html, new RegExp(`background:#f5c33b;border-radius:999px"><a href="https://stillafloatcruising\\.com/details\\.html\\?t=${TOKEN}" [^>]*>I'll finish it now</a>`));
-  assert.match(m.html, new RegExp(`border:2px solid #07183f;border-radius:999px"><a href="https://stillafloatcruising\\.com/details\\.html\\?t=${TOKEN}&amp;choice=call" [^>]*>Mark, call me</a>`));
-  assert.ok(m.html.includes("Not you? Reply and we&#39;ll take you off.") || m.html.includes("Not you? Reply and we'll take you off."));
+test("Road A's email repeats each answer in its own words, and names neither a cabin nor a price", () => {
+  const says = (when: CallInput["when"]) => callEmail({ ...CALL, when }).text.match(/from 919-346-6127… (.*?), like you said/)![1];
+  assert.deepEqual(CALL_WHENS.map(says), ["mornings", "afternoons", "evenings", "whenever works"]);
+  const m = callEmail(CALL);
+  assert.ok(!/\$|\bBalcony\b|\bBella\b|\bAurea\b|\bInterior\b|per person|deposit/.test(m.text + m.html), "no cabin names or prices (the lower-case 'coffee on the balcony' is the joke, not a cabin)");
+  // no link at all: the next move is Mark's call
+  assert.ok(!/href=|https?:\/\/(?!dev\.example\.test)/i.test(m.html.replace(/src="[^"]*"/g, "")), "no link in Road A's email");
+  // a group with its own number in its line beside the button: that number, and its area code in the brand line
+  const own = callEmail({ ...CALL, phone: "(704) 555-0100" });
+  assert.match(own.text, /from \(704\) 555-0100… evenings/);
+  assert.match(own.text, /when the 704 number rings!/);
+  // a number with no area code to name still reads
+  assert.match(callEmail({ ...CALL, phone: "555-0100" }).text, /when the number rings!/);
 });
 
-test("the logos are the site's own hosted images, so the email works on dev and on prod", () => {
-  const m = ackEmail(ack({ publicSite: "http://178.156.154.144/" }));
-  assert.deepEqual([...m.html.matchAll(/<img src="([^"]+)"/g)].map((x) => x[1]), ["http://178.156.154.144/assets/images/still_afloat_logo.png", "http://178.156.154.144/assets/images/cornerstone-white.png"]);
-  assert.ok(!/supabase|file:\/\//.test(m.html));
+test("Road A's email: the logos are the site's own hosted images, every value is escaped, and a missing host name signs Mark", () => {
+  const m = callEmail({ ...CALL, groupLabel: 'Fam <b>& "Friends"', firstName: "<i>Pat</i>", hostNames: "  ", publicSite: "https://dev.example.test/" });
+  assert.ok(m.html.includes('src="https://dev.example.test/assets/images/still_afloat_logo.png"'));
+  assert.ok(m.html.includes('src="https://dev.example.test/assets/images/cornerstone-white.png"'));
+  assert.ok(!/<i>Pat|<b>& "Friends"/.test(m.html), "markup from a person or a file is escaped");
+  assert.match(m.html, /&lt;i&gt;Pat&lt;\/i&gt;/);
+  assert.match(m.text, /\n\nMark\n\nStill Afloat LLC/);
 });
 
-test("what depends on the group is dropped when the file does not say it, never invented", () => {
-  const bare = ackEmail(ack({ cabinPrices: [], depositPerPersonText: null, ports: [], embarkPort: null, taxesIncluded: false }));
-  assert.ok(!bare.text.includes("cabins to choose from") && !bare.text.includes("holds your spot"), bare.text);
-  assert.ok(bare.text.includes("The plan in one breath: we sail on Sunday, May 9, 2027… and home Thursday, May 13, 2027."), bare.text);
-  const noDates = ackEmail(ack({ sailDateText: null, returnDateText: null, ports: [] }));
-  assert.ok(!noDates.text.includes("The plan in one breath"));
-  const oneCabin = ackEmail(ack({ cabinPrices: [{ category: "Balcony Bella", perPersonText: "$536.79" }], taxesIncluded: false, depositPerPersonText: null }));
-  assert.ok(oneCabin.text.includes("Either way, your cabin: Balcony Bella from $536.79 per person, with taxes and port fees confirmed at booking."), oneCabin.text);
-  const three = ackEmail(ack({ cabinPrices: [{ category: "A", perPersonText: "$1" }, { category: "B", perPersonText: "$2" }, { category: "C", perPersonText: "$3" }] }));
-  assert.ok(three.text.includes("three cabins to choose from: A from $1, B from $2 or C from $3 per person"), three.text);
-  assert.ok(ackEmail(ack({ hostNames: "  " })).text.includes("See you on board!\nMark\n"), "the sign-off falls back to Mark");
+test("Road A's email in Spanish is Spanish all the way down, in usted", () => {
+  const m = callEmail({ ...CALL, lang: "es", groupLabel: "Amigos y Familia 2027", firstName: "Ana", hostNames: "Mark y Ceci" });
+  assert.equal(m.subject, "Buena decisión… ¡la llamada va en camino! Amigos y Familia 2027");
+  assert.match(m.text, /^Hola Ana:/);
+  assert.match(m.text, /Mark le llamará en un día desde el 919-346-6127… por la noche, como usted dijo\./);
+  assert.match(m.text, /¡y conteste cuando suene el número 919!/);
+  assert.match(m.text, /Recibió este correo porque apartó su lugar en nuestra página de Amigos y Familia 2027 y pidió que Mark lo convenciera\. ¿No fue usted\? Responda y le quitamos de la lista\./);
+  assert.ok(!/\b(You|your|Reply|Hi|Smart|Mark will)\b/.test(m.text.replace(/Still Afloat LLC dba Still Afloat Cruising/, "")), "English words in the Spanish email");
+  assert.deepEqual(CALL_WHENS.map((when) => callEmail({ ...CALL, lang: "es", when }).text.match(/desde el 919-346-6127… (.*?), como usted dijo/)![1]), ["por la mañana", "por la tarde", "por la noche", "cuando le quede bien"]);
 });
 
-test("every value that came from a person or a file is escaped in the html", () => {
-  const evil = '<img src=x onerror=alert(1)>';
-  const m = ackEmail(ack({ firstName: evil, groupLabel: evil, hostNames: evil, ports: [evil], cabinPrices: [{ category: evil, perPersonText: evil }], depositPerPersonText: evil, embarkPort: evil, sailDateText: evil }));
-  assert.ok(!m.html.includes("<img src=x"), "a raw tag came through");
-  assert.ok(!m.html.includes("onerror=alert(1)>") && m.html.includes("&lt;img src=x onerror=alert(1)&gt;"));
+// ── Road B's email ────────────────────────────────────────────────────────────
+
+const HOLD: HoldInput = {
+  firstName: "Mark", groupLabel: "Friends and Family 2027", hostNames: "Mark & Ceci", lang: "en", publicSite: "https://dev.example.test",
+  category: "Balcony Bella", where: "midship, a lower deck", travelerFirstNames: ["Mark", "Ceci", "Pat"], detailsUrl: `https://dev.example.test/details.html?t=${"T".repeat(43)}`,
+};
+
+test("Road B's email says the approved words: the laugh, what they did for whom, the passport move, the way back, the brand line, the footer", () => {
+  const m = holdEmail(HOLD);
+  assert.equal(m.subject, "Your cabin is on hold… nicely done! Friends and Family 2027");
+  assert.deepEqual(m.text.trim().split("\n\n"), [
+    "Hi Mark,",
+    "You planned a cruise in three minutes. Some people take three months and still end up next to the elevator.",
+    "Here's what you did: Balcony Bella, midship, a lower deck, for Mark, Ceci and Pat. Mark confirms it with the cruise line within a day, and your paperwork follows. Nothing is charged tonight.",
+    "One smart-cruiser move while you wait: dig out everyone's passport and check the expiry dates. Renewals take weeks, and your paperwork page will ask for the numbers.",
+    `Need to change a name, a birthday or your mind? Open my details: ${HOLD.detailsUrl}`,
+    "Cruise smarter, laugh more… see you at the muster drill!",
+    "Mark & Ceci",
+    "Still Afloat LLC dba Still Afloat Cruising\nYou got this email because you put your cabin on hold on our Friends and Family 2027 page. Not you? Reply and we'll take you off.",
+  ]);
+  assert.match(m.html, /<b>Balcony Bella, midship, a lower deck<\/b>, for Mark, Ceci and Pat\./);
+  assert.ok(m.html.includes(`<a href="${HOLD.detailsUrl}"`) && /<a href="[^"]*"[^>]*background:#f5c33b[^>]*>Open my details<\/a>/.test(m.html), "the yellow button goes to their details");
+  assert.match(m.html, /<h1[^>]*>Your cabin is on hold… nicely done!<\/h1>/);
 });
 
-test("the Spanish email is Spanish all the way down, in usted, with the Spanish group page's own button words", () => {
-  const m = ackEmail(ack({ lang: "es", firstName: "Ana", groupLabel: "Amigos y Familia 2027", hostNames: "Mark y Ceci", sailDateText: "domingo, 9 de mayo de 2027", returnDateText: "jueves, 13 de mayo de 2027", embarkPort: "Puerto Cañaveral" }));
-  assert.equal(m.subject, "Ya está en la lista de Amigos y Familia 2027");
-  for (const line of [
-    "Hola Ana:", "Tocó ¡Cuenten conmigo! y con eso nos basta. Dos caminos desde aquí, usted decide:", "1. Lo termino ahora: ", "2. Mark, llámeme: ",
-    "De cualquier manera, dos cabinas para elegir: Balcony Bella desde $536.79 o Balcony Aurea desde $686.79 por persona, con impuestos y cargos portuarios incluidos… y solo $50 por persona aparta su lugar.",
-    "El plan en pocas palabras: zarpamos desde Puerto Cañaveral el domingo, 9 de mayo de 2027… paradas en Nassau y Ocean Cay… y de regreso el jueves, 13 de mayo de 2027.",
-    "¿Preguntas antes? Llame o escriba a Mark al 919-346-6127.", "¡Nos vemos a bordo!\nMark y Ceci",
-    "Recibió este correo porque tocó ¡Cuenten conmigo! en nuestra página de Amigos y Familia 2027. ¿No fue usted? Responda y le quitamos de la lista.",
-  ]) assert.ok(m.text.includes(line), `the Spanish text lacks: ${line}\n${m.text}`);
-  assert.ok(!/\b(You|your|Count me in|See you)\b/.test(m.text.replace(/Room Concierge/g, "")), "English words in the Spanish email");
+test("Road B's email: the passport move follows the party (one, both, everyone's), and no price or deposit is named", () => {
+  const move = (names: string[]) => holdEmail({ ...HOLD, travelerFirstNames: names }).text.match(/One smart-cruiser move while you wait: (.*)/)![1];
+  assert.equal(move(["Mark"]), "dig out your passport and check the expiry date. Renewals take weeks, and your paperwork page will ask for the number.");
+  assert.equal(move(["Mark", "Ceci"]), "dig out both passports and check the expiry dates. Renewals take weeks, and your paperwork page will ask for the numbers.");
+  assert.match(move(["A", "B", "C"]), /^dig out everyone's passport and check the expiry dates/);
+  assert.match(move(["A", "B", "C", "D"]), /^dig out everyone's passport/);
+  assert.match(holdEmail({ ...HOLD, travelerFirstNames: ["Mark", "Ceci"] }).text, /for Mark and Ceci\./);
+  assert.match(holdEmail({ ...HOLD, travelerFirstNames: ["Mark"] }).text, /for Mark\./);
+  const m = holdEmail(HOLD);
+  assert.ok(!/\$|per person|deposit|From \d/i.test(m.text + m.html), "no price in Road B's email");
 });
 
-test("no em dash anywhere in the guest's email, in either language", () => {
+test("Road B's email: escaped, the site's own logos, the link only in its own body, and the Spanish twin is Spanish in usted", () => {
+  const m = holdEmail({ ...HOLD, groupLabel: "Fam <script>", category: "Balcony <b>Bella</b>", travelerFirstNames: ["<i>Mark</i>"] });
+  assert.ok(!m.html.includes("<script>") && !m.html.includes("<i>Mark</i>"));
+  assert.ok(m.html.includes('src="https://dev.example.test/assets/images/still_afloat_logo.png"'));
+  const es = holdEmail({ ...HOLD, lang: "es", groupLabel: "Amigos y Familia 2027", firstName: "Ana", category: "Balcony Bella", where: "en el centro del barco, en una cubierta baja", travelerFirstNames: ["Ana", "Luis"], hostNames: "Mark y Ceci" });
+  assert.equal(es.subject, "Su cabina está apartada… ¡bien hecho! Amigos y Familia 2027");
+  assert.match(es.text, /^Hola Ana:/);
+  assert.match(es.text, /Esto es lo que hizo: Balcony Bella, en el centro del barco, en una cubierta baja, para Ana y Luis\. Mark la confirma con la naviera en un día/);
+  assert.match(es.text, /saque los dos pasaportes y revise las fechas de vencimiento/);
+  assert.match(es.html, />Abrir mis datos</);
+  assert.match(es.text, /Recibió este correo porque apartó su cabina en nuestra página de Amigos y Familia 2027\. ¿No fue usted\? Responda y le quitamos de la lista\./);
+  assert.ok(!/\b(You|your|Reply|Hi|Smart|Mark confirms)\b/.test(es.text.replace(/Still Afloat LLC dba Still Afloat Cruising/, "")), "English words in the Spanish email");
+});
+
+test("no em dash anywhere in either email, in either language", () => {
   for (const lang of ["en", "es"] as const) {
-    const m = ackEmail(ack({ lang }));
-    assert.ok(!/[—–]/.test(m.text), `${lang}: a dash in the text`);
+    const a = callEmail({ ...CALL, lang });
+    const b = holdEmail({ ...HOLD, lang });
+    for (const t of [a.subject, a.text, a.html, b.subject, b.text, b.html]) assert.ok(!/—/.test(t), `an em dash in the ${lang} email`);
   }
 });
