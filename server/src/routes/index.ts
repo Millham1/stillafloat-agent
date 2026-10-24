@@ -34,6 +34,8 @@ import groupsRouter from "./groups";
 import groupIntakeRouter from "./group-intake";
 import groupMarketingRouter from "./group-marketing";
 import groupFormsRouter from "./group-forms";
+import groupDetailsRouter from "./group-details";
+import addressRouter from "./address";
 import groupJourneyRouter from "./group-journey";
 import groupAnalyticsRouter from "./group-analytics";
 import myCruiseRouter from "./my-cruise";
@@ -73,6 +75,8 @@ router.use(congaLineRouter);
 router.use(aiVisibilityRouter);
 router.use(groupIntakeRouter);
 router.use(groupMarketingRouter);
+router.use(groupDetailsRouter); // the guest's own "Your details" page (public, by private link)
+router.use(addressRouter); // the post office's address lookup behind the details page's home address (public, limited per address)
 router.use(groupFormsRouter); // before groupsRouter: its /groups/:id/:child routes would otherwise answer first
 router.use(groupJourneyRouter); // likewise: its DELETE /groups/:id/journey/simulate would match groupsRouter's /groups/:id/:child/:rowId
 router.use(groupAnalyticsRouter); // before groupsRouter: its GET /groups/:id would read "analytics" as a group id

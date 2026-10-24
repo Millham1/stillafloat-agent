@@ -142,6 +142,9 @@ const PAGES = [
   // "menu on both or neither" rule holds and the menu's language switch is not read for them.
   { path: "/group.html", lang: "en", kind: "template", h1: { client: "the page script writes 'Welcome!' into the <h1> from its language strings" } },
   { path: "/es/group.html", lang: "es", kind: "template", h1: { client: "the page script writes '¡Bienvenidos!' into the <h1> from its language strings" } },
+  // the guest's "Your details" page (Mark 2026-10-24, Road B: after Save my spot! the guest may fill it in themselves): a private link (?t=), menu-free like the group page.
+  { path: "/details.html", lang: "en", kind: "template", h1: { client: "the page script writes 'Look at you, taking charge… WE LOVE A PLANNER!' into the <h1> once the link's reply loads" } },
+  { path: "/es/details.html", lang: "es", kind: "template", h1: { client: "the page script writes the Spanish heading into the <h1> once the link's reply loads" } },
   // client paperwork — NEW IN THIS RELEASE: a traveler's private link (?t=), English only until Cornerstone has Spanish templates.
   { path: "/forms.html", lang: "en", kind: "utility", noTwin: "a private paperwork page opened from a link emailed to one traveler; English only until Cornerstone has Spanish templates (the page's strings are structured for an es twin)" },
   // the traveler's cruise page — NEW IN THE RELEASE THAT ADDS THE GROUP JOURNEY: one page for both languages (the traveler's own, or ?lang=es), every word from the API
@@ -175,6 +178,7 @@ const APIS = {
   "/commentary.html": ["/api/commentary"],
   "/commentary-post.html": ["/api/commentary"],
   "/group.html": ["/api/group-page/"],
+  "/details.html": ["/api/group-details/", "/api/address/lookup"],
   "/forms.html": ["/api/forms/"],
   "/my-cruise.html": ["/api/my-cruise/"],
   "/translate-loading.html": ["/api/translate-article"],

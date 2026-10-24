@@ -902,7 +902,7 @@ test("the interview has the optional look questions right after the call to acti
   const keys = INTERVIEW.map((q) => q.key);
   const i = keys.indexOf("cta_line");
   assert.deepEqual(keys.slice(i + 1, i + 4), ["taxes_included", "hero_photo", "host_photo"]);
-  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "photo_plan", "photo_cabin", "host_names", "page_label", "day_notes", "tone", "show_prices", "show_rating"]);
+  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "photo_plan", "photo_cabin", "host_names", "page_label", "day_notes", "upgrade_perks", "tone", "show_prices", "show_rating"]);
   // Mark 2026-10-23 (design v2 of the group page): two more picture links and a note for any day of the plan, all optional
   const byKey = Object.fromEntries(INTERVIEW.map((q) => [q.key, q]));
   assert.equal(byKey["photo_plan"]!.type, "text"); assert.equal(byKey["photo_plan"]!.label, "Picture above the day-by-day plan (link, optional)");
@@ -1067,7 +1067,7 @@ test("credits: the attribution lines of the pictures shown, in the pictures' ord
   assert.deepEqual(pageLook({}).credits, []);
 });
 
-test("the Count me in form's contact: a real email, or a phone with at least seven digits (spaces, dashes, dots and parentheses allowed), nothing else", () => {
+test("the Save my spot! form's contact: a real email, or a phone with at least seven digits (spaces, dashes, dots and parentheses allowed), nothing else", () => {
   for (const ok of ["mary@example.com", "a.b+c@mail.example.org", "m@x.co"]) assert.equal(validEmail(ok), true, ok);
   for (const bad of ["", "mary", "mary@", "@example.com", "mary@example", "mary@example.c", "mary @example.com", "a@b@c.com"]) assert.equal(validEmail(bad), false, bad);
   for (const ok of ["919-346-6127", "(919) 346-6127", "919.346.6127", "+1 919 346 6127", "9193466127", "346 6127", "+34 600 123 456"]) assert.equal(validPhone(ok), true, ok);
@@ -1140,7 +1140,7 @@ test("copyNotes on the welcome: missing, the headline or payoff again, a sentenc
   const f = buildFacts(file(), rating, "en");
   const notes = (copy: Partial<GroupCopy>, answers: Parameters<typeof copyNotes>[2] = {}) => copyNotes({ ...goodCopy(), ...copy }, f, answers).filter((n) => n.field === "welcome").map((n) => n.problem);
   assert.deepEqual(notes({}), [], "a welcome in new words says nothing");
-  assert.match(notes({ welcome: null })[0]!, /^there is no welcome note yet: the group page opens straight on the Count me in form/);
+  assert.match(notes({ welcome: null })[0]!, /^there is no welcome note yet: the group page opens straight on the plan/);
   assert.match(notes({ welcome: "" })[0]!, /no welcome note yet/);
   assert.match(notes({ welcome: "Hello, Post 12 goes to sea, and we are glad." })[0]!, /^repeats the headline/);
   assert.match(notes({ subhead: "ALL ON THE SAME CRUISE!", welcome: "Come along for it all on the same cruise! We are glad." })[0]!, /^repeats the payoff line/);

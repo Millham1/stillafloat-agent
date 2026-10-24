@@ -35,9 +35,9 @@
 //   • GET /api/groups/:id/marketing and GET /api/group-page/:code write groups.ship_slug the first
 //     time a group with a ship name but no slug is read (memoisation). On prod those reads are
 //     only made for groups whose ship_slug is already set, so a prod sweep never writes.
-//   • POST /api/group-page/:code/interest EMAILS Mark (priority lead). Only its refusal paths are
-//     used: a malformed code, the bot honeypot (answers success and stores nothing) and a body
-//     with no name and no email. TURNSTILE is not enforced on dev, so a request carrying a name
+//   • POST /api/group-page/:code/interest EMAILS Mark (priority lead) and, since 2026-10-23, EMAILS THE GUEST an acknowledgement
+//     with their private details link. Only its refusal paths are used: a malformed code, the bot honeypot (answers success and
+//     stores nothing) and a body with no name and no email. TURNSTILE is not enforced on dev, so a request carrying a name
 //     and an email WOULD be stored and e-mailed — never send one.
 //   • ops.group-journey-plan-and-preview runs on both boxes and is the one such check that writes, on dev only and only when no group
 //     there has a real traveler: it adds one throwaway "E2E Gate Preview" traveler (undeliverable address) so a message can be
@@ -1243,8 +1243,8 @@ export default [
   },
   {
     id: "ops.group-page-public",
-    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids, a card number or the cabins still available (Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"); unapproved pages stay hidden; Mark 2026-10-20 \"we already had this discussion\": the page is handed the welcome and the Count me in words, never the poster's headline or pitch; ruling: Mark 2026-10-23 — no ship rating or advisor bio on the invitation page",
-    title: "Whenever Mark has a live group page, it shows exactly his approved welcome and Count me in words and the group's facts (English and Spanish) with no contact details, ids or cabin availability, none of the poster's headline or pitch, no ship rating and no advisor bio, and unapproved pages stay hidden",
+    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids, a card number or the cabins still available (Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"); unapproved pages stay hidden; Mark 2026-10-20 \"we already had this discussion\": the page is handed the welcome and the button's words, never the poster's headline or pitch; ruling: Mark 2026-10-23 — no ship rating or advisor bio on the invitation page; ruling: Mark 2026-10-24 — the button is \"Save my spot!\" (\"Count me in\" is gone from the page)",
+    title: "Whenever Mark has a live group page, it shows exactly his approved welcome and button words and the group's facts (English and Spanish) with no contact details, ids or cabin availability, none of the poster's headline or pitch, no ship rating and no advisor bio, and unapproved pages stay hidden",
     covers: ["GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/groups/:id/marketing"],
     modes: ["dev", "prod"],
     // New in the 2026-10-08 release: prod has neither the pages nor the address before the promotion,
@@ -1254,7 +1254,8 @@ export default [
       // twin reads, so a field renamed or dropped by the API (or by one twin only) fails below.
       const reads = {};
       for (const [p, lang] of [["/group.html", "en"], ["/es/group.html", "es"]]) {
-        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Cuenten conmigo" : "Count me in"] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Aparte mi lugar" : "Save my spot"] });
+        t.ok(!/count me in|cuenten conmigo/i.test(html), `${p} still says "Count me in" (Mark 2026-10-24: the button is "Save my spot!")`);
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         // The page asks one thing, "I'm interested": no cabin table, no cabin picker (Mark 2026-10-19).
         t.ok(!/id="gp-cabins"|id="f-cabin"|id="sec-cabins"/.test(html), `${p} still has the cabin table or the cabin picker`);
@@ -1453,6 +1454,99 @@ export default [
         t.success(await t.send("PUT", `/api/groups/${g.id}/marketing/campaign`, { body: { campaign: pk.campaign }, auth: true }));   // put it back
       }
       t.observe("photos on file for the test group", f.assets.length, "info");
+    },
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────────────────────
+  // The guest's two roads after "Save my spot!" (migrations 0056 and 0057; server/src/routes/group-details.ts, routes/address.ts, lib/group-details.ts).
+  // NEW IN THE RELEASE THAT ADDS IT: prod has neither the pages nor the addresses before the promotion, so these FAIL there until
+  // then — correct (the same note as ops.group-page-public). The page is the guest's private link: only what a wrong link gets is
+  // asked here, because a good link exists only for a real reply, and a sweep never makes one (a reply emails Mark and the guest).
+  {
+    id: "ops.group-details-public",
+    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road: Road B is their own details page in three short parts (who's coming, which cabin suits you, our pick) ending in \"Hold my cabin!\"; the page is private by link and refuses bad tokens",
+    title: "The guest's private details page opens in English and Spanish, stays out of search, calls its own API and the address lookup with the bot trap and the hold button, checks itself field by field, shows no price, and any wrong link gets the same plain 'not found' that is never stored or cached",
+    covers: ["page /details.html", "page /es/details.html", "GET /api/group-details/:token"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      for (const [p, lang] of [["/details.html", "en"], ["/es/details.html", "es"]]) {
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Apartar mi cabina" : "Hold my cabin", "/choice", "/pick", "/hold", 'aria-disabled="true"', 'id="d-summary"'] });
+        t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
+        // a private link: never indexed, and the address that carries it is never sent on to another site
+        t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
+        t.matches(H.metaContent(html, "referrer"), /no-referrer/, `${p} referrer policy (its address carries the link)`);
+        t.ok(!/type="(checkbox|password|email|tel)"/.test(html), `${p} asks for something other than names, birthdays, an address and the four answers`);
+        // Mark 2026-10-24: no price is written on the page after the group page, and it no longer says "Count me in"
+        t.ok(!/\$\s?\d/.test(html.replace(/<style[\s\S]*?<\/style>/g, "")), `${p} writes a dollar amount on the page (nothing after the group page repeats a price)`);
+        t.ok(!/count me in|cuenten conmigo/i.test(html), `${p} still says "Count me in"`);
+        // the page's look is the same-site stylesheet it links
+        const sheet = /<link rel="stylesheet" href="(\/css\/[a-z-]+\.css)[^"]*"/.exec(html)?.[1];
+        t.ok(sheet, `${p} links no same-site stylesheet from /css/`);
+        if (sheet) {
+          const css = await t.get(sheet);
+          t.ok(css.status === 200 && /^text\/css/i.test(css.headers.get("content-type") || ""), `${p}'s stylesheet ${sheet} is not served as CSS: ${css.describe()}`);
+          t.ok(/\.err\{[^}]*color:#d12d2d/.test(css.text) && /\.btn\[aria-disabled="true"\]/.test(css.text), `${p}'s stylesheet has lost the red notes or the dim button`);
+        }
+        t.observe(`${p} title`, H.title(html));
+      }
+      // Every kind of wrong link: the same answer, never a hint about which part was wrong.
+      const bodies = new Set();
+      for (const token of ["short", "A".repeat(43), "wrong-link-with-$ymbols!-and-the-right-length", "A".repeat(44)]) {
+        const res = await t.get(`/api/group-details/${encodeURIComponent(token)}`);
+        refused(t, res, 404, `a wrong guest link (${token.length} characters)`, /^not found$/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the details answer");
+        t.matches(res.headers.get("x-robots-tag") || "", /noindex/, "X-Robots-Tag of the details answer");
+        t.matches(res.headers.get("referrer-policy") || "", /no-referrer/, "Referrer-Policy of the details answer");
+        bodies.add(res.text);
+      }
+      t.equal(bodies.size, 1, "different wrong links must all get the identical answer (number of distinct answers)");
+    },
+  },
+  {
+    id: "ops.group-details-writes-refuse",
+    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road (Talk me into it, Mark! picks a time and gets one email; I've got this fills in the details page, holds the cabin and gets one email); the page is private by link and refuses bad tokens, a time that is not one of the four, and a robot; Mark alone adds the typed travelers to a cabin and closes his items (he books with the cruise line himself); the home address is looked up at the post office, never logged, and only for a person",
+    title: "Choosing a time to be rung, picking a cabin, saving details and asking for a hold refuse a link that does not exist, the time must be one of the four answers, the bot trap stores nothing, the address lookup refuses a robot and a short street, and adding a reply's travelers to a cabin or closing Mark's items is his alone and refuses an unknown reply",
+    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/address/lookup", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how"],
+    modes: ["dev"],
+    devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap and a request without Mark's token; nothing is stored, nobody is told and the post office is never asked); prod sweeps are read-only",
+    run: async (t) => {
+      const send = (p, body, auth = false) => t.send("POST", p, { auth, body });
+      const form = {
+        travelers: [{ legal_name: "Fixture Tester", dob: "1970-01-01" }], address: { street: "1 Fixture Way", city: "Raleigh", state: "NC", zip: "27601", tidied: false },
+        concierge: { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" },
+      };
+      const nowhere = "A".repeat(43);
+      for (const [path, body] of [[`/api/group-details/${nowhere}/choice`, { choice: "call", when: "evening" }], [`/api/group-details/${nowhere}/pick`, { concierge: form.concierge }], [`/api/group-details/${nowhere}`, form], [`/api/group-details/${nowhere}/hold`, {}],
+        ["/api/group-details/short/choice", { choice: "call", when: "evening" }], ["/api/group-details/short/pick", { concierge: form.concierge }], ["/api/group-details/short", form], ["/api/group-details/short/hold", {}]]) {
+        const res = await send(path, body);
+        refused(t, res, 404, `POST ${path.replace(nowhere, ":token").replace("short", ":token")} with a link that does not exist`, /^not found$/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the refused details write");
+      }
+      // The bot trap answers as if it had been accepted and stores nothing: no pick, no promise.
+      for (const path of [`/api/group-details/${nowhere}/choice`, `/api/group-details/${nowhere}/pick`, `/api/group-details/${nowhere}`, `/api/group-details/${nowhere}/hold`]) {
+        const trap = await send(path, { ...form, choice: "call", when: "evening", website: "e2e-fixture-honeypot" });
+        t.ok(trap.status === 200 && trap.json?.success === true, `the details bot trap should answer as if accepted: ${trap.describe()}`);
+        t.ok(!("pick" in (trap.json || {})), "the bot trap must not pretend a cabin was picked");
+      }
+      // A time that is not one of the four answers is refused before anything else is looked at that a robot could use (a link that does not exist is a 404 first).
+      for (const when of ["night", "", null, 3]) {
+        const res = await send(`/api/group-details/${nowhere}/choice`, { choice: "call", when });
+        refused(t, res, 404, `a call request at a time that is not an answer (${JSON.stringify(when)}) on a link that does not exist`, /^not found$/i);
+      }
+      // The address lookup: a robot is answered as if nothing could be found (and the post office is never asked); a street under five characters is refused.
+      const trap = await send("/api/address/lookup", { q: "123 Main Street", city: "Raleigh", state: "NC", zip: "", website: "e2e-fixture-honeypot" });
+      t.ok(trap.status === 200 && trap.json?.success === true && trap.json?.available === false && !("suggestions" in (trap.json || {})), `the address bot trap should answer "not available": ${trap.describe()}`);
+      t.matches(trap.headers.get("cache-control") || "", /no-store/, "Cache-Control of the address lookup");
+      const short = await send("/api/address/lookup", { q: "12", website: "" });
+      refused(t, short, 400, "an address lookup for a street under five characters", /five characters/i);
+      // Adding a reply's travelers to a cabin, and the two buttons that close Mark's items, are Mark's alone, and an unknown reply is refused (no traveler is made).
+      unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/to-file`, { cabin_id: ZERO }), "POST /api/groups/:id/interests/:iid/to-file");
+      refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/to-file`, { cabin_id: ZERO }, true), 404, "adding the travelers of a reply that does not exist", /reply not found/i);
+      refused(t, await send(`/api/groups/${ZERO}/interests/not-an-id/to-file`, { cabin_id: ZERO }, true), 404, "adding the travelers of a malformed reply id", /reply not found/i);
+      unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/talked`, {}), "POST /api/groups/:id/interests/:iid/mark/:how");
+      refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/talked`, {}, true), 404, "closing the item of a reply that does not exist", /reply not found/i);
+      refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/confirmed`, {}, true), 404, "confirming a reply that does not exist", /reply not found/i);
+      refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/later`, {}, true), 404, "a button that does not exist", /reply not found/i);
     },
   },
 

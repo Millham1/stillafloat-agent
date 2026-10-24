@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your details | Still Afloat Cruising</title>
+<!-- A guest's private link, opened from the page after they save their spot or from the email: never indexed, and the address (which carries the link) is never sent on to another site. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/details-page.css?v=20261024a">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <img class="logo" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+  </div>
+
+  <div class="d-banner" id="d-banner"><div class="d-lockup"><div class="plaque"><span id="d-plaque">Your details</span></div></div></div>
+
+  <div id="d-state"></div>
+  <main id="d-main" hidden>
+
+    <section class="intro" id="d-intro">
+      <h1 id="d-h1"></h1>
+      <p id="d-lede"></p>
+    </section>
+
+    <!-- Part 1: who is coming. What we already have is filled in; the guest adds each traveler's legal name and birthday, and one home address for the cabin.
+         At most four travelers on a cabin: the third and the fourth open with a checkmark. -->
+    <section class="panel" id="d-part1">
+      <p class="label" id="d-p1"></p>
+      <div class="two">
+        <div class="field"><label id="d-reach-l"></label><div class="box done" id="d-reach"></div></div>
+        <div class="field"><label id="d-count-l"></label><div class="box done" id="d-count"></div></div>
+      </div>
+      <p class="small" style="margin-top:12px" id="d-p1note"></p>
+
+      <div class="trav" id="d-trav-0">
+        <div class="who" id="d-who-0"></div>
+        <div class="two">
+          <div class="field"><label for="d-name-0" id="d-name-l-0"></label><input id="d-name-0" type="text" autocomplete="name"><p class="err" id="d-name-e-0" hidden></p></div>
+          <div class="field"><label for="d-dob-0" id="d-dob-l-0"></label><input id="d-dob-0" type="text" inputmode="numeric" autocomplete="bday" maxlength="14"><p class="err" id="d-dob-e-0" hidden></p></div>
+        </div>
+        <div class="field"><label for="d-street" id="d-street-l"></label><input id="d-street" type="text" autocomplete="address-line1"><p class="err" id="d-street-e" hidden></p></div>
+        <div class="sugg" id="d-sugg" hidden></div>
+        <div class="two">
+          <div class="field"><label for="d-city" id="d-city-l"></label><input id="d-city" type="text" autocomplete="address-level2"><p class="err" id="d-city-e" hidden></p></div>
+          <div class="field"><label for="d-st" id="d-stzip-l"></label>
+            <div class="stz"><input id="d-st" type="text" maxlength="2" autocomplete="address-level1"><input id="d-zip" type="text" inputmode="numeric" maxlength="10" autocomplete="postal-code"></div>
+            <p class="err" id="d-st-e" hidden></p><p class="err" id="d-zip-e" hidden></p></div>
+        </div>
+        <div class="fix" id="d-fix" hidden></div>
+        <p class="small" id="d-addr-status" hidden></p>
+        <p class="small" style="margin-top:8px" id="d-addr-note"></p>
+      </div>
+
+      <div class="trav" id="d-trav-1" hidden>
+        <div class="who" id="d-who-1"></div>
+        <div class="two">
+          <div class="field"><label for="d-name-1" id="d-name-l-1"></label><input id="d-name-1" type="text" autocomplete="off"><p class="err" id="d-name-e-1" hidden></p></div>
+          <div class="field"><label for="d-dob-1" id="d-dob-l-1"></label><input id="d-dob-1" type="text" inputmode="numeric" autocomplete="off" maxlength="14"><p class="err" id="d-dob-e-1" hidden></p></div>
+        </div>
+      </div>
+
+      <div class="trav" id="d-more" hidden>
+        <div class="who" id="d-more-h"></div>
+        <button type="button" class="tickrow" id="d-tick-3" role="checkbox" aria-checked="false"><span class="bx"></span><span id="d-tick-3-t"></span></button>
+        <div class="trav" id="d-trav-2" hidden>
+          <div class="who" id="d-who-2"></div>
+          <div class="two">
+            <div class="field"><label for="d-name-2" id="d-name-l-2"></label><input id="d-name-2" type="text" autocomplete="off"><p class="err" id="d-name-e-2" hidden></p></div>
+            <div class="field"><label for="d-dob-2" id="d-dob-l-2"></label><input id="d-dob-2" type="text" inputmode="numeric" autocomplete="off" maxlength="14"><p class="err" id="d-dob-e-2" hidden></p></div>
+          </div>
+        </div>
+        <button type="button" class="tickrow" id="d-tick-4" role="checkbox" aria-checked="false" hidden><span class="bx"></span><span id="d-tick-4-t"></span></button>
+        <div class="trav" id="d-trav-3" hidden>
+          <div class="who" id="d-who-3"></div>
+          <div class="two">
+            <div class="field"><label for="d-name-3" id="d-name-l-3"></label><input id="d-name-3" type="text" autocomplete="off"><p class="err" id="d-name-e-3" hidden></p></div>
+            <div class="field"><label for="d-dob-3" id="d-dob-l-3"></label><input id="d-dob-3" type="text" inputmode="numeric" autocomplete="off" maxlength="14"><p class="err" id="d-dob-e-3" hidden></p></div>
+          </div>
+        </div>
+      </div>
+      <p class="small center" id="d-max" hidden></p>
+    </section>
+
+    <!-- Part 2: the Room Concierge's four questions, one answer each. -->
+    <section class="panel" id="d-part2">
+      <p class="label" id="d-p2"></p>
+      <p class="small" id="d-p2intro"></p>
+      <div id="d-qs"></div>
+      <p class="small" style="margin-top:12px" id="d-p2move"></p>
+    </section>
+
+    <!-- Part 3: our pick, once the four answers are in. The button stays dim until Part 1 is clean; a tap on it goes to the first problem. -->
+    <section class="panel" id="d-part3" hidden>
+      <p class="label" id="d-p3"></p>
+      <div class="pick">
+        <b id="d-pick-h"></b>
+        <p style="margin:0 0 6px" id="d-pick-why"></p>
+        <p style="margin:8px 0 0" id="d-pick-up" hidden></p>
+      </div>
+      <button type="button" class="btn" id="d-hold" aria-disabled="true"></button>
+      <p class="err center" id="d-summary" hidden><span id="d-summary-t"></span> <a href="#" id="d-take"></a></p>
+      <p class="small center" id="d-hold-note"></p>
+    </section>
+
+    <div class="hp" aria-hidden="true"><label>Website<input type="text" id="d-website" tabindex="-1" autocomplete="off"></label></div>
+    <div class="msg" id="d-msg" role="status"></div>
+
+    <!-- After the hold: the whole page becomes one line. -->
+    <section class="panel" id="d-thanks" hidden>
+      <div class="thanks-head"><div class="tick">&#10003;</div><h2 id="d-thanks-h"></h2></div>
+      <p class="small" id="d-thanks-p" hidden></p>
+    </section>
+  </main>
+
+  <div class="foot">
+    <img class="sa" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+    <p>Still Afloat LLC dba Still Afloat Cruising · mark@stillafloatcruising.com</p>
+    <p class="credits" id="d-credits" hidden></p>
+    <div class="cs-row"><img class="cs" src="/assets/images/cornerstone-white.png" alt=""></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var ES = document.documentElement.lang === 'es';
+  var PHONE = '919-346-6127';
+  var T = ES ? {
+    loading:'Cargando sus datos…', bad:'Este enlace no es válido. Abra el enlace completo de su correo, o llame o escriba a Mark al ' + PHONE + '.',
+    title:'Sus datos',
+    h1:'Mire nada más, tomando el mando… ¡NOS ENCANTA UN BUEN PLANIFICADOR!', lede:'Tres partes cortas, unos tres minutos… menos que la fila del buffet el día del embarque. Su cabina queda apartada al final.',
+    p1:'Parte 1 · Quiénes vienen', reach:'Cómo comunicarnos con usted', howmany:'Cuántos son',
+    p1note:'La naviera necesita el nombre legal y la fecha de nacimiento de cada viajero para apartar una cabina. Escríbalos como aparecen en el pasaporte, no como los escribe su tía. Los números de pasaporte vienen después, en su página de documentos.',
+    who_you:'Viajero 1 · usted', who_n:'Viajero {n}', legal_you:'Nombre legal, como aparece en su pasaporte', legal_other:'Nombre legal, como aparece en su pasaporte',
+    ph_name:'Nombre y apellido', dob:'Fecha de nacimiento', ph_dob:'mm / dd / aaaa',
+    home:'Su dirección de casa', ph_street:'Calle y número', city:'Ciudad', ph_city:'Ciudad', stzip:'Estado · Código postal', ph_st:'NC', ph_zip:'27601',
+    addr_note:'Una sola dirección para la cabina. Si alguien de su grupo vive en otro lugar, lo resolvemos en la página de documentos.',
+    more_h:'¿Son más? Entre más, mejor…', tick3:'Viene un tercero', tick4:'…¡y un cuarto!',
+    max:'¿Más de cuatro? Mark arma una segunda cabina en la llamada… toque ¡Convénzame, Mark! en la página del grupo.',
+    p2:'Parte 2 · Qué cabina le conviene', p2intro:'Cuatro preguntas de nuestro Room Concierge. Responda con honestidad… el barco lo nota.',
+    p2move:'Jugada de crucerista inteligente: el barco se mueve menos abajo y en el centro. Ahí ponemos a quien lo siente.',
+    p3:'Parte 3 · Nuestra sugerencia para usted', up_lead:'La mejora que casi nadie conoce:', up_ask:'Pregunte a Mark por las cabinas de clase {cat}.',
+    hold:'¡Apartar mi cabina!', holding:'Apartando…',
+    hold_dep:'Mark la confirma con la naviera y sus documentos le llegan después. {deposit} por persona la aparta… no se cobra nada esta noche.',
+    hold_free:'Mark la confirma con la naviera y sus documentos le llegan después. No se cobra nada esta noche.',
+    bad_name:'Nombre Y apellido, por favor… tal como aparecen en el pasaporte.', bad_dob:'Mes, día y año de cuatro dígitos (el mes primero): 03 / 04 / 1965.',
+    bad_street:'Una calle y un número, por favor… como 123 Main St.', bad_city:'¿En qué ciudad, por favor?', bad_state:'Las dos letras del estado, por favor… como NC.',
+    bad_zip:'Cinco dígitos para el código postal, por favor… como 27601.',
+    lookup_na:'No pudimos revisar esa dirección en este momento, así que la tomaremos tal como la escribió.', lookup_nf:'No encontramos esa dirección… revise la calle y el código postal.',
+    tidied:'La ajustamos a la ortografía del correo postal:', right:'¿Es correcta?', yes:'Sí', no:'No, la corrijo yo',
+    ph_travelers:'Viajero {n}',
+    p_name:'el nombre del Viajero {n}', p_last:'el apellido del Viajero {n}', p_dob:'la fecha de nacimiento del Viajero {n}', p_year:'un año de cuatro dígitos en la fecha de nacimiento del Viajero {n}',
+    p_name1:'su nombre', p_last1:'su apellido', p_dob1:'su fecha de nacimiento', p_year1:'un año de cuatro dígitos en su fecha de nacimiento',
+    p_street:'su calle', p_city:'su ciudad', p_state:'su estado', p_zip:'su código postal', p_nf:'su dirección (no la encontramos)',
+    one_thing:'Todavía falta una cosa:', n_things:'Todavía faltan {n} cosas:', take:'Lléveme ahí',
+    held_h:'¡Apartada!… {category}, {party}. Revise su correo para la confirmación.', party_one:'para una persona', party_n:'grupo de {n}',
+    change:'¿Necesita cambiar un nombre, una fecha de nacimiento o de opinión? Llame o escriba a Mark al {phone}.',
+    saving:'Guardando…',
+    err:'No se pudo guardar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
+    photo:'Foto:', photos:'Fotos:'
+  } : {
+    loading:'Loading your details…', bad:'This link is not valid. Please open the whole link from your email, or call or text Mark at ' + PHONE + '.',
+    title:'Your details',
+    h1:'Look at you, taking charge… WE LOVE A PLANNER!', lede:'Three short parts, about three minutes… less time than the buffet line on embarkation day. Your cabin is held at the end.',
+    p1:"Part 1 · Who's coming", reach:'How to reach you', howmany:'How many of you',
+    p1note:"The cruise line needs each traveler's legal name and birthday to hold a cabin. Spell them the way the passport does, not the way your aunt does. Passport numbers come later, on your paperwork page.",
+    who_you:'Traveler 1 · you', who_n:'Traveler {n}', legal_you:'Legal name, as on your passport', legal_other:'Legal name, as on their passport',
+    ph_name:'First and last', dob:'Date of birth', ph_dob:'mm / dd / yyyy',
+    home:'Your home address', ph_street:'Street', city:'City', ph_city:'City', stzip:'State · ZIP', ph_st:'NC', ph_zip:'27601',
+    addr_note:'One address for the cabin. If someone in your party lives elsewhere, we sort it on the paperwork page.',
+    more_h:'More of you? The more the merrier…', tick3:"There's a third of us", tick4:'…and a fourth!',
+    max:'More than four? Mark will set up a second cabin on the call… tap Talk me into it, Mark! on the group page.',
+    p2:'Part 2 · Which cabin suits you', p2intro:'Four questions from our Room Concierge. Answer honestly… the ship can tell.',
+    p2move:'Smart-cruiser move: the ship moves least low and midship. That is where we put anyone who feels it.',
+    p3:'Part 3 · Our pick for you', up_lead:'The upgrade most people never hear about:', up_ask:'Ask Mark about the {cat} class rooms.',
+    hold:'Hold my cabin!', holding:'Holding…',
+    hold_dep:'Mark confirms it with the cruise line and your paperwork follows. {deposit} a person holds it… nothing is charged tonight.',
+    hold_free:'Mark confirms it with the cruise line and your paperwork follows. Nothing is charged tonight.',
+    bad_name:'First AND last name, please… the way the passport has it.', bad_dob:'Month, day and a four-digit year: 03 / 04 / 1965.',
+    bad_street:'A street and number, please… like 123 Main St.', bad_city:'Which city, please?', bad_state:"The state's two letters, please… like NC.",
+    bad_zip:'Five digits for the ZIP, please… like 27601.',
+    lookup_na:"We couldn't check that address right now, so we'll take it as typed.", lookup_nf:"We couldn't find that one… check the street and ZIP.",
+    tidied:"We tidied it to the post office's spelling:", right:'Right?', yes:'Yes', no:"No, I'll fix it",
+    p_name:"Traveler {n}'s name", p_last:"Traveler {n}'s last name", p_dob:"Traveler {n}'s birthday", p_year:"a four-digit year on Traveler {n}'s birthday",
+    p_name1:'your name', p_last1:'your last name', p_dob1:'your birthday', p_year1:'a four-digit year on your birthday',
+    p_street:'your street address', p_city:'your city', p_state:'your state', p_zip:'your ZIP', p_nf:"your address (we couldn't find it)",
+    one_thing:'One thing still needs you:', n_things:'{n} things still need you:', take:'Take me there',
+    held_h:'Held!… {category}, {party}. Watch your inbox for the confirmation.', party_one:'party of one', party_n:'party of {n}',
+    change:'Need to change a name, a birthday or your mind? Call or text Mark at {phone}.',
+    saving:'Saving…',
+    err:'That did not go through. Please try again, or call or text Mark at ' + PHONE + '.',
+    photo:'Photo:', photos:'Photos:'
+  };
+  var NUMW = ES ? ['cero','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez']
+                : ['zero','one','two','three','four','five','six','seven','eight','nine','ten'];
+  var NUMW_CAP = ES ? ['Cero','Uno','Dos','Tres','Cuatro','Cinco','Seis','Siete','Ocho','Nueve','Diez']
+                    : ['Zero','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
+
+  // The four Room Concierge questions, in the design's words: [label, value] for each answer. The values are the Room Concierge's own (lib/concierge-interview.ts);
+  // the last question has three answers because "I can grin and bear it" counts as a no, as it does there.
+  var Q = ES ? [
+    { k:'room', q:'¿Cómo se imagina usando su cabina?', o:[['Para dormir y recargar pilas','inside'],['Despertar con luz de día y mar','oceanview'],['Café afuera en pijama','balcony'],['La cabina es parte de las vacaciones','suite']] },
+    { k:'priority', q:'¿Qué es lo que más importa ya a bordo?', o:[['Despertar viendo el mar','ocean'],['Paz y tranquilidad','quiet'],['Estar cerca de la acción','action'],['Espacio de sobra','space']] },
+    { k:'budget', q:'¿Cómo anda el presupuesto del viaje, siendo honestos?', o:[['Hay un número, y lo respetamos','lean'],['Cómodo, pero cada dólar debe ganarse su lugar','middle'],['Por la cabina correcta, el presupuesto se mueve','treat'],['El presupuesto es lo que haga falta para que quede perfecto','sky']] },
+    { k:'motion', q:'¿Alguien se marea en el barco?', o:[['Sí, manténganos estables','yes'],['No, estamos bien','no'],['Lo aguanto con una sonrisa','no']] }
+  ] : [
+    { k:'room', q:'How do you picture using your room?', o:[['Crash and recharge','inside'],['Wake up to daylight and water','oceanview'],['Coffee outside in my pajamas','balcony'],['The room is part of the vacation','suite']] },
+    { k:'priority', q:"What matters most once you're aboard?", o:[['Waking up to the ocean','ocean'],['Peace and quiet','quiet'],['Being near the action','action'],['Room to spread out','space']] },
+    { k:'budget', q:'How does the trip budget work, honestly?', o:[["There's a number, and we respect it",'lean'],['Comfortable, but every dollar should earn its spot','middle'],['For the right room, the budget moves','treat'],['The budget is whatever makes it perfect','sky']] },
+    { k:'motion', q:'Does anyone get seasick?', o:[['Yes, keep us steady','yes'],["No, we're fine",'no'],['I can grin and bear it','no']] }
+  ];
+  var MAXT = 4;   // the cruise line's limit for these cabins
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ var d=document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML.replace(/"/g,'&quot;'); }
+  function fill(tpl, v){ return tpl.replace(/\{(\w+)\}/g, function(_, k){ return v[k] == null ? '' : v[k]; }); }
+  function show(id, on){ var e=$(id); if(e) e.hidden = on === false; }
+
+  var qs = new URLSearchParams(location.search);
+  var token = (qs.get('t') || '').trim();
+  var state = $('d-state');
+  state.textContent = T.loading;
+  if(!/^[A-Za-z0-9_-]{43}$/.test(token)){ state.textContent = T.bad; return; }
+
+  var data = null;           // what the server knows (GET)
+  var travelers = [];        // [{ name, dob }] as typed, MAXT of them; the first `open` count
+  var open = 1;              // how many traveler blocks are open (1 to MAXT)
+  var addr = { street: '', city: '', st: '', zip: '', tidied: false };
+  var sel = {};              // question key -> index of the answer tapped
+  var pick = null;           // our pick for the four answers, once the server has made it
+  var pickFor = '';          // the answers (as JSON) the pick belongs to
+  var asking = '';           // the answers a pick is being asked for right now
+  var pickFailed = '';       // the answers a pick could not be made for (asked again only when an answer changes)
+  var lastSent = '';         // the payload the server has saved
+  var timer = null, lookTimer = null;
+  var touched = {};          // field id -> true once the guest has left it
+  var attempted = false;     // the guest tapped the dim button
+  var shownErr = {};         // field id -> words the server refused it with (replaced by the page's own words once the field changes)
+  var busy = false, held = false;   // a hold is being asked / has been made: nothing is saved behind it
+  var look = { key: '', mode: '', sugg: [], off: false, pending: null };   // the address lookup: mode '' | nf | ok
+
+  function msg(text){ var m = $('d-msg'); m.className = text ? 'msg err' : 'msg'; m.textContent = text || ''; }
+
+  // ── The same rules the server keeps, with the same words (Road B design, row 5) ──
+  var NAME_CHARS = /^[\p{L}\p{M}'’\- ]+$/u;
+  function tidy(n){ return String(n || '').replace(/\s+/g, ' ').trim(); }
+  /** null when good; else 'empty', 'last' (only one word) or 'bad'. */
+  function nameWhy(n){
+    n = tidy(n);
+    if(!n) return 'empty';
+    if(n.length < 3 || n.length > 80 || !NAME_CHARS.test(n)) return 'bad';
+    var w = n.split(' ');
+    for(var i = 0; i < w.length; i++){ if(!/\p{L}/u.test(w[i])) return 'bad'; }
+    return w.length < 2 ? 'last' : null;
+  }
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  /** { iso } for a real date, else { why: 'empty' | 'year' | 'bad' }. Month first: 03 / 04 / 1965. */
+  function parseDob(text){
+    var t = String(text || '').trim();
+    if(!t) return { why: 'empty' };
+    var mo, d, y, m = /^(\d{1,2})\s*[\/\-. ]\s*(\d{1,2})\s*[\/\-. ]\s*(\d+)$/.exec(t);
+    if(m){ mo = +m[1]; d = +m[2]; y = m[3]; }
+    else if(/^\d{8}$/.test(t)){ mo = +t.slice(0, 2); d = +t.slice(2, 4); y = t.slice(4); }
+    else if(/^\d{6}$/.test(t)) return { why: 'year' };
+    else return { why: 'bad' };
+    if(y.length !== 4) return { why: 'year' };
+    var yy = +y, date = new Date(Date.UTC(yy, mo - 1, d));
+    if(date.getUTCFullYear() !== yy || date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== d) return { why: 'bad' };
+    var now = new Date(), today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()), oldest = Date.UTC(now.getFullYear() - 120, now.getMonth(), now.getDate());
+    if(date.getTime() > today || date.getTime() <= oldest) return { why: 'bad' };
+    return { iso: y + '-' + pad(mo) + '-' + pad(d) };
+  }
+  function dobText(iso){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')); return m ? m[2] + ' / ' + m[3] + ' / ' + m[1] : ''; }
+  /** While the guest types digits only, they get " / " put in for them; anything they type with their own separators is left alone. */
+  function dobTyping(v){
+    var digits = v.replace(/ \/ /g, '');
+    if(!/^\d*$/.test(digits)) return v;
+    if(digits.length <= 2) return digits;
+    if(digits.length <= 4) return digits.slice(0, 2) + ' / ' + digits.slice(2);
+    return digits.slice(0, 2) + ' / ' + digits.slice(2, 4) + ' / ' + digits.slice(4, 8);
+  }
+  var STATES = ' AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY AS GU MP PR VI AA AE AP ';
+  function streetBad(v){ v = tidy(v); return v.length < 5 || v.length > 100 || !/\p{L}/u.test(v) || !/^[\p{L}\p{M}\d .,#'’\/&\-]+$/u.test(v); }
+  function cityBad(v){ v = tidy(v); return v.length < 2 || v.length > 60 || !/^[\p{L}\p{M}][\p{L}\p{M} .'’\-]*$/u.test(v); }
+  function stateBad(v){ v = tidy(v).toUpperCase(); return v.length !== 2 || STATES.indexOf(' ' + v + ' ') < 0; }
+  function zipBad(v){ return !/^\d{5}(-\d{4})?$/.test(tidy(v)); }
+  function addrKey(){ return [addr.street, addr.city, addr.st, addr.zip].map(function(x){ return tidy(x).toLowerCase(); }).join('|'); }
+
+  // ── Every field of every open block: its words when it is wrong, and what the summary calls it ──
+  function fields(){
+    var out = [], n = open;
+    for(var i = 0; i < n; i++){
+      out.push({ id: 'd-name-' + i, e: 'd-name-e-' + i, i: i, kind: 'name' });
+      out.push({ id: 'd-dob-' + i, e: 'd-dob-e-' + i, i: i, kind: 'dob' });
+      if(i === 0){
+        out.push({ id: 'd-street', e: 'd-street-e', i: 0, kind: 'street' }, { id: 'd-city', e: 'd-city-e', i: 0, kind: 'city' },
+                 { id: 'd-st', e: 'd-st-e', i: 0, kind: 'state' }, { id: 'd-zip', e: 'd-zip-e', i: 0, kind: 'zip' });
+      }
+    }
+    return out;
+  }
+  /** null when the field is good; else { words, phrase }. */
+  function problem(f){
+    var you = f.i === 0, n = f.i + 1, v = $(f.id).value;
+    if(f.kind === 'name'){
+      var w = nameWhy(v);
+      return w ? { words: T.bad_name, phrase: fill(you ? (w === 'last' ? T.p_last1 : T.p_name1) : (w === 'last' ? T.p_last : T.p_name), { n: n }) } : null;
+    }
+    if(f.kind === 'dob'){
+      var p = parseDob(v);
+      return p.iso ? null : { words: T.bad_dob, phrase: fill(you ? (p.why === 'year' ? T.p_year1 : T.p_dob1) : (p.why === 'year' ? T.p_year : T.p_dob), { n: n }) };
+    }
+    if(f.kind === 'street'){
+      if(streetBad(v)) return { words: T.bad_street, phrase: T.p_street };
+      if(look.mode === 'nf' && look.key === addrKey()) return { words: T.lookup_nf, phrase: T.p_nf };
+      return null;
+    }
+    if(f.kind === 'city') return cityBad(v) ? { words: T.bad_city, phrase: T.p_city } : null;
+    if(f.kind === 'state') return stateBad(v) ? { words: T.bad_state, phrase: T.p_state } : null;
+    return zipBad(v) ? { words: T.bad_zip, phrase: T.p_zip } : null;
+  }
+  function problems(){
+    var out = [];
+    fields().forEach(function(f){ var p = problem(f); if(p) out.push({ f: f, p: p }); });
+    return out;
+  }
+  /** Paint one field: red with its words under it when it is wrong and has been left (or the guest tapped the dim button); green when it is good. */
+  function paint(f){
+    var p = problem(f), input = $(f.id), note = $(f.e), words = '';
+    if(p && (touched[f.id] || attempted)) words = shownErr[f.id] || p.words;
+    else if(shownErr[f.id]) words = shownErr[f.id];
+    note.textContent = words; note.hidden = !words;
+    input.className = words ? 'bad' : (!p && tidy(input.value) ? 'done' : '');
+  }
+  function paintAll(){ fields().forEach(paint); }
+
+  function answers(){
+    var out = {};
+    for(var i = 0; i < Q.length; i++){ if(sel[Q[i].k] === undefined) return null; out[Q[i].k] = Q[i].o[sel[Q[i].k]][1]; }
+    return out;
+  }
+  function part1Ok(){ return problems().length === 0; }
+  function payload(){
+    var list = [];
+    for(var i = 0; i < open; i++) list.push({ legal_name: tidy(travelers[i].name), dob: (parseDob(travelers[i].dob).iso || '') });
+    return { travelers: list, address: { street: tidy(addr.street), city: tidy(addr.city), state: tidy(addr.st).toUpperCase(), zip: tidy(addr.zip), tidied: !!addr.tidied }, concierge: answers(), lang: ES ? 'es' : 'en' };
+  }
+
+  function api(path, body){
+    var b = body || {};
+    b.website = $('d-website').value;   // the bot trap: a person never fills it
+    return fetch('/api/group-details/' + token + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) })
+      .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, status: r.status, j: j }; }, function(){ return { ok: r.ok, status: r.status, j: {} }; }); });
+  }
+
+  // ── Part 1: who is coming ──
+  function renderBlocks(){
+    for(var i = 0; i < MAXT; i++){
+      var on = i < open;
+      if(i === 1) show('d-trav-1', on);
+      if(i === 2) show('d-trav-2', on);
+      if(i === 3) show('d-trav-3', on);
+    }
+    var guests = parseInt(data.guests, 10) || 1;
+    show('d-more', guests >= 2 || open >= 2);
+    $('d-tick-3').setAttribute('aria-checked', open >= 3 ? 'true' : 'false'); $('d-tick-3').className = open >= 3 ? 'tickrow on' : 'tickrow';
+    show('d-tick-4', open >= 3);
+    $('d-tick-4').setAttribute('aria-checked', open >= 4 ? 'true' : 'false'); $('d-tick-4').className = open >= 4 ? 'tickrow on' : 'tickrow';
+    show('d-max', guests > MAXT);
+    $('d-count').textContent = String(open);
+  }
+  function setOpen(n){
+    open = Math.max(1, Math.min(MAXT, n));
+    renderBlocks(); paintAll(); refresh();
+  }
+
+  // ── Part 2: the four questions ──
+  function renderQuestions(){
+    var h = '';
+    Q.forEach(function(q){
+      h += '<p class="q">' + esc(q.q) + '</p><div class="opts">';
+      q.o.forEach(function(o, j){
+        var on = sel[q.k] === j;
+        h += '<button type="button" class="opt' + (on ? ' on' : '') + '" data-q="' + q.k + '" data-i="' + j + '" data-v="' + o[1] + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(o[0]) + '</button>';
+      });
+      h += '</div>';
+    });
+    $('d-qs').innerHTML = h;
+  }
+
+  // ── Part 3: our pick, and the hold ──
+  function renderPart3(){
+    var a = answers(), shownPick = a && pick && pickFor === JSON.stringify(a);
+    if(!shownPick){ show('d-part3', false); return; }
+    $('d-pick-h').textContent = pick.category + ', ' + pick.where;
+    $('d-pick-why').textContent = pick.why;
+    var up = pick.upgrade;
+    if(up && up.category && up.hook){
+      $('d-pick-up').innerHTML = '<b>' + esc(T.up_lead) + '</b> ' + esc(up.category) + '. ' + esc(up.hook) + ' ' + esc(fill(T.up_ask, { cat: up.category }));
+      show('d-pick-up', true);
+    } else show('d-pick-up', false);
+    $('d-hold-note').textContent = data.depositPerPersonText ? fill(T.hold_dep, { deposit: data.depositPerPersonText }) : T.hold_free;
+    $('d-hold').textContent = busy ? T.holding : T.hold;
+    show('d-part3', true);
+  }
+  function syncHold(){
+    var lit = part1Ok() && !busy;
+    $('d-hold').setAttribute('aria-disabled', lit ? 'false' : 'true');
+    if(lit) show('d-summary', false);
+  }
+
+  function askPick(a, key){
+    asking = key;
+    api('/pick', { concierge: a, lang: ES ? 'es' : 'en' }).then(function(x){
+      if(asking !== key) return;
+      asking = '';
+      var now = answers();
+      if(!now || JSON.stringify(now) !== key) return;   // they changed an answer while it was asked: a newer ask is on its way
+      if(x.ok && x.j && x.j.pick){ pick = x.j.pick; pickFor = key; pickFailed = ''; msg(''); refresh(); }
+      else { pickFailed = key; msg((x.j && x.j.error) || T.err); renderPart3(); syncHold(); }
+    }).catch(function(){ asking = ''; pickFailed = JSON.stringify(answers() || ''); msg(T.err); });
+  }
+
+  /** Called after every change: the blocks, the pick, the button, and (once Part 1 is clean and the pick is in) a quiet save so Mark has the names even if the guest stops here. */
+  function refresh(){
+    clearTimeout(timer);
+    var a = answers();
+    if(!a){ pick = null; pickFor = ''; }
+    else { var key = JSON.stringify(a); if(key !== pickFor && key !== asking && key !== pickFailed) askPick(a, key); }
+    renderPart3(); syncHold();
+    if(!busy && !held && a && pick && pickFor === JSON.stringify(a) && part1Ok() && JSON.stringify(payload()) !== lastSent) timer = setTimeout(function(){ if(!busy && !held) save(); }, 350);
+  }
+  /** Save the names, birthdays, address and answers. Resolves true when the server has them; false (with the server's words under the field it names) when not. */
+  function save(){
+    if(!part1Ok() || !answers()) return Promise.resolve(false);
+    var body = payload(), key = JSON.stringify(body);
+    return api('', body).then(function(x){
+      if(x.ok){ lastSent = key; if(x.j && x.j.pick) pick = x.j.pick; msg(''); return true; }
+      if(x.status === 409){ msg((x.j && x.j.error) || T.err); return false; }
+      refuse(x.j || {});
+      return false;
+    }).catch(function(){ msg(T.err); return false; });
+  }
+  var FIELD_OF = { name: 'd-name-', dob: 'd-dob-' };
+  /** The server refused a field: its words under that field, and the guest is taken there. */
+  function refuse(j){
+    var m = /^travelers\.(\d)\.(legal_name|dob)$/.exec(j.field || ''), id = '';
+    if(m) id = FIELD_OF[m[2] === 'dob' ? 'dob' : 'name'] + m[1];
+    else if(/^address\.(street|city|zip)$/.test(j.field || '')) id = 'd-' + j.field.slice(8);
+    else if(j.field === 'address.state') id = 'd-st';
+    if(id && $(id)){ shownErr[id] = j.error; touched[id] = true; var f = fields().filter(function(x){ return x.id === id; })[0]; if(f) paint(f); goTo(id); }
+    else msg(j.error || T.err);
+  }
+  function goTo(id){ var el = $(id); if(el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); if(el && el.focus) el.focus(); }
+
+  // ── The summary under a dim button: "{N} things still need you: {list}. Take me there" ──
+  // "A, and B" and "A, B, and C" (the design's way); Spanish has no comma before "y".
+  function listWords(xs){
+    if(xs.length < 2) return xs[0] || '';
+    if(ES) return xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1];
+    return xs.slice(0, -1).join(', ') + ', and ' + xs[xs.length - 1];
+  }
+  function showSummary(list){
+    var n = list.length;
+    var lead = n === 1 ? T.one_thing : fill(T.n_things, { n: NUMW_CAP[n] ? (ES ? NUMW[n] : NUMW_CAP[n]) : String(n) });
+    $('d-summary-t').textContent = lead + ' ' + listWords(list.map(function(x){ return x.p.phrase; })) + '.';
+    $('d-take').textContent = T.take;
+    show('d-summary', true);
+  }
+
+  // ── The address lookup: asked as the street is typed; the post office's spelling is offered, never forced ──
+  function renderAddress(){
+    var fix = $('d-fix'), sg = $('d-sugg');
+    $('d-addr-status').textContent = look.off ? T.lookup_na : ''; show('d-addr-status', !!look.off);
+    sg.hidden = true; fix.hidden = true;
+    if(look.mode !== 'ok' || look.key !== addrKey()) return;
+    if(look.pending){
+      fix.innerHTML = esc(T.tidied) + ' <b>' + esc(look.pending.formatted) + '</b>. ' + esc(T.right) + ' <button type="button" class="yes" data-act="yes">' + esc(T.yes) + '</button> · <button type="button" class="linkbtn" data-act="no">' + esc(T.no) + '</button>';
+      fix.hidden = false;
+    } else if(look.sugg.length > 1){
+      sg.innerHTML = look.sugg.map(function(s, j){ return '<button type="button" data-s="' + j + '">' + esc(s.formatted) + '</button>'; }).join('');
+      sg.hidden = false;
+    }
+  }
+  function setAddress(s){
+    addr.street = s.street; addr.city = s.city; addr.st = s.state; addr.zip = s.zip;
+    $('d-street').value = s.street; $('d-city').value = s.city; $('d-st').value = s.state; $('d-zip').value = s.zip;
+  }
+  function sameAs(s){
+    function n(x){ return tidy(x).toLowerCase().replace(/[.,]/g, ''); }
+    return n(s.street) === n(addr.street) && n(s.city) === n(addr.city) && tidy(s.state).toUpperCase() === tidy(addr.st).toUpperCase() && tidy(s.zip).slice(0, 5) === tidy(addr.zip).slice(0, 5);
+  }
+  function askLookup(){
+    var key = addrKey();
+    if(look.off || tidy(addr.street).length < 5 || key === look.key) return;
+    fetch('/api/address/lookup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: tidy(addr.street), city: tidy(addr.city), state: tidy(addr.st).toUpperCase(), zip: tidy(addr.zip), website: $('d-website').value }) })
+      .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+      .then(function(x){
+        if(addrKey() !== key) return;                    // typed on since: a newer question is on its way
+        var j = x.j || {};
+        if(!x.ok || !j.available){ look.off = true; look.key = ''; look.mode = ''; look.pending = null; }
+        else if(j.incomplete){ look.key = ''; look.mode = ''; look.pending = null; }
+        else if(!j.suggestions || !j.suggestions.length){ look.key = key; look.mode = 'nf'; look.sugg = []; look.pending = null; touched['d-street'] = true; }
+        else {
+          look.key = key; look.mode = 'ok'; look.sugg = j.suggestions.slice(0, 5); look.pending = null;
+          if(look.sugg.length === 1 && !sameAs(look.sugg[0])) look.pending = look.sugg[0];
+        }
+        renderAddress(); paintAll(); refresh();
+      })
+      .catch(function(){ look.off = true; renderAddress(); });
+  }
+  function addressTyped(){
+    addr.tidied = false;
+    look.mode = look.mode === 'nf' ? '' : look.mode; look.pending = null; look.key = '';
+    renderAddress();
+    clearTimeout(lookTimer);
+    if(tidy(addr.street).length >= 5 && !look.off) lookTimer = setTimeout(askLookup, 500);
+  }
+
+  // ── The thank-you: the cabin is on hold ──
+  function partyWords(n){ return n < 2 ? T.party_one : fill(T.party_n, { n: NUMW[n] || String(n) }); }
+  function showHeld(count, again){
+    held = true; clearTimeout(timer);
+    show('d-intro', false); show('d-part1', false); show('d-part2', false); show('d-part3', false); show('d-summary', false); msg('');
+    var p = pick || data.pick || { category: '' };
+    $('d-thanks-h').textContent = fill(T.held_h, { category: p.category, party: partyWords(count) });
+    // reopened from the email: the way to change something is Mark, not a form
+    $('d-thanks-p').textContent = again ? fill(T.change, { phone: data.businessPhone || PHONE }) : ''; show('d-thanks-p', !!again);
+    show('d-thanks', true);
+  }
+
+  // ── Events ──
+  function wire(id, kind, i){
+    var input = $(id);
+    input.addEventListener('input', function(){
+      var v = input.value;
+      if(kind === 'dob'){ var f = dobTyping(v); if(f !== v){ input.value = f; v = f; } }
+      if(kind === 'state'){ var u = v.toUpperCase().replace(/[^A-Z]/g, ''); if(u !== v){ input.value = u; v = u; } }
+      if(kind === 'name' || kind === 'dob') travelers[i][kind] = v;
+      else addr[kind === 'state' ? 'st' : kind] = v;
+      shownErr[id] = '';
+      if(kind === 'street' || kind === 'city' || kind === 'state' || kind === 'zip') addressTyped();
+      var f2 = fields().filter(function(x){ return x.id === id; })[0];
+      if(f2 && (touched[id] || attempted)) paint(f2); else if(f2 && !problem(f2)) paint(f2);
+      refresh();
+    });
+    input.addEventListener('blur', function(){
+      touched[id] = true;
+      var f = fields().filter(function(x){ return x.id === id; })[0];
+      if(f) paint(f);
+      refresh();
+    });
+  }
+  for(var wi = 0; wi < MAXT; wi++){ wire('d-name-' + wi, 'name', wi); wire('d-dob-' + wi, 'dob', wi); }
+  wire('d-street', 'street', 0); wire('d-city', 'city', 0); wire('d-st', 'state', 0); wire('d-zip', 'zip', 0);
+
+  $('d-tick-3').addEventListener('click', function(){ setOpen(open >= 3 ? 2 : 3); });
+  $('d-tick-4').addEventListener('click', function(){ setOpen(open >= 4 ? 3 : 4); });
+  $('d-qs').addEventListener('click', function(e){
+    var t = e.target, k = t.getAttribute('data-q'), j = Number(t.getAttribute('data-i'));
+    if(!k || isNaN(j)) return;
+    sel[k] = j; renderQuestions(); refresh();
+  });
+  $('d-fix').addEventListener('click', function(e){
+    var act = e.target.getAttribute('data-act');
+    if(act === 'yes' && look.pending){ setAddress(look.pending); addr.tidied = true; look.key = addrKey(); look.pending = null; look.mode = 'ok'; look.sugg = []; }
+    else if(act === 'no'){ look.pending = null; look.sugg = []; goTo('d-street'); }
+    else return;
+    renderAddress(); paintAll(); refresh();
+  });
+  $('d-sugg').addEventListener('click', function(e){
+    var j = Number(e.target.getAttribute('data-s'));
+    if(isNaN(j) || !look.sugg[j]) return;
+    var s = look.sugg[j];
+    setAddress(s); look.key = addrKey(); look.pending = s; look.sugg = [s];   // the picked one is shown for a last "Right?"
+    renderAddress(); paintAll(); refresh();
+  });
+  function takeMeThere(){
+    var list = problems();
+    attempted = true; paintAll();
+    if(!list.length){ show('d-summary', false); return false; }
+    showSummary(list); goTo(list[0].f.id);
+    return true;
+  }
+  $('d-take').addEventListener('click', function(e){ if(e && e.preventDefault) e.preventDefault(); var list = problems(); if(list.length) goTo(list[0].f.id); });
+  $('d-hold').addEventListener('click', function(){
+    if(busy) return;
+    if(takeMeThere()) return;                         // the dim button: go to the first problem, red, with the summary
+    clearTimeout(timer);
+    busy = true; $('d-hold').textContent = T.holding; syncHold(); msg('');
+    var again = function(){ busy = false; $('d-hold').textContent = T.hold; syncHold(); };
+    (JSON.stringify(payload()) === lastSent ? Promise.resolve(true) : save())
+      .then(function(saved){
+        if(!saved){ again(); return null; }
+        return api('/hold', {}).then(function(x){
+          if(x.ok){ busy = false; showHeld(open, false); }
+          else { again(); msg((x.j && x.j.error) || T.err); }
+        });
+      })
+      .catch(function(){ again(); msg(T.err); });
+  });
+
+  // ── The picture: the group's own, set as an <img> source only when it is https (the API has already refused any that is not on our hosts) ──
+  function applyHero(url){
+    if(typeof url !== 'string' || !/^https:\/\//i.test(url)) return;
+    var banner = $('d-banner'), img = document.createElement('img');
+    img.className = 'd-hero'; img.alt = ''; img.decoding = 'async';
+    img.onload = function(){ img.className = 'd-hero on'; banner.className = 'd-banner custom'; };
+    img.onerror = function(){ if(img.parentNode) img.parentNode.removeChild(img); };
+    img.src = url;
+    banner.insertBefore(img, banner.firstChild);
+  }
+
+  // The credit line of the picture shown, as on the group page: "Photo: <artist> (<licence>) · Wikimedia Commons"; any other kind of line is shown as it is.
+  function creditsLine(list){
+    var parts = [], ok = true;
+    list.forEach(function(a){
+      var m = /^Photos?:\s*(.+?)\s*·\s*([^·]+?)\s*·\s*Wikimedia Commons$/i.exec(a);
+      if(!m){ ok = false; return; }
+      var p = m[1] + ' (' + m[2] + ')';
+      if(parts.indexOf(p) < 0) parts.push(p);
+    });
+    return ok ? (parts.length > 1 ? T.photos : T.photo) + ' ' + parts.join(' · ') + ' · Wikimedia Commons' : list.join(' · ');
+  }
+
+  function render(d){
+    data = d;
+    state.hidden = true; show('d-main', true);
+    document.title = T.title + ' | ' + d.label;
+    $('d-plaque').textContent = d.label;
+    applyHero(d.heroUrl);
+    var credits = (Array.isArray(d.credits) ? d.credits : []).filter(function(x){ return typeof x === 'string' && x.trim(); });
+    if(credits.length){ $('d-credits').textContent = creditsLine(credits); show('d-credits', true); }
+    $('d-h1').textContent = T.h1; $('d-lede').textContent = T.lede;
+    $('d-p1').textContent = T.p1; $('d-reach-l').textContent = T.reach; $('d-count-l').textContent = T.howmany;
+    $('d-reach').textContent = [d.email, d.phone].filter(Boolean).join(' · ');
+    $('d-p1note').textContent = T.p1note; $('d-addr-note').textContent = T.addr_note; $('d-max').textContent = T.max;
+    $('d-more-h').textContent = T.more_h; $('d-tick-3-t').textContent = T.tick3; $('d-tick-4-t').textContent = T.tick4;
+    for(var i = 0; i < MAXT; i++){
+      $('d-who-' + i).textContent = i === 0 ? T.who_you : fill(T.who_n, { n: i + 1 });
+      $('d-name-l-' + i).textContent = i === 0 ? T.legal_you : T.legal_other;
+      $('d-name-' + i).placeholder = T.ph_name;
+      $('d-dob-l-' + i).textContent = T.dob; $('d-dob-' + i).placeholder = T.ph_dob;
+    }
+    $('d-street-l').textContent = T.home; $('d-street').placeholder = T.ph_street;
+    $('d-city-l').textContent = T.city; $('d-city').placeholder = T.ph_city;
+    $('d-stzip-l').textContent = T.stzip; $('d-st').placeholder = T.ph_st; $('d-zip').placeholder = T.ph_zip;
+    $('d-p2').textContent = T.p2; $('d-p2intro').textContent = T.p2intro; $('d-p2move').textContent = T.p2move;
+    $('d-p3').textContent = T.p3;
+    $('d-take').textContent = T.take;
+
+    // What the guest already entered (a second visit) is back in the form; otherwise one block per person they said was coming, the first with their own name.
+    var saved = Array.isArray(d.travelers) ? d.travelers : [];
+    var guests = Math.max(parseInt(d.guests, 10) || 1, 1);
+    for(var k = 0; k < MAXT; k++) travelers.push({ name: '', dob: '' });
+    if(saved.length){ saved.slice(0, MAXT).forEach(function(t, j){ travelers[j] = { name: t.legal_name || '', dob: dobText(t.dob) }; }); }
+    else travelers[0].name = tidy((d.firstName || '') + ' ' + (d.lastName || ''));
+    open = Math.min(Math.max(saved.length, guests, 1), MAXT);
+    for(var m = 0; m < MAXT; m++){ $('d-name-' + m).value = travelers[m].name; $('d-dob-' + m).value = travelers[m].dob; }
+    if(d.address){ addr = { street: d.address.street, city: d.address.city, st: d.address.state, zip: d.address.zip, tidied: !!d.address.tidied }; }
+    $('d-street').value = addr.street; $('d-city').value = addr.city; $('d-st').value = addr.st; $('d-zip').value = addr.zip;
+    if(d.concierge){
+      Q.forEach(function(q){ var v = d.concierge[q.k]; for(var j = 0; j < q.o.length; j++){ if(q.o[j][1] === v){ sel[q.k] = j; break; } } });
+    }
+    if(d.pick && d.concierge){ pick = d.pick; pickFor = JSON.stringify(answers()); }
+    renderBlocks(); renderQuestions();
+
+    if(d.holdRequestedAt && d.pick){ showHeld(Math.max(saved.length, 1), true); return; }
+    // a returning guest whose names, birthdays and address are all saved: nothing is re-sent until they change something
+    if(saved.length && d.pick && d.concierge && part1Ok()) lastSent = JSON.stringify(payload());
+    paintAll(); renderPart3(); syncHold();
+  }
+
+  fetch('/api/group-details/' + token)
+    .then(function(r){ if(!r.ok) throw new Error('gone'); return r.json(); })
+    .then(render)
+    .catch(function(){ state.textContent = T.bad; });
+})();
+</script>
+</body>
+</html>

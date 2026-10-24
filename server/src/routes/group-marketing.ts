@@ -7,6 +7,9 @@ import { llmJson } from "../lib/llm";
 import { verifyTurnstile } from "../lib/turnstile";
 import { createAction } from "../lib/actions";
 import { hashForAudit } from "../lib/group-secure";
+import { issueToken } from "../lib/group-forms";
+import { MSG, callUrl as makeCallUrl, detailsUrl as makeDetailsUrl, firstWord, splitLegalName, storedAddress, storedTravelers, tidyLegalName } from "../lib/group-details";
+import { formatAddress } from "../lib/address-lookup";
 import { clientIp } from "../lib/client-ip";
 import {
   ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote, validEmail, validPhone,
@@ -27,9 +30,13 @@ import { CAMPAIGN_SCHEMA, campaignSystemPrompt, campaignUserPrompt, facebookPost
 //   POST /api/groups/:id/marketing/approve         { approved: true|false } — the page goes live / comes down
 //   GET  /api/groups/:id/interests                 replies from the page
 //   PATCH /api/groups/:id/interests/:rowId         { status }
+//   POST /api/groups/:id/interests/:iid/to-file    { cabin_id } the travelers a reply typed on its details page become travelers on that cabin
+//   POST /api/groups/:id/interests/:iid/mark/:how  how = talked | confirmed — the buttons on Mark's list ("We talked", "Confirmed with MSC")
 // Public (the group page):
 //   GET  /api/group-page/:code?lang=en|es          facts + approved copy (or with the dashboard token: a preview)
-//   POST /api/group-page/:code/interest            "I'm interested" — stored, Mark is told, no payment, no card
+//   POST /api/group-page/:code/interest            "Save my spot!" — stored, Mark is told, no payment, no card; the answer carries the guest's own
+//                                                  {detailsUrl, callUrl, first} (migration 0056). NO email goes out here: the guest's ONE email is sent when they
+//                                                  choose a road (routes/group-details.ts holds the choice, the details page's API and both emails)
 //
 // Facts come from the group file on every request; copy never carries a figure
 // the validator has not matched to the file.
@@ -255,7 +262,7 @@ router.post("/groups/:id/marketing/share-code", requireToken, async (req: Reques
 router.get("/groups/:id/interests", requireToken, async (req: Request, res: Response) => {
   try {
     const { data, error } = await db().from("group_interests")
-      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at")
+      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, call_when, travelers, address, concierge, pick, hold_requested_at, ack_email_status, traveler_id")
       .eq("group_id", String(req.params["id"])).order("created_at", { ascending: false }).order("id", { ascending: true });
     if (error) throw new Error(error.message);
     return res.json({ success: true, interests: data ?? [] });
@@ -276,6 +283,83 @@ router.patch("/groups/:id/interests/:rowId", requireToken, async (req: Request, 
     return res.json({ success: true });
   } catch (err) {
     return fail(req, res, err, "group interest update failed");
+  }
+});
+
+/**
+ * What a guest typed on the details page becomes travelers on a cabin of Mark's choosing (Mark 2026-10-23). The legal name splits on the LAST space
+ * (first / last), the birthday goes in as typed, and the first person is the cabin's lead (when it has none yet) and carries the reply's email, phone and
+ * language. Mark books with the cruise line himself: nothing here changes the cabin's status, charges anything or sends anything. A reply goes into the
+ * file once (it remembers the first traveler it made); Mark deletes that traveler to put the reply in again.
+ */
+router.post("/groups/:id/interests/:iid/to-file", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    const cabinId = String((req.body as Row | undefined)?.["cabin_id"] ?? "");
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID.test(groupId) || !UUID.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const { data: reply, error } = await db().from("group_interests")
+      .select("id, group_id, first_name, email, phone, lang, travelers, address, traveler_id").eq("id", iid).eq("group_id", groupId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!reply) return res.status(404).json({ success: false, error: "Reply not found" });
+    const people = storedTravelers(reply.travelers);
+    if (!people) return res.status(400).json({ success: false, error: "This reply has no travelers yet: the guest has not finished the details page." });
+    if (!cabinId) return res.status(400).json({ success: false, error: "Choose a cabin first." });
+    if (!UUID.test(cabinId)) return res.status(404).json({ success: false, error: "That cabin is not on this group." });
+    const { data: cabin, error: ce } = await db().from("group_cabins").select("id").eq("id", cabinId).eq("group_id", groupId).maybeSingle();
+    if (ce) throw new Error(ce.message);
+    if (!cabin) return res.status(404).json({ success: false, error: "That cabin is not on this group." });
+    if (reply.traveler_id) return res.status(409).json({ success: false, error: "These travelers are already in the file. Delete the traveler first if you want to add them again." });
+
+    const { data: onCabin, error: le } = await db().from("group_travelers").select("id, is_lead").eq("cabin_id", cabinId);
+    if (le) throw new Error(le.message);
+    const hasLead = ((onCabin ?? []) as Row[]).some((t) => t["is_lead"] === true);
+    const guestLang = reply.lang === "es" ? "es" : "en";
+    // The one home address for the cabin goes on the first traveler, as one line, where the paperwork already reads it (form_data.address); someone
+    // who lives elsewhere says so on their own paperwork page.
+    const home = storedAddress(reply.address);
+    const rows = people.map((p, i) => {
+      const { first, last } = splitLegalName(p.legal_name);
+      return {
+        group_id: groupId, cabin_id: cabinId, is_lead: i === 0 && !hasLead, first_name: first, last_name: last, dob: p.dob, lang: guestLang,
+        ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null, ...(home ? { form_data: { address: formatAddress(home) } } : {}) } : {}),
+      };
+    });
+    const { data: made, error: me } = await db().from("group_travelers").insert(rows).select("id");
+    if (me) throw new Error(me.message);
+    const ids = ((made ?? []) as Row[]).map((r) => String(r["id"]));
+    if (ids[0]) {
+      const { error: ue } = await db().from("group_interests").update({ traveler_id: ids[0], updated_at: new Date().toISOString() }).eq("id", iid);
+      if (ue) logger.warn({ err: ue.message }, "to-file: the reply could not be marked as added (the travelers are in the file)");
+    }
+    return res.json({ success: true, count: ids.length, ids });
+  } catch (err) {
+    return fail(req, res, err, "group interest to-file failed");
+  }
+});
+
+/**
+ * The two buttons on Mark's list that close a guest's item (the brief calls the path, then clears the item): "We talked" after the call of Road A, and
+ * "Confirmed with MSC" after the hold of Road B. They move the reply along in the replies table (talked = contacted, confirmed = booked) and never
+ * change a reply Mark has already marked declined or spam.
+ */
+router.post("/groups/:id/interests/:iid/mark/:how", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]), how = String(req.params["how"]);
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID.test(groupId) || !UUID.test(iid) || !["talked", "confirmed"].includes(how)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const { data: reply, error } = await db().from("group_interests").select("id, status").eq("id", iid).eq("group_id", groupId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!reply) return res.status(404).json({ success: false, error: "Reply not found" });
+    const status = how === "talked" ? "contacted" : "booked";
+    if (["new", "contacted"].includes(String(reply.status))) {
+      const { error: ue } = await db().from("group_interests").update({ status, updated_at: new Date().toISOString() }).eq("id", iid);
+      if (ue) throw new Error(ue.message);
+      return res.json({ success: true, status });
+    }
+    return res.json({ success: true, status: reply.status });
+  } catch (err) {
+    return fail(req, res, err, "group interest mark failed");
   }
 });
 
@@ -358,7 +442,8 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     const first = text(body["first_name"], 80);
     const last = text(body["last_name"], 80);
     const lang: Lang = body["lang"] === "es" ? "es" : "en";
-    if (!first) return res.status(400).json({ success: false, error: lang === "es" ? "Falta su nombre." : "Please add your name." });
+    // A first AND a last name, letters, spaces, hyphens and apostrophes only, the way the passport has it (Mark 2026-10-24); the page checks the same and says the same.
+    if (!first || !tidyLegalName(`${first} ${last}`)) return res.status(400).json({ success: false, error: MSG.name[lang], field: "name" });
     // One way to reach them is enough (Mark 2026-10-23: one box, "Email or phone"): a valid email, or a phone with at least seven digits. What they typed
     // is kept as they typed it (the phone is only checked, not rewritten); an email is stored in lower case.
     const rawEmail = text(body["email"], 200).toLowerCase();
@@ -366,10 +451,7 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     const email = validEmail(rawEmail) ? rawEmail : null;
     const phone = validPhone(rawPhone) ? rawPhone : null;
     if (!email && !phone) {
-      const error = rawEmail || rawPhone
-        ? (lang === "es" ? "Revise su correo electrónico o su teléfono." : "Please check your email address or phone number.")
-        : (lang === "es" ? "Agregue un correo o un teléfono." : "Please add an email or a phone number.");
-      return res.status(400).json({ success: false, error });
+      return res.status(400).json({ success: false, error: lang === "es" ? "Revise su correo electrónico o su teléfono." : "Please check your email address or phone number.", field: "contact" });
     }
     const guests = Number.isInteger(Number(body["guests"])) && Number(body["guests"]) > 0 && Number(body["guests"]) <= 12 ? Number(body["guests"]) : null;
     const optIn = body["newsletter_opt_in"] === true;
@@ -395,12 +477,13 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
       else prospectId = prospect?.id ?? null;
     }
 
-    const { error } = await db().from("group_interests").insert({
+    const { data: created, error } = await db().from("group_interests").insert({
       group_id: group.id, first_name: first, last_name: last || null, email, phone, lang,
       guests, note: text(body["note"], 800) || null,
       newsletter_opt_in: optIn, ip_hash: hashForAudit(ip), prospect_id: prospectId,
-    });
+    }).select("id").maybeSingle();
     if (error) throw new Error(error.message);
+    const interestId: string | null = created?.id ? String(created.id) : null;
 
     // A lead is a decision waiting on Mark: one row in the queue (he clears it once he has
     // replied) and the one "Waiting on you" notification, keeping the email floor a lead
@@ -408,14 +491,26 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     // the same group never collapse into one.
     void createAction({
       type: "lead",
-      source_ref: `group-interest-${group.id}-${Date.now()}`,
+      source_ref: interestId ? `group-interest-${interestId}` : `group-interest-${group.id}-${Date.now()}`,
       title: `Group reply: ${first}${last ? " " + last : ""}`,
       body: `${group.name} — ${guests ? `party of ${guests}` : "party size not given"}. Reply within a few hours.`,
       buttons: [{ label: "Open the group file", href: `/groups/${group.id}` }],
       priority: "lead",
     }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest notify failed"));
 
-    return res.json({ success: true });
+    // The guest's own private link, handed back to them and to nobody else (it is the credential for their page). Made AFTER the reply is safely stored, so a
+    // box that has not applied migration 0056 yet still takes every reply (it just has no links to hand back).
+    // NO email goes out now (Mark 2026-10-24: "the client should not get 2"): the one email is sent when they choose a road, "Talk me into it, Mark!" (a call
+    // confirmation) or "I've got this" and then "Hold my cabin!" (a hold confirmation). Until then the status says so.
+    const answer = { success: true as const, first: firstWord(first) };
+    if (!interestId) return res.json(answer);
+    const { token, hash } = issueToken();
+    const { error: te } = await db().from("group_interests").update({ details_token_hash: hash, details_token_issued_at: new Date().toISOString(), ack_email_status: "awaiting-choice" }).eq("id", interestId);
+    if (te) {
+      logger.warn({ err: te.message }, "group interest: the details link could not be saved (migration 0056 applied?); the reply is kept without one");
+      return res.json(answer);
+    }
+    return res.json({ ...answer, detailsUrl: makeDetailsUrl(publicSite(), token, lang), callUrl: makeCallUrl(publicSite(), token, lang) });
   } catch (err) {
     return fail(req, res, err, "group interest failed");
   }
