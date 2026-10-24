@@ -79,6 +79,9 @@ const BUTTON_ROUTES = [
   /^POST \/api\/proposals\/[0-9a-f-]{36}\/(approve|dismiss)$/,
   /^POST \/api\/tasks\/[0-9a-f-]{36}\/(close|keep)$/,
   /^POST \/api\/actions\/[0-9a-f-]{36}\/resolve$/,
+  // A group guest's two roads (Mark 2026-10-24, routes/group-marketing.ts): "We talked" after the call of Road A and
+  // "Confirmed with MSC" after the hold of Road B — the route itself admits only these two words.
+  /^POST \/api\/groups\/[0-9a-f-]{36}\/interests\/[0-9a-f-]{36}\/mark\/(talked|confirmed)$/,
   /^GET \/api\/storm-watch$/, // the July "demo" action's read-only button
 ];
 
