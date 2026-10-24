@@ -1243,7 +1243,7 @@ export default [
   },
   {
     id: "ops.group-page-public",
-    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids, a card number or the cabins still available (Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"); unapproved pages stay hidden; Mark 2026-10-20 \"we already had this discussion\": the page is handed the welcome and the button's words, never the poster's headline or pitch; ruling: Mark 2026-10-23 — no ship rating or advisor bio on the invitation page; ruling: Mark 2026-10-24 — the button is \"Save my spot!\" (\"Count me in\" is gone from the page)",
+    basis: "ruling: stillafloat-group-bookings.md — a live group page shows exactly Mark's approved copy and the group's facts, never contact details, ids, a card number or the cabins still available (Mark 2026-10-19: \"why would they see the available cabins before I know they are interested\"); unapproved pages stay hidden; Mark 2026-10-20 \"we already had this discussion\": the page is handed the welcome and the button's words, never the poster's headline or pitch; ruling: Mark 2026-10-23 — no ship rating or advisor bio on the invitation page; ruling: Mark 2026-10-24 — the button is \"Save my spot!\" (\"Count me in\" is gone from the page) and after it the guest chooses a road on this page (Talk me into it, Mark! or I've got this)",
     title: "Whenever Mark has a live group page, it shows exactly his approved welcome and button words and the group's facts (English and Spanish) with no contact details, ids or cabin availability, none of the poster's headline or pitch, no ship rating and no advisor bio, and unapproved pages stay hidden",
     covers: ["GET /api/group-page/:code", "page /group.html", "page /es/group.html", "GET /api/groups/:id/marketing"],
     modes: ["dev", "prod"],
@@ -1254,7 +1254,8 @@ export default [
       // twin reads, so a field renamed or dropped by the API (or by one twin only) fails below.
       const reads = {};
       for (const [p, lang] of [["/group.html", "en"], ["/es/group.html", "es"]]) {
-        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Aparte mi lugar" : "Save my spot"] });
+        // After "Save my spot!" the guest chooses a road on this same page: its panel posts the choice to /api/group-details/<token>/choice.
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Aparte mi lugar" : "Save my spot", "/api/group-details/", "/choice"] });
         t.ok(!/count me in|cuenten conmigo/i.test(html), `${p} still says "Count me in" (Mark 2026-10-24: the button is "Save my spot!")`);
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         // The page asks one thing, "I'm interested": no cabin table, no cabin picker (Mark 2026-10-19).
@@ -1458,7 +1459,9 @@ export default [
   },
 
   // ───────────────────────────────────────────────────────────────────────────────────────────
-  // The guest's two roads after "Save my spot!" (migrations 0056 and 0057; server/src/routes/group-details.ts, routes/address.ts, lib/group-details.ts).
+  // The guest's two roads after "Save my spot!" (migrations 0055 and 0057; server/src/routes/group-details.ts, routes/address.ts, lib/group-details.ts).
+  // The CHOICE between the roads is made on the group page (its panel posts /choice); the details page is Road B only — it has no choice call
+  // (lib/details-page.test.ts: "the call link is no longer read"), so "/choice" is asserted on the group page, not here.
   // NEW IN THE RELEASE THAT ADDS IT: prod has neither the pages nor the addresses before the promotion, so these FAIL there until
   // then — correct (the same note as ops.group-page-public). The page is the guest's private link: only what a wrong link gets is
   // asked here, because a good link exists only for a real reply, and a sweep never makes one (a reply emails Mark and the guest).
@@ -1470,7 +1473,7 @@ export default [
     modes: ["dev", "prod"],
     run: async (t) => {
       for (const [p, lang] of [["/details.html", "en"], ["/es/details.html", "es"]]) {
-        const html = t.html(await t.get(p), { mustContain: ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Apartar mi cabina" : "Hold my cabin", "/choice", "/pick", "/hold", 'aria-disabled="true"', 'id="d-summary"'] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Apartar mi cabina" : "Hold my cabin", "/pick", "/hold", 'aria-disabled="true"', 'id="d-summary"'] });
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         // a private link: never indexed, and the address that carries it is never sent on to another site
         t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
