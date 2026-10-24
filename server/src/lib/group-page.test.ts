@@ -580,7 +580,7 @@ test("the group's top picture and hosts' photo still go to the banner, and a lin
   await bad.ready();
   assert.deepEqual(bad.el("query:.gp-banner").kids, [], "neither picture is used");
   // the hosts' photo keeps its place: small, top-right of the picture
-  assert.match(css("en"), /\.gp-host\{position:absolute;top:16px;right:16px;[^}]*width:clamp\(110px,22%,260px\)/);
+  assert.match(css("en"), /\.gp-host\{position:absolute;top:16px;right:16px;[^}]*width:clamp\(143px,29%,340px\)/);
 });
 
 test("the language link shows only for a group in both languages and points at the other page with the same code", async () => {
