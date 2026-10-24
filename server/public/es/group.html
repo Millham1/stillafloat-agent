@@ -10,7 +10,7 @@
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/group-page.css?v=20261023a">
+<link rel="stylesheet" href="/css/group-page.css?v=20261024a">
 </head>
 <body>
 <div class="wrap">
@@ -36,38 +36,7 @@
     <!-- The organizer's own line, only when there is one. -->
     <section id="sec-org" hidden><div class="org" id="gp-org"></div></section>
 
-    <!-- 2. The one call to action. The page asks one thing, "I'm interested": no cabin picker, no availability, no cabin count
-         (Mark 2026-10-19: "why would they see the available cabins before I know they are interested"). -->
-    <section class="panel" id="interest">
-      <div id="gp-ask">
-        <h2 data-t="put_name"></h2>
-        <p class="small" data-t="only_step"></p>
-        <form id="gp-form" novalidate>
-          <div class="field"><label for="f-name" data-t="f_name"></label><input id="f-name" type="text" autocomplete="name" data-ph="ph_name"></div>
-          <div class="field"><label for="f-contact" data-t="f_contact"></label><input id="f-contact" type="text" autocomplete="email" data-ph="ph_contact"></div>
-          <div class="field"><label for="f-guests" data-t="f_guests"></label><select id="f-guests"></select></div>
-          <div class="hp" aria-hidden="true"><label>Sitio web<input type="text" id="f-website" tabindex="-1" autocomplete="off"></label></div>
-          <div id="gp-turnstile" data-appearance="interaction-only"></div>
-          <button class="btn" type="submit" id="gp-submit"></button>
-          <div class="msg" id="gp-msg" role="status"></div>
-        </form>
-        <p class="phone" id="gp-cta-blurb"></p>
-      </div>
-
-      <!-- What the form becomes once they have counted themselves in (Mark 2026-10-23, design 5a): two ways from here, and the guest picks. -->
-      <div id="gp-choice" hidden>
-        <div class="choice-head"><div class="tick">&#10003;</div><h2 id="gp-choice-h"></h2></div>
-        <p id="gp-choice-lead"></p>
-        <a class="btn" id="gp-finish" href="#" style="margin:12px 0 6px"></a>
-        <p class="small center" id="gp-finish-note" style="margin:0 0 16px"></p>
-        <button type="button" class="btn-out" id="gp-call"></button>
-        <p class="small center" id="gp-call-note" style="margin:8px 0 14px"></p>
-        <p class="small" id="gp-choice-foot"></p>
-        <div class="msg" id="gp-choice-msg" role="status"></div>
-      </div>
-    </section>
-
-    <!-- 3. The plan, day by day: a picture band, then one sentence a day built from the itinerary (plus Mark's own note for a day). -->
+    <!-- 2. The plan, day by day: a picture band, then one sentence a day built from the itinerary (plus Mark's own note for a day). -->
     <div class="photo" id="gp-photo-plan" hidden></div>
     <section class="panel" id="sec-itin" hidden>
       <p class="label" data-t="itinerary"></p>
@@ -75,7 +44,8 @@
       <p class="small" style="margin-top:10px" data-t="itin_note"></p>
     </section>
 
-    <!-- 4. Your cabin: a picture band, the categories and what each starts at, the price note, FlexPay, the upgrade offer, what is planned for the group. -->
+    <!-- 3. Your cabin: a picture band, the categories and what each starts at, the price note, FlexPay, the upgrade offer, what is planned for the group.
+         The prices are said here, once: nothing after this page repeats them (Mark 2026-10-24). -->
     <div class="photo" id="gp-photo-cabin" hidden></div>
     <section class="panel" id="sec-cabin">
       <p class="label" data-t="cabin"></p>
@@ -87,18 +57,58 @@
       <div id="gp-planned"></div>
     </section>
 
-    <!-- 5. Dates that matter, directly after the cabins. -->
+    <!-- 4. Dates that matter, directly after the cabins. -->
     <section class="panel" id="sec-dates" hidden>
       <p class="label" data-t="dates"></p>
       <div class="dates" id="gp-dates"></div>
     </section>
 
-    <!-- 6. Getting there: flights, hotel and transfers, in the guest's words. Never the airline, hotel or transfer company (Mark 2026-10-20);
+    <!-- 5. Getting there: flights, hotel and transfers, in the guest's words. Never the airline, hotel or transfer company (Mark 2026-10-20);
          a hotel is priced per room, the rest per person. -->
     <section class="panel" id="sec-travel" hidden>
       <p class="label" data-t="travel"></p>
       <div id="gp-travel"></div>
       <p class="small" style="margin-top:10px" data-t="travel_note"></p>
+    </section>
+
+    <!-- 6. The ask, LAST (Mark 2026-10-24: the pitch first, the ask at the bottom): who is coming and how to reach them. The page asks one thing, no cabin picker, no
+         availability, no cabin count (Mark 2026-10-19: "why would they see the available cabins before I know they are interested"). -->
+    <section class="panel" id="interest">
+      <div id="gp-ask">
+        <h2 data-t="ask_h"></h2>
+        <p data-t="ask_p"></p>
+        <form id="gp-form" novalidate>
+          <div class="field"><label for="f-name" data-t="f_name"></label><input id="f-name" type="text" autocomplete="name" data-ph="ph_name"><p class="err" id="e-name" hidden></p></div>
+          <div class="field"><label for="f-contact" data-t="f_contact"></label><input id="f-contact" type="text" autocomplete="email" data-ph="ph_contact"><p class="err" id="e-contact" hidden></p></div>
+          <div class="field"><label for="f-guests" data-t="f_guests"></label><select id="f-guests"></select></div>
+          <div class="hp" aria-hidden="true"><label>Sitio web<input type="text" id="f-website" tabindex="-1" autocomplete="off"></label></div>
+          <div id="gp-turnstile" data-appearance="interaction-only"></div>
+          <button class="btn" type="submit" id="gp-submit" aria-disabled="true"></button>
+          <div class="msg" id="gp-msg" role="status"></div>
+        </form>
+        <p class="phone" id="gp-cta-blurb"></p>
+      </div>
+
+      <!-- What the form becomes once they have saved their spot (Mark 2026-10-24, Road A and Road B): two EQUAL pills. "I've got this" is a plain link to their own
+           details page; "Talk me into it, Mark!" opens a drop-down under itself for the time, and a tap on a time is the whole request. -->
+      <div id="gp-choice" hidden>
+        <div class="choice-head"><div class="tick">&#10003;</div><h2 id="gp-choice-h"></h2></div>
+        <p id="gp-choice-lead"></p>
+        <a class="btn" id="gp-finish" href="#"></a>
+        <button type="button" class="btn" id="gp-talk"></button>
+        <div class="dd" id="gp-dd" hidden>
+          <p id="gp-dd-q"></p>
+          <div class="opts" id="gp-whens">
+            <button type="button" class="opt" id="gp-when-morning" data-when="morning"></button>
+            <button type="button" class="opt" id="gp-when-afternoon" data-when="afternoon"></button>
+            <button type="button" class="opt" id="gp-when-evening" data-when="evening"></button>
+            <button type="button" class="opt" id="gp-when-anytime" data-when="anytime"></button>
+          </div>
+          <p class="dd-line" id="gp-dd-line" hidden></p>
+        </div>
+        <p class="small center" id="gp-choice-foot" style="margin-top:14px"></p>
+        <div class="msg" id="gp-choice-msg" role="status"></div>
+      </div>
     </section>
   </main>
 
@@ -114,15 +124,16 @@
 <script>
 (function(){
   var ES = document.documentElement.lang === 'es';
+  var PHONE = '919-346-6127';
   var T = ES ? {
     loading:'Cargando la invitación…', gone:'Esta página no está disponible. Si recibió el enlace de su grupo, escriba a mark@stillafloatcruising.com.',
     preview:'VISTA PREVIA — solo usted puede ver esta página hasta que la apruebe.',
     hosts:'Sus anfitriones', other:'English', title:'Crucero en grupo',
     welcome_h:'¡Bienvenidos!',
-    put_name:'Deje su nombre', only_step:'Este es el único paso. Su nombre, cómo comunicarnos con usted y cuántos son, y Mark se encarga del resto.',
+    ask_h:'Usted tocó… ¡así que hagámoslo oficial!', ask_p:'Díganos quién viene y cómo comunicarnos con usted… eso es todo. Nada que pagar, nada que firmar, ¡y Mark se encarga del resto!',
     f_name:'Su nombre', ph_name:'Nombre y apellido', f_contact:'Correo electrónico o teléfono', ph_contact:'El que prefiera que usemos', f_guests:'¿Cuántos son?',
-    count_me_in:'¡Cuenten conmigo!',
-    need_name:'Escriba su nombre.', need_contact:'Escriba un correo electrónico o un teléfono.',
+    default_cta:'¡Aparte mi lugar!',
+    bad_name:'Nombre Y apellido, por favor… tal como aparecen en el pasaporte.', bad_contact:'Revise su correo electrónico o su teléfono.',
     sent:'Recibido. Le escribiremos pronto.', sending:'Enviando…', err:'No se pudo enviar. Escriba a mark@stillafloatcruising.com.',
     itinerary:'El plan, día a día', itin_note:'Los horarios son de la naviera y pueden cambiar un poco.',
     sea:'Un día en el mar.',
@@ -134,20 +145,23 @@
     dates:'Fechas que importan', book_by:'Reserve antes de', final_pay:'Pago final', we_sail:'Zarpamos', we_sail_from:'desde',
     travel:'Cómo llegar', travel_note:'¿Quiere algo de esto? Dígaselo a Mark cuando llame y él se encarga.',
     photo:'Foto:', photos:'Fotos:',
-    choice_h:'¡Ya está en la lista, {first}!', choice_lead:'Dos caminos desde aquí. Usted decide.',
-    finish:'Lo termino ahora', finish_note:'Nombres, fechas de nacimiento y cuatro preguntas rápidas para elegir la cabina correcta. Unos tres minutos, y su cabina queda apartada.',
-    call:'Mark, llámeme', call_note:'Mark le llama o le escribe en un día y lo hace con usted.',
-    choice_foot:'Aquí no se paga nada y todavía no se firma nada. ¿No quería tocar? Llame o escriba a Mark al 919-346-6127 y lo quitamos de la lista.',
-    got_it_h:'Listo, {first}.', got_it_p:'Mark le llamará o le escribirá en un día.', err_call:'No se pudo enviar. Llame o escriba a Mark al 919-346-6127.'
+    choice_h:'Usted tocó, nosotros aplaudimos… ¡YA ESTÁ EN LA LISTA, {first}!', choice_lead:'Ahora, ¿cómo le gusta planear un crucero?',
+    finish:'¡Yo me encargo… déjeme llenarlo!', talk:'¡Convénzame, Mark!',
+    choice_foot:'De cualquier manera: nada que pagar ni firmar esta noche… y una que otra risa en el camino.',
+    dd_q:'¿Cuándo es buen momento para llamarle?',
+    when_morning:'Por la mañana', when_afternoon:'Por la tarde', when_evening:'Por la noche', when_anytime:'Cuando sea… me adapto',
+    lead_morning:'Por la mañana, entonces…', lead_afternoon:'Por la tarde, entonces…', lead_evening:'Por la noche, entonces…', lead_anytime:'Cuando le quede bien…',
+    rings:'Mark le llama desde el', rings_end:'. Esté pendiente de su correo: los detalles van en camino, con una jugada inteligente de crucerista para hacer mientras espera.',
+    err_call:'No se pudo enviar. Llame o escriba a Mark al {phone}.'
   } : {
     loading:'Loading the invitation…', gone:'This page is not available. If your group sent you the link, email mark@stillafloatcruising.com.',
     preview:'PREVIEW — only you can see this page until you approve it.',
     hosts:'Your hosts', other:'Español', title:'Group Cruise',
     welcome_h:'Welcome!',
-    put_name:'Put your name down', only_step:'This is the only step. Your name, how to reach you, how many, and Mark takes it from there.',
+    ask_h:"You tapped… so let's make it official!", ask_p:"Tell us who's coming and how to reach you… that's all it takes. Nothing to pay, nothing to sign, and Mark takes it from there!",
     f_name:'Your name', ph_name:'First and last', f_contact:'Email or phone', ph_contact:"Whichever you'd rather we use", f_guests:'How many of you',
-    count_me_in:'Count me in!',
-    need_name:'Please add your name.', need_contact:'Please add an email or a phone number.',
+    default_cta:'Save my spot!',
+    bad_name:'First AND last name, please… the way the passport has it.', bad_contact:'Please check your email address or phone number.',
     sent:'Got it. We will be in touch soon.', sending:'Sending…', err:'That did not go through. Email mark@stillafloatcruising.com.',
     itinerary:'The plan, day by day', itin_note:"Times are the cruise line's and can shift a little.",
     sea:'A day at sea.',
@@ -159,11 +173,14 @@
     dates:'Dates that matter', book_by:'Reserve by', final_pay:'Final payment', we_sail:'We sail', we_sail_from:'from',
     travel:'Getting there', travel_note:"Want any of it? Say so when Mark calls and he'll line it up.",
     photo:'Photo:', photos:'Photos:',
-    choice_h:"You're on the list, {first}!", choice_lead:'Two ways from here. Your call.',
-    finish:"I'll finish it now", finish_note:'Names, birthdays and four quick questions so we pick the right cabin. About three minutes, and your cabin is held.',
-    call:'Mark, call me', call_note:'Mark calls or texts you within a day and does it with you.',
-    choice_foot:"Nothing to pay here, nothing to sign yet. Didn't mean to tap? Call or text Mark at 919-346-6127 and we'll take you off.",
-    got_it_h:'Got it, {first}.', got_it_p:'Mark will call or text you within a day.', err_call:'That did not go through. Call or text Mark at 919-346-6127.'
+    choice_h:"You tapped, we cheered… YOU'RE ON THE LIST, {first}!", choice_lead:'Now, how do you like to plan a cruise?',
+    finish:"I've got this… let me fill it in!", talk:'Talk me into it, Mark!',
+    choice_foot:'Either way: nothing to pay or sign tonight… and a laugh or two along the way.',
+    dd_q:"When's a good time to catch you?",
+    when_morning:'Mornings', when_afternoon:'Afternoons', when_evening:'Evenings', when_anytime:"Whenever… I'm easy",
+    lead_morning:'Mornings it is…', lead_afternoon:'Afternoons it is…', lead_evening:'Evenings it is…', lead_anytime:'Whenever works…',
+    rings:'Mark rings you from', rings_end:'. Watch your inbox: the details are on their way, with one smart-cruiser move to do while you wait.',
+    err_call:'That did not go through. Call or text Mark at {phone}.'
   };
   var LOCALE = ES ? 'es-419' : 'en-US';
 
@@ -172,6 +189,9 @@
   function show(id){ var e=$(id); if(e) e.hidden=false; }
   document.querySelectorAll('[data-t]').forEach(function(el){ el.textContent = T[el.getAttribute('data-t')] || ''; });
   document.querySelectorAll('[data-ph]').forEach(function(el){ el.placeholder = T[el.getAttribute('data-ph')] || ''; });
+  ['morning','afternoon','evening','anytime'].forEach(function(k){ $('gp-when-' + k).textContent = T['when_' + k]; });
+  $('gp-dd-q').textContent = T.dd_q;
+  $('gp-submit').textContent = T.default_cta;   // until the group's own words arrive
 
   var qs = new URLSearchParams(location.search);
   var code = (qs.get('g') || '').trim();
@@ -189,6 +209,7 @@
     .catch(function(){ state.textContent = T.gone; });
 
   var turnstileToken = null, siteKey = '', widgetId = null;
+  var callPhone = PHONE;   // the number Mark rings from: the one in the group's own line beside the button, else the business number
 
   // The group's own look (the API has already refused any picture that is not on our own hosts; the page checks it is https once more).
   // The pictures are set as an <img> source, never written into markup. A picture that does not load is dropped and the usual page shows.
@@ -286,20 +307,15 @@
     }
     applyLook(look);
 
-    // 1. The welcome: the hosts' note, signed. A group whose copy has none opens straight on the form.
+    // 1. The welcome: the hosts' note, signed. A group whose copy has none opens straight on the plan.
     var welcome = typeof c.welcome === 'string' ? c.welcome.trim() : '';
     if(welcome){ $('gp-welcome').innerHTML = welcomeHtml(welcome); $('gp-sig').textContent = look.hostNames || 'Mark'; show('sec-welcome'); }
     if(c.organizer_note){ $('gp-org').textContent = c.organizer_note; show('sec-org'); }
 
-    // 2. Count me in: the button is the group's own words, the phone line under it is the copy's blurb.
-    $('gp-submit').textContent = (typeof c.cta_label === 'string' && c.cta_label.trim()) || T.count_me_in;
-    $('gp-cta-blurb').textContent = c.cta_blurb || ''; $('gp-cta-blurb').hidden = !c.cta_blurb;
-    var gs = ''; for(var n=1;n<=12;n++) gs += '<option value="'+n+'"'+(n===2?' selected':'')+'>'+n+'</option>'; $('f-guests').innerHTML = gs;
-
-    // 3. The plan: one row a day.
+    // 2. The plan: one row a day.
     if(f.itinerary && f.itinerary.length){ $('gp-itin').innerHTML = planRows(f.itinerary, look.dayNotes); show('sec-itin'); }
 
-    // 4. Your cabin: each category and what it starts at (names and prices only), the price note, FlexPay, the upgrade offer, what is planned.
+    // 3. Your cabin: each category and what it starts at (names and prices only), the price note, FlexPay, the upgrade offer, what is planned.
     var cabins = (f.cabinPrices || []).filter(function(x){ return x && x.category && x.perPersonText; });
     var rows = cabins.map(function(x){ return '<div class="price"><b>'+esc(x.category)+'</b><span class="amt">'+esc(x.perPersonText)+'<small>'+esc(T.pp)+'</small></span></div>'; });
     if(!rows.length && f.fromPerPersonText) rows.push('<div class="price"><b>'+esc(T.price_from)+'</b><span class="amt">'+esc(f.fromPerPersonText)+'<small>'+esc(T.pp)+'</small></span></div>');
@@ -310,14 +326,21 @@
     // What Mark's own words say is planned for the group (an onboard credit he named). Never composed here.
     $('gp-planned').innerHTML = (f.planned || []).filter(Boolean).map(function(p){ return '<p>' + esc(T.planned + ' ' + p + (/[.!?]$/.test(p) ? '' : '.')) + '</p>'; }).join('');
 
-    // 5. Dates that matter.
+    // 4. Dates that matter.
     var sails = f.sailDateText ? ((f.sailDate ? cap(dateFmt(f.sailDate, { weekday: 'long' })) + ', ' : '') + f.sailDateText + (f.embarkPort ? ' ' + T.we_sail_from + ' ' + f.embarkPort : '')) : '';
     if(f.bookByText || f.finalPaymentText){ $('gp-dates').innerHTML = tile(T.book_by, f.bookByText) + tile(T.final_pay, f.finalPaymentText) + tile(T.we_sail, sails, true); show('sec-dates'); }
 
-    // 6. Getting there: the server writes each line without the vendor and with its price unit ("per person", "per room").
+    // 5. Getting there: the server writes each line without the vendor and with its price unit ("per person", "per room").
     if(f.travel && f.travel.length){
       $('gp-travel').innerHTML = f.travel.map(function(t){ return '<div class="trip"><span>'+(t.kind==='flight'?'✈️':t.kind==='hotel'?'🏨':'🚐')+'</span><span>'+esc(t.text)+'</span></div>'; }).join(''); show('sec-travel');
     }
+
+    // 6. The ask, last: the button is the group's own words (or "Save my spot!"), the phone line under it is the copy's blurb.
+    $('gp-submit').textContent = (typeof c.cta_label === 'string' && c.cta_label.trim()) || T.default_cta;
+    $('gp-cta-blurb').textContent = c.cta_blurb || ''; $('gp-cta-blurb').hidden = !c.cta_blurb;
+    var bp = /\(?\b\d{3}\)?[-. ]\d{3}[-. ]\d{4}\b/.exec(String(c.cta_blurb || ''));
+    if(bp) callPhone = bp[0];
+    var gs = ''; for(var n=1;n<=12;n++) gs += '<option value="'+n+'"'+(n===2?' selected':'')+'>'+n+'</option>'; $('f-guests').innerHTML = gs;
 
     // The footer: the business named as it files, and the credit line of the pictures shown.
     $('gp-legal').textContent = f.business.legalName + ' · ' + f.business.email;
@@ -334,49 +357,104 @@
     }
   }
 
-  // ── After Count me in: the choice that takes the form's place (Mark 2026-10-23). The answer carries the guest's own two links; "I'll finish it now" is a plain link
-  // to their details page, and "Mark, call me" tells us (the same route the email's button reaches) and swaps the panel's words. No links in the answer (an older server): the old thank-you.
-  var pendingCall = null;
-  function choiceToken(url){ var m = /[?&]t=([A-Za-z0-9_-]{43})/.exec(String(url || '')); return m ? m[1] : ''; }
+  // ── The two fields, checked (Mark 2026-10-24): when the field is left, again on submit, and the button sits dim until both are good. A red note under the
+  // field and a red border say what is wrong; a tap on the dim button goes to the FIRST problem. The server checks the same, with the same words.
+  var NAME_CHARS = /^[\p{L}\p{M}'’\- ]+$/u;
+  function tidy(n){ return String(n || '').replace(/\s+/g, ' ').trim(); }
+  function nameBad(v){
+    v = tidy(v);
+    if(v.length < 3 || v.length > 80 || !NAME_CHARS.test(v)) return true;
+    var w = v.split(' ');
+    if(w.length < 2) return true;
+    for(var i = 0; i < w.length; i++){ if(!/\p{L}/u.test(w[i])) return true; }
+    return false;
+  }
+  function contactBad(v){
+    v = String(v || '').trim();
+    if(!v) return true;
+    if(v.indexOf('@') >= 0) return !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+    var digits = v.replace(/\D/g, '').length;
+    return !(/^[\d\s().+\-]+$/.test(v) && digits >= 7 && digits <= 15);
+  }
+  var FIELDS = [
+    { key: 'name', input: 'f-name', note: 'e-name', bad: function(){ return nameBad($('f-name').value); }, words: function(){ return T.bad_name; } },
+    { key: 'contact', input: 'f-contact', note: 'e-contact', bad: function(){ return contactBad($('f-contact').value); }, words: function(){ return T.bad_contact; } }
+  ];
+  var touched = {};
+  function mark(fl, force){
+    var wrong = fl.bad(), shown = wrong && (force || touched[fl.key]);
+    $(fl.note).textContent = shown ? fl.words() : ''; $(fl.note).hidden = !shown;
+    $(fl.input).className = shown ? 'bad' : '';
+  }
+  function sync(){
+    var ok = true; FIELDS.forEach(function(fl){ if(fl.bad()) ok = false; });
+    $('gp-submit').setAttribute('aria-disabled', ok ? 'false' : 'true');
+    return ok;
+  }
+  FIELDS.forEach(function(fl){
+    $(fl.input).addEventListener('input', function(){ mark(fl, false); sync(); });
+    $(fl.input).addEventListener('blur', function(){ touched[fl.key] = true; mark(fl, false); sync(); });
+  });
+  sync();   // the button starts dim, said in the script as well as in the markup
+  /** Mark every problem and take the visitor to the first one; true when there is none. */
+  function checkAll(){
+    var first = null;
+    FIELDS.forEach(function(fl){ touched[fl.key] = true; mark(fl, true); if(fl.bad() && !first) first = fl; });
+    sync();
+    if(first){ var el = $(first.input); if(el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); if(el.focus) el.focus(); return false; }
+    return true;
+  }
+
+  // ── After "Save my spot!": the choice that takes the form's place (Mark 2026-10-24). The answer carries the guest's own link; "I've got this" is a plain link
+  // to their details page, and "Talk me into it, Mark!" opens the drop-down for the time. No link in the answer (an older server): the old thank-you.
+  var pending = null, talkDone = false;
+  function linkToken(url){ var m = /[?&]t=([A-Za-z0-9_-]{43})/.exec(String(url || '')); return m ? m[1] : ''; }
   function showChoice(first, links){
-    var link = String(links.detailsUrl || ''), tok = choiceToken(links.callUrl);
+    var link = String(links.detailsUrl || ''), tok = linkToken(link);
     if(!/^https?:\/\//i.test(link) || !tok) return false;
-    pendingCall = { first: first, token: tok };
-    $('gp-choice-h').textContent = fill(T.choice_h, { first: first });
+    pending = { token: tok };
+    $('gp-choice-h').textContent = fill(T.choice_h, { first: String(first).toLocaleUpperCase(ES ? 'es' : 'en') });
     $('gp-choice-lead').textContent = T.choice_lead;
-    var go = $('gp-finish'); go.textContent = T.finish; go.href = link;
-    $('gp-finish-note').textContent = T.finish_note;
-    var callBtn = $('gp-call'); callBtn.textContent = T.call; callBtn.disabled = false;
-    $('gp-call-note').textContent = T.call_note;
+    var go = $('gp-finish'); go.textContent = T.finish; go.href = link; go.className = 'btn';
+    var talk = $('gp-talk'); talk.textContent = T.talk; talk.className = 'btn'; talk.disabled = false;
+    $('gp-dd').hidden = true;
     $('gp-choice-foot').textContent = T.choice_foot;
-    $('gp-choice-msg').textContent = '';
+    $('gp-choice-msg').textContent = ''; $('gp-choice-msg').className = 'msg';
     $('gp-ask').hidden = true; $('gp-choice').hidden = false;
     return true;
   }
-  $('gp-call').addEventListener('click', function(){
-    if(!pendingCall) return;
-    var btn = $('gp-call'), note = $('gp-choice-msg'), who = pendingCall;
-    btn.disabled = true; note.className = 'msg'; note.textContent = T.sending;
-    fetch('/api/group-details/' + who.token + '/choice', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ choice: 'call', website: '' }) })
+  $('gp-talk').addEventListener('click', function(){
+    if(!pending || talkDone) return;
+    var open = $('gp-dd').hidden;                      // a second tap closes the drop-down again
+    $('gp-dd').hidden = !open;
+    $('gp-finish').className = open ? 'btn dim' : 'btn';
+    $('gp-choice-msg').textContent = '';
+  });
+  function pickWhen(when){
+    if(!pending || talkDone) return;
+    var note = $('gp-choice-msg');
+    note.className = 'msg'; note.textContent = '';
+    fetch('/api/group-details/' + pending.token + '/choice', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ choice: 'call', when: when, lang: ES ? 'es' : 'en', website: '' }) })
       .then(function(r){ return r.ok; }, function(){ return false; })
       .then(function(ok){
-        if(!ok){ btn.disabled = false; note.className = 'msg err'; note.textContent = T.err_call; return; }
-        note.textContent = '';
-        $('gp-choice-h').textContent = fill(T.got_it_h, { first: who.first });
-        $('gp-choice-lead').textContent = T.got_it_p;
-        ['gp-finish', 'gp-finish-note', 'gp-call', 'gp-call-note'].forEach(function(id){ $(id).hidden = true; });
+        if(!ok){ note.className = 'msg err'; note.textContent = fill(T.err_call, { phone: callPhone }); return; }
+        talkDone = true;
+        // the drop-down's content becomes the one line; the pills and the question go
+        $('gp-dd-q').hidden = true; $('gp-whens').hidden = true;
+        var line = $('gp-dd-line');
+        line.innerHTML = esc(T['lead_' + when]) + ' ' + esc(T.rings) + ' <b>' + esc(callPhone) + '</b>' + esc(T.rings_end);
+        line.hidden = false;
       });
-  });
+  }
+  ['morning','afternoon','evening','anytime'].forEach(function(k){ $('gp-when-' + k).addEventListener('click', function(){ pickWhen(k); }); });
 
   $('gp-form').addEventListener('submit', function(e){
     e.preventDefault();
     var msg = $('gp-msg'), btn = $('gp-submit');
-    function refuse(text){ msg.className = 'msg err'; msg.textContent = text; }
+    if(!checkAll()) return;
     // One name box: the last space splits it (one word is a first name only). One contact box: an "@" makes it an email, anything else a phone.
-    var name = $('f-name').value.replace(/\s+/g, ' ').trim();
+    var name = tidy($('f-name').value);
     var contact = $('f-contact').value.trim();
-    if(!name) return refuse(T.need_name);
-    if(!contact) return refuse(T.need_contact);
     var cut = name.lastIndexOf(' ');
     var firstName = cut < 0 ? name : name.slice(0, cut);
     var isEmail = contact.indexOf('@') >= 0;
@@ -393,7 +471,8 @@
       .then(function(x){
         if(x.ok){
           $('gp-form').reset();
-          if(x.j && x.j.detailsUrl && showChoice(firstName, x.j)){ msg.className = 'msg'; msg.textContent = ''; }
+          var first = (x.j && typeof x.j.first === 'string' && x.j.first.trim()) || name.split(' ')[0];
+          if(x.j && x.j.detailsUrl && showChoice(first, x.j)){ msg.className = 'msg'; msg.textContent = ''; }
           else { msg.className = 'msg ok'; msg.textContent = T.sent; }
         }
         else { msg.className = 'msg err'; msg.textContent = (x.j && x.j.error) || T.err; btn.disabled = false; }

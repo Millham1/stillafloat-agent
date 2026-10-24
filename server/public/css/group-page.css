@@ -1,5 +1,5 @@
 /* group-page.css — the shared stylesheet of /group.html and /es/group.html (moved out of the pages 2026-10-23 so the release gate's crawl sees a same-site stylesheet, and so both languages share one look). */
-/* The group page, design v2 (Mark 2026-10-23): one centered column, a navy page, cloud-white panels. No site menu on this page: the logo and the language link are the whole header. */
+/* The group page, design v3 (Mark 2026-10-24, pitch first, ask last): one centered column, a navy page, cloud-white panels, the ask panel at the bottom. No site menu on this page: the logo and the language link are the whole header. */
 :root{--navy:#07183f;--cloud:#f7fbff;--gold:#ffca4f;--yellow:#f5c33b;--ink:#07183f;--muted:#4a5a7a;--label:#9a6b00;--line:#dde6f3}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -55,14 +55,27 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .btn:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
 .btn:disabled{opacity:.55;cursor:default}
 a.btn{text-decoration:none}
-/* After Count me in: the choice that replaces the form (Mark 2026-10-23). Two ways from here: finish it now (the yellow pill) or Mark calls (the outlined one). */
+/* A field that fails its check: a red note under it and a red border, set when the field is left and again on submit (Mark 2026-10-24). */
+.panel p.err,.err{margin:4px 0 0;font-size:15px;font-weight:700;color:#d12d2d}
+.field input.bad,.field select.bad{border-color:#d12d2d;background:#fff5f5}
+/* The button sits dim until every field is good; a tap on it still goes to the first problem. */
+.btn[aria-disabled="true"]{opacity:.6}
+/* After "Save my spot!": the choice that replaces the form. Two EQUAL yellow pills (Mark 2026-10-24): "I've got this… let me fill it in!" and "Talk me into it, Mark!". */
 .choice-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
-.choice-head h2{margin:0}
-.tick{flex:none;width:54px;height:54px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font:800 32px/1 'Baloo 2',sans-serif;color:var(--ink)}
-.btn-out{display:block;width:100%;cursor:pointer;border:2px solid var(--ink);border-radius:999px;background:transparent;color:var(--ink);font:800 22px/1 'Baloo 2',sans-serif;padding:16px 10px;text-align:center}
-.btn-out:hover:not(:disabled){background:rgba(7,24,63,.06)}
-.btn-out:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
-.btn-out:disabled{opacity:.55;cursor:default}
+.choice-head h2{margin:0;font-size:30px}
+.tick{flex:none;width:52px;height:52px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font:800 30px/1 'Baloo 2',sans-serif;color:var(--ink)}
+#gp-choice .btn{margin:12px 0 6px;font-size:24px;padding:18px 10px}
+#gp-choice .btn.dim{opacity:.45}
+#gp-choice a.btn{margin-top:14px}
+/* "Talk me into it, Mark!" opens a drop-down joined to the button: a white box with a yellow border, the time to catch them, then one line. */
+.dd{margin:0 10px;border:2px solid var(--yellow);border-top:0;border-radius:0 0 16px 16px;padding:14px 16px 12px;background:#fff}
+.dd p{margin:0 0 8px;font-size:19px;color:var(--ink)}
+.dd .dd-line{margin:0;font-size:18px}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.opt{cursor:pointer;border:2px solid #c9d6ea;background:#fff;border-radius:999px;padding:8px 16px;font:700 17px/1.3 'Baloo 2',sans-serif;color:var(--ink)}
+.opt:hover:not(:disabled){border-color:var(--yellow)}
+.opt.on{background:var(--yellow);border-color:var(--yellow)}
+.opt:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
 .msg{margin:6px 0 0;font-size:19px;text-align:center}
 .msg.ok{color:#0b6b3a}.msg.err{color:#a12116}
 .panel .phone{font-size:17px;color:var(--muted);text-align:center;margin:0}
