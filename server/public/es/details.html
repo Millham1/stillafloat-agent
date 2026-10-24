@@ -412,7 +412,7 @@
   function syncHold(){
     var lit = part1Ok() && !busy;
     $('d-hold').setAttribute('aria-disabled', lit ? 'false' : 'true');
-    if(lit) show('d-summary', false);
+    if(lit){ show('d-summary', false); $('d-summary-t').textContent = ''; }   // Mark 2026-10-24: the red summary goes the moment every field is good
   }
 
   function askPick(a, key){

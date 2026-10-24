@@ -439,8 +439,8 @@
       .then(function(ok){
         if(!ok){ note.className = 'msg err'; note.textContent = fill(T.err_call, { phone: callPhone }); return; }
         talkDone = true;
-        // the drop-down's content becomes the one line; the pills and the question go
-        $('gp-dd-q').hidden = true; $('gp-whens').hidden = true;
+        // Mark 2026-10-24 (Road A v5): the question and the pills stay, the chosen time is lit, and the one line sits under them
+        ['morning','afternoon','evening','anytime'].forEach(function(k){ var b = $('gp-when-' + k); b.className = 'opt' + (k === when ? ' on' : ''); b.setAttribute('aria-pressed', k === when ? 'true' : 'false'); });
         var line = $('gp-dd-line');
         line.innerHTML = esc(T['lead_' + when]) + ' ' + esc(T.rings) + ' <b>' + esc(callPhone) + '</b>' + esc(T.rings_end);
         line.hidden = false;
