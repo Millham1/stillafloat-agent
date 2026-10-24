@@ -775,7 +775,7 @@ test("'Talk me into it, Mark!' opens a drop-down under the button ('When's a goo
   assert.deepEqual(["morning", "afternoon", "evening", "anytime"].map((k) => es.el(`gp-when-${k}`).textContent), ["Por la mañana", "Por la tarde", "Por la noche", "Cuando sea… me adapto"]);
 });
 
-test("picking a time is the whole request: it goes to the choice route of their own link, and the drop-down's content becomes the one line", async () => {
+test("picking a time is the whole request: it goes to the choice route of their own link, the chosen pill stays lit, and the one line sits under the pills", async () => {
   const p = await saved();
   p.el("gp-talk").handlers["click"]!({ preventDefault() { /* */ } });
   p.el("gp-when-evening").handlers["click"]!({ preventDefault() { /* */ } });
@@ -785,7 +785,9 @@ test("picking a time is the whole request: it goes to the choice route of their 
   assert.deepEqual(call.body, { choice: "call", when: "evening", lang: "en", website: "" });
   assert.equal(p.el("gp-dd-line").hidden, false);
   assert.equal(p.el("gp-dd-line").innerHTML, "Evenings it is… Mark rings you from <b>919-346-6127</b>. Watch your inbox: the details are on their way, with one smart-cruiser move to do while you wait.");
-  assert.equal(p.el("gp-dd-q").hidden, true); assert.equal(p.el("gp-whens").hidden, true, "the question and the pills are gone");
+  // Mark 2026-10-24 (Road A v5): the question and the pills stay, the chosen time is lit, and the one line sits under them
+  assert.equal(p.el("gp-dd-q").hidden, false); assert.equal(p.el("gp-whens").hidden, false, "the question and the pills stay");
+  assert.equal(p.el("gp-when-evening").className, "opt on"); assert.equal(p.el("gp-when-morning").className, "opt");
   assert.equal(p.el("gp-choice-msg").textContent, "");
   // a second tap on a pill (a double tap) asks for nothing more
   const before = p.sent.length;

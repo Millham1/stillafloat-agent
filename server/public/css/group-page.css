@@ -20,9 +20,11 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .gp-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 46%;z-index:0;opacity:0;transition:opacity .5s ease}
 /* The hosts' photo (look.hostPhotoUrl): small, framed, in the TOP-RIGHT corner of the picture, never near the centre of the hero (Mark 2026-10-20: "the inset is not in the correct place"; "it is cutting off the lighthouse"). At 22% (110-260px) it clears the right third of the picture. */
 .gp-host{position:absolute;top:16px;right:16px;z-index:5;box-sizing:border-box;width:clamp(110px,22%,260px);aspect-ratio:4/3;object-fit:cover;object-position:center 30%;
-  background:#fff;border:6px solid #fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.38);opacity:0;transition:opacity .5s ease}
+  border:0;border-radius:0;box-shadow:none;opacity:0;transition:opacity .5s ease;
+  -webkit-mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,#000 52%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(ellipse 72% 72% at 50% 50%,#000 52%,rgba(0,0,0,0) 100%)}
+/* Mark 2026-10-24: the hosts' photo fades at its edges into the picture; no hard white frame. */
 .gp-hero.on,.gp-host.on{opacity:1}
-.gp-lockup{position:absolute;left:0;right:0;bottom:22px;z-index:4;display:flex;justify-content:center;padding:0 12px}
+.gp-lockup{display:flex;justify-content:center;padding:14px 12px 0}  /* Mark 2026-10-24: the group's label sits under the picture */
 .plaque{background:rgba(7,24,63,.86);border:1px solid rgba(255,202,79,.6);border-radius:999px;padding:10px 22px;max-width:100%;text-align:center}
 .plaque span{font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:15px;line-height:1.4;color:#fff}
 .plaque span::before,.plaque span::after{content:"";display:inline-block;width:22px;height:2px;background:var(--gold);vertical-align:middle;margin:0 10px}
