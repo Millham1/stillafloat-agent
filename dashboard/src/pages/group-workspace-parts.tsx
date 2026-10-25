@@ -83,7 +83,7 @@ function Slicer({ title, children, hint }: { title: string; children: React.Reac
   );
 }
 
-function CheckList({ options, selected, onChange, empty }: {
+export function CheckList({ options, selected, onChange, empty }: {
   options: Array<{ value: string; label: string; hint?: string }>; selected: string[]; onChange: (next: string[]) => void; empty?: string;
 }) {
   if (!options.length) return <p className="text-xs text-muted-foreground">{empty ?? "Nothing to pick yet."}</p>;

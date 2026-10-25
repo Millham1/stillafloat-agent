@@ -94,3 +94,54 @@ export function CopyButton({ row }: { row: WPaperwork }) {
     </span>
   );
 }
+
+const stamp = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : null;
+
+/** The traveler's own page (Mark 2026-10-25, drill-through): the two link buttons, big, and what has happened so far. */
+export function TravelerPaperworkPanel({ row }: { row: WTraveler }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const run = async (fn: () => Promise<void>, failTitle: string) => {
+    setBusy(true);
+    try { await fn(); } catch (e) { toast({ variant: "destructive", title: failTitle, description: (e as Error).message }); }
+    setBusy(false);
+    void qc.invalidateQueries({ queryKey: ANALYTICS_KEY });
+  };
+  const emailLink = () => {
+    if (!window.confirm(`Email a new paperwork link to ${row.name} (${row.email})? Any earlier link for this traveler stops working.`)) return;
+    void run(async () => {
+      const r = await api<{ sentTo: string }>(`/groups/${row.groupId}/travelers/${row.id}/form-link/send`, "POST", {});
+      setUrl(null);
+      toast({ title: "Paperwork link emailed", description: `Sent to ${r.sentTo}` });
+    }, "The email did not go out");
+  };
+  const makeLink = () => run(async () => {
+    const r = await api<{ url: string }>(`/groups/${row.groupId}/travelers/${row.id}/form-link`, "POST", {});
+    setUrl(r.url);
+    toast({ title: "Link made", description: "Copy it now: it is shown only this once." });
+  }, "Could not make the link");
+  const big = "inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-md border disabled:opacity-50";
+  const steps: Array<[string, string | null]> = [
+    ["Link sent", stamp(row.formSentAt)], ["First opened", stamp(row.formOpenedAt)], ["Agreed to e-signing", stamp(row.consentAt)],
+    ["All documents signed", stamp(row.formSubmittedAt)], ["Copies emailed", stamp(row.copiesSentAt)],
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={`${big} bg-primary text-primary-foreground border-primary`} disabled={busy || !row.email} onClick={emailLink}
+          title={row.email ? `Email the paperwork link to ${row.email}` : "This traveler has no email address on the file"}><Mail className="w-4 h-4" /> Email the link</button>
+        <button type="button" className={`${big} bg-card hover:bg-muted/50`} disabled={busy} onClick={() => void makeLink()}><Link2 className="w-4 h-4" /> Make a link to text</button>
+      </div>
+      {!row.email && <p className="text-xs text-amber-700">No email address on the file: add one on the group's file, or make a link and text it.</p>}
+      {url && <LinkBox url={url} />}
+      <p className="text-xs text-muted-foreground">Either one replaces the traveler's earlier link.</p>
+      <ol className="text-sm divide-y divide-border">
+        {steps.map(([k, v]) => <li key={k} className="flex gap-3 py-1.5"><span className="w-40 shrink-0 text-muted-foreground">{k}</span><span className={v ? "" : "text-muted-foreground"}>{v ?? "not yet"}</span></li>)}
+      </ol>
+    </div>
+  );
+}
+

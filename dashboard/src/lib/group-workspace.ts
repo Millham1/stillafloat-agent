@@ -37,6 +37,7 @@ export interface WTraveler {
   id: string; groupId: string; groupName: string; cabinId: string | null; cabinNum: string | null; firstName: string | null; lastName: string | null;
   name: string; email: string | null; lang: string; isLead: boolean; formSentAt: string | null; formSubmittedAt: string | null;
   formStatus: "returned" | "sent" | "not sent"; docsRequired: number; docsSigned: number; fullySigned: boolean; passportOnFile: boolean;
+  formOpenedAt?: string | null; consentAt?: string | null; copiesSentAt?: string | null;
 }
 export interface WPayment {
   id: string; groupId: string; groupName: string; cabinId: string | null; cabinNum: string | null; kind: string; dueDate: string | null;

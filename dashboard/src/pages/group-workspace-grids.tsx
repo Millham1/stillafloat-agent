@@ -155,8 +155,10 @@ function download(name: string, csv: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, rows, onOpen, today }: {
+export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, rows, onOpen, today, fill = false, title, rowTitle = "Open this group's file" }: {
   tab: Tab; rows: T[]; onOpen: (row: T) => void; today: string;
+  /** Mark 2026-10-25 (report pages): the grid takes the box it is given and scrolls inside it, never the page. */
+  fill?: boolean; title?: string; rowTitle?: string;
 }) {
   const columns = useMemo(() => columnsFor(tab) as Column<T>[], [tab]);
   const dataCols = useMemo(() => columns.filter((c) => !c.action), [columns]);
@@ -188,8 +190,9 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
   const open = (r: T) => onOpen(r);
 
   return (
-    <Card>
-      <div className="flex flex-wrap items-center gap-3 px-3 py-2 border-b">
+    <Card className={fill ? "h-full min-h-0 flex flex-col" : ""}>
+      <div className="flex flex-wrap items-center gap-3 px-3 py-2 border-b shrink-0">
+        {title && <h3 className="text-sm font-semibold mr-1">{title}</h3>}
         <label className="relative flex-1 min-w-[12rem] max-w-sm">
           <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <span className="sr-only">Filter the {TAB_LABEL[tab].toLowerCase()} grid</span>
@@ -202,7 +205,7 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
           <Download className="w-3.5 h-3.5" /> Export CSV{filtered ? " (filtered rows)" : ""}
         </button>
       </div>
-      <div className="overflow-auto max-h-[520px]">
+      <div className={fill ? "overflow-auto flex-1 min-h-0" : "overflow-auto max-h-[520px]"}>
         <table className="w-full text-sm border-collapse">
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b">
@@ -228,7 +231,7 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
             )}
             {shown.slice(0, limit).map((r, i) => (
               <tr key={(r.id ?? "") + i} tabIndex={0} onClick={() => open(r)} onKeyDown={(e) => { if (e.key === "Enter") open(r); }}
-                className="cursor-pointer hover:bg-muted/40 focus:bg-muted/40 focus:outline-none" title="Open this group's file">
+                className="cursor-pointer hover:bg-muted/40 focus:bg-muted/40 focus:outline-none" title={rowTitle}>
                 {columns.map((c) => <td key={c.key} className={`px-3 py-1.5 ${c.action ? "cursor-default align-top" : "whitespace-nowrap"} ${c.align === "right" ? "text-right tabular-nums" : ""}`}>{c.render ? c.render(r) : plain(c.get(r))}</td>)}
                 <td className="pr-2 text-muted-foreground"><ChevronRight className="w-4 h-4" aria-hidden="true" /></td>
               </tr>
@@ -237,7 +240,7 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
         </table>
       </div>
       {shown.length > limit && (
-        <div className="px-3 py-2 border-t text-xs text-muted-foreground flex items-center gap-3">
+        <div className="px-3 py-2 border-t text-xs text-muted-foreground flex items-center gap-3 shrink-0">
           Showing the first {limit} of {shown.length} rows.
           <button type="button" className="underline" onClick={() => setLimit((n) => n + PAGE)}>Show {Math.min(PAGE, shown.length - limit)} more</button>
           <span>Export CSV has all {shown.length}.</span>

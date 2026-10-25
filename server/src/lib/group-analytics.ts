@@ -74,6 +74,8 @@ export interface AnalyticsTraveler {
   firstName: string | null; lastName: string | null; name: string; email: string | null; lang: string; isLead: boolean;
   formSentAt: string | null; formSubmittedAt: string | null; formStatus: "returned" | "sent" | "not sent";
   docsRequired: number; docsSigned: number; fullySigned: boolean; passportOnFile: boolean;
+  /** Mark 2026-10-25 (the traveler's own page in the workspace): when the link was first opened, when they agreed to e-signing, when their copies went out. */
+  formOpenedAt: string | null; consentAt: string | null; copiesSentAt: string | null;
 }
 
 export interface AnalyticsPayment {
@@ -304,6 +306,7 @@ export function buildAnalytics(raw: AnalyticsRaw, now: Date = new Date()): Group
         formSentAt: iso(t["form_sent_at"]), formSubmittedAt: iso(t["form_submitted_at"]),
         formStatus: t["form_submitted_at"] ? "returned" : t["form_sent_at"] ? "sent" : "not sent",
         docsRequired: required.length, docsSigned, fullySigned: complete, passportOnFile: !!text(t["passport_last4"], 8),
+        formOpenedAt: iso(t["form_opened_at"]), consentAt: iso(t["esign_consent_at"]), copiesSentAt: iso(t["copies_sent_at"]),
       });
       for (const key of required) {
         if (!docOrder.has(key)) docOrder.set(key, docTitle(key));

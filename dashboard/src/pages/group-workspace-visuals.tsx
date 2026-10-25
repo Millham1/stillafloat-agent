@@ -14,17 +14,22 @@ import { money } from "./group-workspace-parts";
 // The five visuals of the Group Bookings Workspace. Every one is a plain picture of numbers that lib/group-workspace.ts
 // worked out; a click on a part of it hands back a Group slicer change or a cross-filter, and the page does the rest.
 
-export function Visual({ title, caption, children, className = "" }: { title: string; caption?: React.ReactNode; children: React.ReactNode; className?: string }) {
+export function Visual({ title, caption, children, className = "", fill = false }: { title: string; caption?: React.ReactNode; children: React.ReactNode; className?: string; fill?: boolean }) {
+  // fill (Mark 2026-10-25, the report pages): the visual takes the box it is given and its chart grows to fit, so a page is one screen
   return (
-    <Card className={`p-4 ${className}`}>
-      <div className="mb-2">
+    <Card className={fill ? `p-3 h-full min-h-0 flex flex-col ${className}` : `p-4 ${className}`}>
+      <div className={fill ? "mb-1.5 shrink-0" : "mb-2"}>
         <h3 className="text-sm font-semibold">{title}</h3>
         {caption && <p className="text-xs text-muted-foreground mt-0.5">{caption}</p>}
       </div>
-      {children}
+      {fill ? <div className="flex-1 min-h-0 flex flex-col">{children}</div> : children}
     </Card>
   );
 }
+
+/** In a filled visual the figure and its chart take the remaining height; otherwise the chart keeps its fixed height. */
+const fig = (fill: boolean | undefined) => (fill ? "flex-1 min-h-0 flex flex-col m-0" : undefined);
+const ch = (fill: boolean | undefined, h: string) => (fill ? "aspect-auto w-full flex-1 min-h-[140px]" : `aspect-auto ${h} w-full`.replace("  ", " "));
 
 const Nothing = ({ children }: { children: React.ReactNode }) => (
   <div className="h-40 flex items-center justify-center text-sm text-muted-foreground text-center px-6">{children}</div>
@@ -54,13 +59,13 @@ function Tip({ title, lines }: { title: string; lines: Array<{ color?: string; t
 
 // ── 1. Pipeline funnel ────────────────────────────────────────────────────────
 
-export function FunnelVisual({ steps, active, onStep }: { steps: FunnelStep[]; active: Cross[]; onStep: (s: FunnelStep) => void }) {
+export function FunnelVisual({ steps, active, onStep, fill }: { steps: FunnelStep[]; active: Cross[]; onStep: (s: FunnelStep) => void; fill?: boolean }) {
   const data = steps.map((s) => ({ ...s, axis: s.label, text: `${s.value.toLocaleString("en-US")} ${s.value === 1 ? s.unitOne : s.unit}` }));
   const isActive = (s: FunnelStep) => !!s.cross && active.some((c) => c.dim === s.cross!.dim && c.value === s.cross!.value);
   return (
-    <Visual title="Pipeline" caption="From a lead to a final payment. Click a step to list its rows below.">
-      <figure aria-label={`Pipeline: ${data.map((d) => `${d.text} ${d.label.toLowerCase()}`).join(", ")}`}>
-        <ChartContainer config={cfg(["funnel", "Count"])} className="aspect-auto h-[240px] w-full">
+    <Visual fill={fill} title="Pipeline" caption="From a lead to a final payment. Click a step to list its rows below.">
+      <figure className={fig(fill)} aria-label={`Pipeline: ${data.map((d) => `${d.text} ${d.label.toLowerCase()}`).join(", ")}`}>
+        <ChartContainer config={cfg(["funnel", "Count"])} className={ch(fill, "h-[240px]")}>
           <BarChart data={data} layout="vertical" margin={{ left: 4, right: 12, top: 4, bottom: 4 }}>
             <CartesianGrid horizontal={false} />
             <XAxis type="number" hide domain={[0, (max: number) => Math.max(1, Math.ceil(max * 1.45))]} />
@@ -80,17 +85,18 @@ export function FunnelVisual({ steps, active, onStep }: { steps: FunnelStep[]; a
 
 // ── 2. Money by week ──────────────────────────────────────────────────────────
 
-export function MoneyVisual({ model, active, onSegment }: { model: MoneyModel; active: string | null; onSegment: (status: "paid" | "due" | "overdue") => void }) {
+export function MoneyVisual({ model, active, onSegment, fill }: { model: MoneyModel; active: string | null; onSegment: (status: "paid" | "due" | "overdue") => void; fill?: boolean }) {
   const total = model.buckets.reduce((n, b) => n + b.paid + b.due + b.overdue, 0);
   const dim = (status: string) => (active && active !== status ? 0.35 : 1);
   return (
     <Visual
+      fill={fill}
       title="Money by week"
       caption={<>Dollars falling due in each of the next 26 weeks. Overdue is everything unpaid past its date.{model.noDateCount > 0 && <> {model.noDateCount} unpaid payment{model.noDateCount === 1 ? " has" : "s have"} no date ({money(model.noDate)}) and {model.noDateCount === 1 ? "is" : "are"} not on the chart.</>}{model.laterCount > 0 && <> {money(model.later)} falls due after these 26 weeks.</>}</>}
     >
       {total === 0 ? <Nothing>No payments fall due in the next 26 weeks and none are overdue.</Nothing> : (
-        <figure aria-label={`Money by week: ${money(model.buckets[0]!.overdue)} overdue, ${money(model.buckets.reduce((n, b) => n + b.due, 0))} still due and ${money(model.buckets.reduce((n, b) => n + b.paid, 0))} paid across the next 26 weeks`}>
-          <ChartContainer config={cfg(["paid", "Paid"], ["due", "Still due"], ["overdue", "Overdue"])} className="aspect-auto h-[260px] w-full">
+        <figure className={fig(fill)} aria-label={`Money by week: ${money(model.buckets[0]!.overdue)} overdue, ${money(model.buckets.reduce((n, b) => n + b.due, 0))} still due and ${money(model.buckets.reduce((n, b) => n + b.paid, 0))} paid across the next 26 weeks`}>
+          <ChartContainer config={cfg(["paid", "Paid"], ["due", "Still due"], ["overdue", "Overdue"])} className={ch(fill, "h-[260px]")}>
             <BarChart data={model.buckets} margin={{ top: 18, right: 8, left: 0, bottom: 22 }}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="label" tickLine={false} interval={2} tick={{ fontSize: 11 }} label={{ value: "week of", position: "insideBottom", offset: -14, fontSize: 11 }} />
@@ -175,8 +181,8 @@ function GroupTick({ x, y, payload, rows, onGroup }: { x?: number; y?: number; p
   );
 }
 
-export function TimelineVisual({ model, today, onGroup, onKind }: {
-  model: TimelineModel; today: string; onGroup: (id: string, additive: boolean) => void; onKind: (k: DeadlineKind) => void;
+export function TimelineVisual({ model, today, onGroup, onKind, fill }: {
+  model: TimelineModel; today: string; onGroup: (id: string, additive: boolean) => void; onKind: (k: DeadlineKind) => void; fill?: boolean;
 }) {
   const dark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
   const col = (k: DeadlineKind) => (dark ? KIND_STYLE[k].dark : KIND_STYLE[k].light);
@@ -184,10 +190,10 @@ export function TimelineVisual({ model, today, onGroup, onKind }: {
   const ticks = [-14, 0, 14, 28, 42, 56, 70, 84, 98, 112].filter((d) => d <= model.to);
   const kindsHere = KINDS.filter((k) => model.points.some((p) => p.kind === k));
   return (
-    <Visual title="Deadlines, next 120 days" caption="One row per group. Click a group's name to show only that group; click a marker's colour in the key to list that kind below.">
+    <Visual fill={fill} title="Deadlines, next 120 days" caption="One row per group. Click a group's name to show only that group; click a marker's colour in the key to list that kind below.">
       {model.rows.length === 0 ? <Nothing>No dated deadlines in the next 120 days for these groups.</Nothing> : (
-        <figure aria-label={`Deadline timeline: ${model.points.length} dated items across ${model.rows.length} group${model.rows.length === 1 ? "" : "s"}`}>
-          <ChartContainer config={{}} className="aspect-auto w-full" style={{ height }}>
+        <figure className={fig(fill)} aria-label={`Deadline timeline: ${model.points.length} dated items across ${model.rows.length} group${model.rows.length === 1 ? "" : "s"}`}>
+          <ChartContainer config={{}} className={ch(fill, "")} style={fill ? undefined : { height }}>
             <ScatterChart margin={{ top: 22, right: 18, bottom: 26, left: 4 }}>
               <CartesianGrid />
               <XAxis type="number" dataKey="x" domain={[model.from, model.to]} ticks={ticks} allowDataOverflow tickFormatter={(d: number) => shortDate(addDays(today, d))} tick={{ fontSize: 11 }} label={{ value: "date", position: "insideBottom", offset: -14, fontSize: 11 }} />
@@ -230,17 +236,17 @@ export function TimelineVisual({ model, today, onGroup, onKind }: {
 
 // ── 4. Journey status ─────────────────────────────────────────────────────────
 
-export function JourneyVisual({ bars, active, onSegment }: {
-  bars: JourneyBar[]; active: Cross[]; onSegment: (kind: string, series: "planned" | "sent" | "failed") => void;
+export function JourneyVisual({ bars, active, onSegment, fill }: {
+  bars: JourneyBar[]; active: Cross[]; onSegment: (kind: string, series: "planned" | "sent" | "failed") => void; fill?: boolean;
 }) {
   const total = bars.reduce((n, b) => n + b.planned + b.sent + b.failed + b.skipped, 0);
   const picked = active.find((c) => c.dim === "mk")?.value ?? null;
   const dim = (kind: string) => (picked && picked !== kind ? 0.4 : 1);
   return (
-    <Visual title="Journey emails" caption="Each email in the journey, by how many travelers it is planned for, has gone to, or failed for. Click a part to list those emails (or, for planned, those dates).">
+    <Visual fill={fill} title="Journey emails" caption="Each email in the journey, by how many travelers it is planned for, has gone to, or failed for. Click a part to list those emails (or, for planned, those dates).">
       {total === 0 ? <Nothing>No journey emails are planned for these groups yet.</Nothing> : (
-        <figure aria-label={`Journey emails: ${bars.reduce((n, b) => n + b.sent, 0)} sent, ${bars.reduce((n, b) => n + b.failed, 0)} failed, ${bars.reduce((n, b) => n + b.planned, 0)} planned`}>
-          <ChartContainer config={cfg(["sent", "Sent"], ["failed", "Failed"], ["planned", "Planned"], ["skipped", "Skipped"])} className="aspect-auto h-[300px] w-full">
+        <figure className={fig(fill)} aria-label={`Journey emails: ${bars.reduce((n, b) => n + b.sent, 0)} sent, ${bars.reduce((n, b) => n + b.failed, 0)} failed, ${bars.reduce((n, b) => n + b.planned, 0)} planned`}>
+          <ChartContainer config={cfg(["sent", "Sent"], ["failed", "Failed"], ["planned", "Planned"], ["skipped", "Skipped"])} className={ch(fill, "h-[300px]")}>
             <BarChart data={bars} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 22 }}>
               <CartesianGrid horizontal={false} />
               <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} label={{ value: "emails (one per traveler)", position: "insideBottom", offset: -12, fontSize: 11 }} />
@@ -276,16 +282,18 @@ const CELL: Record<MatrixCell, { text: string; cls: string; icon?: boolean }> = 
   "n/a": { text: "—", cls: "text-muted-foreground" },
 };
 
-export function PaperworkMatrix({ model, active, onCell, onGroup }: {
+export function PaperworkMatrix({ model, active, onCell, onGroup, onTraveler, fill, title, caption }: {
   model: MatrixModel; active: Cross[]; onCell: (docKey: string, status: "signed" | "pending") => void; onGroup: (id: string, additive: boolean) => void;
+  /** Mark 2026-10-25: a traveler's name opens that traveler's page. */
+  onTraveler?: (id: string) => void; fill?: boolean; title?: string; caption?: string;
 }) {
   const doc = active.find((c) => c.dim === "doc")?.value ?? null;
   const st = active.find((c) => c.dim === "pws")?.value ?? null;
   const people = model.groups.reduce((n, g) => n + g.rows.length, 0);
   return (
-    <Visual title="Paperwork matrix" caption="Every traveler against every document they are asked to sign. Click a cell to list that document's rows below; click a group's name to show only that group.">
+    <Visual fill={fill} title={title ?? "Paperwork matrix"} caption={caption ?? "Every traveler against every document they are asked to sign. Click a cell to list that document's rows below; click a group's name to show only that group."}>
       {people === 0 ? <Nothing>No travelers with paperwork to show for these groups.</Nothing> : (
-        <div className="overflow-auto max-h-[460px] border rounded-md">
+        <div className={fill ? "flex-1 min-h-0 overflow-auto border rounded-md" : "overflow-auto max-h-[460px] border rounded-md"}>
           <table className="w-full text-xs border-collapse">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b">
@@ -305,7 +313,9 @@ export function PaperworkMatrix({ model, active, onCell, onGroup }: {
                   </tr>
                   {g.rows.map((r) => (
                     <tr key={r.travelerId} className="border-b last:border-b-0">
-                      <td className="px-2 py-1"><span className="font-medium">{r.name}</span>{r.cabinNum && <span className="text-muted-foreground"> · cabin {r.cabinNum}</span>}</td>
+                      <td className="px-2 py-1">{onTraveler
+                        ? <button type="button" className="font-medium underline decoration-dotted text-left hover:text-primary" onClick={() => onTraveler(r.travelerId)} title={`Open ${r.name}'s page`}>{r.name}</button>
+                        : <span className="font-medium">{r.name}</span>}{r.cabinNum && <span className="text-muted-foreground"> · cabin {r.cabinNum}</span>}</td>
                       {model.columns.map((c) => {
                         const cell = r.cells[c.key] ?? "n/a";
                         const look = CELL[cell];

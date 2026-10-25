@@ -44,7 +44,7 @@ function fixture(): AnalyticsRaw {
   ];
   const travelers: Row[] = [
     traveler("t1", { cabin_id: "c1", is_lead: true, first_name: "Ann", last_name: "Lee", email: "ann.lee@gmail.com", passport_last4: "1234", form_sent_at: "2026-10-01T00:00:00Z", form_submitted_at: "2026-10-02T00:00:00Z" }),
-    traveler("t2", { cabin_id: "c1", first_name: "Bo", last_name: "Lee", email: "bo@example.com", lang: "es", form_sent_at: "2026-10-01T00:00:00Z" }),
+    traveler("t2", { cabin_id: "c1", first_name: "Bo", last_name: "Lee", email: "bo@example.com", lang: "es", form_sent_at: "2026-10-01T00:00:00Z", form_opened_at: "2026-10-05T10:20:00Z", esign_consent_at: "2026-10-05T10:21:00Z" }),
     traveler("t3", { cabin_id: "c2", is_lead: true, first_name: "Cy", last_name: "Diaz", email: null, lang: "es" }),
     traveler("t4", { cabin_id: "c3", first_name: "Di", last_name: "Released", email: "di@example.com" }), // on a released cabin: left out
     traveler("t5", { group_id: "g2", cabin_id: "c4", first_name: "Ed", last_name: "Sailed", email: "ed@example.com" }),
@@ -203,6 +203,8 @@ test("paperwork: one row per traveler and required document, signed or pending",
   assert.equal(t1.every((p) => p.signatureId === null && p.hasCopy === true && p.sealed === false), true, "a copy on file whose signature row carries no id: no id is invented (the workspace then shows no open button)");
   const tr = (id: string) => a.travelers.find((t) => t.id === id)!;
   assert.deepEqual([tr("t1").fullySigned, tr("t2").fullySigned, tr("t3").fullySigned], [true, false, false]);
+  assert.deepEqual([tr("t1").formOpenedAt, tr("t1").consentAt, tr("t1").copiesSentAt], [null, null, null], "no opening, consent or copies on file: nulls, never a guess");
+  assert.deepEqual([tr("t2").formOpenedAt, tr("t2").consentAt, tr("t2").copiesSentAt], ["2026-10-05T10:20:00Z", "2026-10-05T10:21:00Z", null]);
   assert.equal(tr("t2").docsSigned, 1);
   assert.equal(tr("t2").docsRequired, t2.length);
   assert.equal(tr("t2").lang, "es");
