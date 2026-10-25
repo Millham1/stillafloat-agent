@@ -26,7 +26,7 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .gp-hero.on,.gp-host.on{opacity:1}
 .gp-lockup{display:flex;justify-content:center;padding:14px 12px 0}  /* Mark 2026-10-24: the group's label sits under the picture */
 .plaque{background:none;border:0;border-radius:0;padding:2px 0 0;max-width:100%;text-align:center}  /* Mark 2026-10-24: no pill on the special pages */
-.plaque span{font-family:Pacifico,'Brush Script MT',cursive;font-weight:400;letter-spacing:0;text-transform:none;font-size:clamp(30px,4.2vw,42px);line-height:1.25;color:#ffca4f;text-shadow:0 2px 0 rgba(0,0,0,.35)}  /* Mark 2026-10-24: the brand's accent script (BRAND_GUIDE: Pacifico), gold, no pill: fun, party, not the website's label */
+.plaque span{font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:15px;line-height:1.4;color:#fff}  /* Mark 2026-10-24: the label's FONT is his pick (candidates shown); size, colour and case stay as they were until he says otherwise */
 .plaque span::before,.plaque span::after{content:"";display:inline-block;width:22px;height:2px;background:var(--gold);vertical-align:middle;margin:0 10px}
 
 /* welcome: the hosts' note, one paragraph per line; an all-capitals line ending in "!" is the bold payoff; signed in the gold accent */
