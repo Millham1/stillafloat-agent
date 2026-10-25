@@ -1585,7 +1585,7 @@ export default [
       for (const needle of ["/api/groups/analytics", "x-affiliate-token", "/api/auth-check", "saf_group_bookings_token", "form-link/send"]) {
         t.ok(js.text.includes(needle), `the Group Bookings program no longer mentions ${needle}`);
       }
-      t.ok(!js.text.includes("Editorial Command Center"), "the Group Bookings program carries the dashboard (it must be its own app)");
+      t.ok(!js.text.includes("Still Afloat Command Center"), "the Group Bookings program carries the dashboard (it must be its own app)");
     },
   },
   {

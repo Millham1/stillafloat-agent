@@ -140,7 +140,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <h1 className="text-sm font-semibold tracking-tight flex-1 truncate">Editorial Command Center</h1>
+          <h1 className="text-sm font-semibold tracking-tight flex-1 truncate">Still Afloat Command Center</h1>
           <a
             href="/"
             target="_blank"
