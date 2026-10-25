@@ -13,7 +13,8 @@ const db = (): any => getSupabase();
 const MESSAGE_COLS = "id, group_id, cabin_id, traveler_id, template, to_email, status, scheduled_for, sent_at, dedupe_key, created_at, updated_at, meta";
 const INTEREST_COLS = "id, group_id, first_name, last_name, email, lang, cabin_type, guests, status, created_at";
 const DOCUMENT_COLS = "id, group_id, cabin_id, traveler_id, kind, title, status, owner, due_date";
-const SIGNATURE_COLS = "group_id, traveler_id, doc_key, signer_role, signed_at";
+// id, pdf_path and sealed only become a signature id and two yes/no flags in the payload; the path never leaves (Mark 2026-10-25: open the signed copy from the workspace).
+const SIGNATURE_COLS = "id, group_id, traveler_id, doc_key, signer_role, signed_at, pdf_path, sealed";
 
 export async function loadAnalyticsRaw(): Promise<AnalyticsRaw> {
   const table = (name: string, cols: string, what = name) =>

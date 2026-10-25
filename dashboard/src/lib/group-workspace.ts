@@ -45,6 +45,15 @@ export interface WPayment {
 export interface WPaperwork {
   groupId: string; groupName: string; travelerId: string; travelerName: string; cabinNum: string | null; travelerLang: string;
   docKey: string; docTitle: string; status: "signed" | "pending"; signedAt: string | null;
+  /** Mark 2026-10-25: the signature's id (null while pending), whether a signed copy is kept, whether it carries our seal. */
+  signatureId: string | null; hasCopy: boolean; sealed: boolean;
+}
+
+/** A traveler's signed copies the workspace can open, in packet order: only rows with a signature id AND a kept copy. */
+export function signedCopies(paperwork: WPaperwork[], travelerId: string): Array<{ signatureId: string; groupId: string; docTitle: string; signedAt: string | null; sealed: boolean }> {
+  return paperwork
+    .filter((p) => p.travelerId === travelerId && p.status === "signed" && p.hasCopy && !!p.signatureId)
+    .map((p) => ({ signatureId: p.signatureId as string, groupId: p.groupId, docTitle: p.docTitle, signedAt: p.signedAt, sealed: p.sealed }));
 }
 export interface WMessage {
   id: string; groupId: string; groupName: string; travelerId: string | null; travelerName: string | null; travelerLang: string | null;

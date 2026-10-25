@@ -6,6 +6,7 @@ import {
 } from "@/lib/group-workspace";
 import { Pill, STATUS_STYLE, money } from "./group-workspace-parts";
 import { Badge } from "@/components/ui/badge";
+import { CopyButton, TravelerActions } from "./group-workspace-actions";
 
 // The detail grids of the Group Bookings Workspace: one per kind of row, each with a quick filter, sortable columns, a row
 // count, an export of exactly the rows on screen, and a click on a row that opens the group's file at the matching section.
@@ -19,6 +20,8 @@ export interface Column<T> {
   sort?: (r: T) => string | number | null;
   align?: "right";
   min?: string;
+  /** A column of buttons (Mark 2026-10-25): not searched, sorted or exported, and a click in it never opens the row. */
+  action?: true;
 }
 
 type Tone = "slate" | "green" | "blue" | "red" | "amber" | "violet";
@@ -78,6 +81,7 @@ export function columnsFor(tab: Tab): Column<any>[] {
       { key: "docs", label: "Documents signed", get: (r: WTraveler) => r.docsSigned, render: (r: WTraveler) => `${r.docsSigned} of ${r.docsRequired}`, align: "right" },
       { key: "full", label: "Fully signed", get: (r: WTraveler) => r.fullySigned, render: (r: WTraveler) => <Pill tone={r.fullySigned ? "green" : "amber"}>{r.fullySigned ? "yes" : "no"}</Pill> },
       { key: "pp", label: "Passport on file", get: (r: WTraveler) => r.passportOnFile, render: (r: WTraveler) => (r.passportOnFile ? "yes" : "no") },
+      { key: "act", label: "Paperwork", get: () => null, render: (r: WTraveler) => <TravelerActions row={r} />, action: true, min: "19rem" },
     ];
     case "payments": return [
       { key: "group", label: "Group", get: (r: WPayment) => r.groupName, render: GroupCell, min: "10rem" },
@@ -96,6 +100,7 @@ export function columnsFor(tab: Tab): Column<any>[] {
       { key: "doc", label: "Document", get: (r: WPaperwork) => r.docTitle },
       { key: "status", label: "Status", get: (r: WPaperwork) => r.status, render: (r: WPaperwork) => <Pill tone={r.status === "signed" ? "green" : "amber"}>{r.status}</Pill> },
       { key: "at", label: "Signed on", get: (r: WPaperwork) => r.signedAt, render: (r: WPaperwork) => when(r.signedAt), sort: (r: WPaperwork) => r.signedAt },
+      { key: "copy", label: "Signed copy", get: () => null, render: (r: WPaperwork) => <CopyButton row={r} />, action: true },
     ];
     case "messages": return [
       { key: "group", label: "Group", get: (r: WMessage) => r.groupName, render: GroupCell, min: "10rem" },
@@ -154,6 +159,7 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
   tab: Tab; rows: T[]; onOpen: (row: T) => void; today: string;
 }) {
   const columns = useMemo(() => columnsFor(tab) as Column<T>[], [tab]);
+  const dataCols = useMemo(() => columns.filter((c) => !c.action), [columns]);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   const [limit, setLimit] = useState(PAGE);
@@ -162,8 +168,8 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
 
   const shown = useMemo(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-    let out = words.length ? rows.filter((r) => { const hay = columns.map((c) => String(c.get(r) ?? "")).join(" ").toLowerCase(); return words.every((w) => hay.includes(w)); }) : rows;
-    const col = sort ? columns.find((c) => c.key === sort.key) : null;
+    let out = words.length ? rows.filter((r) => { const hay = dataCols.map((c) => String(c.get(r) ?? "")).join(" ").toLowerCase(); return words.every((w) => hay.includes(w)); }) : rows;
+    const col = sort ? dataCols.find((c) => c.key === sort.key) : null;
     if (col && sort) {
       const key = col.sort ?? ((r: T) => { const v = col.get(r); return typeof v === "boolean" ? Number(v) : (v as string | number | null | undefined) ?? null; });
       out = [...out].sort((a, b) => {
@@ -175,9 +181,9 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
       });
     }
     return out;
-  }, [rows, columns, query, sort]);
+  }, [rows, dataCols, query, sort]);
 
-  const exportCsv = () => download(`group-workspace-${tab}-${today}.csv`, toCsv(columns.map((c) => c.label), shown.map((r) => columns.map((c) => c.get(r)))));
+  const exportCsv = () => download(`group-workspace-${tab}-${today}.csv`, toCsv(dataCols.map((c) => c.label), shown.map((r) => dataCols.map((c) => c.get(r)))));
   const filtered = query.trim() !== "";
   const open = (r: T) => onOpen(r);
 
@@ -202,6 +208,7 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
             <tr className="border-b">
               {columns.map((c) => {
                 const on = sort?.key === c.key;
+                if (c.action) return <th key={c.key} className="px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap text-left" style={{ minWidth: c.min }}>{c.label}</th>;
                 return (
                   <th key={c.key} className={`px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap ${c.align === "right" ? "text-right" : "text-left"}`} style={{ minWidth: c.min }} aria-sort={on ? (sort!.dir === 1 ? "ascending" : "descending") : "none"}>
                     <button type="button" className={`inline-flex items-center gap-1 hover:text-foreground ${on ? "text-foreground" : ""}`}
@@ -222,7 +229,7 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
             {shown.slice(0, limit).map((r, i) => (
               <tr key={(r.id ?? "") + i} tabIndex={0} onClick={() => open(r)} onKeyDown={(e) => { if (e.key === "Enter") open(r); }}
                 className="cursor-pointer hover:bg-muted/40 focus:bg-muted/40 focus:outline-none" title="Open this group's file">
-                {columns.map((c) => <td key={c.key} className={`px-3 py-1.5 whitespace-nowrap ${c.align === "right" ? "text-right tabular-nums" : ""}`}>{c.render ? c.render(r) : plain(c.get(r))}</td>)}
+                {columns.map((c) => <td key={c.key} className={`px-3 py-1.5 ${c.action ? "cursor-default align-top" : "whitespace-nowrap"} ${c.align === "right" ? "text-right tabular-nums" : ""}`}>{c.render ? c.render(r) : plain(c.get(r))}</td>)}
                 <td className="pr-2 text-muted-foreground"><ChevronRight className="w-4 h-4" aria-hidden="true" /></td>
               </tr>
             ))}

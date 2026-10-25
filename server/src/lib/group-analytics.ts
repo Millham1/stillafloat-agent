@@ -36,7 +36,7 @@ export interface AnalyticsRaw {
   travel: Row[];
   checklist: Row[];
   documents: Row[];
-  /** group_signatures: group_id, traveler_id, doc_key, signer_role, signed_at — never the answers. */
+  /** group_signatures: id, group_id, traveler_id, doc_key, signer_role, signed_at, pdf_path, sealed — never the answers; pdf_path becomes a yes/no. */
   signatures: Row[];
   /** group_messages: no body. `dedupe_key`, `meta` and `updated_at` are read only to plan the journey. */
   messages: Row[];
@@ -84,6 +84,8 @@ export interface AnalyticsPayment {
 export interface AnalyticsPaperwork {
   groupId: string; groupName: string; travelerId: string; travelerName: string; cabinNum: string | null; travelerLang: string;
   docKey: string; docTitle: string; status: "signed" | "pending"; signedAt: string | null;
+  /** Mark 2026-10-25: the workspace opens the signed copy itself. The signature's id (null while pending), whether a copy is kept, and whether it carries our seal. */
+  signatureId: string | null; hasCopy: boolean; sealed: boolean;
 }
 
 export interface AnalyticsMessage {
@@ -288,7 +290,8 @@ export function buildAnalytics(raw: AnalyticsRaw, now: Date = new Date()): Group
       const required = packetFor({ group: g, cabin, traveler: t });
       const signedKeys = new Set(signatures.filter((x) => x["traveler_id"] === t["id"]).map((x) => String(x["doc_key"])));
       const signedAt = new Map<string, string | null>();
-      for (const x of signatures) if (x["traveler_id"] === t["id"] && !signedAt.has(String(x["doc_key"]))) signedAt.set(String(x["doc_key"]), iso(x["signed_at"]));
+      const sigOf = new Map<string, Row>();
+      for (const x of signatures) if (x["traveler_id"] === t["id"] && !signedAt.has(String(x["doc_key"]))) { signedAt.set(String(x["doc_key"]), iso(x["signed_at"])); sigOf.set(String(x["doc_key"]), x); }
       const docsSigned = required.filter((k) => signedKeys.has(k)).length;
       const complete = required.length > 0 && docsSigned === required.length;
       if (complete) fullySigned++;
@@ -307,6 +310,8 @@ export function buildAnalytics(raw: AnalyticsRaw, now: Date = new Date()): Group
         out.paperwork.push({
           groupId: gid, groupName: gname, travelerId: String(t["id"]), travelerName: name, cabinNum: cabinNumOf(t["cabin_id"]), travelerLang: lang,
           docKey: key, docTitle: docTitle(key), status: signedKeys.has(key) ? "signed" : "pending", signedAt: signedAt.get(key) ?? null,
+          signatureId: sigOf.has(key) && sigOf.get(key)!["id"] ? String(sigOf.get(key)!["id"]) : null,
+          hasCopy: !!(sigOf.get(key)?.["pdf_path"]), sealed: !!(sigOf.get(key)?.["sealed"]),
         });
       }
     }

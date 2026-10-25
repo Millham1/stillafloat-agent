@@ -34,7 +34,7 @@ async function copyText(text: string): Promise<void> {
 
 // ── One traveler's row: status chip and the two link buttons ─────────────────
 
-function LinkBox({ url, blanks }: { url: string; blanks?: string[] }) {
+export function LinkBox({ url, blanks }: { url: string; blanks?: string[] }) {
   const { toast } = useToast();
   return (
     <div className="mt-1 p-2 border rounded bg-muted/30 space-y-1 text-xs min-w-[16rem]">
