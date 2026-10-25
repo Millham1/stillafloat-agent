@@ -15,18 +15,25 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .preview-bar{background:#ffd21f;color:#07183f;text-align:center;font-weight:700;padding:10px 16px;font-size:18px}
 
 /* hero: the group's own top picture (look.heroUrl) replaces the generic one and fades in once it has loaded. */
-.gp-banner{position:relative;overflow:hidden;height:clamp(300px,76vw,380px);background:url('/assets/images/wheres-my-ship-hero.png') center 46%/cover no-repeat}
+/* Mark 2026-10-25: the top picture goes EDGE TO EDGE (the page column stays 640px). --gp-h is its height; the left insets are sized from it so two fit. */
+.gp-banner{--gp-h:clamp(300px,48vw,640px);position:relative;overflow:hidden;height:var(--gp-h);width:100vw;margin-left:calc(50% - 50vw);background:url('/assets/images/wheres-my-ship-hero.png') center 46%/cover no-repeat}
+html{overflow-x:clip}
 .gp-banner.custom{background-image:none}
-.gp-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 46%;z-index:0;opacity:0;transition:opacity .5s ease}
+.gp-hero{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 70%;z-index:0;opacity:0;transition:opacity .5s ease}
 /* The hosts' photo (look.hostPhotoUrl): small, framed, in the TOP-RIGHT corner of the picture, never near the centre of the hero (Mark 2026-10-20: "the inset is not in the correct place"; "it is cutting off the lighthouse"). At 29% (143-340px, Mark 2026-10-24: 30% larger) it still clears the lighthouse in the centre. */
 .gp-host{position:absolute;top:16px;right:16px;z-index:5;box-sizing:border-box;width:clamp(143px,29%,340px);aspect-ratio:4/3;object-fit:cover;object-position:center 30%;
   border:0;border-radius:0;box-shadow:none;opacity:0;transition:opacity .5s ease;
   -webkit-mask-image:radial-gradient(ellipse 58% 58% at 50% 50%,#000 38%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(ellipse 58% 58% at 50% 50%,#000 38%,rgba(0,0,0,0) 100%)}
 /* Mark 2026-10-24: the hosts' photo fades at its edges into the picture; no hard white frame. */
-.gp-hero.on,.gp-host.on{opacity:1}
+.gp-hero.on,.gp-host.on,.gp-side.on{opacity:1}
+/* Mark 2026-10-25: two small pictures on the LEFT of the top picture (upper, lower), the same fade as the hosts' photo; the hosts stay top-right. */
+.gp-side{position:absolute;left:16px;z-index:5;box-sizing:border-box;width:min(29%,calc((var(--gp-h) - 44px) * 2 / 3));aspect-ratio:4/3;object-fit:cover;object-position:center;border:0;opacity:0;transition:opacity .5s ease;
+  -webkit-mask-image:radial-gradient(ellipse 58% 58% at 50% 50%,#000 38%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(ellipse 58% 58% at 50% 50%,#000 38%,rgba(0,0,0,0) 100%)}
+.gp-side-1{top:16px}
+.gp-side-2{bottom:16px}
 .gp-lockup{display:flex;justify-content:center;padding:14px 12px 0}  /* Mark 2026-10-24: the group's label sits under the picture */
 .plaque{background:none;border:0;border-radius:0;padding:2px 0 0;max-width:100%;text-align:center}  /* Mark 2026-10-24: no pill on the special pages */
-.plaque span{font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:15px;line-height:1.4;color:#fff}  /* Mark 2026-10-24: the label's FONT is his pick (candidates shown); size, colour and case stay as they were until he says otherwise */
+.plaque span{font-family:'Luckiest Guy','Baloo 2',sans-serif;font-weight:400;letter-spacing:.02em;text-transform:uppercase;font-size:clamp(22px,7vw,30px);line-height:1.2;color:#fff}  /* Mark 2026-10-25: row C of the font sheet, exactly as shown: Luckiest Guy (one weight, 400) at 30px, .02em; white, centred, the dashes, no pill, unchanged */
 .plaque span::before,.plaque span::after{content:"";display:inline-block;width:22px;height:2px;background:var(--gold);vertical-align:middle;margin:0 10px}
 
 /* welcome: the hosts' note, one paragraph per line; an all-capitals line ending in "!" is the bold payoff; signed in the gold accent */

@@ -9,7 +9,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://stillafloatcruising.com/assets/images/still_afloat_logo.png">
-<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Luckiest+Guy&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/group-page.css?v=20261024a">
 </head>
 <body>
@@ -130,7 +130,7 @@
   var T = ES ? {
     loading:'Cargando la invitación…', gone:'Esta página no está disponible. Si recibió el enlace de su grupo, escriba a mark@stillafloatcruising.com.',
     preview:'VISTA PREVIA — solo usted puede ver esta página hasta que la apruebe.',
-    hosts:'Sus anfitriones', other:'English', title:'Crucero en grupo',
+    hosts:'Sus anfitriones', insetsNote:'Recuadros: imágenes ilustrativas', other:'English', title:'Crucero en grupo',
     welcome_h:'¡Bienvenidos!',
     ask_h:'Usted tocó… ¡así que hagámoslo oficial!', ask_p:'Díganos quién viene y cómo comunicarnos con usted… eso es todo. Nada que pagar, nada que firmar, ¡y Mark se encarga del resto!',
     f_name:'Su nombre', ph_name:'Nombre y apellido', f_contact:'Correo electrónico o teléfono', ph_contact:'El que prefiera que usemos', f_guests:'¿Cuántos son?',
@@ -158,7 +158,7 @@
   } : {
     loading:'Loading the invitation…', gone:'This page is not available. If your group sent you the link, email mark@stillafloatcruising.com.',
     preview:'PREVIEW — only you can see this page until you approve it.',
-    hosts:'Your hosts', other:'Español', title:'Group Cruise',
+    hosts:'Your hosts', insetsNote:'Insets: illustrative imagery', other:'Español', title:'Group Cruise',
     welcome_h:'Welcome!',
     ask_h:"You tapped… so let's make it official!", ask_p:"Tell us who's coming and how to reach you… that's all it takes. Nothing to pay, nothing to sign, and Mark takes it from there!",
     f_name:'Your name', ph_name:'First and last', f_contact:'Email or phone', ph_contact:"Whichever you'd rather we use", f_guests:'How many of you',
@@ -230,6 +230,8 @@
     if(hero) banner.insertBefore(hero, banner.firstChild);
     var host = lookImage(look.hostPhotoUrl, 'gp-host', T.hosts);
     if(host) banner.appendChild(host);
+    // Mark 2026-10-25: two small pictures on the LEFT of the top picture, upper then lower; the hosts stay top-right
+    [['gp-side gp-side-1', look.insetTopUrl], ['gp-side gp-side-2', look.insetBottomUrl]].forEach(function(s){ var img = lookImage(s[1], s[0], ''); if(img) banner.appendChild(img); });
     // the two picture bands: the band is there while the picture loads, and goes if the picture does not load
     [['gp-photo-plan', look.planPhotoUrl], ['gp-photo-cabin', look.cabinPhotoUrl]].forEach(function(b){
       var band = $(b[0]);
@@ -347,7 +349,9 @@
     // The footer: the business named as it files, and the credit line of the pictures shown.
     $('gp-legal').textContent = f.business.legalName + ' · ' + f.business.email;
     var credits = (look.credits || []).filter(function(x){ return typeof x === 'string' && x.trim(); });
-    if(credits.length){ $('gp-credits').textContent = creditsLine(credits); show('gp-credits'); }
+    var creditText = credits.length ? creditsLine(credits) : '';
+    if(look.insetTopUrl || look.insetBottomUrl) creditText += (creditText ? ' · ' : '') + T.insetsNote;   // the approved poster carries this note under the same insets
+    if(creditText){ $('gp-credits').textContent = creditText; show('gp-credits'); }
 
     siteKey = d.turnstileSiteKey || '';
     if(siteKey){

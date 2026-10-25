@@ -583,6 +583,24 @@ test("the group's top picture and hosts' photo still go to the banner, and a lin
   assert.match(css("en"), /\.gp-host\{position:absolute;top:16px;right:16px;[^}]*width:clamp\(143px,29%,340px\)/);
 });
 
+test("Mark 2026-10-25: the two small pictures on the LEFT of the top picture load after the hosts' photo, sit top-left and bottom-left with the same fade, the top picture runs edge to edge, and the poster's note joins the credits", async () => {
+  const p = visit("en", answerFor("en", { answers: { hero_photo: "https://stillafloatcruising.com/h.jpg", host_photo: "https://stillafloatcruising.com/hosts.jpg", hero_inset_top: "https://stillafloatcruising.com/sunset.jpg", hero_inset_bottom: "https://stillafloatcruising.com/sunrise.jpg" } }));
+  await p.ready();
+  assert.deepEqual(p.el("query:.gp-banner").kids.map((k) => [k.className, k.src]), [["gp-hero", "https://stillafloatcruising.com/h.jpg"], ["gp-host", "https://stillafloatcruising.com/hosts.jpg"], ["gp-side gp-side-1", "https://stillafloatcruising.com/sunset.jpg"], ["gp-side gp-side-2", "https://stillafloatcruising.com/sunrise.jpg"]]);
+  assert.equal(p.el("gp-credits").hidden, false);
+  assert.equal(p.el("gp-credits").textContent, "Insets: illustrative imagery");
+  const one = visit("en", answerFor("en", { answers: { hero_inset_top: "http://stillafloatcruising.com/x.jpg", hero_inset_bottom: "https://stillafloatcruising.com/sunrise.jpg" } }));
+  await one.ready();
+  assert.deepEqual(one.el("query:.gp-banner").kids.map((k) => k.className), ["gp-side gp-side-2"], "a link that is not https shows nothing; the other still shows");
+  const none = visit("en", answerFor("en"));
+  await none.ready();
+  assert.equal(none.el("gp-credits").hidden, true, "no insets, no note");
+  const c = css("en");
+  assert.match(c, /\.gp-banner\{--gp-h:clamp\(300px,48vw,640px\);position:relative;overflow:hidden;height:var\(--gp-h\);width:100vw;margin-left:calc\(50% - 50vw\)/, "edge to edge");
+  assert.match(c, /\.gp-side\{position:absolute;left:16px;[^}]*width:min\(29%,calc\(\(var\(--gp-h\) - 44px\) \* 2 \/ 3\)\);aspect-ratio:4\/3;[^}]*mask-image:radial-gradient/, "left, two fit, faded like the hosts");
+  assert.match(c, /\.gp-side-1\{top:16px\}/); assert.match(c, /\.gp-side-2\{bottom:16px\}/);
+});
+
 test("the language link shows only for a group in both languages and points at the other page with the same code", async () => {
   const one = visit("en", answerFor("en"));
   await one.ready();

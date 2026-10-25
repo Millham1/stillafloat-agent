@@ -70,6 +70,9 @@ export const INTERVIEW: InterviewQuestion[] = [
   { key: "taxes_included", type: "yesno", label: "Do the quoted cabin prices include taxes and port fees?", fallback: false, hint: "Yes: the page says the price is per person with taxes and port fees included. No: the page keeps its usual line, that the price, taxes, fees and port expenses are confirmed in writing when they book." },
   { key: "hero_photo", type: "text", label: "Top picture for the group page (link, optional)", hint: "Replaces the site's generic picture at the top of the page. Paste the link of a picture kept on stillafloatcruising.com or in the site's own storage; a link anywhere else is ignored. Left blank, the page keeps the usual picture." },
   { key: "host_photo", type: "text", label: "Photo of the hosts, shown small in the top-right corner (link, optional)", hint: "A small framed photo of the hosts in the top-right corner of the top picture. Same rule: a link on stillafloatcruising.com or in the site's own storage. Left blank, no photo is shown." },
+  // Mark 2026-10-25 ("the sunset and sunrise hand hold images on the left side, Ceci and I on the top right where it is"): two small pictures on the LEFT of the top picture, upper and lower, fading into it like the hosts' photo. Optional; the same own-hosts rule.
+  { key: "hero_inset_top", type: "text", label: "Small picture on the left of the top picture, upper (link, optional)", hint: "Shown small at the top-left of the top picture, fading into it like the hosts' photo. Same rule: a link on stillafloatcruising.com or in the site's own storage; a link anywhere else is ignored. Left blank, nothing is shown there." },
+  { key: "hero_inset_bottom", type: "text", label: "Small picture on the left of the top picture, lower (link, optional)", hint: "Shown small at the bottom-left of the top picture, under the upper one. Same rule. Left blank, nothing is shown there." },
   // Mark 2026-10-23 (design v2 of the group page): a picture band above the day-by-day plan and another above the cabin prices. Optional; the same own-hosts rule.
   { key: "photo_plan", type: "text", label: "Picture above the day-by-day plan (link, optional)", hint: "A wide picture shown above the plan. Same rule as the others: a link on stillafloatcruising.com or in the site's own storage; a link anywhere else is ignored. Left blank, no picture is shown there." },
   { key: "photo_cabin", type: "text", label: "Picture above the cabin prices (link, optional)", hint: "A wide picture shown above the cabin prices. Same rule: a link on stillafloatcruising.com or in the site's own storage. Left blank, no picture is shown there." },
@@ -177,6 +180,8 @@ export function safeImageUrl(u: unknown): string | null {
 
 export interface PageLook {
   heroUrl: string | null; hostPhotoUrl: string | null;
+  /** The two small pictures on the LEFT of the top picture, upper then lower (Mark 2026-10-25); null when not given or refused. */
+  insetTopUrl: string | null; insetBottomUrl: string | null;
   /** The picture band above the day-by-day plan, and the one above the cabin prices (Mark 2026-10-23); null when not given or refused. */
   planPhotoUrl: string | null; cabinPhotoUrl: string | null;
   taxesIncluded: boolean; hostNames: string; label: string | null;
@@ -250,6 +255,7 @@ export function dayNotes(answers: Record<string, string | boolean>): Record<stri
 export function pageLook(answers: Record<string, string | boolean>, attributions: readonly string[] = []): PageLook {
   return {
     heroUrl: safeImageUrl(answers["hero_photo"]), hostPhotoUrl: safeImageUrl(answers["host_photo"]),
+    insetTopUrl: safeImageUrl(answers["hero_inset_top"]), insetBottomUrl: safeImageUrl(answers["hero_inset_bottom"]),
     planPhotoUrl: safeImageUrl(answers["photo_plan"]), cabinPhotoUrl: safeImageUrl(answers["photo_cabin"]),
     taxesIncluded: answers["taxes_included"] === true, hostNames: hostNames(answers), label: pageLabel(answers),
     dayNotes: dayNotes(answers),

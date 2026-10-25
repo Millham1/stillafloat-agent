@@ -143,7 +143,7 @@ async function call(method: string, path: string, o: { body?: unknown; token?: b
 }
 
 const pageOf = (lang: "en" | "es" = "en") => call("GET", `/group-page/${CODE}?lang=${lang}`);
-const NO_LOOK = { heroUrl: null, hostPhotoUrl: null, planPhotoUrl: null, cabinPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null, dayNotes: {}, credits: [] };
+const NO_LOOK = { heroUrl: null, hostPhotoUrl: null, insetTopUrl: null, insetBottomUrl: null, planPhotoUrl: null, cabinPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null, dayNotes: {}, credits: [] };
 
 test("a group that says nothing about its look gets a look block of nulls and false: the page is unchanged", async () => {
   marketing = { pitch: "Come along.", audience: "a", occasion: "b", why_sailing: "c" };
@@ -195,11 +195,11 @@ test("taxes_included is a boolean on the page whatever the interview holds", asy
   }
 });
 
-test("the look block holds exactly nine names, and the raw answers are not in the public answer", async () => {
+test("the look block holds exactly eleven names, and the raw answers are not in the public answer", async () => {
   marketing = { pitch: "Come along.", hero_photo: "https://stillafloatcruising.com/a.jpg", host_photo: "https://stillafloatcruising.com/b.jpg", taxes_included: true, cta_line: "Join the fun!", reference: "a private note", day_notes: "May 11: a note" };
   const r = await pageOf();
-  assert.deepEqual(Object.keys(r.json["look"]).sort(), ["cabinPhotoUrl", "credits", "dayNotes", "heroUrl", "hostNames", "hostPhotoUrl", "label", "planPhotoUrl", "taxesIncluded"]);
-  for (const k of ["hero_photo", "host_photo", "photo_plan", "photo_cabin", "day_notes", "taxes_included", "host_names", "page_label", "reference", "pitch"]) {
+  assert.deepEqual(Object.keys(r.json["look"]).sort(), ["cabinPhotoUrl", "credits", "dayNotes", "heroUrl", "hostNames", "hostPhotoUrl", "insetBottomUrl", "insetTopUrl", "label", "planPhotoUrl", "taxesIncluded"]);
+  for (const k of ["hero_photo", "host_photo", "hero_inset_top", "hero_inset_bottom", "photo_plan", "photo_cabin", "day_notes", "taxes_included", "host_names", "page_label", "reference", "pitch"]) {
     assert.ok(!(k in r.json["facts"]) && !(k in r.json["look"]) && !(k in r.json), `${k} leaks into the public answer`);
   }
   assert.ok(!r.text.includes("a private note"));
@@ -221,7 +221,7 @@ test("the dashboard's interview list carries the look questions after the call t
   assert.equal(r.status, 200);
   const keys = (r.json["interview"] as Array<{ key: string }>).map((q) => q.key);
   const i = keys.indexOf("cta_line");
-  assert.deepEqual(keys.slice(i + 1, i + 7), ["taxes_included", "hero_photo", "host_photo", "photo_plan", "photo_cabin", "host_names"]);
+  assert.deepEqual(keys.slice(i + 1, i + 9), ["taxes_included", "hero_photo", "host_photo", "hero_inset_top", "hero_inset_bottom", "photo_plan", "photo_cabin", "host_names"]);
   assert.deepEqual(keys.slice(keys.indexOf("page_label"), keys.indexOf("page_label") + 2), ["page_label", "day_notes"]);
   const byKey = Object.fromEntries((r.json["interview"] as Array<{ key: string; type: string; label: string; required?: boolean }>).map((q) => [q.key, q]));
   assert.equal(byKey["taxes_included"].type, "yesno");
@@ -233,7 +233,7 @@ test("the dashboard's interview list carries the look questions after the call t
   assert.equal(byKey["photo_cabin"].label, "Picture above the cabin prices (link, optional)");
   assert.equal(byKey["day_notes"].type, "long");
   assert.equal(byKey["day_notes"].label, "A note for any day of the plan (optional)");
-  for (const k of ["taxes_included", "hero_photo", "host_photo", "photo_plan", "photo_cabin", "host_names", "day_notes"]) assert.notEqual(byKey[k].required, true);
+  for (const k of ["taxes_included", "hero_photo", "host_photo", "hero_inset_top", "hero_inset_bottom", "photo_plan", "photo_cabin", "host_names", "day_notes"]) assert.notEqual(byKey[k].required, true);
   // the answers the screen starts from carry them too (so the form shows what is saved)
   assert.equal(r.json["answers"].taxes_included, false);
   assert.equal(r.json["answers"].hero_photo, "");

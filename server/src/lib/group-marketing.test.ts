@@ -902,7 +902,7 @@ test("the interview has the optional look questions right after the call to acti
   const keys = INTERVIEW.map((q) => q.key);
   const i = keys.indexOf("cta_line");
   assert.deepEqual(keys.slice(i + 1, i + 4), ["taxes_included", "hero_photo", "host_photo"]);
-  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "photo_plan", "photo_cabin", "host_names", "page_label", "day_notes", "upgrade_perks", "tone", "show_prices", "show_rating"]);
+  assert.deepEqual(keys, ["pitch", "picture", "occasion_line", "reference", "audience", "occasion", "why_sailing", "who_fits", "organizer_quote", "extras", "cta_line", "taxes_included", "hero_photo", "host_photo", "hero_inset_top", "hero_inset_bottom", "photo_plan", "photo_cabin", "host_names", "page_label", "day_notes", "upgrade_perks", "tone", "show_prices", "show_rating"]);
   // Mark 2026-10-23 (design v2 of the group page): two more picture links and a note for any day of the plan, all optional
   const byKey = Object.fromEntries(INTERVIEW.map((q) => [q.key, q]));
   assert.equal(byKey["photo_plan"]!.type, "text"); assert.equal(byKey["photo_plan"]!.label, "Picture above the day-by-day plan (link, optional)");
@@ -997,7 +997,7 @@ test("safeImageUrl takes the storage host from SUPABASE_URL, and falls back to t
   withSupabaseUrl("not a url", () => { assert.equal(safeImageUrl(other), null); assert.equal(safeImageUrl("https://stillafloatcruising.com/a.jpg"), "https://stillafloatcruising.com/a.jpg", "our own host still works"); });
 });
 
-const NO_LOOK = { heroUrl: null, hostPhotoUrl: null, planPhotoUrl: null, cabinPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null, dayNotes: {}, credits: [] };
+const NO_LOOK = { heroUrl: null, hostPhotoUrl: null, insetTopUrl: null, insetBottomUrl: null, planPhotoUrl: null, cabinPhotoUrl: null, taxesIncluded: false, hostNames: "Mark", label: null, dayNotes: {}, credits: [] };
 
 test("pageLook passes only validated values: nulls for anything absent or refused, a real boolean for taxes", () => {
   withSupabaseUrl(SUPABASE_BASE, () => {
@@ -1014,7 +1014,7 @@ test("pageLook passes only validated values: nulls for anything absent or refuse
     for (const bad of ["https://example.com/h.jpg", 'https://stillafloatcruising.com/h.jpg")', "data:image/png;base64,AAAA", "https://stillafloatcruising.com/h (1).jpg"]) {
       assert.deepEqual(pageLook(normalizeAnswers({ hero_photo: bad, host_photo: bad, photo_plan: bad, photo_cabin: bad })), NO_LOOK, bad);
     }
-    assert.deepEqual(Object.keys(pageLook({})).sort(), ["cabinPhotoUrl", "credits", "dayNotes", "heroUrl", "hostNames", "hostPhotoUrl", "label", "planPhotoUrl", "taxesIncluded"], "nothing else about the answers leaks into the look");
+    assert.deepEqual(Object.keys(pageLook({})).sort(), ["cabinPhotoUrl", "credits", "dayNotes", "heroUrl", "hostNames", "hostPhotoUrl", "insetBottomUrl", "insetTopUrl", "label", "planPhotoUrl", "taxesIncluded"], "nothing else about the answers leaks into the look");
     assert.equal(typeof pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, "boolean");
     assert.equal(pageLook({ taxes_included: "true" as unknown as boolean }).taxesIncluded, false);
   });
