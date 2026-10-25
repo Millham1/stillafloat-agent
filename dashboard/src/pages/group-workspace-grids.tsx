@@ -74,6 +74,7 @@ export function columnsFor(tab: Tab): Column<any>[] {
     case "travelers": return [
       { key: "group", label: "Group", get: (r: WTraveler) => r.groupName, render: GroupCell, min: "10rem" },
       { key: "name", label: "Traveler", get: (r: WTraveler) => r.name, render: (r: WTraveler) => <span>{r.name}{r.isLead && <span className="ml-1 text-[11px] text-muted-foreground">(lead)</span>}</span> },
+      { key: "act", label: "Paperwork", get: () => null, render: (r: WTraveler) => <TravelerActions row={r} />, action: true, min: "19rem" },
       { key: "cabin", label: "Cabin", get: (r: WTraveler) => r.cabinNum },
       { key: "email", label: "Email", get: (r: WTraveler) => r.email },
       { key: "lang", label: "Language", get: (r: WTraveler) => (r.lang === "es" ? "Spanish" : "English") },
@@ -81,7 +82,6 @@ export function columnsFor(tab: Tab): Column<any>[] {
       { key: "docs", label: "Documents signed", get: (r: WTraveler) => r.docsSigned, render: (r: WTraveler) => `${r.docsSigned} of ${r.docsRequired}`, align: "right" },
       { key: "full", label: "Fully signed", get: (r: WTraveler) => r.fullySigned, render: (r: WTraveler) => <Pill tone={r.fullySigned ? "green" : "amber"}>{r.fullySigned ? "yes" : "no"}</Pill> },
       { key: "pp", label: "Passport on file", get: (r: WTraveler) => r.passportOnFile, render: (r: WTraveler) => (r.passportOnFile ? "yes" : "no") },
-      { key: "act", label: "Paperwork", get: () => null, render: (r: WTraveler) => <TravelerActions row={r} />, action: true, min: "19rem" },
     ];
     case "payments": return [
       { key: "group", label: "Group", get: (r: WPayment) => r.groupName, render: GroupCell, min: "10rem" },
