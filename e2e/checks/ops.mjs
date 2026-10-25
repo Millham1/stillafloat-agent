@@ -1558,6 +1558,37 @@ export default [
   // NEW IN THE RELEASE THAT ADDS THEM: prod has neither the page nor the addresses before the promotion,
   // so these FAIL there until then — correct (the same note as ops.group-page-public).
   {
+    id: "ops.group-bookings-app",
+    basis: "ruling: mark-group-dashboard-big-picture-plus-workhorse.md — Mark 2026-10-25: \"stop relating it to the dashboard. it is a separate entity\", \"the title should be stillafloatcruising.com/groups\", \"only I have access to it\": Group Bookings is its own app at /groups/, and on the live site the door asks for Mark's password before anything loads",
+    title: "Group Bookings is its own app at /groups/: on the test site the page and its program load (private, never indexed) and the program talks only to the group API with Mark's key; on the live site /groups/ asks for Mark's password first",
+    covers: ["ext:group-bookings app"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      const res = await t.get("/groups/");
+      if (t.mode === "prod") {
+        // the live door: nothing of the app is served without Mark's password
+        t.equal(res.status, 401, "HTTP status of /groups/ without Mark's password on the live site");
+        t.matches(res.headers.get("www-authenticate") || "", /^Basic /i, "the live site's password challenge on /groups/");
+        t.ok(!res.text.includes("/groups/assets/"), "the live site handed out the Group Bookings program without the password");
+        return;
+      }
+      t.status(res, 200);
+      const html = t.html(res, { mustContain: ['id="root"', "/groups/assets/", "Group Bookings"] });
+      t.matches(H.metaContent(html, "robots"), /noindex/, "robots meta of Group Bookings (a private app is never indexed)");
+      t.matches(res.headers.get("x-robots-tag") || "", /noindex/, "X-Robots-Tag of Group Bookings");
+      const src = (/src="(\/groups\/assets\/[^"]+\.js)"/.exec(html) || [])[1];
+      t.ok(src, "Group Bookings names no program file");
+      if (!src) return;
+      const js = await t.get(src);
+      t.status(js, 200);
+      t.matches(js.headers.get("content-type") || "", /javascript/, "the Group Bookings program's content type");
+      for (const needle of ["/api/groups/analytics", "x-affiliate-token", "/api/auth-check", "saf_group_bookings_token", "form-link/send"]) {
+        t.ok(js.text.includes(needle), `the Group Bookings program no longer mentions ${needle}`);
+      }
+      t.ok(!js.text.includes("Editorial Command Center"), "the Group Bookings program carries the dashboard (it must be its own app)");
+    },
+  },
+  {
     id: "ops.paperwork-link-page",
     basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: clients sign on their own private link (only its hash is stored); a wrong link gets one neutral answer that says nothing about whether it ever existed; the page is never indexed; the signed-documents list is for Mark only and never carries a passport, an answer, a token or an audit hash; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "The private paperwork page opens and stays out of search, any wrong link gets the same 'not valid' answer, and the dashboard's signed-documents list is Mark's alone and carries no private detail",

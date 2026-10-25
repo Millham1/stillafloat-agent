@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { GroupMarketing } from "./group-marketing";
 import { GroupTerms } from "./group-terms";
 import { ClientPaperwork, TravelerPaperwork, type PaperworkData } from "./group-paperwork";
+import { groupBookingsHref } from "@/lib/group-api";
 import { GroupJourney } from "./group-journey";
 import { GroupBigPicture } from "./group-big-picture";
 
@@ -381,9 +382,8 @@ function GroupDetail({ id }: { id: string }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/groups/workspace?g=${g.id}&status=all`}>
-            <span className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-md border bg-card cursor-pointer hover:border-foreground/30" title="Open the Group Bookings Workspace with only this group"><BarChart3 className="w-3.5 h-3.5" /> Workspace</span>
-          </Link>
+          {/* Mark 2026-10-25: Group Bookings is its own app, opened in its own tab */}
+          <a href={groupBookingsHref(`g=${g.id}&status=all`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-md border bg-card hover:border-foreground/30" title="Open this group in the Group Bookings app"><BarChart3 className="w-3.5 h-3.5" /> Group Bookings</a>
           <Badge variant="outline" className={STATUS_STYLE[g.status] ?? ""}>{g.status}</Badge>
         </div>
       </div>

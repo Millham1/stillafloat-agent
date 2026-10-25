@@ -1,5 +1,4 @@
 import React from "react";
-import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { ExternalLink } from "lucide-react";
 import { longDate, type WorkspaceData } from "@/lib/group-workspace";
@@ -7,6 +6,7 @@ import {
   cabinDetail, groupDetail, leadDetail, paymentDetail, travelerDetail, type Drill, type DrillKind,
 } from "@/lib/group-report";
 import { Pill, money } from "./group-workspace-parts";
+import { groupFileHref } from "@/lib/group-api";
 import { CopyButton, TravelerPaperworkPanel } from "./group-workspace-actions";
 import { Box, DrillHeader, Facts, KpiCard, RowLink } from "./group-report-shell";
 
@@ -45,8 +45,8 @@ const fileButton = (go: () => void, label = "Open the group file") => (
 export function DrillView({ data, drill, backTo, onBack, onDrill }: {
   data: WorkspaceData; drill: Drill; backTo: string; onBack: () => void; onDrill: (kind: DrillKind, id: string) => void;
 }) {
-  const [, navigate] = useLocation();
-  const openFile = (groupId: string, section = "") => navigate(`/groups/${groupId}${section ? `#${section}` : ""}`);
+  // Editing a file's fields stays on the group's file; it opens in a new tab so Group Bookings stays where it is.
+  const openFile = (groupId: string, section = "") => { window.open(groupFileHref(groupId, section), "_blank", "noopener"); };
 
   if (drill.kind === "traveler") {
     const d = travelerDetail(data, drill.id);

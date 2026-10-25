@@ -4,7 +4,7 @@ import { FileCheck2, Link2, Mail, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ANALYTICS_KEY, api } from "@/lib/group-api";
 import { signedCopies, type WPaperwork, type WTraveler, type WorkspaceData } from "@/lib/group-workspace";
-import { LinkBox } from "./group-paperwork";
+import { Copy } from "lucide-react";
 
 // Mark 2026-10-25: "Add the paperwork actions to the Group Workspace: email the link, make a link, open the signed copy, per traveler."
 // The workspace is the workhorse (Mark 2026-10-19), so the paperwork is worked from here too. These are the same calls the group's
@@ -12,6 +12,28 @@ import { LinkBox } from "./group-paperwork";
 
 const btn = "text-xs px-2 py-1 rounded border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-1 whitespace-nowrap";
 const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+
+/** Select-and-copy fallback for browsers that refuse the clipboard API. */
+async function copyText(text: string): Promise<void> {
+  try { await navigator.clipboard.writeText(text); return; } catch { /* fall through */ }
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+}
+
+/** A private link, shown once, with a copy button. */
+function LinkBox({ url }: { url: string }) {
+  const { toast } = useToast();
+  return (
+    <div className="mt-1 p-2 border rounded bg-muted/30 space-y-1 text-xs min-w-[16rem]">
+      <div className="flex gap-1">
+        <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className="flex-1 min-w-0 px-2 py-1 rounded border bg-card" aria-label="Private link" />
+        <button type="button" className={btn} onClick={async () => { await copyText(url); toast({ title: "Link copied" }); }}><Copy className="w-3 h-3" /> Copy</button>
+      </div>
+      <p className="text-muted-foreground">Shown once. Making another link replaces this one.</p>
+    </div>
+  );
+}
 
 /** Opens a signed copy: a 10-minute link to the private bucket, fetched on the click (a blank tab first, so no pop-up blocker stops it). */
 async function openCopy(groupId: string, signatureId: string): Promise<void> {

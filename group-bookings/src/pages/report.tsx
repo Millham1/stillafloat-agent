@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import { Link, useLocation, useSearch } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import { AlertTriangle, ArrowLeft, BarChart3, RefreshCw } from "lucide-react";
+import { AlertTriangle, BarChart3, RefreshCw } from "lucide-react";
 import { ANALYTICS_KEY, ANALYTICS_STALE_MS, fetchAnalytics } from "@/lib/group-api";
 import {
   activeFilterCount, applyFilters, crossValue, hasFilterParams, isDefaultFilters, parseFilters, removeCross, serializeFilters, toggleCross,
@@ -25,8 +25,9 @@ import { DrillView } from "./group-report-drills";
 // (GET /api/groups/analytics) feeds everything. Slicers, page and drill live in the address (a link carries them); the
 // slicers are also remembered in this browser.
 
-const STORE_KEY = "saf.groupWorkspace.slicers";
-const PATH = "/groups/workspace";
+const STORE_KEY = "saf.groupBookings.slicers";
+/** The app's one page, at the router's base (/groups/): the address carries the report page, the slicers and the drill. */
+const PATH = "/";
 
 function readStored(): string {
   try { return localStorage.getItem(STORE_KEY) ?? ""; } catch { return ""; }
@@ -93,8 +94,7 @@ export default function GroupWorkspace() {
     <div className="flex flex-col gap-2 lg:h-full lg:min-h-0">
       <div className="flex items-center gap-3 flex-wrap shrink-0">
         <div className="flex items-center gap-2 mr-2">
-          <Link href="/groups"><span className="text-xs text-muted-foreground inline-flex items-center gap-1 cursor-pointer hover:text-foreground"><ArrowLeft className="w-3.5 h-3.5" /> Group Bookings</span></Link>
-          <h2 className="text-base font-bold tracking-tight inline-flex items-center gap-1.5"><BarChart3 className="w-4 h-4 text-muted-foreground" />Workspace · {drill ? `${PAGE_LABEL[page]} ›` : PAGE_LABEL[page]}</h2>
+          <h1 className="text-base font-bold tracking-tight inline-flex items-center gap-1.5"><BarChart3 className="w-4 h-4 text-muted-foreground" />Group Bookings · {drill ? `${PAGE_LABEL[page]} ›` : PAGE_LABEL[page]}</h1>
         </div>
         {data && <SlicerStrip groups={data.groups} filters={filters} onChange={(next) => to(next, page, drill)} onClear={clearAll} dirty={dirty} matching={slice?.groups.length ?? 0} />}
         <div className="ml-auto flex items-center gap-2">
@@ -121,11 +121,11 @@ export default function GroupWorkspace() {
       )}
 
       <div className="lg:flex-1 lg:min-h-0">
-        {!data && !q.error && <Card className="p-8 text-center text-muted-foreground">Loading the workspace…</Card>}
+        {!data && !q.error && <Card className="p-8 text-center text-muted-foreground">Loading Group Bookings…</Card>}
         {q.error && !data && (
           <Card className="p-6 border-red-300">
             <div className="flex items-start gap-2 text-red-700"><AlertTriangle className="w-4 h-4 mt-0.5" /><div>
-              <div className="font-semibold">The workspace could not load.</div>
+              <div className="font-semibold">Group Bookings could not load.</div>
               <div className="text-sm">{(q.error as Error).message}</div>
             </div></div>
             <button type="button" onClick={() => void q.refetch()} className="mt-3 text-xs px-3 py-1.5 rounded-md border bg-card">Try again</button>
@@ -134,7 +134,7 @@ export default function GroupWorkspace() {
         {data && ctx && (drill
           ? <DrillView data={data} drill={drill} backTo={PAGE_LABEL[page]} onBack={() => to(filters, page)} onDrill={ctx.drill} />
           : data.groups.length === 0
-            ? <Card className="p-10 text-center text-muted-foreground">There are no group files yet. Open one on the <Link href="/groups"><span className="underline cursor-pointer">Group Bookings</span></Link> tab.</Card>
+            ? <Card className="p-10 text-center text-muted-foreground">There are no group files yet.</Card>
             : ctx.slice.groups.length === 0
               ? (
                 <Card className="p-10 text-center">

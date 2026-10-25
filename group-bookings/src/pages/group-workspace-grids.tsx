@@ -185,7 +185,7 @@ export function DataGrid<T extends { groupId?: string; id?: string }>({ tab, row
     return out;
   }, [rows, dataCols, query, sort]);
 
-  const exportCsv = () => download(`group-workspace-${tab}-${today}.csv`, toCsv(dataCols.map((c) => c.label), shown.map((r) => dataCols.map((c) => c.get(r)))));
+  const exportCsv = () => download(`group-bookings-${tab}-${today}.csv`, toCsv(dataCols.map((c) => c.label), shown.map((r) => dataCols.map((c) => c.get(r)))));
   const filtered = query.trim() !== "";
   const open = (r: T) => onOpen(r);
 
