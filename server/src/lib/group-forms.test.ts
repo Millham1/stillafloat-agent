@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
-} from "./group-forms";
+ giveConsent, getCopies, getCopyPdf, copiesEmail, ESIGN_CONSENT_VERSION } from "./group-forms";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
 import { blocksToText } from "./group-documents";
@@ -32,6 +32,8 @@ function makeStore() {
     signatures: [] as Row[],
     prospects: [] as Row[],
     uploads: [] as Array<{ path: string; bytes: number }>,
+    files: {} as Record<string, Buffer>,
+    messages: [] as Row[],
     deleted: [] as string[],
     failUpdate: false,
     failUpload: false,
@@ -58,8 +60,13 @@ function makeStore() {
       if (state.failUpdate) throw new Error("database is down");
       Object.assign(state.travelers.find((t) => t.id === id)!, patch);
     },
-    async uploadPdf(path, bytes) { if (state.failUpload) throw new Error("storage is down"); state.uploads.push({ path, bytes: bytes.length }); },
-    async setSignaturePdf(id, path) { state.signatures.find((s) => s.id === id)!.pdf_path = path; },
+    async uploadPdf(path, bytes) { if (state.failUpload) throw new Error("storage is down"); state.uploads.push({ path, bytes: bytes.length }); state.files[path] = bytes; },
+    async downloadPdf(path) { return state.files[path] ?? null; },
+    async setSignaturePdf(id, path, meta) { Object.assign(state.signatures.find((s) => s.id === id)!, { pdf_path: path, sealed: !!meta?.sealed, seal_fingerprint: meta?.seal_fingerprint ?? null }); },
+    async updateGroup(id, patch) { if (id === state.group.id) Object.assign(state.group, patch); },
+    async logMessage(row) { state.messages.push({ ...row }); },
+    async travelerByCopiesHash(hash) { const t = state.travelers.find((x) => x.copies_token_hash === hash); return t ? strip(t) : null; },
+    async groupByOrganizerCopiesHash(hash) { return state.group.organizer_copies_token_hash === hash ? { ...state.group } : null; },
     async upsertProspect(row) {
       const found = state.prospects.find((p) => p.email.toLowerCase() === String(row["email"]).toLowerCase());
       if (found) return found.id;
@@ -76,23 +83,29 @@ function setup(over: Partial<FormsDeps> = {}) {
   const pdfs: SignedCopyInput[] = [];
   const notices: Array<{ title: string; body: string; groupId: string }> = [];
   const warnings: string[] = [];
+  const mails: Array<{ to: string; subject: string; html: string; text: string }> = [];
   const clock = { now: new Date("2026-10-16T15:30:12Z") };
   const deps: FormsDeps = {
     store, now: () => clock.now, piiKey: KEY, logo: null,
     renderPdf: async (input) => { pdfs.push(input); return Buffer.from("%PDF-1.4 test"); },
     notify: async (n) => { notices.push(n); },
     warn: (_o, msg) => { warnings.push(msg); },
+    seal: null,
+    mail: async (m) => { mails.push(m); return true; },
+    publicSite: "https://stillafloatcruising.com",
     ...over,
   };
   const link = (travelerId: string) => { const { token, hash } = issueToken(); state.travelers.find((t) => t.id === travelerId)!.form_token_hash = hash; return token; };
   const orgLink = () => { const { token, hash } = issueToken(); state.group.organizer_token_hash = hash; return token; };
-  return { state, deps, pdfs, notices, warnings, link, orgLink, clock };
+  return { state, deps, pdfs, notices, warnings, mails, link, orgLink, clock };
 }
 
 const pkt = (r: { json: Record<string, unknown> }) => r.json as { docs: Array<{ key: string; status: string; text_sha256: string; html: string; fields: Array<Record<string, any>> }>; complete: boolean; traveler: Row; mates: string[]; group: Row; cabin: Row | null; pii_ready: boolean; kind: string };
 const NAME = "Jane Public";
 
+const META = { ip: "203.0.113.9", ua: "Mozilla/5.0 test" };
 async function signKey(t: ReturnType<typeof setup>, token: string, key: string, extra: Record<string, unknown> = {}, name = NAME) {
+  await giveConsent(t.deps, token, { agreed: true }, META);
   const p = pkt(await getPacket(t.deps, token));
   const doc = p.docs.find((d) => d.key === key)!;
   return signDocument(t.deps, token, { doc_key: key, signer_name: name, agreed: true, content_sha256: doc.text_sha256, ...extra }, { ip: "203.0.113.9", ua: "Mozilla/5.0 test" });
@@ -176,7 +189,9 @@ test("signing records a typed name, the hash of the text, hashed audit data and 
   assert.equal(sig!.doc_version, "16-passport-document-checklist@2026-10-03");
   assert.match(sig!.content_sha256, /^[0-9a-f]{64}$/);
   assert.equal(sig!.ip_hash, hashForAudit("203.0.113.9"));
-  assert.ok(sig!.ip_hash && sig!.ua_hash && !JSON.stringify(sig).includes("203.0.113.9") && !JSON.stringify(sig).includes("Mozilla"), "ip and user agent are stored only as hashes");
+  assert.ok(sig!.ip_hash && sig!.ua_hash, "the hashes are still kept");
+  // Mark 2026-10-25 (DocuSign-grade evidence): the address and browser are also kept in clear, for the evidence page
+  assert.equal(sig!.ip, "203.0.113.9"); assert.equal(sig!.ua, "Mozilla/5.0 test");
   assert.equal(sig!.pdf_path, `signatures/g1/${sig!.id}.pdf`);
   assert.deepEqual(t.state.uploads.map((u) => u.path), [`signatures/g1/${sig!.id}.pdf`]);
   assert.equal(t.pdfs.length, 1);
@@ -195,6 +210,7 @@ test("a signature is refused without agreement, a full name, a matching hash, a 
   const doc = pkt(await getPacket(t.deps, token)).docs.find((d) => d.key === "16-passport-document-checklist")!;
   const base = { doc_key: "16-passport-document-checklist", signer_name: NAME, agreed: true, content_sha256: doc.text_sha256 };
   const meta = { ip: "1.2.3.4" };
+  await giveConsent(t.deps, token, { agreed: true }, meta);
   assert.equal((await signDocument(t.deps, token, { ...base, agreed: false }, meta)).status, 400);
   assert.equal((await signDocument(t.deps, token, { ...base, agreed: "true" }, meta)).status, 400);
   for (const bad of ["", "Jane", "J", "123 456", "<b>Jane</b> Public", "Jane\u0000 Public"]) assert.equal((await signDocument(t.deps, token, { ...base, signer_name: bad }, meta)).status, 400, `name ${JSON.stringify(bad)}`);
@@ -204,6 +220,7 @@ test("a signature is refused without agreement, a full name, a matching hash, a 
   assert.equal(stale.json["code"], "document-changed");
   assert.equal((await signDocument(t.deps, token, { ...base, doc_key: "06-credit-card-authorization" }, meta)).status, 404, "the card form is in no packet");
   const mateToken = t.link("t2");
+  await giveConsent(t.deps, mateToken, { agreed: true }, meta);
   assert.equal((await signDocument(t.deps, mateToken, { ...base, doc_key: "12-cruise-booking-agreement", signer_name: "John Public" }, { ip: "1" })).status, 404, "a traveler who is not the lead has no cabin agreement");
   assert.equal((await signDocument(t.deps, token, { ...base, doc_key: "09-group-travel-contract" }, meta)).status, 404);
   assert.equal((await signDocument(t.deps, issueToken().token, base, meta)).status, 404);
@@ -211,6 +228,7 @@ test("a signature is refused without agreement, a full name, a matching hash, a 
   for (const ok of ["José Núñez", "Mary-Ann O'Neil", "Wei Chen", "Jane Q. Public"]) {
     const t2 = setup();
     const tok = t2.link("t1");
+    await giveConsent(t2.deps, tok, { agreed: true }, meta);
     const d = pkt(await getPacket(t2.deps, tok)).docs.find((x) => x.key === base.doc_key)!;
     assert.equal((await signDocument(t2.deps, tok, { ...base, content_sha256: d.text_sha256, signer_name: ok }, meta)).status, 200, ok);
   }
@@ -224,6 +242,7 @@ test("a signature is refused without agreement, a full name, a matching hash, a 
 test("a file that changed after the page loaded cannot be signed on the old text", async () => {
   const t = setup();
   const token = t.link("t2");
+  await giveConsent(t.deps, token, { agreed: true }, META);
   const doc = pkt(await getPacket(t.deps, token)).docs.find((d) => d.key === "05-liability-waiver")!;
   t.state.group.sail_date = "2027-03-15";
   const r = await signDocument(t.deps, token, { doc_key: "05-liability-waiver", signer_name: "John Public", agreed: true, content_sha256: doc.text_sha256, answers: { health_ack: true } }, {});
@@ -367,6 +386,7 @@ test("the newsletter box records the choice and a prospect, sends no email, and 
 test("a failed save of the traveler's answers removes the signature; a failed PDF copy keeps it and says so", async () => {
   const t = setup();
   const token = t.link("t1");
+  await giveConsent(t.deps, token, { agreed: true }, META);
   t.state.failUpdate = true;
   const r = await signKey(t, token, "15-emergency-contact-form", { answers: GOOD_15 });
   assert.equal(r.status, 500);
@@ -466,4 +486,138 @@ test("each traveler's progress is the documents asked for against the ones signe
   assert.equal(s.travelers["t2"]!.complete, false);
   assert.deepEqual(s.organizer, { required: ["09-group-travel-contract"], signed: ["09-group-travel-contract"], complete: true });
   assert.deepEqual(organizerBlanks(g, cabins, travelers, new Date()).sort(), ["Complimentary berth ratio", "Minimum group size", "Per-person estimated cost"]);
+});
+
+
+// ── Mark 2026-10-25: DocuSign-grade evidence ──────────────────────────────────
+
+const ORDER_T2 = ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"];
+const ANSWERS_T2: Record<string, unknown> = {
+  "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", passport_number: "B99887766" },
+  "05-liability-waiver": { health_ack: true },
+  "07-travel-insurance-declination": { insurance_choice: "quote" },
+};
+async function signAllT2(t: ReturnType<typeof setup>, token: string) {
+  for (const key of ORDER_T2) {
+    const r = await signKey(t, token, key, { answers: ANSWERS_T2[key] ?? {} }, "John Public");
+    assert.equal(r.status, 200, `${key}: ${JSON.stringify(r.json)}`);
+  }
+}
+
+test("no signature before the one-time consent to electronic records; the consent is kept once with its time, address, browser and text version", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  const p0 = pkt(await getPacket(t.deps, token)) as any;
+  assert.equal(p0.esign.consent_given_at, null);
+  assert.equal(p0.esign.version, ESIGN_CONSENT_VERSION);
+  assert.equal(p0.esign.text.points.length, 5, "the five things the signer agrees to");
+  assert.match(p0.esign.text.points.join(" "), /paper copy any time, at no charge/);
+  const doc = p0.docs.find((d: any) => d.key === "16-passport-document-checklist");
+  const early = await signDocument(t.deps, token, { doc_key: doc.key, signer_name: NAME, agreed: true, content_sha256: doc.text_sha256 }, META);
+  assert.equal(early.status, 400); assert.equal(early.json["code"], "consent-required");
+  assert.equal(t.state.signatures.length, 0, "nothing stored before consent");
+  assert.equal((await giveConsent(t.deps, token, { agreed: false }, META)).status, 400);
+  assert.equal((await giveConsent(t.deps, issueToken().token, { agreed: true }, META)).status, 404);
+  const ok = await giveConsent(t.deps, token, { agreed: true }, META);
+  assert.equal(ok.status, 200);
+  assert.equal((ok.json["packet"] as any).esign.consent_given_at, "2026-10-16T15:30:12.000Z");
+  const tr = t.state.travelers[0]!;
+  assert.deepEqual([tr.esign_consent_at, tr.esign_consent_ip, tr.esign_consent_ua, tr.esign_consent_version], ["2026-10-16T15:30:12.000Z", "203.0.113.9", "Mozilla/5.0 test", ESIGN_CONSENT_VERSION]);
+  t.clock.now = new Date("2026-10-17T09:00:00Z");
+  await giveConsent(t.deps, token, { agreed: true }, { ip: "198.51.100.1" });
+  assert.equal(t.state.travelers[0]!.esign_consent_at, "2026-10-16T15:30:12.000Z", "a second tick never moves the first consent");
+  assert.equal((await signDocument(t.deps, token, { doc_key: doc.key, signer_name: NAME, agreed: true, content_sha256: doc.text_sha256 }, META)).status, 200);
+  // the Spanish signer reads it in Spanish
+  t.state.travelers[1]!.lang = "es";
+  const es = pkt(await getPacket(t.deps, t.link("t2"))) as any;
+  assert.match(es.esign.text.title, /firmar en línea/);
+});
+
+test("opening the link is recorded (first and latest) and the evidence page gets the email, link, opening, consent, address, browser and seal", async () => {
+  const t = setup();
+  t.state.travelers[0]!.form_sent_at = "2026-10-15T12:00:00.000Z";
+  const token = t.link("t1");
+  await getPacket(t.deps, token);
+  assert.equal(t.state.travelers[0]!.form_opened_at, "2026-10-16T15:30:12.000Z");
+  t.clock.now = new Date("2026-10-16T16:00:00Z");
+  assert.equal((await signKey(t, token, "16-passport-document-checklist")).status, 200);
+  assert.equal(t.state.travelers[0]!.form_opened_at, "2026-10-16T15:30:12.000Z", "the first opening stays");
+  assert.equal(t.state.travelers[0]!.form_last_opened_at, "2026-10-16T16:00:00.000Z");
+  const a = t.pdfs.at(-1)!.audit!;
+  assert.deepEqual(a, {
+    signerEmail: "jane@example.com", linkSentAt: "2026-10-15T12:00:00.000Z", firstOpenedAt: "2026-10-16T15:30:12.000Z",
+    consentAt: "2026-10-16T16:00:00.000Z", consentVersion: ESIGN_CONSENT_VERSION, consentIp: "203.0.113.9",
+    ip: "203.0.113.9", ua: "Mozilla/5.0 test", seal: null,
+  });
+  const sig = t.state.signatures[0]!;
+  assert.equal(sig.sealed, false); assert.equal(sig.seal_fingerprint, null);
+});
+
+test("with a certificate the copy is sealed and marked so; a seal that fails is saved unsealed, and its evidence page never claims a seal", async () => {
+  const sealCalls: Array<{ reason: string }> = [];
+  const sealer = { fingerprint: "ab".repeat(32), subject: "Still Afloat Cruising", async seal(pdf: Buffer, meta: { reason: string }) { sealCalls.push(meta); return Buffer.concat([pdf, Buffer.from(" sealed")]); } };
+  const t = setup({ seal: sealer });
+  const token = t.link("t1");
+  assert.equal((await signKey(t, token, "16-passport-document-checklist")).status, 200);
+  assert.equal(sealCalls.length, 1); assert.match(sealCalls[0]!.reason, /^Signed copy: /);
+  assert.deepEqual(t.pdfs.at(-1)!.audit!.seal, { fingerprint: "ab".repeat(32), subject: "Still Afloat Cruising" });
+  const sig = t.state.signatures[0]!;
+  assert.equal(sig.sealed, true); assert.equal(sig.seal_fingerprint, "ab".repeat(32));
+  assert.match(t.state.files[sig.pdf_path]!.toString(), /sealed$/);
+
+  const broken = { ...sealer, async seal() { throw new Error("bad key"); } };
+  const t2 = setup({ seal: broken });
+  const tok2 = t2.link("t1");
+  assert.equal((await signKey(t2, tok2, "16-passport-document-checklist")).status, 200);
+  assert.equal(t2.pdfs.length, 2, "rendered again without the seal");
+  assert.equal(t2.pdfs.at(-1)!.audit!.seal, null);
+  assert.equal(t2.state.signatures[0]!.sealed, false);
+  assert.ok(t2.warnings.some((w) => /could not be sealed/.test(w)));
+});
+
+test("the last signature emails the signer their copies once: one link per document, logged, and the links open only that signer's PDFs", async () => {
+  const t = setup();
+  const token = t.link("t2");
+  await signAllT2(t, token);
+  assert.equal(t.mails.length, 1, "one email, on the last signature only");
+  const m = t.mails[0]!;
+  assert.equal(m.to, "john@example.com");
+  assert.equal(m.subject, `Your signed paperwork for ${t.state.group.name}`);
+  assert.match(m.text, /^Hi John,/);
+  assert.match(m.text, /Smart-cruiser tip/); assert.match(m.text, /See you on board!/);
+  const links = [...m.text.matchAll(/https:\/\/stillafloatcruising\.com\/api\/forms\/copies\/([A-Za-z0-9_-]{43})\/(sig\d+)\.pdf/g)];
+  assert.equal(links.length, ORDER_T2.length, "one link per signed document");
+  assert.deepEqual(t.state.messages.map((r) => [r.template, r.status, r.to_email]), [["paperwork-copies", "sent", "john@example.com"]]);
+  assert.ok(!JSON.stringify(t.state.messages).includes(links[0]![1]!), "the email log never keeps the link");
+  assert.equal(t.state.travelers[1]!.copies_sent_at, "2026-10-16T15:30:12.000Z");
+  const copiesToken = links[0]![1]!;
+  const list = await getCopies(t.deps, copiesToken);
+  assert.equal(list.status, 200);
+  assert.equal((list.json["docs"] as unknown[]).length, ORDER_T2.length);
+  const one = await getCopyPdf(t.deps, copiesToken, `${links[0]![2]}.pdf`);
+  assert.ok("bytes" in one && one.bytes.toString().startsWith("%PDF"));
+  // another traveler's signature id under this link: refused, the same answer as a wrong link
+  const other = setup(); const otok = other.link("t1"); await signKey(other, otok, "16-passport-document-checklist");
+  t.state.signatures.push({ ...other.state.signatures[0]!, id: "sigX", traveler_id: "t1" });
+  assert.equal(((await getCopyPdf(t.deps, copiesToken, "sigX.pdf")) as { status: number }).status, 404);
+  assert.equal((await getCopies(t.deps, issueToken().token)).status, 404);
+  assert.equal((await getCopies(t.deps, token)).status, 404, "the signing link is not a copies link");
+});
+
+test("a refused copies email is logged as failed and leaves the file saying not sent; the signatures stand", async () => {
+  const t = setup({ mail: async () => false });
+  await signAllT2(t, t.link("t2"));
+  assert.deepEqual(t.state.messages.map((r) => [r.template, r.status]), [["paperwork-copies", "failed"]]);
+  assert.equal(t.state.travelers[1]!.copies_sent_at, null);
+  assert.equal(t.state.signatures.length, ORDER_T2.length);
+});
+
+test("the copies email reads in the signer's language and in Mark's register", () => {
+  const en = copiesEmail({ lang: "en", firstName: "Ana", groupName: "Millham F/F 2027", trip: "Millham F/F 2027 — MSC Seashore, sailing May 9, 2027", docs: [{ title: "Liability Waiver", url: "https://x/y.pdf" }], sealed: true });
+  assert.match(en.text, /^Hi Ana,\n\nSigned, sealed… and here it is, delivered! Your document for Millham F\/F 2027/);
+  assert.match(en.text, /sealed with our certificate/);
+  const es = copiesEmail({ lang: "es", firstName: "Ana", groupName: "Millham F/F 2027", trip: "Millham F/F 2027", docs: [{ title: "Exención", url: "https://x/y.pdf" }, { title: "Términos", url: "https://x/z.pdf" }], sealed: false });
+  assert.equal(es.subject, "Sus documentos firmados: Millham F/F 2027");
+  assert.match(es.text, /^Hola Ana,/); assert.match(es.text, /¡Nos vemos a bordo!/);
+  assert.ok(!/certificado|sello digital/.test(es.text), "no seal claimed when the copies are not sealed");
 });

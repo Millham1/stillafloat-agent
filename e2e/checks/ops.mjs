@@ -1559,9 +1559,9 @@ export default [
   // so these FAIL there until then — correct (the same note as ops.group-page-public).
   {
     id: "ops.paperwork-link-page",
-    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: clients sign on their own private link (only its hash is stored); a wrong link gets one neutral answer that says nothing about whether it ever existed; the page is never indexed; the signed-documents list is for Mark only and never carries a passport, an answer, a token or an audit hash",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: clients sign on their own private link (only its hash is stored); a wrong link gets one neutral answer that says nothing about whether it ever existed; the page is never indexed; the signed-documents list is for Mark only and never carries a passport, an answer, a token or an audit hash; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "The private paperwork page opens and stays out of search, any wrong link gets the same 'not valid' answer, and the dashboard's signed-documents list is Mark's alone and carries no private detail",
-    covers: ["page /forms.html", "GET /api/forms/:token", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file"],
+    covers: ["page /forms.html", "GET /api/forms/:token", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "GET /api/forms/copies/:token", "GET /api/forms/copies/:token/:sid"],
     modes: ["dev", "prod"],
     run: async (t) => {
       const html = t.html(await t.get("/forms.html"), { mustContain: ["/api/forms/", 'id="fm-agree"', 'id="fm-name"', "Sign and continue", 'id="fm-website"'] });
@@ -1579,6 +1579,13 @@ export default [
         bodies.add(res.text);
       }
       t.equal(bodies.size, 1, "different wrong links must all get the identical answer (number of distinct answers)");
+
+      // Mark 2026-10-25: the signer's copies link (from the "your signed paperwork" email) answers a wrong link the same way.
+      for (const path of [`/api/forms/copies/${"A".repeat(43)}`, `/api/forms/copies/${"A".repeat(43)}/${ZERO}.pdf`, "/api/forms/copies/short"]) {
+        const res = await t.get(path);
+        refused(t, res, 404, `a wrong copies link (${path})`, /not valid/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the copies answer");
+      }
 
       // Mark's own addresses: refused without his token.
       unauthorized(t, await t.get(`/api/groups/${ZERO}/signatures`), "GET /api/groups/:id/signatures");
@@ -1605,7 +1612,7 @@ export default [
           if (!Object.keys(g.fees || {}).length) t.ok(!p.required.some((k) => /^0[23]-/.test(k)), `group ${g.id}: a group with no fees is asked to sign a fee agreement`);
         }
         const raw = JSON.stringify(body);
-        for (const secret of ["passport_enc", "form_token_hash", "consent_ip_hash", "ip_hash", "ua_hash", "pdf_path", "organizer_token_hash", '"answers"']) t.ok(!raw.includes(secret), `group ${g.id}: the signed-documents list carries ${secret}`);
+        for (const secret of ["passport_enc", "form_token_hash", "consent_ip_hash", "ip_hash", "ua_hash", "pdf_path", "organizer_token_hash", '"answers"', '"ip":', '"ua":', "esign_consent_ip", "copies_token_hash"]) t.ok(!raw.includes(secret), `group ${g.id}: the signed-documents list carries ${secret}`);
         t.ok(!cardShaped(raw), `group ${g.id}: the signed-documents list contains something shaped like a card number`);
         for (const sg of body.signatures) {
           t.fields(sg, ["id", "doc_key", "doc_title", "doc_version", "signer_name", "signer_role", "signed_at", "content_sha256"], `a signature of group ${g.id}`);
@@ -1627,9 +1634,9 @@ export default [
   },
   {
     id: "ops.paperwork-writes-refuse",
-    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-03: every paperwork write needs Mark's token or the client's own link; unknown travelers, groups and links are refused; the bot trap and a missing agreement store nothing and email no one (dev never emails real people, Mark 2026-10-08)",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-03: every paperwork write needs Mark's token or the client's own link; unknown travelers, groups and links are refused; the bot trap and a missing agreement store nothing and email no one (dev never emails real people, Mark 2026-10-08); Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "Making links, emailing a link, the organizer's link and removing a signature refuse a visitor without Mark's token and unknown travelers and groups, and a signature with no link or a bot trap stores nothing",
-    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "POST /api/groups/:id/travelers/:tid/form-link/send", "POST /api/groups/:id/organizer-link", "DELETE /api/groups/:id/signatures/:sid", "POST /api/forms/:token/sign"],
+    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "POST /api/groups/:id/travelers/:tid/form-link/send", "POST /api/groups/:id/organizer-link", "DELETE /api/groups/:id/signatures/:sid", "POST /api/forms/:token/sign", "POST /api/forms/:token/consent"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST/DELETE requests (refusal paths only: nothing is created and no email is sent); prod sweeps are read-only",
     run: async (t) => {
@@ -1649,6 +1656,7 @@ export default [
       const body = { doc_key: "16-passport-document-checklist", signer_name: "Fixture Tester", agreed: true, content_sha256: "0".repeat(64), answers: {} };
       refused(t, await send("POST", `/api/forms/${"A".repeat(43)}/sign`, body, false), 404, "signing with a link that does not exist", /not valid/i);
       refused(t, await send("POST", "/api/forms/short/sign", body, false), 404, "signing with a malformed link", /not valid/i);
+      refused(t, await send("POST", `/api/forms/${"A".repeat(43)}/consent`, { agreed: true }, false), 404, "agreeing to electronic signing with a link that does not exist", /not valid/i);
       const trap = await send("POST", `/api/forms/${"A".repeat(43)}/sign`, { ...body, website: "e2e-fixture-honeypot" }, false);
       t.ok(trap.status === 200 && trap.json?.success === true, `the paperwork bot trap should answer as if accepted: ${trap.describe()}`);
       t.ok(!("packet" in (trap.json || {})) && !("signed" in (trap.json || {})), "the bot trap must not pretend a document was signed");
@@ -1660,9 +1668,9 @@ export default [
   },
   {
     id: "ops.paperwork-roundtrip",
-    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: a traveler signs with a typed name and an explicit agreement on their own link; the signature pins the text they saw (changed text is refused); one signature per document; a signed PDF copy is kept in the private bucket; the business is named 'Still Afloat LLC dba Still Afloat Cruising'; no fees unless Mark enters one; the passport never comes back out",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: a traveler signs with a typed name and an explicit agreement on their own link; the signature pins the text they saw (changed text is refused); one signature per document; a signed PDF copy is kept in the private bucket; the business is named 'Still Afloat LLC dba Still Afloat Cruising'; no fees unless Mark enters one; the passport never comes back out; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "A throwaway traveler gets a link, sees their documents under the business's legal name, signs one document with a typed name (a wrong hash, no agreement and a second signing are refused), Mark sees the signature and opens its PDF, and removing it asks for the document again",
-    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id"],
+    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent"],
     modes: ["dev"],
     devOnlyBecause: "it creates a fixture traveler, signs one document and stores its PDF, then deletes all three (dev database and bucket only; removed in a finally block)",
     run: async (t) => {
@@ -1725,10 +1733,21 @@ export default [
         for (const secret of ["passport_enc", "form_token_hash", "consent_ip_hash", "organizer_token_hash", "organizer_email", "prospect_id"]) t.ok(!raw.includes(secret), `the paperwork packet carries ${secret}`);
         t.ok(!cardShaped(raw), "the paperwork packet contains something shaped like a card number");
         t.ok(typeof p.pii_ready === "boolean", "the packet does not say whether passport numbers can be taken");
+        // Mark 2026-10-25: the one-time consent to electronic records, before any signature
+        t.equal(p.esign?.consent_given_at, null, "a new link's consent to electronic signing");
+        t.equal(p.esign?.text?.points?.length, 5, "the things the signer agrees to before signing electronically");
+        t.ok(/paper copy/i.test((p.esign?.text?.points || []).join(" ")), "the consent offers a paper copy");
+        for (const secret of ["esign_consent_ip", "esign_consent_ua", "copies_token_hash"]) t.ok(!raw.includes(secret), `the paperwork packet carries ${secret}`);
 
         // refusals on the real link: nothing is stored by any of them
         const doc = p.docs.find((d) => d.key === "16-passport-document-checklist");
         const sign = (extra = {}, key = "16-passport-document-checklist") => t.send("POST", `/api/forms/${token}/sign`, { body: { doc_key: key, signer_name: NAME, agreed: true, content_sha256: doc.text_sha256, answers: {}, ...extra } });
+        const early = await sign({});
+        refused(t, early, 400, "signing before agreeing to electronic signing", /signing electronically/i);
+        t.equal(early.json.code, "consent-required", "the code of a signature before the consent");
+        refused(t, await t.send("POST", `/api/forms/${token}/consent`, { body: { agreed: false } }), 400, "the consent without its box ticked", /tick the box/i);
+        const agreed = t.success(await t.send("POST", `/api/forms/${token}/consent`, { body: { agreed: true } }));
+        t.fresh(agreed.packet?.esign?.consent_given_at, 1, "the consent's timestamp");
         refused(t, await sign({ agreed: false }), 400, "signing without ticking the agreement", /tick the box/i);
         refused(t, await sign({ signer_name: "Fixture" }), 400, "signing with only one name", /full name/i);
         const stale = await sign({ content_sha256: "0".repeat(64) });
@@ -1768,6 +1787,9 @@ export default [
         const pdf = await t.get(link.url);
         t.ok((pdf.status === 200 || pdf.status === 206) && pdf.text.startsWith("%PDF"), `the signed copy does not download as a PDF (HTTP ${pdf.status})`);
         t.atLeast(pdf.text.length, 3000, "size of the signed copy in bytes");
+        // Mark 2026-10-25: the copy is sealed with the business's certificate (the box carries GROUP_SIGN_P12_*), and the list says so
+        t.equal(s.sealed, true, "whether the signed copy is sealed with the business's certificate");
+        t.ok(/\/ByteRange\s*\[/.test(pdf.text) && /adbe\.pkcs7\.detached|ETSI\.CAdES\.detached/.test(pdf.text), "the signed copy carries no digital seal");
 
         // a new link replaces the old one
         const second = await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/form-link`, { auth: true, body: {} });

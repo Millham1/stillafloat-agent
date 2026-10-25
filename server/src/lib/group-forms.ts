@@ -24,7 +24,8 @@ import {
   DOC_SPECS, applyAnswers, buildCtx, fillBlocks, packetFor, publicField, renderDocument,
   type Answers, type DocCtx, type RenderedDoc, type Row,
 } from "./group-documents";
-import type { SignedCopyInput } from "./group-signature-pdf";
+import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
+import type { Sealer } from "./group-pdf-seal";
 import { fmtLong } from "./group-document-kit";
 import { displayName } from "./group-marketing";
 
@@ -46,9 +47,16 @@ export interface FormsStore {
   deleteSignature(id: string): Promise<void>;
   updateTraveler(id: string, patch: Row): Promise<void>;
   uploadPdf(path: string, bytes: Buffer): Promise<void>;
-  setSignaturePdf(id: string, path: string): Promise<void>;
+  downloadPdf(path: string): Promise<Buffer | null>;
+  setSignaturePdf(id: string, path: string, meta?: { sealed: boolean; seal_fingerprint: string | null }): Promise<void>;
   /** Find a prospect by email or add one; returns its id (null when the website's contact list refused it). */
   upsertProspect(row: Row): Promise<string | null>;
+  // Mark 2026-10-25, signature evidence (migration 0058):
+  updateGroup(id: string, patch: Row): Promise<void>;
+  /** The email log (group_messages): who, when, which template. Never a link. */
+  logMessage(row: Row): Promise<void>;
+  travelerByCopiesHash(hash: string): Promise<Row | null>;
+  groupByOrganizerCopiesHash(hash: string): Promise<Row | null>;
 }
 
 export interface FormsDeps {
@@ -61,6 +69,12 @@ export interface FormsDeps {
   /** Tell Mark a packet is complete (one notification per traveler, on the last signature). */
   notify: (n: { title: string; body: string; groupId: string }) => Promise<void>;
   warn: (obj: Record<string, unknown>, msg: string) => void;
+  /** The certificate that seals signed copies (GROUP_SIGN_P12_*); null = none configured, copies are saved unsealed and their evidence page says so. */
+  seal: Sealer | null;
+  /** Sends the signer their copies; false = the mail sender refused (the box's test-address rule lives in here too). */
+  mail: (m: { to: string; subject: string; html: string; text: string }) => Promise<boolean>;
+  /** The site the copies links point at (PUBLIC_URL). */
+  publicSite: string;
 }
 
 // ── Loading a link ────────────────────────────────────────────────────────────
@@ -69,7 +83,10 @@ export interface FormsDeps {
 export const TRAVELER_COLS =
   "id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, dob, gender, citizenship, email, phone, lang, " +
   "passport_last4, passport_country, passport_expiry, emergency_name, emergency_phone, special_needs, form_data, " +
-  "newsletter_opt_in, prospect_id, form_sent_at, form_submitted_at, consent_name, consent_signed_at";
+  "newsletter_opt_in, prospect_id, form_sent_at, form_submitted_at, consent_name, consent_signed_at, " +
+  "esign_consent_at, esign_consent_version, form_opened_at, copies_sent_at";
+/** The signer's own row adds the consent's network address, for the evidence page only (never in the shared list above). */
+export const SIGNER_COLS = `${TRAVELER_COLS}, esign_consent_ip`;
 
 export interface Loaded {
   kind: "traveler" | "organizer";
@@ -144,12 +161,85 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey">): R
     docs,
     complete: loaded.packet.length > 0 && loaded.packet.every((k) => loaded.signed.has(k)),
     pii_ready: piiConfigured(deps.piiKey),
+    // Mark 2026-10-25: consent to electronic records comes first, once per signer; the page shows the box until it is given.
+    esign: { consent_given_at: consentOf(loaded), version: ESIGN_CONSENT_VERSION, text: esignConsentText(loaded.ctx.lang) },
+    copies_sent_at: (traveler ? traveler.copies_sent_at : group.organizer_copies_sent_at) ?? null,
   };
+}
+
+// ── Consent to electronic records (ESIGN consumer consent), once per signer ──
+
+export const ESIGN_CONSENT_VERSION = "2026-10-25";
+
+export interface ConsentText { title: string; intro: string; points: string[]; tick: string; button: string }
+
+/** The disclosure a signer agrees to before the first signature. Plain words; the legal substance is the five points. */
+export function esignConsentText(lang: "en" | "es"): ConsentText {
+  return lang === "es"
+    ? {
+        title: "Antes de empezar: firmar en línea",
+        intro: "Estos documentos se firman electrónicamente, aquí mismo en esta página. Al marcar la casilla usted acepta que:",
+        points: [
+          "podemos entregarle estos documentos, y sus copias firmadas, de forma electrónica a la dirección de correo de su expediente;",
+          "escribir su nombre en un documento es su firma legal, igual que firmar en papel;",
+          `puede pedir una copia en papel en cualquier momento, sin costo, a ${BUSINESS.email} o al ${BUSINESS.phone};`,
+          "puede cambiar de opinión para documentos futuros avisándonos, y firmarlos en papel;",
+          "para leer y guardar sus copias necesita un dispositivo con navegador web, una dirección de correo y un lector de PDF.",
+        ],
+        tick: "Acepto recibir y firmar estos documentos electrónicamente.",
+        button: "Continuar a mis documentos",
+      }
+    : {
+        title: "Before you start: signing online",
+        intro: "These documents are signed electronically, right here on this page. By ticking the box you agree that:",
+        points: [
+          "we may give you these documents, and your signed copies, electronically at the email address on your file;",
+          "typing your name on a document is your legal signature, the same as signing on paper;",
+          `you can have a paper copy any time, at no charge, by asking us at ${BUSINESS.email} or ${BUSINESS.phone};`,
+          "you can change your mind for future documents by telling us, and sign those on paper instead;",
+          "to read and keep your copies you need a device with a web browser, an email address and a PDF reader.",
+        ],
+        tick: "I agree to receive and sign these documents electronically.",
+        button: "Continue to my paperwork",
+      };
+}
+
+/** When this signer agreed to electronic records, or null. */
+export function consentOf(loaded: Loaded): string | null {
+  const v = loaded.traveler ? loaded.traveler.esign_consent_at : loaded.group.organizer_esign_consent_at;
+  return typeof v === "string" && v ? v : null;
+}
+
+export async function giveConsent(deps: FormsDeps, token: unknown, body: { agreed?: unknown }, meta: { ip?: string; ua?: string }): Promise<Reply> {
+  const loaded = await loadByToken(deps, token);
+  if (!loaded) return NOT_FOUND;
+  if (body.agreed !== true) return reply(400, { success: false, error: "Please tick the box to agree to signing electronically, then continue." });
+  if (!consentOf(loaded)) {
+    const at = deps.now().toISOString();
+    const ip = meta.ip?.trim() || null;
+    const ua = (meta.ua ?? "").trim().slice(0, 300) || null;
+    if (loaded.traveler) await deps.store.updateTraveler(loaded.traveler.id, { esign_consent_at: at, esign_consent_ip: ip, esign_consent_ua: ua, esign_consent_version: ESIGN_CONSENT_VERSION });
+    else await deps.store.updateGroup(loaded.group.id, { organizer_esign_consent_at: at, organizer_esign_consent_ip: ip, organizer_esign_consent_ua: ua, organizer_esign_consent_version: ESIGN_CONSENT_VERSION });
+  }
+  const again = await loadByToken(deps, token);
+  return reply(200, { success: true, ...(again ? { packet: publicPacket(again, deps) } : {}) });
+}
+
+/** The first and latest opening of the link, for the evidence page. Best effort: a failure here never costs the page. */
+async function recordOpen(deps: FormsDeps, loaded: Loaded): Promise<void> {
+  const at = deps.now().toISOString();
+  try {
+    if (loaded.traveler) await deps.store.updateTraveler(loaded.traveler.id, { form_opened_at: loaded.traveler.form_opened_at ?? at, form_last_opened_at: at });
+    else await deps.store.updateGroup(loaded.group.id, { organizer_form_opened_at: loaded.group.organizer_form_opened_at ?? at, organizer_form_last_opened_at: at });
+  } catch (err) {
+    deps.warn({ err: err instanceof Error ? err.message : String(err), group: loaded.group.id }, "paperwork: the link's opening could not be recorded");
+  }
 }
 
 export async function getPacket(deps: FormsDeps, token: unknown): Promise<Reply> {
   const loaded = await loadByToken(deps, token);
   if (!loaded) return NOT_FOUND;
+  await recordOpen(deps, loaded);
   return reply(200, publicPacket(loaded, deps));
 }
 
@@ -182,6 +272,8 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
   const docKey = typeof body.doc_key === "string" ? body.doc_key : "";
   if (!loaded.packet.includes(docKey)) return reply(404, { success: false, error: "That document is not part of this paperwork." });
   if (loaded.signed.has(docKey)) return reply(409, { success: false, code: "already-signed", error: "This document is already signed. Thank you." });
+  // Mark 2026-10-25: no signature before the one-time consent to electronic records (ESIGN consumer consent).
+  if (!consentOf(loaded)) return reply(400, { success: false, code: "consent-required", error: "Please agree to signing electronically first: the box at the top of your paperwork." });
   if (body.agreed !== true) return reply(400, { success: false, error: "Please tick the box to say you agree, then sign." });
   const signerName = typeof body.signer_name === "string" ? body.signer_name.replace(/\s+/g, " ").trim() : "";
   if (!SIGNER_NAME.test(signerName) || signerName.split(" ").length < 2) {
@@ -221,6 +313,9 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
     signed_at: now.toISOString(),
     ip_hash: ipHash,
     ua_hash: hashForAudit(meta.ua),
+    // Mark 2026-10-25: in clear as well, as an e-signature service records them; the table is service-key only.
+    ip: meta.ip?.trim() || null,
+    ua: (meta.ua ?? "").trim().slice(0, 300) || null,
     answers: stored,
     content_sha256: doc.sha256,
   });
@@ -261,17 +356,31 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
     }
   }
 
-  // The signed copy. A failure here never undoes a valid signature: the hash and answers are stored.
+  // The signed copy, with its evidence page, sealed when the server has a certificate. A failure here never undoes a
+  // valid signature: the hash and answers are stored.
   let pdfSaved = true;
   try {
-    const pdf = await deps.renderPdf({
+    const base = {
       businessName: BUSINESS.legalName, title: doc.title, blocks: fillBlocks(doc, stored, now),
       signerName, signerRole: spec.signerRole, signedAt: now, docVersion: doc.version, contentSha256: doc.sha256,
       signatureId: saved.id, agentCountersignPending: !!spec.agentCountersign, logo: deps.logo,
-    });
+    };
+    const audit = auditFor(loaded, { ip: meta.ip, ua: meta.ua, at: now, seal: deps.seal });
+    let bytes = await deps.renderPdf({ ...base, audit });
+    let sealed = false;
+    if (deps.seal) {
+      try {
+        bytes = await deps.seal.seal(bytes, { reason: `Signed copy: ${doc.title}`, contactInfo: BUSINESS.email, name: BUSINESS.legalName, location: BUSINESS.arbitrationCity }, now);
+        sealed = true;
+      } catch (err) {
+        // The copy must not claim a seal it does not carry: render again saying so.
+        deps.warn({ err: err instanceof Error ? err.message : String(err), signature: saved.id }, "paperwork: the signed copy could not be sealed; saved unsealed");
+        bytes = await deps.renderPdf({ ...base, audit: { ...audit, seal: null } });
+      }
+    }
     const path = `signatures/${loaded.group.id}/${saved.id}.pdf`;
-    await deps.store.uploadPdf(path, pdf);
-    await deps.store.setSignaturePdf(saved.id, path);
+    await deps.store.uploadPdf(path, bytes);
+    await deps.store.setSignaturePdf(saved.id, path, { sealed, seal_fingerprint: sealed && deps.seal ? deps.seal.fingerprint : null });
   } catch (err) {
     pdfSaved = false;
     deps.warn({ err: err instanceof Error ? err.message : String(err), signature: saved.id }, "paperwork: the signed copy could not be saved (the signature itself is recorded)");
@@ -286,11 +395,138 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
   }
 
   // The refreshed packet: the documents after this one may now show what was just entered (and so carry a new hash).
-  const again = await loadByToken(deps, token);
+  let again = await loadByToken(deps, token);
+  // Mark 2026-10-25: the signer keeps their own copies. One email on the last signature, with a long-lived link per document.
+  if (complete && again) {
+    try { await sendCopies(deps, again); again = (await loadByToken(deps, token)) ?? again; } catch (err) {
+      deps.warn({ err: err instanceof Error ? err.message : String(err), group: loaded.group.id }, "paperwork: the signer's copies email failed (the signatures are recorded)");
+    }
+  }
   return reply(200, {
     success: true, signed: docKey, complete, pdf_saved: pdfSaved,
     ...(again ? { packet: publicPacket(again, deps) } : {}),
   });
+}
+
+/** The evidence page's facts, read from the file at the moment of signing. */
+function auditFor(loaded: Loaded, m: { ip?: string; ua?: string; at: Date; seal: Sealer | null }): AuditInfo {
+  const t = loaded.traveler; const g = loaded.group;
+  const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
+  return {
+    signerEmail: str(t ? t.email : g.organizer_email),
+    linkSentAt: str(t ? t.form_sent_at : g.organizer_link_sent_at),
+    firstOpenedAt: str(t ? t.form_opened_at : g.organizer_form_opened_at) ?? m.at.toISOString(),
+    consentAt: consentOf(loaded),
+    consentVersion: str(t ? t.esign_consent_version : g.organizer_esign_consent_version),
+    consentIp: str(t ? t.esign_consent_ip : g.organizer_esign_consent_ip),
+    ip: m.ip?.trim() || null,
+    ua: (m.ua ?? "").trim().slice(0, 300) || null,
+    seal: m.seal ? { fingerprint: m.seal.fingerprint, subject: m.seal.subject } : null,
+  };
+}
+
+// ── The signer's own copies (Mark 2026-10-25) ─────────────────────────────────
+
+export function copiesUrl(publicSite: string, token: string, signatureId: string): string {
+  return `${publicSite.replace(/\/$/, "")}/api/forms/copies/${token}/${signatureId}.pdf`;
+}
+
+/** The email that carries the signer's copies: warm, one tip, the facts. Mark's register (a laugh and a cruise-smart tip in every beat). */
+export function copiesEmail(input: { lang: "en" | "es"; firstName: string; groupName: string; trip: string; docs: Array<{ title: string; url: string }>; sealed: boolean }): { subject: string; text: string; html: string } {
+  const es = input.lang === "es"; const n = input.docs.length;
+  const hello = es ? (input.firstName ? `Hola ${input.firstName},` : "Hola,") : (input.firstName ? `Hi ${input.firstName},` : "Hi,");
+  const opening = es
+    ? `¡Firmado, sellado… y entregado! ${n === 1 ? "Su documento" : `Los ${n} documentos`} de ${input.trip} ${n === 1 ? "está listo" : "están listos"}. Aquí ${n === 1 ? "tiene su copia" : "tiene sus copias, un PDF por documento"}:`
+    : `Signed, sealed… and here it is, delivered! ${n === 1 ? "Your document" : `All ${n} documents`} for ${input.trip} ${n === 1 ? "is" : "are"} done. ${n === 1 ? "Your copy is" : "Your copies are"} below${n === 1 ? "" : ", one PDF each"}:`;
+  const tip = es
+    ? "Consejo de crucerista: guárdelos en la misma carpeta que la copia de su pasaporte, así todo el viaje vive en un solo lugar."
+    : "Smart-cruiser tip: save them in the same folder as your passport scan, so the whole trip lives in one place.";
+  const seal = input.sealed
+    ? (es ? "Cada PDF lleva nuestro sello digital: cualquier cambio al archivo después de hoy quedaría a la vista. Los enlaces son solo suyos; por favor no los reenvíe."
+          : "Each PDF is sealed with our certificate, which means any change to the file after today would show. The links are yours alone, so please don't forward them.")
+    : (es ? "Los enlaces son solo suyos; por favor no los reenvíe." : "The links are yours alone, so please don't forward them.");
+  const fix = es ? `¿Algo que corregir? Responda a este correo o llame al ${BUSINESS.phone} y lo resolvemos juntos.` : `Spot something that needs fixing? Reply to this email or call ${BUSINESS.phone}, and we'll sort it together.`;
+  const bye = es ? "¡Nos vemos a bordo!" : "See you on board!";
+  const sign = [BUSINESS.agentName, BUSINESS.legalName, BUSINESS.contactLine.split(" · ").slice(1).join(" · ")];
+  const text = [hello, opening, ...input.docs.map((d) => `${d.title}\n${d.url}`), tip, seal, fix, bye, sign.join("\n")].join("\n\n") + "\n";
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#07183f">`
+    + `<p>${esc(hello)}</p><p>${esc(opening)}</p>`
+    + `<ul>${input.docs.map((d) => `<li><a href="${esc(d.url)}">${esc(d.title)}</a></li>`).join("")}</ul>`
+    + `<p>${esc(tip)}</p><p>${esc(seal)}</p><p>${esc(fix)}</p><p>${esc(bye)}</p><p>${sign.map(esc).join("<br>")}</p></div>`;
+  return { subject: es ? `Sus documentos firmados: ${input.groupName}` : `Your signed paperwork for ${input.groupName}`, text, html };
+}
+
+/** On the last signature: a long-lived copies link is issued, the email goes to the address on file, and the send is logged. */
+async function sendCopies(deps: FormsDeps, loaded: Loaded): Promise<void> {
+  const t = loaded.traveler; const g = loaded.group;
+  const to = String((t ? t.email : g.organizer_email) ?? "").trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) {
+    deps.warn({ group: g.id, traveler: t?.id ?? null }, "paperwork: packet complete but no email address on file for the signer's copies");
+    return;
+  }
+  const now = deps.now().toISOString();
+  const { token, hash } = issueToken();
+  if (t) await deps.store.updateTraveler(t.id, { copies_token_hash: hash, copies_sent_at: now });
+  else await deps.store.updateGroup(g.id, { organizer_copies_token_hash: hash, organizer_copies_sent_at: now });
+  const docs = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig)
+    .map((d) => ({ title: renderDocument(d.key, loaded.ctx).title, url: copiesUrl(deps.publicSite, token, String(d.sig.id)) }));
+  const when = fmtLong(g.sail_date);
+  const trip = [g.name, [displayName(g.ship_name), when ? (loaded.ctx.lang === "es" ? `zarpa ${when}` : `sailing ${when}`) : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
+  const mail = copiesEmail({ lang: loaded.ctx.lang, firstName: String((t ? t.first_name : g.organizer_name) ?? ""), groupName: String(g.name ?? ""), trip, docs, sealed: !!deps.seal });
+  const ok = await deps.mail({ to, subject: mail.subject, html: mail.html, text: mail.text });
+  await deps.store.logMessage({
+    group_id: g.id, cabin_id: t?.cabin_id ?? null, traveler_id: t?.id ?? null, audience: "client", template: "paperwork-copies",
+    to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? now : null, error: ok ? null : "mail sender refused or was unreachable",
+  });
+  if (!ok) {
+    if (t) await deps.store.updateTraveler(t.id, { copies_sent_at: null });
+    else await deps.store.updateGroup(g.id, { organizer_copies_sent_at: null });
+  }
+}
+
+/** The copies link's owner: a traveler, or the group's organizer. */
+async function loadByCopiesToken(deps: FormsDeps, token: unknown): Promise<Loaded | null> {
+  if (!looksLikeLinkToken(token)) return null;
+  const hash = hashLinkToken(token);
+  const t = await deps.store.travelerByCopiesHash(hash);
+  const now = deps.now();
+  if (t) {
+    const group = await deps.store.group(t.group_id);
+    if (!group || group.status === "cancelled") return null;
+    const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
+    const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: t, now });
+    const sigs = await deps.store.signaturesFor({ groupId: group.id, travelerId: t.id });
+    return { kind: "traveler", group, traveler: t, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cabin: ctx.cabin, traveler: t }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
+  }
+  const group = await deps.store.groupByOrganizerCopiesHash(hash);
+  if (!group || group.status === "cancelled") return null;
+  const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
+  const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: null, now });
+  const sigs = await deps.store.signaturesFor({ groupId: group.id, travelerId: null });
+  return { kind: "organizer", group, traveler: null, cabin: null, mates: [], ctx, packet: packetFor({ group, organizer: true }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
+}
+
+/** GET /api/forms/copies/:token — the signer's signed documents, each with its download link. */
+export async function getCopies(deps: FormsDeps, token: unknown): Promise<Reply> {
+  const loaded = await loadByCopiesToken(deps, token);
+  if (!loaded) return NOT_FOUND;
+  const tok = String(token);
+  const docs = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig)
+    .map((d) => ({ id: String(d.sig.id), title: renderDocument(d.key, loaded.ctx).title, signed_at: d.sig.signed_at ?? null, sealed: !!d.sig.sealed, url: copiesUrl(deps.publicSite, tok, String(d.sig.id)) }));
+  return reply(200, { success: true, group: { name: loaded.group.name ?? null }, docs });
+}
+
+/** GET /api/forms/copies/:token/:sid.pdf — one signed copy, only when it belongs to this link's owner. */
+export async function getCopyPdf(deps: FormsDeps, token: unknown, signatureId: unknown): Promise<{ status: 200; bytes: Buffer; filename: string } | Reply> {
+  const loaded = await loadByCopiesToken(deps, token);
+  if (!loaded) return NOT_FOUND;
+  const sid = typeof signatureId === "string" ? signatureId.replace(/\.pdf$/i, "") : "";
+  const sig = [...loaded.signed.values()].find((s) => String(s.id) === sid);
+  if (!sig || typeof sig.pdf_path !== "string" || !sig.pdf_path) return NOT_FOUND;
+  const bytes = await deps.store.downloadPdf(sig.pdf_path);
+  if (!bytes) return reply(503, { success: false, error: "That copy is not available right now. Please try again in a minute." });
+  return { status: 200, bytes, filename: `${String(sig.doc_key)}-signed.pdf` };
 }
 
 // ── Dashboard side: links ─────────────────────────────────────────────────────

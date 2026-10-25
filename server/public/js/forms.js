@@ -38,16 +38,41 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     return '<div class="trip">' + lines.join('<br>') + '</div>';
   }
 
+  // Mark 2026-10-25: the one-time consent to electronic records comes before the first signature (ESIGN consumer consent).
+  function consented() { return !packet.esign || !!packet.esign.consent_given_at; }
+  function consentCard() {
+    var c = packet.esign.text;
+    return '<section class="sign esign" id="fm-consent" aria-labelledby="fm-consent-h"><h3 id="fm-consent-h">' + esc(c.title) + '</h3>' +
+      '<p>' + esc(c.intro) + '</p><ul>' + c.points.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
+      '<label class="agree"><input type="checkbox" id="fm-esign"><span>' + esc(c.tick) + '</span></label>' +
+      '<div id="fm-esign-err" class="err-box" role="alert" hidden></div>' +
+      '<button type="button" class="btn" id="fm-esign-go">' + esc(c.button) + '</button></section>';
+  }
+  function giveConsent() {
+    if (busy) return;
+    var err = $('fm-esign-err'); err.hidden = true;
+    if (!$('fm-esign').checked) { err.textContent = 'Please tick the box to agree to signing electronically.'; err.hidden = false; return; }
+    busy = true; $('fm-esign-go').disabled = true;
+    api('/consent', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ agreed: true, website: ($('fm-website') || {}).value || '' }) })
+      .then(function (r) {
+        busy = false;
+        var j = r.json || {};
+        if (r.status === 200 && j.success && j.packet) { packet = j.packet; var nxt = nextPending(); if (nxt) { renderIntro(); openDoc(nxt.key); } else render(); return; }
+        $('fm-esign-go').disabled = false; err.textContent = j.error || 'That did not go through. Please try again.'; err.hidden = false;
+      }).catch(function () { busy = false; $('fm-esign-go').disabled = false; err.textContent = 'We could not reach the server. Please check your connection and try again.'; err.hidden = false; });
+  }
+
   function renderIntro() {
     var n = packet.docs.length, done = packet.docs.filter(function (d) { return d.status === 'signed'; }).length;
     var nowDoc = nextPending();
     var h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '. ' +
-      (packet.kind === 'organizer' ? 'This is the group contract for you to read and sign.' : 'Here is your paperwork for this trip. Please read each document and sign it with your full name.') + '</p>' + tripBox();
+      (packet.kind === 'organizer' ? 'This is the group contract for you to read and sign.' : 'Here is your paperwork for this trip. Please read each document and sign it with your full name.') + '</p>' +
+      (consented() ? '' : consentCard()) + tripBox();
     h += '<p class="fine">' + done + ' of ' + n + ' signed.' + (nowDoc ? '' : ' Everything is done.') + '</p><ol class="progress">';
     packet.docs.forEach(function (d) {
       var isNow = nowDoc && nowDoc.key === d.key;
       h += '<li' + (isNow ? ' class="now"' : '') + '><span class="t">' + esc(d.title) + '</span>' +
-        (d.status === 'signed' ? '<span class="chip done">Signed</span>' : isNow ? '<button type="button" class="linkbtn" data-open="' + esc(d.key) + '">Continue</button>' : '<button type="button" class="linkbtn" data-open="' + esc(d.key) + '">Open</button>') + '</li>';
+        (d.status === 'signed' ? '<span class="chip done">Signed</span>' : !consented() ? '<span class="chip">Opens after the box above</span>' : isNow ? '<button type="button" class="linkbtn" data-open="' + esc(d.key) + '">Continue</button>' : '<button type="button" class="linkbtn" data-open="' + esc(d.key) + '">Open</button>') + '</li>';
     });
     h += '</ol>';
     $('fm-intro').innerHTML = h;
@@ -95,6 +120,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function openDoc(key) {
     var doc = docByKey(key);
     if (!doc || doc.status === 'signed') return;
+    if (!consented()) { var cc = $('fm-consent'); if (cc) cc.scrollIntoView({ block: 'center' }); return; }
     current = doc;
     show('fm-intro', false); show('fm-done', false); show('fm-doc', true);
     $('fm-doc-title').textContent = doc.title;
@@ -110,6 +136,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     $('fm-done').innerHTML = '<h2>Thank you' + (who ? ', ' + esc(who) : '') + '.</h2>' +
       '<p class="lead">' + (packet.kind === 'organizer' ? 'Your group contract is signed.' : 'Your paperwork is complete.') + '</p>' +
       '<p>A signed copy of each document is kept on file with ' + esc(packet.business ? packet.business.name : 'us') + '. ' +
+      (packet.copies_sent_at ? 'We have also emailed you your own copy of each signed document. ' : '') +
       (packet.kind === 'organizer' ? 'Mark will add the agent signature and be in touch. ' : 'There is nothing more to do right now. We will contact you if anything is missing or changes. ') +
       'You can close this page; opening your link again shows what is signed.</p>' + tripBox() +
       '<p class="fine">Questions? ' + esc(packet.business ? packet.business.contact : '') + '</p>';
@@ -182,6 +209,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       }
       if (r.status === 409 && j.code === 'document-changed') { return reload(true, saved, j.error); }
       if (r.status === 409 && j.code === 'already-signed') { return reload(); }
+      if (r.status === 400 && j.code === 'consent-required') { current = null; show('fm-doc', false); return reload(); }
       if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-doc', false); return; }
       showErr(j.error || 'That did not go through. Please try again.');
       fieldErrors(j.fields);
@@ -205,6 +233,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   }
 
   document.addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'fm-esign-go') { giveConsent(); return; }
     var b = e.target.closest && e.target.closest('[data-open]');
     if (b) openDoc(b.getAttribute('data-open'));
   });

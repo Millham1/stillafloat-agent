@@ -10,11 +10,9 @@ import { createAction } from "../lib/actions";
 import { resolvePublicDir } from "../lib/public-dir";
 import { BUSINESS } from "../lib/group-secure";
 import { renderSignedPdf } from "../lib/group-signature-pdf";
+import { sealerFromEnv, type Sealer } from "../lib/group-pdf-seal";
 import { DOC_SPECS } from "../lib/group-documents";
-import {
-  TRAVELER_COLS, formUrl, getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument,
-  type FormsDeps, type FormsStore,
-} from "../lib/group-forms";
+import { SIGNER_COLS, TRAVELER_COLS, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
 
 // Client paperwork (migrations 0044 and 0052).
 //
@@ -58,12 +56,12 @@ const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export const store: FormsStore = {
   async travelerByTokenHash(hash) {
-    const { data, error } = await db().from("group_travelers").select(TRAVELER_COLS).eq("form_token_hash", hash).maybeSingle();
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("form_token_hash", hash).maybeSingle();
     if (error) throw new Error(error.message);
     if (data) return data;
     // The traveler's cruise-page link (migration 0053) opens this page too: one link, one person, both pages. A box that
     // has not applied 0053 yet has no such column; the paperwork link must keep working there, so that error is not fatal.
-    const hub = await db().from("group_travelers").select(TRAVELER_COLS).eq("hub_token_hash", hash).maybeSingle();
+    const hub = await db().from("group_travelers").select(SIGNER_COLS).eq("hub_token_hash", hash).maybeSingle();
     if (hub.error) return null;
     return hub.data ?? null;
   },
@@ -88,7 +86,7 @@ export const store: FormsStore = {
     return data ?? [];
   },
   async signaturesFor({ groupId, travelerId }) {
-    let q = db().from("group_signatures").select("id, doc_key, signer_role, signer_name, signed_at, traveler_id, pdf_path");
+    let q = db().from("group_signatures").select("id, doc_key, signer_role, signer_name, signed_at, traveler_id, pdf_path, sealed");
     q = travelerId ? q.eq("traveler_id", travelerId) : q.eq("group_id", groupId).eq("signer_role", "organizer").is("traveler_id", null);
     const { data, error } = await q;
     if (error) throw new Error(error.message);
@@ -114,9 +112,33 @@ export const store: FormsStore = {
     const { error } = await db().storage.from(BUCKET).upload(p, bytes, { contentType: "application/pdf", upsert: false });
     if (error) throw new Error(error.message);
   },
-  async setSignaturePdf(id, p) {
-    const { error } = await db().from("group_signatures").update({ pdf_path: p }).eq("id", id);
+  async downloadPdf(p) {
+    const { data, error } = await db().storage.from(BUCKET).download(p);
+    if (error || !data) return null;
+    return Buffer.from(await data.arrayBuffer());
+  },
+  async setSignaturePdf(id, p, meta) {
+    const { error } = await db().from("group_signatures").update({ pdf_path: p, ...(meta ? { sealed: meta.sealed, seal_fingerprint: meta.seal_fingerprint } : {}) }).eq("id", id);
     if (error) throw new Error(error.message);
+  },
+  // Mark 2026-10-25, signature evidence (migration 0058)
+  async updateGroup(id, patch) {
+    const { error } = await db().from("groups").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+  },
+  async logMessage(row) {
+    const { error } = await db().from("group_messages").insert(row);
+    if (error) throw new Error(error.message);
+  },
+  async travelerByCopiesHash(hash) {
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("copies_token_hash", hash).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+  async groupByOrganizerCopiesHash(hash) {
+    const { data, error } = await db().from("groups").select("*").eq("organizer_copies_token_hash", hash).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? null;
   },
   async upsertProspect(row) {
     const found = await db().from("prospects").select("id").ilike("email", likeEscape(String(row["email"]))).limit(1).maybeSingle();
@@ -138,6 +160,15 @@ function logoBytes(): Buffer | null {
   return logo;
 }
 
+/** The sealing certificate, read from the env once; a bad P12 is logged once and sealing is off. */
+let sealerOnce: Sealer | null | undefined;
+function sealer(): Sealer | null {
+  if (sealerOnce !== undefined) return sealerOnce;
+  try { sealerOnce = sealerFromEnv(); if (!sealerOnce) logger.warn("paperwork: GROUP_SIGN_P12_B64 unset; signed copies are saved unsealed"); }
+  catch (err) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the sealing certificate could not be read; signed copies are saved unsealed"); sealerOnce = null; }
+  return sealerOnce;
+}
+
 function deps(): FormsDeps {
   return {
     store,
@@ -154,6 +185,13 @@ function deps(): FormsDeps {
       buttons: [{ label: "Open the group file", href: `/groups/${n.groupId}` }],
     }).then(() => undefined),
     warn: (obj, msg) => logger.warn(obj, msg),
+    seal: sealer(),
+    // The signer's copies: the box's test-address rule applies to this email as to every paperwork email.
+    mail: async (m) => {
+      if (!mailAllowed(m.to, process.env["GROUP_FORMS_MAIL_ALLOW"])) { logger.warn({ to: m.to }, "paperwork copies: this box only emails its test addresses"); return false; }
+      return sendMail({ ...m, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
+    },
+    publicSite: publicSite(),
   };
 }
 
@@ -211,6 +249,50 @@ router.post("/forms/:token/sign", async (req: Request, res: Response) => {
     return res.status(out.status).json(out.json);
   } catch (err) {
     return fail(req, res, err, "paperwork signing failed");
+  }
+});
+
+// Mark 2026-10-25: the one-time consent to electronic records, before the first signature.
+router.post("/forms/:token/consent", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (signLimited(ip)) return res.status(429).json({ success: false, error: `Too many attempts. Please try again later, or email ${BUSINESS.email}.` });
+    const body = (req.body ?? {}) as Row;
+    if (typeof body["website"] === "string" && body["website"]) return res.json({ success: true }); // honeypot
+    const out = await giveConsent(deps(), req.params["token"], { agreed: body["agreed"] }, { ip, ua: String(req.headers["user-agent"] ?? "") });
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork consent failed");
+  }
+});
+
+// Mark 2026-10-25: the signer's own copies, on the long-lived link from the "your signed paperwork" email.
+router.get("/forms/copies/:token", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const out = await getCopies(deps(), req.params["token"]);
+    if (out.status === 404 && missLimited(clientIp(req))) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork copies failed");
+  }
+});
+
+router.get("/forms/copies/:token/:sid", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const out = await getCopyPdf(deps(), req.params["token"], req.params["sid"]);
+    if ("bytes" in out) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${out.filename.replace(/[^\w.-]/g, "_")}"`);
+      return res.status(200).send(out.bytes);
+    }
+    if (out.status === 404 && missLimited(clientIp(req))) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork copy download failed");
   }
 });
 
@@ -311,7 +393,7 @@ router.get("/groups/:id/signatures", requireToken, async (req: Request, res: Res
       signatures: rows.map((s) => ({
         id: s.id, doc_key: s.doc_key, doc_title: DOC_SPECS[s.doc_key]?.title ?? s.doc_key, doc_version: s.doc_version,
         signer_role: s.signer_role, signer_name: s.signer_name, traveler_id: s.traveler_id ?? null, traveler_name: names.get(s.traveler_id) ?? null,
-        cabin_id: s.cabin_id ?? null, signed_at: s.signed_at, content_sha256: s.content_sha256, has_pdf: !!s.pdf_path,
+        cabin_id: s.cabin_id ?? null, signed_at: s.signed_at, content_sha256: s.content_sha256, has_pdf: !!s.pdf_path, sealed: !!s.sealed,
         choice: s.doc_key === "07-travel-insurance-declination" ? (s.answers?.insurance_choice ?? null) : null,
       })),
       packets: status.travelers,

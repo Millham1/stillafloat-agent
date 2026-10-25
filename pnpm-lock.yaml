@@ -6,60 +6,12 @@ settings:
 
 catalogs:
   default:
-    '@tailwindcss/vite':
-      specifier: ^4.1.14
-      version: 4.3.0
-    '@tanstack/react-query':
-      specifier: ^5.90.21
-      version: 5.100.9
     '@types/node':
       specifier: ^25.3.3
       version: 25.6.2
-    '@types/react':
-      specifier: ^19.2.0
-      version: 19.2.14
-    '@types/react-dom':
-      specifier: ^19.2.0
-      version: 19.2.3
-    '@vitejs/plugin-react':
-      specifier: ^5.0.4
-      version: 5.2.0
-    class-variance-authority:
-      specifier: ^0.7.1
-      version: 0.7.1
-    clsx:
-      specifier: ^2.1.1
-      version: 2.1.1
     drizzle-orm:
       specifier: ^0.45.2
       version: 0.45.2
-    framer-motion:
-      specifier: ^12.23.24
-      version: 12.38.0
-    lucide-react:
-      specifier: ^0.545.0
-      version: 0.545.0
-    react:
-      specifier: 19.1.0
-      version: 19.1.0
-    react-dom:
-      specifier: 19.1.0
-      version: 19.1.0
-    tailwind-merge:
-      specifier: ^3.3.1
-      version: 3.5.0
-    tailwindcss:
-      specifier: ^4.1.14
-      version: 4.3.0
-    tsx:
-      specifier: ^4.21.0
-      version: 4.21.0
-    vite:
-      specifier: ^7.3.2
-      version: 7.3.3
-    zod:
-      specifier: ^3.25.76
-      version: 3.25.76
 
 importers:
 
@@ -309,6 +261,15 @@ importers:
 
   server:
     dependencies:
+      '@signpdf/placeholder-plain':
+        specifier: '3'
+        version: 3.4.0(pdfkit@0.20.2)
+      '@signpdf/signer-p12':
+        specifier: '3'
+        version: 3.4.0(node-forge@1.4.0)
+      '@signpdf/signpdf':
+        specifier: '3'
+        version: 3.4.0
       '@supabase/supabase-js':
         specifier: ^2.105.4
         version: 2.105.4
@@ -329,13 +290,16 @@ importers:
         version: 2.8.6
       drizzle-orm:
         specifier: 'catalog:'
-        version: 0.45.2(@types/pg@8.20.0)(pg@8.20.0)
+        version: 0.45.2
       express:
         specifier: ^5.2.1
         version: 5.2.1
       http-proxy-middleware:
         specifier: ^4.0.0
         version: 4.0.0
+      node-forge:
+        specifier: '1'
+        version: 1.4.0
       pdfjs-dist:
         specifier: ^4
         version: 4.10.38
@@ -382,6 +346,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
+      '@types/node-forge':
+        specifier: ^1.3.14
+        version: 1.3.14
       '@types/pdfkit':
         specifier: ^0.17.6
         version: 0.17.6
@@ -2261,6 +2228,30 @@ packages:
   '@shikijs/vscode-textmate@10.0.2':
     resolution: {integrity: sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg==}
 
+  '@signpdf/placeholder-pdfkit010@3.4.0':
+    resolution: {integrity: sha512-fWj/BkZ8JXqzY1HliPuOEWtBmhQZ+sYATJrE3WADNKGb/ZAO0w/Enfb/8wKd8gDR2T2OrMmK299wXmHktXIjqA==}
+    engines: {node: '>=12', yarn: '>=1.22.18'}
+    peerDependencies:
+      pdfkit: ~0.10.0
+
+  '@signpdf/placeholder-plain@3.4.0':
+    resolution: {integrity: sha512-uK3Ql35hIjHWV2I5KAfXczuBrnwJfTp2B1Rl6REGllVh479Tj7CQb2o/R6tfkUKcEuT38mpXTlherPkBEZlOAw==}
+    engines: {node: '>=12'}
+
+  '@signpdf/signer-p12@3.4.0':
+    resolution: {integrity: sha512-xTV/lAK1/X7+7faqBdvNhlsryGCyxfUCsQVVyZz7l/Lhq7h/7bwFpOCEE/EUCwVQdpCC6aPuIs7BFrC4kGPeng==}
+    engines: {node: '>=12', yarn: '>=1.22.18'}
+    peerDependencies:
+      node-forge: ^1.3.3
+
+  '@signpdf/signpdf@3.4.0':
+    resolution: {integrity: sha512-7s4t0qJvKjbJRWv5umPZYC1iyxBcPZYV5wMhNPgncj0sMUpvBtJ+aus2va/ETWTsHXRaeYLvtSP/r+xFotlztQ==}
+    engines: {node: '>=12'}
+
+  '@signpdf/utils@3.4.0':
+    resolution: {integrity: sha512-8Ayesb0qwk9FrrlotPPaGvNKkIwMeTz4WB43kVu20zA/wcPn2s7J0ZSPqsx+ltVYDglL1wYHQFobgrKDccp3kw==}
+    engines: {node: '>=12', yarn: '>=1.22.18'}
+
   '@sindresorhus/merge-streams@4.0.0':
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
@@ -2508,6 +2499,9 @@ packages:
 
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
+
+  '@types/node-forge@1.3.14':
+    resolution: {integrity: sha512-mhVF2BnD4BO+jtOp7z1CdzaK4mbuK0LLQYAvdOLqHTavxFNq4zA1EmYkpnFjP8HOUzedfQkRnp0E2ulSAYSzAw==}
 
   '@types/node@25.6.2':
     resolution: {integrity: sha512-sokuT28dxf9JT5Kady1fsXOvI4HVpjZa95NKT5y9PNTIrs2AsobR4GFAA90ZG8M+nxVRLysCXsVj6eGC7Vbrlw==}
@@ -3551,6 +3545,10 @@ packages:
     peerDependencies:
       react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
       react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+
+  node-forge@1.4.0:
+    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+    engines: {node: '>= 6.13.0'}
 
   node-releases@2.0.38:
     resolution: {integrity: sha512-3qT/88Y3FbH/Kx4szpQQ4HzUbVrHPKTLVpVocKiLfoYvw9XSGOX2FmD2d6DrXbVYyAQTF2HeF6My8jmzx7/CRw==}
@@ -5949,6 +5947,29 @@ snapshots:
 
   '@shikijs/vscode-textmate@10.0.2': {}
 
+  '@signpdf/placeholder-pdfkit010@3.4.0(pdfkit@0.20.2)':
+    dependencies:
+      '@signpdf/utils': 3.4.0
+      pdfkit: 0.20.2
+
+  '@signpdf/placeholder-plain@3.4.0(pdfkit@0.20.2)':
+    dependencies:
+      '@signpdf/placeholder-pdfkit010': 3.4.0(pdfkit@0.20.2)
+      '@signpdf/utils': 3.4.0
+    transitivePeerDependencies:
+      - pdfkit
+
+  '@signpdf/signer-p12@3.4.0(node-forge@1.4.0)':
+    dependencies:
+      '@signpdf/utils': 3.4.0
+      node-forge: 1.4.0
+
+  '@signpdf/signpdf@3.4.0':
+    dependencies:
+      '@signpdf/utils': 3.4.0
+
+  '@signpdf/utils@3.4.0': {}
+
   '@sindresorhus/merge-streams@4.0.0': {}
 
   '@supabase/auth-js@2.105.4':
@@ -6218,6 +6239,10 @@ snapshots:
       '@types/unist': 3.0.3
 
   '@types/http-errors@2.0.5': {}
+
+  '@types/node-forge@1.3.14':
+    dependencies:
+      '@types/node': 25.6.2
 
   '@types/node@25.6.2':
     dependencies:
@@ -6556,6 +6581,8 @@ snapshots:
       '@esbuild-kit/esm-loader': 2.6.5
       esbuild: 0.25.12
       tsx: 4.21.0
+
+  drizzle-orm@0.45.2: {}
 
   drizzle-orm@0.45.2(@types/pg@8.20.0)(pg@8.20.0):
     optionalDependencies:
@@ -7214,6 +7241,8 @@ snapshots:
     dependencies:
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
+
+  node-forge@1.4.0: {}
 
   node-releases@2.0.38: {}
 
