@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import {
-  computeKpis, crossValue, funnel, gridRows, journeyBars, moneyByWeek, paperworkMatrix, timeline,
+  computeKpis, crossValue, funnel, gridRows, journeyBars, longDate, moneyByWeek, paperworkMatrix, timeline,
   type Cross, type CrossDim, type DeadlineKind, type Filters, type FunnelStep, type Slice, type Tab, type WMessage, type WorkspaceData,
 } from "@/lib/group-workspace";
 import {
@@ -148,7 +148,7 @@ export function DeadlinesPage({ c }: { c: PageCtx }) {
       <KpiCard label="Next 30 days" value={String(k.next30)} caption="deadlines coming up" />
       <KpiCard label="Missed" value={String(k.missed)} tone={k.missed ? "bad" : undefined} caption="deposits, names or final payments past their date" />
       <KpiCard label="Met" value={String(k.met)} tone={k.met ? "good" : undefined} caption="deadlines already done" />
-      <KpiCard label="Next up" value={k.nextDate ?? "—"} caption={k.nextLabel ?? "nothing dated ahead"} />
+      <KpiCard label="Next up" value={k.nextDate ? longDate(k.nextDate) : "—"} caption={k.nextLabel ?? "nothing dated ahead"} />
     </>}>
       <Cell span={7}><TimelineVisual fill model={timeline(c.slice)} today={c.slice.today} onGroup={(id) => c.drill("group", id)} onKind={(kd: DeadlineKind) => c.cross({ dim: "dk", value: kd })} /></Cell>
       <Cell span={5}><DataGrid fill title="Deadlines" tab="deadlines" rows={gridRows("deadlines", c.slice, c.filters.x)} today={c.slice.today} onOpen={(r: any) => c.drill("group", r.groupId)} rowTitle="Open this group's page" /></Cell>
