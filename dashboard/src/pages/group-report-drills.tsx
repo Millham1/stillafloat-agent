@@ -79,7 +79,7 @@ export function DrillView({ data, drill, backTo, onBack, onDrill }: {
           {d.cabin && <RowLink onClick={() => onDrill("cabin", d.cabin!.id)}><span className="text-muted-foreground w-24 shrink-0">Cabin</span>{[d.cabin.category, d.cabin.cabinNum, d.cabin.bookingNumber].filter(Boolean).join(" · ")}</RowLink>}
           {d.mates.map((m) => <RowLink key={m.id} onClick={() => onDrill("traveler", m.id)}><span className="text-muted-foreground w-24 shrink-0">Sharing with</span>{m.name}</RowLink>)}
           {d.payments.map((p) => <RowLink key={p.id} onClick={() => onDrill("payment", p.id)}><span className="text-muted-foreground w-24 shrink-0">{p.kind}</span>{money(p.amount)} · {p.dueDate ? when(p.dueDate) : "no date"} <span className="ml-auto"><Pill tone={PAY_TONE[p.status] ?? "slate"}>{p.status}</Pill></span></RowLink>)}
-          <Facts rows={[["Sails", d.group?.sailDate ? `${when(d.group.sailDate)} · ${[d.group.cruiseLine, d.group.shipName].filter(Boolean).join(" · ")}` : "—"], ["Journey emails", d.messages.length ? d.messages.map((m) => `${m.kind}: ${m.status}`).join(", ") : "none yet"]]} />
+          <Facts rows={[["Sails", d.group?.sailDate ? `${when(d.group.sailDate)} · ${[d.group.cruiseLine, d.group.shipName].filter(Boolean).join(" · ")}` : "—"], ["Emails sent to them", d.messages.length ? d.messages.map((m) => `${m.kind}: ${m.status}`).join(", ") : "none yet"]]} />
         </Box>
       </DrillPage>
     );

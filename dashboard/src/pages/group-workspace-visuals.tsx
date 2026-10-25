@@ -297,9 +297,9 @@ export function PaperworkMatrix({ model, active, onCell, onGroup, onTraveler, fi
           <table className="w-full text-xs border-collapse">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b">
-                <th className="text-left px-2 py-2 font-semibold min-w-[11rem]">Traveler</th>
-                {model.columns.map((c) => <th key={c.key} className="px-2 py-2 font-semibold text-center min-w-[6.5rem]">{c.title}</th>)}
-                <th className="px-2 py-2 font-semibold text-center min-w-[5rem]">Signed</th>
+                <th className={`text-left px-2 py-2 font-semibold ${fill ? "min-w-[8.5rem]" : "min-w-[11rem]"}`}>Traveler</th>
+                {model.columns.map((c) => <th key={c.key} className={`px-1.5 py-2 font-semibold text-center ${fill ? "min-w-[4.6rem]" : "min-w-[6.5rem]"}`}>{c.title}</th>)}
+                <th className={`px-2 py-2 font-semibold text-center ${fill ? "min-w-[3.5rem]" : "min-w-[5rem]"}`}>Signed</th>
               </tr>
             </thead>
             <tbody>
