@@ -1582,7 +1582,7 @@ export default [
       const js = await t.get(src);
       t.status(js, 200);
       t.matches(js.headers.get("content-type") || "", /javascript/, "the Group Bookings program's content type");
-      for (const needle of ["/api/groups/analytics", "x-affiliate-token", "/api/auth-check", "saf_group_bookings_token", "form-link/send"]) {
+      for (const needle of ["/groups/analytics", "x-affiliate-token", "/api/auth-check", "saf_group_bookings_token", "form-link/send"]) {  // the program joins "/api" and "/groups/analytics" at run time
         t.ok(js.text.includes(needle), `the Group Bookings program no longer mentions ${needle}`);
       }
       t.ok(!js.text.includes("Still Afloat Command Center"), "the Group Bookings program carries the dashboard (it must be its own app)");

@@ -380,7 +380,7 @@ router.get("/groups/:id/signatures", requireToken, async (req: Request, res: Res
     const group = await store.group(groupId);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
     const { data, error } = await db().from("group_signatures")
-      .select("id, group_id, cabin_id, traveler_id, doc_key, doc_version, signer_role, signer_name, signed_at, content_sha256, pdf_path, answers")
+      .select("id, group_id, cabin_id, traveler_id, doc_key, doc_version, signer_role, signer_name, signed_at, content_sha256, pdf_path, sealed, answers")
       .eq("group_id", groupId).order("signed_at", { ascending: false }).order("id", { ascending: true });
     if (error) throw new Error(error.message);
     const rows: Row[] = data ?? [];
