@@ -32,8 +32,6 @@ if (!entryPoints.length) {
 // and would otherwise change the common base esbuild lays this suite's output out from.
 const dashboardSrc = path.resolve(here, "..", "dashboard", "src");
 const dashboardTests = await findTests(dashboardSrc).catch(() => []);
-// Group Bookings is its own app (Mark 2026-10-25); its plain-TypeScript rules (report pages, drill-through) are tested the same way.
-const groupBookingsTests = await findTests(path.resolve(here, "..", "group-bookings", "src")).catch(() => []);
 
 await rm(outDir, { recursive: true, force: true });
 if (dashboardTests.length) {
@@ -43,17 +41,6 @@ if (dashboardTests.length) {
     bundle: true,
     format: "esm",
     outdir: path.join(outDir, "dashboard-tests"),
-    outExtension: { ".js": ".mjs" },
-    logLevel: "warning",
-  });
-}
-if (groupBookingsTests.length) {
-  await esbuild({
-    entryPoints: groupBookingsTests,
-    platform: "node",
-    bundle: true,
-    format: "esm",
-    outdir: path.join(outDir, "group-bookings-tests"),
     outExtension: { ".js": ".mjs" },
     logLevel: "warning",
   });
@@ -109,7 +96,7 @@ async function builtTests(dir) {
   return out;
 }
 const built = await builtTests(outDir);
-await copyFixturesBesideBuilds([...new Set(built.filter((f) => !f.startsWith(path.join(outDir, "dashboard-tests")) && !f.startsWith(path.join(outDir, "group-bookings-tests"))).map((f) => path.dirname(f)))]); // the app tests read no fixtures
+await copyFixturesBesideBuilds([...new Set(built.filter((f) => !f.startsWith(path.join(outDir, "dashboard-tests"))).map((f) => path.dirname(f)))]); // the dashboard tests read no fixtures
 if (!built.length) { console.error("build produced no test files"); process.exit(1); }
 
 // NODE_ENV=production keeps the logger on the plain pino path (no pino-pretty

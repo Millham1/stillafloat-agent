@@ -30,7 +30,6 @@ minimumReleaseAge: 1440
 packages:
   - server
   - dashboard
-  - group-bookings
   - lib/*
   - lib/integrations/*
   - scripts
