@@ -274,6 +274,29 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   }
 
   function showErr(msg) { var e = $('fm-err'); e.textContent = msg; e.hidden = false; }
+
+  // Mark 2026-10-26: "the page alerted me but didn't take me to the errors". The page goes to the first problem in page order,
+  // and the message under the sign button lists every problem as a link that goes straight to it.
+  function fieldEl(name) { return $('fm-doc-body').querySelector('[data-field="' + name + '"]'); }
+  function goTo(el) {
+    if (!el) return;
+    var top = el.getBoundingClientRect().top + window.pageYOffset - 140;
+    window.scrollTo(0, Math.max(0, top));
+    try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
+  }
+  function errLinks(names) {
+    var labels = {}; (current ? current.fields : []).forEach(function (f) { labels[f.name] = f.label; });
+    var list = names.filter(function (n) { return fieldEl(n); });
+    if (!list.length) return;
+    var box = $('fm-err'), ul = document.createElement('ul'); ul.className = 'err-links';
+    list.forEach(function (n) {
+      var li = document.createElement('li'), b = document.createElement('button');
+      b.type = 'button'; b.className = 'linkbtn'; b.textContent = 'Go to: ' + (labels[n] || n);
+      b.onclick = function () { goTo(fieldEl(n)); };
+      li.appendChild(b); ul.appendChild(li);
+    });
+    box.appendChild(ul);
+  }
   function hideErr() {
     $('fm-err').hidden = true;
     var errs = $('fm-doc').querySelectorAll('.field-err'); for (var i = 0; i < errs.length; i++) errs[i].remove();
@@ -304,9 +327,10 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       var anchor = els[els.length - 1];
       if (anchor.type === 'checkbox' || anchor.type === 'radio') { (anchor.closest('p,li,td,th') || anchor.parentNode).appendChild(msg); }
       else anchor.parentNode.insertBefore(msg, anchor.nextSibling);
-      if (!first) first = host;
+      if (!first || (first.compareDocumentPosition(host) & Node.DOCUMENT_POSITION_PRECEDING)) first = host;   // the first one on the page
     });
-    if (first) { first.scrollIntoView({ block: 'center' }); try { first.focus(); } catch (e) {} }
+    errLinks(Object.keys(map || {}));
+    goTo(first);
   }
 
   function sign() {
