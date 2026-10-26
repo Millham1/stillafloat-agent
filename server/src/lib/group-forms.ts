@@ -184,7 +184,8 @@ export function pagePhotos(journey: unknown, page: "paperwork" | "cruise"): Arra
 
 // ── Consent to electronic records (ESIGN consumer consent), once per signer ──
 
-export const ESIGN_CONSENT_VERSION = "2026-10-25";
+// 2026-10-26: the paper-copy point reworded (Mark: copies are emailed once every document is done; paper on request, still free).
+export const ESIGN_CONSENT_VERSION = "2026-10-26";
 
 export interface ConsentText { title: string; intro: string; points: string[]; tick: string; button: string }
 
@@ -197,7 +198,7 @@ export function esignConsentText(lang: "en" | "es"): ConsentText {
         points: [
           "podemos entregarle estos documentos, y sus copias firmadas, de forma electrónica a la dirección de correo de su expediente;",
           "escribir su nombre en un documento es su firma legal, igual que firmar en papel;",
-          `puede pedir una copia en papel en cualquier momento, sin costo, a ${BUSINESS.email} o al ${BUSINESS.phone};`,
+          "sus copias firmadas se le envían por correo cuando todos los documentos estén listos; si alguna vez desea una copia en papel, solo pídala, sin costo;",
           "puede cambiar de opinión para documentos futuros avisándonos, y firmarlos en papel;",
           "para leer y guardar sus copias necesita un dispositivo con navegador web, una dirección de correo y un lector de PDF.",
         ],
@@ -210,7 +211,7 @@ export function esignConsentText(lang: "en" | "es"): ConsentText {
         points: [
           "we may give you these documents, and your signed copies, electronically at the email address on your file;",
           "typing your name on a document is your legal signature, the same as signing on paper;",
-          `you can have a paper copy any time, at no charge, by asking us at ${BUSINESS.email} or ${BUSINESS.phone};`,
+          "your signed copies are emailed to you once every document is done; if you'd ever like a paper copy, just ask, at no charge;",
           "you can change your mind for future documents by telling us, and sign those on paper instead;",
           "to read and keep your copies you need a device with a web browser, an email address and a PDF reader.",
         ],

@@ -511,7 +511,7 @@ test("no signature before the one-time consent to electronic records; the consen
   assert.equal(p0.esign.consent_given_at, null);
   assert.equal(p0.esign.version, ESIGN_CONSENT_VERSION);
   assert.equal(p0.esign.text.points.length, 5, "the five things the signer agrees to");
-  assert.match(p0.esign.text.points.join(" "), /paper copy any time, at no charge/);
+  assert.match(p0.esign.text.points.join(" "), /emailed to you once every document is done; if you'd ever like a paper copy, just ask, at no charge/);
   const doc = p0.docs.find((d: any) => d.key === "16-passport-document-checklist");
   const early = await signDocument(t.deps, token, { doc_key: doc.key, signer_name: NAME, agreed: true, content_sha256: doc.text_sha256 }, META);
   assert.equal(early.status, 400); assert.equal(early.json["code"], "consent-required");
