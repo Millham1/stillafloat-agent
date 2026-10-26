@@ -127,6 +127,7 @@
 
 </div>
 
+<script src="/js/keep-typing.js?v=20261026"></script>
 <script>
 (function(){
   var ES = document.documentElement.lang === 'es';
@@ -527,6 +528,7 @@
   function partyWords(n){ return n < 2 ? T.party_one : fill(T.party_n, { n: NUMW[n] || String(n) }); }
   function showHeld(count, again){
     held = true; clearTimeout(timer);
+    if(window.SAKeep) window.SAKeep.clear(window.SAKeep.keyFor('details', token));
     show('d-intro', false); show('d-part1', false); show('d-part2', false); show('d-part3', false); show('d-summary', false); msg('');
     var p = pick || data.pick || { category: '' };
     $('d-thanks-h').textContent = fill(T.held_h, { category: p.category, party: partyWords(count) });
@@ -675,6 +677,8 @@
     // a returning guest whose names, birthdays and address are all saved: nothing is re-sent until they change something
     if(saved.length && d.pick && d.concierge && part1Ok()) lastSent = JSON.stringify(payload());
     paintAll(); renderPart3(); syncHold();
+    // Mark 2026-10-26: what was typed here and not saved yet comes back when the guest returns, until the cabin is on hold (js/keep-typing.js)
+    if(window.SAKeep){ window.SAKeep.track($('d-part1'), function(){ return held ? null : window.SAKeep.keyFor('details', token); }); window.SAKeep.restore($('d-part1'), window.SAKeep.keyFor('details', token)); }
   }
 
   fetch('/api/group-details/' + token)

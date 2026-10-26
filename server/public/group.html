@@ -123,6 +123,7 @@
 
 </div>
 
+<script src="/js/keep-typing.js?v=20261026"></script>
 <script>
 (function(){
   var ES = document.documentElement.lang === 'es';
@@ -197,6 +198,7 @@
 
   var qs = new URLSearchParams(location.search);
   var code = (qs.get('g') || '').trim();
+  var sentOk = false;   // the form went through: nothing more to keep
   // A preview carries the dashboard token in the FRAGMENT (never sent to the server in the URL, never logged).
   var hm = location.hash.match(/[#&]preview=([^&]+)/);
   var previewToken = hm ? decodeURIComponent(hm[1]) : '';
@@ -345,6 +347,8 @@
     var bp = /\(?\b\d{3}\)?[-. ]\d{3}[-. ]\d{4}\b/.exec(String(c.cta_blurb || ''));
     if(bp) callPhone = bp[0];
     var gs = ''; for(var n=1;n<=12;n++) gs += '<option value="'+n+'"'+(n===2?' selected':'')+'>'+n+'</option>'; $('f-guests').innerHTML = gs;
+    // Mark 2026-10-26: the name, contact and party size typed here come back if the visitor leaves and returns, until it is sent (js/keep-typing.js)
+    if(window.SAKeep){ window.SAKeep.track($('gp-form'), function(){ return sentOk ? null : window.SAKeep.keyFor('group', code); }); window.SAKeep.restore($('gp-form'), window.SAKeep.keyFor('group', code)); }
 
     // The footer: the business named as it files, and the credit line of the pictures shown.
     $('gp-legal').textContent = f.business.legalName + ' · ' + f.business.email;
@@ -476,6 +480,7 @@
     }).then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
       .then(function(x){
         if(x.ok){
+          sentOk = true; if(window.SAKeep) window.SAKeep.clear(window.SAKeep.keyFor('group', code));
           $('gp-form').reset();
           var first = (x.j && typeof x.j.first === 'string' && x.j.first.trim()) || name.split(' ')[0];
           if(x.j && x.j.detailsUrl && showChoice(first, x.j)){ msg.className = 'msg'; msg.textContent = ''; }

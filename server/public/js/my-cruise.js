@@ -31,7 +31,7 @@
   function checklist(list) {
     return '<ul class="ck">' + list.map(function (e) {
       return '<li class="' + (e.done ? 'done' : '') + '" data-row="' + esc(e.id) + '">' +
-        '<input type="checkbox" id="ck-' + esc(e.id) + '" data-tick="' + esc(e.id) + '"' + (e.done ? ' checked' : '') + ' aria-label="' + esc(view.ui.tick + ': ' + e.title) + '">' +
+        '<input type="checkbox" data-nokeep id="ck-' + esc(e.id) + '" data-tick="' + esc(e.id) + '"' + (e.done ? ' checked' : '') + ' aria-label="' + esc(view.ui.tick + ': ' + e.title) + '">' +
         '<label for="ck-' + esc(e.id) + '"><span class="t">' + esc(e.title) + (e.dueText ? ' <span class="d">' + esc(e.dueText) + '</span>' : '') + '</span>' +
         (e.detail ? '<span class="d">' + esc(e.detail) + '</span>' : '') +
         (e.url ? '<span class="d"><a href="' + esc(safe(e.url)) + '" rel="noopener noreferrer" target="_blank">' + esc(e.url.replace(/^https?:\/\//, '').slice(0, 60)) + '</a></span>' : '') +
@@ -97,11 +97,15 @@
 
   // ── actions ────────────────────────────────────────────────────────────────
 
+  function keepKey() { return window.SAKeep ? window.SAKeep.keyFor('cruise', token) : null; }
+
   function load(keepScroll) {
     var y = window.scrollY;
     return api('').then(function (r) {
       if (r.status !== 200 || !r.json || !r.json.success) { setState((r.json && r.json.error) || 'We could not open this link. Please try again later.'); show('mc-body', false); return; }
       view = r.json; render();
+      // Mark 2026-10-26: what was typed in the details form and not saved yet comes back when the traveler returns (js/keep-typing.js)
+      if (window.SAKeep && $('mc-form')) { window.SAKeep.track($('mc-body'), keepKey); window.SAKeep.restore($('mc-form'), keepKey()); }
       if (keepScroll) window.scrollTo(0, y);
     }).catch(function () { setState('We could not reach the server. Please check your connection and try again. / No pudimos conectar con el servidor.'); });
   }
@@ -131,6 +135,7 @@
       busy = false; $('mc-save').disabled = false;
       var j = r.json || {};
       if (r.status === 200 && j.success) {
+        if (window.SAKeep) window.SAKeep.clear(keepKey());
         // show the confirmation, then redraw with what is now on file (the list of what we still need shrinks)
         load(true).then(function () { var m = $('mc-form-msg'); if (m) { m.innerHTML = '<p class="ok-box">' + esc(j.message || view.ui.saved) + '</p>'; } });
         return;

@@ -155,6 +155,7 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey">): R
       name: group.name ?? null, cruise_line: displayName(group.cruise_line) || null, ship_name: displayName(group.ship_name) || null,
       sail_date_text: fmtLong(group.sail_date) || null, return_date_text: fmtLong(group.return_date) || null,
       nights: group.nights ?? null, embark_port: group.embark_port ?? null,
+      photos: pagePhotos(group.journey, "paperwork"),
     },
     cabin: loaded.cabin ? { cabin_num: loaded.cabin.cabin_num ?? null, category: loaded.cabin.category ?? null } : null,
     mates: loaded.mates.map(personName).filter(Boolean),
@@ -165,6 +166,20 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey">): R
     esign: { consent_given_at: consentOf(loaded), version: ESIGN_CONSENT_VERSION, text: esignConsentText(loaded.ctx.lang) },
     copies_sent_at: (traveler ? traveler.copies_sent_at : group.organizer_copies_sent_at) ?? null,
   };
+}
+
+/**
+ * Mark 2026-10-26: a private page opens on the trip's own photos (left, middle, right), never the website's banner, and each page shows a
+ * different selling point. The group file names them: groups.journey.photos.<page> = up to three { url, alt }. Only our own /assets/ files
+ * and https addresses are passed on; anything else is left out.
+ */
+export function pagePhotos(journey: unknown, page: "paperwork" | "cruise"): Array<{ url: string; alt: string }> {
+  const j = journey && typeof journey === "object" ? (journey as Row) : {};
+  const list: unknown = j["photos"] && typeof j["photos"] === "object" ? (j["photos"] as Row)[page] : null;
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, 3)
+    .map((p: Row | null) => ({ url: typeof p?.url === "string" ? p.url.trim() : "", alt: typeof p?.alt === "string" ? p.alt.trim().slice(0, 160) : "" }))
+    .filter((p) => p.url.length <= 500 && !p.url.includes("..") && (/^\/assets\/[\w\-./]+$/.test(p.url) || /^https:\/\/[^\s"'<>()\\]+$/.test(p.url)));
 }
 
 // ── Consent to electronic records (ESIGN consumer consent), once per signer ──

@@ -22,6 +22,74 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     });
   }
 
+  // Mark 2026-10-26: what is typed in a document stays if the client leaves and comes back, until that document is signed (js/keep-typing.js).
+  function keepKey(docKey) { return window.SAKeep ? window.SAKeep.keyFor('forms', token) + ':' + docKey : null; }
+
+  // ── The home address, checked with the post office as it is typed (Mark 2026-10-26, the same service and words as the details page) ──
+  // A street box (a field ending "address") is paired with its "city_state_zip" box. Once the street has five characters and the second box
+  // holds a state with a city or a ZIP, the post office's version is offered under the boxes; "Yes" fills both, "No" leaves them as typed.
+  var ADDR = {
+    tidied: "We tidied it to the post office's spelling:", right: 'Right?', yes: 'Yes', no: "No, I'll fix it",
+    nf: "We couldn't find that one… check the street and ZIP.", na: "We couldn't check that address right now, so we'll take it as typed.",
+  };
+  function tidy(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); }
+  function splitCsz(s) {
+    var t = tidy(s), m = /^(.*?)[\s,]+([A-Za-z]{2})\.?(?:[\s,]+(\d{5})(?:-?\d{4})?)?$/.exec(t);
+    if (m) return { city: m[1].replace(/[,\s]+$/, ''), state: m[2].toUpperCase(), zip: m[3] || '' };
+    var z = /(\d{5})(?:-?\d{4})?$/.exec(t);
+    return { city: z ? tidy(t.slice(0, z.index).replace(/[,\s]+$/, '')) : t, state: '', zip: z ? z[1] : '' };
+  }
+  function addressCheck(body) {
+    var streets = body.querySelectorAll('input[data-field$="address"]');
+    for (var i = 0; i < streets.length; i++) {
+      var street = streets[i], name = street.getAttribute('data-field');
+      var csz = body.querySelector('input[data-field="' + name.replace(/address$/, 'city_state_zip') + '"]');
+      if (csz && !street.disabled) pairUp(street, csz);
+    }
+  }
+  function pairUp(street, csz) {
+    var box = document.createElement('div'); box.className = 'addr-fix'; box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite'); box.hidden = true;
+    csz.parentNode.insertBefore(box, csz.nextSibling);
+    var look = { key: '', off: false, sugg: [], timer: null };
+    function keyNow() { return (tidy(street.value) + '|' + tidy(csz.value)).toLowerCase(); }
+    function say(html) { box.innerHTML = html; box.hidden = !html; }
+    function offer(s) {
+      say(esc(ADDR.tidied) + ' <b>' + esc(s.formatted) + '</b>. ' + esc(ADDR.right) + ' <button type="button" class="addr-yes">' + esc(ADDR.yes) + '</button> · <button type="button" class="linkbtn addr-no">' + esc(ADDR.no) + '</button>');
+      box.querySelector('.addr-yes').onclick = function () {
+        street.value = s.street; csz.value = s.city + ', ' + s.state + ' ' + s.zip;
+        look.key = keyNow(); say('');
+        street.dispatchEvent(new Event('input', { bubbles: true })); look.key = keyNow();
+      };
+      box.querySelector('.addr-no').onclick = function () { say(''); street.focus(); };
+    }
+    function same(s) {
+      var c = splitCsz(csz.value), n = function (x) { return tidy(x).toLowerCase().replace(/[.,]/g, ''); };
+      return n(s.street) === n(street.value) && n(s.city) === n(c.city) && s.state === c.state && tidy(s.zip).slice(0, 5) === c.zip;
+    }
+    function ask() {
+      var key = keyNow(), c = splitCsz(csz.value);
+      if (look.off || key === look.key || tidy(street.value).length < 5 || !c.state || !(c.city || c.zip)) return;
+      fetch('/api/address/lookup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: tidy(street.value), city: c.city, state: c.state, zip: c.zip, website: ($('fm-website') || {}).value || '' }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
+        .then(function (x) {
+          if (keyNow() !== key) return;                     // typed on since: a newer question is on its way
+          if (!x.ok || !x.j.available) { look.off = true; say(esc(ADDR.na)); return; }
+          if (x.j.incomplete) return;
+          look.key = key;
+          var list = (x.j.suggestions || []).slice(0, 5);
+          if (!list.length) { say(esc(ADDR.nf)); return; }
+          if (list.length === 1) { if (same(list[0])) say(''); else offer(list[0]); return; }
+          say(list.map(function (s, j) { return '<button type="button" class="addr-pick" data-s="' + j + '">' + esc(s.formatted) + '</button>'; }).join(''));
+          var picks = box.querySelectorAll('.addr-pick');
+          for (var k = 0; k < picks.length; k++) picks[k].onclick = function () { offer(list[Number(this.getAttribute('data-s'))]); };
+        })
+        .catch(function () { look.off = true; say(esc(ADDR.na)); });
+    }
+    function typed() { if (look.off) return; say(''); clearTimeout(look.timer); look.timer = setTimeout(ask, 500); }
+    street.addEventListener('input', typed); csz.addEventListener('input', typed);
+    if (tidy(street.value) && tidy(csz.value)) typed();
+  }
+
   function firstName() { return (packet && packet.traveler && packet.traveler.first_name) || ''; }
   function docByKey(k) { for (var i = 0; i < packet.docs.length; i++) if (packet.docs[i].key === k) return packet.docs[i]; return null; }
   function nextPending() { for (var i = 0; i < packet.docs.length; i++) if (packet.docs[i].status !== 'signed') return packet.docs[i]; return null; }
@@ -115,6 +183,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     $('fm-agree').checked = false;
     $('fm-go').disabled = false;
     hideErr();
+    addressCheck(body);
+    if (window.SAKeep) window.SAKeep.restore($('fm-doc'), keepKey(doc.key));
   }
 
   function openDoc(key) {
@@ -144,8 +214,21 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     window.scrollTo(0, 0);
   }
 
+  // Mark 2026-10-26: the page opens on the trip's own photos (left, middle, right, tilted), never the website's banner. Each private page
+  // shows a different selling point; the group file says which (groups.journey.photos), and a missing one is simply left out.
+  function photos() {
+    var list = (packet.group && Array.isArray(packet.group.photos)) ? packet.group.photos : [], host = $('fm-photos');
+    var slots = ['left', 'mid', 'right'], h = '';
+    list.forEach(function (ph, i) {
+      if (ph && ph.url) h += '<figure class="ph ph-' + slots[i] + '"><img src="' + esc(ph.url) + '" alt="' + esc(ph.alt || '') + '" loading="eager"></figure>';
+    });
+    $('fm-photo-row').innerHTML = h;
+    host.hidden = !h;
+  }
+
   function render() {
     setState('');
+    photos();
     $('fm-foot').textContent = (packet.business && packet.business.name) || 'Still Afloat Cruising';
     if (packet.docs.length && !nextPending()) showDone(); else renderIntro();
   }
@@ -193,7 +276,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var name = $('fm-name').value.replace(/\s+/g, ' ').trim();
     if (name.split(' ').length < 2) { showErr('Please type your full name (first and last) as your signature.'); $('fm-name').focus(); return; }
     var answers = collect(current), news = $('fm-news');
-    var saved = answers;
+    var saved = answers, signing = current.key;
     busy = true; $('fm-go').disabled = true; $('fm-go').textContent = 'Saving…';
     api('/sign', {
       method: 'POST', headers: { 'content-type': 'application/json' },
@@ -202,6 +285,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       busy = false; $('fm-go').textContent = 'Sign and continue'; $('fm-go').disabled = false;
       var j = r.json || {};
       if (r.status === 200 && j.success) {
+        if (window.SAKeep) window.SAKeep.clear(keepKey(signing));
         if (j.packet) packet = j.packet; else return reload();
         var nxt = nextPending();
         if (nxt) { renderIntro(); openDoc(nxt.key); } else showDone();
@@ -238,6 +322,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     if (b) openDoc(b.getAttribute('data-open'));
   });
   $('fm-go').addEventListener('click', sign);
+  if (window.SAKeep) window.SAKeep.track($('fm-doc'), function () { return current ? keepKey(current.key) : null; });
   $('fm-back').addEventListener('click', function () { current = null; show('fm-doc', false); renderIntro(); window.scrollTo(0, 0); });
 
   if (!token) { setState('This page opens from your private link. Please use the link in your email, or ask us for a new one.'); return; }

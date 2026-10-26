@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
- giveConsent, getCopies, getCopyPdf, copiesEmail, ESIGN_CONSENT_VERSION } from "./group-forms";
+ giveConsent, getCopies, getCopyPdf, copiesEmail, ESIGN_CONSENT_VERSION, pagePhotos } from "./group-forms";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
 import { blocksToText } from "./group-documents";
@@ -620,4 +620,20 @@ test("the copies email reads in the signer's language and in Mark's register", (
   assert.equal(es.subject, "Sus documentos firmados: Millham F/F 2027");
   assert.match(es.text, /^Hola Ana,/); assert.match(es.text, /¡Nos vemos a bordo!/);
   assert.ok(!/certificado|sello digital/.test(es.text), "no seal claimed when the copies are not sealed");
+});
+
+test("the paperwork page opens on the group's own photos: up to three, our /assets/ files or https only, the rest left out", () => {
+  const journey = { photos: { paperwork: [
+    { url: "/assets/images/trips/g/sunset.jpg", alt: "Sunset at sea" },
+    { url: "https://example.test/ship.jpg", alt: "The ship" },
+    { url: "javascript:alert(1)", alt: "x" },
+    { url: "/assets/../secret.jpg" },
+  ], cruise: [{ url: "/assets/a.jpg" }] } };
+  assert.deepEqual(pagePhotos(journey, "paperwork"), [
+    { url: "/assets/images/trips/g/sunset.jpg", alt: "Sunset at sea" }, { url: "https://example.test/ship.jpg", alt: "The ship" },
+  ]);
+  assert.deepEqual(pagePhotos(journey, "cruise"), [{ url: "/assets/a.jpg", alt: "" }]);
+  assert.deepEqual(pagePhotos({}, "paperwork"), []);
+  assert.deepEqual(pagePhotos(null, "paperwork"), []);
+  assert.deepEqual(pagePhotos({ photos: { paperwork: [{ url: "http://plain.test/a.jpg" }, { url: "https://a.test/x\"onerror=1" }] } }, "paperwork"), []);
 });
