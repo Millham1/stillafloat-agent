@@ -139,7 +139,8 @@ const en = {
     payOverdue: (p: { kind: string; amount: string; date: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, was due ${p.date}. Please reply or call so we can sort it out.`,
     payNoDate: (p: { kind: string; amount: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, date to be confirmed.`,
     // A deposit with no calendar date is due when the cabin is booked (the line sets no date): never "date to be confirmed".
-    payAtBooking: (p: { kind: string; amount: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, due when you book.`,
+    // Mark 2026-10-26: the deposit is paid once the paperwork is done, through Mark or on the cruise line's own site
+    payAtBooking: (p: { kind: string; amount: string }) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, due when your paperwork is completed (either through me or on the cruise line's website).`,
     payAllPaid: "Every payment on file is paid. Thank you.",
     payGroupFinal: (date: string) => `The final payment is due ${date}.`,
     payGroupDeposit: (date: string) => `The deposit deadline is ${date}.`,
@@ -270,8 +271,9 @@ const en = {
     signedNone: "No documents are signed yet. They are waiting on your private paperwork page.",
     next: "What comes next",
     nextRow: (p: { date: string; what: string }) => `${p.date}: ${p.what}`,
+    nextPayDue: (kind: string) => `${kind.toLowerCase()} due`,
     nextTopics: {
-      "t-120": "payments and paperwork", "t-90": "final payment and travel plans", "t-45": "excursions and dining",
+      "t-120": "payments and paperwork", "t-90": "final payment and travel plans", "t-90-paid": "travel plans", "t-45": "excursions and dining",
       "t-20": "check-in, documents and packing", "t-10": "your ship and boarding day", "t-5": "the weather forecast", "t-2": "check-in and last details",
     } as Record<string, string>,
 
@@ -441,7 +443,7 @@ const es: Strings = {
     payDue: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, vence el ${p.date}.`,
     payOverdue: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, venció el ${p.date}. Responda este correo o llame para resolverlo.`,
     payNoDate: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, fecha por confirmar.`,
-    payAtBooking: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, se paga al reservar.`,
+    payAtBooking: (p) => `${p.kind}${p.amount ? `: ${p.amount}` : ""}, se paga cuando complete su documentación (conmigo o en el sitio web de la naviera).`,
     payAllPaid: "Todos los pagos registrados están al día. Gracias.",
     payGroupFinal: (date) => `El pago final vence el ${date}.`,
     payGroupDeposit: (date) => `El plazo del depósito es el ${date}.`,
@@ -571,8 +573,9 @@ const es: Strings = {
     signedNone: "Todavía no hay documentos firmados. Lo esperan en su página privada de documentos.",
     next: "Lo que sigue",
     nextRow: (p) => `${p.date}: ${p.what}`,
+    nextPayDue: (kind) => `vence el ${kind.toLowerCase()}`,
     nextTopics: {
-      "t-120": "pagos y documentos", "t-90": "pago final y planes de viaje", "t-45": "excursiones y comidas",
+      "t-120": "pagos y documentos", "t-90": "pago final y planes de viaje", "t-90-paid": "planes de viaje", "t-45": "excursiones y comidas",
       "t-20": "registro, documentos y equipaje", "t-10": "su barco y el día de embarque", "t-5": "el pronóstico del tiempo", "t-2": "registro y últimos detalles",
     },
 

@@ -46,7 +46,6 @@ function nights(group: Row): number | null {
 }
 
 const opt = (value: string, label: string, match?: string): Option => ({ value, label, ...(match ? { match } : {}) });
-const YES_NO = [opt("yes", "Yes"), opt("no", "No")];
 
 const text = (name: string, label: string, extra: Partial<FieldSpec> = {}): FieldSpec => ({ name, label, kind: "text", ...extra });
 
@@ -74,58 +73,22 @@ const withRows = (headerFirstCell: string, rows: (ctx: DocCtx) => string[][]) =>
 // ── 15 — emergency contact and traveler information ───────────────────────────
 
 const GENDER = [opt("male", "Male"), opt("female", "Female"), opt("nonbinary", "Non-binary / Other"), opt("na", "Prefer not to say")];
-const NONE_YES = (none = "None") => [opt("none", none), opt("yes", "Yes", "Yes")];
 const PROGRAMS = [opt("none", "No", "No"), opt("tsa", "TSA PreCheck"), opt("global", "Global Entry"), opt("nexus", "NEXUS"), opt("clear", "CLEAR")];
 
-const contactFields = (n: 1 | 2): FieldSpec[] => {
-  const k = n === 1 ? "primary" : "secondary";
-  const p = `ec${n}_`;
-  return [
-    text(`${p}name`, `${n === 1 ? "Primary" : "Secondary"} emergency contact: full name`, { required: true, form: `emergency.${k}.name`, ...(n === 1 ? { col: "emergency_name" } : {}) }),
-    text(`${p}relationship`, "Relationship to you", { required: true, form: `emergency.${k}.relationship` }),
-    { name: `${p}home_phone`, label: "Home phone", kind: "tel", form: `emergency.${k}.home_phone` },
-    { name: `${p}cell_phone`, label: "Cell phone", kind: "tel", form: `emergency.${k}.cell_phone` },
-    { name: `${p}work_phone`, label: "Work phone", kind: "tel", form: `emergency.${k}.work_phone` },
-    { name: `${p}email`, label: "Email", kind: "email", form: `emergency.${k}.email` },
-    text(`${p}address`, "Address", { form: `emergency.${k}.address` }),
-    text(`${p}city_state_zip`, "City, state, ZIP", { form: `emergency.${k}.city_state_zip` }),
-    ...(n === 1 ? [{ name: "ec1_poa", label: "Has your power of attorney", kind: "choice" as const, options: YES_NO, form: "emergency.primary.poa" }] : []),
-  ];
-};
-
-const contactRules = (n: 1 | 2) => {
-  const p = `ec${n}_`;
-  return [
-    { after: "**Full Name:**", slot: `${p}name` },
-    { after: "**Relationship to Traveler:**", slot: `${p}relationship` },
-    { after: "**Home Phone:**", slot: `${p}home_phone` },
-    { after: "**Cell Phone:**", slot: `${p}cell_phone` },
-    { after: "**Work Phone:**", slot: `${p}work_phone` },
-    { after: "**Email Address:**", slot: `${p}email` },
-    { after: "**Address:**", slot: `${p}address` },
-    { after: "**City, State, ZIP:**", slot: `${p}city_state_zip` },
-    ...(n === 1 ? [{ after: "Does this person have your power of attorney", choice: "ec1_poa" }] : []),
-  ];
-};
-
-const noneYes = (name: string, label: string, form: string, textName: string, noneLabel = "None") => ([
-  { name, label, kind: "choice" as const, options: NONE_YES(noneLabel), form: `${form}.choice` },
-  text(textName, `${label} — details`, { form: `${form}.details` }),
-] as FieldSpec[]);
+// Mark 2026-10-26: one emergency contact, asked for a cell phone only; no second contact, no power-of-attorney question.
+const CONTACT_FIELDS: FieldSpec[] = [
+  text("ec1_name", "Emergency contact: full name", { required: true, form: "emergency.primary.name", col: "emergency_name" }),
+  text("ec1_relationship", "Relationship to you", { required: true, form: "emergency.primary.relationship" }),
+  { name: "ec1_cell_phone", label: "Cell phone", kind: "tel", required: true, form: "emergency.primary.cell_phone" },
+  { name: "ec1_email", label: "Email", kind: "email", form: "emergency.primary.email" },
+  text("ec1_address", "Address", { form: "emergency.primary.address" }),
+  text("ec1_city_state_zip", "City, state, ZIP", { form: "emergency.primary.city_state_zip" }),
+];
 
 const LOYALTY = [1, 2, 3].flatMap((i) => [
   text(`loyalty_${i}_program`, `Loyalty program ${i}`, { form: `loyalty.${i}.program` }),
   text(`loyalty_${i}_number`, `Membership number ${i}`, { form: `loyalty.${i}.number` }),
 ]);
-const RX = [1, 2, 3].flatMap((i) => [
-  text(`rx_${i}_name`, `Medication ${i}`, { form: `prescriptions.${i}.name` }),
-  text(`rx_${i}_dose`, `Dosage ${i}`, { form: `prescriptions.${i}.dosage` }),
-  text(`rx_${i}_condition`, `Condition treated ${i}`, { form: `prescriptions.${i}.condition` }),
-  text(`rx_${i}_physician`, `Prescribing physician ${i}`, { form: `prescriptions.${i}.physician` }),
-]);
-
-const phones = (a: Answers, p: string) => ["home_phone", "cell_phone", "work_phone"].some((k) => typeof a[`${p}${k}`] === "string");
-
 // Rules run in document order (the cursor in applyRules moves forward only), so this list reads top to bottom like the form.
 const RULES_15: DocSpec["rules"] = [
   { after: "Date Completed:", today: true },
@@ -146,35 +109,22 @@ const RULES_15: DocSpec["rules"] = [
   { after: "Do you have Global Entry / TSA PreCheck?", choice: "trusted_programs" },
   { after: "(KTN):", slot: "ktn" },
   { after: "Membership Number:", slot: "global_entry_number" },
-  ...contactRules(1),
-  ...contactRules(2),
-  { after: "**Blood Type:**", slot: "blood_type" },
-  { after: "**Known Allergies", choice: "allergies" },
-  { after: "Yes:", slot: "allergies_text" },
-  { after: "**Current Medications", choice: "medications" },
-  { after: "Yes:", slot: "medications_text" },
-  { after: "**Medical Conditions or Diagnoses", choice: "conditions" },
-  { after: "Yes:", slot: "conditions_text" },
-  { after: "**Mobility Limitations", choice: "mobility" },
-  { after: "Yes:", slot: "mobility_text" },
-  { after: "**Do you require any medical equipment", choice: "equipment" },
-  { after: "Please describe:", slot: "equipment_text" },
-  { after: "**Do you have a Do Not Resuscitate", choice: "dnr" },
-  { after: "Location of document:", slot: "dnr_text" },
-  { after: "**Primary Health Insurance Provider:**", slot: "hi_provider" },
-  { after: "**Policy Number:**", slot: "hi_policy" },
-  { after: "**Group Number:**", slot: "hi_group" },
-  { after: "**Customer Service Phone:**", slot: "hi_phone" },
-  { after: "**Does your health insurance cover international", choice: "hi_international" },
-  { after: "**Travel Insurance Provider:**", slot: "ti_provider" },
-  { after: "**Policy Number:**", slot: "ti_policy" },
-  { after: "**Coverage Dates:** From", slot: "ti_from" },
-  { after: " To ", slot: "ti_to" },
-  { after: "**24/7 Emergency Assistance Phone (from your policy):**", slot: "ti_phone" },
-  { after: "**Do you carry an EpiPen?**", choice: "epipen" },
-  { after: "**Do you carry a medical alert card", choice: "medical_alert" },
-  { after: "(Different from general preferences — list only medically relevant restrictions)*", choice: "dietary" },
-  { after: "Yes:", slot: "dietary_text" },
+  // Mark 2026-10-26: the loyalty heading reads as a question
+  { sub: "FREQUENT FLYER / LOYALTY PROGRAMS", with: () => "Do you belong to any Loyalty Programs?" },
+  { sub: "*Please list at least two individuals who can be reached in case of emergency during your travels. These individuals are NOT traveling with you.*",
+    with: () => "*Please list one person who can be reached in case of emergency during your travels. This person is NOT traveling with you.*" },
+  { after: "**Full Name:**", slot: "ec1_name" },
+  { after: "**Relationship to Traveler:**", slot: "ec1_relationship" },
+  { sub: /\*\*Home Phone:\*\*[^\n]*\n+/, with: () => "" },
+  { after: "**Cell Phone:**", slot: "ec1_cell_phone" },
+  { sub: /\*\*Work Phone:\*\*[^\n]*\n+/, with: () => "" },
+  { after: "**Email Address:**", slot: "ec1_email" },
+  { after: "**Address:**", slot: "ec1_address" },
+  { after: "**City, State, ZIP:**", slot: "ec1_city_state_zip" },
+  { sub: /\*\*Does this person have your power of attorney[\s\S]*?☐ Yes ☐ No\n*/, with: () => "" },
+  // Mark 2026-10-26: no second contact, and nothing medical, no health or travel insurance, prescriptions, EpiPen, medical alert
+  // card or dietary questions (the cruise line's booking covers what it needs): all of it, up to ADDITIONAL NOTES, is left out.
+  { sub: /### Secondary Emergency Contact[\s\S]*?(?=## ADDITIONAL NOTES)/, with: () => "" },
 ];
 
 const FIELDS_15: FieldSpec[] = [
@@ -197,37 +147,12 @@ const FIELDS_15: FieldSpec[] = [
   text("ktn", "Known Traveler Number (KTN)", { form: "trusted.ktn" }),
   text("global_entry_number", "Global Entry membership number", { form: "trusted.global_entry_number" }),
   ...LOYALTY,
-  ...contactFields(1),
-  ...contactFields(2),
-  text("blood_type", "Blood type", { maxLength: 12, form: "medical.blood_type" }),
-  ...noneYes("allergies", "Known allergies", "medical.allergies", "allergies_text", "None known"),
-  ...noneYes("medications", "Current medications", "medical.medications", "medications_text"),
-  ...noneYes("conditions", "Medical conditions relevant to travel", "medical.conditions", "conditions_text"),
-  ...noneYes("mobility", "Mobility limitations or accessibility needs", "medical.mobility", "mobility_text"),
-  { name: "equipment", label: "Medical equipment while traveling", kind: "choice", options: [opt("no", "No"), opt("yes", "Yes")], form: "medical.equipment.choice" },
-  text("equipment_text", "Medical equipment — description", { form: "medical.equipment.details" }),
-  { name: "dnr", label: "DNR order or medical directive", kind: "choice", options: [opt("no", "No"), opt("yes", "Yes")], form: "medical.dnr.choice" },
-  text("dnr_text", "Where the document is kept", { form: "medical.dnr.details" }),
-  text("hi_provider", "Health insurance provider", { form: "health_insurance.provider" }),
-  text("hi_policy", "Health insurance policy number", { form: "health_insurance.policy" }),
-  text("hi_group", "Health insurance group number", { form: "health_insurance.group" }),
-  { name: "hi_phone", label: "Health insurance customer service phone", kind: "tel", form: "health_insurance.phone" },
-  { name: "hi_international", label: "Covers international medical care", kind: "choice", options: [opt("yes", "Yes"), opt("no", "No"), opt("unknown", "Unknown"), opt("na", "N/A (domestic travel only)", "N/A")], form: "health_insurance.international" },
-  text("ti_provider", "Travel insurance provider", { form: "travel_insurance.provider" }),
-  text("ti_policy", "Travel insurance policy number", { form: "travel_insurance.policy" }),
-  { name: "ti_from", label: "Travel insurance coverage from", kind: "date", form: "travel_insurance.from" },
-  { name: "ti_to", label: "Travel insurance coverage to", kind: "date", form: "travel_insurance.to" },
-  { name: "ti_phone", label: "24/7 emergency assistance phone", kind: "tel", form: "travel_insurance.phone" },
-  ...RX,
-  { name: "epipen", label: "Carries an EpiPen", kind: "choice", options: YES_NO, form: "medical.epipen" },
-  { name: "medical_alert", label: "Medical alert card or bracelet", kind: "choice", options: YES_NO, form: "medical.alert" },
-  ...noneYes("dietary", "Medically relevant dietary restrictions", "medical.dietary", "dietary_text"),
+  ...CONTACT_FIELDS,
   { name: "notes", label: "Anything else your agent or emergency contacts should know", kind: "textarea", form: "notes" },
 ];
 
 const EDITS_15: NonNullable<DocSpec["edits"]> = [
   withRows("Program", () => [1, 2, 3].map((i) => [`{{in:loyalty_${i}_program}}`, `{{in:loyalty_${i}_number}}`])),
-  withRows("Medication Name", () => [1, 2, 3].map((i) => [`{{in:rx_${i}_name}}`, `{{in:rx_${i}_dose}}`, `{{in:rx_${i}_condition}}`, `{{in:rx_${i}_physician}}`])),
   // "ADDITIONAL NOTES" was four rules to write between: one box instead
   (blocks) => {
     const h = blocks.findIndex((b) => b.t === "h" && b.text === "ADDITIONAL NOTES");
@@ -238,16 +163,9 @@ const EDITS_15: NonNullable<DocSpec["edits"]> = [
   },
 ];
 
-const VALIDATE_15: NonNullable<DocSpec["validate"]> = (a) => {
-  const errors: Record<string, string> = {};
-  if (!phones(a, "ec1_")) errors["ec1_cell_phone"] = "Please give at least one phone number for your primary emergency contact.";
-  if (!phones(a, "ec2_")) errors["ec2_cell_phone"] = "Please give at least one phone number for your second emergency contact.";
-  return errors;
-};
-
 const DERIVE_15: NonNullable<DocSpec["derive"]> = (a, ctx) => {
   const patch: Row = {};
-  const phone = ["ec1_cell_phone", "ec1_home_phone", "ec1_work_phone"].map((k) => a[k]).find((v) => typeof v === "string");
+  const phone = typeof a["ec1_cell_phone"] === "string" ? a["ec1_cell_phone"] : undefined;
   if (phone) patch["emergency_phone"] = phone;
   if (a["us_citizen"] === "yes" && typeof a["citizenship"] !== "string") patch["citizenship"] = "United States";
   // The file's name columns are Mark's to edit: fill them from the form only when they are empty.
@@ -258,14 +176,6 @@ const DERIVE_15: NonNullable<DocSpec["derive"]> = (a, ctx) => {
     patch["first_name"] = parts[0];
     if (parts.length > 1) patch["last_name"] = parts[parts.length - 1];
     if (parts.length > 2) patch["middle_name"] = parts.slice(1, -1).join(" ");
-  }
-  if (!t?.special_needs) {
-    const bits: string[] = [];
-    const add = (label: string, choice: unknown, details: unknown) => { if (choice === "yes" && typeof details === "string") bits.push(`${label}: ${details}`); };
-    add("Mobility / accessibility", a["mobility"], a["mobility_text"]);
-    add("Medical equipment", a["equipment"], a["equipment_text"]);
-    add("Dietary", a["dietary"], a["dietary_text"]);
-    if (bits.length) patch["special_needs"] = bits.join("; ").slice(0, 500);
   }
   return patch;
 };
@@ -278,7 +188,6 @@ const FORM_15: DocSpec = {
   rules: RULES_15,
   fields: FIELDS_15,
   edits: EDITS_15,
-  validate: VALIDATE_15,
   derive: DERIVE_15,
 };
 

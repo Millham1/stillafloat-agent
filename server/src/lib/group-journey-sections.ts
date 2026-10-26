@@ -500,11 +500,21 @@ export function signed(ctx: Ctx): Section | null {
 
 export function next(ctx: Ctx): Section | null {
   const S = strings(ctx.lang).s;
-  const items: SectionItem[] = [];
+  // Mark 2026-10-26: the list carries the real payment dates, and the 90-day message is not called "final payment" when nothing is still due by then.
+  const rows = cabinPayments(ctx.input, ctx.cabin);
+  const due: Array<{ date: string; kind: string }> = rows.filter((p) => !p.paid_at && ymd(p.due_date)).map((p) => ({ date: ymd(p.due_date)!, kind: String(p.kind) }));
+  const groupFinal = ymd(ctx.group.final_payment_due);
+  if (!rows.some((p) => p.kind === "final") && groupFinal) due.push({ date: groupFinal, kind: "final" });
+  const list: Array<{ date: string; text: string }> = due.filter((p) => p.date > ctx.today)
+    .map((p) => ({ date: p.date, text: S.nextRow({ date: fmtDate(p.date, ctx.lang), what: S.nextPayDue(S.payKind[p.kind] ?? S.payKind["other"]!) }) }));
   for (const n of DAY_MILESTONES) {
     const d = milestoneDate(ctx.group, n);
-    if (d && d > ctx.today) items.push({ text: S.nextRow({ date: fmtDate(d, ctx.lang), what: S.nextTopics[`t-${n}`] ?? "" }) });
+    if (!d || d <= ctx.today) continue;
+    const topic = n === 90 && !due.some((p) => p.date >= d) ? "t-90-paid" : `t-${n}`;
+    list.push({ date: d, text: S.nextRow({ date: fmtDate(d, ctx.lang), what: S.nextTopics[topic] ?? "" }) });
   }
+  list.sort((a, b) => a.date.localeCompare(b.date));
+  const items: SectionItem[] = list.map((r) => ({ text: r.text }));
   return items.length ? { key: "next", title: S.next, lines: [], items } : null;
 }
 

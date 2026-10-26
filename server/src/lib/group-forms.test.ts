@@ -114,7 +114,7 @@ async function signKey(t: ReturnType<typeof setup>, token: string, key: string, 
 const GOOD_15 = {
   legal_name: "Jane Public", dob: "1960-05-04", gender: "female", us_citizen: "yes", address: "1 Main St", city_state_zip: "Raleigh, NC 27601", phone: "919-555-0100", email: "jane@example.com",
   passport_number: "A12345678", passport_country: "United States", passport_expiry: "2031-02-03", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
-  ec2_name: "Lee Public", ec2_relationship: "Daughter", ec2_home_phone: "919-555-0188", health_note: "ignored",
+  health_note: "ignored",
 };
 
 // ── links ─────────────────────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ test("a traveler's packet lists their documents in order, with their own inputs,
   assert.equal(p.kind, "traveler");
   assert.deepEqual(p.docs.map((d) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
   assert.ok(p.docs.every((d) => d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.includes("<")));
-  assert.equal(p.docs[0]!.fields.length, 80);
+  assert.equal(p.docs[0]!.fields.length, 30);
   assert.deepEqual(p.mates, ["Jane Public"]);
   assert.equal(p.traveler.passport_on_file, "ending 4321");
   assert.equal(p.pii_ready, true);
@@ -267,7 +267,7 @@ test("form 15 files the answers on the traveler, encrypts the passport, and keep
   assert.equal(tr.emergency_phone, "919-555-0199");
   assert.equal(tr.gender, "Female");
   assert.equal(tr.form_data.address, "1 Main St");
-  assert.equal(tr.form_data.emergency.secondary.relationship, "Daughter");
+  assert.equal(tr.form_data.emergency.secondary, undefined, "no second contact is asked");
   const sig = t.state.signatures[0]!;
   assert.equal(sig.answers.passport_number, "ending 5678");
   for (const where of [JSON.stringify(sig), JSON.stringify(t.state.travelers[0]!.form_data), JSON.stringify(r.json), JSON.stringify(t.pdfs.map((p) => blocksToText(p.blocks)))]) {

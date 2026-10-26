@@ -240,7 +240,7 @@ test("the traveler form's blanks and boxes become the inputs its spec names, and
     }
   }
   const f15 = renderDocument("15-emergency-contact-form", ctxFor());
-  assert.equal(f15.fields.length, 80);
+  assert.equal(f15.fields.length, 30);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance, prescriptions or diet
   assert.ok(f15.html.includes('type="date" name="dob"') && f15.html.includes('type="email" name="email"') && f15.html.includes('type="radio" name="gender" value="female"'));
   assert.ok(f15.html.includes('type="checkbox" name="trusted_programs" value="tsa"'), "multi fields are checkboxes");
   assert.ok(f15.html.includes('autocomplete="off"'), "the passport input must not be autofilled or remembered");
@@ -314,8 +314,8 @@ test("documents 02 and 03 are in a packet only when the file carries a fee; 04, 
 const GOOD_15 = {
   legal_name: "Jane Quincy Public", dob: "1960-05-04", gender: "female", us_citizen: "yes", address: "1 Main St", city_state_zip: "Raleigh, NC 27601",
   phone: "(919) 555-0100", email: "jane@example.com", passport_number: "a1234-5678", passport_country: "United States", passport_expiry: "2031-02-03",
-  passport_issue: "2021-02-04", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199", ec2_name: "Lee Public", ec2_relationship: "Daughter", ec2_home_phone: "919-555-0188",
-  trusted_programs: ["tsa"], ktn: "TT1234567", mobility: "yes", mobility_text: "walks with a cane", loyalty_1_program: "Delta", loyalty_1_number: "123456", ec1_poa: "no", notes: "Window seat please.",
+  passport_issue: "2021-02-04", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
+  trusted_programs: ["tsa"], ktn: "TT1234567", loyalty_1_program: "Delta", loyalty_1_number: "123456", notes: "Window seat please.",
 };
 const doc15 = () => renderDocument("15-emergency-contact-form", ctxFor());
 
@@ -329,10 +329,10 @@ test("form 15 answers are checked, filed into columns and form_data, and the pas
   assert.equal(JSON.stringify(r.travelerPatch).includes("A1234"), false);
   assert.deepEqual(
     { dob: r.travelerPatch["dob"], gender: r.travelerPatch["gender"], phone: r.travelerPatch["phone"], email: r.travelerPatch["email"], passport_country: r.travelerPatch["passport_country"], passport_expiry: r.travelerPatch["passport_expiry"], passport_last4: r.travelerPatch["passport_last4"], emergency_name: r.travelerPatch["emergency_name"], emergency_phone: r.travelerPatch["emergency_phone"], citizenship: r.travelerPatch["citizenship"], special_needs: r.travelerPatch["special_needs"] },
-    { dob: "1960-05-04", gender: "Female", phone: "(919) 555-0100", email: "jane@example.com", passport_country: "United States", passport_expiry: "2031-02-03", passport_last4: "5678", emergency_name: "Sam Public", emergency_phone: "919-555-0199", citizenship: "United States", special_needs: "Mobility / accessibility: walks with a cane" },
+    { dob: "1960-05-04", gender: "Female", phone: "(919) 555-0100", email: "jane@example.com", passport_country: "United States", passport_expiry: "2031-02-03", passport_last4: "5678", emergency_name: "Sam Public", emergency_phone: "919-555-0199", citizenship: "United States", special_needs: undefined },
   );
   assert.equal(getPath(r.formData, "emergency.primary.relationship"), "Son");
-  assert.equal(getPath(r.formData, "emergency.secondary.home_phone"), "919-555-0188");
+  assert.equal(getPath(r.formData, "emergency.primary.cell_phone"), "919-555-0199");
   assert.deepEqual(getPath(r.formData, "trusted.programs"), ["tsa"]);
   assert.equal(getPath(r.formData, "loyalty.1.program"), "Delta");
   assert.equal(getPath(r.formData, "passport.issue_date"), "2021-02-04");
@@ -362,8 +362,8 @@ test("required answers, dates, phone and email are checked with a plain message 
   const none = applyAnswers(doc15(), {}, ctxFor());
   assert.equal(none.ok, false);
   if (none.ok) return;
-  for (const k of ["legal_name", "dob", "gender", "us_citizen", "address", "city_state_zip", "phone", "email", "ec1_name", "ec1_relationship", "ec2_name", "ec2_relationship", "ec1_cell_phone", "ec2_cell_phone"]) assert.ok(none.errors[k], `${k} should be required`);
-  for (const k of ["passport_number", "passport_country", "passport_expiry", "notes", "blood_type"]) assert.equal(none.errors[k], undefined, `${k} is optional until a passport number is given`);
+  for (const k of ["legal_name", "dob", "gender", "us_citizen", "address", "city_state_zip", "phone", "email", "ec1_name", "ec1_relationship", "ec1_cell_phone"]) assert.ok(none.errors[k], `${k} should be required`);
+  for (const k of ["passport_number", "passport_country", "passport_expiry", "notes", "ec1_email", "ec1_address"]) assert.equal(none.errors[k], undefined, `${k} is optional until a passport number is given`);
 });
 
 test("a passport number needs its country and expiry, must look like a passport, and a US non-citizen must say their citizenship", () => {
@@ -400,10 +400,16 @@ test("a card number is refused in any text answer, unknown answers are dropped, 
   assert.equal(nonObject.ok, true, "a document with no inputs needs no answers");
 });
 
-test("each emergency contact needs at least one phone", () => {
-  const { ec2_home_phone: _h, ...noPhone } = GOOD_15;
+test("form 15 asks for one emergency contact by cell phone, and nothing medical, no insurance, prescriptions or diet (Mark 2026-10-26)", () => {
+  const { ec1_cell_phone: _c, ...noPhone } = GOOD_15;
   const r = applyAnswers(doc15(), noPhone, ctxFor());
-  assert.equal(!r.ok && r.errors["ec2_cell_phone"], "Please give at least one phone number for your second emergency contact.");
+  assert.ok(!r.ok && r.errors["ec1_cell_phone"], "the contact's cell phone is required");
+  const d = doc15();
+  for (const gone of ["Secondary Emergency Contact", "Home Phone", "Work Phone", "power of attorney", "MEDICAL INFORMATION", "Blood Type", "HEALTH INSURANCE",
+    "TRAVEL INSURANCE", "PRESCRIPTION", "EpiPen", "medical alert", "DIETARY", "at least two individuals"]) assert.ok(!d.text.includes(gone), `"${gone}" is no longer asked`);
+  assert.ok(d.text.includes("Do you belong to any Loyalty Programs?") && !d.text.includes("FREQUENT FLYER"));
+  assert.ok(d.text.includes("Please list one person who can be reached") && d.text.includes("ADDITIONAL NOTES"));
+  assert.deepEqual(d.fields.filter((f) => f.name.startsWith("ec")).map((f) => f.name), ["ec1_name", "ec1_relationship", "ec1_cell_phone", "ec1_email", "ec1_address", "ec1_city_state_zip"]);
 });
 
 test("the insurance choice is required, a quote or a declination; the waiver's health box must be ticked", () => {

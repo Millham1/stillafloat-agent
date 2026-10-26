@@ -382,21 +382,21 @@ test("the other countdown messages also name only the sections they have, in bot
   assert.equal(renderEmail("t-10", ctx(fixtureInput(), "t1", before(10)))!.subject, "10 days to go: your ship and how boarding day works");
 });
 
-test("a deposit with no date is 'due when you book' ('se paga al reservar'), never 'date to be confirmed'; other payments with no date keep that wording", () => {
+test("a deposit with no date is due when the paperwork is completed (Mark 2026-10-26), never 'date to be confirmed'; other payments with no date keep that wording", () => {
   const input = fixtureInput({ group: { deposit_due: null, terms: { deposit_timing: "at_booking", deadlines: [] } } });
   const dep = input.payments.find((p) => p.id === "p3")!; dep.paid_at = null; dep.due_date = null;       // Carlos and Dulce's cabin: deposit due at booking
   const fin = input.payments.find((p) => p.id === "p4")!; fin.due_date = null;                           // and a final payment with no date yet
   const en = renderEmail("t-120", ctx(input, "t3", before(120), fullExtras(), "en"))!;
-  assert.match(en.text, /Deposit: \$400, due when you book\./);
+  assert.match(en.text, /Deposit: \$400, due when your paperwork is completed \(either through me or on the cruise line's website\)\./);
   assert.match(en.text, /Final payment: \$2,200, date to be confirmed\./);
   assert.ok(!/Deposit: \$400, date to be confirmed/.test(en.text));
   const es = renderEmail("t-120", ctx(input, "t3", before(120)))!;
-  assert.match(es.text, /Depósito: \$400, se paga al reservar\./);
+  assert.match(es.text, /Depósito: \$400, se paga cuando complete su documentación \(conmigo o en el sitio web de la naviera\)\./);
   assert.match(es.text, /Pago final: \$2,200, fecha por confirmar\./);
   assert.ok(!/Depósito: \$400, fecha por confirmar/.test(es.text));
   // the cruise page says the same
   const hub = renderHub(ctx(input, "t3", before(120), fullExtras(), "en"));
-  assert.ok(hub.sections.find((x) => x.key === "payments")!.lines.includes("Deposit: $400, due when you book."));
+  assert.ok(hub.sections.find((x) => x.key === "payments")!.lines.includes("Deposit: $400, due when your paperwork is completed (either through me or on the cruise line's website)."));
   // a deposit that has a date, or is paid, is unchanged
   assert.match(renderEmail("t-120", ctx(fixtureInput(), "t1", before(120)))!.text, /Deposit: \$400, paid on October 20, 2026\./);
 });
@@ -513,7 +513,15 @@ test("the booking confirmation: what is booked, what was signed, the payment sch
   assert.match(r.text, /Terms and Conditions of Travel Services, October 25, 2026/);
   assert.match(r.text, /Still to sign:/);
   assert.match(r.text, /December 6, 2026: final payment and travel plans/);
+  assert.match(r.text, /January 5, 2027: final payment due/, "the real final payment date is on the list (Mark 2026-10-26)");
   assert.match(r.text, /March 4, 2027: check-in and last details/);
+  // a final payment due BEFORE the 90-day message: that day is not called "final payment" any more, and the list stays in date order
+  const early = fixtureInput(); early.payments.find((p) => p.id === "p2")!.due_date = "2026-11-20";
+  const e = renderEmail("confirmation", ctx(early, "t1", before(120)))!.text;
+  assert.match(e, /November 20, 2026: final payment due\n- December 6, 2026: travel plans/);
+  assert.ok(!/final payment and travel plans/.test(e));
+  const ee = renderEmail("confirmation", ctx(early, "t1", before(120), undefined, "es"))!.text;
+  assert.match(ee, /vence el pago final/);
   assert.ok(!/days to go/.test(r.text), "the confirmation is about the booking, not a countdown");
   // 90 days later the early milestones are no longer listed as coming
   assert.ok(!/payments and paperwork/.test(renderEmail("confirmation", ctx(input, "t1", before(60)))!.text));
