@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { pagePhotos } from "../lib/group-page-photos";
 import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { clientIp } from "../lib/client-ip";
@@ -145,6 +146,8 @@ router.get("/group-details/:token", async (req: Request, res: Response) => {
     return res.json({
       success: true,
       label: f.label, ship: f.ship, sailDateText: f.sailDateText, returnDateText: f.returnDateText, heroUrl: f.heroUrl, credits,
+      // Mark 2026-10-26: the details page opens on its own three photos when the group file names them (otherwise the top picture as before)
+      photos: pagePhotos(group.journey, "details"),
       firstName: reply.first_name ?? "", lastName: reply.last_name ?? "", email: reply.email ?? null, phone: reply.phone ?? null, guests: reply.guests ?? null,
       travelers: storedTravelers(reply.travelers) ?? [], address: storedAddress(reply.address), concierge: storedConcierge(reply.concierge), pick: storedPick(reply.pick),
       choice: reply.choice ?? null, callWhen: reply.call_when ?? null, holdRequestedAt: reply.hold_requested_at ?? null,

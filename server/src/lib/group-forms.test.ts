@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {
   getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
- giveConsent, getCopies, getCopyPdf, copiesEmail, ESIGN_CONSENT_VERSION, pagePhotos } from "./group-forms";
+ giveConsent, getCopies, getCopyPdf, copiesEmail, ESIGN_CONSENT_VERSION } from "./group-forms";
+import { pagePhotos } from "./group-page-photos";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
 import { blocksToText } from "./group-documents";

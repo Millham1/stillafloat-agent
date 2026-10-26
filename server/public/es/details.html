@@ -10,6 +10,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261024a">
+<link rel="stylesheet" href="/css/trip-photos.css?v=20261026">
 </head>
 <body>
 <div class="wrap">
@@ -18,6 +19,7 @@
     <img class="logo" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
   </div>
 
+  <header class="trip-photos" id="d-photos" aria-hidden="true" hidden></header>
   <div class="d-banner" id="d-banner"><div class="d-lockup"><div class="plaque"><span id="d-plaque">Sus datos</span></div></div></div>
 
   <div id="d-state"></div>
@@ -128,6 +130,7 @@
 </div>
 
 <script src="/js/keep-typing.js?v=20261026"></script>
+<script src="/js/trip-photos.js?v=20261026"></script>
 <script>
 (function(){
   var ES = document.documentElement.lang === 'es';
@@ -636,7 +639,9 @@
     state.hidden = true; show('d-main', true);
     document.title = T.title + ' | ' + d.label;
     $('d-plaque').textContent = d.label;
-    applyHero(d.heroUrl);
+    // Mark 2026-10-26: the page opens on its own three photos when the group file names them; otherwise the top picture as before
+    if(window.SATripPhotos && window.SATripPhotos.render($('d-photos'), d.photos)) $('d-banner').hidden = true;
+    else applyHero(d.heroUrl);
     var credits = (Array.isArray(d.credits) ? d.credits : []).filter(function(x){ return typeof x === 'string' && x.trim(); });
     if(credits.length){ $('d-credits').textContent = creditsLine(credits); show('d-credits', true); }
     $('d-h1').textContent = T.h1; $('d-lede').textContent = T.lede;

@@ -84,6 +84,8 @@
     document.documentElement.lang = view.lang;
     document.title = view.title + ' | Still Afloat Cruising';
     $('mc-plaque').textContent = view.title;
+    // Mark 2026-10-26: the page opens on its own three photos when the group file names them; the plain banner stays only when it has none
+    $('mc-banner').hidden = !!(window.SATripPhotos && window.SATripPhotos.render($('mc-photos'), view.photos));
     $('mc-h1').textContent = view.hello;
     var c = $('mc-count');
     if (view.countdown && view.countdown.text) { c.textContent = view.countdown.text; c.hidden = false; } else c.hidden = true;

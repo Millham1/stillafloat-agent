@@ -8,24 +8,13 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="/css/trip-photos.css?v=20261026" rel="stylesheet">
 <style>
 /* Page: the dark ocean gradient of the group page. The documents sit on a cloud-white sheet with navy text. */
 :root{--navy:#07183f;--cloud:#f7fbff;--line:#9db1cf;--gold:#ffca4f}
 *{box-sizing:border-box}
 body{margin:0;background:linear-gradient(to bottom,#06111f 0%,#0b2238 40%,#102f4d 100%);min-height:100vh;font-family:'Baloo 2',system-ui,sans-serif;font-size:18px;color:var(--navy);line-height:1.55}
 h1,h2,h3,h4{font-family:'Bree Serif',Georgia,serif;font-weight:400;color:var(--navy)}
-
-/* Mark 2026-10-26: the trip's own photos at the top, tilted for fun, with palm trees scattered round them (not the website's banner) */
-.fm-photos{position:relative;max-width:1100px;margin:0 auto;padding:34px 16px 6px;overflow:hidden}
-.fm-photo-row{display:flex;justify-content:center;align-items:center;gap:0;min-height:120px}
-.ph{margin:0;background:#fff;padding:9px 9px 26px;border-radius:3px;box-shadow:0 14px 34px rgba(0,0,0,.45);flex:0 1 31%;max-width:340px}
-.ph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
-.ph-left{transform:rotate(-6deg) translateY(10px);margin-right:-2%;z-index:1}
-.ph-mid{transform:rotate(2deg);flex-basis:36%;max-width:400px;z-index:2}
-.ph-right{transform:rotate(6deg) translateY(12px);margin-left:-2%;z-index:1}
-.palm{position:absolute;font-size:34px;line-height:1;pointer-events:none;user-select:none}
-@media(max-width:640px){.fm-photos{padding-top:22px}.ph{padding:5px 5px 14px}.palm{font-size:24px}}
-@media(prefers-reduced-motion:reduce){.ph{transform:none}}
 
 .shell{max-width:920px;margin:0 auto;padding:30px 16px 70px}
 .sheet{background:var(--cloud);color:var(--navy);border-radius:20px;padding:26px 24px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
@@ -47,34 +36,38 @@ ol.progress .t{font-weight:700}
 .chip.done{background:var(--navy);color:#fff}
 .linkbtn{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--navy);text-decoration:underline;cursor:pointer}
 
-/* the document itself */
-.doc{border:2px solid var(--line);border-radius:14px;padding:20px 18px;background:#fff;overflow-wrap:anywhere}
+/* the document itself — Mark 2026-10-26: "forms should look like what they are". Each document is a sheet of paper laid out like the
+   Cornerstone original: document type, ruled fill-in lines, square tick boxes, plain ruled tables. */
+.doc{background:#fff;color:#111;border:1px solid #c4cad6;box-shadow:0 3px 14px rgba(7,24,63,.18);padding:clamp(20px,6vw,64px) clamp(16px,7vw,72px);font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.6;overflow-wrap:anywhere}
 .doc p{margin:0 0 12px}
-.doc h3.doc-h,.doc h2.doc-h{font-size:24px;margin:20px 0 8px}
-.doc h4.doc-h{font-size:21px;margin:16px 0 6px}
-.doc hr{border:0;border-top:2px solid #dbe5f4;margin:20px 0}
+.doc h3.doc-h,.doc h2.doc-h,.doc h4.doc-h{font-family:Arial,Helvetica,sans-serif;font-weight:700;color:#111}
+.doc h3.doc-h,.doc h2.doc-h{font-size:22px;margin:22px 0 8px}
+.doc h4.doc-h{font-size:20px;margin:16px 0 6px}
+.doc hr{border:0;border-top:1px solid #111;margin:20px 0}
 .doc ul,.doc ol{margin:0 0 14px;padding-left:26px}
 .doc li{margin:0 0 6px}
 .doc-logo{display:block;margin:0 auto 6px;max-width:220px;height:auto}
 .doc-table{overflow-x:auto;margin:0 0 14px}
 .doc table{border-collapse:collapse;width:100%;font-size:18px}
-.doc th,.doc td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
-.doc th{background:#eaf3ff;font-weight:700}
-.blank{display:inline-block;min-width:7ch;border-bottom:1.5px solid var(--navy);height:1.1em;vertical-align:baseline}
+.doc th,.doc td{border:1px solid #111;padding:8px 10px;text-align:left;vertical-align:top}
+.doc th{background:#fff;font-weight:700}
+.blank{display:inline-block;min-width:7ch;border-bottom:1px solid #111;height:1.1em;vertical-align:baseline}
 .box{font-size:1.1em}
 .doc-today{font-weight:700}
-.doc-in,.doc-ta{font:inherit;font-size:18px;color:var(--navy);background:#fff;border:1px solid #8796ad;border-radius:0;padding:5px 8px;max-width:100%}
-.doc-in:focus,.doc-ta:focus{outline:2px solid var(--navy);outline-offset:1px}
+.doc-in,.doc-ta{font:inherit;font-size:18px;color:#111;background:transparent;border:0;border-bottom:1px solid #111;border-radius:0;padding:2px 4px;max-width:100%}
+.doc-in:focus,.doc-ta:focus{outline:2px solid #07183f;outline-offset:2px}
 .doc-in{width:min(100%,21rem);min-width:9rem}
 .doc td .doc-in{width:100%;min-width:8rem}
-.doc-ta{display:block;width:100%;min-height:96px;resize:vertical}
-.doc-in.req,.doc-ta.req{border-color:var(--navy);background:#fbfdff}
+.doc-ta{display:block;width:100%;min-height:96px;resize:vertical;border:1px solid #111}
+.doc-in.req,.doc-ta.req{border-bottom-width:2px}
 .doc-in[aria-invalid=true],.doc-ta[aria-invalid=true]{border-color:#8a1c0e;background:#fff3f0}
-.doc-in:disabled{background:#eef2f8;color:#42526e}
-.doc-box{width:24px;height:24px;vertical-align:middle;margin:0 4px 0 2px;accent-color:var(--navy)}
+.doc-in:disabled{background:#f1f2f4;color:#42526e}
+.doc input[type=radio],.doc input[type=checkbox]{-webkit-appearance:none;appearance:none;width:22px;height:22px;border:1.5px solid #111;border-radius:0;background:#fff;vertical-align:middle;margin:0 6px 0 2px;display:inline-grid;place-content:center;cursor:pointer}
+.doc input[type=radio]:checked::before,.doc input[type=checkbox]:checked::before{content:"";width:12px;height:12px;background:#111}
+.doc input[type=radio]:focus-visible,.doc input[type=checkbox]:focus-visible{outline:2px solid #07183f;outline-offset:2px}
 .field-err{display:block;color:#8a1c0e;font-weight:700;margin:4px 0 6px}
 .passport-note{margin:6px 0 10px;font-weight:600}
-.addr-fix{display:block;background:#fff6d6;border:1px solid #f5c33b;padding:8px 12px;margin:8px 0 4px;font-size:18px;color:var(--navy)}
+.addr-fix{display:block;background:#fff6d6;border:1px solid #f5c33b;padding:8px 12px;margin:8px 0 4px;font-size:18px;color:var(--navy);font-family:'Baloo 2',system-ui,sans-serif}
 .addr-fix button{font:inherit;font-weight:800;color:var(--navy);background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
 .addr-fix .addr-pick{display:block;text-align:left;font-weight:600;padding:4px 0}
 
@@ -98,7 +91,7 @@ footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;col
 </style>
 </head>
 <body>
-<header class="fm-photos" id="fm-photos" aria-hidden="true" hidden><span class="palm" style="left:1%;top:14%;transform:rotate(-14deg)">🌴</span><span class="palm" style="left:6%;top:72%;transform:rotate(10deg)">🌴</span><span class="palm" style="left:17%;top:2%;transform:rotate(8deg)">🌴</span><span class="palm" style="left:47%;top:0%;transform:rotate(-6deg)">🌴</span><span class="palm" style="left:79%;top:4%;transform:rotate(12deg)">🌴</span><span class="palm" style="left:92%;top:18%;transform:rotate(-10deg)">🌴</span><span class="palm" style="left:95%;top:70%;transform:rotate(14deg)">🌴</span><span class="palm" style="left:33%;top:86%;transform:rotate(-8deg)">🌴</span><span class="palm" style="left:63%;top:88%;transform:rotate(6deg)">🌴</span><div class="fm-photo-row" id="fm-photo-row"></div></header>
+<header class="trip-photos" id="fm-photos" aria-hidden="true" hidden></header>
 
 <main class="shell" data-api="/api/forms/">
   <div class="sheet">
@@ -109,7 +102,7 @@ footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;col
     <section id="fm-doc" hidden aria-labelledby="fm-doc-title">
       <p><button type="button" class="linkbtn" id="fm-back">&larr; All documents</button></p>
       <h2 id="fm-doc-title" tabindex="-1"></h2>
-      <p class="note" id="fm-legend">Lines with a dark outline are required. Everything else is optional.</p>
+      <p class="note" id="fm-legend">Lines drawn in bold are required. Everything else is optional.</p>
       <div class="doc" id="fm-doc-body"></div>
       <div class="sign" id="fm-sign">
         <h3>Sign this document</h3>
@@ -129,6 +122,7 @@ footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;col
 <footer id="fm-foot">Still Afloat LLC dba Still Afloat Cruising</footer>
 
 <script src="/js/keep-typing.js?v=20261026"></script>
+<script src="/js/trip-photos.js?v=20261026"></script>
 <script src="/js/forms.js?v=20261026"></script>
 
 </body>

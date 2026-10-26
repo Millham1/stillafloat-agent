@@ -25,6 +25,7 @@ export interface LookupDeps { fetch?: typeof fetch; env?: Record<string, string 
 
 const TOKEN_URL = "https://apis.usps.com/oauth2/v3/token";
 const ADDRESS_URL = "https://apis.usps.com/addresses/v3/address";
+const CITY_STATE_URL = "https://apis.usps.com/addresses/v3/city-state";
 const TIMEOUT_MS = 6000;
 const CACHE_MS = 60 * 60 * 1000;
 const CACHE_MAX = 500;
@@ -118,6 +119,25 @@ async function askUsps(raw: Raw, env: Record<string, string | undefined>, f: typ
   throw new Error("address unauthorised");
 }
 
+/** Mark 2026-10-26 ("the street and the ZIP"): the state a ZIP belongs to, from the post office's own ZIP table. null = no such ZIP. */
+async function askZip(zip: string, env: Record<string, string | undefined>, f: typeof fetch, now: number): Promise<{ city: string; state: string } | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const token = await getToken(env, f, now);
+    if (!token) throw new Error("no credentials");
+    const u = new URL(CITY_STATE_URL);
+    u.searchParams.set("ZIPCode", zip);
+    const res = await f(u.toString(), { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (res.status === 401 || res.status === 403) { tokenCache = null; continue; }
+    if (res.status === 400 || res.status === 404) return null;
+    if (!res.ok) throw new Error(`city-state ${res.status}`);
+    const j = (await res.json()) as Record<string, unknown>;
+    const state = typeof j["state"] === "string" ? j["state"].trim().toUpperCase() : "";
+    const city = typeof j["city"] === "string" ? j["city"].trim() : "";
+    return US_STATES.has(state) ? { city, state } : null;
+  }
+  throw new Error("city-state unauthorised");
+}
+
 /**
  * Ask the post office about what the guest has typed. Never throws; never logs the address.
  * `deps` are the seams for the tests (a stubbed fetch, a chosen environment and clock); production passes nothing.
@@ -135,12 +155,13 @@ export async function lookupAddress(input: LookupInput, deps: LookupDeps = {}): 
   const city = (input.city ?? "").trim().slice(0, 60) || one.city || "";
   const zipText = (input.zip ?? "").trim() || one.zip || "";
   const zip = /^\d{5}(-\d{4})?$/.test(zipText) ? zipText.slice(0, 5) : "";
-  const state = US_STATES.has(stateIn) ? stateIn : "";
+  let state = US_STATES.has(stateIn) ? stateIn : "";
   let street = one.street.trim();
   let secondary: string | undefined;
   const sec = SECONDARY.exec(street);
   if (sec) { street = sec[1]!; secondary = sec[2]!.trim(); }
-  if (street.length < 5 || !state || (!city && !zip)) return { available: true, suggestions: [], incomplete: true };
+  // A street and a ZIP are enough (Mark 2026-10-26): the ZIP's own state is asked for first.
+  if (street.length < 5 || (!state && !zip) || (!city && !zip)) return { available: true, suggestions: [], incomplete: true };
 
   const key = JSON.stringify([street, secondary ?? "", city, state, zip].map((x) => x.toLowerCase()));
   const hit = results.get(key);
@@ -152,6 +173,11 @@ export async function lookupAddress(input: LookupInput, deps: LookupDeps = {}): 
   hour.calls++;
 
   try {
+    if (!state) {
+      const z = await askZip(zip, env, f, now);
+      if (!z) { const none: LookupResult = { available: true, suggestions: [] }; results.set(key, { at: now, result: none }); return none; }
+      state = z.state;
+    }
     const found = await askUsps({ street, ...(secondary ? { secondary } : {}), ...(city ? { city } : {}), state, ...(zip ? { zip } : {}) }, env, f, now);
     const result: LookupResult = { available: true, suggestions: found ? [found] : [] };
     if (results.size >= CACHE_MAX) results.delete(results.keys().next().value as string);

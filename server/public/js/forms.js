@@ -27,7 +27,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
 
   // ── The home address, checked with the post office as it is typed (Mark 2026-10-26, the same service and words as the details page) ──
   // A street box (a field ending "address") is paired with its "city_state_zip" box. Once the street has five characters and the second box
-  // holds a state with a city or a ZIP, the post office's version is offered under the boxes; "Yes" fills both, "No" leaves them as typed.
+  // holds a ZIP (or a city and state), the post office's whole address is offered under the boxes; "Yes" fills both, "No" leaves them as typed.
   var ADDR = {
     tidied: "We tidied it to the post office's spelling:", right: 'Right?', yes: 'Yes', no: "No, I'll fix it",
     nf: "We couldn't find that one… check the street and ZIP.", na: "We couldn't check that address right now, so we'll take it as typed.",
@@ -68,7 +68,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
     function ask() {
       var key = keyNow(), c = splitCsz(csz.value);
-      if (look.off || key === look.key || tidy(street.value).length < 5 || !c.state || !(c.city || c.zip)) return;
+      if (look.off || key === look.key || tidy(street.value).length < 5 || !(c.zip || (c.state && c.city))) return;   // a street and a ZIP are enough
       fetch('/api/address/lookup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: tidy(street.value), city: c.city, state: c.state, zip: c.zip, website: ($('fm-website') || {}).value || '' }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
         .then(function (x) {
@@ -217,13 +217,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // Mark 2026-10-26: the page opens on the trip's own photos (left, middle, right, tilted), never the website's banner. Each private page
   // shows a different selling point; the group file says which (groups.journey.photos), and a missing one is simply left out.
   function photos() {
-    var list = (packet.group && Array.isArray(packet.group.photos)) ? packet.group.photos : [], host = $('fm-photos');
-    var slots = ['left', 'mid', 'right'], h = '';
-    list.forEach(function (ph, i) {
-      if (ph && ph.url) h += '<figure class="ph ph-' + slots[i] + '"><img src="' + esc(ph.url) + '" alt="' + esc(ph.alt || '') + '" loading="eager"></figure>';
-    });
-    $('fm-photo-row').innerHTML = h;
-    host.hidden = !h;
+    if (window.SATripPhotos) window.SATripPhotos.render($('fm-photos'), packet.group && packet.group.photos);
   }
 
   function render() {
