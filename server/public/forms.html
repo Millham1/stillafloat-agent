@@ -26,6 +26,35 @@ h1,h2,h3,h4{font-family:'Bree Serif',Georgia,serif;font-weight:400;color:var(--n
 .state{padding:34px 8px;text-align:center;font-size:21px}
 .note{background:#eaf3ff;border-left:5px solid var(--navy);border-radius:10px;padding:12px 16px;margin:0 0 18px}
 .err-box{background:#fff3f0;border:2px solid #8a1c0e;color:#5c0f06;border-radius:12px;padding:12px 16px;margin:14px 0}
+/* the steps (Mark 2026-10-26): one screen each, a Continue button, plain formal boxes */
+.w-progress{margin:0 0 4px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#4a5670}
+.w-step h2{margin:0 0 14px}
+.w-field{display:block;border:0;margin:0 0 18px;padding:0;min-width:0}
+.w-field>label:not(.w-opt-row),.w-field legend{display:block;font-weight:700;margin:0 0 6px;padding:0}
+.w-opt{font-weight:400;color:#4a5670}
+.w-in{display:block;width:100%;font:inherit;font-size:18px;color:var(--navy);background:#fff;border:1px solid #8796ad;border-radius:0;padding:9px 10px}
+.w-in:focus{outline:2px solid var(--navy);outline-offset:1px}
+.w-field.req .w-in{border-color:var(--navy)}
+.w-in[aria-invalid=true]{border-color:#8a1c0e;background:#fff3f0}
+textarea.w-in{resize:vertical}
+.w-opt-row{display:flex;gap:12px;align-items:flex-start;margin:6px 0;font-weight:400;cursor:pointer}
+#fm-wiz input[type=radio],#fm-wiz input[type=checkbox]{-webkit-appearance:none;appearance:none;flex:none;width:24px;height:24px;margin:3px 0 0;border:1.5px solid var(--navy);border-radius:0;background:#fff;display:inline-grid;place-content:center;cursor:pointer}
+#fm-wiz input[type=radio]:checked::before,#fm-wiz input[type=checkbox]:checked::before{content:"";width:13px;height:13px;background:var(--navy)}
+#fm-wiz input[type=radio]:focus-visible,#fm-wiz input[type=checkbox]:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+.w-follow{margin:4px 0 10px 36px}
+.w-follow .w-field{margin-bottom:8px}
+.w-pairs{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.w-box{border:1px solid #c4cad6;background:#fff;padding:14px 16px;margin:0 0 16px}
+.w-box ul{margin:8px 0 12px;padding-left:22px}
+.w-docs{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:10px}
+.w-docs>li{border:1px solid #c4cad6;background:#fff;padding:12px 14px}
+.w-docs .w-read{margin-left:36px}
+.w-sub{margin:10px 0 0 36px}
+.w-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:20px}
+.w-nav .btn{margin-left:auto}
+.btn-ghost{background:none;border:0;font:inherit;font-weight:700;color:var(--navy);text-decoration:underline;cursor:pointer;padding:8px 0}
+#fm-name{width:100%;font:inherit;font-size:22px;color:var(--navy);background:#fff;border:0;border-bottom:2px solid var(--navy);border-radius:0;padding:8px 4px;margin:0 0 6px}
+@media(max-width:640px){.w-pairs{grid-template-columns:1fr}.w-follow,.w-sub,.w-docs .w-read{margin-left:0}}
 .err-links{margin:8px 0 0;padding-left:20px}.err-links li{margin:4px 0}.err-links .linkbtn{color:#5c0f06}
 
 /* progress */
@@ -103,23 +132,17 @@ footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;col
     <h1 id="fm-h1">Your travel paperwork</h1>
     <div id="fm-state" class="state" role="status" aria-live="polite">Opening your paperwork…</div>
     <noscript><p class="err-box">This page needs JavaScript to show and sign your documents. Please turn it on, or email <a href="mailto:mark@stillafloatcruising.com">mark@stillafloatcruising.com</a>.</p></noscript>
-    <div id="fm-intro" hidden></div>
+    <section id="fm-wiz" hidden aria-live="polite">
+      <p class="w-progress" id="fm-progress"></p>
+      <div id="fm-steps"></div>
+      <div class="hp" aria-hidden="true"><label>Website <input type="text" id="fm-website" name="website" tabindex="-1" autocomplete="off"></label></div>
+      <div id="fm-err" class="err-box" role="alert" hidden></div>
+      <div class="w-nav"><button type="button" class="btn-ghost" id="fm-prev">&larr; Back</button><button type="button" class="btn" id="fm-next">Continue</button></div>
+    </section>
     <section id="fm-doc" hidden aria-labelledby="fm-doc-title">
-      <p><button type="button" class="linkbtn" id="fm-back">&larr; All documents</button></p>
+      <p><button type="button" class="linkbtn" id="fm-back">&larr; Back to your paperwork</button></p>
       <h2 id="fm-doc-title" tabindex="-1"></h2>
-      <p class="note" id="fm-legend">Lines drawn in bold are required. Everything else is optional.</p>
       <div class="doc" id="fm-doc-body"></div>
-      <div class="sign" id="fm-sign">
-        <h3>Sign this document</h3>
-        <div id="fm-extra"></div>
-        <label class="agree"><input type="checkbox" id="fm-agree" data-nokeep><span>I have read this document and I agree to it. I understand that typing my name below is my legal signature.</span></label>
-        <label class="nm" for="fm-name">Type your full name</label>
-        <input type="text" id="fm-name" autocomplete="name" maxlength="120" placeholder="First and last name">
-        <p class="hint fine">Your signature, the date and time, and the exact text you agreed to are saved with us, and a signed copy is kept on file.</p>
-        <div class="hp" aria-hidden="true"><label>Website <input type="text" id="fm-website" name="website" tabindex="-1" autocomplete="off"></label></div>
-        <div id="fm-err" class="err-box" role="alert" hidden></div>
-        <button type="button" class="btn" id="fm-go">Sign and continue</button>
-      </div>
     </section>
     <div id="fm-done" hidden></div>
   </div>

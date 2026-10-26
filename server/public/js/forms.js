@@ -1,4 +1,4 @@
-// forms.js — the traveler's private paperwork page (server/public/forms.html).
+// forms.js — the traveler's private paperwork page (server/public/forms.html): short screens with a Continue button (Mark 2026-10-26).
 // The link in the address is the only credential: it is read once, sent only to our own API
 // (/api/forms/<link>), and never logged, stored or echoed. All rules (what is shown, what is
 // accepted, what a signature pins) live on the server in lib/group-forms.ts.
@@ -11,7 +11,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   var params = new URLSearchParams(location.search);
   var token = (params.get('t') || (location.hash.match(/[#&]t=([^&]+)/) || [])[1] || '').trim();
   var $ = function (id) { return document.getElementById(id); };
-  var packet = null, current = null, busy = false;
+  var packet = null, busy = false;
   var newsWanted = false;   // Mark 2026-10-26: the newsletter is asked once, at the start; the answer rides with the next signature
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -22,9 +22,6 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, json: j }; });
     });
   }
-
-  // Mark 2026-10-26: what is typed in a document stays if the client leaves and comes back, until that document is signed (js/keep-typing.js).
-  function keepKey(docKey) { return window.SAKeep ? window.SAKeep.keyFor('forms', token) + ':' + docKey : null; }
 
   // ── The home address, checked with the post office as it is typed (Mark 2026-10-26, the same service and words as the details page) ──
   // A street box (a field ending "address") is paired with its "city_state_zip" box. Once the street has five characters and the second box
@@ -123,7 +120,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
 
   function firstName() { return (packet && packet.traveler && packet.traveler.first_name) || ''; }
   function docByKey(k) { for (var i = 0; i < packet.docs.length; i++) if (packet.docs[i].key === k) return packet.docs[i]; return null; }
-  function nextPending() { for (var i = 0; i < packet.docs.length; i++) if (packet.docs[i].status !== 'signed') return packet.docs[i]; return null; }
+  function pending() { return packet.docs.filter(function (d) { return d.status !== 'signed'; }); }
 
   function tripBox() {
     var g = packet.group || {}, c = packet.cabin;
@@ -139,118 +136,270 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
 
   // Mark 2026-10-25: the one-time consent to electronic records comes before the first signature (ESIGN consumer consent).
   function consented() { return !packet.esign || !!packet.esign.consent_given_at; }
-  function consentCard() {
-    var c = packet.esign.text;
-    return '<section class="sign esign" id="fm-consent" aria-labelledby="fm-consent-h"><h3 id="fm-consent-h">' + esc(c.title) + '</h3>' +
-      '<p>' + esc(c.intro) + '</p><ul>' + c.points.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
-      '<label class="agree"><input type="checkbox" id="fm-esign"><span>' + esc(c.tick) + '</span></label>' +
-      '<div id="fm-esign-err" class="err-box" role="alert" hidden></div>' +
-      '<button type="button" class="btn" id="fm-esign-go">' + esc(c.button) + '</button></section>';
-  }
-  function giveConsent() {
-    if (busy) return;
-    var err = $('fm-esign-err'); err.hidden = true;
-    if (!$('fm-esign').checked) { err.textContent = 'Please tick the box to agree to signing electronically.'; err.hidden = false; return; }
-    busy = true; $('fm-esign-go').disabled = true;
-    api('/consent', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ agreed: true, website: ($('fm-website') || {}).value || '' }) })
-      .then(function (r) {
-        busy = false;
-        var j = r.json || {};
-        if (r.status === 200 && j.success && j.packet) { packet = j.packet; var nxt = nextPending(); if (nxt) { renderIntro(); openDoc(nxt.key); } else render(); return; }
-        $('fm-esign-go').disabled = false; err.textContent = j.error || 'That did not go through. Please try again.'; err.hidden = false;
-      }).catch(function () { busy = false; $('fm-esign-go').disabled = false; err.textContent = 'We could not reach the server. Please check your connection and try again.'; err.hidden = false; });
-  }
 
-  function newsBox() {
-    if (packet.kind !== 'traveler' || (packet.traveler && packet.traveler.newsletter_opt_in) || !nextPending()) return '';
-    return '<label class="agree"><input type="checkbox" id="fm-news"' + (newsWanted ? ' checked' : '') + '><span>Send me the Still Afloat Cruising newsletter. (Optional. You can unsubscribe at any time.)</span></label>';
-  }
+  // ── The steps (Mark 2026-10-26: "one page worth with a continue button … we should be able to get it down to 5 minutes") ──
+  // Each screen fits on one page. The questions of every document still to sign are asked once, by step; a question two documents
+  // share is asked once and goes to both. Any question not named here is asked on the last screen, under its own document.
+  var STEPS = [
+    { id: 'welcome', title: 'Welcome aboard' },
+    { id: 'about', title: 'About you', fields: ['legal_name', 'dob', 'gender', 'us_citizen', 'citizenship'] },
+    { id: 'home', title: 'Where you live', fields: ['address', 'city_state_zip', 'phone', 'email'] },
+    { id: 'travel', title: 'Travel documents', fields: ['passport_number', 'passport_country', 'passport_issue', 'passport_expiry', 'passport_place', 'trusted_programs', 'ktn', 'global_entry_number',
+      'loyalty_1_program', 'loyalty_1_number', 'loyalty_2_program', 'loyalty_2_number', 'loyalty_3_program', 'loyalty_3_number'] },
+    { id: 'contact', title: 'Emergency contact', fields: ['ec1_name', 'ec1_relationship', 'ec1_cell_phone', 'ec1_email', 'ec1_address', 'ec1_city_state_zip', 'notes'] },
+    { id: 'sign', title: 'Review and sign' },
+  ];
+  // A follow-up line shows right under the choice it belongs to, only when that choice is ticked.
+  var FOLLOW = { us_citizen: { no: ['citizenship'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] } };
+  var SUMMARY = {
+    '15-emergency-contact-form': 'The answers you just gave: who you are, how to reach you, and who to call in an emergency.',
+    '01-terms-and-conditions': 'How we work together: what we do, what the cruise line does, and how changes and cancellations are handled.',
+    '05-liability-waiver': 'Travel has risks no one controls; you accept them, and the cruise line and suppliers answer for their own services.',
+    '07-travel-insurance-declination': 'Your travel insurance choice.',
+    '16-passport-document-checklist': 'Your travel documents checklist.',
+    '12-cruise-booking-agreement': 'Your cabin, your price and the cruise line\'s rules for this booking.',
+    '09-group-travel-contract': 'The group\'s contract: the cabins held, the dates and the cruise line\'s terms.',
+  };
+  var AUTO = { legal_name: 'name', dob: 'bday', email: 'email', phone: 'tel', address: 'address-line1', ec1_name: 'off', ec1_cell_phone: 'off' };
 
-  // Mark 2026-10-26: nothing is signed with a required line empty. The page names what is missing and goes to the first one.
-  function missing(doc) {
-    var body = $('fm-doc-body'), out = {}, names = [];
-    doc.fields.forEach(function (f) {
-      if (!f.required) return;
-      var els = body.querySelectorAll('[data-field="' + f.name + '"]');
-      if (!els.length || els[0].disabled) return;
-      for (var i = 0; i < els.length; i++) { var el = els[i]; if (el.type === 'radio' || el.type === 'checkbox' ? el.checked : String(el.value).trim()) return; }
-      out[f.name] = f.kind === 'check' ? 'Please tick this box.' : (f.kind === 'choice' || f.kind === 'multi') ? 'Please choose one.' : 'Please fill this in.';
-      names.push(f.label);
+  var fields = {}, order = [], steps = [], at = 0;   // the questions of the documents still to sign, by name; the screens shown
+  function gather() {
+    fields = {}; order = [];
+    pending().forEach(function (d) {
+      d.fields.forEach(function (f) {
+        if (!fields[f.name]) { fields[f.name] = { f: f, docs: [] }; order.push(f.name); }
+        fields[f.name].docs.push(d.key);
+        if (f.required) fields[f.name].f.required = true;
+      });
     });
+    var named = {};
+    STEPS.forEach(function (s) { (s.fields || []).forEach(function (n) { named[n] = true; }); });
+    steps = STEPS.filter(function (s) { return !s.fields || s.fields.some(function (n) { return fields[n]; }); });
+    return named;
+  }
+
+  function control(f) {
+    var id = 'w-' + f.name, v = f.value, req = f.required ? ' req' : '';
+    var lab = '<span class="w-label">' + esc(f.label) + (f.required ? '' : ' <span class="w-opt">(optional)</span>') + '</span>';
+    if (f.kind === 'choice' || f.kind === 'multi') {
+      var type = f.kind === 'choice' ? 'radio' : 'checkbox', follow = FOLLOW[f.name] || {};
+      return '<fieldset class="w-field' + req + '" data-q="' + esc(f.name) + '"><legend>' + lab + '</legend>' + (f.options || []).map(function (o) {
+        var on = Array.isArray(v) ? v.indexOf(o.value) >= 0 : v === o.value;
+        return '<label class="w-opt-row"><input type="' + type + '" name="' + esc(f.name) + '" data-field="' + esc(f.name) + '" value="' + esc(o.value) + '"' + (on ? ' checked' : '') + '><span>' + esc(o.label) + '</span></label>' +
+          (follow[o.value] || []).map(function (n) { return fields[n] ? '<div class="w-follow" data-follow="' + esc(f.name) + ':' + esc(o.value) + '">' + control(fields[n].f) + '</div>' : ''; }).join('');
+      }).join('') + '</fieldset>';
+    }
+    if (f.kind === 'check') {
+      return '<div class="w-field' + req + '" data-q="' + esc(f.name) + '"><label class="w-opt-row"><input type="checkbox" id="' + id + '" data-field="' + esc(f.name) + '"' + (v === true ? ' checked' : '') + '><span>' + esc(f.label) + '</span></label></div>';
+    }
+    if (f.kind === 'textarea') {
+      return '<div class="w-field" data-q="' + esc(f.name) + '"><label for="' + id + '">' + lab + '</label><textarea class="w-in" id="' + id + '" data-field="' + esc(f.name) + '" rows="3">' + esc(v || '') + '</textarea></div>';
+    }
+    var type2 = f.kind === 'date' ? 'date' : f.kind === 'email' ? 'email' : f.kind === 'tel' ? 'tel' : 'text';
+    var extra = (f.maxLength ? ' maxlength="' + f.maxLength + '"' : '') + ' autocomplete="' + (AUTO[f.name] || 'off') + '"';
+    var note = '';
+    if (f.kind === 'passport') {
+      if (!packet.pii_ready) { extra += ' disabled'; note = 'We cannot take a passport number on this page right now. Leave it empty; we will ask for it another way.'; }
+      else if (packet.traveler && packet.traveler.passport_on_file) note = 'A passport ' + packet.traveler.passport_on_file + ' is already on file. Type the number again only if it has changed.';
+      else note = 'Optional on this sailing. Stored encrypted and never shown again, not even to you.';
+    }
+    return '<div class="w-field' + req + '" data-q="' + esc(f.name) + '"><label for="' + id + '">' + lab + '</label><input class="w-in" type="' + type2 + '" id="' + id + '" data-field="' + esc(f.name) + '" value="' + esc(typeof v === 'string' ? v : '') + '"' + extra + '>' +
+      (note ? '<p class="passport-note">' + esc(note) + '</p>' : '') + '</div>';
+  }
+
+  function isFollow(n) { for (var k in FOLLOW) for (var o in FOLLOW[k]) if (FOLLOW[k][o].indexOf(n) >= 0 && fields[k]) return true; return false; }
+  function stepBody(s, named) {
+    if (s.id === 'welcome') {
+      var c = packet.esign && packet.esign.text, h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '! ' +
+        (packet.kind === 'organizer' ? 'Here is the group contract to read and sign.' : 'Five quick screens and your paperwork is done: about 5 minutes, less time than the line at the buffet!') + '</p>' + tripBox();
+      if (!consented() && c) h += '<div class="w-box"><b>' + esc(c.title) + '</b><p>' + esc(c.intro) + '</p><ul>' + c.points.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
+        '<label class="w-opt-row"><input type="checkbox" id="fm-esign" data-nokeep><span>' + esc(c.tick) + '</span></label></div>';
+      if (packet.kind === 'traveler' && !(packet.traveler && packet.traveler.newsletter_opt_in))
+        h += '<label class="w-opt-row"><input type="checkbox" id="fm-news"' + (newsWanted ? ' checked' : '') + '><span>Send me the Still Afloat Cruising newsletter. (Optional. You can unsubscribe at any time.)</span></label>';
+      return h;
+    }
+    if (s.id === 'sign') {
+      var h2 = '<p class="lead">Last screen. Tick each document to say you have read it and agree, then type your name once to sign them all.</p><ul class="w-docs">';
+      pending().forEach(function (d) {
+        // only what is still required is asked here; the optional questions of a document (its advisory level, insurance details, dining and
+        // occasions) are the ones Mark fills in from the file (Mark 2026-10-26), so they are not put to the client
+        var rest = d.fields.filter(function (f) { return f.required && !named[f.name] && !isFollow(f.name) && fields[f.name] && fields[f.name].docs[0] === d.key; });
+        h2 += '<li><label class="w-opt-row"><input type="checkbox" class="w-agree" data-doc="' + esc(d.key) + '" data-nokeep><span><b>' + esc(d.title) + '</b><br>' + esc(SUMMARY[d.key] || '') + '</span></label>' +
+          '<button type="button" class="linkbtn w-read" data-read="' + esc(d.key) + '">Read it</button>' +
+          (rest.length ? '<div class="w-sub">' + rest.map(function (f) { return control(f); }).join('') + '</div>' : '') + '</li>';
+      });
+      h2 += '</ul><label class="nm" for="fm-name">Type your full name to sign</label><input type="text" id="fm-name" autocomplete="name" maxlength="120" placeholder="First and last name">' +
+        '<p class="hint fine">Typing your name is your legal signature on each document you ticked. The date and time and the exact text you agreed to are saved with each one, and you get a signed copy of each by email.</p>';
+      return h2;
+    }
+    var list = s.fields.filter(function (n) { return fields[n] && !isFollow(n); });
+    var html = '', loyalty = list.filter(function (n) { return /^loyalty_/.test(n); });
+    list.filter(function (n) { return !/^loyalty_/.test(n); }).forEach(function (n) { html += control(fields[n].f); });
+    if (loyalty.length) {
+      var any = loyalty.some(function (n) { return fields[n].f.value; });
+      html += '<fieldset class="w-field"><legend><span class="w-label">Do you belong to any Loyalty Programs?</span> <span class="w-opt">(optional)</span></legend>' +
+        '<label class="w-opt-row"><input type="radio" name="w-loyal" id="w-loyal-no" value="no"' + (any ? '' : ' checked') + '><span>No</span></label>' +
+        '<label class="w-opt-row"><input type="radio" name="w-loyal" id="w-loyal-yes" value="yes"' + (any ? ' checked' : '') + '><span>Yes</span></label>' +
+        '<div class="w-follow w-loyal-rows" data-follow="w-loyal:yes"><div class="w-pairs">' + loyalty.map(function (n) { return control(fields[n].f); }).join('') + '</div></div></fieldset>';
+    }
+    return html;
+  }
+
+  function renderWizard() {
+    var named = gather();
+    var host = $('fm-steps');
+    host.innerHTML = steps.map(function (s, i) {
+      return '<section class="w-step" data-step="' + i + '" hidden><h2>' + esc(s.title) + '</h2>' + stepBody(s, named) + '</section>';
+    }).join('');
+    addressCheck(host);
+    followUps();
+    if (window.SAKeep) { window.SAKeep.track(host, wizKey); window.SAKeep.restore(host, wizKey()); followUps(); }
+    show('fm-wiz', true); show('fm-done', false); show('fm-doc', false);
+    goStep(Math.min(at, steps.length - 1), true);
+  }
+  function wizKey() { return window.SAKeep ? window.SAKeep.keyFor('forms', token) + ':steps' : null; }
+
+  // a follow-up line shows only under the choice it belongs to
+  function followUps() {
+    var els = $('fm-steps').querySelectorAll('[data-follow]');
+    for (var i = 0; i < els.length; i++) {
+      var p = els[i].getAttribute('data-follow').split(':'), name = p[0], val = p[1];
+      var box = name === 'w-loyal' ? $('w-loyal-yes') : $('fm-steps').querySelector('[data-field="' + name + '"][value="' + val + '"]');
+      els[i].hidden = !(box && box.checked);
+    }
+  }
+
+  function goStep(i, quiet) {
+    at = i;
+    var all = $('fm-steps').querySelectorAll('.w-step');
+    for (var k = 0; k < all.length; k++) all[k].hidden = Number(all[k].getAttribute('data-step')) !== i;
+    $('fm-progress').textContent = 'Step ' + (i + 1) + ' of ' + steps.length;
+    $('fm-prev').hidden = i === 0;
+    $('fm-next').textContent = steps[i].id === 'sign' ? 'Sign' : steps[i].id === 'welcome' ? "Let's go!" : 'Continue';
+    hideErr();
+    if (!quiet) window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20));
+  }
+
+  function stepEl(i) { return $('fm-steps').querySelector('.w-step[data-step="' + i + '"]'); }
+  function stepOf(name) {
+    var el = $('fm-steps').querySelector('[data-field="' + name + '"]'), s = el && el.closest('.w-step');
+    return s ? Number(s.getAttribute('data-step')) : -1;
+  }
+  function value(name) {
+    var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"]'), f = fields[name] && fields[name].f;
+    if (!els.length || !f) return undefined;
+    if (f.kind === 'choice') { for (var i = 0; i < els.length; i++) if (els[i].checked) return els[i].value; return undefined; }
+    if (f.kind === 'multi') { var out = []; for (var k = 0; k < els.length; k++) if (els[k].checked) out.push(els[k].value); return out; }
+    if (f.kind === 'check') return !!els[0].checked;
+    if (els[0].disabled) return undefined;
+    var v = els[0].value.trim(); return v ? v : undefined;
+  }
+  /** What a step still needs: its required questions that are empty and in view (a hidden follow-up is not asked). */
+  function stepGaps(i) {
+    var out = {}, names = [], el = stepEl(i);
+    var qs = el.querySelectorAll('[data-q]');
+    for (var k = 0; k < qs.length; k++) {
+      var n = qs[k].getAttribute('data-q'), f = fields[n] && fields[n].f;
+      if (!f || !f.required || qs[k].closest('[hidden]') !== null && qs[k].closest('[hidden]') !== el) continue;
+      var v = value(n);
+      if (v === undefined || v === false || (Array.isArray(v) && !v.length)) { out[n] = f.kind === 'check' ? 'Please tick this box.' : (f.kind === 'choice' || f.kind === 'multi') ? 'Please choose one.' : 'Please fill this in.'; names.push(f.label); }
+    }
     return { fields: out, names: names };
   }
 
-  function renderIntro() {
-    var n = packet.docs.length, done = packet.docs.filter(function (d) { return d.status === 'signed'; }).length;
-    var nowDoc = nextPending();
-    var h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '. ' +
-      (packet.kind === 'organizer' ? 'This is the group contract for you to read and sign.' : 'Here is your paperwork for this trip. Please read each document and sign it with your full name.') + '</p>' +
-      (consented() ? '' : consentCard()) + tripBox() + newsBox();
-    h += '<p class="fine">' + done + ' of ' + n + ' signed.' + (nowDoc ? '' : ' Everything is done.') + '</p><ol class="progress">';
-    packet.docs.forEach(function (d) {
-      var isNow = nowDoc && nowDoc.key === d.key;
-      h += '<li' + (isNow ? ' class="now"' : '') + '><span class="t">' + esc(d.title) + '</span>' +
-        (d.status === 'signed' ? '<span class="chip done">Signed</span>' : !consented() ? '<span class="chip">Opens after the box above</span>' : isNow ? '<button type="button" class="linkbtn" data-open="' + esc(d.key) + '">Continue</button>' : '<button type="button" class="linkbtn" data-open="' + esc(d.key) + '">Open</button>') + '</li>';
-    });
-    h += '</ol>';
-    $('fm-intro').innerHTML = h;
-    show('fm-intro', true);
-  }
-
-  function setValue(name, value) {
-    var els = $('fm-doc-body').querySelectorAll('[data-field="' + name + '"]');
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      if (el.type === 'radio') el.checked = (el.value === value);
-      else if (el.type === 'checkbox') el.checked = Array.isArray(value) ? value.indexOf(el.value) >= 0 : value === true;
-      else el.value = value == null ? '' : String(value);
-    }
-  }
-
-  function wireDoc(doc) {
-    var body = $('fm-doc-body');
-    body.innerHTML = doc.html;
-    doc.fields.forEach(function (f) {
-      var els = body.querySelectorAll('[data-field="' + f.name + '"]');
-      for (var i = 0; i < els.length; i++) { if (f.required && (els[i].type === 'text' || els[i].tagName === 'TEXTAREA' || els[i].type === 'date' || els[i].type === 'email' || els[i].type === 'tel')) els[i].classList.add('req'); }
-      if (f.value !== null && f.value !== undefined && f.value !== '') setValue(f.name, f.value);
-    });
-    show('fm-legend', doc.fields.some(function (f) { return f.required; }));
-    // passport: say what is on file, and stop short when this box cannot keep a passport number safely
-    var pp = body.querySelector('[data-field="passport_number"]');
-    if (pp) {
-      var note = document.createElement('div'); note.className = 'passport-note';
-      if (!packet.pii_ready) { pp.disabled = true; note.textContent = 'We cannot take a passport number on this page right now. Please leave it empty; we will ask for it another way.'; }
-      else if (packet.traveler && packet.traveler.passport_on_file) note.textContent = 'A passport ' + packet.traveler.passport_on_file + ' is already on file. Type the number again only if it has changed.';
-      else note.textContent = 'Your passport number is stored encrypted and is never shown again, not even to you.';
-      pp.parentNode.insertBefore(note, pp.nextSibling);
-    }
-    $('fm-extra').innerHTML = '';
-    $('fm-agree').checked = false;
-    $('fm-go').disabled = false;
+  function next() {
+    if (busy) return;
     hideErr();
-    addressCheck(body);
-    if (window.SAKeep) window.SAKeep.restore($('fm-doc'), keepKey(doc.key));
+    var s = steps[at];
+    if (s.id === 'welcome' && !consented()) {
+      if (!$('fm-esign').checked) { showErr('Please tick the box to agree to signing electronically.'); return; }
+      busy = true; $('fm-next').disabled = true;
+      return api('/consent', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ agreed: true, website: ($('fm-website') || {}).value || '' }) })
+        .then(function (r) {
+          busy = false; $('fm-next').disabled = false;
+          var j = r.json || {};
+          if (r.status === 200 && j.success && j.packet) { packet.esign = j.packet.esign; goStep(at + 1); return; }
+          showErr(j.error || 'That did not go through. Please try again.');
+        }).catch(function () { busy = false; $('fm-next').disabled = false; showErr('We could not reach the server. Please check your connection and try again.'); });
+    }
+    var gaps = stepGaps(at);
+    if (gaps.names.length) { showErr('Before you continue, please fill in ' + (gaps.names.length === 1 ? 'this line' : 'these ' + gaps.names.length + ' lines') + ': ' + gaps.names.join(', ') + '.'); fieldErrors(gaps.fields); return; }
+    if (s.id === 'sign') return signAll();
+    goStep(at + 1);
   }
 
-  function openDoc(key) {
-    var doc = docByKey(key);
-    if (!doc || doc.status === 'signed') return;
-    if (!consented()) { var cc = $('fm-consent'); if (cc) cc.scrollIntoView({ block: 'center' }); return; }
-    current = doc;
-    show('fm-intro', false); show('fm-done', false); show('fm-doc', true);
+  // ── Signing: each ticked document is signed and recorded on its own, one after the other, with the answers that belong to it ──
+  function answersFor(doc) {
+    var out = {};
+    doc.fields.forEach(function (f) {
+      var v = value(f.name);
+      if (f.kind === 'multi') { if (v && v.length) out[f.name] = v; }
+      else if (f.kind === 'check') out[f.name] = !!v;
+      else if (v !== undefined) out[f.name] = v;
+    });
+    return out;
+  }
+  function signAll() {
+    var docs = pending(), name = $('fm-name').value.replace(/\s+/g, ' ').trim();
+    var unticked = docs.filter(function (d) { var b = $('fm-steps').querySelector('.w-agree[data-doc="' + d.key + '"]'); return !(b && b.checked); });
+    if (unticked.length) { showErr('Please tick ' + (unticked.length === 1 ? 'this document' : 'each document') + ' to say you have read it and agree: ' + unticked.map(function (d) { return d.title; }).join(', ') + '.'); return; }
+    if (name.split(' ').length < 2) { showErr('Please type your full name (first and last) as your signature.'); $('fm-name').focus(); return; }
+    busy = true; $('fm-next').disabled = true; $('fm-next').textContent = 'Signing…';
+    var i = 0;
+    function one() {
+      if (i >= docs.length) { busy = false; if (window.SAKeep) window.SAKeep.clear(wizKey()); return showDone(); }
+      var d = docs[i];
+      return api('/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+        doc_key: d.key, signer_name: name, agreed: true, content_sha256: d.text_sha256, answers: answersFor(d), newsletter_opt_in: newsWanted, website: ($('fm-website') || {}).value || '',
+      }) }).then(function (r) {
+        var j = r.json || {};
+        if ((r.status === 200 && j.success) || (r.status === 409 && j.code === 'already-signed')) { if (j.packet) packet = j.packet; i++; return one(); }
+        busy = false; $('fm-next').disabled = false; $('fm-next').textContent = 'Sign';
+        if (r.status === 409 && j.code === 'document-changed') return reload('A document was just updated, so please look over the last screen again before you sign.');
+        if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload(); }
+        if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
+        // a refused answer: go to the screen that asks it
+        var bad = Object.keys(j.fields || {}), s = bad.length ? stepOf(bad[0]) : -1;
+        if (s >= 0) goStep(s);
+        showErr((j.error || 'That did not go through. Please try again.') + (i ? ' (' + i + ' of ' + docs.length + ' documents are already signed.)' : ''));
+        fieldErrors(j.fields);
+      }).catch(function () { busy = false; $('fm-next').disabled = false; $('fm-next').textContent = 'Sign'; showErr('We could not reach the server. Please check your connection and try again.'); });
+    }
+    return one();
+  }
+
+  function reload(msg) {
+    return api('').then(function (r) {
+      if (r.status !== 200 || !r.json || !r.json.success) { setState((r.json && r.json.error) || 'This link is not valid.'); show('fm-wiz', false); return; }
+      packet = r.json; render();
+      if (msg) showErr(msg);
+    });
+  }
+
+  // ── "Read it": the whole document, laid out like the paper original, with the answers given so far ──
+  function readDoc(key) {
+    var doc = docByKey(key); if (!doc) return;
     $('fm-doc-title').textContent = doc.title;
-    wireDoc(doc);
-    window.scrollTo(0, 0);
-    $('fm-doc-title').focus();
+    var body = $('fm-doc-body'); body.innerHTML = doc.html;
+    doc.fields.forEach(function (f) {
+      var v = value(f.name), els = body.querySelectorAll('[data-field="' + f.name + '"]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (el.type === 'radio') el.checked = el.value === v;
+        else if (el.type === 'checkbox') el.checked = Array.isArray(v) ? v.indexOf(el.value) >= 0 : v === true;
+        else el.value = v == null ? '' : String(v);
+        el.disabled = true;
+      }
+    });
+    show('fm-wiz', false); show('fm-doc', true);
+    window.scrollTo(0, 0); $('fm-doc-title').focus();
   }
 
   function showDone() {
-    current = null;
-    show('fm-intro', false); show('fm-doc', false);
+    show('fm-wiz', false); show('fm-doc', false);
     var who = firstName();
-    $('fm-done').innerHTML = '<h2>Thank you' + (who ? ', ' + esc(who) : '') + '.</h2>' +
-      '<p class="lead">' + (packet.kind === 'organizer' ? 'Your group contract is signed.' : 'Your paperwork is complete.') + '</p>' +
+    $('fm-done').innerHTML = '<h2>All done' + (who ? ', ' + esc(who) : '') + '!</h2>' +
+      '<p class="lead">' + (packet.kind === 'organizer' ? 'Your group contract is signed.' : 'Your paperwork is complete. That is the boring part finished; the next thing on your list is packing!') + '</p>' +
       '<p>A signed copy of each document is kept on file with ' + esc(packet.business ? packet.business.name : 'us') + '. ' +
       (packet.copies_sent_at ? 'We have also emailed you your own copy of each signed document. ' : '') +
       (packet.kind === 'organizer' ? 'Mark will add the agent signature and be in touch. ' : 'There is nothing more to do right now. We will contact you if anything is missing or changes. ') +
@@ -260,8 +409,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     window.scrollTo(0, 0);
   }
 
-  // Mark 2026-10-26: the page opens on the trip's own photos (left, middle, right, tilted), never the website's banner. Each private page
-  // shows a different selling point; the group file says which (groups.journey.photos), and a missing one is simply left out.
+  // Mark 2026-10-26: the page opens on the trip's own photos (left, middle, right, tilted), never the website's banner.
   function photos() {
     if (window.SATripPhotos) window.SATripPhotos.render($('fm-photos'), packet.group && packet.group.photos);
   }
@@ -270,144 +418,69 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     setState('');
     photos();
     $('fm-foot').textContent = (packet.business && packet.business.name) || 'Still Afloat Cruising';
-    if (packet.docs.length && !nextPending()) showDone(); else renderIntro();
+    if (packet.docs.length && !pending().length) showDone(); else renderWizard();
   }
 
   function showErr(msg) { var e = $('fm-err'); e.textContent = msg; e.hidden = false; }
-
-  // Mark 2026-10-26: "the page alerted me but didn't take me to the errors". The page goes to the first problem in page order,
-  // and the message under the sign button lists every problem as a link that goes straight to it.
-  function fieldEl(name) { return $('fm-doc-body').querySelector('[data-field="' + name + '"]'); }
+  function hideErr() {
+    $('fm-err').hidden = true;
+    var errs = document.querySelectorAll('#fm-steps .field-err'); for (var i = 0; i < errs.length; i++) errs[i].remove();
+    var bad = document.querySelectorAll('#fm-steps [aria-invalid]'); for (var j = 0; j < bad.length; j++) bad[j].removeAttribute('aria-invalid');
+  }
+  // Mark 2026-10-26: "the page alerted me but didn't take me to the errors". The page goes to the first problem, and the message lists
+  // every problem as a link that goes straight to it.
+  function fieldEl(name) { return $('fm-steps').querySelector('[data-field="' + name + '"]'); }
   function goTo(el) {
     if (!el) return;
     var top = el.getBoundingClientRect().top + window.pageYOffset - 140;
     window.scrollTo(0, Math.max(0, top));
     try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
   }
-  function errLinks(names) {
-    var labels = {}; (current ? current.fields : []).forEach(function (f) { labels[f.name] = f.label; });
-    var list = names.filter(function (n) { return fieldEl(n); });
-    if (!list.length) return;
-    var box = $('fm-err'), ul = document.createElement('ul'); ul.className = 'err-links';
-    list.forEach(function (n) {
-      var li = document.createElement('li'), b = document.createElement('button');
-      b.type = 'button'; b.className = 'linkbtn'; b.textContent = 'Go to: ' + (labels[n] || n);
-      b.onclick = function () { goTo(fieldEl(n)); };
-      li.appendChild(b); ul.appendChild(li);
-    });
-    box.appendChild(ul);
-  }
-  function hideErr() {
-    $('fm-err').hidden = true;
-    var errs = $('fm-doc').querySelectorAll('.field-err'); for (var i = 0; i < errs.length; i++) errs[i].remove();
-    var bad = $('fm-doc').querySelectorAll('[aria-invalid]'); for (var j = 0; j < bad.length; j++) bad[j].removeAttribute('aria-invalid');
-  }
-
-  function collect(doc) {
-    var body = $('fm-doc-body'), out = {};
-    doc.fields.forEach(function (f) {
-      var els = body.querySelectorAll('[data-field="' + f.name + '"]');
-      if (!els.length) return;
-      if (f.kind === 'choice') { for (var i = 0; i < els.length; i++) if (els[i].checked) out[f.name] = els[i].value; }
-      else if (f.kind === 'multi') { var vals = []; for (var k = 0; k < els.length; k++) if (els[k].checked) vals.push(els[k].value); out[f.name] = vals; }
-      else if (f.kind === 'check') { out[f.name] = !!els[0].checked; }
-      else if (!els[0].disabled) { var v = els[0].value.trim(); if (v) out[f.name] = v; }
-    });
-    return out;
-  }
-
   function fieldErrors(map) {
-    var first = null;
+    var first = null, list = [];
     Object.keys(map || {}).forEach(function (name) {
-      var els = $('fm-doc-body').querySelectorAll('[data-field="' + name + '"]');
-      if (!els.length) return;
-      var host = els[0], msg = document.createElement('span');
-      msg.className = 'field-err'; msg.textContent = map[name];
-      for (var i = 0; i < els.length; i++) els[i].setAttribute('aria-invalid', 'true');
-      var anchor = els[els.length - 1];
-      if (anchor.type === 'checkbox' || anchor.type === 'radio') { (anchor.closest('p,li,td,th') || anchor.parentNode).appendChild(msg); }
-      else anchor.parentNode.insertBefore(msg, anchor.nextSibling);
-      if (!first || (first.compareDocumentPosition(host) & Node.DOCUMENT_POSITION_PRECEDING)) first = host;   // the first one on the page
+      var el = fieldEl(name), q = el && (el.closest('[data-q]') || el.parentNode);
+      if (!el) return;
+      var msg = document.createElement('span'); msg.className = 'field-err'; msg.textContent = map[name];
+      var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"]'); for (var i = 0; i < els.length; i++) els[i].setAttribute('aria-invalid', 'true');
+      q.appendChild(msg);
+      list.push(name);
+      if (!first || (first.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING)) first = el;
     });
-    errLinks(Object.keys(map || {}));
+    if (list.length > 1) {
+      var ul = document.createElement('ul'); ul.className = 'err-links';
+      list.forEach(function (n) {
+        var li = document.createElement('li'), b = document.createElement('button');
+        b.type = 'button'; b.className = 'linkbtn'; b.textContent = 'Go to: ' + ((fields[n] && fields[n].f.label) || n);
+        b.onclick = function () { var s = stepOf(n); if (s >= 0 && s !== at) goStep(s, true); goTo(fieldEl(n)); };
+        li.appendChild(b); ul.appendChild(li);
+      });
+      $('fm-err').appendChild(ul);
+    }
     goTo(first);
   }
-
-  function sign() {
-    if (busy || !current) return;
-    hideErr();
-    var gaps = missing(current);
-    if (gaps.names.length) {
-      showErr('Before you sign, please fill in ' + (gaps.names.length === 1 ? 'this required line' : 'these ' + gaps.names.length + ' required lines') + ': ' + gaps.names.join(', ') + '.');
-      fieldErrors(gaps.fields);
-      return;
-    }
-    if (!$('fm-agree').checked) { showErr('Please tick the box to say you have read this document and agree to it.'); return; }
-    var name = $('fm-name').value.replace(/\s+/g, ' ').trim();
-    if (name.split(' ').length < 2) { showErr('Please type your full name (first and last) as your signature.'); $('fm-name').focus(); return; }
-    var answers = collect(current);
-    var saved = answers, signing = current.key;
-    busy = true; $('fm-go').disabled = true; $('fm-go').textContent = 'Saving…';
-    api('/sign', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ doc_key: current.key, signer_name: name, agreed: true, content_sha256: current.text_sha256, answers: answers, newsletter_opt_in: newsWanted, website: $('fm-website').value })
-    }).then(function (r) {
-      busy = false; $('fm-go').textContent = 'Sign and continue'; $('fm-go').disabled = false;
-      var j = r.json || {};
-      if (r.status === 200 && j.success) {
-        if (window.SAKeep) window.SAKeep.clear(keepKey(signing));
-        if (j.packet) packet = j.packet; else return reload();
-        var nxt = nextPending();
-        if (nxt) { renderIntro(); openDoc(nxt.key); } else showDone();
-        return;
-      }
-      if (r.status === 409 && j.code === 'document-changed') { return reload(true, saved, j.error); }
-      if (r.status === 409 && j.code === 'already-signed') { return reload(); }
-      if (r.status === 400 && j.code === 'consent-required') { current = null; show('fm-doc', false); return reload(); }
-      if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-doc', false); return; }
-      showErr(j.error || 'That did not go through. Please try again.');
-      fieldErrors(j.fields);
-    }).catch(function () {
-      busy = false; $('fm-go').textContent = 'Sign and continue'; $('fm-go').disabled = false;
-      showErr('We could not reach the server. Please check your connection and try again.');
-    });
-  }
-
-  function reload(keep, saved, msg) {
-    var key = current && current.key;
-    return api('').then(function (r) {
-      if (r.status !== 200) { setState((r.json && r.json.error) || 'This link is not valid.'); show('fm-doc', false); show('fm-intro', false); return; }
-      packet = r.json;
-      if (key && docByKey(key) && docByKey(key).status !== 'signed') {
-        renderIntro(); openDoc(key);
-        if (keep && saved) Object.keys(saved).forEach(function (n) { setValue(n, saved[n]); });
-        if (msg) showErr(msg);
-      } else render();
-    });
-  }
-
-  document.addEventListener('change', function (e) { if (e.target && e.target.id === 'fm-news') newsWanted = !!e.target.checked; });
-  // a line that was marked as missing loses its note as soon as it is filled
+  // a line that was marked as missing loses its note as soon as it is answered
   function unmark(e) {
     var name = e.target && e.target.getAttribute && e.target.getAttribute('data-field');
     if (!name || !e.target.hasAttribute('aria-invalid')) return;
-    var els = $('fm-doc-body').querySelectorAll('[data-field="' + name + '"]');
-    for (var i = 0; i < els.length; i++) {
-      els[i].removeAttribute('aria-invalid');
-      var n = els[i].nextSibling; if (n && n.className === 'field-err') n.remove();
-      var host = els[i].closest('p,li,td,th'), m = host && host.querySelector('.field-err'); if (m) m.remove();
-    }
+    var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"]');
+    for (var i = 0; i < els.length; i++) els[i].removeAttribute('aria-invalid');
+    var q = els[0] && els[0].closest('[data-q]'), m = q && q.querySelector('.field-err'); if (m) m.remove();
   }
-  $('fm-doc-body').addEventListener('input', unmark);
-  $('fm-doc-body').addEventListener('change', unmark);
-  document.addEventListener('click', function (e) {
-    if (e.target && e.target.id === 'fm-esign-go') { giveConsent(); return; }
-    var b = e.target.closest && e.target.closest('[data-open]');
-    if (b) openDoc(b.getAttribute('data-open'));
+
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.id === 'fm-news') newsWanted = !!e.target.checked;
+    if (e.target && e.target.closest && e.target.closest('#fm-steps')) followUps();
   });
-  $('fm-go').addEventListener('click', sign);
-  if (window.SAKeep) window.SAKeep.track($('fm-doc'), function () { return current ? keepKey(current.key) : null; });
-  $('fm-back').addEventListener('click', function () { current = null; show('fm-doc', false); renderIntro(); window.scrollTo(0, 0); });
+  $('fm-steps').addEventListener('input', unmark);
+  $('fm-steps').addEventListener('change', unmark);
+  document.addEventListener('click', function (e) {
+    var r = e.target.closest && e.target.closest('[data-read]');
+    if (r) readDoc(r.getAttribute('data-read'));
+  });
+  $('fm-next').addEventListener('click', next);
+  $('fm-prev').addEventListener('click', function () { if (at > 0) goStep(at - 1); });
+  $('fm-back').addEventListener('click', function () { show('fm-doc', false); show('fm-wiz', true); goStep(at, true); window.scrollTo(0, 0); });
 
   if (!token) { setState('This page opens from your private link. Please use the link in your email, or ask us for a new one.'); return; }
   api('').then(function (r) {
