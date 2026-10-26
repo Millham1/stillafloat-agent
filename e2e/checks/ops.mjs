@@ -1764,7 +1764,7 @@ export default [
           t.ok(!/name="(card|cardnumber|cc)/i.test(d.html), `document ${d.key} has a card-number input`);
         }
         if (!fees) for (const d of p.docs) t.ok(!/Service Fees|AGENT SERVICE FEES|retainer fee/.test(d.html), `document ${d.key} shows a fee although the group file has none`);
-        t.equal(p.docs[0].fields.length, 80, "inputs on the traveler information form");
+        t.equal(p.docs[0].fields.length, 30, "inputs on the traveler information form (Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance, prescriptions or diet)");
         t.ok(p.docs[0].fields.some((f) => f.kind === "passport" && f.value === null), "the passport input must never come pre-filled");
         const raw = JSON.stringify(p);
         for (const secret of ["passport_enc", "form_token_hash", "consent_ip_hash", "organizer_token_hash", "organizer_email", "prospect_id"]) t.ok(!raw.includes(secret), `the paperwork packet carries ${secret}`);
