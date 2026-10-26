@@ -98,10 +98,10 @@ test("the bot trap answers as if nothing could be found and asks nobody; a stree
   assert.equal(uspsCalls.length, 0);
 });
 
-test("lookups are limited per address: the 121st in an hour is a 429, and another address is unaffected", async () => {
+test("lookups are limited per address: the 401st in an hour is a 429 (the type-ahead asks as the street is typed), and another address is unaffected", async () => {
   const ip = "198.51.100.200";
   let last = 0;
-  for (let i = 0; i < 121; i++) last = (await lookup({ q: "12" }, { ip })).status;     // short streets are cheap to refuse and count the same
+  for (let i = 0; i < 401; i++) last = (await lookup({ q: "12" }, { ip })).status;     // short streets are cheap to refuse and count the same
   assert.equal(last, 429);
   assert.equal((await lookup(FULL, { ip: "198.51.100.201" })).status, 200);
 });

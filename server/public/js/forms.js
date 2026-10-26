@@ -12,6 +12,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   var token = (params.get('t') || (location.hash.match(/[#&]t=([^&]+)/) || [])[1] || '').trim();
   var $ = function (id) { return document.getElementById(id); };
   var packet = null, current = null, busy = false;
+  var newsWanted = false;   // Mark 2026-10-26: the newsletter is asked once, at the start; the answer rides with the next signature
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function show(id, on) { $(id).hidden = !on; }
@@ -51,6 +52,36 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var box = document.createElement('div'); box.className = 'addr-fix'; box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite'); box.hidden = true;
     csz.parentNode.insertBefore(box, csz.nextSibling);
     var look = { key: '', off: false, sugg: [], timer: null };
+    // Mark 2026-10-26, the type-ahead: as the street is typed, whole addresses drop down under it; tapping one fills both boxes.
+    // Without the type-ahead service (no keys, or it failed) the post office's whole-address check below does the work.
+    var drop = document.createElement('div'); drop.className = 'addr-drop'; drop.setAttribute('role', 'listbox'); drop.hidden = true;
+    street.parentNode.insertBefore(drop, street.nextSibling);
+    var ahead = { off: false, timer: null, asked: '' };
+    function closeDrop() { drop.hidden = true; drop.innerHTML = ''; }
+    function take(s) {
+      street.value = s.street; csz.value = s.city + ', ' + s.state + ' ' + s.zip; closeDrop(); say(''); ahead.asked = tidy(s.street); look.key = keyNow();
+      street.dispatchEvent(new Event('input', { bubbles: true })); look.key = keyNow(); closeDrop();
+    }
+    function suggest() {
+      var q = tidy(street.value);
+      if (ahead.off || q.length < 4 || q === ahead.asked) return;
+      ahead.asked = q;
+      fetch('/api/address/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: q, website: ($('fm-website') || {}).value || '' }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
+        .then(function (x) {
+          if (tidy(street.value) !== q) return;               // typed on since
+          if (!x.ok || !x.j.available) { ahead.off = true; closeDrop(); return; }
+          var list = (x.j.suggestions || []).slice(0, 5);
+          if (!list.length) { closeDrop(); return; }
+          drop.innerHTML = list.map(function (s, j) { return '<button type="button" role="option" data-s="' + j + '">' + esc(s.formatted) + '</button>'; }).join('');
+          var bs = drop.querySelectorAll('button');
+          for (var k = 0; k < bs.length; k++) bs[k].onclick = function () { take(list[Number(this.getAttribute('data-s'))]); };
+          drop.hidden = false;
+        })
+        .catch(function () { ahead.off = true; closeDrop(); });
+    }
+    street.addEventListener('input', function () { clearTimeout(ahead.timer); if (tidy(street.value).length < 4) closeDrop(); else ahead.timer = setTimeout(suggest, 250); });
+    street.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrop(); });
     function keyNow() { return (tidy(street.value) + '|' + tidy(csz.value)).toLowerCase(); }
     function say(html) { box.innerHTML = html; box.hidden = !html; }
     function offer(s) {
@@ -85,7 +116,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
         })
         .catch(function () { look.off = true; say(esc(ADDR.na)); });
     }
-    function typed() { if (look.off) return; say(''); clearTimeout(look.timer); look.timer = setTimeout(ask, 500); }
+    function typed() { if (look.off || keyNow() === look.key) return; say(''); clearTimeout(look.timer); look.timer = setTimeout(ask, 500); }
     street.addEventListener('input', typed); csz.addEventListener('input', typed);
     if (tidy(street.value) && tidy(csz.value)) typed();
   }
@@ -130,12 +161,31 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       }).catch(function () { busy = false; $('fm-esign-go').disabled = false; err.textContent = 'We could not reach the server. Please check your connection and try again.'; err.hidden = false; });
   }
 
+  function newsBox() {
+    if (packet.kind !== 'traveler' || (packet.traveler && packet.traveler.newsletter_opt_in) || !nextPending()) return '';
+    return '<label class="agree"><input type="checkbox" id="fm-news"' + (newsWanted ? ' checked' : '') + '><span>Send me the Still Afloat Cruising newsletter. (Optional. You can unsubscribe at any time.)</span></label>';
+  }
+
+  // Mark 2026-10-26: nothing is signed with a required line empty. The page names what is missing and goes to the first one.
+  function missing(doc) {
+    var body = $('fm-doc-body'), out = {}, names = [];
+    doc.fields.forEach(function (f) {
+      if (!f.required) return;
+      var els = body.querySelectorAll('[data-field="' + f.name + '"]');
+      if (!els.length || els[0].disabled) return;
+      for (var i = 0; i < els.length; i++) { var el = els[i]; if (el.type === 'radio' || el.type === 'checkbox' ? el.checked : String(el.value).trim()) return; }
+      out[f.name] = f.kind === 'check' ? 'Please tick this box.' : (f.kind === 'choice' || f.kind === 'multi') ? 'Please choose one.' : 'Please fill this in.';
+      names.push(f.label);
+    });
+    return { fields: out, names: names };
+  }
+
   function renderIntro() {
     var n = packet.docs.length, done = packet.docs.filter(function (d) { return d.status === 'signed'; }).length;
     var nowDoc = nextPending();
     var h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '. ' +
       (packet.kind === 'organizer' ? 'This is the group contract for you to read and sign.' : 'Here is your paperwork for this trip. Please read each document and sign it with your full name.') + '</p>' +
-      (consented() ? '' : consentCard()) + tripBox();
+      (consented() ? '' : consentCard()) + tripBox() + newsBox();
     h += '<p class="fine">' + done + ' of ' + n + ' signed.' + (nowDoc ? '' : ' Everything is done.') + '</p><ol class="progress">';
     packet.docs.forEach(function (d) {
       var isNow = nowDoc && nowDoc.key === d.key;
@@ -175,11 +225,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       else note.textContent = 'Your passport number is stored encrypted and is never shown again, not even to you.';
       pp.parentNode.insertBefore(note, pp.nextSibling);
     }
-    // extra choice that belongs to the form, not to the signed text: the newsletter
-    var extra = $('fm-extra'); extra.innerHTML = '';
-    if (doc.key === '15-emergency-contact-form' && packet.kind === 'traveler' && !(packet.traveler && packet.traveler.newsletter_opt_in)) {
-      extra.innerHTML = '<label class="agree"><input type="checkbox" id="fm-news"><span>Send me the Still Afloat Cruising newsletter. (Optional. You can unsubscribe at any time.)</span></label>';
-    }
+    $('fm-extra').innerHTML = '';
     $('fm-agree').checked = false;
     $('fm-go').disabled = false;
     hideErr();
@@ -266,15 +312,21 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function sign() {
     if (busy || !current) return;
     hideErr();
+    var gaps = missing(current);
+    if (gaps.names.length) {
+      showErr('Before you sign, please fill in ' + (gaps.names.length === 1 ? 'this required line' : 'these ' + gaps.names.length + ' required lines') + ': ' + gaps.names.join(', ') + '.');
+      fieldErrors(gaps.fields);
+      return;
+    }
     if (!$('fm-agree').checked) { showErr('Please tick the box to say you have read this document and agree to it.'); return; }
     var name = $('fm-name').value.replace(/\s+/g, ' ').trim();
     if (name.split(' ').length < 2) { showErr('Please type your full name (first and last) as your signature.'); $('fm-name').focus(); return; }
-    var answers = collect(current), news = $('fm-news');
+    var answers = collect(current);
     var saved = answers, signing = current.key;
     busy = true; $('fm-go').disabled = true; $('fm-go').textContent = 'Saving…';
     api('/sign', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ doc_key: current.key, signer_name: name, agreed: true, content_sha256: current.text_sha256, answers: answers, newsletter_opt_in: !!(news && news.checked), website: $('fm-website').value })
+      body: JSON.stringify({ doc_key: current.key, signer_name: name, agreed: true, content_sha256: current.text_sha256, answers: answers, newsletter_opt_in: newsWanted, website: $('fm-website').value })
     }).then(function (r) {
       busy = false; $('fm-go').textContent = 'Sign and continue'; $('fm-go').disabled = false;
       var j = r.json || {};
@@ -310,6 +362,20 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     });
   }
 
+  document.addEventListener('change', function (e) { if (e.target && e.target.id === 'fm-news') newsWanted = !!e.target.checked; });
+  // a line that was marked as missing loses its note as soon as it is filled
+  function unmark(e) {
+    var name = e.target && e.target.getAttribute && e.target.getAttribute('data-field');
+    if (!name || !e.target.hasAttribute('aria-invalid')) return;
+    var els = $('fm-doc-body').querySelectorAll('[data-field="' + name + '"]');
+    for (var i = 0; i < els.length; i++) {
+      els[i].removeAttribute('aria-invalid');
+      var n = els[i].nextSibling; if (n && n.className === 'field-err') n.remove();
+      var host = els[i].closest('p,li,td,th'), m = host && host.querySelector('.field-err'); if (m) m.remove();
+    }
+  }
+  $('fm-doc-body').addEventListener('input', unmark);
+  $('fm-doc-body').addEventListener('change', unmark);
   document.addEventListener('click', function (e) {
     if (e.target && e.target.id === 'fm-esign-go') { giveConsent(); return; }
     var b = e.target.closest && e.target.closest('[data-open]');
