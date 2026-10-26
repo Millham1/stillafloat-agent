@@ -1509,7 +1509,7 @@ export default [
     id: "ops.group-details-writes-refuse",
     basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road (Talk me into it, Mark! picks a time and gets one email; I've got this fills in the details page, holds the cabin and gets one email); the page is private by link and refuses bad tokens, a time that is not one of the four, and a robot; Mark alone adds the typed travelers to a cabin and closes his items (he books with the cruise line himself); the home address is looked up at the post office, never logged, and only for a person",
     title: "Choosing a time to be rung, picking a cabin, saving details and asking for a hold refuse a link that does not exist, the time must be one of the four answers, the bot trap stores nothing, the address lookup refuses a robot and a short street, and adding a reply's travelers to a cabin or closing Mark's items is his alone and refuses an unknown reply",
-    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/address/lookup", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how"],
+    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/address/lookup", "POST /api/address/suggest", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap and a request without Mark's token; nothing is stored, nobody is told and the post office is never asked); prod sweeps are read-only",
     run: async (t) => {
@@ -1542,6 +1542,12 @@ export default [
       t.matches(trap.headers.get("cache-control") || "", /no-store/, "Cache-Control of the address lookup");
       const short = await send("/api/address/lookup", { q: "12", website: "" });
       refused(t, short, 400, "an address lookup for a street under five characters", /five characters/i);
+      // The address type-ahead (Mark 2026-10-26): the same bot trap and the same private headers; with or without its keys it answers in the same shape.
+      const ahead = await send("/api/address/suggest", { q: "123 Main", website: "e2e-fixture-honeypot" });
+      t.ok(ahead.status === 200 && ahead.json?.success === true && ahead.json?.available === false && !("suggestions" in (ahead.json || {})), `the type-ahead bot trap should answer "not available": ${ahead.describe()}`);
+      t.matches(ahead.headers.get("cache-control") || "", /no-store/, "Cache-Control of the address type-ahead");
+      const few = await send("/api/address/suggest", { q: "12", website: "" });
+      t.ok(few.status === 200 && few.json?.success === true && (few.json?.available === false || (Array.isArray(few.json?.suggestions) && few.json.suggestions.length === 0)), `two characters ask nobody and suggest nothing: ${few.describe()}`);
       // Adding a reply's travelers to a cabin, and the two buttons that close Mark's items, are Mark's alone, and an unknown reply is refused (no traveler is made).
       unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/to-file`, { cabin_id: ZERO }), "POST /api/groups/:id/interests/:iid/to-file");
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/to-file`, { cabin_id: ZERO }, true), 404, "adding the travelers of a reply that does not exist", /reply not found/i);
