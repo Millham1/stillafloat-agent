@@ -712,7 +712,8 @@ test("the insurance box on the cruise page says 'Call or text Mark at 919-346-61
   assert.ok(root, "the site's public folder");
   const js = readFileSync(path.join(root!, "js", "my-cruise.js"), "utf8");
   assert.match(js, /function safe\(u\) \{[^\n]*\^tel:/, "the cruise page's script lets a tel: link through");
-  assert.match(readFileSync(path.join(root!, "my-cruise.html"), "utf8"), /my-cruise\.js\?v=20261019/, "the script's cache stamp moved with the change");
+  const stamp = Number((/my-cruise\.js\?v=(\d{8})/.exec(readFileSync(path.join(root!, "my-cruise.html"), "utf8")) ?? [])[1]);
+  assert.ok(stamp >= 20261019, "the script's cache stamp moved with the change (and with every later one)");
 });
 
 test("text from the file is escaped in the html", () => {
