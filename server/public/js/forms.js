@@ -101,7 +101,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
         .then(function (x) {
           if (keyNow() !== key) return;                     // typed on since: a newer question is on its way
-          if (!x.ok || !x.j.available) { look.off = true; say(esc(ADDR.na)); return; }
+          if (!x.ok || !x.j.available) { look.off = true; say(esc(ADDR.na) + (x.j.why ? ' <span class="addr-why">(Test site: ' + esc(x.j.why) + ')</span>' : '')); return; }
           if (x.j.incomplete) return;
           look.key = key;
           var list = (x.j.suggestions || []).slice(0, 5);

@@ -70,9 +70,12 @@ const SECONDARY = /^(.*?\S)\s+((?:apt|apartment|unit|ste|suite|bldg|building|fl|
 let tokenCache: { token: string; expiresAt: number } | null = null;
 const results = new Map<string, { at: number; result: LookupResult }>();
 let hour = { start: 0, calls: 0 };
+let why: string | null = null;
+/** Why the last answer was "not available" ("no credentials", "token 401", a timeout …): never the address. The test site shows it (routes/address.ts). */
+export function addressLookupWhy(): string | null { return why; }
 
 /** Forget the cached token, the cached answers and the hourly count (the tests start every case clean). */
-export function resetAddressLookupState(): void { tokenCache = null; results.clear(); hour = { start: 0, calls: 0 }; }
+export function resetAddressLookupState(): void { tokenCache = null; results.clear(); hour = { start: 0, calls: 0 }; why = null; }
 
 async function getToken(env: Record<string, string | undefined>, f: typeof fetch, now: number): Promise<string | null> {
   if (tokenCache && tokenCache.expiresAt > now + 60_000) return tokenCache.token;
@@ -146,7 +149,8 @@ export async function lookupAddress(input: LookupInput, deps: LookupDeps = {}): 
   const env = deps.env ?? (process.env as Record<string, string | undefined>);
   const f = deps.fetch ?? fetch;
   const now = (deps.now ?? Date.now)();
-  if (!env["USPS_CLIENT_ID"] || !env["USPS_CLIENT_SECRET"]) return { available: false };
+  why = null;
+  if (!env["USPS_CLIENT_ID"] || !env["USPS_CLIENT_SECRET"]) { why = `no credentials (USPS_CLIENT_ID ${env["USPS_CLIENT_ID"] ? "set" : "missing"}, USPS_CLIENT_SECRET ${env["USPS_CLIENT_SECRET"] ? "set" : "missing"})`; return { available: false }; }
 
   // What was typed: the street box may hold the whole line ("123 Main St, Raleigh, NC 27601"); the other boxes win when they are filled in.
   const q = typeof input.q === "string" ? input.q.slice(0, 200) : "";
@@ -169,7 +173,7 @@ export async function lookupAddress(input: LookupInput, deps: LookupDeps = {}): 
 
   const cap = Math.max(1, Number(env["USPS_HOURLY_CAP"]) || DEFAULT_HOURLY_CAP);
   if (now - hour.start > 60 * 60 * 1000) hour = { start: now, calls: 0 };
-  if (hour.calls >= cap) return { available: false };
+  if (hour.calls >= cap) { why = `over the hourly allowance (${cap})`; return { available: false }; }
   hour.calls++;
 
   try {
@@ -185,7 +189,8 @@ export async function lookupAddress(input: LookupInput, deps: LookupDeps = {}): 
     return result;
   } catch (err) {
     // The reason, never the address: "token 401", "address 429", "no credentials", a timeout.
-    logger.warn({ reason: err instanceof Error ? err.message : String(err) }, "address lookup unavailable (the page takes the address as typed)");
+    why = err instanceof Error ? err.message : String(err);
+    logger.warn({ reason: why }, "address lookup unavailable (the page takes the address as typed)");
     return { available: false };
   }
 }
