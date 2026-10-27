@@ -41,13 +41,14 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var streets = body.querySelectorAll('input[data-field$="address"]');
     for (var i = 0; i < streets.length; i++) {
       var street = streets[i], name = street.getAttribute('data-field');
-      var csz = body.querySelector('input[data-field="' + name.replace(/address$/, 'city_state_zip') + '"]');
+      var csz = body.querySelector('input[type=hidden][data-field="' + name.replace(/address$/, 'city_state_zip') + '"]');
       if (csz && !street.disabled) pairUp(street, csz);
     }
   }
   function pairUp(street, csz) {
     var box = document.createElement('div'); box.className = 'addr-fix'; box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite'); box.hidden = true;
     csz.parentNode.insertBefore(box, csz.nextSibling);
+    if (csz.type === 'hidden') cszCompose(csz);
     var look = { key: '', off: false, sugg: [], timer: null };
     // Mark 2026-10-26, the type-ahead: as the street is typed, whole addresses drop down under it; tapping one fills both boxes.
     // Without the type-ahead service (no keys, or it failed) the post office's whole-address check below does the work.
@@ -56,8 +57,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var ahead = { off: false, timer: null, asked: '' };
     function closeDrop() { drop.hidden = true; drop.innerHTML = ''; }
     function take(s) {
-      street.value = s.street; csz.value = s.city + ', ' + s.state + ' ' + s.zip; closeDrop(); say(''); ahead.asked = tidy(s.street); look.key = keyNow();
-      street.dispatchEvent(new Event('input', { bubbles: true })); look.key = keyNow(); closeDrop();
+      street.value = s.street; setCsz(csz, s.city, s.state, s.zip); closeDrop(); say(''); ahead.asked = tidy(s.street); look.key = keyNow();
+      street.dispatchEvent(new Event('input', { bubbles: true })); csz.dispatchEvent(new Event('input', { bubbles: true })); look.key = keyNow(); closeDrop();
     }
     function suggest() {
       var q = tidy(street.value);
@@ -84,9 +85,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     function offer(s) {
       say(esc(ADDR.tidied) + ' <b>' + esc(s.formatted) + '</b>. ' + esc(ADDR.right) + ' <button type="button" class="addr-yes">' + esc(ADDR.yes) + '</button> · <button type="button" class="linkbtn addr-no">' + esc(ADDR.no) + '</button>');
       box.querySelector('.addr-yes').onclick = function () {
-        street.value = s.street; csz.value = s.city + ', ' + s.state + ' ' + s.zip;
+        street.value = s.street; setCsz(csz, s.city, s.state, s.zip);
         look.key = keyNow(); say('');
-        street.dispatchEvent(new Event('input', { bubbles: true })); look.key = keyNow();
+        street.dispatchEvent(new Event('input', { bubbles: true })); csz.dispatchEvent(new Event('input', { bubbles: true })); look.key = keyNow();
       };
       box.querySelector('.addr-no').onclick = function () { say(''); street.focus(); };
     }
@@ -162,6 +163,65 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   };
   var AUTO = { legal_name: 'name', dob: 'bday', email: 'email', phone: 'tel', address: 'address-line1', ec1_name: 'off', ec1_cell_phone: 'off' };
 
+  // Mark 2026-10-27: the passport country and the relationship are picked from a list; city, state and ZIP are three boxes.
+  var COUNTRIES = ['United States', 'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
+    'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana',
+    'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China',
+    'Colombia', 'Comoros', 'Congo', 'Costa Rica', "Côte d'Ivoire", 'Croatia', 'Cuba', 'Cyprus', 'Czechia', 'Democratic Republic of the Congo', 'Denmark', 'Djibouti',
+    'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France',
+    'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland',
+    'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Kosovo', 'Kuwait', 'Kyrgyzstan',
+    'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta',
+    'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia',
+    'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Panama',
+    'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia',
+    'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'São Tomé and Príncipe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore',
+    'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland',
+    'Syria', 'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda',
+    'Ukraine', 'United Arab Emirates', 'United Kingdom', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'];
+  var RELATIONS = ['Spouse', 'Partner', 'Parent', 'Child', 'Brother or sister', 'Friend', 'Other'];
+  var STATES = [['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'], ['CO', 'Colorado'], ['CT', 'Connecticut'], ['DE', 'Delaware'],
+    ['DC', 'District of Columbia'], ['FL', 'Florida'], ['GA', 'Georgia'], ['HI', 'Hawaii'], ['ID', 'Idaho'], ['IL', 'Illinois'], ['IN', 'Indiana'], ['IA', 'Iowa'], ['KS', 'Kansas'],
+    ['KY', 'Kentucky'], ['LA', 'Louisiana'], ['ME', 'Maine'], ['MD', 'Maryland'], ['MA', 'Massachusetts'], ['MI', 'Michigan'], ['MN', 'Minnesota'], ['MS', 'Mississippi'],
+    ['MO', 'Missouri'], ['MT', 'Montana'], ['NE', 'Nebraska'], ['NV', 'Nevada'], ['NH', 'New Hampshire'], ['NJ', 'New Jersey'], ['NM', 'New Mexico'], ['NY', 'New York'],
+    ['NC', 'North Carolina'], ['ND', 'North Dakota'], ['OH', 'Ohio'], ['OK', 'Oklahoma'], ['OR', 'Oregon'], ['PA', 'Pennsylvania'], ['RI', 'Rhode Island'], ['SC', 'South Carolina'],
+    ['SD', 'South Dakota'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'], ['VA', 'Virginia'], ['WA', 'Washington'], ['WV', 'West Virginia'],
+    ['WI', 'Wisconsin'], ['WY', 'Wyoming'], ['AS', 'American Samoa'], ['GU', 'Guam'], ['MP', 'Northern Mariana Islands'], ['PR', 'Puerto Rico'], ['VI', 'U.S. Virgin Islands'],
+    ['AA', 'Armed Forces Americas'], ['AE', 'Armed Forces Europe'], ['AP', 'Armed Forces Pacific']];
+  var PICK = { passport_country: COUNTRIES, ec1_relationship: RELATIONS };
+  function isCsz(name) { return /city_state_zip$/.test(name); }
+  function wholeCsz(v) { return /,\s*[A-Z]{2}\s+\d{5}$/.test(String(v || '')); }
+  function opts(list, v, blank) {
+    var have = !v || list.some(function (o) { return (Array.isArray(o) ? o[0] : o) === v; });
+    return '<option value="">' + esc(blank) + '</option>' + (have ? '' : '<option selected>' + esc(v) + '</option>') + list.map(function (o) {
+      var val = Array.isArray(o) ? o[0] : o, lab = Array.isArray(o) ? o[1] : o;
+      return '<option value="' + esc(val) + '"' + (val === v ? ' selected' : '') + '>' + esc(lab) + '</option>';
+    }).join('');
+  }
+  // the three boxes write the one answer the documents hold ("Fuquay Varina, NC 27526") into a hidden box; the server keeps the parts apart too
+  function cszParts(hidden) {
+    var n = hidden.getAttribute('data-field'), q = hidden.closest('[data-q]');
+    return { city: q.querySelector('[data-part-of="' + n + '"][data-part="city"]'), state: q.querySelector('[data-part-of="' + n + '"][data-part="state"]'), zip: q.querySelector('[data-part-of="' + n + '"][data-part="zip"]') };
+  }
+  function cszCompose(hidden) {
+    var p = cszParts(hidden), tail = [p.state.value, tidy(p.zip.value)].filter(Boolean).join(' ');
+    hidden.value = [tidy(p.city.value), tail].filter(Boolean).join(', ');
+  }
+  function setCsz(hidden, city, state, zip) {
+    var p = cszParts(hidden);
+    p.city.value = city || ''; p.state.value = state || ''; p.zip.value = zip || '';
+    cszCompose(hidden);
+  }
+  function cszWire(root) {
+    var hs = root.querySelectorAll('input[type=hidden][data-field$="city_state_zip"]');
+    Array.prototype.forEach.call(hs, function (h) {
+      var p = cszParts(h);
+      [p.city, p.state, p.zip].forEach(function (el) {
+        el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function () { cszCompose(h); h.dispatchEvent(new Event('input', { bubbles: true })); });
+      });
+    });
+  }
+
   var fields = {}, order = [], steps = [], at = 0;   // the questions of the documents still to sign, by name; the screens shown
   function gather() {
     fields = {}; order = [];
@@ -194,6 +254,18 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
     if (f.kind === 'textarea') {
       return '<div class="w-field" data-q="' + esc(f.name) + '"><label for="' + id + '">' + lab + '</label><textarea class="w-in" id="' + id + '" data-field="' + esc(f.name) + '" rows="3">' + esc(v || '') + '</textarea></div>';
+    }
+    if (PICK[f.name]) {
+      return '<div class="w-field' + req + '" data-q="' + esc(f.name) + '"><label for="' + id + '">' + lab + '</label><select class="w-in" id="' + id + '" data-field="' + esc(f.name) + '">' +
+        opts(PICK[f.name], typeof v === 'string' ? v : '', 'Choose one') + '</select></div>';
+    }
+    if (isCsz(f.name)) {
+      var c = splitCsz(typeof v === 'string' ? v : ''), home = f.name === 'city_state_zip', nm = esc(f.name);
+      return '<fieldset class="w-field' + req + '" data-q="' + nm + '"><legend>' + lab + '</legend><div class="w-csz">' +
+        '<label class="w-part w-part-city"><span>City</span><input class="w-in" type="text" id="' + id + '-city" data-part-of="' + nm + '" data-part="city" maxlength="60" autocomplete="' + (home ? 'address-level2' : 'off') + '" value="' + esc(c.city) + '"></label>' +
+        '<label class="w-part"><span>State</span><select class="w-in" id="' + id + '-state" data-part-of="' + nm + '" data-part="state" autocomplete="' + (home ? 'address-level1' : 'off') + '">' + opts(STATES, c.state, 'Choose') + '</select></label>' +
+        '<label class="w-part"><span>ZIP</span><input class="w-in" type="text" id="' + id + '-zip" data-part-of="' + nm + '" data-part="zip" inputmode="numeric" maxlength="10" autocomplete="' + (home ? 'postal-code' : 'off') + '" value="' + esc(c.zip) + '"></label>' +
+        '</div><input type="hidden" data-field="' + nm + '" value="' + esc(typeof v === 'string' ? v : '') + '"></fieldset>';
     }
     var type2 = f.kind === 'date' ? 'date' : f.kind === 'email' ? 'email' : f.kind === 'tel' ? 'tel' : 'text';
     var extra = (f.maxLength ? ' maxlength="' + f.maxLength + '"' : '') + ' autocomplete="' + (AUTO[f.name] || 'off') + '"';
@@ -251,13 +323,15 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     host.innerHTML = steps.map(function (s, i) {
       return '<section class="w-step" data-step="' + i + '" hidden><h2>' + esc(s.title) + '</h2>' + stepBody(s, named) + '</section>';
     }).join('');
+    cszWire(host);
     addressCheck(host);
     followUps();
     if (window.SAKeep) { window.SAKeep.track(host, wizKey); window.SAKeep.restore(host, wizKey()); followUps(); }
     show('fm-wiz', true); show('fm-done', false); show('fm-doc', false);
     goStep(Math.min(at, steps.length - 1), true);
   }
-  function wizKey() { return window.SAKeep ? window.SAKeep.keyFor('forms', token) + ':steps' : null; }
+  // the consent time is part of the key, so paperwork that was cleared on the file starts empty here too
+  function wizKey() { return window.SAKeep ? window.SAKeep.keyFor('forms', token) + ':steps:' + ((packet && packet.esign && packet.esign.consent_given_at) || 'new') : null; }
 
   // a follow-up line shows only under the choice it belongs to
   function followUps() {
@@ -302,7 +376,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       var n = qs[k].getAttribute('data-q'), f = fields[n] && fields[n].f;
       if (!f || !f.required || qs[k].closest('[hidden]') !== null && qs[k].closest('[hidden]') !== el) continue;
       var v = value(n);
-      if (v === undefined || v === false || (Array.isArray(v) && !v.length)) { out[n] = f.kind === 'check' ? 'Please tick this box.' : (f.kind === 'choice' || f.kind === 'multi') ? 'Please choose one.' : 'Please fill this in.'; names.push(f.label); }
+      if (v === undefined || v === false || (Array.isArray(v) && !v.length)) { out[n] = f.kind === 'check' ? 'Please tick this box.' : (f.kind === 'choice' || f.kind === 'multi' || PICK[n]) ? 'Please choose one.' : 'Please fill this in.'; names.push(f.label); }
+      else if (isCsz(n) && !wholeCsz(v)) { out[n] = 'Please fill in the city, state and ZIP.'; names.push(f.label); }
     }
     return { fields: out, names: names };
   }
@@ -429,7 +504,11 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   }
   // Mark 2026-10-26: "the page alerted me but didn't take me to the errors". The page goes to the first problem, and the message lists
   // every problem as a link that goes straight to it.
-  function fieldEl(name) { return $('fm-steps').querySelector('[data-field="' + name + '"]'); }
+  function fieldEl(name) {
+    var el = $('fm-steps').querySelector('[data-field="' + name + '"]');
+    if (el && el.type === 'hidden') { var p = cszParts(el); return [p.city, p.state, p.zip].filter(function (x) { return !x.value; })[0] || p.city; }
+    return el;
+  }
   function goTo(el) {
     if (!el) return;
     var top = el.getBoundingClientRect().top + window.pageYOffset - 140;
@@ -442,7 +521,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       var el = fieldEl(name), q = el && (el.closest('[data-q]') || el.parentNode);
       if (!el) return;
       var msg = document.createElement('span'); msg.className = 'field-err'; msg.textContent = map[name];
-      var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"]'); for (var i = 0; i < els.length; i++) els[i].setAttribute('aria-invalid', 'true');
+      var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"],[data-part-of="' + name + '"]'); for (var i = 0; i < els.length; i++) els[i].setAttribute('aria-invalid', 'true');
       q.appendChild(msg);
       list.push(name);
       if (!first || (first.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING)) first = el;
@@ -462,8 +541,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // a line that was marked as missing loses its note as soon as it is answered
   function unmark(e) {
     var name = e.target && e.target.getAttribute && e.target.getAttribute('data-field');
-    if (!name || !e.target.hasAttribute('aria-invalid')) return;
-    var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"]');
+    if (!name || !e.target.hasAttribute('aria-invalid') || (isCsz(name) && !wholeCsz(e.target.value))) return;
+    var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"],[data-part-of="' + name + '"]');
     for (var i = 0; i < els.length; i++) els[i].removeAttribute('aria-invalid');
     var q = els[0] && els[0].closest('[data-q]'), m = q && q.querySelector('.field-err'); if (m) m.remove();
   }
@@ -480,7 +559,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   });
   $('fm-next').addEventListener('click', next);
   $('fm-prev').addEventListener('click', function () { if (at > 0) goStep(at - 1); });
-  $('fm-back').addEventListener('click', function () { show('fm-doc', false); show('fm-wiz', true); goStep(at, true); window.scrollTo(0, 0); });
+  function backToSteps() { show('fm-doc', false); show('fm-wiz', true); goStep(at, true); window.scrollTo(0, 0); }
+  $('fm-back').addEventListener('click', backToSteps);
+  $('fm-back2').addEventListener('click', backToSteps);
 
   if (!token) { setState('This page opens from your private link. Please use the link in your email, or ask us for a new one.'); return; }
   api('').then(function (r) {

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DOC_SPECS, TEMPLATE_VERSION_DATE, applyAnswers, blocksToText, buildCtx, fillBlocks, getPath, markdownToHtml, packetFor, parseBlocks,
+  DOC_SPECS, TEMPLATE_VERSION_DATE, applyAnswers, splitCityStateZip, blocksToText, buildCtx, fillBlocks, getPath, markdownToHtml, packetFor, parseBlocks,
   prefillValue, publicField, renderDocument, separateGluedHeadings, unescapeConnectorMarkdown,
 } from "./group-documents";
 import { BUSINESS } from "./group-secure";
@@ -338,9 +338,17 @@ test("form 15 answers are checked, filed into columns and form_data, and the pas
   assert.equal(getPath(r.formData, "passport.issue_date"), "2021-02-04");
   assert.equal(getPath(r.formData, "legal_name"), "Jane Quincy Public");
   assert.equal(getPath(r.formData, "address"), "1 Main St");
+  assert.equal(getPath(r.formData, "city_state_zip"), "Raleigh, NC 27601");
+  assert.deepEqual(getPath(r.formData, "city_state_zip_parts"), { city: "Raleigh", state: "NC", zip: "27601" }, "city, state and ZIP are kept apart too");
   assert.equal(getPath(r.formData, "passport_number"), undefined);
   assert.equal("passport_enc" in r.travelerPatch, false);
   assert.equal("first_name" in r.travelerPatch, false, "the file's name columns are only filled from the form when they are empty");
+});
+
+test("a city line splits into city, state and ZIP only when it is whole", () => {
+  assert.deepEqual(splitCityStateZip("Fuquay  Varina, NC 27526-1234"), { city: "Fuquay Varina", state: "NC", zip: "27526" });
+  assert.equal(splitCityStateZip("Cary, NC"), null);
+  assert.equal(splitCityStateZip("27526"), null);
 });
 
 test("the file's name columns are filled from the legal name only when they are empty", () => {

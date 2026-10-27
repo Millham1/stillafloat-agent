@@ -37,6 +37,10 @@ h1,h2,h3,h4{font-family:'Bree Serif',Georgia,serif;font-weight:400;color:var(--n
 .w-field.req .w-in{border-color:var(--navy)}
 .w-in[aria-invalid=true]{border-color:#8a1c0e;background:#fff3f0}
 textarea.w-in{resize:vertical}
+select.w-in{height:auto;cursor:pointer}
+.w-csz{display:grid;grid-template-columns:2fr 1.5fr 1fr;gap:0 10px}
+.w-part{display:block;margin:0}
+.w-part>span{display:block;font-size:18px;margin:0 0 4px}
 .w-opt-row{display:flex;gap:12px;align-items:flex-start;margin:6px 0;font-weight:400;cursor:pointer}
 #fm-wiz input[type=radio],#fm-wiz input[type=checkbox]{-webkit-appearance:none;appearance:none;flex:none;width:24px;height:24px;margin:3px 0 0;border:1.5px solid var(--navy);border-radius:0;background:#fff;display:inline-grid;place-content:center;cursor:pointer}
 #fm-wiz input[type=radio]:checked::before,#fm-wiz input[type=checkbox]:checked::before{content:"";width:13px;height:13px;background:var(--navy)}
@@ -54,7 +58,7 @@ textarea.w-in{resize:vertical}
 .w-nav .btn{margin-left:auto}
 .btn-ghost{background:none;border:0;font:inherit;font-weight:700;color:var(--navy);text-decoration:underline;cursor:pointer;padding:8px 0}
 #fm-name{width:100%;font:inherit;font-size:22px;color:var(--navy);background:#fff;border:0;border-bottom:2px solid var(--navy);border-radius:0;padding:8px 4px;margin:0 0 6px}
-@media(max-width:640px){.w-pairs{grid-template-columns:1fr}.w-follow,.w-sub,.w-docs .w-read{margin-left:0}}
+@media(max-width:640px){.w-csz{grid-template-columns:1fr 1fr}.w-part-city{grid-column:1/-1;margin-bottom:10px}.w-pairs{grid-template-columns:1fr}.w-follow,.w-sub,.w-docs .w-read{margin-left:0}}
 .err-links{margin:8px 0 0;padding-left:20px}.err-links li{margin:4px 0}.err-links .linkbtn{color:#5c0f06}
 
 /* progress */
@@ -143,6 +147,7 @@ footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;col
       <p><button type="button" class="linkbtn" id="fm-back">&larr; Back to your paperwork</button></p>
       <h2 id="fm-doc-title" tabindex="-1"></h2>
       <div class="doc" id="fm-doc-body"></div>
+      <p><button type="button" class="linkbtn" id="fm-back2">&larr; Back to your paperwork</button></p>
     </section>
     <div id="fm-done" hidden></div>
   </div>
@@ -151,7 +156,7 @@ footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;col
 
 <script src="/js/keep-typing.js?v=20261026"></script>
 <script src="/js/trip-photos.js?v=20261026"></script>
-<script src="/js/forms.js?v=20261026"></script>
+<script src="/js/forms.js?v=20261027"></script>
 
 </body>
 </html>

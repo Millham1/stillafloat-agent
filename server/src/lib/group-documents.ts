@@ -564,6 +564,12 @@ function validDate(s: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
+/** "Fuquay Varina, NC 27526" → its three parts; null when it is not in that shape. */
+export function splitCityStateZip(s: string): { city: string; state: string; zip: string } | null {
+  const m = /^(.+?),\s*([A-Z]{2})\s+(\d{5})(?:-\d{4})?$/.exec(s.replace(/\s+/g, " ").trim());
+  return m ? { city: m[1]!.trim(), state: m[2]!, zip: m[3]! } : null;
+}
+
 function setPath(target: Row, path: string, value: unknown): void {
   const parts = path.split(".");
   let node = target;
@@ -662,6 +668,8 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
     const shown = f.kind === "choice" ? f.options?.find((o) => o.value === v)?.label ?? v : v; // a column holds the words ("Female"), not the code
     if (f.col) travelerPatch[f.col] = shown;
     if (f.form) setPath(formData, f.form, v);
+    // Mark 2026-10-27: city, state and ZIP are typed in three boxes and kept apart too, so the file can sort and search by each
+    if (f.form && /city_state_zip$/.test(f.name) && typeof v === "string") { const parts = splitCityStateZip(v); if (parts) setPath(formData, `${f.form}_parts`, parts); }
   }
   if (spec?.derive) Object.assign(travelerPatch, spec.derive(clean, ctx));
   return { ok: true, answers: stored, travelerPatch, formData, ...(passport ? { passport } : {}) };
