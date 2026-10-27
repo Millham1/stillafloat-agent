@@ -148,8 +148,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     { id: 'travel', title: 'Travel documents', fields: ['passport_number', 'passport_country', 'passport_issue', 'passport_expiry', 'passport_place', 'trusted_programs', 'ktn', 'global_entry_number',
       'loyalty_1_program', 'loyalty_1_number', 'loyalty_2_program', 'loyalty_2_number', 'loyalty_3_program', 'loyalty_3_number'] },
     { id: 'contact', title: 'Emergency contact', fields: ['ec1_name', 'ec1_relationship', 'ec1_cell_phone', 'ec1_email', 'ec1_address', 'ec1_city_state_zip', 'notes'] },
-    { id: 'sign', title: 'Review and sign' },
   ];
+  // Mark 2026-10-27: "each page needs to come up separately". After the questions, each document still to sign opens on its own screen:
+  // read it, tick that you agree, Continue; the name is typed once, on the last one.
   // A follow-up line shows right under the choice it belongs to, only when that choice is ticked.
   var FOLLOW = { us_citizen: { no: ['citizenship'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] } };
   var SUMMARY = {
@@ -235,6 +236,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var named = {};
     STEPS.forEach(function (s) { (s.fields || []).forEach(function (n) { named[n] = true; }); });
     steps = STEPS.filter(function (s) { return !s.fields || s.fields.some(function (n) { return fields[n]; }); });
+    pending().forEach(function (d) { steps.push({ id: 'doc', key: d.key, title: d.title }); });
     return named;
   }
 
@@ -283,26 +285,27 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function stepBody(s, named) {
     if (s.id === 'welcome') {
       var c = packet.esign && packet.esign.text, h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '! ' +
-        (packet.kind === 'organizer' ? 'Here is the group contract to read and sign.' : 'Five quick screens and your paperwork is done: about 5 minutes, less time than the line at the buffet!') + '</p>' + tripBox();
+        (packet.kind === 'organizer' ? 'Here is the group contract to read and sign.' : 'A few quick screens and your paperwork is done: about 5 minutes, less time than the line at the buffet!') + '</p>' + tripBox();
       if (!consented() && c) h += '<div class="w-box"><b>' + esc(c.title) + '</b><p>' + esc(c.intro) + '</p><ul>' + c.points.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
         '<label class="w-opt-row"><input type="checkbox" id="fm-esign" data-nokeep><span>' + esc(c.tick) + '</span></label></div>';
       if (packet.kind === 'traveler' && !(packet.traveler && packet.traveler.newsletter_opt_in))
         h += '<label class="w-opt-row"><input type="checkbox" id="fm-news"' + (newsWanted ? ' checked' : '') + '><span>Send me the Still Afloat Cruising newsletter. (Optional. You can unsubscribe at any time.)</span></label>';
       return h;
     }
-    if (s.id === 'sign') {
-      var h2 = '<p class="lead">Last screen. Tick each document to say you have read it and agree, then type your name once to sign them all.</p><ul class="w-docs">';
-      pending().forEach(function (d) {
-        // only what is still required is asked here; the optional questions of a document (its advisory level, insurance details, dining and
-        // occasions) are the ones Mark fills in from the file (Mark 2026-10-26), so they are not put to the client
-        var rest = d.fields.filter(function (f) { return f.required && !named[f.name] && !isFollow(f.name) && fields[f.name] && fields[f.name].docs[0] === d.key; });
-        h2 += '<li><label class="w-opt-row"><input type="checkbox" class="w-agree" data-doc="' + esc(d.key) + '" data-nokeep><span><b>' + esc(d.title) + '</b><br>' + esc(SUMMARY[d.key] || '') + '</span></label>' +
-          '<button type="button" class="linkbtn w-read" data-read="' + esc(d.key) + '">Read it</button>' +
-          (rest.length ? '<div class="w-sub">' + rest.map(function (f) { return control(f); }).join('') + '</div>' : '') + '</li>';
-      });
-      h2 += '</ul><label class="nm" for="fm-name">Type your full name to sign</label><input type="text" id="fm-name" autocomplete="name" maxlength="120" placeholder="First and last name">' +
-        '<p class="hint fine">Typing your name is your legal signature on each document you ticked. The date and time and the exact text you agreed to are saved with each one, and you get a signed copy of each by email.</p>';
-      return h2;
+    if (s.id === 'doc') {
+      var d = docByKey(s.key), docs = pending(), n = docs.indexOf(d), last = n === docs.length - 1;
+      // only what is still required is asked here; the optional questions of a document (its advisory level, insurance details, dining and
+      // occasions) are the ones Mark fills in from the file (Mark 2026-10-26), so they are not put to the client
+      var rest = d.fields.filter(function (f) { return f.required && !named[f.name] && !isFollow(f.name) && fields[f.name] && fields[f.name].docs[0] === d.key; });
+      // the document's own boxes only show the answers: renamed so they never count as the answers themselves
+      var paper = d.html.replace(/ data-field="/g, ' data-docfield="').replace(/ name="/g, ' data-docname="');
+      var h3 = '<p><button type="button" class="linkbtn w-back-top">&larr; Back</button></p>' +
+        '<p class="lead">Document ' + (n + 1) + ' of ' + docs.length + '. ' + esc(SUMMARY[d.key] || '') + '</p><div class="doc w-paper">' + paper + '</div>' +
+        (rest.length ? '<div class="w-sub">' + rest.map(function (f) { return control(f); }).join('') + '</div>' : '') +
+        '<label class="w-opt-row w-agree-row"><input type="checkbox" class="w-agree" data-doc="' + esc(d.key) + '" data-nokeep><span>I have read this document and I agree to it.</span></label>';
+      if (last) h3 += '<label class="nm" for="fm-name">Type your full name to sign</label><input type="text" id="fm-name" autocomplete="name" maxlength="120" placeholder="First and last name">' +
+        '<p class="hint fine">Typing your name is your legal signature on each document you agreed to. The date and time and the exact text you agreed to are saved with each one, and you get a signed copy of each by email.</p>';
+      return h3;
     }
     var list = s.fields.filter(function (n) { return fields[n] && !isFollow(n); });
     var html = '', loyalty = list.filter(function (n) { return /^loyalty_/.test(n); });
@@ -343,17 +346,32 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
   }
 
+  function fillPaper(el, key) {
+    var doc = docByKey(key); if (!doc || !el) return;
+    doc.fields.forEach(function (f) {
+      var v = value(f.name), els = el.querySelectorAll('.w-paper [data-docfield="' + f.name + '"]');
+      for (var i = 0; i < els.length; i++) {
+        var b = els[i];
+        if (b.type === 'radio') b.checked = b.value === v;
+        else if (b.type === 'checkbox') b.checked = Array.isArray(v) ? v.indexOf(b.value) >= 0 : v === true;
+        else b.value = v == null ? '' : String(v);
+        b.disabled = true;
+      }
+    });
+  }
   function goStep(i, quiet) {
     at = i;
+    if (steps[i].id === 'doc') fillPaper(stepEl(i), steps[i].key);
     var all = $('fm-steps').querySelectorAll('.w-step');
     for (var k = 0; k < all.length; k++) all[k].hidden = Number(all[k].getAttribute('data-step')) !== i;
     $('fm-progress').textContent = 'Step ' + (i + 1) + ' of ' + steps.length;
     $('fm-prev').hidden = i === 0;
-    $('fm-next').textContent = steps[i].id === 'sign' ? 'Sign' : steps[i].id === 'welcome' ? "Let's go!" : 'Continue';
+    $('fm-next').textContent = steps[i].id === 'doc' && i === steps.length - 1 ? 'Sign' : steps[i].id === 'welcome' ? "Let's go!" : 'Continue';
     hideErr();
     if (!quiet) window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20));
   }
 
+  function stepOfDoc(key) { for (var i = 0; i < steps.length; i++) if (steps[i].key === key) return i; return steps.length - 1; }
   function stepEl(i) { return $('fm-steps').querySelector('.w-step[data-step="' + i + '"]'); }
   function stepOf(name) {
     var el = $('fm-steps').querySelector('[data-field="' + name + '"]'), s = el && el.closest('.w-step');
@@ -399,7 +417,11 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
     var gaps = stepGaps(at);
     if (gaps.names.length) { showErr('Before you continue, please fill in ' + (gaps.names.length === 1 ? 'this line' : 'these ' + gaps.names.length + ' lines') + ': ' + gaps.names.join(', ') + '.'); fieldErrors(gaps.fields); return; }
-    if (s.id === 'sign') return signAll();
+    if (s.id === 'doc') {
+      var tick = stepEl(at).querySelector('.w-agree');
+      if (!tick.checked) { showErr('Please tick the box to say you have read this document and agree to it.'); goTo(tick); return; }
+      if (at === steps.length - 1) return signAll();
+    }
     goStep(at + 1);
   }
 
@@ -417,7 +439,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function signAll() {
     var docs = pending(), name = $('fm-name').value.replace(/\s+/g, ' ').trim();
     var unticked = docs.filter(function (d) { var b = $('fm-steps').querySelector('.w-agree[data-doc="' + d.key + '"]'); return !(b && b.checked); });
-    if (unticked.length) { showErr('Please tick ' + (unticked.length === 1 ? 'this document' : 'each document') + ' to say you have read it and agree: ' + unticked.map(function (d) { return d.title; }).join(', ') + '.'); return; }
+    if (unticked.length) { goStep(stepOfDoc(unticked[0].key)); showErr('Please tick the box to say you have read this document and agree to it.'); return; }
     if (name.split(' ').length < 2) { showErr('Please type your full name (first and last) as your signature.'); $('fm-name').focus(); return; }
     busy = true; $('fm-next').disabled = true; $('fm-next').textContent = 'Signing…';
     var i = 0;
@@ -425,7 +447,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       if (i >= docs.length) { busy = false; if (window.SAKeep) window.SAKeep.clear(wizKey()); return showDone(); }
       var d = docs[i];
       return api('/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-        doc_key: d.key, signer_name: name, agreed: true, content_sha256: d.text_sha256, answers: answersFor(d), newsletter_opt_in: newsWanted, website: ($('fm-website') || {}).value || '',
+        doc_key: d.key, signer_name: name, agreed: true, content_sha256: (docByKey(d.key) || d).text_sha256, answers: answersFor(d), newsletter_opt_in: newsWanted, website: ($('fm-website') || {}).value || '',
       }) }).then(function (r) {
         var j = r.json || {};
         if ((r.status === 200 && j.success) || (r.status === 409 && j.code === 'already-signed')) { if (j.packet) packet = j.packet; i++; return one(); }
@@ -552,10 +574,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     if (e.target && e.target.closest && e.target.closest('#fm-steps')) followUps();
   });
   $('fm-steps').addEventListener('input', unmark);
+  $('fm-steps').addEventListener('change', function () { if (steps[at] && steps[at].id === 'doc') fillPaper(stepEl(at), steps[at].key); });
   $('fm-steps').addEventListener('change', unmark);
   document.addEventListener('click', function (e) {
     var r = e.target.closest && e.target.closest('[data-read]');
     if (r) readDoc(r.getAttribute('data-read'));
+    if (e.target.closest && e.target.closest('.w-back-top') && at > 0) goStep(at - 1);
   });
   $('fm-next').addEventListener('click', next);
   $('fm-prev').addEventListener('click', function () { if (at > 0) goStep(at - 1); });
