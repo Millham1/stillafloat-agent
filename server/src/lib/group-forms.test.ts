@@ -638,3 +638,10 @@ test("the paperwork page opens on the group's own photos: up to three, our /asse
   assert.deepEqual(pagePhotos(null, "paperwork"), []);
   assert.deepEqual(pagePhotos({ photos: { paperwork: [{ url: "http://plain.test/a.jpg" }, { url: "https://a.test/x\"onerror=1" }] } }, "paperwork"), []);
 });
+
+test("guests see the group's page label, never the file's short name (Mark 2026-10-26: 'Friends and Family 2027', not 'Millham F/F 2027')", async () => {
+  const { guestGroupName } = await import("./group-marketing");
+  assert.equal(guestGroupName({ name: "Millham F/F 2027", marketing: { page_label: "Friends and Family 2027" } }), "Friends and Family 2027");
+  assert.equal(guestGroupName({ name: "Millham F/F 2027", marketing: { page_label: "  " } }), "Millham F/F 2027");
+  assert.equal(guestGroupName({ name: "Millham F/F 2027" }), "Millham F/F 2027");
+});

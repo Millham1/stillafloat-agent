@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { guestGroupName } from "../lib/group-marketing";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { getSupabase } from "../lib/persistence";
@@ -334,7 +335,7 @@ router.post("/groups/:id/travelers/:tid/form-link/send", requireToken, async (re
     const { token, hash } = issueToken();
     // The new link is stored first so it works the moment the email arrives; a failed send puts the old one back.
     await store.updateTraveler(t.id, { form_token_hash: hash, form_sent_at: new Date().toISOString() });
-    const mail = linkEmail({ firstName: String(t.first_name ?? ""), groupName: String(group.name ?? ""), ship: group.ship_name ?? null, sailDate: group.sail_date ?? null, url: formUrl(publicSite(), token) });
+    const mail = linkEmail({ firstName: String(t.first_name ?? ""), groupName: guestGroupName(group), ship: group.ship_name ?? null, sailDate: group.sail_date ?? null, url: formUrl(publicSite(), token) });
     const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
     // The email log keeps who and when, never the link.
     await db().from("group_messages").insert({

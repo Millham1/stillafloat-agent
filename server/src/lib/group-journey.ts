@@ -19,6 +19,7 @@
 
 import { BUSINESS } from "./group-secure";
 import { pagePhotos, type PagePhoto } from "./group-page-photos";
+import { guestGroupName } from "./group-marketing";
 import {
   addDays, cabinIsBooked, cabinOf, cabinPayments, clientChecklist, ctxFor, dayDiff, displayName, emailOf, fmtDate, fmtMoney, journeyAnswers,
   langOf, localToday, matesOf, missingItems, payee, personName, plain, ymd,
@@ -372,7 +373,7 @@ function subjectFor(kind: MilestoneKind, ctx: Ctx, o: RenderOptions, has: Has): 
   switch (kind) {
     case "confirmation": return S.subject.confirmation({ ship, date: fmtDate(g.sail_date, ctx.lang) });
     case "payment-due": return S.subject.paymentDue({ date: fmtDate(o.payment?.due_date, ctx.lang), amount: fmtMoney(o.payment?.amount) });
-    case "change-notice": return S.subject.change({ group: plain(g.name, 80) });
+    case "change-notice": return S.subject.change({ group: plain(guestGroupName(g), 80) });
     case "data-needed": return S.subject.dataNeeded({ ship });
     default: {
       const n = kindDays(kind) ?? 0;

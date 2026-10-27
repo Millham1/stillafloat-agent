@@ -213,6 +213,12 @@ export function pageLabel(answers: Record<string, string | boolean>): string | n
   return clean || null;
 }
 
+/** The group's name as guests see it on every page and email (Mark 2026-10-26): the page label ("Friends and Family 2027"), else the file's name. */
+export function guestGroupName(group: { name?: unknown; marketing?: unknown }): string {
+  const m = group.marketing && typeof group.marketing === "object" ? (group.marketing as Record<string, string | boolean>) : {};
+  return pageLabel(m) ?? (typeof group.name === "string" ? group.name : "");
+}
+
 /** A usable email address on the Save my spot! form: something@something.tld. */
 export function validEmail(v: string): boolean { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
 

@@ -27,7 +27,7 @@ import {
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
 import { fmtLong } from "./group-document-kit";
-import { displayName } from "./group-marketing";
+import { displayName, guestGroupName } from "./group-marketing";
 import { pagePhotos } from "./group-page-photos";
 
 export type Reply = { status: number; json: Record<string, unknown> };
@@ -153,7 +153,7 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey">): R
       ? { first_name: traveler.first_name ?? null, last_name: traveler.last_name ?? null, is_lead: !!traveler.is_lead, passport_on_file: traveler.passport_last4 ? `ending ${traveler.passport_last4}` : null, newsletter_opt_in: !!traveler.newsletter_opt_in }
       : { first_name: group.organizer_name ?? null, last_name: null, is_lead: false, passport_on_file: null, newsletter_opt_in: false },
     group: {
-      name: group.name ?? null, cruise_line: displayName(group.cruise_line) || null, ship_name: displayName(group.ship_name) || null,
+      name: guestGroupName(group) || null, cruise_line: displayName(group.cruise_line) || null, ship_name: displayName(group.ship_name) || null,
       sail_date_text: fmtLong(group.sail_date) || null, return_date_text: fmtLong(group.return_date) || null,
       nights: group.nights ?? null, embark_port: group.embark_port ?? null,
       photos: pagePhotos(group.journey, "paperwork"),
@@ -475,8 +475,8 @@ async function sendCopies(deps: FormsDeps, loaded: Loaded): Promise<void> {
   const docs = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig)
     .map((d) => ({ title: renderDocument(d.key, loaded.ctx).title, url: copiesUrl(deps.publicSite, token, String(d.sig.id)) }));
   const when = fmtLong(g.sail_date);
-  const trip = [g.name, [displayName(g.ship_name), when ? (loaded.ctx.lang === "es" ? `zarpa ${when}` : `sailing ${when}`) : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
-  const mail = copiesEmail({ lang: loaded.ctx.lang, firstName: String((t ? t.first_name : g.organizer_name) ?? ""), groupName: String(g.name ?? ""), trip, docs, sealed: !!deps.seal });
+  const trip = [guestGroupName(g), [displayName(g.ship_name), when ? (loaded.ctx.lang === "es" ? `zarpa ${when}` : `sailing ${when}`) : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
+  const mail = copiesEmail({ lang: loaded.ctx.lang, firstName: String((t ? t.first_name : g.organizer_name) ?? ""), groupName: guestGroupName(g), trip, docs, sealed: !!deps.seal });
   const ok = await deps.mail({ to, subject: mail.subject, html: mail.html, text: mail.text });
   await deps.store.logMessage({
     group_id: g.id, cabin_id: t?.cabin_id ?? null, traveler_id: t?.id ?? null, audience: "client", template: "paperwork-copies",
@@ -517,7 +517,7 @@ export async function getCopies(deps: FormsDeps, token: unknown): Promise<Reply>
   const tok = String(token);
   const docs = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig)
     .map((d) => ({ id: String(d.sig.id), title: renderDocument(d.key, loaded.ctx).title, signed_at: d.sig.signed_at ?? null, sealed: !!d.sig.sealed, url: copiesUrl(deps.publicSite, tok, String(d.sig.id)) }));
-  return reply(200, { success: true, group: { name: loaded.group.name ?? null }, docs });
+  return reply(200, { success: true, group: { name: guestGroupName(loaded.group) || null }, docs });
 }
 
 /** GET /api/forms/copies/:token/:sid.pdf — one signed copy, only when it belongs to this link's owner. */
