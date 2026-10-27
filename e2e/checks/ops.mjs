@@ -1601,7 +1601,7 @@ export default [
     covers: ["page /forms.html", "GET /api/forms/:token", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "GET /api/forms/copies/:token", "GET /api/forms/copies/:token/:sid"],
     modes: ["dev", "prod"],
     run: async (t) => {
-      const html = t.html(await t.get("/forms.html"), { mustContain: ["/api/forms/", 'id="fm-agree"', 'id="fm-name"', "Sign and continue", 'id="fm-website"'] });
+      const html = t.html(await t.get("/forms.html"), { mustContain: ["/api/forms/", 'id="fm-wiz"', 'id="fm-steps"', 'id="fm-progress"', 'id="fm-next"', 'id="fm-website"'] });
       t.matches(H.metaContent(html, "robots"), /noindex/, "robots meta of the paperwork page (a private link must never be indexed)");
       t.matches(H.metaContent(html, "referrer"), /no-referrer/, "referrer policy of the paperwork page (its address carries the link)");
       t.equal(H.htmlLang(html).slice(0, 2), "en", "language of the paperwork page");
