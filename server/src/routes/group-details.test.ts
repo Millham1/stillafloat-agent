@@ -3,12 +3,13 @@
 // that close Mark's items. The real routers run against a small in-memory stand-in for the database (an http server that answers the PostgREST reads and
 // writes the routes make) and for the mail sender, so nothing here can reach Supabase, an inbox or Mark's phone.
 
-import { test, before, after, beforeEach } from "node:test";
+import { test, before, after, beforeEach, afterEach } from "node:test";
 import * as assert from "node:assert/strict";
 import express, { type Router } from "express";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { hashLinkToken } from "../lib/group-secure";
+import { _afterAnswerSettledForTests } from "../lib/after-answer";
 
 const TOKEN = "test-agent-token";
 const CODE = "bcdfghjkmn";
@@ -145,6 +146,11 @@ beforeEach(() => {
   log = []; mails = []; mailOk = true; actionsAccept = false; tokenWriteFails = false; assetsFail = false;
   delete process.env["GROUP_FORMS_MAIL_ALLOW"];
 });
+
+// A test is over only when the work its routes started after answering (Mark's item, the ONE email, its line in the email log) has finished. Otherwise
+// that work lands in the NEXT test's freshly reset tables: 2026-10-26, in a loaded full run, the last hold of "Road B's email goes only to…" logged its
+// email during "a wrong link or the bot trap holds nothing", which counts writes and found it.
+afterEach(() => _afterAnswerSettledForTests());
 
 type Res = { status: number; json: Record<string, any>; text: string; headers: Headers };
 let visitor = 0;
@@ -403,7 +409,7 @@ test("Road A's email goes only to an address this box may email; a phone-only re
   await wait(() => replyRow()["ack_email_status"] === "no-email");
   assert.equal(replyRow()["ack_email_status"], "no-email");
   assert.equal(mails.length, 0, "no email for a phone number");
-  await wait(() => writes("actions").filter((w) => w.method === "POST").length > 1);
+  await wait(() => writes("actions").filter((w) => w.method === "POST").length > 2);    // this step's item is the third, after the held and the allowed address
   assert.match(writes("actions").filter((w) => w.method === "POST").pop()!.body.body, /919-555-0100/, "Mark still gets the item, with the phone to ring");
 
   // a mail sender that is down
@@ -632,6 +638,7 @@ test("Road B's email goes only to an address this box may email; a phone-only re
   assert.equal((await hold()).status, 200);
   await wait(() => replyRow()["ack_email_status"] === "held");
   assert.equal(mails.length, 0);
+  await wait(() => writes("group_messages").length > 0);                         // the email log is written after the status
   assert.equal(writes("group_messages")[0]!.body.status, "skipped");
   delete process.env["GROUP_FORMS_MAIL_ALLOW"];
   Object.assign(replyRow(), { hold_requested_at: null, email: null, phone: "919-555-0100", ack_email_status: null });

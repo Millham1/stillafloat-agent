@@ -7,6 +7,7 @@ import { BUSINESS, hashLinkToken, looksLikeLinkToken } from "../lib/group-secure
 import { creditsForPictures, tidyCopy, type Lang } from "../lib/group-marketing";
 import { mailAllowed } from "../lib/group-forms";
 import { sendMail } from "../lib/mailer";
+import { afterAnswer } from "../lib/after-answer";
 import {
   WHEN_WORD, callEmail, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl as makeDetailsUrl, firstWord, holdEmail, pickCabin, reasonsInWords, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
@@ -214,20 +215,20 @@ router.post("/group-details/:token/choice", async (req: Request, res: Response) 
     ];
     const changed = await retitleActionsForSource("lead", `group-interest-${reply.id}`, { title, body: note, buttons });
     if (!changed && first) {
-      void createAction({ type: "lead", source_ref: `group-call-${reply.id}`, title, body: note, buttons, priority: "lead" })
-        .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the call request could not be put on the list"));
+      afterAnswer(createAction({ type: "lead", source_ref: `group-call-${reply.id}`, title, body: note, buttons, priority: "lead" })
+        .catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the call request could not be put on the list")));
     }
     res.json({ success: true });
 
     if (!first) return;
     // The ONE email, after the answer has gone, so the guest never waits on the mailer.
-    void deliver({
+    afterAnswer(deliver({
       group, reply, template: "call-confirmation",
       make: () => callEmail({
         firstName: firstWord(reply.first_name), groupLabel: detailsFacts({ group, cabins }, lang).label, hostNames: detailsFacts({ group, cabins }, lang).hostNames, lang, publicSite: publicSite(),
         when, phone: callerPhone(blurbOf(group, lang)),
       }),
-    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the call confirmation step failed"));
+    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the call confirmation step failed")));
     return;
   } catch (err) {
     return fail(req, res, err, "group details choice failed");
@@ -302,7 +303,7 @@ router.post("/group-details/:token/hold", async (req: Request, res: Response) =>
     const title = `Hold requested · ${nameOf(reply)} · ${pick.category} · party of ${travelers.length}`;
     const body = `${f.label} · ${reachOf(reply)} · ${pick.where}${reasons ? ` (${reasonsInWords(reasons)})` : ""}. Names, birthdays and the address are on the reply.`;
     // Their earlier item on Mark's list ("Group reply", or "Ring …" if they had asked for a call first) is answered by this one (one person, one item): close it only once the new one exists.
-    void createAction({
+    afterAnswer(createAction({
       type: "lead", source_ref: `group-hold-${reply.id}`, title, body, priority: "lead",
       buttons: [
         { label: "Add the travelers to a cabin", href: `/groups/${group.id}#replies` },
@@ -313,19 +314,19 @@ router.post("/group-details/:token/hold", async (req: Request, res: Response) =>
       if (!made.created) return;
       await resolveActionsForSource("lead", `group-interest-${reply.id}`, "done");
       await resolveActionsForSource("lead", `group-call-${reply.id}`, "done");
-    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the hold request could not be put on the list"));
+    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the hold request could not be put on the list")));
     res.json({ success: true });
 
     // The ONE email, after the answer has gone. The guest's own link is the one they just used.
     const facts = detailsFacts({ group, cabins }, lang);
-    void deliver({
+    afterAnswer(deliver({
       group, reply, template: "hold-confirmation",
       make: () => holdEmail({
         firstName: firstWord(reply.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(),
         category: pick.category, where: pick.where, travelerFirstNames: travelers.map((t) => firstWord(t.legal_name)),
         detailsUrl: makeDetailsUrl(publicSite(), String(req.params["token"]), lang),
       }),
-    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the hold confirmation step failed"));
+    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the hold confirmation step failed")));
     return;
   } catch (err) {
     return fail(req, res, err, "group details hold failed");

@@ -6,6 +6,7 @@ import { logger } from "../lib/logger";
 import { llmJson } from "../lib/llm";
 import { verifyTurnstile } from "../lib/turnstile";
 import { createAction } from "../lib/actions";
+import { afterAnswer } from "../lib/after-answer";
 import { hashForAudit } from "../lib/group-secure";
 import { issueToken } from "../lib/group-forms";
 import { MSG, callUrl as makeCallUrl, detailsUrl as makeDetailsUrl, firstWord, splitLegalName, storedAddress, storedTravelers, tidyLegalName } from "../lib/group-details";
@@ -489,14 +490,14 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     // replied) and the one "Waiting on you" notification, keeping the email floor a lead
     // has had since 2026-10-07. Each enquiry is its own row, so two people interested in
     // the same group never collapse into one.
-    void createAction({
+    afterAnswer(createAction({
       type: "lead",
       source_ref: interestId ? `group-interest-${interestId}` : `group-interest-${group.id}-${Date.now()}`,
       title: `Group reply: ${first}${last ? " " + last : ""}`,
       body: `${group.name} — ${guests ? `party of ${guests}` : "party size not given"}. Reply within a few hours.`,
       buttons: [{ label: "Open the group file", href: `/groups/${group.id}` }],
       priority: "lead",
-    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest notify failed"));
+    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group interest notify failed")));
 
     // The guest's own private link, handed back to them and to nobody else (it is the credential for their page). Made AFTER the reply is safely stored, so a
     // box that has not applied migration 0056 yet still takes every reply (it just has no links to hand back).
