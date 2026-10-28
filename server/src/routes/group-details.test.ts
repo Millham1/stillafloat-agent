@@ -172,7 +172,12 @@ async function call(method: string, path: string, o: { body?: unknown; token?: b
   }
 }
 
-const wait = async (cond: () => boolean) => { for (let i = 0; i < 200 && !cond(); i++) await new Promise((r) => setTimeout(r, 10)); };
+// The email and Mark's item are sent after the answer goes back, so a test waits for them: up to 10 seconds (a busy test run
+// is slow), and a wait that never comes true fails the test right there instead of leaving that work to land in the next test.
+const wait = async (cond: () => boolean) => {
+  for (let i = 0; i < 1000 && !cond(); i++) await new Promise((r) => setTimeout(r, 10));
+  if (!cond()) throw new Error(`timed out waiting for: ${cond.toString()}`);
+};
 const replyRow = () => tables["group_interests"]!.find((r) => r["id"] === REPLY_ID)!;
 const writes = (table: string) => log.filter((l) => l.table === table && l.method !== "GET");
 const ADDRESS = { street: "123 Main St", city: "Raleigh", state: "NC", zip: "27601", tidied: true };
