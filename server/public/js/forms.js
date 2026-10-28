@@ -149,9 +149,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       'loyalty_1_program', 'loyalty_1_number', 'loyalty_2_program', 'loyalty_2_number', 'loyalty_3_program', 'loyalty_3_number'] },
     { id: 'contact', title: 'Emergency contact', fields: ['ec1_name', 'ec1_relationship', 'ec1_cell_phone', 'ec1_email', 'ec1_address', 'ec1_city_state_zip', 'notes'] },
   ];
-  // Mark 2026-10-28, three screens, the way the e-signature services do it: the welcome; one short questionnaire whose answers fill
-  // every document; then his own PDFs of the documents, filled in, one under the other, with a yellow tag that goes to each place
-  // that needs the client. The name, typed once, goes on every signature line, and Finish signs them all.
+  // Mark 2026-10-28: the welcome; one short questionnaire whose answers fill every document; then each document on a page of its own
+  // ("each page should show on it's own, including the signature lines"): his own PDF of it, filled in, and under it a place to type
+  // the name and sign that one document before going on to the next. The name typed for the first is filled in for the rest.
   // A follow-up line shows right under the choice it belongs to, only when that choice is ticked.
   var FOLLOW = { us_citizen: { no: ['citizenship'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] } };
   var SUMMARY = {
@@ -247,7 +247,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     });
     steps = [STEPS[0]];
     if (groups.length) steps.push({ id: 'ask', title: 'Your details', groups: groups });
-    if (pending().length) steps.push({ id: 'docs', title: 'Your documents' });
+    pending().forEach(function (d) { steps.push({ id: 'doc', key: d.key, title: d.title }); });
     return named;
   }
 
@@ -307,20 +307,18 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       return '<p class="lead">Your answers fill in all of your documents, so you type each thing only once.</p>' +
         s.groups.map(function (g) { return '<h3 class="w-group">' + esc(g.title) + '</h3>' + fieldsHtml(g.fields); }).join('');
     }
-    if (s.id === 'docs') {
-      var docs = pending();
-      return '<p class="lead">Here ' + (docs.length === 1 ? 'is your document' : 'are your ' + docs.length + ' documents') + ', filled in with your answers. Please read each one; the yellow tag takes you to each place that needs you.</p>' +
-        docs.map(function (d, k) {
-          // the document's own boxes only show the answers: renamed so they never count as the answers themselves
-          var paper = d.html.replace(/ data-field="/g, ' data-docfield="').replace(/ name="/g, ' data-docname="');
-          var ticks = d.fields.filter(function (f) { return f.required && f.kind === 'check' && fields[f.name] && fields[f.name].docs[0] === d.key; });
-          return '<article class="w-docpage" data-doc="' + esc(d.key) + '"><h3 class="w-group">' + (k + 1) + '. ' + esc(d.title) + '</h3>' +
-            '<div class="w-pdf" data-pdf="' + esc(d.key) + '"></div><div class="doc w-paper" hidden>' + paper + '</div>' +
-            (ticks.length ? '<div class="w-spot">' + ticks.map(function (f) { return control(f); }).join('') + '</div>' : '') + '</article>';
-        }).join('') +
-        '<div class="w-spot" id="fm-sign-box"><label class="nm" for="fm-name">Type your full name to sign ' + (docs.length === 1 ? 'it' : 'all ' + docs.length) + '</label>' +
-        '<input type="text" id="fm-name" autocomplete="name" maxlength="120" placeholder="First and last name" data-nokeep>' +
-        '<p class="hint fine">Typing your name is your legal signature on each document above, and says you agree to it. It goes on each signature line; the date and time and the exact text of each one are saved with it, and you get a signed copy of each by email.</p></div>';
+    if (s.id === 'doc') {
+      var d = docByKey(s.key);
+      // the document's own boxes only show the answers: renamed so they never count as the answers themselves
+      var paper = d.html.replace(/ data-field="/g, ' data-docfield="').replace(/ name="/g, ' data-docname="');
+      var ticks = d.fields.filter(function (f) { return f.required && f.kind === 'check' && fields[f.name] && fields[f.name].docs[0] === d.key; });
+      return '<p class="lead">Please read your ' + esc(d.title) + '. It is filled in with your answers. When it is right, sign it at the bottom.</p>' +
+        '<div class="w-pdf" data-pdf="' + esc(d.key) + '"></div><div class="doc w-paper" hidden>' + paper + '</div>' +
+        '<div class="w-spot"><h3 class="w-sign-h">Sign your ' + esc(d.title) + '</h3>' +
+        ticks.map(function (f) { return control(f); }).join('') +
+        '<label class="nm" for="w-sign-' + esc(d.key) + '">Type your full name</label>' +
+        '<input type="text" class="w-signname" id="w-sign-' + esc(d.key) + '" autocomplete="name" maxlength="120" placeholder="First and last name" data-nokeep>' +
+        '<p class="hint fine">Typing your name is your legal signature on this document, and says you agree to it. It goes on the signature line; the date and time and the exact text are saved with it, and you get a signed copy by email.</p></div>';
     }
     return fieldsHtml(s.fields || []);
   }
@@ -342,7 +340,11 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var named = gather();
     var host = $('fm-steps');
     host.innerHTML = steps.map(function (s, i) {
-      return '<section class="w-step" data-step="' + i + '" hidden><h2>' + esc(s.title) + '</h2>' + stepBody(s, named) + '</section>';
+      // a document's page opens with its name on a bar of its own, and which of the documents it is
+      var head = s.id === 'doc'
+        ? '<div class="w-docbar"><span>Document ' + (packet.docs.indexOf(docByKey(s.key)) + 1) + ' of ' + packet.docs.length + '</span><h2>' + esc(s.title) + '</h2></div>'
+        : '<h2>' + esc(s.title) + '</h2>';
+      return '<section class="w-step" data-step="' + i + '" hidden>' + head + stepBody(s, named) + '</section>';
     }).join('');
     cszWire(host);
     addressCheck(host);
@@ -392,7 +394,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     return out;
   }
   /** the filled-in PDF of one document into host; false when it cannot be shown (the page's own copy is shown instead) */
-  function signer() { var el = $('fm-name'), n = el ? el.value.replace(/\s+/g, ' ').trim() : ''; return n.split(' ').length >= 2 ? n : ''; }
+  var adopted = '';   // the name typed to sign the first document, filled in for the next ones
+  function nameBox() { var el = stepEl(at); return el ? el.querySelector('.w-signname') : null; }
+  function signer() { var el = nameBox(), n = el ? el.value.replace(/\s+/g, ' ').trim() : ''; return n.split(' ').length >= 2 ? n : ''; }
   // Mark 2026-10-28: "there is a lot of blank space here, i did not initially know i needed to continue to scroll down". On screen,
   // a blank stretch taller than a couple of lines (where a section Mark cut was covered) is closed up; the printed PDF is unchanged.
   function closeGaps(c, ratio) {
@@ -467,37 +471,24 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       .catch(fallback);
   }
 
-  function showAllPdfs(i) {
-    var arts = stepEl(i).querySelectorAll('.w-docpage');
-    for (var k = 0; k < arts.length; k++) {
-      var key = arts[k].getAttribute('data-doc');
-      fillPaper(arts[k], key);
-      showPdf(arts[k].querySelector('.w-pdf'), key, arts[k].querySelector('.w-paper'));
-    }
-  }
-  // the yellow tag: to the next place that needs the client (an "I accept" box, the name), then to Finish
-  function nextSpot() {
-    hideErr();
-    var el = stepEl(at), boxes = el.querySelectorAll('.w-spot input[type=checkbox][data-field]');
-    for (var k = 0; k < boxes.length; k++) if (!boxes[k].checked) return goTo(boxes[k]);
-    if (!signer()) return goTo($('fm-name'));
-    goTo($('fm-next'));
-  }
-  function tagLabel() {
-    var el = stepEl(at), open = el ? Array.prototype.some.call(el.querySelectorAll('.w-spot input[type=checkbox][data-field]'), function (b) { return !b.checked; }) : false;
-    $('fm-tag').textContent = open ? 'Next \u2193' : !signer() ? 'Sign here \u2193' : 'Finish \u2193';
+  function showDocPdf(i) {
+    var el = stepEl(i), key = steps[i].key;
+    fillPaper(el, key);
+    showPdf(el.querySelector('.w-pdf'), key, el.querySelector('.w-paper'));
   }
 
   function goStep(i, quiet) {
     at = i;
-    if (steps[i].id === 'docs') showAllPdfs(i);
-    $('fm-tag').hidden = steps[i].id !== 'docs';
+    if (steps[i].id === 'doc') {
+      var nb = nameBox();
+      if (nb && !nb.value && adopted) nb.value = adopted;
+      showDocPdf(i);
+    }
     var all = $('fm-steps').querySelectorAll('.w-step');
     for (var k = 0; k < all.length; k++) all[k].hidden = Number(all[k].getAttribute('data-step')) !== i;
     $('fm-progress').hidden = true;
     $('fm-prev').hidden = i === 0;
-    $('fm-next').textContent = { welcome: "Let's go!", docs: 'Finish' }[steps[i].id] || 'Continue';
-    if (steps[i].id === 'docs') tagLabel();
+    $('fm-next').textContent = steps[i].id === 'doc' ? (i === steps.length - 1 ? 'Sign and finish' : 'Sign and go to the next document') : steps[i].id === 'welcome' ? "Let's go!" : 'Continue';
     hideErr();
     if (!quiet) window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20));
   }
@@ -547,7 +538,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
     var gaps = stepGaps(at);
     if (gaps.names.length) { showErr('Before you continue, please fill in ' + (gaps.names.length === 1 ? 'this line' : 'these ' + gaps.names.length + ' lines') + ': ' + gaps.names.join(', ') + '.'); fieldErrors(gaps.fields); return; }
-    if (s.id === 'docs') return signAll();
+    if (s.id === 'doc') return signOne(s);
     goStep(at + 1);
   }
 
@@ -562,31 +553,32 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     });
     return out;
   }
-  function signAll() {
-    var docs = pending(), name = $('fm-name').value.replace(/\s+/g, ' ').trim();
-    if (name.split(' ').length < 2) { showErr('Please type your full name (first and last) as your signature.'); $('fm-name').focus(); return; }
+  /** the document on screen, signed on its own with the answers that belong to it; then the next one */
+  function signOne(s) {
+    var d = docByKey(s.key), name = signer(), label = $('fm-next').textContent;
+    if (!name) { showErr('Please type your full name (first and last) to sign.'); var nb = nameBox(); if (nb) goTo(nb); return; }
+    adopted = name;
     busy = true; $('fm-next').disabled = true; $('fm-next').textContent = 'Signing…';
-    var i = 0;
-    function one() {
-      if (i >= docs.length) { busy = false; if (window.SAKeep) window.SAKeep.clear(wizKey()); return showDone(); }
-      var d = docs[i];
-      return api('/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-        doc_key: d.key, signer_name: name, agreed: true, content_sha256: (docByKey(d.key) || d).text_sha256, answers: answersFor(d), newsletter_opt_in: newsWanted, website: ($('fm-website') || {}).value || '',
-      }) }).then(function (r) {
-        var j = r.json || {};
-        if ((r.status === 200 && j.success) || (r.status === 409 && j.code === 'already-signed')) { if (j.packet) packet = j.packet; i++; return one(); }
-        busy = false; $('fm-next').disabled = false; $('fm-next').textContent = 'Sign';
-        if (r.status === 409 && j.code === 'document-changed') return reload('A document was just updated, so please look over the last screen again before you sign.');
-        if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload(); }
-        if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
-        // a refused answer: go to the screen that asks it
-        var bad = Object.keys(j.fields || {}), s = bad.length ? stepOf(bad[0]) : -1;
-        if (s >= 0) goStep(s);
-        showErr((j.error || 'That did not go through. Please try again.') + (i ? ' (' + i + ' of ' + docs.length + ' documents are already signed.)' : ''));
-        fieldErrors(j.fields);
-      }).catch(function () { busy = false; $('fm-next').disabled = false; $('fm-next').textContent = 'Sign'; showErr('We could not reach the server. Please check your connection and try again.'); });
-    }
-    return one();
+    var done = function () { busy = false; $('fm-next').disabled = false; $('fm-next').textContent = label; };
+    return api('/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+      doc_key: d.key, signer_name: name, agreed: true, content_sha256: d.text_sha256, answers: answersFor(d), newsletter_opt_in: newsWanted, website: ($('fm-website') || {}).value || '',
+    }) }).then(function (r) {
+      var j = r.json || {};
+      done();
+      if ((r.status === 200 && j.success) || (r.status === 409 && j.code === 'already-signed')) {
+        if (j.packet) packet = j.packet;
+        if (at === steps.length - 1 || !pending().length) { if (window.SAKeep) window.SAKeep.clear(wizKey()); return showDone(); }
+        return goStep(at + 1);
+      }
+      if (r.status === 409 && j.code === 'document-changed') return reload('This document was just updated, so please read it again before you sign.');
+      if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload(); }
+      if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
+      // a refused answer: go to the screen that asks it
+      var bad = Object.keys(j.fields || {}), s2 = bad.length ? stepOf(bad[0]) : -1;
+      if (s2 >= 0) goStep(s2);
+      showErr(j.error || 'That did not go through. Please try again.');
+      fieldErrors(j.fields);
+    }).catch(function () { done(); showErr('We could not reach the server. Please check your connection and try again.'); });
   }
 
   function reload(msg) {
@@ -699,15 +691,13 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     if (e.target && e.target.closest && e.target.closest('#fm-steps')) followUps();
   });
   $('fm-steps').addEventListener('input', unmark);
-  // on the documents: an "I accept" box or the name changes what the PDFs show (the name goes on every signature line)
+  // on a document's page: an "I accept" box or the typed name changes what its PDF shows (the name goes on its signature line)
   var nameTimer = null;
-  $('fm-steps').addEventListener('change', function () { if (steps[at] && steps[at].id === 'docs') { showAllPdfs(at); tagLabel(); } });
+  $('fm-steps').addEventListener('change', function () { if (steps[at] && steps[at].id === 'doc') showDocPdf(at); });
   $('fm-steps').addEventListener('input', function (e) {
-    if (!(steps[at] && steps[at].id === 'docs' && e.target && e.target.id === 'fm-name')) return;
-    tagLabel();
-    clearTimeout(nameTimer); nameTimer = setTimeout(function () { showAllPdfs(at); }, 900);
+    if (!(steps[at] && steps[at].id === 'doc' && e.target && e.target.classList && e.target.classList.contains('w-signname'))) return;
+    clearTimeout(nameTimer); nameTimer = setTimeout(function () { showDocPdf(at); }, 900);
   });
-  $('fm-tag').addEventListener('click', nextSpot);
   $('fm-steps').addEventListener('change', unmark);
   document.addEventListener('click', function (e) {
     var r = e.target.closest && e.target.closest('[data-read]');
