@@ -18,6 +18,7 @@ const ctx = () => buildCtx({ business: BUSINESS, group: GROUP, cabins: CABINS, t
 const ANSWERS: Answers = {
   legal_name: "Jane Quincy Public", dob: "1960-05-04", gender: "female", us_citizen: "yes", address: "100 Goodsell Ct", city_state_zip: "Fuquay Varina, NC 27526",
   phone: "919-555-0100", email: "jane@example.com", ec1_name: "Sam Public", ec1_relationship: "Child", ec1_cell_phone: "919-555-0199",
+  loyalty_1_program: "MSC Voyagers Club", loyalty_1_number: "123456789",
 };
 const value = (a: Answers) => (m: string) => markValue(m, a, "October 27, 2026");
 
@@ -54,7 +55,7 @@ test("the filled traveler form: the answers are written in, the business named, 
   const pdf = await PDFDocument.load(out);
   assert.ok(pdf.getPageCount() < f.chars.pages.length, "a page left empty is taken out");
   const text = said.join(" | ");
-  for (const s of ["Jane Quincy Public", "100 Goodsell Ct", "Fuquay Varina, NC 27526", "Sam Public", "Child", "October 27, 2026", "Still Afloat LLC dba Still Afloat Cruising", "Do you belong to any Loyalty Programs?"]) {
+  for (const s of ["Jane Quincy Public", "100 Goodsell Ct", "Fuquay Varina, NC 27526", "Sam Public", "Child", "October 27, 2026", "Still Afloat LLC dba Still Afloat Cruising", "Do you belong to any Loyalty Programs?", "MSC Voyagers Club", "123456789"]) {
     assert.ok(text.includes(s), s);
   }
 });

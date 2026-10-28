@@ -101,6 +101,11 @@ export interface Hunk {
   ins: string;
   /** how many words that is */
   words: number;
+  /** the last PDF letter before this place and the first after it (where words with no place of their own can go) */
+  before?: number;
+  after?: number;
+  /** the document's blanks here, by the line they are on (a table's rows) */
+  rows: string[][];
 }
 export interface Lined {
   hunks: Hunk[];
@@ -125,22 +130,24 @@ export function lineUp(chars: FormChars, text: string, value: MarkValue = () => 
     const v = value(x.mark);
     return typeof v === "boolean" ? (v ? "☒" : "☐") : v;
   };
-  const raws: Array<{ del: PdfWord[]; ins: TextWord[] }> = [];
-  let ip = 0, it = 0, cur: { del: PdfWord[]; ins: TextWord[] } | null = null;
+  type Raw = { del: PdfWord[]; ins: TextWord[]; before?: number; after?: number };
+  const raws: Raw[] = [];
+  let ip = 0, it = 0, cur: Raw | null = null;
   for (const [op, str] of diffs) {
     if (op === 0) {
+      if (cur && pw[ip]) cur.after = pw[ip]!.at[0];
       cur = null;
       for (let k = 0; k < str.length; k++) if (tw[it + k]!.mark) marks.push({ at: pw[ip + k]!.at, mark: tw[it + k]!.mark! });
       ip += str.length; it += str.length;
       continue;
     }
-    if (!cur) { cur = { del: [], ins: [] }; raws.push(cur); }
+    if (!cur) { cur = { del: [], ins: [], ...(ip > 0 ? { before: pw[ip - 1]!.at[pw[ip - 1]!.at.length - 1] } : {}) }; raws.push(cur); }
     if (op === -1) { for (let k = 0; k < str.length; k++) cur.del.push(pw[ip + k]!); ip += str.length; }
     else { for (let k = 0; k < str.length; k++) cur.ins.push(tw[it + k]!); it += str.length; }
   }
   // words that only moved (a table the PDF reads in another order) stay where the PDF has them: a deleted word and the same
   // word inserted close by cancel out, in small edits only (a section Mark cut is never thinned out this way)
-  const small = (r: { del: PdfWord[]; ins: TextWord[] }) => r.del.length <= 12 && r.ins.length <= 12;
+  const small = (r: Raw) => r.del.length <= 12 && r.ins.length <= 12;
   raws.forEach((r, i) => {
     if (!small(r)) return;
     for (let d = r.del.length - 1; d >= 0; d--) {
@@ -160,7 +167,13 @@ export function lineUp(chars: FormChars, text: string, value: MarkValue = () => 
       const w = said(t);
       if (w) ins += (ins ? (k > 0 && t.line !== r.ins[k - 1]!.line ? "\n" : " ") : "") + w;
     });
-    return { del: r.del.flatMap((x) => x.at), ins, words: r.ins.length };
+    const rows: string[][] = [];
+    r.ins.forEach((t, k) => {
+      if (!t.mark) return;
+      if (!rows.length || (k > 0 && t.line !== r.ins[k - 1]!.line)) rows.push([]);
+      rows[rows.length - 1]!.push(t.mark);
+    });
+    return { del: r.del.flatMap((x) => x.at), ins, words: r.ins.length, rows, ...(r.before !== undefined ? { before: r.before } : {}), ...(r.after !== undefined ? { after: r.after } : {}) };
   });
   return { hunks: out, marks };
 }
@@ -290,6 +303,27 @@ export async function fillFormPdf(input: FillInput): Promise<Uint8Array> {
     return idx.length ? { text: text.trim(), x1, idx } : null;
   };
 
+  /** a table's rows of blanks under its headings: the columns start where the headings do, the rows share the space down to
+   *  the next words on the page */
+  const intoTable = (h: Hunk) => {
+    if (h.before === undefined || h.after === undefined) return;
+    const hb = chars.box[h.before]!, nb = chars.box[h.after]!;
+    if (hb[0] !== nb[0] || nb[2] <= hb[4]) return;
+    const heading = chars.box.filter((b) => b[0] === hb[0] && b[2] < hb[4] - 1 && b[4] > hb[2] + 1).sort((a, b) => a[1] - b[1]);
+    const cols: number[] = [];
+    let end = -1e9;
+    for (const b of heading) { if (b[1] - end > 15) cols.push(b[1]); end = b[3]; }
+    const rows = h.rows.filter((r) => r.length);
+    if (!rows.length || rows.some((r) => r.length > cols.length)) return;
+    const lh = hb[4] - hb[2], top0 = hb[4] + 2, rowH = Math.min((nb[2] - top0 - 4) / rows.length, lh * 2.4);
+    rows.forEach((r, i) => r.forEach((m, j) => {
+      const v = input.value(m);
+      if (typeof v !== "string" || !v) return;
+      const top = top0 + rowH * i + (rowH - lh) / 2;
+      write(pages[hb[0]]!, hb[0], v, cols[j]! + 2, top, top + lh, (cols[j + 1] ?? W(hb[0]) - MARGIN) - 6, INK);
+    }));
+  };
+
   const lined = lineUp(chars, input.text, input.value);
   // the document's blanks and boxes where the PDF has them: answers on the lines, X in the ticked boxes
   for (const m of lined.marks) {
@@ -300,6 +334,10 @@ export async function fillFormPdf(input: FillInput): Promise<Uint8Array> {
   const extra: string[] = [];
   for (const h of lined.hunks) {
     if (!h.del.length) {
+      // only blanks, a row of them to a line: the rows of a table whose boxes on the PDF are empty, with no line to write on
+      // (the loyalty programs). They go in the space under the table's headings, in its columns.
+      const blanks = h.rows.reduce((n, r) => n + r.length, 0);
+      if (blanks && blanks === h.words) { intoTable(h); continue; }
       // words with no place on the PDF: a whole passage (Mark's own additions, like the insurance choice) goes on a page at
       // the end; a stray word or table cell is left to the document's text
       if (h.words >= 12) extra.push(h.ins);
