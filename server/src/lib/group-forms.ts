@@ -21,9 +21,10 @@ import {
   BUSINESS, encryptPii, hashForAudit, hashLinkToken, looksLikeLinkToken, newLinkToken, piiConfigured, safeEqualHex,
 } from "./group-secure";
 import {
-  DOC_SPECS, applyAnswers, buildCtx, fillBlocks, packetFor, publicField, renderDocument,
+  DOC_SPECS, applyAnswers, buildCtx, fillBlocks, markValue, packetFor, paperText, publicField, renderDocument,
   type Answers, type DocCtx, type RenderedDoc, type Row,
 } from "./group-documents";
+import { fillFormPdf, formPdfFiles, stillAfloatLogo } from "./form-pdf";
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
 import { fmtLong } from "./group-document-kit";
@@ -518,6 +519,61 @@ export async function getCopies(deps: FormsDeps, token: unknown): Promise<Reply>
   const docs = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig)
     .map((d) => ({ id: String(d.sig.id), title: renderDocument(d.key, loaded.ctx).title, signed_at: d.sig.signed_at ?? null, sealed: !!d.sig.sealed, url: copiesUrl(deps.publicSite, tok, String(d.sig.id)) }));
   return reply(200, { success: true, group: { name: guestGroupName(loaded.group) || null }, docs });
+}
+
+// ── Mark's own PDF of a document, filled in (Mark 2026-10-27: "show the client the actual populated document") ──
+
+/** What the page sends to be shown: known names only, plain values only, nothing long. Nothing here is kept. */
+function previewInput(raw: unknown): Answers {
+  const out: Answers = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^[a-z0-9_]{1,40}$/.test(k)) continue;
+    if (typeof v === "string") out[k] = v.slice(0, 1000);
+    else if (typeof v === "boolean") out[k] = v;
+    else if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === "string").slice(0, 20).map((x) => x.slice(0, 100));
+  }
+  return out;
+}
+
+/** POST /api/forms/:token/preview — one document of this link's packet on Mark's own PDF, filled in with what the client has
+ *  typed so far. The answers to the documents before it are read as they will be on the file once those are signed (the
+ *  traveler form's address and birth date fill the waiver's), so the PDF shows what will be signed. Nothing is saved. */
+export async function previewDocument(deps: FormsDeps, token: unknown, body: { doc_key?: unknown; answers?: unknown }): Promise<{ status: 200; bytes: Uint8Array; key: string } | Reply> {
+  const loaded = await loadByToken(deps, token);
+  if (!loaded) return NOT_FOUND;
+  const key = typeof body.doc_key === "string" ? body.doc_key : "";
+  if (!loaded.packet.includes(key)) return reply(404, { success: false, error: "That document is not part of this paperwork." });
+  const files = formPdfFiles(key);
+  if (!files) return reply(404, { success: false, code: "no-pdf", error: "There is no printed form for this document." });
+  const typed = previewInput(body.answers);
+  const now = deps.now();
+
+  let ctx: DocCtx = loaded.ctx;
+  for (const earlier of loaded.packet.slice(0, loaded.packet.indexOf(key))) {
+    if (loaded.signed.has(earlier) || !ctx.traveler) continue;
+    const applied = applyAnswers(renderDocument(earlier, ctx), typed, ctx);
+    if (!applied.ok) continue;
+    const t = ctx.traveler;
+    ctx = { ...ctx, traveler: { ...t, ...applied.travelerPatch, form_data: mergeDeep((t["form_data"] as Row) ?? {}, applied.formData) } };
+  }
+  const doc = renderDocument(key, ctx);
+  const own: Answers = {};
+  for (const f of doc.fields) if (typed[f.name] !== undefined) own[f.name] = typed[f.name]!;
+  // shown as it will be kept: a passport number never in full
+  const applied = applyAnswers(doc, own, ctx);
+  const answers: Answers = applied.ok ? applied.answers : { ...own, ...(typeof own["passport_number"] === "string" ? { passport_number: "" } : {}) };
+  const today = fmtLong(now.toISOString());
+  const bytes = await fillFormPdf({ pdf: files.pdf, chars: files.chars, text: paperText(key, ctx), value: (m) => markValue(m, answers, today), logo: stillAfloatLogo() });
+  return { status: 200, bytes, key };
+}
+
+function mergeDeep(a: Row, b: Row): Row {
+  const out: Row = { ...a };
+  for (const [k, v] of Object.entries(b)) {
+    out[k] = v && typeof v === "object" && !Array.isArray(v) && out[k] && typeof out[k] === "object" && !Array.isArray(out[k]) ? mergeDeep(out[k] as Row, v as Row) : v;
+  }
+  return out;
 }
 
 /** GET /api/forms/copies/:token/:sid.pdf — one signed copy, only when it belongs to this link's owner. */

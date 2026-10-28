@@ -13,7 +13,7 @@ import { BUSINESS } from "../lib/group-secure";
 import { renderSignedPdf } from "../lib/group-signature-pdf";
 import { sealerFromEnv, type Sealer } from "../lib/group-pdf-seal";
 import { DOC_SPECS } from "../lib/group-documents";
-import { SIGNER_COLS, TRAVELER_COLS, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
+import { SIGNER_COLS, TRAVELER_COLS, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
 
 // Client paperwork (migrations 0044 and 0052).
 //
@@ -211,6 +211,7 @@ function limiter(max: number) {
 }
 const signLimited = limiter(20);   // signing attempts per address per hour
 const missLimited = limiter(40);   // wrong links per address per hour: a guess is never worth trying
+const previewLimited = limiter(300); // filled-in PDFs shown per address per hour (one per document screen and review)
 
 function privateHeaders(res: Response) {
   res.setHeader("Cache-Control", "no-store");
@@ -250,6 +251,28 @@ router.post("/forms/:token/sign", async (req: Request, res: Response) => {
     return res.status(out.status).json(out.json);
   } catch (err) {
     return fail(req, res, err, "paperwork signing failed");
+  }
+});
+
+// Mark 2026-10-27: each document is shown as Mark's own PDF, filled in with what the client has typed. Nothing is saved.
+router.post("/forms/:token/preview", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (previewLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const body = (req.body ?? {}) as Row;
+    if (typeof body["website"] === "string" && body["website"]) return res.status(204).end(); // honeypot
+    if (JSON.stringify(body).length > 120_000) return res.status(413).json({ success: false, error: "That is too much text for one form." });
+    const out = await previewDocument(deps(), req.params["token"], body);
+    if ("bytes" in out) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${out.key.replace(/[^\w.-]/g, "_")}.pdf"`);
+      return res.status(200).send(Buffer.from(out.bytes));
+    }
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork preview failed");
   }
 });
 

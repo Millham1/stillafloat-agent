@@ -310,7 +310,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       var paper = d.html.replace(/ data-field="/g, ' data-docfield="').replace(/ name="/g, ' data-docname="');
       return '<p><button type="button" class="linkbtn w-back-top">&larr; Back</button></p>' +
         '<p class="lead">Please read your <b>' + esc(d.title) + '</b> and check that everything in it is right, then press Confirm at the bottom.</p>' +
-        '<div class="doc w-paper">' + paper + '</div>';
+        '<div class="w-pdf" data-pdf="' + esc(d.key) + '"></div><div class="doc w-paper" hidden>' + paper + '</div>';
     }
     if (s.id === 'check') {
       return '<p class="lead">Every document is filled in and confirmed. Open any of them to look it over again.</p><ul class="w-docs">' + pending().map(function (d) {
@@ -373,9 +373,60 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       }
     });
   }
+  // ── Mark 2026-10-27: "show the client the actual populated document": Mark's own PDF of it, filled in with the answers so far ──
+  var pdfLib = null;
+  function loadPdfLib() {
+    if (!pdfLib) pdfLib = import('/vendor/pdfjs-4.10.38/pdf.min.js').then(function (lib) {
+      lib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs-4.10.38/pdf.worker.min.js';
+      return lib;
+    });
+    return pdfLib;
+  }
+  function allAnswers() {
+    var out = {};
+    Object.keys(fields).forEach(function (n) { var v = value(n); if (v !== undefined) out[n] = v; });
+    return out;
+  }
+  /** the filled-in PDF of one document into host; false when it cannot be shown (the page's own copy is shown instead) */
+  function showPdf(host, key, paper) {
+    if (!host) return;
+    var ask = JSON.stringify({ doc_key: key, answers: allAnswers(), website: ($('fm-website') || {}).value || '' });
+    if (host.getAttribute('data-shown') === ask) return;
+    host.setAttribute('data-shown', ask);
+    host.innerHTML = '<p class="hint">Filling in your document…</p>';
+    if (paper) paper.hidden = true;
+    var fallback = function () { if (host.getAttribute('data-shown') !== ask) return; host.innerHTML = ''; host.removeAttribute('data-shown'); if (paper) paper.hidden = false; };
+    fetch(API_BASE + encodeURIComponent(token) + '/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: ask })
+      .then(function (r) { if (!r.ok) throw new Error('preview ' + r.status); return r.arrayBuffer(); })
+      .then(function (buf) {
+        return loadPdfLib().then(function (lib) { return lib.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise; }).then(function (pdf) {
+          if (host.getAttribute('data-shown') !== ask) return;
+          host.innerHTML = '';
+          var url = URL.createObjectURL(new Blob([buf], { type: 'application/pdf' }));
+          var print = document.createElement('p');
+          print.innerHTML = '<a class="linkbtn" target="_blank" rel="noopener">Print or save this document</a>';
+          print.firstChild.href = url;
+          host.appendChild(print);
+          var width = Math.max(300, host.clientWidth || 600), ratio = Math.min(2, window.devicePixelRatio || 1), chain = Promise.resolve();
+          for (var n = 1; n <= pdf.numPages; n++) (function (n) {
+            chain = chain.then(function () { return pdf.getPage(n); }).then(function (page) {
+              var base = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: (width / base.width) * ratio });
+              var c = document.createElement('canvas');
+              c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+              c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Page ' + n + ' of ' + pdf.numPages);
+              host.appendChild(c);
+              return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+            });
+          })(n);
+          return chain;
+        });
+      })
+      .catch(fallback);
+  }
+
   function goStep(i, quiet) {
     at = i;
-    if (steps[i].id === 'doc') fillPaper(stepEl(i), steps[i].key);
+    if (steps[i].id === 'doc') { var se = stepEl(i); fillPaper(se, steps[i].key); showPdf(se.querySelector('.w-pdf'), steps[i].key, se.querySelector('.w-paper')); }
     var all = $('fm-steps').querySelectorAll('.w-step');
     for (var k = 0; k < all.length; k++) all[k].hidden = Number(all[k].getAttribute('data-step')) !== i;
     $('fm-progress').hidden = true;
@@ -491,7 +542,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function readDoc(key) {
     var doc = docByKey(key); if (!doc) return;
     $('fm-doc-title').textContent = doc.title;
-    var body = $('fm-doc-body'); body.innerHTML = doc.html.replace(/ name="/g, ' data-docname="');
+    var body = $('fm-doc-body'); body.innerHTML = '<div class="w-pdf"></div><div class="doc w-paper" hidden>' + doc.html.replace(/ name="/g, ' data-docname="') + '</div>';
     doc.fields.forEach(function (f) {
       var v = value(f.name), els = body.querySelectorAll('[data-field="' + f.name + '"]');
       for (var i = 0; i < els.length; i++) {
@@ -503,6 +554,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       }
     });
     show('fm-wiz', false); show('fm-doc', true);
+    showPdf(body.querySelector('.w-pdf'), key, body.querySelector('.w-paper'));
     window.scrollTo(0, 0); $('fm-doc-title').focus();
   }
 

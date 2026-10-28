@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
- giveConsent, getCopies, getCopyPdf, copiesEmail, ESIGN_CONSENT_VERSION } from "./group-forms";
+ giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, ESIGN_CONSENT_VERSION } from "./group-forms";
 import { pagePhotos } from "./group-page-photos";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
@@ -117,6 +117,23 @@ const GOOD_15 = {
   passport_number: "A12345678", passport_country: "United States", passport_expiry: "2031-02-03", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
   health_note: "ignored",
 };
+
+// ── Mark's own PDF, filled in (Mark 2026-10-27) ───────────────────────────────
+
+test("a document is shown as Mark's own PDF filled in with what was typed, for this link's packet only, and nothing is saved", async () => {
+  const t = setup();
+  const token = t.link("t2");
+  const before = JSON.stringify(t.state);
+  const r = await previewDocument(t.deps, token, { doc_key: "05-liability-waiver", answers: { ...GOOD_15, health_ack: true, extra: { no: 1 }, "../x": "y" } });
+  assert.equal(r.status, 200);
+  assert.ok("bytes" in r && Buffer.from(r.bytes.slice(0, 5)).toString() === "%PDF-");
+  const own = await previewDocument(t.deps, token, { doc_key: "15-emergency-contact-form", answers: GOOD_15 });
+  assert.equal(own.status, 200, "the passport number in the answers is shown only as its last four");
+  assert.equal(JSON.stringify(t.state), before, "a preview saves nothing");
+  assert.equal((await previewDocument(t.deps, "nope", { doc_key: "05-liability-waiver" })).status, 404);
+  assert.equal((await previewDocument(t.deps, token, { doc_key: "09-group-travel-contract" })).status, 404, "not this link's document");
+  assert.equal((await previewDocument(t.deps, token, { doc_key: "../../etc/passwd" })).status, 404);
+});
 
 // ── links ─────────────────────────────────────────────────────────────────────
 

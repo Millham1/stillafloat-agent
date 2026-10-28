@@ -1707,7 +1707,7 @@ export default [
     id: "ops.paperwork-roundtrip",
     basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: a traveler signs with a typed name and an explicit agreement on their own link; the signature pins the text they saw (changed text is refused); one signature per document; a signed PDF copy is kept in the private bucket; the business is named 'Still Afloat LLC dba Still Afloat Cruising'; no fees unless Mark enters one; the passport never comes back out; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "A throwaway traveler gets a link, sees their documents under the business's legal name, signs one document with a typed name (a wrong hash, no agreement and a second signing are refused), Mark sees the signature and opens its PDF, and removing it asks for the document again",
-    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent"],
+    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent", "POST /api/forms/:token/preview"],
     modes: ["dev"],
     devOnlyBecause: "it creates a fixture traveler, signs one document and stores its PDF, then deletes all three (dev database and bucket only; removed in a finally block)",
     run: async (t) => {
@@ -1775,6 +1775,13 @@ export default [
         t.equal(p.esign?.text?.points?.length, 5, "the things the signer agrees to before signing electronically");
         t.ok(/paper copy/i.test((p.esign?.text?.points || []).join(" ")), "the consent offers a paper copy");
         for (const secret of ["esign_consent_ip", "esign_consent_ua", "copies_token_hash"]) t.ok(!raw.includes(secret), `the paperwork packet carries ${secret}`);
+
+        // Mark 2026-10-27: each document is shown as Mark's own PDF, filled in with what was typed so far; nothing is kept
+        const shown = await t.send("POST", `/api/forms/${token}/preview`, { body: { doc_key: "15-emergency-contact-form", answers: { legal_name: "E2E Fixture" } } });
+        t.status(shown, 200);
+        t.matches(shown.headers.get("content-type") || "", /application\/pdf/, "the filled-in document's type");
+        t.matches(shown.headers.get("cache-control") || "", /no-store/, "Cache-Control of the filled-in document");
+        refused(t, await t.send("POST", `/api/forms/${token}/preview`, { body: { doc_key: "09-group-travel-contract" } }), 404, "showing a document outside this link's packet", /not part of this paperwork/i);
 
         // refusals on the real link: nothing is stored by any of them
         const doc = p.docs.find((d) => d.key === "16-passport-document-checklist");
