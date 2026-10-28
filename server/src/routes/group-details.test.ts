@@ -416,6 +416,7 @@ test("Road A's email goes only to an address this box may email; a phone-only re
   Object.assign(replyRow(), { choice: null, choice_at: null, email: "fail@example.com", phone: null, ack_email_status: null, ack_email_at: null });
   assert.equal((await choose("evening")).status, 200, "a mail sender that is down does not cost the guest their answer");
   await wait(() => replyRow()["ack_email_status"] === "failed");
+  await wait(() => writes("group_messages").some((w) => w.body.status === "failed"));   // the email log is written just after the status
   assert.equal(replyRow()["ack_email_status"], "failed");
   assert.equal(replyRow()["ack_email_at"], null);
 
@@ -426,6 +427,7 @@ test("Road A's email goes only to an address this box may email; a phone-only re
   await wait(() => mails.length === 1);
   assert.equal(mails[0]!["subject"], "Buena decisión… ¡la llamada va en camino! Friends and Family 2027");
   assert.match(String(mails[0]!["text"]), /Mark le llamará en un día desde el 919-346-6127… por la mañana, como usted dijo\./);
+  await wait(() => writes("group_messages").some((w) => w.body.status === "sent"));   // nothing of this test is left to land in the next
 });
 
 test("Road A rings from the number in the group's own line beside the button", async () => {
@@ -636,6 +638,7 @@ test("Road B's email goes only to an address this box may email; a phone-only re
   process.env["GROUP_FORMS_MAIL_ALLOW"] = "tester@example.org";
   assert.equal((await hold()).status, 200);
   await wait(() => replyRow()["ack_email_status"] === "held");
+  await wait(() => writes("group_messages").length > 0);   // the email log is written just after the reply's status
   assert.equal(mails.length, 0);
   assert.equal(writes("group_messages")[0]!.body.status, "skipped");
   delete process.env["GROUP_FORMS_MAIL_ALLOW"];
@@ -647,12 +650,14 @@ test("Road B's email goes only to an address this box may email; a phone-only re
   Object.assign(replyRow(), { hold_requested_at: null, email: "fail@example.com", phone: null, ack_email_status: null });
   assert.equal((await hold()).status, 200);
   await wait(() => replyRow()["ack_email_status"] === "failed");
+  await wait(() => writes("group_messages").some((w) => w.body.status === "failed"));   // the email log is written just after the status
   mailOk = true; mails.length = 0;
   Object.assign(replyRow(), { hold_requested_at: null, email: "ana@example.com", lang: "es", first_name: "Ana", ack_email_status: null, pick: { ...PICK, where: "en el centro del barco, en una cubierta baja" } });
   assert.equal((await hold()).status, 200);
   await wait(() => mails.length === 1);
   assert.equal(mails[0]!["subject"], "Su cabina está apartada… ¡bien hecho! Friends and Family 2027");
   assert.match(String(mails[0]!["text"]), new RegExp(`/es/details\\.html\\?t=${LINK}`));
+  await wait(() => writes("group_messages").some((w) => w.body.status === "sent"));   // nothing of this test is left to land in the next
 });
 
 test("Road B: a wrong link or the bot trap holds nothing", async () => {
