@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { PDFDocument } from "pdf-lib";
-import { buildCtx, markValue, paperText, type Answers } from "./group-documents";
+import { buildCtx, markSignature, markValue, paperText, type Answers } from "./group-documents";
 import { BUSINESS } from "./group-secure";
 import { FORM_PDF_KEYS, fillFormPdf, formPdfFiles, lineUp, printable, stillAfloatLogo, textWords } from "./form-pdf";
 
@@ -87,4 +87,20 @@ test("a marked blank holds the answer or the date; a marked box is ticked by its
   assert.equal(markValue("ch:trusted_programs:tsa", a, ""), true);
   assert.equal(markValue("ck:ok", a, ""), true);
   assert.equal(markValue("bl:Full name", a, ""), "");
+});
+
+test("the client's own signature block takes the typed name and the date; the co-traveler's, the parent's and the agent's do not", () => {
+  const waiver = paperText("05-liability-waiver", ctx());
+  assert.equal(waiver.match(/⟦sig⟧/g)?.length, 1);
+  assert.equal(waiver.match(/⟦sigdate⟧/g)?.length, 1);
+  assert.equal(waiver.match(/⟦signame⟧/g)?.length, 1);
+  assert.ok(waiver.indexOf("⟦sig⟧") < waiver.indexOf("Co-Traveler"), "the primary traveler's block is the one marked");
+  const terms = paperText("01-terms-and-conditions", ctx());
+  assert.equal(terms.match(/⟦sig⟧/g)?.length, 1);
+  assert.ok(terms.indexOf("⟦sig⟧") < terms.indexOf("Agent Signature"), "never the agent's line");
+  assert.equal(markSignature("**Travel Agent:**\n\nSignature: ____\n\nDate: ____"), "**Travel Agent:**\n\nSignature: ____\n\nDate: ____");
+  assert.equal(markValue("sig", {}, "Oct 27", "Jane Public"), "/s/ Jane Public");
+  assert.equal(markValue("sigdate", {}, "Oct 27", "Jane Public"), "Oct 27");
+  assert.equal(markValue("signame", {}, "Oct 27", "Jane Public"), "Jane Public");
+  assert.equal(markValue("sig", {}, "Oct 27"), "", "nothing on the line before the name is typed");
 });

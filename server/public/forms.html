@@ -27,8 +27,12 @@ h1,h2,h3,h4{font-family:'Bree Serif',Georgia,serif;font-weight:400;color:var(--n
 .note{background:#eaf3ff;border-left:5px solid var(--navy);border-radius:10px;padding:12px 16px;margin:0 0 18px}
 .err-box{background:#fff3f0;border:2px solid #8a1c0e;color:#5c0f06;border-radius:12px;padding:12px 16px;margin:14px 0}
 /* the steps (Mark 2026-10-26): one screen each, a Continue button, plain formal boxes */
+.w-group{font-size:22px;margin:26px 0 10px}
+.w-docpage{margin:0 0 26px}
+.w-spot{border:2px solid #f5c33b;background:#fffbea;padding:12px 14px;margin:0 0 18px}
+.w-tag{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:20;font:700 18px/1 'Baloo 2',Arial,sans-serif;color:#07183f;background:#f5c33b;border:2px solid #07183f;border-radius:999px;padding:12px 18px;box-shadow:0 4px 14px rgba(7,24,63,.35);cursor:pointer}
+.w-tag[hidden]{display:none}
 .w-pdf canvas{display:block;width:100%;height:auto;margin:0 0 14px;background:#fff;box-shadow:0 3px 14px rgba(7,24,63,.18)}
-.w-for{margin:0 0 10px;padding:10px 14px;background:#e8eff9;border-left:5px solid var(--navy);font-size:18px}
 .w-tick{color:#1d6b35;font-weight:700}
 .w-progress{margin:0 0 4px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#4a5670}
 .w-step h2{margin:0 0 14px}
@@ -144,7 +148,7 @@ footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;col
       <div id="fm-steps"></div>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" id="fm-website" name="website" tabindex="-1" autocomplete="off"></label></div>
       <div id="fm-err" class="err-box" role="alert" hidden></div>
-      <div class="w-nav"><button type="button" class="btn-ghost" id="fm-prev">&larr; Back</button><button type="button" class="btn" id="fm-next">Continue</button></div>
+      <div class="w-nav"><button type="button" class="btn-ghost" id="fm-prev">&larr; Back</button><button type="button" class="btn" id="fm-next">Continue</button></div><button type="button" class="w-tag" id="fm-tag" hidden>Next &darr;</button>
     </section>
     <section id="fm-doc" hidden aria-labelledby="fm-doc-title">
       <p><button type="button" class="linkbtn" id="fm-back">&larr; Back to your paperwork</button></p>
@@ -159,7 +163,7 @@ footer{max-width:920px;margin:0 auto;text-align:center;padding:6px 20px 40px;col
 
 <script src="/js/keep-typing.js?v=20261026"></script>
 <script src="/js/trip-photos.js?v=20261026"></script>
-<script src="/js/forms.js?v=20261028"></script>
+<script src="/js/forms.js?v=20261028b"></script>
 
 </body>
 </html>

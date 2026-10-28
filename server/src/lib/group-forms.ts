@@ -539,7 +539,7 @@ function previewInput(raw: unknown): Answers {
 /** POST /api/forms/:token/preview — one document of this link's packet on Mark's own PDF, filled in with what the client has
  *  typed so far. The answers to the documents before it are read as they will be on the file once those are signed (the
  *  traveler form's address and birth date fill the waiver's), so the PDF shows what will be signed. Nothing is saved. */
-export async function previewDocument(deps: FormsDeps, token: unknown, body: { doc_key?: unknown; answers?: unknown }): Promise<{ status: 200; bytes: Uint8Array; key: string } | Reply> {
+export async function previewDocument(deps: FormsDeps, token: unknown, body: { doc_key?: unknown; answers?: unknown; signer_name?: unknown }): Promise<{ status: 200; bytes: Uint8Array; key: string } | Reply> {
   const loaded = await loadByToken(deps, token);
   if (!loaded) return NOT_FOUND;
   const key = typeof body.doc_key === "string" ? body.doc_key : "";
@@ -564,7 +564,10 @@ export async function previewDocument(deps: FormsDeps, token: unknown, body: { d
   const applied = applyAnswers(doc, own, ctx);
   const answers: Answers = applied.ok ? applied.answers : { ...own, ...(typeof own["passport_number"] === "string" ? { passport_number: "" } : {}) };
   const today = fmtLong(now.toISOString());
-  const bytes = await fillFormPdf({ pdf: files.pdf, chars: files.chars, text: paperText(key, ctx), value: (m) => markValue(m, answers, today), logo: stillAfloatLogo() });
+  // the name typed to sign goes on the client's signature lines (only a first and last name, as the signing itself asks)
+  const name = typeof body.signer_name === "string" ? body.signer_name.replace(/\s+/g, " ").trim().slice(0, 120) : "";
+  const signer = SIGNER_NAME.test(name) && name.split(" ").length >= 2 ? name : "";
+  const bytes = await fillFormPdf({ pdf: files.pdf, chars: files.chars, text: paperText(key, ctx), value: (m) => markValue(m, answers, today, signer), logo: stillAfloatLogo() });
   return { status: 200, bytes, key };
 }
 

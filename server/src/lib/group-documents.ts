@@ -511,14 +511,34 @@ export function renderDocument(key: string, ctx: DocCtx): RenderedDoc {
 /** The wording laid over Mark's own PDF of the document (lib/form-pdf.ts): the same document keeping the PDF's own title and
  *  signature lines, each blank and box marked ("⟦in:dob⟧", "⟦ch:gender:male⟧", "⟦today⟧") so it lines up with the PDF's own. */
 export function paperText(key: string, ctx: DocCtx): string {
-  return blocksToText(blocksFor(key, ctx, { paper: true }).blocks, { mark: true });
+  return markSignature(blocksToText(blocksFor(key, ctx, { paper: true }).blocks, { mark: true }));
+}
+
+/** The client's own signature block on the PDF (the first "Primary Traveler / Primary Guest / Client / Traveler" block): its
+ *  Signature, Date and Print Name lines are marked so the typed name and the date go on them. The co-traveler's, the parent's and
+ *  the agent's blocks are left as they are. */
+export function markSignature(text: string): string {
+  let mine = false, done = false;
+  return text.split("\n\n").map((p) => {
+    if (done) return p;
+    if (/^\**(Primary Traveler|Primary Guest)\b/i.test(p) || /\b(Client|Traveler) Signature/i.test(p)) mine = true;
+    else if (/^\**(Co-Traveler|Parent|Travel Agent|Agent)\b/i.test(p) || /Agent Signature/i.test(p)) { if (mine) done = true; mine = false; }
+    if (!mine) return p;
+    const out = p.replace(/(Signature:\**\s*)_{3,}/i, "$1 ⟦sig⟧ ").replace(/(Date:\**\s*)_{3,}/, "$1 ⟦sigdate⟧ ").replace(/(Print Name:\**\s*)_{3,}/, "$1 ⟦signame⟧ ");
+    if (/Print Name:/.test(p)) { mine = false; done = true; }
+    return out;
+  }).join("\n\n");
 }
 
 /** What a marked blank or box holds (lib/form-pdf.ts): the answer, the date, or whether the box is ticked. */
-export function markValue(mark: string, answers: Answers, today: string): string | boolean {
+export function markValue(mark: string, answers: Answers, today: string, signer = ""): string | boolean {
   const [kind, name, value] = mark.split(":");
   const v = name ? answers[name] : undefined;
   switch (kind) {
+    // the client's signature block, once their name is typed
+    case "sig": return signer ? `/s/ ${signer}` : "";
+    case "sigdate": return signer ? today : "";
+    case "signame": return signer;
     case "in": case "ta": return typeof v === "string" && v.trim() ? cleanValue(v) : "";
     case "today": return today;
     case "ck": return v === true;
