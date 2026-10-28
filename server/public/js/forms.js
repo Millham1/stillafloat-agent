@@ -393,6 +393,34 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   }
   /** the filled-in PDF of one document into host; false when it cannot be shown (the page's own copy is shown instead) */
   function signer() { var el = $('fm-name'), n = el ? el.value.replace(/\s+/g, ' ').trim() : ''; return n.split(' ').length >= 2 ? n : ''; }
+  // Mark 2026-10-28: "there is a lot of blank space here, i did not initially know i needed to continue to scroll down". On screen,
+  // a blank stretch taller than a couple of lines (where a section Mark cut was covered) is closed up; the printed PDF is unchanged.
+  function closeGaps(c, ratio) {
+    var w = c.width, h = c.height, ctx = c.getContext('2d'), data;
+    try { data = ctx.getImageData(0, 0, w, h).data; } catch (e) { return c; }
+    var blank = new Array(h), step = Math.max(1, Math.floor(w / 300));
+    for (var y = 0; y < h; y++) {
+      var b = true;
+      for (var x = 0; x < w; x += step) { var i = (y * w + x) * 4; if (data[i] < 235 || data[i + 1] < 235 || data[i + 2] < 235) { b = false; break; } }
+      blank[y] = b;
+    }
+    var keep = Math.round(28 * ratio), most = Math.round(56 * ratio), parts = [], y0 = 0, inked = 0;
+    for (var y2 = 0; y2 <= h; y2++) {
+      if (y2 < h && !blank[y2]) { inked++; continue; }
+      var run = 0; while (y2 + run < h && blank[y2 + run]) run++;
+      if (run > most || y2 + run === h) { parts.push([y0, y2 + Math.min(run, keep)]); y0 = y2 + run; }
+      y2 += Math.max(0, run - 1);
+    }
+    if (inked < 4) return null;                                   // a page with nothing left on it
+    var total = parts.reduce(function (n, p) { return n + (p[1] - p[0]); }, 0);
+    if (total >= h - 2) return c;
+    var out = document.createElement('canvas');
+    out.width = w; out.height = total;
+    var o = out.getContext('2d'), at = 0;
+    parts.forEach(function (p) { o.drawImage(c, 0, p[0], w, p[1] - p[0], 0, at, w, p[1] - p[0]); at += p[1] - p[0]; });
+    out.setAttribute('role', 'img'); out.setAttribute('aria-label', c.getAttribute('aria-label') || '');
+    return out;
+  }
   function showPdf(host, key, paper) {
     if (!host) return;
     var ask = JSON.stringify({ doc_key: key, answers: allAnswers(), signer_name: signer(), website: ($('fm-website') || {}).value || '' });
@@ -421,7 +449,10 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
               c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
               c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Page ' + n + ' of ' + pdf.numPages);
               next.appendChild(c);
-              return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+              return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function () {
+                var t = closeGaps(c, ratio);
+                if (t === null) next.removeChild(c); else if (t !== c) next.replaceChild(t, c);
+              });
             });
           })(n);
           return chain.then(function () {
