@@ -13,7 +13,7 @@ import { BUSINESS } from "../lib/group-secure";
 import { renderSignedPdf } from "../lib/group-signature-pdf";
 import { sealerFromEnv, type Sealer } from "../lib/group-pdf-seal";
 import { DOC_SPECS } from "../lib/group-documents";
-import { SIGNER_COLS, TRAVELER_COLS, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
+import { SIGNER_COLS, TRAVELER_COLS, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
 
 // Client paperwork (migrations 0044 and 0052).
 //
@@ -254,7 +254,7 @@ router.post("/forms/:token/sign", async (req: Request, res: Response) => {
   }
 });
 
-// Mark 2026-10-27: each document is shown as Mark's own PDF, filled in with what the client has typed. Nothing is saved.
+// Mark 2026-10-28: each document is shown as its clean printed form, filled in with what the client has typed. Nothing is saved.
 router.post("/forms/:token/preview", async (req: Request, res: Response) => {
   try {
     privateHeaders(res);
@@ -273,6 +273,25 @@ router.post("/forms/:token/preview", async (req: Request, res: Response) => {
     return res.status(out.status).json(out.json);
   } catch (err) {
     return fail(req, res, err, "paperwork preview failed");
+  }
+});
+
+// One document as its clean printed form (to read, print or save): as signed, or with what the file holds.
+router.get("/forms/:token/document/:key", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (previewLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const out = await documentPdf(deps(), req.params["token"], req.params["key"]);
+    if ("bytes" in out) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${out.key.replace(/[^\w.-]/g, "_")}.pdf"`);
+      return res.status(200).send(Buffer.from(out.bytes));
+    }
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork document failed");
   }
 });
 

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
- giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, ESIGN_CONSENT_VERSION } from "./group-forms";
+ giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, ESIGN_CONSENT_VERSION } from "./group-forms";
 import { pagePhotos } from "./group-page-photos";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
@@ -133,6 +133,19 @@ test("a document is shown as Mark's own PDF filled in with what was typed, for t
   assert.equal((await previewDocument(t.deps, "nope", { doc_key: "05-liability-waiver" })).status, 404);
   assert.equal((await previewDocument(t.deps, token, { doc_key: "09-group-travel-contract" })).status, 404, "not this link's document");
   assert.equal((await previewDocument(t.deps, token, { doc_key: "../../etc/passwd" })).status, 404);
+});
+
+test("a document of the packet opens as its printed form, for this link only: not yet signed with what the file holds, signed as it was signed", async () => {
+  const t = setup();
+  const token = t.link("t2");
+  const blank = await documentPdf(t.deps, token, "05-liability-waiver.pdf");
+  assert.equal(blank.status, 200);
+  assert.ok("bytes" in blank && Buffer.from(blank.bytes.slice(0, 5)).toString() === "%PDF-");
+  assert.equal((await signKey(t, token, "15-emergency-contact-form", { answers: GOOD_15 })).status, 200);
+  const signed = await documentPdf(t.deps, token, "15-emergency-contact-form");
+  assert.equal(signed.status, 200);
+  assert.equal((await documentPdf(t.deps, "nope", "05-liability-waiver")).status, 404);
+  assert.equal((await documentPdf(t.deps, token, "09-group-travel-contract")).status, 404, "not this link's document");
 });
 
 // ── links ─────────────────────────────────────────────────────────────────────

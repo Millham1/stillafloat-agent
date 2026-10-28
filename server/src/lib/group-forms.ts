@@ -21,10 +21,10 @@ import {
   BUSINESS, encryptPii, hashForAudit, hashLinkToken, looksLikeLinkToken, newLinkToken, piiConfigured, safeEqualHex,
 } from "./group-secure";
 import {
-  DOC_SPECS, applyAnswers, buildCtx, fillBlocks, markValue, packetFor, paperText, publicField, renderDocument,
+  DOC_SPECS, applyAnswers, blocksFor, buildCtx, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
   type Answers, type DocCtx, type RenderedDoc, type Row,
 } from "./group-documents";
-import { fillFormPdf, formPdfFiles, stillAfloatLogo } from "./form-pdf";
+import { renderFormPdf } from "./group-form-pdf";
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
 import { fmtLong } from "./group-document-kit";
@@ -536,16 +536,20 @@ function previewInput(raw: unknown): Answers {
   return out;
 }
 
-/** POST /api/forms/:token/preview — one document of this link's packet on Mark's own PDF, filled in with what the client has
- *  typed so far. The answers to the documents before it are read as they will be on the file once those are signed (the
- *  traveler form's address and birth date fill the waiver's), so the PDF shows what will be signed. Nothing is saved. */
+/** The clean printed form of one document (lib/group-form-pdf.ts) with these answers, this date and, once typed, this name. */
+async function formPdf(deps: FormsDeps, key: string, ctx: DocCtx, answers: Answers, today: string, signer: string): Promise<Uint8Array> {
+  const { spec, blocks } = blocksFor(key, ctx, { paper: true });
+  return renderFormPdf({ title: spec.title, businessName: BUSINESS.legalName, blocks, answers, today, ...(signer ? { signer } : {}), logo: deps.logo });
+}
+
+/** POST /api/forms/:token/preview — one document of this link's packet as its clean printed form, filled in with what the client
+ *  has typed so far. The answers to the documents before it are read as they will be on the file once those are signed (the
+ *  traveler form's address and birth date fill the waiver's), so the form shows what will be signed. Nothing is saved. */
 export async function previewDocument(deps: FormsDeps, token: unknown, body: { doc_key?: unknown; answers?: unknown; signer_name?: unknown }): Promise<{ status: 200; bytes: Uint8Array; key: string } | Reply> {
   const loaded = await loadByToken(deps, token);
   if (!loaded) return NOT_FOUND;
   const key = typeof body.doc_key === "string" ? body.doc_key : "";
   if (!loaded.packet.includes(key)) return reply(404, { success: false, error: "That document is not part of this paperwork." });
-  const files = formPdfFiles(key);
-  if (!files) return reply(404, { success: false, code: "no-pdf", error: "There is no printed form for this document." });
   const typed = previewInput(body.answers);
   const now = deps.now();
 
@@ -563,12 +567,30 @@ export async function previewDocument(deps: FormsDeps, token: unknown, body: { d
   // shown as it will be kept: a passport number never in full
   const applied = applyAnswers(doc, own, ctx);
   const answers: Answers = applied.ok ? applied.answers : { ...own, ...(typeof own["passport_number"] === "string" ? { passport_number: "" } : {}) };
-  const today = fmtLong(now.toISOString());
-  // the name typed to sign goes on the client's signature lines (only a first and last name, as the signing itself asks)
+  // the name typed to sign goes on the client's signature line (only a first and last name, as the signing itself asks)
   const name = typeof body.signer_name === "string" ? body.signer_name.replace(/\s+/g, " ").trim().slice(0, 120) : "";
   const signer = SIGNER_NAME.test(name) && name.split(" ").length >= 2 ? name : "";
-  const bytes = await fillFormPdf({ pdf: files.pdf, chars: files.chars, text: paperText(key, ctx), value: (m) => markValue(m, answers, today, signer), logo: stillAfloatLogo() });
-  return { status: 200, bytes, key };
+  return { status: 200, bytes: await formPdf(deps, key, ctx, answers, fmtLong(now.toISOString()), signer), key };
+}
+
+/** GET /api/forms/:token/document/:key — one document of this link's packet as its clean printed form: signed, as it was signed
+ *  (the answers kept with the signature, the name and the day); not yet signed, with what the file already holds. */
+export async function documentPdf(deps: FormsDeps, token: unknown, docKey: unknown): Promise<{ status: 200; bytes: Uint8Array; key: string } | Reply> {
+  const loaded = await loadByToken(deps, token);
+  if (!loaded) return NOT_FOUND;
+  const key = typeof docKey === "string" ? docKey.replace(/\.pdf$/i, "") : "";
+  if (!loaded.packet.includes(key)) return reply(404, { success: false, error: "That document is not part of this paperwork." });
+  const sig = loaded.signed.get(key);
+  if (sig) {
+    const answers = (sig["answers"] && typeof sig["answers"] === "object" ? sig["answers"] : {}) as Answers;
+    return { status: 200, bytes: await formPdf(deps, key, loaded.ctx, answers, fmtLong(String(sig["signed_at"] ?? "")), String(sig["signer_name"] ?? "")), key };
+  }
+  const answers: Answers = {};
+  for (const f of renderDocument(key, loaded.ctx).fields) {
+    const v = prefillValue(f, loaded.ctx);
+    if (v !== undefined) answers[f.name] = v;
+  }
+  return { status: 200, bytes: await formPdf(deps, key, loaded.ctx, answers, fmtLong(deps.now().toISOString()), ""), key };
 }
 
 function mergeDeep(a: Row, b: Row): Row {

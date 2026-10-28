@@ -174,11 +174,9 @@ function inlineHtml(text: string, env: Env): string {
   return out.replace(/\n/g, "<br>");
 }
 
-function tokensToText(text: string, mode: { answers?: Answers; today?: string; mark?: boolean }): string {
+function tokensToText(text: string, mode: { answers?: Answers; today?: string }): string {
   const a = mode.answers;
   return text.replace(TOKEN, (_m, kind: string, name?: string, value?: string) => {
-    // marked: each blank and box stays a word of its own ("⟦in:dob⟧"), for lining the document up with Mark's PDF
-    if (mode.mark) return kind === "logo" ? "" : ` ⟦${[kind, name, value].filter(Boolean).join(":")}⟧ `;
     switch (kind) {
       case "in": case "ta": {
         const v = a?.[name!];
@@ -436,7 +434,7 @@ export function blocksFor(key: string, ctx: DocCtx, opts: { paper?: boolean } = 
   md = applyRules(md, spec, ctx);
   md = replacePlaceholders(md, ctx);
   let blocks = parseBlocks(md);
-  // on Mark's own PDF (paper) the title and the signature lines are the PDF's own, so they stay
+  // on the printed form (paper) the title and the template's signature lines stay
   if (!opts.paper) {
     blocks = dropTitle(blocks);
     blocks = dropSignature(key, blocks, spec.sigStart);
@@ -449,20 +447,19 @@ export function blocksFor(key: string, ctx: DocCtx, opts: { paper?: boolean } = 
   return { spec, blocks };
 }
 
-function blockText(b: Block, mode: { answers?: Answers; today?: string; mark?: boolean }): string {
+function blockText(b: Block, mode: { answers?: Answers; today?: string }): string {
   const inline = (s: string) => tokensToText(stripInline(s), mode);
   switch (b.t) {
     case "h": return inline(b.text);
     case "hr": return "-----";
     case "p": return inline(b.text);
     case "ul": return b.items.map((x) => `- ${inline(x)}`).join("\n");
-    // on Mark's PDF a list keeps its own letters or numbers ("a)"), so the marked text numbers nothing
-    case "ol": return b.items.map((x, i) => `${mode.mark ? "- " : `${i + 1}. `}${inline(x)}`).join("\n");
+    case "ol": return b.items.map((x, i) => `${i + 1}. ${inline(x)}`).join("\n");
     case "table": return [b.header, ...b.rows].map((r) => r.map(inline).join(" | ")).join("\n");
   }
 }
 
-export function blocksToText(blocks: Block[], mode: { answers?: Answers; today?: string; mark?: boolean } = {}): string {
+export function blocksToText(blocks: Block[], mode: { answers?: Answers; today?: string } = {}): string {
   return blocks.map((b) => blockText(b, mode)).filter((t) => t.trim() !== "").join("\n\n");
 }
 
@@ -506,45 +503,6 @@ export function renderDocument(key: string, ctx: DocCtx): RenderedDoc {
   const text = blocksToText(blocks);
   const unfilled = [...new Set([...JSON.stringify(blocks).matchAll(/\{\{bl:([^}]+)\}\}/g)].map((m) => m[1]!))];
   return { key, title: spec.title, version: `${key}@${TEMPLATE_VERSION_DATE}`, html, text, sha256: sha256Hex(text), fields, unfilled, blocks };
-}
-
-/** The wording laid over Mark's own PDF of the document (lib/form-pdf.ts): the same document keeping the PDF's own title and
- *  signature lines, each blank and box marked ("⟦in:dob⟧", "⟦ch:gender:male⟧", "⟦today⟧") so it lines up with the PDF's own. */
-export function paperText(key: string, ctx: DocCtx): string {
-  return markSignature(blocksToText(blocksFor(key, ctx, { paper: true }).blocks, { mark: true }));
-}
-
-/** The client's own signature block on the PDF (the first "Primary Traveler / Primary Guest / Client / Traveler" block): its
- *  Signature, Date and Print Name lines are marked so the typed name and the date go on them. The co-traveler's, the parent's and
- *  the agent's blocks are left as they are. */
-export function markSignature(text: string): string {
-  let mine = false, done = false;
-  return text.split("\n\n").map((p) => {
-    if (done) return p;
-    if (/^\**(Primary Traveler|Primary Guest)\b/i.test(p) || /\b(Client|Traveler) Signature/i.test(p)) mine = true;
-    else if (/^\**(Co-Traveler|Parent|Travel Agent|Agent)\b/i.test(p) || /Agent Signature/i.test(p)) { if (mine) done = true; mine = false; }
-    if (!mine) return p;
-    const out = p.replace(/(Signature:\**\s*)_{3,}/i, "$1 ⟦sig⟧ ").replace(/(Date:\**\s*)_{3,}/, "$1 ⟦sigdate⟧ ").replace(/(Print Name:\**\s*)_{3,}/, "$1 ⟦signame⟧ ");
-    if (/Print Name:/.test(p)) { mine = false; done = true; }
-    return out;
-  }).join("\n\n");
-}
-
-/** What a marked blank or box holds (lib/form-pdf.ts): the answer, the date, or whether the box is ticked. */
-export function markValue(mark: string, answers: Answers, today: string, signer = ""): string | boolean {
-  const [kind, name, value] = mark.split(":");
-  const v = name ? answers[name] : undefined;
-  switch (kind) {
-    // the client's signature block, once their name is typed
-    case "sig": return signer ? `/s/ ${signer}` : "";
-    case "sigdate": return signer ? today : "";
-    case "signame": return signer;
-    case "in": case "ta": return typeof v === "string" && v.trim() ? cleanValue(v) : "";
-    case "today": return today;
-    case "ck": return v === true;
-    case "ch": return Array.isArray(v) ? v.includes(value!) : v === value;
-    default: return "";
-  }
 }
 
 /** The document with what the signer entered merged in (for the signed PDF and the stored copy). */
