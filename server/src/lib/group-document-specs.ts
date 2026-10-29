@@ -5,9 +5,12 @@
 // document order, and group-documents.test.ts renders every document so a template that drifts from
 // its spec fails the build instead of printing a wrong page.
 //
-// WHO SIGNS WHAT (Mark 2026-10-03, from the templates):
-//   every traveler        15 traveler information, 01 terms, 05 waiver, 07 insurance choice, 16 passport checklist
-//   the cabin's lead      + 12 cruise booking agreement (lists the cabin's other travelers; passport LAST 4 only)
+// WHO SIGNS WHAT (Mark 2026-10-29, "simplify the documents"; Cornerstone's templates are recommended, not required):
+//   every traveler        20 About you (the data), 21 Your booking (cabin + price from the file, the terms, risks, documents
+//                         and insurance choice condensed from 01/05/07/12/16, one signature)
+//   the cabin's lead      + 22 Credit card authorization (last four + expiry only, modelled on Cornerstone's e-signed form)
+//   (before 10/29, from the templates: 15, 01, 05, 07, 16 for every traveler; + 12 for the cabin's lead. The specs stay so
+//    signed copies from before still render, and so Mark can switch back.)
 //   the group organizer   09 group travel contract (the agent's countersignature is a later dashboard step)
 //   only with fees on file 02 travel planning agreement, 03 service fee agreement
 //   in no packet          04 cancellation policy, 06 card authorization (clients pay the line directly),
@@ -578,6 +581,132 @@ const FEE_03: DocSpec = {
   ],
 };
 
+// ── 20 — About you (Mark 2026-10-29: "simplify the documents"; the data document, no legal wording) ──
+// One screen per question on the page (like the form tools Mark compared), the whole record on one printed sheet.
+
+const CRUISE_LINES: DocSpec["rules"] = [
+  { after: "**Group:**", fill: (c) => cleanValue(displayName(c.group.name)), label: "Group name" },
+  { after: "**Ship:**", fill: (c) => [displayName(c.group.cruise_line), displayName(c.group.ship_name)].map(cleanValue).filter(Boolean).join(" · "), label: "Ship" },
+  { after: "**Sailing:**", fill: (c) => fmtLong(c.group.sail_date), label: "Sail date" },
+  { after: "**Returning:**", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
+];
+
+const FIELDS_20: FieldSpec[] = [
+  text("legal_name", "Full legal name, exactly as on your passport or ID", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined }),
+  { name: "dob", label: "Date of birth", kind: "date", required: true, date: "dob", col: "dob" },
+  { name: "gender", label: "Gender", kind: "choice", required: true, options: GENDER, col: "gender" },
+  { name: "us_citizen", label: "Are you a U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen" },
+  text("citizenship", "Your country of citizenship", { required: (a) => a["us_citizen"] === "no", col: "citizenship" }),
+  text("address", "Home address", { required: true, form: "address" }),
+  text("city_state_zip", "City, state, ZIP", { required: true, form: "city_state_zip" }),
+  { name: "phone", label: "Mobile phone", kind: "tel", required: true, col: "phone" },
+  { name: "email", label: "Email address", kind: "email", required: true, col: "email" },
+  { name: "passport_number", label: "Passport number", kind: "passport" },
+  text("passport_country", "Passport country of issue", { required: (a) => typeof a["passport_number"] === "string", col: "passport_country" }),
+  { name: "passport_issue", label: "Passport issue date", kind: "date", date: "past", form: "passport.issue_date" },
+  { name: "passport_expiry", label: "Passport expiration date", kind: "date", date: "future", required: (a) => typeof a["passport_number"] === "string", col: "passport_expiry" },
+  ...[1, 2].flatMap((i) => [
+    text(`loyalty_${i}_program`, `Loyalty program ${i}`, { form: `loyalty.${i}.program` }),
+    text(`loyalty_${i}_number`, `Membership number ${i}`, { form: `loyalty.${i}.number` }),
+  ]),
+  text("ec1_name", "Emergency contact: full name", { required: true, form: "emergency.primary.name", col: "emergency_name" }),
+  text("ec1_relationship", "Relationship to you", { required: true, form: "emergency.primary.relationship" }),
+  { name: "ec1_cell_phone", label: "Emergency contact: mobile phone", kind: "tel", required: true, form: "emergency.primary.cell_phone" },
+  { name: "notes", label: "Anything we should know: dietary needs, mobility, medical, a birthday or anniversary on board", kind: "textarea", form: "notes" },
+];
+
+const ABOUT_20: DocSpec = {
+  key: "20-about-you",
+  title: "About you",
+  signerRole: "traveler",
+  sigStart: /^\*\*Traveler Signature:\*\*/,
+  rules: [...CRUISE_LINES, { after: "**Date completed:**", today: true }],
+  fields: FIELDS_20,
+  derive: (a, ctx) => {
+    const patch = DERIVE_15(a, ctx);
+    if (typeof a["notes"] === "string" && a["notes"].trim()) patch["special_needs"] = a["notes"].trim().slice(0, 1000);
+    return patch;
+  },
+};
+
+// ── 21 — Your booking (Mark 2026-10-29): the cabin and price from the file, then the terms, the risks, the documents and the
+// insurance choice, condensed from Cornerstone's 01, 05, 07, 12 and 16, under ONE signature. Every traveler signs it.
+
+const BOOKING_21: DocSpec = {
+  key: "21-your-booking",
+  title: "Your booking",
+  signerRole: "traveler",
+  sigStart: /^\*\*Traveler Signature:\*\*/,
+  cancellationHeading: /^THE CRUISE LINE'S CANCELLATION SCHEDULE$/,
+  rules: [
+    { after: "**Traveler:**", fill: legalName, label: "Traveler name" },
+    { after: "**Address:**", fill: (c) => [formText(c, "address"), formText(c, "city_state_zip")].filter(Boolean).join(", "), label: "Address" },
+    ...CRUISE_LINES,
+    { after: "**From:**", fill: (c) => cleanValue(c.group.embark_port), label: "Departure port" },
+    { after: "**Ports:**", fill: (c) => destinationText(c.group), label: "Ports" },
+    { after: "**Cabin category:**", fill: (c) => [c.cabin?.category, c.cabin?.category_code ? `(${c.cabin.category_code})` : ""].map(cleanValue).filter(Boolean).join(" "), label: "Cabin category" },
+    { after: "**Cabin number:**", fill: (c) => cleanValue(c.cabin?.cabin_num) || "To be assigned", label: "Cabin number" },
+    { after: "as quoted (taxes included):** $", fill: (c) => (perPersonPrice(c) ? amountText(perPersonPrice(c)!) : ""), label: "Cruise fare per person" },
+    { after: "**Deposit per person:** $", fill: (c) => (depositPerPerson(c) ? amountText(depositPerPerson(c)!) : ""), label: "Deposit per person" },
+    { after: "**Deposit due:**", fill: (c) => fmtLong(c.group.deposit_due) || (c.group.terms?.deposit_timing === "at_booking" ? "When you book" : ""), label: "Deposit due" },
+    { after: "**Final payment due:**", fill: (c) => fmtLong(c.group.final_payment_due), label: "Final payment due" },
+    { after: "**Booking number:**", fill: (c) => bookingReference(c) || "Assigned when the line confirms", label: "Booking number" },
+    { after: "**Date:**", today: true },
+    { after: "valid at least six months past", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
+    { after: "CDC notices for", fill: (c) => destinationText(c.group), label: "Destination" },
+  ],
+  fields: [
+    {
+      name: "insurance_choice", label: "Travel insurance: your choice", kind: "choice", required: true, form: "insurance.choice",
+      options: [
+        opt("quote", "Yes, quote me insurance through Mark"),
+        opt("own", "I have my own policy"),
+        opt("decline", "I decline travel insurance. I understand I am accepting those costs myself, and that Still Afloat Cruising and Cornerstone Collective are not liable for losses insurance would have covered."),
+      ],
+    },
+    text("insurance_policy", "Your own policy: provider and policy number", { required: (a) => a["insurance_choice"] === "own", form: "insurance.policy" }),
+  ],
+};
+
+// ── 22 — Credit card authorization (Mark 2026-10-29: "a credit card authorization every time"), modelled on Cornerstone's own
+// e-signed form: the last four digits and the expiry only, never the number or the security code; the cabin's lead signs it.
+// TODO(card-auth): Cornerstone's form also takes the cardholder's driver's licence, encrypted, to verify identity. That needs
+// an encrypted column of its own (like the passport); not in this version.
+
+const CARD_FIELDS: FieldSpec[] = [
+  text("card_name", "Name, as it appears on the card", { required: true, form: "card.name", prefill: (c) => legalName(c) || undefined }),
+  text("card_address", "Billing address", { required: true, form: "card.address", prefill: (c) => formText(c, "address") || undefined }),
+  text("card_city_state_zip", "City, state, ZIP", { required: true, form: "card.city_state_zip", prefill: (c) => formText(c, "city_state_zip") || undefined }),
+  { name: "card_phone", label: "Phone", kind: "tel", required: true, form: "card.phone", prefill: (c) => cleanValue(c.traveler?.phone) || undefined },
+  { name: "card_type", label: "Card type", kind: "choice", required: true, options: [opt("visa", "Visa"), opt("mastercard", "Mastercard"), opt("amex", "American Express"), opt("discover", "Discover")], form: "card.type" },
+  text("card_last4", "Card ending in (last four digits only)", { required: true, maxLength: 4, form: "card.last4" }),
+  text("card_expiry", "Expires (MM/YY)", { required: true, maxLength: 5, form: "card.expiry" }),
+];
+
+const CARD_22: DocSpec = {
+  key: "22-card-authorization",
+  title: "Credit card authorization",
+  signerRole: "lead",
+  sigStart: /^\*\*Cardholder Signature:\*\*/,
+  rules: [
+    ...CRUISE_LINES,
+    { after: "**Cabin category:**", fill: (c) => [c.cabin?.category, c.cabin?.category_code ? `(${c.cabin.category_code})` : ""].map(cleanValue).filter(Boolean).join(" "), label: "Cabin category" },
+    { after: "**Booking number:**", fill: (c) => bookingReference(c) || "Assigned when the line confirms", label: "Booking number" },
+    { after: "**Total authorized:** $", fill: (c) => (cabinTotal(c) ? amountText(cabinTotal(c)!) : ""), label: "Total authorized" },
+    { after: "**Date:**", today: true },
+  ],
+  fields: CARD_FIELDS,
+  validate: (a) => {
+    const errors: Record<string, string> = {};
+    if (typeof a["card_last4"] === "string" && !/^\d{4}$/.test(a["card_last4"])) errors["card_last4"] = "Just the last four digits of the card.";
+    if (typeof a["card_expiry"] === "string") {
+      const m = /^(\d{2})\/(\d{2})$/.exec(a["card_expiry"]);
+      if (!m || Number(m[1]) < 1 || Number(m[1]) > 12) errors["card_expiry"] = "The expiry as MM/YY, for example 03/30.";
+    }
+    return errors;
+  },
+};
+
 export const DOC_SPECS: Record<string, DocSpec> = Object.fromEntries(
-  [FORM_15, TERMS_01, PLANNING_02, FEE_03, CANCELLATION_04, WAIVER_05, CARD_06, INSURANCE_07, CONTRACT_09, BOOKING_12, CHECKLIST_16].map((s) => [s.key, s]),
+  [ABOUT_20, BOOKING_21, CARD_22, FORM_15, TERMS_01, PLANNING_02, FEE_03, CANCELLATION_04, WAIVER_05, CARD_06, INSURANCE_07, CONTRACT_09, BOOKING_12, CHECKLIST_16].map((s) => [s.key, s]),
 );

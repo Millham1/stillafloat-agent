@@ -1,4 +1,5 @@
-// forms.js — the traveler's private paperwork page (server/public/forms.html): short screens with a Continue button (Mark 2026-10-26).
+// forms.js — the traveler's private paperwork page (server/public/forms.html): one question per screen, then each document one
+// page at a time in its true form, Confirm to move on (Mark 2026-10-26, 2026-10-29).
 // The link in the address is the only credential: it is read once, sent only to our own API
 // (/api/forms/<link>), and never logged, stored or echoed. All rules (what is shown, what is
 // accepted, what a signature pins) live on the server in lib/group-forms.ts.
@@ -138,17 +139,39 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // Mark 2026-10-25: the one-time consent to electronic records comes before the first signature (ESIGN consumer consent).
   function consented() { return !packet.esign || !!packet.esign.consent_given_at; }
 
-  // ── The steps (Mark 2026-10-26: "one page worth with a continue button … we should be able to get it down to 5 minutes") ──
-  // Each screen fits on one page. The questions of every document still to sign are asked once, by step; a question two documents
-  // share is asked once and goes to both. Any question not named here is asked on the last screen, under its own document.
-  var STEPS = [
-    { id: 'welcome', title: 'Welcome aboard' },
-    { id: 'about', title: 'About you', fields: ['legal_name', 'dob', 'gender', 'us_citizen', 'citizenship'] },
-    { id: 'home', title: 'Where you live', fields: ['address', 'city_state_zip', 'phone', 'email'] },
-    { id: 'travel', title: 'Travel documents', fields: ['passport_number', 'passport_country', 'passport_issue', 'passport_expiry', 'passport_place', 'trusted_programs', 'ktn', 'global_entry_number',
-      'loyalty_1_program', 'loyalty_1_number', 'loyalty_2_program', 'loyalty_2_number', 'loyalty_3_program', 'loyalty_3_number'] },
-    { id: 'contact', title: 'Emergency contact', fields: ['ec1_name', 'ec1_relationship', 'ec1_cell_phone', 'ec1_email', 'ec1_address', 'ec1_city_state_zip', 'notes'] },
-  ];
+  // ── The screens (Mark 2026-10-29: "build our versions" of the two simplified documents, one question per screen like the form
+  // tools he compared; then each document one page at a time, in its true form, Confirm to move on) ──
+  // A screen names the questions it asks; any required question of a document not named here is asked on a screen of its own.
+  var WELCOME = { id: 'welcome', title: 'Welcome aboard' };
+  var SCREENS = {
+    '20-about-you': [
+      { id: 'name', title: 'Your name', fields: ['legal_name'] },
+      { id: 'dob', title: 'Date of birth', fields: ['dob'] },
+      { id: 'gender', title: 'Gender', fields: ['gender'] },
+      { id: 'citizen', title: 'Citizenship', fields: ['us_citizen', 'citizenship'] },
+      { id: 'home', title: 'Where you live', fields: ['address', 'city_state_zip'] },
+      { id: 'phone', title: 'Mobile phone', fields: ['phone'] },
+      { id: 'email', title: 'Email', fields: ['email'] },
+      { id: 'passport', title: 'Passport', fields: ['passport_number', 'passport_country', 'passport_issue', 'passport_expiry'] },
+      { id: 'loyalty', title: 'Loyalty programs', fields: ['loyalty_1_program', 'loyalty_1_number', 'loyalty_2_program', 'loyalty_2_number'] },
+      { id: 'contact', title: 'Emergency contact', fields: ['ec1_name', 'ec1_relationship', 'ec1_cell_phone'] },
+      { id: 'notes', title: 'Anything we should know', fields: ['notes'] },
+    ],
+    '21-your-booking': [
+      { id: 'insurance', title: 'Travel insurance: your choice', fields: ['insurance_choice', 'insurance_policy'] },
+    ],
+    '22-card-authorization': [
+      { id: 'cardholder', title: 'The cardholder', fields: ['card_name', 'card_address', 'card_city_state_zip', 'card_phone'] },
+      { id: 'card', title: 'The card', fields: ['card_type', 'card_last4', 'card_expiry'] },
+    ],
+  };
+  // a line of help above a screen's question
+  var INTRO = {
+    insurance: 'We strongly recommend travel insurance. It can cover the fare if you have to cancel, medical care abroad (your U.S. health plan may pay little or nothing outside the country), and emergency evacuation, which can run from $15,000 to $200,000. Some benefits are only available within about two weeks of your deposit. You can add insurance any time before sailing.',
+    passport: 'Optional on a cruise that starts and ends in the same U.S. port, but the only document that gets you home by air if you have to leave the ship early.',
+    contact: 'One person who is not traveling with you.',
+    card: 'Only the last four digits and the expiry. Never type the full card number or the security code anywhere on this page.',
+  };
   // Mark 2026-10-27/28, his flow: "We collect the data to populate only that document, then show the client the actual populated
   // document, the client then confirms it is accurate by hitting confirm, then we move to the next document … at the end of all the
   // confirmed documents we provide the checklist format for them to go back and review". So, document by document: its questions
@@ -156,7 +179,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // "Confirm and sign"; at the end the checklist of the signed documents, each to view or print, and Finish. The name typed to sign
   // the first document is filled in for the rest.
   // A follow-up line shows right under the choice it belongs to, only when that choice is ticked.
-  var FOLLOW = { us_citizen: { no: ['citizenship'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] } };
+  var FOLLOW = { us_citizen: { no: ['citizenship'] }, insurance_choice: { own: ['insurance_policy'] } };
   var SUMMARY = {
     '15-emergency-contact-form': 'The answers you just gave: who you are, how to reach you, and who to call in an emergency.',
     '01-terms-and-conditions': 'How we work together: what we do, what the cruise line does, and how changes and cancellations are handled.',
@@ -166,7 +189,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     '12-cruise-booking-agreement': 'Your cabin, your price and the cruise line\'s rules for this booking.',
     '09-group-travel-contract': 'The group\'s contract: the cabins held, the dates and the cruise line\'s terms.',
   };
-  var AUTO = { legal_name: 'name', dob: 'bday', email: 'email', phone: 'tel', address: 'address-line1', ec1_name: 'off', ec1_cell_phone: 'off' };
+  var AUTO = { legal_name: 'name', dob: 'bday', email: 'email', phone: 'tel', address: 'address-line1', ec1_name: 'off', ec1_cell_phone: 'off', card_name: 'cc-name', card_address: 'address-line1', card_phone: 'tel', card_last4: 'off', card_expiry: 'off' };
 
   // Mark 2026-10-27: the passport country and the relationship are picked from a list; city, state and ZIP are three boxes.
   var COUNTRIES = ['United States', 'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
@@ -238,13 +261,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       });
     });
     var named = {};
-    STEPS.forEach(function (s) { (s.fields || []).forEach(function (n) { named[n] = true; }); });
-    steps = [STEPS[0]];
+    Object.keys(SCREENS).forEach(function (k) { SCREENS[k].forEach(function (s) { s.fields.forEach(function (n) { named[n] = true; }); }); });
+    steps = [WELCOME];
     pending().forEach(function (d) {
-      // a question is asked for the first document that needs it; the other documents' optional questions (the advisory level,
-      // insurance details, dining and occasions) are the ones Mark fills in from the file (Mark 2026-10-26)
+      // a question is asked for the first document that needs it
       var mine = function (n) { return !!fields[n] && fields[n].docs[0] === d.key; };
-      STEPS.forEach(function (s) { if (s.fields && s.fields.some(mine)) steps.push({ id: s.id, title: s.title, fields: s.fields.filter(mine), doc: d.key }); });
+      (SCREENS[d.key] || []).forEach(function (s) { if (s.fields.some(mine)) steps.push({ id: s.id, title: s.title, fields: s.fields.filter(mine), doc: d.key }); });
       var ask = d.fields.filter(function (f) { return f.required && !named[f.name] && !isFollow(f.name) && mine(f.name); }).map(function (f) { return f.name; });
       if (ask.length) steps.push({ id: 'ask', title: ask.length === 1 ? 'One quick question' : 'A few quick questions', fields: ask, doc: d.key });
       steps.push({ id: 'doc', key: d.key, doc: d.key, title: d.title });
@@ -306,18 +328,21 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       return h;
     }
     if (s.id === 'doc') {
-      var d = docByKey(s.key);
+      var d = docByKey(s.key), confirmOnly = /^20-/.test(d.key);
       // the document's own boxes only show the answers: renamed so they never count as the answers themselves
       var paper = d.html.replace(/ data-field="/g, ' data-docfield="').replace(/ name="/g, ' data-docname="');
-      return '<p class="lead">Here is your ' + esc(d.title) + ', filled in with your answers. Please read it. When it is right, sign it at the bottom.</p>' +
+      return '<p class="lead">' + (confirmOnly ? 'Here is what we will keep on file for you. Read it; if anything is wrong, go back and fix it. When it is right, type your name to confirm.'
+          : 'Here is your ' + esc(d.title) + '. Read each page and press Confirm. When you reach the end, type your name to sign.') + '</p>' +
+        '<p class="w-pageof" aria-live="polite"></p>' +
         '<div class="w-pdf" data-pdf="' + esc(d.key) + '"></div><div class="doc w-paper" hidden>' + paper + '</div>' +
-        '<div class="w-spot"><h3 class="w-sign-h">Sign your ' + esc(d.title) + '</h3>' +
+        '<div class="w-spot" hidden><h3 class="w-sign-h">' + (confirmOnly ? 'Confirm it is right' : 'Sign your ' + esc(d.title)) + '</h3>' +
         '<label class="nm" for="w-sign-' + esc(d.key) + '">Type your full name</label>' +
         '<input type="text" class="w-signname" id="w-sign-' + esc(d.key) + '" autocomplete="name" maxlength="120" placeholder="First and last name" data-nokeep>' +
-        '<p class="hint fine">Typing your name is your legal signature on this document, and says you agree to it. It goes on the signature line; the date and time and the exact text are saved with it, and you get a signed copy by email.</p></div>';
+        '<p class="hint fine">' + (confirmOnly ? 'Typing your name confirms this information is yours and correct. It goes on the form with the date and time, and you get a copy by email.'
+          : 'Typing your name is your legal signature on this document, and says you agree to it. It goes on the signature line; the date and time and the exact text are saved with it, and you get a signed copy by email.') + '</p></div>';
     }
     if (s.id === 'check') return '<p class="lead">All of your documents are signed. You can look at any of them again, print it or save it.</p><ul class="w-docs" id="fm-checklist"></ul>';
-    return fieldsHtml(s.fields || []);
+    return (INTRO[s.id] ? '<p class="w-for">' + esc(INTRO[s.id]) + '</p>' : '') + fieldsHtml(s.fields || []);
   }
   // the checklist at the end: every document of the packet, signed, each to view, print or save
   function checklist() {
@@ -405,33 +430,24 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   var adopted = '';   // the name typed to sign the first document, filled in for the next ones
   function nameBox() { var el = stepEl(at); return el ? el.querySelector('.w-signname') : null; }
   function signer() { var el = nameBox(), n = el ? el.value.replace(/\s+/g, ' ').trim() : ''; return n.split(' ').length >= 2 ? n : ''; }
-  // Mark 2026-10-28: "there is a lot of blank space here, i did not initially know i needed to continue to scroll down". On screen,
-  // a blank stretch taller than a couple of lines (where a section Mark cut was covered) is closed up; the printed PDF is unchanged.
-  function closeGaps(c, ratio) {
-    var w = c.width, h = c.height, ctx = c.getContext('2d'), data;
-    try { data = ctx.getImageData(0, 0, w, h).data; } catch (e) { return c; }
-    var blank = new Array(h), step = Math.max(1, Math.floor(w / 300));
-    for (var y = 0; y < h; y++) {
-      var b = true;
-      for (var x = 0; x < w; x += step) { var i = (y * w + x) * 4; if (data[i] < 235 || data[i + 1] < 235 || data[i + 2] < 235) { b = false; break; } }
-      blank[y] = b;
-    }
-    var keep = Math.round(28 * ratio), most = Math.round(56 * ratio), parts = [], y0 = 0, inked = 0;
-    for (var y2 = 0; y2 <= h; y2++) {
-      if (y2 < h && !blank[y2]) { inked++; continue; }
-      var run = 0; while (y2 + run < h && blank[y2 + run]) run++;
-      if (run > most || y2 + run === h) { parts.push([y0, y2 + Math.min(run, keep)]); y0 = y2 + run; }
-      y2 += Math.max(0, run - 1);
-    }
-    if (inked < 4) return null;                                   // a page with nothing left on it
-    var total = parts.reduce(function (n, p) { return n + (p[1] - p[0]); }, 0);
-    if (total >= h - 2) return c;
-    var out = document.createElement('canvas');
-    out.width = w; out.height = total;
-    var o = out.getContext('2d'), at = 0;
-    parts.forEach(function (p) { o.drawImage(c, 0, p[0], w, p[1] - p[0], 0, at, w, p[1] - p[0]); at += p[1] - p[0]; });
-    out.setAttribute('role', 'img'); out.setAttribute('aria-label', c.getAttribute('aria-label') || '');
-    return out;
+  // Mark 2026-10-29: a document is shown one page at a time, each page exactly as it prints; Confirm moves to the next page and the
+  // place to sign is on the last page. (The 10/28 closing-up of blank stretches is gone with the Cornerstone layouts.)
+  function pagesOf(host) { return host ? host.querySelectorAll('canvas') : []; }
+  function showPage(host, i) {
+    var cs = pagesOf(host); if (!host || !cs.length) return;
+    i = Math.max(0, Math.min(i, cs.length - 1)); host.pageAt = i;
+    for (var k = 0; k < cs.length; k++) cs[k].hidden = k !== i;
+    var el = host.closest('.w-step'), tag = el && el.querySelector('.w-pageof'), spot = el && el.querySelector('.w-spot');
+    if (tag) tag.textContent = 'Page ' + (i + 1) + ' of ' + cs.length;
+    if (spot) spot.hidden = i < cs.length - 1;
+    nextLabel();
+  }
+  function lastPage(host) { var cs = pagesOf(host); return !cs.length || (host.pageAt || 0) >= cs.length - 1; }
+  function nextLabel() {
+    var s = steps[at]; if (!s) return;
+    if (s.id !== 'doc') { $('fm-next').textContent = { check: 'Finish', welcome: "Let's go!" }[s.id] || 'Continue'; return; }
+    var host = stepEl(at).querySelector('.w-pdf');
+    $('fm-next').textContent = lastPage(host) ? (/^20-/.test(s.key) ? 'Confirm' : 'Confirm and sign') : 'Confirm';
   }
   function showPdf(host, key, paper) {
     if (!host) return;
@@ -441,7 +457,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     // a document already on screen stays there until its new pages are drawn, so the page never jumps
     if (!host.querySelector('canvas')) host.innerHTML = '<p class="hint">Filling in your document…</p>';
     if (paper) paper.hidden = true;
-    var fallback = function () { if (host.getAttribute('data-shown') !== ask) return; host.innerHTML = ''; host.removeAttribute('data-shown'); if (paper) paper.hidden = false; };
+    var fallback = function () { if (host.getAttribute('data-shown') !== ask) return; host.innerHTML = ''; host.removeAttribute('data-shown'); if (paper) paper.hidden = false; var spot = host.parentNode && host.parentNode.querySelector('.w-spot'); if (spot) spot.hidden = false; nextLabel(); };
     fetch(API_BASE + encodeURIComponent(token) + '/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: ask })
       .then(function (r) { if (!r.ok) throw new Error('preview ' + r.status); return r.arrayBuffer(); })
       .then(function (buf) {
@@ -461,10 +477,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
               c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
               c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Page ' + n + ' of ' + pdf.numPages);
               next.appendChild(c);
-              return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function () {
-                var t = closeGaps(c, ratio);
-                if (t === null) next.removeChild(c); else if (t !== c) next.replaceChild(t, c);
-              });
+              return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
             });
           })(n);
           return chain.then(function () {
@@ -473,6 +486,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
             if (old) URL.revokeObjectURL(old.href);
             host.innerHTML = '';
             while (next.firstChild) host.appendChild(next.firstChild);
+            showPage(host, host.pageAt || 0);
           });
         });
       })
@@ -490,14 +504,16 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     if (steps[i].id === 'doc') {
       var nb = nameBox();
       if (nb && !nb.value && adopted) nb.value = adopted;
+      var h = stepEl(i).querySelector('.w-pdf'); if (h) h.pageAt = 0;
       showDocPdf(i);
+      showPage(h, 0);
     }
     if (steps[i].id === 'check') checklist();
     var all = $('fm-steps').querySelectorAll('.w-step');
     for (var k = 0; k < all.length; k++) all[k].hidden = Number(all[k].getAttribute('data-step')) !== i;
     $('fm-progress').hidden = true;
     $('fm-prev').hidden = i === 0;
-    $('fm-next').textContent = { doc: 'Confirm and sign', check: 'Finish', welcome: "Let's go!" }[steps[i].id] || 'Continue';
+    nextLabel();
     hideErr();
     if (!quiet) window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20));
   }
@@ -547,7 +563,11 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
     var gaps = stepGaps(at);
     if (gaps.names.length) { showErr('Before you continue, please fill in ' + (gaps.names.length === 1 ? 'this line' : 'these ' + gaps.names.length + ' lines') + ': ' + gaps.names.join(', ') + '.'); fieldErrors(gaps.fields); return; }
-    if (s.id === 'doc') return signOne(s);
+    if (s.id === 'doc') {
+      var host = stepEl(at).querySelector('.w-pdf');
+      if (!lastPage(host)) { showPage(host, (host.pageAt || 0) + 1); window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20)); return; }
+      return signOne(s);
+    }
     if (s.id === 'check') { if (window.SAKeep) window.SAKeep.clear(wizKey()); return showDone(); }
     goStep(at + 1);
   }
@@ -721,7 +741,11 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
 
   });
   $('fm-next').addEventListener('click', next);
-  $('fm-prev').addEventListener('click', function () { if (at > 0) goStep(at - 1); });
+  $('fm-prev').addEventListener('click', function () {
+    var s = steps[at], host = s && s.id === 'doc' ? stepEl(at).querySelector('.w-pdf') : null;
+    if (host && (host.pageAt || 0) > 0) { showPage(host, host.pageAt - 1); window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20)); return; }
+    if (at > 0) goStep(at - 1);
+  });
   function backToSteps() { show('fm-doc', false); show('fm-wiz', true); goStep(at, true); window.scrollTo(0, 0); }
   $('fm-back').addEventListener('click', backToSteps);
   $('fm-back2').addEventListener('click', backToSteps);

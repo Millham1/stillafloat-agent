@@ -95,7 +95,7 @@ function inRun(text: string, bold: boolean, italic: boolean, input: Pick<FormPdf
   return out;
 }
 
-/** The client's own signature block (the first "Primary Traveler / Primary Guest / Client / Traveler Signature" one): its
+/** The client's own signature block (the first "Primary Traveler / Primary Guest / Client / Traveler / Cardholder Signature" one): its
  *  Signature, Date and Print Name lines become places for the typed name and the date. The co-traveler's, the parent's and the
  *  agent's blocks stay blank lines. */
 export function markSignature(blocks: Block[]): Block[] {
@@ -103,7 +103,7 @@ export function markSignature(blocks: Block[]): Block[] {
   return blocks.map((b) => {
     if (b.t !== "p" || done) return b;
     const p = b.text;
-    if (/^\**(Primary Traveler|Primary Guest)\b/i.test(p) || /\b(Client|Traveler) Signature/i.test(p)) mine = true;
+    if (/^\**(Primary Traveler|Primary Guest)\b/i.test(p) || /\b(Client|Traveler|Cardholder) Signature/i.test(p)) mine = true;
     else if (/^\**(Co-Traveler|Parent|Travel Agent|Agent)\b/i.test(p) || /Agent Signature/i.test(p)) { if (mine) done = true; mine = false; }
     if (!mine) return b;
     const text = p.replace(/(Signature:\**\s*)_{3,}/i, "$1{{sig}}").replace(/(Date:\**\s*)_{3,}/, "$1{{sigdate}}").replace(/(Print Name:\**\s*)_{3,}/, "$1{{signame}}");

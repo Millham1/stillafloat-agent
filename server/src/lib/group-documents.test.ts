@@ -81,7 +81,7 @@ test("every client document renders with a full file and with an empty one, with
   for (const ctx of [ctxFor(), ctxFor({}, null), buildCtx({ business: BUSINESS, group: { id: "g2", name: "Bare", fees: {} }, now: NOW })]) {
     for (const key of KEYS.filter((k) => !DOC_SPECS[k]!.requiresFees)) {
       const d = renderDocument(key, ctx);
-      assert.ok(d.text.length > 1500, `${key} is suspiciously short`);
+      assert.ok(d.text.length > (key === "20-about-you" ? 700 : 1500), `${key} is suspiciously short`);
       for (const bad of ["[AGENT NAME", "[AGENT CONTACT", "[INSERT LOGO", "[City, State]", "[list accepted", "\\_", "\\[", "{{", "<!--"]) {
         assert.ok(!d.text.includes(bad), `${key} still contains ${bad}`);
         assert.ok(!d.html.includes(bad), `${key} html still contains ${bad}`);
@@ -288,22 +288,25 @@ test("a signed copy merges the answers into the text and marks the chosen boxes"
 
 // ── who signs what ────────────────────────────────────────────────────────────
 
-test("every traveler gets 15, 01, 05, 07 and 16 in that order; the cabin's lead also 12; the organizer 09", () => {
+test("every traveler gets About you then Your booking, the cabin's lead the card authorization (Mark 2026-10-29); the organizer 09; the Cornerstone set stays renderable but is in no packet", () => {
   const plain = packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] });
-  assert.deepEqual(plain, ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
-  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[0] }), [...plain, "12-cruise-booking-agreement"]);
-  assert.deepEqual(packetFor({ group: GROUP, cabin: null, traveler: TRAVELERS[0] }), plain, "a lead with no cabin has no cabin agreement to sign");
+  assert.deepEqual(plain, ["20-about-you", "21-your-booking"]);
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[0] }), [...plain, "22-card-authorization"], "the cabin's lead also authorizes the card");
+  assert.deepEqual(packetFor({ group: GROUP, cabin: null, traveler: TRAVELERS[0] }), plain, "a lead with no cabin has nothing to pay for yet");
   assert.deepEqual(packetFor({ group: GROUP, organizer: true }), ["09-group-travel-contract"]);
+  for (const key of ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement"]) {
+    assert.ok(renderDocument(key, ctxFor()).html.includes("<"), `${key} still renders (signed copies from before 10/29 and Mark's way back)`);
+  }
 });
 
-test("documents 02 and 03 are in a packet only when the file carries a fee; 04, 06, 13 and 14 are in no packet", () => {
+test("documents 02 and 03 are in a packet only when the file carries a fee, after About you; 04, 06, 13, 14 and the Cornerstone set are in no packet", () => {
   const withFees = packetFor({ group: { ...GROUP, fees: { planning_fee: 100 } }, cabin: CABINS[0], traveler: TRAVELERS[0] });
-  assert.deepEqual(withFees.slice(0, 5), ["15-emergency-contact-form", "01-terms-and-conditions", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "05-liability-waiver"]);
-  assert.equal(packetFor({ group: { ...GROUP, fees: { planning_fee: 0, x: "free" } }, traveler: TRAVELERS[1] }).length, 5, "a zero or non-numeric fee is not a fee");
+  assert.deepEqual(withFees, ["20-about-you", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "21-your-booking", "22-card-authorization"]);
+  assert.equal(packetFor({ group: { ...GROUP, fees: { planning_fee: 0, x: "free" } }, traveler: TRAVELERS[1] }).length, 2, "a zero or non-numeric fee is not a fee");
   for (const g of [GROUP, { ...GROUP, fees: { planning_fee: 100 } }]) {
     for (const t of [TRAVELERS[0], TRAVELERS[1]]) {
       const keys = [...packetFor({ group: g, cabin: CABINS[0], traveler: t }), ...packetFor({ group: g, organizer: true })];
-      for (const out of ["04-cancellation-policy", "06-credit-card-authorization", "13-new-client-questionnaire", "14-travel-preferences-survey"]) assert.ok(!keys.includes(out), `${out} must be in no packet`);
+      for (const out of ["04-cancellation-policy", "06-credit-card-authorization", "13-new-client-questionnaire", "14-travel-preferences-survey", "15-emergency-contact-form", "12-cruise-booking-agreement"]) assert.ok(!keys.includes(out), `${out} must be in no packet`);
     }
   }
   assert.ok(DOC_SPECS["09-group-travel-contract"]!.agentCountersign, "09 flags the agent countersignature that is still to build");

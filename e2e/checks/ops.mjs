@@ -1640,12 +1640,13 @@ export default [
         t.ok(body.packets && typeof body.packets === "object", `group ${g.id}: the signed-documents list has no per-traveler progress`);
         t.equal(JSON.stringify(body.organizer?.required), JSON.stringify(["09-group-travel-contract"]), `group ${g.id}: the documents asked of the organizer`);
         t.ok(Array.isArray(body.organizer?.signed), `group ${g.id}: the organizer's signed list`);
-        // the progress agrees with the group file: one entry per traveler, 5 documents asked (6 for a cabin lead with a cabin)
+        // the progress agrees with the group file: one entry per traveler, 2 documents asked (Mark 2026-10-29: About you + Your booking; + the card authorization for a cabin's lead; + 2 fee agreements when the file carries a fee)
         for (const tr of file.travelers) {
           const p = body.packets[tr.id];
           t.ok(p && Array.isArray(p.required) && Array.isArray(p.signed), `group ${g.id}: traveler ${tr.id} has no paperwork progress`);
-          t.equal(p.required.length, tr.is_lead && tr.cabin_id ? 6 + (Object.keys(g.fees || {}).length ? 2 : 0) : 5 + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (a lead with a cabin also signs the cruise agreement; fees add two)`);
-          t.ok(!p.required.some((k) => /^(04|06|13|14)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet`);
+          t.equal(p.required.length, 2 + (tr.is_lead && tr.cabin_id ? 1 : 0) + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (About you and Your booking; the card authorization for a cabin's lead; the two fee agreements when the file carries a fee)`);
+          t.equal(JSON.stringify(p.required.filter((k) => /^2[01]-/.test(k))), JSON.stringify(["20-about-you", "21-your-booking"]), `group ${g.id}: traveler ${tr.id} is asked for the two documents in order`);
+          t.ok(!p.required.some((k) => /^(04|06|13|14|15|01|05|07|16|12)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet (the Cornerstone set went out 2026-10-29)`);
           if (!Object.keys(g.fees || {}).length) t.ok(!p.required.some((k) => /^0[23]-/.test(k)), `group ${g.id}: a group with no fees is asked to sign a fee agreement`);
         }
         const raw = JSON.stringify(body);

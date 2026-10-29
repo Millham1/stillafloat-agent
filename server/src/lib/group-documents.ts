@@ -523,24 +523,22 @@ export function fillBlocks(doc: Pick<RenderedDoc, "blocks">, answers: Answers, s
 // ── 6. Who signs what ─────────────────────────────────────────────────────────
 
 export const TRAVELER_PACKET = [
-  "15-emergency-contact-form", // first: its answers (address, phone, passport) prefill the documents after it
-  "01-terms-and-conditions",
-  "05-liability-waiver",
-  "07-travel-insurance-declination",
-  "16-passport-document-checklist",
+  "20-about-you",    // first: its answers (address, phone, passport) prefill the document after it
+  "21-your-booking",
 ] as const;
 export const FEE_DOCUMENTS = ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] as const;
-export const LEAD_DOCUMENT = "12-cruise-booking-agreement";
+export const LEAD_DOCUMENT = "22-card-authorization";
 export const ORGANIZER_DOCUMENT = "09-group-travel-contract";
 
-/** The ordered document keys one signer is asked for.
- *  Not in any packet: 04 (cancellation policy, not assigned a signer), 06 (card authorization — clients pay the
- *  line directly; open question for Cornerstone), 13 and 14 (questionnaires, not in v1). */
+/** The ordered document keys one signer is asked for (Mark 2026-10-29: two documents for every traveler, and the card
+ *  authorization for the cabin's lead, who pays; the booking's cabin and price are on 21 for everyone in it).
+ *  Not in any packet: the Cornerstone set (15, 01, 05, 07, 16, 12; kept so earlier signatures still render), 04 (cancellation
+ *  policy), 06 (card authorization — clients pay the line directly), 13 and 14 (questionnaires). */
 export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean }): string[] {
   if (input.organizer) return [ORGANIZER_DOCUMENT];
   const hasFees = normalizeFees(input.group?.fees).length > 0;
   const keys: string[] = [...TRAVELER_PACKET];
-  if (hasFees) keys.splice(2, 0, ...FEE_DOCUMENTS); // after the terms
+  if (hasFees) keys.splice(1, 0, ...FEE_DOCUMENTS); // after About you, before the booking
   if (input.traveler?.is_lead && input.cabin) keys.push(LEAD_DOCUMENT);
   return keys;
 }

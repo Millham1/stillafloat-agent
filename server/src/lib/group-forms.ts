@@ -334,7 +334,8 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
       const patch: Row = { ...applied.travelerPatch, updated_at: now.toISOString() };
       if (Object.keys(applied.formData).length) patch["form_data"] = deepMerge(traveler.form_data, applied.formData);
       if (applied.passport) patch["passport_enc"] = encryptPii(applied.passport.number, deps.piiKey);
-      if (docKey === "01-terms-and-conditions") Object.assign(patch, { consent_name: signerName, consent_signed_at: now.toISOString(), consent_ip_hash: ipHash });
+      // the terms are on 01 (the Cornerstone set) or inside 21 (Mark 2026-10-29): signing either records the consent to them
+      if (docKey === "01-terms-and-conditions" || docKey === "21-your-booking") Object.assign(patch, { consent_name: signerName, consent_signed_at: now.toISOString(), consent_ip_hash: ipHash });
       if (complete) patch["form_submitted_at"] = now.toISOString();
       const email = String(patch["email"] ?? traveler.email ?? "").trim().toLowerCase();
       if (body.newsletter_opt_in === true && !traveler.newsletter_opt_in && email) {

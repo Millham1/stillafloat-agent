@@ -208,6 +208,9 @@ const FINISHED = new Set(["sailed", "closed", "cancelled"]);
 
 /** The short column titles of the paperwork matrix. A key not listed falls back to the document's own title. */
 export const DOC_SHORT: Record<string, string> = {
+  "20-about-you": "About you",
+  "21-your-booking": "Your booking",
+  "22-card-authorization": "Card authorization",
   "15-emergency-contact-form": "Emergency contact",
   "01-terms-and-conditions": "Terms",
   "02-travel-planning-agreement": "Planning agreement",
