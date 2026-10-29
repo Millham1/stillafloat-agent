@@ -89,6 +89,19 @@ export interface SealCheck {
 const OID_MESSAGE_DIGEST = "1.2.840.113549.1.9.4";
 const OID_SIGNING_TIME = "1.2.840.113549.1.9.5";
 
+/** The leading DER element of a padded buffer: its tag, its length bytes and the length they state. */
+function derOnly(buf: Buffer): Buffer {
+  if (buf.length < 2) throw new Error("the seal is empty");
+  const first = buf[1]!;
+  if (first < 0x80) return buf.subarray(0, 2 + first);
+  const n = first & 0x7f;
+  if (n < 1 || n > 4 || buf.length < 2 + n) throw new Error("the seal's length cannot be read");
+  let len = 0;
+  for (let i = 0; i < n; i++) len = len * 256 + buf[2 + i]!;
+  if (2 + n + len > buf.length) throw new Error("the seal is longer than its placeholder");
+  return buf.subarray(0, 2 + n + len);
+}
+
 /** Checks a sealed PDF: the covered bytes hash to the digest inside the signature, and the signature verifies with the certificate. */
 export function verifySeal(pdf: Buffer): SealCheck {
   const text = pdf.toString("latin1");
@@ -98,10 +111,12 @@ export function verifySeal(pdf: Buffer): SealCheck {
   const contentsAt = text.indexOf("/Contents", br.index + br[0].length);
   const lt = text.indexOf("<", contentsAt); const gt = text.indexOf(">", lt);
   if (contentsAt < 0 || lt < 0 || gt < 0) return { sealed: false, intact: false, reason: "no signature contents" };
-  const hex = text.slice(lt + 1, gt).replace(/\s+/g, "").replace(/0+$/, "");
+  const hex = text.slice(lt + 1, gt).replace(/\s+/g, "");
   if (a + b !== lt || c !== gt + 1 || c + d !== pdf.length) return { sealed: true, intact: false, reason: "the byte range does not cover the file" };
   try {
-    const der = forge.util.createBuffer(Buffer.from(hex.length % 2 ? hex + "0" : hex, "hex").toString("binary"));
+    // The signature sits in a zero-padded placeholder; it is cut at its own DER length, never by trimming zeros
+    // (a signature that itself ends in a zero byte, about 1 in 256, was cut short and read as "could not be read").
+    const der = forge.util.createBuffer(derOnly(Buffer.from(hex, "hex")).toString("binary"));
     const p7 = forge.pkcs7.messageFromAsn1(forge.asn1.fromDer(der)) as forge.pkcs7.PkcsSignedData & { rawCapture: Record<string, any>; certificates: forge.pki.Certificate[] };
     const cert = p7.certificates[0];
     if (!cert) return { sealed: true, intact: false, reason: "no certificate in the seal" };

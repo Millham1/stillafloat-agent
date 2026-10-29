@@ -38,6 +38,16 @@ test("one sealer seals every copy, not only the first (the server keeps one for 
   }
 });
 
+test("every seal reads back, including one whose signature ends in a zero byte (it sits in zero padding; 2026-10-29 CI read one as unreadable)", async () => {
+  const sealer = sealerFromP12(P12, "pw-test");
+  const meta = { reason: "test", contactInfo: "mark@stillafloatcruising.com", name: "Still Afloat LLC", location: "Raleigh, North Carolina" };
+  const pdf = await tinyPdf("Read back.");
+  for (let i = 0; i < 300; i++) {   // the signing time moves the signature; ~1 in 256 ends in 0x00, so 300 seals all but guarantee one
+    const check = verifySeal(await sealer.seal(pdf, meta, new Date(Date.UTC(2026, 9, 25, 6, 0, i))));
+    assert.equal(check.intact, true, `seal ${i}: ${check.reason}`);
+  }
+});
+
 test("a change to the file after sealing breaks the seal; a file without a seal says so", async () => {
   const sealer = sealerFromP12(P12, "pw-test");
   const sealed = await sealer.seal(await tinyPdf("The agreed text."), { reason: "test", contactInfo: "mark@stillafloatcruising.com", name: "Still Afloat LLC", location: "Raleigh, North Carolina" });
