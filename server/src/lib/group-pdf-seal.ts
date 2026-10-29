@@ -38,13 +38,14 @@ export function sealerFromP12(p12: Buffer, passphrase: string): Sealer {
   const bags = store.getBags({ bagType: forge.pki.oids["certBag"] })[forge.pki.oids["certBag"]!] ?? [];
   const cert = bags.find((b) => b.cert)?.cert;
   if (!cert) throw new Error("the P12 holds no certificate");
-  const signer = new P12Signer(p12, { passphrase });
+  // A P12Signer reads its certificate from a forge buffer that the first signature uses up, so one kept for the
+  // server's life sealed only the first copy after a restart ("Too few bytes to parse DER", 2026-10-28): a fresh one per seal.
   return {
     fingerprint: certFingerprint(cert),
     subject: String(cert.subject.getField("CN")?.value ?? ""),
     async seal(pdf, meta, signingTime) {
       const withField = plainAddPlaceholder({ pdfBuffer: pdf, reason: meta.reason, contactInfo: meta.contactInfo, name: meta.name, location: meta.location, signatureLength: 8192, signingTime });
-      return new SignPdf().sign(withField, signer, signingTime);
+      return new SignPdf().sign(withField, new P12Signer(p12, { passphrase }), signingTime);
     },
   };
 }

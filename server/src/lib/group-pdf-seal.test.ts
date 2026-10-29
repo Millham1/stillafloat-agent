@@ -29,6 +29,15 @@ test("a sealed copy verifies: the covered bytes match the digest in the seal and
   assert.equal(prettyFingerprint("abcd1234").startsWith("ABCD 1234"), true);
 });
 
+test("one sealer seals every copy, not only the first (the server keeps one for its life; 2026-10-28 only document 1 of 6 was sealed)", async () => {
+  const sealer = sealerFromP12(P12, "pw-test");
+  const meta = { reason: "test", contactInfo: "mark@stillafloatcruising.com", name: "Still Afloat LLC", location: "Raleigh, North Carolina" };
+  for (const n of [1, 2, 3]) {
+    const check = verifySeal(await sealer.seal(await tinyPdf(`Document ${n} of 3.`), meta));
+    assert.equal(check.sealed, true, `document ${n} was not sealed`); assert.equal(check.intact, true, `document ${n}: ${check.reason}`);
+  }
+});
+
 test("a change to the file after sealing breaks the seal; a file without a seal says so", async () => {
   const sealer = sealerFromP12(P12, "pw-test");
   const sealed = await sealer.seal(await tinyPdf("The agreed text."), { reason: "test", contactInfo: "mark@stillafloatcruising.com", name: "Still Afloat LLC", location: "Raleigh, North Carolina" });
