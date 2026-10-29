@@ -1670,6 +1670,34 @@ export default [
     },
   },
   {
+    id: "ops.paperwork-assets-not-banned",
+    basis: "incident: 2026-10-28 — the paperwork page loaded its PDF viewer from /vendor/pdfjs-…; the box's attack guard (fail2ban jail nginx-badprobes, /etc/fail2ban/filter.d/nginx-badprobes.conf) bans any address asking for /vendor/, so every client who reached their first document was locked out of the whole site (1 hour on dev, 24 hours on the live site); Mark: \"i cannot see the paperwork\"",
+    title: "Nothing the paperwork page loads sits at an address the server's attack guard bans, and its PDF viewer answers where the page asks for it",
+    covers: ["page /forms.html"],
+    modes: ["dev", "prod"],
+    incident: "2026-10-28: opening the first document banned the client's address from the whole site",
+    run: async (t) => {
+      // The guard's own pattern, word for word (filter.d/nginx-badprobes.conf on both boxes). A file the site serves to its own
+      // visitors must never match it: two such requests in 10 minutes ban the visitor.
+      const BANNED = /(?:\/\.env|\/\.git|\/\.aws|\/\.ssh|wp-admin|wp-includes|wp-content|xmlrpc\.php|phpmyadmin|\/config\.(?:json|php|yml|yaml)|\/\.DS_Store|\/vendor\/|\/\.vscode)/;
+      const html = t.html(await t.get("/forms.html"), { mustContain: ["/js/forms.js"] });
+      const pageAssets = [...html.matchAll(/\b(?:src|href)="(\/[^"]+)"/g)].map((m) => m[1]);
+      const jsPath = pageAssets.find((p) => p.startsWith("/js/forms.js"));
+      t.ok(jsPath, "the paperwork page does not load /js/forms.js");
+      const js = await t.get(jsPath || "/js/forms.js");
+      t.equal(js.status, 200, "HTTP status of the paperwork program");
+      const programAssets = [...js.text.matchAll(/['"](\/(?:js|vendor|css|assets|fonts)\/[^'"\s]+\.(?:m?js|css|woff2?|png|jpe?g|webp|svg))['"]/g)].map((m) => m[1]);
+      const pdfAssets = programAssets.filter((p) => /pdf(?:\.worker)?\.min\.js$/.test(p));
+      t.equal(pdfAssets.length, 2, "PDF viewer files the paperwork program names (the viewer and its worker)");
+      for (const p of [...pageAssets, ...programAssets]) t.ok(!BANNED.test(p), `the paperwork page loads ${p}, an address the attack guard bans`);
+      for (const p of pdfAssets) {
+        const res = await t.get(p);
+        t.equal(res.status, 200, `HTTP status of ${p}`);
+        t.matches(res.headers.get("content-type") || "", /javascript/, `content type of ${p}`);
+      }
+    },
+  },
+  {
     id: "ops.paperwork-writes-refuse",
     basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-03: every paperwork write needs Mark's token or the client's own link; unknown travelers, groups and links are refused; the bot trap and a missing agreement store nothing and email no one (dev never emails real people, Mark 2026-10-08); Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "Making links, emailing a link, the organizer's link and removing a signature refuse a visitor without Mark's token and unknown travelers and groups, and a signature with no link or a bot trap stores nothing",

@@ -390,8 +390,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // ── Mark 2026-10-27: "show the client the actual populated document": Mark's own PDF of it, filled in with the answers so far ──
   var pdfLib = null;
   function loadPdfLib() {
-    if (!pdfLib) pdfLib = import('/vendor/pdfjs-4.10.38/pdf.min.js').then(function (lib) {
-      lib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs-4.10.38/pdf.worker.min.js';
+    if (!pdfLib) pdfLib = import('/js/pdfjs-4.10.38/pdf.min.js').then(function (lib) {
+      lib.GlobalWorkerOptions.workerSrc = '/js/pdfjs-4.10.38/pdf.worker.min.js';
       return lib;
     });
     return pdfLib;
