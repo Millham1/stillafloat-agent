@@ -129,10 +129,10 @@ router.post("/ai-visibility/activity/update", requireToken, async (req: Request,
         res.status(400).json({ success: false, error: "an item that waits on Mark must carry at least one button" });
         return;
       }
-      if (!entry.actionId) {
-        const id = await fileAction(entry);
-        if (id) entry.actionId = id;
-      }
+      // Re-opened items keep an actionId whose row was already closed: createAction dedups on a
+      // PENDING row only, so filing again is a no-op while one is open and a fresh row otherwise.
+      const id = await fileAction(entry);
+      if (id) entry.actionId = id;
     } else if (before.status === "waiting-on-mark") {
       await closeAction(before, entry.status);
     }
