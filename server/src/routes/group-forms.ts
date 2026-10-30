@@ -13,7 +13,8 @@ import { BUSINESS } from "../lib/group-secure";
 import { renderSignedPdf } from "../lib/group-signature-pdf";
 import { sealerFromEnv, type Sealer } from "../lib/group-pdf-seal";
 import { DOC_SPECS } from "../lib/group-documents";
-import { SIGNER_COLS, TRAVELER_COLS, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
+import { advisoriesForGroup } from "../lib/travel-advisories";
+import { SIGNER_COLS, TRAVELER_COLS, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
 
 // Client paperwork (migrations 0044 and 0052).
 //
@@ -193,6 +194,13 @@ function deps(): FormsDeps {
       return sendMail({ ...m, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
     },
     publicSite: publicSite(),
+    // Mark 2026-10-30: the advisory level per port, from the State Department; the insurance step's video and background quote.
+    advisories: (g) => advisoriesForGroup(g),
+    insurance: {
+      videoUrl: process.env["GROUP_INSURANCE_VIDEO_URL"] || null,
+      chromePath: process.env["CHROME_PATH"], user: process.env["ALLIANZ_AGENT_USER"], password: process.env["ALLIANZ_AGENT_PASSWORD"],
+      quoteNeeded: (n) => createAction({ type: "group-insurance-quote", source_ref: n.travelerId, title: n.title, body: n.body, priority: "lead", buttons: [{ label: "Open the group file", href: `/groups/${n.groupId}` }] }).then(() => undefined),
+    },
   };
 }
 
@@ -308,6 +316,28 @@ router.post("/forms/:token/consent", async (req: Request, res: Response) => {
     return res.status(out.status).json(out.json);
   } catch (err) {
     return fail(req, res, err, "paperwork consent failed");
+  }
+});
+
+// Mark 2026-10-30: the insurance step. The quote starts in the background when the information page is submitted; the page polls.
+router.post("/forms/:token/insurance/quote", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (signLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const out = await requestInsuranceQuote(deps(), req.params["token"]);
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "insurance quote request failed");
+  }
+});
+router.get("/forms/:token/insurance", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const out = await insuranceStatus(deps(), req.params["token"]);
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "insurance status failed");
   }
 });
 

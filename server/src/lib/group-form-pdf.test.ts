@@ -17,7 +17,7 @@ const ANSWERS: Answers = {
   legal_name: "Jane Quincy Public", dob: "1960-05-04", gender: "female", us_citizen: "yes", address: "100 Goodsell Ct", city_state_zip: "Fuquay Varina, NC 27526",
   ec1_name: "Sam Public", ec1_relationship: "Child", ec1_cell_phone: "919-555-0199", loyalty_1_program: "MSC Voyagers Club", loyalty_1_number: "123456789",
 };
-const KEYS = ["20-about-you", "21-your-booking", "22-card-authorization", "15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement"];
+const KEYS = ["20-about-you", "21-your-booking", "22-card-authorization", "15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist", "12-cruise-booking-agreement"];
 
 test("a line of the form: words in their print, each blank with its answer or a line, each box ticked by its choice", () => {
   const p = pieces("**Gender:** {{ch:gender:male}} Male {{ch:gender:female}} Female *Date Completed: {{today}}* Name: {{in:legal_name}} Zip: {{in:zip}} ___ ☐ Yes", { answers: ANSWERS, today: "October 28, 2026" });

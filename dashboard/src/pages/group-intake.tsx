@@ -58,6 +58,7 @@ const FIELDS: Field[] = [
   { key: "deposit_due", label: "Deposit deadline", type: "date" },
   { key: "names_due", label: "Names due to the line", type: "date" },
   { key: "final_payment_due", label: "Final payment deadline", type: "date" },
+  { key: "line_protection", label: "Cruise line's protection plan, as quoted (e.g. MSC Vacation Protection: $89 per person)" },
   { key: "recall_date", label: "Unsold cabins go back", type: "date" },
   { key: "organizer_name", label: "Organizer" },
 ];

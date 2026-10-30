@@ -68,6 +68,9 @@ export function normalizeFees(raw: unknown): FeeLine[] {
 export const fee = (ctx: DocCtx, key: string): FeeLine | undefined => ctx.fees.find((f) => f.key === key);
 
 // ── Context ───────────────────────────────────────────────────────────────────
+/** One port of the itinerary with its country's State Department advisory (null level = the feed did not name the country). */
+export interface Advisory { port: string; country: string; level: 1 | 2 | 3 | 4 | null; title: string }
+
 export interface DocCtx {
   business: typeof BUSINESS;
   group: Row;
@@ -82,6 +85,8 @@ export interface DocCtx {
   now: Date;
   /** How big the group's file is today (for the organizer's contract). */
   counts: { travelers: number; cabins: number };
+  /** The State Department advisory for every port of the itinerary, read when the page opened (empty = not read). */
+  advisories: Advisory[];
 }
 
 /** Build the context for one signer from rows already read from the group file. */
@@ -93,6 +98,7 @@ export function buildCtx(input: {
   traveler?: Row | null;
   lang?: Lang;
   now?: Date;
+  advisories?: Advisory[];
 }): DocCtx {
   const traveler = input.traveler ?? null;
   const cabin = traveler?.cabin_id ? (input.cabins ?? []).find((c) => c.id === traveler.cabin_id) ?? null : null;
@@ -109,6 +115,7 @@ export function buildCtx(input: {
     fees: normalizeFees(input.group?.fees),
     now: input.now ?? new Date(),
     counts: { travelers: (input.travelers ?? []).length, cabins: (input.cabins ?? []).length },
+    advisories: input.advisories ?? [],
   };
 }
 
@@ -303,7 +310,7 @@ export interface FieldSpec {
   /** Date sanity: "dob" = in the past and under 125 years ago, "past", "future". */
   date?: "dob" | "past" | "future";
   /** What the page pre-fills when the file holds nothing under col/form. */
-  prefill?: (ctx: DocCtx) => string | undefined;
+  prefill?: (ctx: DocCtx) => string | string[] | undefined;
 }
 
 // ── Template edits ────────────────────────────────────────────────────────────

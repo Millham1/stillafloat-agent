@@ -180,7 +180,8 @@ function tokensToText(text: string, mode: { answers?: Answers; today?: string })
     switch (kind) {
       case "in": case "ta": {
         const v = a?.[name!];
-        if (typeof v !== "string" || !v.trim()) return "________";
+        // Mark 2026-10-30: a line the signer left empty says so on the signed copy, never a bare blank.
+        if (typeof v !== "string" || !v.trim()) return a ? "N/A — left intentionally blank" : "________";
         // A date answer is stored as YYYY-MM-DD; the printed copy reads it as a date.
         return (/^\d{4}-\d{2}-\d{2}$/.test(v.trim()) && fmtLong(v.trim())) || cleanValue(v);
       }
@@ -527,8 +528,8 @@ export function fillBlocks(doc: Pick<RenderedDoc, "blocks">, answers: Answers, s
 export const TRAVELER_PACKET = [
   "15-emergency-contact-form", // first: the information page's answers (address, phone, passport) fill the documents after it
   "01-terms-and-conditions",
+  "07-travel-insurance-declination", // after the insurance video and the quote (Mark 2026-10-30); the waiver's insurance line follows it
   "05-liability-waiver",
-  "07-travel-insurance-declination",
   "16-passport-document-checklist",
 ] as const;
 export const FEE_DOCUMENTS = ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] as const;

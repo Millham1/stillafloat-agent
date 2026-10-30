@@ -103,7 +103,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
         .then(function (x) {
           if (keyNow() !== key) return;                     // typed on since: a newer question is on its way
-          if (!x.ok || !x.j.available) { look.off = true; say(esc(ADDR.na) + (x.j.why ? ' <span class="addr-why">(Test site: ' + esc(x.j.why) + ')</span>' : '')); return; }
+          if (!x.ok || !x.j.available) { look.off = true; say(esc(ADDR.na)); return; }
           if (x.j.incomplete) return;
           look.key = key;
           var list = (x.j.suggestions || []).slice(0, 5);
@@ -161,9 +161,13 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     advisory_level: 'The U.S. State Department advisory level for your destination, if you know it; leave it if not.',
     dining: 'For the cruise booking agreement: dining, anything to celebrate on board, and anything the ship should know.',
   };
-  // Asked once: the waiver's own insurance line follows the insurance choice instead of asking again.
-  var HIDE = ['insurance_status'];
-  var DERIVE = { insurance_status: function () { var c = value('insurance_choice'); return c === 'decline' ? 'declined' : (value('ins_provider') || value('ins_policy')) ? 'have' : undefined; } };
+  // Mark 2026-10-30: lines the file already answers are never asked; their values go on the documents from the file.
+  // advisory_level: the State Department level per port; dining and the occasion: from the booking; insurance_status: follows the choice.
+  var HIDE = ['insurance_status', 'advisory_level', 'dining', 'occasions', 'occasion_other', 'occasion_date'];
+  var DERIVE = { insurance_status: function () { var c = value('insurance_choice'); return c === 'decline' ? 'declined' : (c === 'own' || c === 'line') ? 'have' : undefined; } };
+  // Mark 2026-10-30: "all of the travel insurance stuff should be after they review the video and quote": these lines are asked
+  // on their own step, right before the Travel Insurance document, never on the information page.
+  var INSURANCE = ['insurance_choice', 'decline_reasons', 'decline_other', 'ins_provider', 'ins_policy'];
   // the card's details start as the traveler's own (editable; a changed box stays as typed)
   var MIRROR = { card_name: 'legal_name', card_address: 'address', card_city_state_zip: 'city_state_zip', card_phone: 'phone' };
   // Mark 2026-10-27/28, his flow: "We collect the data to populate only that document, then show the client the actual populated
@@ -173,7 +177,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // "Confirm and sign"; at the end the checklist of the signed documents, each to view or print, and Finish. The name typed to sign
   // the first document is filled in for the rest.
   // A follow-up line shows right under the choice it belongs to, only when that choice is ticked.
-  var FOLLOW = { us_citizen: { no: ['citizenship'] }, insurance_choice: { own: ['insurance_policy'], decline: ['decline_reasons'] }, decline_reasons: { other: ['decline_other'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] }, occasions: { other: ['occasion_other'] } };
+  var FOLLOW = { us_citizen: { no: ['citizenship'] }, insurance_choice: { own: ['ins_provider', 'ins_policy'], decline: ['decline_reasons'] }, decline_reasons: { other: ['decline_other'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] } };
   var SUMMARY = {
     '15-emergency-contact-form': 'The answers you just gave: who you are, how to reach you, and who to call in an emergency.',
     '01-terms-and-conditions': 'How we work together: what we do, what the cruise line does, and how changes and cancellations are handled.',
@@ -255,9 +259,13 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       });
     });
     steps = [WELCOME];
-    var ask = order.filter(function (n) { return !isFollow(n) && HIDE.indexOf(n) < 0; });
+    var ask = order.filter(function (n) { return !isFollow(n) && HIDE.indexOf(n) < 0 && INSURANCE.indexOf(n) < 0; });
     if (ask.length) steps.push({ id: 'details', title: 'Your information', fields: ask });
-    pending().forEach(function (d) { steps.push({ id: 'doc', key: d.key, doc: d.key, title: d.title }); });
+    var insuranceAsk = INSURANCE.filter(function (n) { return fields[n] && !isFollow(n); });
+    pending().forEach(function (d) {
+      if (/^07-/.test(d.key) && insuranceAsk.length) steps.push({ id: 'insurance', title: 'Travel insurance', fields: insuranceAsk });
+      steps.push({ id: 'doc', key: d.key, doc: d.key, title: d.title });
+    });
     steps.push({ id: 'check', title: 'Your documents' });
     return {};
   }
@@ -323,7 +331,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       // the document's own boxes only show the answers: renamed so they never count as the answers themselves
       var paper = d.html.replace(/ data-field="/g, ' data-docfield="').replace(/ name="/g, ' data-docname="');
       return '<p class="lead">' + (confirmOnly ? 'Here is what we will keep on file for you. Read it; if anything is wrong, go back and fix it. On the last page, type your name to confirm.'
-          : 'Here is your ' + esc(d.title) + '. Read each page and press Next page. On the last page, type your name to sign.') + '</p>' +
+          : 'This is document ' + (packet.docs.indexOf(d) + 1) + ' of ' + packet.docs.length + ', your ' + esc(d.title) + ', filled in from your information. Read each page and press Next page. On the last page, type your name to sign it.') + '</p>' +
         '<p class="w-pageof" aria-live="polite"></p>' +
         '<div class="w-pdf" data-pdf="' + esc(d.key) + '"></div><div class="doc w-paper" hidden>' + paper + '</div>' +
         '<div class="w-spot" hidden><h3 class="w-sign-h">' + (confirmOnly ? 'Confirm it is right' : 'Sign your ' + esc(d.title)) + '</h3>' +
@@ -333,8 +341,50 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
           : 'Typing your name is your legal signature on this document, and says you agree to it. It goes on the signature line; the date and time and the exact text are saved with it, and you get a signed copy by email.') + '</p></div>';
     }
     if (s.id === 'check') return '<p class="lead">All of your documents are signed. You can look at any of them again, print it or save it.</p><ul class="w-docs" id="fm-checklist"></ul>';
+    if (s.id === 'insurance') return insuranceBody(s);
     return (s.id === 'details' ? '<p class="lead">Everything we need for your paperwork, on one page. What we already know is filled in: check it, change anything that is wrong, and fill in the rest.</p>' : '') + fieldsHtml(s.fields || []);
   }
+  // ── The insurance step (Mark 2026-10-30): the video, then the price for this trip, then the choice ──
+  function insuranceBody(s) {
+    var ins = packet.insurance || {};
+    var h = '<p class="lead">Before you choose, please watch the short video and look at the price for your trip.</p>';
+    if (ins.video_url) h += '<div class="w-video"><iframe src="' + esc(embedUrl(ins.video_url)) + '" title="Travel insurance: what it covers and what it costs" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+    h += '<div class="w-quote" id="w-quote" aria-live="polite">' + quoteHtml(ins.quote, ins.line_protection) + '</div>';
+    return h + fieldsHtml(s.fields || []);
+  }
+  function embedUrl(u) { var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(u || ''); return m ? 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0' : u; }
+  function quoteHtml(q, line) {
+    q = q || { status: 'none' };
+    var h = '<h3 class="w-group">Your price</h3>';
+    if (q.status === 'ready' && q.plans && q.plans.length) {
+      h += '<p>Allianz travel insurance for this trip' + (q.trip_cost ? ', on a fare of $' + esc(String(q.trip_cost)) + ' per person' : '') + ', quoted ' + esc(q.quoted_at ? new Date(q.quoted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'today') + ':</p><ul class="w-plans">' +
+        q.plans.map(function (p) { return '<li><b>' + esc(p.name) + '</b>: $' + esc(String(p.price_per_person)) + ' per person</li>'; }).join('') + '</ul><p class="hint">' + esc(q.note || 'Pricing subject to change until finalized.') + '</p>';
+    } else if (q.status === 'pending' || q.status === 'none') {
+      h += '<p>We are getting your Allianz price for this trip now. It takes a minute or two: you can read on and come back to it.</p>';
+    } else {
+      h += '<p>Mark will email you the Allianz price for this trip. You can choose now, or come back to this page once you have it.</p>';
+    }
+    if (line) h += '<p><b>The cruise line\'s own plan:</b> ' + esc(line) + '</p>';
+    return h;
+  }
+  var quoteTimer = null;
+  function pollQuote() {
+    clearTimeout(quoteTimer);
+    var box = $('w-quote'); if (!box) return;
+    api('/insurance').then(function (r) {
+      var j = r.json || {}; if (r.status !== 200 || !j.success) return;
+      packet.insurance = { video_url: j.video_url, line_protection: j.line_protection, quote: j.quote };
+      box.innerHTML = quoteHtml(j.quote, j.line_protection);
+      if (j.quote && j.quote.status === 'none') requestQuote();
+      if (j.quote && (j.quote.status === 'pending' || j.quote.status === 'none') && steps[at] && steps[at].id === 'insurance') quoteTimer = setTimeout(pollQuote, 5000);
+    }).catch(function () {});
+  }
+  // the quote starts in the background as soon as the information page is submitted (Mark 2026-10-29)
+  function requestQuote() {
+    if (packet.kind !== 'traveler' || !steps.some(function (s) { return s.id === 'insurance'; })) return;
+    api('/insurance/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(function () {});
+  }
+
   // the checklist at the end: every document of the packet, signed, each to view, print or save
   function checklist() {
     var ul = $('fm-checklist'); if (!ul) return;
@@ -540,6 +590,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       showPage(h, 0);
     }
     if (steps[i].id === 'check') checklist();
+    if (steps[i].id === 'insurance') pollQuote();
     var all = $('fm-steps').querySelectorAll('.w-step');
     for (var k = 0; k < all.length; k++) all[k].hidden = Number(all[k].getAttribute('data-step')) !== i;
     $('fm-progress').hidden = true;
@@ -600,6 +651,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       return signOne(s);
     }
     if (s.id === 'check') { if (window.SAKeep) window.SAKeep.clear(wizKey()); return showDone(); }
+    if (s.id === 'details') requestQuote();
     goStep(at + 1);
   }
 
@@ -607,7 +659,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function answersFor(doc) {
     var out = {};
     doc.fields.forEach(function (f) {
-      var v = DERIVE[f.name] ? DERIVE[f.name]() : value(f.name);
+      // a hidden line's value is the file's (pre-filled on the packet), never typed
+      var v = DERIVE[f.name] ? DERIVE[f.name]() : HIDE.indexOf(f.name) >= 0 ? (fields[f.name] && fields[f.name].f.value) : value(f.name);
+      if (v === null) v = undefined;
       if (f.kind === 'multi') { if (v && v.length) out[f.name] = v; }
       else if (f.kind === 'check') out[f.name] = !!v;
       else if (v !== undefined) out[f.name] = v;

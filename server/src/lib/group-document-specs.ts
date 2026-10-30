@@ -38,6 +38,49 @@ const formText = (ctx: DocCtx, path: string): string => {
 const legalName = (ctx: DocCtx): string => formText(ctx, "legal_name") || fullName(ctx.traveler);
 
 const dobText = (ctx: DocCtx) => fmtLong(ctx.traveler?.dob);
+
+/** Drop the paragraphs matching any pattern, and never leave two rules in a row behind. */
+function dropLines(blocks: Block[], patterns: RegExp[]): Block[] {
+  const kept = blocks.filter((b) => !(b.t === "p" && patterns.some((p) => p.test(b.text))));
+  return kept.filter((b, i) => !(b.t === "hr" && kept[i - 1]?.t === "hr"));
+}
+
+/** The highest State Department level among the itinerary's countries, as the waiver's box value; "unknown" when none could be read. */
+function highestAdvisory(ctx: DocCtx): string {
+  const levels = ctx.advisories.map((a) => a.level).filter((l): l is 1 | 2 | 3 | 4 => l != null);
+  return levels.length ? String(Math.max(...levels)) : "unknown";
+}
+
+/** One line per country of the itinerary, with its ports, as the waiver prints them. */
+function advisoryLines(ctx: DocCtx): string {
+  const byCountry = new Map<string, { title: string; ports: string[] }>();
+  for (const a of ctx.advisories) {
+    const row = byCountry.get(a.country) ?? { title: a.title, ports: [] };
+    if (!row.ports.includes(a.port)) row.ports.push(a.port);
+    byCountry.set(a.country, row);
+  }
+  // {{today}} keeps the hashed text stable from day to day: the signing date is written in when the copy is made.
+  if (!byCountry.size) return "The advisory levels for this itinerary could not be read from travel.state.gov on {{today}}; please check them there before you go.";
+  const list = [...byCountry.entries()].map(([country, r]) => `${country}: ${r.title} (${r.ports.join(", ")})`).join("; ");
+  return `Advisory levels for this itinerary on {{today}}, from the U.S. Department of State (travel.state.gov): ${list}.`;
+}
+
+/** The cabin's dining on the file, as the booking agreement's box value. */
+function diningFromFile(ctx: DocCtx): string | undefined {
+  const d = cleanValue(ctx.cabin?.dining).toLowerCase();
+  if (!d) return undefined;
+  if (/early|first|main/.test(d)) return "early";
+  if (/late|second/.test(d)) return "late";
+  if (/any|my ?time|flex|open/.test(d)) return "anytime";
+  return undefined;
+}
+
+/** The group's occasion, as Mark wrote it on the file (the sign-up's "What is the occasion?"). */
+function occasionFromFile(ctx: DocCtx): string | undefined {
+  const m = ctx.group.marketing;
+  const o = m && typeof m === "object" ? cleanValue((m as Record<string, unknown>)["occasion"]) : "";
+  return o || undefined;
+}
 const mateNames = (ctx: DocCtx) => ctx.mates.map(fullName).filter(Boolean);
 
 function nights(group: Row): number | null {
@@ -108,7 +151,6 @@ const RULES_15: DocSpec["rules"] = [
   { after: "**Country of Issue:**", slot: "passport_country" },
   { after: "**Issue Date:**", slot: "passport_issue" },
   { after: "**Expiration Date:**", slot: "passport_expiry" },
-  { after: "**Place of Issue (City):**", slot: "passport_place" },
   { after: "Do you have Global Entry / TSA PreCheck?", choice: "trusted_programs" },
   { after: "(KTN):", slot: "ktn" },
   { after: "Membership Number:", slot: "global_entry_number" },
@@ -145,7 +187,6 @@ const FIELDS_15: FieldSpec[] = [
   text("passport_country", "Passport country of issue", { required: (a) => typeof a["passport_number"] === "string", col: "passport_country" }),
   { name: "passport_issue", label: "Passport issue date", kind: "date", date: "past", form: "passport.issue_date" },
   { name: "passport_expiry", label: "Passport expiration date", kind: "date", date: "future", required: (a) => typeof a["passport_number"] === "string", col: "passport_expiry" },
-  text("passport_place", "Passport place of issue (city)", { form: "passport.place_of_issue" }),
   { name: "trusted_programs", label: "Global Entry / TSA PreCheck", kind: "multi", options: PROGRAMS, form: "trusted.programs" },
   text("ktn", "Known Traveler Number (KTN)", { form: "trusted.ktn" }),
   text("global_entry_number", "Global Entry membership number", { form: "trusted.global_entry_number" }),
@@ -155,6 +196,8 @@ const FIELDS_15: FieldSpec[] = [
 ];
 
 const EDITS_15: NonNullable<DocSpec["edits"]> = [
+  // Mark 2026-10-30: no passport place-of-issue question, and the agent-only lines at the foot are not the client's to see.
+  (blocks) => dropLines(blocks, [/^\*\*Place of Issue \(City\):\*\*/, /^\*For Agent Use Only:\*/, /^Entered into Client File:/]),
   withRows("Program", () => [1, 2, 3].map((i) => [`{{in:loyalty_${i}_program}}`, `{{in:loyalty_${i}_number}}`])),
   // "ADDITIONAL NOTES" was four rules to write between: one box instead
   (blocks) => {
@@ -237,13 +280,21 @@ const WAIVER_05: DocSpec = {
     { after: "HEALTH DECLARATION", choice: "health_ack" },
   ],
   fields: [
-    { name: "advisory_level", label: "Current travel advisory level", kind: "choice", options: [opt("1", "Level 1", "Level 1"), opt("2", "Level 2", "Level 2"), opt("3", "Level 3", "Level 3"), opt("4", "Level 4", "Level 4"), opt("unknown", "Unknown", "Unknown")] },
+    // Mark 2026-10-30: "we are supposed to be pulling the travel advisory levels for each port in the itinerary": the highest level
+    // among the itinerary's countries (travel.state.gov, read when the page opens), never a question.
+    { name: "advisory_level", label: "Current travel advisory level", kind: "choice", prefill: (c) => highestAdvisory(c), options: [opt("1", "Level 1", "Level 1"), opt("2", "Level 2", "Level 2"), opt("3", "Level 3", "Level 3"), opt("4", "Level 4", "Level 4"), opt("unknown", "Unknown", "Unknown")] },
     { name: "insurance_status", label: "Travel insurance", kind: "choice", options: [opt("have", "I have purchased travel insurance", "**I/We HAVE purchased"), opt("declined", "I have declined travel insurance", "**I/We have DECLINED")] },
     text("ins_provider", "Insurance provider"),
     text("ins_policy", "Policy number"),
     { name: "health_ack", label: "I am aware of and accept the health-related risks", kind: "check", required: true },
   ],
   edits: [
+    // The advisory level of every country on the itinerary, written under the acknowledgment (Mark 2026-10-30).
+    (blocks, ctx) => {
+      const at = blocks.findIndex((b) => b.t === "p" && b.text.startsWith("I/We acknowledge that I/we have been advised"));
+      if (at < 0) throw new Error("client document 05 no longer matches its spec: the advisory acknowledgment not found");
+      return [...blocks.slice(0, at + 1), { t: "p", text: advisoryLines(ctx) }, ...blocks.slice(at + 1)];
+    },
     // The traveler's cabin-mates, by name; the waiver does not need anyone else's birth date.
     (blocks, ctx) => mapTable(blocks, (t) => t.header[0] === "Name" && t.header[1] === "Date of Birth", (t) => [{
       ...t,
@@ -272,7 +323,12 @@ const INSURANCE_07: DocSpec = {
   fields: [
     {
       name: "insurance_choice", label: "Your travel insurance choice", kind: "choice", required: true, form: "insurance.choice",
-      options: [opt("quote", "Yes, please send me an Allianz travel insurance quote"), opt("decline", "No, I decline travel insurance for this trip")],
+      options: [
+        opt("quote", "Yes: Allianz travel insurance through Mark, at the quoted price"),
+        opt("line", "The cruise line's own protection plan"),
+        opt("own", "I have my own travel insurance policy"),
+        opt("decline", "No, I decline travel insurance for this trip"),
+      ],
     },
     {
       name: "decline_reasons", label: "Reasons for declining (optional)", kind: "multi", form: "insurance.reasons",
@@ -295,7 +351,9 @@ const INSURANCE_07: DocSpec = {
       const choice: Block[] = [
         { t: "h", level: 2, text: "YOUR CHOICE" },
         { t: "p", text: "Please choose one before you sign. The Declination Statement, the reasons and the Acknowledgment further down apply only if you choose to decline." },
-        { t: "p", text: "{{ch:insurance_choice:quote}} **Yes.** Please send me an Allianz travel insurance quote for this trip. I am not declining insurance, and the Declination Statement below does not apply to me." },
+        { t: "p", text: "{{ch:insurance_choice:quote}} **Yes.** I want Allianz travel insurance through Mark at the price quoted to me (subject to change until finalized). I am not declining insurance, and the Declination Statement below does not apply to me." },
+        { t: "p", text: "{{ch:insurance_choice:line}} **The cruise line's plan.** I want the cruise line's own protection plan added to my booking. The Declination Statement below does not apply to me." },
+        { t: "p", text: "{{ch:insurance_choice:own}} **My own policy.** I have travel insurance of my own; its provider and policy number are on my Liability Waiver. The Declination Statement below does not apply to me." },
         { t: "p", text: "{{ch:insurance_choice:decline}} **No.** I decline travel insurance for this trip. The Declination Statement and the Acknowledgment below apply to me." },
         { t: "hr" },
       ];
@@ -359,9 +417,9 @@ const BOOKING_12: DocSpec = {
     { after: "Agent Cancellation/Processing Fee:", fill: (c) => (fee(c, "cancellation_fee") ? amountText(fee(c, "cancellation_fee")!.amount) : ""), label: "Cancellation processing fee" },
   ],
   fields: [
-    { name: "dining", label: "Dining preference", kind: "choice", options: [opt("early", "Early Seating"), opt("late", "Late Seating"), opt("anytime", "Anytime Dining"), opt("none", "No Preference")], form: "cabin_preferences.dining" },
-    { name: "occasions", label: "Special occasions", kind: "multi", options: [opt("honeymoon", "Honeymoon"), opt("anniversary", "Anniversary"), opt("birthday", "Birthday"), opt("other", "Other", "Other:")], form: "cabin_preferences.occasions" },
-    text("occasion_other", "Other occasion", { form: "cabin_preferences.occasion_other" }),
+    { name: "dining", label: "Dining preference", kind: "choice", prefill: (c) => diningFromFile(c), options: [opt("early", "Early Seating"), opt("late", "Late Seating"), opt("anytime", "Anytime Dining"), opt("none", "No Preference")], form: "cabin_preferences.dining" },
+    { name: "occasions", label: "Special occasions", kind: "multi", prefill: (c) => (occasionFromFile(c) ? ["other"] : undefined), options: [opt("honeymoon", "Honeymoon"), opt("anniversary", "Anniversary"), opt("birthday", "Birthday"), opt("other", "Other", "Other:")], form: "cabin_preferences.occasions" },
+    text("occasion_other", "Other occasion", { form: "cabin_preferences.occasion_other", prefill: (c) => occasionFromFile(c) }),
     { name: "occasion_date", label: "Date of the occasion", kind: "date", form: "cabin_preferences.occasion_date" },
     { name: "special_needs", label: "Special needs and accessibility requirements", kind: "textarea", form: "cabin_preferences.special_needs" },
     { name: "dietary", label: "Dietary restrictions", kind: "textarea", form: "cabin_preferences.dietary" },

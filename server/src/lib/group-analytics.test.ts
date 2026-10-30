@@ -192,7 +192,7 @@ test("paperwork: one row per traveler and required document, signed or pending",
   const t3 = a.paperwork.filter((p) => p.travelerId === "t3");
   assert.deepEqual(t1.map((p) => p.docKey), packetFor({ group: raw.groups[0], cabin: raw.cabins[0], traveler: raw.travelers[0] }));
   assert.equal(t1.every((p) => p.status === "signed" && p.signedAt === "2026-10-03T00:00:00Z"), true);
-  assert.deepEqual(t2.map((p) => p.docKey), ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"], "every traveler owes the same five (Mark 2026-10-30)");
+  assert.deepEqual(t2.map((p) => p.docKey), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"], "every traveler owes the same five (Mark 2026-10-30)");
   assert.deepEqual(t2.filter((p) => p.status === "signed").map((p) => p.docKey), ["15-emergency-contact-form"]);
   assert.equal(t3.every((p) => p.status === "pending" && p.signedAt === null), true);
   // Mark 2026-10-25: the workspace opens a signed copy itself: the signature's id and two yes/no flags, never the file's path

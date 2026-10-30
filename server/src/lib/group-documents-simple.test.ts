@@ -22,10 +22,10 @@ const TRAVELERS = [
 const ctx = (traveler = TRAVELERS[0], over: Record<string, unknown> = {}) => buildCtx({ business: BUSINESS, group: { ...GROUP, ...over }, cabins: CABINS, travelers: TRAVELERS, traveler, now: NOW });
 
 test("every traveler gets About you then Your booking, the cabin's lead the card authorization too; a fee agreement slots between; the organizer keeps the contract", () => {
-  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[0] }), ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"], "Mark 2026-10-30: the six live documents plus the card authorization; the cabin's lead signs the booking agreement and authorizes the card");
-  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] }), ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[0] }), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"], "Mark 2026-10-30: the six live documents plus the card authorization; the cabin's lead signs the booking agreement and authorizes the card");
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] }), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"]);
   assert.deepEqual(packetFor({ group: { ...GROUP, fees: { planning_fee: 100 } }, cabin: CABINS[0], traveler: TRAVELERS[1] }),
-    ["15-emergency-contact-form", "01-terms-and-conditions", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
+    ["15-emergency-contact-form", "01-terms-and-conditions", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"]);
   assert.deepEqual(packetFor({ group: GROUP, organizer: true }), ["09-group-travel-contract"]);
 });
 
@@ -113,4 +113,53 @@ test("both print as clean forms with the business named, the answers on their li
     assert.ok(text.includes("/s/ Mark Millham"), `${key}: the typed signature`);
     assert.ok(!/\[AGENT|\[INSERT|\{\{/.test(text), `${key}: no placeholder`);
   }
+});
+
+// ── Mark 2026-10-30 ────────────────────────────────────────────────────────────
+
+test("the waiver's advisory level comes from the State Department per port, never asked; the levels are written on the waiver", () => {
+  const advisories = [
+    { port: "Port Canaveral", country: "United States", level: null, title: "United States (no State Department advisory applies at home)" },
+    { port: "Nassau", country: "The Bahamas", level: 2 as const, title: "Level 2: Exercise Increased Caution" },
+    { port: "Ocean Cay", country: "The Bahamas", level: 2 as const, title: "Level 2: Exercise Increased Caution" },
+  ];
+  const c = buildCtx({ business: BUSINESS, group: GROUP, cabins: CABINS, travelers: TRAVELERS, traveler: TRAVELERS[0], now: NOW, advisories });
+  const d = renderDocument("05-liability-waiver", c);
+  assert.equal(d.fields.find((f) => f.name === "advisory_level")!.prefill!(c), "2", "the highest level on the itinerary ticks the box");
+  const filled = blocksToText(fillBlocks(d, { advisory_level: "2", health_ack: true }, NOW));
+  assert.ok(filled.includes("Advisory levels for this itinerary on October 29, 2026, from the U.S. Department of State (travel.state.gov): United States: United States (no State Department advisory applies at home) (Port Canaveral); The Bahamas: Level 2: Exercise Increased Caution (Nassau, Ocean Cay)."), filled.slice(filled.indexOf("Advisory levels"), filled.indexOf("Advisory levels") + 300));
+  assert.ok(d.text.includes("on [date of signing], from the U.S. Department of State"), "the hashed text carries the marker, not the day");
+  const none = renderDocument("05-liability-waiver", ctx());
+  assert.equal(none.fields.find((f) => f.name === "advisory_level")!.prefill!(ctx()), "unknown");
+  assert.ok(none.text.includes("could not be read from travel.state.gov on [date of signing]"));
+});
+
+test("the booking agreement's dining and occasion come from the booking; a line left empty prints as intentionally blank", () => {
+  const c = buildCtx({ business: BUSINESS, group: { ...GROUP, marketing: { occasion: "A reunion of old friends" } }, cabins: [{ ...CABINS[0], dining: "Late seating" }], travelers: TRAVELERS, traveler: TRAVELERS[0], now: NOW });
+  const d = renderDocument("12-cruise-booking-agreement", c);
+  const by = Object.fromEntries(d.fields.map((f) => [f.name, f]));
+  assert.equal(by["dining"]!.prefill!(c), "late");
+  assert.deepEqual(by["occasions"]!.prefill!(c), ["other"]);
+  assert.equal(by["occasion_other"]!.prefill!(c), "A reunion of old friends");
+  assert.equal(by["dining"]!.prefill!(ctx()), undefined, "no dining on the file: nothing ticked");
+  const filled = blocksToText(fillBlocks(d, { dining: "late", occasions: ["other"], occasion_other: "A reunion of old friends" }, NOW));
+  assert.ok(filled.includes("☒ Late Seating") && filled.includes("☒ Other: A reunion of old friends"), filled.slice(filled.indexOf("Dining"), filled.indexOf("Dining") + 400));
+  assert.ok(filled.includes("Date of Occasion: N/A — left intentionally blank"), "an empty line on a signed copy says so");
+  assert.ok(!renderDocument("12-cruise-booking-agreement", c).text.includes("N/A — left"), "the unsigned text keeps its blanks (the hash)");
+});
+
+test("the traveler information form asks no passport place of issue and hides the agent-only lines; the card form says why the licence is asked", () => {
+  const d = renderDocument("15-emergency-contact-form", ctx());
+  assert.ok(!d.fields.some((f) => f.name === "passport_place"));
+  assert.ok(!/Place of Issue|For Agent Use Only|Entered into Client File/.test(d.text), "the client's copy keeps none of these");
+  assert.ok(!/\n-{3,}\n-{3,}/.test(d.text), "no doubled rule where the agent block was");
+  const card = renderDocument("22-card-authorization", ctx());
+  assert.ok(card.text.includes("Why we ask for it: to protect against fraud, Cornerstone Collective asks for the state and number of your driver's licence."));
+});
+
+test("the insurance document offers the four choices Mark wants, after the video and the quote", () => {
+  const d = renderDocument("07-travel-insurance-declination", ctx());
+  assert.deepEqual(d.fields.find((f) => f.name === "insurance_choice")!.options!.map((o) => o.value), ["quote", "line", "own", "decline"]);
+  for (const s of ["subject to change until finalized", "The cruise line's plan.", "My own policy."]) assert.ok(d.text.includes(s), s);
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] }).slice(1, 4), ["01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"], "the waiver's insurance line follows the choice");
 });

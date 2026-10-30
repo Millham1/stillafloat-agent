@@ -44,6 +44,8 @@
 
 **Driver's licence:** {{in:dl_state}} · {{in:dl_number}}
 
+*Why we ask for it: to protect against fraud, Cornerstone Collective asks for the state and number of your driver's licence. It is stored encrypted, used only to verify your identity for this authorization, and seen only by the agent named on this form and, where necessary, authorized Cornerstone Collective personnel.*
+
 *This form takes only the last four digits of the card and its expiry. It never asks for the full card number or the security code; do not type them anywhere on this page.*
 
 -----

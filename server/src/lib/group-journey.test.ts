@@ -155,7 +155,7 @@ test("seven days after a request that went out, a nudge follows if something is 
   assert.equal(day("2026-12-13").after, "t-90");
   // everything in: nothing to chase
   const done = fixtureInput({ extraMessages: [sent] });
-  done.signatures = ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"].map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "traveler", signed_at: "2026-11-01T00:00:00Z" }));
+  done.signatures = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"].map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "traveler", signed_at: "2026-11-01T00:00:00Z" }));
   done.travelers[0]!.form_data = { journey: { getting_there: "driving" } };
   const quiet = item(planJourney(done, at("2026-12-13"), { isApproved: approvedAll }), "t1", "data-needed")!;
   assert.deepEqual([quiet.status, quiet.reason], ["skipped", "nothing is missing"]);
@@ -572,7 +572,7 @@ test("a missing-details message lists what is still missing, and is not written 
   assert.ok(!/How you are getting to the port/.test(r.text), "Ann's flight in is on file");
   assert.ok(!/emergency contact/.test(r.text), "Ann's emergency contact is on file");
   const done = fixtureInput(); done.travelers[0]!.form_data = { journey: { getting_there: "driving" } };
-  done.signatures = ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"].map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "traveler", signed_at: "2026-11-01T00:00:00Z" }));
+  done.signatures = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"].map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "traveler", signed_at: "2026-11-01T00:00:00Z" }));
   assert.equal(renderEmail("data-needed", ctx(done, "t1", before(80))), null);
 });
 

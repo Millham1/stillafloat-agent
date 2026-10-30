@@ -187,9 +187,9 @@ test("a traveler's packet lists their documents in order, with their own inputs,
   assert.equal(r.status, 200);
   const p = pkt(r);
   assert.equal(p.kind, "traveler");
-  assert.deepEqual(p.docs.map((d) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
+  assert.deepEqual(p.docs.map((d) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"]);
   assert.ok(p.docs.every((d) => d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.includes("<")));
-  assert.equal(p.docs[0]!.fields.length, 30, "inputs on the traveler information form");
+  assert.equal(p.docs[0]!.fields.length, 29, "inputs on the traveler information form (no passport place of issue, Mark 2026-10-30)");
   assert.deepEqual(p.mates, ["Jane Public"]);
   assert.equal(p.traveler.passport_on_file, "ending 4321");
   assert.equal(p.pii_ready, true);
@@ -356,7 +356,7 @@ test("signing the booking document records consent; the last signature completes
   const t = setup();
   const token = t.link("t2");
   const mate = "John Public";
-  const order = ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"];
+  const order = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"];
   const answers: Record<string, unknown> = {
     "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", passport_number: "B99887766" },
     "05-liability-waiver": { health_ack: true },
@@ -532,7 +532,7 @@ test("each traveler's progress is the documents asked for against the ones signe
 
 // ── Mark 2026-10-25: DocuSign-grade evidence ──────────────────────────────────
 
-const ORDER_T2 = ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"];
+const ORDER_T2 = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"];
 const ANSWERS_T2: Record<string, unknown> = {
   "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", passport_number: "B99887766" },
   "05-liability-waiver": { health_ack: true },

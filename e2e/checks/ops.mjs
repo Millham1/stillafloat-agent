@@ -1735,7 +1735,7 @@ export default [
           const p = body.packets[tr.id];
           t.ok(p && Array.isArray(p.required) && Array.isArray(p.signed), `group ${g.id}: traveler ${tr.id} has no paperwork progress`);
           t.equal(p.required.length, 5 + (tr.is_lead && tr.cabin_id ? 2 : 0) + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (Mark 2026-10-30: the five Cornerstone documents; the booking agreement and the card authorization for a cabin's lead; the two fee agreements when the file carries a fee)`);
-          t.equal(JSON.stringify(p.required.filter((k) => !/^0[23]-/.test(k)).slice(0, 5)), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]), `group ${g.id}: traveler ${tr.id} is asked for the five documents in order`);
+          t.equal(JSON.stringify(p.required.filter((k) => !/^0[23]-/.test(k)).slice(0, 5)), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"]), `group ${g.id}: traveler ${tr.id} is asked for the five documents in order`);
           t.ok(!p.required.some((k) => /^(04|06|13|14|20|21)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet (Mark 2026-10-30: the two-document packet of 10/29 went out; 04, 06, 13 and 14 never were)`);
           if (!Object.keys(g.fees || {}).length) t.ok(!p.required.some((k) => /^0[23]-/.test(k)), `group ${g.id}: a group with no fees is asked to sign a fee agreement`);
         }
@@ -1826,7 +1826,7 @@ export default [
     id: "ops.paperwork-roundtrip",
     basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: a traveler signs with a typed name and an explicit agreement on their own link; the signature pins the text they saw (changed text is refused); one signature per document; a signed PDF copy is kept in the private bucket; the business is named 'Still Afloat LLC dba Still Afloat Cruising'; no fees unless Mark enters one; the passport never comes back out; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "A throwaway traveler gets a link, sees their documents under the business's legal name, signs one document with a typed name (a wrong hash, no agreement and a second signing are refused), Mark sees the signature and opens its PDF, and removing it asks for the document again",
-    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent", "POST /api/forms/:token/preview", "GET /api/forms/:token/document/:key"],
+    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/forms/:token/insurance", "POST /api/forms/:token/insurance/quote", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent", "POST /api/forms/:token/preview", "GET /api/forms/:token/document/:key"],
     modes: ["dev"],
     devOnlyBecause: "it creates a fixture traveler, signs one document and stores its PDF, then deletes all three (dev database and bucket only; removed in a finally block)",
     run: async (t) => {
@@ -1873,7 +1873,7 @@ export default [
         t.equal(p.kind, "traveler", "kind of the paperwork packet");
         const keys = p.docs.map((d) => d.key);
         const fees = Object.keys(file.group.fees || {}).length > 0;
-        t.equal(JSON.stringify(keys), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", ...(fees ? ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] : []), "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]), `documents in a traveler's packet (Mark 2026-10-30: the five Cornerstone documents; this group ${fees ? "has" : "has no"} fees on file; the fixture is not a cabin's lead, so no booking agreement or card authorization)`);
+        t.equal(JSON.stringify(keys), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", ...(fees ? ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] : []), "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"]), `documents in a traveler's packet (Mark 2026-10-30: the five Cornerstone documents; this group ${fees ? "has" : "has no"} fees on file; the fixture is not a cabin's lead, so no booking agreement or card authorization)`);
         t.equal(p.business?.name, "Still Afloat LLC dba Still Afloat Cruising", "the business's legal name on the paperwork");
         for (const d of p.docs) {
           t.ok(d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.length > 1500, `document ${d.key} is not a real pending document`);
@@ -1883,7 +1883,7 @@ export default [
           t.ok(!/name="(card|cardnumber|cc)/i.test(d.html), `document ${d.key} has a card-number input`);
         }
         if (!fees) for (const d of p.docs) t.ok(!/Service Fees|AGENT SERVICE FEES|retainer fee/.test(d.html), `document ${d.key} shows a fee although the group file has none`);
-        t.equal(p.docs[0].fields.length, 30, "inputs on the traveler information form (name, birth date, gender, citizenship, address, phone, email, passport, trusted traveler programs, three loyalty programs, one emergency contact, a note)");
+        t.equal(p.docs[0].fields.length, 29, "inputs on the traveler information form (name, birth date, gender, citizenship, address, phone, email, passport, trusted traveler programs, three loyalty programs, one emergency contact, a note)");
         t.ok(p.docs[0].fields.some((f) => f.kind === "passport" && f.value === null), "the passport input must never come pre-filled");
         const raw = JSON.stringify(p);
         for (const secret of ["passport_enc", "form_token_hash", "consent_ip_hash", "organizer_token_hash", "organizer_email", "prospect_id"]) t.ok(!raw.includes(secret), `the paperwork packet carries ${secret}`);
@@ -1894,6 +1894,25 @@ export default [
         t.equal(p.esign?.text?.points?.length, 5, "the things the signer agrees to before signing electronically");
         t.ok(/paper copy/i.test((p.esign?.text?.points || []).join(" ")), "the consent offers a paper copy");
         for (const secret of ["esign_consent_ip", "esign_consent_ua", "copies_token_hash"]) t.ok(!raw.includes(secret), `the paperwork packet carries ${secret}`);
+
+        // Mark 2026-10-30: the insurance step comes after the video and the quote. A fresh link has no quote yet; asking for one on
+        // the fixture's file, which carries no home state or birth date, is answered in words (unavailable) and makes exactly one
+        // "Waiting on you" row for Mark, resolved here so the fixture leaves nothing behind. No price is ever invented.
+        const insBefore = t.success(await t.get(`/api/forms/${token}/insurance`));
+        t.equal(insBefore.quote?.status, "none", "quote status on a fresh link");
+        t.equal(insBefore.quote?.note, "Pricing subject to change until finalized.", "the note that goes with every price");
+        t.ok("video_url" in insBefore && "line_protection" in insBefore, "the insurance step's video and the cruise line's own plan");
+        const quoteAsk = await t.send("POST", `/api/forms/${token}/insurance/quote`, { body: {} });
+        t.ok([200, 202].includes(quoteAsk.status), `asking for the Allianz quote (HTTP ${quoteAsk.status}: ${quoteAsk.describe()})`);
+        t.ok(["pending", "unavailable", "ready"].includes(quoteAsk.json?.status), `the quote's state after asking (${quoteAsk.json?.status})`);
+        const insAfter = t.success(await t.get(`/api/forms/${token}/insurance`));
+        t.ok(["pending", "unavailable", "ready"].includes(insAfter.quote?.status), `the quote's state on the page (${insAfter.quote?.status})`);
+        t.ok(!JSON.stringify(insAfter).includes("ALLIANZ_AGENT") && !/password/i.test(JSON.stringify(insAfter)), "the insurance step leaks nothing of the box's sign-in");
+        refused(t, await t.get("/api/forms/nope/insurance"), 404, "the insurance step on a wrong link", /not valid/i);
+        const actRows = t.success(await t.get("/api/actions", { auth: true }));
+        const quoteRows = (actRows.actions || []).filter((a) => a && a.type === "group-insurance-quote" && a.source_ref === travelerId);
+        t.ok(quoteRows.length <= 1, `rows for Mark about this traveler's quote (${quoteRows.length}; one at most)`);
+        for (const a of quoteRows) t.success(await t.send("POST", `/api/actions/${a.id}/resolve`, { auth: true, body: { status: "dismissed" } }), "ok");
 
         // Mark 2026-10-27: each document is shown as Mark's own PDF, filled in with what was typed so far; nothing is kept
         const shown = await t.send("POST", `/api/forms/${token}/preview`, { body: { doc_key: "15-emergency-contact-form", answers: { legal_name: "E2E Fixture" } } });

@@ -27,7 +27,8 @@ import {
 import { renderFormPdf } from "./group-form-pdf";
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
-import { fmtLong } from "./group-document-kit";
+import { fmtLong, type Advisory } from "./group-document-kit";
+import { QUOTE_NOTE, fetchAllianzQuote, quoteInputFor, type QuoteEnv, type QuoteRecord } from "./allianz-quote";
 import { displayName, guestGroupName } from "./group-marketing";
 import { pagePhotos } from "./group-page-photos";
 
@@ -77,6 +78,17 @@ export interface FormsDeps {
   mail: (m: { to: string; subject: string; html: string; text: string }) => Promise<boolean>;
   /** The site the copies links point at (PUBLIC_URL). */
   publicSite: string;
+  /** The State Department advisory per port of the itinerary (Mark 2026-10-30); absent = the waiver says they could not be read. */
+  advisories?: (group: Row) => Promise<Advisory[]>;
+  /** The insurance step: the video, the box's browser and Allianz sign-in for the background quote, and Mark's row when it cannot quote. */
+  insurance?: InsuranceDeps;
+}
+
+export interface InsuranceDeps extends QuoteEnv {
+  /** GROUP_INSURANCE_VIDEO_URL: the video the client watches before choosing; null = no video yet. */
+  videoUrl: string | null;
+  /** "Waiting on you": send this traveler an Allianz quote by hand (made once per traveler). */
+  quoteNeeded: (n: { title: string; body: string; groupId: string; travelerId: string }) => Promise<void>;
 }
 
 // ── Loading a link ────────────────────────────────────────────────────────────
@@ -103,7 +115,7 @@ export interface Loaded {
 }
 
 /** Look a link up. null for every kind of failure: malformed, unknown, replaced, or a group that was cancelled. */
-export async function loadByToken(deps: Pick<FormsDeps, "store" | "now">, token: unknown): Promise<Loaded | null> {
+export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advisories">, token: unknown): Promise<Loaded | null> {
   if (!looksLikeLinkToken(token)) return null;
   const hash = hashLinkToken(token);
   const { store } = deps;
@@ -113,7 +125,8 @@ export async function loadByToken(deps: Pick<FormsDeps, "store" | "now">, token:
     const group = await store.group(traveler.group_id);
     if (!group || group.status === "cancelled") return null;
     const [cabins, travelers] = await Promise.all([store.cabins(group.id), store.travelers(group.id)]);
-    const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler, now });
+    const advisories = deps.advisories ? await deps.advisories(group).catch(() => [] as Advisory[]) : [];
+    const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler, now, advisories });
     const packet = packetFor({ group, cabin: ctx.cabin, traveler });
     const sigs = await store.signaturesFor({ groupId: group.id, travelerId: traveler.id });
     return { kind: "traveler", group, traveler, cabin: ctx.cabin, mates: ctx.mates, ctx, packet, signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
@@ -132,7 +145,7 @@ const personName = (t: Row | null) => [t?.first_name, t?.middle_name, t?.last_na
 /** What the page may see: the safe columns of the signer, the group's headline facts, the cabin's other
  * travelers by name, and each document (its page, the hash to send back, its inputs). Never a passport
  * number, a token, an audit hash or another traveler's details. */
-export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey">): Record<string, unknown> {
+export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey" | "insurance">): Record<string, unknown> {
   const { group, traveler, ctx } = loaded;
   const docs = loaded.packet.map((key) => {
     const sig = loaded.signed.get(key);
@@ -164,6 +177,7 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey">): R
     docs,
     complete: loaded.packet.length > 0 && loaded.packet.every((k) => loaded.signed.has(k)),
     pii_ready: piiConfigured(deps.piiKey),
+    insurance: insurancePublic(loaded, deps),
     // Mark 2026-10-25: consent to electronic records comes first, once per signer; the page shows the box until it is given.
     esign: { consent_given_at: consentOf(loaded), version: ESIGN_CONSENT_VERSION, text: esignConsentText(loaded.ctx.lang) },
     copies_sent_at: (traveler ? traveler.copies_sent_at : group.organizer_copies_sent_at) ?? null,
@@ -686,3 +700,80 @@ export function organizerBlanks(group: Row, cabins: Row[], travelers: Row[], now
   return renderDocument("09-group-travel-contract", ctx).unfilled;
 }
 
+
+
+// ── The insurance step (Mark 2026-10-30): the video, the Allianz quote fetched in the background, the line's own plan ──
+
+const quoteOf = (traveler: Row | null): QuoteRecord | null => {
+  const q = traveler?.form_data?.insurance?.quote;
+  return q && typeof q === "object" && typeof q.status === "string" ? (q as QuoteRecord) : null;
+};
+
+/** What the page sees of the insurance step: never the sign-in, never the reason a quote failed (that is Mark's row). */
+export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance">): Record<string, unknown> {
+  const q = quoteOf(loaded.traveler);
+  return {
+    video_url: deps.insurance?.videoUrl ?? null,
+    line_protection: typeof loaded.group.line_protection === "string" && loaded.group.line_protection.trim() ? loaded.group.line_protection.trim() : null,
+    quote: q
+      ? { status: q.status, plans: q.status === "ready" ? q.plans : [], quoted_at: q.quoted_at, note: QUOTE_NOTE, trip_cost: q.input?.trip_cost ?? null }
+      : { status: "none", plans: [], quoted_at: null, note: QUOTE_NOTE, trip_cost: null },
+  };
+}
+
+async function saveQuote(deps: Pick<FormsDeps, "store">, traveler: Row, q: QuoteRecord): Promise<void> {
+  const fd = traveler.form_data && typeof traveler.form_data === "object" ? traveler.form_data : {};
+  const ins = fd.insurance && typeof fd.insurance === "object" ? fd.insurance : {};
+  const form_data = { ...fd, insurance: { ...ins, quote: q } };
+  traveler.form_data = form_data;
+  await deps.store.updateTraveler(traveler.id, { form_data });
+}
+
+const TEN_MINUTES = 10 * 60_000;
+
+/** POST …/insurance/quote: start the background quote for this traveler (once; again when the last one failed or stalled). */
+export async function requestInsuranceQuote(deps: FormsDeps, token: unknown): Promise<{ status: number; json: Row }> {
+  const loaded = await loadByToken(deps, token);
+  if (!loaded || !loaded.traveler) return { status: 404, json: { success: false, error: "This link is not valid." } };
+  const t = loaded.traveler;
+  const now = deps.now();
+  const have = quoteOf(t);
+  if (have?.status === "ready") return { status: 200, json: { success: true, status: "ready" } };
+  if (have?.status === "pending" && now.getTime() - Date.parse(have.requested_at) < TEN_MINUTES) return { status: 200, json: { success: true, status: "pending" } };
+  const input = quoteInputFor(loaded);
+  const base: QuoteRecord = { status: "pending", requested_at: now.toISOString(), quoted_at: null, plans: [], note: QUOTE_NOTE, reason: null, input: "missing" in input ? null : input, action_at: have?.action_at ?? null };
+  if ("missing" in input) {
+    await finishQuote(deps, loaded, { ...base, status: "unavailable", reason: `the file is missing: ${input.missing.join(", ")}` });
+    return { status: 200, json: { success: true, status: "unavailable" } };
+  }
+  await saveQuote(deps, t, base);
+  // In the background: the client reads on while the portal is driven; the page polls GET …/insurance.
+  void fetchAllianzQuote(input, deps.insurance ?? { chromePath: undefined, user: undefined, password: undefined })
+    .then((out) => finishQuote(deps, loaded, out.status === "ready"
+      ? { ...base, status: "ready", quoted_at: deps.now().toISOString(), plans: out.plans }
+      : { ...base, status: "unavailable", reason: out.reason }))
+    .catch((err) => deps.warn({ err, traveler: t.id }, "insurance quote: the background job failed"));
+  return { status: 202, json: { success: true, status: "pending" } };
+}
+
+async function finishQuote(deps: FormsDeps, loaded: Loaded, q: QuoteRecord): Promise<void> {
+  const t = loaded.traveler!;
+  if (q.status === "unavailable" && !q.action_at && deps.insurance) {
+    const who = personName(t) || "a traveler";
+    const i = q.input;
+    const facts = i ? `${i.destination}, ${fmtLong(i.depart_date)} to ${fmtLong(i.return_date)}, $${i.trip_cost} per person, home state ${i.state}, birth date${i.birth_dates.length > 1 ? "s" : ""} ${i.birth_dates.map((d) => fmtLong(d)).join(", ")}.` : "";
+    await deps.insurance.quoteNeeded({
+      title: `Allianz quote to send: ${who}`,
+      body: `${guestGroupName(loaded.group)} — the background quote could not run (${q.reason ?? "unknown"}). ${facts} Send the quote by email; the client's paperwork page says it is coming from you.`.trim(),
+      groupId: loaded.group.id, travelerId: t.id,
+    }).then(() => { q.action_at = deps.now().toISOString(); }).catch((err) => deps.warn({ err }, "insurance quote: could not make Mark's row"));
+  }
+  await saveQuote(deps, t, q);
+}
+
+/** GET …/insurance: where the quote stands, for the page to poll. */
+export async function insuranceStatus(deps: FormsDeps, token: unknown): Promise<{ status: number; json: Row }> {
+  const loaded = await loadByToken(deps, token);
+  if (!loaded || !loaded.traveler) return { status: 404, json: { success: false, error: "This link is not valid." } };
+  return { status: 200, json: { success: true, ...insurancePublic(loaded, deps) } };
+}

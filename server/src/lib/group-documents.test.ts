@@ -240,7 +240,7 @@ test("the traveler form's blanks and boxes become the inputs its spec names, and
     }
   }
   const f15 = renderDocument("15-emergency-contact-form", ctxFor());
-  assert.equal(f15.fields.length, 30);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance, prescriptions or diet
+  assert.equal(f15.fields.length, 29);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance; 10/30: no passport place of issue, prescriptions or diet
   assert.ok(f15.html.includes('type="date" name="dob"') && f15.html.includes('type="email" name="email"') && f15.html.includes('type="radio" name="gender" value="female"'));
   assert.ok(f15.html.includes('type="checkbox" name="trusted_programs" value="tsa"'), "multi fields are checkboxes");
   assert.ok(f15.html.includes('autocomplete="off"'), "the passport input must not be autofilled or remembered");
@@ -278,7 +278,7 @@ test("a signed copy merges the answers into the text and marks the chosen boxes"
   const d = renderDocument("07-travel-insurance-declination", ctxFor());
   const filled = blocksToText(fillBlocks(d, { insurance_choice: "decline", decline_reasons: ["premium"], decline_other: "no thanks" }, NOW));
   assert.ok(filled.includes("☒ No. I decline travel insurance for this trip."));
-  assert.ok(filled.includes("☐ Yes. Please send me an Allianz travel insurance quote"));
+  assert.ok(filled.includes("☐ Yes. I want Allianz travel insurance through Mark"));
   assert.ok(filled.includes("☒ The insurance premium cost is a concern"));
   assert.ok(filled.includes("☐ I have existing coverage"));
   assert.ok(filled.includes("Other: no thanks"));
@@ -290,18 +290,18 @@ test("a signed copy merges the answers into the text and marks the chosen boxes"
 
 test("every traveler gets About you then Your booking, the cabin's lead the card authorization (Mark 2026-10-29); the organizer 09; the Cornerstone set stays renderable but is in no packet", () => {
   const plain = packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] });
-  assert.deepEqual(plain, ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
+  assert.deepEqual(plain, ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"]);
   assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[0] }), [...plain, "12-cruise-booking-agreement", "22-card-authorization"], "the cabin's lead also signs the booking agreement and authorizes the card");
   assert.deepEqual(packetFor({ group: GROUP, cabin: null, traveler: TRAVELERS[0] }), plain, "a lead with no cabin has nothing to pay for yet");
   assert.deepEqual(packetFor({ group: GROUP, organizer: true }), ["09-group-travel-contract"]);
-  for (const key of ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement"]) {
+  for (const key of ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist", "12-cruise-booking-agreement"]) {
     assert.ok(renderDocument(key, ctxFor()).html.includes("<"), `${key} still renders (signed copies from before 10/29 and Mark's way back)`);
   }
 });
 
 test("documents 02 and 03 are in a packet only when the file carries a fee, after About you; 04, 06, 13, 14 and the Cornerstone set are in no packet", () => {
   const withFees = packetFor({ group: { ...GROUP, fees: { planning_fee: 100 } }, cabin: CABINS[0], traveler: TRAVELERS[0] });
-  assert.deepEqual(withFees, ["15-emergency-contact-form", "01-terms-and-conditions", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"]);
+  assert.deepEqual(withFees, ["15-emergency-contact-form", "01-terms-and-conditions", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"]);
   assert.equal(packetFor({ group: { ...GROUP, fees: { planning_fee: 0, x: "free" } }, traveler: TRAVELERS[1] }).length, 5, "a zero or non-numeric fee is not a fee");
   for (const g of [GROUP, { ...GROUP, fees: { planning_fee: 100 } }]) {
     for (const t of [TRAVELERS[0], TRAVELERS[1]]) {
@@ -450,13 +450,13 @@ test("the organizer's contract asks for an address, phone and email, and offers 
 });
 
 test("the page gets each field without functions or secrets, pre-filled from the file, and never a passport number", () => {
-  const ctx = ctxFor({}, { ...TRAVELERS[1]!, form_data: { passport: { place_of_issue: "Raleigh" }, trusted: { programs: ["global"] } }, passport_country: "United States" });
+  const ctx = ctxFor({}, { ...TRAVELERS[1]!, form_data: { passport: { place_of_issue: "Raleigh" }, trusted: { programs: ["global"] } }, passport_country: "United States" }); // the place of issue on an older file is simply not asked any more (Mark 2026-10-30)
   const fields = renderDocument("15-emergency-contact-form", ctx).fields.map((f) => publicField(f, ctx));
   const by = Object.fromEntries(fields.map((f) => [f.name as string, f]));
   assert.equal(by["dob"]!.value, "1958-01-09");
   assert.equal(by["legal_name"]!.value, "John Q Public");
   assert.equal(by["passport_country"]!.value, "United States");
-  assert.equal(by["passport_place"]!.value, "Raleigh");
+  assert.equal(by["passport_place"], undefined, "no passport place-of-issue line (Mark 2026-10-30)");
   assert.deepEqual(by["trusted_programs"]!.value, ["global"]);
   assert.equal(by["passport_number"]!.value, null);
   assert.equal(by["passport_number"]!.kind, "passport");
