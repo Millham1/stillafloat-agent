@@ -608,7 +608,7 @@ export default [
       // A "Waiting on you" row is an action: it carries at least one well-formed button (API, link or
       // dismiss) and its public.actions row is pending, so the brief and the notification show the same item.
       const waiting = v.activity.filter((a) => a.status === "waiting-on-mark");
-      const pending = waiting.length ? t.json(await t.get("/api/actions", { auth: true })).actions || [] : [];
+      const pending = t.json(await t.get("/api/actions", { auth: true })).actions || [];
       const pendingIds = new Set(pending.map((r) => r.id));
       for (const a of waiting) {
         t.ok(Array.isArray(a.buttons) && a.buttons.length > 0, `"${a.title}" is waiting on Mark with nothing to press`);
