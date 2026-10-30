@@ -139,39 +139,25 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // Mark 2026-10-25: the one-time consent to electronic records comes before the first signature (ESIGN consumer consent).
   function consented() { return !packet.esign || !!packet.esign.consent_given_at; }
 
-  // ── The screens (Mark 2026-10-29: "build our versions" of the two simplified documents, one question per screen like the form
-  // tools he compared; then each document one page at a time, in its true form, Confirm to move on) ──
-  // A screen names the questions it asks; any required question of a document not named here is asked on a screen of its own.
+  // ── The screens (Mark 2026-10-30: "gather all the information to fill every form, then present the document for them to sign;
+  // the questions pre-filled from information we already have, with the ability to edit") ──
+  // One page, "Your details", holds every question of every document still to sign, in sections, pre-filled from the file; then each
+  // document is shown one page at a time, in its true form, Confirm to move on, the signature on its last page.
   var WELCOME = { id: 'welcome', title: 'Welcome aboard' };
-  var SCREENS = {
-    '20-about-you': [
-      { id: 'name', title: 'Your name', fields: ['legal_name'] },
-      { id: 'dob', title: 'Date of birth', fields: ['dob'] },
-      { id: 'gender', title: 'Gender', fields: ['gender'] },
-      { id: 'citizen', title: 'Citizenship', fields: ['us_citizen', 'citizenship'] },
-      { id: 'home', title: 'Where you live', fields: ['address', 'city_state_zip'] },
-      { id: 'phone', title: 'Mobile phone', fields: ['phone'] },
-      { id: 'email', title: 'Email', fields: ['email'] },
-      { id: 'passport', title: 'Passport', fields: ['passport_number', 'passport_country', 'passport_issue', 'passport_expiry'] },
-      { id: 'loyalty', title: 'Loyalty programs', fields: ['loyalty_1_program', 'loyalty_1_number', 'loyalty_2_program', 'loyalty_2_number'] },
-      { id: 'contact', title: 'Emergency contact', fields: ['ec1_name', 'ec1_relationship', 'ec1_cell_phone'] },
-      { id: 'notes', title: 'Anything we should know', fields: ['notes'] },
-    ],
-    '21-your-booking': [
-      { id: 'insurance', title: 'Travel insurance: your choice', fields: ['insurance_choice', 'insurance_policy'] },
-    ],
-    '22-card-authorization': [
-      { id: 'cardholder', title: 'The cardholder', fields: ['card_name', 'card_address', 'card_city_state_zip', 'card_phone'] },
-      { id: 'card', title: 'The card', fields: ['card_type', 'card_last4', 'card_expiry'] },
-    ],
+  // a section heading before the first of its questions
+  var SECTIONS = {
+    legal_name: 'Who you are', address: 'How to reach you', passport_number: 'Passport', loyalty_1_program: 'Loyalty programs',
+    ec1_name: 'Emergency contact', notes: 'Anything we should know', insurance_choice: 'Travel insurance: your choice', card_name: 'The card',
   };
-  // a line of help above a screen's question
+  // a line of help under a section heading
   var INTRO = {
-    insurance: 'We strongly recommend travel insurance. It can cover the fare if you have to cancel, medical care abroad (your U.S. health plan may pay little or nothing outside the country), and emergency evacuation, which can run from $15,000 to $200,000. Some benefits are only available within about two weeks of your deposit. You can add insurance any time before sailing.',
-    passport: 'Optional on a cruise that starts and ends in the same U.S. port, but the only document that gets you home by air if you have to leave the ship early.',
-    contact: 'One person who is not traveling with you.',
-    card: 'Only the last four digits and the expiry. Never type the full card number or the security code anywhere on this page.',
+    passport_number: 'Optional on a cruise that starts and ends in the same U.S. port, but the only document that gets you home by air if you have to leave the ship early.',
+    ec1_name: 'One person who is not traveling with you.',
+    insurance_choice: 'We strongly recommend travel insurance. It can cover the fare if you have to cancel, medical care abroad (your U.S. health plan may pay little or nothing outside the country), and emergency evacuation, which can run from $15,000 to $200,000. Some benefits are only available within about two weeks of your deposit. You can add insurance any time before sailing.',
+    card_name: 'For the deposit and the payments as they come due. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
   };
+  // the card's details start as the traveler's own (editable; a changed box stays as typed)
+  var MIRROR = { card_name: 'legal_name', card_address: 'address', card_city_state_zip: 'city_state_zip', card_phone: 'phone' };
   // Mark 2026-10-27/28, his flow: "We collect the data to populate only that document, then show the client the actual populated
   // document, the client then confirms it is accurate by hitting confirm, then we move to the next document … at the end of all the
   // confirmed documents we provide the checklist format for them to go back and review". So, document by document: its questions
@@ -260,19 +246,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
         if (f.required) fields[f.name].f.required = true;
       });
     });
-    var named = {};
-    Object.keys(SCREENS).forEach(function (k) { SCREENS[k].forEach(function (s) { s.fields.forEach(function (n) { named[n] = true; }); }); });
     steps = [WELCOME];
-    pending().forEach(function (d) {
-      // a question is asked for the first document that needs it
-      var mine = function (n) { return !!fields[n] && fields[n].docs[0] === d.key; };
-      (SCREENS[d.key] || []).forEach(function (s) { if (s.fields.some(mine)) steps.push({ id: s.id, title: s.title, fields: s.fields.filter(mine), doc: d.key }); });
-      var ask = d.fields.filter(function (f) { return f.required && !named[f.name] && !isFollow(f.name) && mine(f.name); }).map(function (f) { return f.name; });
-      if (ask.length) steps.push({ id: 'ask', title: ask.length === 1 ? 'One quick question' : 'A few quick questions', fields: ask, doc: d.key });
-      steps.push({ id: 'doc', key: d.key, doc: d.key, title: d.title });
-    });
+    var ask = order.filter(function (n) { return !isFollow(n); });
+    if (ask.length) steps.push({ id: 'details', title: 'Your details', fields: ask });
+    pending().forEach(function (d) { steps.push({ id: 'doc', key: d.key, doc: d.key, title: d.title }); });
     steps.push({ id: 'check', title: 'Your documents' });
-    return named;
+    return {};
   }
 
   function control(f) {
@@ -320,7 +299,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function stepBody(s, named) {
     if (s.id === 'welcome') {
       var c = packet.esign && packet.esign.text, h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '! ' +
-        (packet.kind === 'organizer' ? 'Here is the group contract to read and sign.' : 'A few quick screens and your paperwork is done: about 5 minutes, less time than the line at the buffet!') + '</p>' + tripBox();
+        (packet.kind === 'organizer' ? 'Here is the group contract to read and sign.' : 'One page of details, then your documents to read and sign: about 5 minutes, less time than the line at the buffet!') + '</p>' + tripBox();
       if (!consented() && c) h += '<div class="w-box"><b>' + esc(c.title) + '</b><p>' + esc(c.intro) + '</p><ul>' + c.points.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
         '<label class="w-opt-row"><input type="checkbox" id="fm-esign" data-nokeep><span>' + esc(c.tick) + '</span></label></div>';
       if (packet.kind === 'traveler' && !(packet.traveler && packet.traveler.newsletter_opt_in))
@@ -342,7 +321,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
           : 'Typing your name is your legal signature on this document, and says you agree to it. It goes on the signature line; the date and time and the exact text are saved with it, and you get a signed copy by email.') + '</p></div>';
     }
     if (s.id === 'check') return '<p class="lead">All of your documents are signed. You can look at any of them again, print it or save it.</p><ul class="w-docs" id="fm-checklist"></ul>';
-    return (INTRO[s.id] ? '<p class="w-for">' + esc(INTRO[s.id]) + '</p>' : '') + fieldsHtml(s.fields || []);
+    return (s.id === 'details' ? '<p class="lead">Everything we need for your paperwork, on one page. What we already know is filled in: check it, change anything that is wrong, and fill in the rest.</p>' : '') + fieldsHtml(s.fields || []);
   }
   // the checklist at the end: every document of the packet, signed, each to view, print or save
   function checklist() {
@@ -355,16 +334,39 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   }
   function fieldsHtml(names) {
     var list = names.filter(function (n) { return fields[n] && !isFollow(n); });
-    var html = '', loyalty = list.filter(function (n) { return /^loyalty_/.test(n); });
-    list.filter(function (n) { return !/^loyalty_/.test(n); }).forEach(function (n) { html += control(fields[n].f); });
-    if (loyalty.length) {
-      var any = loyalty.some(function (n) { return fields[n].f.value; });
-      html += '<fieldset class="w-field"><legend><span class="w-label">Do you belong to any Loyalty Programs?</span> <span class="w-opt">(optional)</span></legend>' +
-        '<label class="w-opt-row"><input type="radio" name="w-loyal" id="w-loyal-no" value="no"' + (any ? '' : ' checked') + '><span>No</span></label>' +
-        '<label class="w-opt-row"><input type="radio" name="w-loyal" id="w-loyal-yes" value="yes"' + (any ? ' checked' : '') + '><span>Yes</span></label>' +
-        '<div class="w-follow w-loyal-rows" data-follow="w-loyal:yes"><div class="w-pairs">' + loyalty.map(function (n) { return control(fields[n].f); }).join('') + '</div></div></fieldset>';
-    }
+    var html = '', loyalty = list.filter(function (n) { return /^loyalty_/.test(n); }), loyaltyDone = false;
+    list.forEach(function (n) {
+      if (SECTIONS[n]) html += '<h3 class="w-group">' + esc(SECTIONS[n]) + '</h3>' + (INTRO[n] ? '<p class="w-for">' + esc(INTRO[n]) + '</p>' : '');
+      if (/^loyalty_/.test(n)) {
+        if (loyaltyDone) return;
+        loyaltyDone = true;
+        var any = loyalty.some(function (k) { return fields[k].f.value; });
+        html += '<fieldset class="w-field"><legend><span class="w-label">Do you belong to any loyalty programs?</span> <span class="w-opt">(optional)</span></legend>' +
+          '<label class="w-opt-row"><input type="radio" name="w-loyal" id="w-loyal-no" value="no"' + (any ? '' : ' checked') + '><span>No</span></label>' +
+          '<label class="w-opt-row"><input type="radio" name="w-loyal" id="w-loyal-yes" value="yes"' + (any ? ' checked' : '') + '><span>Yes</span></label>' +
+          '<div class="w-follow w-loyal-rows" data-follow="w-loyal:yes"><div class="w-pairs">' + loyalty.map(function (k) { return control(fields[k].f); }).join('') + '</div></div></fieldset>';
+        return;
+      }
+      html += control(fields[n].f);
+    });
     return html;
+  }
+
+  // the card's name, address and phone follow the traveler's own until the client types something different there
+  function mirrorCard(root) {
+    Object.keys(MIRROR).forEach(function (to) {
+      var src = root.querySelector('[data-field="' + MIRROR[to] + '"]'), dst = root.querySelector('[data-field="' + to + '"]');
+      if (!src || !dst) return;
+      var last = null;
+      var copy = function () {
+        if (dst.value && dst.value !== last) return;            // the client typed their own: leave it
+        if (isCsz(to)) { var c = splitCsz(src.value); setCsz(dst, c.city, c.state, c.zip); } else dst.value = src.value;
+        last = dst.value;
+      };
+      copy();
+      src.addEventListener('input', copy);
+      if (isCsz(MIRROR[to])) { var p = cszParts(src); [p.city, p.state, p.zip].forEach(function (el) { el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function () { setTimeout(copy, 0); }); }); }
+    });
   }
 
   function renderWizard() {
@@ -376,11 +378,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
         ? '<div class="w-docbar"><span>Document ' + (packet.docs.indexOf(docByKey(s.key)) + 1) + ' of ' + packet.docs.length + '</span><h2>' + esc(s.title) + '</h2></div>'
         : '<h2>' + esc(s.title) + '</h2>';
       // every question screen says which document it fills in
-      var forDoc = s.doc && s.id !== 'doc' ? '<p class="w-for">You\u2019re filling in: <b>' + esc(docByKey(s.doc).title) + '</b></p>' : '';
+      var forDoc = '';
       return '<section class="w-step" data-step="' + i + '" hidden>' + forDoc + head + stepBody(s, named) + '</section>';
     }).join('');
     cszWire(host);
     addressCheck(host);
+    mirrorCard(host);
     followUps();
     if (window.SAKeep) { window.SAKeep.track(host, wizKey); window.SAKeep.restore(host, wizKey()); followUps(); }
     show('fm-wiz', true); show('fm-done', false); show('fm-doc', false);
