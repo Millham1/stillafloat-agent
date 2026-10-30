@@ -68,8 +68,8 @@ test("the traveler form carries the answers, the loyalty programs in their table
 });
 
 test("Mark 2026-10-30: on a document shown with the client's answers, a line left empty reads as intentionally blank; a form printed with no answers keeps its blanks", () => {
-  const withAnswers = pieces("**Dietary Restrictions:** {{in:dietary}} **Notes:** {{ta:notes}}", { answers: { dietary: "none", notes: "" }, today: "October 30, 2026", signer: null });
+  const withAnswers = pieces("**Dietary Restrictions:** {{in:dietary}} **Notes:** {{ta:notes}}", { answers: { dietary: "none", notes: "" }, today: "October 30, 2026", signer: undefined });
   assert.deepEqual(withAnswers.filter((p) => p.k === "answer").map((p) => (p as { text: string }).text), ["none", "N/A — left intentionally blank"]);
-  const blankForm = pieces("**Dietary Restrictions:** {{in:dietary}}", { answers: {}, today: "October 30, 2026", signer: null });
+  const blankForm = pieces("**Dietary Restrictions:** {{in:dietary}}", { answers: {}, today: "October 30, 2026", signer: undefined });
   assert.ok(blankForm.some((p) => p.k === "blank") && !blankForm.some((p) => p.k === "answer"));
 });
