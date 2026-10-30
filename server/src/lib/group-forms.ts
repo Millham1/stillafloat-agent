@@ -474,7 +474,7 @@ export function copiesEmail(input: { lang: "en" | "es"; firstName: string; group
     : (es ? "Los enlaces son solo suyos; por favor no los reenvíe." : "The links are yours alone, so please don't forward them.");
   const fix = es ? `¿Algo que corregir? Responda a este correo o llame al ${BUSINESS.phone} y lo resolvemos juntos.` : `Spot something that needs fixing? Reply to this email or call ${BUSINESS.phone}, and we'll sort it together.`;
   const bye = es ? "¡Nos vemos a bordo!" : "See you on board!";
-  const sign = [BUSINESS.agentName, BUSINESS.legalName, BUSINESS.contactLine.split(" · ").slice(1).join(" · ")];
+  const sign = [BUSINESS.agentName, BUSINESS.tradeName, BUSINESS.contactLine.split(" · ").slice(1).join(" · ")]; // Mark 2026-10-30: the signature reads "Still Afloat Cruising"
   const text = [hello, opening, ...input.docs.map((d) => `${d.title}\n${d.url}`), tip, seal, fix, bye, sign.join("\n")].join("\n\n") + "\n";
   const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#07183f">`
@@ -660,7 +660,7 @@ export function linkEmail(input: { firstName: string; groupName: string; ship: s
     "It takes about ten minutes, and it helps to have your passport handy. The link is only for you, so please do not forward it.",
     `Questions? Reply to this email or call ${BUSINESS.phone}.`,
   ];
-  const sign = [BUSINESS.agentName, BUSINESS.legalName, BUSINESS.contactLine.split(" · ").slice(1).join(" · ")];
+  const sign = [BUSINESS.agentName, BUSINESS.tradeName, BUSINESS.contactLine.split(" · ").slice(1).join(" · ")]; // Mark 2026-10-30: the signature reads "Still Afloat Cruising"
   const text = `${lines.join("\n\n")}\n\n${sign.join("\n")}\n`;
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#07183f">${lines

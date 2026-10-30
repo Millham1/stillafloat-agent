@@ -80,7 +80,9 @@ function inRun(text: string, bold: boolean, italic: boolean, input: Pick<FormPdf
     const v = name ? a[name] : undefined;
     const say = (s: string | undefined) => out.push(s ? { k: "answer", text: s } : { k: "blank" });
     switch (kind) {
-      case "in": case "ta": say(typeof v === "string" ? v.replace(/\s+/g, " ").trim() : undefined); break;
+      // Mark 2026-10-30: once the client has answered, a line they left empty reads "N/A — left intentionally blank" on the
+      // document they are shown and sign; a form printed with no answers at all keeps its blank lines.
+      case "in": case "ta": { const s = typeof v === "string" ? v.replace(/\s+/g, " ").trim() : ""; say(s || (Object.keys(a).length ? "N/A — left intentionally blank" : undefined)); break; }
       case "today": say(input.today); break;
       case "sig": say(input.signer ? `/s/ ${input.signer}` : undefined); break;
       case "sigdate": say(input.signer ? input.today : undefined); break;

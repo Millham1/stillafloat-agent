@@ -307,7 +307,7 @@ const en = {
     contactTitle: "Questions",
     sectionEmpty: "",
     badLink: "This link is not valid. Please check that you opened the whole link from your email, or ask Mark for a new one.",
-    footer: BUSINESS.legalName,
+    footer: BUSINESS.tradeName, // Mark 2026-10-30: the sign-off is "Still Afloat Cruising"
     fields: {
       getting_there: "How are you getting to the port?",
       getting_there_flying: "Flying",
@@ -607,7 +607,7 @@ const es: Strings = {
     contactTitle: "Preguntas",
     sectionEmpty: "",
     badLink: "Este enlace no es válido. Verifique que abrió el enlace completo de su correo, o pida a Mark uno nuevo.",
-    footer: BUSINESS.legalName,
+    footer: BUSINESS.tradeName, // Mark 2026-10-30: the sign-off is "Still Afloat Cruising"
     fields: {
       getting_there: "¿Cómo llegará al puerto?",
       getting_there_flying: "En avión",

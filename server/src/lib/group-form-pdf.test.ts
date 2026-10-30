@@ -22,7 +22,7 @@ const KEYS = ["20-about-you", "21-your-booking", "22-card-authorization", "15-em
 test("a line of the form: words in their print, each blank with its answer or a line, each box ticked by its choice", () => {
   const p = pieces("**Gender:** {{ch:gender:male}} Male {{ch:gender:female}} Female *Date Completed: {{today}}* Name: {{in:legal_name}} Zip: {{in:zip}} ___ ☐ Yes", { answers: ANSWERS, today: "October 28, 2026" });
   assert.deepEqual(p.filter((x) => x.k !== "text"), [
-    { k: "box", on: false }, { k: "box", on: true }, { k: "answer", text: "October 28, 2026" }, { k: "answer", text: "Jane Quincy Public" }, { k: "blank" }, { k: "blank" }, { k: "box", on: false },
+    { k: "box", on: false }, { k: "box", on: true }, { k: "answer", text: "October 28, 2026" }, { k: "answer", text: "Jane Quincy Public" }, { k: "answer", text: "N/A — left intentionally blank" }, { k: "blank" }, { k: "box", on: false },
   ]);
   assert.ok(p.some((x) => x.k === "text" && x.bold && x.text === "Gender:"));
   assert.ok(p.some((x) => x.k === "text" && x.italic && /Date Completed/.test(x.text)), "an italic run keeps its blank inside it");
@@ -65,4 +65,11 @@ test("the traveler form carries the answers, the loyalty programs in their table
   const text = said.join(" ");
   for (const s of ["Jane Quincy Public", "100 Goodsell Ct", "Sam Public", "Child", "MSC Voyagers Club", "123456789", "/s/ Jane Public", "Loyalty Programs?"]) assert.ok(text.includes(s), s);
   for (const cut of ["MEDICAL INFORMATION", "Secondary Emergency Contact", "power of attorney", "Blood Type"]) assert.ok(!text.includes(cut), `cut: ${cut}`);
+});
+
+test("Mark 2026-10-30: on a document shown with the client's answers, a line left empty reads as intentionally blank; a form printed with no answers keeps its blanks", () => {
+  const withAnswers = pieces("**Dietary Restrictions:** {{in:dietary}} **Notes:** {{ta:notes}}", { answers: { dietary: "none", notes: "" }, today: "October 30, 2026", signer: null });
+  assert.deepEqual(withAnswers.filter((p) => p.k === "answer").map((p) => (p as { text: string }).text), ["none", "N/A — left intentionally blank"]);
+  const blankForm = pieces("**Dietary Restrictions:** {{in:dietary}}", { answers: {}, today: "October 30, 2026", signer: null });
+  assert.ok(blankForm.some((p) => p.k === "blank") && !blankForm.some((p) => p.k === "answer"));
 });

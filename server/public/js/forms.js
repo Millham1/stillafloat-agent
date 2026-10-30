@@ -751,7 +751,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function render() {
     setState('');
     photos();
-    $('fm-foot').textContent = (packet.business && packet.business.name) || 'Still Afloat Cruising';
+    $('fm-foot').textContent = (packet.business && packet.business.trade_name) || 'Still Afloat Cruising'; // Mark 2026-10-30: the page signs off as Still Afloat Cruising
     if (packet.docs.length && !pending().length) showDone(); else renderWizard();
   }
 

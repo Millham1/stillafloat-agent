@@ -499,7 +499,7 @@ test("the emailed link is plain and short, carries the business signature, and m
   assert.ok(m.text.startsWith("Hello Jane,"));
   assert.ok(m.text.includes(url) && m.html.includes(`href="${url}"`));
   assert.ok(m.text.includes("MSC Seascape, sailing March 14, 2027"));
-  assert.ok(m.text.includes("Still Afloat LLC dba Still Afloat Cruising") && m.text.includes("mark@stillafloatcruising.com"));
+  assert.ok(m.text.includes("Still Afloat Cruising") && !m.text.includes("Still Afloat LLC dba") && m.text.includes("mark@stillafloatcruising.com"), "the sign-off is Still Afloat Cruising (Mark 2026-10-30)");
   assert.ok(!/actually/i.test(m.text), "Mark's banned word");
   assert.ok(m.text.length < 900, "short");
   assert.ok(linkEmail({ firstName: "", groupName: "G", ship: null, sailDate: null, url }).text.startsWith("Hello,\n"));

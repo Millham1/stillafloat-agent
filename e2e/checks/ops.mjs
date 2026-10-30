@@ -1909,7 +1909,7 @@ export default [
         t.ok(["pending", "unavailable", "ready"].includes(insAfter.quote?.status), `the quote's state on the page (${insAfter.quote?.status})`);
         t.ok(!JSON.stringify(insAfter).includes("ALLIANZ_AGENT") && !/password/i.test(JSON.stringify(insAfter)), "the insurance step leaks nothing of the box's sign-in");
         refused(t, await t.get("/api/forms/nope/insurance"), 404, "the insurance step on a wrong link", /not valid/i);
-        const actRows = t.success(await t.get("/api/actions", { auth: true }));
+        const actRows = t.success(await t.get("/api/actions", { auth: true }), "ok");
         const quoteRows = (actRows.actions || []).filter((a) => a && a.type === "group-insurance-quote" && a.source_ref === travelerId);
         t.ok(quoteRows.length <= 1, `rows for Mark about this traveler's quote (${quoteRows.length}; one at most)`);
         for (const a of quoteRows) t.success(await t.send("POST", `/api/actions/${a.id}/resolve`, { auth: true, body: { status: "dismissed" } }), "ok");
