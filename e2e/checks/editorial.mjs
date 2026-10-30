@@ -499,7 +499,9 @@ export default [
         types[a.type] = (types[a.type] || 0) + 1;
         for (const b of a.buttons) {
           t.ok(typeof b.label === "string" && b.label.trim(), `action ${a.id}: a button has no label`);
-          t.ok((["GET", "POST"].includes(b.method) && /^\/api\//.test(b.path || "")) || /^(\/|https:\/\/)/.test(b.href || ""), `action ${a.id}: a button goes nowhere`);
+          // Three shapes (lib/notify.ts NotifyButton): API (method + /api/ path), link (href), or an explicit
+          // dismiss ("Not now" / "Ignore") that resolves the row as dismissed — Mark 2026-10-29, the AI Visibility rows.
+          t.ok((["GET", "POST"].includes(b.method) && /^\/api\//.test(b.path || "")) || /^(\/|https:\/\/)/.test(b.href || "") || b.dismiss === true, `action ${a.id}: a button goes nowhere`);
           if (b.path) {
             t.ok(!/[?&]token=/.test(b.path), `action ${a.id}: a button carries the dashboard key in its address`);
             // the button must call an endpoint that exists, with the verb it is registered under —
