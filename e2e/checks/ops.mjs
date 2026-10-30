@@ -1736,7 +1736,7 @@ export default [
           t.ok(p && Array.isArray(p.required) && Array.isArray(p.signed), `group ${g.id}: traveler ${tr.id} has no paperwork progress`);
           t.equal(p.required.length, 5 + (tr.is_lead && tr.cabin_id ? 2 : 0) + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (Mark 2026-10-30: the five Cornerstone documents; the booking agreement and the card authorization for a cabin's lead; the two fee agreements when the file carries a fee)`);
           t.equal(JSON.stringify(p.required.filter((k) => !/^0[23]-/.test(k)).slice(0, 5)), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]), `group ${g.id}: traveler ${tr.id} is asked for the five documents in order`);
-          t.ok(!p.required.some((k) => /^(04|06|13|14|15|01|05|07|16|12)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet (the Cornerstone set went out 2026-10-29)`);
+          t.ok(!p.required.some((k) => /^(04|06|13|14|20|21)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet (Mark 2026-10-30: the two-document packet of 10/29 went out; 04, 06, 13 and 14 never were)`);
           if (!Object.keys(g.fees || {}).length) t.ok(!p.required.some((k) => /^0[23]-/.test(k)), `group ${g.id}: a group with no fees is asked to sign a fee agreement`);
         }
         const raw = JSON.stringify(body);
