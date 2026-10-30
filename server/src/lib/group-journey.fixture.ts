@@ -68,7 +68,8 @@ export function fixtureInput(over: { group?: Row; extraMessages?: Row[]; noEmail
     { id: "k6", group_id: "g1", cabin_id: null, audience: "mark", kind: "task", title: "Chase the line for the rooming list", detail: "internal", link_url: null, due_date: "2026-12-01", done_at: null, sort: 6 },
   ];
   const signatures: Row[] = [
-    { traveler_id: "t1", doc_key: "20-about-you", signer_role: "traveler", signed_at: "2026-10-25T12:00:00Z" },
+    { traveler_id: "t1", doc_key: "15-emergency-contact-form", signer_role: "traveler", signed_at: "2026-10-25T12:00:00Z" },
+    { traveler_id: "t1", doc_key: "01-terms-and-conditions", signer_role: "traveler", signed_at: "2026-10-25T12:05:00Z" },
   ];
   return { group: { ...group, ...(over.group ?? {}) }, cabins, travelers, payments, travel, checklist, signatures, messages: over.extraMessages ?? [] };
 }

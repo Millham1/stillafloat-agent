@@ -145,9 +145,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // document is shown one page at a time, in its true form, Confirm to move on, the signature on its last page.
   var WELCOME = { id: 'welcome', title: 'Welcome aboard' };
   // a section heading before the first of its questions
+  // Mark 2026-10-30: one information page gathers everything the documents need that the file does not already hold; the
+  // headings follow the documents the answers go on to.
   var SECTIONS = {
-    legal_name: 'Who you are', address: 'How to reach you', passport_number: 'Passport', loyalty_1_program: 'Loyalty programs',
-    ec1_name: 'Emergency contact', notes: 'Anything we should know', insurance_choice: 'Travel insurance: your choice', card_name: 'The card',
+    legal_name: 'Who you are', address: 'How to reach you', passport_number: 'Passport', trusted_programs: 'Trusted traveler programs', loyalty_1_program: 'Loyalty programs',
+    ec1_name: 'Emergency contact', notes: 'Anything we should know', advisory_level: 'For the liability waiver', insurance_choice: 'Travel insurance: your choice',
+    dining: 'Your cabin', card_name: 'The card',
   };
   // a line of help under a section heading
   var INTRO = {
@@ -155,7 +158,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     ec1_name: 'One person who is not traveling with you.',
     insurance_choice: 'We strongly recommend travel insurance. It can cover the fare if you have to cancel, medical care abroad (your U.S. health plan may pay little or nothing outside the country), and emergency evacuation, which can run from $15,000 to $200,000. Some benefits are only available within about two weeks of your deposit. You can add insurance any time before sailing.',
     card_name: 'For the deposit and the payments as they come due. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
+    advisory_level: 'The U.S. State Department advisory level for your destination, if you know it; leave it if not.',
+    dining: 'For the cruise booking agreement: dining, anything to celebrate on board, and anything the ship should know.',
   };
+  // Asked once: the waiver's own insurance line follows the insurance choice instead of asking again.
+  var HIDE = ['insurance_status'];
+  var DERIVE = { insurance_status: function () { var c = value('insurance_choice'); return c === 'decline' ? 'declined' : (value('ins_provider') || value('ins_policy')) ? 'have' : undefined; } };
   // the card's details start as the traveler's own (editable; a changed box stays as typed)
   var MIRROR = { card_name: 'legal_name', card_address: 'address', card_city_state_zip: 'city_state_zip', card_phone: 'phone' };
   // Mark 2026-10-27/28, his flow: "We collect the data to populate only that document, then show the client the actual populated
@@ -165,7 +173,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // "Confirm and sign"; at the end the checklist of the signed documents, each to view or print, and Finish. The name typed to sign
   // the first document is filled in for the rest.
   // A follow-up line shows right under the choice it belongs to, only when that choice is ticked.
-  var FOLLOW = { us_citizen: { no: ['citizenship'] }, insurance_choice: { own: ['insurance_policy'] } };
+  var FOLLOW = { us_citizen: { no: ['citizenship'] }, insurance_choice: { own: ['insurance_policy'], decline: ['decline_reasons'] }, decline_reasons: { other: ['decline_other'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] }, occasions: { other: ['occasion_other'] } };
   var SUMMARY = {
     '15-emergency-contact-form': 'The answers you just gave: who you are, how to reach you, and who to call in an emergency.',
     '01-terms-and-conditions': 'How we work together: what we do, what the cruise line does, and how changes and cancellations are handled.',
@@ -247,8 +255,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       });
     });
     steps = [WELCOME];
-    var ask = order.filter(function (n) { return !isFollow(n); });
-    if (ask.length) steps.push({ id: 'details', title: 'Your details', fields: ask });
+    var ask = order.filter(function (n) { return !isFollow(n) && HIDE.indexOf(n) < 0; });
+    if (ask.length) steps.push({ id: 'details', title: 'Your information', fields: ask });
     pending().forEach(function (d) { steps.push({ id: 'doc', key: d.key, doc: d.key, title: d.title }); });
     steps.push({ id: 'check', title: 'Your documents' });
     return {};
@@ -599,7 +607,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function answersFor(doc) {
     var out = {};
     doc.fields.forEach(function (f) {
-      var v = value(f.name);
+      var v = DERIVE[f.name] ? DERIVE[f.name]() : value(f.name);
       if (f.kind === 'multi') { if (v && v.length) out[f.name] = v; }
       else if (f.kind === 'check') out[f.name] = !!v;
       else if (v !== undefined) out[f.name] = v;

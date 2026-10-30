@@ -180,7 +180,9 @@ function tokensToText(text: string, mode: { answers?: Answers; today?: string })
     switch (kind) {
       case "in": case "ta": {
         const v = a?.[name!];
-        return typeof v === "string" && v.trim() ? cleanValue(v) : "________";
+        if (typeof v !== "string" || !v.trim()) return "________";
+        // A date answer is stored as YYYY-MM-DD; the printed copy reads it as a date.
+        return (/^\d{4}-\d{2}-\d{2}$/.test(v.trim()) && fmtLong(v.trim())) || cleanValue(v);
       }
       case "ck": return a?.[name!] === true ? "☒" : "☐";
       case "ch": {
@@ -523,23 +525,30 @@ export function fillBlocks(doc: Pick<RenderedDoc, "blocks">, answers: Answers, s
 // ── 6. Who signs what ─────────────────────────────────────────────────────────
 
 export const TRAVELER_PACKET = [
-  "20-about-you",    // first: its answers (address, phone, passport) prefill the document after it
-  "21-your-booking",
+  "15-emergency-contact-form", // first: the information page's answers (address, phone, passport) fill the documents after it
+  "01-terms-and-conditions",
+  "05-liability-waiver",
+  "07-travel-insurance-declination",
+  "16-passport-document-checklist",
 ] as const;
 export const FEE_DOCUMENTS = ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] as const;
-export const LEAD_DOCUMENT = "22-card-authorization";
+/** The cabin's lead, who pays, also signs the booking agreement and the card authorization (Mark 2026-10-29: "a credit card
+ *  authorization … every time"). */
+export const LEAD_DOCUMENTS = ["12-cruise-booking-agreement", "22-card-authorization"] as const;
+export const LEAD_DOCUMENT = LEAD_DOCUMENTS[1];
 export const ORGANIZER_DOCUMENT = "09-group-travel-contract";
 
-/** The ordered document keys one signer is asked for (Mark 2026-10-29: two documents for every traveler, and the card
- *  authorization for the cabin's lead, who pays; the booking's cabin and price are on 21 for everyone in it).
- *  Not in any packet: the Cornerstone set (15, 01, 05, 07, 16, 12; kept so earlier signatures still render), 04 (cancellation
- *  policy), 06 (card authorization — clients pay the line directly), 13 and 14 (questionnaires). */
+/** The ordered document keys one signer is asked for. Mark 2026-10-30: the package is the six Cornerstone documents that
+ *  are live today plus the card authorization, every one filled from the one information page, shown for confirmation and
+ *  signature, and listed in the copies email. Not in any packet: 04 (cancellation policy), 06 (Cornerstone's own card form:
+ *  22 is that form with the last four, the expiry and the licence), 13 and 14 (questionnaires), 20 and 21 (the two-document
+ *  packet of 10/29, kept so copies signed under it still render). */
 export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean }): string[] {
   if (input.organizer) return [ORGANIZER_DOCUMENT];
   const hasFees = normalizeFees(input.group?.fees).length > 0;
   const keys: string[] = [...TRAVELER_PACKET];
-  if (hasFees) keys.splice(1, 0, ...FEE_DOCUMENTS); // after About you, before the booking
-  if (input.traveler?.is_lead && input.cabin) keys.push(LEAD_DOCUMENT);
+  if (hasFees) keys.splice(2, 0, ...FEE_DOCUMENTS); // after the terms
+  if (input.traveler?.is_lead && input.cabin) keys.push(...LEAD_DOCUMENTS);
   return keys;
 }
 

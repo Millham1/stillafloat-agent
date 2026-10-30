@@ -22,10 +22,10 @@ const TRAVELERS = [
 const ctx = (traveler = TRAVELERS[0], over: Record<string, unknown> = {}) => buildCtx({ business: BUSINESS, group: { ...GROUP, ...over }, cabins: CABINS, travelers: TRAVELERS, traveler, now: NOW });
 
 test("every traveler gets About you then Your booking, the cabin's lead the card authorization too; a fee agreement slots between; the organizer keeps the contract", () => {
-  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[0] }), ["20-about-you", "21-your-booking", "22-card-authorization"], "the cabin's lead also authorizes the card");
-  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] }), ["20-about-you", "21-your-booking"]);
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[0] }), ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"], "Mark 2026-10-30: the six live documents plus the card authorization; the cabin's lead signs the booking agreement and authorizes the card");
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] }), ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
   assert.deepEqual(packetFor({ group: { ...GROUP, fees: { planning_fee: 100 } }, cabin: CABINS[0], traveler: TRAVELERS[1] }),
-    ["20-about-you", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "21-your-booking"]);
+    ["15-emergency-contact-form", "01-terms-and-conditions", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
   assert.deepEqual(packetFor({ group: GROUP, organizer: true }), ["09-group-travel-contract"]);
 });
 
