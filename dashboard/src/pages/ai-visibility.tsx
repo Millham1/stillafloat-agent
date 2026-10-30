@@ -17,8 +17,8 @@
 // the measurements daily; any field may be missing, so every section has its own
 // empty state. Same fetch + authHeaders pattern as search.tsx / diversions.tsx.
 
-import { type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { type ReactNode, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,8 +33,13 @@ type Week = {
   referrals?: Counts;
   topPages?: { path: string; assistant: string; count: number }[];
 };
-type Status = "done" | "in-progress" | "waiting-on-mark" | "planned";
-type Activity = { at: string; kind: string; title: string; detail?: string; status?: Status; link?: string };
+type Status = "done" | "in-progress" | "waiting-on-mark" | "planned" | "declined";
+// Same three button shapes as the brief's action queue: API (method+path), link (href), dismiss.
+type ActivityButton = { label: string; method?: string; path?: string; href?: string; dismiss?: boolean };
+type Activity = {
+  at: string; kind: string; title: string; detail?: string; status?: Status; link?: string;
+  buttons?: ActivityButton[]; actionId?: string;
+};
 type Praise = {
   videoId: string; videoTitle: string; author: string; text: string;
   likes: number; publishedAt: string; why: string; used: boolean;
@@ -52,7 +57,7 @@ type Payload = {
   activity?: Activity[];
   praise?: Praise[];
   forum?: ForumItem[];
-  promptTests?: { enabled?: boolean; costNote?: string; runs?: PromptRun[] };
+  promptTests?: { enabled?: boolean; wanted?: boolean; costNote?: string; runs?: PromptRun[] };
 };
 
 const SITE = "https://stillafloatcruising.com";
@@ -74,13 +79,14 @@ const CRAWLER_NOTE: Record<string, string> = {
 };
 
 const STATUS_WORD: Record<Status, string> = {
-  done: "Done", "in-progress": "In progress", "waiting-on-mark": "Waiting on you", planned: "Planned",
+  done: "Done", "in-progress": "In progress", "waiting-on-mark": "Waiting on you", planned: "Planned", declined: "Not now",
 };
 const STATUS_CLASS: Record<Status, string> = {
   done: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
   "in-progress": "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800",
   "waiting-on-mark": "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
   planned: "text-muted-foreground",
+  declined: "text-muted-foreground",
 };
 const KIND_WORD: Record<string, string> = {
   "domain-block": "Domain block", takedown: "Takedown", page: "Page", llms: "llms.txt", schema: "Markup",
@@ -96,6 +102,21 @@ const num = (n: number | undefined) => (n == null ? "—" : new Intl.NumberForma
 const sum = (c: Counts | undefined) => Object.values(c ?? {}).reduce((a, b) => a + (Number(b) || 0), 0);
 const plural = (n: number, one: string, many = `${one}s`) => `${num(n)} ${n === 1 ? one : many}`;
 const assistantName = (k: string) => ASSISTANT_NAME[k.toLowerCase()] ?? k;
+
+/** "About $0.65 per week" out of the job's cost note, for the button label. */
+function weeklyDollars(note: string | undefined): string | null {
+  const m = /About \$([\d.]+) per week/i.exec(note ?? "");
+  return m ? `$${m[1]}` : null;
+}
+
+async function post(path: string, method = "POST", body?: unknown): Promise<void> {
+  const r = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
 
 function when(iso: string | undefined): string {
   if (!iso) return "";
@@ -177,6 +198,53 @@ export default function AiVisibility() {
   const visitsLast = sum(last?.referrals);
   const lookupsPrev = prev ? sum(prev.assistants) : undefined;
   const visitsPrev = prev ? sum(prev.referrals) : undefined;
+
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failed_, setFailed] = useState<string | null>(null);
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["ai-visibility"] });
+
+  // A waiting item's buttons DO the thing (same contract as the brief's action
+  // queue): API button → call it, close the action row, mark the item done;
+  // dismiss → close the row as dismissed, mark the item "Not now"; link → open.
+  const press = async (a: Activity, b: ActivityButton, key: string) => {
+    if (b.href) {
+      const h = safeHref(b.href);
+      if (h) window.open(h, "_blank", "noopener,noreferrer");
+      return;
+    }
+    setBusy(key);
+    setFailed(null);
+    const match = a.actionId ? { actionId: a.actionId } : { title: a.title };
+    try {
+      if (b.dismiss) {
+        if (a.actionId) await post(`/api/actions/${encodeURIComponent(a.actionId)}/resolve`, "POST", { status: "dismissed" }).catch(() => undefined);
+        await post("/api/ai-visibility/activity/update", "POST", { ...match, status: "declined", note: "Mark pressed Not now." });
+      } else if (b.path) {
+        await post(b.path, b.method || "POST");
+        if (a.actionId) await post(`/api/actions/${encodeURIComponent(a.actionId)}/resolve`, "POST", { status: "done" }).catch(() => undefined);
+        await post("/api/ai-visibility/activity/update", "POST", { ...match, status: "done", note: `Mark pressed "${b.label}".` }).catch(() => undefined);
+      }
+      await refresh();
+    } catch (e) {
+      setFailed(`${a.title}: ${(e as Error).message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const promptSwitch = async (on: boolean) => {
+    setBusy(`prompt:${on}`);
+    setFailed(null);
+    try {
+      await post(`/api/ai-visibility/prompt-tests/${on ? "on" : "off"}`);
+      await refresh();
+    } catch (e) {
+      setFailed(`Prompt tests: ${(e as Error).message}`);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const activity = data?.activity ?? [];
   const waiting = activity.filter((a) => a.status === "waiting-on-mark").length;
@@ -293,6 +361,7 @@ export default function AiVisibility() {
         title="What the agent did"
         note={`Newest first.${waiting ? ` ${plural(waiting, "item")} waiting on you.` : ""}`}
       >
+        {failed_ && <p className="px-4 pt-3 text-xs text-destructive">Failed — {failed_}</p>}
         {isLoading ? (
           <Empty text="Loading…" />
         ) : activity.length === 0 ? (
@@ -315,6 +384,30 @@ export default function AiVisibility() {
                       <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs text-primary inline-flex items-center gap-1 mt-1 hover:underline">
                         Open <ExternalLink className="w-3 h-3" />
                       </a>
+                    )}
+                    {status === "waiting-on-mark" && (a.buttons?.length ?? 0) > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {a.buttons!.map((b, j) => {
+                          const key = `${a.actionId ?? a.title}|${j}`;
+                          const primary = j === 0 && !b.dismiss;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              disabled={busy !== null}
+                              onClick={() => press(a, b, key)}
+                              className={`text-xs px-3 py-1.5 rounded-md border font-medium transition-colors disabled:opacity-60 ${
+                                primary ? "bg-primary text-primary-foreground border-primary hover:opacity-90" : "hover:bg-muted"
+                              }`}
+                            >
+                              {busy === key ? "…" : b.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {status === "waiting-on-mark" && !(a.buttons?.length) && (
+                      <p className="text-xs text-destructive mt-1">This item is waiting on you but carries nothing to press — report it.</p>
                     )}
                   </div>
                   <Badge variant="outline" className={`self-start ${STATUS_CLASS[status] ?? ""}`}>{STATUS_WORD[status] ?? status}</Badge>
@@ -512,8 +605,38 @@ export default function AiVisibility() {
       >
         {pt?.enabled !== true && (
           <div className="px-4 py-3 border-b">
-            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Off — waiting for Mark's OK on cost</p>
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              {pt?.wanted === true ? "Turned on — runs on the next daily measurement" : "Off — your call on the cost"}
+            </p>
             {pt?.costNote && <p className="text-xs text-muted-foreground mt-1">{pt.costNote}</p>}
+            {pt?.wanted !== true && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => promptSwitch(true)}
+                  className="text-xs px-3 py-1.5 rounded-md border font-medium bg-primary text-primary-foreground border-primary hover:opacity-90 disabled:opacity-60"
+                >
+                  {busy === "prompt:true" ? "…" : `Turn on${weeklyDollars(pt?.costNote) ? ` (about ${weeklyDollars(pt?.costNote)} a week)` : ""}`}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => promptSwitch(false)}
+                  className="text-xs px-3 py-1.5 rounded-md border font-medium hover:bg-muted disabled:opacity-60"
+                >
+                  {busy === "prompt:false" ? "…" : "Not now"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {pt?.enabled === true && (
+          <div className="px-4 py-2 border-b flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs text-muted-foreground">On — once a week.{pt.costNote ? ` ${pt.costNote}` : ""}</p>
+            <button type="button" disabled={busy !== null} onClick={() => promptSwitch(false)} className="text-xs px-3 py-1.5 rounded-md border font-medium hover:bg-muted disabled:opacity-60">
+              {busy === "prompt:false" ? "…" : "Turn off"}
+            </button>
           </div>
         )}
         {runs.length === 0 ? (

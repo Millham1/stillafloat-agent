@@ -65,7 +65,7 @@ const GROUP_STATUSES = ["draft", "marketing", "booking", "final-paid", "sailed",
 const BATCH_STATUSES = ["pending", "approved", "rejected", "scheduled", "posted"];
 const POST_STATES = ["scheduled", "posted", "skipped", "failed"];
 const ACTIVITY_KINDS = ["domain-block", "takedown", "page", "llms", "schema", "praise", "forum", "prompt-test", "measure", "note"];
-const ACTIVITY_STATUSES = ["done", "in-progress", "waiting-on-mark", "planned"];
+const ACTIVITY_STATUSES = ["done", "in-progress", "waiting-on-mark", "planned", "declined"];
 const INTEREST_STATUSES = ["new", "contacted", "booked", "declined", "spam"];
 const DAY = 86_400_000;
 
@@ -575,9 +575,9 @@ export default [
   // ───────────────────────────────────────────────────────────────────────────────────────────
   {
     id: "ops.ai-visibility",
-    basis: "ruling: stillafloat-ai-visibility-program.md — the AI-visibility dashboard reports a daily roll-up of AI-assistant lookups and crawler counts, plus the agent's activity log; Mark 10/8: dev gets no AI-assistant traffic and must be made a true mirror (known-failures.json)",
-    title: "The AI Visibility page has this week's roll-up of AI-assistant lookups, the crawler counts and the agent's activity log, all well-formed and current",
-    covers: ["GET /api/ai-visibility"],
+    basis: "ruling: stillafloat-ai-visibility-program.md — the AI-visibility dashboard reports a daily roll-up of AI-assistant lookups and crawler counts, plus the agent's activity log; Mark 10/8: dev gets no AI-assistant traffic and must be made a true mirror (known-failures.json); Mark 10/29 on two Waiting-on-you rows with nothing to press: 'There is nothing here that takes me to an action' — a waiting item carries buttons and is filed in the action queue (mark-approvals-go-to-dashboard-actions.md)",
+    title: "The AI Visibility page has this week's roll-up of AI-assistant lookups, the crawler counts and the agent's activity log, all well-formed and current — and every item waiting on Mark carries buttons and sits in the action queue",
+    covers: ["GET /api/ai-visibility", "GET /api/actions"],
     modes: ["dev", "prod"],
     run: async (t) => {
       const v = t.success(await t.get("/api/ai-visibility", { auth: true }));
@@ -605,6 +605,21 @@ export default [
         t.ok(ACTIVITY_STATUSES.includes(a.status), `an activity entry has an unknown status "${a.status}"`);
         t.ok(Number.isFinite(Date.parse(a.at)) && typeof a.title === "string" && a.title.trim(), "an activity entry has no time or title");
       }
+      // A "Waiting on you" row is an action: it carries at least one well-formed button (API, link or
+      // dismiss) and its public.actions row is pending, so the brief and the notification show the same item.
+      const waiting = v.activity.filter((a) => a.status === "waiting-on-mark");
+      const pending = waiting.length ? t.json(await t.get("/api/actions", { auth: true })).actions || [] : [];
+      const pendingIds = new Set(pending.map((r) => r.id));
+      for (const a of waiting) {
+        t.ok(Array.isArray(a.buttons) && a.buttons.length > 0, `"${a.title}" is waiting on Mark with nothing to press`);
+        for (const b of a.buttons || []) {
+          const shapes = [b.path != null, b.href != null, b.dismiss === true].filter(Boolean).length;
+          t.ok(typeof b.label === "string" && b.label.trim() && shapes === 1, `"${a.title}" has a button that is not one of API, link or dismiss`);
+          if (b.path != null) t.ok(String(b.path).startsWith("/api/"), `"${a.title}": button "${b.label}" does not point at a site API path`);
+        }
+        t.ok(typeof a.actionId === "string" && pendingIds.has(a.actionId), `"${a.title}" is waiting on Mark but has no pending row in the action queue (the brief and the phone would not show it)`);
+      }
+      t.observe("activity waiting on Mark", waiting.length, "info");
       t.observe("keys", keysOf(v));
       t.observe("lookup keys", keysOf(L));
       t.observe("lookup weeks", L.weeks.length, "min");
@@ -615,6 +630,66 @@ export default [
       // not failed — dev gets no assistant traffic at all. The shape, freshness and weekly roll-up are held above.
       const lookups = L.weeks.reduce((n, w) => n + Object.values(w.assistants).reduce((a, b) => a + b, 0), 0);
       t.observe("assistant lookups in the window", lookups, "info");
+    },
+  },
+
+  // ───────────────────────────────────────────────────────────────────────────────────────────
+  {
+    id: "ops.ai-visibility-waiting-items-are-actions",
+    basis: "ruling: mark-approvals-go-to-dashboard-actions.md — anything Mark must approve outside a session goes to the dashboard action queue with working buttons plus a notification, never a file; Mark 10/29 on the AI-visibility page: 'There is nothing here that takes me to an action'",
+    title: "A waiting item logged on the AI Visibility page carries its buttons, appears in the action queue, and pressing a button closes both; the weekly prompt-test switch flips and is logged",
+    covers: ["POST /api/ai-visibility/activity", "POST /api/ai-visibility/activity/update", "POST /api/ai-visibility/prompt-tests/:choice", "GET /api/actions"],
+    modes: ["dev"],
+    devOnlyBecause: "it files, presses and removes a labelled fixture item in the activity log and flips the prompt-test switch there and back; prod sweeps are read-only",
+    run: async (t) => {
+      const post = (p, body, auth = true) => t.send("POST", p, { auth, body });
+      const title = "e2e-fixture waiting item (safe to delete)";
+      // Leftover from an interrupted sweep: retract it first so the fixture is the newest match by title.
+      await post("/api/ai-visibility/activity/update", { title, remove: true });
+      // 1. A waiting item with nothing to press is refused — that was the 10/29 complaint.
+      refused(t, await post("/api/ai-visibility/activity", { kind: "note", title, status: "waiting-on-mark" }), 400, "a waiting item with no buttons", /at least one button/i);
+      // 2. Filed with buttons: the log carries them and an action row is pending.
+      const filed = t.success(await post("/api/ai-visibility/activity", {
+        kind: "note", title, detail: "release-gate fixture", status: "waiting-on-mark",
+        buttons: [{ label: "Open the page", href: "/ai-visibility" }, { label: "Not now", dismiss: true }],
+      }));
+      const id = filed.entry && filed.entry.actionId;
+      t.ok(typeof id === "string" && id, "the waiting item was logged without an action-queue row");
+      const logged = t.success(await t.get("/api/ai-visibility", { auth: true })).activity.find((a) => a.actionId === id);
+      t.ok(logged && logged.status === "waiting-on-mark" && Array.isArray(logged.buttons) && logged.buttons.length === 2, "the logged item does not carry its two buttons");
+      const pending = t.json(await t.get("/api/actions", { auth: true })).actions || [];
+      const row = pending.find((r) => r.id === id);
+      t.ok(row && row.type === "ai-visibility" && row.title === title, "the action queue has no pending row for the waiting item");
+      t.ok(Array.isArray(row && row.buttons) && row.buttons.length === 2, "the action-queue row does not carry the same buttons");
+      // 3. Pressing Not now: the item reads Not now with nothing to press, and its row is closed.
+      const declined = t.success(await post("/api/ai-visibility/activity/update", { actionId: id, status: "declined", note: "gate pressed Not now" }));
+      t.equal(declined.entry.status, "declined", "the item's status after Not now");
+      t.ok(!declined.entry.buttons, "a closed item still carries buttons");
+      t.ok(/gate pressed Not now/.test(declined.entry.detail), "the note was not appended to the item");
+      const after = t.json(await t.get("/api/actions", { auth: true })).actions || [];
+      t.ok(!after.some((r) => r.id === id), "the action-queue row is still pending after Not now");
+      refused(t, await post("/api/ai-visibility/activity/update", { actionId: "e2e-fixture-no-such-action", status: "done" }), 404, "changing an item nobody logged", /no activity item/i);
+      // 4. The prompt-test switch: flip it and put it back; each flip is logged.
+      const before = t.success(await t.get("/api/ai-visibility", { auth: true }));
+      const was = before.promptTests && before.promptTests.wanted === true;
+      const flipped = t.success(await post(`/api/ai-visibility/prompt-tests/${was ? "off" : "on"}`, {}));
+      t.equal(flipped.wanted, !was, "the switch after the flip");
+      const mid = t.success(await t.get("/api/ai-visibility", { auth: true }));
+      t.equal(mid.promptTests.wanted, !was, "the stored switch after the flip");
+      t.ok(mid.activity[0] && mid.activity[0].kind === "prompt-test" && /prompt tests/i.test(mid.activity[0].title), "the flip was not logged as the newest activity line");
+      const restored = t.success(await post(`/api/ai-visibility/prompt-tests/${was ? "on" : "off"}`, {}));
+      t.equal(restored.wanted, was, "the switch put back");
+      // 5. Clean up: retract the fixture line and the two switch lines.
+      const removed = t.success(await post("/api/ai-visibility/activity/update", { actionId: id, remove: true }));
+      t.equal(removed.removed.title, title, "the retracted fixture item");
+      for (let i = 0; i < 2; i++) {
+        const top = t.success(await t.get("/api/ai-visibility", { auth: true })).activity[0];
+        if (top && top.kind === "prompt-test" && /prompt tests/i.test(top.title) && daysOld(t, top.at) < 0.01) {
+          await post("/api/ai-visibility/activity/update", { title: top.title, remove: true });
+        }
+      }
+      t.ok(!t.success(await t.get("/api/ai-visibility", { auth: true })).activity.some((a) => a.title === title), "the fixture item is still in the log");
+      t.observe("fixture round trip", "filed → pending → declined → removed");
     },
   },
 
@@ -859,6 +934,12 @@ export default [
       refused(t, await post("/api/social/queue/e2e-fixture-no-such-batch/reject", {}), 404, "rejecting a batch that does not exist", /not found/i);
       refused(t, await post("/api/social/media", { videoId: "e2eFixture01", videoUrl: "ftp://not-public" }), 400, "registering a clip with no public address", /videoUrl/i);
       refused(t, await post("/api/social/clip/sign", {}), 400, "signing a clip upload with no video id", /videoId/i);
+      // AI-visibility writes (2026-10-29): bad input and no token are refused; the happy paths are ops.ai-visibility-waiting-items-are-actions.
+      refused(t, await post("/api/ai-visibility/activity/update", { status: "done" }), 400, "changing an activity item with no actionId or title", /actionId or title/i);
+      refused(t, await post("/api/ai-visibility/activity/update", { actionId: "e2e-fixture-no-such-action", status: "finished" }), 400, "changing an activity item to an unknown status", /status must be/i);
+      unauthorized(t, await post("/api/ai-visibility/activity/update", { actionId: "e2e-fixture-no-such-action", status: "done" }, false), "POST /api/ai-visibility/activity/update");
+      refused(t, await post("/api/ai-visibility/prompt-tests/e2e-maybe", {}), 400, "a prompt-test switch that is neither on nor off", /on or off/i);
+      unauthorized(t, await post("/api/ai-visibility/prompt-tests/off", {}, false), "POST /api/ai-visibility/prompt-tests/:choice");
       unauthorized(t, await post("/api/social/clip/sign", { videoId: "e2eFixture01", lang: "en" }, false), "POST /api/social/clip/sign");
       // The Mac publisher and Make use their own narrow keys (x-social-clip-token, x-social-stats-token);
       // a wrong one must be refused like a missing one.
