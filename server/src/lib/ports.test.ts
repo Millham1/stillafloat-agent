@@ -4,7 +4,7 @@
 // which is why ships like Norwegian Getaway ("GSC") had no route line.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { matchDestination, portBySlug, nearestPort, CRUISE_LOCATIONS } from "./ports";
+import { matchDestination, matchPortName, portBySlug, nearestPort, CRUISE_LOCATIONS } from "./ports";
 
 const CASES: Array<[string, string | null]> = [
   ["GSC", "great-stirrup"],                  // Norwegian Getaway
@@ -64,5 +64,22 @@ describe("new gazetteer entries", () => {
   it("a ship alongside at Great Stirrup Cay is detected in port there, not at Freeport", () => {
     assert.equal(nearestPort(25.8244, -77.9120, 4)?.slug, "great-stirrup");
     assert.equal(nearestPort(26.5170, -78.7780, 4)?.slug, "freeport-bahamas");
+  });
+});
+
+describe("matchPortName: written itinerary names, no crew shorthand", () => {
+  it("keeps the AIS matcher as it is", () => {
+    assert.equal(matchDestination("CABO")?.slug, "cabo-san-lucas");
+    assert.equal(matchDestination("US MIA > BS NAS")?.slug, "nassau");
+  });
+  it("needs the name spelled out", () => {
+    assert.equal(matchPortName("Cabo Rojo-Pedernales, Dominicana"), null);
+    assert.equal(matchPortName("CABO"), null);
+    assert.equal(matchPortName("Cabo San Lucas, Baja California Mexico")?.slug, "cabo-san-lucas");
+    assert.equal(matchPortName("Nassau, Bahamas, New Providence Island")?.slug, "nassau");
+    assert.equal(matchPortName("Philipsburg St Maarten, Netherlands Antilles")?.slug, "st-maarten");
+    assert.equal(matchPortName("Kings Wharf, Bermuda")?.slug, "bermuda");
+    assert.equal(matchPortName("Miami, Florida")?.slug, "miami");
+    assert.equal(matchPortName(null), null);
   });
 });

@@ -82,7 +82,7 @@ test("two sources for the same ship collapse to the earliest sailing; unresolvab
 // 2026-09-26, Mark: "we only ping a ship if the itinerary says it's in the path
 // of the storm". The 26 Sep nor'easter as the NWS adapter saw it: low 38N 72W,
 // 24 h 41N 73W, 48 h 40N 74W, warnings from the Chesapeake to the Gulf of Maine.
-import { plannedRowsNearPath, sailingsNearPath, nearPath, pathOf, callInWindow, PATH_ZONE_NM, PATH_LOW_NM, type PathPoint } from "./storm-sailings";
+import { plannedRowsNearPath, preferDatedRows, sailingsNearPath, nearPath, pathOf, callInWindow, PATH_ZONE_NM, PATH_LOW_NM, type PathPoint } from "./storm-sailings";
 
 const NOREASTER: PathPoint[] = [
   { kind: "low", lat: 38, lon: -72, label: "986 mb" },
@@ -156,6 +156,32 @@ test("a port call counts only on the day it happens: a Montreal → New York cru
   assert.equal(callInWindow({ date: "2026-09-30T10:00:00Z" }, win), true, "a timestamp is judged by its day");
 });
 
+
+test("a ship's dated itinerary outranks her undated one: Norwegian Bliss (Miami → New York) is not in Tropical Storm Vance off Baja (2026-10-29)", () => {
+  const win = { start: "2026-10-29", end: "2026-11-03" };
+  const VANCE: PathPoint[] = [{ kind: "low", lat: 22.3, lon: -108.6, reachNm: 300 }];
+  const locate: PortLocator = (p) => ({
+    "los-angeles": { lat: 33.74, lon: -118.28 }, "cabo-san-lucas": { lat: 22.89, lon: -109.92 },
+    miami: { lat: 25.76, lon: -80.19 }, "new-york": { lat: 40.71, lon: -74.0 }, ensenada: { lat: 31.86, lon: -116.62 },
+  } as Record<string, { lat: number; lon: number }>)[p.slug ?? ""] ?? null;
+  const undated = (ship: string, start: string, end: string, slugs: string[], source = "rapidapi-cruise"): PlannedSailingRow =>
+    ({ ship_name: ship, operator: "Norwegian", source, start_date: start, end_date: end, ports: slugs.map((slug) => ({ name: slug, slug })) });
+  const dated = (ship: string, start: string, end: string, calls: Array<[string, string]>): PlannedSailingRow =>
+    ({ ship_name: ship, operator: "Norwegian", source: "cruisemapper", start_date: start, end_date: end, ports: calls.map(([slug, date]) => ({ name: slug, slug, date })) });
+  const rows = [
+    // Bliss: the Cruise API row has no call dates, so her Oct 15 Cabo call "counts" all window; CruiseMapper dates it.
+    undated("Norwegian Bliss", "2026-10-13", "2026-11-01", ["los-angeles", "cabo-san-lucas", "miami", "new-york"]),
+    dated("Norwegian Bliss", "2026-10-13", "2026-10-29", [["los-angeles", "2026-10-13"], ["cabo-san-lucas", "2026-10-15"], ["miami", "2026-10-29"]]),
+    dated("Norwegian Bliss", "2026-11-01", "2026-11-09", [["new-york", "2026-11-01"], ["miami", "2026-11-04"]]),
+    // Disney Wonder really is there this week.
+    dated("Disney Wonder", "2026-10-27", "2026-11-02", [["ensenada", "2026-10-28"], ["cabo-san-lucas", "2026-10-30"]]),
+    // A ship with ONLY undated rows keeps the old overlap rule.
+    undated("Carnival Radiance", "2026-10-27", "2026-10-31", ["los-angeles", "cabo-san-lucas", "los-angeles"], "widgety-archive"),
+  ];
+  assert.deepEqual(plannedRowsNearPath(rows, VANCE, locate, win).map((s) => s.ship_name).sort(), ["Carnival Radiance", "Disney Wonder"]);
+  assert.deepEqual(preferDatedRows(rows).map((r) => `${r.ship_name}/${r.source}`),
+    ["Norwegian Bliss/cruisemapper", "Norwegian Bliss/cruisemapper", "Disney Wonder/cruisemapper", "Carnival Radiance/widgety-archive"]);
+});
 
 describe("mainstream lines only, unless specifically requested (Mark 2026-10-09)", () => {
   const sail = (ship_name: string, cruise_line: string): Sailing => ({ ship_name, cruise_line, depart_port: null, start_date: "2026-10-06", end_date: "2026-10-13", regions: [] });

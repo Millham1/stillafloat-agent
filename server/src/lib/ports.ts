@@ -259,6 +259,28 @@ export function matchDestination(raw: string | null | undefined): CruiseLocation
   return null;
 }
 
+/**
+ * Match a WRITTEN port name — an itinerary line such as "Cabo Rojo-Pedernales,
+ * Dominicana" — to a curated location. Same vocabulary as matchDestination,
+ * but a hit must be spelled out: the location's own leading name ("Cabo San
+ * Lucas") or an alias of five letters or more. The short crew shorthand that
+ * the AIS matcher needs ("CABO", "NOLA", "GSC") is never typed on an itinerary,
+ * and taken literally it put Cabo Rojo in the Dominican Republic 2,900 nm
+ * west at Cabo San Lucas — 27 Caribbean port calls that pinned MSC Poesia,
+ * Norwegian Sun, Nieuw Amsterdam and Independence of the Seas to Tropical
+ * Storm Vance off Baja (2026-10-29). AIS tracking is untouched.
+ */
+export function matchPortName(raw: string | null | undefined): CruiseLocation | null {
+  const hit = matchDestination(raw);
+  if (!hit || !raw) return null;
+  const norm = ` ${normalizeDest(raw)} `;
+  const spelled = [
+    normalizeDest(hit.name.split(",")[0]!.split(" (")[0]!.split(" /")[0]!),
+    ...Object.entries(DEST_ALIASES).filter(([a, slug]) => slug === hit.slug && a.replace(/ /g, "").length >= 5).map(([a]) => a),
+  ];
+  return spelled.some((t) => t && norm.includes(` ${t} `)) ? hit : null;
+}
+
 // ── Proximity (port-call detection) ──────────────────────────────────────────
 const EARTH_RADIUS_KM = 6371;
 export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {

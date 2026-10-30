@@ -15,7 +15,7 @@
  *     ("Nassau, Bahamas, New Providence Island"). Prefer the slug.
  */
 
-import { matchDestination } from "./ports";
+import { matchPortName } from "./ports";
 import { WORLD_PORT_SLUGS } from "./world-ports";
 
 export const CRUISEMAPPER_BASE = "https://www.cruisemapper.com";
@@ -169,8 +169,9 @@ export function pageIdentity(html: string): { mmsi: string | null; imo: string |
 /**
  * Resolve one call to a stable port key.
  *
- * Curated ports first, via matchDestination() — the one matcher the rest of the
- * system uses, so an itinerary and an AIS destination always agree about Nassau.
+ * Curated ports first, via matchPortName() — the same vocabulary the AIS side
+ * uses (matchDestination), so an itinerary and an AIS destination always agree
+ * about Nassau, minus the crew shorthand that a written name never carries.
  * Anything it does not know falls back to CruiseMapper's own catalogue, which
  * covers the other 776 ports the fleet visits. Without that, a Mediterranean
  * sailing stored two ports out of seven.
@@ -184,8 +185,10 @@ export function pageIdentity(html: string): { mmsi: string | null; imo: string |
  * using the measured berths in ports.ts.
  */
 export function resolvePort(call: PortCall) {
-  const curated = matchDestination(call.name)
-    ?? (call.portSlug ? matchDestination(call.portSlug.replace(/-/g, " ")) : null);
+  // matchPortName, not matchDestination: itinerary lines are spelled out, so the
+  // AIS shorthand ("CABO") must not claim "Cabo Rojo-Pedernales, Dominicana".
+  const curated = matchPortName(call.name)
+    ?? (call.portSlug ? matchPortName(call.portSlug.replace(/-/g, " ")) : null);
   return {
     name: call.name,
     slug: curated?.slug ?? WORLD_PORT_SLUGS.get(call.name) ?? call.portSlug ?? null,

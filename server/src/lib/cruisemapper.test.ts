@@ -141,6 +141,17 @@ test("resolvePort falls back to the world catalogue for ports we never curated",
   }
 });
 
+test("resolvePort never takes the AIS shorthand literally: Cabo Rojo in the Dominican Republic is not Cabo San Lucas (TS Vance, 2026-10-29)", () => {
+  // 27 Caribbean port calls carried slug cabo-san-lucas and pinned MSC Poesia,
+  // Norwegian Sun, Nieuw Amsterdam and Independence of the Seas to a storm off Baja.
+  const cabo = (name: string, portSlug: string | null) => resolvePort({ date: "2026-11-02", times: "", name, portSlug, portId: null }).slug;
+  assert.notEqual(cabo("Cabo Rojo-Pedernales, Dominicana", "cabo-rojo-pedernales"), "cabo-san-lucas");
+  assert.notEqual(cabo("Cabo Pulmo Beach Resort, Baja California Mexico", "cabo-pulmo"), "cabo-san-lucas");
+  assert.equal(cabo("Cabo San Lucas, Baja California Mexico", "cabo-san-lucas"), "cabo-san-lucas", "the real one still resolves");
+  assert.equal(cabo("Oranjestad Aruba, Netherlands Antilles", "oranjestad"), "aruba", "spelled-out aliases still work");
+  assert.equal(cabo("Great Stirrup Cay, Bahamas NCL private island", "great-stirrup-cay"), "great-stirrup");
+});
+
 test("resolvePort returns null rather than inventing a key", () => {
   assert.equal(resolvePort({ date: null, times: "", name: "Somewhere Nobody Charted",
     portSlug: null, portId: null }).slug, null);
