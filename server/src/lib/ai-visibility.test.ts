@@ -5,8 +5,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  ACTIVITY_CAP, ACTIVITY_KINDS, TITLE_MAX, DETAIL_MAX,
-  prependActivity, validateActivity, type ActivityEntry,
+  ACTIVITY_CAP, ACTIVITY_KINDS, TITLE_MAX, DETAIL_MAX, BUTTONS_MAX,
+  prependActivity, validateActivity, validateButtons, patchActivity, activitySourceRef, type ActivityEntry,
 } from "./ai-visibility";
 
 const NOW = new Date("2026-09-29T15:00:00.000Z");
@@ -27,12 +27,30 @@ describe("validateActivity", () => {
     const r = validateActivity({
       kind: "schema", title: "Person markup on Work with Mark", detail: "EN + ES", status: "waiting-on-mark",
       link: "https://stillafloatcruising.com/work-with-mark.html",
+      buttons: [{ label: "Approve", path: "/api/x/approve" }],
     }, NOW);
     assert.ok(r.ok);
     if (!r.ok) return;
     assert.equal(r.entry.status, "waiting-on-mark");
     assert.equal(r.entry.detail, "EN + ES");
     assert.equal(r.entry.link, "https://stillafloatcruising.com/work-with-mark.html");
+  });
+
+  // Mark, 2026-10-29: "There is nothing here that takes me to an action."
+  it("refuses a waiting item with nothing to press", () => {
+    const r = validateActivity({ kind: "forum", title: "Sorting comments", status: "waiting-on-mark" }, NOW);
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.match(r.error, /at least one button/);
+  });
+
+  it("keeps the buttons on a waiting item and drops them from a finished one", () => {
+    const buttons = [{ label: "Turn on", method: "post", path: "/api/ai-visibility/prompt-tests/on" }, { label: "Not now", dismiss: true }];
+    const w = validateActivity({ kind: "prompt-test", title: "Weekly check", status: "waiting-on-mark", buttons }, NOW);
+    assert.ok(w.ok);
+    if (!w.ok) return;
+    assert.deepEqual(w.entry.buttons, [{ label: "Turn on", method: "POST", path: "/api/ai-visibility/prompt-tests/on" }, { label: "Not now", dismiss: true }]);
+    const d = validateActivity({ kind: "prompt-test", title: "Weekly check", status: "done", buttons }, NOW);
+    assert.ok(d.ok && !("buttons" in d.entry));
   });
 
   it("accepts every documented kind", () => {
@@ -67,6 +85,104 @@ describe("validateActivity", () => {
       if (!r.ok) assert.ok(r.error.length > 0);
     });
   }
+});
+
+describe("validateButtons", () => {
+  it("accepts the three shapes and normalises the method", () => {
+    const r = validateButtons([
+      { label: " Approve ", path: "/api/x/approve" },
+      { label: "Open", href: "/forum" },
+      { label: "Ignore", dismiss: true },
+    ]);
+    assert.ok(r.ok);
+    if (!r.ok) return;
+    assert.deepEqual(r.buttons, [
+      { label: "Approve", method: "POST", path: "/api/x/approve" },
+      { label: "Open", href: "/forum" },
+      { label: "Ignore", dismiss: true },
+    ]);
+  });
+
+  it("treats a missing list as no buttons", () => {
+    assert.deepEqual(validateButtons(undefined), { ok: true, buttons: [] });
+  });
+
+  const bad: [string, unknown][] = [
+    ["not a list", { label: "x" }],
+    ["too many", Array.from({ length: BUTTONS_MAX + 1 }, () => ({ label: "x", dismiss: true }))],
+    ["no label", [{ path: "/api/x" }]],
+    ["two shapes at once", [{ label: "x", path: "/api/x", dismiss: true }]],
+    ["no shape", [{ label: "x" }]],
+    ["a path outside /api/", [{ label: "x", path: "/admin" }]],
+    ["a path with a query", [{ label: "x", path: "/api/x?y=1" }]],
+    ["a DELETE", [{ label: "x", method: "DELETE", path: "/api/x" }]],
+    ["a javascript: href", [{ label: "x", href: "javascript:alert(1)" }]],
+  ];
+  for (const [what, raw] of bad) {
+    it(`rejects ${what}`, () => {
+      const r = validateButtons(raw);
+      assert.equal(r.ok, false);
+    });
+  }
+});
+
+describe("activitySourceRef", () => {
+  it("is stable and slug-shaped", () => {
+    assert.equal(activitySourceRef("Weekly check: do ChatGPT, Claude and Perplexity recommend Mark?"),
+      "ai-visibility:weekly-check-do-chatgpt-claude-and-perplexity-recommend-mark");
+    assert.equal(activitySourceRef("  A  "), "ai-visibility:a");
+  });
+});
+
+describe("patchActivity", () => {
+  const waiting: ActivityEntry = {
+    at: "2026-09-29T21:49:00.000Z", kind: "forum", title: "Sorting YouTube comments and Reddit questions",
+    detail: "Built and OFF.", status: "waiting-on-mark", buttons: [{ label: "Ignore", dismiss: true }], actionId: "act-1",
+  };
+  const other = entry(7);
+
+  it("matches by actionId, closes the item and drops its buttons", () => {
+    const r = patchActivity([other, waiting], { actionId: "act-1" }, { status: "done", note: "Moved to the AI box." }, NOW);
+    assert.ok(r.entry && r.before);
+    assert.equal(r.before!.status, "waiting-on-mark");
+    assert.equal(r.entry!.status, "done");
+    assert.equal(r.entry!.detail, "Built and OFF.\n\n2026-09-29: Moved to the AI box.");
+    assert.ok(!("buttons" in r.entry!), "a closed item has nothing to press");
+    assert.equal(r.list[1], r.entry);
+    assert.equal(r.list[0], other);
+  });
+
+  it("matches the newest item by title when there is no actionId, case-insensitively", () => {
+    const older = { ...waiting, at: "2026-09-01T00:00:00.000Z", actionId: undefined };
+    const newer = { ...waiting, actionId: undefined };
+    const r = patchActivity([newer, older], { title: "sorting youtube comments AND reddit questions" },
+      { buttons: [{ label: "Turn on", method: "POST", path: "/api/x" }], actionId: "act-2" }, NOW);
+    assert.equal(r.entry, r.list[0]);
+    assert.deepEqual(r.entry!.buttons, [{ label: "Turn on", method: "POST", path: "/api/x" }]);
+    assert.equal(r.entry!.actionId, "act-2");
+    assert.equal(r.list[1], older, "the older twin is untouched");
+  });
+
+  it("returns null when nothing matches and leaves the list as it was", () => {
+    const stored = [waiting];
+    const r = patchActivity(stored, { actionId: "nope" }, { status: "done" }, NOW);
+    assert.equal(r.entry, null);
+    assert.equal(stored[0]!.status, "waiting-on-mark");
+  });
+
+  it("removes the matched item when asked and hands back what it removed", () => {
+    const r = patchActivity([other, waiting], { actionId: "act-1" }, { remove: true }, NOW);
+    assert.deepEqual(r.list, [other]);
+    assert.equal(r.entry!.title, waiting.title);
+    assert.equal(r.before!.status, "waiting-on-mark");
+  });
+
+  it("replaces the detail when asked, and never edits the list it was given", () => {
+    const stored = [waiting];
+    const r = patchActivity(stored, { actionId: "act-1" }, { detail: "New text" }, NOW);
+    assert.equal(r.entry!.detail, "New text");
+    assert.equal(stored[0]!.detail, "Built and OFF.");
+  });
 });
 
 describe("prependActivity", () => {

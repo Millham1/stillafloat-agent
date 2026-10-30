@@ -19,10 +19,6 @@
       "reason": "A successful resolve acts on Mark's real Google Calendar and clears the pending conflict. The unknown-key 404 and the 401 are checked on dev (ops.calendar-conflicts); a success needs a fixture conflict on a test calendar.",
       "since": "2026-10-08"
     },
-    "POST /api/ai-visibility/activity": {
-      "reason": "A successful POST prepends an entry to Mark's real AI-visibility activity log and there is no delete route, so a fixture could never be removed. Bad kind / missing title (400) and no token (401) are checked on dev (ops.social-writes-refuse).",
-      "since": "2026-10-08"
-    },
     "POST /api/social/ingest": {
       "reason": "A successful POST appends a snapshot to the live follower-stats series (no delete route). The array-body 400 and the 401 are checked on dev. This key is defined in BOTH social.ts and social-analytics.ts; only social.ts's runs (see site problem: the dashboard's social panel snapshot is never written).",
       "since": "2026-10-08"

@@ -77,6 +77,16 @@ export async function createAction(a: {
   return { created: true, id };
 }
 
+/** The pending row for a source, when createAction's dedup kept it (it returns no id then). */
+export async function findPendingActionId(type: string, sourceRef: string): Promise<string | undefined> {
+  const supabase = getSupabase();
+  const { data } = await supabase
+    .from("actions").select("id")
+    .eq("type", type).eq("source_ref", sourceRef).eq("status", "pending")
+    .order("created_at", { ascending: false }).limit(1);
+  return ((data ?? [])[0] as { id?: string } | undefined)?.id;
+}
+
 export async function listPendingActions(): Promise<ActionRow[]> {
   const supabase = getSupabase();
   // Every pending action, newest first. Until 2026-10-08 this stopped at 30: with 54 waiting, a
