@@ -193,6 +193,27 @@ export const locatePort: PortLocator = (p) => {
 };
 
 /**
+ * A ship's dated rows (CruiseMapper, one day per call) say where she is DURING
+ * the window; her undated rows (Widgety, Cruise API) only say the sailing
+ * overlaps it, so every call on a 19-day cruise counts all window long.
+ * Norwegian Bliss, Miami → New York on 2026-10-29, was pinned to Tropical
+ * Storm Vance off Baja because her undated Oct 13 – Nov 1 row still listed
+ * the Cabo San Lucas call she made on Oct 15. When a ship has any dated row,
+ * her undated rows are set aside; a ship with no dated row keeps the old
+ * rule. Pure; tested.
+ */
+export function preferDatedRows(rows: readonly PlannedSailingRow[]): PlannedSailingRow[] {
+  const dated = new Set<string>();
+  for (const row of rows) {
+    if (row.ship_name && (row.ports ?? []).some((p) => typeof p?.date === "string" && p.date)) dated.add(row.ship_name.trim().toLowerCase());
+  }
+  return rows.filter((row) => {
+    if (!row.ship_name || !dated.has(row.ship_name.trim().toLowerCase())) return true;
+    return (row.ports ?? []).some((p) => typeof p?.date === "string" && p.date);
+  });
+}
+
+/**
  * Sailings with a port inside any of `grounds` (a port is in a region box or
  * it is not — no margin). One entry per ship, the earliest sailing wins; the
  * same sailing from two sources collapses. Pure; tested.
@@ -201,7 +222,7 @@ export function plannedRowsInGrounds(
   rows: readonly PlannedSailingRow[], grounds: readonly string[], locate: PortLocator = locatePort, win?: DateWindow,
 ): Sailing[] {
   const byShip = new Map<string, Sailing>();
-  for (const row of rows) {
+  for (const row of preferDatedRows(rows)) {
     if (!row.ship_name) continue;
     const regions = new Set<string>();
     for (const port of row.ports ?? []) {
@@ -328,7 +349,7 @@ export function plannedRowsNearPath(
 ): Sailing[] {
   if (!path.length) return [];
   const byShip = new Map<string, Sailing>();
-  for (const row of rows) {
+  for (const row of preferDatedRows(rows)) {
     if (!row.ship_name) continue;
     let hit = false;
     for (const port of row.ports ?? []) {
