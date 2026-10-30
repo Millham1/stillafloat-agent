@@ -83,6 +83,9 @@ const BUTTON_ROUTES = [
   // "Confirmed with MSC" after the hold of Road B — the route itself admits only these two words.
   /^POST \/api\/groups\/[0-9a-f-]{36}\/interests\/[0-9a-f-]{36}\/mark\/(talked|confirmed)$/,
   /^GET \/api\/storm-watch$/, // the July "demo" action's read-only button
+  // The AI Visibility page's weekly prompt-test switch (Mark 2026-10-29: a waiting item carries the button that
+  // does the thing; routes/ai-visibility.ts admits only on|off).
+  /^POST \/api\/ai-visibility\/prompt-tests\/(on|off)$/,
 ];
 
 // The Gmail labels that make "Waiting on you" (saf-ops-manager agent/brief_feed.py ACTION_RULES).
