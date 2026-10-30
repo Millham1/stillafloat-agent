@@ -669,9 +669,12 @@ export default [
       const after = t.json(await t.get("/api/actions", { auth: true })).actions || [];
       t.ok(!after.some((r) => r.id === id), "the action-queue row is still pending after Not now");
       refused(t, await post("/api/ai-visibility/activity/update", { actionId: "e2e-fixture-no-such-action", status: "done" }), 404, "changing an item nobody logged", /no activity item/i);
-      // 4. The prompt-test switch: flip it and put it back; each flip is logged.
+      // 4. The prompt-test switch: flip it and put it back; each flip is logged. A press closes every
+      //    waiting prompt-test item (that is the point when Mark presses), so the real one, if any, is
+      //    put back exactly as it was once the switch is restored.
       const before = t.success(await t.get("/api/ai-visibility", { auth: true }));
       const was = before.promptTests && before.promptTests.wanted === true;
+      const realWaiting = before.activity.filter((a) => a.kind === "prompt-test" && a.status === "waiting-on-mark" && a.title !== title);
       const flipped = t.success(await post(`/api/ai-visibility/prompt-tests/${was ? "off" : "on"}`, {}));
       t.equal(flipped.wanted, !was, "the switch after the flip");
       const mid = t.success(await t.get("/api/ai-visibility", { auth: true }));
@@ -679,6 +682,12 @@ export default [
       t.ok(mid.activity[0] && mid.activity[0].kind === "prompt-test" && /prompt tests/i.test(mid.activity[0].title), "the flip was not logged as the newest activity line");
       const restored = t.success(await post(`/api/ai-visibility/prompt-tests/${was ? "on" : "off"}`, {}));
       t.equal(restored.wanted, was, "the switch put back");
+      for (const a of realWaiting) {
+        const back = t.success(await post("/api/ai-visibility/activity/update", {
+          ...(a.actionId ? { actionId: a.actionId } : { title: a.title }), status: "waiting-on-mark", buttons: a.buttons, detail: a.detail || "",
+        }));
+        t.ok(back.entry && back.entry.status === "waiting-on-mark" && back.entry.actionId, `"${a.title}" was not put back as a waiting item with an action row`);
+      }
       // 5. Clean up: retract the fixture line and the two switch lines.
       const removed = t.success(await post("/api/ai-visibility/activity/update", { actionId: id, remove: true }));
       t.equal(removed.removed.title, title, "the retracted fixture item");
