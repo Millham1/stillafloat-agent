@@ -75,10 +75,19 @@ test("Credit card authorization: the booking and total from the file, last four 
   const d = renderDocument("22-card-authorization", ctx());
   assert.equal(d.title, "Credit card authorization");
   for (const s of ["Total authorized: $ 1,073.58", "Booking number: TEST-0001", "Balcony Bella (BB)", "last four digits of my card", "ESIGN Act"]) assert.ok(d.text.includes(s), s);
-  assert.deepEqual(d.fields.map((f) => f.name), ["card_name", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry"]);
+  assert.deepEqual(d.fields.map((f) => f.name), ["card_name", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"]);
+  assert.ok(d.text.includes("Identity verification") && d.text.includes("Driver's licence:"), "the licence line and Cornerstone's identity point");
   assert.equal(d.fields[0]!.prefill!(ctx()), "Mark Millham", "the cardholder's name starts as the traveler's");
-  const good = { card_name: "Mark Millham", card_address: "100 Goodsell Ct", card_city_state_zip: "Fuquay Varina, NC 27526", card_phone: "9193466127", card_type: "visa", card_last4: "6666", card_expiry: "03/30" };
-  assert.ok(applyAnswers(d, good, ctx()).ok);
+  const good = { card_name: "Mark Millham", card_address: "100 Goodsell Ct", card_city_state_zip: "Fuquay Varina, NC 27526", card_phone: "9193466127", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
+  const ok = applyAnswers(d, good, ctx());
+  assert.ok(ok.ok, JSON.stringify(ok));
+  if (ok.ok) {
+    assert.deepEqual(ok.license, { number: "0000554321", last4: "4321" }, "the licence number is handed back only to be encrypted");
+    assert.equal(ok.answers["dl_number"], "ending 4321", "the signature's answers never hold the licence number");
+    assert.deepEqual([ok.travelerPatch["dl_last4"], ok.travelerPatch["dl_state"]], ["4321", "NC"]);
+  }
+  const badDl = applyAnswers(d, { ...good, dl_number: "x" }, ctx());
+  assert.ok(!badDl.ok && badDl.errors["dl_number"]);
   const bad = applyAnswers(d, { ...good, card_last4: "4111111111111111", card_expiry: "13/30" }, ctx());
   assert.ok(!bad.ok && bad.errors["card_last4"] && bad.errors["card_expiry"], JSON.stringify(bad));
   const whole = applyAnswers(d, { ...good, card_address: "4111 1111 1111 1111" }, ctx());

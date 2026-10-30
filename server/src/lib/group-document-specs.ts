@@ -670,8 +670,7 @@ const BOOKING_21: DocSpec = {
 
 // ── 22 — Credit card authorization (Mark 2026-10-29: "a credit card authorization every time"), modelled on Cornerstone's own
 // e-signed form: the last four digits and the expiry only, never the number or the security code; the cabin's lead signs it.
-// TODO(card-auth): Cornerstone's form also takes the cardholder's driver's licence, encrypted, to verify identity. That needs
-// an encrypted column of its own (like the passport); not in this version.
+// The driver's licence (Cornerstone's identity check) is taken too: the state in clear, the number encrypted (dl_enc, migration 0059).
 
 const CARD_FIELDS: FieldSpec[] = [
   text("card_name", "Name, as it appears on the card", { required: true, form: "card.name", prefill: (c) => legalName(c) || undefined }),
@@ -681,6 +680,9 @@ const CARD_FIELDS: FieldSpec[] = [
   { name: "card_type", label: "Card type", kind: "choice", required: true, options: [opt("visa", "Visa"), opt("mastercard", "Mastercard"), opt("amex", "American Express"), opt("discover", "Discover")], form: "card.type" },
   text("card_last4", "Card ending in (last four digits only)", { required: true, maxLength: 4, form: "card.last4" }),
   text("card_expiry", "Expires (MM/YY)", { required: true, maxLength: 5, form: "card.expiry" }),
+  // Mark 2026-10-30: the driver's licence, as on Cornerstone's form — to verify identity; the number is encrypted like the passport
+  text("dl_state", "Driver's licence: state", { required: true, maxLength: 2, col: "dl_state" }),
+  { name: "dl_number", label: "Driver's licence: number", kind: "license", required: true },
 ];
 
 const CARD_22: DocSpec = {

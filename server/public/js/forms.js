@@ -175,7 +175,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     '12-cruise-booking-agreement': 'Your cabin, your price and the cruise line\'s rules for this booking.',
     '09-group-travel-contract': 'The group\'s contract: the cabins held, the dates and the cruise line\'s terms.',
   };
-  var AUTO = { legal_name: 'name', dob: 'bday', email: 'email', phone: 'tel', address: 'address-line1', ec1_name: 'off', ec1_cell_phone: 'off', card_name: 'cc-name', card_address: 'address-line1', card_phone: 'tel', card_last4: 'off', card_expiry: 'off' };
+  var AUTO = { legal_name: 'name', dob: 'bday', email: 'email', phone: 'tel', address: 'address-line1', ec1_name: 'off', ec1_cell_phone: 'off', card_name: 'cc-name', card_address: 'address-line1', card_phone: 'tel', card_last4: 'off', card_expiry: 'off', dl_number: 'off' };
 
   // Mark 2026-10-27: the passport country and the relationship are picked from a list; city, state and ZIP are three boxes.
   var COUNTRIES = ['United States', 'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
@@ -202,7 +202,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     ['SD', 'South Dakota'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'], ['VA', 'Virginia'], ['WA', 'Washington'], ['WV', 'West Virginia'],
     ['WI', 'Wisconsin'], ['WY', 'Wyoming'], ['AS', 'American Samoa'], ['GU', 'Guam'], ['MP', 'Northern Mariana Islands'], ['PR', 'Puerto Rico'], ['VI', 'U.S. Virgin Islands'],
     ['AA', 'Armed Forces Americas'], ['AE', 'Armed Forces Europe'], ['AP', 'Armed Forces Pacific']];
-  var PICK = { passport_country: COUNTRIES, ec1_relationship: RELATIONS };
+  var PICK = { passport_country: COUNTRIES, ec1_relationship: RELATIONS, dl_state: STATES };
   function isCsz(name) { return /city_state_zip$/.test(name); }
   function wholeCsz(v) { return /,\s*[A-Z]{2}\s+\d{5}$/.test(String(v || '')); }
   function opts(list, v, blank) {
@@ -286,6 +286,10 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var type2 = f.kind === 'date' ? 'date' : f.kind === 'email' ? 'email' : f.kind === 'tel' ? 'tel' : 'text';
     var extra = (f.maxLength ? ' maxlength="' + f.maxLength + '"' : '') + ' autocomplete="' + (AUTO[f.name] || 'off') + '"';
     var note = '';
+    if (f.kind === 'license') {
+      if (!packet.pii_ready) { extra += ' disabled'; note = 'We cannot take a licence number on this page right now. Leave it empty; we will ask for it another way.'; }
+      else note = 'Stored encrypted and never shown again, not even to you. It is used only to verify who is authorizing this card.';
+    }
     if (f.kind === 'passport') {
       if (!packet.pii_ready) { extra += ' disabled'; note = 'We cannot take a passport number on this page right now. Leave it empty; we will ask for it another way.'; }
       else if (packet.traveler && packet.traveler.passport_on_file) note = 'A passport ' + packet.traveler.passport_on_file + ' is already on file. Type the number again only if it has changed.';
@@ -310,8 +314,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       var d = docByKey(s.key), confirmOnly = /^20-/.test(d.key);
       // the document's own boxes only show the answers: renamed so they never count as the answers themselves
       var paper = d.html.replace(/ data-field="/g, ' data-docfield="').replace(/ name="/g, ' data-docname="');
-      return '<p class="lead">' + (confirmOnly ? 'Here is what we will keep on file for you. Read it; if anything is wrong, go back and fix it. When it is right, type your name to confirm.'
-          : 'Here is your ' + esc(d.title) + '. Read each page and press Confirm. When you reach the end, type your name to sign.') + '</p>' +
+      return '<p class="lead">' + (confirmOnly ? 'Here is what we will keep on file for you. Read it; if anything is wrong, go back and fix it. On the last page, type your name to confirm.'
+          : 'Here is your ' + esc(d.title) + '. Read each page and press Next page. On the last page, type your name to sign.') + '</p>' +
         '<p class="w-pageof" aria-live="polite"></p>' +
         '<div class="w-pdf" data-pdf="' + esc(d.key) + '"></div><div class="doc w-paper" hidden>' + paper + '</div>' +
         '<div class="w-spot" hidden><h3 class="w-sign-h">' + (confirmOnly ? 'Confirm it is right' : 'Sign your ' + esc(d.title)) + '</h3>' +
@@ -430,12 +434,28 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     return out;
   }
   /** the filled-in PDF of one document into host; false when it cannot be shown (the page's own copy is shown instead) */
-  var adopted = '';   // the name typed to sign the first document, filled in for the next ones
   function nameBox() { var el = stepEl(at); return el ? el.querySelector('.w-signname') : null; }
   function signer() { var el = nameBox(), n = el ? el.value.replace(/\s+/g, ' ').trim() : ''; return n.split(' ').length >= 2 ? n : ''; }
   // Mark 2026-10-29: a document is shown one page at a time, each page exactly as it prints; Confirm moves to the next page and the
   // place to sign is on the last page. (The 10/28 closing-up of blank stretches is gone with the Cornerstone layouts.)
   function pagesOf(host) { return host ? host.querySelectorAll('canvas') : []; }
+  // Mark 2026-10-30: "the confirmation box is not visible without scrolling. move it up just below the signature line". On screen the
+  // last page of a document ends where its wording ends (the blank rest of the sheet and the page footer are not drawn), so the place
+  // to sign follows the signature line. The printed PDF is unchanged.
+  function trimEnd(c) {
+    var w = c.width, h = c.height, ctx = c.getContext('2d'), data;
+    try { data = ctx.getImageData(0, 0, w, h).data; } catch (e) { return c; }
+    var step = Math.max(1, Math.floor(w / 300)), end = -1;
+    for (var y = Math.floor(h * 0.9); y >= 0 && end < 0; y--) {
+      for (var x = 0; x < w; x += step) { var i = (y * w + x) * 4; if (data[i] < 235 || data[i + 1] < 235 || data[i + 2] < 235) { end = y; break; } }
+    }
+    if (end < 0 || end > h * 0.84) return c;
+    var out = document.createElement('canvas'), keep = Math.min(h, end + Math.round(h * 0.03));
+    out.width = w; out.height = keep;
+    out.getContext('2d').drawImage(c, 0, 0, w, keep, 0, 0, w, keep);
+    out.setAttribute('role', 'img'); out.setAttribute('aria-label', c.getAttribute('aria-label') || '');
+    return out;
+  }
   function showPage(host, i) {
     var cs = pagesOf(host); if (!host || !cs.length) return;
     i = Math.max(0, Math.min(i, cs.length - 1)); host.pageAt = i;
@@ -450,7 +470,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var s = steps[at]; if (!s) return;
     if (s.id !== 'doc') { $('fm-next').textContent = { check: 'Finish', welcome: "Let's go!" }[s.id] || 'Continue'; return; }
     var host = stepEl(at).querySelector('.w-pdf');
-    $('fm-next').textContent = lastPage(host) ? (/^20-/.test(s.key) ? 'Confirm' : 'Confirm and sign') : 'Confirm';
+    $('fm-next').textContent = lastPage(host) ? (/^20-/.test(s.key) ? 'Confirm' : 'Confirm and sign') : 'Next page';
   }
   function showPdf(host, key, paper) {
     if (!host) return;
@@ -480,7 +500,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
               c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
               c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Page ' + n + ' of ' + pdf.numPages);
               next.appendChild(c);
-              return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+              return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function () {
+                if (n === pdf.numPages) { var t = trimEnd(c); if (t !== c) next.replaceChild(t, c); }
+              });
             });
           })(n);
           return chain.then(function () {
@@ -505,8 +527,6 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function goStep(i, quiet) {
     at = i;
     if (steps[i].id === 'doc') {
-      var nb = nameBox();
-      if (nb && !nb.value && adopted) nb.value = adopted;
       var h = stepEl(i).querySelector('.w-pdf'); if (h) h.pageAt = 0;
       showDocPdf(i);
       showPage(h, 0);
@@ -565,7 +585,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
         }).catch(function () { busy = false; $('fm-next').disabled = false; showErr('We could not reach the server. Please check your connection and try again.'); });
     }
     var gaps = stepGaps(at);
-    if (gaps.names.length) { showErr('Before you continue, please fill in ' + (gaps.names.length === 1 ? 'this line' : 'these ' + gaps.names.length + ' lines') + ': ' + gaps.names.join(', ') + '.'); fieldErrors(gaps.fields); return; }
+    if (gaps.names.length) { showErr(gaps.names.length === 1 ? 'One line still needs an answer: it is marked in red.' : 'Some lines still need an answer: they are marked in red.'); fieldErrors(gaps.fields); return; }
     if (s.id === 'doc') {
       var host = stepEl(at).querySelector('.w-pdf');
       if (!lastPage(host)) { showPage(host, (host.pageAt || 0) + 1); window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20)); return; }
@@ -590,7 +610,6 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function signOne(s) {
     var d = docByKey(s.key), name = signer(), label = $('fm-next').textContent;
     if (!name) { showErr('Please type your full name (first and last) to sign.'); var nb = nameBox(); if (nb) goTo(nb); return; }
-    adopted = name;
     busy = true; $('fm-next').disabled = true; $('fm-next').textContent = 'Signing…';
     var done = function () { busy = false; $('fm-next').disabled = false; $('fm-next').textContent = label; };
     var body = JSON.stringify({
@@ -704,16 +723,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       list.push(name);
       if (!first || (first.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING)) first = el;
     });
-    if (list.length > 1) {
-      var ul = document.createElement('ul'); ul.className = 'err-links';
-      list.forEach(function (n) {
-        var li = document.createElement('li'), b = document.createElement('button');
-        b.type = 'button'; b.className = 'linkbtn'; b.textContent = 'Go to: ' + ((fields[n] && fields[n].f.label) || n);
-        b.onclick = function () { var s = stepOf(n); if (s >= 0 && s !== at) goStep(s, true); goTo(fieldEl(n)); };
-        li.appendChild(b); ul.appendChild(li);
-      });
-      $('fm-err').appendChild(ul);
-    }
+    // Mark 2026-10-30: no list of links; the page goes to the first marked line and each carries its own red note
     goTo(first);
   }
   // a line that was marked as missing loses its note as soon as it is answered

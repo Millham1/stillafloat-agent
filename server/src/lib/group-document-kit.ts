@@ -280,7 +280,7 @@ export function mapTable(blocks: Block[], match: (t: TableBlock) => boolean, fn:
 }
 
 // ── Fields ────────────────────────────────────────────────────────────────────
-export type FieldKind = "text" | "date" | "email" | "tel" | "textarea" | "choice" | "multi" | "check" | "passport";
+export type FieldKind = "text" | "date" | "email" | "tel" | "textarea" | "choice" | "multi" | "check" | "passport" | "license";
 
 export interface Option {
   value: string;

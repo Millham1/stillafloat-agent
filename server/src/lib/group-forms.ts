@@ -81,10 +81,10 @@ export interface FormsDeps {
 
 // ── Loading a link ────────────────────────────────────────────────────────────
 
-/** The traveler columns any private page may read. Never passport_enc, form_token_hash, hub_token_hash or consent_ip_hash. */
+/** The traveler columns any private page may read. Never passport_enc, dl_enc, form_token_hash, hub_token_hash or consent_ip_hash. */
 export const TRAVELER_COLS =
   "id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, dob, gender, citizenship, email, phone, lang, " +
-  "passport_last4, passport_country, passport_expiry, emergency_name, emergency_phone, special_needs, form_data, " +
+  "passport_last4, passport_country, passport_expiry, dl_last4, dl_state, emergency_name, emergency_phone, special_needs, form_data, " +
   "newsletter_opt_in, prospect_id, form_sent_at, form_submitted_at, consent_name, consent_signed_at, " +
   "esign_consent_at, esign_consent_version, form_opened_at, copies_sent_at";
 /** The signer's own row adds the consent's network address, for the evidence page only (never in the shared list above). */
@@ -299,6 +299,13 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
       fields: { passport_number: "Not available right now. Leave this empty." },
     });
   }
+  if (applied.license && !piiConfigured(deps.piiKey)) {
+    return reply(503, {
+      success: false, code: "license-unavailable",
+      error: "We cannot take a driver's licence number on this page right now. Please leave that line empty; we will collect it another way.",
+      fields: { dl_number: "Not available right now. Leave this empty." },
+    });
+  }
 
   const now = deps.now();
   const spec = DOC_SPECS[docKey]!;
@@ -334,6 +341,7 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
       const patch: Row = { ...applied.travelerPatch, updated_at: now.toISOString() };
       if (Object.keys(applied.formData).length) patch["form_data"] = deepMerge(traveler.form_data, applied.formData);
       if (applied.passport) patch["passport_enc"] = encryptPii(applied.passport.number, deps.piiKey);
+      if (applied.license) patch["dl_enc"] = encryptPii(applied.license.number, deps.piiKey);
       // the terms are on 01 (the Cornerstone set) or inside 21 (Mark 2026-10-29): signing either records the consent to them
       if (docKey === "01-terms-and-conditions" || docKey === "21-your-booking") Object.assign(patch, { consent_name: signerName, consent_signed_at: now.toISOString(), consent_ip_hash: ipHash });
       if (complete) patch["form_submitted_at"] = now.toISOString();
@@ -565,9 +573,9 @@ export async function previewDocument(deps: FormsDeps, token: unknown, body: { d
   const doc = renderDocument(key, ctx);
   const own: Answers = {};
   for (const f of doc.fields) if (typed[f.name] !== undefined) own[f.name] = typed[f.name]!;
-  // shown as it will be kept: a passport number never in full
+  // shown as it will be kept: a passport or licence number never in full
   const applied = applyAnswers(doc, own, ctx);
-  const answers: Answers = applied.ok ? applied.answers : { ...own, ...(typeof own["passport_number"] === "string" ? { passport_number: "" } : {}) };
+  const answers: Answers = applied.ok ? applied.answers : { ...own, ...(typeof own["passport_number"] === "string" ? { passport_number: "" } : {}), ...(typeof own["dl_number"] === "string" ? { dl_number: "" } : {}) };
   // the name typed to sign goes on the client's signature line (only a first and last name, as the signing itself asks)
   const name = typeof body.signer_name === "string" ? body.signer_name.replace(/\s+/g, " ").trim().slice(0, 120) : "";
   const signer = SIGNER_NAME.test(name) && name.split(" ").length >= 2 ? name : "";

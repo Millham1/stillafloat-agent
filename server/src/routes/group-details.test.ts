@@ -772,7 +772,7 @@ test("the typed travelers become travelers on the chosen cabin: last-space split
   assert.equal(r.json["count"], 2);
   const [a, b] = tables["group_travelers"]!;
   assert.deepEqual([a!["group_id"], a!["cabin_id"], a!["first_name"], a!["last_name"], a!["dob"], a!["is_lead"], a!["email"], a!["phone"], a!["lang"]], [GROUP_ID, CABIN_ID, "Mary Ann", "Smith", "1965-04-12", true, "mmillham1@gmail.com", null, "es"]);
-  assert.deepEqual(a!["form_data"], { address: "123 Main St, Raleigh, NC 27601" }, "the home address goes where the paperwork reads it");
+  assert.deepEqual(a!["form_data"], { address: "123 Main St", city_state_zip: "Raleigh, NC 27601" }, "the home address goes where the paperwork pre-fills from, in its two parts (Mark 2026-10-30)");
   assert.deepEqual([b!["first_name"], b!["last_name"], b!["dob"], b!["is_lead"], b!["cabin_id"], "email" in b!, "form_data" in b!], ["Cher", "Bono", "1980-11-02", false, CABIN_ID, false, false]);
   assert.equal(replyRow()["traveler_id"], a!["id"], "the reply remembers it was added");
   assert.equal(writes("group_cabins").length, 0, "the cabin was not touched: Mark books with the cruise line himself");

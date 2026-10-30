@@ -41,7 +41,7 @@ function makeStore() {
     duplicate: false,
   };
   let seq = 0;
-  const strip = (t: Row) => { const { passport_enc: _p, ...rest } = t; return { ...rest }; };
+  const strip = (t: Row) => { const { passport_enc: _p, dl_enc: _d, ...rest } = t; return { ...rest }; };
   const store: FormsStore = {
     async travelerByTokenHash(hash) { const t = state.travelers.find((x) => x.form_token_hash === hash); return t ? strip(t) : null; },
     async groupByOrganizerHash(hash) { return state.group.organizer_token_hash === hash ? { ...state.group } : null; },
@@ -194,7 +194,7 @@ test("a traveler's packet lists their documents in order, with their own inputs,
   assert.equal(p.traveler.passport_on_file, "ending 4321");
   assert.equal(p.pii_ready, true);
   const raw = JSON.stringify(r.json);
-  for (const secret of ["SECRET", "passport_enc", "form_token_hash", "consent_ip_hash", "organizer_email", "pat@example.com", "1960-05-04", "jane@example.com", "organizer_token_hash"]) {
+  for (const secret of ["SECRET", "passport_enc", "dl_enc", "form_token_hash", "consent_ip_hash", "organizer_email", "pat@example.com", "1960-05-04", "jane@example.com", "organizer_token_hash"]) {
     assert.ok(!raw.includes(secret), `the packet leaks ${secret}`);
   }
   const lead = pkt(await getPacket(t.deps, t.link("t1")));
@@ -380,6 +380,25 @@ test("signing the booking document records consent; the last signature completes
   assert.equal(t.state.signatures.find((s) => s.doc_key.startsWith("21"))!.answers.insurance_choice, "quote");
   assert.equal(t.state.travelers[1]!.form_data.insurance.choice, "quote");
   assert.equal(((await getPacket(t.deps, token)).json as { complete: boolean }).complete, true);
+});
+
+test("the cabin's lead authorizes the card: last four, expiry and the licence, whose number is encrypted and never shown again", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  const card = { card_name: "Jane Public", card_address: "1 Main St", card_city_state_zip: "Raleigh, NC 27601", card_phone: "919-555-0100", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
+  const r = await signKey(t, token, "22-card-authorization", { answers: card });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const tr = t.state.travelers[0]!;
+  assert.equal(tr.signer_role, undefined);
+  assert.equal(t.state.signatures[0]!.signer_role, "lead");
+  assert.equal(decryptPii(tr.dl_enc, KEY), "0000554321");
+  assert.deepEqual([tr.dl_last4, tr.dl_state], ["4321", "NC"]);
+  assert.equal(t.state.signatures[0]!.answers.dl_number, "ending 4321");
+  for (const where of [JSON.stringify(t.state.signatures), JSON.stringify(r.json), JSON.stringify(t.pdfs.map((p) => blocksToText(p.blocks)))]) assert.ok(!where.includes("0000554321"), "the licence number appears in plaintext somewhere it must not");
+  assert.ok(blocksToText(t.pdfs[0]!.blocks).includes("Driver's licence: NC · ending 4321"), "the signed copy shows the state and the last four only");
+  const noKey = setup({ piiKey: undefined });
+  const refused = await signKey(noKey, noKey.link("t1"), "22-card-authorization", { answers: card });
+  assert.equal(refused.status, 503); assert.equal(refused.json["code"], "license-unavailable");
 });
 
 test("the cabin's lead signs the same booking document as a traveler; an own policy is kept on the file", async () => {

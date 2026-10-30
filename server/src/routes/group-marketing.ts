@@ -9,7 +9,6 @@ import { createAction } from "../lib/actions";
 import { hashForAudit } from "../lib/group-secure";
 import { issueToken } from "../lib/group-forms";
 import { MSG, callUrl as makeCallUrl, detailsUrl as makeDetailsUrl, firstWord, splitLegalName, storedAddress, storedTravelers, tidyLegalName } from "../lib/group-details";
-import { formatAddress } from "../lib/address-lookup";
 import { clientIp } from "../lib/client-ip";
 import {
   ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote, validEmail, validPhone,
@@ -315,14 +314,15 @@ router.post("/groups/:id/interests/:iid/to-file", requireToken, async (req: Requ
     if (le) throw new Error(le.message);
     const hasLead = ((onCabin ?? []) as Row[]).some((t) => t["is_lead"] === true);
     const guestLang = reply.lang === "es" ? "es" : "en";
-    // The one home address for the cabin goes on the first traveler, as one line, where the paperwork already reads it (form_data.address); someone
-    // who lives elsewhere says so on their own paperwork page.
+    // The one home address for the cabin goes on the first traveler, in the two parts the paperwork pre-fills from (form_data.address = the street,
+    // form_data.city_state_zip; Mark 2026-10-30: "the questions should be pre-filled from information we already have"); someone who lives
+    // elsewhere says so on their own paperwork page.
     const home = storedAddress(reply.address);
     const rows = people.map((p, i) => {
       const { first, last } = splitLegalName(p.legal_name);
       return {
         group_id: groupId, cabin_id: cabinId, is_lead: i === 0 && !hasLead, first_name: first, last_name: last, dob: p.dob, lang: guestLang,
-        ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null, ...(home ? { form_data: { address: formatAddress(home) } } : {}) } : {}),
+        ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null, ...(home ? { form_data: { address: home.street, city_state_zip: `${home.city}, ${home.state} ${home.zip}` } } : {}) } : {}),
       };
     });
     const { data: made, error: me } = await db().from("group_travelers").insert(rows).select("id");

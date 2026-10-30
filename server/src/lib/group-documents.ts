@@ -150,7 +150,7 @@ function inputHtml(kind: string, name: string, env: Env): string {
   if (kind === "ta") return `<textarea class="doc-ta" name="${name}" data-field="${name}" maxlength="${f?.maxLength ?? 1000}" rows="3" aria-label="${label}"></textarea>`;
   if (kind === "ck") return `<input class="doc-box" type="checkbox" name="${name}" data-field="${name}" data-kind="check" aria-label="${label}">`;
   const type = f?.kind === "date" ? "date" : f?.kind === "email" ? "email" : f?.kind === "tel" ? "tel" : "text";
-  const extra = f?.kind === "passport" ? ' autocomplete="off" autocapitalize="characters" spellcheck="false"' : "";
+  const extra = f?.kind === "passport" || f?.kind === "license" ? ' autocomplete="off" autocapitalize="characters" spellcheck="false"' : "";
   return `<input class="doc-in" type="${type}" name="${name}" data-field="${name}" data-kind="${f?.kind ?? "text"}" maxlength="${max}" aria-label="${label}"${extra}>`;
 }
 
@@ -553,6 +553,8 @@ export interface AppliedAnswers {
   formData: Row;
   /** The number is returned ONLY so the caller can encrypt it; it is never part of `answers`. */
   passport?: { number: string; last4: string };
+  /** The driver's licence number (the card authorization, Mark 2026-10-30): returned only to be encrypted, never in `answers`. */
+  license?: { number: string; last4: string };
 }
 export interface RejectedAnswers { ok: false; errors: Record<string, string> }
 
@@ -604,7 +606,7 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
     const v = input[f.name];
     const max = f.maxLength ?? (f.kind === "textarea" ? 1000 : 200);
     switch (f.kind) {
-      case "text": case "textarea": case "tel": case "email": case "date": case "passport": {
+      case "text": case "textarea": case "tel": case "email": case "date": case "passport": case "license": {
         if (v === undefined || v === null) break;
         if (typeof v !== "string") { errors[f.name] = "Please check this answer."; break; }
         const s = f.kind === "textarea" ? v.replace(/\r/g, "").trim() : v.replace(/\s+/g, " ").trim();
@@ -615,6 +617,7 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
         if (f.kind === "email" && !EMAIL.test(s)) { errors[f.name] = "Please check the email address."; break; }
         if (f.kind === "tel" && !(s.replace(/\D/g, "").length >= 7 && s.replace(/\D/g, "").length <= 15 && /^[0-9+()\-.\s xX#]+$/.test(s))) { errors[f.name] = "Please check the phone number."; break; }
         if (f.kind === "passport" && !passportLooksValid(s)) { errors[f.name] = "A passport number is 6 to 9 letters and digits."; break; }
+        if (f.kind === "license" && !/^[A-Z0-9-]{4,20}$/.test(normalizePassport(s))) { errors[f.name] = "A driver's licence number is 4 to 20 letters and digits."; break; }
         if (f.kind === "date") {
           if (!validDate(s)) { errors[f.name] = "Please enter a real date."; break; }
           const year = Number(s.slice(0, 4));
@@ -622,7 +625,7 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
           if (f.date === "past" && s > today) { errors[f.name] = "That date should be in the past."; break; }
           if (f.date === "future" && s <= today) { errors[f.name] = "That date has already passed."; break; }
         }
-        clean[f.name] = f.kind === "passport" ? normalizePassport(s) : s;
+        clean[f.name] = f.kind === "passport" || f.kind === "license" ? normalizePassport(s) : s;
         break;
       }
       case "choice": {
@@ -655,6 +658,7 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
   const travelerPatch: Row = {};
   const formData: Row = {};
   let passport: AppliedAnswers["passport"];
+  let license: AppliedAnswers["license"];
   const stored: Answers = { ...clean };
   for (const f of doc.fields) {
     const v = clean[f.name];
@@ -666,6 +670,13 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
       travelerPatch["passport_last4"] = passport.last4;
       continue;
     }
+    if (f.kind === "license") {
+      const number = String(v);
+      license = { number, last4: last4(number) };
+      stored[f.name] = `ending ${license.last4}`; // the number itself is never stored in answers
+      travelerPatch["dl_last4"] = license.last4;
+      continue;
+    }
     const shown = f.kind === "choice" ? f.options?.find((o) => o.value === v)?.label ?? v : v; // a column holds the words ("Female"), not the code
     if (f.col) travelerPatch[f.col] = shown;
     if (f.form) setPath(formData, f.form, v);
@@ -673,12 +684,12 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
     if (f.form && /city_state_zip$/.test(f.name) && typeof v === "string") { const parts = splitCityStateZip(v); if (parts) setPath(formData, `${f.form}_parts`, parts); }
   }
   if (spec?.derive) Object.assign(travelerPatch, spec.derive(clean, ctx));
-  return { ok: true, answers: stored, travelerPatch, formData, ...(passport ? { passport } : {}) };
+  return { ok: true, answers: stored, travelerPatch, formData, ...(passport ? { passport } : {}), ...(license ? { license } : {}) };
 }
 
 /** What the page puts in each input before the signer types: the file's own value (never a passport number). */
 export function prefillValue(f: FieldSpec, ctx: DocCtx): string | string[] | boolean | undefined {
-  if (f.kind === "passport") return undefined;
+  if (f.kind === "passport" || f.kind === "license") return undefined;
   const fromCol = f.col ? ctx.traveler?.[f.col] : undefined;
   const fromForm = f.form ? getPath(ctx.traveler?.form_data, f.form) : undefined;
   const v = !isEmpty(fromForm) ? fromForm : fromCol;

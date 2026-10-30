@@ -42,6 +42,8 @@
 
 **Card ending in (last four digits only):** {{in:card_last4}} **Expires (MM/YY):** {{in:card_expiry}}
 
+**Driver's licence:** {{in:dl_state}} · {{in:dl_number}}
+
 *This form takes only the last four digits of the card and its expiry. It never asks for the full card number or the security code; do not type them anywhere on this page.*
 
 -----
@@ -55,9 +57,10 @@ I, the cardholder named above, authorize [AGENT NAME / BUSINESS NAME], an indepe
 3. **Cardholder authority.** I am the cardholder or an authorized user of this card, I am at least 18, and what I have given here is true and complete.
 4. **Supplier terms.** The supplier's terms govern the booking, including cancellation, change and refund policies; deposits and payments may be partly or wholly non-refundable. I have received, or will receive, those terms before final payment.
 5. **Questions about a charge.** I will contact the Agency first about any charge covered by this authorization so it can be resolved promptly. This does not limit my rights under law or my card issuer's rules.
-6. **Card information.** This form collects only the last four digits of my card and its expiry date, never the full number or security code.
-7. **Electronic signature and records.** My electronic signature on this form has the same legal effect as a handwritten one, and this authorization may be created, signed and kept as an electronic record under the federal ESIGN Act and applicable state law.
-8. **Duration.** This authorization stays in effect until every charge for this booking has been paid in full, or until I revoke it in writing to the Agency. Revoking it does not cancel charges already made or amounts owed under the supplier's terms for services already booked.
+6. **Identity verification.** To protect against fraud, I consent to giving the state and number of my driver's licence. It is stored encrypted, used only to verify my identity for this authorization, and is read only by the agent named on this form and, where necessary, authorized Cornerstone Collective personnel.
+7. **Card information.** This form collects only the last four digits of my card and its expiry date, never the full number or security code.
+8. **Electronic signature and records.** My electronic signature on this form has the same legal effect as a handwritten one, and this authorization may be created, signed and kept as an electronic record under the federal ESIGN Act and applicable state law.
+9. **Duration.** This authorization stays in effect until every charge for this booking has been paid in full, or until I revoke it in writing to the Agency. Revoking it does not cancel charges already made or amounts owed under the supplier's terms for services already booked.
 
 -----
 
