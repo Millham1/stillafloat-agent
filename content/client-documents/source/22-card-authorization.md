@@ -30,6 +30,8 @@
 
 ## CARDHOLDER
 
+**The card belongs to:** {{ch:cardholder:me}} me, the traveler named on this booking {{ch:cardholder:other}} someone else, named below
+
 **Name, as it appears on the card:** {{in:card_name}}
 
 **Billing address:** {{in:card_address}}

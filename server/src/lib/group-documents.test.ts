@@ -463,3 +463,19 @@ test("the page gets each field without functions or secrets, pre-filled from the
   assert.ok(!JSON.stringify(fields).includes("X99887766") && !JSON.stringify(fields).includes("SECRETCIPHER") && !JSON.stringify(fields).includes("4321"));
   for (const f of fields) for (const v of Object.values(f)) assert.notEqual(typeof v, "function");
 });
+
+test("the waiver's health tick is made on the document's own signing screen, under Cornerstone's Health Declaration in its words (Mark 2026-10-30)", () => {
+  const ctx = ctxFor();
+  const d = renderDocument("05-liability-waiver", ctx);
+  const tick = d.fields.find((f) => f.name === "health_ack")!;
+  assert.ok(tick.onDocument, "the tick is a sign-stage line");
+  assert.equal(tick.onDocument!.heading, "Health declaration");
+  assert.ok(d.text.includes(tick.onDocument!.text), "the words shown with the tick are the document's own");
+  assert.ok(d.text.includes(tick.label), "the tick's label is the document's own line");
+  const pub = publicField(tick, ctx);
+  assert.deepEqual(pub["on_document"], tick.onDocument);
+  assert.equal(pub["required"], true);
+  // a follow-up line the document requires once its choice is made reaches the page as "shown"
+  const citizenship = renderDocument("15-emergency-contact-form", ctx).fields.find((f) => f.name === "citizenship")!;
+  assert.equal(publicField(citizenship, ctx)["required"], "shown");
+});

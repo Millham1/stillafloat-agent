@@ -286,7 +286,15 @@ const WAIVER_05: DocSpec = {
     { name: "insurance_status", label: "Travel insurance", kind: "choice", options: [opt("have", "I have purchased travel insurance", "**I/We HAVE purchased"), opt("declined", "I have declined travel insurance", "**I/We have DECLINED")] },
     text("ins_provider", "Insurance provider"),
     text("ins_policy", "Policy number"),
-    { name: "health_ack", label: "I am aware of and accept the health-related risks", kind: "check", required: true },
+    // Mark 2026-10-30: "we haven't shown them a health declaration … this should show in the signing stage on the actual document":
+    // ticked on the waiver's own signing screen, under Cornerstone's Health Declaration, in its words.
+    {
+      name: "health_ack", label: "I am aware of and accept the health-related risks associated with my intended destination.", kind: "check", required: true,
+      onDocument: {
+        heading: "Health declaration",
+        text: "I/We confirm that to the best of our knowledge, there are no known medical conditions that would prevent us from traveling to our intended destination(s). I/We have consulted or will consult with a qualified healthcare provider regarding any necessary vaccinations, medications, or health precautions for my/our destination.",
+      },
+    },
   ],
   edits: [
     // The advisory level of every country on the itinerary, written under the acknowledgment (Mark 2026-10-30).
@@ -342,7 +350,11 @@ const INSURANCE_07: DocSpec = {
       ],
     },
     text("decline_other", "Other reason", { form: "insurance.other_reason" }),
+    // Mark 2026-10-30: "they should be able to select the policy/price here": the Allianz plan picked on the insurance step, with its
+    // price, printed under the Yes line. The page asks for it whenever plans are offered; it is kept only when Allianz was chosen.
+    text("insurance_plan", "The Allianz plan you chose", { maxLength: 160, form: "insurance.plan" }),
   ],
+  complete: (a) => { if (a["insurance_choice"] === "quote") return a; const { insurance_plan: _drop, ...rest } = a; return rest; },
   edits: [
     // The choice goes first: the Declination Statement and Acknowledgment apply only to someone who declines.
     (blocks) => {
@@ -352,6 +364,7 @@ const INSURANCE_07: DocSpec = {
         { t: "h", level: 2, text: "YOUR CHOICE" },
         { t: "p", text: "Please choose one before you sign. The Declination Statement, the reasons and the Acknowledgment further down apply only if you choose to decline." },
         { t: "p", text: "{{ch:insurance_choice:quote}} **Yes.** I want Allianz travel insurance through Mark at the price quoted to me (subject to change until finalized). I am not declining insurance, and the Declination Statement below does not apply to me." },
+        { t: "p", text: "Plan chosen: {{in:insurance_plan}}" },
         { t: "p", text: "{{ch:insurance_choice:line}} **The cruise line's plan.** I want the cruise line's own protection plan added to my booking. The Declination Statement below does not apply to me." },
         { t: "p", text: "{{ch:insurance_choice:own}} **My own policy.** I have travel insurance of my own; its provider and policy number are on my Liability Waiver. The Declination Statement below does not apply to me." },
         { t: "p", text: "{{ch:insurance_choice:decline}} **No.** I decline travel insurance for this trip. The Declination Statement and the Acknowledgment below apply to me." },
@@ -730,18 +743,31 @@ const BOOKING_21: DocSpec = {
 // e-signed form: the last four digits and the expiry only, never the number or the security code; the cabin's lead signs it.
 // The driver's licence (Cornerstone's identity check) is taken too: the state in clear, the number encrypted (dl_enc, migration 0059).
 
+// Mark 2026-10-30: "the driver's license is for the person who owns the credit card, not necessarily the traveller. we need a check box
+// if it is the traveller, continue, if it is someone else we need the information requested on the form": the traveler's own card takes
+// its cardholder lines from the file; someone else's card asks for that person's details. The licence is the cardholder's either way.
+const otherCard = (a: Answers) => a["cardholder"] === "other";
 const CARD_FIELDS: FieldSpec[] = [
-  text("card_name", "Name, as it appears on the card", { required: true, form: "card.name", prefill: (c) => legalName(c) || undefined }),
-  text("card_address", "Billing address", { required: true, form: "card.address", prefill: (c) => formText(c, "address") || undefined }),
-  text("card_city_state_zip", "City, state, ZIP", { required: true, form: "card.city_state_zip", prefill: (c) => formText(c, "city_state_zip") || undefined }),
-  { name: "card_phone", label: "Phone", kind: "tel", required: true, form: "card.phone", prefill: (c) => cleanValue(c.traveler?.phone) || undefined },
+  { name: "cardholder", label: "Is the card in your name?", kind: "choice", required: true, form: "card.holder", options: [opt("me", "Yes, it is my card"), opt("other", "No, it belongs to someone else")] },
+  text("card_name", "Cardholder's name, as it appears on the card", { required: otherCard, form: "card.name" }),
+  text("card_address", "Cardholder's billing address", { required: otherCard, form: "card.address" }),
+  text("card_city_state_zip", "Cardholder's city, state, ZIP", { required: otherCard, form: "card.city_state_zip" }),
+  { name: "card_phone", label: "Cardholder's phone", kind: "tel", required: otherCard, form: "card.phone" },
   { name: "card_type", label: "Card type", kind: "choice", required: true, options: [opt("visa", "Visa"), opt("mastercard", "Mastercard"), opt("amex", "American Express"), opt("discover", "Discover")], form: "card.type" },
   text("card_last4", "Card ending in (last four digits only)", { required: true, maxLength: 4, form: "card.last4" }),
   text("card_expiry", "Expires (MM/YY)", { required: true, maxLength: 5, form: "card.expiry" }),
   // Mark 2026-10-30: the driver's licence, as on Cornerstone's form — to verify identity; the number is encrypted like the passport
-  text("dl_state", "Driver's licence: state", { required: true, maxLength: 2, col: "dl_state" }),
-  { name: "dl_number", label: "Driver's licence: number", kind: "license", required: true },
+  text("dl_state", "Cardholder's driver's licence: state", { required: true, maxLength: 2, col: "dl_state" }),
+  { name: "dl_number", label: "Cardholder's driver's licence: number", kind: "license", required: true },
 ];
+/** The traveler's own card: the cardholder is the traveler on file (name, address, city/state/ZIP, phone), nothing asked twice. */
+function ownCard(a: Answers, c: DocCtx): Answers {
+  if (a["cardholder"] !== "me") return a;
+  const own: Answers = { ...a };
+  const from: Array<[string, string]> = [["card_name", legalName(c)], ["card_address", formText(c, "address")], ["card_city_state_zip", formText(c, "city_state_zip")], ["card_phone", cleanValue(c.traveler?.phone)]];
+  for (const [k, v] of from) if (v) own[k] = v; else delete own[k];
+  return own;
+}
 
 const CARD_22: DocSpec = {
   key: "22-card-authorization",
@@ -756,6 +782,7 @@ const CARD_22: DocSpec = {
     { after: "**Date:**", today: true },
   ],
   fields: CARD_FIELDS,
+  complete: ownCard,
   validate: (a) => {
     const errors: Record<string, string> = {};
     if (typeof a["card_last4"] === "string" && !/^\d{4}$/.test(a["card_last4"])) errors["card_last4"] = "Just the last four digits of the card.";

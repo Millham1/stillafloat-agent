@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
- giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, ESIGN_CONSENT_VERSION } from "./group-forms";
+ giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, ESIGN_CONSENT_VERSION, insuranceStatus } from "./group-forms";
 import { pagePhotos } from "./group-page-photos";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
@@ -386,7 +386,7 @@ test("signing the booking document records consent; the last signature completes
 test("the cabin's lead authorizes the card: last four, expiry and the licence, whose number is encrypted and never shown again", async () => {
   const t = setup();
   const token = t.link("t1");
-  const card = { card_name: "Jane Public", card_address: "1 Main St", card_city_state_zip: "Raleigh, NC 27601", card_phone: "919-555-0100", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
+  const card = { cardholder: "other", card_name: "Jane Public", card_address: "1 Main St", card_city_state_zip: "Raleigh, NC 27601", card_phone: "919-555-0100", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
   const r = await signKey(t, token, "22-card-authorization", { answers: card });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   const tr = t.state.travelers[0]!;
@@ -684,4 +684,18 @@ test("guests see the group's page label, never the file's short name (Mark 2026-
   assert.equal(guestGroupName({ name: "Millham F/F 2027", marketing: { page_label: "Friends and Family 2027" } }), "Friends and Family 2027");
   assert.equal(guestGroupName({ name: "Millham F/F 2027", marketing: { page_label: "  " } }), "Millham F/F 2027");
   assert.equal(guestGroupName({ name: "Millham F/F 2027" }), "Millham F/F 2027");
+});
+
+test("the insurance step offers the Allianz plans Mark put on the group file until the box has a quote of its own (Mark 2026-10-30)", async () => {
+  const t = setup();
+  const token = t.link("t2");
+  const bare = (await insuranceStatus(t.deps, token)).json as { quote: { status: string; source: string | null; plans: unknown[] } };
+  assert.deepEqual([bare.quote.status, bare.quote.source, bare.quote.plans], ["none", null, []]);
+  t.state.group.insurance_plans = "OneTrip Basic: $89 per person\nOneTrip Prime: $129 per person\n";
+  const q = ((await insuranceStatus(t.deps, token)).json as { quote: { status: string; source: string; quoted_at: string | null; plans: Array<{ name: string; price_per_person: number }>; note: string } }).quote;
+  assert.equal(q.status, "ready");
+  assert.equal(q.source, "file");
+  assert.equal(q.quoted_at, null);
+  assert.deepEqual(q.plans, [{ name: "OneTrip Basic", price_per_person: 89 }, { name: "OneTrip Prime", price_per_person: 129 }]);
+  assert.equal(q.note, "Pricing subject to change until finalized.");
 });

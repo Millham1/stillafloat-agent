@@ -44,7 +44,7 @@ const STATUS_TEXT: Record<Intake["status"], string> = {
   failed: "Could not read this document.",
 };
 
-type Field = { key: string; label: string; type?: "text" | "date" | "number" };
+type Field = { key: string; label: string; type?: "text" | "date" | "number" | "lines" };
 const FIELDS: Field[] = [
   { key: "cruise_line", label: "Cruise line" },
   { key: "ship_name", label: "Ship" },
@@ -59,6 +59,7 @@ const FIELDS: Field[] = [
   { key: "names_due", label: "Names due to the line", type: "date" },
   { key: "final_payment_due", label: "Final payment deadline", type: "date" },
   { key: "line_protection", label: "Cruise line's protection plan, as quoted (e.g. MSC Vacation Protection: $89 per person)" },
+  { key: "insurance_plans", label: "Allianz plans for this sailing, as quoted in AgentMax, one per line (e.g. OneTrip Prime: $129 per person); the paperwork shows them to pick from whenever the box cannot quote the traveler itself", type: "lines" },
   { key: "recall_date", label: "Unsold cabins go back", type: "date" },
   { key: "organizer_name", label: "Organizer" },
 ];
@@ -409,8 +410,10 @@ export default function GroupIntake() {
                 <label key={f.key} className="text-xs text-muted-foreground">
                   {f.label} {found.has(f.key) ? <span className="text-green-600">· from the document{hint(f.key) ? ` (${hint(f.key)})` : ""}</span>
                     : hint(f.key) ? <span className="text-sky-600">· {hint(f.key)}</span> : <span className="text-amber-600">· not found</span>}
-                  <input className={`${inputCls}${saveError && saveField === f.key ? " border-red-500" : ""}`} type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
-                    value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />
+                  {f.type === "lines"
+                    ? <textarea className={`${inputCls}${saveError && saveField === f.key ? " border-red-500" : ""}`} rows={3} value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />
+                    : <input className={`${inputCls}${saveError && saveField === f.key ? " border-red-500" : ""}`} type={f.type === "date" ? "date" : f.type === "number" ? "number" : "text"}
+                        value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} />}
                   {saveError && saveField === f.key && <span role="alert" className="block mt-1 text-xs text-red-600">{saveError}</span>}
                 </label>
               ))}

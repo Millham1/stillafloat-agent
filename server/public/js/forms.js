@@ -150,14 +150,14 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   var SECTIONS = {
     legal_name: 'Who you are', address: 'How to reach you', passport_number: 'Passport', trusted_programs: 'Trusted traveler programs', loyalty_1_program: 'Loyalty programs',
     ec1_name: 'Emergency contact', notes: 'Anything we should know', advisory_level: 'For the liability waiver', insurance_choice: 'Travel insurance: your choice',
-    dining: 'Your cabin', card_name: 'The card',
+    dining: 'Your cabin', cardholder: 'The card',
   };
   // a line of help under a section heading
   var INTRO = {
     passport_number: 'Optional on a cruise that starts and ends in the same U.S. port, but the only document that gets you home by air if you have to leave the ship early.',
     ec1_name: 'One person who is not traveling with you.',
     insurance_choice: 'We strongly recommend travel insurance. It can cover the fare if you have to cancel, medical care abroad (your U.S. health plan may pay little or nothing outside the country), and emergency evacuation, which can run from $15,000 to $200,000. Some benefits are only available within about two weeks of your deposit. You can add insurance any time before sailing.',
-    card_name: 'For the deposit and the payments as they come due. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
+    cardholder: 'For the deposit and the payments as they come due. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
     advisory_level: 'The U.S. State Department advisory level for your destination, if you know it; leave it if not.',
     dining: 'For the cruise booking agreement: dining, anything to celebrate on board, and anything the ship should know.',
   };
@@ -168,8 +168,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // Mark 2026-10-30: "all of the travel insurance stuff should be after they review the video and quote": these lines are asked
   // on their own step, right before the Travel Insurance document, never on the information page.
   var INSURANCE = ['insurance_choice', 'decline_reasons', 'decline_other', 'ins_provider', 'ins_policy'];
-  // the card's details start as the traveler's own (editable; a changed box stays as typed)
-  var MIRROR = { card_name: 'legal_name', card_address: 'address', card_city_state_zip: 'city_state_zip', card_phone: 'phone' };
+  // Mark 2026-10-30: "they should be able to select the policy/price here": the Allianz plan is picked in the price panel of the
+  // insurance step (quoteHtml), never asked as a line of its own; it is needed once "Yes" is chosen and plans are offered.
+  var PANEL = ['insurance_plan'];
+  var NEEDS = { insurance_plan: { when: function () { return value('insurance_choice') === 'quote'; }, say: 'Please choose your plan.' } };
+  // a line is required when its document says so, or, for a follow-up line, once the choice above it brings it into view
+  function mustHave(f) { return f.required === true || (f.required === 'shown' && isFollow(f.name)); }
   // Mark 2026-10-27/28, his flow: "We collect the data to populate only that document, then show the client the actual populated
   // document, the client then confirms it is accurate by hitting confirm, then we move to the next document … at the end of all the
   // confirmed documents we provide the checklist format for them to go back and review". So, document by document: its questions
@@ -177,7 +181,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // "Confirm and sign"; at the end the checklist of the signed documents, each to view or print, and Finish. The name typed to sign
   // the first document is filled in for the rest.
   // A follow-up line shows right under the choice it belongs to, only when that choice is ticked.
-  var FOLLOW = { us_citizen: { no: ['citizenship'] }, insurance_choice: { own: ['ins_provider', 'ins_policy'], decline: ['decline_reasons'] }, decline_reasons: { other: ['decline_other'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] } };
+  var FOLLOW = { us_citizen: { no: ['citizenship'] }, insurance_choice: { own: ['ins_provider', 'ins_policy'], decline: ['decline_reasons'] }, decline_reasons: { other: ['decline_other'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] },
+    // Mark 2026-10-30: someone else's card asks for that person's details; the traveler's own card takes them from the file
+    cardholder: { other: ['card_name', 'card_address', 'card_city_state_zip', 'card_phone'] } };
   var SUMMARY = {
     '15-emergency-contact-form': 'The answers you just gave: who you are, how to reach you, and who to call in an emergency.',
     '01-terms-and-conditions': 'How we work together: what we do, what the cruise line does, and how changes and cancellations are handled.',
@@ -255,11 +261,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       d.fields.forEach(function (f) {
         if (!fields[f.name]) { fields[f.name] = { f: f, docs: [] }; order.push(f.name); }
         fields[f.name].docs.push(d.key);
-        if (f.required) fields[f.name].f.required = true;
+        if (f.required === true) fields[f.name].f.required = true;
+        else if (f.required === 'shown' && !fields[f.name].f.required) fields[f.name].f.required = 'shown';
       });
     });
     steps = [WELCOME];
-    var ask = order.filter(function (n) { return !isFollow(n) && HIDE.indexOf(n) < 0 && INSURANCE.indexOf(n) < 0; });
+    var ask = order.filter(function (n) { return !isFollow(n) && HIDE.indexOf(n) < 0 && INSURANCE.indexOf(n) < 0 && PANEL.indexOf(n) < 0 && !fields[n].f.on_document; });
     if (ask.length) steps.push({ id: 'details', title: 'Your information', fields: ask });
     var insuranceAsk = INSURANCE.filter(function (n) { return fields[n] && !isFollow(n); });
     pending().forEach(function (d) {
@@ -271,8 +278,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   }
 
   function control(f) {
-    var id = 'w-' + f.name, v = f.value, req = f.required ? ' req' : '';
-    var lab = '<span class="w-label">' + esc(f.label) + (f.required ? '' : ' <span class="w-opt">(optional)</span>') + '</span>';
+    var id = 'w-' + f.name, v = f.value, req = mustHave(f) ? ' req' : '';
+    var lab = '<span class="w-label">' + esc(f.label) + (mustHave(f) ? '' : ' <span class="w-opt">(optional)</span>') + '</span>';
     if (f.kind === 'choice' || f.kind === 'multi') {
       var type = f.kind === 'choice' ? 'radio' : 'checkbox', follow = FOLLOW[f.name] || {};
       return '<fieldset class="w-field' + req + '" data-q="' + esc(f.name) + '"><legend>' + lab + '</legend>' + (f.options || []).map(function (o) {
@@ -316,6 +323,13 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   }
 
   function isFollow(n) { for (var k in FOLLOW) for (var o in FOLLOW[k]) if (FOLLOW[k][o].indexOf(n) >= 0 && fields[k]) return true; return false; }
+  // Mark 2026-10-30: a tick that carries no information ("I am aware of and accept the health-related risks…") is made on the
+  // document's own signing screen, under the heading and the words it belongs to, and shows ticked on the document itself.
+  function signStageHtml(d) {
+    return d.fields.filter(function (f) { return f.on_document && fields[f.name]; }).map(function (f) {
+      return '<div class="w-decl"><h3 class="w-sign-h">' + esc(f.on_document.heading) + '</h3><p>' + esc(f.on_document.text) + '</p>' + control(fields[f.name].f) + '</div>';
+    }).join('');
+  }
   function stepBody(s, named) {
     if (s.id === 'welcome') {
       var c = packet.esign && packet.esign.text, h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '! ' +
@@ -334,7 +348,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
           : 'This is document ' + (packet.docs.indexOf(d) + 1) + ' of ' + packet.docs.length + ', your ' + esc(d.title) + ', filled in from your information. Read each page and press Next page. On the last page, type your name to sign it.') + '</p>' +
         '<p class="w-pageof" aria-live="polite"></p>' +
         '<div class="w-pdf" data-pdf="' + esc(d.key) + '"></div><div class="doc w-paper" hidden>' + paper + '</div>' +
-        '<div class="w-spot" hidden><h3 class="w-sign-h">' + (confirmOnly ? 'Confirm it is right' : 'Sign your ' + esc(d.title)) + '</h3>' +
+        '<div class="w-spot" hidden>' + signStageHtml(d) + '<h3 class="w-sign-h">' + (confirmOnly ? 'Confirm it is right' : 'Sign your ' + esc(d.title)) + '</h3>' +
         '<label class="nm" for="w-sign-' + esc(d.key) + '">Type your full name</label>' +
         '<input type="text" class="w-signname" id="w-sign-' + esc(d.key) + '" autocomplete="name" maxlength="120" placeholder="First and last name" data-nokeep>' +
         '<p class="hint fine">' + (confirmOnly ? 'Typing your name confirms this information is yours and correct. It goes on the form with the date and time, and you get a copy by email.'
@@ -353,12 +367,18 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     return h + fieldsHtml(s.fields || []);
   }
   function embedUrl(u) { var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(u || ''); return m ? 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0' : u; }
-  function quoteHtml(q, line) {
+  function planText(p) { return p.name + ': $' + money(p.price_per_person) + ' per person'; }
+  function money(n) { var v = Number(n); return isFinite(v) ? v.toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }) : String(n); }
+  function quoteHtml(q, line, picked) {
     q = q || { status: 'none' };
     var h = '<h3 class="w-group">Your price</h3>';
     if (q.status === 'ready' && q.plans && q.plans.length) {
-      h += '<p>Allianz travel insurance for this trip' + (q.trip_cost ? ', on a fare of $' + esc(String(q.trip_cost)) + ' per person' : '') + ', quoted ' + esc(q.quoted_at ? new Date(q.quoted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'today') + ':</p><ul class="w-plans">' +
-        q.plans.map(function (p) { return '<li><b>' + esc(p.name) + '</b>: $' + esc(String(p.price_per_person)) + ' per person</li>'; }).join('') + '</ul><p class="hint">' + esc(q.note || 'Pricing subject to change until finalized.') + '</p>';
+      // Mark 2026-10-30: the client picks the plan and price right here; what they pick goes on the Travel Insurance document
+      h += '<p>Allianz travel insurance for this trip' + (q.trip_cost ? ', on a fare of $' + esc(money(q.trip_cost)) + ' per person' : '') +
+        (q.quoted_at ? ', quoted ' + esc(new Date(q.quoted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })) : ', as quoted by Mark for this sailing') + '. Choose your plan:</p>' +
+        '<fieldset class="w-field w-plans" data-q="insurance_plan"><legend><span class="w-label">Your plan</span></legend>' +
+        q.plans.map(function (p) { var t = planText(p); return '<label class="w-opt-row"><input type="radio" name="w-plan" value="' + esc(t) + '"' + (t === picked ? ' checked' : '') + '><span><b>' + esc(p.name) + '</b>: $' + esc(money(p.price_per_person)) + ' per person</span></label>'; }).join('') +
+        '<input type="hidden" data-field="insurance_plan" value="' + esc(picked || '') + '"></fieldset><p class="hint">' + esc(q.note || 'Pricing subject to change until finalized.') + '</p>';
     } else if (q.status === 'pending' || q.status === 'none') {
       h += '<p>We are getting your Allianz price for this trip now. It takes a minute or two: you can read on and come back to it.</p>';
     } else {
@@ -374,7 +394,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     api('/insurance').then(function (r) {
       var j = r.json || {}; if (r.status !== 200 || !j.success) return;
       packet.insurance = { video_url: j.video_url, line_protection: j.line_protection, quote: j.quote };
-      box.innerHTML = quoteHtml(j.quote, j.line_protection);
+      box.innerHTML = quoteHtml(j.quote, j.line_protection, value('insurance_plan'));
       if (j.quote && j.quote.status === 'none') requestQuote();
       if (j.quote && (j.quote.status === 'pending' || j.quote.status === 'none') && steps[at] && steps[at].id === 'insurance') quoteTimer = setTimeout(pollQuote, 5000);
     }).catch(function () {});
@@ -414,23 +434,6 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     return html;
   }
 
-  // the card's name, address and phone follow the traveler's own until the client types something different there
-  function mirrorCard(root) {
-    Object.keys(MIRROR).forEach(function (to) {
-      var src = root.querySelector('[data-field="' + MIRROR[to] + '"]'), dst = root.querySelector('[data-field="' + to + '"]');
-      if (!src || !dst) return;
-      var last = null;
-      var copy = function () {
-        if (dst.value && dst.value !== last) return;            // the client typed their own: leave it
-        if (isCsz(to)) { var c = splitCsz(src.value); setCsz(dst, c.city, c.state, c.zip); } else dst.value = src.value;
-        last = dst.value;
-      };
-      copy();
-      src.addEventListener('input', copy);
-      if (isCsz(MIRROR[to])) { var p = cszParts(src); [p.city, p.state, p.zip].forEach(function (el) { el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function () { setTimeout(copy, 0); }); }); }
-    });
-  }
-
   function renderWizard() {
     var named = gather();
     var host = $('fm-steps');
@@ -445,7 +448,6 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }).join('');
     cszWire(host);
     addressCheck(host);
-    mirrorCard(host);
     followUps();
     if (window.SAKeep) { window.SAKeep.track(host, wizKey); window.SAKeep.restore(host, wizKey()); followUps(); }
     show('fm-wiz', true); show('fm-done', false); show('fm-doc', false);
@@ -620,9 +622,10 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var qs = el.querySelectorAll('[data-q]');
     for (var k = 0; k < qs.length; k++) {
       var n = qs[k].getAttribute('data-q'), f = fields[n] && fields[n].f;
-      if (!f || !f.required || qs[k].closest('[hidden]') !== null && qs[k].closest('[hidden]') !== el) continue;
+      var need = f && (mustHave(f) || (NEEDS[n] && NEEDS[n].when()));
+      if (!f || !need || qs[k].closest('[hidden]') !== null && qs[k].closest('[hidden]') !== el) continue;
       var v = value(n);
-      if (v === undefined || v === false || (Array.isArray(v) && !v.length)) { out[n] = f.kind === 'check' ? 'Please tick this box.' : (f.kind === 'choice' || f.kind === 'multi' || PICK[n]) ? 'Please choose one.' : 'Please fill this in.'; names.push(f.label); }
+      if (v === undefined || v === false || (Array.isArray(v) && !v.length)) { out[n] = NEEDS[n] ? NEEDS[n].say : f.kind === 'check' ? 'Please tick this box.' : (f.kind === 'choice' || f.kind === 'multi' || PICK[n]) ? 'Please choose one.' : 'Please fill this in.'; names.push(f.label); }
       else if (isCsz(n) && !wholeCsz(v)) { out[n] = 'Please fill in the city, state and ZIP.'; names.push(f.label); }
     }
     return { fields: out, names: names };
@@ -799,6 +802,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
 
   document.addEventListener('change', function (e) {
     if (e.target && e.target.id === 'fm-news') newsWanted = !!e.target.checked;
+    if (e.target && e.target.name === 'w-plan') { var hid = $('fm-steps').querySelector('[data-field="insurance_plan"]'); if (hid) { hid.value = e.target.value; hid.dispatchEvent(new Event('input', { bubbles: true })); } }
     if (e.target && e.target.closest && e.target.closest('#fm-steps')) followUps();
   });
   $('fm-steps').addEventListener('input', unmark);

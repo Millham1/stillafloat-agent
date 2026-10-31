@@ -75,10 +75,10 @@ test("Credit card authorization: the booking and total from the file, last four 
   const d = renderDocument("22-card-authorization", ctx());
   assert.equal(d.title, "Credit card authorization");
   for (const s of ["Total authorized: $ 1,073.58", "Booking number: TEST-0001", "Balcony Bella (BB)", "last four digits of my card", "ESIGN Act"]) assert.ok(d.text.includes(s), s);
-  assert.deepEqual(d.fields.map((f) => f.name), ["card_name", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"]);
+  assert.deepEqual(d.fields.map((f) => f.name), ["cardholder", "card_name", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"]);
   assert.ok(d.text.includes("Identity verification") && d.text.includes("Driver's licence:"), "the licence line and Cornerstone's identity point");
-  assert.equal(d.fields[0]!.prefill!(ctx()), "Mark Millham", "the cardholder's name starts as the traveler's");
-  const good = { card_name: "Mark Millham", card_address: "100 Goodsell Ct", card_city_state_zip: "Fuquay Varina, NC 27526", card_phone: "9193466127", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
+  assert.ok(d.text.includes("The card belongs to:"), "whose card it is, on the form (Mark 2026-10-30)");
+  const good = { cardholder: "other", card_name: "Jane Public", card_address: "1 Main St", card_city_state_zip: "Raleigh, NC 27601", card_phone: "9195550100", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
   const ok = applyAnswers(d, good, ctx());
   assert.ok(ok.ok, JSON.stringify(ok));
   if (ok.ok) {
@@ -93,6 +93,20 @@ test("Credit card authorization: the booking and total from the file, last four 
   const whole = applyAnswers(d, { ...good, card_address: "4111 1111 1111 1111" }, ctx());
   assert.ok(!whole.ok && /never collected/.test(whole.errors["card_address"] ?? ""), "a card number typed anywhere is refused");
   assert.ok(blocksToText(fillBlocks(d, good, NOW)).includes("☒ Visa"));
+  assert.ok(blocksToText(fillBlocks(d, good, NOW)).includes("☒ someone else, named below") && blocksToText(fillBlocks(d, good, NOW)).includes("Jane Public"), "someone else's card: that person on the form");
+  // Mark 2026-10-30: the traveler's own card needs nothing more from them: the cardholder lines come from the file, the licence is theirs
+  const mine = applyAnswers(d, { cardholder: "me", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" }, ctx());
+  assert.ok(mine.ok, JSON.stringify(mine));
+  if (mine.ok) {
+    assert.deepEqual([mine.answers["card_name"], mine.answers["card_address"], mine.answers["card_city_state_zip"]], ["Mark Millham", "100 Goodsell Ct", "Fuquay Varina, NC 27526"], "the traveler on file is the cardholder");
+    assert.equal((mine.formData["card"] as Record<string, unknown>)["holder"], "me");
+    const printed = blocksToText(fillBlocks(d, mine.answers, NOW));
+    assert.ok(printed.includes("☒ me, the traveler named on this booking") && printed.includes("Mark Millham") && printed.includes("Fuquay Varina"), printed);
+  }
+  const someone = applyAnswers(d, { cardholder: "other", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" }, ctx());
+  assert.ok(!someone.ok && someone.errors["card_name"] && someone.errors["card_address"] && someone.errors["card_phone"], "someone else's card without that person's details is refused");
+  const nobody = applyAnswers(d, { card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" }, ctx());
+  assert.ok(!nobody.ok && nobody.errors["cardholder"], "whose card it is must be answered");
 });
 
 test("Your booking reports what the file cannot fill instead of guessing, and its hash moves with the file", () => {
@@ -162,4 +176,24 @@ test("the insurance document offers the four choices Mark wants, after the video
   assert.deepEqual(d.fields.find((f) => f.name === "insurance_choice")!.options!.map((o) => o.value), ["quote", "line", "own", "decline"]);
   for (const s of ["subject to change until finalized", "The cruise line's plan.", "My own policy."]) assert.ok(d.text.includes(s), s);
   assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] }).slice(1, 4), ["01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"], "the waiver's insurance line follows the choice");
+});
+
+test("the Allianz plan picked on the insurance step goes on the Travel Insurance document, and only when Allianz was chosen (Mark 2026-10-30)", () => {
+  const d = renderDocument("07-travel-insurance-declination", ctx());
+  assert.ok(d.fields.some((f) => f.name === "insurance_plan"), "the plan is one of the document's inputs");
+  assert.ok(!d.fields.find((f) => f.name === "insurance_plan")!.required, "the page asks for it only when plans are offered; the document never blocks on it");
+  const yes = applyAnswers(d, { insurance_choice: "quote", insurance_plan: "OneTrip Prime: $129 per person" }, ctx());
+  assert.ok(yes.ok, JSON.stringify(yes));
+  if (yes.ok) {
+    assert.equal(yes.answers["insurance_plan"], "OneTrip Prime: $129 per person");
+    assert.equal((yes.formData["insurance"] as Record<string, unknown>)["plan"], "OneTrip Prime: $129 per person");
+    const printed = blocksToText(fillBlocks(d, yes.answers, NOW));
+    assert.ok(printed.includes("☒ Yes.") && printed.includes("Plan chosen: OneTrip Prime: $129 per person"), printed);
+  }
+  const no = applyAnswers(d, { insurance_choice: "decline", insurance_plan: "OneTrip Prime: $129 per person" }, ctx());
+  assert.ok(no.ok, JSON.stringify(no));
+  if (no.ok) {
+    assert.equal(no.answers["insurance_plan"], undefined, "a plan picked before choosing No is not kept");
+    assert.ok(blocksToText(fillBlocks(d, no.answers, NOW)).includes("Plan chosen: N/A — left intentionally blank"));
+  }
 });

@@ -311,6 +311,9 @@ export interface FieldSpec {
   date?: "dob" | "past" | "future";
   /** What the page pre-fills when the file holds nothing under col/form. */
   prefill?: (ctx: DocCtx) => string | string[] | undefined;
+  /** Mark 2026-10-30: a tick that carries no information ("I am aware of and accept…") is asked on the document's own signing
+   *  screen, under the heading and the words it belongs to, never on the information page. */
+  onDocument?: { heading: string; text: string };
 }
 
 // ── Template edits ────────────────────────────────────────────────────────────
@@ -352,4 +355,7 @@ export interface DocSpec {
   validate?: (answers: Answers) => Record<string, string>;
   /** Columns on group_travelers that follow from several answers (e.g. emergency_phone, special_needs). */
   derive?: (answers: Answers, ctx: DocCtx) => Row;
+  /** Answers the file supplies once a choice says so (the traveler's own card: the cardholder lines come from the file), and
+   *  answers a choice makes moot (no Allianz plan unless Allianz was chosen); run before the required check. */
+  complete?: (answers: Answers, ctx: DocCtx) => Answers;
 }

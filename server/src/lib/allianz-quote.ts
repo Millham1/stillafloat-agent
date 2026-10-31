@@ -24,6 +24,21 @@ export interface QuoteInput {
   destination: string;
 }
 export interface QuotePlan { name: string; price_per_person: number }
+
+/** The Allianz plans Mark typed on the group file, one per line ("OneTrip Prime: $129 per person"; "OneTrip Basic — $89"):
+ *  the price a line names is per person; a line with no dollar figure is not a plan. */
+export function plansFromText(text: unknown): QuotePlan[] {
+  if (typeof text !== "string") return [];
+  const out: QuotePlan[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^\s*(.+?)\s*[:—–-]*\s*\$\s*([\d,]+(?:\.\d{1,2})?)/.exec(line);
+    if (!m) continue;
+    const price = Number(m[2]!.replace(/,/g, ""));
+    if (!Number.isFinite(price) || price <= 0) continue;
+    out.push({ name: m[1]!.replace(/[\s:—–-]+$/, ""), price_per_person: price });
+  }
+  return out;
+}
 export interface QuoteRecord {
   status: "pending" | "ready" | "unavailable";
   requested_at: string;

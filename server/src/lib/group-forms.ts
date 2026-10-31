@@ -28,7 +28,7 @@ import { renderFormPdf } from "./group-form-pdf";
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
 import { fmtLong, type Advisory } from "./group-document-kit";
-import { QUOTE_NOTE, fetchAllianzQuote, quoteInputFor, type QuoteEnv, type QuoteRecord } from "./allianz-quote";
+import { QUOTE_NOTE, fetchAllianzQuote, plansFromText, quoteInputFor, type QuoteEnv, type QuoteRecord } from "./allianz-quote";
 import { displayName, guestGroupName } from "./group-marketing";
 import { pagePhotos } from "./group-page-photos";
 
@@ -712,12 +712,20 @@ const quoteOf = (traveler: Row | null): QuoteRecord | null => {
 /** What the page sees of the insurance step: never the sign-in, never the reason a quote failed (that is Mark's row). */
 export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance">): Record<string, unknown> {
   const q = quoteOf(loaded.traveler);
+  // Mark 2026-10-30: "they should be able to select the policy/price here" — the box's own quote for this traveler first; until it
+  // has one, the plans Mark quoted for the sailing on the group file, so the client always has prices to pick from on the page.
+  const file = plansFromText(loaded.group.insurance_plans);
+  const quote = q?.status === "ready"
+    ? { status: "ready", source: "portal", plans: q.plans, quoted_at: q.quoted_at, note: QUOTE_NOTE, trip_cost: q.input?.trip_cost ?? null }
+    : file.length
+      ? { status: "ready", source: "file", plans: file, quoted_at: null, note: QUOTE_NOTE, trip_cost: null }
+      : q
+        ? { status: q.status, source: null, plans: [], quoted_at: q.quoted_at, note: QUOTE_NOTE, trip_cost: q.input?.trip_cost ?? null }
+        : { status: "none", source: null, plans: [], quoted_at: null, note: QUOTE_NOTE, trip_cost: null };
   return {
     video_url: deps.insurance?.videoUrl ?? null,
     line_protection: typeof loaded.group.line_protection === "string" && loaded.group.line_protection.trim() ? loaded.group.line_protection.trim() : null,
-    quote: q
-      ? { status: q.status, plans: q.status === "ready" ? q.plans : [], quoted_at: q.quoted_at, note: QUOTE_NOTE, trip_cost: q.input?.trip_cost ?? null }
-      : { status: "none", plans: [], quoted_at: null, note: QUOTE_NOTE, trip_cost: null },
+    quote,
   };
 }
 
@@ -758,7 +766,8 @@ export async function requestInsuranceQuote(deps: FormsDeps, token: unknown): Pr
 
 async function finishQuote(deps: FormsDeps, loaded: Loaded, q: QuoteRecord): Promise<void> {
   const t = loaded.traveler!;
-  if (q.status === "unavailable" && !q.action_at && deps.insurance) {
+  // no row for Mark when the group file already carries the sailing's plans: the client has prices to pick from
+  if (q.status === "unavailable" && !q.action_at && deps.insurance && !plansFromText(loaded.group.insurance_plans).length) {
     const who = personName(t) || "a traveler";
     const i = q.input;
     const facts = i ? `${i.destination}, ${fmtLong(i.depart_date)} to ${fmtLong(i.return_date)}, $${i.trip_cost} per person, home state ${i.state}, birth date${i.birth_dates.length > 1 ? "s" : ""} ${i.birth_dates.map((d) => fmtLong(d)).join(", ")}.` : "";

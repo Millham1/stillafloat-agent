@@ -1899,7 +1899,13 @@ export default [
         // the fixture's file, which carries no home state or birth date, is answered in words (unavailable) and makes exactly one
         // "Waiting on you" row for Mark, resolved here so the fixture leaves nothing behind. No price is ever invented.
         const insBefore = t.success(await t.get(`/api/forms/${token}/insurance`));
-        t.equal(insBefore.quote?.status, "none", "quote status on a fresh link");
+        // Mark 2026-10-30: "they should be able to select the policy/price here" — a fresh link has no quote of its own ("none") unless
+        // the group file carries the sailing's Allianz plans, which the page then offers at once ("ready", from the file)
+        t.ok(["none", "ready"].includes(insBefore.quote?.status), `quote status on a fresh link (${insBefore.quote?.status})`);
+        t.ok(Array.isArray(insBefore.quote?.plans) && "source" in (insBefore.quote || {}), "the plans to pick from, and where they came from");
+        const waiverDoc = p.docs.find((d) => d.key === "05-liability-waiver");
+        const healthTick = waiverDoc && waiverDoc.fields.find((f) => f.name === "health_ack");
+        t.ok(healthTick && healthTick.on_document && healthTick.on_document.heading === "Health declaration" && healthTick.on_document.text.length > 100, "the waiver's health tick is made on the document's own signing screen, under the Health Declaration (Mark 2026-10-30)");
         t.equal(insBefore.quote?.note, "Pricing subject to change until finalized.", "the note that goes with every price");
         t.ok("video_url" in insBefore && "line_protection" in insBefore, "the insurance step's video and the cruise line's own plan");
         const quoteAsk = await t.send("POST", `/api/forms/${token}/insurance/quote`, { body: {} });

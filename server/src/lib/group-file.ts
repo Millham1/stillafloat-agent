@@ -12,7 +12,7 @@ export const GROUP_COLUMNS = [
   "cruise_line", "ship_name", "ship_slug", "sail_date", "return_date", "nights",
   "embark_port", "itinerary", "group_number", "cabins_held", "amenities", "inclusions",
   "deposit_per_person", "deposit_due", "names_due", "final_payment_due",
-  "recall_date", "lang", "notes", "line_protection",
+  "recall_date", "lang", "notes", "line_protection", "insurance_plans",
   // Mark's own entry, {} by default: a fee appears on a client's documents only when he enters one here (Mark 2026-10-03).
   "fees",
 ] as const;

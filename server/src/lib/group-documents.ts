@@ -609,7 +609,7 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
   const input = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   const spec = DOC_SPECS[doc.key];
   const errors: Record<string, string> = {};
-  const clean: Answers = {};
+  let clean: Answers = {};
   const today = ctx.now.toISOString().slice(0, 10);
 
   for (const f of doc.fields) {
@@ -658,6 +658,7 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
       }
     }
   }
+  if (spec?.complete) clean = spec.complete(clean, ctx);
   for (const f of doc.fields) {
     const required = typeof f.required === "function" ? f.required(clean) : f.required === true;
     if (required && isEmpty(clean[f.name]) && !errors[f.name]) errors[f.name] = f.kind === "check" ? "Please tick this box." : "Please fill this in.";
@@ -715,9 +716,11 @@ export function prefillValue(f: FieldSpec, ctx: DocCtx): string | string[] | boo
 /** The field as the page needs it: no functions, nothing secret. */
 export function publicField(f: FieldSpec, ctx: DocCtx): Record<string, unknown> {
   return {
-    name: f.name, label: f.label, kind: f.kind, required: f.required === true,
+    // "shown": required once the page shows it (a follow-up line under the choice that calls for it)
+    name: f.name, label: f.label, kind: f.kind, required: f.required === true ? true : typeof f.required === "function" ? "shown" : false,
     ...(f.options ? { options: f.options.map((o) => ({ value: o.value, label: o.label })) } : {}),
     ...(f.maxLength ? { maxLength: f.maxLength } : {}),
+    ...(f.onDocument ? { on_document: f.onDocument } : {}),
     value: prefillValue(f, ctx) ?? null,
   };
 }
