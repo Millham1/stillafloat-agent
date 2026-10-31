@@ -156,9 +156,12 @@ export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
             atoms.push({ kind, text: part, font, color, wd: doc.font(font).fontSize(size).widthOfString(part), space: 0 });
           }
         };
-        for (const p of list) {
+        for (let pi = 0; pi < list.length; pi++) {
+          const p = list[pi]!, nxt = list[pi + 1];
+          // an answer followed by punctuation ("on October 31, 2026; the page") keeps the punctuation against it
+          const glued = !!nxt && nxt.k === "text" && /^[.,;:!?)]/.test(nxt.text);
           if (p.k === "text") words(p.text, "word", fontOf(p.bold || !!o.bold, p.italic || !!o.italic), o.color ?? INK);
-          else if (p.k === "answer") { const n = atoms.length; words(p.text, "answer", "Helvetica", PEN); if (atoms.length) atoms[atoms.length - 1]!.space = spaceW; if (p.mark && atoms[n]) atoms[n]!.mark = p.mark; }
+          else if (p.k === "answer") { const n = atoms.length; words(p.text, "answer", "Helvetica", PEN); if (atoms.length) atoms[atoms.length - 1]!.space = glued ? 0 : spaceW; if (p.mark && atoms[n]) atoms[n]!.mark = p.mark; }
           else if (p.k === "blank") atoms.push({ kind: "blank", text: "", font: "Helvetica", color: INK, wd: Math.min(120, w * 0.5), space: spaceW, ...(p.mark ? { mark: p.mark } : {}) });
           else atoms.push({ kind: "box", text: "", font: "Helvetica", color: INK, wd: size * 0.85, space: size * 0.45, on: p.on, ...(p.field ? { field: p.field } : {}), ...(p.value ? { value: p.value } : {}) });
         }
