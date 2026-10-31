@@ -732,11 +732,12 @@ export function prefillValue(f: FieldSpec, ctx: DocCtx): string | string[] | boo
   return f.prefill?.(ctx);
 }
 
-/** The field as the page needs it: no functions, nothing secret. */
-export function publicField(f: FieldSpec, ctx: DocCtx): Record<string, unknown> {
+/** The field as the page needs it: no functions, nothing secret. `given`: answers the server already knows for this signer (the
+ *  card owner's "someone else's card"), so a line required by them reads as required, not as a follow-up. */
+export function publicField(f: FieldSpec, ctx: DocCtx, given?: Answers): Record<string, unknown> {
   return {
     // "shown": required once the page shows it (a follow-up line under the choice that calls for it)
-    name: f.name, label: f.label, kind: f.kind, required: f.required === true ? true : typeof f.required === "function" ? "shown" : false,
+    name: f.name, label: f.label, kind: f.kind, required: f.required === true ? true : typeof f.required === "function" ? (given ? f.required(given) : "shown") : false,
     ...(f.options ? { options: f.options.map((o) => ({ value: o.value, label: o.label })) } : {}),
     ...(f.maxLength ? { maxLength: f.maxLength } : {}),
     ...(f.onDocument ? { on_document: f.onDocument } : {}),

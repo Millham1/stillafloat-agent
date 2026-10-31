@@ -482,6 +482,7 @@ test("the lead names the card's owner: the owner is emailed a link of their own,
   assert.deepEqual(own.docs.map((d: any) => d.key), ["22-card-authorization"]);
   assert.deepEqual(own.docs[0].fields.map((f: any) => f.name), ["card_name", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"]);
   assert.equal(own.docs[0].fields[0].value, "Pat Payer");
+  assert.ok(own.docs[0].fields.every((f: any) => f.required === true), "every line on the owner's page is required of them (no 'optional', no follow-up)");
   assert.deepEqual(own.traveler, { first_name: "Pat", last_name: "Payer", is_lead: false, passport_on_file: null, newsletter_opt_in: true });
   assert.deepEqual(own.cardholder, { for: "Jane Public", travelers: ["Jane Public", "John Public"] });
   assert.equal(own.esign.consent_given_at, null, "the owner's own consent, not the lead's");
@@ -537,6 +538,9 @@ test("the lead names the card's owner: the owner is emailed a link of their own,
   assert.ok(!status.travelers["t1"]!.required.includes("22-card-authorization"));
   const locked = await chooseCardholder(t.deps, token, { cardholder: "me" });
   assert.equal(locked.status, 409); assert.equal(locked.json["code"], "card-signed");
+  const same = await chooseCardholder(t.deps, token, { cardholder: "other", card_name: "Pat Payer", card_email: "pat2@example.com" });
+  assert.equal(same.status, 200, "the lead's page says the same thing again when they pass the information page: never a refusal");
+  assert.equal(same.json["sent"], null); assert.equal(t.mails.length, 3, "and no email");
   assert.equal((await signDocument(t.deps, cardToken, { doc_key: doc.key, signer_name: "Pat Payer", agreed: true, content_sha256: doc.text_sha256, answers: OWNER_CARD }, META)).json["code"], "already-signed");
 });
 

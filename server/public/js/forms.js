@@ -275,7 +275,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function insuranceDoc() { return pending().filter(function (d) { return /^(07|23)-/.test(d.key); })[0] || null; }
   function gather() {
     fields = {}; order = [];
-    if (packet.card) ownLines(packet.card.fields, 'card');
+    if (packet.card && !packet.card.signed) ownLines(packet.card.fields, 'card'); // once the card authorization is signed, whose card it is stands
     if (packet.kind === 'traveler' && packet.insurance && insuranceDoc()) ownLines(packet.insurance.fields, 'insurance');
     pending().forEach(function (d) { ownLines(d.fields, d.key); });
     steps = [WELCOME];

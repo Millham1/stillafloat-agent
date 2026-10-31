@@ -210,7 +210,7 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey" | "i
       signed_at: sig?.signed_at ?? null,
       html: d.html,
       text_sha256: d.sha256,
-      fields: sig ? [] : askedOf(d.fields, loaded.kind === "cardholder" ? "cardholder" : "lead").map((f) => publicField(f, ctx)),
+      fields: sig ? [] : askedOf(d.fields, loaded.kind === "cardholder" ? "cardholder" : "lead").map((f) => publicField(f, ctx, loaded.kind === "cardholder" ? { cardholder: "other" } : undefined)),
       agent_countersign_pending: !!DOC_SPECS[key]?.agentCountersign,
     };
   });
@@ -849,8 +849,12 @@ export async function chooseCardholder(deps: FormsDeps, token: unknown, body: { 
   const t = loaded.traveler;
   if (!t.is_lead || !loaded.cabin) return reply(400, { success: false, error: "Only the cabin's lead traveler authorizes the card for the booking." });
   if (!consentOf(loaded)) return reply(400, { success: false, code: "consent-required", error: "Please agree to signing electronically first: the box at the top of your paperwork." });
-  if (loaded.signed.has(CARD_DOCUMENT)) return reply(409, { success: false, code: "card-signed", error: "The credit card authorization for this booking is already signed, so whose card it is cannot change here." });
   const holder = body.cardholder === "me" || body.cardholder === "other" ? body.cardholder : "";
+  // signed (by the lead, or by the card's owner on their own link): the answer stands; saying it again is fine, changing it is not
+  if (loaded.signed.has(CARD_DOCUMENT)) {
+    if (holder && holder === cardOf(t).holder) return reply(200, { success: true, holder, sent: null, packet: publicPacket(loaded, deps) });
+    return reply(409, { success: false, code: "card-signed", error: "The credit card authorization for this booking is already signed, so whose card it is cannot change here." });
+  }
   const name = typeof body.card_name === "string" ? body.card_name.replace(/\s+/g, " ").trim().slice(0, 120) : "";
   const email = typeof body.card_email === "string" ? body.card_email.trim().toLowerCase().slice(0, 200) : "";
   const errors: Record<string, string> = {};
