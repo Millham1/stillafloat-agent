@@ -612,7 +612,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     showPdf(el.querySelector('.w-pdf'), key, el.querySelector('.w-paper'));
   }
 
+  function stepIndex(s) { for (var k = 0; k < steps.length; k++) if (steps[k].id === s.id && (s.id !== 'doc' || steps[k].key === s.key)) return k; return -1; }
   function goStep(i, quiet) {
+    // a document already signed is never shown again as a step: skipped in the direction of travel
+    var dir = i >= at ? 1 : -1;
+    while (i > 0 && i < steps.length - 1 && steps[i].id === 'doc' && (docByKey(steps[i].key) || {}).status === 'signed') i += dir;
+    i = Math.max(0, Math.min(i, steps.length - 1));
     at = i;
     if (steps[i].id === 'doc') {
       var h = stepEl(i).querySelector('.w-pdf'); if (h) h.pageAt = 0;
@@ -696,7 +701,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       .then(function (r) {
         busy = false; $('fm-next').disabled = false;
         var j = r.json || {};
-        if (r.status === 200 && j.success && j.packet) { var here = at; adopt(j.packet); goStep(here + 1); return; }
+        // the screens may have been rebuilt (signed documents drop out of the list): find this screen again, then move on from it
+        if (r.status === 200 && j.success && j.packet) { var cur = steps[at]; adopt(j.packet); var i = stepIndex(cur); goStep((i >= 0 ? i : at) + 1); return; }
         if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
         if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload().then(function () { goStep(0); showErr('Please tick the box to agree to signing electronically, then carry on.'); }); }
         showErr(j.error || ('That did not go through (' + r.status + '). Please try again.'));
