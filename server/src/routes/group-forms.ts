@@ -16,6 +16,7 @@ import { DOC_SPECS } from "../lib/group-documents";
 import { advisoriesForGroup } from "../lib/travel-advisories";
 import { SIGNER_COLS, TRAVELER_COLS, cardOf, chooseCardholder, chooseInsurance, formUrl, getChecklistPdf, getCopies, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, sendCardLink, sendChecklist, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
 import { entryRequirementsForGroup } from "../lib/entry-requirements";
+import { supabaseVisaStore } from "../lib/visa-requirements";
 
 // Client paperwork (migrations 0044 and 0052).
 //
@@ -219,7 +220,7 @@ function deps(): FormsDeps {
     // Mark 2026-10-30: the advisory level per port, from the State Department; the insurance step's video and background quote.
     // Mark 2026-10-31: with it, each itinerary country's visa and vaccination requirements, for the passport checklist.
     advisories: (g) => advisoriesForGroup(g),
-    entry: (g) => entryRequirementsForGroup(g),
+    entry: (g) => entryRequirementsForGroup(g, fetch, Date.now(), () => supabaseVisaStore().all("US")),
     insurance: {
       videoUrl: process.env["GROUP_INSURANCE_VIDEO_URL"] || null,
       chromePath: process.env["CHROME_PATH"], user: process.env["ALLIANZ_AGENT_USER"], password: process.env["ALLIANZ_AGENT_PASSWORD"],

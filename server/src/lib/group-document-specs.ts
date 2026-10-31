@@ -33,6 +33,7 @@ import { displayName } from "./group-marketing";
 import { planLabel, plansFromText } from "./allianz-quote";
 import { STATE_COUNTRY_INDEX, countriesOf } from "./entry-requirements";
 import { itineraryPorts } from "./travel-advisories";
+import { describeVisa, type VisaRow } from "./visa-requirements";
 
 // ── small lookups ─────────────────────────────────────────────────────────────
 
@@ -541,14 +542,20 @@ function closedLoop(c: DocCtx): boolean {
 }
 const entryFor = (c: DocCtx) => c.entry;
 const vaccineLine = (e: EntryRequirement, re: RegExp): VaccineLine | undefined => e.vaccines?.lines.find((l) => re.test(l.name));
-/** The visa line per country: yes / no / could not be read, with the words and the page. */
+/** The visa line per country: the State Department's page when it answered, else our own table (Mark 2026-10-31: the Passport
+ *  Index dataset, reviewed every 90 days) with its date, else "could not be read"; the department's page is named every time. */
 function visaRows(c: DocCtx): string[][] {
   const countries = countriesOf(itineraryPorts(c.group));
   if (!countries.length) return [["No foreign port on this itinerary", "☐ Yes ☒ No", "Not needed", "☐", "☐", "—"]];
   return countries.map(({ country, ports }) => {
     const e = entryFor(c).find((x) => x.country === country);
     const where = `${country} (${ports.map(cleanValue).join(", ")})`;
-    if (!e?.visa) return [where, "☐ Yes ☐ No", `Could not be read from travel.state.gov on {{today}}. Check: ${e?.visa_url ?? STATE_COUNTRY_INDEX}`, "☐", "☐", "—"];
+    const page = e?.visa_url ?? STATE_COUNTRY_INDEX;
+    if (!e?.visa && e?.table) {
+      const d = describeVisa({ passport: "US", destination_iso2: "", destination_name: country, requirement: e.table.requirement as VisaRow["requirement"], stay_days: e.table.stay_days, raw: e.table.raw, source: e.table.source, source_url: e.table.source_url, checked_at: e.table.checked_at, next_check_at: "" });
+      return [where, yesNo(d.required), `${d.type} (Passport Index data, checked ${fmtLong(e.table.checked_at)}). Verify at travel.state.gov before you go: ${page}`, "☐", "☐", d.required ? "—" : "N/A"];
+    }
+    if (!e?.visa) return [where, "☐ Yes ☐ No", `Could not be read from travel.state.gov on {{today}}. Check: ${page}`, "☐", "☐", "—"];
     const v = e.visa;
     const type = v.tourist_visa_required === false ? `Visa-free for U.S. passport holders${v.passport_validity ? `. Passport validity: ${cleanValue(v.passport_validity)}` : ""} (travel.state.gov, ${readOn(v.read_at)})`
       : v.tourist_visa_required === true ? `Visa required${v.passport_validity ? `. Passport validity: ${cleanValue(v.passport_validity)}` : ""} (travel.state.gov, ${readOn(v.read_at)}): ${v.url}`
@@ -559,10 +566,11 @@ function visaRows(c: DocCtx): string[][] {
 function visaIntro(c: DocCtx): string {
   const countries = countriesOf(itineraryPorts(c.group));
   if (!countries.length) return "This cruise calls at no foreign port, so no visa applies.";
-  const read = countries.filter(({ country }) => entryFor(c).find((x) => x.country === country)?.visa);
-  return read.length === countries.length
-    ? "For a U.S. passport holder, from the U.S. Department of State's country information (travel.state.gov) for every country on this itinerary."
-    : `For a U.S. passport holder. The U.S. Department of State's country information (travel.state.gov) could not be read for ${countries.length - read.length === countries.length ? "this itinerary" : "every country"} on {{today}}; the page to check is in the table.`;
+  const entries = countries.map(({ country }) => entryFor(c).find((x) => x.country === country));
+  const read = entries.filter((e) => e?.visa).length, tabled = entries.filter((e) => !e?.visa && e?.table).length;
+  if (read === countries.length) return "For a U.S. passport holder, from the U.S. Department of State's country information (travel.state.gov) for every country on this itinerary.";
+  if (read + tabled === countries.length) return "For a U.S. passport holder, from our visa table (Passport Index data, reviewed every 90 days). Requirements can change: verify at travel.state.gov 30–60 days before travel; the page for each country is in the table.";
+  return `For a U.S. passport holder. The U.S. Department of State's country information (travel.state.gov) could not be read for ${read + tabled ? "every country" : "this itinerary"} on {{today}}; the page to check is in the table.`;
 }
 /** Yellow fever at entry, across the itinerary: required anywhere → yes; read everywhere and required nowhere → no; else unknown. */
 function yellowFever(c: DocCtx): { required: boolean | null; notes: string } {

@@ -16,6 +16,7 @@
 import type { EntryRequirement, Row, VaccineLine } from "./group-document-kit";
 import { countryOfPort, itineraryPorts } from "./travel-advisories";
 import { matchPortName } from "./ports";
+import { visaRowFor, type VisaRow } from "./visa-requirements";
 
 export const CDC_LIST_URL = "https://wwwnc.cdc.gov/travel/destinations/list";
 const CDC_BASE = "https://wwwnc.cdc.gov";
@@ -180,12 +181,23 @@ export function countriesOf(ports: string[]): Array<{ country: string; ports: st
   return out;
 }
 
-/** Every country of the group's itinerary with what was read for it; a source that could not be read is null, never guessed. */
-export async function entryRequirementsForGroup(group: Row, fetchImpl: typeof fetch = fetch, now = Date.now()): Promise<EntryRequirement[]> {
+/** Every country of the group's itinerary with what was read for it; a source that could not be read is null, never guessed.
+ *  `visaRows`: our own visa table (lib/visa-requirements.ts), read once per call; the checklist uses it when the State Department's
+ *  page did not answer. */
+export async function entryRequirementsForGroup(group: Row, fetchImpl: typeof fetch = fetch, now = Date.now(), visaRows?: VisaRow[] | (() => Promise<VisaRow[]>)): Promise<EntryRequirement[]> {
   const out: EntryRequirement[] = [];
-  for (const { country, ports } of countriesOf(itineraryPorts(group))) {
+  const countries = countriesOf(itineraryPorts(group));
+  let table: VisaRow[] = [];
+  if (countries.length && visaRows) {
+    try { table = typeof visaRows === "function" ? await visaRows() : visaRows; } catch { table = []; }
+  }
+  for (const { country, ports } of countries) {
     const [vaccines, visa] = await Promise.all([cdcFor(country, fetchImpl, now), stateFor(country, fetchImpl, now)]);
-    out.push({ country, ports, vaccines, visa, visa_url: stateCountryUrl(country) });
+    const row = visaRowFor(country, table);
+    out.push({
+      country, ports, vaccines, visa, visa_url: stateCountryUrl(country),
+      table: row ? { requirement: row.requirement, stay_days: row.stay_days, raw: row.raw, source: row.source, source_url: row.source_url, checked_at: row.checked_at } : null,
+    });
   }
   return out;
 }

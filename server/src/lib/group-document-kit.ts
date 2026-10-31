@@ -79,7 +79,9 @@ export interface EntryRequirement {
   ports: string[];
   vaccines: { lines: VaccineLine[]; url: string; read_at: string } | null;
   visa: { tourist_visa_required: boolean | null; passport_validity: string; blank_pages: string; vaccinations: string; url: string; read_at: string } | null;
-  /** The State Department page to check by hand when `visa` could not be read. */
+  /** Our own visa table (Mark 2026-10-31: the Passport Index dataset, reviewed every 90 days), or null when it has no row for the country. */
+  table: { requirement: string; stay_days: number | null; raw: string; source: string; source_url: string; checked_at: string } | null;
+  /** The State Department page to check by hand (named on the checklist whatever the table says). */
   visa_url: string;
 }
 

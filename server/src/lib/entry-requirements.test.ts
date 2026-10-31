@@ -70,6 +70,11 @@ test("every foreign country of the itinerary is read once a week; the State Depa
   assert.equal(out[0]!.country, "The Bahamas");
   assert.deepEqual(out[0]!.ports, ["Nassau", "Ocean Cay"]);
   assert.equal(out[0]!.visa, null, "the State Department's page did not answer: nothing is guessed");
+  assert.equal(out[0]!.table, null, "no visa table given: no row");
+  const withTable = await entryRequirementsForGroup(group, fetchImpl, 1_000, async () => [{ passport: "US", destination_iso2: "BS", destination_name: "Bahamas", requirement: "visa-free", stay_days: 240, raw: "240", source: "passport-index-dataset", source_url: "u", checked_at: "2026-10-31T20:00:00.000Z", next_check_at: "2027-01-29T20:00:00.000Z" }]);
+  assert.deepEqual(withTable[0]!.table, { requirement: "visa-free", stay_days: 240, raw: "240", source: "passport-index-dataset", source_url: "u", checked_at: "2026-10-31T20:00:00.000Z" }, "our own table's row rides with the country");
+  const tableDown = await entryRequirementsForGroup(group, fetchImpl, 1_000, async () => { throw new Error("db down"); });
+  assert.equal(tableDown[0]!.table, null, "a table that cannot be read is no row, never an error on the page");
   assert.equal(out[0]!.visa_url, "https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/TheBahamas.html");
   assert.equal(out[0]!.vaccines!.lines.length, 6);
   assert.equal(out[0]!.vaccines!.url, "https://wwwnc.cdc.gov/travel/destinations/traveler/none/the-bahamas");

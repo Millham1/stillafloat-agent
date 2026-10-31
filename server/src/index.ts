@@ -26,6 +26,7 @@ import { registerJob, runJob, loadJobHealth } from "./lib/job-health";
 import { tick as groupJourneyTick } from "./lib/group-journey-run";
 import { journeyDeps } from "./lib/group-journey-wire";
 import { localToday } from "./lib/group-journey-facts";
+import { refreshVisaRequirements, supabaseVisaStore } from "./lib/visa-requirements";
 import { primeWeatherOnBoot, warmWeatherTiles } from "./lib/weather-tiles";
 
 const rawPort = process.env["PORT"] ?? "8080";
@@ -68,6 +69,7 @@ app.listen(port, "0.0.0.0", () => {
   registerJob("scheduleLiveAisCredits", { every: "on boot + every 4h", everyMs: 4 * 3_600_000, disabled: !liveAisEnabled(), disabledWhy: liveAisEnabled() ? undefined : "no LIVEAIS_API_KEY on this box" });
   registerJob("scheduleSubscriberHygiene", { every: "daily at SUBSCRIBER_HYGIENE_HOUR (polled every 5 min)", everyMs: 24 * 3_600_000, disabled: Boolean(off("DISABLE_SUBSCRIBER_HYGIENE")), disabledWhy: off("DISABLE_SUBSCRIBER_HYGIENE") });
   registerJob("scheduleGroupJourney", { every: "daily at GROUP_JOURNEY_HOUR (polled every 5 min)", everyMs: 24 * 3_600_000, disabled: Boolean(off("DISABLE_GROUP_JOURNEY")), disabledWhy: off("DISABLE_GROUP_JOURNEY") });
+  registerJob("scheduleVisaRequirements", { every: "on boot + daily (the visa table is reviewed every 90 days)", everyMs: 24 * 3_600_000 });
   void loadJobHealth();
   // Editorial/news is owned entirely by the standalone news agent
   // (:3003, stillafloat-newsagent). The monorepo no longer contains or runs any
@@ -171,7 +173,24 @@ app.listen(port, "0.0.0.0", () => {
   } else {
     scheduleGroupJourney();
   }
+  // Mark 2026-10-31: the visa requirements table, loaded from the Passport Index dataset and reviewed every 90 days. Runs on
+  // every box (it emails nothing and reads one public file).
+  scheduleVisaRequirements();
 });
+
+// ── Visa requirements table (Mark 2026-10-31: "load a table in the DB and set a job to review every 3 months") ──
+// lib/visa-requirements.ts: what a U.S. passport needs at every destination, from the Passport Index dataset on GitHub. The
+// job runs 90 seconds after boot and then daily; the table is read again only when its rows are due (90 days) or missing, so
+// the review is quarterly, and the ledger's result says how many destinations changed. The passport checklist reads the table.
+function scheduleVisaRequirements() {
+  const tick = () => runJob("scheduleVisaRequirements", async () => {
+    const r = await refreshVisaRequirements(supabaseVisaStore());
+    return r.due ? { reviewed: true, destinations: r.loaded, changed: r.changed, nextReview: r.next_check_at } : { reviewed: false, destinations: r.rows, nextReview: r.next_check_at };
+  }, { logFail: "Visa requirements review failed" });
+  setTimeout(() => { tick().catch(() => {}); }, 90_000);
+  setInterval(() => { tick().catch(() => {}); }, 24 * 3_600_000);
+  logger.info("Visa requirements scheduler active — 90 s after boot, then daily; the table is reviewed every 90 days");
+}
 
 // ── WMS watch-alert scheduler ─────────────────────────────────────────────────
 // Hourly sweep of active ship watches: itinerary changes, weather threats, and

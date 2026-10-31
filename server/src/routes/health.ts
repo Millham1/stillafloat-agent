@@ -3,6 +3,10 @@ import { HealthCheckResponse } from "@workspace/api-zod";
 import { subscriptionCount, getVapidPublicKey } from "../lib/push";
 import { requireToken } from "../lib/http-auth";
 import { jobHealthReport } from "../lib/job-health";
+import { getSupabase } from "../lib/persistence";
+import { countriesOf } from "../lib/entry-requirements";
+import { itineraryPorts } from "../lib/travel-advisories";
+import { VISA_REVIEW_DAYS, VISA_SOURCE, iso2Of, supabaseVisaStore } from "../lib/visa-requirements";
 
 const router: IRouter = Router();
 
@@ -51,6 +55,35 @@ router.get("/healthz/jobs", requireToken, (_req: Request, res: Response) => {
   const report = jobHealthReport();
   res.set("Cache-Control", "no-store");
   res.status(report.ok ? 200 : 503).json({ success: true, ...report });
+});
+
+// ── The visa requirements table (Mark 2026-10-31) ─────────────────────────────
+// How many destinations the table holds for a U.S. passport, when they were checked and when the quarterly review is due, and
+// whether every country on an open group's itinerary has a row (the passport checklist reads the table). Token-gated like the
+// job ledger; the release gate reads it on every sweep.
+router.get("/healthz/visa-requirements", requireToken, async (_req: Request, res: Response) => {
+  type Row = Record<string, unknown>;
+  try {
+    const rows = await supabaseVisaStore().all("US");
+    const g = await getSupabase().from("groups").select("id, name, status, embark_port, itinerary").not("status", "in", "(cancelled,closed,sailed)");
+    if (g.error) throw new Error(g.error.message);
+    const countries = new Map<string, string[]>();
+    for (const grp of (g.data ?? []) as Row[]) {
+      for (const { country } of countriesOf(itineraryPorts(grp as Record<string, any>))) countries.set(country, [...(countries.get(country) ?? []), String(grp["name"] ?? grp["id"])]);
+    }
+    const missing = [...countries.keys()].filter((c) => { const code = iso2Of(c); return !code || !rows.some((r) => r.destination_iso2 === code); });
+    const checked = rows.map((r) => r.checked_at).sort(), next = rows.map((r) => r.next_check_at).sort();
+    res.set("Cache-Control", "no-store");
+    res.json({
+      success: true, passport: "US", source: VISA_SOURCE, review_days: VISA_REVIEW_DAYS, rows: rows.length,
+      checked_at: checked[checked.length - 1] ?? null, oldest_checked_at: checked[0] ?? null, next_check_at: next[0] ?? null,
+      coverage: { countries: [...countries.keys()].sort(), missing },
+      sample: rows.filter((r) => ["BS", "MX", "KY", "JM"].includes(r.destination_iso2)).map((r) => ({ destination_iso2: r.destination_iso2, destination_name: r.destination_name, requirement: r.requirement, stay_days: r.stay_days, checked_at: r.checked_at })),
+    });
+  } catch (err) {
+    res.set("Cache-Control", "no-store");
+    res.status(503).json({ success: false, error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 export default router;

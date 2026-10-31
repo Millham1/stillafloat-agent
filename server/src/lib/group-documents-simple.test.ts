@@ -196,6 +196,7 @@ const ENTRY = [{
     ],
   },
   visa: null,
+  table: null,
 }];
 test("the passport checklist is prepared from the file: the passport on file, the visa and vaccination lines per country, the insurance choice; it is never signed", () => {
   const traveler = { ...TRAVELERS[0], passport_last4: "4321", passport_country: "United States", passport_expiry: "2035-05-09", emergency_name: "Pat Guest",
@@ -219,6 +220,13 @@ test("the passport checklist is prepared from the file: the passport on file, th
     "Current U.S. State Department travel advisory reviewed | ☐ | The Bahamas: Level 2: Exercise Increased Caution (travel.state.gov, [date of signing])",
     "For a U.S. passport holder. The U.S. Department of State's country information (travel.state.gov) could not be read for this itinerary on [date of signing]; the page to check is in the table.",
   ]) assert.ok(d.text.includes(s), `missing: ${s}\n${d.text.slice(0, 4000)}`);
+  // our own visa table (Mark 2026-10-31): the row, its date, and the department's page to verify
+  const tabled = buildCtx({ business: BUSINESS, group: GROUP, cabins: CABINS, travelers: TRAVELERS, traveler, now: NOW, entry: [{ ...ENTRY[0]!, table: { requirement: "visa-free", stay_days: 240, raw: "240", source: "passport-index-dataset", source_url: "https://raw.githubusercontent.com/ilyankou/passport-index-dataset/master/passport-index-tidy-iso2.csv", checked_at: "2026-10-31T20:00:00.000Z" } }] });
+  const tb = renderDocument("16-passport-document-checklist", tabled).text;
+  assert.ok(tb.includes("The Bahamas (Nassau, Ocean Cay) | ☐ Yes ☒ No | Visa-free for U.S. passport holders, stays up to 240 days (Passport Index data, checked October 31, 2026). Verify at travel.state.gov before you go: https://travel.state.gov/content/travel/en/international-travel/International-Travel-Country-Information-Pages/TheBahamas.html | ☐ | ☐ | N/A"), tb.slice(tb.indexOf("Destination |"), tb.indexOf("Destination |") + 500));
+  assert.ok(tb.includes("from our visa table (Passport Index data, reviewed every 90 days)"), "the section says where the line came from");
+  const eta = renderDocument("16-passport-document-checklist", buildCtx({ business: BUSINESS, group: GROUP, cabins: CABINS, travelers: TRAVELERS, traveler, now: NOW, entry: [{ ...ENTRY[0]!, table: { requirement: "eta", stay_days: null, raw: "eta", source: "passport-index-dataset", source_url: "x", checked_at: "2026-10-31T20:00:00.000Z" } }] })).text;
+  assert.ok(eta.includes("| ☒ Yes ☐ No | Electronic Travel Authorization (ETA): applied for online before travel (Passport Index data, checked October 31, 2026)."), "an authorization to obtain reads as required");
   // the State Department page read: the visa line says so
   const read = buildCtx({ business: BUSINESS, group: GROUP, cabins: CABINS, travelers: TRAVELERS, traveler, now: NOW, entry: [{ ...ENTRY[0]!, visa: { tourist_visa_required: false, passport_validity: "Must be valid at time of entry", blank_pages: "One page", vaccinations: "None", url: ENTRY[0]!.visa_url, read_at: "2026-10-29T04:00:00Z" } }] });
   const r = renderDocument("16-passport-document-checklist", read).text;
