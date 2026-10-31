@@ -265,7 +265,7 @@ test("the 120-day message: sailing, payment schedule, paperwork, passport, insur
   assert.match(r.text, /Final payment: \$2,800, due January 5, 2027\./);
   assert.match(r.text, /These amounts are for cabin 8123\./);
   assert.match(r.text, /Payments are made directly to the cruise line or supplier by the client\./);
-  assert.match(r.text, /You have signed 2 of 7 documents\./);
+  assert.match(r.text, /You have signed 2 of 6 documents\./);
   assert.match(r.text, /- Liability Waiver and Release/i);
   assert.match(r.text, /passport on your file expires June 1, 2027, less than six months after you return/);
   assert.match(r.text, /Mark offers Allianz plans/);
@@ -303,7 +303,7 @@ test("the 45-day message: excursions, dining and change windows, and what is sti
   assert.match(r.text, /Nassau: Junkanoo walking tour — Two hours\. \(https:\/\/example\.test\/nassau\)/);
   assert.match(r.text, /Dining on file for your cabin: Late seating\./);
   assert.match(r.text, /January 20, 2027: Name changes carry a fee after this date\./);
-  assert.match(r.text, /Paperwork: 5 documents still to sign/);
+  assert.match(r.text, /Paperwork: 4 documents still to sign/);
   assert.match(r.text, /How you are getting home/);
 });
 
@@ -567,7 +567,7 @@ test("a missing-details message lists what is still missing, and is not written 
   const r = renderEmail("data-needed", ctx(input, "t1", before(80)))!;
   assert.equal(r.subject, "A few details we still need for your MSC Seaside cruise");
   assert.deepEqual(r.sections, ["missing"]);
-  assert.match(r.text, /Paperwork: 5 documents still to sign/);
+  assert.match(r.text, /Paperwork: 4 documents still to sign/);
   assert.match(r.text, /How you are getting home/);
   assert.ok(!/How you are getting to the port/.test(r.text), "Ann's flight in is on file");
   assert.ok(!/emergency contact/.test(r.text), "Ann's emergency contact is on file");

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
- giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, ESIGN_CONSENT_VERSION, insuranceStatus, chooseInsurance, chooseCardholder, cardLinkEmail } from "./group-forms";
+ giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, ESIGN_CONSENT_VERSION, insuranceStatus, chooseInsurance, chooseCardholder, cardLinkEmail, getChecklistPdf, sendChecklist, checklistEmail } from "./group-forms";
 import { pagePhotos } from "./group-page-photos";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
@@ -41,7 +41,7 @@ function makeStore() {
     duplicate: false,
   };
   let seq = 0;
-  const strip = (t: Row) => { const { passport_enc: _p, dl_enc: _d, card_token_hash: _c, card_copies_token_hash: _cc, form_token_hash: _f, copies_token_hash: _co, ...rest } = t; return { ...rest }; };
+  const strip = (t: Row) => { const { passport_enc: _p, dl_enc: _d, card_token_hash: _c, card_copies_token_hash: _cc, form_token_hash: _f, copies_token_hash: _co, checklist_token_hash: _ch, ...rest } = t; return { ...rest }; };
   const store: FormsStore = {
     async travelerByTokenHash(hash) { const t = state.travelers.find((x) => x.form_token_hash === hash); return t ? strip(t) : null; },
     async groupByOrganizerHash(hash) { return state.group.organizer_token_hash === hash ? { ...state.group } : null; },
@@ -69,6 +69,7 @@ function makeStore() {
     async travelerByCopiesHash(hash) { const t = state.travelers.find((x) => x.copies_token_hash === hash); return t ? strip(t) : null; },
     async travelerByCardTokenHash(hash) { const t = state.travelers.find((x) => x.card_token_hash && x.card_token_hash === hash); return t ? strip(t) : null; },
     async travelerByCardCopiesHash(hash) { const t = state.travelers.find((x) => x.card_copies_token_hash && x.card_copies_token_hash === hash); return t ? strip(t) : null; },
+    async travelerByChecklistHash(hash) { const t = state.travelers.find((x) => x.checklist_token_hash && x.checklist_token_hash === hash); return t ? strip(t) : null; },
     async groupByOrganizerCopiesHash(hash) { return state.group.organizer_copies_token_hash === hash ? { ...state.group } : null; },
     async upsertProspect(row) {
       const found = state.prospects.find((p) => p.email.toLowerCase() === String(row["email"]).toLowerCase());
@@ -189,7 +190,7 @@ test("a traveler's packet lists their documents in order, with their own inputs,
   assert.equal(r.status, 200);
   const p = pkt(r);
   assert.equal(p.kind, "traveler");
-  assert.deepEqual(p.docs.map((d) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"]);
+  assert.deepEqual(p.docs.map((d) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"]);
   assert.ok(p.docs.every((d) => d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.includes("<")));
   assert.equal(p.docs[0]!.fields.length, 29, "inputs on the traveler information form (no passport place of issue, Mark 2026-10-30)");
   assert.deepEqual(p.mates, ["Jane Public"]);
@@ -200,9 +201,9 @@ test("a traveler's packet lists their documents in order, with their own inputs,
     assert.ok(!raw.includes(secret), `the packet leaks ${secret}`);
   }
   const lead = pkt(await getPacket(t.deps, t.link("t1")));
-  assert.equal(lead.docs.length, 7, "the cabin's lead signs the same five documents, the booking agreement and the card authorization (Mark 2026-10-30)");
-  assert.deepEqual(lead.docs.slice(5).map((d) => d.key), ["12-cruise-booking-agreement", "22-card-authorization"]);
-  assert.ok(lead.docs[5]!.html.includes("BK77"), "the booking agreement carries the cabin's booking number from the file");
+  assert.equal(lead.docs.length, 6, "the cabin's lead signs the same four documents, the booking agreement before the waiver and the card authorization last (Mark 2026-10-31)");
+  assert.deepEqual(lead.docs.slice(3).map((d) => d.key), ["12-cruise-booking-agreement", "05-liability-waiver", "22-card-authorization"]);
+  assert.ok(lead.docs[3]!.html.includes("BK77"), "the booking agreement carries the cabin's booking number from the file");
   assert.ok(!JSON.stringify(lead).includes("SECRET"));
 });
 
@@ -278,9 +279,9 @@ test("a file that changed after the page loaded cannot be signed on the old text
   const t = setup();
   const token = t.link("t2");
   await giveConsent(t.deps, token, { agreed: true }, META);
-  const doc = pkt(await getPacket(t.deps, token)).docs.find((d) => d.key === "16-passport-document-checklist")!;
+  const doc = pkt(await getPacket(t.deps, token)).docs.find((d) => d.key === "05-liability-waiver")!;
   t.state.group.sail_date = "2027-03-15";
-  const r = await signDocument(t.deps, token, { doc_key: "16-passport-document-checklist", signer_name: "John Public", agreed: true, content_sha256: doc.text_sha256, answers: {} }, {});
+  const r = await signDocument(t.deps, token, { doc_key: "05-liability-waiver", signer_name: "John Public", agreed: true, content_sha256: doc.text_sha256, answers: { health_ack: true } }, {});
   assert.equal(r.status, 409);
   assert.equal(r.json["code"], "document-changed");
   assert.equal(t.state.signatures.length, 0);
@@ -358,7 +359,7 @@ test("signing the booking document records consent; the last signature completes
   const t = setup();
   const token = t.link("t2");
   const mate = "John Public";
-  const order = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"];
+  const order = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"];
   const answers: Record<string, unknown> = {
     "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", passport_number: "B99887766" },
     "05-liability-waiver": { health_ack: true },
@@ -381,7 +382,7 @@ test("signing the booking document records consent; the last signature completes
   }
   assert.equal(t.notices[0]!.title, "Paperwork returned: John Public");
   assert.equal(t.notices[0]!.groupId, "g1");
-  assert.equal(t.state.signatures.length, 5);
+  assert.equal(t.state.signatures.length, 4);
   assert.equal(t.state.signatures.find((s) => s.doc_key.startsWith("07"))!.answers.insurance_choice, undefined, "the choice is the file's, not the declination's answer");
   assert.deepEqual(t.state.signatures.find((s) => s.doc_key.startsWith("07"))!.answers.decline_reasons, ["premium"]);
   assert.equal(t.state.travelers[1]!.form_data.insurance.choice, "decline");
@@ -400,7 +401,8 @@ test("choosing Allianz with one of the plans offered swaps the declination for t
   await giveConsent(t.deps, token, { agreed: true }, META);
   const before = pkt(await getPacket(t.deps, token)) as any;
   assert.equal(before.docs[2].key, "07-travel-insurance-declination");
-  assert.deepEqual(before.insurance.fields.map((f: any) => f.name), ["insurance_choice", "insurance_plan"]);
+  assert.deepEqual(before.insurance.fields.map((f: any) => f.name), ["insurance_choice", "insurance_plan", "ins_provider", "ins_policy"]);
+  assert.deepEqual(before.insurance.fields[0].options.map((o: any) => o.value), ["quote", "own", "decline"], "no rate for the line's plan on the file: it is not offered (Mark 2026-10-31)");
   assert.deepEqual(before.insurance.choice, { value: null, plan: null, chosen_at: null, locked: false });
   assert.equal((await chooseInsurance(t.deps, token, { insurance_choice: "quote", insurance_plan: "OneTrip Gold: $999 per person" })).status, 400, "not a plan the page offered");
   assert.equal((await chooseInsurance(t.deps, token, { insurance_choice: "quote" })).status, 400, "Allianz needs a plan");
@@ -409,7 +411,7 @@ test("choosing Allianz with one of the plans offered swaps the declination for t
   const r = await chooseInsurance(t.deps, token, { insurance_choice: "quote", insurance_plan: "OneTrip Prime: $129 per person" });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   const p = r.json["packet"] as any;
-  assert.deepEqual(p.docs.map((d: any) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "23-insurance-plan", "05-liability-waiver", "16-passport-document-checklist"]);
+  assert.deepEqual(p.docs.map((d: any) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "23-insurance-plan", "05-liability-waiver"]);
   assert.deepEqual(p.insurance.choice, { value: "quote", plan: "OneTrip Prime: $129 per person", chosen_at: "2026-10-16T15:30:12.000Z", locked: false });
   assert.equal(p.insurance.fields[1].value, "OneTrip Prime: $129 per person", "the page shows the plan already picked");
   assert.ok(p.docs[2].html.includes("OneTrip Prime: $129 per person") && p.docs[2].html.includes("Allianz Global Assistance"), "the plan document carries the plan and price chosen");
@@ -453,7 +455,7 @@ test("the lead names the card's owner: the owner is emailed a link of their own,
   assert.equal(r.status, 200, JSON.stringify(r.json));
   assert.equal(r.json["sent"], true);
   const p = r.json["packet"] as any;
-  assert.deepEqual(p.docs.map((d: any) => d.key).slice(-2), ["16-passport-document-checklist", "12-cruise-booking-agreement"], "the card authorization is the owner's to sign, not the lead's");
+  assert.deepEqual(p.docs.map((d: any) => d.key).slice(-2), ["12-cruise-booking-agreement", "05-liability-waiver"], "the card authorization is the owner's to sign, not the lead's");
   assert.deepEqual({ ...p.card, fields: undefined }, { holder: "other", name: "Pat Payer", email: "pat@example.com", link_sent_at: "2026-10-16T15:30:12.000Z", signed: false, fields: undefined });
   assert.equal(t.mails.length, 1);
   assert.equal(t.mails[0]!.to, "pat@example.com");
@@ -717,7 +719,7 @@ test("each traveler's progress is the documents asked for against the ones signe
     { traveler_id: null, doc_key: "09-group-travel-contract", signer_role: "organizer" },
   ];
   const s = packetStatuses({ group: g, cabins, travelers, signatures });
-  assert.equal(s.travelers["t1"]!.required.length, 7);
+  assert.equal(s.travelers["t1"]!.required.length, 6);
   assert.equal(s.travelers["t1"]!.signed.length, 0);
   assert.deepEqual(s.travelers["t2"]!.signed, ["15-emergency-contact-form", "01-terms-and-conditions"]);
   assert.equal(s.travelers["t2"]!.complete, false);
@@ -728,7 +730,7 @@ test("each traveler's progress is the documents asked for against the ones signe
 
 // ── Mark 2026-10-25: DocuSign-grade evidence ──────────────────────────────────
 
-const ORDER_T2 = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"];
+const ORDER_T2 = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"];
 const ANSWERS_T2: Record<string, unknown> = {
   "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", passport_number: "B99887766" },
   "05-liability-waiver": { health_ack: true },
@@ -815,7 +817,7 @@ test("the last signature emails the signer their copies once: one link per docum
   const t = setup();
   const token = t.link("t2");
   await signAllT2(t, token);
-  assert.equal(t.mails.length, 1, "one email, on the last signature only");
+  assert.equal(t.mails.length, 2, "the copies on the last signature only, then the checklist on its own (Mark 2026-10-31)");
   const m = t.mails[0]!;
   assert.equal(m.to, "john@example.com");
   assert.equal(m.subject, `Your signed paperwork for ${t.state.group.name}`);
@@ -823,7 +825,7 @@ test("the last signature emails the signer their copies once: one link per docum
   assert.match(m.text, /Smart-cruiser tip/); assert.match(m.text, /See you on board!/);
   const links = [...m.text.matchAll(/https:\/\/stillafloatcruising\.com\/api\/forms\/copies\/([A-Za-z0-9_-]{43})\/(sig\d+)\.pdf/g)];
   assert.equal(links.length, ORDER_T2.length, "one link per signed document");
-  assert.deepEqual(t.state.messages.map((r) => [r.template, r.status, r.to_email]), [["paperwork-copies", "sent", "john@example.com"]]);
+  assert.deepEqual(t.state.messages.map((r) => [r.template, r.status, r.to_email]), [["paperwork-copies", "sent", "john@example.com"], ["paperwork-checklist", "sent", "john@example.com"]]);
   assert.ok(!JSON.stringify(t.state.messages).includes(links[0]![1]!), "the email log never keeps the link");
   assert.equal(t.state.travelers[1]!.copies_sent_at, "2026-10-16T15:30:12.000Z");
   const copiesToken = links[0]![1]!;
@@ -843,8 +845,9 @@ test("the last signature emails the signer their copies once: one link per docum
 test("a refused copies email is logged as failed and leaves the file saying not sent; the signatures stand", async () => {
   const t = setup({ mail: async () => false });
   await signAllT2(t, t.link("t2"));
-  assert.deepEqual(t.state.messages.map((r) => [r.template, r.status]), [["paperwork-copies", "failed"]]);
+  assert.deepEqual(t.state.messages.map((r) => [r.template, r.status]), [["paperwork-copies", "failed"], ["paperwork-checklist", "failed"]]);
   assert.equal(t.state.travelers[1]!.copies_sent_at, null);
+  assert.equal(t.state.travelers[1]!.checklist_sent_at, null);
   assert.equal(t.state.signatures.length, ORDER_T2.length);
 });
 
@@ -893,4 +896,86 @@ test("the insurance step offers the Allianz plans Mark put on the group file unt
   assert.equal(q.quoted_at, null);
   assert.deepEqual(q.plans, [{ name: "OneTrip Basic", price_per_person: 89 }, { name: "OneTrip Prime", price_per_person: 129 }]);
   assert.equal(q.note, "Pricing subject to change until finalized.");
+});
+
+// ── Mark 2026-10-31: the walkthrough findings ─────────────────────────────────
+
+test("the line's plan is offered with its rate on the file, its price in the option; a policy of their own needs its company and number, which go on the file and the waiver", async () => {
+  const t = setup();
+  t.state.group.line_protection = "MSC Cruise Protection: $99 per person";
+  const token = t.link("t2");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  const p = pkt(await getPacket(t.deps, token)) as any;
+  const lineOpt = p.insurance.fields[0].options.find((o: any) => o.value === "line");
+  assert.equal(lineOpt.label, "The cruise line's own protection plan: MSC Cruise Protection: $99 per person");
+  const bare = await chooseInsurance(t.deps, token, { insurance_choice: "own" });
+  assert.equal(bare.status, 400);
+  assert.deepEqual(Object.keys(bare.json["fields"] as object).sort(), ["ins_policy", "ins_provider"]);
+  const card = await chooseInsurance(t.deps, token, { insurance_choice: "own", ins_provider: "Travel Guard", ins_policy: "4111 1111 1111 1111" });
+  assert.equal(card.status, 400); assert.match(String((card.json["fields"] as any).ins_policy), /never collected/);
+  const ok = await chooseInsurance(t.deps, token, { insurance_choice: "own", ins_provider: "Travel Guard", ins_policy: "TG-55512" });
+  assert.equal(ok.status, 200, JSON.stringify(ok.json));
+  const ins = t.state.travelers[1]!.form_data.insurance;
+  assert.deepEqual([ins.choice, ins.provider, ins.policy_number], ["own", "Travel Guard", "TG-55512"]);
+  const waiver = (ok.json["packet"] as any).docs.find((d: any) => d.key === "05-liability-waiver");
+  assert.ok(waiver.html.includes("Travel Guard") && waiver.html.includes("TG-55512") && waiver.html.includes("☒ <strong>I/We HAVE purchased"), "the waiver's insurance line carries the policy");
+  assert.equal((ok.json["packet"] as any).insurance.fields[2].value, "Travel Guard", "the page shows the company already given");
+  const back = await chooseInsurance(t.deps, token, { insurance_choice: "decline" });
+  assert.equal(back.status, 200);
+  assert.equal(t.state.travelers[1]!.form_data.insurance.provider, null, "another choice clears the policy lines");
+});
+
+test("the preview says where the waiver's health box and the signature line sit, so the page lays its tick and name box there", async () => {
+  const t = setup();
+  const token = t.link("t2");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  const r = await previewDocument(t.deps, token, { doc_key: "05-liability-waiver", answers: {} });
+  assert.equal(r.status, 200);
+  const marks = (r as { marks: Array<Record<string, any>> }).marks;
+  const tick = marks.find((m) => m.kind === "box" && m.field === "health_ack");
+  assert.ok(tick && tick.w > 5 && tick.h > 5 && tick.page >= 0 && tick.x > 0 && tick.y > 0, JSON.stringify(marks));
+  const sig = marks.find((m) => m.kind === "sig");
+  assert.ok(sig && sig.right > sig.x && sig.page >= tick!.page, "the signature line comes after the health box, on the last page");
+  assert.ok(!marks.some((m) => m.kind === "box" && m.field !== "health_ack"), "only the document's own lines are marked: the advisory and insurance boxes are the file's");
+  const terms = await previewDocument(t.deps, token, { doc_key: "01-terms-and-conditions", answers: {} });
+  assert.ok((terms as any).marks.some((m: any) => m.kind === "sig") && !(terms as any).marks.some((m: any) => m.kind === "box"));
+});
+
+test("the last signature sends the copies email and then the passport checklist on its own link; the checklist prints from that link, from the traveler's page, and again from the group file", async () => {
+  const t = setup();
+  const token = t.link("t2");
+  await signAllT2(t, token);
+  assert.equal(t.mails.length, 2, "the copies, then the checklist");
+  assert.match(t.mails[1]!.subject, /^Your passport and travel document checklist: American Legion Post 12$/);
+  assert.ok(t.mails[1]!.text.includes("what each country on the itinerary asks of a U.S. traveler (visas and vaccinations)"));
+  const tr = t.state.travelers[1]!;
+  assert.ok(tr.checklist_token_hash && tr.checklist_sent_at === "2026-10-16T15:30:12.000Z");
+  const link = /\/api\/forms\/checklist\/([A-Za-z0-9_-]{43})\.pdf/.exec(t.mails[1]!.text)![1]!;
+  assert.ok(!JSON.stringify(t.state.messages).includes(link), "the email log never holds the link");
+  assert.equal(t.state.messages.filter((m) => m.template === "paperwork-checklist").length, 1);
+  const pdf = await getChecklistPdf(t.deps, `${link}.pdf`);
+  assert.equal(pdf.status, 200);
+  assert.equal(Buffer.from((pdf as { bytes: Uint8Array }).bytes).subarray(0, 5).toString(), "%PDF-");
+  assert.equal((await getChecklistPdf(t.deps, "nope")).status, 404);
+  assert.equal((await getChecklistPdf(t.deps, issueToken().token)).status, 404);
+  assert.equal(((await getPacket(t.deps, token)).json as any).checklist.sent_at, "2026-10-16T15:30:12.000Z", "the page knows the checklist went out");
+  // from the traveler's own page, though it is never in the packet
+  assert.equal((await documentPdf(t.deps, token, "16-passport-document-checklist")).status, 200);
+  assert.equal((await documentPdf(t.deps, token, "06-credit-card-authorization")).status, 404);
+  // sent again from the group file: a new link; the old one stops working
+  assert.equal(await sendChecklist(t.deps, t.state.group, t.state.travelers[1]!), true);
+  assert.equal((await getChecklistPdf(t.deps, `${link}.pdf`)).status, 404);
+  assert.equal(t.mails.length, 3);
+  // a refused email leaves the link usable and the send unmarked
+  const refused = setup({ mail: async () => false });
+  assert.equal(await sendChecklist(refused.deps, refused.state.group, refused.state.travelers[1]!), false);
+  assert.ok(refused.state.travelers[1]!.checklist_token_hash && refused.state.travelers[1]!.checklist_sent_at === null);
+  assert.equal(refused.state.messages[0]!.status, "failed");
+  // no address: nothing sent, nothing stored
+  const none = setup();
+  none.state.travelers[1]!.email = "";
+  assert.equal(await sendChecklist(none.deps, none.state.group, none.state.travelers[1]!), false);
+  assert.equal(none.state.travelers[1]!.checklist_token_hash, undefined);
+  const es = checklistEmail({ lang: "es", firstName: "Dulce", groupName: "Grupo", trip: "Grupo — MSC Seascape, zarpa March 14, 2027", url: "https://x/y.pdf" });
+  assert.match(es.subject, /^Su lista de pasaporte/);
 });

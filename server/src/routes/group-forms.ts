@@ -14,7 +14,8 @@ import { renderSignedPdf } from "../lib/group-signature-pdf";
 import { sealerFromEnv, type Sealer } from "../lib/group-pdf-seal";
 import { DOC_SPECS } from "../lib/group-documents";
 import { advisoriesForGroup } from "../lib/travel-advisories";
-import { SIGNER_COLS, TRAVELER_COLS, cardOf, chooseCardholder, chooseInsurance, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, sendCardLink, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
+import { SIGNER_COLS, TRAVELER_COLS, cardOf, chooseCardholder, chooseInsurance, formUrl, getChecklistPdf, getCopies, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, sendCardLink, sendChecklist, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
+import { entryRequirementsForGroup } from "../lib/entry-requirements";
 
 // Client paperwork (migrations 0044 and 0052).
 //
@@ -157,6 +158,12 @@ export const store: FormsStore = {
     if (error) return null;
     return data ?? null;
   },
+  // Mark 2026-10-31: the passport checklist's own link (migration 0063); a box without the column answers "not valid", nothing worse
+  async travelerByChecklistHash(hash) {
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("checklist_token_hash", hash).maybeSingle();
+    if (error) return null;
+    return data ?? null;
+  },
   async upsertProspect(row) {
     const found = await db().from("prospects").select("id").ilike("email", likeEscape(String(row["email"]))).limit(1).maybeSingle();
     if (found.data?.id) return found.data.id as string;
@@ -210,7 +217,9 @@ function deps(): FormsDeps {
     },
     publicSite: publicSite(),
     // Mark 2026-10-30: the advisory level per port, from the State Department; the insurance step's video and background quote.
+    // Mark 2026-10-31: with it, each itinerary country's visa and vaccination requirements, for the passport checklist.
     advisories: (g) => advisoriesForGroup(g),
+    entry: (g) => entryRequirementsForGroup(g),
     insurance: {
       videoUrl: process.env["GROUP_INSURANCE_VIDEO_URL"] || null,
       chromePath: process.env["CHROME_PATH"], user: process.env["ALLIANZ_AGENT_USER"], password: process.env["ALLIANZ_AGENT_PASSWORD"],
@@ -290,6 +299,8 @@ router.post("/forms/:token/preview", async (req: Request, res: Response) => {
     if ("bytes" in out) {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `inline; filename="${out.key.replace(/[^\w.-]/g, "_")}.pdf"`);
+      // Mark 2026-10-31: where the client's own boxes and signature line sit, so the page lays its tick and name box right there
+      res.setHeader("X-Doc-Marks", JSON.stringify(out.marks.map((m) => ({ ...m, x: Math.round(m.x * 100) / 100, y: Math.round(m.y * 100) / 100, w: Math.round(m.w * 100) / 100, h: Math.round(m.h * 100) / 100, ...("right" in m ? { right: Math.round(m.right * 100) / 100 } : {}) }))));
       return res.status(200).send(Buffer.from(out.bytes));
     }
     if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
@@ -385,6 +396,25 @@ router.get("/forms/:token/insurance", async (req: Request, res: Response) => {
     return res.status(out.status).json(out.json);
   } catch (err) {
     return fail(req, res, err, "insurance status failed");
+  }
+});
+
+// Mark 2026-10-31: the passport and travel document checklist, prepared from the file, on the link from its own email.
+router.get("/forms/checklist/:token", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (previewLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const out = await getChecklistPdf(deps(), req.params["token"]);
+    if ("bytes" in out) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${out.filename}"`);
+      return res.status(200).send(Buffer.from(out.bytes));
+    }
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork checklist failed");
   }
 });
 
@@ -488,6 +518,25 @@ router.post("/groups/:id/travelers/:tid/card-link/send", requireToken, async (re
     return res.json({ success: true, sentTo: card.email });
   } catch (err) {
     return fail(req, res, err, "card link email failed");
+  }
+});
+
+// Mark 2026-10-31: the passport checklist, emailed again from the group file (a new link; the old one stops working).
+router.post("/groups/:id/travelers/:tid/checklist/send", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    const t = (await store.travelers(groupId)).find((x) => x.id === String(req.params["tid"]));
+    if (!t) return res.status(404).json({ success: false, error: "Traveler not found" });
+    const to = String(t.email ?? "").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) return res.status(400).json({ success: false, error: "This traveler has no email address on the file. Add one first." });
+    if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) return res.status(400).json({ success: false, error: "This box only emails its test addresses, so that address was not emailed." });
+    const group = await store.group(groupId);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const ok = await sendChecklist(deps(), group, t);
+    if (!ok) return res.status(502).json({ success: false, error: "The email did not go out. The checklist's new link is stored; try again in a minute." });
+    return res.json({ success: true, sentTo: to });
+  } catch (err) {
+    return fail(req, res, err, "checklist email failed");
   }
 });
 

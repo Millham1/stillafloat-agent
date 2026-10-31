@@ -28,14 +28,15 @@ import {
   BUSINESS, encryptPii, hashForAudit, hashLinkToken, looksLikeLinkToken, newLinkToken, piiConfigured, safeEqualHex,
 } from "./group-secure";
 import {
-  CARD_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cardHolderOf, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
+  CARD_DOCUMENT, CHECKLIST_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cardHolderOf, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
   type Answers, type DocCtx, type RenderedDoc, type Row,
 } from "./group-documents";
 import { INSURANCE_CHOICES, INSURANCE_CHOICE_FIELDS, INSURANCE_DOCUMENTS } from "./group-document-specs";
-import { renderFormPdf } from "./group-form-pdf";
+import { renderFormPdf, type FormMark } from "./group-form-pdf";
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
-import { fmtLong, type Advisory } from "./group-document-kit";
+import { fmtLong, type Advisory, type EntryRequirement } from "./group-document-kit";
+import { looksLikeCardNumber } from "./group-file";
 import { QUOTE_NOTE, fetchAllianzQuote, planLabel, plansFromText, quoteInputFor, type QuoteEnv, type QuoteRecord } from "./allianz-quote";
 import { displayName, guestGroupName } from "./group-marketing";
 import { pagePhotos } from "./group-page-photos";
@@ -71,6 +72,8 @@ export interface FormsStore {
   // Mark 2026-10-30, the card owner's own link (migration 0062): the lead traveler's row, found by the owner's link or copies link
   travelerByCardTokenHash(hash: string): Promise<Row | null>;
   travelerByCardCopiesHash(hash: string): Promise<Row | null>;
+  // Mark 2026-10-31, the passport checklist's own link (migration 0063)
+  travelerByChecklistHash(hash: string): Promise<Row | null>;
 }
 
 export interface FormsDeps {
@@ -91,6 +94,8 @@ export interface FormsDeps {
   publicSite: string;
   /** The State Department advisory per port of the itinerary (Mark 2026-10-30); absent = the waiver says they could not be read. */
   advisories?: (group: Row) => Promise<Advisory[]>;
+  /** Each itinerary country's visa and vaccination requirements (Mark 2026-10-31), for the checklist; absent = it says they could not be read. */
+  entry?: (group: Row) => Promise<EntryRequirement[]>;
   /** The insurance step: the video, the box's browser and Allianz sign-in for the background quote, and Mark's row when it cannot quote. */
   insurance?: InsuranceDeps;
 }
@@ -110,7 +115,7 @@ export const TRAVELER_COLS =
   "passport_last4, passport_country, passport_expiry, dl_last4, dl_state, emergency_name, emergency_phone, special_needs, form_data, " +
   "newsletter_opt_in, prospect_id, form_sent_at, form_submitted_at, consent_name, consent_signed_at, " +
   "esign_consent_at, esign_consent_version, form_opened_at, copies_sent_at, " +
-  "card_link_sent_at, card_form_opened_at, card_esign_consent_at, card_esign_consent_version, card_copies_sent_at";
+  "card_link_sent_at, card_form_opened_at, card_esign_consent_at, card_esign_consent_version, card_copies_sent_at, checklist_sent_at";
 /** The signer's own row adds the consent's network address, for the evidence page only (never in the shared list above). */
 export const SIGNER_COLS = `${TRAVELER_COLS}, esign_consent_ip, card_esign_consent_ip`;
 
@@ -128,7 +133,17 @@ export interface Loaded {
 }
 
 /** Look a link up. null for every kind of failure: malformed, unknown, replaced, or a group that was cancelled. */
-export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advisories">, token: unknown): Promise<Loaded | null> {
+/** The travel checks for a group's itinerary (Mark 2026-10-30/31): the State Department advisory per port and each country's visa
+ *  and vaccination requirements, read together; a source that fails answers empty, and the documents say so. */
+async function travelChecks(deps: Pick<FormsDeps, "advisories" | "entry">, group: Row): Promise<{ advisories: Advisory[]; entry: EntryRequirement[] }> {
+  const [advisories, entry] = await Promise.all([
+    deps.advisories ? deps.advisories(group).catch(() => [] as Advisory[]) : Promise.resolve([] as Advisory[]),
+    deps.entry ? deps.entry(group).catch(() => [] as EntryRequirement[]) : Promise.resolve([] as EntryRequirement[]),
+  ]);
+  return { advisories, entry };
+}
+
+export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advisories" | "entry">, token: unknown): Promise<Loaded | null> {
   if (!looksLikeLinkToken(token)) return null;
   const hash = hashLinkToken(token);
   const { store } = deps;
@@ -138,8 +153,8 @@ export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advis
     const group = await store.group(traveler.group_id);
     if (!group || group.status === "cancelled") return null;
     const [cabins, travelers] = await Promise.all([store.cabins(group.id), store.travelers(group.id)]);
-    const advisories = deps.advisories ? await deps.advisories(group).catch(() => [] as Advisory[]) : [];
-    const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler, now, advisories });
+    const checks = await travelChecks(deps, group);
+    const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler, now, ...checks });
     const packet = packetFor({ group, cabin: ctx.cabin, traveler });
     const sigs = await store.signaturesFor({ groupId: group.id, travelerId: traveler.id });
     return { kind: "traveler", group, traveler, cabin: ctx.cabin, mates: ctx.mates, ctx, packet, signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
@@ -239,6 +254,8 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey" | "i
     complete: loaded.packet.length > 0 && loaded.packet.every((k) => loaded.signed.has(k)),
     pii_ready: piiConfigured(deps.piiKey),
     insurance: insurancePublic(loaded, deps),
+    // Mark 2026-10-31: the passport checklist is prepared from the file and emailed on its own once the paperwork is complete
+    checklist: loaded.kind === "traveler" ? { sent_at: traveler?.checklist_sent_at ?? null } : null,
     // Mark 2026-10-25: consent to electronic records comes first, once per signer; the page shows the box until it is given.
     esign: { consent_given_at: consentOf(loaded), version: ESIGN_CONSENT_VERSION, text: esignConsentText(loaded.ctx.lang) },
     copies_sent_at: (loaded.kind === "cardholder" ? traveler?.card_copies_sent_at : traveler ? traveler.copies_sent_at : group.organizer_copies_sent_at) ?? null,
@@ -498,6 +515,12 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
     try { await sendCopies(deps, again); again = (await loadByToken(deps, token)) ?? again; } catch (err) {
       deps.warn({ err: err instanceof Error ? err.message : String(err), group: loaded.group.id }, "paperwork: the signer's copies email failed (the signatures are recorded)");
     }
+    // Mark 2026-10-31: the passport and travel document checklist, prepared from the file, goes out on its own right after
+    if (again.kind === "traveler" && again.traveler) {
+      try { await sendChecklist(deps, again.group, again.traveler); again = (await loadByToken(deps, token)) ?? again; } catch (err) {
+        deps.warn({ err: err instanceof Error ? err.message : String(err), group: loaded.group.id }, "paperwork: the checklist email failed (the signatures are recorded)");
+      }
+    }
   }
   return reply(200, {
     success: true, signed: docKey, complete, pdf_saved: pdfSaved,
@@ -593,6 +616,81 @@ async function sendCopies(deps: FormsDeps, loaded: Loaded): Promise<void> {
   }
 }
 
+// ── Mark 2026-10-31: the passport and travel document checklist, prepared from the file, emailed on its own, never signed ──
+
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+export function checklistUrl(publicSite: string, token: string): string {
+  return `${publicSite.replace(/\/$/, "")}/api/forms/checklist/${token}.pdf`;
+}
+
+/** The email that carries the checklist: what we filled in, what is theirs, one tip, the link. */
+export function checklistEmail(input: { lang: "en" | "es"; firstName: string; groupName: string; trip: string; url: string }): { subject: string; text: string; html: string } {
+  const es = input.lang === "es";
+  const hello = es ? (input.firstName ? `Hola ${input.firstName},` : "Hola,") : (input.firstName ? `Hi ${input.firstName},` : "Hi,");
+  const lines = es
+    ? [
+        `Aquí está su lista de pasaporte y documentos de viaje para ${input.trip}. Ya llenamos lo que sabemos: su pasaporte en nuestro expediente, lo que cada país del itinerario pide a un viajero de EE. UU. (visas y vacunas), su elección de seguro de viaje y su contacto de emergencia. El resto es suyo para ir marcando.`,
+        input.url,
+        "Consejo de crucerista: imprímala y guárdela con su pasaporte. Es la única lista que se acorta a medida que se acerca el crucero.",
+        `El enlace es solo suyo. Muestra la lista tal como está hoy y se actualiza cuando algo cambia en su expediente. ¿Preguntas? Responda a este correo o llame al ${BUSINESS.phone}.`,
+      ]
+    : [
+        `Here is your passport and travel document checklist for ${input.trip}. We filled in what we already know: your passport on file, what each country on the itinerary asks of a U.S. traveler (visas and vaccinations), your travel insurance choice and your emergency contact. The rest is yours to tick off as you go.`,
+        input.url,
+        "Smart-cruiser tip: print it and keep it with your passport. It is the one list that gets shorter as the sailing gets closer.",
+        `The link is yours alone. It shows the checklist as it stands today and is updated whenever something on your file changes. Questions? Reply to this email or call ${BUSINESS.phone}.`,
+      ];
+  const sign = [BUSINESS.agentName, BUSINESS.tradeName, BUSINESS.contactLine.split(" · ").slice(1).join(" · ")];
+  const text = `${[hello, ...lines].join("\n\n")}\n\n${sign.join("\n")}\n`;
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#07183f"><p>${esc(hello)}</p>${lines
+    .map((l) => (l === input.url ? `<p><a href="${esc(l)}">${esc(l)}</a></p>` : `<p>${esc(l)}</p>`)).join("")}<p>${sign.map(esc).join("<br>")}</p></div>`;
+  return { subject: es ? `Su lista de pasaporte y documentos de viaje: ${input.groupName}` : `Your passport and travel document checklist: ${input.groupName}`, text, html };
+}
+
+/** A new checklist link for a traveler, emailed to the address on their file (the earlier link stops working). A refused email
+ *  (this box's test-address rule, or the sender down) leaves the link usable and marks it unsent. true = the email went out. */
+export async function sendChecklist(deps: FormsDeps, group: Row, traveler: Row): Promise<boolean> {
+  const to = String(traveler.email ?? "").trim();
+  if (!EMAIL_OK.test(to)) {
+    deps.warn({ group: group.id, traveler: traveler.id }, "paperwork: no email address on file for the traveler's checklist");
+    return false;
+  }
+  const now = deps.now().toISOString();
+  const { token, hash } = issueToken();
+  await deps.store.updateTraveler(traveler.id, { checklist_token_hash: hash, checklist_sent_at: now });
+  const when = fmtLong(group.sail_date);
+  const lang: "en" | "es" = traveler.lang === "es" ? "es" : "en";
+  const trip = [guestGroupName(group), [displayName(group.ship_name), when ? (lang === "es" ? `zarpa ${when}` : `sailing ${when}`) : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
+  const mail = checklistEmail({ lang, firstName: String(traveler.first_name ?? ""), groupName: guestGroupName(group), trip, url: checklistUrl(deps.publicSite, token) });
+  const ok = await deps.mail({ to, subject: mail.subject, html: mail.html, text: mail.text });
+  await deps.store.logMessage({
+    group_id: group.id, cabin_id: traveler.cabin_id ?? null, traveler_id: traveler.id, audience: "client", template: "paperwork-checklist",
+    to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? now : null, error: ok ? null : "mail sender refused or was unreachable",
+  });
+  if (!ok) {
+    await deps.store.updateTraveler(traveler.id, { checklist_sent_at: null });
+    deps.warn({ group: group.id, traveler: traveler.id }, "paperwork: the checklist email did not go out (the link itself is stored and works)");
+  }
+  return ok;
+}
+
+/** GET /api/forms/checklist/:token.pdf — the traveler's checklist as it stands today, prepared from the file. */
+export async function getChecklistPdf(deps: FormsDeps, token: unknown): Promise<{ status: 200; bytes: Uint8Array; filename: string } | Reply> {
+  const tok = typeof token === "string" ? token.replace(/\.pdf$/i, "") : token;
+  if (!looksLikeLinkToken(tok)) return NOT_FOUND;
+  const t = await deps.store.travelerByChecklistHash(hashLinkToken(tok));
+  if (!t) return NOT_FOUND;
+  const group = await deps.store.group(t.group_id);
+  if (!group || group.status === "cancelled") return NOT_FOUND;
+  const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
+  const checks = await travelChecks(deps, group);
+  const now = deps.now();
+  const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: t, now, ...checks });
+  return { status: 200, bytes: await formPdf(deps, CHECKLIST_DOCUMENT, ctx, {}, fmtLong(now.toISOString()), ""), filename: "passport-and-travel-document-checklist.pdf" };
+}
+
 /** The copies link's owner: a traveler, or the group's organizer. */
 async function loadByCopiesToken(deps: FormsDeps, token: unknown): Promise<Loaded | null> {
   if (!looksLikeLinkToken(token)) return null;
@@ -650,15 +748,16 @@ function previewInput(raw: unknown): Answers {
 }
 
 /** The clean printed form of one document (lib/group-form-pdf.ts) with these answers, this date and, once typed, this name. */
-async function formPdf(deps: FormsDeps, key: string, ctx: DocCtx, answers: Answers, today: string, signer: string): Promise<Uint8Array> {
+async function formPdf(deps: Pick<FormsDeps, "logo">, key: string, ctx: DocCtx, answers: Answers, today: string, signer: string, onMark?: (m: FormMark) => void): Promise<Uint8Array> {
   const { spec, blocks } = blocksFor(key, ctx, { paper: true });
-  return renderFormPdf({ title: spec.title, businessName: BUSINESS.legalName, blocks, answers, today, ...(signer ? { signer } : {}), logo: deps.logo });
+  return renderFormPdf({ title: spec.title, businessName: BUSINESS.legalName, blocks, answers, today, ...(signer ? { signer } : {}), logo: deps.logo, ...(onMark ? { onMark } : {}) });
 }
 
 /** POST /api/forms/:token/preview — one document of this link's packet as its clean printed form, filled in with what the client
  *  has typed so far. The answers to the documents before it are read as they will be on the file once those are signed (the
- *  traveler form's address and birth date fill the waiver's), so the form shows what will be signed. Nothing is saved. */
-export async function previewDocument(deps: FormsDeps, token: unknown, body: { doc_key?: unknown; answers?: unknown; signer_name?: unknown }): Promise<{ status: 200; bytes: Uint8Array; key: string } | Reply> {
+ *  traveler form's address and birth date fill the waiver's), so the form shows what will be signed. Nothing is saved. With the
+ *  bytes come the marks: where the client's own boxes and signature line sit, so the page lays its tick and name box right there. */
+export async function previewDocument(deps: FormsDeps, token: unknown, body: { doc_key?: unknown; answers?: unknown; signer_name?: unknown }): Promise<{ status: 200; bytes: Uint8Array; key: string; marks: FormMark[] } | Reply> {
   const loaded = await loadByToken(deps, token);
   if (!loaded) return NOT_FOUND;
   const key = typeof body.doc_key === "string" ? body.doc_key : "";
@@ -683,7 +782,10 @@ export async function previewDocument(deps: FormsDeps, token: unknown, body: { d
   // the name typed to sign goes on the client's signature line (only a first and last name, as the signing itself asks)
   const name = typeof body.signer_name === "string" ? body.signer_name.replace(/\s+/g, " ").trim().slice(0, 120) : "";
   const signer = SIGNER_NAME.test(name) && name.split(" ").length >= 2 ? name : "";
-  return { status: 200, bytes: await formPdf(deps, key, ctx, answers, fmtLong(now.toISOString()), signer), key };
+  const marks: FormMark[] = [];
+  const fieldNames = new Set(doc.fields.map((f) => f.name));
+  const bytes = await formPdf(deps, key, ctx, answers, fmtLong(now.toISOString()), signer, (m) => { if (m.kind === "sig" || fieldNames.has(m.field)) marks.push(m); });
+  return { status: 200, bytes, key, marks };
 }
 
 /** GET /api/forms/:token/document/:key — one document of this link's packet as its clean printed form: signed, as it was signed
@@ -692,6 +794,8 @@ export async function documentPdf(deps: FormsDeps, token: unknown, docKey: unkno
   const loaded = await loadByToken(deps, token);
   if (!loaded) return NOT_FOUND;
   const key = typeof docKey === "string" ? docKey.replace(/\.pdf$/i, "") : "";
+  // Mark 2026-10-31: the passport checklist is a traveler's to read and print from their page, though it is never signed
+  if (key === CHECKLIST_DOCUMENT && loaded.kind === "traveler") return { status: 200, bytes: await formPdf(deps, key, loaded.ctx, {}, fmtLong(deps.now().toISOString()), ""), key };
   if (!loaded.packet.includes(key)) return reply(404, { success: false, error: "That document is not part of this paperwork." });
   const sig = loaded.signed.get(key);
   if (sig) {
@@ -770,7 +874,7 @@ export function mailAllowed(to: string, allow: string | undefined): boolean {
 
 /** The card for a lead's booking: whose, and where the owner's own signing stands (null: not a cabin's lead). */
 export interface CardStatus { holder: "me" | "other" | null; name: string | null; email: string | null; link_sent_at: string | null; signed: boolean }
-export interface PacketStatus { required: string[]; signed: string[]; complete: boolean; card?: CardStatus | null }
+export interface PacketStatus { required: string[]; signed: string[]; complete: boolean; card?: CardStatus | null; checklist_sent_at?: string | null }
 
 /** For each traveler (and the organizer), the documents asked for and the ones signed. */
 export function packetStatuses(input: { group: Row; cabins: Row[]; travelers: Row[]; signatures: Row[] }): { travelers: Record<string, PacketStatus>; organizer: PacketStatus } {
@@ -782,6 +886,7 @@ export function packetStatuses(input: { group: Row; cabins: Row[]; travelers: Ro
     const card = cardOf(t);
     out[t.id] = {
       required, signed, complete: required.length > 0 && signed.length === required.length,
+      checklist_sent_at: t.checklist_sent_at ?? null,
       card: t.is_lead && cabin
         ? { holder: card.holder, name: card.name || null, email: card.email || null, link_sent_at: t.card_link_sent_at ?? null, signed: input.signatures.some((s) => s.traveler_id === t.id && s.doc_key === CARD_DOCUMENT) }
         : null,
@@ -890,7 +995,7 @@ export async function chooseCardholder(deps: FormsDeps, token: unknown, body: { 
 
 /** POST …/insurance/choice — kept on the file (form_data.insurance.choice / .plan); the packet then carries 23 (the plan) or 07
  *  (the declination). Allianz needs one of the plans the page offered, word for word; the line's plan needs the line's rate on file. */
-export async function chooseInsurance(deps: FormsDeps, token: unknown, body: { insurance_choice?: unknown; insurance_plan?: unknown }): Promise<Reply> {
+export async function chooseInsurance(deps: FormsDeps, token: unknown, body: { insurance_choice?: unknown; insurance_plan?: unknown; ins_provider?: unknown; ins_policy?: unknown }): Promise<Reply> {
   const loaded = await loadByToken(deps, token);
   if (!loaded || loaded.kind !== "traveler" || !loaded.traveler) return NOT_FOUND;
   if (!consentOf(loaded)) return reply(400, { success: false, code: "consent-required", error: "Please agree to signing electronically first: the box at the top of your paperwork." });
@@ -912,10 +1017,23 @@ export async function chooseInsurance(deps: FormsDeps, token: unknown, body: { i
     if (typeof line !== "string" || !line) return reply(400, { success: false, error: "The cruise line's own plan is not on file for this sailing. Please choose another option, or ask Mark.", fields: { insurance_choice: "Not on file for this sailing." } });
     plan = line;
   }
+  // Mark 2026-10-31: a policy of their own names its company and number; they go on the waiver's insurance line
+  let own: { provider: string; policy_number: string } | null = null;
+  if (choice === "own") {
+    const clean = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
+    const provider = clean(body.ins_provider, 120), policy = clean(body.ins_policy, 60);
+    const fields: Record<string, string> = {};
+    if (!provider) fields["ins_provider"] = "Please name your insurance company.";
+    else if (looksLikeCardNumber(provider)) fields["ins_provider"] = "Card numbers are never collected here. Please remove it.";
+    if (!policy) fields["ins_policy"] = "Please give the policy number.";
+    else if (looksLikeCardNumber(policy)) fields["ins_policy"] = "Card numbers are never collected here. Please remove it.";
+    if (Object.keys(fields).length) return reply(400, { success: false, error: "Please check the answers marked below.", fields });
+    own = { provider, policy_number: policy };
+  }
   const t = loaded.traveler;
   const fd: Row = t.form_data && typeof t.form_data === "object" ? t.form_data : {};
   const ins: Row = fd["insurance"] && typeof fd["insurance"] === "object" ? fd["insurance"] : {};
-  await deps.store.updateTraveler(t.id, { form_data: { ...fd, insurance: { ...ins, choice, plan, chosen_at: deps.now().toISOString() } }, updated_at: deps.now().toISOString() });
+  await deps.store.updateTraveler(t.id, { form_data: { ...fd, insurance: { ...ins, choice, plan, provider: own?.provider ?? null, policy_number: own?.policy_number ?? null, chosen_at: deps.now().toISOString() } }, updated_at: deps.now().toISOString() });
   const again = await loadByToken(deps, token);
   return reply(200, { success: true, choice, plan, ...(again ? { packet: publicPacket(again, deps) } : {}) });
 }
@@ -949,9 +1067,17 @@ export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance
         ? { status: q.status, source: null, plans: [], quoted_at: q.quoted_at, note: QUOTE_NOTE, trip_cost: q.input?.trip_cost ?? null }
         : { status: "none", source: null, plans: [], quoted_at: null, note: QUOTE_NOTE, trip_cost: null };
   const ins: Row = loaded.traveler?.form_data?.insurance && typeof loaded.traveler.form_data.insurance === "object" ? loaded.traveler.form_data.insurance : {};
+  const lineText = typeof loaded.group.line_protection === "string" && loaded.group.line_protection.trim() ? loaded.group.line_protection.trim() : null;
+  // Mark 2026-10-31 ("provide the cruise line's insurance quote with Allianz"): the line's own plan is offered with its price beside
+  // the Allianz plans; with no rate on the file the option is not offered at all
+  const fields = loaded.kind === "traveler" ? INSURANCE_CHOICE_FIELDS.map((f) => {
+    const pub = publicField(f, loaded.ctx);
+    if (f.name === "insurance_choice") pub["options"] = (pub["options"] as Array<{ value: string; label: string }>).flatMap((o) => (o.value !== "line" ? [o] : lineText ? [{ value: "line", label: `The cruise line's own protection plan: ${lineText}` }] : []));
+    return pub;
+  }) : [];
   return {
     video_url: deps.insurance?.videoUrl ?? null,
-    line_protection: typeof loaded.group.line_protection === "string" && loaded.group.line_protection.trim() ? loaded.group.line_protection.trim() : null,
+    line_protection: lineText,
     quote,
     // the choice made on the page (Mark 2026-10-30) and the lines that ask it; locked once the insurance document is signed
     choice: {
@@ -960,7 +1086,7 @@ export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance
       chosen_at: typeof ins["chosen_at"] === "string" ? ins["chosen_at"] : null,
       locked: INSURANCE_DOCUMENTS.some((k) => loaded.signed.has(k)),
     },
-    fields: loaded.kind === "traveler" ? INSURANCE_CHOICE_FIELDS.map((f) => publicField(f, loaded.ctx)) : [],
+    fields,
   };
 }
 

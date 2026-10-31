@@ -14,7 +14,7 @@ type Row = Record<string, any>;
 export type ApiFn = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
 /** Mark 2026-10-30: whose card pays for a lead's booking, and where the owner's own signing stands. */
 export type CardStatus = { holder: "me" | "other" | null; name: string | null; email: string | null; link_sent_at: string | null; signed: boolean };
-export type PacketStatus = { required: string[]; signed: string[]; complete: boolean; card?: CardStatus | null };
+export type PacketStatus = { required: string[]; signed: string[]; complete: boolean; card?: CardStatus | null; checklist_sent_at?: string | null };
 export type PaperworkData = {
   signatures: Row[];
   packets: Record<string, PacketStatus>;
@@ -95,6 +95,14 @@ export function TravelerPaperwork({ api, groupId, row, status, onChanged }: { ap
       toast({ title: "Card owner's link emailed", description: `Sent to ${r.sentTo}` });
     }, "The email did not go out");
   };
+  // Mark 2026-10-31: the passport checklist is prepared from the file and emailed on its own (on the last signature, and from here)
+  const emailChecklist = () => {
+    if (!row.email || !window.confirm(`Email ${row.email} their passport and travel document checklist, prepared from the file as it stands today? Any earlier checklist link stops working.`)) return;
+    return run(async () => {
+      const r = await api<{ sentTo: string }>(`/groups/${groupId}/travelers/${row.id}/checklist/send`, "POST", {});
+      toast({ title: "Checklist emailed", description: `Sent to ${r.sentTo}` });
+    }, "The email did not go out");
+  };
 
   return (
     <div className="px-2 py-1 space-y-1">
@@ -110,6 +118,10 @@ export function TravelerPaperwork({ api, groupId, row, status, onChanged }: { ap
           {!card.signed && <button className={btn} disabled={busy || !card.email} onClick={emailCardLink}><Mail className="w-3 h-3" /> Email card link</button>}
         </div>
       )}
+      <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+        <span>Checklist: {status?.checklist_sent_at ? `emailed ${when(status.checklist_sent_at)}` : "not emailed yet (goes out with the last signature)"}</span>
+        <button className={btn} disabled={busy || !row.email} onClick={emailChecklist} title={row.email ? `Email the passport and travel document checklist to ${row.email}` : "Add an email address to this traveler first"}><Mail className="w-3 h-3" /> Email checklist</button>
+      </div>
     </div>
   );
 }

@@ -27,6 +27,8 @@ export interface FormPdfInput {
   logo?: Buffer | null;
   /** told each word written on the form (for the tests) */
   onText?: (word: string) => void;
+  /** told where each of the client's boxes and their signature line land (for the page's own tick and name box) */
+  onMark?: (mark: FormMark) => void;
 }
 
 const INK = "#111111";
@@ -38,9 +40,16 @@ const SIZE = 10.5;
 
 type Piece =
   | { k: "text"; text: string; bold: boolean; italic: boolean }
-  | { k: "answer"; text: string }
-  | { k: "blank" }
-  | { k: "box"; on: boolean };
+  | { k: "answer"; text: string; mark?: "sig" }
+  | { k: "blank"; mark?: "sig" }
+  | { k: "box"; on: boolean; field?: string; value?: string };
+
+/** Where a box the client ticks, or the client's signature line, sits on the printed form (PDF points from the page's top left,
+ *  page 0-based): the page lays the tick and the name box right there (Mark 2026-10-31: the health declaration in its place on
+ *  the document, the signature block aligned with the signature). */
+export type FormMark =
+  | { kind: "box"; field: string; value?: string; page: number; x: number; y: number; w: number; h: number }
+  | { kind: "sig"; page: number; x: number; y: number; w: number; h: number; right: number };
 
 const TOKEN = /\{\{(in|ta|ck|ch|today|logo|bl|sig|sigdate|signame)(?::([^:}]+))?(?::([^}]+))?\}\}|_{3,}|[☐☒☑]/g;
 
@@ -78,17 +87,17 @@ function inRun(text: string, bold: boolean, italic: boolean, input: Pick<FormPdf
       continue;
     }
     const v = name ? a[name] : undefined;
-    const say = (s: string | undefined) => out.push(s ? { k: "answer", text: s } : { k: "blank" });
+    const say = (s: string | undefined, mark?: "sig") => out.push(s ? { k: "answer", text: s, ...(mark ? { mark } : {}) } : { k: "blank", ...(mark ? { mark } : {}) });
     switch (kind) {
-      // Mark 2026-10-30: once the client has answered, a line they left empty reads "N/A — left intentionally blank" on the
-      // document they are shown and sign; a form printed with no answers at all keeps its blank lines.
-      case "in": case "ta": { const s = typeof v === "string" ? v.replace(/\s+/g, " ").trim() : ""; say(s || (Object.keys(a).length ? "N/A — left intentionally blank" : undefined)); break; }
+      // Mark 2026-10-30: once the client has answered, a line they left empty says so on the document they are shown and sign
+      // ("N/A", Mark 2026-10-31: one or the other, never both); a form printed with no answers at all keeps its blank lines.
+      case "in": case "ta": { const s = typeof v === "string" ? v.replace(/\s+/g, " ").trim() : ""; say(s || (Object.keys(a).length ? "N/A" : undefined)); break; }
       case "today": say(input.today); break;
-      case "sig": say(input.signer ? `/s/ ${input.signer}` : undefined); break;
+      case "sig": say(input.signer ? `/s/ ${input.signer}` : undefined, "sig"); break;
       case "sigdate": say(input.signer ? input.today : undefined); break;
       case "signame": say(input.signer || undefined); break;
-      case "ck": out.push({ k: "box", on: v === true }); break;
-      case "ch": out.push({ k: "box", on: Array.isArray(v) ? v.includes(value!) : v === value }); break;
+      case "ck": out.push({ k: "box", on: v === true, field: name! }); break;
+      case "ch": out.push({ k: "box", on: Array.isArray(v) ? v.includes(value!) : v === value, field: name!, value: value! }); break;
       case "logo": break;
       default: out.push({ k: "blank" });
     }
@@ -135,7 +144,7 @@ export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
         const list = pieces(text, input);
         if (!list.some((p) => p.k !== "text" || p.text.trim())) return;
         const size = o.size ?? SIZE, lead = size * 1.42, x0 = (o.x ?? MARGIN) + (o.indent ?? 0), w = (o.w ?? width) - (o.indent ?? 0);
-        type Atom = { kind: "word" | "answer" | "blank" | "box"; text: string; font: string; color: string; wd: number; space: number; on?: boolean };
+        type Atom = { kind: "word" | "answer" | "blank" | "box"; text: string; font: string; color: string; wd: number; space: number; on?: boolean; field?: string; value?: string; mark?: "sig" };
         const atoms: Atom[] = [];
         const fontOf = (b: boolean, i: boolean) => (b ? (i ? "Helvetica-BoldOblique" : "Helvetica-Bold") : i ? "Helvetica-Oblique" : "Helvetica");
         const spaceW = doc.font("Helvetica").fontSize(size).widthOfString(" ");
@@ -149,9 +158,9 @@ export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
         };
         for (const p of list) {
           if (p.k === "text") words(p.text, "word", fontOf(p.bold || !!o.bold, p.italic || !!o.italic), o.color ?? INK);
-          else if (p.k === "answer") { words(p.text, "answer", "Helvetica", PEN); if (atoms.length) atoms[atoms.length - 1]!.space = spaceW; }
-          else if (p.k === "blank") atoms.push({ kind: "blank", text: "", font: "Helvetica", color: INK, wd: Math.min(120, w * 0.5), space: spaceW });
-          else atoms.push({ kind: "box", text: "", font: "Helvetica", color: INK, wd: size * 0.85, space: size * 0.45, on: p.on });
+          else if (p.k === "answer") { const n = atoms.length; words(p.text, "answer", "Helvetica", PEN); if (atoms.length) atoms[atoms.length - 1]!.space = spaceW; if (p.mark && atoms[n]) atoms[n]!.mark = p.mark; }
+          else if (p.k === "blank") atoms.push({ kind: "blank", text: "", font: "Helvetica", color: INK, wd: Math.min(120, w * 0.5), space: spaceW, ...(p.mark ? { mark: p.mark } : {}) });
+          else atoms.push({ kind: "box", text: "", font: "Helvetica", color: INK, wd: size * 0.85, space: size * 0.45, on: p.on, ...(p.field ? { field: p.field } : {}), ...(p.value ? { value: p.value } : {}) });
         }
         let x = x0, y = o.y ?? doc.y;
         const bottomLimit = doc.page.height - 72;
@@ -159,16 +168,20 @@ export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
         for (const at of atoms) {
           if (x > x0 && x + at.wd > x0 + w) { x = x0; y += lead; if (y + lead > bottomLimit) { doc.addPage(); y = doc.page.margins.top; } }
           const base = y + size * 0.82;    // where the letters sit
+          const page = doc.bufferedPageRange().count - 1;
           if (at.kind === "word" || at.kind === "answer") {
             doc.font(at.font).fontSize(size).fillColor(at.color).text(at.text, x, y, { lineBreak: false });
             input.onText?.(at.text);
             if (at.kind === "answer") doc.moveTo(x - 1, base + 2).lineTo(x + at.wd + (at.space ? at.space : 1), base + 2).strokeColor(PEN).lineWidth(0.6).stroke();
+            if (at.mark === "sig") input.onMark?.({ kind: "sig", page, x, y, w: at.wd, h: lead, right: x0 + w });
           } else if (at.kind === "blank") {
             doc.moveTo(x, base + 2).lineTo(x + at.wd, base + 2).strokeColor(INK).lineWidth(0.6).stroke();
+            if (at.mark === "sig") input.onMark?.({ kind: "sig", page, x, y, w: at.wd, h: lead, right: x0 + w });
           } else {
             const s0 = at.wd, top = base - s0 + 1;
             doc.rect(x, top, s0, s0).strokeColor(INK).lineWidth(0.8).stroke();
             if (at.on) doc.rect(x + 2, top + 2, s0 - 4, s0 - 4).fill(PEN);
+            if (at.field) input.onMark?.({ kind: "box", field: at.field, ...(at.value ? { value: at.value } : {}), page, x, y: top, w: s0, h: s0 });
           }
           x += at.wd + at.space;
         }

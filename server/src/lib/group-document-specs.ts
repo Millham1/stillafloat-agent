@@ -5,15 +5,19 @@
 // document order, and group-documents.test.ts renders every document so a template that drifts from
 // its spec fails the build instead of printing a wrong page.
 //
-// WHO SIGNS WHAT (Mark 2026-10-30: the six live Cornerstone documents plus the card authorization, behind one information page):
+// WHO SIGNS WHAT (Mark 2026-10-30: the live Cornerstone documents plus the card authorization, behind one information page):
 //   every traveler        15 traveler information, 01 terms, then ONE insurance document decided by the choice made on the page
 //                         after the video and the price (Mark 2026-10-30: "either a declination or the approval with the quote"):
 //                         23 Travel insurance: your plan (Allianz at the quoted price, or the line's own plan) or
-//                         07 Cornerstone's declination (no insurance, or the traveler's own policy); then 05 waiver, 16 checklist
-//   the cabin's lead      + 12 cruise booking agreement, + 22 Credit card authorization (last four + expiry only) — signed by the
-//                         lead when the card is theirs, or by the card's owner on a link of their own when it is someone else's
+//                         07 Cornerstone's declination (no insurance, or the traveler's own policy); then 05 waiver
+//   the cabin's lead      + 12 cruise booking agreement right after the insurance document (Mark 2026-10-31: its protection line
+//                         and cost row carry the choice), + 22 Credit card authorization (last four + expiry only) last — signed by
+//                         the lead when the card is theirs, or by the card's owner on a link of their own when it is someone else's
 //   the group organizer   09 group travel contract (the agent's countersignature is a later dashboard step)
 //   only with fees on file 02 travel planning agreement, 03 service fee agreement
+//   never signed          16 passport and travel document checklist (Mark 2026-10-31): prepared from the file — the passport on
+//                         file, each itinerary country's visa and vaccination requirements, the insurance choice — and emailed
+//                         on its own once the paperwork is complete, or from the group file
 //   in no packet          04 cancellation policy, 06 card authorization (clients pay the line directly), 13 and 14 questionnaires,
 //                         20 and 21 (the two-document packet of 10/29, kept so copies signed under it still render)
 //
@@ -23,10 +27,12 @@
 import {
   amountText, bookingReference, cabinTotal, cleanValue, depositPerPerson, destinationText, fee, finalPaymentDays,
   fmtLong, fmtMoney, fullName, mapTable, perPersonPrice, TEMPLATE_VERSION_DATE,
-  type Answers, type Block, type DocCtx, type DocSpec, type FieldSpec, type Option, type Row,
+  type Answers, type Block, type DocCtx, type DocSpec, type EntryRequirement, type FieldSpec, type Option, type Row, type VaccineLine,
 } from "./group-document-kit";
 import { displayName } from "./group-marketing";
 import { planLabel, plansFromText } from "./allianz-quote";
+import { STATE_COUNTRY_INDEX, countriesOf } from "./entry-requirements";
+import { itineraryPorts } from "./travel-advisories";
 
 // ── small lookups ─────────────────────────────────────────────────────────────
 
@@ -51,6 +57,12 @@ function dropLines(blocks: Block[], patterns: RegExp[]): Block[] {
 function highestAdvisory(ctx: DocCtx): string {
   const levels = ctx.advisories.map((a) => a.level).filter((l): l is 1 | 2 | 3 | 4 => l != null);
   return levels.length ? String(Math.max(...levels)) : "unknown";
+}
+const box = (on: boolean | null | undefined) => (on ? "☒" : "☐");
+/** The waiver's advisory boxes, the highest level ticked by the file (Mark 2026-10-31: filled on the document, never asked). */
+function advisoryBoxes(ctx: DocCtx): string {
+  const top = highestAdvisory(ctx);
+  return `**Current Advisory Level:** ${["1", "2", "3", "4", "unknown"].map((l, i) => `${box(top === l)} ${i < 4 ? `Level ${l}` : "Unknown"}`).join(" ")}`;
 }
 
 /** One line per country of the itinerary, with its ports, as the waiver prints them. */
@@ -273,6 +285,27 @@ const CANCELLATION_04: DocSpec = {
 
 // ── 05 — liability waiver ─────────────────────────────────────────────────────
 
+// Mark 2026-10-31: "page 3 of the liability waiver didn't populate the choices on the insurance document": the waiver's insurance
+// lines follow the choice made on the page, written by the file, never asked again.
+const hasInsurance = (c: DocCtx) => ["quote", "line", "own"].includes(insuranceChoice(c));
+function insuranceProvider(c: DocCtx): string {
+  switch (insuranceChoice(c)) {
+    case "quote": return "Allianz Global Assistance";
+    case "line": return `${cleanValue(displayName(c.group.cruise_line)) || "The cruise line"} (the line's own protection plan)`;
+    case "own": return formText(c, "insurance.provider");
+    case "decline": return "N/A";
+    default: return "";
+  }
+}
+function insurancePolicyNumber(c: DocCtx): string {
+  switch (insuranceChoice(c)) {
+    case "quote": case "line": return "Assigned when the policy is issued";
+    case "own": return formText(c, "insurance.policy_number");
+    case "decline": return "N/A";
+    default: return "";
+  }
+}
+
 const WAIVER_05: DocSpec = {
   key: "05-liability-waiver",
   title: "Liability Waiver and Release",
@@ -283,21 +316,18 @@ const WAIVER_05: DocSpec = {
     ...CLIENT_LINES("**Full Name:**"),
     ...TRIP_LINES,
     { after: "Booking Reference Number:", fill: bookingReference, label: "Booking reference" },
-    { after: "Current Advisory Level:", choice: "advisory_level" },
-    { after: "I/We understand that purchasing comprehensive travel insurance", choice: "insurance_status" },
-    { after: "Policy Provider:", slot: "ins_provider" },
-    { after: "Policy Number:", slot: "ins_policy" },
+    // Mark 2026-10-30: "we are supposed to be pulling the travel advisory levels for each port in the itinerary": the highest level
+    // among the itinerary's countries (travel.state.gov, read when the page opens), ticked by the file, never a question.
+    { sub: "**Current Advisory Level:** ☐ Level 1 ☐ Level 2 ☐ Level 3 ☐ Level 4 ☐ Unknown", with: advisoryBoxes },
+    { sub: "☐ **I/We HAVE purchased travel insurance.**", with: (c) => `${box(hasInsurance(c))} **I/We HAVE purchased travel insurance.**` },
+    { after: "Policy Provider:", fill: insuranceProvider, label: "Insurance provider" },
+    { after: "Policy Number:", fill: insurancePolicyNumber, label: "Policy number" },
+    { sub: "☐ **I/We have DECLINED travel insurance.**", with: (c) => `${box(insuranceChoice(c) === "decline")} **I/We have DECLINED travel insurance.**` },
     { after: "HEALTH DECLARATION", choice: "health_ack" },
   ],
   fields: [
-    // Mark 2026-10-30: "we are supposed to be pulling the travel advisory levels for each port in the itinerary": the highest level
-    // among the itinerary's countries (travel.state.gov, read when the page opens), never a question.
-    { name: "advisory_level", label: "Current travel advisory level", kind: "choice", prefill: (c) => highestAdvisory(c), options: [opt("1", "Level 1", "Level 1"), opt("2", "Level 2", "Level 2"), opt("3", "Level 3", "Level 3"), opt("4", "Level 4", "Level 4"), opt("unknown", "Unknown", "Unknown")] },
-    { name: "insurance_status", label: "Travel insurance", kind: "choice", options: [opt("have", "I have purchased travel insurance", "**I/We HAVE purchased"), opt("declined", "I have declined travel insurance", "**I/We have DECLINED")] },
-    text("ins_provider", "Insurance provider"),
-    text("ins_policy", "Policy number"),
     // Mark 2026-10-30: "we haven't shown them a health declaration … this should show in the signing stage on the actual document":
-    // ticked on the waiver's own signing screen, under Cornerstone's Health Declaration, in its words.
+    // ticked on the waiver itself, in its place under Cornerstone's Health Declaration (Mark 2026-10-31: in document order).
     {
       name: "health_ack", label: "I am aware of and accept the health-related risks associated with my intended destination.", kind: "check", required: true,
       onDocument: {
@@ -344,6 +374,9 @@ export const INSURANCE_CHOICE_FIELDS: FieldSpec[] = [
   },
   // "they should be able to select the policy/price here": the Allianz plan picked on the insurance step, with its price
   text("insurance_plan", "The Allianz plan you chose", { maxLength: 160, form: "insurance.plan", required: (a) => a["insurance_choice"] === "quote" }),
+  // a policy of their own: its company and number go on the waiver's insurance line (Mark 2026-10-31)
+  text("ins_provider", "Your own policy: the insurance company", { maxLength: 120, form: "insurance.provider", required: (a) => a["insurance_choice"] === "own" }),
+  text("ins_policy", "Your own policy: the policy number", { maxLength: 60, form: "insurance.policy_number", required: (a) => a["insurance_choice"] === "own" }),
 ];
 export const INSURANCE_CHOICES = ["quote", "line", "own", "decline"] as const;
 export const INSURANCE_DOCUMENTS = ["23-insurance-plan", "07-travel-insurance-declination"] as const;
@@ -445,7 +478,147 @@ const PLAN_23: DocSpec = {
   fields: [],
 };
 
-// ── 16 — passport and travel document checklist (read, then acknowledge) ──────
+// ── 16 — passport and travel document checklist: prepared from the file, emailed on its own, never signed (Mark 2026-10-31) ──
+//
+// "the passport section is not pre-populated from the data collected … we need to do a visa/vaccination requirements check for
+// every country on the itinerary … it should be separate / pre-populated with the info we have, and sent separately". Every box
+// the file can answer is ticked and its note written; the traveler's own to-dos (the photocopy, the e-docs) stay theirs to tick.
+// The visa and vaccination lines come from ctx.entry (lib/entry-requirements.ts: the CDC's page per country, and the State
+// Department's when it answers); a line that could not be read says so and names the page to check. Nothing is guessed.
+
+type TableBlock = Extract<Block, { t: "table" }>;
+/** Rewrite the rows of the table whose first row starts with `firstRow` (the checklist's tables all share the header "Item"). */
+function editTable(blocks: Block[], firstRow: string, fn: (rows: string[][]) => string[][]): Block[] {
+  const i = blocks.findIndex((b) => b.t === "table" && (b.rows[0]?.[0] ?? "").startsWith(firstRow));
+  if (i < 0) throw new Error(`client document 16 no longer matches its spec: table "${firstRow}" not found`);
+  const t = blocks[i] as TableBlock;
+  return [...blocks.slice(0, i), { ...t, rows: fn(t.rows) }, ...blocks.slice(i + 1)];
+}
+/** One row of a checklist table, by the start of its item: the box ticked or not, the note replaced. Columns: Item, [Required?,] Completed, Notes. */
+function rowSet(rows: string[][], item: string, patch: { required?: boolean | null; done?: boolean; notes?: string }): string[][] {
+  return rows.map((r) => {
+    if (!(r[0] ?? "").startsWith(item)) return r;
+    const out = [...r];
+    const four = out.length === 4;
+    if (patch.required !== undefined) out[1] = yesNo(patch.required);
+    if (patch.done !== undefined) out[four ? 2 : 1] = box(patch.done);
+    if (patch.notes !== undefined) out[four ? 3 : 2] = patch.notes;
+    return out;
+  });
+}
+const yesNo = (v: boolean | null) => (v === null ? "☐ Yes ☐ No" : v ? "☒ Yes ☐ No" : "☐ Yes ☒ No");
+const readOn = (iso: string | undefined) => (iso ? `read ${fmtLong(iso)}` : "");
+
+/** Six months past the return date, as YYYY-MM-DD; "" when the file has no return date. */
+function sixMonthsPastReturn(c: DocCtx): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(c.group.return_date ?? ""));
+  if (!m) return "";
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1 + 6, Number(m[3]))).toISOString().slice(0, 10);
+}
+const passportOnFile = (c: DocCtx) => !!cleanValue(c.traveler?.passport_last4);
+const passportExpiry = (c: DocCtx) => String(c.traveler?.passport_expiry ?? "").slice(0, 10);
+/** Valid six months past the return date (Cornerstone's rule); null when the file lacks a date. */
+function passportSixMonths(c: DocCtx): boolean | null {
+  const exp = passportExpiry(c), need = sixMonthsPastReturn(c);
+  return /^\d{4}-\d{2}-\d{2}$/.test(exp) && need ? exp >= need : null;
+}
+function passportNote(c: DocCtx): string {
+  if (!passportOnFile(c)) return "No passport on file with us";
+  const bits = [`On file: ending ${cleanValue(c.traveler?.passport_last4)}`, cleanValue(c.traveler?.passport_country) ? `issued by ${cleanValue(c.traveler?.passport_country)}` : "", fmtLong(c.traveler?.passport_expiry) ? `expires ${fmtLong(c.traveler?.passport_expiry)}` : ""];
+  return bits.filter(Boolean).join(", ");
+}
+function expiryNote(c: DocCtx): string {
+  const exp = fmtLong(c.traveler?.passport_expiry);
+  if (!exp) return "Expiration: —";
+  const ok = passportSixMonths(c);
+  return ok === false ? `Expiration: ${exp}. Renew before ${fmtLong(sixMonthsPastReturn(c))}: many countries ask for six months past your return` : `Expiration: ${exp}`;
+}
+/** Closed loop: the itinerary on file starts and ends in the same U.S. port (the last stop named, not the deduplicated port list). */
+function closedLoop(c: DocCtx): boolean {
+  const stops = (Array.isArray(c.group.itinerary) ? (c.group.itinerary as Row[]) : []).map((s) => (typeof s?.port === "string" ? s.port.trim() : "")).filter((p) => p && !/^(at sea|cruising|sea day|scenic cruising)/i.test(p));
+  const first = cleanValue(c.group.embark_port) || stops[0] || "", last = stops[stops.length - 1] || "";
+  return !!first && !!last && stops.length > 1 && first.toLowerCase() === last.toLowerCase() && countriesOf([first]).length === 0;
+}
+const entryFor = (c: DocCtx) => c.entry;
+const vaccineLine = (e: EntryRequirement, re: RegExp): VaccineLine | undefined => e.vaccines?.lines.find((l) => re.test(l.name));
+/** The visa line per country: yes / no / could not be read, with the words and the page. */
+function visaRows(c: DocCtx): string[][] {
+  const countries = countriesOf(itineraryPorts(c.group));
+  if (!countries.length) return [["No foreign port on this itinerary", "☐ Yes ☒ No", "Not needed", "☐", "☐", "—"]];
+  return countries.map(({ country, ports }) => {
+    const e = entryFor(c).find((x) => x.country === country);
+    const where = `${country} (${ports.map(cleanValue).join(", ")})`;
+    if (!e?.visa) return [where, "☐ Yes ☐ No", `Could not be read from travel.state.gov on {{today}}. Check: ${e?.visa_url ?? STATE_COUNTRY_INDEX}`, "☐", "☐", "—"];
+    const v = e.visa;
+    const type = v.tourist_visa_required === false ? `Visa-free for U.S. passport holders${v.passport_validity ? `. Passport validity: ${cleanValue(v.passport_validity)}` : ""} (travel.state.gov, ${readOn(v.read_at)})`
+      : v.tourist_visa_required === true ? `Visa required${v.passport_validity ? `. Passport validity: ${cleanValue(v.passport_validity)}` : ""} (travel.state.gov, ${readOn(v.read_at)}): ${v.url}`
+        : `See ${v.url} (travel.state.gov, ${readOn(v.read_at)})`;
+    return [where, yesNo(v.tourist_visa_required), type, "☐", "☐", v.tourist_visa_required ? "—" : "N/A"];
+  });
+}
+function visaIntro(c: DocCtx): string {
+  const countries = countriesOf(itineraryPorts(c.group));
+  if (!countries.length) return "This cruise calls at no foreign port, so no visa applies.";
+  const read = countries.filter(({ country }) => entryFor(c).find((x) => x.country === country)?.visa);
+  return read.length === countries.length
+    ? "For a U.S. passport holder, from the U.S. Department of State's country information (travel.state.gov) for every country on this itinerary."
+    : `For a U.S. passport holder. The U.S. Department of State's country information (travel.state.gov) could not be read for ${countries.length - read.length === countries.length ? "this itinerary" : "every country"} on {{today}}; the page to check is in the table.`;
+}
+/** Yellow fever at entry, across the itinerary: required anywhere → yes; read everywhere and required nowhere → no; else unknown. */
+function yellowFever(c: DocCtx): { required: boolean | null; notes: string } {
+  const countries = countriesOf(itineraryPorts(c.group));
+  if (!countries.length) return { required: false, notes: "No foreign port on this itinerary" };
+  const notes: string[] = []; let required: boolean | null = false;
+  for (const { country } of countries) {
+    const e = entryFor(c).find((x) => x.country === country);
+    const yf = e ? vaccineLine(e, /yellow fever/i) : undefined;
+    if (!e?.vaccines) { required = required === true ? true : null; notes.push(`${country}: could not be read from the CDC on {{today}}`); continue; }
+    if (yf?.advice === "required") { required = true; notes.push(`${country}: required (CDC, ${readOn(e.vaccines.read_at)})`); }
+    else if (yf?.advice === "not-required" || !yf) notes.push(`${country}: not required for travel from the United States (CDC, ${readOn(e.vaccines.read_at)})`);
+    else { if (required !== true) required = null; notes.push(`${country}: ${cleanValue(yf.text)} (CDC, ${readOn(e.vaccines.read_at)})`); }
+  }
+  return { required, notes: notes.join("; ") };
+}
+/** What the CDC recommends per country, in one line: "The Bahamas: Hepatitis A, Hepatitis B, Measles; consider Typhoid, Rabies". */
+function cdcRecommended(c: DocCtx): string {
+  const out: string[] = [];
+  for (const { country } of countriesOf(itineraryPorts(c.group))) {
+    const e = entryFor(c).find((x) => x.country === country);
+    if (!e?.vaccines) { out.push(`${country}: could not be read from the CDC on {{today}}`); continue; }
+    const rec = e.vaccines.lines.filter((l) => l.advice === "recommended").map((l) => cleanValue(l.name));
+    const con = e.vaccines.lines.filter((l) => l.advice === "consider").map((l) => cleanValue(l.name));
+    out.push(`${country}: ${[rec.length ? rec.join(", ") : "nothing beyond routine vaccines", con.length ? `consider ${con.join(", ")}` : ""].filter(Boolean).join("; ")} (CDC, ${readOn(e.vaccines.read_at)}: ${e.vaccines.url})`);
+  }
+  return out.join(". ") || "—";
+}
+function malariaNote(c: DocCtx): string {
+  const out: string[] = [];
+  for (const { country } of countriesOf(itineraryPorts(c.group))) {
+    const e = entryFor(c).find((x) => x.country === country);
+    const m = e ? vaccineLine(e, /malaria/i) : undefined;
+    if (m) out.push(`${country}: ${cleanValue(m.text)} (CDC)`);
+  }
+  return out.join("; ") || "Consult physician";
+}
+/** The insurance choice on the file, in the checklist's words. */
+function insuranceNote(c: DocCtx): string {
+  switch (insuranceChoice(c)) {
+    case "quote": return `Allianz, ${cleanValue(insurancePlan(c)) || "the plan chosen"} (chosen on your paperwork): the policy documents come from Allianz once it is issued`;
+    case "line": return `The cruise line's own protection plan${cleanValue(c.group.line_protection) ? `: ${cleanValue(c.group.line_protection)}` : ""} (chosen on your paperwork)`;
+    case "own": return `Your own policy${formText(c, "insurance.provider") ? `: ${formText(c, "insurance.provider")}` : ""}${formText(c, "insurance.policy_number") ? `, policy ${formText(c, "insurance.policy_number")}` : ""}`;
+    case "decline": return "Declined on your paperwork";
+    default: return "Not chosen yet";
+  }
+}
+function advisoryNote(c: DocCtx): string {
+  const byCountry = new Map<string, string>();
+  for (const a of c.advisories) if (a.level != null) byCountry.set(a.country, a.title);
+  return byCountry.size ? `${[...byCountry.entries()].map(([k, v]) => `${k}: ${v}`).join("; ")} (travel.state.gov, {{today}})` : "travel.state.gov";
+}
+const trustedPrograms = (c: DocCtx) => {
+  const p = c.traveler?.form_data?.trusted?.programs;
+  return Array.isArray(p) ? p.filter((x: unknown): x is string => typeof x === "string" && x !== "none") : [];
+};
 
 const CHECKLIST_16: DocSpec = {
   key: "16-passport-document-checklist",
@@ -457,11 +630,82 @@ const CHECKLIST_16: DocSpec = {
     { after: "Travel Dates:** From", fill: (c) => fmtLong(c.group.sail_date), label: "Sail date" },
     { after: " To ", fill: (c) => fmtLong(c.group.return_date), label: "Return date" },
     { after: "Date Checklist Completed:", today: true },
+    { sub: "Visa requirements depend on your citizenship and your destination(s). Your agent will advise you on requirements specific to your trip.", with: visaIntro },
   ],
   fields: [],
+  edits: [
+    (blocks, c) => editTable(blocks, "I have a valid U.S. passport", (rows) => {
+      const us = passportOnFile(c) && /united states/i.test(cleanValue(c.traveler?.passport_country) || "United States");
+      rows = rowSet(rows, "I have a valid U.S. passport", { done: us, notes: passportNote(c) });
+      rows = rowSet(rows, "Passport does NOT expire within 6 months", { done: passportSixMonths(c) === true, notes: expiryNote(c) });
+      return rows;
+    }),
+    (blocks, c) => mapTable(blocks, (t) => t.header[0] === "Destination", (t) => [{ ...t, rows: visaRows(c) }]),
+    (blocks, c) => editTable(blocks, "COVID-19 vaccination record", (rows) => {
+      const yf = yellowFever(c);
+      rows = rowSet(rows, "COVID-19 vaccination record", { notes: "Not an entry requirement on this itinerary as far as the CDC's pages say; the CDC asks every traveler to be up to date" });
+      rows = rowSet(rows, "Yellow fever vaccination certificate", { required: yf.required, notes: yf.notes });
+      rows = rowSet(rows, "Malaria prophylaxis", { notes: malariaNote(c) });
+      rows = rowSet(rows, "Required vaccinations documentation", { required: yf.required, notes: cdcRecommended(c) });
+      rows = rowSet(rows, "International Certificate of Vaccination", { required: yf.required, notes: yf.required ? "Needed: yellow fever is required on this itinerary" : yf.required === false ? "Not needed on this itinerary" : "" });
+      rows = rowSet(rows, "Travel health insurance", { done: hasInsurance(c), notes: insuranceNote(c) });
+      return rows;
+    }),
+    (blocks, c) => editTable(blocks, "Passport (preferred even", (rows) => {
+      rows = rowSet(rows, "Passport (preferred even", { done: passportOnFile(c), notes: passportOnFile(c) ? passportNote(c) : "No passport on file with us" });
+      rows = rowSet(rows, "Birth certificate + government photo ID", { notes: passportOnFile(c) ? "Not needed: your passport is on file" : closedLoop(c) ? "Needed if you sail without a passport: this cruise starts and ends in the same U.S. port. Must be a certified/official copy" : "A passport is required unless the cruise starts and ends in the same U.S. port; ask us if you are not sure" });
+      const needs = [formText(c, "notes"), cleanValue(c.traveler?.special_needs)].filter(Boolean);
+      if (needs.length) rows = rowSet(rows, "Dietary/special needs requests", { notes: `On file with us: ${needs.join("; ")}` });
+      return rows;
+    }),
+    (blocks, c) => editTable(blocks, "Flight confirmation and e-ticket", (rows) => {
+      const tp = trustedPrograms(c);
+      return tp.length ? rowSet(rows, "TSA PreCheck / Global Entry number", { notes: `On file with us: ${tp.map((p) => ({ tsa: "TSA PreCheck", global: "Global Entry", nexus: "NEXUS", clear: "CLEAR" })[p] ?? p).join(", ")}` }) : rows;
+    }),
+    (blocks, c) => editTable(blocks, "Notify bank and credit cards", (rows) => {
+      rows = rowSet(rows, "Travel insurance policy documents", { notes: insuranceNote(c) });
+      const ec = cleanValue(c.traveler?.emergency_name) || formText(c, "emergency.primary.name");
+      if (ec) rows = rowSet(rows, "Emergency contact list saved", { notes: `On file with us: ${ec}` });
+      rows = rowSet(rows, "Agent contact information saved", { notes: c.business.contactLine });
+      return rows;
+    }),
+    (blocks, c) => editTable(blocks, "Itinerary reviewed and understood", (rows) => rowSet(rows, "Current U.S. State Department travel advisory reviewed", { notes: advisoryNote(c) })),
+  ],
 };
 
 // ── 12 — cruise booking agreement (the cabin's lead signs) ────────────────────
+
+/** The group file's inclusions and amenities, as one lower-case text, for the scope-of-services boxes. */
+function offersText(c: DocCtx): string {
+  const parts: unknown[] = [c.group.inclusions, c.group.amenities];
+  return parts.flatMap((p) => (Array.isArray(p) ? p : [p])).filter((x): x is string => typeof x === "string").join(" ").toLowerCase();
+}
+const offers = (re: RegExp) => (c: DocCtx) => re.test(offersText(c));
+const always = () => true;
+const tick = (phrase: string, when: (c: DocCtx) => boolean): DocSpec["rules"][number] => ({ sub: `☐ ${phrase}`, with: (c) => `${box(when(c))} ${phrase}` });
+/** The scope-of-services line, in the template's order (the cursor moves forward only). */
+const SCOPE_LINES: DocSpec["rules"] = [
+  tick("Cruise research and cabin selection", always),
+  tick("Cruise booking and cabin assignment", always),
+  tick("Dining reservations and special seating requests", (c) => !!cleanValue(c.cabin?.dining)),
+  tick("Pre/post cruise hotel arrangements", offers(/hotel/)),
+  tick("Air travel coordination", offers(/\bair\b|airfare|flight/)),
+  tick("Transfer arrangements (hotel to port, port to hotel)", offers(/transfer|shuttle/)),
+  tick("Excursion research and booking", offers(/excursion|shore/)),
+  tick("Travel insurance consultation", always),
+  tick("Passport and documentation guidance", always),
+  tick("Pre-departure documents and final booking summary", always),
+  tick("Emergency contact during sailing", always),
+];
+/** The per-person price of the protection chosen on the page, as the page showed it; "" when none was chosen or no price is on file. */
+function chosenPremium(c: DocCtx): string {
+  const choice = insuranceChoice(c);
+  if (choice === "quote") { const p = plansFromText(insurancePlan(c))[0]; return p ? fmtMoney(p.price_per_person) : cleanValue(insurancePlan(c)); }
+  if (choice === "line") { const p = plansFromText(c.group.line_protection)[0]; return p ? fmtMoney(p.price_per_person) : cleanValue(c.group.line_protection); }
+  if (choice === "own") return "Own policy";
+  if (choice === "decline") return "Declined";
+  return "";
+}
 
 const BOOKING_12: DocSpec = {
   key: "12-cruise-booking-agreement",
@@ -482,7 +726,7 @@ const BOOKING_12: DocSpec = {
     { after: "Itinerary / Destination(s):", fill: (c) => destinationText(c.group), label: "Itinerary" },
     { after: "Cruise Line Booking Number:", fill: (c) => cleanValue(c.cabin?.booking_number) || cleanValue(c.group.group_number), label: "Booking number" },
     { after: "Cabin Category:", fill: (c) => [c.cabin?.category, c.cabin?.category_code ? `(${c.cabin.category_code})` : ""].map(cleanValue).filter(Boolean).join(" "), label: "Cabin category" },
-    { after: "Cabin Number (if assigned):", fill: (c) => cleanValue(c.cabin?.cabin_num), label: "Cabin number" },
+    { after: "Cabin Number (if assigned):", fill: (c) => cleanValue(c.cabin?.cabin_num) || "To be assigned", label: "Cabin number" },
     { after: "Number of Nights:", fill: (c) => (nights(c.group) ? String(nights(c.group)) : ""), label: "Nights" },
     { after: "Dining Preference:", choice: "dining" },
     { after: "Special Occasions:", choice: "occasions" },
@@ -490,6 +734,9 @@ const BOOKING_12: DocSpec = {
     { after: "Date of Occasion:", slot: "occasion_date" },
     { after: "Special Needs / Accessibility Requirements:", area: "special_needs" },
     { after: "Dietary Restrictions:", area: "dietary" },
+    // Mark 2026-10-31 ("not pre-populated"): the services every group booking gets from Still Afloat are ticked; air, hotels,
+    // transfers and excursions only when the group file's inclusions or amenities say the group has them.
+    ...SCOPE_LINES,
     { after: "Final payment is due no later than", fill: (c) => (finalPaymentDays(c.group) ? String(finalPaymentDays(c.group)) : ""), label: "Final payment days" },
     {
       sub: "The following are typical cruise line cancellation penalties.",
@@ -498,6 +745,9 @@ const BOOKING_12: DocSpec = {
         : "The following are typical cruise line cancellation penalties.",
     },
     { after: "Agent Cancellation/Processing Fee:", fill: (c) => (fee(c, "cancellation_fee") ? amountText(fee(c, "cancellation_fee")!.amount) : ""), label: "Cancellation processing fee" },
+    // Mark 2026-10-31: the protection boxes follow the insurance choice made on the page (the agreement comes after that step)
+    { sub: "☐ Client is interested in travel insurance options.", with: (c) => `${box(["quote", "line"].includes(insuranceChoice(c)))} Client is interested in travel insurance options.` },
+    { sub: "☐ Client declines travel insurance.", with: (c) => `${box(["decline", "own"].includes(insuranceChoice(c)))} Client declines travel insurance.` },
   ],
   fields: [
     { name: "dining", label: "Dining preference", kind: "choice", prefill: (c) => diningFromFile(c), options: [opt("early", "Early Seating"), opt("late", "Late Seating"), opt("anytime", "Anytime Dining"), opt("none", "No Preference")], form: "cabin_preferences.dining" },
@@ -526,6 +776,9 @@ const BOOKING_12: DocSpec = {
       const rows: string[][] = [];
       const perPerson = perPersonPrice(ctx);
       if (perPerson) rows.push(["Cruise Fare (per person, taxes and fees as quoted)", fmtMoney(perPerson)]);
+      // Mark 2026-10-31: the protection chosen on the page, at the price the page showed; not added into the cabin's total below
+      const premium = chosenPremium(ctx);
+      if (premium) rows.push(["Travel Protection / Insurance (per person, as chosen on the paperwork; not in the total below)", premium]);
       const f = fee(ctx, "planning_fee") ?? fee(ctx, "service_fee");
       if (f) rows.push(["Agent Planning / Service Fee", fmtMoney(f.amount)]);
       const total = cabinTotal(ctx);

@@ -150,7 +150,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // headings follow the documents the answers go on to.
   var SECTIONS = {
     legal_name: 'Who you are', address: 'How to reach you', passport_number: 'Passport', trusted_programs: 'Trusted traveler programs', loyalty_1_program: 'Loyalty programs',
-    ec1_name: 'Emergency contact', notes: 'Anything we should know', advisory_level: 'For the liability waiver', insurance_choice: 'Do you want travel insurance?',
+    ec1_name: 'Emergency contact', notes: 'Anything we should know', insurance_choice: 'Do you want travel insurance?',
     dining: 'Your cabin', cardholder: 'The card', card_name: 'The card',
   };
   // a line of help under a section heading
@@ -161,13 +161,12 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     cardholder: 'For the deposit and the payments as they come due. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
     // the card owner's own page (Mark 2026-10-30): the heading sits on the first card line, since whose card it is was answered by the lead
     card_name: 'The card the deposit and the payments for this cruise go on. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
-    advisory_level: 'The U.S. State Department advisory level for your destination, if you know it; leave it if not.',
     dining: 'For the cruise booking agreement: dining, anything to celebrate on board, and anything the ship should know.',
   };
-  // Mark 2026-10-30: lines the file already answers are never asked; their values go on the documents from the file.
-  // advisory_level: the State Department level per port; dining and the occasion: from the booking; insurance_status: follows the choice.
-  var HIDE = ['insurance_status', 'advisory_level', 'dining', 'occasions', 'occasion_other', 'occasion_date'];
-  var DERIVE = { insurance_status: function () { var c = value('insurance_choice'); return c === 'decline' ? 'declined' : (c === 'own' || c === 'line') ? 'have' : undefined; } };
+  // Mark 2026-10-30: lines the file already answers are never asked; their values go on the documents from the file (dining and the
+  // occasion: from the booking). Mark 2026-10-31: the waiver's advisory level and insurance lines are written by the server from
+  // the State Department feed and the insurance choice, so they are no longer lines of the page at all.
+  var HIDE = ['dining', 'occasions', 'occasion_other', 'occasion_date'];
   // Mark 2026-10-30: "all of the travel insurance stuff should be after they review the video and quote": these lines are asked
   // on their own step, right before the Travel Insurance document, never on the information page.
   var INSURANCE = ['insurance_choice', 'decline_reasons', 'decline_other', 'ins_provider', 'ins_policy'];
@@ -348,10 +347,11 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
 
   function isFollow(n) { for (var k in FOLLOW) for (var o in FOLLOW[k]) if (FOLLOW[k][o].indexOf(n) >= 0 && fields[k]) return true; return false; }
   // Mark 2026-10-30: a tick that carries no information ("I am aware of and accept the health-related risks…") is made on the
-  // document's own signing screen, under the heading and the words it belongs to, and shows ticked on the document itself.
+  // document itself. Mark 2026-10-31 ("the health section is out of order"): the box is laid on the document's page in its own
+  // place (showPdf, from the server's marks); this block below the page is kept hidden and shows only when the PDF cannot be drawn.
   function signStageHtml(d) {
     return d.fields.filter(function (f) { return f.on_document && fields[f.name]; }).map(function (f) {
-      return '<div class="w-decl"><h3 class="w-sign-h">' + esc(f.on_document.heading) + '</h3><p>' + esc(f.on_document.text) + '</p>' + control(fields[f.name].f) + '</div>';
+      return '<div class="w-decl" data-decl="' + esc(f.name) + '" hidden><h3 class="w-sign-h">' + esc(f.on_document.heading) + '</h3><p>' + esc(f.on_document.text) + '</p>' + control(fields[f.name].f) + '</div>';
     }).join('');
   }
   function stepBody(s, named) {
@@ -412,7 +412,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     } else {
       h += '<p>Mark will email you the Allianz price for this trip. You can choose now, or come back to this page once you have it.</p>';
     }
-    if (line) h += '<p><b>The cruise line\'s own plan:</b> ' + esc(line) + '</p>';
+    // Mark 2026-10-31: "provide the cruise line's insurance quote with Allianz": the line's own plan, at the rate on the file, beside the Allianz plans
+    if (line) h += '<div class="w-lineplan"><h3 class="w-group">The cruise line\'s own plan</h3><p><b>' + esc(line) + '</b></p><p class="hint">Offered by ' + esc((packet.group && packet.group.cruise_line) || 'the cruise line') + ' with the booking. Choose it below if you prefer it to Allianz.</p></div>';
     return h;
   }
   var quoteTimer = null;
@@ -516,9 +517,11 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     });
     return pdfLib;
   }
+  // a hidden line's value is the file's (pre-filled on the packet), never typed: it goes on the document shown and on the one signed
+  function answerOf(n) { return HIDE.indexOf(n) >= 0 ? (fields[n] && fields[n].f.value) : value(n); }
   function allAnswers() {
     var out = {};
-    Object.keys(fields).forEach(function (n) { var v = value(n); if (v !== undefined) out[n] = v; });
+    Object.keys(fields).forEach(function (n) { var v = answerOf(n); if (v !== undefined && v !== null) out[n] = v; });
     return out;
   }
   /** the filled-in PDF of one document into host; false when it cannot be shown (the page's own copy is shown instead) */
@@ -526,7 +529,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function signer() { var el = nameBox(), n = el ? el.value.replace(/\s+/g, ' ').trim() : ''; return n.split(' ').length >= 2 ? n : ''; }
   // Mark 2026-10-29: a document is shown one page at a time, each page exactly as it prints; Confirm moves to the next page and the
   // place to sign is on the last page. (The 10/28 closing-up of blank stretches is gone with the Cornerstone layouts.)
-  function pagesOf(host) { return host ? host.querySelectorAll('canvas') : []; }
+  function pagesOf(host) { return host ? host.querySelectorAll('.w-page') : []; }
   // Mark 2026-10-30: "the confirmation box is not visible without scrolling. move it up just below the signature line". On screen the
   // last page of a document ends where its wording ends (the blank rest of the sheet and the page footer are not drawn), so the place
   // to sign follows the signature line. The printed PDF is unchanged.
@@ -560,6 +563,39 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var host = stepEl(at).querySelector('.w-pdf');
     $('fm-next').textContent = lastPage(host) ? (/^20-/.test(s.key) ? 'Confirm' : 'Confirm and sign') : 'Next page';
   }
+  // Mark 2026-10-31 ("the health section is out of order and the signature block isn't aligned with the signature"): the server
+  // marks where the document's own boxes and its signature line sit (the X-Doc-Marks header of the preview). The tick is laid on
+  // the page right over its box, and the name box right on the signature line, so the document reads in its own order.
+  function overlayFor(m, scale, key) {
+    if (m.kind === 'box') {
+      var f = fields[m.field] && fields[m.field].f;
+      if (!f || !f.on_document) return null;
+      var size = 26, cx = (m.x + m.w / 2) * scale, cy = (m.y + m.h / 2) * scale;
+      var lab = document.createElement('label');
+      lab.className = 'w-mark w-mark-box'; lab.setAttribute('data-q', m.field);
+      lab.style.left = (cx - size / 2) + 'px'; lab.style.top = (cy - size / 2) + 'px'; lab.style.width = size + 'px'; lab.style.height = size + 'px';
+      var inp = document.createElement('input');
+      inp.type = f.kind === 'choice' ? 'radio' : 'checkbox'; inp.setAttribute('data-field', m.field); inp.setAttribute('data-nokeep', '');
+      if (m.value !== undefined) { inp.value = m.value; inp.name = 'w-mark-' + m.field; }
+      inp.setAttribute('aria-label', f.label || m.field);
+      lab.appendChild(inp);
+      return lab;
+    }
+    if (m.kind === 'sig') {
+      var box = document.createElement('input');
+      box.type = 'text'; box.className = 'w-signname w-mark w-mark-sig'; box.id = 'w-sign-' + key + '-line'; box.autocomplete = 'name'; box.maxLength = 120;
+      box.placeholder = 'First and last name'; box.setAttribute('aria-label', 'Type your full name to sign'); box.setAttribute('data-nokeep', '');
+      var h = Math.max(28, m.h * scale + 10);
+      box.style.left = (m.x * scale - 2) + 'px'; box.style.top = (m.y * scale - 6) + 'px'; box.style.width = ((m.right - m.x) * scale + 2) + 'px'; box.style.height = h + 'px'; box.style.fontSize = Math.max(17, Math.round(h * 0.6)) + 'px';
+      return box;
+    }
+    return null;
+  }
+  // the block below the page for a tick is shown only when the tick could not be laid on the document itself (no mark, or no PDF)
+  function declBlocks(step, placed) {
+    if (!step) return;
+    Array.prototype.forEach.call(step.querySelectorAll('[data-decl]'), function (d) { d.hidden = !!(placed && placed[d.getAttribute('data-decl')]); });
+  }
   function showPdf(host, key, paper) {
     if (!host) return;
     var ask = JSON.stringify({ doc_key: key, answers: allAnswers(), signer_name: signer(), website: ($('fm-website') || {}).value || '' });
@@ -568,9 +604,20 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     // a document already on screen stays there until its new pages are drawn, so the page never jumps
     if (!host.querySelector('canvas')) host.innerHTML = '<p class="hint">Filling in your document…</p>';
     if (paper) paper.hidden = true;
-    var fallback = function () { if (host.getAttribute('data-shown') !== ask) return; host.innerHTML = ''; host.removeAttribute('data-shown'); if (paper) paper.hidden = false; var spot = host.parentNode && host.parentNode.querySelector('.w-spot'); if (spot) spot.hidden = false; nextLabel(); };
+    var step = host.closest('.w-step'), marks = [];
+    var fallback = function () {
+      if (host.getAttribute('data-shown') !== ask) return;
+      host.innerHTML = ''; host.removeAttribute('data-shown'); if (paper) paper.hidden = false;
+      var spot = step && step.querySelector('.w-spot'); if (spot) spot.hidden = false;
+      var spotName = step && step.querySelector('.w-spot .w-signname'); if (spotName) spotName.hidden = false;
+      declBlocks(step, null); nextLabel();
+    };
     fetch(API_BASE + encodeURIComponent(token) + '/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: ask })
-      .then(function (r) { if (!r.ok) throw new Error('preview ' + r.status); return r.arrayBuffer(); })
+      .then(function (r) {
+        if (!r.ok) throw new Error('preview ' + r.status);
+        try { marks = JSON.parse(r.headers.get('x-doc-marks') || '[]') || []; } catch (e) { marks = []; }
+        return r.arrayBuffer();
+      })
       .then(function (buf) {
         return loadPdfLib().then(function (lib) { return lib.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise; }).then(function (pdf) {
           if (host.getAttribute('data-shown') !== ask) return;
@@ -580,25 +627,44 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
           print.innerHTML = '<a class="linkbtn" target="_blank" rel="noopener">Print or save this document</a>';
           print.firstChild.href = url;
           next.appendChild(print);
-          var width = Math.max(300, host.clientWidth || 600), ratio = Math.min(2, window.devicePixelRatio || 1), chain = Promise.resolve();
+          var width = Math.max(300, host.clientWidth || 600), ratio = Math.min(2, window.devicePixelRatio || 1), chain = Promise.resolve(), last = pdf.numPages - 1;
           for (var n = 1; n <= pdf.numPages; n++) (function (n) {
             chain = chain.then(function () { return pdf.getPage(n); }).then(function (page) {
               var base = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: (width / base.width) * ratio });
               var c = document.createElement('canvas');
               c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
               c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Page ' + n + ' of ' + pdf.numPages);
-              next.appendChild(c);
+              var wrap = document.createElement('div'); wrap.className = 'w-page'; wrap.hidden = true; wrap.appendChild(c);
+              next.appendChild(wrap);
               return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function () {
-                if (n === pdf.numPages) { var t = trimEnd(c); if (t !== c) next.replaceChild(t, c); }
+                if (n === pdf.numPages) { var t = trimEnd(c); if (t !== c) wrap.replaceChild(t, c); }
+                var scale = width / base.width;   // screen pixels per point of the page
+                marks.forEach(function (m) {
+                  if (m.page !== n - 1) return;
+                  if (m.kind === 'sig' && m.page !== last) return;   // a signature line before the last page: the box below the page stays
+                  var el = overlayFor(m, scale, key); if (el) wrap.appendChild(el);
+                });
               });
             });
           })(n);
           return chain.then(function () {
             if (host.getAttribute('data-shown') !== ask) return;
+            // what was already ticked or typed on the document stays as its pages are drawn again
+            var prior = {}, nb = nameBox(), typed = nb ? nb.value : '';
+            Object.keys(fields).forEach(function (nm) { if (fields[nm].f.on_document) prior[nm] = value(nm); });
             var old = host.querySelector('a[href^="blob:"]');
             if (old) URL.revokeObjectURL(old.href);
             host.innerHTML = '';
             while (next.firstChild) host.appendChild(next.firstChild);
+            var placed = {};
+            Array.prototype.forEach.call(host.querySelectorAll('.w-mark-box input'), function (inp) {
+              var nm = inp.getAttribute('data-field'), v = prior[nm]; placed[nm] = true;
+              inp.checked = inp.type === 'radio' ? v === inp.value : v === true;
+            });
+            var sig = host.querySelector('.w-mark-sig'), spotName = step && step.querySelector('.w-spot .w-signname');
+            if (sig) sig.value = typed;
+            if (spotName) { spotName.hidden = !!sig; if (!sig) spotName.value = typed; }
+            declBlocks(step, placed);
             showPage(host, host.pageAt || 0);
           });
         });
@@ -691,7 +757,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     // Mark 2026-10-30: whose card (the lead's page) and the insurance choice are kept on the file as their screen is left; the
     // documents that follow may change with the answer (the card authorization leaves for the card's owner; the plan or the declination)
     if (s.id === 'details' && packet.card && fields.cardholder) return keep('/card', { cardholder: value('cardholder'), card_name: value('card_name'), card_email: value('card_email') });
-    if (s.id === 'insurance') return keep('/insurance/choice', { insurance_choice: value('insurance_choice'), insurance_plan: value('insurance_plan') });
+    if (s.id === 'insurance') return keep('/insurance/choice', { insurance_choice: value('insurance_choice'), insurance_plan: value('insurance_plan'), ins_provider: value('ins_provider'), ins_policy: value('ins_policy') });
     goStep(at + 1);
   }
   function keep(path, body) {
@@ -714,8 +780,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function answersFor(doc) {
     var out = {};
     doc.fields.forEach(function (f) {
-      // a hidden line's value is the file's (pre-filled on the packet), never typed
-      var v = DERIVE[f.name] ? DERIVE[f.name]() : HIDE.indexOf(f.name) >= 0 ? (fields[f.name] && fields[f.name].f.value) : value(f.name);
+      var v = answerOf(f.name);
       if (v === null) v = undefined;
       if (f.kind === 'multi') { if (v && v.length) out[f.name] = v; }
       else if (f.kind === 'check') out[f.name] = !!v;
@@ -794,7 +859,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       (packet.copies_sent_at ? 'We have also emailed you your own copy' + (packet.kind === 'cardholder' ? '' : ' of each signed document') + '. ' : '') +
       (packet.kind === 'organizer' ? 'Mark will add the agent signature and be in touch. ' : 'There is nothing more to do right now. We will contact you if anything is missing or changes. ') +
       'You can close this page; opening your link again shows what is signed.</p>' +
-      (card ? '<p>The credit card authorization is ' + esc(card.name || "the card owner") + "'s to fill in and sign" + (card.signed ? ', and it is signed. ' : card.link_sent_at ? ': we emailed their own private link to ' + esc(card.email || '') + '. ' : ': Mark will send them their own private link. ') + '</p>' : '') + tripBox() +
+      (card ? '<p>The credit card authorization is ' + esc(card.name || "the card owner") + "'s to fill in and sign" + (card.signed ? ', and it is signed. ' : card.link_sent_at ? ': we emailed their own private link to ' + esc(card.email || '') + '. ' : ': Mark will send them their own private link. ') + '</p>' : '') +
+      // Mark 2026-10-31: the passport checklist is prepared from the file and emailed on its own, never signed
+      (packet.kind === 'traveler' ? '<p>Your passport and travel document checklist, filled in from your file, ' + (packet.checklist && packet.checklist.sent_at ? 'has been emailed to you separately' : 'is emailed to you separately') + '. <a class="linkbtn" target="_blank" rel="noopener" href="' + API_BASE + encodeURIComponent(token) + '/document/16-passport-document-checklist">View or print it now</a>.</p>' : '') + tripBox() +
       '<p class="fine">Questions? ' + esc(packet.business ? packet.business.contact : '') + '</p>';
     show('fm-done', true);
     window.scrollTo(0, 0);
@@ -865,6 +932,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   $('fm-steps').addEventListener('change', function () { if (steps[at] && steps[at].id === 'doc') showDocPdf(at); });
   $('fm-steps').addEventListener('input', function (e) {
     if (!(steps[at] && steps[at].id === 'doc' && e.target && e.target.classList && e.target.classList.contains('w-signname'))) return;
+    if (e.target.classList.contains('w-mark')) return;   // the name box on the signature line itself shows the name as it is typed; the page is not redrawn under it
     clearTimeout(nameTimer); nameTimer = setTimeout(function () { showDocPdf(at); }, 900);
   });
   $('fm-steps').addEventListener('change', unmark);

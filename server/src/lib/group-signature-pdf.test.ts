@@ -27,8 +27,9 @@ test("pdfSafe keeps Latin-1, turns boxes into [x] / [ ], and never emits a chara
 });
 
 test("the signed copy is a real PDF that carries the document, the typed name, the UTC time, the version and the hash", async () => {
-  const doc = renderDocument("05-liability-waiver", buildCtx({ business: BUSINESS, group, traveler, now: NOW }));
-  const blocks = fillBlocks(doc, { health_ack: true, insurance_status: "declined" }, NOW);
+  // Mark 2026-10-31: the waiver's insurance box follows the choice on the file, never an answer typed on the waiver
+  const doc = renderDocument("05-liability-waiver", buildCtx({ business: BUSINESS, group, traveler: { ...traveler, form_data: { insurance: { choice: "decline" } } }, now: NOW }));
+  const blocks = fillBlocks(doc, { health_ack: true }, NOW);
   const logo = readFileSync(`${process.cwd()}/public${BUSINESS.logoPath}`);
   const pdf = await renderSignedPdf({
     businessName: BUSINESS.legalName, title: doc.title, blocks, signerName: "José Núñez", signerRole: "traveler", signedAt: NOW,

@@ -180,8 +180,8 @@ function tokensToText(text: string, mode: { answers?: Answers; today?: string })
     switch (kind) {
       case "in": case "ta": {
         const v = a?.[name!];
-        // Mark 2026-10-30: a line the signer left empty says so on the signed copy, never a bare blank.
-        if (typeof v !== "string" || !v.trim()) return a ? "N/A — left intentionally blank" : "________";
+        // Mark 2026-10-30: a line the signer left empty says so on the signed copy, never a bare blank. Mark 2026-10-31: "N/A".
+        if (typeof v !== "string" || !v.trim()) return a ? "N/A" : "________";
         // A date answer is stored as YYYY-MM-DD; the printed copy reads it as a date.
         return (/^\d{4}-\d{2}-\d{2}$/.test(v.trim()) && fmtLong(v.trim())) || cleanValue(v);
       }
@@ -530,15 +530,18 @@ export const TRAVELER_PACKET = [
   "01-terms-and-conditions",
   "insurance", // the ONE insurance document the choice on the page decides (Mark 2026-10-30): 23 the plan, or 07 the declination
   "05-liability-waiver",
-  "16-passport-document-checklist",
 ] as const;
 export const FEE_DOCUMENTS = ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] as const;
 /** The cabin's lead, who pays, also signs the booking agreement and the card authorization (Mark 2026-10-29: "a credit card
- *  authorization … every time"). */
+ *  authorization … every time"). Mark 2026-10-31: the booking agreement follows the insurance decision (its protection line and
+ *  cost row carry the choice) and comes before the waiver; the card authorization, which pays for it, closes the packet. */
 export const LEAD_DOCUMENTS = ["12-cruise-booking-agreement", "22-card-authorization"] as const;
 export const LEAD_DOCUMENT = LEAD_DOCUMENTS[1];
 export const CARD_DOCUMENT = LEAD_DOCUMENTS[1];
+export const BOOKING_DOCUMENT = LEAD_DOCUMENTS[0];
 export const ORGANIZER_DOCUMENT = "09-group-travel-contract";
+/** Mark 2026-10-31: the passport and travel document checklist is prepared from the file and emailed on its own; never signed. */
+export const CHECKLIST_DOCUMENT = "16-passport-document-checklist";
 
 /** Whose card pays for the booking, as the lead answered on their page: "me", "other" (the owner signs on a link of their own), or null. */
 export function cardHolderOf(traveler: Row | null | undefined): "me" | "other" | null {
@@ -546,13 +549,14 @@ export function cardHolderOf(traveler: Row | null | undefined): "me" | "other" |
   return h === "me" || h === "other" ? h : null;
 }
 
-/** The ordered document keys one signer is asked for. Mark 2026-10-30: the package is the six Cornerstone documents that
- *  are live today plus the card authorization, every one filled from the one information page, shown for confirmation and
- *  signature, and listed in the copies email. The insurance document is the one the choice on the file calls for (23 the plan,
- *  07 the declination; 07 until a choice is made). The card authorization is the lead's unless the card is someone else's: then
- *  it is the card owner's own packet (kind "cardholder") and not in the lead's. Not in any packet: 04 (cancellation policy), 06
- *  (Cornerstone's own card form: 22 is that form with the last four, the expiry and the licence), 13 and 14 (questionnaires),
- *  20 and 21 (the two-document packet of 10/29, kept so copies signed under it still render). */
+/** The ordered document keys one signer is asked for. Mark 2026-10-30: the package is the Cornerstone documents that are live
+ *  today plus the card authorization, every one filled from the one information page, shown for confirmation and signature, and
+ *  listed in the copies email. The insurance document is the one the choice on the file calls for (23 the plan, 07 the
+ *  declination; 07 until a choice is made). The card authorization is the lead's unless the card is someone else's: then it is
+ *  the card owner's own packet (kind "cardholder") and not in the lead's. Mark 2026-10-31: the passport checklist (16) is not
+ *  signed; it is prepared from the file and emailed on its own (CHECKLIST_DOCUMENT). Not in any packet: 04 (cancellation
+ *  policy), 06 (Cornerstone's own card form: 22 is that form with the last four, the expiry and the licence), 13 and 14
+ *  (questionnaires), 20 and 21 (the two-document packet of 10/29, kept so copies signed under it still render). */
 export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean; cardholder?: boolean }): string[] {
   if (input.organizer) return [ORGANIZER_DOCUMENT];
   if (input.cardholder) return [CARD_DOCUMENT];
@@ -560,7 +564,7 @@ export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Ro
   const keys: string[] = TRAVELER_PACKET.map((k) => (k === "insurance" ? insuranceDocFor(input.traveler) : k));
   if (hasFees) keys.splice(2, 0, ...FEE_DOCUMENTS); // after the terms
   if (input.traveler?.is_lead && input.cabin) {
-    keys.push(LEAD_DOCUMENTS[0]);
+    keys.splice(keys.indexOf("05-liability-waiver"), 0, BOOKING_DOCUMENT); // right after the insurance document, before the waiver
     if (cardHolderOf(input.traveler) !== "other") keys.push(CARD_DOCUMENT);
   }
   return keys;

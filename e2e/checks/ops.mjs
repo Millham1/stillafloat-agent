@@ -1737,11 +1737,15 @@ export default [
           // Mark 2026-10-30 (later): the card authorization is the card owner's own when the card is someone else's; the insurance
           // document is the one the choice on the file calls for (23 the plan, 07 the declination)
           const ownersCard = p.card && p.card.holder === "other";
-          t.equal(p.required.length, 5 + (tr.is_lead && tr.cabin_id ? (ownersCard ? 1 : 2) : 0) + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (Mark 2026-10-30: the five Cornerstone documents; the booking agreement and, unless the card is someone else's, the card authorization for a cabin's lead; the two fee agreements when the file carries a fee)`);
+          // Mark 2026-10-31: the passport checklist (16) is prepared from the file and emailed, never signed; the booking agreement
+          // comes right after the insurance document, before the waiver; the card authorization closes the lead's packet
+          t.equal(p.required.length, 4 + (tr.is_lead && tr.cabin_id ? (ownersCard ? 1 : 2) : 0) + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (Mark 2026-10-31: four Cornerstone documents; the booking agreement and, unless the card is someone else's, the card authorization for a cabin's lead; the two fee agreements when the file carries a fee)`);
           const insuranceDoc = ["quote", "line"].includes(tr.form_data?.insurance?.choice) ? "23-insurance-plan" : "07-travel-insurance-declination";
-          t.equal(JSON.stringify(p.required.filter((k) => !/^0[23]-/.test(k)).slice(0, 5)), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", insuranceDoc, "05-liability-waiver", "16-passport-document-checklist"]), `group ${g.id}: traveler ${tr.id} is asked for the five documents in order, the insurance document following the choice on the file`);
+          t.equal(JSON.stringify(p.required.filter((k) => !/^(0[23]|12|22)-/.test(k))), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", insuranceDoc, "05-liability-waiver"]), `group ${g.id}: traveler ${tr.id} is asked for the four documents in order, the insurance document following the choice on the file`);
+          if (tr.is_lead && tr.cabin_id && !ownersCard) t.equal(JSON.stringify(p.required.slice(-3)), JSON.stringify(["12-cruise-booking-agreement", "05-liability-waiver", "22-card-authorization"]), `group ${g.id}: lead ${tr.id}'s booking agreement comes before the waiver and the card authorization last (Mark 2026-10-31)`);
           if (tr.is_lead && tr.cabin_id) t.ok(p.card && "holder" in p.card && "signed" in p.card, `group ${g.id}: lead ${tr.id} has no card standing (whose card, whether the owner signed)`);
-          t.ok(!p.required.some((k) => /^(04|06|13|14|20|21)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet (Mark 2026-10-30: the two-document packet of 10/29 went out; 04, 06, 13 and 14 never were)`);
+          t.ok("checklist_sent_at" in p, `group ${g.id}: traveler ${tr.id}'s progress does not say whether their passport checklist was emailed`);
+          t.ok(!p.required.some((k) => /^(04|06|13|14|16|20|21)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet (Mark 2026-10-30: the two-document packet of 10/29 went out; 04, 06, 13 and 14 never were; 10/31: the checklist is prepared and emailed, never signed)`);
           if (!Object.keys(g.fees || {}).length) t.ok(!p.required.some((k) => /^0[23]-/.test(k)), `group ${g.id}: a group with no fees is asked to sign a fee agreement`);
         }
         const raw = JSON.stringify(body);
@@ -1831,7 +1835,7 @@ export default [
     id: "ops.paperwork-roundtrip",
     basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: a traveler signs with a typed name and an explicit agreement on their own link; the signature pins the text they saw (changed text is refused); one signature per document; a signed PDF copy is kept in the private bucket; the business is named 'Still Afloat LLC dba Still Afloat Cruising'; no fees unless Mark enters one; the passport never comes back out; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "A throwaway traveler gets a link, sees their documents under the business's legal name, signs one document with a typed name (a wrong hash, no agreement and a second signing are refused), Mark sees the signature and opens its PDF, and removing it asks for the document again",
-    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/forms/:token/insurance", "POST /api/forms/:token/insurance/quote", "POST /api/forms/:token/insurance/choice", "POST /api/forms/:token/card", "POST /api/groups/:id/travelers/:tid/card-link/send", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent", "POST /api/forms/:token/preview", "GET /api/forms/:token/document/:key"],
+    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/forms/:token/insurance", "POST /api/forms/:token/insurance/quote", "POST /api/forms/:token/insurance/choice", "POST /api/forms/:token/card", "POST /api/groups/:id/travelers/:tid/card-link/send", "POST /api/groups/:id/travelers/:tid/checklist/send", "GET /api/forms/checklist/:token", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent", "POST /api/forms/:token/preview", "GET /api/forms/:token/document/:key"],
     modes: ["dev"],
     devOnlyBecause: "it creates a fixture traveler, signs one document and stores its PDF, then deletes all three (dev database and bucket only; removed in a finally block)",
     run: async (t) => {
@@ -1878,7 +1882,15 @@ export default [
         t.equal(p.kind, "traveler", "kind of the paperwork packet");
         const keys = p.docs.map((d) => d.key);
         const fees = Object.keys(file.group.fees || {}).length > 0;
-        t.equal(JSON.stringify(keys), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", ...(fees ? ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] : []), "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"]), `documents in a traveler's packet (Mark 2026-10-30: the five Cornerstone documents; this group ${fees ? "has" : "has no"} fees on file; the fixture is not a cabin's lead, so no booking agreement or card authorization)`);
+        t.equal(JSON.stringify(keys), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", ...(fees ? ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] : []), "07-travel-insurance-declination", "05-liability-waiver"]), `documents in a traveler's packet (Mark 2026-10-31: four Cornerstone documents, the passport checklist prepared and emailed instead of signed; this group ${fees ? "has" : "has no"} fees on file; the fixture is not a cabin's lead, so no booking agreement or card authorization)`);
+        t.ok(p.checklist && "sent_at" in p.checklist && p.checklist.sent_at === null, "a fresh link's passport checklist has not been emailed yet");
+        const printedChecklist = await t.get(`/api/forms/${token}/document/16-passport-document-checklist`);
+        t.status(printedChecklist, 200);
+        t.matches(printedChecklist.headers.get("content-type") || "", /application\/pdf/, "the prepared passport checklist, printed from the traveler's page (never signed)");
+        refused(t, await t.get(`/api/forms/checklist/${"A".repeat(43)}.pdf`), 404, "the checklist on a link that does not exist", /not valid/i);
+        unauthorized(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/checklist/send`, { body: {} }), "POST /api/groups/:id/travelers/:tid/checklist/send");
+        refused(t, await t.send("POST", `/api/groups/${g.id}/travelers/${ZERO}/checklist/send`, { auth: true, body: {} }), 404, "the checklist emailed to a traveler who does not exist", /traveler not found/i);
+        refused(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/checklist/send`, { auth: true, body: {} }), 400, "the checklist emailed to a traveler with no email address", /no email address/i);
         t.equal(p.business?.name, "Still Afloat LLC dba Still Afloat Cruising", "the business's legal name on the paperwork");
         for (const d of p.docs) {
           t.ok(d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.length > 1500, `document ${d.key} is not a real pending document`);
@@ -1926,7 +1938,10 @@ export default [
         for (const a of quoteRows) t.success(await t.send("POST", `/api/actions/${a.id}/resolve`, { auth: true, body: { status: "dismissed" } }), "ok");
         // Mark 2026-10-30 (later): the choice is made on the page, kept on the file, and decides the document that follows: the plan (23)
         // for Allianz or the line's plan, Cornerstone's declination (07) for none or own. Before the consent nothing is kept.
-        t.equal(JSON.stringify((insBefore.fields || []).map((f) => f.name)), JSON.stringify(["insurance_choice", "insurance_plan"]), "the insurance step's own lines");
+        t.equal(JSON.stringify((insBefore.fields || []).map((f) => f.name)), JSON.stringify(["insurance_choice", "insurance_plan", "ins_provider", "ins_policy"]), "the insurance step's own lines (Mark 2026-10-31: a policy of their own names its company and number)");
+        const lineOption = (insBefore.fields || [])[0].options.find((o) => o.value === "line");
+        t.ok(insBefore.line_protection ? lineOption && lineOption.label.includes(insBefore.line_protection) : !lineOption, "the cruise line's own plan is offered with its rate on the file, and not offered without one (Mark 2026-10-31)");
+        refused(t, await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "own" } }), 400, "a policy of their own without its company and number", /signing electronically|company|policy/i);
         t.equal(JSON.stringify(insBefore.choice), JSON.stringify({ value: null, plan: null, chosen_at: null, locked: false }), "a fresh link has made no choice");
         const tooEarly = await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "decline" } });
         refused(t, tooEarly, 400, "the insurance choice before agreeing to electronic signing", /signing electronically/i);
@@ -1946,8 +1961,8 @@ export default [
         t.matches(printed.headers.get("content-type") || "", /application\/pdf/, "a document's printed form's type");
 
         // refusals on the real link: nothing is stored by any of them
-        const doc = p.docs.find((d) => d.key === "16-passport-document-checklist");
-        const sign = (extra = {}, key = "16-passport-document-checklist") => t.send("POST", `/api/forms/${token}/sign`, { body: { doc_key: key, signer_name: NAME, agreed: true, content_sha256: doc.text_sha256, answers: {}, ...extra } });
+        const doc = p.docs.find((d) => d.key === "01-terms-and-conditions");
+        const sign = (extra = {}, key = "01-terms-and-conditions") => t.send("POST", `/api/forms/${token}/sign`, { body: { doc_key: key, signer_name: NAME, agreed: true, content_sha256: doc.text_sha256, answers: {}, ...extra } });
         const early = await sign({});
         refused(t, early, 400, "signing before agreeing to electronic signing", /signing electronically/i);
         t.equal(early.json.code, "consent-required", "the code of a signature before the consent");
@@ -1976,6 +1991,7 @@ export default [
         refused(t, stale, 409, "signing text that is not the text on file", /changed/i);
         t.equal(stale.json.code, "document-changed", "the code of a refused stale signature");
         refused(t, await sign({}, "06-credit-card-authorization"), 404, "signing Cornerstone's card form, which is in no packet", /not part of/i);
+        refused(t, await sign({}, "16-passport-document-checklist"), 404, "signing the passport checklist, which is prepared and emailed, never signed (Mark 2026-10-31)", /not part of/i);
         refused(t, await sign({}, "22-card-authorization"), 404, "signing the card authorization with a link that is not a cabin lead's", /not part of/i);
         refused(t, await sign({}, "09-group-travel-contract"), 404, "signing the group contract with a traveler's link", /not part of/i);
         t.equal((await sigs()).signatures.filter((x) => x.traveler_id === travelerId).length, 0, "signatures stored by the refused attempts");
@@ -1983,9 +1999,9 @@ export default [
         // the signature
         const ok = await sign({ newsletter_opt_in: false });
         t.status(ok, 200);
-        t.ok(ok.json?.success === true && ok.json.signed === "16-passport-document-checklist", `signing was not reported as a success: ${ok.describe()}`);
+        t.ok(ok.json?.success === true && ok.json.signed === "01-terms-and-conditions", `signing was not reported as a success: ${ok.describe()}`);
         t.equal(ok.json.pdf_saved, true, "whether the signed copy was saved");
-        t.equal(ok.json.packet.docs.find((d) => d.key === "16-passport-document-checklist").status, "signed", "status of the document just signed");
+        t.equal(ok.json.packet.docs.find((d) => d.key === "01-terms-and-conditions").status, "signed", "status of the document just signed");
         t.equal(ok.json.complete, false, "a packet with one document signed is not complete");
         const again = await sign({});
         refused(t, again, 409, "signing the same document twice", /already signed/i);
@@ -1996,11 +2012,11 @@ export default [
         const mine = list.signatures.filter((x) => x.traveler_id === travelerId);
         t.equal(mine.length, 1, "signatures on file for the fixture traveler");
         const s = mine[0];
-        t.equal(s.doc_key, "16-passport-document-checklist", "document of the signature");
+        t.equal(s.doc_key, "01-terms-and-conditions", "document of the signature");
         t.equal(s.signer_name, NAME, "typed name of the signature");
         t.equal(s.signer_role, "traveler", "role of the signature");
         t.equal(s.content_sha256, doc.text_sha256, "the hash the signature pins vs the hash the traveler was shown");
-        t.equal(s.doc_version.split("@")[0], "16-passport-document-checklist", "the template version's document");
+        t.equal(s.doc_version.split("@")[0], "01-terms-and-conditions", "the template version's document");
         t.equal(s.has_pdf, true, "whether the signed copy was kept");
         t.fresh(s.signed_at, 1, "the signature's own timestamp");
         t.equal(list.packets[travelerId].signed.length, 1, "documents signed, in the traveler's progress");
@@ -2021,13 +2037,13 @@ export default [
         t.ok(token2 !== token, "a second link is the same as the first");
         refused(t, await t.get(`/api/forms/${token}`), 404, "the replaced link", /not valid/i);
         const reopened = t.success(await t.get(`/api/forms/${token2}`));
-        t.equal(reopened.docs.find((d) => d.key === "16-passport-document-checklist").status, "signed", "status of the signed document on the new link");
+        t.equal(reopened.docs.find((d) => d.key === "01-terms-and-conditions").status, "signed", "status of the signed document on the new link");
 
         // removing the signature asks for the document again
         t.success(await t.send("DELETE", `/api/groups/${g.id}/signatures/${s.id}`, { auth: true }));
         t.equal((await sigs()).signatures.filter((x) => x.traveler_id === travelerId).length, 0, "signatures left after removing it");
         const asked = t.success(await t.get(`/api/forms/${token2}`));
-        t.equal(asked.docs.find((d) => d.key === "16-passport-document-checklist").status, "pending", "status of the document after its signature was removed");
+        t.equal(asked.docs.find((d) => d.key === "01-terms-and-conditions").status, "pending", "status of the document after its signature was removed");
         refused(t, await t.send("DELETE", `/api/groups/${g.id}/signatures/${s.id}`, { auth: true }), 404, "removing the same signature twice", /not found/i);
       } finally {
         if (travelerId) {
