@@ -327,8 +327,9 @@ const WAIVER_05: DocSpec = {
 // opens the logic chain of what is presented in the documents, either a declination or the approval with the quote." The choice
 // is made on the page's insurance step and kept on the file (form_data.insurance.choice / .plan); the packet then carries ONE
 // insurance document: 23 (the plan) for Allianz or the line's own plan, 07 (this one) for "no insurance" or "my own policy".
-// Nothing of the quote is printed here ("the quotes should not be on a declination page"): Cornerstone's own "quote offered"
-// boxes record that quotes were shown, the provider is named, and the premium line stays blank.
+// No plan is picked here ("the quotes should not be on a declination page"): Cornerstone's own "quote offered" boxes record that
+// quotes were shown, the provider is named, and the premium line carries the prices that were offered, as the page showed them
+// (Mark 2026-10-31: "Show the price").
 
 /** The choice fields the page asks on the insurance step (not a document's own inputs): kept on the file by chooseInsurance. */
 export const INSURANCE_CHOICE_FIELDS: FieldSpec[] = [
@@ -353,9 +354,20 @@ const quoteOnFile = (c: DocCtx): Row | null => {
   const q = c.traveler?.form_data?.insurance?.quote;
   return q && typeof q === "object" ? (q as Row) : null;
 };
+/** The plans the page offered, in the page's own order of preference: the box's own Allianz quote when it came back, else the
+ *  sailing's plans on the group file. [] when no price was shown. */
+function plansOffered(c: DocCtx): Array<{ name: string; price_per_person: number }> {
+  const q = quoteOnFile(c);
+  if (q?.status === "ready" && Array.isArray(q.plans) && q.plans.length) return q.plans as Array<{ name: string; price_per_person: number }>;
+  return plansFromText(c.group.insurance_plans);
+}
 /** Prices were shown on the page: the group file carries the sailing's plans, or the box's own quote came back. */
 function plansShown(c: DocCtx): boolean {
-  return plansFromText(c.group.insurance_plans).length > 0 || quoteOnFile(c)?.status === "ready";
+  return plansOffered(c).length > 0;
+}
+/** "89 per person for OneTrip Basic; $129 per person for OneTrip Prime" — after the template's own "$". */
+function premiumsOffered(c: DocCtx): string {
+  return plansOffered(c).map((p, i) => `${i ? "$" : ""}${amountText(Number(p.price_per_person))} per person for ${cleanValue(p.name)}`).join("; ");
 }
 /** Which insurance document a traveler's packet carries, from the choice on their file. */
 export function insuranceDocFor(traveler: Row | null | undefined): (typeof INSURANCE_DOCUMENTS)[number] {
@@ -379,7 +391,7 @@ const INSURANCE_07: DocSpec = {
     { sub: "☐ Client has been provided with travel insurance quote(s).", with: (c) => `${plansShown(c) ? "☒" : "☐"} Client has been provided with travel insurance quote(s).` },
     { sub: "☐ Client has reviewed insurance options and is declining all coverage.", with: (c) => `${insuranceChoice(c) === "decline" ? "☒" : "☐"} Client has reviewed insurance options and is declining all coverage.` },
     { after: "Quoted Policy Provider (if applicable):**", fill: (c) => (plansShown(c) ? "Allianz Global Assistance" : ""), label: "Quoted policy provider" },
-    { after: "Quoted Premium Amount (if applicable):** $", fill: () => "", label: "Quoted premium amount" },
+    { after: "Quoted Premium Amount (if applicable):** $", fill: premiumsOffered, label: "Quoted premium amount" },
     { after: "REASONS FOR DECLINATION", choice: "decline_reasons" },
     { after: "Other:", slot: "decline_other" },
   ],

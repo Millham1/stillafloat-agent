@@ -200,15 +200,17 @@ test("the plan document carries the plan and price chosen, the provider and who 
   assert.ok(line.text.includes("Provider: MSC Cruises") && line.text.includes("Plan and price: MSC Protection Plan: $59 per person") && line.text.includes("Quoted: The cruise line's own protection plan"), line.text);
 });
 
-test("the declination is Cornerstone's form, with no quote on it: its own boxes say quotes were shown and the provider, the premium line stays blank", () => {
+test("the declination is Cornerstone's form with no plan to pick on it: its own boxes say quotes were shown, the provider, and the prices offered (Mark 2026-10-31: 'Show the price')", () => {
   const d = renderDocument("07-travel-insurance-declination", ctx(withInsurance("decline") as any, { insurance_plans: "OneTrip Basic: $89 per person\nOneTrip Prime: $129 per person" }));
   assert.equal(d.title, "Travel insurance declination");
   assert.deepEqual(d.fields.map((f) => f.name), ["decline_reasons", "decline_other"], "only Cornerstone's optional reasons are asked");
-  assert.ok(!/YOUR CHOICE|Plan chosen|OneTrip|\$89|\$129/.test(d.text), "no plan or price on a declination");
+  assert.ok(!/YOUR CHOICE|Plan chosen/.test(d.text), "no plan is picked on a declination");
   assert.ok(d.text.includes("☒ Client has been provided with travel insurance quote(s).") && d.text.includes("☒ Client has reviewed insurance options and is declining all coverage."), d.text);
   assert.ok(d.text.includes("Quoted Policy Provider (if applicable): Allianz Global Assistance"));
-  assert.ok(d.text.includes("Quoted Premium Amount (if applicable): $ ________"), "the premium line is left for Mark, never a figure");
-  assert.ok(d.unfilled.includes("Quoted premium amount"));
+  assert.ok(d.text.includes("Quoted Premium Amount (if applicable): $ 89 per person for OneTrip Basic; $129 per person for OneTrip Prime"), "the prices offered, as the page showed them: " + d.text);
+  assert.ok(!d.unfilled.includes("Quoted premium amount"));
+  const noPrice = renderDocument("07-travel-insurance-declination", ctx(withInsurance("decline") as any));
+  assert.ok(noPrice.text.includes("Quoted Premium Amount (if applicable): $ ________") && noPrice.unfilled.includes("Quoted premium amount"), "no price was shown: the line stays a blank");
   const own = renderDocument("07-travel-insurance-declination", ctx(withInsurance("own") as any));
   assert.ok(own.text.includes("☐ Client has been provided with travel insurance quote(s).") && own.text.includes("☐ Client has reviewed insurance options and is declining all coverage."), "no plans shown, and own cover is not declining all coverage");
   assert.deepEqual(prefillValue(own.fields[0]!, ctx(withInsurance("own") as any)), ["existing"], "a policy of their own pre-ticks Cornerstone's first reason");
