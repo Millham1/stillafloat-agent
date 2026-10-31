@@ -149,7 +149,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // headings follow the documents the answers go on to.
   var SECTIONS = {
     legal_name: 'Who you are', address: 'How to reach you', passport_number: 'Passport', trusted_programs: 'Trusted traveler programs', loyalty_1_program: 'Loyalty programs',
-    ec1_name: 'Emergency contact', notes: 'Anything we should know', advisory_level: 'For the liability waiver', insurance_choice: 'Travel insurance: your choice',
+    ec1_name: 'Emergency contact', notes: 'Anything we should know', advisory_level: 'For the liability waiver', insurance_choice: 'Do you want travel insurance?',
     dining: 'Your cabin', cardholder: 'The card',
   };
   // a line of help under a section heading
