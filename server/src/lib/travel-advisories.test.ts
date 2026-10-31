@@ -1,7 +1,7 @@
 // travel-advisories.test.ts — the State Department advisory per port of an itinerary (Mark 2026-10-30), never asked of the client.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { advisoriesForGroup, advisoriesForPorts, advisoryEntries, advisoryFor, countryOfPort, itineraryPorts, parseAdvisoryFeed, resetAdvisoryCache } from "./travel-advisories";
+import { ADVISORY_FEED, advisoriesForGroup, advisoriesForPorts, advisoryEntries, advisoryFor, countryOfPort, itineraryPorts, parseAdvisoryFeed, parseAdvisoryLayer, resetAdvisoryCache } from "./travel-advisories";
 
 const FEED = `<?xml version="1.0"?><rss><channel><title>Travel Advisories</title>
 <item><title>The Bahamas - Level 2: Exercise Increased Caution</title></item>
@@ -44,6 +44,29 @@ test("every port of the itinerary gets its advisory, the embarkation port first,
   assert.match(a[4]!.title, /not listed/);
 });
 
+test("the department's ArcGIS layer gives the same entries as the feed, with the level's fixed words, and is read when the feed is down", async () => {
+  const layer = { features: [
+    { attributes: { OBJECTID: 1, NAME: null, LEVEL_: null } },
+    { attributes: { OBJECTID: 3, NAME: "Afghanistan", LEVEL_: 4, ADVDATE: 1771616650000 } },
+    { attributes: { OBJECTID: 9, NAME: "The Bahamas", LEVEL_: 2 } },
+    { attributes: { OBJECTID: 10, NAME: "Cayman Islands", LEVEL_: 1 } },
+  ] };
+  assert.deepEqual(parseAdvisoryLayer(layer), [
+    { country: "Afghanistan", level: 4, title: "Level 4: Do Not Travel" },
+    { country: "The Bahamas", level: 2, title: "Level 2: Exercise Increased Caution" },
+    { country: "Cayman Islands", level: 1, title: "Level 1: Exercise Normal Precautions" },
+  ]);
+  assert.deepEqual(parseAdvisoryLayer({ error: { code: 400 } }), []);
+  resetAdvisoryCache();
+  const calls: string[] = [];
+  const feedDown = (async (url: string) => { calls.push(url); return url === ADVISORY_FEED ? new Response("", { status: 503 }) : new Response(JSON.stringify(layer), { status: 200 }); }) as unknown as typeof fetch;
+  const e = await advisoryEntries(feedDown, 5_000);
+  assert.equal(e.length, 3, "the layer answered for the feed");
+  assert.equal(calls.length, 2, "the feed first, then the layer");
+  assert.equal(advisoryFor("Bahamas", e)?.title, "Level 2: Exercise Increased Caution");
+  resetAdvisoryCache();
+});
+
 test("the feed is read once a day and the last good copy is kept when it is down; nothing read means no advisories", async () => {
   resetAdvisoryCache();
   let calls = 0;
@@ -53,7 +76,7 @@ test("the feed is read once a day and the last good copy is kept when it is down
   assert.equal((await advisoryEntries(down, 2_000)).length, 5, "within the day: the kept copy, no fetch");
   assert.equal(calls, 1);
   assert.equal((await advisoryEntries(down, 2_000 + 25 * 3_600_000)).length, 5, "a day later and the feed is down: the last good copy");
-  assert.equal(calls, 2);
+  assert.equal(calls, 3, "the feed, then the department's layer, both tried before the kept copy");
   resetAdvisoryCache();
   assert.deepEqual(await advisoriesForGroup({ embark_port: "Miami", itinerary: [] }, down), [], "nothing ever read: no advisories (the waiver says they could not be read)");
   resetAdvisoryCache();

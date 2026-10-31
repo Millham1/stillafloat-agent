@@ -7,7 +7,26 @@ import type { Advisory } from "./group-document-kit";
 import type { Row } from "./group-document-kit";
 
 export const ADVISORY_FEED = "https://travel.state.gov/_res/rss/TAsTWs.xml";
+/** The Bureau of Consular Affairs' own ArcGIS layer of the same levels (Mark 2026-10-31 pointed at it): the fallback when the feed is down. */
+export const ADVISORY_LAYER = "https://services6.arcgis.com/R6wlO6UHmSzqm9Vs/arcgis/rest/services/Travel_Advisory_Levels__(2024)_View_Layer/FeatureServer/54/query?where=LEVEL_%3E0&outFields=NAME%2CLEVEL_%2CADVDATE&returnGeometry=false&resultRecordCount=1000&f=json";
 export interface AdvisoryEntry { country: string; level: 1 | 2 | 3 | 4; title: string }
+/** The department's fixed words for each level (the layer carries only the number). */
+export const LEVEL_WORDS: Record<1 | 2 | 3 | 4, string> = { 1: "Exercise Normal Precautions", 2: "Exercise Increased Caution", 3: "Reconsider Travel", 4: "Do Not Travel" };
+
+/** The ArcGIS layer's features → the same entries as the feed gives ("The Bahamas", 2, "Level 2: Exercise Increased Caution"). */
+export function parseAdvisoryLayer(json: unknown): AdvisoryEntry[] {
+  const out: AdvisoryEntry[] = [];
+  const feats = json && typeof json === "object" && Array.isArray((json as { features?: unknown }).features) ? (json as { features: Array<{ attributes?: Record<string, unknown> }> }).features : [];
+  for (const f of feats) {
+    const a = f.attributes ?? {};
+    const country = typeof a["NAME"] === "string" ? a["NAME"].trim() : "";
+    const level = Number(a["LEVEL_"]);
+    if (!country || ![1, 2, 3, 4].includes(level)) continue;
+    const l = level as 1 | 2 | 3 | 4;
+    out.push({ country, level: l, title: `Level ${l}: ${LEVEL_WORDS[l]}` });
+  }
+  return out;
+}
 
 /** "The Bahamas - Level 2: Exercise Increased Caution" → { country: "The Bahamas", level: 2, title: "Level 2: Exercise Increased Caution" }. */
 export function parseAdvisoryFeed(xml: string): AdvisoryEntry[] {
@@ -79,21 +98,32 @@ export function advisoriesForPorts(ports: string[], entries: AdvisoryEntry[]): A
 const DAY = 24 * 3_600_000;
 let cache: { at: number; entries: AdvisoryEntry[] } | null = null;
 
+async function readText(url: string, fetchImpl: typeof fetch): Promise<string> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8_000);
+  try {
+    const res = await fetchImpl(url, { signal: ctrl.signal, headers: { "user-agent": "StillAfloatCruising/1.0 (+https://stillafloatcruising.com)" } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The feed first; the department's ArcGIS layer when the feed does not answer; the last good copy when neither does. */
 export async function advisoryEntries(fetchImpl: typeof fetch = fetch, now = Date.now()): Promise<AdvisoryEntry[]> {
   if (cache && now - cache.at < DAY) return cache.entries;
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8_000);
-    const res = await fetchImpl(ADVISORY_FEED, { signal: ctrl.signal, headers: { "user-agent": "StillAfloatCruising/1.0 (+https://stillafloatcruising.com)" } });
-    clearTimeout(timer);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const entries = parseAdvisoryFeed(await res.text());
-    if (!entries.length) throw new Error("no advisories in the feed");
-    cache = { at: now, entries };
-    return entries;
-  } catch {
-    return cache?.entries ?? [];
+  for (const [url, parse] of [[ADVISORY_FEED, parseAdvisoryFeed], [ADVISORY_LAYER, (s: string) => parseAdvisoryLayer(JSON.parse(s))]] as const) {
+    try {
+      const entries = parse(await readText(url, fetchImpl));
+      if (!entries.length) throw new Error("no advisories");
+      cache = { at: now, entries };
+      return entries;
+    } catch {
+      // the next source, then the kept copy
+    }
   }
+  return cache?.entries ?? [];
 }
 
 /** For a paperwork page: every port of the group's itinerary with its advisory; [] when the feed could not be read and nothing is kept. */
