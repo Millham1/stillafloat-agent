@@ -48,8 +48,8 @@ function fakeStore() {
   };
   return { state, store };
 }
-// 120 made-up destinations "FA".."JP" (none of them BS) plus the Bahamas row the test watches
-const bigCsv = (bahamas = "240") => ["Passport,Destination,Requirement", `US,BS,${bahamas}`, ...Array.from({ length: 120 }, (_, i) => `US,${String.fromCharCode(70 + Math.floor(i / 26))}${String.fromCharCode(65 + (i % 26))},90`)].join("\n");
+// 120 made-up destinations "QA".."UP"-style codes starting with Q, W, X, Y, Z (none of them BS, and none a cruise territory) plus the Bahamas row the test watches
+const bigCsv = (bahamas = "240") => ["Passport,Destination,Requirement", `US,BS,${bahamas}`, ...Array.from({ length: 120 }, (_, i) => `US,${"QWXYZ"[Math.floor(i / 26)]}${String.fromCharCode(65 + (i % 26))},90`)].join("\n");
 
 test("the quarterly review: the table is loaded when empty, left alone until a row is due, read again after 90 days with the changes counted; a dataset that cannot be read keeps the rows", async () => {
   const { state, store } = fakeStore();
@@ -57,12 +57,15 @@ test("the quarterly review: the table is loaded when empty, left alone until a r
   const fetchImpl = (async () => { calls++; return new Response(body, { status: 200 }); }) as unknown as typeof fetch;
   const t0 = new Date("2026-10-31T20:00:00.000Z");
   const first = await refreshVisaRequirements(store, fetchImpl, t0);
-  assert.deepEqual(first, { due: true, rows: 121, loaded: 121, changed: 0, next_check_at: "2027-01-29T20:00:00.000Z" });
+  const { orizn: _o, ...dataset } = first;
+  assert.deepEqual(dataset, { due: true, rows: 121, loaded: 121, changed: 0, next_check_at: "2027-01-29T20:00:00.000Z" });
   assert.equal(state.length, 121);
   const bs = state.find((r) => r.destination_iso2 === "BS")!;
   assert.deepEqual([bs.destination_name, bs.requirement, bs.stay_days, bs.raw, bs.source, bs.checked_at], ["Bahamas", "visa-free", 240, "240", "passport-index-dataset", "2026-10-31T20:00:00.000Z"]);
   const later = await refreshVisaRequirements(store, fetchImpl, new Date("2026-12-01T20:00:00.000Z"));
-  assert.deepEqual(later, { due: false, rows: 121, loaded: 0, changed: 0, next_check_at: "2027-01-29T20:00:00.000Z" });
+  const { orizn: _o2, ...laterDataset } = later;
+  assert.deepEqual(laterDataset, { due: false, rows: 121, loaded: 0, changed: 0, next_check_at: "2027-01-29T20:00:00.000Z" });
+  assert.match(later.orizn.note, /no ORIZN_API_KEY/);
   assert.equal(calls, 1, "nothing fetched while no row is due");
   body = bigCsv("visa required");
   const review = await refreshVisaRequirements(store, fetchImpl, new Date("2027-01-30T20:00:00.000Z"));
@@ -75,4 +78,86 @@ test("the quarterly review: the table is loaded when empty, left alone until a r
   const thin = (async () => new Response("Passport,Destination,Requirement\nUS,BS,240\n", { status: 200 })) as unknown as typeof fetch;
   await assert.rejects(refreshVisaRequirements(store, thin, new Date("2027-05-01T20:00:00.000Z")), /only 1 rows/);
   assert.equal((await refreshVisaRequirements(store, fetchImpl, new Date("2026-12-01T20:00:00.000Z"), "US", true)).due, true, "forced: read again whether or not a row is due");
+});
+
+// ── Mark 2026-10-31 "Yes, add one": Orizn fills the destinations the dataset lacks ──
+import { CRUISE_TERRITORIES, ORIZN_SOURCE, fetchOrizn, oriznDetail } from "./visa-requirements";
+import { ALPHA3 } from "./iso3166";
+
+const oriznBody = (requirement: string, days: number | null, extra: Record<string, unknown> = {}) => JSON.stringify({ data: { passport: "USA", destination: "CYM", requirement, visa_required: requirement !== "visa_free", visa_free_days: days, verified: true, source: "official", source_url: null, last_verified_at: null, passport_validity_months: 6, documents_required: ["Valid passport", "Return ticket"], ...extra }, meta: { lang: "en", quota: { used: 3, limit: 100, remaining: 97, resets_at: "2026-11-30" } } });
+
+test("Orizn: one destination by alpha-3 with the key in the header; the row keeps the stay, the validity and the documents; 404 is no row; a refused key or a used-up quota throws", async () => {
+  assert.equal(ALPHA3["KY"], "CYM"); assert.equal(ALPHA3["SX"], "SXM"); assert.equal(ALPHA3["US"], "USA"); assert.equal(Object.keys(ALPHA3).length, 249);
+  const seen: Array<{ url: string; key: string | null }> = [];
+  const fetchImpl = (async (url: string, init: RequestInit) => {
+    seen.push({ url, key: (init.headers as Record<string, string>)["x-api-key"] ?? null });
+    if (url.includes("destination=BES")) return new Response(JSON.stringify({ error: "No visa data found for USA -> BES" }), { status: 404, headers: { "x-ratelimit-remaining": "96" } });
+    if (url.includes("destination=GRL")) return new Response(JSON.stringify({ error: "Missing API key" }), { status: 401 });
+    if (url.includes("destination=GIB")) return new Response("", { status: 429, headers: { "retry-after": "3600" } });
+    return new Response(oriznBody(url.includes("destination=ABW") ? "eta" : "visa_free", url.includes("destination=ABW") ? null : 30), { status: 200, headers: { "x-ratelimit-remaining": "97" } });
+  }) as unknown as typeof fetch;
+  const now = new Date("2026-10-31T22:00:00.000Z");
+  const ky = await fetchOrizn("KY", "k-123", fetchImpl, now);
+  assert.equal(seen[0]!.url, "https://visa.orizn.app/api/v1/visa?passport=USA&destination=CYM&lang=en");
+  assert.equal(seen[0]!.key, "k-123");
+  assert.equal(ky.remaining, 97);
+  assert.deepEqual([ky.row!.destination_iso2, ky.row!.destination_name, ky.row!.requirement, ky.row!.stay_days, ky.row!.source, ky.row!.source_url, ky.row!.checked_at, ky.row!.next_check_at],
+    ["KY", "Cayman Islands", "visa-free", 30, "orizn", "https://visa.orizn.app/visa-api/docs", "2026-10-31T22:00:00.000Z", "2027-01-29T22:00:00.000Z"]);
+  assert.deepEqual(oriznDetail(ky.row!).documents_required, ["Valid passport", "Return ticket"]);
+  assert.equal(oriznDetail(ky.row!).passport_validity_months, 6);
+  assert.equal((await fetchOrizn("AW", "k-123", fetchImpl, now)).row!.requirement, "eta");
+  const none = await fetchOrizn("BQ", "k-123", fetchImpl, now);
+  assert.equal(none.row, null); assert.equal(none.remaining, 96);
+  await assert.rejects(fetchOrizn("GL", "k-123", fetchImpl, now), /refused the API key/);
+  await assert.rejects(fetchOrizn("GI", "k-123", fetchImpl, now), /quota is used up/);
+  assert.equal((await fetchOrizn("XX", "k-123", fetchImpl, now)).row, null, "a code with no alpha-3 is never asked for");
+});
+
+test("the review's second pass: without a key the territories stay unfilled and the result says so; with a key only the destinations the dataset lacks are asked for, within the cap and the quota's reserve, and 'no data' is kept as unknown until the next review", async () => {
+  const { state, store } = fakeStore();
+  let remaining = 100;
+  const calls: string[] = [];
+  const fetchImpl = (async (url: string) => {
+    if (url.includes("passport-index-dataset")) return new Response(bigCsv(), { status: 200 });
+    calls.push(url);
+    remaining -= 1;
+    if (url.includes("destination=BES")) return new Response("{}", { status: 404, headers: { "x-ratelimit-remaining": String(remaining) } });
+    return new Response(oriznBody("visa_free", 90), { status: 200, headers: { "x-ratelimit-remaining": String(remaining) } }).clone();
+  }) as unknown as typeof fetch;
+  // the body above always reports remaining=97; the header is read when the body has no quota, so make the body quota follow the counter
+  const live = (async (url: string, init?: RequestInit) => {
+    const r = await (fetchImpl as unknown as (u: string, i?: RequestInit) => Promise<Response>)(url, init);
+    if (r.status !== 200 || url.includes("passport-index-dataset")) return r;
+    const j = JSON.parse(await r.text()); j.meta.quota.remaining = remaining;
+    return new Response(JSON.stringify(j), { status: 200 });
+  }) as unknown as typeof fetch;
+  const t0 = new Date("2026-10-31T22:00:00.000Z");
+  const noKey = await refreshVisaRequirements(store, live, t0, "US", { wanted: ["BS", "KY"] });
+  assert.equal(noKey.rows, 121);
+  assert.match(noKey.orizn.note, /no ORIZN_API_KEY/);
+  assert.ok(noKey.orizn.missing.includes("KY") && !noKey.orizn.missing.includes("BS"), "the Bahamas is in the dataset; Cayman is not");
+  assert.equal(calls.length, 0);
+  const withKey = await refreshVisaRequirements(store, live, t0, "US", { oriznKey: "k-123", wanted: async () => ["BS", "KY", "MX"], maxOrizn: 100 });
+  assert.equal(withKey.due, false, "the dataset was read today: not read again");
+  assert.equal(withKey.orizn.fetched, CRUISE_TERRITORIES.length + 1, "every standing territory asked for once, plus Mexico, which this fake dataset lacks; the dataset's own countries never are");
+  assert.ok(!calls.some((u) => u.includes("destination=BHS")) && calls.some((u) => u.includes("destination=MEX")), "nothing the dataset has is asked of Orizn; what an itinerary needs and the dataset lacks is");
+  assert.deepEqual(withKey.orizn.missing, []);
+  const bq = state.find((r) => r.destination_iso2 === "BQ")!;
+  assert.deepEqual([bq.requirement, bq.source, JSON.parse(bq.raw)], ["unknown", ORIZN_SOURCE, { orizn: "no visa data" }], "no visa data is kept as unknown so it is not asked daily");
+  assert.equal(state.find((r) => r.destination_iso2 === "KY")!.stay_days, 90);
+  const again = await refreshVisaRequirements(store, live, new Date("2026-11-15T22:00:00.000Z"), "US", { oriznKey: "k-123" });
+  assert.equal(again.orizn.fetched, 0, "nothing due, nothing missing: no request spent");
+  // the reserve: with 6 requests left only one more is spent
+  remaining = 6;
+  const { state: s2, store: store2 } = fakeStore();
+  const low = await refreshVisaRequirements(store2, live, t0, "US", { oriznKey: "k-123", maxOrizn: 100 });
+  assert.equal(low.orizn.fetched, 1, `one request, then the reserve stops the run: ${low.orizn.note}`);
+  assert.match(low.orizn.note, /kept in reserve/);
+  assert.ok(low.orizn.missing.length >= CRUISE_TERRITORIES.length - 1);
+  assert.equal(s2.length, 122);
+  // the cap
+  remaining = 100;
+  const { store: store3 } = fakeStore();
+  const capped = await refreshVisaRequirements(store3, live, t0, "US", { oriznKey: "k-123", maxOrizn: 3 });
+  assert.equal(capped.orizn.fetched, 3); assert.match(capped.orizn.note, /cap of 3/);
 });

@@ -6,7 +6,7 @@ import { jobHealthReport } from "../lib/job-health";
 import { getSupabase } from "../lib/persistence";
 import { countriesOf } from "../lib/entry-requirements";
 import { itineraryPorts } from "../lib/travel-advisories";
-import { VISA_REVIEW_DAYS, VISA_SOURCE, iso2Of, supabaseVisaStore } from "../lib/visa-requirements";
+import { CRUISE_TERRITORIES, VISA_REVIEW_DAYS, VISA_SOURCE, iso2Of, supabaseVisaStore } from "../lib/visa-requirements";
 
 const router: IRouter = Router();
 
@@ -73,11 +73,15 @@ router.get("/healthz/visa-requirements", requireToken, async (_req: Request, res
     }
     const missing = [...countries.keys()].filter((c) => { const code = iso2Of(c); return !code || !rows.some((r) => r.destination_iso2 === code); });
     const checked = rows.map((r) => r.checked_at).sort(), next = rows.map((r) => r.next_check_at).sort();
+    const sources: Record<string, number> = {};
+    for (const r of rows) sources[r.source] = (sources[r.source] ?? 0) + 1;
     res.set("Cache-Control", "no-store");
     res.json({
-      success: true, passport: "US", source: VISA_SOURCE, review_days: VISA_REVIEW_DAYS, rows: rows.length,
+      success: true, passport: "US", source: VISA_SOURCE, review_days: VISA_REVIEW_DAYS, rows: rows.length, sources,
+      // Mark 2026-10-31 ("Yes, add one"): Orizn fills the territories the dataset lacks, with a key of Mark's on the box
+      orizn_key: !!process.env["ORIZN_API_KEY"],
       checked_at: checked[checked.length - 1] ?? null, oldest_checked_at: checked[0] ?? null, next_check_at: next[0] ?? null,
-      coverage: { countries: [...countries.keys()].sort(), missing },
+      coverage: { countries: [...countries.keys()].sort(), missing, territories_missing: CRUISE_TERRITORIES.filter((c) => !rows.some((r) => r.destination_iso2 === c)) },
       sample: rows.filter((r) => ["BS", "MX", "KY", "JM"].includes(r.destination_iso2)).map((r) => ({ destination_iso2: r.destination_iso2, destination_name: r.destination_name, requirement: r.requirement, stay_days: r.stay_days, checked_at: r.checked_at })),
     });
   } catch (err) {

@@ -713,7 +713,13 @@ export default [
       t.fresh(v.oldest_checked_at, (90 + 10) * 24, "the oldest row's check (the review is due every 90 days, with ten days' grace)");
       t.ok(Date.parse(v.next_check_at) <= t.now() + 91 * 24 * HOUR, "the next review is never more than 91 days away");
       t.equal(JSON.stringify(v.coverage.missing), "[]", `countries on an open group's itinerary with no row in the visa table: ${(v.coverage.missing || []).join(", ")}`);
-      t.observe("visa table", `${v.rows} destinations, checked ${v.checked_at}, next review ${v.next_check_at}; itinerary countries: ${(v.coverage.countries || []).join(", ")}`, "info");
+      // Mark 2026-10-31 ("Yes, add one"): with his Orizn key on the box, the territories the dataset lacks are filled by the second source
+      // (asserted once the job has run on this boot: right after a deploy the key may be new and the first run 20 s away)
+      const ranThisBoot = job.lastOkAt && Date.parse(job.lastOkAt) >= Date.parse(ledger.bootedAt);
+      if (v.orizn_key && ranThisBoot) t.equal(JSON.stringify(v.coverage.territories_missing), "[]", `territories cruise ships call at with no row although an Orizn key is on this box: ${(v.coverage.territories_missing || []).join(", ")}`);
+      else if (v.orizn_key) t.observe("Orizn key on this box; the visa job has not run on this boot yet", `${(v.coverage.territories_missing || []).length} cruise territories still to fill`, "info");
+      else t.observe("no Orizn key on this box", `${(v.coverage.territories_missing || []).length} cruise territories unfilled (the dataset lists countries only)`, "info");
+      t.observe("visa table", `${v.rows} destinations (${Object.entries(v.sources || {}).map(([k, n]) => `${k} ${n}`).join(", ")}), checked ${v.checked_at}, next review ${v.next_check_at}; itinerary countries: ${(v.coverage.countries || []).join(", ")}`, "info");
     },
   },
 

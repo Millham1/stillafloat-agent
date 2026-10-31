@@ -26,7 +26,10 @@ import { registerJob, runJob, loadJobHealth } from "./lib/job-health";
 import { tick as groupJourneyTick } from "./lib/group-journey-run";
 import { journeyDeps } from "./lib/group-journey-wire";
 import { localToday } from "./lib/group-journey-facts";
-import { refreshVisaRequirements, supabaseVisaStore } from "./lib/visa-requirements";
+import { iso2Of, refreshVisaRequirements, supabaseVisaStore } from "./lib/visa-requirements";
+import { countriesOf } from "./lib/entry-requirements";
+import { itineraryPorts } from "./lib/travel-advisories";
+import { getSupabase as visaDb } from "./lib/persistence";
 import { primeWeatherOnBoot, warmWeatherTiles } from "./lib/weather-tiles";
 
 const rawPort = process.env["PORT"] ?? "8080";
@@ -180,16 +183,24 @@ app.listen(port, "0.0.0.0", () => {
 
 // ── Visa requirements table (Mark 2026-10-31: "load a table in the DB and set a job to review every 3 months") ──
 // lib/visa-requirements.ts: what a U.S. passport needs at every destination, from the Passport Index dataset on GitHub. The
-// job runs 90 seconds after boot and then daily; the table is read again only when its rows are due (90 days) or missing, so
+// job runs 20 seconds after boot and then daily; the table is read again only when its rows are due (90 days) or missing, so
 // the review is quarterly, and the ledger's result says how many destinations changed. The passport checklist reads the table.
 function scheduleVisaRequirements() {
+  // the destinations the open groups' itineraries need, beside the standing territory list (lib/visa-requirements.ts)
+  const wanted = async (): Promise<string[]> => {
+    const g = await visaDb().from("groups").select("embark_port, itinerary").not("status", "in", "(cancelled,closed,sailed)");
+    const codes = new Set<string>();
+    for (const grp of (g.data ?? []) as Array<Record<string, any>>) for (const { country } of countriesOf(itineraryPorts(grp))) { const c = iso2Of(country); if (c) codes.add(c); }
+    return [...codes];
+  };
   const tick = () => runJob("scheduleVisaRequirements", async () => {
-    const r = await refreshVisaRequirements(supabaseVisaStore());
-    return r.due ? { reviewed: true, destinations: r.loaded, changed: r.changed, nextReview: r.next_check_at } : { reviewed: false, destinations: r.rows, nextReview: r.next_check_at };
+    const r = await refreshVisaRequirements(supabaseVisaStore(), fetch, new Date(), "US", { oriznKey: process.env["ORIZN_API_KEY"] || undefined, wanted });
+    const second = { oriznFetched: r.orizn.fetched, stillMissing: r.orizn.missing.length, ...(r.orizn.note ? { oriznNote: r.orizn.note } : {}), ...(r.orizn.remaining !== null ? { oriznQuotaLeft: r.orizn.remaining } : {}) };
+    return r.due ? { reviewed: true, destinations: r.rows, changed: r.changed, nextReview: r.next_check_at, ...second } : { reviewed: false, destinations: r.rows, nextReview: r.next_check_at, ...second };
   }, { logFail: "Visa requirements review failed" });
-  setTimeout(() => { tick().catch(() => {}); }, 90_000);
+  setTimeout(() => { tick().catch(() => {}); }, 20_000);
   setInterval(() => { tick().catch(() => {}); }, 24 * 3_600_000);
-  logger.info("Visa requirements scheduler active — 90 s after boot, then daily; the table is reviewed every 90 days");
+  logger.info("Visa requirements scheduler active — 20 s after boot, then daily; the table is reviewed every 90 days");
 }
 
 // ── WMS watch-alert scheduler ─────────────────────────────────────────────────
