@@ -12,7 +12,7 @@ import type { BUSINESS } from "./group-secure";
 export type Row = Record<string, any>;
 export type Lang = "en" | "es";
 /** Which signature row a document produces (group_signatures.signer_role). */
-export type SignerRole = "traveler" | "lead" | "organizer";
+export type SignerRole = "traveler" | "lead" | "organizer" | "cardholder";
 export type Answers = Record<string, string | boolean | string[]>;
 
 /** The template version a signature records: "<doc key>@<capture date>". */
@@ -314,6 +314,10 @@ export interface FieldSpec {
   /** Mark 2026-10-30: a tick that carries no information ("I am aware of and accept…") is asked on the document's own signing
    *  screen, under the heading and the words it belongs to, never on the information page. */
   onDocument?: { heading: string; text: string };
+  /** Mark 2026-10-30: a line asked of one signer only. "lead": the cabin's lead, on their own page (whose card it is, the owner's
+   *  name and email); "cardholder": the card's owner, on the link of their own (billing address, phone). Unset: asked of whoever
+   *  signs the document. */
+  ask?: "lead" | "cardholder";
 }
 
 // ── Template edits ────────────────────────────────────────────────────────────

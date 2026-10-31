@@ -1734,8 +1734,13 @@ export default [
         for (const tr of file.travelers) {
           const p = body.packets[tr.id];
           t.ok(p && Array.isArray(p.required) && Array.isArray(p.signed), `group ${g.id}: traveler ${tr.id} has no paperwork progress`);
-          t.equal(p.required.length, 5 + (tr.is_lead && tr.cabin_id ? 2 : 0) + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (Mark 2026-10-30: the five Cornerstone documents; the booking agreement and the card authorization for a cabin's lead; the two fee agreements when the file carries a fee)`);
-          t.equal(JSON.stringify(p.required.filter((k) => !/^0[23]-/.test(k)).slice(0, 5)), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist"]), `group ${g.id}: traveler ${tr.id} is asked for the five documents in order`);
+          // Mark 2026-10-30 (later): the card authorization is the card owner's own when the card is someone else's; the insurance
+          // document is the one the choice on the file calls for (23 the plan, 07 the declination)
+          const ownersCard = p.card && p.card.holder === "other";
+          t.equal(p.required.length, 5 + (tr.is_lead && tr.cabin_id ? (ownersCard ? 1 : 2) : 0) + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (Mark 2026-10-30: the five Cornerstone documents; the booking agreement and, unless the card is someone else's, the card authorization for a cabin's lead; the two fee agreements when the file carries a fee)`);
+          const insuranceDoc = ["quote", "line"].includes(tr.form_data?.insurance?.choice) ? "23-insurance-plan" : "07-travel-insurance-declination";
+          t.equal(JSON.stringify(p.required.filter((k) => !/^0[23]-/.test(k)).slice(0, 5)), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", insuranceDoc, "05-liability-waiver", "16-passport-document-checklist"]), `group ${g.id}: traveler ${tr.id} is asked for the five documents in order, the insurance document following the choice on the file`);
+          if (tr.is_lead && tr.cabin_id) t.ok(p.card && "holder" in p.card && "signed" in p.card, `group ${g.id}: lead ${tr.id} has no card standing (whose card, whether the owner signed)`);
           t.ok(!p.required.some((k) => /^(04|06|13|14|20|21)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet (Mark 2026-10-30: the two-document packet of 10/29 went out; 04, 06, 13 and 14 never were)`);
           if (!Object.keys(g.fees || {}).length) t.ok(!p.required.some((k) => /^0[23]-/.test(k)), `group ${g.id}: a group with no fees is asked to sign a fee agreement`);
         }
@@ -1826,7 +1831,7 @@ export default [
     id: "ops.paperwork-roundtrip",
     basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: a traveler signs with a typed name and an explicit agreement on their own link; the signature pins the text they saw (changed text is refused); one signature per document; a signed PDF copy is kept in the private bucket; the business is named 'Still Afloat LLC dba Still Afloat Cruising'; no fees unless Mark enters one; the passport never comes back out; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "A throwaway traveler gets a link, sees their documents under the business's legal name, signs one document with a typed name (a wrong hash, no agreement and a second signing are refused), Mark sees the signature and opens its PDF, and removing it asks for the document again",
-    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/forms/:token/insurance", "POST /api/forms/:token/insurance/quote", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent", "POST /api/forms/:token/preview", "GET /api/forms/:token/document/:key"],
+    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/forms/:token/insurance", "POST /api/forms/:token/insurance/quote", "POST /api/forms/:token/insurance/choice", "POST /api/forms/:token/card", "POST /api/groups/:id/travelers/:tid/card-link/send", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent", "POST /api/forms/:token/preview", "GET /api/forms/:token/document/:key"],
     modes: ["dev"],
     devOnlyBecause: "it creates a fixture traveler, signs one document and stores its PDF, then deletes all three (dev database and bucket only; removed in a finally block)",
     run: async (t) => {
@@ -1919,6 +1924,16 @@ export default [
         const quoteRows = (actRows.actions || []).filter((a) => a && a.type === "group-insurance-quote" && a.source_ref === travelerId);
         t.ok(quoteRows.length <= 1, `rows for Mark about this traveler's quote (${quoteRows.length}; one at most)`);
         for (const a of quoteRows) t.success(await t.send("POST", `/api/actions/${a.id}/resolve`, { auth: true, body: { status: "dismissed" } }), "ok");
+        // Mark 2026-10-30 (later): the choice is made on the page, kept on the file, and decides the document that follows: the plan (23)
+        // for Allianz or the line's plan, Cornerstone's declination (07) for none or own. Before the consent nothing is kept.
+        t.equal(JSON.stringify((insBefore.fields || []).map((f) => f.name)), JSON.stringify(["insurance_choice", "insurance_plan"]), "the insurance step's own lines");
+        t.equal(JSON.stringify(insBefore.choice), JSON.stringify({ value: null, plan: null, chosen_at: null, locked: false }), "a fresh link has made no choice");
+        const tooEarly = await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "decline" } });
+        refused(t, tooEarly, 400, "the insurance choice before agreeing to electronic signing", /signing electronically/i);
+        t.equal(tooEarly.json.code, "consent-required", "the code of a choice before the consent");
+        refused(t, await t.send("POST", `/api/forms/${token}/card`, { body: { cardholder: "me" } }), 400, "whose card, asked of a traveler who is not a cabin's lead", /lead/i);
+        unauthorized(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/card-link/send`, { body: {} }), "POST /api/groups/:id/travelers/:tid/card-link/send");
+        refused(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/card-link/send`, { auth: true, body: {} }), 400, "the card owner's link for a booking not paid with someone else's card", /someone else|card owner/i);
 
         // Mark 2026-10-27: each document is shown as Mark's own PDF, filled in with what was typed so far; nothing is kept
         const shown = await t.send("POST", `/api/forms/${token}/preview`, { body: { doc_key: "15-emergency-contact-form", answers: { legal_name: "E2E Fixture" } } });
@@ -1939,6 +1954,22 @@ export default [
         refused(t, await t.send("POST", `/api/forms/${token}/consent`, { body: { agreed: false } }), 400, "the consent without its box ticked", /tick the box/i);
         const agreed = t.success(await t.send("POST", `/api/forms/${token}/consent`, { body: { agreed: true } }));
         t.fresh(agreed.packet?.esign?.consent_given_at, 1, "the consent's timestamp");
+        // the choice, once consented: Allianz needs one of the plans the page offered (word for word); no insurance keeps the declination
+        refused(t, await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "maybe" } }), 400, "an insurance choice that is not one of the four", /choose/i);
+        refused(t, await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "quote", insurance_plan: "Not a plan: $1 per person" } }), 400, "Allianz with a plan the page never offered", /plan|price/i);
+        const chosen = t.success(await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "decline" } }));
+        t.equal(chosen.packet?.docs?.map((d) => d.key)[fees ? 4 : 2], "07-travel-insurance-declination", "no insurance: Cornerstone's declination follows");
+        t.equal(JSON.stringify(chosen.packet?.insurance?.choice?.value), JSON.stringify("decline"), "the choice kept on the file");
+        const offered = (insBefore.quote?.plans || []).map((pl) => `${pl.name}: $${Number(pl.price_per_person).toLocaleString("en-US", { minimumFractionDigits: Number(pl.price_per_person) % 1 ? 2 : 0, maximumFractionDigits: 2 })} per person`);
+        if (offered.length) {
+          const yes = t.success(await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "quote", insurance_plan: offered[0] } }));
+          const planDoc = (yes.packet?.docs || []).find((d) => d.key === "23-insurance-plan");
+          t.ok(planDoc && planDoc.html.includes(offered[0].replace(/&/g, "&amp;")) && planDoc.html.includes("Allianz Global Assistance"), "Allianz chosen: the plan document carries the plan and price picked");
+          t.ok(planDoc && planDoc.fields.length === 0, "nothing is typed on the plan document");
+          t.ok(!(yes.packet?.docs || []).some((d) => d.key === "07-travel-insurance-declination"), "the declination leaves the packet once a plan is chosen");
+          t.success(await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "decline" } }), "ok");
+        } else t.note("no Allianz plans on this group's file, so the plan document was not exercised");
+        t.ok(!cardShaped(JSON.stringify(chosen)), "the choice's answer contains something shaped like a card number");
         refused(t, await sign({ agreed: false }), 400, "signing without ticking the agreement", /tick the box/i);
         refused(t, await sign({ signer_name: "Fixture" }), 400, "signing with only one name", /full name/i);
         const stale = await sign({ content_sha256: "0".repeat(64) });

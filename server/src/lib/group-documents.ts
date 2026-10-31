@@ -34,7 +34,7 @@ import {
   TEMPLATE_VERSION_DATE, buildCtx, cancellationNote, cancellationRows, cleanValue, fmtLong, fmtMoney, normalizeFees,
   type Answers, type Block, type DocCtx, type DocSpec, type FeeLine, type FieldSpec, type Lang, type Row, type SignerRole,
 } from "./group-document-kit";
-import { DOC_SPECS } from "./group-document-specs";
+import { DOC_SPECS, insuranceDocFor } from "./group-document-specs";
 
 export { DOC_SPECS, TEMPLATE_VERSION_DATE, buildCtx, normalizeFees };
 export type { Answers, Block, DocCtx, DocSpec, FeeLine, FieldSpec, Lang, Row, SignerRole };
@@ -528,7 +528,7 @@ export function fillBlocks(doc: Pick<RenderedDoc, "blocks">, answers: Answers, s
 export const TRAVELER_PACKET = [
   "15-emergency-contact-form", // first: the information page's answers (address, phone, passport) fill the documents after it
   "01-terms-and-conditions",
-  "07-travel-insurance-declination", // after the insurance video and the quote (Mark 2026-10-30); the waiver's insurance line follows it
+  "insurance", // the ONE insurance document the choice on the page decides (Mark 2026-10-30): 23 the plan, or 07 the declination
   "05-liability-waiver",
   "16-passport-document-checklist",
 ] as const;
@@ -537,20 +537,39 @@ export const FEE_DOCUMENTS = ["02-travel-planning-agreement", "03-service-fee-pl
  *  authorization … every time"). */
 export const LEAD_DOCUMENTS = ["12-cruise-booking-agreement", "22-card-authorization"] as const;
 export const LEAD_DOCUMENT = LEAD_DOCUMENTS[1];
+export const CARD_DOCUMENT = LEAD_DOCUMENTS[1];
 export const ORGANIZER_DOCUMENT = "09-group-travel-contract";
+
+/** Whose card pays for the booking, as the lead answered on their page: "me", "other" (the owner signs on a link of their own), or null. */
+export function cardHolderOf(traveler: Row | null | undefined): "me" | "other" | null {
+  const h = traveler?.form_data?.card?.holder;
+  return h === "me" || h === "other" ? h : null;
+}
 
 /** The ordered document keys one signer is asked for. Mark 2026-10-30: the package is the six Cornerstone documents that
  *  are live today plus the card authorization, every one filled from the one information page, shown for confirmation and
- *  signature, and listed in the copies email. Not in any packet: 04 (cancellation policy), 06 (Cornerstone's own card form:
- *  22 is that form with the last four, the expiry and the licence), 13 and 14 (questionnaires), 20 and 21 (the two-document
- *  packet of 10/29, kept so copies signed under it still render). */
-export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean }): string[] {
+ *  signature, and listed in the copies email. The insurance document is the one the choice on the file calls for (23 the plan,
+ *  07 the declination; 07 until a choice is made). The card authorization is the lead's unless the card is someone else's: then
+ *  it is the card owner's own packet (kind "cardholder") and not in the lead's. Not in any packet: 04 (cancellation policy), 06
+ *  (Cornerstone's own card form: 22 is that form with the last four, the expiry and the licence), 13 and 14 (questionnaires),
+ *  20 and 21 (the two-document packet of 10/29, kept so copies signed under it still render). */
+export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean; cardholder?: boolean }): string[] {
   if (input.organizer) return [ORGANIZER_DOCUMENT];
+  if (input.cardholder) return [CARD_DOCUMENT];
   const hasFees = normalizeFees(input.group?.fees).length > 0;
-  const keys: string[] = [...TRAVELER_PACKET];
+  const keys: string[] = TRAVELER_PACKET.map((k) => (k === "insurance" ? insuranceDocFor(input.traveler) : k));
   if (hasFees) keys.splice(2, 0, ...FEE_DOCUMENTS); // after the terms
-  if (input.traveler?.is_lead && input.cabin) keys.push(...LEAD_DOCUMENTS);
+  if (input.traveler?.is_lead && input.cabin) {
+    keys.push(LEAD_DOCUMENTS[0]);
+    if (cardHolderOf(input.traveler) !== "other") keys.push(CARD_DOCUMENT);
+  }
   return keys;
+}
+
+/** The inputs of a document that one signer is asked for: a line marked `ask` is for that signer only (Mark 2026-10-30: the lead
+ *  names the card's owner; the owner fills in the billing lines on their own link). */
+export function askedOf(fields: FieldSpec[], who: "lead" | "cardholder"): FieldSpec[] {
+  return fields.filter((f) => !f.ask || f.ask === who);
 }
 
 // ── 7. Answers ────────────────────────────────────────────────────────────────

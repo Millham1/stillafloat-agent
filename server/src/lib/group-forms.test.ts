@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
- giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, ESIGN_CONSENT_VERSION, insuranceStatus } from "./group-forms";
+ giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, ESIGN_CONSENT_VERSION, insuranceStatus, chooseInsurance, chooseCardholder, cardLinkEmail } from "./group-forms";
 import { pagePhotos } from "./group-page-photos";
 import { decryptPii, hashForAudit } from "./group-secure";
 import type { SignedCopyInput } from "./group-signature-pdf";
@@ -41,7 +41,7 @@ function makeStore() {
     duplicate: false,
   };
   let seq = 0;
-  const strip = (t: Row) => { const { passport_enc: _p, dl_enc: _d, ...rest } = t; return { ...rest }; };
+  const strip = (t: Row) => { const { passport_enc: _p, dl_enc: _d, card_token_hash: _c, card_copies_token_hash: _cc, form_token_hash: _f, copies_token_hash: _co, ...rest } = t; return { ...rest }; };
   const store: FormsStore = {
     async travelerByTokenHash(hash) { const t = state.travelers.find((x) => x.form_token_hash === hash); return t ? strip(t) : null; },
     async groupByOrganizerHash(hash) { return state.group.organizer_token_hash === hash ? { ...state.group } : null; },
@@ -67,6 +67,8 @@ function makeStore() {
     async updateGroup(id, patch) { if (id === state.group.id) Object.assign(state.group, patch); },
     async logMessage(row) { state.messages.push({ ...row }); },
     async travelerByCopiesHash(hash) { const t = state.travelers.find((x) => x.copies_token_hash === hash); return t ? strip(t) : null; },
+    async travelerByCardTokenHash(hash) { const t = state.travelers.find((x) => x.card_token_hash && x.card_token_hash === hash); return t ? strip(t) : null; },
+    async travelerByCardCopiesHash(hash) { const t = state.travelers.find((x) => x.card_copies_token_hash && x.card_copies_token_hash === hash); return t ? strip(t) : null; },
     async groupByOrganizerCopiesHash(hash) { return state.group.organizer_copies_token_hash === hash ? { ...state.group } : null; },
     async upsertProspect(row) {
       const found = state.prospects.find((p) => p.email.toLowerCase() === String(row["email"]).toLowerCase());
@@ -360,8 +362,10 @@ test("signing the booking document records consent; the last signature completes
   const answers: Record<string, unknown> = {
     "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", passport_number: "B99887766" },
     "05-liability-waiver": { health_ack: true },
-    "07-travel-insurance-declination": { insurance_choice: "quote" },
+    "07-travel-insurance-declination": { decline_reasons: ["premium"] },
   };
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  assert.equal((await chooseInsurance(t.deps, token, { insurance_choice: "decline" })).status, 200);
   for (const [i, key] of order.entries()) {
     const r = await signKey(t, token, key, { answers: answers[key] ?? {} }, mate);
     assert.equal(r.status, 200, `${key}: ${JSON.stringify(r.json)}`);
@@ -378,15 +382,203 @@ test("signing the booking document records consent; the last signature completes
   assert.equal(t.notices[0]!.title, "Paperwork returned: John Public");
   assert.equal(t.notices[0]!.groupId, "g1");
   assert.equal(t.state.signatures.length, 5);
-  assert.equal(t.state.signatures.find((s) => s.doc_key.startsWith("07"))!.answers.insurance_choice, "quote");
-  assert.equal(t.state.travelers[1]!.form_data.insurance.choice, "quote");
+  assert.equal(t.state.signatures.find((s) => s.doc_key.startsWith("07"))!.answers.insurance_choice, undefined, "the choice is the file's, not the declination's answer");
+  assert.deepEqual(t.state.signatures.find((s) => s.doc_key.startsWith("07"))!.answers.decline_reasons, ["premium"]);
+  assert.equal(t.state.travelers[1]!.form_data.insurance.choice, "decline");
   assert.equal(((await getPacket(t.deps, token)).json as { complete: boolean }).complete, true);
+  assert.equal((await chooseInsurance(t.deps, token, { insurance_choice: "quote" })).status, 409, "the choice is locked once the insurance document is signed");
+});
+
+// ── Mark 2026-10-30: the choice after the video and the price decides the document that follows ──
+
+test("choosing Allianz with one of the plans offered swaps the declination for the plan document; a plan not offered, or the line's plan with no rate on file, is refused", async () => {
+  const t = setup();
+  t.state.group.insurance_plans = "OneTrip Basic: $89 per person\nOneTrip Prime: $129 per person\n";
+  const token = t.link("t2");
+  const early = await chooseInsurance(t.deps, token, { insurance_choice: "quote", insurance_plan: "OneTrip Prime: $129 per person" });
+  assert.equal(early.status, 400); assert.equal(early.json["code"], "consent-required");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  const before = pkt(await getPacket(t.deps, token)) as any;
+  assert.equal(before.docs[2].key, "07-travel-insurance-declination");
+  assert.deepEqual(before.insurance.fields.map((f: any) => f.name), ["insurance_choice", "insurance_plan"]);
+  assert.deepEqual(before.insurance.choice, { value: null, plan: null, chosen_at: null, locked: false });
+  assert.equal((await chooseInsurance(t.deps, token, { insurance_choice: "quote", insurance_plan: "OneTrip Gold: $999 per person" })).status, 400, "not a plan the page offered");
+  assert.equal((await chooseInsurance(t.deps, token, { insurance_choice: "quote" })).status, 400, "Allianz needs a plan");
+  assert.equal((await chooseInsurance(t.deps, token, { insurance_choice: "line" })).status, 400, "no rate for the line's plan on the file");
+  assert.equal((await chooseInsurance(t.deps, token, { insurance_choice: "maybe" })).status, 400);
+  const r = await chooseInsurance(t.deps, token, { insurance_choice: "quote", insurance_plan: "OneTrip Prime: $129 per person" });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const p = r.json["packet"] as any;
+  assert.deepEqual(p.docs.map((d: any) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "23-insurance-plan", "05-liability-waiver", "16-passport-document-checklist"]);
+  assert.deepEqual(p.insurance.choice, { value: "quote", plan: "OneTrip Prime: $129 per person", chosen_at: "2026-10-16T15:30:12.000Z", locked: false });
+  assert.equal(p.insurance.fields[1].value, "OneTrip Prime: $129 per person", "the page shows the plan already picked");
+  assert.ok(p.docs[2].html.includes("OneTrip Prime: $129 per person") && p.docs[2].html.includes("Allianz Global Assistance"), "the plan document carries the plan and price chosen");
+  assert.deepEqual(p.docs[2].fields, [], "nothing to type on the plan document");
+  // the line's plan, once the file has the line's rate
+  t.state.group.line_protection = "MSC Protection Plan: $59 per person";
+  const line = await chooseInsurance(t.deps, token, { insurance_choice: "line" });
+  assert.equal(line.status, 200);
+  assert.equal(t.state.travelers[1]!.form_data.insurance.plan, "MSC Protection Plan: $59 per person");
+  assert.ok((line.json["packet"] as any).docs[2].html.includes("MSC Protection Plan: $59 per person"));
+  // back to no insurance: the declination is back, and the plan is off the file
+  const no = await chooseInsurance(t.deps, token, { insurance_choice: "decline" });
+  assert.equal((no.json["packet"] as any).docs[2].key, "07-travel-insurance-declination");
+  assert.equal(t.state.travelers[1]!.form_data.insurance.plan, null);
+  // signed: locked
+  assert.equal((await chooseInsurance(t.deps, token, { insurance_choice: "quote", insurance_plan: "OneTrip Prime: $129 per person" })).status, 200);
+  assert.equal((await signKey(t, token, "23-insurance-plan", { answers: {} }, "John Public")).status, 200);
+  const locked = await chooseInsurance(t.deps, token, { insurance_choice: "decline" });
+  assert.equal(locked.status, 409); assert.equal(locked.json["code"], "insurance-signed");
+  assert.equal((pkt(await getPacket(t.deps, token)) as any).insurance.choice.locked, true);
+  assert.equal((await chooseInsurance(t.deps, "nope", { insurance_choice: "decline" })).status, 404);
+});
+
+// ── Mark 2026-10-30: someone else's card: the owner gets a link of their own ──
+
+const OWNER_CARD = { card_name: "Pat Payer", card_address: "9 Pay St", card_city_state_zip: "Durham, NC 27701", card_phone: "919-555-0199", card_type: "mastercard", card_last4: "4242", card_expiry: "11/31", dl_state: "NC", dl_number: "0000998877" };
+const cardTokenIn = (text: string) => (/forms\.html\?t=([A-Za-z0-9_-]{43})/.exec(text) || [])[1]!;
+
+test("the lead names the card's owner: the owner is emailed a link of their own, the card authorization leaves the lead's packet, and the owner signs it as the cardholder", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  assert.equal((await chooseCardholder(t.deps, token, { cardholder: "other", card_name: "Pat Payer", card_email: "pat@example.com" })).json["code"], "consent-required");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  const before = pkt(await getPacket(t.deps, token)) as any;
+  assert.deepEqual(before.card, { holder: null, name: null, email: null, link_sent_at: null, signed: false, fields: before.card.fields });
+  assert.deepEqual(before.card.fields.map((f: any) => f.name), ["cardholder", "card_name", "card_email"], "the lead's own card lines, sent with the packet whether or not the card form is in it");
+  const bad = await chooseCardholder(t.deps, token, { cardholder: "other", card_name: "Pat", card_email: "not-an-email" });
+  assert.equal(bad.status, 400); assert.deepEqual(Object.keys(bad.json["fields"] as object), ["card_name", "card_email"]);
+  assert.equal((await chooseCardholder(t.deps, token, {})).status, 400);
+  const r = await chooseCardholder(t.deps, token, { cardholder: "other", card_name: "Pat Payer", card_email: "Pat@Example.com" });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json["sent"], true);
+  const p = r.json["packet"] as any;
+  assert.deepEqual(p.docs.map((d: any) => d.key).slice(-2), ["16-passport-document-checklist", "12-cruise-booking-agreement"], "the card authorization is the owner's to sign, not the lead's");
+  assert.deepEqual({ ...p.card, fields: undefined }, { holder: "other", name: "Pat Payer", email: "pat@example.com", link_sent_at: "2026-10-16T15:30:12.000Z", signed: false, fields: undefined });
+  assert.equal(t.mails.length, 1);
+  assert.equal(t.mails[0]!.to, "pat@example.com");
+  assert.equal(t.mails[0]!.subject, "Credit card authorization for Jane Public's cruise booking");
+  assert.match(t.mails[0]!.text, /Hello Pat,\n\nJane Public has asked that the deposit and the payments for American Legion Post 12 — MSC Seascape, sailing March 14, 2027 go on your card/);
+  assert.ok(t.mails[0]!.text.includes("never the full number or the security code") && t.mails[0]!.text.includes("driver's licence"));
+  assert.equal(t.state.messages[0]!.template, "card-link");
+  assert.ok(!JSON.stringify(t.state.messages).includes(cardTokenIn(t.mails[0]!.text)), "the email log never carries the link");
+  const lead = t.state.travelers[0]!;
+  assert.ok(lead.card_token_hash && lead.card_link_sent_at === "2026-10-16T15:30:12.000Z");
+  assert.deepEqual(lead.form_data.card, { holder: "other", name: "Pat Payer", email: "pat@example.com" });
+  // the same owner and address again: no second email, no new link
+  assert.equal((await chooseCardholder(t.deps, token, { cardholder: "other", card_name: "Pat Payer", card_email: "pat@example.com" })).json["sent"], null);
+  assert.equal(t.mails.length, 1);
+  // a new address: a new link, the old one stops working
+  const first = cardTokenIn(t.mails[0]!.text);
+  assert.equal((await chooseCardholder(t.deps, token, { cardholder: "other", card_name: "Pat Payer", card_email: "pat2@example.com" })).json["sent"], true);
+  assert.equal(t.mails.length, 2);
+  assert.equal((await getPacket(t.deps, first)).status, 404, "the earlier owner link must stop working");
+  const cardToken = cardTokenIn(t.mails[1]!.text);
+
+  // the owner's own page
+  const leadOpened = [t.state.travelers[0]!.form_opened_at, t.state.travelers[0]!.form_last_opened_at];
+  const own = pkt(await getPacket(t.deps, cardToken)) as any;
+  assert.equal(own.kind, "cardholder");
+  assert.deepEqual(own.docs.map((d: any) => d.key), ["22-card-authorization"]);
+  assert.deepEqual(own.docs[0].fields.map((f: any) => f.name), ["card_name", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"]);
+  assert.equal(own.docs[0].fields[0].value, "Pat Payer");
+  assert.deepEqual(own.traveler, { first_name: "Pat", last_name: "Payer", is_lead: false, passport_on_file: null, newsletter_opt_in: true });
+  assert.deepEqual(own.cardholder, { for: "Jane Public", travelers: ["Jane Public", "John Public"] });
+  assert.equal(own.esign.consent_given_at, null, "the owner's own consent, not the lead's");
+  assert.equal(own.card, null);
+  assert.ok(!JSON.stringify(own).includes("jane@example.com") && !JSON.stringify(own).includes("SECRET"), "nothing of the lead's that the owner has no business seeing");
+  assert.ok(t.state.travelers[0]!.card_form_opened_at, "the owner's opening is recorded on its own column");
+  assert.deepEqual([t.state.travelers[0]!.form_opened_at, t.state.travelers[0]!.form_last_opened_at], leadOpened, "and not as the lead's");
+  // signing: the owner's own consent first, then the card lines; whose card it is and the email come from what the lead said
+  const doc = own.docs[0];
+  const early = await signDocument(t.deps, cardToken, { doc_key: doc.key, signer_name: "Pat Payer", agreed: true, content_sha256: doc.text_sha256, answers: OWNER_CARD }, META);
+  assert.equal(early.json["code"], "consent-required");
+  const leadConsent = t.state.travelers[0]!.esign_consent_at;
+  await giveConsent(t.deps, cardToken, { agreed: true }, META);
+  assert.equal(t.state.travelers[0]!.card_esign_consent_at, "2026-10-16T15:30:12.000Z", "the owner's consent is recorded on its own column");
+  assert.equal(t.state.travelers[0]!.esign_consent_at, leadConsent, "and the lead's consent is untouched");
+  const shown = await previewDocument(t.deps, cardToken, { doc_key: doc.key, answers: OWNER_CARD, signer_name: "Pat Payer" });
+  assert.equal(shown.status, 200);
+  const signed = await signDocument(t.deps, cardToken, { doc_key: doc.key, signer_name: "Pat Payer", agreed: true, content_sha256: doc.text_sha256, answers: OWNER_CARD, newsletter_opt_in: true }, META);
+  assert.equal(signed.status, 200, JSON.stringify(signed.json));
+  assert.equal(signed.json["complete"], true);
+  const sig = t.state.signatures[0]!;
+  assert.equal(sig.signer_role, "cardholder");
+  assert.equal(sig.signer_name, "Pat Payer");
+  assert.equal(sig.traveler_id, "t1", "recorded on the booking it pays for");
+  assert.deepEqual([sig.answers.cardholder, sig.answers.card_email, sig.answers.card_name, sig.answers.dl_number], ["other", "pat2@example.com", "Pat Payer", "ending 8877"]);
+  assert.ok(blocksToText(t.pdfs[0]!.blocks).includes("☒ someone else, named below") && blocksToText(t.pdfs[0]!.blocks).includes("Email: pat2@example.com"));
+  assert.equal(t.pdfs[0]!.audit?.signerEmail, "pat2@example.com", "the evidence page names the owner, not the lead");
+  assert.equal(t.pdfs[0]!.audit?.consentAt, t.state.travelers[0]!.card_esign_consent_at);
+  const after = t.state.travelers[0]!;
+  assert.deepEqual([after.dl_last4, after.dl_state, decryptPii(after.dl_enc, KEY)], ["8877", "NC", "0000998877"], "the licence columns hold the card owner's licence; form_data.card.holder says whose");
+  assert.equal(after.form_data.card.last4, "4242");
+  assert.equal(after.form_submitted_at ?? null, null, "the lead's own paperwork is not done by the owner's signature");
+  assert.equal(after.newsletter_opt_in, false, "the owner's page offers no newsletter");
+  assert.equal(t.notices.length, 1);
+  assert.equal(t.notices[0]!.title, "Card authorization signed: Pat Payer");
+  assert.match(t.notices[0]!.body, /the card for Jane Public's cabin, signed by its owner/);
+  // the owner's copies go to the owner, on a copies link of their own
+  assert.equal(t.mails.length, 3);
+  assert.equal(t.mails[2]!.to, "pat2@example.com");
+  assert.ok(after.card_copies_token_hash && after.card_copies_sent_at && !after.copies_sent_at);
+  assert.equal(t.state.messages.at(-1)!.template, "paperwork-copies-cardholder");
+  const copyToken = (/\/copies\/([A-Za-z0-9_-]{43})\//.exec(t.mails[2]!.text) || [])[1]!;
+  const list = await getCopies(t.deps, copyToken);
+  assert.equal(list.status, 200);
+  assert.deepEqual((list.json["docs"] as any[]).map((d) => d.title), ["Credit card authorization"]);
+  assert.equal((await getCopyPdf(t.deps, copyToken, `${sig.id}.pdf`)).status, 200);
+  // the lead's side
+  const leadView = pkt(await getPacket(t.deps, token)) as any;
+  assert.equal(leadView.card.signed, true);
+  const status = packetStatuses({ group: t.state.group, cabins: t.state.cabins, travelers: t.state.travelers, signatures: t.state.signatures });
+  assert.deepEqual(status.travelers["t1"]!.card, { holder: "other", name: "Pat Payer", email: "pat2@example.com", link_sent_at: "2026-10-16T15:30:12.000Z", signed: true });
+  assert.equal(status.travelers["t2"]!.card, null);
+  assert.ok(!status.travelers["t1"]!.required.includes("22-card-authorization"));
+  const locked = await chooseCardholder(t.deps, token, { cardholder: "me" });
+  assert.equal(locked.status, 409); assert.equal(locked.json["code"], "card-signed");
+  assert.equal((await signDocument(t.deps, cardToken, { doc_key: doc.key, signer_name: "Pat Payer", agreed: true, content_sha256: doc.text_sha256, answers: OWNER_CARD }, META)).json["code"], "already-signed");
+});
+
+test("the lead's own card: the card lines are theirs on their page; taking the card back from someone else cuts the owner's link; only a cabin's lead is asked", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  assert.equal((await chooseCardholder(t.deps, token, { cardholder: "other", card_name: "Pat Payer", card_email: "pat@example.com" })).status, 200);
+  const cardToken = cardTokenIn(t.mails[0]!.text);
+  assert.equal((await getPacket(t.deps, cardToken)).status, 200);
+  const mine = await chooseCardholder(t.deps, token, { cardholder: "me" });
+  assert.equal(mine.status, 200);
+  assert.deepEqual((mine.json["packet"] as any).docs.map((d: any) => d.key).slice(-1), ["22-card-authorization"], "the lead signs the card authorization again");
+  assert.equal(t.state.travelers[0]!.card_token_hash, null);
+  assert.deepEqual(t.state.travelers[0]!.form_data.card, { holder: "me" });
+  assert.equal((await getPacket(t.deps, cardToken)).status, 404, "the owner's link stops working");
+  const r = await signKey(t, token, "22-card-authorization", { answers: { cardholder: "me", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" } });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(t.state.signatures[0]!.signer_role, "lead");
+  assert.deepEqual([t.state.signatures[0]!.answers.card_name, t.state.signatures[0]!.answers.card_email], ["Jane Public", "jane@example.com"], "the lead's own lines come off the file");
+  // a traveler who is not the cabin's lead has no card to speak for
+  const t2 = t.link("t2");
+  await giveConsent(t.deps, t2, { agreed: true }, META);
+  assert.equal((await chooseCardholder(t.deps, t2, { cardholder: "me" })).status, 400);
+  assert.equal((pkt(await getPacket(t.deps, t2)) as any).card, null);
+  // the owner's email refused by the mail sender (the dev box's test-address rule): the link is kept, Mark is told
+  const refused = setup({ mail: async () => false });
+  const tok = refused.link("t1");
+  await giveConsent(refused.deps, tok, { agreed: true }, META);
+  const r2 = await chooseCardholder(refused.deps, tok, { cardholder: "other", card_name: "Pat Payer", card_email: "pat@example.com" });
+  assert.equal(r2.status, 200); assert.equal(r2.json["sent"], false);
+  assert.ok(refused.state.travelers[0]!.card_token_hash && refused.state.travelers[0]!.card_link_sent_at === null);
+  assert.equal(refused.notices[0]!.title, "Card authorization link to send: Pat Payer");
+  assert.equal(refused.state.messages[0]!.status, "failed");
+  const m = cardLinkEmail({ name: "Pat Payer", leadName: "Jane Public", groupName: "G", ship: "MSC SEASCAPE", sailDate: "2027-03-14", url: "https://x.test/forms.html?t=T" });
+  assert.ok(m.text.includes("MSC Seascape, sailing March 14, 2027") && m.html.includes('href="https://x.test/forms.html?t=T"'));
 });
 
 test("the cabin's lead authorizes the card: last four, expiry and the licence, whose number is encrypted and never shown again", async () => {
   const t = setup();
   const token = t.link("t1");
-  const card = { cardholder: "other", card_name: "Jane Public", card_address: "1 Main St", card_city_state_zip: "Raleigh, NC 27601", card_phone: "919-555-0100", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
+  const card = { cardholder: "other", card_name: "Jane Public", card_email: "jane@example.com", card_address: "1 Main St", card_city_state_zip: "Raleigh, NC 27601", card_phone: "919-555-0100", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
   const r = await signKey(t, token, "22-card-authorization", { answers: card });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   const tr = t.state.travelers[0]!;
@@ -536,7 +728,6 @@ const ORDER_T2 = ["15-emergency-contact-form", "01-terms-and-conditions", "07-tr
 const ANSWERS_T2: Record<string, unknown> = {
   "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", passport_number: "B99887766" },
   "05-liability-waiver": { health_ack: true },
-  "07-travel-insurance-declination": { insurance_choice: "quote" },
 };
 async function signAllT2(t: ReturnType<typeof setup>, token: string) {
   for (const key of ORDER_T2) {

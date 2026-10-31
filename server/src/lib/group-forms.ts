@@ -16,19 +16,27 @@
 //   * the traveler's file changes only after the signature row is saved, and a failed save removes
 //     the signature again, so a signature without its data (or data without its signature) cannot stay;
 //   * no email goes out from the sign path; the newsletter box only records the choice and a prospect.
+//
+// MARK 2026-10-30 (later the same day):
+//   * the insurance choice is made on the page after the video and the price, and kept on the file (chooseInsurance); the
+//     packet then carries ONE insurance document: 23 (the plan, Allianz or the line's own) or 07 (Cornerstone's declination);
+//   * a card that belongs to someone else: the lead names the owner and their email (chooseCardholder); the owner gets a link of
+//     their own (kind "cardholder", card_* columns on the lead's row, migration 0062), fills in the card form and signs it as
+//     signer_role "cardholder"; the lead's own packet has no card authorization in it.
 
 import {
   BUSINESS, encryptPii, hashForAudit, hashLinkToken, looksLikeLinkToken, newLinkToken, piiConfigured, safeEqualHex,
 } from "./group-secure";
 import {
-  DOC_SPECS, applyAnswers, blocksFor, buildCtx, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
+  CARD_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cardHolderOf, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
   type Answers, type DocCtx, type RenderedDoc, type Row,
 } from "./group-documents";
+import { INSURANCE_CHOICES, INSURANCE_CHOICE_FIELDS, INSURANCE_DOCUMENTS } from "./group-document-specs";
 import { renderFormPdf } from "./group-form-pdf";
 import type { AuditInfo, SignedCopyInput } from "./group-signature-pdf";
 import type { Sealer } from "./group-pdf-seal";
 import { fmtLong, type Advisory } from "./group-document-kit";
-import { QUOTE_NOTE, fetchAllianzQuote, plansFromText, quoteInputFor, type QuoteEnv, type QuoteRecord } from "./allianz-quote";
+import { QUOTE_NOTE, fetchAllianzQuote, planLabel, plansFromText, quoteInputFor, type QuoteEnv, type QuoteRecord } from "./allianz-quote";
 import { displayName, guestGroupName } from "./group-marketing";
 import { pagePhotos } from "./group-page-photos";
 
@@ -60,6 +68,9 @@ export interface FormsStore {
   logMessage(row: Row): Promise<void>;
   travelerByCopiesHash(hash: string): Promise<Row | null>;
   groupByOrganizerCopiesHash(hash: string): Promise<Row | null>;
+  // Mark 2026-10-30, the card owner's own link (migration 0062): the lead traveler's row, found by the owner's link or copies link
+  travelerByCardTokenHash(hash: string): Promise<Row | null>;
+  travelerByCardCopiesHash(hash: string): Promise<Row | null>;
 }
 
 export interface FormsDeps {
@@ -98,12 +109,14 @@ export const TRAVELER_COLS =
   "id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, dob, gender, citizenship, email, phone, lang, " +
   "passport_last4, passport_country, passport_expiry, dl_last4, dl_state, emergency_name, emergency_phone, special_needs, form_data, " +
   "newsletter_opt_in, prospect_id, form_sent_at, form_submitted_at, consent_name, consent_signed_at, " +
-  "esign_consent_at, esign_consent_version, form_opened_at, copies_sent_at";
+  "esign_consent_at, esign_consent_version, form_opened_at, copies_sent_at, " +
+  "card_link_sent_at, card_form_opened_at, card_esign_consent_at, card_esign_consent_version, card_copies_sent_at";
 /** The signer's own row adds the consent's network address, for the evidence page only (never in the shared list above). */
-export const SIGNER_COLS = `${TRAVELER_COLS}, esign_consent_ip`;
+export const SIGNER_COLS = `${TRAVELER_COLS}, esign_consent_ip, card_esign_consent_ip`;
 
 export interface Loaded {
-  kind: "traveler" | "organizer";
+  /** "cardholder": the owner of someone else's card, on their own link; `traveler` is then the cabin's lead (the booking). */
+  kind: "traveler" | "organizer" | "cardholder";
   group: Row;
   traveler: Row | null;
   cabin: Row | null;
@@ -131,6 +144,17 @@ export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advis
     const sigs = await store.signaturesFor({ groupId: group.id, travelerId: traveler.id });
     return { kind: "traveler", group, traveler, cabin: ctx.cabin, mates: ctx.mates, ctx, packet, signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
   }
+  const lead = await store.travelerByCardTokenHash(hash);
+  if (lead) {
+    // the card owner's link opens only while the card is still someone else's (the lead can take it back)
+    if (cardHolderOf(lead) !== "other") return null;
+    const group = await store.group(lead.group_id);
+    if (!group || group.status === "cancelled") return null;
+    const [cabins, travelers] = await Promise.all([store.cabins(group.id), store.travelers(group.id)]);
+    const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: lead, now });
+    const sigs = await store.signaturesFor({ groupId: group.id, travelerId: lead.id });
+    return { kind: "cardholder", group, traveler: lead, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cardholder: true }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
+  }
   const group = await store.groupByOrganizerHash(hash);
   if (!group || group.status === "cancelled") return null;
   const [cabins, travelers] = await Promise.all([store.cabins(group.id), store.travelers(group.id)]);
@@ -141,6 +165,37 @@ export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advis
 }
 
 const personName = (t: Row | null) => [t?.first_name, t?.middle_name, t?.last_name].filter(Boolean).join(" ");
+
+/** Whose card pays for the booking, as the lead answered on their page, with the owner's name and email when it is someone else's. */
+export function cardOf(t: Row | null | undefined): { holder: "me" | "other" | null; name: string; email: string } {
+  const c = t?.form_data?.card;
+  const o: Row = c && typeof c === "object" ? c : {};
+  return { holder: cardHolderOf(t), name: typeof o["name"] === "string" ? o["name"].replace(/\s+/g, " ").trim() : "", email: typeof o["email"] === "string" ? o["email"].trim().toLowerCase() : "" };
+}
+const firstOf = (name: string) => name.split(" ")[0] ?? "";
+const restOf = (name: string) => name.split(" ").slice(1).join(" ");
+
+/** The card owner's answers carry what the lead already said and the owner is never asked: whose card it is, and the email the link went to. */
+function signerAnswers(loaded: Loaded, raw: unknown): unknown {
+  if (loaded.kind !== "cardholder") return raw;
+  const base = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Row) : {};
+  const card = cardOf(loaded.traveler);
+  return { ...base, cardholder: "other", ...(card.email ? { card_email: card.email } : {}) };
+}
+
+/** What the lead's page sees of the card: whose it is, the owner named, whether their link went out and whether it is signed. */
+function cardPublic(loaded: Loaded): Record<string, unknown> | null {
+  const t = loaded.traveler;
+  if (loaded.kind !== "traveler" || !t || !t.is_lead || !loaded.cabin) return null;
+  const card = cardOf(t);
+  const spec = DOC_SPECS[CARD_DOCUMENT]!;
+  const names = ["cardholder", "card_name", "card_email"];
+  return {
+    holder: card.holder, name: card.name || null, email: card.email || null,
+    link_sent_at: t.card_link_sent_at ?? null, signed: loaded.signed.has(CARD_DOCUMENT),
+    fields: spec.fields.filter((f) => names.includes(f.name)).map((f) => publicField(f, loaded.ctx)),
+  };
+}
 
 /** What the page may see: the safe columns of the signer, the group's headline facts, the cabin's other
  * travelers by name, and each document (its page, the hash to send back, its inputs). Never a passport
@@ -155,17 +210,23 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey" | "i
       signed_at: sig?.signed_at ?? null,
       html: d.html,
       text_sha256: d.sha256,
-      fields: sig ? [] : d.fields.map((f) => publicField(f, ctx)),
+      fields: sig ? [] : askedOf(d.fields, loaded.kind === "cardholder" ? "cardholder" : "lead").map((f) => publicField(f, ctx)),
       agent_countersign_pending: !!DOC_SPECS[key]?.agentCountersign,
     };
   });
+  const card = cardOf(traveler);
   return {
     success: true,
     kind: loaded.kind,
     business: { name: BUSINESS.legalName, trade_name: BUSINESS.tradeName, email: BUSINESS.email, phone: BUSINESS.phone, contact: BUSINESS.contactLine },
-    traveler: traveler
-      ? { first_name: traveler.first_name ?? null, last_name: traveler.last_name ?? null, is_lead: !!traveler.is_lead, passport_on_file: traveler.passport_last4 ? `ending ${traveler.passport_last4}` : null, newsletter_opt_in: !!traveler.newsletter_opt_in }
-      : { first_name: group.organizer_name ?? null, last_name: null, is_lead: false, passport_on_file: null, newsletter_opt_in: false },
+    traveler: loaded.kind === "cardholder"
+      ? { first_name: firstOf(card.name) || null, last_name: restOf(card.name) || null, is_lead: false, passport_on_file: null, newsletter_opt_in: true }
+      : traveler
+        ? { first_name: traveler.first_name ?? null, last_name: traveler.last_name ?? null, is_lead: !!traveler.is_lead, passport_on_file: traveler.passport_last4 ? `ending ${traveler.passport_last4}` : null, newsletter_opt_in: !!traveler.newsletter_opt_in }
+        : { first_name: group.organizer_name ?? null, last_name: null, is_lead: false, passport_on_file: null, newsletter_opt_in: false },
+    // the card owner's page says whose booking they are paying for (Mark 2026-10-30)
+    ...(loaded.kind === "cardholder" ? { cardholder: { for: personName(traveler), travelers: [personName(traveler), ...loaded.mates.map(personName)].filter(Boolean) } } : {}),
+    card: cardPublic(loaded),
     group: {
       name: guestGroupName(group) || null, cruise_line: displayName(group.cruise_line) || null, ship_name: displayName(group.ship_name) || null,
       sail_date_text: fmtLong(group.sail_date) || null, return_date_text: fmtLong(group.return_date) || null,
@@ -180,7 +241,7 @@ export function publicPacket(loaded: Loaded, deps: Pick<FormsDeps, "piiKey" | "i
     insurance: insurancePublic(loaded, deps),
     // Mark 2026-10-25: consent to electronic records comes first, once per signer; the page shows the box until it is given.
     esign: { consent_given_at: consentOf(loaded), version: ESIGN_CONSENT_VERSION, text: esignConsentText(loaded.ctx.lang) },
-    copies_sent_at: (traveler ? traveler.copies_sent_at : group.organizer_copies_sent_at) ?? null,
+    copies_sent_at: (loaded.kind === "cardholder" ? traveler?.card_copies_sent_at : traveler ? traveler.copies_sent_at : group.organizer_copies_sent_at) ?? null,
   };
 }
 
@@ -224,7 +285,7 @@ export function esignConsentText(lang: "en" | "es"): ConsentText {
 
 /** When this signer agreed to electronic records, or null. */
 export function consentOf(loaded: Loaded): string | null {
-  const v = loaded.traveler ? loaded.traveler.esign_consent_at : loaded.group.organizer_esign_consent_at;
+  const v = loaded.kind === "cardholder" ? loaded.traveler?.card_esign_consent_at : loaded.traveler ? loaded.traveler.esign_consent_at : loaded.group.organizer_esign_consent_at;
   return typeof v === "string" && v ? v : null;
 }
 
@@ -236,7 +297,8 @@ export async function giveConsent(deps: FormsDeps, token: unknown, body: { agree
     const at = deps.now().toISOString();
     const ip = meta.ip?.trim() || null;
     const ua = (meta.ua ?? "").trim().slice(0, 300) || null;
-    if (loaded.traveler) await deps.store.updateTraveler(loaded.traveler.id, { esign_consent_at: at, esign_consent_ip: ip, esign_consent_ua: ua, esign_consent_version: ESIGN_CONSENT_VERSION });
+    if (loaded.kind === "cardholder" && loaded.traveler) await deps.store.updateTraveler(loaded.traveler.id, { card_esign_consent_at: at, card_esign_consent_ip: ip, card_esign_consent_ua: ua, card_esign_consent_version: ESIGN_CONSENT_VERSION });
+    else if (loaded.traveler) await deps.store.updateTraveler(loaded.traveler.id, { esign_consent_at: at, esign_consent_ip: ip, esign_consent_ua: ua, esign_consent_version: ESIGN_CONSENT_VERSION });
     else await deps.store.updateGroup(loaded.group.id, { organizer_esign_consent_at: at, organizer_esign_consent_ip: ip, organizer_esign_consent_ua: ua, organizer_esign_consent_version: ESIGN_CONSENT_VERSION });
   }
   const again = await loadByToken(deps, token);
@@ -247,7 +309,8 @@ export async function giveConsent(deps: FormsDeps, token: unknown, body: { agree
 async function recordOpen(deps: FormsDeps, loaded: Loaded): Promise<void> {
   const at = deps.now().toISOString();
   try {
-    if (loaded.traveler) await deps.store.updateTraveler(loaded.traveler.id, { form_opened_at: loaded.traveler.form_opened_at ?? at, form_last_opened_at: at });
+    if (loaded.kind === "cardholder" && loaded.traveler) await deps.store.updateTraveler(loaded.traveler.id, { card_form_opened_at: loaded.traveler.card_form_opened_at ?? at, card_form_last_opened_at: at });
+    else if (loaded.traveler) await deps.store.updateTraveler(loaded.traveler.id, { form_opened_at: loaded.traveler.form_opened_at ?? at, form_last_opened_at: at });
     else await deps.store.updateGroup(loaded.group.id, { organizer_form_opened_at: loaded.group.organizer_form_opened_at ?? at, organizer_form_last_opened_at: at });
   } catch (err) {
     deps.warn({ err: err instanceof Error ? err.message : String(err), group: loaded.group.id }, "paperwork: the link's opening could not be recorded");
@@ -303,7 +366,7 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
   const doc = renderDocument(docKey, loaded.ctx);
   if (!safeEqualHex(doc.sha256, sha)) return CHANGED;
 
-  const applied = applyAnswers(doc, body.answers, loaded.ctx);
+  const applied = applyAnswers(doc, signerAnswers(loaded, body.answers), loaded.ctx);
   if (!applied.ok) return reply(400, { success: false, error: "Please check the answers marked below.", fields: applied.errors });
   // FAIL CLOSED: no key, no passport number — never a plaintext fallback.
   if (applied.passport && !piiConfigured(deps.piiKey)) {
@@ -333,7 +396,7 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
     doc_key: docKey,
     doc_version: doc.version,
     lang: loaded.ctx.lang,
-    signer_role: spec.signerRole,
+    signer_role: loaded.kind === "cardholder" ? "cardholder" : spec.signerRole,
     signer_name: signerName,
     signed_at: now.toISOString(),
     ip_hash: ipHash,
@@ -358,9 +421,10 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
       if (applied.license) patch["dl_enc"] = encryptPii(applied.license.number, deps.piiKey);
       // the terms are on 01 (the Cornerstone set) or inside 21 (Mark 2026-10-29): signing either records the consent to them
       if (docKey === "01-terms-and-conditions" || docKey === "21-your-booking") Object.assign(patch, { consent_name: signerName, consent_signed_at: now.toISOString(), consent_ip_hash: ipHash });
-      if (complete) patch["form_submitted_at"] = now.toISOString();
+      // the card owner's signature completes THEIR packet, never the lead's own paperwork
+      if (complete && loaded.kind !== "cardholder") patch["form_submitted_at"] = now.toISOString();
       const email = String(patch["email"] ?? traveler.email ?? "").trim().toLowerCase();
-      if (body.newsletter_opt_in === true && !traveler.newsletter_opt_in && email) {
+      if (body.newsletter_opt_in === true && loaded.kind === "traveler" && !traveler.newsletter_opt_in && email) {
         newsletterProspect = await deps.store.upsertProspect({
           first_name: String(patch["first_name"] ?? traveler.first_name ?? "").trim() || signerName.split(" ")[0],
           last_name: String(patch["last_name"] ?? traveler.last_name ?? "").trim(),
@@ -415,9 +479,15 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
 
   if (complete) {
     // One notice per signer, on the last signature. The organizer's contract also waits for Mark's countersignature.
-    void deps.notify(traveler
-      ? { title: `Paperwork returned: ${personName(traveler) || signerName}`, body: `${loaded.group.name} — all ${loaded.packet.length} documents signed.`, groupId: loaded.group.id }
-      : { title: `Group contract signed: ${signerName}`, body: `${loaded.group.name} — the organizer signed. Your countersignature is still to do.`, groupId: loaded.group.id },
+    const card = cardOf(traveler);
+    const cardNote = loaded.kind === "traveler" && card.holder === "other"
+      ? ` The credit card authorization is ${card.name || "the card's owner"}'s to sign${signedKeys.has(CARD_DOCUMENT) ? " (signed)" : traveler?.card_link_sent_at ? " (their link was emailed)" : " (their link has NOT been emailed yet)"}.`
+      : "";
+    void deps.notify(loaded.kind === "cardholder"
+      ? { title: `Card authorization signed: ${signerName}`, body: `${loaded.group.name} — the card for ${personName(traveler) || "the lead"}'s cabin, signed by its owner.`, groupId: loaded.group.id }
+      : traveler
+        ? { title: `Paperwork returned: ${personName(traveler) || signerName}`, body: `${loaded.group.name} — all ${loaded.packet.length} documents signed.${cardNote}`, groupId: loaded.group.id }
+        : { title: `Group contract signed: ${signerName}`, body: `${loaded.group.name} — the organizer signed. Your countersignature is still to do.`, groupId: loaded.group.id },
     ).catch((err: unknown) => deps.warn({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the completion notice failed"));
   }
 
@@ -439,6 +509,14 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
 function auditFor(loaded: Loaded, m: { ip?: string; ua?: string; at: Date; seal: Sealer | null }): AuditInfo {
   const t = loaded.traveler; const g = loaded.group;
   const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
+  if (loaded.kind === "cardholder" && t) {
+    return {
+      signerEmail: cardOf(t).email || null, linkSentAt: str(t.card_link_sent_at), firstOpenedAt: str(t.card_form_opened_at) ?? m.at.toISOString(),
+      consentAt: consentOf(loaded), consentVersion: str(t.card_esign_consent_version), consentIp: str(t.card_esign_consent_ip),
+      ip: m.ip?.trim() || null, ua: (m.ua ?? "").trim().slice(0, 300) || null,
+      seal: m.seal ? { fingerprint: m.seal.fingerprint, subject: m.seal.subject } : null,
+    };
+  }
   return {
     signerEmail: str(t ? t.email : g.organizer_email),
     linkSentAt: str(t ? t.form_sent_at : g.organizer_link_sent_at),
@@ -487,27 +565,30 @@ export function copiesEmail(input: { lang: "en" | "es"; firstName: string; group
 /** On the last signature: a long-lived copies link is issued, the email goes to the address on file, and the send is logged. */
 async function sendCopies(deps: FormsDeps, loaded: Loaded): Promise<void> {
   const t = loaded.traveler; const g = loaded.group;
-  const to = String((t ? t.email : g.organizer_email) ?? "").trim();
+  const owner = loaded.kind === "cardholder"; // the card's owner gets their own copy at the address the lead gave (Mark 2026-10-30)
+  const to = owner ? cardOf(t).email : String((t ? t.email : g.organizer_email) ?? "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) {
     deps.warn({ group: g.id, traveler: t?.id ?? null }, "paperwork: packet complete but no email address on file for the signer's copies");
     return;
   }
   const now = deps.now().toISOString();
   const { token, hash } = issueToken();
-  if (t) await deps.store.updateTraveler(t.id, { copies_token_hash: hash, copies_sent_at: now });
+  if (owner && t) await deps.store.updateTraveler(t.id, { card_copies_token_hash: hash, card_copies_sent_at: now });
+  else if (t) await deps.store.updateTraveler(t.id, { copies_token_hash: hash, copies_sent_at: now });
   else await deps.store.updateGroup(g.id, { organizer_copies_token_hash: hash, organizer_copies_sent_at: now });
   const docs = loaded.packet.map((key) => ({ key, sig: loaded.signed.get(key) })).filter((d): d is { key: string; sig: Row } => !!d.sig)
     .map((d) => ({ title: renderDocument(d.key, loaded.ctx).title, url: copiesUrl(deps.publicSite, token, String(d.sig.id)) }));
   const when = fmtLong(g.sail_date);
   const trip = [guestGroupName(g), [displayName(g.ship_name), when ? (loaded.ctx.lang === "es" ? `zarpa ${when}` : `sailing ${when}`) : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
-  const mail = copiesEmail({ lang: loaded.ctx.lang, firstName: String((t ? t.first_name : g.organizer_name) ?? ""), groupName: guestGroupName(g), trip, docs, sealed: !!deps.seal });
+  const mail = copiesEmail({ lang: loaded.ctx.lang, firstName: owner ? firstOf(cardOf(t).name) : String((t ? t.first_name : g.organizer_name) ?? ""), groupName: guestGroupName(g), trip, docs, sealed: !!deps.seal });
   const ok = await deps.mail({ to, subject: mail.subject, html: mail.html, text: mail.text });
   await deps.store.logMessage({
-    group_id: g.id, cabin_id: t?.cabin_id ?? null, traveler_id: t?.id ?? null, audience: "client", template: "paperwork-copies",
+    group_id: g.id, cabin_id: t?.cabin_id ?? null, traveler_id: t?.id ?? null, audience: "client", template: owner ? "paperwork-copies-cardholder" : "paperwork-copies",
     to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? now : null, error: ok ? null : "mail sender refused or was unreachable",
   });
   if (!ok) {
-    if (t) await deps.store.updateTraveler(t.id, { copies_sent_at: null });
+    if (owner && t) await deps.store.updateTraveler(t.id, { card_copies_sent_at: null });
+    else if (t) await deps.store.updateTraveler(t.id, { copies_sent_at: null });
     else await deps.store.updateGroup(g.id, { organizer_copies_sent_at: null });
   }
 }
@@ -525,6 +606,15 @@ async function loadByCopiesToken(deps: FormsDeps, token: unknown): Promise<Loade
     const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: t, now });
     const sigs = await deps.store.signaturesFor({ groupId: group.id, travelerId: t.id });
     return { kind: "traveler", group, traveler: t, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cabin: ctx.cabin, traveler: t }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
+  }
+  const lead = await deps.store.travelerByCardCopiesHash(hash);
+  if (lead) {
+    const group = await deps.store.group(lead.group_id);
+    if (!group || group.status === "cancelled") return null;
+    const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
+    const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: lead, now });
+    const sigs = await deps.store.signaturesFor({ groupId: group.id, travelerId: lead.id });
+    return { kind: "cardholder", group, traveler: lead, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cardholder: true }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
   }
   const group = await deps.store.groupByOrganizerCopiesHash(hash);
   if (!group || group.status === "cancelled") return null;
@@ -573,7 +663,7 @@ export async function previewDocument(deps: FormsDeps, token: unknown, body: { d
   if (!loaded) return NOT_FOUND;
   const key = typeof body.doc_key === "string" ? body.doc_key : "";
   if (!loaded.packet.includes(key)) return reply(404, { success: false, error: "That document is not part of this paperwork." });
-  const typed = previewInput(body.answers);
+  const typed = previewInput(signerAnswers(loaded, body.answers));
   const now = deps.now();
 
   let ctx: DocCtx = loaded.ctx;
@@ -678,7 +768,9 @@ export function mailAllowed(to: string, allow: string | undefined): boolean {
 
 // ── Dashboard side: who has signed what ───────────────────────────────────────
 
-export interface PacketStatus { required: string[]; signed: string[]; complete: boolean }
+/** The card for a lead's booking: whose, and where the owner's own signing stands (null: not a cabin's lead). */
+export interface CardStatus { holder: "me" | "other" | null; name: string | null; email: string | null; link_sent_at: string | null; signed: boolean }
+export interface PacketStatus { required: string[]; signed: string[]; complete: boolean; card?: CardStatus | null }
 
 /** For each traveler (and the organizer), the documents asked for and the ones signed. */
 export function packetStatuses(input: { group: Row; cabins: Row[]; travelers: Row[]; signatures: Row[] }): { travelers: Record<string, PacketStatus>; organizer: PacketStatus } {
@@ -687,11 +779,141 @@ export function packetStatuses(input: { group: Row; cabins: Row[]; travelers: Ro
     const cabin = input.cabins.find((c) => c.id === t.cabin_id) ?? null;
     const required = packetFor({ group: input.group, cabin, traveler: t });
     const signed = required.filter((k) => input.signatures.some((s) => s.traveler_id === t.id && s.doc_key === k));
-    out[t.id] = { required, signed, complete: required.length > 0 && signed.length === required.length };
+    const card = cardOf(t);
+    out[t.id] = {
+      required, signed, complete: required.length > 0 && signed.length === required.length,
+      card: t.is_lead && cabin
+        ? { holder: card.holder, name: card.name || null, email: card.email || null, link_sent_at: t.card_link_sent_at ?? null, signed: input.signatures.some((s) => s.traveler_id === t.id && s.doc_key === CARD_DOCUMENT) }
+        : null,
+    };
   }
   const required = packetFor({ group: input.group, organizer: true });
   const signed = required.filter((k) => input.signatures.some((s) => !s.traveler_id && s.signer_role === "organizer" && s.doc_key === k));
   return { travelers: out, organizer: { required, signed, complete: signed.length === required.length } };
+}
+
+// ── Whose card (Mark 2026-10-30): the lead says, and the owner of someone else's card gets a link of their own ──
+
+/** The email that carries the card owner's link: who asked, what for, what the form takes, and that the number is never asked. */
+export function cardLinkEmail(input: { name: string; leadName: string; groupName: string; ship: string | null; sailDate: string | null; url: string }): { subject: string; text: string; html: string } {
+  const when = fmtLong(input.sailDate);
+  const trip = [input.groupName, [displayName(input.ship), when ? `sailing ${when}` : ""].filter(Boolean).join(", ")].filter(Boolean).join(" — ");
+  const first = firstOf(input.name);
+  const lines = [
+    first ? `Hello ${first},` : "Hello,",
+    `${input.leadName || "A traveler"} has asked that the deposit and the payments for ${trip} go on your card. Please fill in and sign the credit card authorization on your private link:`,
+    input.url,
+    "It asks for your name as it appears on the card, your billing address, the last four digits of the card and its expiry date (never the full number or the security code), and your driver's licence, which Cornerstone Collective uses to verify your identity. It takes about five minutes. The link is only for you, so please do not forward it.",
+    `Questions? Reply to this email or call ${BUSINESS.phone}.`,
+  ];
+  const sign = [BUSINESS.agentName, BUSINESS.tradeName, BUSINESS.contactLine.split(" · ").slice(1).join(" · ")];
+  const text = `${lines.join("\n\n")}\n\n${sign.join("\n")}\n`;
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#07183f">${lines
+    .map((l) => (l === input.url ? `<p><a href="${esc(l)}">${esc(l)}</a></p>` : `<p>${esc(l)}</p>`)).join("")}<p>${sign.map(esc).join("<br>")}</p></div>`;
+  return { subject: `Credit card authorization for ${input.leadName ? `${input.leadName}'s` : "a"} cruise booking`, text, html };
+}
+
+/** A new link for the card's owner, emailed to the address the lead gave. The old link stops working the moment the new one is
+ *  stored; a refused email (this box's test-address rule, or the sender down) leaves the link usable, marks it unsent, and tells
+ *  Mark. true = the email went out. */
+export async function sendCardLink(deps: FormsDeps, group: Row, lead: Row): Promise<boolean> {
+  const card = cardOf(lead);
+  if (card.holder !== "other" || !card.email) return false;
+  const now = deps.now().toISOString();
+  const { token, hash } = issueToken();
+  await deps.store.updateTraveler(lead.id, { card_token_hash: hash, card_link_sent_at: now });
+  const mail = cardLinkEmail({ name: card.name, leadName: personName(lead), groupName: guestGroupName(group), ship: group.ship_name ?? null, sailDate: group.sail_date ?? null, url: formUrl(deps.publicSite, token) });
+  const ok = await deps.mail({ to: card.email, subject: mail.subject, html: mail.html, text: mail.text });
+  await deps.store.logMessage({
+    group_id: group.id, cabin_id: lead.cabin_id ?? null, traveler_id: lead.id, audience: "client", template: "card-link",
+    to_email: card.email, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? now : null, error: ok ? null : "mail sender refused or was unreachable",
+  });
+  if (!ok) {
+    await deps.store.updateTraveler(lead.id, { card_link_sent_at: null });
+    deps.warn({ group: group.id, traveler: lead.id }, "paperwork: the card owner's link email did not go out (the link itself is stored and works)");
+    await deps.notify({
+      title: `Card authorization link to send: ${card.name}`,
+      body: `${guestGroupName(group)} — ${personName(lead)}'s booking is paid with ${card.name}'s card, and the email with their signing link did not go out (the mail sender refused it, or this box emails only its test addresses). Send it again from the group file.`,
+      groupId: group.id,
+    }).catch((err: unknown) => deps.warn({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the card-link notice failed"));
+  }
+  return ok;
+}
+
+/** POST …/card — the lead says whose card pays: theirs (the card lines are theirs to fill and sign), or someone else's, named
+ *  with an email, who then gets a link of their own. Kept on the file (form_data.card); the lead's packet follows. */
+export async function chooseCardholder(deps: FormsDeps, token: unknown, body: { cardholder?: unknown; card_name?: unknown; card_email?: unknown }): Promise<Reply> {
+  const loaded = await loadByToken(deps, token);
+  if (!loaded || loaded.kind !== "traveler" || !loaded.traveler) return NOT_FOUND;
+  const t = loaded.traveler;
+  if (!t.is_lead || !loaded.cabin) return reply(400, { success: false, error: "Only the cabin's lead traveler authorizes the card for the booking." });
+  if (!consentOf(loaded)) return reply(400, { success: false, code: "consent-required", error: "Please agree to signing electronically first: the box at the top of your paperwork." });
+  if (loaded.signed.has(CARD_DOCUMENT)) return reply(409, { success: false, code: "card-signed", error: "The credit card authorization for this booking is already signed, so whose card it is cannot change here." });
+  const holder = body.cardholder === "me" || body.cardholder === "other" ? body.cardholder : "";
+  const name = typeof body.card_name === "string" ? body.card_name.replace(/\s+/g, " ").trim().slice(0, 120) : "";
+  const email = typeof body.card_email === "string" ? body.card_email.trim().toLowerCase().slice(0, 200) : "";
+  const errors: Record<string, string> = {};
+  if (!holder) errors["cardholder"] = "Please choose one.";
+  if (holder === "other") {
+    if (!SIGNER_NAME.test(name) || name.split(" ").length < 2) errors["card_name"] = "The cardholder's first and last name, please.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errors["card_email"] = "Please check the email address.";
+  }
+  if (Object.keys(errors).length) return reply(400, { success: false, error: "Please check the answers marked below.", fields: errors });
+  const fd: Row = t.form_data && typeof t.form_data === "object" ? t.form_data : {};
+  const was: Row = fd["card"] && typeof fd["card"] === "object" ? fd["card"] : {};
+  const now = deps.now().toISOString();
+  if (holder === "me") {
+    // the lead's own card: the owner's lines come off the file and any link that went to someone else stops working
+    const { name: _n, email: _e, ...rest } = was;
+    await deps.store.updateTraveler(t.id, { form_data: { ...fd, card: { ...rest, holder: "me" } }, card_token_hash: null, card_link_sent_at: null, updated_at: now });
+    const again = await loadByToken(deps, token);
+    return reply(200, { success: true, holder, sent: null, ...(again ? { packet: publicPacket(again, deps) } : {}) });
+  }
+  const changed = was["holder"] !== "other" || String(was["email"] ?? "").trim().toLowerCase() !== email;
+  await deps.store.updateTraveler(t.id, { form_data: { ...fd, card: { ...was, holder: "other", name, email } }, updated_at: now });
+  // a new owner or a new address gets a new link; an address that already has its link out is not emailed again
+  let sent: boolean | null = null;
+  if (changed || !t.card_link_sent_at) {
+    const fresh = await loadByToken(deps, token);
+    if (fresh?.traveler) sent = await sendCardLink(deps, fresh.group, fresh.traveler);
+  }
+  const again = await loadByToken(deps, token);
+  return reply(200, { success: true, holder, sent, ...(again ? { packet: publicPacket(again, deps) } : {}) });
+}
+
+// ── The insurance choice (Mark 2026-10-30): made on the page after the video and the price; it decides the document that follows ──
+
+/** POST …/insurance/choice — kept on the file (form_data.insurance.choice / .plan); the packet then carries 23 (the plan) or 07
+ *  (the declination). Allianz needs one of the plans the page offered, word for word; the line's plan needs the line's rate on file. */
+export async function chooseInsurance(deps: FormsDeps, token: unknown, body: { insurance_choice?: unknown; insurance_plan?: unknown }): Promise<Reply> {
+  const loaded = await loadByToken(deps, token);
+  if (!loaded || loaded.kind !== "traveler" || !loaded.traveler) return NOT_FOUND;
+  if (!consentOf(loaded)) return reply(400, { success: false, code: "consent-required", error: "Please agree to signing electronically first: the box at the top of your paperwork." });
+  if (INSURANCE_DOCUMENTS.some((k) => loaded.signed.has(k))) return reply(409, { success: false, code: "insurance-signed", error: "Your travel insurance document is already signed, so the choice cannot change here. Ask Mark to take that signature back if you need to change it." });
+  const choice = typeof body.insurance_choice === "string" ? body.insurance_choice : "";
+  if (!(INSURANCE_CHOICES as readonly string[]).includes(choice)) return reply(400, { success: false, error: "Please choose one of the options.", fields: { insurance_choice: "Please choose one." } });
+  const pub = insurancePublic(loaded, deps);
+  const quote = pub["quote"] as { status: string; plans: Row[] };
+  let plan: string | null = null;
+  if (choice === "quote") {
+    const typed = typeof body.insurance_plan === "string" ? body.insurance_plan.replace(/\s+/g, " ").trim() : "";
+    const offered = (quote.plans ?? []).map((p) => planLabel(p));
+    if (!offered.length) return reply(400, { success: false, error: "There is no price to pick from yet. Please wait for the quote, or choose another option for now.", fields: { insurance_plan: "No plan to pick from yet." } });
+    if (!offered.includes(typed)) return reply(400, { success: false, error: "Please choose your plan.", fields: { insurance_plan: "Please choose your plan." } });
+    plan = typed;
+  }
+  if (choice === "line") {
+    const line = pub["line_protection"];
+    if (typeof line !== "string" || !line) return reply(400, { success: false, error: "The cruise line's own plan is not on file for this sailing. Please choose another option, or ask Mark.", fields: { insurance_choice: "Not on file for this sailing." } });
+    plan = line;
+  }
+  const t = loaded.traveler;
+  const fd: Row = t.form_data && typeof t.form_data === "object" ? t.form_data : {};
+  const ins: Row = fd["insurance"] && typeof fd["insurance"] === "object" ? fd["insurance"] : {};
+  await deps.store.updateTraveler(t.id, { form_data: { ...fd, insurance: { ...ins, choice, plan, chosen_at: deps.now().toISOString() } }, updated_at: deps.now().toISOString() });
+  const again = await loadByToken(deps, token);
+  return reply(200, { success: true, choice, plan, ...(again ? { packet: publicPacket(again, deps) } : {}) });
 }
 
 /** The blanks in the organizer's contract the file cannot fill (what Mark should know before he sends the link). */
@@ -722,10 +944,19 @@ export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance
       : q
         ? { status: q.status, source: null, plans: [], quoted_at: q.quoted_at, note: QUOTE_NOTE, trip_cost: q.input?.trip_cost ?? null }
         : { status: "none", source: null, plans: [], quoted_at: null, note: QUOTE_NOTE, trip_cost: null };
+  const ins: Row = loaded.traveler?.form_data?.insurance && typeof loaded.traveler.form_data.insurance === "object" ? loaded.traveler.form_data.insurance : {};
   return {
     video_url: deps.insurance?.videoUrl ?? null,
     line_protection: typeof loaded.group.line_protection === "string" && loaded.group.line_protection.trim() ? loaded.group.line_protection.trim() : null,
     quote,
+    // the choice made on the page (Mark 2026-10-30) and the lines that ask it; locked once the insurance document is signed
+    choice: {
+      value: (INSURANCE_CHOICES as readonly string[]).includes(ins["choice"]) ? ins["choice"] : null,
+      plan: typeof ins["plan"] === "string" ? ins["plan"] : null,
+      chosen_at: typeof ins["chosen_at"] === "string" ? ins["chosen_at"] : null,
+      locked: INSURANCE_DOCUMENTS.some((k) => loaded.signed.has(k)),
+    },
+    fields: loaded.kind === "traveler" ? INSURANCE_CHOICE_FIELDS.map((f) => publicField(f, loaded.ctx)) : [],
   };
 }
 

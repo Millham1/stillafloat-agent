@@ -12,7 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 
 type Row = Record<string, any>;
 export type ApiFn = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
-export type PacketStatus = { required: string[]; signed: string[]; complete: boolean };
+/** Mark 2026-10-30: whose card pays for a lead's booking, and where the owner's own signing stands. */
+export type CardStatus = { holder: "me" | "other" | null; name: string | null; email: string | null; link_sent_at: string | null; signed: boolean };
+export type PacketStatus = { required: string[]; signed: string[]; complete: boolean; card?: CardStatus | null };
 export type PaperworkData = {
   signatures: Row[];
   packets: Record<string, PacketStatus>;
@@ -84,6 +86,15 @@ export function TravelerPaperwork({ api, groupId, row, status, onChanged }: { ap
       toast({ title: "Link emailed", description: `Sent to ${r.sentTo}` });
     }, "The email did not go out");
   };
+  // Mark 2026-10-30: someone else's card — the owner signs the authorization on a link of their own
+  const card = status?.card ?? null;
+  const emailCardLink = () => {
+    if (!card?.email || !window.confirm(`Email ${card.name ?? "the card owner"} (${card.email}) a new link to sign the credit card authorization? Any earlier link of theirs stops working.`)) return;
+    return run(async () => {
+      const r = await api<{ sentTo: string }>(`/groups/${groupId}/travelers/${row.id}/card-link/send`, "POST", {});
+      toast({ title: "Card owner's link emailed", description: `Sent to ${r.sentTo}` });
+    }, "The email did not go out");
+  };
 
   return (
     <div className="px-2 py-1 space-y-1">
@@ -93,6 +104,12 @@ export function TravelerPaperwork({ api, groupId, row, status, onChanged }: { ap
         <button className={btn} disabled={busy || !row.email} onClick={emailLink} title={row.email ? `Email the link to ${row.email}` : "Add an email address to this traveler first"}><Mail className="w-3 h-3" /> Email link</button>
       </div>
       {url && <LinkBox url={url} />}
+      {card?.holder === "other" && (
+        <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+          <span>Card: {card.name ?? "someone else"}{card.email ? ` (${card.email})` : ""} · {card.signed ? "authorization signed" : card.link_sent_at ? `their link went out ${when(card.link_sent_at)}` : "their link has NOT been emailed"}</span>
+          {!card.signed && <button className={btn} disabled={busy || !card.email} onClick={emailCardLink}><Mail className="w-3 h-3" /> Email card link</button>}
+        </div>
+      )}
     </div>
   );
 }
@@ -218,7 +235,7 @@ export function ClientPaperwork({ api, groupId, group, data, onChanged }: { api:
                 <td className="px-3 py-2">{s.signer_name}</td>
                 <td className="px-3 py-2">{s.signer_role}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{when(s.signed_at)}</td>
-                <td className="px-3 py-2">{s.choice === "quote" ? "Wants an Allianz quote" : s.choice === "decline" ? "Declined insurance" : ""}</td>
+                <td className="px-3 py-2">{s.choice === "quote" ? `Allianz${s.plan ? `: ${s.plan}` : ""}` : s.choice === "line" ? `The cruise line's plan${s.plan ? `: ${s.plan}` : ""}` : s.choice === "own" ? "Own policy" : s.choice === "decline" ? "Declined insurance" : ""}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1 justify-end">
                     {s.has_pdf

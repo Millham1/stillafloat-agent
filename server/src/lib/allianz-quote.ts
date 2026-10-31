@@ -25,6 +25,14 @@ export interface QuoteInput {
 }
 export interface QuotePlan { name: string; price_per_person: number }
 
+/** A plan as the page offers it and the file keeps it: "OneTrip Prime: $129 per person" (the page's own wording, so the server
+ *  can check that what came back is one of the plans it offered). */
+export function planLabel(p: { name?: unknown; price_per_person?: unknown }): string {
+  const v = Number(p.price_per_person);
+  const money = Number.isFinite(v) ? v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }) : String(p.price_per_person ?? "");
+  return `${String(p.name ?? "").trim()}: $${money} per person`;
+}
+
 /** The Allianz plans Mark typed on the group file, one per line ("OneTrip Prime: $129 per person"; "OneTrip Basic — $89"):
  *  the price a line names is per person; a line with no dollar figure is not a plan. */
 export function plansFromText(text: unknown): QuotePlan[] {

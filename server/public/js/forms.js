@@ -132,7 +132,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     if (ship) lines.push(esc(ship));
     if (when) lines.push('Sailing ' + esc(when) + (g.embark_port ? ' from ' + esc(g.embark_port) : ''));
     if (c && (c.cabin_num || c.category)) lines.push('Cabin ' + esc([c.cabin_num, c.category].filter(Boolean).join(' · ')));
-    if (packet.mates && packet.mates.length) lines.push('Sharing with ' + esc(packet.mates.join(', ')));
+    if (packet.kind === 'cardholder' && packet.cardholder) lines.push('Paying for ' + esc((packet.cardholder.travelers || []).join(', ') || packet.cardholder.for || ''));
+    else if (packet.mates && packet.mates.length) lines.push('Sharing with ' + esc(packet.mates.join(', ')));
     return '<div class="trip">' + lines.join('<br>') + '</div>';
   }
 
@@ -150,7 +151,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   var SECTIONS = {
     legal_name: 'Who you are', address: 'How to reach you', passport_number: 'Passport', trusted_programs: 'Trusted traveler programs', loyalty_1_program: 'Loyalty programs',
     ec1_name: 'Emergency contact', notes: 'Anything we should know', advisory_level: 'For the liability waiver', insurance_choice: 'Do you want travel insurance?',
-    dining: 'Your cabin', cardholder: 'The card',
+    dining: 'Your cabin', cardholder: 'The card', card_name: 'The card',
   };
   // a line of help under a section heading
   var INTRO = {
@@ -158,6 +159,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     ec1_name: 'One person who is not traveling with you.',
     insurance_choice: 'We strongly recommend travel insurance. It can cover the fare if you have to cancel, medical care abroad (your U.S. health plan may pay little or nothing outside the country), and emergency evacuation, which can run from $15,000 to $200,000. Some benefits are only available within about two weeks of your deposit. You can add insurance any time before sailing.',
     cardholder: 'For the deposit and the payments as they come due. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
+    // the card owner's own page (Mark 2026-10-30): the heading sits on the first card line, since whose card it is was answered by the lead
+    card_name: 'The card the deposit and the payments for this cruise go on. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
     advisory_level: 'The U.S. State Department advisory level for your destination, if you know it; leave it if not.',
     dining: 'For the cruise booking agreement: dining, anything to celebrate on board, and anything the ship should know.',
   };
@@ -183,17 +186,20 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   // A follow-up line shows right under the choice it belongs to, only when that choice is ticked.
   var FOLLOW = { us_citizen: { no: ['citizenship'] }, insurance_choice: { own: ['ins_provider', 'ins_policy'], decline: ['decline_reasons'] }, decline_reasons: { other: ['decline_other'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] },
     // Mark 2026-10-30: someone else's card asks for that person's details; the traveler's own card takes them from the file
-    cardholder: { other: ['card_name', 'card_address', 'card_city_state_zip', 'card_phone'] } };
+    // Mark 2026-10-30: the lead's own card takes its details here; someone else's card takes the owner's name and email, and the
+    // owner fills in the rest (billing address, phone, the card and the licence) on a link of their own
+    cardholder: { me: ['card_type', 'card_last4', 'card_expiry', 'dl_state', 'dl_number'], other: ['card_name', 'card_email'] } };
   var SUMMARY = {
     '15-emergency-contact-form': 'The answers you just gave: who you are, how to reach you, and who to call in an emergency.',
     '01-terms-and-conditions': 'How we work together: what we do, what the cruise line does, and how changes and cancellations are handled.',
     '05-liability-waiver': 'Travel has risks no one controls; you accept them, and the cruise line and suppliers answer for their own services.',
-    '07-travel-insurance-declination': 'Your travel insurance choice.',
+    '07-travel-insurance-declination': 'Your travel insurance declination.',
+    '23-insurance-plan': 'Your travel insurance plan, as you chose it.',
     '16-passport-document-checklist': 'Your travel documents checklist.',
     '12-cruise-booking-agreement': 'Your cabin, your price and the cruise line\'s rules for this booking.',
     '09-group-travel-contract': 'The group\'s contract: the cabins held, the dates and the cruise line\'s terms.',
   };
-  var AUTO = { legal_name: 'name', dob: 'bday', email: 'email', phone: 'tel', address: 'address-line1', ec1_name: 'off', ec1_cell_phone: 'off', card_name: 'cc-name', card_address: 'address-line1', card_phone: 'tel', card_last4: 'off', card_expiry: 'off', dl_number: 'off' };
+  var AUTO = { legal_name: 'name', dob: 'bday', email: 'email', phone: 'tel', address: 'address-line1', ec1_name: 'off', ec1_cell_phone: 'off', card_name: 'cc-name', card_email: 'email', card_address: 'address-line1', card_phone: 'tel', card_last4: 'off', card_expiry: 'off', dl_number: 'off' };
 
   // Mark 2026-10-27: the passport country and the relationship are picked from a list; city, state and ZIP are three boxes.
   var COUNTRIES = ['United States', 'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
@@ -255,26 +261,44 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   }
 
   var fields = {}, order = [], steps = [], at = 0;   // the questions of the documents still to sign, by name; the screens shown
+  // Mark 2026-10-30: two questions are the page's own, not a document's: the insurance choice (after the video and the price; it decides
+  // which insurance document follows) and whose card pays (someone else's: the owner signs on a link of their own). The server sends
+  // their lines with the packet (insurance.fields, card.fields) and keeps the answers on the file when the screen is left.
+  function ownLines(list, from) {
+    (list || []).forEach(function (f) {
+      if (!fields[f.name]) { fields[f.name] = { f: f, docs: [] }; order.push(f.name); }
+      fields[f.name].docs.push(from);
+      if (f.required === true) fields[f.name].f.required = true;
+      else if (f.required === 'shown' && !fields[f.name].f.required) fields[f.name].f.required = 'shown';
+    });
+  }
+  function insuranceDoc() { return pending().filter(function (d) { return /^(07|23)-/.test(d.key); })[0] || null; }
   function gather() {
     fields = {}; order = [];
-    pending().forEach(function (d) {
-      d.fields.forEach(function (f) {
-        if (!fields[f.name]) { fields[f.name] = { f: f, docs: [] }; order.push(f.name); }
-        fields[f.name].docs.push(d.key);
-        if (f.required === true) fields[f.name].f.required = true;
-        else if (f.required === 'shown' && !fields[f.name].f.required) fields[f.name].f.required = 'shown';
-      });
-    });
+    if (packet.card) ownLines(packet.card.fields, 'card');
+    if (packet.kind === 'traveler' && packet.insurance && insuranceDoc()) ownLines(packet.insurance.fields, 'insurance');
+    pending().forEach(function (d) { ownLines(d.fields, d.key); });
     steps = [WELCOME];
     var ask = order.filter(function (n) { return !isFollow(n) && HIDE.indexOf(n) < 0 && INSURANCE.indexOf(n) < 0 && PANEL.indexOf(n) < 0 && !fields[n].f.on_document; });
     if (ask.length) steps.push({ id: 'details', title: 'Your information', fields: ask });
     var insuranceAsk = INSURANCE.filter(function (n) { return fields[n] && !isFollow(n); });
     pending().forEach(function (d) {
-      if (/^07-/.test(d.key) && insuranceAsk.length) steps.push({ id: 'insurance', title: 'Travel insurance', fields: insuranceAsk });
+      if (/^(07|23)-/.test(d.key) && insuranceAsk.length) steps.push({ id: 'insurance', title: 'Travel insurance', fields: insuranceAsk });
       steps.push({ id: 'doc', key: d.key, doc: d.key, title: d.title });
     });
     steps.push({ id: 'check', title: 'Your documents' });
     return {};
+  }
+  /** a packet that came back from a save: the screens are rebuilt only when the documents to sign changed (a swap of the insurance
+   *  document, the card authorization leaving for the card's owner); otherwise what is typed stays exactly where it is */
+  function adopt(next) {
+    var before = pending().map(function (d) { return d.key; }).join(','), was = packet;
+    packet = next;
+    var after = pending().map(function (d) { return d.key; }).join(',');
+    if (before === after) { gather(); return false; }
+    if (was && window.SAKeep) window.SAKeep.save($('fm-steps'), wizKey());
+    renderWizard();
+    return true;
   }
 
   function control(f) {
@@ -333,7 +357,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function stepBody(s, named) {
     if (s.id === 'welcome') {
       var c = packet.esign && packet.esign.text, h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '! ' +
-        (packet.kind === 'organizer' ? 'Here is the group contract to read and sign.' : 'One page of details, then your documents to read and sign: about 5 minutes, less time than the line at the buffet!') + '</p>' + tripBox();
+        (packet.kind === 'organizer' ? 'Here is the group contract to read and sign.'
+          : packet.kind === 'cardholder' ? esc((packet.cardholder && packet.cardholder.for) || 'A traveler') + ' asked that the deposit and the payments for this cruise go on your card. One page of details, then the credit card authorization to read and sign: about five minutes.'
+          : 'One page of details, then your documents to read and sign: about 5 minutes, less time than the line at the buffet!') + '</p>' + tripBox();
       if (!consented() && c) h += '<div class="w-box"><b>' + esc(c.title) + '</b><p>' + esc(c.intro) + '</p><ul>' + c.points.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
         '<label class="w-opt-row"><input type="checkbox" id="fm-esign" data-nokeep><span>' + esc(c.tick) + '</span></label></div>';
       if (packet.kind === 'traveler' && !(packet.traveler && packet.traveler.newsletter_opt_in))
@@ -356,14 +382,16 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
     if (s.id === 'check') return '<p class="lead">All of your documents are signed. You can look at any of them again, print it or save it.</p><ul class="w-docs" id="fm-checklist"></ul>';
     if (s.id === 'insurance') return insuranceBody(s);
-    return (s.id === 'details' ? '<p class="lead">Everything we need for your paperwork, on one page. What we already know is filled in: check it, change anything that is wrong, and fill in the rest.</p>' : '') + fieldsHtml(s.fields || []);
+    return (s.id === 'details' ? '<p class="lead">' + (packet.kind === 'cardholder' ? 'Everything we need for the credit card authorization, on one page. Only the last four digits of the card and its expiry: never type the full card number or the security code anywhere on this page.'
+      : 'Everything we need for your paperwork, on one page. What we already know is filled in: check it, change anything that is wrong, and fill in the rest.') + '</p>' : '') + fieldsHtml(s.fields || []);
   }
   // ── The insurance step (Mark 2026-10-30): the video, then the price for this trip, then the choice ──
   function insuranceBody(s) {
     var ins = packet.insurance || {};
     var h = '<p class="lead">Before you choose, please watch the short video and look at the price for your trip.</p>';
     if (ins.video_url) h += '<div class="w-video"><iframe src="' + esc(embedUrl(ins.video_url)) + '" title="Travel insurance: what it covers and what it costs" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
-    h += '<div class="w-quote" id="w-quote" aria-live="polite">' + quoteHtml(ins.quote, ins.line_protection) + '</div>';
+    var chosen = (ins.choice && ins.choice.plan) || (fields.insurance_plan && fields.insurance_plan.f.value) || '';
+    h += '<div class="w-quote" id="w-quote" aria-live="polite">' + quoteHtml(ins.quote, ins.line_protection, chosen) + '</div>';
     return h + fieldsHtml(s.fields || []);
   }
   function embedUrl(u) { var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(u || ''); return m ? 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0' : u; }
@@ -655,7 +683,25 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     }
     if (s.id === 'check') { if (window.SAKeep) window.SAKeep.clear(wizKey()); return showDone(); }
     if (s.id === 'details') requestQuote();
+    // Mark 2026-10-30: whose card (the lead's page) and the insurance choice are kept on the file as their screen is left; the
+    // documents that follow may change with the answer (the card authorization leaves for the card's owner; the plan or the declination)
+    if (s.id === 'details' && packet.card && fields.cardholder) return keep('/card', { cardholder: value('cardholder'), card_name: value('card_name'), card_email: value('card_email') });
+    if (s.id === 'insurance') return keep('/insurance/choice', { insurance_choice: value('insurance_choice'), insurance_plan: value('insurance_plan') });
     goStep(at + 1);
+  }
+  function keep(path, body) {
+    busy = true; $('fm-next').disabled = true;
+    body.website = ($('fm-website') || {}).value || '';
+    return api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) {
+        busy = false; $('fm-next').disabled = false;
+        var j = r.json || {};
+        if (r.status === 200 && j.success && j.packet) { var here = at; adopt(j.packet); goStep(here + 1); return; }
+        if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
+        if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload().then(function () { goStep(0); showErr('Please tick the box to agree to signing electronically, then carry on.'); }); }
+        showErr(j.error || ('That did not go through (' + r.status + '). Please try again.'));
+        fieldErrors(j.fields);
+      }).catch(function () { busy = false; $('fm-next').disabled = false; showErr('We could not reach the server. Please check your connection and try again.'); });
   }
 
   // ── Signing: each ticked document is signed and recorded on its own, one after the other, with the answers that belong to it ──
@@ -735,12 +781,14 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   function showDone() {
     show('fm-wiz', false); show('fm-doc', false);
     var who = firstName();
+    var card = packet.card && packet.card.holder === 'other' ? packet.card : null;
     $('fm-done').innerHTML = '<h2>All done' + (who ? ', ' + esc(who) : '') + '!</h2>' +
-      '<p class="lead">' + (packet.kind === 'organizer' ? 'Your group contract is signed.' : 'Your paperwork is complete. That is the boring part finished; the next thing on your list is packing!') + '</p>' +
-      '<p>A signed copy of each document is kept on file with ' + esc(packet.business ? packet.business.name : 'us') + '. ' +
-      (packet.copies_sent_at ? 'We have also emailed you your own copy of each signed document. ' : '') +
+      '<p class="lead">' + (packet.kind === 'organizer' ? 'Your group contract is signed.' : packet.kind === 'cardholder' ? 'The credit card authorization is signed. Thank you!' : 'Your paperwork is complete. That is the boring part finished; the next thing on your list is packing!') + '</p>' +
+      '<p>A signed copy of ' + (packet.kind === 'cardholder' ? 'it' : 'each document') + ' is kept on file with ' + esc(packet.business ? packet.business.name : 'us') + '. ' +
+      (packet.copies_sent_at ? 'We have also emailed you your own copy' + (packet.kind === 'cardholder' ? '' : ' of each signed document') + '. ' : '') +
       (packet.kind === 'organizer' ? 'Mark will add the agent signature and be in touch. ' : 'There is nothing more to do right now. We will contact you if anything is missing or changes. ') +
-      'You can close this page; opening your link again shows what is signed.</p>' + tripBox() +
+      'You can close this page; opening your link again shows what is signed.</p>' +
+      (card ? '<p>The credit card authorization is ' + esc(card.name || "the card owner") + "'s to fill in and sign" + (card.signed ? ', and it is signed. ' : card.link_sent_at ? ': we emailed their own private link to ' + esc(card.email || '') + '. ' : ': Mark will send them their own private link. ') + '</p>' : '') + tripBox() +
       '<p class="fine">Questions? ' + esc(packet.business ? packet.business.contact : '') + '</p>';
     show('fm-done', true);
     window.scrollTo(0, 0);

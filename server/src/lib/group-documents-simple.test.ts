@@ -2,7 +2,8 @@
 // file, carry every input the page asks for, and print as clean forms; the cabin and price come from the file, never typed.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyAnswers, blocksFor, blocksToText, buildCtx, fillBlocks, packetFor, renderDocument } from "./group-documents";
+import { applyAnswers, askedOf, blocksFor, blocksToText, buildCtx, fillBlocks, packetFor, prefillValue, renderDocument } from "./group-documents";
+import { INSURANCE_CHOICE_FIELDS } from "./group-document-specs";
 import { renderFormPdf } from "./group-form-pdf";
 import { BUSINESS } from "./group-secure";
 
@@ -75,10 +76,10 @@ test("Credit card authorization: the booking and total from the file, last four 
   const d = renderDocument("22-card-authorization", ctx());
   assert.equal(d.title, "Credit card authorization");
   for (const s of ["Total authorized: $ 1,073.58", "Booking number: TEST-0001", "Balcony Bella (BB)", "last four digits of my card", "ESIGN Act"]) assert.ok(d.text.includes(s), s);
-  assert.deepEqual(d.fields.map((f) => f.name), ["cardholder", "card_name", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"]);
+  assert.deepEqual(d.fields.map((f) => f.name), ["cardholder", "card_name", "card_email", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"]);
   assert.ok(d.text.includes("Identity verification") && d.text.includes("Driver's licence:"), "the licence line and Cornerstone's identity point");
   assert.ok(d.text.includes("The card belongs to:"), "whose card it is, on the form (Mark 2026-10-30)");
-  const good = { cardholder: "other", card_name: "Jane Public", card_address: "1 Main St", card_city_state_zip: "Raleigh, NC 27601", card_phone: "9195550100", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
+  const good = { cardholder: "other", card_name: "Jane Public", card_email: "jane@example.com", card_address: "1 Main St", card_city_state_zip: "Raleigh, NC 27601", card_phone: "9195550100", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" };
   const ok = applyAnswers(d, good, ctx());
   assert.ok(ok.ok, JSON.stringify(ok));
   if (ok.ok) {
@@ -98,7 +99,7 @@ test("Credit card authorization: the booking and total from the file, last four 
   const mine = applyAnswers(d, { cardholder: "me", card_type: "visa", card_last4: "6666", card_expiry: "03/30", dl_state: "NC", dl_number: "0000554321" }, ctx());
   assert.ok(mine.ok, JSON.stringify(mine));
   if (mine.ok) {
-    assert.deepEqual([mine.answers["card_name"], mine.answers["card_address"], mine.answers["card_city_state_zip"]], ["Mark Millham", "100 Goodsell Ct", "Fuquay Varina, NC 27526"], "the traveler on file is the cardholder");
+    assert.deepEqual([mine.answers["card_name"], mine.answers["card_address"], mine.answers["card_city_state_zip"], mine.answers["card_email"]], ["Mark Millham", "100 Goodsell Ct", "Fuquay Varina, NC 27526", "mark@example.com"], "the traveler on file is the cardholder");
     assert.equal((mine.formData["card"] as Record<string, unknown>)["holder"], "me");
     const printed = blocksToText(fillBlocks(d, mine.answers, NOW));
     assert.ok(printed.includes("☒ me, the traveler named on this booking") && printed.includes("Mark Millham") && printed.includes("Fuquay Varina"), printed);
@@ -171,29 +172,58 @@ test("the traveler information form asks no passport place of issue and hides th
   assert.ok(card.text.includes("Why we ask for it: to protect against fraud, Cornerstone Collective asks for the state and number of your driver's licence."));
 });
 
-test("the insurance document offers the four choices Mark wants, after the video and the quote", () => {
-  const d = renderDocument("07-travel-insurance-declination", ctx());
-  assert.deepEqual(d.fields.find((f) => f.name === "insurance_choice")!.options!.map((o) => o.value), ["quote", "line", "own", "decline"]);
-  for (const s of ["subject to change until finalized", "The cruise line's plan.", "My own policy."]) assert.ok(d.text.includes(s), s);
+// Mark 2026-10-30: "the quotes should show up right after viewing the insurance video and they make a decision there. then that opens the
+// logic chain of what is presented in the documents, either a declination or the approval with the quote."
+const withInsurance = (choice: string, plan?: string, over: Record<string, unknown> = {}) => ({ ...TRAVELERS[1], form_data: { insurance: { choice, ...(plan ? { plan } : {}) } }, ...over });
+test("the choice made on the page decides the insurance document: the plan (23) for Allianz or the line's own plan, Cornerstone's declination (07) for none or own", () => {
+  const at = (t: Record<string, unknown>) => packetFor({ group: GROUP, cabin: CABINS[0], traveler: t })[2];
+  assert.equal(at(TRAVELERS[1]), "07-travel-insurance-declination", "no choice yet: the declination holds the slot");
+  assert.equal(at(withInsurance("quote", "OneTrip Prime: $129 per person")), "23-insurance-plan");
+  assert.equal(at(withInsurance("line", "MSC Protection Plan: $59 per person")), "23-insurance-plan");
+  assert.equal(at(withInsurance("own")), "07-travel-insurance-declination");
+  assert.equal(at(withInsurance("decline")), "07-travel-insurance-declination");
+  assert.deepEqual(INSURANCE_CHOICE_FIELDS.map((f) => f.name), ["insurance_choice", "insurance_plan"], "the page's own lines, not a document's");
+  assert.deepEqual(INSURANCE_CHOICE_FIELDS[0]!.options!.map((o) => o.value), ["quote", "line", "own", "decline"]);
   assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] }).slice(1, 4), ["01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"], "the waiver's insurance line follows the choice");
 });
 
-test("the Allianz plan picked on the insurance step goes on the Travel Insurance document, and only when Allianz was chosen (Mark 2026-10-30)", () => {
-  const d = renderDocument("07-travel-insurance-declination", ctx());
-  assert.ok(d.fields.some((f) => f.name === "insurance_plan"), "the plan is one of the document's inputs");
-  assert.ok(!d.fields.find((f) => f.name === "insurance_plan")!.required, "the page asks for it only when plans are offered; the document never blocks on it");
-  const yes = applyAnswers(d, { insurance_choice: "quote", insurance_plan: "OneTrip Prime: $129 per person" }, ctx());
-  assert.ok(yes.ok, JSON.stringify(yes));
-  if (yes.ok) {
-    assert.equal(yes.answers["insurance_plan"], "OneTrip Prime: $129 per person");
-    assert.equal((yes.formData["insurance"] as Record<string, unknown>)["plan"], "OneTrip Prime: $129 per person");
-    const printed = blocksToText(fillBlocks(d, yes.answers, NOW));
-    assert.ok(printed.includes("☒ Yes.") && printed.includes("Plan chosen: OneTrip Prime: $129 per person"), printed);
+test("the plan document carries the plan and price chosen, the provider and who is covered; nothing is asked on it and nothing is worked out", () => {
+  const allianz = renderDocument("23-insurance-plan", ctx(withInsurance("quote", "OneTrip Prime: $129 per person") as any));
+  assert.equal(allianz.title, "Travel insurance: your plan");
+  assert.deepEqual(allianz.fields, [], "nothing to type: the choice was made on the page");
+  for (const line of ["Provider: Allianz Global Assistance", "Plan and price: OneTrip Prime: $129 per person", "Covered traveler: Pat Guest", "Traveler: Pat Guest", "Also on this cabin: Mark Millham", "Cruise fare per person, as quoted: $ 536.79", "Pricing subject to change until finalized", "it is not the policy", "charged to the card authorized for this booking", "do not insure me and do not decide claims"]) {
+    assert.ok(allianz.text.includes(line), `missing: ${line}\n${allianz.text}`);
   }
-  const no = applyAnswers(d, { insurance_choice: "decline", insurance_plan: "OneTrip Prime: $129 per person" }, ctx());
-  assert.ok(no.ok, JSON.stringify(no));
-  if (no.ok) {
-    assert.equal(no.answers["insurance_plan"], undefined, "a plan picked before choosing No is not kept");
-    assert.ok(blocksToText(fillBlocks(d, no.answers, NOW)).includes("Plan chosen: N/A — left intentionally blank"));
-  }
+  assert.match(allianz.text, /Quoted: By .+ for this sailing, from Allianz's rates/, "a plan from the group file says who quoted it");
+  assert.ok(!/\$\s*\d[\d,]*\.?\d*\s*(?!per person)/.test(allianz.text.replace(/\$ 536\.79|\$129 per person/g, "")), "no price the file does not hold");
+  const line = renderDocument("23-insurance-plan", ctx(withInsurance("line") as any, { line_protection: "MSC Protection Plan: $59 per person" }));
+  assert.ok(line.text.includes("Provider: MSC Cruises") && line.text.includes("Plan and price: MSC Protection Plan: $59 per person") && line.text.includes("Quoted: The cruise line's own protection plan"), line.text);
+});
+
+test("the declination is Cornerstone's form, with no quote on it: its own boxes say quotes were shown and the provider, the premium line stays blank", () => {
+  const d = renderDocument("07-travel-insurance-declination", ctx(withInsurance("decline") as any, { insurance_plans: "OneTrip Basic: $89 per person\nOneTrip Prime: $129 per person" }));
+  assert.equal(d.title, "Travel insurance declination");
+  assert.deepEqual(d.fields.map((f) => f.name), ["decline_reasons", "decline_other"], "only Cornerstone's optional reasons are asked");
+  assert.ok(!/YOUR CHOICE|Plan chosen|OneTrip|\$89|\$129/.test(d.text), "no plan or price on a declination");
+  assert.ok(d.text.includes("☒ Client has been provided with travel insurance quote(s).") && d.text.includes("☒ Client has reviewed insurance options and is declining all coverage."), d.text);
+  assert.ok(d.text.includes("Quoted Policy Provider (if applicable): Allianz Global Assistance"));
+  assert.ok(d.text.includes("Quoted Premium Amount (if applicable): $ ________"), "the premium line is left for Mark, never a figure");
+  assert.ok(d.unfilled.includes("Quoted premium amount"));
+  const own = renderDocument("07-travel-insurance-declination", ctx(withInsurance("own") as any));
+  assert.ok(own.text.includes("☐ Client has been provided with travel insurance quote(s).") && own.text.includes("☐ Client has reviewed insurance options and is declining all coverage."), "no plans shown, and own cover is not declining all coverage");
+  assert.deepEqual(prefillValue(own.fields[0]!, ctx(withInsurance("own") as any)), ["existing"], "a policy of their own pre-ticks Cornerstone's first reason");
+  assert.equal(prefillValue(d.fields[0]!, ctx(withInsurance("decline") as any)), undefined);
+});
+
+// Mark 2026-10-30: "for the CC, build the link to be sent to the owner of the card if that choice is selected"
+test("someone else's card leaves the lead's packet; the owner's own packet is the card authorization alone, with the lines that are theirs", () => {
+  const lead = { ...TRAVELERS[0], form_data: { ...TRAVELERS[0].form_data, card: { holder: "other", name: "Pat Payer", email: "pat@example.com" } } };
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: lead }).slice(-2), ["16-passport-document-checklist", "12-cruise-booking-agreement"], "no card authorization in the lead's packet");
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: { ...TRAVELERS[0], form_data: { card: { holder: "me" } } } }).slice(-1), ["22-card-authorization"]);
+  assert.deepEqual(packetFor({ group: GROUP, cardholder: true }), ["22-card-authorization"]);
+  const d = renderDocument("22-card-authorization", ctx(lead as any));
+  assert.deepEqual(askedOf(d.fields, "lead").map((f) => f.name), ["cardholder", "card_name", "card_email", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"], "the lead names the owner and their email; the billing lines are the owner's");
+  assert.deepEqual(askedOf(d.fields, "cardholder").map((f) => f.name), ["card_name", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"], "the owner is not asked whose card it is or their own email");
+  assert.ok(d.text.includes("Email: ________"), "the owner's email is on the form");
+  assert.equal(prefillValue(d.fields.find((f) => f.name === "card_name")!, ctx(lead as any)), "Pat Payer", "the owner's page starts with the name the lead gave");
 });

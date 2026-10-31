@@ -14,7 +14,7 @@ import { renderSignedPdf } from "../lib/group-signature-pdf";
 import { sealerFromEnv, type Sealer } from "../lib/group-pdf-seal";
 import { DOC_SPECS } from "../lib/group-documents";
 import { advisoriesForGroup } from "../lib/travel-advisories";
-import { SIGNER_COLS, TRAVELER_COLS, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
+import { SIGNER_COLS, TRAVELER_COLS, cardOf, chooseCardholder, chooseInsurance, formUrl, getCopies, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, sendCardLink, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
 
 // Client paperwork (migrations 0044 and 0052).
 //
@@ -28,6 +28,9 @@ import { SIGNER_COLS, TRAVELER_COLS, formUrl, getCopies, getCopyPdf, getPacket, 
 // Public (the link's token is the credential; there is no other login):
 //   GET    /api/forms/:token                               the packet: documents, their inputs, what is signed
 //   POST   /api/forms/:token/sign                          { doc_key, answers, signer_name, agreed, content_sha256, newsletter_opt_in, website }
+//   POST   /api/forms/:token/insurance/choice              { insurance_choice, insurance_plan }: the choice after the video and the price (Mark 2026-10-30)
+//   POST   /api/forms/:token/card                          { cardholder, card_name, card_email }: whose card; someone else's gets a link of their own
+//   POST   /api/groups/:id/travelers/:tid/card-link/send   the card owner's link again (dashboard)
 //
 // Environment: GROUP_PII_KEY (64 hex characters; without it no passport number is taken), PUBLIC_URL (the site the
 // emailed link points at), and on the DEV box GROUP_FORMS_MAIL_ALLOW = a comma list of test addresses or "@domain"
@@ -140,6 +143,18 @@ export const store: FormsStore = {
   async groupByOrganizerCopiesHash(hash) {
     const { data, error } = await db().from("groups").select("*").eq("organizer_copies_token_hash", hash).maybeSingle();
     if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+  // Mark 2026-10-30: the card owner's own link and copies link live on the lead traveler's row (migration 0062). A box that has
+  // not applied 0062 has no such columns; the traveler's link must keep working there, so that error is not fatal.
+  async travelerByCardTokenHash(hash) {
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("card_token_hash", hash).maybeSingle();
+    if (error) return null;
+    return data ?? null;
+  },
+  async travelerByCardCopiesHash(hash) {
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("card_copies_token_hash", hash).maybeSingle();
+    if (error) return null;
     return data ?? null;
   },
   async upsertProspect(row) {
@@ -331,6 +346,38 @@ router.post("/forms/:token/insurance/quote", async (req: Request, res: Response)
     return fail(req, res, err, "insurance quote request failed");
   }
 });
+// Mark 2026-10-30: "the quotes should show up right after viewing the insurance video and they make a decision there": the choice
+// is kept on the file and decides the insurance document that follows (23 the plan, or 07 the declination).
+router.post("/forms/:token/insurance/choice", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (signLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const body = (req.body ?? {}) as Row;
+    if (typeof body["website"] === "string" && body["website"]) return res.json({ success: true }); // honeypot
+    const out = await chooseInsurance(deps(), req.params["token"], { insurance_choice: body["insurance_choice"], insurance_plan: body["insurance_plan"] });
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "insurance choice failed");
+  }
+});
+// Mark 2026-10-30: whose card pays. Someone else's: the owner, named with an email, gets a link of their own to fill in and sign the
+// authorization; the lead's packet then has no card authorization in it.
+router.post("/forms/:token/card", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (signLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const body = (req.body ?? {}) as Row;
+    if (typeof body["website"] === "string" && body["website"]) return res.json({ success: true }); // honeypot
+    const out = await chooseCardholder(deps(), req.params["token"], { cardholder: body["cardholder"], card_name: body["card_name"], card_email: body["card_email"] });
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "cardholder choice failed");
+  }
+});
 router.get("/forms/:token/insurance", async (req: Request, res: Response) => {
   try {
     privateHeaders(res);
@@ -372,7 +419,7 @@ router.get("/forms/copies/:token/:sid", async (req: Request, res: Response) => {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 async function travelerInGroup(groupId: string, tid: string): Promise<Row | null> {
-  const { data, error } = await db().from("group_travelers").select("id, group_id, cabin_id, first_name, last_name, email, lang, form_token_hash, form_sent_at").eq("id", tid).eq("group_id", groupId).maybeSingle();
+  const { data, error } = await db().from("group_travelers").select("id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, email, lang, form_token_hash, form_sent_at, form_data, card_link_sent_at").eq("id", tid).eq("group_id", groupId).maybeSingle();
   if (error) throw new Error(error.message);
   return data ?? null;
 }
@@ -425,6 +472,25 @@ router.post("/groups/:id/travelers/:tid/form-link/send", requireToken, async (re
   }
 });
 
+// Mark 2026-10-30: the card owner's link, sent again from the group file (a new link; the old one stops working).
+router.post("/groups/:id/travelers/:tid/card-link/send", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    const t = await travelerInGroup(groupId, String(req.params["tid"]));
+    if (!t) return res.status(404).json({ success: false, error: "Traveler not found" });
+    const card = cardOf(t);
+    if (card.holder !== "other" || !card.email) return res.status(400).json({ success: false, error: "This traveler's booking is not paid with someone else's card, so there is no card owner to email." });
+    if (!mailAllowed(card.email, process.env["GROUP_FORMS_MAIL_ALLOW"])) return res.status(400).json({ success: false, error: "This box only emails its test addresses, so that address was not emailed." });
+    const group = await store.group(groupId);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const ok = await sendCardLink(deps(), group, t);
+    if (!ok) return res.status(502).json({ success: false, error: "The email did not go out. The card owner's new link is stored; try again in a minute." });
+    return res.json({ success: true, sentTo: card.email });
+  } catch (err) {
+    return fail(req, res, err, "card link email failed");
+  }
+});
+
 router.post("/groups/:id/organizer-link", requireToken, async (req: Request, res: Response) => {
   try {
     const groupId = String(req.params["id"]);
@@ -459,6 +525,8 @@ router.get("/groups/:id/signatures", requireToken, async (req: Request, res: Res
     const rows: Row[] = data ?? [];
     const [cabins, travelers] = await Promise.all([store.cabins(groupId), store.travelers(groupId)]);
     const names = new Map(travelers.map((t) => [t.id, [t.first_name, t.last_name].filter(Boolean).join(" ")]));
+    // the insurance choice lives on the file (Mark 2026-10-30), the plan with it; older signatures carried it in their answers
+    const insurance = new Map(travelers.map((t) => [t.id, (t.form_data && typeof t.form_data === "object" && t.form_data.insurance && typeof t.form_data.insurance === "object" ? t.form_data.insurance : {}) as Row]));
     const status = packetStatuses({ group, cabins, travelers, signatures: rows });
     return res.json({
       success: true,
@@ -467,7 +535,8 @@ router.get("/groups/:id/signatures", requireToken, async (req: Request, res: Res
         id: s.id, doc_key: s.doc_key, doc_title: DOC_SPECS[s.doc_key]?.title ?? s.doc_key, doc_version: s.doc_version,
         signer_role: s.signer_role, signer_name: s.signer_name, traveler_id: s.traveler_id ?? null, traveler_name: names.get(s.traveler_id) ?? null,
         cabin_id: s.cabin_id ?? null, signed_at: s.signed_at, content_sha256: s.content_sha256, has_pdf: !!s.pdf_path, sealed: !!s.sealed,
-        choice: s.doc_key === "07-travel-insurance-declination" ? (s.answers?.insurance_choice ?? null) : null,
+        choice: /^(07|23)-/.test(String(s.doc_key)) ? (insurance.get(s.traveler_id)?.["choice"] ?? s.answers?.insurance_choice ?? null) : null,
+        plan: s.doc_key === "23-insurance-plan" ? (insurance.get(s.traveler_id)?.["plan"] ?? null) : null,
       })),
       packets: status.travelers,
       organizer: { ...status.organizer, link_sent_at: group.organizer_link_sent_at ?? null },

@@ -22,7 +22,7 @@ test("regenerating the client-documents module gives exactly the committed file"
 test("every Cornerstone template source is in the module, and the module holds nothing else", async () => {
   const { CLIENT_DOCUMENTS } = await import("../content/client-documents");
   const files = readdirSync(sources).filter((f) => f.endsWith(".md")).map((f) => f.replace(/\.md$/, "")).sort();
-  assert.equal(files.length, 16, "13 Cornerstone templates + About you, Your booking and the card authorization (2026-10-29)");
+  assert.equal(files.length, 17, "13 Cornerstone templates + About you, Your booking and the card authorization (2026-10-29), and the insurance plan (2026-10-30)");
   assert.deepEqual(Object.keys(CLIENT_DOCUMENTS).sort(), files);
   for (const key of files) {
     assert.equal(CLIENT_DOCUMENTS[key], readFileSync(path.join(sources, `${key}.md`), "utf8").replace(/\r\n?/g, "\n"), `${key} differs from its source`);

@@ -40,6 +40,8 @@
 
 **Phone:** {{in:card_phone}}
 
+**Email:** {{in:card_email}}
+
 **Card type:** {{ch:card_type:visa}} Visa {{ch:card_type:mastercard}} Mastercard {{ch:card_type:amex}} American Express {{ch:card_type:discover}} Discover
 
 **Card ending in (last four digits only):** {{in:card_last4}} **Expires (MM/YY):** {{in:card_expiry}}

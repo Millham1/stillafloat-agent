@@ -276,9 +276,8 @@ test("the document hash is stable for the same file and moves when anything the 
 
 test("a signed copy merges the answers into the text and marks the chosen boxes", () => {
   const d = renderDocument("07-travel-insurance-declination", ctxFor());
-  const filled = blocksToText(fillBlocks(d, { insurance_choice: "decline", decline_reasons: ["premium"], decline_other: "no thanks" }, NOW));
-  assert.ok(filled.includes("☒ No. I decline travel insurance for this trip."));
-  assert.ok(filled.includes("☐ Yes. I want Allianz travel insurance through Mark"));
+  const filled = blocksToText(fillBlocks(d, { decline_reasons: ["premium"], decline_other: "no thanks" }, NOW));
+  assert.ok(!filled.includes("YOUR CHOICE") && !filled.includes("Plan chosen"), "Mark 2026-10-30: the choice is made on the page, never on the declination");
   assert.ok(filled.includes("☒ The insurance premium cost is a concern"));
   assert.ok(filled.includes("☐ I have existing coverage"));
   assert.ok(filled.includes("Other: no thanks"));
@@ -423,14 +422,13 @@ test("form 15 asks for one emergency contact by cell phone, and nothing medical,
   assert.deepEqual(d.fields.filter((f) => f.name.startsWith("ec")).map((f) => f.name), ["ec1_name", "ec1_relationship", "ec1_cell_phone", "ec1_email", "ec1_address", "ec1_city_state_zip"]);
 });
 
-test("the insurance choice is required, a quote or a declination; the waiver's health box must be ticked", () => {
+test("the declination asks nothing but Cornerstone's optional reasons (the choice lives on the file, Mark 2026-10-30); the waiver's health box must be ticked", () => {
   const ins = renderDocument("07-travel-insurance-declination", ctxFor());
-  assert.equal(applyAnswers(ins, {}, ctxFor()).ok, false);
-  const q = applyAnswers(ins, { insurance_choice: "quote" }, ctxFor());
-  assert.equal(q.ok && getPath(q.formData, "insurance.choice"), "quote");
-  assert.equal(applyAnswers(ins, { insurance_choice: "maybe" }, ctxFor()).ok, false);
+  assert.equal(applyAnswers(ins, {}, ctxFor()).ok, true, "a declination with no reason given is still a declination");
+  assert.equal(applyAnswers(ins, { decline_reasons: ["maybe"] }, ctxFor()).ok, false);
   const d = applyAnswers(ins, { insurance_choice: "decline", decline_reasons: ["premium", "other"], decline_other: "tight budget" }, ctxFor());
   assert.equal(d.ok && getPath(d.formData, "insurance.other_reason"), "tight budget");
+  assert.equal(d.ok && d.answers["insurance_choice"], undefined, "a stray choice in the answers is dropped: it is not this document's line");
   const waiver = renderDocument("05-liability-waiver", ctxFor());
   assert.equal(applyAnswers(waiver, {}, ctxFor()).ok, false);
   assert.equal(applyAnswers(waiver, { health_ack: true }, ctxFor()).ok, true);
