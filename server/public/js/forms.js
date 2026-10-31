@@ -272,11 +272,15 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     });
   }
   function insuranceDoc() { return pending().filter(function (d) { return /^(07|23)-/.test(d.key); })[0] || null; }
-  function gather() {
+  /** the lines of the documents still to sign, by name, from the packet as it stands (the screens are left as they are) */
+  function gatherFields() {
     fields = {}; order = [];
     if (packet.card && !packet.card.signed) ownLines(packet.card.fields, 'card'); // once the card authorization is signed, whose card it is stands
     if (packet.kind === 'traveler' && packet.insurance && insuranceDoc()) ownLines(packet.insurance.fields, 'insurance');
     pending().forEach(function (d) { ownLines(d.fields, d.key); });
+  }
+  function gather() {
+    gatherFields();
     steps = [WELCOME];
     var ask = order.filter(function (n) { return !isFollow(n) && HIDE.indexOf(n) < 0 && INSURANCE.indexOf(n) < 0 && PANEL.indexOf(n) < 0 && !fields[n].f.on_document; });
     if (ask.length) steps.push({ id: 'details', title: 'Your information', fields: ask });
@@ -294,7 +298,9 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     var before = pending().map(function (d) { return d.key; }).join(','), was = packet;
     packet = next;
     var after = pending().map(function (d) { return d.key; }).join(',');
-    if (before === after) { gather(); return false; }
+    // the same documents: the lines are refreshed from the packet, and the screens (and the list that numbers them) stay as drawn,
+    // so a document signed earlier in this sitting keeps its place and the page never lands on the wrong screen
+    if (before === after) { gatherFields(); return false; }
     if (was && window.SAKeep) window.SAKeep.save($('fm-steps'), wizKey());
     renderWizard();
     return true;
@@ -627,7 +633,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
           print.innerHTML = '<a class="linkbtn" target="_blank" rel="noopener">Print or save this document</a>';
           print.firstChild.href = url;
           next.appendChild(print);
-          var width = Math.max(300, host.clientWidth || 600), ratio = Math.min(2, window.devicePixelRatio || 1), chain = Promise.resolve(), last = pdf.numPages - 1;
+          var width = Math.max(300, host.clientWidth || 600), ratio = Math.min(2, window.devicePixelRatio || 1), chain = Promise.resolve();
           for (var n = 1; n <= pdf.numPages; n++) (function (n) {
             chain = chain.then(function () { return pdf.getPage(n); }).then(function (page) {
               var base = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: (width / base.width) * ratio });
@@ -641,8 +647,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
                 var scale = width / base.width;   // screen pixels per point of the page
                 marks.forEach(function (m) {
                   if (m.page !== n - 1) return;
-                  if (m.kind === 'sig' && m.page !== last) return;   // a signature line before the last page: the box below the page stays
-                  var el = overlayFor(m, scale, key); if (el) wrap.appendChild(el);
+                  var el = overlayFor(m, scale, key); if (el) wrap.appendChild(el);   // the name box sits on the signature line, whichever page it is on
                 });
               });
             });
@@ -791,7 +796,14 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   /** the document on screen, signed on its own with the answers that belong to it; then on to the next screen */
   function signOne(s) {
     var d = docByKey(s.key), name = signer(), label = $('fm-next').textContent;
-    if (!name) { showErr('Please type your full name (first and last) to sign.'); var nb = nameBox(); if (nb) goTo(nb); return; }
+    if (!name) {
+      showErr('Please type your full name (first and last) to sign.');
+      var nb = nameBox(), pg = nb && nb.closest('.w-page');
+      // the name box is on the signature line: when that line is on an earlier page, the page turns back to it
+      if (pg && pg.hidden) { var hostEl = stepEl(at).querySelector('.w-pdf'); showPage(hostEl, Array.prototype.indexOf.call(pagesOf(hostEl), pg)); }
+      if (nb) goTo(nb);
+      return;
+    }
     busy = true; $('fm-next').disabled = true; $('fm-next').textContent = 'Signing…';
     var done = function () { busy = false; $('fm-next').disabled = false; $('fm-next').textContent = label; };
     var body = JSON.stringify({

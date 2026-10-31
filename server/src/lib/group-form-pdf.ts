@@ -195,7 +195,29 @@ export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
       }
       let titled = false;
       const blocks = markSignature(input.blocks);
-      for (const b of blocks) {
+      // Mark 2026-10-31 ("the signature block isn't aligned with the signature"): the client's signature block and everything after
+      // it stay together on the last page, so the name box on the signature line and "Confirm and sign" share a page. When what is
+      // left will not fit under the acknowledgment, the signature block starts a fresh page.
+      const sigLine = blocks.findIndex((b) => b.t === "p" && /\{\{sig\}\}/.test(b.text));
+      const sigStart = sigLine > 0 && blocks[sigLine - 1]!.t === "p" && /^\*\*[^*]+\*\*$/.test((blocks[sigLine - 1] as { text: string }).text) ? sigLine - 1 : sigLine;
+      const lead = SIZE * 1.42;
+      const guess = (b: Block): number => {
+        const plain = (s: string) => pdfSafe(s.replace(/\{\{[^}]*\}\}/g, "Jane Quincy Public, Oct 31").replace(/_{3,}/g, "____________________").replace(/\*/g, ""));
+        const lines = (s: string, w = width) => s.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(doc.font("Helvetica").fontSize(SIZE).widthOfString(plain(l)) / w)), 0);
+        switch (b.t) {
+          case "h": return lead * 1.9 + 8;
+          case "hr": return lead * 0.8;
+          case "p": return lines(b.text) * lead + lead * 0.35;
+          case "ul": case "ol": return b.items.reduce((n, x) => n + lines(x, width - 12) * lead + lead * 0.2, 0) + lead * 0.3;
+          case "table": return (b.rows.length + 1) * 22 + lead * 0.8;
+        }
+      };
+      for (let i = 0; i < blocks.length; i++) {
+        const b = blocks[i]!;
+        if (i === sigStart && sigStart > 0 && doc.y > doc.page.margins.top + 40) {
+          const need = blocks.slice(sigStart).reduce((h, x) => h + guess(x), 0) * 1.08;
+          if (doc.y + need > doc.page.height - 72) doc.addPage();
+        }
         // keep the title and the business's lines clear of the logo on the first page
         const wFirst = doc.bufferedPageRange().count === 1 && doc.y < MARGIN + 70 ? width - LOGO_W - 12 : width;
         switch (b.t) {
