@@ -29,6 +29,9 @@ export const ORIZN_DOCS = "https://visa.orizn.app/visa-api/docs";
 export const CRUISE_TERRITORIES = ["KY", "SX", "CW", "AW", "BQ", "TC", "VG", "BM", "MQ", "GP", "MF", "BL", "AI", "MS", "GL", "GI", "FO", "PF", "NC", "MO", "RE"] as const;
 /** The quota kept unspent on a free key, so a review never uses the month's last requests. */
 export const ORIZN_RESERVE = 5;
+/** Mark 2026-10-31: "alert me on reaching 180 ports". Every Orizn destination costs one request at each quarterly review, and the
+ *  free key allows 100 a month: at 180 the review needs two months of quota, so a "Waiting on you" row says so. */
+export const VISA_ALERT_AT = 180;
 const ORIZN_REQ: Record<string, Requirement> = { visa_free: "visa-free", visa_required: "visa-required", e_visa: "e-visa", visa_on_arrival: "visa-on-arrival", eta: "eta", no_admission: "no-admission" };
 
 export type Requirement = "visa-free" | "visa-on-arrival" | "e-visa" | "eta" | "visa-required" | "no-admission" | "unknown";
@@ -209,11 +212,18 @@ export interface RefreshOptions {
   wanted?: string[] | (() => Promise<string[]>);
   /** the most Orizn requests one run may spend (the quota is 100 a month on a free key) */
   maxOrizn?: number;
+  /** false: only `wanted` is asked for, not the standing territory list (a group file's save, not the daily job) */
+  territories?: boolean;
 }
+export interface VisaChange { code: string; name: string; from: string; to: string }
 export interface RefreshResult {
   due: boolean; rows: number; loaded: number; changed: number; next_check_at: string | null;
   /** the second source's pass: what it fetched, what is still missing, and why it stopped if it did */
   orizn: { fetched: number; missing: string[]; note: string; remaining: number | null };
+  /** destinations whose requirement moved in this run (either source): Mark's "Europe is what concerns me" */
+  changes: VisaChange[];
+  /** rows that came from Orizn, after the run (each costs a request at every review) */
+  oriznRows: number;
 }
 
 /** The quarterly review: when any dataset row is due (or the table is empty) the whole passport's rows are read again and
@@ -227,6 +237,8 @@ export async function refreshVisaRequirements(store: VisaStore, fetchImpl: typeo
   const nextDue = have.length ? have.map((r) => r.next_check_at).sort()[0]! : null;
   const next = new Date(now.getTime() + VISA_REVIEW_DAYS * 24 * 3_600_000).toISOString();
   const datasetDue = !!opts.force || !have.length || have.some((r) => r.source === VISA_SOURCE && isDue(r, now));
+  const changes: VisaChange[] = [];
+  const noteChange = (o: VisaRow | undefined, r: VisaRow) => { if (o && o.requirement !== r.requirement) changes.push({ code: r.destination_iso2, name: r.destination_name, from: o.requirement, to: r.requirement }); };
   let loaded = 0, changed = 0;
   if (datasetDue) {
     const parsed = parseTidyCsv(await readDataset(fetchImpl), passport);
@@ -237,14 +249,17 @@ export async function refreshVisaRequirements(store: VisaStore, fetchImpl: typeo
       source: VISA_SOURCE, source_url: VISA_DATASET_URL, checked_at: now.toISOString(), next_check_at: next,
     }));
     changed = rows.filter((r) => { const o = before.get(r.destination_iso2); return !!o && (o.requirement !== r.requirement || o.stay_days !== r.stay_days); }).length;
+    for (const r of rows) noteChange(before.get(r.destination_iso2), r);
     await store.upsert(rows);
     loaded = rows.length;
     have = await store.all(passport);
   }
-  // the second source: what the dataset lacks
+  // the second source: what the dataset lacks. Mark 2026-10-31: a new port on an itinerary is asked for on its own (`wanted`,
+  // from the group file's save) and then rides the quarterly review like every other row; the standing territory list is the
+  // daily job's (territories !== false).
   const wanted = typeof opts.wanted === "function" ? await opts.wanted().catch(() => [] as string[]) : opts.wanted ?? [];
   const byCode = new Map(have.map((r) => [r.destination_iso2, r]));
-  const candidates = [...new Set([...CRUISE_TERRITORIES, ...wanted.map((c) => c.toUpperCase())])].filter((c) => /^[A-Z]{2}$/.test(c) && c !== passport);
+  const candidates = [...new Set([...(opts.territories === false ? [] : CRUISE_TERRITORIES), ...wanted.map((c) => c.toUpperCase())])].filter((c) => /^[A-Z]{2}$/.test(c) && c !== passport);
   const todo = candidates.filter((c) => { const r = byCode.get(c); return !r || (r.source === ORIZN_SOURCE && isDue(r, now)); });
   const orizn: RefreshResult["orizn"] = { fetched: 0, missing: candidates.filter((c) => !byCode.has(c)), note: "", remaining: null };
   const key = opts.oriznKey;
@@ -259,14 +274,50 @@ export async function refreshVisaRequirements(store: VisaStore, fetchImpl: typeo
       const a = await fetchOrizn(code, key, fetchImpl, now, passport);
       orizn.remaining = a.remaining;
       // "no visa data" is written too, as unknown, so the same question is not asked every day; it is asked again at the review
-      got.push(a.row ?? { passport, destination_iso2: code, destination_name: regionName(code), requirement: "unknown", stay_days: null, raw: JSON.stringify({ orizn: "no visa data" }), source: ORIZN_SOURCE, source_url: ORIZN_DOCS, checked_at: now.toISOString(), next_check_at: next });
+      const row = a.row ?? { passport, destination_iso2: code, destination_name: regionName(code), requirement: "unknown" as Requirement, stay_days: null, raw: JSON.stringify({ orizn: "no visa data" }), source: ORIZN_SOURCE, source_url: ORIZN_DOCS, checked_at: now.toISOString(), next_check_at: next };
+      noteChange(byCode.get(code), row);
+      got.push(row);
     }
     if (got.length) await store.upsert(got);
     orizn.fetched = got.length;
     const after = new Set((await store.all(passport)).map((r) => r.destination_iso2));
     orizn.missing = candidates.filter((c) => !after.has(c));
   }
-  return { due: datasetDue, rows: (await store.all(passport)).length, loaded, changed, next_check_at: datasetDue ? next : nextDue, orizn };
+  const final = await store.all(passport);
+  return { due: datasetDue, rows: final.length, loaded, changed, next_check_at: datasetDue ? next : nextDue, orizn, changes, oriznRows: final.filter((r) => r.source === ORIZN_SOURCE).length };
+}
+
+export interface VisaAlert { type: string; source_ref: string; title: string; body: string }
+
+/** The "Waiting on you" rows a run earns (Mark 2026-10-31): the Orizn side of the table reaching the threshold, requirements that
+ *  moved (Europe's ETIAS is the one he is watching for), and a review paused at the quota's reserve. Each is made once: the
+ *  source_ref dedupes against a pending row of the same kind. */
+export function visaAlerts(r: RefreshResult, now = new Date()): VisaAlert[] {
+  const out: VisaAlert[] = [];
+  const day = now.toISOString().slice(0, 10), month = day.slice(0, 7);
+  if (r.oriznRows >= VISA_ALERT_AT) {
+    out.push({
+      type: "visa-requirements", source_ref: `visa-orizn-${VISA_ALERT_AT}`,
+      title: `Visa table: ${r.oriznRows} destinations now come from Orizn (threshold ${VISA_ALERT_AT})`,
+      body: `Every Orizn destination costs one request at each quarterly review, and the free key allows 100 a month: ${r.oriznRows} rows need about ${Math.ceil(r.oriznRows / (100 - ORIZN_RESERVE))} months of quota per review. Either upgrade the Orizn plan, or leave it: the review stops at the quota's reserve and carries on the next day and the next month, and a row waiting on it keeps its last answer.`,
+    });
+  }
+  if (r.changes.length) {
+    const lines = r.changes.slice(0, 20).map((c) => `${c.name} (${c.code}): ${c.from} → ${c.to}`);
+    out.push({
+      type: "visa-requirements", source_ref: `visa-change-${day}`,
+      title: `Visa requirements changed for ${r.changes.length} destination${r.changes.length === 1 ? "" : "s"}`,
+      body: `${lines.join("; ")}${r.changes.length > 20 ? `; and ${r.changes.length - 20} more` : ""}. The passport checklist already prints the new answer; a traveler whose checklist went out before today has the old one.`,
+    });
+  }
+  if (/quota|reserve/.test(r.orizn.note) && r.orizn.missing.length) {
+    out.push({
+      type: "visa-requirements", source_ref: `visa-quota-${month}`,
+      title: `Visa review paused: the Orizn month's quota is at its reserve, ${r.orizn.missing.length} destination${r.orizn.missing.length === 1 ? "" : "s"} still to fill`,
+      body: `${r.orizn.note}. Still to fill: ${r.orizn.missing.join(", ")}. It carries on when the quota resets; nothing to do unless you want the Orizn plan upgraded.`,
+    });
+  }
+  return out;
 }
 
 /** The table in Supabase (service key; migration 0064). */

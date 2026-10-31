@@ -26,10 +26,10 @@ import { registerJob, runJob, loadJobHealth } from "./lib/job-health";
 import { tick as groupJourneyTick } from "./lib/group-journey-run";
 import { journeyDeps } from "./lib/group-journey-wire";
 import { localToday } from "./lib/group-journey-facts";
-import { iso2Of, refreshVisaRequirements, supabaseVisaStore } from "./lib/visa-requirements";
-import { countriesOf } from "./lib/entry-requirements";
-import { itineraryPorts } from "./lib/travel-advisories";
+import { refreshVisaRequirements, supabaseVisaStore, visaAlerts } from "./lib/visa-requirements";
+import { visaCodesOf } from "./lib/visa-fill";
 import { getSupabase as visaDb } from "./lib/persistence";
+import { createAction } from "./lib/actions";
 import { primeWeatherOnBoot, warmWeatherTiles } from "./lib/weather-tiles";
 
 const rawPort = process.env["PORT"] ?? "8080";
@@ -188,14 +188,16 @@ app.listen(port, "0.0.0.0", () => {
 function scheduleVisaRequirements() {
   // the destinations the open groups' itineraries need, beside the standing territory list (lib/visa-requirements.ts)
   const wanted = async (): Promise<string[]> => {
-    const g = await visaDb().from("groups").select("embark_port, itinerary").not("status", "in", "(cancelled,closed,sailed)");
+    const g = await visaDb().from("groups").select("id, embark_port, itinerary").not("status", "in", "(cancelled,closed,sailed)");
     const codes = new Set<string>();
-    for (const grp of (g.data ?? []) as Array<Record<string, any>>) for (const { country } of countriesOf(itineraryPorts(grp))) { const c = iso2Of(country); if (c) codes.add(c); }
+    for (const grp of (g.data ?? []) as Array<Record<string, any>>) for (const c of visaCodesOf(grp)) codes.add(c);
     return [...codes];
   };
   const tick = () => runJob("scheduleVisaRequirements", async () => {
     const r = await refreshVisaRequirements(supabaseVisaStore(), fetch, new Date(), "US", { oriznKey: process.env["ORIZN_API_KEY"] || undefined, wanted });
-    const second = { oriznFetched: r.orizn.fetched, stillMissing: r.orizn.missing.length, ...(r.orizn.note ? { oriznNote: r.orizn.note } : {}), ...(r.orizn.remaining !== null ? { oriznQuotaLeft: r.orizn.remaining } : {}) };
+    // Mark 2026-10-31: "Waiting on you" at 180 Orizn destinations, on requirements that moved (Europe), and on a review paused by the quota
+    for (const a of visaAlerts(r)) await createAction(a).catch((err: unknown) => logger.warn({ err: err instanceof Error ? err.message : String(err) }, "visa table: the alert row could not be made"));
+    const second = { oriznFetched: r.orizn.fetched, oriznRows: r.oriznRows, stillMissing: r.orizn.missing.length, changes: r.changes.length, ...(r.orizn.note ? { oriznNote: r.orizn.note } : {}), ...(r.orizn.remaining !== null ? { oriznQuotaLeft: r.orizn.remaining } : {}) };
     return r.due ? { reviewed: true, destinations: r.rows, changed: r.changed, nextReview: r.next_check_at, ...second } : { reviewed: false, destinations: r.rows, nextReview: r.next_check_at, ...second };
   }, { logFail: "Visa requirements review failed" });
   setTimeout(() => { tick().catch(() => {}); }, 20_000);

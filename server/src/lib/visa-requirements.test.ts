@@ -57,13 +57,13 @@ test("the quarterly review: the table is loaded when empty, left alone until a r
   const fetchImpl = (async () => { calls++; return new Response(body, { status: 200 }); }) as unknown as typeof fetch;
   const t0 = new Date("2026-10-31T20:00:00.000Z");
   const first = await refreshVisaRequirements(store, fetchImpl, t0);
-  const { orizn: _o, ...dataset } = first;
+  const { orizn: _o, changes: _c, oriznRows: _n, ...dataset } = first;
   assert.deepEqual(dataset, { due: true, rows: 121, loaded: 121, changed: 0, next_check_at: "2027-01-29T20:00:00.000Z" });
   assert.equal(state.length, 121);
   const bs = state.find((r) => r.destination_iso2 === "BS")!;
   assert.deepEqual([bs.destination_name, bs.requirement, bs.stay_days, bs.raw, bs.source, bs.checked_at], ["Bahamas", "visa-free", 240, "240", "passport-index-dataset", "2026-10-31T20:00:00.000Z"]);
   const later = await refreshVisaRequirements(store, fetchImpl, new Date("2026-12-01T20:00:00.000Z"));
-  const { orizn: _o2, ...laterDataset } = later;
+  const { orizn: _o2, changes: _c2, oriznRows: _n2, ...laterDataset } = later;
   assert.deepEqual(laterDataset, { due: false, rows: 121, loaded: 0, changed: 0, next_check_at: "2027-01-29T20:00:00.000Z" });
   assert.match(later.orizn.note, /no ORIZN_API_KEY/);
   assert.equal(calls, 1, "nothing fetched while no row is due");
@@ -160,4 +160,66 @@ test("the review's second pass: without a key the territories stay unfilled and 
   const { store: store3 } = fakeStore();
   const capped = await refreshVisaRequirements(store3, live, t0, "US", { oriznKey: "k-123", maxOrizn: 3 });
   assert.equal(capped.orizn.fetched, 3); assert.match(capped.orizn.note, /cap of 3/);
+});
+
+// ── Mark 2026-10-31: a new port is asked for on its own; "alert me on reaching 180 ports"; Europe's changes ──
+import { VISA_ALERT_AT, visaAlerts } from "./visa-requirements";
+import { visaCodesOf } from "./visa-fill";
+
+test("a group file's save asks only for the itinerary's missing destination, never the standing territory list; it then rides the quarterly review", async () => {
+  const { state, store } = fakeStore();
+  const calls: string[] = [];
+  const fetchImpl = (async (url: string) => {
+    if (url.includes("passport-index-dataset")) return new Response(bigCsv(), { status: 200 });
+    calls.push(url);
+    return new Response(oriznBody("visa_free", 30), { status: 200, headers: { "x-ratelimit-remaining": "90" } });
+  }) as unknown as typeof fetch;
+  const t0 = new Date("2026-10-31T22:00:00.000Z");
+  await refreshVisaRequirements(store, fetchImpl, t0); // the table, without a key
+  assert.deepEqual(visaCodesOf({ embark_port: "Miami, Florida", itinerary: [{ port: "Miami, Florida" }, { port: "At sea" }, { port: "Grand Cayman" }, { port: "Nassau, Bahamas" }, { port: "Cozumel, Mexico" }] }).sort(), ["BS", "KY", "MX"]);
+  const r = await refreshVisaRequirements(store, fetchImpl, t0, "US", { oriznKey: "k-123", wanted: ["BS", "KY", "MX"], territories: false, maxOrizn: 10 });
+  assert.equal(r.orizn.fetched, 2, "Cayman and Mexico (which this fake dataset lacks), nothing else");
+  assert.ok(calls.every((u) => u.includes("destination=CYM") || u.includes("destination=MEX")), calls.join(" "));
+  assert.ok(!state.some((x) => x.destination_iso2 === "SX"), "the territory list was not touched");
+  const ky = state.find((x) => x.destination_iso2 === "KY")!;
+  assert.equal(ky.next_check_at, "2027-01-29T22:00:00.000Z", "due again with the quarterly review");
+  const again = await refreshVisaRequirements(store, fetchImpl, new Date("2026-12-01T22:00:00.000Z"), "US", { oriznKey: "k-123", wanted: ["KY"], territories: false });
+  assert.equal(again.orizn.fetched, 0, "the row exists and is not due: no request");
+  const review = await refreshVisaRequirements(store, fetchImpl, new Date("2027-01-30T22:00:00.000Z"), "US", { oriznKey: "k-123", wanted: ["KY"], territories: false });
+  assert.equal(review.orizn.fetched, 1, "at the review the Orizn row is asked for again");
+  assert.equal(review.due, true, "and the dataset is read again, free");
+});
+
+test("the alerts: at the threshold of Orizn destinations, on requirements that moved, and on a review paused by the quota; none otherwise", () => {
+  const base = { due: false, rows: 218, loaded: 0, changed: 0, next_check_at: "2027-01-29T22:00:00.000Z", orizn: { fetched: 0, missing: [], note: "", remaining: 79 }, changes: [], oriznRows: 20 };
+  assert.deepEqual(visaAlerts(base), []);
+  const many = visaAlerts({ ...base, oriznRows: VISA_ALERT_AT }, new Date("2027-03-01T10:00:00.000Z"));
+  assert.equal(many.length, 1);
+  assert.equal(many[0]!.source_ref, "visa-orizn-180");
+  assert.match(many[0]!.title, /180 destinations now come from Orizn/);
+  assert.match(many[0]!.body, /about 2 months of quota/);
+  const moved = visaAlerts({ ...base, changes: [{ code: "FR", name: "France", from: "visa-free", to: "eta" }, { code: "IT", name: "Italy", from: "visa-free", to: "eta" }] }, new Date("2027-01-30T22:00:00.000Z"));
+  assert.equal(moved.length, 1);
+  assert.equal(moved[0]!.source_ref, "visa-change-2027-01-30");
+  assert.equal(moved[0]!.title, "Visa requirements changed for 2 destinations");
+  assert.match(moved[0]!.body, /^France \(FR\): visa-free → eta; Italy \(IT\): visa-free → eta\./);
+  const paused = visaAlerts({ ...base, orizn: { fetched: 1, missing: ["SX", "CW"], note: "stopped: 5 requests left on the month's quota (5 kept in reserve)", remaining: 5 } }, new Date("2027-02-10T22:00:00.000Z"));
+  assert.equal(paused.length, 1);
+  assert.equal(paused[0]!.source_ref, "visa-quota-2027-02");
+  assert.match(paused[0]!.title, /paused.*2 destinations still to fill/);
+});
+
+test("a review that moves a requirement is reported as a change, from either source", async () => {
+  const { store } = fakeStore();
+  let bahamas = "240";
+  const fetchImpl = (async (url: string) => {
+    if (url.includes("passport-index-dataset")) return new Response(bigCsv(bahamas), { status: 200 });
+    return new Response(oriznBody(url.includes("destination=CYM") ? "eta" : "visa_free", 30), { status: 200, headers: { "x-ratelimit-remaining": "90" } });
+  }) as unknown as typeof fetch;
+  const first = await refreshVisaRequirements(store, fetchImpl, new Date("2026-10-31T22:00:00.000Z"), "US", { oriznKey: "k-123", wanted: ["KY"], territories: false });
+  assert.deepEqual(first.changes, [], "the first load moves nothing");
+  assert.equal(first.oriznRows, 1);
+  bahamas = "eta";
+  const review = await refreshVisaRequirements(store, fetchImpl, new Date("2027-01-30T22:00:00.000Z"), "US", { oriznKey: "k-123", wanted: ["KY"], territories: false });
+  assert.deepEqual(review.changes, [{ code: "BS", name: "Bahamas", from: "visa-free", to: "eta" }], "the dataset's change is reported; Cayman's answer did not move");
 });
