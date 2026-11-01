@@ -2,22 +2,25 @@
 //
 // "I want to give them the ability to just complete the forms rather than have me call them, so it becomes a choice giving them some control."
 // Then (2026-10-24): the client gets ONE message, never two. Road A, "Talk me into it, Mark!": a drop-down for the time, one line, ONE email, one item for
-// Mark. Road B, "I've got this… let me fill it in!": a details page in three short parts, "Hold my cabin!", one line, ONE email, one item for Mark.
-// No prices after the group page: the guest has seen them. This file holds every rule the two roads need, as pure functions (no database, no mailer, no
+// Mark. Road B, "I've got this… let me fill it in!": a details page in three short parts, "Build my quote!", one line, ONE email, one item for Mark.
+// Then (2026-11-01): nothing is held at the end of Part 3 ("i do not have the information needed to reserve the cabin"): the email's button says
+// "Let's begin!" and opens Part 4, the quote step (lib/group-quote.ts: which cabin, FlexPay, a drink package when the fare has none, insurance,
+// hotel / air / transfers), the guest agrees to the quote, and only then do the travelers go on the file and the paperwork go out.
+// No prices after the group page until the quote step: the guest has seen them. This file holds every rule the two roads need, as pure functions (no database, no mailer, no
 // clock unless it is passed in), so each one is unit-tested in group-details.test.ts; routes/group-details.ts and routes/group-marketing.ts only wire
 // them to Supabase and the mailer.
 //
 //   * pickCabin       the cabin we suggest from the four Room Concierge answers and the group's own cabin categories, with the upgrade hook;
 //   * validateDetails the names, birthdays, address and answers the page sends, refused in plain words (English and Spanish);
 //   * callEmail       Road A's ONE email ("Good call… literally!");
-//   * holdEmail       Road B's ONE email ("Your cabin is on hold… nicely done!");
+//   * holdEmail       Road B's ONE email ("Nicely done… now let's build your quote!", button "Let's begin!");
 //   * detailsUrl / callUrl   the guest's private links.
 //
 // THE RULES (Mark 2026-10-23/24):
 //   * the link is a credential: a random token whose sha256 alone is stored (group-secure.ts), good for 90 days;
-//   * nothing here charges, books or signs anything: "Hold my cabin" is a request Mark confirms with the cruise line himself;
+//   * nothing here charges, books or signs anything: "Build my quote!" sends the names in; the cabin is Mark's to book with the cruise line once the quote is agreed;
 //   * what we say about a cabin is true of the group's own cabin categories, never a promise the file cannot back (see pickCabin);
-//   * no cabin name and no price in Road A's email, no price anywhere in Road B (the deposit per person on the hold line is what holds the cabin, not a price).
+//   * no cabin name and no price in Road A's email, no price in Road B before the quote step (whose every figure comes from the group file).
 
 import { BUSINESS } from "./group-secure";
 import { buildFacts, cabinPrices, formatDate, formatMoney, normalizeAnswers, pageLook, type Lang } from "./group-marketing";
@@ -550,7 +553,7 @@ export function callEmail(i: CallInput): { subject: string; html: string; text: 
   return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
 }
 
-// ── Road B: "Your cabin is on hold… nicely done!" ─────────────────────────────
+// ── Road B: "Nicely done… now let's build your quote!" (Mark 2026-11-01: the button says "Let's begin!" and opens the quote step) ──
 
 export interface HoldInput extends MailBase {
   /** The pick: the category and where on the ship, as the page showed them. */
@@ -558,46 +561,46 @@ export interface HoldInput extends MailBase {
   where: string;
   /** The first name of each traveler, in the order they were listed. */
   travelerFirstNames: readonly string[];
-  /** The guest's private link: "Open my details". */
+  /** The guest's private link: the "Let's begin!" button, which opens the quote step. */
   detailsUrl: string;
 }
 
 const HOLD = {
   en: {
-    subject: (label: string) => `Your cabin is on hold… nicely done! ${label}`,
-    title: "Your cabin is on hold… nicely done!",
+    subject: (label: string) => `Nicely done… now let's build your quote! ${label}`,
+    title: "Nicely done… now let's build your quote!",
     hi: (first: string) => `Hi ${first},`,
     p1: "You planned a cruise in three minutes. Some people take three months and still end up next to the elevator.",
-    p2: (cabin: string, names: string) => `Here's what you did: [[${cabin}]], for ${names}. Mark confirms it with the cruise line within a day, and your paperwork follows. Nothing is charged tonight.`,
+    p2: (cabin: string, names: string) => `Here's what you did: our pick is [[${cabin}]], for ${names}. Next comes the fun part: which cabin, insurance, drinks, and a hotel, flights or transfers if you want them… then your quote. Once you agree to it, your paperwork follows. Nothing is charged tonight.`,
     passports: (n: number) => (n <= 1
       ? "One smart-cruiser move while you wait: dig out your passport and check the expiry date. Renewals take weeks, and your paperwork page will ask for the number."
       : `One smart-cruiser move while you wait: dig out ${n === 2 ? "both passports" : "everyone's passport"} and check the expiry dates. Renewals take weeks, and your paperwork page will ask for the numbers.`),
-    change: "Need to change a name, a birthday or your mind?",
-    open: "Open my details",
+    change: "Ready when you are.",
+    open: "Let's begin!",
     close: "Cruise smarter, laugh more… see you at the muster drill!",
-    footer: (label: string) => `You got this email because you put your cabin on hold on our ${label} page. Not you? Reply and we'll take you off.`,
+    footer: (label: string) => `You got this email because you gave us your names on our ${label} page. Not you? Reply and we'll take you off.`,
   },
   es: {
-    subject: (label: string) => `Su cabina está apartada… ¡bien hecho! ${label}`,
-    title: "Su cabina está apartada… ¡bien hecho!",
+    subject: (label: string) => `Bien hecho… ¡ahora armemos su cotización! ${label}`,
+    title: "Bien hecho… ¡ahora armemos su cotización!",
     hi: (first: string) => `Hola ${first}:`,
     p1: "Usted planeó un crucero en tres minutos. Hay quien tarda tres meses y aun así termina junto al elevador.",
-    p2: (cabin: string, names: string) => `Esto es lo que hizo: [[${cabin}]], para ${names}. Mark la confirma con la naviera en un día, y sus documentos le llegan después. No se cobra nada esta noche.`,
+    p2: (cabin: string, names: string) => `Esto es lo que hizo: nuestra sugerencia es [[${cabin}]], para ${names}. Ahora viene lo bueno: qué cabina, seguro, bebidas, y hotel, vuelos o traslados si los quiere… y después su cotización. Cuando la acepte, le llegan sus documentos. No se cobra nada esta noche.`,
     passports: (n: number) => (n <= 1
       ? "Una jugada inteligente mientras espera: saque su pasaporte y revise la fecha de vencimiento. Las renovaciones tardan semanas, y su página de documentos le pedirá el número."
       : `Una jugada inteligente mientras espera: saque ${n === 2 ? "los dos pasaportes" : "el pasaporte de cada quien"} y revise las fechas de vencimiento. Las renovaciones tardan semanas, y su página de documentos le pedirá los números.`),
-    change: "¿Necesita cambiar un nombre, una fecha de nacimiento o de opinión?",
-    open: "Abrir mis datos",
+    change: "Cuando usted quiera.",
+    open: "¡Empecemos!",
     close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
-    footer: (label: string) => `Recibió este correo porque apartó su cabina en nuestra página de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+    footer: (label: string) => `Recibió este correo porque nos dio sus nombres en nuestra página de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
   },
 } as const;
 
 /**
  * Road B's ONE email (approved design, go-packets "Road B · I've got this", cell 4, 2026-10-24): a laugh about how fast they were, what they did (the
  * category and where, for the travelers by first name), what Mark does next, the passport move ("both passports", "everyone's passport" for more than two),
- * the way back to their details (the yellow "Open my details" button), the brand line, the signature and the footer. No prices: the deposit, the totals and
- * the category prices were on the page they came from. Every value is escaped; the link appears only in the body it is sent to.
+ * the way on to the quote step (the yellow "Let's begin!" button, Mark 2026-11-01), the brand line, the signature and the footer. No prices: the figures are
+ * on the quote step it opens. Every value is escaped; the link appears only in the body it is sent to.
  */
 export function holdEmail(i: HoldInput): { subject: string; html: string; text: string } {
   const T = HOLD[i.lang];

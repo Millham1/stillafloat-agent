@@ -1557,13 +1557,13 @@ export default [
   // asked here, because a good link exists only for a real reply, and a sweep never makes one (a reply emails Mark and the guest).
   {
     id: "ops.group-details-public",
-    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road: Road B is their own details page in three short parts (who's coming, which cabin suits you, our pick) ending in \"Hold my cabin!\"; the page is private by link and refuses bad tokens",
-    title: "The guest's private details page opens in English and Spanish, stays out of search, calls its own API and the address lookup with the bot trap and the hold button, checks itself field by field, shows no price, and any wrong link gets the same plain 'not found' that is never stored or cached",
+    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road: Road B is their own details page in three short parts (who's coming, which cabin suits you, our pick); the page is private by link and refuses bad tokens. Mark 2026-11-01 — nothing is held at the end of Part 3: the button is \"Build my quote!\", the email's button says \"Let's begin!\" and opens Part 4 (which cabin, FlexPay — Mark's own plan, offered apart from the cruise line, no terms promised — a drink package when the fare has none, insurance, hotel / air / transfers), the quote is agreed, and only then is the paperwork sent; the page's own text still carries no price (every figure comes from the group file through the API)",
+    title: "The guest's private details page opens in English and Spanish, stays out of search, calls its own API and the address lookup with the bot trap, the quote button and the quote step, checks itself field by field, writes no price of its own, and any wrong link gets the same plain 'not found' that is never stored or cached",
     covers: ["page /details.html", "page /es/details.html", "GET /api/group-details/:token"],
     modes: ["dev", "prod"],
     run: async (t) => {
       for (const [p, lang] of [["/details.html", "en"], ["/es/details.html", "es"]]) {
-        const html = t.html(await t.get(p), { mustContain: ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Apartar mi cabina" : "Hold my cabin", "/pick", "/hold", 'aria-disabled="true"', 'id="d-summary"'] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Armar mi cotización" : "Build my quote", lang === "es" ? "FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera" : "FlexPay is an installment plan Mark offers separately from the cruise line", "/pick", "/hold", "/quote", "/agree", 'id="d-part4"', 'id="d-agree"', 'aria-disabled="true"', 'id="d-summary"'] });
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         // a private link: never indexed, and the address that carries it is never sent on to another site
         t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
@@ -1597,9 +1597,9 @@ export default [
   },
   {
     id: "ops.group-details-writes-refuse",
-    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road (Talk me into it, Mark! picks a time and gets one email; I've got this fills in the details page, holds the cabin and gets one email); the page is private by link and refuses bad tokens, a time that is not one of the four, and a robot; Mark alone adds the typed travelers to a cabin and closes his items (he books with the cruise line himself); the home address is looked up at the post office, never logged, and only for a person",
-    title: "Choosing a time to be rung, picking a cabin, saving details and asking for a hold refuse a link that does not exist, the time must be one of the four answers, the bot trap stores nothing, the address lookup refuses a robot and a short street, and adding a reply's travelers to a cabin or closing Mark's items is his alone and refuses an unknown reply",
-    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/address/lookup", "POST /api/address/suggest", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how"],
+    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road (Talk me into it, Mark! picks a time and gets one email; I've got this fills in the details page and gets one email); the page is private by link and refuses bad tokens, a time that is not one of the four, and a robot; Mark alone adds the typed travelers to a cabin and closes his items (he books with the cruise line himself); the home address is looked up at the post office, never logged, and only for a person. Mark 2026-11-01 — the quote step (answers, then \"I agree\") sits behind the same link: a link that does not exist and a robot get the same refusals, and no quote is pretended",
+    title: "Choosing a time to be rung, picking a cabin, saving details, sending the names, answering the quote step and agreeing refuse a link that does not exist, the time must be one of the four answers, the bot trap stores nothing and pretends no pick and no quote, the address lookup refuses a robot and a short street, and adding a reply's travelers to a cabin or closing Mark's items is his alone and refuses an unknown reply",
+    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/group-details/:token/quote", "POST /api/group-details/:token/agree", "POST /api/address/lookup", "POST /api/address/suggest", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap and a request without Mark's token; nothing is stored, nobody is told and the post office is never asked); prod sweeps are read-only",
     run: async (t) => {
@@ -1609,17 +1609,17 @@ export default [
         concierge: { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" },
       };
       const nowhere = "A".repeat(43);
-      for (const [path, body] of [[`/api/group-details/${nowhere}/choice`, { choice: "call", when: "evening" }], [`/api/group-details/${nowhere}/pick`, { concierge: form.concierge }], [`/api/group-details/${nowhere}`, form], [`/api/group-details/${nowhere}/hold`, {}],
-        ["/api/group-details/short/choice", { choice: "call", when: "evening" }], ["/api/group-details/short/pick", { concierge: form.concierge }], ["/api/group-details/short", form], ["/api/group-details/short/hold", {}]]) {
+      for (const [path, body] of [[`/api/group-details/${nowhere}/choice`, { choice: "call", when: "evening" }], [`/api/group-details/${nowhere}/pick`, { concierge: form.concierge }], [`/api/group-details/${nowhere}`, form], [`/api/group-details/${nowhere}/hold`, {}], [`/api/group-details/${nowhere}/quote`, { answers: { cabin: "BEL", flexpay: false, insurance: "decline" } }], [`/api/group-details/${nowhere}/agree`, {}],
+        ["/api/group-details/short/choice", { choice: "call", when: "evening" }], ["/api/group-details/short/pick", { concierge: form.concierge }], ["/api/group-details/short", form], ["/api/group-details/short/hold", {}], ["/api/group-details/short/quote", { answers: { cabin: "BEL", flexpay: false, insurance: "decline" } }], ["/api/group-details/short/agree", {}]]) {
         const res = await send(path, body);
         refused(t, res, 404, `POST ${path.replace(nowhere, ":token").replace("short", ":token")} with a link that does not exist`, /^not found$/i);
         t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the refused details write");
       }
       // The bot trap answers as if it had been accepted and stores nothing: no pick, no promise.
-      for (const path of [`/api/group-details/${nowhere}/choice`, `/api/group-details/${nowhere}/pick`, `/api/group-details/${nowhere}`, `/api/group-details/${nowhere}/hold`]) {
-        const trap = await send(path, { ...form, choice: "call", when: "evening", website: "e2e-fixture-honeypot" });
+      for (const path of [`/api/group-details/${nowhere}/choice`, `/api/group-details/${nowhere}/pick`, `/api/group-details/${nowhere}`, `/api/group-details/${nowhere}/hold`, `/api/group-details/${nowhere}/quote`, `/api/group-details/${nowhere}/agree`]) {
+        const trap = await send(path, { ...form, choice: "call", when: "evening", answers: { cabin: "BEL", flexpay: false, insurance: "decline" }, website: "e2e-fixture-honeypot" });
         t.ok(trap.status === 200 && trap.json?.success === true, `the details bot trap should answer as if accepted: ${trap.describe()}`);
-        t.ok(!("pick" in (trap.json || {})), "the bot trap must not pretend a cabin was picked");
+        t.ok(!("pick" in (trap.json || {})) && !("quote" in (trap.json || {})) && !("paperwork" in (trap.json || {})), "the bot trap must not pretend a cabin was picked, a quote made or paperwork sent");
       }
       // A time that is not one of the four answers is refused before anything else is looked at that a robot could use (a link that does not exist is a 404 first).
       for (const when of ["night", "", null, 3]) {

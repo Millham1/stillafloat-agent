@@ -261,7 +261,7 @@ router.post("/groups/:id/marketing/share-code", requireToken, async (req: Reques
 router.get("/groups/:id/interests", requireToken, async (req: Request, res: Response) => {
   try {
     const { data, error } = await db().from("group_interests")
-      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, call_when, travelers, address, concierge, pick, hold_requested_at, ack_email_status, traveler_id")
+      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, call_when, travelers, address, concierge, pick, quote, quote_agreed_at, hold_requested_at, ack_email_status, traveler_id")
       .eq("group_id", String(req.params["id"])).order("created_at", { ascending: false }).order("id", { ascending: true });
     if (error) throw new Error(error.message);
     return res.json({ success: true, interests: data ?? [] });
@@ -501,7 +501,7 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     // The guest's own private link, handed back to them and to nobody else (it is the credential for their page). Made AFTER the reply is safely stored, so a
     // box that has not applied migration 0056 yet still takes every reply (it just has no links to hand back).
     // NO email goes out now (Mark 2026-10-24: "the client should not get 2"): the one email is sent when they choose a road, "Talk me into it, Mark!" (a call
-    // confirmation) or "I've got this" and then "Hold my cabin!" (a hold confirmation). Until then the status says so.
+    // confirmation) or "I've got this" and then "Build my quote!" (the "Let's begin!" email, Mark 2026-11-01). Until then the status says so.
     const answer = { success: true as const, first: firstWord(first) };
     if (!interestId) return res.json(answer);
     const { token, hash } = issueToken();

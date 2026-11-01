@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer">
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/details-page.css?v=20261024a">
+<link rel="stylesheet" href="/css/details-page.css?v=20261101">
 <link rel="stylesheet" href="/css/trip-photos.css?v=20261026">
 </head>
 <body>
@@ -97,7 +97,7 @@
       <p class="small" style="margin-top:12px" id="d-p2move"></p>
     </section>
 
-    <!-- Part 3: our pick, once the four answers are in. The button stays dim until Part 1 is clean; a tap on it goes to the first problem. -->
+    <!-- Part 3: our pick, once the four answers are in. The button ("Build my quote!") stays dim until Part 1 is clean; a tap on it goes to the first problem. -->
     <section class="panel" id="d-part3" hidden>
       <p class="label" id="d-p3"></p>
       <div class="pick">
@@ -110,10 +110,30 @@
       <p class="small center" id="d-hold-note"></p>
     </section>
 
+    <!-- Part 4: the quote step (Mark 2026-11-01), open once the names are in: which cabin, FlexPay (Mark's own installment plan, offered apart from the
+         cruise line: a yes asks for the application, no terms are promised), a drink package when the fare has none, insurance, getting there and back;
+         then the quote from the group file, and "I agree", which puts the travelers on the file and sends the paperwork. -->
+    <section class="panel" id="d-part4" hidden>
+      <p class="label" id="d-p4"></p>
+      <p class="small" id="d-p4intro"></p>
+      <p class="small" id="d-locked"></p>
+      <div id="d-qq"></div>
+      <div class="quote" id="d-quote" hidden>
+        <p class="label" id="d-quote-h" style="margin-top:18px"></p>
+        <div id="d-quote-lines"></div>
+        <p class="small" id="d-quote-plus" hidden></p>
+        <p id="d-quote-dep" style="margin-top:10px"></p>
+        <p id="d-quote-bal"></p>
+        <p class="small" id="d-quote-note"></p>
+      </div>
+      <button type="button" class="btn" id="d-agree" aria-disabled="true"></button>
+      <p class="small center" id="d-agree-note"></p>
+    </section>
+
     <div class="hp" aria-hidden="true"><label>Sitio web<input type="text" id="d-website" tabindex="-1" autocomplete="off"></label></div>
     <div class="msg" id="d-msg" role="status"></div>
 
-    <!-- After the hold: the whole page becomes one line. -->
+    <!-- After the agreement: the whole page becomes one line. -->
     <section class="panel" id="d-thanks" hidden>
       <div class="thanks-head"><div class="tick">&#10003;</div><h2 id="d-thanks-h"></h2></div>
       <p class="small" id="d-thanks-p" hidden></p>
@@ -138,7 +158,7 @@
   var T = ES ? {
     loading:'Cargando sus datos…', bad:'Este enlace no es válido. Abra el enlace completo de su correo, o llame o escriba a Mark al ' + PHONE + '.',
     title:'Sus datos',
-    h1:'Mire nada más, tomando el mando… ¡NOS ENCANTA UN BUEN PLANIFICADOR!', lede:'Tres partes cortas, unos tres minutos… menos que la fila del buffet el día del embarque. Su cabina queda apartada al final.',
+    h1:'Mire nada más, tomando el mando… ¡NOS ENCANTA UN BUEN PLANIFICADOR!', lede:'Cuatro partes cortas, unos cinco minutos… menos que la fila del buffet el día del embarque. Su cotización queda lista al final.',
     p1:'Parte 1 · Quiénes vienen', reach:'Cómo comunicarnos con usted', howmany:'Cuántos son',
     p1note:'La naviera necesita el nombre legal y la fecha de nacimiento de cada viajero para apartar una cabina. Escríbalos como aparecen en el pasaporte, no como los escribe su tía. Los números de pasaporte vienen después, en su página de documentos.',
     who_you:'Viajero 1 · usted', who_n:'Viajero {n}', legal_you:'Nombre legal, como aparece en su pasaporte', legal_other:'Nombre legal, como aparece en su pasaporte',
@@ -150,9 +170,21 @@
     p2:'Parte 2 · Qué cabina le conviene', p2intro:'Cuatro preguntas de nuestro Room Concierge. Responda con honestidad… el barco lo nota.',
     p2move:'Jugada de crucerista inteligente: el barco se mueve menos abajo y en el centro. Ahí ponemos a quien lo siente.',
     p3:'Parte 3 · Nuestra sugerencia para usted', up_lead:'La mejora que casi nadie conoce:', up_ask:'Pregunte a Mark por las cabinas de clase {cat}.',
-    hold:'¡Apartar mi cabina!', holding:'Apartando…',
-    hold_dep:'Mark la confirma con la naviera y sus documentos le llegan después. {deposit} por persona la aparta… no se cobra nada esta noche.',
-    hold_free:'Mark la confirma con la naviera y sus documentos le llegan después. No se cobra nada esta noche.',
+    hold:'¡Armar mi cotización!', holding:'Un momento…',
+    hold_note:'Lo que sigue: qué cabina, seguro, bebidas, y hotel, vuelos o traslados si los quiere… y después su cotización. No se cobra nada esta noche.',
+    p4:'Parte 4 · Armemos su cotización', p4intro:'Cinco decisiones rápidas y luego los números. Mark confirma cada cifra con usted antes de cobrar nada.',
+    locked:'Nombres registrados: {names} · {party}. Nuestra sugerencia: {category}. Para cambiar un nombre o una fecha de nacimiento, llame o escriba a Mark al {phone}.',
+    q_cabin:'¿Qué cabina?',
+    q_flex:'¿Quiere solicitar FlexPay?', flex_note:'FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera. Si dice sí, él le envía la solicitud corta después; fija su propio calendario de pagos y no cambia nada en esta cotización.', flex_yes:'Sí, envíenme la solicitud', flex_no:'No, gracias',
+    q_drinks:'¿Agregar un paquete de bebidas?', drinks_note:'No está incluido en esta tarifa. Mark lo cotiza para su grupo.', drinks_yes:'Sí, cotícenlo', drinks_no:'No, gracias', drinks_inc:'Bebidas: su tarifa incluye un paquete.',
+    q_ins:'¿Seguro de viaje?', ins_note:'Los precios pueden cambiar hasta que se finalicen.',
+    q_travel:'Ida y vuelta', travel_note:'Marque lo que quiera agregar.',
+    q_need_flight:'¿Necesita vuelos?', q_need_hotel:'¿Necesita hotel la noche anterior?', q_need_transfer:'¿Necesita traslados?', need_yes:'Sí, Mark, cotícelo', need_no:'No, gracias',
+    quote_h:'Su cotización', quote_total:'Total', quote_plus:'Más {list}, que Mark cotiza para usted.', to_come:'por cotizar',
+    quote_dep:'Depósito para apartar la cabina: {deposit} ({per} por persona). No se cobra nada hasta que Mark lo confirme con usted.', quote_dep_na:'Mark confirma el depósito con usted; no se cobra nada esta noche.',
+    quote_bal:'Saldo {balance}, a pagar antes del {date}.', quote_bal_nodate:'El saldo es {balance}; Mark confirma la fecha con usted.',
+    agree:'Acepto… ¡hagámoslo!', agreeing:'Enviando…', agree_note:'Al aceptar, su página de documentos llega a su correo. Sigue sin cobrarse nada.', agree_wait:'Responda todas las preguntas de arriba y el botón se activa.',
+    agreed_h:'¡Aceptada!… {category}, {party}. Sus documentos van en camino a {email}.', agreed_h_mark:'¡Aceptada!… {category}, {party}. Mark le envía sus documentos después.',
     bad_name:'Nombre Y apellido, por favor… tal como aparecen en el pasaporte.', bad_dob:'Mes, día y año de cuatro dígitos (el mes primero): 03 / 04 / 1965.',
     bad_street:'Una calle y un número, por favor… como 123 Main St.', bad_city:'¿En qué ciudad, por favor?', bad_state:'Las dos letras del estado, por favor… como NC.',
     bad_zip:'Cinco dígitos para el código postal, por favor… como 27601.',
@@ -163,7 +195,7 @@
     p_name1:'su nombre', p_last1:'su apellido', p_dob1:'su fecha de nacimiento', p_year1:'un año de cuatro dígitos en su fecha de nacimiento',
     p_street:'su calle', p_city:'su ciudad', p_state:'su estado', p_zip:'su código postal', p_nf:'su dirección (no la encontramos)',
     one_thing:'Todavía falta una cosa:', n_things:'Todavía faltan {n} cosas:', take:'Lléveme ahí',
-    held_h:'¡Apartada!… {category}, {party}. Revise su correo para la confirmación.', party_one:'para una persona', party_n:'grupo de {n}',
+    party_one:'para una persona', party_n:'grupo de {n}',
     change:'¿Necesita cambiar un nombre, una fecha de nacimiento o de opinión? Llame o escriba a Mark al {phone}.',
     saving:'Guardando…',
     err:'No se pudo guardar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
@@ -171,7 +203,7 @@
   } : {
     loading:'Loading your details…', bad:'This link is not valid. Please open the whole link from your email, or call or text Mark at ' + PHONE + '.',
     title:'Your details',
-    h1:'Look at you, taking charge… WE LOVE A PLANNER!', lede:'Three short parts, about three minutes… less time than the buffet line on embarkation day. Your cabin is held at the end.',
+    h1:'Look at you, taking charge… WE LOVE A PLANNER!', lede:'Four short parts, about five minutes… less time than the buffet line on embarkation day. Your quote is ready at the end.',
     p1:"Part 1 · Who's coming", reach:'How to reach you', howmany:'How many of you',
     p1note:"The cruise line needs each traveler's legal name and birthday to hold a cabin. Spell them the way the passport does, not the way your aunt does. Passport numbers come later, on your paperwork page.",
     who_you:'Traveler 1 · you', who_n:'Traveler {n}', legal_you:'Legal name, as on your passport', legal_other:'Legal name, as on their passport',
@@ -183,9 +215,21 @@
     p2:'Part 2 · Which cabin suits you', p2intro:'Four questions from our Room Concierge. Answer honestly… the ship can tell.',
     p2move:'Smart-cruiser move: the ship moves least low and midship. That is where we put anyone who feels it.',
     p3:'Part 3 · Our pick for you', up_lead:'The upgrade most people never hear about:', up_ask:'Ask Mark about the {cat} class rooms.',
-    hold:'Hold my cabin!', holding:'Holding…',
-    hold_dep:'Mark confirms it with the cruise line and your paperwork follows. {deposit} a person holds it… nothing is charged tonight.',
-    hold_free:'Mark confirms it with the cruise line and your paperwork follows. Nothing is charged tonight.',
+    hold:'Build my quote!', holding:'One moment…',
+    hold_note:'Next: which cabin, insurance, drinks, and a hotel, flights or transfers if you want them… then your quote. Nothing is charged tonight.',
+    p4:"Part 4 · Let's build your quote", p4intro:'Five quick choices, then the numbers. Mark confirms every figure with you before anything is charged.',
+    locked:'Names are in for {names} · {party}. Our pick: {category}. To change a name or a birthday, call or text Mark at {phone}.',
+    q_cabin:'Which cabin?',
+    q_flex:'Would you like to apply for FlexPay?', flex_note:'FlexPay is an installment plan Mark offers separately from the cruise line. Say yes and he sends you the short application next; it sets its own payment schedule, and nothing on this quote changes.', flex_yes:'Yes, send me the application', flex_no:'No thanks',
+    q_drinks:'Add a drink package?', drinks_note:'Not included in this fare. Mark prices one for your party.', drinks_yes:'Yes, price one for us', drinks_no:'No thanks', drinks_inc:'Drinks: a package is included in your fare.',
+    q_ins:'Travel insurance?', ins_note:'Pricing subject to change until finalized.',
+    q_travel:'Getting there and back', travel_note:'Tick what you want added.',
+    q_need_flight:'Do you need flights?', q_need_hotel:'Do you need a hotel the night before?', q_need_transfer:'Do you need transfers?', need_yes:'Yes, Mark, quote it', need_no:'No thanks',
+    quote_h:'Your quote', quote_total:'Total', quote_plus:'Plus {list}, which Mark prices for you.', to_come:'to come',
+    quote_dep:'Deposit to hold the cabin: {deposit} ({per} per person). Nothing is charged until Mark confirms it with you.', quote_dep_na:'Mark confirms the deposit with you; nothing is charged tonight.',
+    quote_bal:'Balance {balance}, due by {date}.', quote_bal_nodate:'The balance is {balance}; Mark confirms the due date with you.',
+    agree:"I agree… let's do this!", agreeing:'Sending…', agree_note:'Agreeing sends your paperwork page to your inbox. Still nothing charged.', agree_wait:'Answer every question above and the button lights up.',
+    agreed_h:'Agreed!… {category}, {party}. Your paperwork is on its way to {email}.', agreed_h_mark:'Agreed!… {category}, {party}. Mark sends your paperwork next.',
     bad_name:'First AND last name, please… the way the passport has it.', bad_dob:'Month, day and a four-digit year: 03 / 04 / 1965.',
     bad_street:'A street and number, please… like 123 Main St.', bad_city:'Which city, please?', bad_state:"The state's two letters, please… like NC.",
     bad_zip:'Five digits for the ZIP, please… like 27601.',
@@ -195,7 +239,7 @@
     p_name1:'your name', p_last1:'your last name', p_dob1:'your birthday', p_year1:'a four-digit year on your birthday',
     p_street:'your street address', p_city:'your city', p_state:'your state', p_zip:'your ZIP', p_nf:"your address (we couldn't find it)",
     one_thing:'One thing still needs you:', n_things:'{n} things still need you:', take:'Take me there',
-    held_h:'Held!… {category}, {party}. Watch your inbox for the confirmation.', party_one:'party of one', party_n:'party of {n}',
+    party_one:'party of one', party_n:'party of {n}',
     change:'Need to change a name, a birthday or your mind? Call or text Mark at {phone}.',
     saving:'Saving…',
     err:'That did not go through. Please try again, or call or text Mark at ' + PHONE + '.',
@@ -246,8 +290,14 @@
   var touched = {};          // field id -> true once the guest has left it
   var attempted = false;     // the guest tapped the dim button
   var shownErr = {};         // field id -> words the server refused it with (replaced by the page's own words once the field changes)
-  var busy = false, held = false;   // a hold is being asked / has been made: nothing is saved behind it
+  var busy = false, held = false;   // the names are being sent / are in: nothing is saved behind it
   var look = { key: '', mode: '', sugg: [], off: false, pending: null };   // the address lookup: mode '' | nf | ok
+  // ── The quote step (Part 4) ──
+  var qo = null;                 // what the server offers once the names are in: cabins, insurance, travel, what to ask (GET quoteOptions)
+  var qa = { cabin: '', flexpay: null, drinks: null, insurance: '', travel: [], needs: {} };   // the guest's answers
+  var quote = null;              // the quote the server computed for qa
+  var quoteFor = '';             // the answers (as JSON) the quote belongs to
+  var quoteTimer = null, agreeing = false;
 
   function msg(text){ var m = $('d-msg'); m.className = text ? 'msg err' : 'msg'; m.textContent = text || ''; }
 
@@ -409,7 +459,7 @@
       $('d-pick-up').innerHTML = '<b>' + esc(T.up_lead) + '</b> ' + esc(up.category) + '. ' + esc(up.hook) + ' ' + esc(fill(T.up_ask, { cat: up.category }));
       show('d-pick-up', true);
     } else show('d-pick-up', false);
-    $('d-hold-note').textContent = data.depositPerPersonText ? fill(T.hold_dep, { deposit: data.depositPerPersonText }) : T.hold_free;
+    $('d-hold-note').textContent = T.hold_note;
     $('d-hold').textContent = busy ? T.holding : T.hold;
     show('d-part3', true);
   }
@@ -470,6 +520,11 @@
     if(ES) return xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1];
     return xs.slice(0, -1).join(', ') + ', and ' + xs[xs.length - 1];
   }
+  /** Names and the quote's "plus" line: "A and B" for two (no comma), the serial list for three or more. */
+  function andWords(xs){
+    if(xs.length === 2) return xs[0] + (ES ? ' y ' : ' and ') + xs[1];
+    return listWords(xs);
+  }
   function showSummary(list){
     var n = list.length;
     var lead = n === 1 ? T.one_thing : fill(T.n_things, { n: NUMW_CAP[n] ? (ES ? NUMW[n] : NUMW_CAP[n]) : String(n) });
@@ -527,18 +582,127 @@
     if(tidy(addr.street).length >= 5 && !look.off) lookTimer = setTimeout(askLookup, 500);
   }
 
-  // ── The thank-you: the cabin is on hold ──
+  // ── Part 4: the quote step, once the names are in (Mark 2026-11-01) ──
   function partyWords(n){ return n < 2 ? T.party_one : fill(T.party_n, { n: NUMW[n] || String(n) }); }
-  function showHeld(count, again){
+  function lockPage(){
     held = true; clearTimeout(timer);
     if(window.SAKeep) window.SAKeep.clear(window.SAKeep.keyFor('details', token));
     show('d-intro', false); show('d-part1', false); show('d-part2', false); show('d-part3', false); show('d-summary', false); msg('');
-    var p = pick || data.pick || { category: '' };
-    $('d-thanks-h').textContent = fill(T.held_h, { category: p.category, party: partyWords(count) });
-    // reopened from the email: the way to change something is Mark, not a form
-    $('d-thanks-p').textContent = again ? fill(T.change, { phone: data.businessPhone || PHONE }) : ''; show('d-thanks-p', !!again);
+  }
+  function qaComplete(){
+    if(!qo || !qa.cabin || qa.flexpay === null || !qa.insurance) return false;
+    if(qo.drinks === 'ask' && qa.drinks === null) return false;
+    for(var i = 0; i < qo.needs.length; i++){ if(typeof qa.needs[qo.needs[i]] !== 'boolean') return false; }
+    return true;
+  }
+  function optBtn(group, val, text, on){
+    return '<button type="button" class="opt' + (on ? ' on' : '') + '" data-g="' + esc(group) + '" data-v="' + esc(val) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(text) + '</button>';
+  }
+  function yesNo(group, val, yes, no){ return '<div class="opts">' + optBtn(group, 'yes', yes, val === true) + optBtn(group, 'no', no, val === false) + '</div>'; }
+  function renderQuoteQuestions(){
+    var h = '<p class="q">' + esc(T.q_cabin) + '</p><div class="opts">';
+    qo.cabins.forEach(function(c){ h += optBtn('cabin', c.key, c.label, qa.cabin === c.key); });
+    h += '</div>';
+    h += '<p class="q">' + esc(T.q_flex) + '</p><p class="small">' + esc(T.flex_note) + '</p>' + yesNo('flexpay', qa.flexpay, T.flex_yes, T.flex_no);
+    if(qo.drinks === 'ask') h += '<p class="q">' + esc(T.q_drinks) + '</p><p class="small">' + esc(T.drinks_note) + '</p>' + yesNo('drinks', qa.drinks, T.drinks_yes, T.drinks_no);
+    else h += '<p class="q">' + esc(T.drinks_inc) + '</p>';
+    h += '<p class="q">' + esc(T.q_ins) + '</p><div class="opts">';
+    qo.insurance.forEach(function(o){ h += optBtn('insurance', o.key, o.label, qa.insurance === o.key); });
+    h += '</div><p class="small">' + esc(T.ins_note) + '</p>';
+    if(qo.travel.length){
+      h += '<p class="q">' + esc(T.q_travel) + '</p><p class="small">' + esc(T.travel_note) + '</p>';
+      qo.travel.forEach(function(t){
+        var on = qa.travel.indexOf(t.key) >= 0;
+        h += '<button type="button" class="tickrow' + (on ? ' on' : '') + '" role="checkbox" aria-checked="' + (on ? 'true' : 'false') + '" data-g="travel" data-v="' + esc(t.key) + '"><span class="bx"></span><span>' + esc(t.text) + '</span></button>';
+      });
+    }
+    qo.needs.forEach(function(k){ h += '<p class="q">' + esc(T['q_need_' + k]) + '</p>' + yesNo('need-' + k, typeof qa.needs[k] === 'boolean' ? qa.needs[k] : null, T.need_yes, T.need_no); });
+    $('d-qq').innerHTML = h;
+  }
+  function renderQuote(){
+    var q = quote && quoteFor === JSON.stringify(qa) ? quote : null;
+    if(!q){ show('d-quote', false); syncAgree(); return; }
+    var h = '';
+    q.lines.forEach(function(l){
+      h += '<div class="qline"><span>' + esc(l.label) + (l.detail ? '<span class="det">' + esc(l.detail) + '</span>' : '') + '</span><b>' + esc(l.amountText || (l.toQuote ? T.to_come : '')) + '</b></div>';
+    });
+    h += '<div class="qline qtotal"><span>' + esc(T.quote_total) + '</span><b>' + esc(q.totalText) + '</b></div>';
+    $('d-quote-lines').innerHTML = h;
+    $('d-quote-plus').textContent = q.toQuote.length ? fill(T.quote_plus, { list: andWords(q.toQuote) }) : ''; show('d-quote-plus', q.toQuote.length > 0);
+    $('d-quote-dep').textContent = q.depositText ? fill(T.quote_dep, { deposit: q.depositText, per: q.depositPerPersonText || '' }) : T.quote_dep_na;
+    $('d-quote-bal').textContent = q.balanceText ? (q.finalPaymentText ? fill(T.quote_bal, { balance: q.balanceText, date: q.finalPaymentText }) : fill(T.quote_bal_nodate, { balance: q.balanceText })) : '';
+    $('d-quote-note').textContent = q.note || '';
+    show('d-quote', true); syncAgree();
+  }
+  function syncAgree(){
+    var ready = qaComplete() && quote && quoteFor === JSON.stringify(qa) && !agreeing;
+    $('d-agree').setAttribute('aria-disabled', ready ? 'false' : 'true');
+    $('d-agree').textContent = agreeing ? T.agreeing : T.agree;
+    $('d-agree-note').textContent = ready ? T.agree_note : T.agree_wait;
+  }
+  function askQuote(){
+    if(!qaComplete()) return;
+    var key = JSON.stringify(qa);
+    if(key === quoteFor){ renderQuote(); return; }
+    api('/quote', { answers: qa, lang: ES ? 'es' : 'en' }).then(function(x){
+      if(JSON.stringify(qa) !== key) return;   // they changed an answer while it was asked: a newer ask is on its way
+      if(x.ok && x.j && x.j.quote){ quote = x.j.quote; quoteFor = key; msg(''); renderQuote(); }
+      else msg((x.j && x.j.error) || T.err);
+    }).catch(function(){ msg(T.err); });
+  }
+  function refreshQuote(){ clearTimeout(quoteTimer); renderQuote(); quoteTimer = setTimeout(askQuote, 350); }
+  /** The page after the names are in: Parts 1 to 3 close, Part 4 opens with our pick already chosen (or the answers they gave last time). */
+  function openQuote(d){
+    if(!d.quoteOptions || !Array.isArray(d.quoteOptions.cabins)){ reload(); return; }   // nothing to offer yet: ask the server again
+    lockPage();
+    qo = d.quoteOptions;
+    var p = d.pick || pick || { category: '' };
+    var names = (Array.isArray(d.travelers) ? d.travelers : []).map(function(t){ return tidy(t.legal_name).split(' ')[0]; }).filter(Boolean);
+    $('d-p4').textContent = T.p4; $('d-p4intro').textContent = T.p4intro; $('d-quote-h').textContent = T.quote_h;
+    $('d-locked').textContent = fill(T.locked, { names: andWords(names), party: partyWords(Math.max(names.length, 1)), category: p.category, phone: d.businessPhone || PHONE });
+    if(d.quote && d.quote.answers){
+      qa = d.quote.answers; qa.travel = Array.isArray(qa.travel) ? qa.travel : []; qa.needs = qa.needs || {};
+      quote = d.quote; quoteFor = JSON.stringify(qa);
+    } else if(!qa.cabin){
+      var hit = null;
+      qo.cabins.forEach(function(c){ if(!hit && c.category === p.category) hit = c; });
+      if(hit) qa.cabin = hit.key;
+    }
+    renderQuoteQuestions(); renderQuote(); show('d-part4', true);
+  }
+  /** After "I agree": one line, where the paperwork went, and the way to change something (Mark, not a form). */
+  function showAgreed(category, count, paperwork, email){
+    lockPage(); show('d-part4', false);
+    $('d-thanks-h').textContent = fill(paperwork === 'sent' ? T.agreed_h : T.agreed_h_mark, { category: category, party: partyWords(count), email: email || '' });
+    $('d-thanks-p').textContent = fill(T.change, { phone: data.businessPhone || PHONE }); show('d-thanks-p', true);
     show('d-thanks', true);
   }
+  function reload(){
+    fetch('/api/group-details/' + token)
+      .then(function(r){ if(!r.ok) throw new Error('gone'); return r.json(); })
+      .then(function(d){ data = d; if(d.quoteAgreedAt && d.quote) showAgreed(d.quote.category, d.quote.party, d.paperwork, d.email); else if(d.quoteOptions) openQuote(d); else msg(T.err); })
+      .catch(function(){ msg(T.err); });
+  }
+  $('d-qq').addEventListener('click', function(e){
+    var t = e.target.closest ? e.target.closest('[data-g]') : e.target, g = t && t.getAttribute('data-g'), v = t && t.getAttribute('data-v');
+    if(!g || v === null) return;
+    if(g === 'cabin') qa.cabin = v;
+    else if(g === 'flexpay') qa.flexpay = v === 'yes';
+    else if(g === 'drinks') qa.drinks = v === 'yes';
+    else if(g === 'insurance') qa.insurance = v;
+    else if(g === 'travel'){ var at = qa.travel.indexOf(v); if(at >= 0) qa.travel.splice(at, 1); else qa.travel.push(v); }
+    else if(g.indexOf('need-') === 0) qa.needs[g.slice(5)] = v === 'yes';
+    renderQuoteQuestions(); refreshQuote();
+  });
+  $('d-agree').addEventListener('click', function(){
+    if(agreeing || $('d-agree').getAttribute('aria-disabled') === 'true') return;
+    agreeing = true; syncAgree(); msg('');
+    api('/agree', { lang: ES ? 'es' : 'en' }).then(function(x){
+      agreeing = false;
+      if(x.ok) showAgreed(quote.category, quote.party, x.j && x.j.paperwork, data.email);
+      else { syncAgree(); msg((x.j && x.j.error) || T.err); }
+    }).catch(function(){ agreeing = false; syncAgree(); msg(T.err); });
+  });
 
   // ── Events ──
   function wire(id, kind, i){
@@ -604,7 +768,12 @@
       .then(function(saved){
         if(!saved){ again(); return null; }
         return api('/hold', {}).then(function(x){
-          if(x.ok){ busy = false; showHeld(open, false); }
+          if(x.ok){
+            busy = false;
+            // the answer carries what Part 4 offers: open it now; an answer without it (an older server) is read again
+            if(x.j && x.j.quoteOptions){ data.quoteOptions = x.j.quoteOptions; data.holdRequestedAt = new Date().toISOString(); data.travelers = payload().travelers; data.pick = pick || data.pick; openQuote(data); }
+            else reload();
+          }
           else { again(); msg((x.j && x.j.error) || T.err); }
         });
       })
@@ -678,11 +847,12 @@
     if(d.pick && d.concierge){ pick = d.pick; pickFor = JSON.stringify(answers()); }
     renderBlocks(); renderQuestions();
 
-    if(d.holdRequestedAt && d.pick){ showHeld(Math.max(saved.length, 1), true); return; }
+    if(d.quoteAgreedAt && d.quote){ showAgreed(d.quote.category, d.quote.party, d.paperwork, d.email); return; }
+    if(d.holdRequestedAt && d.pick){ openQuote(d); return; }
     // a returning guest whose names, birthdays and address are all saved: nothing is re-sent until they change something
     if(saved.length && d.pick && d.concierge && part1Ok()) lastSent = JSON.stringify(payload());
     paintAll(); renderPart3(); syncHold();
-    // Mark 2026-10-26: what was typed here and not saved yet comes back when the guest returns, until the cabin is on hold (js/keep-typing.js)
+    // Mark 2026-10-26: what was typed here and not saved yet comes back when the guest returns, until the names are in (js/keep-typing.js)
     if(window.SAKeep){ window.SAKeep.track($('d-part1'), function(){ return held ? null : window.SAKeep.keyFor('details', token); }); window.SAKeep.restore($('d-part1'), window.SAKeep.keyFor('details', token)); }
   }
 
