@@ -1557,13 +1557,13 @@ export default [
   // asked here, because a good link exists only for a real reply, and a sweep never makes one (a reply emails Mark and the guest).
   {
     id: "ops.group-details-public",
-    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road: Road B is their own details page in three short parts (who's coming, which cabin suits you, our pick) ending in \"Hold my cabin!\"; the page is private by link and refuses bad tokens",
-    title: "The guest's private details page opens in English and Spanish, stays out of search, calls its own API and the address lookup with the bot trap and the hold button, checks itself field by field, shows no price, and any wrong link gets the same plain 'not found' that is never stored or cached",
+    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road: Road B is their own details page in three short parts (who's coming, which cabin suits you, our pick); the page is private by link and refuses bad tokens. Mark 2026-11-01 — nothing is held at the end of Part 3: the button is \"Build my quote!\", the email's button says \"Let's begin!\" and opens Part 4 (which cabin, FlexPay — Mark's own plan, offered apart from the cruise line, no terms promised — a drink package when the fare has none, insurance, hotel / air / transfers), the quote is agreed, and only then is the paperwork sent; the page's own text still carries no price (every figure comes from the group file through the API)",
+    title: "The guest's private details page opens in English and Spanish, stays out of search, calls its own API and the address lookup with the bot trap, the quote button and the quote step, checks itself field by field, writes no price of its own, and any wrong link gets the same plain 'not found' that is never stored or cached",
     covers: ["page /details.html", "page /es/details.html", "GET /api/group-details/:token"],
     modes: ["dev", "prod"],
     run: async (t) => {
       for (const [p, lang] of [["/details.html", "en"], ["/es/details.html", "es"]]) {
-        const html = t.html(await t.get(p), { mustContain: ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Apartar mi cabina" : "Hold my cabin", "/pick", "/hold", 'aria-disabled="true"', 'id="d-summary"'] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Armar mi cotización" : "Build my quote", lang === "es" ? "FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera" : "FlexPay is an installment plan Mark offers separately from the cruise line", "/pick", "/hold", "/quote", "/agree", 'id="d-part4"', 'id="d-agree"', 'aria-disabled="true"', 'id="d-summary"'] });
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         // a private link: never indexed, and the address that carries it is never sent on to another site
         t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
@@ -1597,9 +1597,9 @@ export default [
   },
   {
     id: "ops.group-details-writes-refuse",
-    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road (Talk me into it, Mark! picks a time and gets one email; I've got this fills in the details page, holds the cabin and gets one email); the page is private by link and refuses bad tokens, a time that is not one of the four, and a robot; Mark alone adds the typed travelers to a cabin and closes his items (he books with the cruise line himself); the home address is looked up at the post office, never logged, and only for a person",
-    title: "Choosing a time to be rung, picking a cabin, saving details and asking for a hold refuse a link that does not exist, the time must be one of the four answers, the bot trap stores nothing, the address lookup refuses a robot and a short street, and adding a reply's travelers to a cabin or closing Mark's items is his alone and refuses an unknown reply",
-    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/address/lookup", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how"],
+    basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road (Talk me into it, Mark! picks a time and gets one email; I've got this fills in the details page and gets one email); the page is private by link and refuses bad tokens, a time that is not one of the four, and a robot; Mark alone adds the typed travelers to a cabin and closes his items (he books with the cruise line himself); the home address is looked up at the post office, never logged, and only for a person. Mark 2026-11-01 — the quote step (answers, then \"I agree\") sits behind the same link: a link that does not exist and a robot get the same refusals, and no quote is pretended",
+    title: "Choosing a time to be rung, picking a cabin, saving details, sending the names, answering the quote step and agreeing refuse a link that does not exist, the time must be one of the four answers, the bot trap stores nothing and pretends no pick and no quote, the address lookup refuses a robot and a short street, and adding a reply's travelers to a cabin or closing Mark's items is his alone and refuses an unknown reply",
+    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/group-details/:token/quote", "POST /api/group-details/:token/agree", "POST /api/address/lookup", "POST /api/address/suggest", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap and a request without Mark's token; nothing is stored, nobody is told and the post office is never asked); prod sweeps are read-only",
     run: async (t) => {
@@ -1609,17 +1609,17 @@ export default [
         concierge: { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" },
       };
       const nowhere = "A".repeat(43);
-      for (const [path, body] of [[`/api/group-details/${nowhere}/choice`, { choice: "call", when: "evening" }], [`/api/group-details/${nowhere}/pick`, { concierge: form.concierge }], [`/api/group-details/${nowhere}`, form], [`/api/group-details/${nowhere}/hold`, {}],
-        ["/api/group-details/short/choice", { choice: "call", when: "evening" }], ["/api/group-details/short/pick", { concierge: form.concierge }], ["/api/group-details/short", form], ["/api/group-details/short/hold", {}]]) {
+      for (const [path, body] of [[`/api/group-details/${nowhere}/choice`, { choice: "call", when: "evening" }], [`/api/group-details/${nowhere}/pick`, { concierge: form.concierge }], [`/api/group-details/${nowhere}`, form], [`/api/group-details/${nowhere}/hold`, {}], [`/api/group-details/${nowhere}/quote`, { answers: { cabin: "BEL", flexpay: false, insurance: "decline" } }], [`/api/group-details/${nowhere}/agree`, {}],
+        ["/api/group-details/short/choice", { choice: "call", when: "evening" }], ["/api/group-details/short/pick", { concierge: form.concierge }], ["/api/group-details/short", form], ["/api/group-details/short/hold", {}], ["/api/group-details/short/quote", { answers: { cabin: "BEL", flexpay: false, insurance: "decline" } }], ["/api/group-details/short/agree", {}]]) {
         const res = await send(path, body);
         refused(t, res, 404, `POST ${path.replace(nowhere, ":token").replace("short", ":token")} with a link that does not exist`, /^not found$/i);
         t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the refused details write");
       }
       // The bot trap answers as if it had been accepted and stores nothing: no pick, no promise.
-      for (const path of [`/api/group-details/${nowhere}/choice`, `/api/group-details/${nowhere}/pick`, `/api/group-details/${nowhere}`, `/api/group-details/${nowhere}/hold`]) {
-        const trap = await send(path, { ...form, choice: "call", when: "evening", website: "e2e-fixture-honeypot" });
+      for (const path of [`/api/group-details/${nowhere}/choice`, `/api/group-details/${nowhere}/pick`, `/api/group-details/${nowhere}`, `/api/group-details/${nowhere}/hold`, `/api/group-details/${nowhere}/quote`, `/api/group-details/${nowhere}/agree`]) {
+        const trap = await send(path, { ...form, choice: "call", when: "evening", answers: { cabin: "BEL", flexpay: false, insurance: "decline" }, website: "e2e-fixture-honeypot" });
         t.ok(trap.status === 200 && trap.json?.success === true, `the details bot trap should answer as if accepted: ${trap.describe()}`);
-        t.ok(!("pick" in (trap.json || {})), "the bot trap must not pretend a cabin was picked");
+        t.ok(!("pick" in (trap.json || {})) && !("quote" in (trap.json || {})) && !("paperwork" in (trap.json || {})), "the bot trap must not pretend a cabin was picked, a quote made or paperwork sent");
       }
       // A time that is not one of the four answers is refused before anything else is looked at that a robot could use (a link that does not exist is a 404 first).
       for (const when of ["night", "", null, 3]) {
@@ -1632,6 +1632,12 @@ export default [
       t.matches(trap.headers.get("cache-control") || "", /no-store/, "Cache-Control of the address lookup");
       const short = await send("/api/address/lookup", { q: "12", website: "" });
       refused(t, short, 400, "an address lookup for a street under five characters", /five characters/i);
+      // The address type-ahead (Mark 2026-10-26): the same bot trap and the same private headers; with or without its keys it answers in the same shape.
+      const ahead = await send("/api/address/suggest", { q: "123 Main", website: "e2e-fixture-honeypot" });
+      t.ok(ahead.status === 200 && ahead.json?.success === true && ahead.json?.available === false && !("suggestions" in (ahead.json || {})), `the type-ahead bot trap should answer "not available": ${ahead.describe()}`);
+      t.matches(ahead.headers.get("cache-control") || "", /no-store/, "Cache-Control of the address type-ahead");
+      const few = await send("/api/address/suggest", { q: "12", website: "" });
+      t.ok(few.status === 200 && few.json?.success === true && (few.json?.available === false || (Array.isArray(few.json?.suggestions) && few.json.suggestions.length === 0)), `two characters ask nobody and suggest nothing: ${few.describe()}`);
       // Adding a reply's travelers to a cabin, and the two buttons that close Mark's items, are Mark's alone, and an unknown reply is refused (no traveler is made).
       unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/to-file`, { cabin_id: ZERO }), "POST /api/groups/:id/interests/:iid/to-file");
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/to-file`, { cabin_id: ZERO }, true), 404, "adding the travelers of a reply that does not exist", /reply not found/i);
@@ -1648,13 +1654,44 @@ export default [
   // NEW IN THE RELEASE THAT ADDS THEM: prod has neither the page nor the addresses before the promotion,
   // so these FAIL there until then — correct (the same note as ops.group-page-public).
   {
-    id: "ops.paperwork-link-page",
-    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: clients sign on their own private link (only its hash is stored); a wrong link gets one neutral answer that says nothing about whether it ever existed; the page is never indexed; the signed-documents list is for Mark only and never carries a passport, an answer, a token or an audit hash",
-    title: "The private paperwork page opens and stays out of search, any wrong link gets the same 'not valid' answer, and the dashboard's signed-documents list is Mark's alone and carries no private detail",
-    covers: ["page /forms.html", "GET /api/forms/:token", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file"],
+    id: "ops.group-bookings-app",
+    basis: "ruling: mark-group-dashboard-big-picture-plus-workhorse.md — Mark 2026-10-25: \"stop relating it to the dashboard. it is a separate entity\", \"the title should be stillafloatcruising.com/groups\", \"only I have access to it\": Group Bookings is its own app at /groups/, and on the live site the door asks for Mark's password before anything loads",
+    title: "Group Bookings is its own app at /groups/: on the test site the page and its program load (private, never indexed) and the program talks only to the group API with Mark's key; on the live site /groups/ asks for Mark's password first",
+    covers: ["ext:group-bookings app"],
     modes: ["dev", "prod"],
     run: async (t) => {
-      const html = t.html(await t.get("/forms.html"), { mustContain: ["/api/forms/", 'id="fm-agree"', 'id="fm-name"', "Sign and continue", 'id="fm-website"'] });
+      const res = await t.get("/groups/");
+      if (t.mode === "prod") {
+        // the live door: nothing of the app is served without Mark's password
+        t.equal(res.status, 401, "HTTP status of /groups/ without Mark's password on the live site");
+        t.matches(res.headers.get("www-authenticate") || "", /^Basic /i, "the live site's password challenge on /groups/");
+        t.ok(!res.text.includes("/groups/assets/"), "the live site handed out the Group Bookings program without the password");
+        return;
+      }
+      t.status(res, 200);
+      const html = t.html(res, { mustContain: ['id="root"', "/groups/assets/", "Group Bookings"] });
+      t.matches(H.metaContent(html, "robots"), /noindex/, "robots meta of Group Bookings (a private app is never indexed)");
+      t.matches(res.headers.get("x-robots-tag") || "", /noindex/, "X-Robots-Tag of Group Bookings");
+      const src = (/src="(\/groups\/assets\/[^"]+\.js)"/.exec(html) || [])[1];
+      t.ok(src, "Group Bookings names no program file");
+      if (!src) return;
+      const js = await t.get(src);
+      t.status(js, 200);
+      t.matches(js.headers.get("content-type") || "", /javascript/, "the Group Bookings program's content type");
+      for (const needle of ["/groups/analytics", "x-affiliate-token", "/api/auth-check", "saf_group_bookings_token", "form-link/send"]) {  // the program joins "/api" and "/groups/analytics" at run time
+        t.ok(js.text.includes(needle), `the Group Bookings program no longer mentions ${needle}`);
+      }
+      t.ok(!js.text.includes("Still Afloat Command Center"), "the Group Bookings program carries the dashboard (it must be its own app)");
+    },
+  },
+  {
+    id: "ops.paperwork-link-page",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: clients sign on their own private link (only its hash is stored); a wrong link gets one neutral answer that says nothing about whether it ever existed; the page is never indexed; the signed-documents list is for Mark only and never carries a passport, an answer, a token or an audit hash; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
+    title: "The private paperwork page opens and stays out of search, any wrong link gets the same 'not valid' answer, and the dashboard's signed-documents list is Mark's alone and carries no private detail",
+    covers: ["page /forms.html", "GET /api/forms/:token", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "GET /api/forms/copies/:token", "GET /api/forms/copies/:token/:sid"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      const html = t.html(await t.get("/forms.html"), { mustContain: ["/api/forms/", 'id="fm-wiz"', 'id="fm-steps"', 'id="fm-progress"', 'id="fm-next"', 'id="fm-website"'] });
       t.matches(H.metaContent(html, "robots"), /noindex/, "robots meta of the paperwork page (a private link must never be indexed)");
       t.matches(H.metaContent(html, "referrer"), /no-referrer/, "referrer policy of the paperwork page (its address carries the link)");
       t.equal(H.htmlLang(html).slice(0, 2), "en", "language of the paperwork page");
@@ -1669,6 +1706,13 @@ export default [
         bodies.add(res.text);
       }
       t.equal(bodies.size, 1, "different wrong links must all get the identical answer (number of distinct answers)");
+
+      // Mark 2026-10-25: the signer's copies link (from the "your signed paperwork" email) answers a wrong link the same way.
+      for (const path of [`/api/forms/copies/${"A".repeat(43)}`, `/api/forms/copies/${"A".repeat(43)}/${ZERO}.pdf`, "/api/forms/copies/short"]) {
+        const res = await t.get(path);
+        refused(t, res, 404, `a wrong copies link (${path})`, /not valid/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the copies answer");
+      }
 
       // Mark's own addresses: refused without his token.
       unauthorized(t, await t.get(`/api/groups/${ZERO}/signatures`), "GET /api/groups/:id/signatures");
@@ -1686,16 +1730,26 @@ export default [
         t.ok(body.packets && typeof body.packets === "object", `group ${g.id}: the signed-documents list has no per-traveler progress`);
         t.equal(JSON.stringify(body.organizer?.required), JSON.stringify(["09-group-travel-contract"]), `group ${g.id}: the documents asked of the organizer`);
         t.ok(Array.isArray(body.organizer?.signed), `group ${g.id}: the organizer's signed list`);
-        // the progress agrees with the group file: one entry per traveler, 5 documents asked (6 for a cabin lead with a cabin)
+        // the progress agrees with the group file: one entry per traveler, 2 documents asked (Mark 2026-10-29: About you + Your booking; + the card authorization for a cabin's lead; + 2 fee agreements when the file carries a fee)
         for (const tr of file.travelers) {
           const p = body.packets[tr.id];
           t.ok(p && Array.isArray(p.required) && Array.isArray(p.signed), `group ${g.id}: traveler ${tr.id} has no paperwork progress`);
-          t.equal(p.required.length, tr.is_lead && tr.cabin_id ? 6 + (Object.keys(g.fees || {}).length ? 2 : 0) : 5 + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (a lead with a cabin also signs the cruise agreement; fees add two)`);
-          t.ok(!p.required.some((k) => /^(04|06|13|14)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet`);
+          // Mark 2026-10-30 (later): the card authorization is the card owner's own when the card is someone else's; the insurance
+          // document is the one the choice on the file calls for (23 the plan, 07 the declination)
+          const ownersCard = p.card && p.card.holder === "other";
+          // Mark 2026-10-31: the passport checklist (16) is prepared from the file and emailed, never signed; the booking agreement
+          // comes right after the insurance document, before the waiver; the card authorization closes the lead's packet
+          t.equal(p.required.length, 4 + (tr.is_lead && tr.cabin_id ? (ownersCard ? 1 : 2) : 0) + (Object.keys(g.fees || {}).length ? 2 : 0), `group ${g.id}: documents asked of traveler ${tr.id} (Mark 2026-10-31: four Cornerstone documents; the booking agreement and, unless the card is someone else's, the card authorization for a cabin's lead; the two fee agreements when the file carries a fee)`);
+          const insuranceDoc = ["quote", "line"].includes(tr.form_data?.insurance?.choice) ? "23-insurance-plan" : "07-travel-insurance-declination";
+          t.equal(JSON.stringify(p.required.filter((k) => !/^(0[23]|12|22)-/.test(k))), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", insuranceDoc, "05-liability-waiver"]), `group ${g.id}: traveler ${tr.id} is asked for the four documents in order, the insurance document following the choice on the file`);
+          if (tr.is_lead && tr.cabin_id && !ownersCard) t.equal(JSON.stringify(p.required.slice(-3)), JSON.stringify(["12-cruise-booking-agreement", "05-liability-waiver", "22-card-authorization"]), `group ${g.id}: lead ${tr.id}'s booking agreement comes before the waiver and the card authorization last (Mark 2026-10-31)`);
+          if (tr.is_lead && tr.cabin_id) t.ok(p.card && "holder" in p.card && "signed" in p.card, `group ${g.id}: lead ${tr.id} has no card standing (whose card, whether the owner signed)`);
+          t.ok("checklist_sent_at" in p, `group ${g.id}: traveler ${tr.id}'s progress does not say whether their passport checklist was emailed`);
+          t.ok(!p.required.some((k) => /^(04|06|13|14|16|20|21)-/.test(k)), `group ${g.id}: traveler ${tr.id} is asked for a document that is in no packet (Mark 2026-10-30: the two-document packet of 10/29 went out; 04, 06, 13 and 14 never were; 10/31: the checklist is prepared and emailed, never signed)`);
           if (!Object.keys(g.fees || {}).length) t.ok(!p.required.some((k) => /^0[23]-/.test(k)), `group ${g.id}: a group with no fees is asked to sign a fee agreement`);
         }
         const raw = JSON.stringify(body);
-        for (const secret of ["passport_enc", "form_token_hash", "consent_ip_hash", "ip_hash", "ua_hash", "pdf_path", "organizer_token_hash", '"answers"']) t.ok(!raw.includes(secret), `group ${g.id}: the signed-documents list carries ${secret}`);
+        for (const secret of ["passport_enc", "form_token_hash", "consent_ip_hash", "ip_hash", "ua_hash", "pdf_path", "organizer_token_hash", '"answers"', '"ip":', '"ua":', "esign_consent_ip", "copies_token_hash"]) t.ok(!raw.includes(secret), `group ${g.id}: the signed-documents list carries ${secret}`);
         t.ok(!cardShaped(raw), `group ${g.id}: the signed-documents list contains something shaped like a card number`);
         for (const sg of body.signatures) {
           t.fields(sg, ["id", "doc_key", "doc_title", "doc_version", "signer_name", "signer_role", "signed_at", "content_sha256"], `a signature of group ${g.id}`);
@@ -1716,10 +1770,38 @@ export default [
     },
   },
   {
+    id: "ops.paperwork-assets-not-banned",
+    basis: "incident: 2026-10-28 — the paperwork page loaded its PDF viewer from /vendor/pdfjs-…; the box's attack guard (fail2ban jail nginx-badprobes, /etc/fail2ban/filter.d/nginx-badprobes.conf) bans any address asking for /vendor/, so every client who reached their first document was locked out of the whole site (1 hour on dev, 24 hours on the live site); Mark: \"i cannot see the paperwork\"",
+    title: "Nothing the paperwork page loads sits at an address the server's attack guard bans, and its PDF viewer answers where the page asks for it",
+    covers: ["page /forms.html"],
+    modes: ["dev", "prod"],
+    incident: "2026-10-28: opening the first document banned the client's address from the whole site",
+    run: async (t) => {
+      // The guard's own pattern, word for word (filter.d/nginx-badprobes.conf on both boxes). A file the site serves to its own
+      // visitors must never match it: two such requests in 10 minutes ban the visitor.
+      const BANNED = /(?:\/\.env|\/\.git|\/\.aws|\/\.ssh|wp-admin|wp-includes|wp-content|xmlrpc\.php|phpmyadmin|\/config\.(?:json|php|yml|yaml)|\/\.DS_Store|\/vendor\/|\/\.vscode)/;
+      const html = t.html(await t.get("/forms.html"), { mustContain: ["/js/forms.js"] });
+      const pageAssets = [...html.matchAll(/\b(?:src|href)="(\/[^"]+)"/g)].map((m) => m[1]);
+      const jsPath = pageAssets.find((p) => p.startsWith("/js/forms.js"));
+      t.ok(jsPath, "the paperwork page does not load /js/forms.js");
+      const js = await t.get(jsPath || "/js/forms.js");
+      t.equal(js.status, 200, "HTTP status of the paperwork program");
+      const programAssets = [...js.text.matchAll(/['"](\/(?:js|vendor|css|assets|fonts)\/[^'"\s]+\.(?:m?js|css|woff2?|png|jpe?g|webp|svg))['"]/g)].map((m) => m[1]);
+      const pdfAssets = programAssets.filter((p) => /pdf(?:\.worker)?\.min\.js$/.test(p));
+      t.equal(pdfAssets.length, 2, "PDF viewer files the paperwork program names (the viewer and its worker)");
+      for (const p of [...pageAssets, ...programAssets]) t.ok(!BANNED.test(p), `the paperwork page loads ${p}, an address the attack guard bans`);
+      for (const p of pdfAssets) {
+        const res = await t.get(p);
+        t.equal(res.status, 200, `HTTP status of ${p}`);
+        t.matches(res.headers.get("content-type") || "", /javascript/, `content type of ${p}`);
+      }
+    },
+  },
+  {
     id: "ops.paperwork-writes-refuse",
-    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-03: every paperwork write needs Mark's token or the client's own link; unknown travelers, groups and links are refused; the bot trap and a missing agreement store nothing and email no one (dev never emails real people, Mark 2026-10-08)",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-03: every paperwork write needs Mark's token or the client's own link; unknown travelers, groups and links are refused; the bot trap and a missing agreement store nothing and email no one (dev never emails real people, Mark 2026-10-08); Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "Making links, emailing a link, the organizer's link and removing a signature refuse a visitor without Mark's token and unknown travelers and groups, and a signature with no link or a bot trap stores nothing",
-    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "POST /api/groups/:id/travelers/:tid/form-link/send", "POST /api/groups/:id/organizer-link", "DELETE /api/groups/:id/signatures/:sid", "POST /api/forms/:token/sign"],
+    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "POST /api/groups/:id/travelers/:tid/form-link/send", "POST /api/groups/:id/organizer-link", "DELETE /api/groups/:id/signatures/:sid", "POST /api/forms/:token/sign", "POST /api/forms/:token/consent"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST/DELETE requests (refusal paths only: nothing is created and no email is sent); prod sweeps are read-only",
     run: async (t) => {
@@ -1739,6 +1821,7 @@ export default [
       const body = { doc_key: "16-passport-document-checklist", signer_name: "Fixture Tester", agreed: true, content_sha256: "0".repeat(64), answers: {} };
       refused(t, await send("POST", `/api/forms/${"A".repeat(43)}/sign`, body, false), 404, "signing with a link that does not exist", /not valid/i);
       refused(t, await send("POST", "/api/forms/short/sign", body, false), 404, "signing with a malformed link", /not valid/i);
+      refused(t, await send("POST", `/api/forms/${"A".repeat(43)}/consent`, { agreed: true }, false), 404, "agreeing to electronic signing with a link that does not exist", /not valid/i);
       const trap = await send("POST", `/api/forms/${"A".repeat(43)}/sign`, { ...body, website: "e2e-fixture-honeypot" }, false);
       t.ok(trap.status === 200 && trap.json?.success === true, `the paperwork bot trap should answer as if accepted: ${trap.describe()}`);
       t.ok(!("packet" in (trap.json || {})) && !("signed" in (trap.json || {})), "the bot trap must not pretend a document was signed");
@@ -1750,9 +1833,9 @@ export default [
   },
   {
     id: "ops.paperwork-roundtrip",
-    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: a traveler signs with a typed name and an explicit agreement on their own link; the signature pins the text they saw (changed text is refused); one signature per document; a signed PDF copy is kept in the private bucket; the business is named 'Still Afloat LLC dba Still Afloat Cruising'; no fees unless Mark enters one; the passport never comes back out",
+    basis: "ruling: stillafloat-group-bookings.md — Mark 2026-10-02/03: a traveler signs with a typed name and an explicit agreement on their own link; the signature pins the text they saw (changed text is refused); one signature per document; a signed PDF copy is kept in the private bucket; the business is named 'Still Afloat LLC dba Still Afloat Cruising'; no fees unless Mark enters one; the passport never comes back out; Mark 2026-10-25 (\"how am I sure the electronic signatures conform legally, like a docusign signature would\"): consent to electronic records before the first signature, an evidence page and our certificate's seal on every signed copy, and the signer's own copies on a link of their own",
     title: "A throwaway traveler gets a link, sees their documents under the business's legal name, signs one document with a typed name (a wrong hash, no agreement and a second signing are refused), Mark sees the signature and opens its PDF, and removing it asks for the document again",
-    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id"],
+    covers: ["POST /api/groups/:id/travelers/:tid/form-link", "GET /api/forms/:token", "POST /api/forms/:token/sign", "GET /api/forms/:token/insurance", "POST /api/forms/:token/insurance/quote", "POST /api/forms/:token/insurance/choice", "POST /api/forms/:token/card", "POST /api/groups/:id/travelers/:tid/card-link/send", "POST /api/groups/:id/travelers/:tid/checklist/send", "GET /api/forms/checklist/:token", "GET /api/groups/:id/signatures", "GET /api/groups/:id/signatures/:sid/file", "DELETE /api/groups/:id/signatures/:sid", "POST /api/groups/:id/:child", "DELETE /api/groups/:id/:child/:rowId", "GET /api/groups/:id", "POST /api/forms/:token/consent", "POST /api/forms/:token/preview", "GET /api/forms/:token/document/:key"],
     modes: ["dev"],
     devOnlyBecause: "it creates a fixture traveler, signs one document and stores its PDF, then deletes all three (dev database and bucket only; removed in a finally block)",
     run: async (t) => {
@@ -1799,7 +1882,15 @@ export default [
         t.equal(p.kind, "traveler", "kind of the paperwork packet");
         const keys = p.docs.map((d) => d.key);
         const fees = Object.keys(file.group.fees || {}).length > 0;
-        t.equal(JSON.stringify(keys), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", ...(fees ? ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] : []), "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]), `documents in a traveler's packet (this group ${fees ? "has" : "has no"} fees on file)`);
+        t.equal(JSON.stringify(keys), JSON.stringify(["15-emergency-contact-form", "01-terms-and-conditions", ...(fees ? ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] : []), "07-travel-insurance-declination", "05-liability-waiver"]), `documents in a traveler's packet (Mark 2026-10-31: four Cornerstone documents, the passport checklist prepared and emailed instead of signed; this group ${fees ? "has" : "has no"} fees on file; the fixture is not a cabin's lead, so no booking agreement or card authorization)`);
+        t.ok(p.checklist && "sent_at" in p.checklist && p.checklist.sent_at === null, "a fresh link's passport checklist has not been emailed yet");
+        const printedChecklist = await t.get(`/api/forms/${token}/document/16-passport-document-checklist`);
+        t.status(printedChecklist, 200);
+        t.matches(printedChecklist.headers.get("content-type") || "", /application\/pdf/, "the prepared passport checklist, printed from the traveler's page (never signed)");
+        refused(t, await t.get(`/api/forms/checklist/${"A".repeat(43)}.pdf`), 404, "the checklist on a link that does not exist", /not valid/i);
+        unauthorized(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/checklist/send`, { body: {} }), "POST /api/groups/:id/travelers/:tid/checklist/send");
+        refused(t, await t.send("POST", `/api/groups/${g.id}/travelers/${ZERO}/checklist/send`, { auth: true, body: {} }), 404, "the checklist emailed to a traveler who does not exist", /traveler not found/i);
+        refused(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/checklist/send`, { auth: true, body: {} }), 400, "the checklist emailed to a traveler with no email address", /no email address/i);
         t.equal(p.business?.name, "Still Afloat LLC dba Still Afloat Cruising", "the business's legal name on the paperwork");
         for (const d of p.docs) {
           t.ok(d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.length > 1500, `document ${d.key} is not a real pending document`);
@@ -1809,31 +1900,108 @@ export default [
           t.ok(!/name="(card|cardnumber|cc)/i.test(d.html), `document ${d.key} has a card-number input`);
         }
         if (!fees) for (const d of p.docs) t.ok(!/Service Fees|AGENT SERVICE FEES|retainer fee/.test(d.html), `document ${d.key} shows a fee although the group file has none`);
-        t.equal(p.docs[0].fields.length, 80, "inputs on the traveler information form");
+        t.equal(p.docs[0].fields.length, 29, "inputs on the traveler information form (name, birth date, gender, citizenship, address, phone, email, passport, trusted traveler programs, three loyalty programs, one emergency contact, a note)");
         t.ok(p.docs[0].fields.some((f) => f.kind === "passport" && f.value === null), "the passport input must never come pre-filled");
         const raw = JSON.stringify(p);
         for (const secret of ["passport_enc", "form_token_hash", "consent_ip_hash", "organizer_token_hash", "organizer_email", "prospect_id"]) t.ok(!raw.includes(secret), `the paperwork packet carries ${secret}`);
         t.ok(!cardShaped(raw), "the paperwork packet contains something shaped like a card number");
         t.ok(typeof p.pii_ready === "boolean", "the packet does not say whether passport numbers can be taken");
+        // Mark 2026-10-25: the one-time consent to electronic records, before any signature
+        t.equal(p.esign?.consent_given_at, null, "a new link's consent to electronic signing");
+        t.equal(p.esign?.text?.points?.length, 5, "the things the signer agrees to before signing electronically");
+        t.ok(/paper copy/i.test((p.esign?.text?.points || []).join(" ")), "the consent offers a paper copy");
+        for (const secret of ["esign_consent_ip", "esign_consent_ua", "copies_token_hash"]) t.ok(!raw.includes(secret), `the paperwork packet carries ${secret}`);
+
+        // Mark 2026-10-30: the insurance step comes after the video and the quote. A fresh link has no quote yet; asking for one on
+        // the fixture's file, which carries no home state or birth date, is answered in words (unavailable) and makes exactly one
+        // "Waiting on you" row for Mark, resolved here so the fixture leaves nothing behind. No price is ever invented.
+        const insBefore = t.success(await t.get(`/api/forms/${token}/insurance`));
+        // Mark 2026-10-30: "they should be able to select the policy/price here" — a fresh link has no quote of its own ("none") unless
+        // the group file carries the sailing's Allianz plans, which the page then offers at once ("ready", from the file)
+        t.ok(["none", "ready"].includes(insBefore.quote?.status), `quote status on a fresh link (${insBefore.quote?.status})`);
+        t.ok(Array.isArray(insBefore.quote?.plans) && "source" in (insBefore.quote || {}), "the plans to pick from, and where they came from");
+        const waiverDoc = p.docs.find((d) => d.key === "05-liability-waiver");
+        const healthTick = waiverDoc && waiverDoc.fields.find((f) => f.name === "health_ack");
+        t.ok(healthTick && healthTick.on_document && healthTick.on_document.heading === "Health declaration" && healthTick.on_document.text.length > 100, "the waiver's health tick is made on the document's own signing screen, under the Health Declaration (Mark 2026-10-30)");
+        t.equal(insBefore.quote?.note, "Pricing subject to change until finalized.", "the note that goes with every price");
+        t.ok("video_url" in insBefore && "line_protection" in insBefore, "the insurance step's video and the cruise line's own plan");
+        const quoteAsk = await t.send("POST", `/api/forms/${token}/insurance/quote`, { body: {} });
+        t.ok([200, 202].includes(quoteAsk.status), `asking for the Allianz quote (HTTP ${quoteAsk.status}: ${quoteAsk.describe()})`);
+        t.ok(["pending", "unavailable", "ready"].includes(quoteAsk.json?.status), `the quote's state after asking (${quoteAsk.json?.status})`);
+        const insAfter = t.success(await t.get(`/api/forms/${token}/insurance`));
+        t.ok(["pending", "unavailable", "ready"].includes(insAfter.quote?.status), `the quote's state on the page (${insAfter.quote?.status})`);
+        t.ok(!JSON.stringify(insAfter).includes("ALLIANZ_AGENT") && !/password/i.test(JSON.stringify(insAfter)), "the insurance step leaks nothing of the box's sign-in");
+        refused(t, await t.get("/api/forms/nope/insurance"), 404, "the insurance step on a wrong link", /not valid/i);
+        const actRows = t.success(await t.get("/api/actions", { auth: true }), "ok");
+        const quoteRows = (actRows.actions || []).filter((a) => a && a.type === "group-insurance-quote" && a.source_ref === travelerId);
+        t.ok(quoteRows.length <= 1, `rows for Mark about this traveler's quote (${quoteRows.length}; one at most)`);
+        for (const a of quoteRows) t.success(await t.send("POST", `/api/actions/${a.id}/resolve`, { auth: true, body: { status: "dismissed" } }), "ok");
+        // Mark 2026-10-30 (later): the choice is made on the page, kept on the file, and decides the document that follows: the plan (23)
+        // for Allianz or the line's plan, Cornerstone's declination (07) for none or own. Before the consent nothing is kept.
+        t.equal(JSON.stringify((insBefore.fields || []).map((f) => f.name)), JSON.stringify(["insurance_choice", "insurance_plan", "ins_provider", "ins_policy"]), "the insurance step's own lines (Mark 2026-10-31: a policy of their own names its company and number)");
+        const lineOption = (insBefore.fields || [])[0].options.find((o) => o.value === "line");
+        t.ok(insBefore.line_protection ? lineOption && lineOption.label.includes(insBefore.line_protection) : !lineOption, "the cruise line's own plan is offered with its rate on the file, and not offered without one (Mark 2026-10-31)");
+        refused(t, await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "own" } }), 400, "a policy of their own without its company and number", /signing electronically|company|policy/i);
+        t.equal(JSON.stringify(insBefore.choice), JSON.stringify({ value: null, plan: null, chosen_at: null, locked: false }), "a fresh link has made no choice");
+        const tooEarly = await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "decline" } });
+        refused(t, tooEarly, 400, "the insurance choice before agreeing to electronic signing", /signing electronically/i);
+        t.equal(tooEarly.json.code, "consent-required", "the code of a choice before the consent");
+        refused(t, await t.send("POST", `/api/forms/${token}/card`, { body: { cardholder: "me" } }), 400, "whose card, asked of a traveler who is not a cabin's lead", /lead/i);
+        unauthorized(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/card-link/send`, { body: {} }), "POST /api/groups/:id/travelers/:tid/card-link/send");
+        refused(t, await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/card-link/send`, { auth: true, body: {} }), 400, "the card owner's link for a booking not paid with someone else's card", /someone else|card owner/i);
+
+        // Mark 2026-10-27: each document is shown as Mark's own PDF, filled in with what was typed so far; nothing is kept
+        const shown = await t.send("POST", `/api/forms/${token}/preview`, { body: { doc_key: "15-emergency-contact-form", answers: { legal_name: "E2E Fixture" } } });
+        t.status(shown, 200);
+        t.matches(shown.headers.get("content-type") || "", /application\/pdf/, "the filled-in document's type");
+        t.matches(shown.headers.get("cache-control") || "", /no-store/, "Cache-Control of the filled-in document");
+        refused(t, await t.send("POST", `/api/forms/${token}/preview`, { body: { doc_key: "09-group-travel-contract" } }), 404, "showing a document outside this link's packet", /not part of this paperwork/i);
+        const printed = await t.get(`/api/forms/${token}/document/01-terms-and-conditions`);
+        t.status(printed, 200);
+        t.matches(printed.headers.get("content-type") || "", /application\/pdf/, "a document's printed form's type");
 
         // refusals on the real link: nothing is stored by any of them
-        const doc = p.docs.find((d) => d.key === "16-passport-document-checklist");
-        const sign = (extra = {}, key = "16-passport-document-checklist") => t.send("POST", `/api/forms/${token}/sign`, { body: { doc_key: key, signer_name: NAME, agreed: true, content_sha256: doc.text_sha256, answers: {}, ...extra } });
+        const doc = p.docs.find((d) => d.key === "01-terms-and-conditions");
+        const sign = (extra = {}, key = "01-terms-and-conditions") => t.send("POST", `/api/forms/${token}/sign`, { body: { doc_key: key, signer_name: NAME, agreed: true, content_sha256: doc.text_sha256, answers: {}, ...extra } });
+        const early = await sign({});
+        refused(t, early, 400, "signing before agreeing to electronic signing", /signing electronically/i);
+        t.equal(early.json.code, "consent-required", "the code of a signature before the consent");
+        refused(t, await t.send("POST", `/api/forms/${token}/consent`, { body: { agreed: false } }), 400, "the consent without its box ticked", /tick the box/i);
+        const agreed = t.success(await t.send("POST", `/api/forms/${token}/consent`, { body: { agreed: true } }));
+        t.fresh(agreed.packet?.esign?.consent_given_at, 1, "the consent's timestamp");
+        // the choice, once consented: Allianz needs one of the plans the page offered (word for word); no insurance keeps the declination
+        refused(t, await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "maybe" } }), 400, "an insurance choice that is not one of the four", /choose/i);
+        refused(t, await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "quote", insurance_plan: "Not a plan: $1 per person" } }), 400, "Allianz with a plan the page never offered", /plan|price/i);
+        const chosen = t.success(await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "decline" } }));
+        t.equal(chosen.packet?.docs?.map((d) => d.key)[fees ? 4 : 2], "07-travel-insurance-declination", "no insurance: Cornerstone's declination follows");
+        t.equal(JSON.stringify(chosen.packet?.insurance?.choice?.value), JSON.stringify("decline"), "the choice kept on the file");
+        const offered = (insBefore.quote?.plans || []).map((pl) => `${pl.name}: $${Number(pl.price_per_person).toLocaleString("en-US", { minimumFractionDigits: Number(pl.price_per_person) % 1 ? 2 : 0, maximumFractionDigits: 2 })} per person`);
+        if (offered.length) {
+          const yes = t.success(await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "quote", insurance_plan: offered[0] } }));
+          const planDoc = (yes.packet?.docs || []).find((d) => d.key === "23-insurance-plan");
+          t.ok(planDoc && planDoc.html.includes(offered[0].replace(/&/g, "&amp;")) && planDoc.html.includes("Allianz Global Assistance"), "Allianz chosen: the plan document carries the plan and price picked");
+          t.ok(planDoc && planDoc.fields.length === 0, "nothing is typed on the plan document");
+          t.ok(!(yes.packet?.docs || []).some((d) => d.key === "07-travel-insurance-declination"), "the declination leaves the packet once a plan is chosen");
+          t.success(await t.send("POST", `/api/forms/${token}/insurance/choice`, { body: { insurance_choice: "decline" } }), "ok");
+        } else t.note("no Allianz plans on this group's file, so the plan document was not exercised");
+        t.ok(!cardShaped(JSON.stringify(chosen)), "the choice's answer contains something shaped like a card number");
         refused(t, await sign({ agreed: false }), 400, "signing without ticking the agreement", /tick the box/i);
         refused(t, await sign({ signer_name: "Fixture" }), 400, "signing with only one name", /full name/i);
         const stale = await sign({ content_sha256: "0".repeat(64) });
         refused(t, stale, 409, "signing text that is not the text on file", /changed/i);
         t.equal(stale.json.code, "document-changed", "the code of a refused stale signature");
-        refused(t, await sign({}, "06-credit-card-authorization"), 404, "signing the card authorization, which is in no packet", /not part of/i);
+        refused(t, await sign({}, "06-credit-card-authorization"), 404, "signing Cornerstone's card form, which is in no packet", /not part of/i);
+        refused(t, await sign({}, "16-passport-document-checklist"), 404, "signing the passport checklist, which is prepared and emailed, never signed (Mark 2026-10-31)", /not part of/i);
+        refused(t, await sign({}, "22-card-authorization"), 404, "signing the card authorization with a link that is not a cabin lead's", /not part of/i);
         refused(t, await sign({}, "09-group-travel-contract"), 404, "signing the group contract with a traveler's link", /not part of/i);
         t.equal((await sigs()).signatures.filter((x) => x.traveler_id === travelerId).length, 0, "signatures stored by the refused attempts");
 
         // the signature
         const ok = await sign({ newsletter_opt_in: false });
         t.status(ok, 200);
-        t.ok(ok.json?.success === true && ok.json.signed === "16-passport-document-checklist", `signing was not reported as a success: ${ok.describe()}`);
+        t.ok(ok.json?.success === true && ok.json.signed === "01-terms-and-conditions", `signing was not reported as a success: ${ok.describe()}`);
         t.equal(ok.json.pdf_saved, true, "whether the signed copy was saved");
-        t.equal(ok.json.packet.docs.find((d) => d.key === "16-passport-document-checklist").status, "signed", "status of the document just signed");
+        t.equal(ok.json.packet.docs.find((d) => d.key === "01-terms-and-conditions").status, "signed", "status of the document just signed");
         t.equal(ok.json.complete, false, "a packet with one document signed is not complete");
         const again = await sign({});
         refused(t, again, 409, "signing the same document twice", /already signed/i);
@@ -1844,11 +2012,11 @@ export default [
         const mine = list.signatures.filter((x) => x.traveler_id === travelerId);
         t.equal(mine.length, 1, "signatures on file for the fixture traveler");
         const s = mine[0];
-        t.equal(s.doc_key, "16-passport-document-checklist", "document of the signature");
+        t.equal(s.doc_key, "01-terms-and-conditions", "document of the signature");
         t.equal(s.signer_name, NAME, "typed name of the signature");
         t.equal(s.signer_role, "traveler", "role of the signature");
         t.equal(s.content_sha256, doc.text_sha256, "the hash the signature pins vs the hash the traveler was shown");
-        t.equal(s.doc_version.split("@")[0], "16-passport-document-checklist", "the template version's document");
+        t.equal(s.doc_version.split("@")[0], "01-terms-and-conditions", "the template version's document");
         t.equal(s.has_pdf, true, "whether the signed copy was kept");
         t.fresh(s.signed_at, 1, "the signature's own timestamp");
         t.equal(list.packets[travelerId].signed.length, 1, "documents signed, in the traveler's progress");
@@ -1858,6 +2026,9 @@ export default [
         const pdf = await t.get(link.url);
         t.ok((pdf.status === 200 || pdf.status === 206) && pdf.text.startsWith("%PDF"), `the signed copy does not download as a PDF (HTTP ${pdf.status})`);
         t.atLeast(pdf.text.length, 3000, "size of the signed copy in bytes");
+        // Mark 2026-10-25: the copy is sealed with the business's certificate (the box carries GROUP_SIGN_P12_*), and the list says so
+        t.equal(s.sealed, true, "whether the signed copy is sealed with the business's certificate");
+        t.ok(/\/ByteRange\s*\[/.test(pdf.text) && /adbe\.pkcs7\.detached|ETSI\.CAdES\.detached/.test(pdf.text), "the signed copy carries no digital seal");
 
         // a new link replaces the old one
         const second = await t.send("POST", `/api/groups/${g.id}/travelers/${travelerId}/form-link`, { auth: true, body: {} });
@@ -1866,13 +2037,13 @@ export default [
         t.ok(token2 !== token, "a second link is the same as the first");
         refused(t, await t.get(`/api/forms/${token}`), 404, "the replaced link", /not valid/i);
         const reopened = t.success(await t.get(`/api/forms/${token2}`));
-        t.equal(reopened.docs.find((d) => d.key === "16-passport-document-checklist").status, "signed", "status of the signed document on the new link");
+        t.equal(reopened.docs.find((d) => d.key === "01-terms-and-conditions").status, "signed", "status of the signed document on the new link");
 
         // removing the signature asks for the document again
         t.success(await t.send("DELETE", `/api/groups/${g.id}/signatures/${s.id}`, { auth: true }));
         t.equal((await sigs()).signatures.filter((x) => x.traveler_id === travelerId).length, 0, "signatures left after removing it");
         const asked = t.success(await t.get(`/api/forms/${token2}`));
-        t.equal(asked.docs.find((d) => d.key === "16-passport-document-checklist").status, "pending", "status of the document after its signature was removed");
+        t.equal(asked.docs.find((d) => d.key === "01-terms-and-conditions").status, "pending", "status of the document after its signature was removed");
         refused(t, await t.send("DELETE", `/api/groups/${g.id}/signatures/${s.id}`, { auth: true }), 404, "removing the same signature twice", /not found/i);
       } finally {
         if (travelerId) {

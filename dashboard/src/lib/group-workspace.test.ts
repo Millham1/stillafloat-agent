@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   ACTIVE_STATUSES, activeFilterCount, applyFilters, bigPicture, computeKpis, crossLabel, csvCell, defaultFilters, funnel, gridRows, hasFilterParams,
   isDefaultFilters, journeyBars, missable, moneyByWeek, nextDeadlines, paperworkMatrix, parseFilters, parseTab, removeCross, serializeFilters, shipKey, timeline,
-  toCsv, toggleCross, toggleGroup, weekStart, type WGroup, type WPayment, type WorkspaceData,
+  signedCopies, toCsv, toggleCross, toggleGroup, weekStart, type WGroup, type WPaperwork, type WPayment, type WorkspaceData,
 } from "./group-workspace";
 
 // Monday 19 October 2026.
@@ -31,6 +31,7 @@ function data(): WorkspaceData {
   });
   const pw = (travelerId: string, groupId: string, docKey: string, status: "signed" | "pending", lang = "en") => ({
     groupId, groupName: `Group ${groupId}`, travelerId, travelerName: `Trav ${travelerId}`, cabinNum: "8214", travelerLang: lang, docKey, docTitle: docKey, status, signedAt: status === "signed" ? "2026-10-03" : null,
+    signatureId: status === "signed" ? `sig-${travelerId}-${docKey}` : null, hasCopy: status === "signed", sealed: status === "signed" && docKey === "terms",
   });
   return {
     generatedAt: "2026-10-19T15:00:00.000Z", today: TODAY,
@@ -392,4 +393,19 @@ test("a CSV cell is quoted when it has a comma, a quote or a line break, and a f
 test("a CSV is a header row and a row per record, with Windows line endings", () => {
   assert.equal(toCsv(["A", "B"], [[1, "x,y"], [null, true]]), 'A,B\r\n1,"x,y"\r\n,yes\r\n');
   assert.equal(toCsv(["A"], []), "A\r\n");
+});
+
+
+test("Mark 2026-10-25: a traveler's signed copies the workspace can open: signed, kept, with an id, in packet order; none for a traveler with nothing signed", () => {
+  const row = (docKey: string, over: Partial<WPaperwork>): WPaperwork => ({ groupId: "a", groupName: "Group a", travelerId: "t1", travelerName: "Ann", cabinNum: "8214", travelerLang: "en",
+    docKey, docTitle: docKey.toUpperCase(), status: "signed", signedAt: "2026-10-25", signatureId: `s-${docKey}`, hasCopy: true, sealed: false, ...over });
+  const rows = [
+    row("15", { sealed: true }), row("01", {}), row("05", { status: "pending", signedAt: null, signatureId: null, hasCopy: false }),
+    row("07", { hasCopy: false }), row("16", { signatureId: null }), row("12", { travelerId: "t2" }),
+  ];
+  assert.deepEqual(signedCopies(rows, "t1"), [
+    { signatureId: "s-15", groupId: "a", docTitle: "15", signedAt: "2026-10-25", sealed: true },
+    { signatureId: "s-01", groupId: "a", docTitle: "01", signedAt: "2026-10-25", sealed: false },
+  ]);
+  assert.deepEqual(signedCopies(rows, "t9"), []);
 });

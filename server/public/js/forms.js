@@ -1,4 +1,5 @@
-// forms.js — the traveler's private paperwork page (server/public/forms.html).
+// forms.js — the traveler's private paperwork page (server/public/forms.html): one question per screen, then each document one
+// page at a time in its true form, Confirm to move on (Mark 2026-10-26, 2026-10-29).
 // The link in the address is the only credential: it is read once, sent only to our own API
 // (/api/forms/<link>), and never logged, stored or echoed. All rules (what is shown, what is
 // accepted, what a signature pins) live on the server in lib/group-forms.ts.
@@ -11,7 +12,8 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
   var params = new URLSearchParams(location.search);
   var token = (params.get('t') || (location.hash.match(/[#&]t=([^&]+)/) || [])[1] || '').trim();
   var $ = function (id) { return document.getElementById(id); };
-  var packet = null, current = null, busy = false;
+  var packet = null, busy = false;
+  var newsWanted = false;   // Mark 2026-10-26: the newsletter is asked once, at the start; the answer rides with the next signature
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function show(id, on) { $(id).hidden = !on; }
@@ -22,9 +24,105 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     });
   }
 
+  // ── The home address, checked with the post office as it is typed (Mark 2026-10-26, the same service and words as the details page) ──
+  // A street box (a field ending "address") is paired with its "city_state_zip" box. Once the street has five characters and the second box
+  // holds a ZIP (or a city and state), the post office's whole address is offered under the boxes; "Yes" fills both, "No" leaves them as typed.
+  var ADDR = {
+    tidied: "We tidied it to the post office's spelling:", right: 'Right?', yes: 'Yes', no: "No, I'll fix it",
+    nf: "We couldn't find that one… check the street and ZIP.", na: "We couldn't check that address right now, so we'll take it as typed.",
+  };
+  function tidy(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); }
+  function splitCsz(s) {
+    var t = tidy(s), m = /^(.*?)[\s,]+([A-Za-z]{2})\.?(?:[\s,]+(\d{5})(?:-?\d{4})?)?$/.exec(t);
+    if (m) return { city: m[1].replace(/[,\s]+$/, ''), state: m[2].toUpperCase(), zip: m[3] || '' };
+    var z = /(\d{5})(?:-?\d{4})?$/.exec(t);
+    return { city: z ? tidy(t.slice(0, z.index).replace(/[,\s]+$/, '')) : t, state: '', zip: z ? z[1] : '' };
+  }
+  function addressCheck(body) {
+    var streets = body.querySelectorAll('input[data-field$="address"]');
+    for (var i = 0; i < streets.length; i++) {
+      var street = streets[i], name = street.getAttribute('data-field');
+      var csz = body.querySelector('input[type=hidden][data-field="' + name.replace(/address$/, 'city_state_zip') + '"]');
+      if (csz && !street.disabled) pairUp(street, csz);
+    }
+  }
+  function pairUp(street, csz) {
+    var box = document.createElement('div'); box.className = 'addr-fix'; box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite'); box.hidden = true;
+    csz.parentNode.insertBefore(box, csz.nextSibling);
+    if (csz.type === 'hidden') cszCompose(csz);
+    var look = { key: '', off: false, sugg: [], timer: null };
+    // Mark 2026-10-26, the type-ahead: as the street is typed, whole addresses drop down under it; tapping one fills both boxes.
+    // Without the type-ahead service (no keys, or it failed) the post office's whole-address check below does the work.
+    var drop = document.createElement('div'); drop.className = 'addr-drop'; drop.setAttribute('role', 'listbox'); drop.hidden = true;
+    street.parentNode.insertBefore(drop, street.nextSibling);
+    var ahead = { off: false, timer: null, asked: '' };
+    function closeDrop() { drop.hidden = true; drop.innerHTML = ''; }
+    function take(s) {
+      street.value = s.street; setCsz(csz, s.city, s.state, s.zip); closeDrop(); say(''); ahead.asked = tidy(s.street); look.key = keyNow();
+      street.dispatchEvent(new Event('input', { bubbles: true })); csz.dispatchEvent(new Event('input', { bubbles: true })); look.key = keyNow(); closeDrop();
+    }
+    function suggest() {
+      var q = tidy(street.value);
+      if (ahead.off || q.length < 4 || q === ahead.asked) return;
+      ahead.asked = q;
+      fetch('/api/address/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: q, website: ($('fm-website') || {}).value || '' }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
+        .then(function (x) {
+          if (tidy(street.value) !== q) return;               // typed on since
+          if (!x.ok || !x.j.available) { ahead.off = true; closeDrop(); return; }
+          var list = (x.j.suggestions || []).slice(0, 5);
+          if (!list.length) { closeDrop(); return; }
+          drop.innerHTML = list.map(function (s, j) { return '<button type="button" role="option" data-s="' + j + '">' + esc(s.formatted) + '</button>'; }).join('');
+          var bs = drop.querySelectorAll('button');
+          for (var k = 0; k < bs.length; k++) bs[k].onclick = function () { take(list[Number(this.getAttribute('data-s'))]); };
+          drop.hidden = false;
+        })
+        .catch(function () { ahead.off = true; closeDrop(); });
+    }
+    street.addEventListener('input', function () { clearTimeout(ahead.timer); if (tidy(street.value).length < 4) closeDrop(); else ahead.timer = setTimeout(suggest, 250); });
+    street.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrop(); });
+    function keyNow() { return (tidy(street.value) + '|' + tidy(csz.value)).toLowerCase(); }
+    function say(html) { box.innerHTML = html; box.hidden = !html; }
+    function offer(s) {
+      say(esc(ADDR.tidied) + ' <b>' + esc(s.formatted) + '</b>. ' + esc(ADDR.right) + ' <button type="button" class="addr-yes">' + esc(ADDR.yes) + '</button> · <button type="button" class="linkbtn addr-no">' + esc(ADDR.no) + '</button>');
+      box.querySelector('.addr-yes').onclick = function () {
+        street.value = s.street; setCsz(csz, s.city, s.state, s.zip);
+        look.key = keyNow(); say('');
+        street.dispatchEvent(new Event('input', { bubbles: true })); csz.dispatchEvent(new Event('input', { bubbles: true })); look.key = keyNow();
+      };
+      box.querySelector('.addr-no').onclick = function () { say(''); street.focus(); };
+    }
+    function same(s) {
+      var c = splitCsz(csz.value), n = function (x) { return tidy(x).toLowerCase().replace(/[.,]/g, ''); };
+      return n(s.street) === n(street.value) && n(s.city) === n(c.city) && s.state === c.state && tidy(s.zip).slice(0, 5) === c.zip;
+    }
+    function ask() {
+      var key = keyNow(), c = splitCsz(csz.value);
+      if (look.off || key === look.key || tidy(street.value).length < 5 || !(c.zip || (c.state && c.city))) return;   // a street and a ZIP are enough
+      fetch('/api/address/lookup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: tidy(street.value), city: c.city, state: c.state, zip: c.zip, website: ($('fm-website') || {}).value || '' }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j || {} }; }); })
+        .then(function (x) {
+          if (keyNow() !== key) return;                     // typed on since: a newer question is on its way
+          if (!x.ok || !x.j.available) { look.off = true; say(esc(ADDR.na)); return; }
+          if (x.j.incomplete) return;
+          look.key = key;
+          var list = (x.j.suggestions || []).slice(0, 5);
+          if (!list.length) { say(esc(ADDR.nf)); return; }
+          if (list.length === 1) { if (same(list[0])) say(''); else offer(list[0]); return; }
+          say(list.map(function (s, j) { return '<button type="button" class="addr-pick" data-s="' + j + '">' + esc(s.formatted) + '</button>'; }).join(''));
+          var picks = box.querySelectorAll('.addr-pick');
+          for (var k = 0; k < picks.length; k++) picks[k].onclick = function () { offer(list[Number(this.getAttribute('data-s'))]); };
+        })
+        .catch(function () { look.off = true; say(esc(ADDR.na)); });
+    }
+    function typed() { if (look.off || keyNow() === look.key) return; say(''); clearTimeout(look.timer); look.timer = setTimeout(ask, 500); }
+    street.addEventListener('input', typed); csz.addEventListener('input', typed);
+    if (tidy(street.value) && tidy(csz.value)) typed();
+  }
+
   function firstName() { return (packet && packet.traveler && packet.traveler.first_name) || ''; }
   function docByKey(k) { for (var i = 0; i < packet.docs.length; i++) if (packet.docs[i].key === k) return packet.docs[i]; return null; }
-  function nextPending() { for (var i = 0; i < packet.docs.length; i++) if (packet.docs[i].status !== 'signed') return packet.docs[i]; return null; }
+  function pending() { return packet.docs.filter(function (d) { return d.status !== 'signed'; }); }
 
   function tripBox() {
     var g = packet.group || {}, c = packet.cabin;
@@ -34,182 +132,836 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     if (ship) lines.push(esc(ship));
     if (when) lines.push('Sailing ' + esc(when) + (g.embark_port ? ' from ' + esc(g.embark_port) : ''));
     if (c && (c.cabin_num || c.category)) lines.push('Cabin ' + esc([c.cabin_num, c.category].filter(Boolean).join(' · ')));
-    if (packet.mates && packet.mates.length) lines.push('Sharing with ' + esc(packet.mates.join(', ')));
+    if (packet.kind === 'cardholder' && packet.cardholder) lines.push('Paying for ' + esc((packet.cardholder.travelers || []).join(', ') || packet.cardholder.for || ''));
+    else if (packet.mates && packet.mates.length) lines.push('Sharing with ' + esc(packet.mates.join(', ')));
     return '<div class="trip">' + lines.join('<br>') + '</div>';
   }
 
-  function renderIntro() {
-    var n = packet.docs.length, done = packet.docs.filter(function (d) { return d.status === 'signed'; }).length;
-    var nowDoc = nextPending();
-    var h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '. ' +
-      (packet.kind === 'organizer' ? 'This is the group contract for you to read and sign.' : 'Here is your paperwork for this trip. Please read each document and sign it with your full name.') + '</p>' + tripBox();
-    h += '<p class="fine">' + done + ' of ' + n + ' signed.' + (nowDoc ? '' : ' Everything is done.') + '</p><ol class="progress">';
-    packet.docs.forEach(function (d) {
-      var isNow = nowDoc && nowDoc.key === d.key;
-      h += '<li' + (isNow ? ' class="now"' : '') + '><span class="t">' + esc(d.title) + '</span>' +
-        (d.status === 'signed' ? '<span class="chip done">Signed</span>' : isNow ? '<button type="button" class="linkbtn" data-open="' + esc(d.key) + '">Continue</button>' : '<button type="button" class="linkbtn" data-open="' + esc(d.key) + '">Open</button>') + '</li>';
+  // Mark 2026-10-25: the one-time consent to electronic records comes before the first signature (ESIGN consumer consent).
+  function consented() { return !packet.esign || !!packet.esign.consent_given_at; }
+
+  // ── The screens (Mark 2026-10-30: "gather all the information to fill every form, then present the document for them to sign;
+  // the questions pre-filled from information we already have, with the ability to edit") ──
+  // One page, "Your details", holds every question of every document still to sign, in sections, pre-filled from the file; then each
+  // document is shown one page at a time, in its true form, Confirm to move on, the signature on its last page.
+  var WELCOME = { id: 'welcome', title: 'Welcome aboard' };
+  // a section heading before the first of its questions
+  // Mark 2026-10-30: one information page gathers everything the documents need that the file does not already hold; the
+  // headings follow the documents the answers go on to.
+  var SECTIONS = {
+    legal_name: 'Who you are', address: 'How to reach you', passport_number: 'Passport', trusted_programs: 'Trusted traveler programs', loyalty_1_program: 'Loyalty programs',
+    ec1_name: 'Emergency contact', notes: 'Anything we should know', insurance_choice: 'Do you want travel insurance?',
+    dining: 'Your cabin', cardholder: 'The card', card_name: 'The card',
+  };
+  // a line of help under a section heading
+  var INTRO = {
+    passport_number: 'Optional on a cruise that starts and ends in the same U.S. port, but the only document that gets you home by air if you have to leave the ship early.',
+    ec1_name: 'One person who is not traveling with you.',
+    insurance_choice: 'We strongly recommend travel insurance. It can cover the fare if you have to cancel, medical care abroad (your U.S. health plan may pay little or nothing outside the country), and emergency evacuation, which can run from $15,000 to $200,000. Some benefits are only available within about two weeks of your deposit. You can add insurance any time before sailing.',
+    cardholder: 'For the deposit and the payments as they come due. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
+    // the card owner's own page (Mark 2026-10-30): the heading sits on the first card line, since whose card it is was answered by the lead
+    card_name: 'The card the deposit and the payments for this cruise go on. Only the last four digits and the expiry: never type the full card number or the security code anywhere on this page.',
+    dining: 'For the cruise booking agreement: dining, anything to celebrate on board, and anything the ship should know.',
+  };
+  // Mark 2026-10-30: lines the file already answers are never asked; their values go on the documents from the file (dining and the
+  // occasion: from the booking). Mark 2026-10-31: the waiver's advisory level and insurance lines are written by the server from
+  // the State Department feed and the insurance choice, so they are no longer lines of the page at all.
+  var HIDE = ['dining', 'occasions', 'occasion_other', 'occasion_date'];
+  // Mark 2026-10-30: "all of the travel insurance stuff should be after they review the video and quote": these lines are asked
+  // on their own step, right before the Travel Insurance document, never on the information page.
+  var INSURANCE = ['insurance_choice', 'decline_reasons', 'decline_other', 'ins_provider', 'ins_policy'];
+  // Mark 2026-10-30: "they should be able to select the policy/price here": the Allianz plan is picked in the price panel of the
+  // insurance step (quoteHtml), never asked as a line of its own; it is needed once "Yes" is chosen and plans are offered.
+  var PANEL = ['insurance_plan'];
+  var NEEDS = { insurance_plan: { when: function () { return value('insurance_choice') === 'quote'; }, say: 'Please choose your plan.' } };
+  // a line is required when its document says so, or, for a follow-up line, once the choice above it brings it into view
+  function mustHave(f) { return f.required === true || (f.required === 'shown' && isFollow(f.name)); }
+  // Mark 2026-10-27/28, his flow: "We collect the data to populate only that document, then show the client the actual populated
+  // document, the client then confirms it is accurate by hitting confirm, then we move to the next document … at the end of all the
+  // confirmed documents we provide the checklist format for them to go back and review". So, document by document: its questions
+  // (each screen says which document it fills in), then the document itself, clean and filled in, with its own signature line and
+  // "Confirm and sign"; at the end the checklist of the signed documents, each to view or print, and Finish. The name typed to sign
+  // the first document is filled in for the rest.
+  // A follow-up line shows right under the choice it belongs to, only when that choice is ticked.
+  var FOLLOW = { us_citizen: { no: ['citizenship'] }, insurance_choice: { own: ['ins_provider', 'ins_policy'], decline: ['decline_reasons'] }, decline_reasons: { other: ['decline_other'] }, trusted_programs: { tsa: ['ktn'], global: ['global_entry_number'] },
+    // Mark 2026-10-30: someone else's card asks for that person's details; the traveler's own card takes them from the file
+    // Mark 2026-10-30: the lead's own card takes its details here; someone else's card takes the owner's name and email, and the
+    // owner fills in the rest (billing address, phone, the card and the licence) on a link of their own
+    cardholder: { me: ['card_type', 'card_last4', 'card_expiry', 'dl_state', 'dl_number'], other: ['card_name', 'card_email'] } };
+  var SUMMARY = {
+    '15-emergency-contact-form': 'The answers you just gave: who you are, how to reach you, and who to call in an emergency.',
+    '01-terms-and-conditions': 'How we work together: what we do, what the cruise line does, and how changes and cancellations are handled.',
+    '05-liability-waiver': 'Travel has risks no one controls; you accept them, and the cruise line and suppliers answer for their own services.',
+    '07-travel-insurance-declination': 'Your travel insurance declination.',
+    '23-insurance-plan': 'Your travel insurance plan, as you chose it.',
+    '16-passport-document-checklist': 'Your travel documents checklist.',
+    '12-cruise-booking-agreement': 'Your cabin, your price and the cruise line\'s rules for this booking.',
+    '09-group-travel-contract': 'The group\'s contract: the cabins held, the dates and the cruise line\'s terms.',
+  };
+  var AUTO = { legal_name: 'name', dob: 'bday', email: 'email', phone: 'tel', address: 'address-line1', ec1_name: 'off', ec1_cell_phone: 'off', card_name: 'cc-name', card_email: 'email', card_address: 'address-line1', card_phone: 'tel', card_last4: 'off', card_expiry: 'off', dl_number: 'off' };
+
+  // Mark 2026-10-27: the passport country and the relationship are picked from a list; city, state and ZIP are three boxes.
+  var COUNTRIES = ['United States', 'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
+    'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana',
+    'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China',
+    'Colombia', 'Comoros', 'Congo', 'Costa Rica', "Côte d'Ivoire", 'Croatia', 'Cuba', 'Cyprus', 'Czechia', 'Democratic Republic of the Congo', 'Denmark', 'Djibouti',
+    'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France',
+    'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland',
+    'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Kosovo', 'Kuwait', 'Kyrgyzstan',
+    'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta',
+    'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia',
+    'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Panama',
+    'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia',
+    'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'São Tomé and Príncipe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore',
+    'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland',
+    'Syria', 'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda',
+    'Ukraine', 'United Arab Emirates', 'United Kingdom', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'];
+  var RELATIONS = ['Spouse', 'Partner', 'Parent', 'Child', 'Brother or sister', 'Friend', 'Other'];
+  var STATES = [['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'], ['CO', 'Colorado'], ['CT', 'Connecticut'], ['DE', 'Delaware'],
+    ['DC', 'District of Columbia'], ['FL', 'Florida'], ['GA', 'Georgia'], ['HI', 'Hawaii'], ['ID', 'Idaho'], ['IL', 'Illinois'], ['IN', 'Indiana'], ['IA', 'Iowa'], ['KS', 'Kansas'],
+    ['KY', 'Kentucky'], ['LA', 'Louisiana'], ['ME', 'Maine'], ['MD', 'Maryland'], ['MA', 'Massachusetts'], ['MI', 'Michigan'], ['MN', 'Minnesota'], ['MS', 'Mississippi'],
+    ['MO', 'Missouri'], ['MT', 'Montana'], ['NE', 'Nebraska'], ['NV', 'Nevada'], ['NH', 'New Hampshire'], ['NJ', 'New Jersey'], ['NM', 'New Mexico'], ['NY', 'New York'],
+    ['NC', 'North Carolina'], ['ND', 'North Dakota'], ['OH', 'Ohio'], ['OK', 'Oklahoma'], ['OR', 'Oregon'], ['PA', 'Pennsylvania'], ['RI', 'Rhode Island'], ['SC', 'South Carolina'],
+    ['SD', 'South Dakota'], ['TN', 'Tennessee'], ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'], ['VA', 'Virginia'], ['WA', 'Washington'], ['WV', 'West Virginia'],
+    ['WI', 'Wisconsin'], ['WY', 'Wyoming'], ['AS', 'American Samoa'], ['GU', 'Guam'], ['MP', 'Northern Mariana Islands'], ['PR', 'Puerto Rico'], ['VI', 'U.S. Virgin Islands'],
+    ['AA', 'Armed Forces Americas'], ['AE', 'Armed Forces Europe'], ['AP', 'Armed Forces Pacific']];
+  var PICK = { passport_country: COUNTRIES, ec1_relationship: RELATIONS, dl_state: STATES };
+  function isCsz(name) { return /city_state_zip$/.test(name); }
+  function wholeCsz(v) { return /,\s*[A-Z]{2}\s+\d{5}$/.test(String(v || '')); }
+  function opts(list, v, blank) {
+    var have = !v || list.some(function (o) { return (Array.isArray(o) ? o[0] : o) === v; });
+    return '<option value="">' + esc(blank) + '</option>' + (have ? '' : '<option selected>' + esc(v) + '</option>') + list.map(function (o) {
+      var val = Array.isArray(o) ? o[0] : o, lab = Array.isArray(o) ? o[1] : o;
+      return '<option value="' + esc(val) + '"' + (val === v ? ' selected' : '') + '>' + esc(lab) + '</option>';
+    }).join('');
+  }
+  // the three boxes write the one answer the documents hold ("Fuquay Varina, NC 27526") into a hidden box; the server keeps the parts apart too
+  function cszParts(hidden) {
+    var n = hidden.getAttribute('data-field'), q = hidden.closest('[data-q]');
+    return { city: q.querySelector('[data-part-of="' + n + '"][data-part="city"]'), state: q.querySelector('[data-part-of="' + n + '"][data-part="state"]'), zip: q.querySelector('[data-part-of="' + n + '"][data-part="zip"]') };
+  }
+  function cszCompose(hidden) {
+    var p = cszParts(hidden), tail = [p.state.value, tidy(p.zip.value)].filter(Boolean).join(' ');
+    hidden.value = [tidy(p.city.value), tail].filter(Boolean).join(', ');
+  }
+  function setCsz(hidden, city, state, zip) {
+    var p = cszParts(hidden);
+    p.city.value = city || ''; p.state.value = state || ''; p.zip.value = zip || '';
+    cszCompose(hidden);
+  }
+  function cszWire(root) {
+    var hs = root.querySelectorAll('input[type=hidden][data-field$="city_state_zip"]');
+    Array.prototype.forEach.call(hs, function (h) {
+      var p = cszParts(h);
+      [p.city, p.state, p.zip].forEach(function (el) {
+        el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function () { cszCompose(h); h.dispatchEvent(new Event('input', { bubbles: true })); });
+      });
     });
-    h += '</ol>';
-    $('fm-intro').innerHTML = h;
-    show('fm-intro', true);
   }
 
-  function setValue(name, value) {
-    var els = $('fm-doc-body').querySelectorAll('[data-field="' + name + '"]');
+  var fields = {}, order = [], steps = [], at = 0;   // the questions of the documents still to sign, by name; the screens shown
+  // Mark 2026-10-30: two questions are the page's own, not a document's: the insurance choice (after the video and the price; it decides
+  // which insurance document follows) and whose card pays (someone else's: the owner signs on a link of their own). The server sends
+  // their lines with the packet (insurance.fields, card.fields) and keeps the answers on the file when the screen is left.
+  function ownLines(list, from) {
+    (list || []).forEach(function (f) {
+      if (!fields[f.name]) { fields[f.name] = { f: f, docs: [] }; order.push(f.name); }
+      fields[f.name].docs.push(from);
+      if (f.required === true) fields[f.name].f.required = true;
+      else if (f.required === 'shown' && !fields[f.name].f.required) fields[f.name].f.required = 'shown';
+    });
+  }
+  function insuranceDoc() { return pending().filter(function (d) { return /^(07|23)-/.test(d.key); })[0] || null; }
+  /** the lines of the documents still to sign, by name, from the packet as it stands (the screens are left as they are) */
+  function gatherFields() {
+    fields = {}; order = [];
+    if (packet.card && !packet.card.signed) ownLines(packet.card.fields, 'card'); // once the card authorization is signed, whose card it is stands
+    if (packet.kind === 'traveler' && packet.insurance && insuranceDoc()) ownLines(packet.insurance.fields, 'insurance');
+    pending().forEach(function (d) { ownLines(d.fields, d.key); });
+  }
+  function gather() {
+    gatherFields();
+    steps = [WELCOME];
+    var ask = order.filter(function (n) { return !isFollow(n) && HIDE.indexOf(n) < 0 && INSURANCE.indexOf(n) < 0 && PANEL.indexOf(n) < 0 && !fields[n].f.on_document; });
+    if (ask.length) steps.push({ id: 'details', title: 'Your information', fields: ask });
+    var insuranceAsk = INSURANCE.filter(function (n) { return fields[n] && !isFollow(n); });
+    pending().forEach(function (d) {
+      if (/^(07|23)-/.test(d.key) && insuranceAsk.length) steps.push({ id: 'insurance', title: 'Travel insurance', fields: insuranceAsk });
+      steps.push({ id: 'doc', key: d.key, doc: d.key, title: d.title });
+    });
+    steps.push({ id: 'check', title: 'Your documents' });
+    return {};
+  }
+  /** a packet that came back from a save: the screens are rebuilt only when the documents to sign changed (a swap of the insurance
+   *  document, the card authorization leaving for the card's owner); otherwise what is typed stays exactly where it is */
+  function adopt(next) {
+    var before = pending().map(function (d) { return d.key; }).join(','), was = packet;
+    packet = next;
+    var after = pending().map(function (d) { return d.key; }).join(',');
+    // the same documents: the lines are refreshed from the packet, and the screens (and the list that numbers them) stay as drawn,
+    // so a document signed earlier in this sitting keeps its place and the page never lands on the wrong screen
+    if (before === after) { gatherFields(); return false; }
+    if (was && window.SAKeep) window.SAKeep.save($('fm-steps'), wizKey());
+    renderWizard();
+    return true;
+  }
+
+  function control(f) {
+    var id = 'w-' + f.name, v = f.value, req = mustHave(f) ? ' req' : '';
+    var lab = '<span class="w-label">' + esc(f.label) + (mustHave(f) ? '' : ' <span class="w-opt">(optional)</span>') + '</span>';
+    if (f.kind === 'choice' || f.kind === 'multi') {
+      var type = f.kind === 'choice' ? 'radio' : 'checkbox', follow = FOLLOW[f.name] || {};
+      return '<fieldset class="w-field' + req + '" data-q="' + esc(f.name) + '"><legend>' + lab + '</legend>' + (f.options || []).map(function (o) {
+        var on = Array.isArray(v) ? v.indexOf(o.value) >= 0 : v === o.value;
+        return '<label class="w-opt-row"><input type="' + type + '" name="' + esc(f.name) + '" data-field="' + esc(f.name) + '" value="' + esc(o.value) + '"' + (on ? ' checked' : '') + '><span>' + esc(o.label) + '</span></label>' +
+          (follow[o.value] || []).map(function (n) { return fields[n] ? '<div class="w-follow" data-follow="' + esc(f.name) + ':' + esc(o.value) + '">' + control(fields[n].f) + '</div>' : ''; }).join('');
+      }).join('') + '</fieldset>';
+    }
+    if (f.kind === 'check') {
+      return '<div class="w-field' + req + '" data-q="' + esc(f.name) + '"><label class="w-opt-row"><input type="checkbox" id="' + id + '" data-field="' + esc(f.name) + '"' + (v === true ? ' checked' : '') + '><span>' + esc(f.label) + '</span></label></div>';
+    }
+    if (f.kind === 'textarea') {
+      return '<div class="w-field" data-q="' + esc(f.name) + '"><label for="' + id + '">' + lab + '</label><textarea class="w-in" id="' + id + '" data-field="' + esc(f.name) + '" rows="3">' + esc(v || '') + '</textarea></div>';
+    }
+    if (PICK[f.name]) {
+      return '<div class="w-field' + req + '" data-q="' + esc(f.name) + '"><label for="' + id + '">' + lab + '</label><select class="w-in" id="' + id + '" data-field="' + esc(f.name) + '">' +
+        opts(PICK[f.name], typeof v === 'string' ? v : '', 'Choose one') + '</select></div>';
+    }
+    if (isCsz(f.name)) {
+      var c = splitCsz(typeof v === 'string' ? v : ''), home = f.name === 'city_state_zip', nm = esc(f.name);
+      return '<fieldset class="w-field' + req + '" data-q="' + nm + '"><legend>' + lab + '</legend><div class="w-csz">' +
+        '<label class="w-part w-part-city"><span>City</span><input class="w-in" type="text" id="' + id + '-city" data-part-of="' + nm + '" data-part="city" maxlength="60" autocomplete="' + (home ? 'address-level2' : 'off') + '" value="' + esc(c.city) + '"></label>' +
+        '<label class="w-part"><span>State</span><select class="w-in" id="' + id + '-state" data-part-of="' + nm + '" data-part="state" autocomplete="' + (home ? 'address-level1' : 'off') + '">' + opts(STATES, c.state, 'Choose') + '</select></label>' +
+        '<label class="w-part"><span>ZIP</span><input class="w-in" type="text" id="' + id + '-zip" data-part-of="' + nm + '" data-part="zip" inputmode="numeric" maxlength="10" autocomplete="' + (home ? 'postal-code' : 'off') + '" value="' + esc(c.zip) + '"></label>' +
+        '</div><input type="hidden" data-field="' + nm + '" value="' + esc(typeof v === 'string' ? v : '') + '"></fieldset>';
+    }
+    var type2 = f.kind === 'date' ? 'date' : f.kind === 'email' ? 'email' : f.kind === 'tel' ? 'tel' : 'text';
+    var extra = (f.maxLength ? ' maxlength="' + f.maxLength + '"' : '') + ' autocomplete="' + (AUTO[f.name] || 'off') + '"';
+    var note = '';
+    if (f.kind === 'license') {
+      if (!packet.pii_ready) { extra += ' disabled'; note = 'We cannot take a licence number on this page right now. Leave it empty; we will ask for it another way.'; }
+      else note = 'Stored encrypted and never shown again, not even to you. It is used only to verify who is authorizing this card.';
+    }
+    if (f.kind === 'passport') {
+      if (!packet.pii_ready) { extra += ' disabled'; note = 'We cannot take a passport number on this page right now. Leave it empty; we will ask for it another way.'; }
+      else if (packet.traveler && packet.traveler.passport_on_file) note = 'A passport ' + packet.traveler.passport_on_file + ' is already on file. Type the number again only if it has changed.';
+      else note = 'Optional on this sailing. Stored encrypted and never shown again, not even to you.';
+    }
+    return '<div class="w-field' + req + '" data-q="' + esc(f.name) + '"><label for="' + id + '">' + lab + '</label><input class="w-in" type="' + type2 + '" id="' + id + '" data-field="' + esc(f.name) + '" value="' + esc(typeof v === 'string' ? v : '') + '"' + extra + '>' +
+      (note ? '<p class="passport-note">' + esc(note) + '</p>' : '') + '</div>';
+  }
+
+  function isFollow(n) { for (var k in FOLLOW) for (var o in FOLLOW[k]) if (FOLLOW[k][o].indexOf(n) >= 0 && fields[k]) return true; return false; }
+  // Mark 2026-10-30: a tick that carries no information ("I am aware of and accept the health-related risks…") is made on the
+  // document itself. Mark 2026-10-31 ("the health section is out of order"): the box is laid on the document's page in its own
+  // place (showPdf, from the server's marks); this block below the page is kept hidden and shows only when the PDF cannot be drawn.
+  function signStageHtml(d) {
+    return d.fields.filter(function (f) { return f.on_document && fields[f.name]; }).map(function (f) {
+      return '<div class="w-decl" data-decl="' + esc(f.name) + '" hidden><h3 class="w-sign-h">' + esc(f.on_document.heading) + '</h3><p>' + esc(f.on_document.text) + '</p>' + control(fields[f.name].f) + '</div>';
+    }).join('');
+  }
+  function stepBody(s, named) {
+    if (s.id === 'welcome') {
+      var c = packet.esign && packet.esign.text, h = '<p class="lead">Hello' + (firstName() ? ' ' + esc(firstName()) : '') + '! ' +
+        (packet.kind === 'organizer' ? 'Here is the group contract to read and sign.'
+          : packet.kind === 'cardholder' ? esc((packet.cardholder && packet.cardholder.for) || 'A traveler') + ' asked that the deposit and the payments for this cruise go on your card. One page of details, then the credit card authorization to read and sign: about five minutes.'
+          : 'One page of details, then your documents to read and sign: about 5 minutes, less time than the line at the buffet!') + '</p>' + tripBox();
+      if (!consented() && c) h += '<div class="w-box"><b>' + esc(c.title) + '</b><p>' + esc(c.intro) + '</p><ul>' + c.points.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
+        '<label class="w-opt-row"><input type="checkbox" id="fm-esign" data-nokeep><span>' + esc(c.tick) + '</span></label></div>';
+      if (packet.kind === 'traveler' && !(packet.traveler && packet.traveler.newsletter_opt_in))
+        h += '<label class="w-opt-row"><input type="checkbox" id="fm-news"' + (newsWanted ? ' checked' : '') + '><span>Send me the Still Afloat Cruising newsletter. (Optional. You can unsubscribe at any time.)</span></label>';
+      return h;
+    }
+    if (s.id === 'doc') {
+      var d = docByKey(s.key), confirmOnly = /^20-/.test(d.key);
+      // the document's own boxes only show the answers: renamed so they never count as the answers themselves
+      var paper = d.html.replace(/ data-field="/g, ' data-docfield="').replace(/ name="/g, ' data-docname="');
+      return '<p class="lead">' + (confirmOnly ? 'Here is what we will keep on file for you. Read it; if anything is wrong, go back and fix it. On the last page, type your name to confirm.'
+          : 'This is document ' + (packet.docs.indexOf(d) + 1) + ' of ' + packet.docs.length + ', your ' + esc(d.title) + ', filled in from your information. Read each page and press Next page. On the last page, type your name to sign it.') + '</p>' +
+        '<p class="w-pageof" aria-live="polite"></p>' +
+        '<div class="w-pdf" data-pdf="' + esc(d.key) + '"></div><div class="doc w-paper" hidden>' + paper + '</div>' +
+        '<div class="w-spot" hidden>' + signStageHtml(d) + '<h3 class="w-sign-h">' + (confirmOnly ? 'Confirm it is right' : 'Sign your ' + esc(d.title)) + '</h3>' +
+        '<label class="nm" for="w-sign-' + esc(d.key) + '">Type your full name</label>' +
+        '<input type="text" class="w-signname" id="w-sign-' + esc(d.key) + '" autocomplete="name" maxlength="120" placeholder="First and last name" data-nokeep>' +
+        '<p class="hint fine">' + (confirmOnly ? 'Typing your name confirms this information is yours and correct. It goes on the form with the date and time, and you get a copy by email.'
+          : 'Typing your name is your legal signature on this document, and says you agree to it. It goes on the signature line; the date and time and the exact text are saved with it, and you get a signed copy by email.') + '</p></div>';
+    }
+    if (s.id === 'check') return '<p class="lead">All of your documents are signed. You can look at any of them again, print it or save it.</p><ul class="w-docs" id="fm-checklist"></ul>';
+    if (s.id === 'insurance') return insuranceBody(s);
+    return (s.id === 'details' ? '<p class="lead">' + (packet.kind === 'cardholder' ? 'Everything we need for the credit card authorization, on one page. Only the last four digits of the card and its expiry: never type the full card number or the security code anywhere on this page.'
+      : 'Everything we need for your paperwork, on one page. What we already know is filled in: check it, change anything that is wrong, and fill in the rest.') + '</p>' : '') + fieldsHtml(s.fields || []);
+  }
+  // ── The insurance step (Mark 2026-10-30): the video, then the price for this trip, then the choice ──
+  function insuranceBody(s) {
+    var ins = packet.insurance || {};
+    var h = '<p class="lead">Before you choose, please watch the short video and look at the price for your trip.</p>';
+    if (ins.video_url) h += '<div class="w-video"><iframe src="' + esc(embedUrl(ins.video_url)) + '" title="Travel insurance: what it covers and what it costs" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+    var chosen = (ins.choice && ins.choice.plan) || (fields.insurance_plan && fields.insurance_plan.f.value) || '';
+    h += '<div class="w-quote" id="w-quote" aria-live="polite">' + quoteHtml(ins.quote, ins.line_protection, chosen) + '</div>';
+    return h + fieldsHtml(s.fields || []);
+  }
+  function embedUrl(u) { var m = /(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/.exec(u || ''); return m ? 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0' : u; }
+  function planText(p) { return p.name + ': $' + money(p.price_per_person) + ' per person'; }
+  function money(n) { var v = Number(n); return isFinite(v) ? v.toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }) : String(n); }
+  function quoteHtml(q, line, picked) {
+    q = q || { status: 'none' };
+    var h = '<h3 class="w-group">Your price</h3>';
+    if (q.status === 'ready' && q.plans && q.plans.length) {
+      // Mark 2026-10-30: the client picks the plan and price right here; what they pick goes on the Travel Insurance document
+      h += '<p>Allianz travel insurance for this trip' + (q.trip_cost ? ', on a fare of $' + esc(money(q.trip_cost)) + ' per person' : '') +
+        (q.quoted_at ? ', quoted ' + esc(new Date(q.quoted_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })) : ', as quoted by Mark for this sailing') + '. Choose your plan:</p>' +
+        '<fieldset class="w-field w-plans" data-q="insurance_plan"><legend><span class="w-label">Your plan</span></legend>' +
+        q.plans.map(function (p) { var t = planText(p); return '<label class="w-opt-row"><input type="radio" name="w-plan" value="' + esc(t) + '"' + (t === picked ? ' checked' : '') + '><span><b>' + esc(p.name) + '</b>: $' + esc(money(p.price_per_person)) + ' per person</span></label>'; }).join('') +
+        '<input type="hidden" data-field="insurance_plan" value="' + esc(picked || '') + '"></fieldset><p class="hint">' + esc(q.note || 'Pricing subject to change until finalized.') + '</p>';
+    } else if (q.status === 'pending' || q.status === 'none') {
+      h += '<p>We are getting your Allianz price for this trip now. It takes a minute or two: you can read on and come back to it.</p>';
+    } else {
+      h += '<p>Mark will email you the Allianz price for this trip. You can choose now, or come back to this page once you have it.</p>';
+    }
+    // Mark 2026-10-31: "provide the cruise line's insurance quote with Allianz": the line's own plan, at the rate on the file, beside the Allianz plans
+    if (line) h += '<div class="w-lineplan"><h3 class="w-group">The cruise line\'s own plan</h3><p><b>' + esc(line) + '</b></p><p class="hint">Offered by ' + esc((packet.group && packet.group.cruise_line) || 'the cruise line') + ' with the booking. Choose it below if you prefer it to Allianz.</p></div>';
+    return h;
+  }
+  var quoteTimer = null;
+  function pollQuote() {
+    clearTimeout(quoteTimer);
+    var box = $('w-quote'); if (!box) return;
+    api('/insurance').then(function (r) {
+      var j = r.json || {}; if (r.status !== 200 || !j.success) return;
+      packet.insurance = { video_url: j.video_url, line_protection: j.line_protection, quote: j.quote };
+      box.innerHTML = quoteHtml(j.quote, j.line_protection, value('insurance_plan'));
+      if (j.quote && j.quote.status === 'none') requestQuote();
+      if (j.quote && (j.quote.status === 'pending' || j.quote.status === 'none') && steps[at] && steps[at].id === 'insurance') quoteTimer = setTimeout(pollQuote, 5000);
+    }).catch(function () {});
+  }
+  // the quote starts in the background as soon as the information page is submitted (Mark 2026-10-29)
+  function requestQuote() {
+    if (packet.kind !== 'traveler' || !steps.some(function (s) { return s.id === 'insurance'; })) return;
+    api('/insurance/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(function () {});
+  }
+
+  // the checklist at the end: every document of the packet, signed, each to view, print or save
+  function checklist() {
+    var ul = $('fm-checklist'); if (!ul) return;
+    ul.innerHTML = packet.docs.map(function (d) {
+      var ok = d.status === 'signed';
+      return '<li><span class="w-tick" aria-hidden="true">' + (ok ? '&#10003;' : '&#9675;') + '</span> <b>' + esc(d.title) + '</b>' + (ok ? '' : ' <span class="w-opt">(not signed yet)</span>') +
+        '<br><a class="linkbtn" target="_blank" rel="noopener" href="' + API_BASE + encodeURIComponent(token) + '/document/' + encodeURIComponent(d.key) + '">View or print</a></li>';
+    }).join('');
+  }
+  function fieldsHtml(names) {
+    var list = names.filter(function (n) { return fields[n] && !isFollow(n); });
+    var html = '', loyalty = list.filter(function (n) { return /^loyalty_/.test(n); }), loyaltyDone = false;
+    list.forEach(function (n) {
+      if (SECTIONS[n]) html += '<h3 class="w-group">' + esc(SECTIONS[n]) + '</h3>' + (INTRO[n] ? '<p class="w-for">' + esc(INTRO[n]) + '</p>' : '');
+      if (/^loyalty_/.test(n)) {
+        if (loyaltyDone) return;
+        loyaltyDone = true;
+        var any = loyalty.some(function (k) { return fields[k].f.value; });
+        html += '<fieldset class="w-field"><legend><span class="w-label">Do you belong to any loyalty programs?</span> <span class="w-opt">(optional)</span></legend>' +
+          '<label class="w-opt-row"><input type="radio" name="w-loyal" id="w-loyal-no" value="no"' + (any ? '' : ' checked') + '><span>No</span></label>' +
+          '<label class="w-opt-row"><input type="radio" name="w-loyal" id="w-loyal-yes" value="yes"' + (any ? ' checked' : '') + '><span>Yes</span></label>' +
+          '<div class="w-follow w-loyal-rows" data-follow="w-loyal:yes"><div class="w-pairs">' + loyalty.map(function (k) { return control(fields[k].f); }).join('') + '</div></div></fieldset>';
+        return;
+      }
+      html += control(fields[n].f);
+    });
+    return html;
+  }
+
+  function renderWizard() {
+    var named = gather();
+    var host = $('fm-steps');
+    host.innerHTML = steps.map(function (s, i) {
+      // a document's page opens with its name on a bar of its own, and which of the documents it is
+      var head = s.id === 'doc'
+        ? '<div class="w-docbar"><span>Document ' + (packet.docs.indexOf(docByKey(s.key)) + 1) + ' of ' + packet.docs.length + '</span><h2>' + esc(s.title) + '</h2></div>'
+        : '<h2>' + esc(s.title) + '</h2>';
+      // every question screen says which document it fills in
+      var forDoc = '';
+      return '<section class="w-step" data-step="' + i + '" hidden>' + forDoc + head + stepBody(s, named) + '</section>';
+    }).join('');
+    cszWire(host);
+    addressCheck(host);
+    followUps();
+    if (window.SAKeep) { window.SAKeep.track(host, wizKey); window.SAKeep.restore(host, wizKey()); followUps(); }
+    show('fm-wiz', true); show('fm-done', false); show('fm-doc', false);
+    goStep(Math.min(at, steps.length - 1), true);
+  }
+  // the consent time is part of the key, so paperwork that was cleared on the file starts empty here too
+  function wizKey() { return window.SAKeep ? window.SAKeep.keyFor('forms', token) + ':steps:' + ((packet && packet.esign && packet.esign.consent_given_at) || 'new') : null; }
+
+  // a follow-up line shows only under the choice it belongs to
+  function followUps() {
+    var els = $('fm-steps').querySelectorAll('[data-follow]');
     for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      if (el.type === 'radio') el.checked = (el.value === value);
-      else if (el.type === 'checkbox') el.checked = Array.isArray(value) ? value.indexOf(el.value) >= 0 : value === true;
-      else el.value = value == null ? '' : String(value);
+      var p = els[i].getAttribute('data-follow').split(':'), name = p[0], val = p[1];
+      var box = name === 'w-loyal' ? $('w-loyal-yes') : $('fm-steps').querySelector('[data-field="' + name + '"][value="' + val + '"]');
+      els[i].hidden = !(box && box.checked);
     }
   }
 
-  function wireDoc(doc) {
-    var body = $('fm-doc-body');
-    body.innerHTML = doc.html;
+  function fillPaper(el, key) {
+    var doc = docByKey(key); if (!doc || !el) return;
     doc.fields.forEach(function (f) {
-      var els = body.querySelectorAll('[data-field="' + f.name + '"]');
-      for (var i = 0; i < els.length; i++) { if (f.required && (els[i].type === 'text' || els[i].tagName === 'TEXTAREA' || els[i].type === 'date' || els[i].type === 'email' || els[i].type === 'tel')) els[i].classList.add('req'); }
-      if (f.value !== null && f.value !== undefined && f.value !== '') setValue(f.name, f.value);
+      var v = value(f.name), els = el.querySelectorAll('.w-paper [data-docfield="' + f.name + '"]');
+      for (var i = 0; i < els.length; i++) {
+        var b = els[i];
+        if (b.type === 'radio') b.checked = b.value === v;
+        else if (b.type === 'checkbox') b.checked = Array.isArray(v) ? v.indexOf(b.value) >= 0 : v === true;
+        else b.value = v == null ? '' : String(v);
+        b.disabled = true;
+      }
     });
-    show('fm-legend', doc.fields.some(function (f) { return f.required; }));
-    // passport: say what is on file, and stop short when this box cannot keep a passport number safely
-    var pp = body.querySelector('[data-field="passport_number"]');
-    if (pp) {
-      var note = document.createElement('div'); note.className = 'passport-note';
-      if (!packet.pii_ready) { pp.disabled = true; note.textContent = 'We cannot take a passport number on this page right now. Please leave it empty; we will ask for it another way.'; }
-      else if (packet.traveler && packet.traveler.passport_on_file) note.textContent = 'A passport ' + packet.traveler.passport_on_file + ' is already on file. Type the number again only if it has changed.';
-      else note.textContent = 'Your passport number is stored encrypted and is never shown again, not even to you.';
-      pp.parentNode.insertBefore(note, pp.nextSibling);
+  }
+  // ── Mark 2026-10-27: "show the client the actual populated document": Mark's own PDF of it, filled in with the answers so far ──
+  var pdfLib = null;
+  function loadPdfLib() {
+    if (!pdfLib) pdfLib = import('/js/pdfjs-4.10.38/pdf.min.js').then(function (lib) {
+      lib.GlobalWorkerOptions.workerSrc = '/js/pdfjs-4.10.38/pdf.worker.min.js';
+      return lib;
+    });
+    return pdfLib;
+  }
+  // a hidden line's value is the file's (pre-filled on the packet), never typed: it goes on the document shown and on the one signed
+  function answerOf(n) { return HIDE.indexOf(n) >= 0 ? (fields[n] && fields[n].f.value) : value(n); }
+  function allAnswers() {
+    var out = {};
+    Object.keys(fields).forEach(function (n) { var v = answerOf(n); if (v !== undefined && v !== null) out[n] = v; });
+    return out;
+  }
+  /** the filled-in PDF of one document into host; false when it cannot be shown (the page's own copy is shown instead) */
+  function nameBox() { var el = stepEl(at); return el ? el.querySelector('.w-signname') : null; }
+  function signer() { var el = nameBox(), n = el ? el.value.replace(/\s+/g, ' ').trim() : ''; return n.split(' ').length >= 2 ? n : ''; }
+  // Mark 2026-10-29: a document is shown one page at a time, each page exactly as it prints; Confirm moves to the next page and the
+  // place to sign is on the last page. (The 10/28 closing-up of blank stretches is gone with the Cornerstone layouts.)
+  function pagesOf(host) { return host ? host.querySelectorAll('.w-page') : []; }
+  // Mark 2026-10-30: "the confirmation box is not visible without scrolling. move it up just below the signature line". On screen the
+  // last page of a document ends where its wording ends (the blank rest of the sheet and the page footer are not drawn), so the place
+  // to sign follows the signature line. The printed PDF is unchanged.
+  function trimEnd(c) {
+    var w = c.width, h = c.height, ctx = c.getContext('2d'), data;
+    try { data = ctx.getImageData(0, 0, w, h).data; } catch (e) { return c; }
+    var step = Math.max(1, Math.floor(w / 300)), end = -1;
+    for (var y = Math.floor(h * 0.9); y >= 0 && end < 0; y--) {
+      for (var x = 0; x < w; x += step) { var i = (y * w + x) * 4; if (data[i] < 235 || data[i + 1] < 235 || data[i + 2] < 235) { end = y; break; } }
     }
-    // extra choice that belongs to the form, not to the signed text: the newsletter
-    var extra = $('fm-extra'); extra.innerHTML = '';
-    if (doc.key === '15-emergency-contact-form' && packet.kind === 'traveler' && !(packet.traveler && packet.traveler.newsletter_opt_in)) {
-      extra.innerHTML = '<label class="agree"><input type="checkbox" id="fm-news"><span>Send me the Still Afloat Cruising newsletter. (Optional. You can unsubscribe at any time.)</span></label>';
+    if (end < 0 || end > h * 0.84) return c;
+    var out = document.createElement('canvas'), keep = Math.min(h, end + Math.round(h * 0.03));
+    out.width = w; out.height = keep;
+    out.getContext('2d').drawImage(c, 0, 0, w, keep, 0, 0, w, keep);
+    out.setAttribute('role', 'img'); out.setAttribute('aria-label', c.getAttribute('aria-label') || '');
+    return out;
+  }
+  function showPage(host, i) {
+    var cs = pagesOf(host); if (!host || !cs.length) return;
+    i = Math.max(0, Math.min(i, cs.length - 1)); host.pageAt = i;
+    for (var k = 0; k < cs.length; k++) cs[k].hidden = k !== i;
+    var el = host.closest('.w-step'), tag = el && el.querySelector('.w-pageof'), spot = el && el.querySelector('.w-spot');
+    if (tag) tag.textContent = 'Page ' + (i + 1) + ' of ' + cs.length;
+    if (spot) spot.hidden = i < cs.length - 1;
+    nextLabel();
+  }
+  function lastPage(host) { var cs = pagesOf(host); return !cs.length || (host.pageAt || 0) >= cs.length - 1; }
+  function nextLabel() {
+    var s = steps[at]; if (!s) return;
+    if (s.id !== 'doc') { $('fm-next').textContent = { check: 'Finish', welcome: "Let's go!" }[s.id] || 'Continue'; return; }
+    var host = stepEl(at).querySelector('.w-pdf');
+    $('fm-next').textContent = lastPage(host) ? (/^20-/.test(s.key) ? 'Confirm' : 'Confirm and sign') : 'Next page';
+  }
+  // Mark 2026-10-31 ("the health section is out of order and the signature block isn't aligned with the signature"): the server
+  // marks where the document's own boxes and its signature line sit (the X-Doc-Marks header of the preview). The tick is laid on
+  // the page right over its box, and the name box right on the signature line, so the document reads in its own order.
+  function overlayFor(m, scale, key) {
+    if (m.kind === 'box') {
+      var f = fields[m.field] && fields[m.field].f;
+      if (!f || !f.on_document) return null;
+      var size = 26, cx = (m.x + m.w / 2) * scale, cy = (m.y + m.h / 2) * scale;
+      var lab = document.createElement('label');
+      lab.className = 'w-mark w-mark-box'; lab.setAttribute('data-q', m.field);
+      lab.style.left = (cx - size / 2) + 'px'; lab.style.top = (cy - size / 2) + 'px'; lab.style.width = size + 'px'; lab.style.height = size + 'px';
+      var inp = document.createElement('input');
+      inp.type = f.kind === 'choice' ? 'radio' : 'checkbox'; inp.setAttribute('data-field', m.field); inp.setAttribute('data-nokeep', '');
+      if (m.value !== undefined) { inp.value = m.value; inp.name = 'w-mark-' + m.field; }
+      inp.setAttribute('aria-label', f.label || m.field);
+      lab.appendChild(inp);
+      return lab;
     }
-    $('fm-agree').checked = false;
-    $('fm-go').disabled = false;
-    hideErr();
+    if (m.kind === 'sig') {
+      var box = document.createElement('input');
+      box.type = 'text'; box.className = 'w-signname w-mark w-mark-sig'; box.id = 'w-sign-' + key + '-line'; box.autocomplete = 'name'; box.maxLength = 120;
+      box.placeholder = 'First and last name'; box.setAttribute('aria-label', 'Type your full name to sign'); box.setAttribute('data-nokeep', '');
+      var h = Math.max(28, m.h * scale + 10);
+      box.style.left = (m.x * scale - 2) + 'px'; box.style.top = (m.y * scale - 6) + 'px'; box.style.width = ((m.right - m.x) * scale + 2) + 'px'; box.style.height = h + 'px'; box.style.fontSize = Math.max(17, Math.round(h * 0.6)) + 'px';
+      return box;
+    }
+    return null;
+  }
+  // the block below the page for a tick is shown only when the tick could not be laid on the document itself (no mark, or no PDF)
+  function declBlocks(step, placed) {
+    if (!step) return;
+    Array.prototype.forEach.call(step.querySelectorAll('[data-decl]'), function (d) { d.hidden = !!(placed && placed[d.getAttribute('data-decl')]); });
+  }
+  function showPdf(host, key, paper) {
+    if (!host) return;
+    var ask = JSON.stringify({ doc_key: key, answers: allAnswers(), signer_name: signer(), website: ($('fm-website') || {}).value || '' });
+    if (host.getAttribute('data-shown') === ask) return;
+    host.setAttribute('data-shown', ask);
+    // a document already on screen stays there until its new pages are drawn, so the page never jumps
+    if (!host.querySelector('canvas')) host.innerHTML = '<p class="hint">Filling in your document…</p>';
+    if (paper) paper.hidden = true;
+    var step = host.closest('.w-step'), marks = [];
+    var fallback = function () {
+      if (host.getAttribute('data-shown') !== ask) return;
+      host.innerHTML = ''; host.removeAttribute('data-shown'); if (paper) paper.hidden = false;
+      var spot = step && step.querySelector('.w-spot'); if (spot) spot.hidden = false;
+      var spotName = step && step.querySelector('.w-spot .w-signname'); if (spotName) spotName.hidden = false;
+      declBlocks(step, null); nextLabel();
+    };
+    fetch(API_BASE + encodeURIComponent(token) + '/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: ask })
+      .then(function (r) {
+        if (!r.ok) throw new Error('preview ' + r.status);
+        try { marks = JSON.parse(r.headers.get('x-doc-marks') || '[]') || []; } catch (e) { marks = []; }
+        return r.arrayBuffer();
+      })
+      .then(function (buf) {
+        return loadPdfLib().then(function (lib) { return lib.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise; }).then(function (pdf) {
+          if (host.getAttribute('data-shown') !== ask) return;
+          var next = document.createElement('div');
+          var url = URL.createObjectURL(new Blob([buf], { type: 'application/pdf' }));
+          var print = document.createElement('p');
+          print.innerHTML = '<a class="linkbtn" target="_blank" rel="noopener">Print or save this document</a>';
+          print.firstChild.href = url;
+          next.appendChild(print);
+          var width = Math.max(300, host.clientWidth || 600), ratio = Math.min(2, window.devicePixelRatio || 1), chain = Promise.resolve();
+          for (var n = 1; n <= pdf.numPages; n++) (function (n) {
+            chain = chain.then(function () { return pdf.getPage(n); }).then(function (page) {
+              var base = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: (width / base.width) * ratio });
+              var c = document.createElement('canvas');
+              c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+              c.setAttribute('role', 'img'); c.setAttribute('aria-label', 'Page ' + n + ' of ' + pdf.numPages);
+              var wrap = document.createElement('div'); wrap.className = 'w-page'; wrap.hidden = true; wrap.appendChild(c);
+              next.appendChild(wrap);
+              return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise.then(function () {
+                if (n === pdf.numPages) { var t = trimEnd(c); if (t !== c) wrap.replaceChild(t, c); }
+                var scale = width / base.width;   // screen pixels per point of the page
+                marks.forEach(function (m) {
+                  if (m.page !== n - 1) return;
+                  var el = overlayFor(m, scale, key); if (el) wrap.appendChild(el);   // the name box sits on the signature line, whichever page it is on
+                });
+              });
+            });
+          })(n);
+          return chain.then(function () {
+            if (host.getAttribute('data-shown') !== ask) return;
+            // what was already ticked or typed on the document stays as its pages are drawn again
+            var prior = {}, nb = nameBox(), typed = nb ? nb.value : '';
+            Object.keys(fields).forEach(function (nm) { if (fields[nm].f.on_document) prior[nm] = value(nm); });
+            var old = host.querySelector('a[href^="blob:"]');
+            if (old) URL.revokeObjectURL(old.href);
+            host.innerHTML = '';
+            while (next.firstChild) host.appendChild(next.firstChild);
+            var placed = {};
+            Array.prototype.forEach.call(host.querySelectorAll('.w-mark-box input'), function (inp) {
+              var nm = inp.getAttribute('data-field'), v = prior[nm]; placed[nm] = true;
+              inp.checked = inp.type === 'radio' ? v === inp.value : v === true;
+            });
+            var sig = host.querySelector('.w-mark-sig'), spotName = step && step.querySelector('.w-spot .w-signname');
+            if (sig) sig.value = typed;
+            if (spotName) { spotName.hidden = !!sig; if (!sig) spotName.value = typed; }
+            declBlocks(step, placed);
+            showPage(host, host.pageAt || 0);
+          });
+        });
+      })
+      .catch(fallback);
   }
 
-  function openDoc(key) {
-    var doc = docByKey(key);
-    if (!doc || doc.status === 'signed') return;
-    current = doc;
-    show('fm-intro', false); show('fm-done', false); show('fm-doc', true);
+  function showDocPdf(i) {
+    var el = stepEl(i), key = steps[i].key;
+    fillPaper(el, key);
+    showPdf(el.querySelector('.w-pdf'), key, el.querySelector('.w-paper'));
+  }
+
+  function stepIndex(s) { for (var k = 0; k < steps.length; k++) if (steps[k].id === s.id && (s.id !== 'doc' || steps[k].key === s.key)) return k; return -1; }
+  function goStep(i, quiet) {
+    // a document already signed is never shown again as a step: skipped in the direction of travel
+    var dir = i >= at ? 1 : -1;
+    while (i > 0 && i < steps.length - 1 && steps[i].id === 'doc' && (docByKey(steps[i].key) || {}).status === 'signed') i += dir;
+    i = Math.max(0, Math.min(i, steps.length - 1));
+    at = i;
+    if (steps[i].id === 'doc') {
+      var h = stepEl(i).querySelector('.w-pdf'); if (h) h.pageAt = 0;
+      showDocPdf(i);
+      showPage(h, 0);
+    }
+    if (steps[i].id === 'check') checklist();
+    if (steps[i].id === 'insurance') pollQuote();
+    var all = $('fm-steps').querySelectorAll('.w-step');
+    for (var k = 0; k < all.length; k++) all[k].hidden = Number(all[k].getAttribute('data-step')) !== i;
+    $('fm-progress').hidden = true;
+    $('fm-prev').hidden = i === 0;
+    nextLabel();
+    hideErr();
+    if (!quiet) window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20));
+  }
+
+  function stepEl(i) { return $('fm-steps').querySelector('.w-step[data-step="' + i + '"]'); }
+  function stepOf(name) {
+    var el = $('fm-steps').querySelector('[data-field="' + name + '"]'), s = el && el.closest('.w-step');
+    return s ? Number(s.getAttribute('data-step')) : -1;
+  }
+  function value(name) {
+    var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"]'), f = fields[name] && fields[name].f;
+    if (!els.length || !f) return undefined;
+    if (f.kind === 'choice') { for (var i = 0; i < els.length; i++) if (els[i].checked) return els[i].value; return undefined; }
+    if (f.kind === 'multi') { var out = []; for (var k = 0; k < els.length; k++) if (els[k].checked) out.push(els[k].value); return out; }
+    if (f.kind === 'check') return !!els[0].checked;
+    if (els[0].disabled) return undefined;
+    var v = els[0].value.trim(); return v ? v : undefined;
+  }
+  /** What a step still needs: its required questions that are empty and in view (a hidden follow-up is not asked). */
+  function stepGaps(i) {
+    var out = {}, names = [], el = stepEl(i);
+    var qs = el.querySelectorAll('[data-q]');
+    for (var k = 0; k < qs.length; k++) {
+      var n = qs[k].getAttribute('data-q'), f = fields[n] && fields[n].f;
+      var need = f && (mustHave(f) || (NEEDS[n] && NEEDS[n].when()));
+      if (!f || !need || qs[k].closest('[hidden]') !== null && qs[k].closest('[hidden]') !== el) continue;
+      var v = value(n);
+      if (v === undefined || v === false || (Array.isArray(v) && !v.length)) { out[n] = NEEDS[n] ? NEEDS[n].say : f.kind === 'check' ? 'Please tick this box.' : (f.kind === 'choice' || f.kind === 'multi' || PICK[n]) ? 'Please choose one.' : 'Please fill this in.'; names.push(f.label); }
+      else if (isCsz(n) && !wholeCsz(v)) { out[n] = 'Please fill in the city, state and ZIP.'; names.push(f.label); }
+    }
+    return { fields: out, names: names };
+  }
+
+  function next() {
+    if (busy) return;
+    hideErr();
+    var s = steps[at];
+    if (s.id === 'welcome' && !consented()) {
+      if (!$('fm-esign').checked) { showErr('Please tick the box to agree to signing electronically.'); return; }
+      busy = true; $('fm-next').disabled = true;
+      return api('/consent', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ agreed: true, website: ($('fm-website') || {}).value || '' }) })
+        .then(function (r) {
+          busy = false; $('fm-next').disabled = false;
+          var j = r.json || {};
+          if (r.status === 200 && j.success && j.packet) { packet.esign = j.packet.esign; goStep(at + 1); return; }
+          showErr(j.error || 'That did not go through. Please try again.');
+        }).catch(function () { busy = false; $('fm-next').disabled = false; showErr('We could not reach the server. Please check your connection and try again.'); });
+    }
+    var gaps = stepGaps(at);
+    if (gaps.names.length) { showErr(gaps.names.length === 1 ? 'One line still needs an answer: it is marked in red.' : 'Some lines still need an answer: they are marked in red.'); fieldErrors(gaps.fields); return; }
+    if (s.id === 'doc') {
+      var host = stepEl(at).querySelector('.w-pdf');
+      if (!lastPage(host)) { showPage(host, (host.pageAt || 0) + 1); window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20)); return; }
+      return signOne(s);
+    }
+    if (s.id === 'check') { if (window.SAKeep) window.SAKeep.clear(wizKey()); return showDone(); }
+    if (s.id === 'details') requestQuote();
+    // Mark 2026-10-30: whose card (the lead's page) and the insurance choice are kept on the file as their screen is left; the
+    // documents that follow may change with the answer (the card authorization leaves for the card's owner; the plan or the declination)
+    if (s.id === 'details' && packet.card && fields.cardholder) return keep('/card', { cardholder: value('cardholder'), card_name: value('card_name'), card_email: value('card_email') });
+    if (s.id === 'insurance') return keep('/insurance/choice', { insurance_choice: value('insurance_choice'), insurance_plan: value('insurance_plan'), ins_provider: value('ins_provider'), ins_policy: value('ins_policy') });
+    goStep(at + 1);
+  }
+  function keep(path, body) {
+    busy = true; $('fm-next').disabled = true;
+    body.website = ($('fm-website') || {}).value || '';
+    return api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) {
+        busy = false; $('fm-next').disabled = false;
+        var j = r.json || {};
+        // the screens may have been rebuilt (signed documents drop out of the list): find this screen again, then move on from it
+        if (r.status === 200 && j.success && j.packet) { var cur = steps[at]; adopt(j.packet); var i = stepIndex(cur); goStep((i >= 0 ? i : at) + 1); return; }
+        if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
+        if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload().then(function () { goStep(0); showErr('Please tick the box to agree to signing electronically, then carry on.'); }); }
+        showErr(j.error || ('That did not go through (' + r.status + '). Please try again.'));
+        fieldErrors(j.fields);
+      }).catch(function () { busy = false; $('fm-next').disabled = false; showErr('We could not reach the server. Please check your connection and try again.'); });
+  }
+
+  // ── Signing: each ticked document is signed and recorded on its own, one after the other, with the answers that belong to it ──
+  function answersFor(doc) {
+    var out = {};
+    doc.fields.forEach(function (f) {
+      var v = answerOf(f.name);
+      if (v === null) v = undefined;
+      if (f.kind === 'multi') { if (v && v.length) out[f.name] = v; }
+      else if (f.kind === 'check') out[f.name] = !!v;
+      else if (v !== undefined) out[f.name] = v;
+    });
+    return out;
+  }
+  /** the document on screen, signed on its own with the answers that belong to it; then on to the next screen */
+  function signOne(s) {
+    var d = docByKey(s.key), name = signer(), label = $('fm-next').textContent;
+    if (!name) {
+      showErr('Please type your full name (first and last) to sign.');
+      var nb = nameBox(), pg = nb && nb.closest('.w-page');
+      // the name box is on the signature line: when that line is on an earlier page, the page turns back to it
+      if (pg && pg.hidden) { var hostEl = stepEl(at).querySelector('.w-pdf'); showPage(hostEl, Array.prototype.indexOf.call(pagesOf(hostEl), pg)); }
+      if (nb) goTo(nb);
+      return;
+    }
+    busy = true; $('fm-next').disabled = true; $('fm-next').textContent = 'Signing…';
+    var done = function () { busy = false; $('fm-next').disabled = false; $('fm-next').textContent = label; };
+    var body = JSON.stringify({
+      doc_key: d.key, signer_name: name, agreed: true, content_sha256: d.text_sha256, answers: answersFor(d), newsletter_opt_in: newsWanted, website: ($('fm-website') || {}).value || '',
+    });
+    var send = function (tries) {
+      return api('/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: body })
+        // a dropped connection is tried once more (signing twice is harmless: the second is "already signed")
+        .catch(function (e) { if (tries > 0) return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { return send(tries - 1); }); throw e; });
+    };
+    return send(1).then(function (r) {
+      var j = r.json || {};
+      done();
+      if ((r.status === 200 && j.success && j.packet) || (r.status === 409 && j.code === 'already-signed')) {
+        if (j.packet) packet = j.packet;
+        return goStep(at + 1);
+      }
+      if (r.status === 409 && j.code === 'document-changed') return reload('This document was just updated, so please read it again before you sign.');
+      if (r.status === 400 && j.code === 'consent-required') { packet.esign = { text: packet.esign && packet.esign.text }; return reload().then(function () { goStep(0); showErr('Please tick the box to agree to signing electronically, then carry on.'); }); }
+      if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-wiz', false); return; }
+      // a refused answer: go to the screen that asks it
+      var bad = Object.keys(j.fields || {}), s2 = bad.length ? stepOf(bad[0]) : -1;
+      if (s2 >= 0) goStep(s2);
+      showErr(j.error || ('That did not go through (' + r.status + '). Please try again.'));
+      fieldErrors(j.fields);
+    }, function () { done(); showErr('We could not reach the server. Please check your connection and try again.'); })
+      .catch(function (e) { done(); showErr('Something went wrong on this page (' + (e && e.message ? e.message : e) + '). Please try again.'); });
+  }
+
+  function reload(msg) {
+    return api('').then(function (r) {
+      if (r.status !== 200 || !r.json || !r.json.success) { setState((r.json && r.json.error) || 'This link is not valid.'); show('fm-wiz', false); return; }
+      packet = r.json; render();
+      if (msg) showErr(msg);
+    });
+  }
+
+  // ── "Read it": the whole document, laid out like the paper original, with the answers given so far ──
+  function readDoc(key) {
+    var doc = docByKey(key); if (!doc) return;
     $('fm-doc-title').textContent = doc.title;
-    wireDoc(doc);
-    window.scrollTo(0, 0);
-    $('fm-doc-title').focus();
+    var body = $('fm-doc-body'); body.innerHTML = '<div class="w-pdf"></div><div class="doc w-paper" hidden>' + doc.html.replace(/ name="/g, ' data-docname="') + '</div>';
+    doc.fields.forEach(function (f) {
+      var v = value(f.name), els = body.querySelectorAll('[data-field="' + f.name + '"]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (el.type === 'radio') el.checked = el.value === v;
+        else if (el.type === 'checkbox') el.checked = Array.isArray(v) ? v.indexOf(el.value) >= 0 : v === true;
+        else el.value = v == null ? '' : String(v);
+        el.disabled = true;
+      }
+    });
+    show('fm-wiz', false); show('fm-doc', true);
+    showPdf(body.querySelector('.w-pdf'), key, body.querySelector('.w-paper'));
+    window.scrollTo(0, 0); $('fm-doc-title').focus();
   }
 
   function showDone() {
-    current = null;
-    show('fm-intro', false); show('fm-doc', false);
+    show('fm-wiz', false); show('fm-doc', false);
     var who = firstName();
-    $('fm-done').innerHTML = '<h2>Thank you' + (who ? ', ' + esc(who) : '') + '.</h2>' +
-      '<p class="lead">' + (packet.kind === 'organizer' ? 'Your group contract is signed.' : 'Your paperwork is complete.') + '</p>' +
-      '<p>A signed copy of each document is kept on file with ' + esc(packet.business ? packet.business.name : 'us') + '. ' +
+    var card = packet.card && packet.card.holder === 'other' ? packet.card : null;
+    $('fm-done').innerHTML = '<h2>All done' + (who ? ', ' + esc(who) : '') + '!</h2>' +
+      '<p class="lead">' + (packet.kind === 'organizer' ? 'Your group contract is signed.' : packet.kind === 'cardholder' ? 'The credit card authorization is signed. Thank you!' : 'Your paperwork is complete. That is the boring part finished; the next thing on your list is packing!') + '</p>' +
+      '<p>A signed copy of ' + (packet.kind === 'cardholder' ? 'it' : 'each document') + ' is kept on file with ' + esc(packet.business ? packet.business.name : 'us') + '. ' +
+      (packet.copies_sent_at ? 'We have also emailed you your own copy' + (packet.kind === 'cardholder' ? '' : ' of each signed document') + '. ' : '') +
       (packet.kind === 'organizer' ? 'Mark will add the agent signature and be in touch. ' : 'There is nothing more to do right now. We will contact you if anything is missing or changes. ') +
-      'You can close this page; opening your link again shows what is signed.</p>' + tripBox() +
+      'You can close this page; opening your link again shows what is signed.</p>' +
+      (card ? '<p>The credit card authorization is ' + esc(card.name || "the card owner") + "'s to fill in and sign" + (card.signed ? ', and it is signed. ' : card.link_sent_at ? ': we emailed their own private link to ' + esc(card.email || '') + '. ' : ': Mark will send them their own private link. ') + '</p>' : '') +
+      // Mark 2026-10-31: the passport checklist is prepared from the file and emailed on its own, never signed
+      (packet.kind === 'traveler' ? '<p>Your passport and travel document checklist, filled in from your file, ' + (packet.checklist && packet.checklist.sent_at ? 'has been emailed to you separately' : 'is emailed to you separately') + '. <a class="linkbtn" target="_blank" rel="noopener" href="' + API_BASE + encodeURIComponent(token) + '/document/16-passport-document-checklist">View or print it now</a>.</p>' : '') + tripBox() +
       '<p class="fine">Questions? ' + esc(packet.business ? packet.business.contact : '') + '</p>';
     show('fm-done', true);
     window.scrollTo(0, 0);
   }
 
+  // Mark 2026-10-26: the page opens on the trip's own photos (left, middle, right, tilted), never the website's banner.
+  function photos() {
+    if (window.SATripPhotos) window.SATripPhotos.render($('fm-photos'), packet.group && packet.group.photos);
+  }
+
   function render() {
     setState('');
-    $('fm-foot').textContent = (packet.business && packet.business.name) || 'Still Afloat Cruising';
-    if (packet.docs.length && !nextPending()) showDone(); else renderIntro();
+    photos();
+    $('fm-foot').textContent = (packet.business && packet.business.trade_name) || 'Still Afloat Cruising'; // Mark 2026-10-30: the page signs off as Still Afloat Cruising
+    if (packet.docs.length && !pending().length) showDone(); else renderWizard();
   }
 
   function showErr(msg) { var e = $('fm-err'); e.textContent = msg; e.hidden = false; }
   function hideErr() {
     $('fm-err').hidden = true;
-    var errs = $('fm-doc').querySelectorAll('.field-err'); for (var i = 0; i < errs.length; i++) errs[i].remove();
-    var bad = $('fm-doc').querySelectorAll('[aria-invalid]'); for (var j = 0; j < bad.length; j++) bad[j].removeAttribute('aria-invalid');
+    var errs = document.querySelectorAll('#fm-steps .field-err'); for (var i = 0; i < errs.length; i++) errs[i].remove();
+    var bad = document.querySelectorAll('#fm-steps [aria-invalid]'); for (var j = 0; j < bad.length; j++) bad[j].removeAttribute('aria-invalid');
   }
-
-  function collect(doc) {
-    var body = $('fm-doc-body'), out = {};
-    doc.fields.forEach(function (f) {
-      var els = body.querySelectorAll('[data-field="' + f.name + '"]');
-      if (!els.length) return;
-      if (f.kind === 'choice') { for (var i = 0; i < els.length; i++) if (els[i].checked) out[f.name] = els[i].value; }
-      else if (f.kind === 'multi') { var vals = []; for (var k = 0; k < els.length; k++) if (els[k].checked) vals.push(els[k].value); out[f.name] = vals; }
-      else if (f.kind === 'check') { out[f.name] = !!els[0].checked; }
-      else if (!els[0].disabled) { var v = els[0].value.trim(); if (v) out[f.name] = v; }
-    });
-    return out;
+  // Mark 2026-10-26: "the page alerted me but didn't take me to the errors". The page goes to the first problem, and the message lists
+  // every problem as a link that goes straight to it.
+  function fieldEl(name) {
+    var el = $('fm-steps').querySelector('[data-field="' + name + '"]');
+    if (el && el.type === 'hidden') { var p = cszParts(el); return [p.city, p.state, p.zip].filter(function (x) { return !x.value; })[0] || p.city; }
+    return el;
   }
-
+  function goTo(el) {
+    if (!el) return;
+    var top = el.getBoundingClientRect().top + window.pageYOffset - 140;
+    window.scrollTo(0, Math.max(0, top));
+    try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) {} }
+  }
   function fieldErrors(map) {
-    var first = null;
+    var first = null, list = [];
     Object.keys(map || {}).forEach(function (name) {
-      var els = $('fm-doc-body').querySelectorAll('[data-field="' + name + '"]');
-      if (!els.length) return;
-      var host = els[0], msg = document.createElement('span');
-      msg.className = 'field-err'; msg.textContent = map[name];
-      for (var i = 0; i < els.length; i++) els[i].setAttribute('aria-invalid', 'true');
-      var anchor = els[els.length - 1];
-      if (anchor.type === 'checkbox' || anchor.type === 'radio') { (anchor.closest('p,li,td,th') || anchor.parentNode).appendChild(msg); }
-      else anchor.parentNode.insertBefore(msg, anchor.nextSibling);
-      if (!first) first = host;
+      var el = fieldEl(name), q = el && (el.closest('[data-q]') || el.parentNode);
+      if (!el) return;
+      var msg = document.createElement('span'); msg.className = 'field-err'; msg.textContent = map[name];
+      var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"],[data-part-of="' + name + '"]'); for (var i = 0; i < els.length; i++) els[i].setAttribute('aria-invalid', 'true');
+      q.appendChild(msg);
+      list.push(name);
+      if (!first || (first.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING)) first = el;
     });
-    if (first) { first.scrollIntoView({ block: 'center' }); try { first.focus(); } catch (e) {} }
+    // Mark 2026-10-30: no list of links; the page goes to the first marked line and each carries its own red note
+    goTo(first);
+  }
+  // a line that was marked as missing loses its note as soon as it is answered
+  function unmark(e) {
+    var name = e.target && e.target.getAttribute && e.target.getAttribute('data-field');
+    if (!name || !e.target.hasAttribute('aria-invalid') || (isCsz(name) && !wholeCsz(e.target.value))) return;
+    var els = $('fm-steps').querySelectorAll('[data-field="' + name + '"],[data-part-of="' + name + '"]');
+    for (var i = 0; i < els.length; i++) els[i].removeAttribute('aria-invalid');
+    var q = els[0] && els[0].closest('[data-q]'), m = q && q.querySelector('.field-err'); if (m) m.remove();
   }
 
-  function sign() {
-    if (busy || !current) return;
-    hideErr();
-    if (!$('fm-agree').checked) { showErr('Please tick the box to say you have read this document and agree to it.'); return; }
-    var name = $('fm-name').value.replace(/\s+/g, ' ').trim();
-    if (name.split(' ').length < 2) { showErr('Please type your full name (first and last) as your signature.'); $('fm-name').focus(); return; }
-    var answers = collect(current), news = $('fm-news');
-    var saved = answers;
-    busy = true; $('fm-go').disabled = true; $('fm-go').textContent = 'Saving…';
-    api('/sign', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ doc_key: current.key, signer_name: name, agreed: true, content_sha256: current.text_sha256, answers: answers, newsletter_opt_in: !!(news && news.checked), website: $('fm-website').value })
-    }).then(function (r) {
-      busy = false; $('fm-go').textContent = 'Sign and continue'; $('fm-go').disabled = false;
-      var j = r.json || {};
-      if (r.status === 200 && j.success) {
-        if (j.packet) packet = j.packet; else return reload();
-        var nxt = nextPending();
-        if (nxt) { renderIntro(); openDoc(nxt.key); } else showDone();
-        return;
-      }
-      if (r.status === 409 && j.code === 'document-changed') { return reload(true, saved, j.error); }
-      if (r.status === 409 && j.code === 'already-signed') { return reload(); }
-      if (r.status === 404) { setState(j.error || 'This link is not valid.'); show('fm-doc', false); return; }
-      showErr(j.error || 'That did not go through. Please try again.');
-      fieldErrors(j.fields);
-    }).catch(function () {
-      busy = false; $('fm-go').textContent = 'Sign and continue'; $('fm-go').disabled = false;
-      showErr('We could not reach the server. Please check your connection and try again.');
-    });
-  }
-
-  function reload(keep, saved, msg) {
-    var key = current && current.key;
-    return api('').then(function (r) {
-      if (r.status !== 200) { setState((r.json && r.json.error) || 'This link is not valid.'); show('fm-doc', false); show('fm-intro', false); return; }
-      packet = r.json;
-      if (key && docByKey(key) && docByKey(key).status !== 'signed') {
-        renderIntro(); openDoc(key);
-        if (keep && saved) Object.keys(saved).forEach(function (n) { setValue(n, saved[n]); });
-        if (msg) showErr(msg);
-      } else render();
-    });
-  }
-
-  document.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('[data-open]');
-    if (b) openDoc(b.getAttribute('data-open'));
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.id === 'fm-news') newsWanted = !!e.target.checked;
+    if (e.target && e.target.name === 'w-plan') { var hid = $('fm-steps').querySelector('[data-field="insurance_plan"]'); if (hid) { hid.value = e.target.value; hid.dispatchEvent(new Event('input', { bubbles: true })); } }
+    if (e.target && e.target.closest && e.target.closest('#fm-steps')) followUps();
   });
-  $('fm-go').addEventListener('click', sign);
-  $('fm-back').addEventListener('click', function () { current = null; show('fm-doc', false); renderIntro(); window.scrollTo(0, 0); });
+  $('fm-steps').addEventListener('input', unmark);
+  // on a document's page: an "I accept" box or the typed name changes what its PDF shows (the name goes on its signature line)
+  var nameTimer = null;
+  $('fm-steps').addEventListener('change', function () { if (steps[at] && steps[at].id === 'doc') showDocPdf(at); });
+  $('fm-steps').addEventListener('input', function (e) {
+    if (!(steps[at] && steps[at].id === 'doc' && e.target && e.target.classList && e.target.classList.contains('w-signname'))) return;
+    if (e.target.classList.contains('w-mark')) return;   // the name box on the signature line itself shows the name as it is typed; the page is not redrawn under it
+    clearTimeout(nameTimer); nameTimer = setTimeout(function () { showDocPdf(at); }, 900);
+  });
+  $('fm-steps').addEventListener('change', unmark);
+  document.addEventListener('click', function (e) {
+    var r = e.target.closest && e.target.closest('[data-read]');
+    if (r) readDoc(r.getAttribute('data-read'));
+
+  });
+  $('fm-next').addEventListener('click', next);
+  $('fm-prev').addEventListener('click', function () {
+    var s = steps[at], host = s && s.id === 'doc' ? stepEl(at).querySelector('.w-pdf') : null;
+    if (host && (host.pageAt || 0) > 0) { showPage(host, host.pageAt - 1); window.scrollTo(0, Math.max(0, $('fm-wiz').getBoundingClientRect().top + window.pageYOffset - 20)); return; }
+    if (at > 0) goStep(at - 1);
+  });
+  function backToSteps() { show('fm-doc', false); show('fm-wiz', true); goStep(at, true); window.scrollTo(0, 0); }
+  $('fm-back').addEventListener('click', backToSteps);
+  $('fm-back2').addEventListener('click', backToSteps);
 
   if (!token) { setState('This page opens from your private link. Please use the link in your email, or ask us for a new one.'); return; }
   api('').then(function (r) {

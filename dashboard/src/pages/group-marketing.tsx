@@ -11,6 +11,26 @@ import { useToast } from "@/hooks/use-toast";
 // from the group file, so the words can never contradict the booking.
 
 type Row = Record<string, any>;
+
+/** The quote step (Mark 2026-11-01): what the guest chose and when they agreed; "under way" while they are still choosing. */
+function quoteCell(r: Row) {
+  const q = r.quote && typeof r.quote === "object" ? (r.quote as Row) : null;
+  if (!q) return r.hold_requested_at ? "under way" : "—";
+  const when = r.quote_agreed_at ? new Date(r.quote_agreed_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
+  const a = (q.answers ?? {}) as Row;
+  const travel = Array.isArray(a.travel) ? a.travel.length : 0;
+  const toPrice = Array.isArray(q.toQuote) ? q.toQuote.length : 0;
+  const insurance = (Array.isArray(q.lines) ? (q.lines as Row[]) : []).find((l) => l.key === "insurance")?.label ?? `insurance: ${a.insurance}`;
+  const bits = [q.category, `FlexPay ${a.flexpay ? "yes" : "no"}`, a.drinks === true ? "drinks: price it" : null, insurance, travel ? `${travel} travel item${travel === 1 ? "" : "s"}` : null, `total ${q.totalText}${toPrice ? ` + ${toPrice} to price` : ""}`].filter(Boolean).join(" · ");
+  const paperwork = q.paperwork === "sent" ? "sent" : q.paperwork === "held" ? "held by this box" : q.paperwork === "no-email" ? "no email on the reply" : q.paperwork === "failed" ? "FAILED" : "—";
+  return (
+    <div>
+      <div>{when ? `Agreed ${when}` : "Answering…"}</div>
+      <div className="text-xs text-muted-foreground">{bits}</div>
+      {when ? <div className="text-xs text-muted-foreground">Paperwork link: {paperwork}</div> : null}
+    </div>
+  );
+}
 type Question = { key: string; label: string; hint?: string; type: "text" | "long" | "yesno" | "choice"; required?: boolean; choices?: Array<{ value: string; label: string }> };
 type Field = { key: string; label: string; max: number; long?: boolean; optional?: boolean };
 type Problem = { field: string; problem: string };
@@ -286,7 +306,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
             : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead><tr className="border-b bg-muted/30 text-muted-foreground"><th className="text-left px-2 py-2">Name</th><th className="text-left px-2 py-2">Contact</th><th className="text-left px-2 py-2">Cabin · guests</th><th className="text-left px-2 py-2">Note</th><th className="text-left px-2 py-2">Saved</th><th className="text-left px-2 py-2">Choice</th><th className="text-left px-2 py-2">When</th><th className="text-left px-2 py-2">Hold</th><th className="text-left px-2 py-2">Travelers</th><th className="text-left px-2 py-2">Address</th><th className="text-left px-2 py-2">Status</th></tr></thead>
+                  <thead><tr className="border-b bg-muted/30 text-muted-foreground"><th className="text-left px-2 py-2">Name</th><th className="text-left px-2 py-2">Contact</th><th className="text-left px-2 py-2">Cabin · guests</th><th className="text-left px-2 py-2">Note</th><th className="text-left px-2 py-2">Saved</th><th className="text-left px-2 py-2">Choice</th><th className="text-left px-2 py-2">When</th><th className="text-left px-2 py-2">Names in</th><th className="text-left px-2 py-2">Quote</th><th className="text-left px-2 py-2">Travelers</th><th className="text-left px-2 py-2">Address</th><th className="text-left px-2 py-2">Status</th></tr></thead>
                   <tbody className="divide-y divide-border">
                     {replies!.interests.map((r) => (
                       <tr key={r.id}>
@@ -298,6 +318,7 @@ export function GroupMarketing({ groupId }: { groupId: string }) {
                         <td className="px-2 py-2 whitespace-nowrap">{r.choice === "call" ? "talk" : r.choice === "finish" ? "finish" : "—"}</td>
                         <td className="px-2 py-2 whitespace-nowrap">{CALL_WHEN_WORD[String(r.call_when)] ?? "—"}</td>
                         <td className="px-2 py-2 whitespace-nowrap">{r.hold_requested_at ? new Date(r.hold_requested_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}</td>
+                        <td className="px-2 py-2 min-w-[13rem]">{quoteCell(r)}</td>
                         <td className="px-2 py-2 min-w-[14rem]">
                           {Array.isArray(r.travelers) && r.travelers.length > 0 ? (
                             <div>

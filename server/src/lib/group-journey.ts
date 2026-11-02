@@ -18,6 +18,8 @@
 //   * Every fact comes from the group file; a section whose data is missing is left out (group-journey-sections.ts).
 
 import { BUSINESS } from "./group-secure";
+import { pagePhotos, type PagePhoto } from "./group-page-photos";
+import { guestGroupName } from "./group-marketing";
 import {
   addDays, cabinIsBooked, cabinOf, cabinPayments, clientChecklist, ctxFor, dayDiff, displayName, emailOf, fmtDate, fmtMoney, journeyAnswers,
   langOf, localToday, matesOf, missingItems, payee, personName, plain, ymd,
@@ -371,7 +373,7 @@ function subjectFor(kind: MilestoneKind, ctx: Ctx, o: RenderOptions, has: Has): 
   switch (kind) {
     case "confirmation": return S.subject.confirmation({ ship, date: fmtDate(g.sail_date, ctx.lang) });
     case "payment-due": return S.subject.paymentDue({ date: fmtDate(o.payment?.due_date, ctx.lang), amount: fmtMoney(o.payment?.amount) });
-    case "change-notice": return S.subject.change({ group: plain(g.name, 80) });
+    case "change-notice": return S.subject.change({ group: plain(guestGroupName(g), 80) });
     case "data-needed": return S.subject.dataNeeded({ ship });
     default: {
       const n = kindDays(kind) ?? 0;
@@ -430,6 +432,8 @@ export interface HubView {
   hello: string;
   title: string;
   countdown: { days: number; text: string } | null;
+  /** The trip's own photos the page opens on (Mark 2026-10-26: every page its own set); [] = the page keeps its plain banner. */
+  photos: PagePhoto[];
   ui: Record<string, string>;
   business: { name: string; email: string; phone: string; contact: string };
   sections: Section[];
@@ -483,6 +487,7 @@ export function renderHub(page: Ctx): HubView {
     success: true, lang: ctx.lang, otherLang: ctx.lang === "es" ? "en" : "es",
     hello: H.helloLead(first), title: H.title,
     countdown: days !== null && days >= 0 ? { days, text: S.s.daysToGo(days) } : null,
+    photos: pagePhotos(ctx.group.journey, "cruise"),
     ui: { save: H.save, saved: H.saved, saveFailed: H.saveFailed, langSwitch: H.langSwitch, tick: H.tick, openPaperwork: H.openPaperwork, contactTitle: H.contactTitle, footer: H.footer, badLink: H.badLink },
     business: { name: BUSINESS.legalName, email: BUSINESS.email, phone: BUSINESS.phone, contact: S.contact },
     sections,

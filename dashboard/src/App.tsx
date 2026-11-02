@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -28,7 +29,13 @@ import AiVisibility from "@/pages/ai-visibility";
 import Ratings from "@/pages/ratings";
 import Groups from "@/pages/groups";
 import GroupIntake from "@/pages/group-intake";
-import GroupWorkspace from "@/pages/group-workspace";
+import { groupBookingsHref } from "@/lib/group-api";
+
+/** Old links to the dashboard's workspace page land in the Group Bookings app (Mark 2026-10-25: its own app at /groups/). */
+function ToGroupBookings() {
+  useEffect(() => { window.location.replace(groupBookingsHref(window.location.search.slice(1))); }, []);
+  return null;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,7 +66,7 @@ function Router() {
         <Route path="/groups" component={Groups} />
         <Route path="/groups/new" component={GroupIntake} />
         {/* before /groups/:id, or "workspace" would be read as a group id */}
-        <Route path="/groups/workspace" component={GroupWorkspace} />
+        <Route path="/groups/workspace" component={ToGroupBookings} />
         <Route path="/groups/:id" component={Groups} />
         <Route path="/affiliate"   component={AffiliateManager} />
         <Route path="/favorites"   component={FavoritesManager} />

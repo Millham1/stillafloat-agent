@@ -145,12 +145,16 @@ jobs:
         env:
           DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          USPS_CLIENT_ID: ${{ secrets.USPS_CLIENT_ID }}
+          USPS_CLIENT_SECRET: ${{ secrets.USPS_CLIENT_SECRET }}
+          SMARTY_AUTH_ID: ${{ secrets.SMARTY_AUTH_ID }}
+          SMARTY_AUTH_TOKEN: ${{ secrets.SMARTY_AUTH_TOKEN }}
         with:
           host: 178.156.154.144
           username: root
           key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
           command_timeout: 20m
-          envs: DEV_DATABASE_URL,YOUTUBE_API_KEY
+          envs: DEV_DATABASE_URL,YOUTUBE_API_KEY,USPS_CLIENT_ID,USPS_CLIENT_SECRET,SMARTY_AUTH_ID,SMARTY_AUTH_TOKEN
           script: |
             set -e
             export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -201,6 +205,17 @@ jobs:
               mv "$SHARED.tmp" "$SHARED"
               chmod 600 "$SHARED"
             fi
+            # Mark 2026-10-26: the address lookup's keys (USPS checks a whole address; Smarty suggests as the client types).
+            # Same upsert as above, one key at a time; a secret that is not set leaves the file as it is.
+            for KEY in USPS_CLIENT_ID USPS_CLIENT_SECRET SMARTY_AUTH_ID SMARTY_AUTH_TOKEN; do
+              VAL="$(printenv "$KEY" || true)"
+              if [ -n "$VAL" ]; then
+                grep -vE "^${KEY}=" "$SHARED" > "$SHARED.tmp" 2>/dev/null || true
+                echo "${KEY}=${VAL}" >> "$SHARED.tmp"
+                mv "$SHARED.tmp" "$SHARED"
+                chmod 600 "$SHARED"
+              fi
+            done
             while IFS= read -r line; do
               case "$line" in ''|\#*) continue;; esac
               export "${line%%=*}=${line#*=}"

@@ -19,5 +19,9 @@ export const ANALYTICS_KEY = ["groups-analytics"] as const;
 export const fetchAnalytics = () => api<WorkspaceData & { success: boolean }>("/groups/analytics");
 export const ANALYTICS_STALE_MS = 60_000;
 
-/** Where the workspace lives, as a full address (for "open in a new tab"; the page is served under /dashboard/ on the dev box). */
-export const workspaceHref = (query = ""): string => `${import.meta.env.BASE_URL.replace(/\/$/, "")}/groups/workspace${query ? `?${query}` : ""}`;
+/** Group Bookings is its own app (Mark 2026-10-25: "a separate entity", "stillafloatcruising.com/groups"), not a dashboard page:
+ * stillafloatcruising.com/groups/ live (the dashboard there runs on its own subdomain), the box address /groups/ on the test site. */
+export const groupBookingsHref = (query = ""): string => {
+  const apiBase = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "").replace(/\/+$/, "");
+  return `${apiBase}/groups/${query ? `?${query}` : ""}`;
+};

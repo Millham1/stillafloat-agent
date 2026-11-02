@@ -26,6 +26,10 @@ import { registerJob, runJob, loadJobHealth } from "./lib/job-health";
 import { tick as groupJourneyTick } from "./lib/group-journey-run";
 import { journeyDeps } from "./lib/group-journey-wire";
 import { localToday } from "./lib/group-journey-facts";
+import { refreshVisaRequirements, supabaseVisaStore, visaAlerts } from "./lib/visa-requirements";
+import { visaCodesOf } from "./lib/visa-fill";
+import { getSupabase as visaDb } from "./lib/persistence";
+import { createAction } from "./lib/actions";
 import { primeWeatherOnBoot, warmWeatherTiles } from "./lib/weather-tiles";
 
 const rawPort = process.env["PORT"] ?? "8080";
@@ -68,6 +72,7 @@ app.listen(port, "0.0.0.0", () => {
   registerJob("scheduleLiveAisCredits", { every: "on boot + every 4h", everyMs: 4 * 3_600_000, disabled: !liveAisEnabled(), disabledWhy: liveAisEnabled() ? undefined : "no LIVEAIS_API_KEY on this box" });
   registerJob("scheduleSubscriberHygiene", { every: "daily at SUBSCRIBER_HYGIENE_HOUR (polled every 5 min)", everyMs: 24 * 3_600_000, disabled: Boolean(off("DISABLE_SUBSCRIBER_HYGIENE")), disabledWhy: off("DISABLE_SUBSCRIBER_HYGIENE") });
   registerJob("scheduleGroupJourney", { every: "daily at GROUP_JOURNEY_HOUR (polled every 5 min)", everyMs: 24 * 3_600_000, disabled: Boolean(off("DISABLE_GROUP_JOURNEY")), disabledWhy: off("DISABLE_GROUP_JOURNEY") });
+  registerJob("scheduleVisaRequirements", { every: "on boot + daily (the visa table is reviewed every 90 days)", everyMs: 24 * 3_600_000 });
   void loadJobHealth();
   // Editorial/news is owned entirely by the standalone news agent
   // (:3003, stillafloat-newsagent). The monorepo no longer contains or runs any
@@ -171,7 +176,34 @@ app.listen(port, "0.0.0.0", () => {
   } else {
     scheduleGroupJourney();
   }
+  // Mark 2026-10-31: the visa requirements table, loaded from the Passport Index dataset and reviewed every 90 days. Runs on
+  // every box (it emails nothing and reads one public file).
+  scheduleVisaRequirements();
 });
+
+// ── Visa requirements table (Mark 2026-10-31: "load a table in the DB and set a job to review every 3 months") ──
+// lib/visa-requirements.ts: what a U.S. passport needs at every destination, from the Passport Index dataset on GitHub. The
+// job runs 20 seconds after boot and then daily; the table is read again only when its rows are due (90 days) or missing, so
+// the review is quarterly, and the ledger's result says how many destinations changed. The passport checklist reads the table.
+function scheduleVisaRequirements() {
+  // the destinations the open groups' itineraries need, beside the standing territory list (lib/visa-requirements.ts)
+  const wanted = async (): Promise<string[]> => {
+    const g = await visaDb().from("groups").select("id, embark_port, itinerary").not("status", "in", "(cancelled,closed,sailed)");
+    const codes = new Set<string>();
+    for (const grp of (g.data ?? []) as Array<Record<string, any>>) for (const c of visaCodesOf(grp)) codes.add(c);
+    return [...codes];
+  };
+  const tick = () => runJob("scheduleVisaRequirements", async () => {
+    const r = await refreshVisaRequirements(supabaseVisaStore(), fetch, new Date(), "US", { oriznKey: process.env["ORIZN_API_KEY"] || undefined, wanted });
+    // Mark 2026-10-31: "Waiting on you" at 180 Orizn destinations, on requirements that moved (Europe), and on a review paused by the quota
+    for (const a of visaAlerts(r)) await createAction(a).catch((err: unknown) => logger.warn({ err: err instanceof Error ? err.message : String(err) }, "visa table: the alert row could not be made"));
+    const second = { oriznFetched: r.orizn.fetched, oriznRows: r.oriznRows, stillMissing: r.orizn.missing.length, changes: r.changes.length, ...(r.orizn.note ? { oriznNote: r.orizn.note } : {}), ...(r.orizn.remaining !== null ? { oriznQuotaLeft: r.orizn.remaining } : {}) };
+    return r.due ? { reviewed: true, destinations: r.rows, changed: r.changed, nextReview: r.next_check_at, ...second } : { reviewed: false, destinations: r.rows, nextReview: r.next_check_at, ...second };
+  }, { logFail: "Visa requirements review failed" });
+  setTimeout(() => { tick().catch(() => {}); }, 20_000);
+  setInterval(() => { tick().catch(() => {}); }, 24 * 3_600_000);
+  logger.info("Visa requirements scheduler active — 20 s after boot, then daily; the table is reviewed every 90 days");
+}
 
 // ── WMS watch-alert scheduler ─────────────────────────────────────────────────
 // Hourly sweep of active ship watches: itinerary changes, weather threats, and

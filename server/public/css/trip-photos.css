@@ -1,0 +1,12 @@
+/* trip-photos.css — Mark 2026-10-26: a private page opens on the trip's own photos (left, middle, right), tilted for fun, with palm trees
+   scattered round them, never the website's banner; every page its own set (the group file names them). Filled by js/trip-photos.js. */
+.trip-photos{position:relative;max-width:1100px;margin:0 auto;padding:34px 16px 6px;overflow:hidden}
+.trip-photo-row{display:flex;justify-content:center;align-items:center;min-height:120px}
+.trip-photos .ph{margin:0;background:#fff;padding:9px 9px 26px;border-radius:3px;box-shadow:0 14px 34px rgba(0,0,0,.45);flex:0 1 31%;max-width:340px}
+.trip-photos .ph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.trip-photos .ph-left{transform:rotate(-6deg) translateY(10px);margin-right:-2%;z-index:1}
+.trip-photos .ph-mid{transform:rotate(2deg);flex-basis:36%;max-width:400px;z-index:2}
+.trip-photos .ph-right{transform:rotate(6deg) translateY(12px);margin-left:-2%;z-index:1}
+.trip-photos .palm{position:absolute;font-size:34px;line-height:1;pointer-events:none;user-select:none}
+@media(max-width:640px){.trip-photos{padding-top:22px}.trip-photos .ph{padding:5px 5px 14px}.trip-photos .palm{font-size:24px}}
+@media(prefers-reduced-motion:reduce){.trip-photos .ph{transform:none}}

@@ -12,7 +12,7 @@ import type { BUSINESS } from "./group-secure";
 export type Row = Record<string, any>;
 export type Lang = "en" | "es";
 /** Which signature row a document produces (group_signatures.signer_role). */
-export type SignerRole = "traveler" | "lead" | "organizer";
+export type SignerRole = "traveler" | "lead" | "organizer" | "cardholder";
 export type Answers = Record<string, string | boolean | string[]>;
 
 /** The template version a signature records: "<doc key>@<capture date>". */
@@ -68,6 +68,23 @@ export function normalizeFees(raw: unknown): FeeLine[] {
 export const fee = (ctx: DocCtx, key: string): FeeLine | undefined => ctx.fees.find((f) => f.key === key);
 
 // ── Context ───────────────────────────────────────────────────────────────────
+/** One port of the itinerary with its country's State Department advisory (null level = the feed did not name the country). */
+export interface Advisory { port: string; country: string; level: 1 | 2 | 3 | 4 | null; title: string }
+
+/** One vaccine of the CDC's table for a country: required at entry (for travel from the United States), recommended, to consider, routine. */
+export interface VaccineLine { name: string; advice: "required" | "not-required" | "recommended" | "consider" | "routine" | "other"; text: string }
+/** What one country of the itinerary asks of a U.S. traveler (Mark 2026-10-31), read with the advisory; a source not read is null, never guessed. */
+export interface EntryRequirement {
+  country: string;
+  ports: string[];
+  vaccines: { lines: VaccineLine[]; url: string; read_at: string } | null;
+  visa: { tourist_visa_required: boolean | null; passport_validity: string; blank_pages: string; vaccinations: string; url: string; read_at: string } | null;
+  /** Our own visa table (Mark 2026-10-31: the Passport Index dataset, reviewed every 90 days), or null when it has no row for the country. */
+  table: { requirement: string; stay_days: number | null; raw: string; source: string; source_url: string; checked_at: string } | null;
+  /** The State Department page to check by hand (named on the checklist whatever the table says). */
+  visa_url: string;
+}
+
 export interface DocCtx {
   business: typeof BUSINESS;
   group: Row;
@@ -82,6 +99,10 @@ export interface DocCtx {
   now: Date;
   /** How big the group's file is today (for the organizer's contract). */
   counts: { travelers: number; cabins: number };
+  /** The State Department advisory for every port of the itinerary, read when the page opened (empty = not read). */
+  advisories: Advisory[];
+  /** Each itinerary country's visa and vaccination requirements, read with the advisory (empty = not read). */
+  entry: EntryRequirement[];
 }
 
 /** Build the context for one signer from rows already read from the group file. */
@@ -93,6 +114,8 @@ export function buildCtx(input: {
   traveler?: Row | null;
   lang?: Lang;
   now?: Date;
+  advisories?: Advisory[];
+  entry?: EntryRequirement[];
 }): DocCtx {
   const traveler = input.traveler ?? null;
   const cabin = traveler?.cabin_id ? (input.cabins ?? []).find((c) => c.id === traveler.cabin_id) ?? null : null;
@@ -109,6 +132,8 @@ export function buildCtx(input: {
     fees: normalizeFees(input.group?.fees),
     now: input.now ?? new Date(),
     counts: { travelers: (input.travelers ?? []).length, cabins: (input.cabins ?? []).length },
+    advisories: input.advisories ?? [],
+    entry: input.entry ?? [],
   };
 }
 
@@ -280,7 +305,7 @@ export function mapTable(blocks: Block[], match: (t: TableBlock) => boolean, fn:
 }
 
 // ── Fields ────────────────────────────────────────────────────────────────────
-export type FieldKind = "text" | "date" | "email" | "tel" | "textarea" | "choice" | "multi" | "check" | "passport";
+export type FieldKind = "text" | "date" | "email" | "tel" | "textarea" | "choice" | "multi" | "check" | "passport" | "license";
 
 export interface Option {
   value: string;
@@ -303,7 +328,14 @@ export interface FieldSpec {
   /** Date sanity: "dob" = in the past and under 125 years ago, "past", "future". */
   date?: "dob" | "past" | "future";
   /** What the page pre-fills when the file holds nothing under col/form. */
-  prefill?: (ctx: DocCtx) => string | undefined;
+  prefill?: (ctx: DocCtx) => string | string[] | undefined;
+  /** Mark 2026-10-30: a tick that carries no information ("I am aware of and accept…") is asked on the document's own signing
+   *  screen, under the heading and the words it belongs to, never on the information page. */
+  onDocument?: { heading: string; text: string };
+  /** Mark 2026-10-30: a line asked of one signer only. "lead": the cabin's lead, on their own page (whose card it is, the owner's
+   *  name and email); "cardholder": the card's owner, on the link of their own (billing address, phone). Unset: asked of whoever
+   *  signs the document. */
+  ask?: "lead" | "cardholder";
 }
 
 // ── Template edits ────────────────────────────────────────────────────────────
@@ -345,4 +377,7 @@ export interface DocSpec {
   validate?: (answers: Answers) => Record<string, string>;
   /** Columns on group_travelers that follow from several answers (e.g. emergency_phone, special_needs). */
   derive?: (answers: Answers, ctx: DocCtx) => Row;
+  /** Answers the file supplies once a choice says so (the traveler's own card: the cardholder lines come from the file), and
+   *  answers a choice makes moot (no Allianz plan unless Allianz was chosen); run before the required check. */
+  complete?: (answers: Answers, ctx: DocCtx) => Answers;
 }

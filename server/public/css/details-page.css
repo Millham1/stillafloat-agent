@@ -98,6 +98,14 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 
 /* "Hold my cabin!" sits dim until every open block is clean; a tap on it still goes to the first problem */
 .btn[aria-disabled="true"]{opacity:.45}
+/* Part 4, the quote (Mark 2026-11-01): one line per item, the amount on the right, the total heavier; "—" where Mark prices it */
+.qline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:18px;line-height:1.35}
+.qline>span{display:flex;flex-direction:column;gap:2px}
+.qline .det{font-size:16px;color:var(--muted)}
+.qline b{white-space:nowrap;font-weight:800}
+.qline.qtotal{border-bottom:0;border-top:2px solid var(--ink);margin-top:4px;padding-top:10px;font-size:22px;font-weight:800}
+#d-qq .q:first-child{margin-top:8px}
+#d-locked{background:#fff6d6;border:2px solid var(--yellow);border-radius:12px;padding:10px 12px;color:var(--ink)}
 .pick p{font-size:17px}
 
 /* footer, as on the group page */

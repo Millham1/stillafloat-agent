@@ -384,21 +384,23 @@ const HOLD: HoldInput = {
 };
 
 test("Road B's email says the approved words: the laugh, what they did for whom, the passport move, the way back, the brand line, the footer", () => {
+  // Mark 2026-11-01: nothing is held at this point; the email leads to the quote step and its button says "Let's begin!"
   const m = holdEmail(HOLD);
-  assert.equal(m.subject, "Your cabin is on hold… nicely done! Friends and Family 2027");
+  assert.equal(m.subject, "Nicely done… now let's build your quote! Friends and Family 2027");
   assert.deepEqual(m.text.trim().split("\n\n"), [
     "Hi Mark,",
     "You planned a cruise in three minutes. Some people take three months and still end up next to the elevator.",
-    "Here's what you did: Balcony Bella, midship, a lower deck, for Mark, Ceci and Pat. Mark confirms it with the cruise line within a day, and your paperwork follows. Nothing is charged tonight.",
+    "Here's what you did: our pick is Balcony Bella, midship, a lower deck, for Mark, Ceci and Pat. Next comes the fun part: which cabin, insurance, drinks, and a hotel, flights or transfers if you want them… then your quote. Once you agree to it, your paperwork follows. Nothing is charged tonight.",
     "One smart-cruiser move while you wait: dig out everyone's passport and check the expiry dates. Renewals take weeks, and your paperwork page will ask for the numbers.",
-    `Need to change a name, a birthday or your mind? Open my details: ${HOLD.detailsUrl}`,
+    `Ready when you are. Let's begin!: ${HOLD.detailsUrl}`,
     "Cruise smarter, laugh more… see you at the muster drill!",
     "Mark & Ceci",
-    "Still Afloat LLC dba Still Afloat Cruising\nYou got this email because you put your cabin on hold on our Friends and Family 2027 page. Not you? Reply and we'll take you off.",
+    "Still Afloat LLC dba Still Afloat Cruising\nYou got this email because you gave us your names on our Friends and Family 2027 page. Not you? Reply and we'll take you off.",
   ]);
   assert.match(m.html, /<b>Balcony Bella, midship, a lower deck<\/b>, for Mark, Ceci and Pat\./);
-  assert.ok(m.html.includes(`<a href="${HOLD.detailsUrl}"`) && /<a href="[^"]*"[^>]*background:#f5c33b[^>]*>Open my details<\/a>/.test(m.html), "the yellow button goes to their details");
-  assert.match(m.html, /<h1[^>]*>Your cabin is on hold… nicely done!<\/h1>/);
+  assert.ok(m.html.includes(`<a href="${HOLD.detailsUrl}"`) && /<a href="[^"]*"[^>]*background:#f5c33b[^>]*>Let's begin!<\/a>/.test(m.html), "the yellow button, 'Let's begin!', goes to their details (the quote step)");
+  assert.match(m.html, /<h1[^>]*>Nicely done… now let's build your quote!<\/h1>/);
+  assert.ok(!/on hold|is held/i.test(m.text + m.html), "nothing is held before the quote is agreed");
 });
 
 test("Road B's email: the passport move follows the party (one, both, everyone's), and no price or deposit is named", () => {
@@ -418,12 +420,12 @@ test("Road B's email: escaped, the site's own logos, the link only in its own bo
   assert.ok(!m.html.includes("<script>") && !m.html.includes("<i>Mark</i>"));
   assert.ok(m.html.includes('src="https://dev.example.test/assets/images/still_afloat_logo.png"'));
   const es = holdEmail({ ...HOLD, lang: "es", groupLabel: "Amigos y Familia 2027", firstName: "Ana", category: "Balcony Bella", where: "en el centro del barco, en una cubierta baja", travelerFirstNames: ["Ana", "Luis"], hostNames: "Mark y Ceci" });
-  assert.equal(es.subject, "Su cabina está apartada… ¡bien hecho! Amigos y Familia 2027");
+  assert.equal(es.subject, "Bien hecho… ¡ahora armemos su cotización! Amigos y Familia 2027");
   assert.match(es.text, /^Hola Ana:/);
-  assert.match(es.text, /Esto es lo que hizo: Balcony Bella, en el centro del barco, en una cubierta baja, para Ana y Luis\. Mark la confirma con la naviera en un día/);
+  assert.match(es.text, /Esto es lo que hizo: nuestra sugerencia es Balcony Bella, en el centro del barco, en una cubierta baja, para Ana y Luis\. Ahora viene lo bueno: qué cabina, seguro, bebidas/);
   assert.match(es.text, /saque los dos pasaportes y revise las fechas de vencimiento/);
-  assert.match(es.html, />Abrir mis datos</);
-  assert.match(es.text, /Recibió este correo porque apartó su cabina en nuestra página de Amigos y Familia 2027\. ¿No fue usted\? Responda y le quitamos de la lista\./);
+  assert.match(es.html, />¡Empecemos!</);
+  assert.match(es.text, /Recibió este correo porque nos dio sus nombres en nuestra página de Amigos y Familia 2027\. ¿No fue usted\? Responda y le quitamos de la lista\./);
   assert.ok(!/\b(You|your|Reply|Hi|Smart|Mark confirms)\b/.test(es.text.replace(/Still Afloat LLC dba Still Afloat Cruising/, "")), "English words in the Spanish email");
 });
 

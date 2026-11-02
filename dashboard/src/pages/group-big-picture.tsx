@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { AlertTriangle, BarChart3, ExternalLink } from "lucide-react";
-import { ANALYTICS_KEY, ANALYTICS_STALE_MS, fetchAnalytics, workspaceHref } from "@/lib/group-api";
+import { ANALYTICS_KEY, ANALYTICS_STALE_MS, fetchAnalytics, groupBookingsHref } from "@/lib/group-api";
 import { DUE_WINDOW_DAYS, LEADS_WINDOW_DAYS, bigPicture, shortDate } from "@/lib/group-workspace";
 import { money } from "./group-workspace-parts";
 
@@ -34,14 +34,12 @@ export function GroupBigPicture() {
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b flex-wrap">
           <div>
             <h3 className="font-semibold">The big picture</h3>
-            <p className="text-xs text-muted-foreground">Every active group at a glance. The workspace is where the detail is.</p>
+            <p className="text-xs text-muted-foreground">Every active group at a glance. The Group Bookings app is where the detail is.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/groups/workspace">
-              <span className="inline-flex items-center gap-1.5 text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground cursor-pointer font-medium"><BarChart3 className="w-4 h-4" /> Open the workspace</span>
-            </Link>
-            <a href={workspaceHref()} target="_blank" rel="noopener noreferrer" title="Open the workspace in a new tab" aria-label="Open the workspace in a new tab"
-              className="inline-flex items-center justify-center h-8 w-8 rounded-md border bg-card text-muted-foreground hover:text-foreground"><ExternalLink className="w-4 h-4" /></a>
+            {/* Mark 2026-10-25: Group Bookings is its own app, opened in its own tab; the dashboard keeps only these highlights */}
+            <a href={groupBookingsHref()} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground font-medium"><BarChart3 className="w-4 h-4" /> Open Group Bookings <ExternalLink className="w-3.5 h-3.5" /></a>
           </div>
         </div>
 

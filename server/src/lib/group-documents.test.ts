@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DOC_SPECS, TEMPLATE_VERSION_DATE, applyAnswers, blocksToText, buildCtx, fillBlocks, getPath, markdownToHtml, packetFor, parseBlocks,
+  DOC_SPECS, TEMPLATE_VERSION_DATE, applyAnswers, splitCityStateZip, blocksToText, buildCtx, fillBlocks, getPath, markdownToHtml, packetFor, parseBlocks,
   prefillValue, publicField, renderDocument, separateGluedHeadings, unescapeConnectorMarkdown,
 } from "./group-documents";
 import { BUSINESS } from "./group-secure";
@@ -81,7 +81,7 @@ test("every client document renders with a full file and with an empty one, with
   for (const ctx of [ctxFor(), ctxFor({}, null), buildCtx({ business: BUSINESS, group: { id: "g2", name: "Bare", fees: {} }, now: NOW })]) {
     for (const key of KEYS.filter((k) => !DOC_SPECS[k]!.requiresFees)) {
       const d = renderDocument(key, ctx);
-      assert.ok(d.text.length > 1500, `${key} is suspiciously short`);
+      assert.ok(d.text.length > (key === "20-about-you" ? 700 : 1500), `${key} is suspiciously short`);
       for (const bad of ["[AGENT NAME", "[AGENT CONTACT", "[INSERT LOGO", "[City, State]", "[list accepted", "\\_", "\\[", "{{", "<!--"]) {
         assert.ok(!d.text.includes(bad), `${key} still contains ${bad}`);
         assert.ok(!d.html.includes(bad), `${key} html still contains ${bad}`);
@@ -240,7 +240,7 @@ test("the traveler form's blanks and boxes become the inputs its spec names, and
     }
   }
   const f15 = renderDocument("15-emergency-contact-form", ctxFor());
-  assert.equal(f15.fields.length, 80);
+  assert.equal(f15.fields.length, 29);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance; 10/30: no passport place of issue, prescriptions or diet
   assert.ok(f15.html.includes('type="date" name="dob"') && f15.html.includes('type="email" name="email"') && f15.html.includes('type="radio" name="gender" value="female"'));
   assert.ok(f15.html.includes('type="checkbox" name="trusted_programs" value="tsa"'), "multi fields are checkboxes");
   assert.ok(f15.html.includes('autocomplete="off"'), "the passport input must not be autofilled or remembered");
@@ -276,9 +276,8 @@ test("the document hash is stable for the same file and moves when anything the 
 
 test("a signed copy merges the answers into the text and marks the chosen boxes", () => {
   const d = renderDocument("07-travel-insurance-declination", ctxFor());
-  const filled = blocksToText(fillBlocks(d, { insurance_choice: "decline", decline_reasons: ["premium"], decline_other: "no thanks" }, NOW));
-  assert.ok(filled.includes("☒ No. I decline travel insurance for this trip."));
-  assert.ok(filled.includes("☐ Yes. Please send me an Allianz travel insurance quote"));
+  const filled = blocksToText(fillBlocks(d, { decline_reasons: ["premium"], decline_other: "no thanks" }, NOW));
+  assert.ok(!filled.includes("YOUR CHOICE") && !filled.includes("Plan chosen"), "Mark 2026-10-30: the choice is made on the page, never on the declination");
   assert.ok(filled.includes("☒ The insurance premium cost is a concern"));
   assert.ok(filled.includes("☐ I have existing coverage"));
   assert.ok(filled.includes("Other: no thanks"));
@@ -288,22 +287,25 @@ test("a signed copy merges the answers into the text and marks the chosen boxes"
 
 // ── who signs what ────────────────────────────────────────────────────────────
 
-test("every traveler gets 15, 01, 05, 07 and 16 in that order; the cabin's lead also 12; the organizer 09", () => {
+test("every traveler gets About you then Your booking, the cabin's lead the card authorization (Mark 2026-10-29); the organizer 09; the Cornerstone set stays renderable but is in no packet", () => {
   const plain = packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[1] });
-  assert.deepEqual(plain, ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist"]);
-  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[0] }), [...plain, "12-cruise-booking-agreement"]);
-  assert.deepEqual(packetFor({ group: GROUP, cabin: null, traveler: TRAVELERS[0] }), plain, "a lead with no cabin has no cabin agreement to sign");
+  assert.deepEqual(plain, ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"]);
+  assert.deepEqual(packetFor({ group: GROUP, cabin: CABINS[0], traveler: TRAVELERS[0] }), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "12-cruise-booking-agreement", "05-liability-waiver", "22-card-authorization"], "the cabin's lead also signs the booking agreement (before the waiver) and authorizes the card (last)");
+  assert.deepEqual(packetFor({ group: GROUP, cabin: null, traveler: TRAVELERS[0] }), plain, "a lead with no cabin has nothing to pay for yet");
   assert.deepEqual(packetFor({ group: GROUP, organizer: true }), ["09-group-travel-contract"]);
+  for (const key of ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist", "12-cruise-booking-agreement"]) {
+    assert.ok(renderDocument(key, ctxFor()).html.includes("<"), `${key} still renders (signed copies from before 10/29 and Mark's way back)`);
+  }
 });
 
-test("documents 02 and 03 are in a packet only when the file carries a fee; 04, 06, 13 and 14 are in no packet", () => {
+test("documents 02 and 03 are in a packet only when the file carries a fee, after About you; 04, 06, 13, 14 and the Cornerstone set are in no packet", () => {
   const withFees = packetFor({ group: { ...GROUP, fees: { planning_fee: 100 } }, cabin: CABINS[0], traveler: TRAVELERS[0] });
-  assert.deepEqual(withFees.slice(0, 5), ["15-emergency-contact-form", "01-terms-and-conditions", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "05-liability-waiver"]);
-  assert.equal(packetFor({ group: { ...GROUP, fees: { planning_fee: 0, x: "free" } }, traveler: TRAVELERS[1] }).length, 5, "a zero or non-numeric fee is not a fee");
+  assert.deepEqual(withFees, ["15-emergency-contact-form", "01-terms-and-conditions", "02-travel-planning-agreement", "03-service-fee-planning-fee-agreement", "07-travel-insurance-declination", "12-cruise-booking-agreement", "05-liability-waiver", "22-card-authorization"]);
+  assert.equal(packetFor({ group: { ...GROUP, fees: { planning_fee: 0, x: "free" } }, traveler: TRAVELERS[1] }).length, 4, "a zero or non-numeric fee is not a fee");
   for (const g of [GROUP, { ...GROUP, fees: { planning_fee: 100 } }]) {
     for (const t of [TRAVELERS[0], TRAVELERS[1]]) {
       const keys = [...packetFor({ group: g, cabin: CABINS[0], traveler: t }), ...packetFor({ group: g, organizer: true })];
-      for (const out of ["04-cancellation-policy", "06-credit-card-authorization", "13-new-client-questionnaire", "14-travel-preferences-survey"]) assert.ok(!keys.includes(out), `${out} must be in no packet`);
+      for (const out of ["04-cancellation-policy", "06-credit-card-authorization", "13-new-client-questionnaire", "14-travel-preferences-survey", "20-about-you", "21-your-booking"]) assert.ok(!keys.includes(out), `${out} must be in no packet`);
     }
   }
   assert.ok(DOC_SPECS["09-group-travel-contract"]!.agentCountersign, "09 flags the agent countersignature that is still to build");
@@ -314,8 +316,8 @@ test("documents 02 and 03 are in a packet only when the file carries a fee; 04, 
 const GOOD_15 = {
   legal_name: "Jane Quincy Public", dob: "1960-05-04", gender: "female", us_citizen: "yes", address: "1 Main St", city_state_zip: "Raleigh, NC 27601",
   phone: "(919) 555-0100", email: "jane@example.com", passport_number: "a1234-5678", passport_country: "United States", passport_expiry: "2031-02-03",
-  passport_issue: "2021-02-04", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199", ec2_name: "Lee Public", ec2_relationship: "Daughter", ec2_home_phone: "919-555-0188",
-  trusted_programs: ["tsa"], ktn: "TT1234567", mobility: "yes", mobility_text: "walks with a cane", loyalty_1_program: "Delta", loyalty_1_number: "123456", ec1_poa: "no", notes: "Window seat please.",
+  passport_issue: "2021-02-04", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
+  trusted_programs: ["tsa"], ktn: "TT1234567", loyalty_1_program: "Delta", loyalty_1_number: "123456", notes: "Window seat please.",
 };
 const doc15 = () => renderDocument("15-emergency-contact-form", ctxFor());
 
@@ -329,18 +331,26 @@ test("form 15 answers are checked, filed into columns and form_data, and the pas
   assert.equal(JSON.stringify(r.travelerPatch).includes("A1234"), false);
   assert.deepEqual(
     { dob: r.travelerPatch["dob"], gender: r.travelerPatch["gender"], phone: r.travelerPatch["phone"], email: r.travelerPatch["email"], passport_country: r.travelerPatch["passport_country"], passport_expiry: r.travelerPatch["passport_expiry"], passport_last4: r.travelerPatch["passport_last4"], emergency_name: r.travelerPatch["emergency_name"], emergency_phone: r.travelerPatch["emergency_phone"], citizenship: r.travelerPatch["citizenship"], special_needs: r.travelerPatch["special_needs"] },
-    { dob: "1960-05-04", gender: "Female", phone: "(919) 555-0100", email: "jane@example.com", passport_country: "United States", passport_expiry: "2031-02-03", passport_last4: "5678", emergency_name: "Sam Public", emergency_phone: "919-555-0199", citizenship: "United States", special_needs: "Mobility / accessibility: walks with a cane" },
+    { dob: "1960-05-04", gender: "Female", phone: "(919) 555-0100", email: "jane@example.com", passport_country: "United States", passport_expiry: "2031-02-03", passport_last4: "5678", emergency_name: "Sam Public", emergency_phone: "919-555-0199", citizenship: "United States", special_needs: undefined },
   );
   assert.equal(getPath(r.formData, "emergency.primary.relationship"), "Son");
-  assert.equal(getPath(r.formData, "emergency.secondary.home_phone"), "919-555-0188");
+  assert.equal(getPath(r.formData, "emergency.primary.cell_phone"), "919-555-0199");
   assert.deepEqual(getPath(r.formData, "trusted.programs"), ["tsa"]);
   assert.equal(getPath(r.formData, "loyalty.1.program"), "Delta");
   assert.equal(getPath(r.formData, "passport.issue_date"), "2021-02-04");
   assert.equal(getPath(r.formData, "legal_name"), "Jane Quincy Public");
   assert.equal(getPath(r.formData, "address"), "1 Main St");
+  assert.equal(getPath(r.formData, "city_state_zip"), "Raleigh, NC 27601");
+  assert.deepEqual(getPath(r.formData, "city_state_zip_parts"), { city: "Raleigh", state: "NC", zip: "27601" }, "city, state and ZIP are kept apart too");
   assert.equal(getPath(r.formData, "passport_number"), undefined);
   assert.equal("passport_enc" in r.travelerPatch, false);
   assert.equal("first_name" in r.travelerPatch, false, "the file's name columns are only filled from the form when they are empty");
+});
+
+test("a city line splits into city, state and ZIP only when it is whole", () => {
+  assert.deepEqual(splitCityStateZip("Fuquay  Varina, NC 27526-1234"), { city: "Fuquay Varina", state: "NC", zip: "27526" });
+  assert.equal(splitCityStateZip("Cary, NC"), null);
+  assert.equal(splitCityStateZip("27526"), null);
 });
 
 test("the file's name columns are filled from the legal name only when they are empty", () => {
@@ -362,8 +372,8 @@ test("required answers, dates, phone and email are checked with a plain message 
   const none = applyAnswers(doc15(), {}, ctxFor());
   assert.equal(none.ok, false);
   if (none.ok) return;
-  for (const k of ["legal_name", "dob", "gender", "us_citizen", "address", "city_state_zip", "phone", "email", "ec1_name", "ec1_relationship", "ec2_name", "ec2_relationship", "ec1_cell_phone", "ec2_cell_phone"]) assert.ok(none.errors[k], `${k} should be required`);
-  for (const k of ["passport_number", "passport_country", "passport_expiry", "notes", "blood_type"]) assert.equal(none.errors[k], undefined, `${k} is optional until a passport number is given`);
+  for (const k of ["legal_name", "dob", "gender", "us_citizen", "address", "city_state_zip", "phone", "email", "ec1_name", "ec1_relationship", "ec1_cell_phone"]) assert.ok(none.errors[k], `${k} should be required`);
+  for (const k of ["passport_number", "passport_country", "passport_expiry", "notes", "ec1_email", "ec1_address"]) assert.equal(none.errors[k], undefined, `${k} is optional until a passport number is given`);
 });
 
 test("a passport number needs its country and expiry, must look like a passport, and a US non-citizen must say their citizenship", () => {
@@ -400,20 +410,25 @@ test("a card number is refused in any text answer, unknown answers are dropped, 
   assert.equal(nonObject.ok, true, "a document with no inputs needs no answers");
 });
 
-test("each emergency contact needs at least one phone", () => {
-  const { ec2_home_phone: _h, ...noPhone } = GOOD_15;
+test("form 15 asks for one emergency contact by cell phone, and nothing medical, no insurance, prescriptions or diet (Mark 2026-10-26)", () => {
+  const { ec1_cell_phone: _c, ...noPhone } = GOOD_15;
   const r = applyAnswers(doc15(), noPhone, ctxFor());
-  assert.equal(!r.ok && r.errors["ec2_cell_phone"], "Please give at least one phone number for your second emergency contact.");
+  assert.ok(!r.ok && r.errors["ec1_cell_phone"], "the contact's cell phone is required");
+  const d = doc15();
+  for (const gone of ["Secondary Emergency Contact", "Home Phone", "Work Phone", "power of attorney", "MEDICAL INFORMATION", "Blood Type", "HEALTH INSURANCE",
+    "TRAVEL INSURANCE", "PRESCRIPTION", "EpiPen", "medical alert", "DIETARY", "at least two individuals"]) assert.ok(!d.text.includes(gone), `"${gone}" is no longer asked`);
+  assert.ok(d.text.includes("Do you belong to any Loyalty Programs?") && !d.text.includes("FREQUENT FLYER"));
+  assert.ok(d.text.includes("Please list one person who can be reached") && d.text.includes("ADDITIONAL NOTES"));
+  assert.deepEqual(d.fields.filter((f) => f.name.startsWith("ec")).map((f) => f.name), ["ec1_name", "ec1_relationship", "ec1_cell_phone", "ec1_email", "ec1_address", "ec1_city_state_zip"]);
 });
 
-test("the insurance choice is required, a quote or a declination; the waiver's health box must be ticked", () => {
+test("the declination asks nothing but Cornerstone's optional reasons (the choice lives on the file, Mark 2026-10-30); the waiver's health box must be ticked", () => {
   const ins = renderDocument("07-travel-insurance-declination", ctxFor());
-  assert.equal(applyAnswers(ins, {}, ctxFor()).ok, false);
-  const q = applyAnswers(ins, { insurance_choice: "quote" }, ctxFor());
-  assert.equal(q.ok && getPath(q.formData, "insurance.choice"), "quote");
-  assert.equal(applyAnswers(ins, { insurance_choice: "maybe" }, ctxFor()).ok, false);
+  assert.equal(applyAnswers(ins, {}, ctxFor()).ok, true, "a declination with no reason given is still a declination");
+  assert.equal(applyAnswers(ins, { decline_reasons: ["maybe"] }, ctxFor()).ok, false);
   const d = applyAnswers(ins, { insurance_choice: "decline", decline_reasons: ["premium", "other"], decline_other: "tight budget" }, ctxFor());
   assert.equal(d.ok && getPath(d.formData, "insurance.other_reason"), "tight budget");
+  assert.equal(d.ok && d.answers["insurance_choice"], undefined, "a stray choice in the answers is dropped: it is not this document's line");
   const waiver = renderDocument("05-liability-waiver", ctxFor());
   assert.equal(applyAnswers(waiver, {}, ctxFor()).ok, false);
   assert.equal(applyAnswers(waiver, { health_ack: true }, ctxFor()).ok, true);
@@ -433,16 +448,32 @@ test("the organizer's contract asks for an address, phone and email, and offers 
 });
 
 test("the page gets each field without functions or secrets, pre-filled from the file, and never a passport number", () => {
-  const ctx = ctxFor({}, { ...TRAVELERS[1]!, form_data: { passport: { place_of_issue: "Raleigh" }, trusted: { programs: ["global"] } }, passport_country: "United States" });
+  const ctx = ctxFor({}, { ...TRAVELERS[1]!, form_data: { passport: { place_of_issue: "Raleigh" }, trusted: { programs: ["global"] } }, passport_country: "United States" }); // the place of issue on an older file is simply not asked any more (Mark 2026-10-30)
   const fields = renderDocument("15-emergency-contact-form", ctx).fields.map((f) => publicField(f, ctx));
   const by = Object.fromEntries(fields.map((f) => [f.name as string, f]));
   assert.equal(by["dob"]!.value, "1958-01-09");
   assert.equal(by["legal_name"]!.value, "John Q Public");
   assert.equal(by["passport_country"]!.value, "United States");
-  assert.equal(by["passport_place"]!.value, "Raleigh");
+  assert.equal(by["passport_place"], undefined, "no passport place-of-issue line (Mark 2026-10-30)");
   assert.deepEqual(by["trusted_programs"]!.value, ["global"]);
   assert.equal(by["passport_number"]!.value, null);
   assert.equal(by["passport_number"]!.kind, "passport");
   assert.ok(!JSON.stringify(fields).includes("X99887766") && !JSON.stringify(fields).includes("SECRETCIPHER") && !JSON.stringify(fields).includes("4321"));
   for (const f of fields) for (const v of Object.values(f)) assert.notEqual(typeof v, "function");
+});
+
+test("the waiver's health tick is made on the document's own signing screen, under Cornerstone's Health Declaration in its words (Mark 2026-10-30)", () => {
+  const ctx = ctxFor();
+  const d = renderDocument("05-liability-waiver", ctx);
+  const tick = d.fields.find((f) => f.name === "health_ack")!;
+  assert.ok(tick.onDocument, "the tick is a sign-stage line");
+  assert.equal(tick.onDocument!.heading, "Health declaration");
+  assert.ok(d.text.includes(tick.onDocument!.text), "the words shown with the tick are the document's own");
+  assert.ok(d.text.includes(tick.label), "the tick's label is the document's own line");
+  const pub = publicField(tick, ctx);
+  assert.deepEqual(pub["on_document"], tick.onDocument);
+  assert.equal(pub["required"], true);
+  // a follow-up line the document requires once its choice is made reaches the page as "shown"
+  const citizenship = renderDocument("15-emergency-contact-form", ctx).fields.find((f) => f.name === "citizenship")!;
+  assert.equal(publicField(citizenship, ctx)["required"], "shown");
 });

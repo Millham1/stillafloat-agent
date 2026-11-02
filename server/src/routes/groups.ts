@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
+import { fillItineraryVisas } from "../lib/visa-fill";
 import {
   CHILDREN,
   BEFORE_SAILING_DATES,
@@ -161,6 +162,8 @@ router.patch("/groups/:id", requireToken, async (req: Request, res: Response) =>
       .maybeSingle();
     if (error) return res.status(400).json({ success: false, error: error.message });
     if (!data) return res.status(404).json({ success: false, error: "Group not found" });
+    // Mark 2026-10-31: a new port on the itinerary → the visa table asks for that destination only, now (lib/visa-fill.ts)
+    if ("itinerary" in picked.row || "embark_port" in picked.row) void fillItineraryVisas(data);
     return res.json({ success: true, group: publicGroupRow(data) });
   } catch (err) {
     return fail(req, res, err, "group update failed");

@@ -25,6 +25,7 @@ export interface LookupDeps { fetch?: typeof fetch; env?: Record<string, string 
 
 const TOKEN_URL = "https://apis.usps.com/oauth2/v3/token";
 const ADDRESS_URL = "https://apis.usps.com/addresses/v3/address";
+const CITY_STATE_URL = "https://apis.usps.com/addresses/v3/city-state";
 const TIMEOUT_MS = 6000;
 const CACHE_MS = 60 * 60 * 1000;
 const CACHE_MAX = 500;
@@ -69,9 +70,12 @@ const SECONDARY = /^(.*?\S)\s+((?:apt|apartment|unit|ste|suite|bldg|building|fl|
 let tokenCache: { token: string; expiresAt: number } | null = null;
 const results = new Map<string, { at: number; result: LookupResult }>();
 let hour = { start: 0, calls: 0 };
+let why: string | null = null;
+/** Why the last answer was "not available" ("no credentials", "token 401", a timeout …): never the address. The test site shows it (routes/address.ts). */
+export function addressLookupWhy(): string | null { return why; }
 
 /** Forget the cached token, the cached answers and the hourly count (the tests start every case clean). */
-export function resetAddressLookupState(): void { tokenCache = null; results.clear(); hour = { start: 0, calls: 0 }; }
+export function resetAddressLookupState(): void { tokenCache = null; results.clear(); hour = { start: 0, calls: 0 }; why = null; }
 
 async function getToken(env: Record<string, string | undefined>, f: typeof fetch, now: number): Promise<string | null> {
   if (tokenCache && tokenCache.expiresAt > now + 60_000) return tokenCache.token;
@@ -118,6 +122,25 @@ async function askUsps(raw: Raw, env: Record<string, string | undefined>, f: typ
   throw new Error("address unauthorised");
 }
 
+/** Mark 2026-10-26 ("the street and the ZIP"): the state a ZIP belongs to, from the post office's own ZIP table. null = no such ZIP. */
+async function askZip(zip: string, env: Record<string, string | undefined>, f: typeof fetch, now: number): Promise<{ city: string; state: string } | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const token = await getToken(env, f, now);
+    if (!token) throw new Error("no credentials");
+    const u = new URL(CITY_STATE_URL);
+    u.searchParams.set("ZIPCode", zip);
+    const res = await f(u.toString(), { headers: { authorization: `Bearer ${token}`, accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (res.status === 401 || res.status === 403) { tokenCache = null; continue; }
+    if (res.status === 400 || res.status === 404) return null;
+    if (!res.ok) throw new Error(`city-state ${res.status}`);
+    const j = (await res.json()) as Record<string, unknown>;
+    const state = typeof j["state"] === "string" ? j["state"].trim().toUpperCase() : "";
+    const city = typeof j["city"] === "string" ? j["city"].trim() : "";
+    return US_STATES.has(state) ? { city, state } : null;
+  }
+  throw new Error("city-state unauthorised");
+}
+
 /**
  * Ask the post office about what the guest has typed. Never throws; never logs the address.
  * `deps` are the seams for the tests (a stubbed fetch, a chosen environment and clock); production passes nothing.
@@ -126,7 +149,8 @@ export async function lookupAddress(input: LookupInput, deps: LookupDeps = {}): 
   const env = deps.env ?? (process.env as Record<string, string | undefined>);
   const f = deps.fetch ?? fetch;
   const now = (deps.now ?? Date.now)();
-  if (!env["USPS_CLIENT_ID"] || !env["USPS_CLIENT_SECRET"]) return { available: false };
+  why = null;
+  if (!env["USPS_CLIENT_ID"] || !env["USPS_CLIENT_SECRET"]) { why = `no credentials (USPS_CLIENT_ID ${env["USPS_CLIENT_ID"] ? "set" : "missing"}, USPS_CLIENT_SECRET ${env["USPS_CLIENT_SECRET"] ? "set" : "missing"})`; return { available: false }; }
 
   // What was typed: the street box may hold the whole line ("123 Main St, Raleigh, NC 27601"); the other boxes win when they are filled in.
   const q = typeof input.q === "string" ? input.q.slice(0, 200) : "";
@@ -135,12 +159,13 @@ export async function lookupAddress(input: LookupInput, deps: LookupDeps = {}): 
   const city = (input.city ?? "").trim().slice(0, 60) || one.city || "";
   const zipText = (input.zip ?? "").trim() || one.zip || "";
   const zip = /^\d{5}(-\d{4})?$/.test(zipText) ? zipText.slice(0, 5) : "";
-  const state = US_STATES.has(stateIn) ? stateIn : "";
+  let state = US_STATES.has(stateIn) ? stateIn : "";
   let street = one.street.trim();
   let secondary: string | undefined;
   const sec = SECONDARY.exec(street);
   if (sec) { street = sec[1]!; secondary = sec[2]!.trim(); }
-  if (street.length < 5 || !state || (!city && !zip)) return { available: true, suggestions: [], incomplete: true };
+  // A street and a ZIP are enough (Mark 2026-10-26): the ZIP's own state is asked for first.
+  if (street.length < 5 || (!state && !zip) || (!city && !zip)) return { available: true, suggestions: [], incomplete: true };
 
   const key = JSON.stringify([street, secondary ?? "", city, state, zip].map((x) => x.toLowerCase()));
   const hit = results.get(key);
@@ -148,10 +173,15 @@ export async function lookupAddress(input: LookupInput, deps: LookupDeps = {}): 
 
   const cap = Math.max(1, Number(env["USPS_HOURLY_CAP"]) || DEFAULT_HOURLY_CAP);
   if (now - hour.start > 60 * 60 * 1000) hour = { start: now, calls: 0 };
-  if (hour.calls >= cap) return { available: false };
+  if (hour.calls >= cap) { why = `over the hourly allowance (${cap})`; return { available: false }; }
   hour.calls++;
 
   try {
+    if (!state) {
+      const z = await askZip(zip, env, f, now);
+      if (!z) { const none: LookupResult = { available: true, suggestions: [] }; results.set(key, { at: now, result: none }); return none; }
+      state = z.state;
+    }
     const found = await askUsps({ street, ...(secondary ? { secondary } : {}), ...(city ? { city } : {}), state, ...(zip ? { zip } : {}) }, env, f, now);
     const result: LookupResult = { available: true, suggestions: found ? [found] : [] };
     if (results.size >= CACHE_MAX) results.delete(results.keys().next().value as string);
@@ -159,7 +189,8 @@ export async function lookupAddress(input: LookupInput, deps: LookupDeps = {}): 
     return result;
   } catch (err) {
     // The reason, never the address: "token 401", "address 429", "no credentials", a timeout.
-    logger.warn({ reason: err instanceof Error ? err.message : String(err) }, "address lookup unavailable (the page takes the address as typed)");
+    why = err instanceof Error ? err.message : String(err);
+    logger.warn({ reason: why }, "address lookup unavailable (the page takes the address as typed)");
     return { available: false };
   }
 }

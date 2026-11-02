@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { guestGroupName } from "../lib/group-marketing";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { getSupabase } from "../lib/persistence";
@@ -10,11 +11,12 @@ import { createAction } from "../lib/actions";
 import { resolvePublicDir } from "../lib/public-dir";
 import { BUSINESS } from "../lib/group-secure";
 import { renderSignedPdf } from "../lib/group-signature-pdf";
+import { sealerFromEnv, type Sealer } from "../lib/group-pdf-seal";
 import { DOC_SPECS } from "../lib/group-documents";
-import {
-  TRAVELER_COLS, formUrl, getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument,
-  type FormsDeps, type FormsStore,
-} from "../lib/group-forms";
+import { advisoriesForGroup } from "../lib/travel-advisories";
+import { SIGNER_COLS, TRAVELER_COLS, cardOf, chooseCardholder, chooseInsurance, formUrl, getChecklistPdf, getCopies, getCopyPdf, getPacket, giveConsent, insuranceStatus, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, previewDocument, documentPdf, requestInsuranceQuote, sendCardLink, sendChecklist, signDocument, type FormsDeps, type FormsStore } from "../lib/group-forms";
+import { entryRequirementsForGroup } from "../lib/entry-requirements";
+import { supabaseVisaStore } from "../lib/visa-requirements";
 
 // Client paperwork (migrations 0044 and 0052).
 //
@@ -28,6 +30,9 @@ import {
 // Public (the link's token is the credential; there is no other login):
 //   GET    /api/forms/:token                               the packet: documents, their inputs, what is signed
 //   POST   /api/forms/:token/sign                          { doc_key, answers, signer_name, agreed, content_sha256, newsletter_opt_in, website }
+//   POST   /api/forms/:token/insurance/choice              { insurance_choice, insurance_plan }: the choice after the video and the price (Mark 2026-10-30)
+//   POST   /api/forms/:token/card                          { cardholder, card_name, card_email }: whose card; someone else's gets a link of their own
+//   POST   /api/groups/:id/travelers/:tid/card-link/send   the card owner's link again (dashboard)
 //
 // Environment: GROUP_PII_KEY (64 hex characters; without it no passport number is taken), PUBLIC_URL (the site the
 // emailed link points at), and on the DEV box GROUP_FORMS_MAIL_ALLOW = a comma list of test addresses or "@domain"
@@ -58,12 +63,12 @@ const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 export const store: FormsStore = {
   async travelerByTokenHash(hash) {
-    const { data, error } = await db().from("group_travelers").select(TRAVELER_COLS).eq("form_token_hash", hash).maybeSingle();
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("form_token_hash", hash).maybeSingle();
     if (error) throw new Error(error.message);
     if (data) return data;
     // The traveler's cruise-page link (migration 0053) opens this page too: one link, one person, both pages. A box that
     // has not applied 0053 yet has no such column; the paperwork link must keep working there, so that error is not fatal.
-    const hub = await db().from("group_travelers").select(TRAVELER_COLS).eq("hub_token_hash", hash).maybeSingle();
+    const hub = await db().from("group_travelers").select(SIGNER_COLS).eq("hub_token_hash", hash).maybeSingle();
     if (hub.error) return null;
     return hub.data ?? null;
   },
@@ -88,7 +93,7 @@ export const store: FormsStore = {
     return data ?? [];
   },
   async signaturesFor({ groupId, travelerId }) {
-    let q = db().from("group_signatures").select("id, doc_key, signer_role, signer_name, signed_at, traveler_id, pdf_path");
+    let q = db().from("group_signatures").select("id, doc_key, signer_role, signer_name, signed_at, traveler_id, pdf_path, sealed");
     q = travelerId ? q.eq("traveler_id", travelerId) : q.eq("group_id", groupId).eq("signer_role", "organizer").is("traveler_id", null);
     const { data, error } = await q;
     if (error) throw new Error(error.message);
@@ -114,9 +119,51 @@ export const store: FormsStore = {
     const { error } = await db().storage.from(BUCKET).upload(p, bytes, { contentType: "application/pdf", upsert: false });
     if (error) throw new Error(error.message);
   },
-  async setSignaturePdf(id, p) {
-    const { error } = await db().from("group_signatures").update({ pdf_path: p }).eq("id", id);
+  async downloadPdf(p) {
+    const { data, error } = await db().storage.from(BUCKET).download(p);
+    if (error || !data) return null;
+    return Buffer.from(await data.arrayBuffer());
+  },
+  async setSignaturePdf(id, p, meta) {
+    const { error } = await db().from("group_signatures").update({ pdf_path: p, ...(meta ? { sealed: meta.sealed, seal_fingerprint: meta.seal_fingerprint } : {}) }).eq("id", id);
     if (error) throw new Error(error.message);
+  },
+  // Mark 2026-10-25, signature evidence (migration 0058)
+  async updateGroup(id, patch) {
+    const { error } = await db().from("groups").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+  },
+  async logMessage(row) {
+    const { error } = await db().from("group_messages").insert(row);
+    if (error) throw new Error(error.message);
+  },
+  async travelerByCopiesHash(hash) {
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("copies_token_hash", hash).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+  async groupByOrganizerCopiesHash(hash) {
+    const { data, error } = await db().from("groups").select("*").eq("organizer_copies_token_hash", hash).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+  // Mark 2026-10-30: the card owner's own link and copies link live on the lead traveler's row (migration 0062). A box that has
+  // not applied 0062 has no such columns; the traveler's link must keep working there, so that error is not fatal.
+  async travelerByCardTokenHash(hash) {
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("card_token_hash", hash).maybeSingle();
+    if (error) return null;
+    return data ?? null;
+  },
+  async travelerByCardCopiesHash(hash) {
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("card_copies_token_hash", hash).maybeSingle();
+    if (error) return null;
+    return data ?? null;
+  },
+  // Mark 2026-10-31: the passport checklist's own link (migration 0063); a box without the column answers "not valid", nothing worse
+  async travelerByChecklistHash(hash) {
+    const { data, error } = await db().from("group_travelers").select(SIGNER_COLS).eq("checklist_token_hash", hash).maybeSingle();
+    if (error) return null;
+    return data ?? null;
   },
   async upsertProspect(row) {
     const found = await db().from("prospects").select("id").ilike("email", likeEscape(String(row["email"]))).limit(1).maybeSingle();
@@ -138,6 +185,15 @@ function logoBytes(): Buffer | null {
   return logo;
 }
 
+/** The sealing certificate, read from the env once; a bad P12 is logged once and sealing is off. */
+let sealerOnce: Sealer | null | undefined;
+function sealer(): Sealer | null {
+  if (sealerOnce !== undefined) return sealerOnce;
+  try { sealerOnce = sealerFromEnv(); if (!sealerOnce) logger.warn("paperwork: GROUP_SIGN_P12_B64 unset; signed copies are saved unsealed"); }
+  catch (err) { logger.error({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the sealing certificate could not be read; signed copies are saved unsealed"); sealerOnce = null; }
+  return sealerOnce;
+}
+
 function deps(): FormsDeps {
   return {
     store,
@@ -154,6 +210,22 @@ function deps(): FormsDeps {
       buttons: [{ label: "Open the group file", href: `/groups/${n.groupId}` }],
     }).then(() => undefined),
     warn: (obj, msg) => logger.warn(obj, msg),
+    seal: sealer(),
+    // The signer's copies: the box's test-address rule applies to this email as to every paperwork email.
+    mail: async (m) => {
+      if (!mailAllowed(m.to, process.env["GROUP_FORMS_MAIL_ALLOW"])) { logger.warn({ to: m.to }, "paperwork copies: this box only emails its test addresses"); return false; }
+      return sendMail({ ...m, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
+    },
+    publicSite: publicSite(),
+    // Mark 2026-10-30: the advisory level per port, from the State Department; the insurance step's video and background quote.
+    // Mark 2026-10-31: with it, each itinerary country's visa and vaccination requirements, for the passport checklist.
+    advisories: (g) => advisoriesForGroup(g),
+    entry: (g) => entryRequirementsForGroup(g, fetch, Date.now(), () => supabaseVisaStore().all("US")),
+    insurance: {
+      videoUrl: process.env["GROUP_INSURANCE_VIDEO_URL"] || null,
+      chromePath: process.env["CHROME_PATH"], user: process.env["ALLIANZ_AGENT_USER"], password: process.env["ALLIANZ_AGENT_PASSWORD"],
+      quoteNeeded: (n) => createAction({ type: "group-insurance-quote", source_ref: n.travelerId, title: n.title, body: n.body, priority: "lead", buttons: [{ label: "Open the group file", href: `/groups/${n.groupId}` }] }).then(() => undefined),
+    },
   };
 }
 
@@ -172,6 +244,7 @@ function limiter(max: number) {
 }
 const signLimited = limiter(20);   // signing attempts per address per hour
 const missLimited = limiter(40);   // wrong links per address per hour: a guess is never worth trying
+const previewLimited = limiter(300); // filled-in PDFs shown per address per hour (one per document screen and review)
 
 function privateHeaders(res: Response) {
   res.setHeader("Cache-Control", "no-store");
@@ -214,10 +287,170 @@ router.post("/forms/:token/sign", async (req: Request, res: Response) => {
   }
 });
 
+// Mark 2026-10-28: each document is shown as its clean printed form, filled in with what the client has typed. Nothing is saved.
+router.post("/forms/:token/preview", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (previewLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const body = (req.body ?? {}) as Row;
+    if (typeof body["website"] === "string" && body["website"]) return res.status(204).end(); // honeypot
+    if (JSON.stringify(body).length > 120_000) return res.status(413).json({ success: false, error: "That is too much text for one form." });
+    const out = await previewDocument(deps(), req.params["token"], body);
+    if ("bytes" in out) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${out.key.replace(/[^\w.-]/g, "_")}.pdf"`);
+      // Mark 2026-10-31: where the client's own boxes and signature line sit, so the page lays its tick and name box right there
+      res.setHeader("X-Doc-Marks", JSON.stringify(out.marks.map((m) => ({ ...m, x: Math.round(m.x * 100) / 100, y: Math.round(m.y * 100) / 100, w: Math.round(m.w * 100) / 100, h: Math.round(m.h * 100) / 100, ...("right" in m ? { right: Math.round(m.right * 100) / 100 } : {}) }))));
+      return res.status(200).send(Buffer.from(out.bytes));
+    }
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork preview failed");
+  }
+});
+
+// One document as its clean printed form (to read, print or save): as signed, or with what the file holds.
+router.get("/forms/:token/document/:key", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (previewLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const out = await documentPdf(deps(), req.params["token"], req.params["key"]);
+    if ("bytes" in out) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${out.key.replace(/[^\w.-]/g, "_")}.pdf"`);
+      return res.status(200).send(Buffer.from(out.bytes));
+    }
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork document failed");
+  }
+});
+
+// Mark 2026-10-25: the one-time consent to electronic records, before the first signature.
+router.post("/forms/:token/consent", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (signLimited(ip)) return res.status(429).json({ success: false, error: `Too many attempts. Please try again later, or email ${BUSINESS.email}.` });
+    const body = (req.body ?? {}) as Row;
+    if (typeof body["website"] === "string" && body["website"]) return res.json({ success: true }); // honeypot
+    const out = await giveConsent(deps(), req.params["token"], { agreed: body["agreed"] }, { ip, ua: String(req.headers["user-agent"] ?? "") });
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork consent failed");
+  }
+});
+
+// Mark 2026-10-30: the insurance step. The quote starts in the background when the information page is submitted; the page polls.
+router.post("/forms/:token/insurance/quote", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (signLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const out = await requestInsuranceQuote(deps(), req.params["token"]);
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "insurance quote request failed");
+  }
+});
+// Mark 2026-10-30: "the quotes should show up right after viewing the insurance video and they make a decision there": the choice
+// is kept on the file and decides the insurance document that follows (23 the plan, or 07 the declination).
+router.post("/forms/:token/insurance/choice", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (signLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const body = (req.body ?? {}) as Row;
+    if (typeof body["website"] === "string" && body["website"]) return res.json({ success: true }); // honeypot
+    const out = await chooseInsurance(deps(), req.params["token"], { insurance_choice: body["insurance_choice"], insurance_plan: body["insurance_plan"] });
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "insurance choice failed");
+  }
+});
+// Mark 2026-10-30: whose card pays. Someone else's: the owner, named with an email, gets a link of their own to fill in and sign the
+// authorization; the lead's packet then has no card authorization in it.
+router.post("/forms/:token/card", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (signLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const body = (req.body ?? {}) as Row;
+    if (typeof body["website"] === "string" && body["website"]) return res.json({ success: true }); // honeypot
+    const out = await chooseCardholder(deps(), req.params["token"], { cardholder: body["cardholder"], card_name: body["card_name"], card_email: body["card_email"] });
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "cardholder choice failed");
+  }
+});
+router.get("/forms/:token/insurance", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const out = await insuranceStatus(deps(), req.params["token"]);
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "insurance status failed");
+  }
+});
+
+// Mark 2026-10-31: the passport and travel document checklist, prepared from the file, on the link from its own email.
+router.get("/forms/checklist/:token", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const ip = clientIp(req);
+    if (previewLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please try again later." });
+    const out = await getChecklistPdf(deps(), req.params["token"]);
+    if ("bytes" in out) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${out.filename}"`);
+      return res.status(200).send(Buffer.from(out.bytes));
+    }
+    if (out.status === 404 && missLimited(ip)) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email, or ask us for a new one." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork checklist failed");
+  }
+});
+
+// Mark 2026-10-25: the signer's own copies, on the long-lived link from the "your signed paperwork" email.
+router.get("/forms/copies/:token", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const out = await getCopies(deps(), req.params["token"]);
+    if (out.status === 404 && missLimited(clientIp(req))) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork copies failed");
+  }
+});
+
+router.get("/forms/copies/:token/:sid", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const out = await getCopyPdf(deps(), req.params["token"], req.params["sid"]);
+    if ("bytes" in out) {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${out.filename.replace(/[^\w.-]/g, "_")}"`);
+      return res.status(200).send(out.bytes);
+    }
+    if (out.status === 404 && missLimited(clientIp(req))) return res.status(429).json({ success: false, error: "Too many attempts. Please use the link from your email." });
+    return res.status(out.status).json(out.json);
+  } catch (err) {
+    return fail(req, res, err, "paperwork copy download failed");
+  }
+});
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 async function travelerInGroup(groupId: string, tid: string): Promise<Row | null> {
-  const { data, error } = await db().from("group_travelers").select("id, group_id, cabin_id, first_name, last_name, email, lang, form_token_hash, form_sent_at").eq("id", tid).eq("group_id", groupId).maybeSingle();
+  const { data, error } = await db().from("group_travelers").select("id, group_id, cabin_id, is_lead, first_name, middle_name, last_name, email, lang, form_token_hash, form_sent_at, form_data, card_link_sent_at").eq("id", tid).eq("group_id", groupId).maybeSingle();
   if (error) throw new Error(error.message);
   return data ?? null;
 }
@@ -252,7 +485,7 @@ router.post("/groups/:id/travelers/:tid/form-link/send", requireToken, async (re
     const { token, hash } = issueToken();
     // The new link is stored first so it works the moment the email arrives; a failed send puts the old one back.
     await store.updateTraveler(t.id, { form_token_hash: hash, form_sent_at: new Date().toISOString() });
-    const mail = linkEmail({ firstName: String(t.first_name ?? ""), groupName: String(group.name ?? ""), ship: group.ship_name ?? null, sailDate: group.sail_date ?? null, url: formUrl(publicSite(), token) });
+    const mail = linkEmail({ firstName: String(t.first_name ?? ""), groupName: guestGroupName(group), ship: group.ship_name ?? null, sailDate: group.sail_date ?? null, url: formUrl(publicSite(), token) });
     const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
     // The email log keeps who and when, never the link.
     await db().from("group_messages").insert({
@@ -267,6 +500,44 @@ router.post("/groups/:id/travelers/:tid/form-link/send", requireToken, async (re
     return res.json({ success: true, sentTo: to });
   } catch (err) {
     return fail(req, res, err, "paperwork link email failed");
+  }
+});
+
+// Mark 2026-10-30: the card owner's link, sent again from the group file (a new link; the old one stops working).
+router.post("/groups/:id/travelers/:tid/card-link/send", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    const t = await travelerInGroup(groupId, String(req.params["tid"]));
+    if (!t) return res.status(404).json({ success: false, error: "Traveler not found" });
+    const card = cardOf(t);
+    if (card.holder !== "other" || !card.email) return res.status(400).json({ success: false, error: "This traveler's booking is not paid with someone else's card, so there is no card owner to email." });
+    if (!mailAllowed(card.email, process.env["GROUP_FORMS_MAIL_ALLOW"])) return res.status(400).json({ success: false, error: "This box only emails its test addresses, so that address was not emailed." });
+    const group = await store.group(groupId);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const ok = await sendCardLink(deps(), group, t);
+    if (!ok) return res.status(502).json({ success: false, error: "The email did not go out. The card owner's new link is stored; try again in a minute." });
+    return res.json({ success: true, sentTo: card.email });
+  } catch (err) {
+    return fail(req, res, err, "card link email failed");
+  }
+});
+
+// Mark 2026-10-31: the passport checklist, emailed again from the group file (a new link; the old one stops working).
+router.post("/groups/:id/travelers/:tid/checklist/send", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    const t = (await store.travelers(groupId)).find((x) => x.id === String(req.params["tid"]));
+    if (!t) return res.status(404).json({ success: false, error: "Traveler not found" });
+    const to = String(t.email ?? "").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) return res.status(400).json({ success: false, error: "This traveler has no email address on the file. Add one first." });
+    if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) return res.status(400).json({ success: false, error: "This box only emails its test addresses, so that address was not emailed." });
+    const group = await store.group(groupId);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    const ok = await sendChecklist(deps(), group, t);
+    if (!ok) return res.status(502).json({ success: false, error: "The email did not go out. The checklist's new link is stored; try again in a minute." });
+    return res.json({ success: true, sentTo: to });
+  } catch (err) {
+    return fail(req, res, err, "checklist email failed");
   }
 });
 
@@ -298,12 +569,14 @@ router.get("/groups/:id/signatures", requireToken, async (req: Request, res: Res
     const group = await store.group(groupId);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
     const { data, error } = await db().from("group_signatures")
-      .select("id, group_id, cabin_id, traveler_id, doc_key, doc_version, signer_role, signer_name, signed_at, content_sha256, pdf_path, answers")
+      .select("id, group_id, cabin_id, traveler_id, doc_key, doc_version, signer_role, signer_name, signed_at, content_sha256, pdf_path, sealed, answers")
       .eq("group_id", groupId).order("signed_at", { ascending: false }).order("id", { ascending: true });
     if (error) throw new Error(error.message);
     const rows: Row[] = data ?? [];
     const [cabins, travelers] = await Promise.all([store.cabins(groupId), store.travelers(groupId)]);
     const names = new Map(travelers.map((t) => [t.id, [t.first_name, t.last_name].filter(Boolean).join(" ")]));
+    // the insurance choice lives on the file (Mark 2026-10-30), the plan with it; older signatures carried it in their answers
+    const insurance = new Map(travelers.map((t) => [t.id, (t.form_data && typeof t.form_data === "object" && t.form_data.insurance && typeof t.form_data.insurance === "object" ? t.form_data.insurance : {}) as Row]));
     const status = packetStatuses({ group, cabins, travelers, signatures: rows });
     return res.json({
       success: true,
@@ -311,8 +584,9 @@ router.get("/groups/:id/signatures", requireToken, async (req: Request, res: Res
       signatures: rows.map((s) => ({
         id: s.id, doc_key: s.doc_key, doc_title: DOC_SPECS[s.doc_key]?.title ?? s.doc_key, doc_version: s.doc_version,
         signer_role: s.signer_role, signer_name: s.signer_name, traveler_id: s.traveler_id ?? null, traveler_name: names.get(s.traveler_id) ?? null,
-        cabin_id: s.cabin_id ?? null, signed_at: s.signed_at, content_sha256: s.content_sha256, has_pdf: !!s.pdf_path,
-        choice: s.doc_key === "07-travel-insurance-declination" ? (s.answers?.insurance_choice ?? null) : null,
+        cabin_id: s.cabin_id ?? null, signed_at: s.signed_at, content_sha256: s.content_sha256, has_pdf: !!s.pdf_path, sealed: !!s.sealed,
+        choice: /^(07|23)-/.test(String(s.doc_key)) ? (insurance.get(s.traveler_id)?.["choice"] ?? s.answers?.insurance_choice ?? null) : null,
+        plan: s.doc_key === "23-insurance-plan" ? (insurance.get(s.traveler_id)?.["plan"] ?? null) : null,
       })),
       packets: status.travelers,
       organizer: { ...status.organizer, link_sent_at: group.organizer_link_sent_at ?? null },

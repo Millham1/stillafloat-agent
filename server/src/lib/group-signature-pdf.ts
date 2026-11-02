@@ -26,6 +26,8 @@ export interface SignedCopyInput {
   docVersion: string;
   contentSha256: string;
   signatureId?: string;
+  /** The evidence page (Mark 2026-10-25, DocuSign-grade evidence): who, where the link went, when it was opened, the consent, the address and browser at signing, the seal. */
+  audit?: AuditInfo;
   /** The template has an agent signature that is recorded later (the group contract). */
   agentCountersignPending?: boolean;
   logo?: Buffer | null;
@@ -35,6 +37,24 @@ export interface SignedCopyInput {
 const WIN_ANSI_EXTRAS = new Set("€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ");
 
 /** Fold text to what the PDF's standard fonts can print. */
+export interface AuditInfo {
+  /** The email address on file, where the private link went. */
+  signerEmail: string | null;
+  linkSentAt: string | null;
+  firstOpenedAt: string | null;
+  consentAt: string | null;
+  consentVersion: string | null;
+  consentIp: string | null;
+  /** Network address and browser at the moment of signing, as the request carried them. */
+  ip: string | null;
+  ua: string | null;
+  /** The certificate the copy is sealed with, or null when the server has none. */
+  seal: { fingerprint: string; subject: string } | null;
+}
+
+const fmtUtc = (iso: string): string => (/^\d{4}-\d{2}-\d{2}T/.test(iso) ? `${iso.slice(0, 10)} ${iso.slice(11, 19)} UTC` : iso);
+const groups4 = (hex: string): string => (hex.match(/.{1,4}/g) ?? [hex]).join(" ").toUpperCase();
+
 export function pdfSafe(input: string): string {
   const swapped = input.replace(/☒/g, "[x]").replace(/☐/g, "[ ]").replace(/[ -​  ]/g, " ").replace(/→/g, "->");
   let out = "";
@@ -148,11 +168,34 @@ export async function renderSignedPdf(input: SignedCopyInput): Promise<Buffer> {
       para(`**Signed electronically by:** ${input.signerName}`, { gap: 0.2 });
       para(`**Signing as:** ${role}`, { gap: 0.2 });
       para(`**Date and time:** ${when}`, { gap: 0.2 });
-      para("**Method:** typed full name and an explicit \"I agree\" confirmation on the signer's private link. The signer's network address and device are kept only as one-way hashes.", { gap: 0.2 });
+      para(input.audit
+        ? "**Method:** typed full name and an explicit \"I agree\" confirmation on the signer's private link. The evidence page at the end records the address, the browser, the consent and the seal."
+        : "**Method:** typed full name and an explicit \"I agree\" confirmation on the signer's private link. The signer's network address and device are kept only as one-way hashes.", { gap: 0.2 });
       para(`**Document version:** ${input.docVersion}`, { gap: 0.2 });
       para(`**SHA-256 of the document text agreed to:** ${input.contentSha256}`, { gap: 0.2, size: 8.5 });
       if (input.signatureId) para(`**Signature record:** ${input.signatureId}`, { gap: 0.2, size: 8.5 });
       if (input.agentCountersignPending) para(`**Agent countersignature (${input.businessName}):** not yet recorded.`, { gap: 0.2 });
+
+      // Mark 2026-10-25: the evidence page, what an e-signature service prints as its "certificate of completion".
+      if (input.audit) {
+        const a = input.audit;
+        const t = (v: string | null) => (v ? fmtUtc(v) : "not recorded");
+        doc.addPage();
+        para("**SIGNATURE EVIDENCE**", { size: 14, gap: 0.3 });
+        para("*How this signature was made and the events around it, kept with the signed copy so it can be checked later.*", { size: 9, gap: 0.8 });
+        para(`**Signer:** ${input.signerName} (${role})`, { gap: 0.25 });
+        para(`**Email address on file, where the private link went:** ${a.signerEmail ?? "none on file"}`, { gap: 0.25 });
+        para(`**Private link sent:** ${t(a.linkSentAt)}`, { gap: 0.25 });
+        para(`**Link first opened:** ${t(a.firstOpenedAt)}`, { gap: 0.25 });
+        para(`**Consent to electronic records and signatures:** ${t(a.consentAt)}${a.consentVersion ? ` (consent text version ${a.consentVersion})` : ""}${a.consentIp ? `, from ${a.consentIp}` : ""}`, { gap: 0.25 });
+        para(`**Signed:** ${when}${a.ip ? `, from ${a.ip}` : ""}`, { gap: 0.25 });
+        para(`**Browser and device at signing:** ${a.ua ?? "not recorded"}`, { gap: 0.25, size: 9 });
+        para("**Identity:** the private link is the signer's only way in. It was sent to the email address on file, and it stops working the moment a new one is issued.", { gap: 0.25 });
+        para("**Integrity:** the exact text shown and agreed to is fingerprinted (the SHA-256 above). " + (a.seal
+          ? `This PDF is sealed with a digital certificate held by ${input.businessName} ("${a.seal.subject}", certificate SHA-256 ${groups4(a.seal.fingerprint)}). Any change to this file after sealing breaks the seal.`
+          : "This PDF is not sealed: no signing certificate was configured on the server when it was made."), { gap: 0.25 });
+        para(`**Record:** signature ${input.signatureId ?? "(pending)"} · document version ${input.docVersion} · copy generated ${fmtUtc(input.signedAt.toISOString())}.`, { gap: 0.25, size: 8.5 });
+      }
 
       const range = doc.bufferedPageRange();
       for (let i = range.start; i < range.start + range.count; i++) {

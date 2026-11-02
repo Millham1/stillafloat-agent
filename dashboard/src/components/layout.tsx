@@ -52,7 +52,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/ai-visibility", label: "AI Visibility", icon: Bot },
     { href: "/ratings",      label: "Ratings",      icon: PartyPopper },
     { href: "/groups",       label: "Group Bookings", icon: Ship },
-    { href: "/groups/workspace", label: "Group Workspace", icon: BarChart3 },
     { href: "/affiliate",    label: "Affiliate Manager", icon: ShoppingBag },
     { href: "/favorites",    label: "Favorites",         icon: Heart },
     { href: "/commentary",   label: "Commentary",        icon: MessageSquare },
@@ -141,7 +140,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <h1 className="text-sm font-semibold tracking-tight flex-1 truncate">Editorial Command Center</h1>
+          <h1 className="text-sm font-semibold tracking-tight flex-1 truncate">Still Afloat Command Center</h1>
           <a
             href="/"
             target="_blank"

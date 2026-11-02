@@ -172,7 +172,12 @@ async function call(method: string, path: string, o: { body?: unknown; token?: b
   }
 }
 
-const wait = async (cond: () => boolean) => { for (let i = 0; i < 200 && !cond(); i++) await new Promise((r) => setTimeout(r, 10)); };
+// The email and Mark's item are sent after the answer goes back, so a test waits for them: up to 10 seconds (a busy test run
+// is slow), and a wait that never comes true fails the test right there instead of leaving that work to land in the next test.
+const wait = async (cond: () => boolean) => {
+  for (let i = 0; i < 1000 && !cond(); i++) await new Promise((r) => setTimeout(r, 10));
+  if (!cond()) throw new Error(`timed out waiting for: ${cond.toString()}`);
+};
 const replyRow = () => tables["group_interests"]!.find((r) => r["id"] === REPLY_ID)!;
 const writes = (table: string) => log.filter((l) => l.table === table && l.method !== "GET");
 const ADDRESS = { street: "123 Main St", city: "Raleigh", state: "NC", zip: "27601", tidied: true };
@@ -373,7 +378,7 @@ test("Road A refuses what it does not understand: any time but the four, any cho
   replyRow()["hold_requested_at"] = "2026-10-24T10:00:00Z";
   const held = await choose("evening");
   assert.equal(held.status, 409);
-  assert.match(held.json["error"], /already on hold/);
+  assert.match(held.json["error"], /quote is under way/);
   assert.equal(replyRow()["call_when"], null);
   // and in Spanish
   const es = await call("POST", `/group-details/${LINK}/choice`, { body: { choice: "call", when: "x", lang: "es" } });
@@ -411,6 +416,7 @@ test("Road A's email goes only to an address this box may email; a phone-only re
   Object.assign(replyRow(), { choice: null, choice_at: null, email: "fail@example.com", phone: null, ack_email_status: null, ack_email_at: null });
   assert.equal((await choose("evening")).status, 200, "a mail sender that is down does not cost the guest their answer");
   await wait(() => replyRow()["ack_email_status"] === "failed");
+  await wait(() => writes("group_messages").some((w) => w.body.status === "failed"));   // the email log is written just after the status
   assert.equal(replyRow()["ack_email_status"], "failed");
   assert.equal(replyRow()["ack_email_at"], null);
 
@@ -421,6 +427,7 @@ test("Road A's email goes only to an address this box may email; a phone-only re
   await wait(() => mails.length === 1);
   assert.equal(mails[0]!["subject"], "Buena decisión… ¡la llamada va en camino! Friends and Family 2027");
   assert.match(String(mails[0]!["text"]), /Mark le llamará en un día desde el 919-346-6127… por la mañana, como usted dijo\./);
+  await wait(() => writes("group_messages").some((w) => w.body.status === "sent"));   // nothing of this test is left to land in the next
 });
 
 test("Road A rings from the number in the group's own line beside the button", async () => {
@@ -532,8 +539,8 @@ test("Road B: a wrong link or the bot trap saves nothing, and once the cabin is 
   replyRow()["hold_requested_at"] = "2026-10-24T10:00:00Z";
   const held = await save(GOOD);
   assert.equal(held.status, 409);
-  assert.equal(held.json["error"], "Your cabin is already on hold. To change anything, call or text Mark at 919-346-6127.");
-  assert.equal((await save({ ...GOOD, lang: "es" })).json["error"], "Su cabina ya está apartada. Para cambiar algo, llame o escriba a Mark al 919-346-6127.");
+  assert.equal(held.json["error"], "Your names are in and your quote is under way. To change anything, call or text Mark at 919-346-6127.");
+  assert.equal((await save({ ...GOOD, lang: "es" })).json["error"], "Sus nombres ya están registrados y su cotización está en marcha. Para cambiar algo, llame o escriba a Mark al 919-346-6127.");
   assert.equal(replyRow()["travelers"], null);
 });
 
@@ -557,7 +564,7 @@ test("Road B: 'Hold my cabin!' needs the saved names, address and pick first", a
   assert.equal((await hold()).json["error"], "Primero termine los nombres, la dirección y las preguntas.");
 });
 
-test("Road B: the hold records the request, marks the choice, tells Mark once with the design's item, and sends the ONE email; nothing is booked", async () => {
+test("Road B: 'Build my quote!' records the moment, marks the choice, tells Mark once that a quote is under way, and sends the ONE email with 'Let's begin!'; nothing is booked (Mark 2026-11-01)", async () => {
   readyToHold();
   actionsAccept = true;
   pendingItem();
@@ -569,14 +576,9 @@ test("Road B: the hold records the request, marks the choice, tells Mark once wi
   const made = writes("actions").find((w) => w.method === "POST")!.body;
   assert.equal(made.type, "lead");
   assert.equal(made.source_ref, `group-hold-${REPLY_ID}`);
-  assert.equal(made.title, "Hold requested · Mark Millham · Balcony Bella · party of 2");
-  assert.equal(made.body, "Friends and Family 2027 · mmillham1@gmail.com · midship, a lower deck (feels the motion, wants quiet, balcony). Names, birthdays and the address are on the reply.");
-  assert.deepEqual(made.buttons, [
-    { label: "Add the travelers to a cabin", href: `/groups/${GROUP_ID}#replies` },
-    { label: "Open the group file", href: `/groups/${GROUP_ID}` },
-    { label: "Confirmed with MSC", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/mark/confirmed` },
-  ]);
-  assert.equal(made.buttons[0].label, "Add the travelers to a cabin", "the to-file route is the FIRST button");
+  assert.equal(made.title, "Quote under way · Mark Millham · our pick Balcony Bella · party of 2");
+  assert.equal(made.body, "Friends and Family 2027 · mmillham1@gmail.com · midship, a lower deck (feels the motion, wants quiet, balcony). Names, birthdays and the address are on the reply; they are choosing cabin, FlexPay, insurance, drinks and travel now. Nothing to do yet.");
+  assert.deepEqual(made.buttons, [{ label: "Open the group file", href: `/groups/${GROUP_ID}#replies` }], "nothing to confirm yet: no cabin is held before the quote is agreed (Mark 2026-11-01)");
   // the earlier "Group reply" item is closed once the new one exists
   await wait(() => tables["actions"]![0]!["status"] === "done");
   assert.equal(tables["actions"]![0]!["status"], "done");
@@ -584,12 +586,14 @@ test("Road B: the hold records the request, marks the choice, tells Mark once wi
   await wait(() => mails.length > 0);
   assert.equal(mails.length, 1);
   assert.equal(mails[0]!["to"], "mmillham1@gmail.com");
-  assert.equal(mails[0]!["subject"], "Your cabin is on hold… nicely done! Friends and Family 2027");
+  assert.equal(mails[0]!["subject"], "Nicely done… now let's build your quote! Friends and Family 2027");
   const text = String(mails[0]!["text"]);
   assert.match(text, /^Hi Mark,/);
-  assert.match(text, /Here's what you did: Balcony Bella, midship, a lower deck, for Mark and Ceci\. Mark confirms it with the cruise line within a day/);
+  assert.match(text, /Here's what you did: our pick is Balcony Bella, midship, a lower deck, for Mark and Ceci\. Next comes the fun part: which cabin, insurance, drinks/);
+  assert.ok(!/on hold|is held/i.test(text), "nothing is held before the quote is agreed (Mark 2026-11-01)");
   assert.match(text, /dig out both passports/);
-  assert.ok(text.includes(`https://dev.example.test/details.html?t=${LINK}`), "the way back to their details is their own link");
+  assert.ok(text.includes(`Let's begin!: https://dev.example.test/details.html?t=${LINK}`), "the 'Let's begin!' button is their own link, which opens the quote step");
+  assert.ok(String(mails[0]!["html"]).includes(`>Let&#39;s begin!</a>`) || String(mails[0]!["html"]).includes(`>Let's begin!</a>`), "the button says Let's begin!");
   assert.ok(!/\$|per person|deposit/i.test(text + String(mails[0]!["html"])), "no price in the email");
   await wait(() => replyRow()["ack_email_status"] === "sent");
   await wait(() => writes("group_messages").length > 0);
@@ -631,6 +635,7 @@ test("Road B's email goes only to an address this box may email; a phone-only re
   process.env["GROUP_FORMS_MAIL_ALLOW"] = "tester@example.org";
   assert.equal((await hold()).status, 200);
   await wait(() => replyRow()["ack_email_status"] === "held");
+  await wait(() => writes("group_messages").length > 0);   // the email log is written just after the reply's status
   assert.equal(mails.length, 0);
   assert.equal(writes("group_messages")[0]!.body.status, "skipped");
   delete process.env["GROUP_FORMS_MAIL_ALLOW"];
@@ -642,12 +647,14 @@ test("Road B's email goes only to an address this box may email; a phone-only re
   Object.assign(replyRow(), { hold_requested_at: null, email: "fail@example.com", phone: null, ack_email_status: null });
   assert.equal((await hold()).status, 200);
   await wait(() => replyRow()["ack_email_status"] === "failed");
+  await wait(() => writes("group_messages").some((w) => w.body.status === "failed"));   // the email log is written just after the status
   mailOk = true; mails.length = 0;
   Object.assign(replyRow(), { hold_requested_at: null, email: "ana@example.com", lang: "es", first_name: "Ana", ack_email_status: null, pick: { ...PICK, where: "en el centro del barco, en una cubierta baja" } });
   assert.equal((await hold()).status, 200);
   await wait(() => mails.length === 1);
-  assert.equal(mails[0]!["subject"], "Su cabina está apartada… ¡bien hecho! Friends and Family 2027");
+  assert.equal(mails[0]!["subject"], "Bien hecho… ¡ahora armemos su cotización! Friends and Family 2027");
   assert.match(String(mails[0]!["text"]), new RegExp(`/es/details\\.html\\?t=${LINK}`));
+  await wait(() => writes("group_messages").some((w) => w.body.status === "sent"));   // nothing of this test is left to land in the next
 });
 
 test("Road B: a wrong link or the bot trap holds nothing", async () => {
@@ -762,7 +769,7 @@ test("the typed travelers become travelers on the chosen cabin: last-space split
   assert.equal(r.json["count"], 2);
   const [a, b] = tables["group_travelers"]!;
   assert.deepEqual([a!["group_id"], a!["cabin_id"], a!["first_name"], a!["last_name"], a!["dob"], a!["is_lead"], a!["email"], a!["phone"], a!["lang"]], [GROUP_ID, CABIN_ID, "Mary Ann", "Smith", "1965-04-12", true, "mmillham1@gmail.com", null, "es"]);
-  assert.deepEqual(a!["form_data"], { address: "123 Main St, Raleigh, NC 27601" }, "the home address goes where the paperwork reads it");
+  assert.deepEqual(a!["form_data"], { address: "123 Main St", city_state_zip: "Raleigh, NC 27601" }, "the home address goes where the paperwork pre-fills from, in its two parts (Mark 2026-10-30)");
   assert.deepEqual([b!["first_name"], b!["last_name"], b!["dob"], b!["is_lead"], b!["cabin_id"], "email" in b!, "form_data" in b!], ["Cher", "Bono", "1980-11-02", false, CABIN_ID, false, false]);
   assert.equal(replyRow()["traveler_id"], a!["id"], "the reply remembers it was added");
   assert.equal(writes("group_cabins").length, 0, "the cabin was not touched: Mark books with the cruise line himself");
@@ -829,4 +836,159 @@ test("'We talked' and 'Confirmed with MSC' (the buttons on Mark's list) move the
   assert.equal((await mark("later")).status, 404, "only the two buttons exist");
   assert.equal((await mark("talked", "66666666-6666-4666-8666-666666666666")).status, 404);
   assert.equal((await mark("talked", "not-an-id")).status, 404);
+});
+
+// ── The quote step (Mark 2026-11-01): which cabin, FlexPay, drinks, insurance, getting there and back; then "I agree" ──
+
+const quoteStep = (answers: Row, token = LINK, body: Row = {}) => call("POST", `/group-details/${token}/quote`, { body: { answers, ...body } });
+const agree = (token = LINK, body: Row = {}) => call("POST", `/group-details/${token}/agree`, { body });
+const ANSWERS = { cabin: "BEL", flexpay: true, drinks: true, insurance: "decline", travel: [], needs: { flight: true, hotel: false, transfer: false } };
+/** The names are in: Part 4 is open. */
+const namesIn = () => Object.assign(replyRow(), { ...GOOD, pick: PICK, choice: "finish", hold_requested_at: new Date().toISOString() });
+
+test("the quote step opens only once the names are in: GET offers the file's choices then, and never a figure before", async () => {
+  Object.assign(replyRow(), { ...GOOD, pick: PICK });
+  let r = await call("GET", `/group-details/${LINK}`);
+  assert.equal(r.json["quoteOptions"], null, "no fares before the names are in");
+  assert.ok(!r.text.includes("536.79"));
+  assert.equal((await quoteStep(ANSWERS)).status, 400);
+  assert.equal((await quoteStep(ANSWERS)).json["error"], "Please finish the names, the address and the four questions first.");
+  namesIn();
+  r = await call("GET", `/group-details/${LINK}`);
+  const o = r.json["quoteOptions"];
+  assert.deepEqual(o.cabins.map((c: Row) => [c.key, c.category, c.perPersonText, c.available, c.label]), [
+    ["BEL", "Balcony Bella", "$536.79", 1, "Balcony Bella · $536.79 per person · taxes and port fees included"],
+    ["AUR", "Balcony Aurea", "$686.79", 1, "Balcony Aurea · $686.79 per person · taxes and port fees included"],
+  ], "the categories the group holds, cheapest first, each with its fare from the file (no fare is made up)");
+  assert.equal(o.drinks, "ask", "no drink package in the group's inclusions: the question is asked");
+  assert.deepEqual(o.insurance.map((i: Row) => [i.key, i.label]), [
+    ["quote", "Yes, quote me the cruise line's plan and Allianz"], ["own", "I have my own policy"], ["decline", "No insurance for us"],
+  ], "no plan with a price on the file: the guest can only ask for the quote");
+  assert.deepEqual([o.travel, o.needs], [[], ["flight", "hotel", "transfer"]], "no offer on the file: each kind is a yes/no for Mark to quote");
+  assert.deepEqual([o.depositPerPersonText, o.finalPaymentText], ["$50", "January 15, 2027"]);
+  assert.deepEqual([r.json["quote"], r.json["quoteAgreedAt"], r.json["paperwork"]], [null, null, null]);
+});
+
+test("the answers are checked against what was offered, in the design's words with the field", async () => {
+  namesIn();
+  for (const [answers, error, field] of [
+    [{ ...ANSWERS, cabin: "YC1" }, "Pick a cabin, please.", "cabin"],
+    [{ ...ANSWERS, flexpay: "yes" }, "Yes or no on FlexPay, please.", "flexpay"],
+    [{ ...ANSWERS, drinks: null }, "Yes or no on the drink package, please.", "drinks"],
+    [{ ...ANSWERS, insurance: "allianz-0" }, "Pick one of the insurance choices, please.", "insurance"],
+    [{ ...ANSWERS, travel: ["not-a-row"] }, "One of those travel choices is not on this group.", "travel"],
+    [{ ...ANSWERS, needs: { flight: true } }, "Yes or no on the hotel, please.", "need-hotel"],
+  ] as Array<[Row, string, string]>) {
+    const r = await quoteStep(answers);
+    assert.equal(r.status, 400, JSON.stringify(answers));
+    assert.deepEqual([r.json["error"], r.json["field"]], [error, field]);
+  }
+  assert.equal(replyRow()["quote"], undefined, "nothing is stored for a refused answer");
+  Object.assign(replyRow(), { lang: "es" });
+  assert.equal((await quoteStep({ ...ANSWERS, cabin: "" })).json["error"], "Elija una cabina, por favor.");
+});
+
+test("the quote is built from the file alone: the fares per traveler, what Mark still prices, FlexPay as a request, the deposit and the balance; it is kept on the reply", async () => {
+  namesIn();
+  const r = await quoteStep(ANSWERS);
+  assert.deepEqual([r.status, r.json["success"]], [200, true]);
+  const q = r.json["quote"];
+  assert.deepEqual(q.lines.map((l: Row) => [l.key, l.label, l.detail, l.amountText, l.toQuote]), [
+    ["cabin", "Balcony Bella · 2 travelers", "Mark $536.79 · Ceci $536.79 · taxes and port fees included", "$1,073.58", false],
+    ["drinks", "Drink package", "Mark prices it for your party", null, true],
+    ["insurance", "Travel insurance: none", null, null, false],
+    ["need-flight", "Flights", "Mark quotes them for your party", null, true],
+    ["flexpay", "FlexPay", "Mark sends you the application next; it sets its own payment schedule and changes nothing on this quote", null, false],
+  ]);
+  assert.deepEqual([q.total, q.totalText, q.toQuote], [1073.58, "$1,073.58", ["Drink package", "Flights"]]);
+  assert.deepEqual([q.deposit, q.depositText, q.depositPerPersonText, q.balance, q.balanceText, q.finalPaymentText], [100, "$100", "$50", 973.58, "$973.58", "January 15, 2027"]);
+  assert.deepEqual([q.category, q.cabinKey, q.party, q.flexpay, q.version], ["Balcony Bella", "BEL", 2, true, 1]);
+  assert.match(q.note, /Mark confirms each one with you before anything is charged\. Pricing subject to change until finalized\./);
+  assert.deepEqual(replyRow()["quote"]["answers"], ANSWERS, "the answers and the figures shown are kept on the reply");
+  assert.equal((await call("GET", `/group-details/${LINK}`)).json["quote"]["totalText"], "$1,073.58", "the page can fill itself again");
+  // a changed answer replaces the quote; the Aurea fare comes from its own cabin row
+  const es = await quoteStep({ ...ANSWERS, cabin: "AUR", flexpay: false, drinks: false, needs: { flight: false, hotel: false, transfer: false } }, LINK, { lang: "es" });
+  assert.deepEqual(es.json["quote"].lines.map((l: Row) => [l.label, l.amountText]), [["Balcony Aurea · 2 viajeros", "$1,373.58"], ["Seguro de viaje: ninguno", null]]);
+  assert.deepEqual([es.json["quote"].toQuote, es.json["quote"].balanceText], [[], "$1,273.58"]);
+  assert.equal(writes("actions").length + mails.length, 0, "answering tells Mark nothing and sends no email: only the agreement does");
+});
+
+test("'I agree': the first press wins; the travelers go on a free cabin of the category with the address on the lead; the lead's paperwork link goes out; Mark's item becomes 'Quote agreed'; the reply is marked", async () => {
+  namesIn();
+  actionsAccept = true;
+  pendingItem();
+  assert.equal((await agree()).status, 400, "no answers yet: nothing to agree to");
+  await quoteStep(ANSWERS);
+  const [a, b] = await Promise.all([agree(), agree()]);
+  const first = [a, b].find((x) => !x.json["already"])!, second = [a, b].find((x) => x.json["already"])!;
+  assert.deepEqual([first.status, first.json["success"], first.json["paperwork"]], [200, true, "sent"]);
+  assert.deepEqual([second.status, second.json["success"]], [200, true], "a double tap is told yes and changes nothing");
+  assert.ok(replyRow()["quote_agreed_at"]);
+  // the travelers, on the first free Balcony Bella cabin
+  const made = tables["group_travelers"]!;
+  assert.equal(made.length, 2, "two travelers, once");
+  assert.deepEqual(made.map((t) => [t["first_name"], t["last_name"], t["dob"], t["cabin_id"], t["is_lead"], t["lang"]]), [["Mark", "Millham", "1965-04-12", CABIN_ID, true, "en"], ["Ceci", "Millham", "1980-11-02", CABIN_ID, false, "en"]]);
+  assert.deepEqual([made[0]!["email"], made[0]!["phone"], made[0]!["form_data"]], ["mmillham1@gmail.com", null, { address: "123 Main St", city_state_zip: "Raleigh, NC 27601" }], "the home address goes on the lead, in the two parts the paperwork pre-fills from");
+  assert.equal("email" in made[1]!, false);
+  assert.ok(made[0]!["form_token_hash"] && made[0]!["form_sent_at"], "the lead's paperwork link is stored (its hash) before the email goes");
+  assert.deepEqual([replyRow()["traveler_id"], replyRow()["status"], replyRow()["quote"]["paperwork"], replyRow()["quote"]["cabin_id"]], [made[0]!["id"], "contacted", "sent", CABIN_ID]);
+  assert.equal(writes("group_cabins").length, 0, "the cabin row is not touched: Mark books with the cruise line himself");
+  // the ONE email: the paperwork link, to the lead's own address
+  assert.equal(mails.length, 1);
+  assert.equal(mails[0]!["to"], "mmillham1@gmail.com");
+  assert.equal(mails[0]!["subject"], "Your travel paperwork for Friends and Family 2027");
+  assert.match(String(mails[0]!["text"]), /https:\/\/dev\.example\.test\/.*[A-Za-z0-9_-]{43}/);
+  const logged = writes("group_messages").find((w) => w.method === "POST")!.body;
+  assert.deepEqual([logged.audience, logged.template, logged.to_email, logged.status, logged.traveler_id], ["client", "paperwork-link", "mmillham1@gmail.com", "sent", made[0]!["id"]]);
+  assert.ok(!String(mails[0]!["text"]).includes(LINK) && !JSON.stringify(logged).match(/[A-Za-z0-9_-]{43}/), "neither link is in the log; the details link is not in the paperwork email");
+  // Mark's item
+  await wait(() => writes("actions").some((w) => w.method === "POST"));
+  const item = writes("actions").find((w) => w.method === "POST")!.body;
+  assert.equal(item.source_ref, `group-quote-${REPLY_ID}`);
+  assert.equal(item.title, "Quote agreed · Mark Millham · Balcony Bella · party of 2");
+  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file); paperwork link sent. Book it with the cruise line.");
+  assert.deepEqual(item.buttons, [
+    { label: "Open the group file", href: `/groups/${GROUP_ID}` },
+    { label: "Confirmed with MSC", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/mark/confirmed` },
+  ]);
+  await wait(() => tables["actions"]![0]!["status"] === "done");
+  // the page afterwards: agreed, where the paperwork went, and nothing changes any more
+  const g = await call("GET", `/group-details/${LINK}`);
+  assert.deepEqual([!!g.json["quoteAgreedAt"], g.json["paperwork"], g.json["quote"]["category"]], [true, "sent", "Balcony Bella"]);
+  assert.ok(!g.text.includes(CABIN_ID) && !("cabin_id" in g.json["quote"]), "the guest never gets the cabin row they were filed on");
+  const changed = await quoteStep({ ...ANSWERS, flexpay: false });
+  assert.deepEqual([changed.status, changed.json["error"]], [409, "Your quote is already agreed and your paperwork is on its way. To change anything, call or text Mark at 919-346-6127."]);
+  assert.equal(replyRow()["quote"]["answers"]["flexpay"], true, "the agreed answers stay");
+});
+
+test("'I agree' when every cabin of the category is taken files the travelers with no cabin and says so on Mark's item; a box that may not email the address holds the paperwork link", async () => {
+  namesIn();
+  actionsAccept = true;
+  process.env["GROUP_FORMS_MAIL_ALLOW"] = "qa@example.test";
+  tables["group_travelers"]!.push({ id: "t-0", group_id: GROUP_ID, cabin_id: CABIN_ID, is_lead: true, first_name: "Existing" });
+  await quoteStep(ANSWERS);
+  const r = await agree();
+  assert.deepEqual([r.status, r.json["paperwork"]], [200, "held"]);
+  const mine = tables["group_travelers"]!.filter((t) => t["first_name"] !== "Existing");
+  assert.deepEqual(mine.map((t) => t["cabin_id"]), [null, null], "no free Balcony Bella cabin: Mark places them");
+  assert.equal(mails.length, 0, "this box only emails its test addresses");
+  assert.equal(writes("group_messages")[0]!.body.status, "skipped");
+  await wait(() => writes("actions").some((w) => w.method === "POST"));
+  const item = writes("actions").find((w) => w.method === "POST")!.body;
+  assert.match(item.body, /Travelers are on the file \(NO free Balcony Bella cabin: place them\); paperwork link held by this box\./);
+});
+
+test("the quote step and the agreement refuse a wrong link and the bot trap like every other write, and the trap pretends no quote", async () => {
+  namesIn();
+  for (const token of ["A".repeat(43), "not-a-token"]) {
+    assert.equal((await quoteStep(ANSWERS, token)).status, 404);
+    assert.equal((await agree(token)).status, 404);
+  }
+  const bot = await quoteStep(ANSWERS, LINK, { website: "http://spam.example" });
+  assert.deepEqual([bot.status, bot.json["success"], "quote" in bot.json], [200, true, false]);
+  const bot2 = await agree(LINK, { website: "http://spam.example" });
+  assert.deepEqual([bot2.status, bot2.json["success"], "paperwork" in bot2.json], [200, true, false]);
+  assert.equal(replyRow()["quote"], undefined);
+  assert.equal(replyRow()["quote_agreed_at"], undefined);
+  assert.equal(tables["group_travelers"]!.length, 0);
 });

@@ -9,7 +9,6 @@ import { createAction } from "../lib/actions";
 import { hashForAudit } from "../lib/group-secure";
 import { issueToken } from "../lib/group-forms";
 import { MSG, callUrl as makeCallUrl, detailsUrl as makeDetailsUrl, firstWord, splitLegalName, storedAddress, storedTravelers, tidyLegalName } from "../lib/group-details";
-import { formatAddress } from "../lib/address-lookup";
 import { clientIp } from "../lib/client-ip";
 import {
   ANSWER_MAX, COPY_FIELDS, COPY_SCHEMA, INTERVIEW, buildFacts, copyNotes, creditedPictureLinks, creditsForPictures, ctaLine, ignoredPictureAnswers, missingAnswers, newShareCode, normalizeAnswers, pageLook, pitchGate, pitchNumberProblems, publicCopy, retryNote, validEmail, validPhone,
@@ -262,7 +261,7 @@ router.post("/groups/:id/marketing/share-code", requireToken, async (req: Reques
 router.get("/groups/:id/interests", requireToken, async (req: Request, res: Response) => {
   try {
     const { data, error } = await db().from("group_interests")
-      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, call_when, travelers, address, concierge, pick, hold_requested_at, ack_email_status, traveler_id")
+      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, call_when, travelers, address, concierge, pick, quote, quote_agreed_at, hold_requested_at, ack_email_status, traveler_id")
       .eq("group_id", String(req.params["id"])).order("created_at", { ascending: false }).order("id", { ascending: true });
     if (error) throw new Error(error.message);
     return res.json({ success: true, interests: data ?? [] });
@@ -315,14 +314,15 @@ router.post("/groups/:id/interests/:iid/to-file", requireToken, async (req: Requ
     if (le) throw new Error(le.message);
     const hasLead = ((onCabin ?? []) as Row[]).some((t) => t["is_lead"] === true);
     const guestLang = reply.lang === "es" ? "es" : "en";
-    // The one home address for the cabin goes on the first traveler, as one line, where the paperwork already reads it (form_data.address); someone
-    // who lives elsewhere says so on their own paperwork page.
+    // The one home address for the cabin goes on the first traveler, in the two parts the paperwork pre-fills from (form_data.address = the street,
+    // form_data.city_state_zip; Mark 2026-10-30: "the questions should be pre-filled from information we already have"); someone who lives
+    // elsewhere says so on their own paperwork page.
     const home = storedAddress(reply.address);
     const rows = people.map((p, i) => {
       const { first, last } = splitLegalName(p.legal_name);
       return {
         group_id: groupId, cabin_id: cabinId, is_lead: i === 0 && !hasLead, first_name: first, last_name: last, dob: p.dob, lang: guestLang,
-        ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null, ...(home ? { form_data: { address: formatAddress(home) } } : {}) } : {}),
+        ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null, ...(home ? { form_data: { address: home.street, city_state_zip: `${home.city}, ${home.state} ${home.zip}` } } : {}) } : {}),
       };
     });
     const { data: made, error: me } = await db().from("group_travelers").insert(rows).select("id");
@@ -501,7 +501,7 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
     // The guest's own private link, handed back to them and to nobody else (it is the credential for their page). Made AFTER the reply is safely stored, so a
     // box that has not applied migration 0056 yet still takes every reply (it just has no links to hand back).
     // NO email goes out now (Mark 2026-10-24: "the client should not get 2"): the one email is sent when they choose a road, "Talk me into it, Mark!" (a call
-    // confirmation) or "I've got this" and then "Hold my cabin!" (a hold confirmation). Until then the status says so.
+    // confirmation) or "I've got this" and then "Build my quote!" (the "Let's begin!" email, Mark 2026-11-01). Until then the status says so.
     const answer = { success: true as const, first: firstWord(first) };
     if (!interestId) return res.json(answer);
     const { token, hash } = issueToken();
