@@ -512,7 +512,8 @@ export default [
       t.equal(q.count, q.stories.length, "editorial queue count");
       t.equal(q.degradedMode, false, "the news scan is in degraded mode (it ran without the AI editor)");
       // the scan runs every morning; it replaces the queue each time
-      t.fresh(q.generatedAt, 36, "the editorial queue (the daily news scan)");
+      // checkedAt: the last scan that ran against the queue (= generatedAt, except on a "nothing new" day)
+      t.fresh(q.checkedAt ?? q.generatedAt, 36, "the editorial queue's last scan (the daily news scan)");
       for (const s of q.stories) {
         t.fields(s, ["id", "title", "summary", "link", "category"], `queued story ${s.id}`);
         t.ok(s.title_es && s.summary_es, `queued story ${s.id} has no Spanish translation — approving it would publish an English-only story`);

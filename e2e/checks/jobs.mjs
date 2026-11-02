@@ -702,7 +702,10 @@ export default [
       t.fresh(h.time, 0.1, "the news agent's own clock");
       const q = t.success(await t.get("/api/editorial-queue", { service: "news", auth: true }));
       t.ok(Array.isArray(q.stories), "the editorial queue has no stories array");
-      t.fresh(q.generatedAt, 30, "the editorial queue (replaced by the news agent's 08:00 Eastern scan every day)");
+      // checkedAt = the last scan that ran against this queue. It equals generatedAt, except on a
+      // "nothing new" day (every story found had already run), when the scan keeps the queue and
+      // stamps it checked (Mark 2026-11-02: a quiet day is a note, not a fault).
+      t.fresh(q.checkedAt ?? q.generatedAt, 30, "the editorial queue's last scan (the news agent's 08:00 Eastern scan, every day)");
       t.equal(q.degradedMode, false, "the last news scan ran in degraded mode (without the AI editor)");
       // how many stories the scan found worth queueing is the news (and Mark's approvals shrink the queue
       // through the day), so only the scan's own stamp is demanded; each queued story must be well-formed
@@ -747,7 +750,7 @@ export default [
       t.fields(s, ["now", "record"], "the news agent's scan-status answer");
       const r = s.record;
       t.fields(r, ["startedAt", "outcome", "trigger"], "the daily scan's last-run record");
-      const outcomes = ["running", "ok", "thin", "empty", "error", "interrupted"];
+      const outcomes = ["running", "ok", "thin", "empty", "nothing-new", "error", "interrupted"];
       t.ok(outcomes.includes(r.outcome), `the scan record has an unknown outcome "${r.outcome}"`);
       // 08:00 Eastern daily; 6 hours of slack for scan time and restarts (the queue check's limit).
       t.fresh(r.startedAt, 30, "the last daily scan's start (the agent schedules one every day at 08:00 Eastern)");
@@ -793,6 +796,12 @@ export default [
           t.ok(r.fault && delivered.includes(r.fault.delivery), `a thin queue (${r.curated} of floor ${r.queueFloor}) ${r.fault ? `was noted nowhere (${r.fault.delivery}: ${r.fault.detail || "no detail"})` : "raised no note at all"} — it belongs on the brief page`);
           t.note(`thin queue: ${r.curated} stories (floor ${r.queueFloor}); mostly ${r.topRefusalReason || "no grounding refusals"}; noted via ${r.fault.delivery}`);
         }
+      } else if (r.outcome === "nothing-new") {
+        // 2026-11-02: every story the scan found had already run. The queue was kept on purpose and
+        // that is a note on the brief page, not a fault on the phone (Mark's ruling). It must still land.
+        t.equal(Number(r.curated), 0, "stories curated by a scan that says nothing was new");
+        t.ok(r.fault && delivered.includes(r.fault.delivery), `a "nothing new" scan ${r.fault ? `left its note nowhere (${r.fault.delivery}: ${r.fault.detail || "no detail"})` : "left no note at all"} — it belongs on the brief page`);
+        t.note(`nothing new: every story found had already run; noted via ${r.fault.delivery}`);
       } else {
         // empty / error / interrupted: the queue was not replaced (the queue check says so in its own
         // time); here the promise is that Mark HEARD it, on the phone, by email or on the brief page.
