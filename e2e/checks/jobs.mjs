@@ -682,48 +682,6 @@ export default [
   },
 
   // ───────────────────────────────────────────────────────────────────────────────────────────
-  // Visa requirements (Mark 2026-10-31: "load a table in the DB and set a job to review every 3 months"): lib/visa-requirements.ts
-  // loads what a U.S. passport needs at every destination from the Passport Index dataset; scheduleVisaRequirements runs 90 s
-  // after boot and then daily, and reads the dataset again only when the rows are due (90 days). The passport checklist reads it.
-  {
-    id: "jobs.visa-requirements-quarterly-review",
-    basis: "ruling: stillafloat-handoff-2026-10-29.md — Mark 2026-10-31: the visa requirements go in a table of our own, loaded from the free visa data, and a job reviews it every 3 months; the passport checklist reads the table",
-    title: "The visa requirements table is loaded and reviewed every 90 days by a daily job that is on the ledger and has not failed, and every country on an open group's itinerary has a row",
-    covers: ["job scheduleVisaRequirements", "GET /api/healthz/visa-requirements"],
-    modes: ["dev", "prod"],
-    run: async (t) => {
-      const ledgerRes = await t.get("/api/healthz/jobs", { auth: true });
-      t.ok(ledgerRes.status === 200 || ledgerRes.status === 503, `the job ledger answered ${ledgerRes.describe()}`);
-      const ledger = ledgerRes.json && typeof ledgerRes.json === "object" ? ledgerRes.json : t.json(ledgerRes);
-      const job = (ledger.jobs || []).find((j) => j.name === "scheduleVisaRequirements");
-      t.ok(job, "the job-health ledger has no entry for scheduleVisaRequirements");
-      t.matches(job.every, /90 days/, "the cadence the ledger gives for the visa review");
-      t.equal(job.everyMs, 24 * HOUR, "the longest normal gap between runs of the visa job (ms)");
-      const bootedH = (t.now() - Date.parse(ledger.bootedAt)) / HOUR;
-      if (job.lastOkAt) {
-        t.fresh(job.lastOkAt, 26, "the visa job's last successful run");
-        t.ok(job.consecutiveFailures === 0, `the visa job has failed ${job.consecutiveFailures} time(s) in a row: ${job.lastError}`);
-        t.observe("visa job last result", job.lastResult || "", "info");
-      } else {
-        t.require(bootedH > 0.1, `the box has just booted (${(bootedH * 60).toFixed(0)} min): the visa job runs 90 seconds after boot`);
-        t.ok(false, `the visa job has never succeeded on a box that has been up ${bootedH.toFixed(1)} hours${job.lastError ? ` — last error: ${job.lastError}` : ""}`);
-      }
-      const v = t.success(await t.get("/api/healthz/visa-requirements", { auth: true }));
-      t.atLeast(v.rows, 150, "destinations in the visa table for a U.S. passport");
-      t.fresh(v.oldest_checked_at, (90 + 10) * 24, "the oldest row's check (the review is due every 90 days, with ten days' grace)");
-      t.ok(Date.parse(v.next_check_at) <= t.now() + 91 * 24 * HOUR, "the next review is never more than 91 days away");
-      t.equal(JSON.stringify(v.coverage.missing), "[]", `countries on an open group's itinerary with no row in the visa table: ${(v.coverage.missing || []).join(", ")}`);
-      // Mark 2026-10-31 ("Yes, add one"): with his Orizn key on the box, the territories the dataset lacks are filled by the second source
-      // (asserted once the job has run on this boot: right after a deploy the key may be new and the first run 20 s away)
-      const ranThisBoot = job.lastOkAt && Date.parse(job.lastOkAt) >= Date.parse(ledger.bootedAt);
-      if (v.orizn_key && ranThisBoot) t.equal(JSON.stringify(v.coverage.territories_missing), "[]", `territories cruise ships call at with no row although an Orizn key is on this box: ${(v.coverage.territories_missing || []).join(", ")}`);
-      else if (v.orizn_key) t.observe("Orizn key on this box; the visa job has not run on this boot yet", `${(v.coverage.territories_missing || []).length} cruise territories still to fill`, "info");
-      else t.observe("no Orizn key on this box", `${(v.coverage.territories_missing || []).length} cruise territories unfilled (the dataset lists countries only)`, "info");
-      t.observe("visa table", `${v.rows} destinations (${Object.entries(v.sources || {}).map(([k, n]) => `${k} ${n}`).join(", ")}), checked ${v.checked_at}, next review ${v.next_check_at}; itinerary countries: ${(v.coverage.countries || []).join(", ")}`, "info");
-    },
-  },
-
-  // ───────────────────────────────────────────────────────────────────────────────────────────
   // News agent (port 3003, stillafloat-newsagent): its own scheduler POSTs /api/scan-news at
   // 08:00 Eastern daily. The scan REPLACES the editorial queue (generatedAt is written only by a
   // scan — approve/reject keep it) and first runs the 21-day archive sweep, which moves every

@@ -1,6 +1,5 @@
 // details-page.test.ts — the guest's "Your details" page, Road B (server/public/details.html and its Spanish twin), run the way a visitor's browser runs it
-// (Mark 2026-10-24, "Road B · I've got this… let me fill it in!": three short parts, the address, the checks, the pick with its upgrade hook; Mark 2026-11-01:
-// "Build my quote!" opens Part 4, the quote step — which cabin, FlexPay, drinks, insurance, getting there and back, the quote, "I agree" — then one line).
+// (Mark 2026-10-24, "Road B · I've got this… let me fill it in!": three short parts, the address, the checks, the pick with its upgrade hook, "Hold my cabin!", one line).
 //
 // The page script is executed against a minimal stand-in for the browser (just enough DOM for what the script touches), fed the answer the server's
 // GET /api/group-details/:token gives and a stand-in for its POSTs, so a field the page reads and the server stopped sending, a question that drifted
@@ -15,7 +14,6 @@ import { runInNewContext } from "node:vm";
 import { EXPECT_QS } from "./concierge-interview";
 import { BUSINESS } from "./group-secure";
 import { MSG, pickCabin } from "./group-details";
-import { buildQuote, quoteOptions } from "./group-quote";
 
 // Built to dist-test/lib/, so the site is two levels up.
 const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), "../../public");
@@ -37,24 +35,13 @@ const PERKS = ["Your own restaurant where you eat when you feel like it", "the a
 const ANSWERS = { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" } as const;
 const PICK = pickCabin(ANSWERS, HELD, "en", PERKS);
 const ADDR = { street: "123 Main St", city: "Raleigh", state: "NC", zip: "27601", tidied: false };
-/** The group file the quote step reads (lib/group-quote.ts): two held categories, the cruise line's plan with a price, one flight on offer. */
-const FILE = {
-  group: { sail_date: "2027-05-09", deposit_per_person: "50.00", final_payment_due: "2027-01-15", inclusions: [], line_protection: "MSC Cruise Protection: $99 per person", insurance_plans: null, marketing: { taxes_included: true }, terms: null },
-  cabins: [{ id: "c1", status: "held", category: "Balcony Bella", category_code: "BEL", price_total: "1073.58" }, { id: "c2", status: "held", category: "Balcony Aurea", category_code: "AUR", price_total: "1373.58" }],
-  travel: [{ id: "f1", kind: "flight", direction: "pre", from_place: "Raleigh (RDU)", price_per_person: "136", price_unit: "person", included: false }],
-};
-const OPTIONS = (lang: Lang) => quoteOptions(FILE, lang);
-const TWO = [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }];
-/** What the guest taps on Part 4: our pick's cabin stays, FlexPay no, drinks no, no insurance, no flight, no hotel, no transfers. */
-const QA = { cabin: "BEL", flexpay: false, drinks: false, insurance: "decline", travel: [], needs: { hotel: false, transfer: false } };
 
 /** The answer GET /api/group-details/:token gives (the server's own shape; each test changes what it needs). No cabin price is in it. */
 function answer(over: Record<string, unknown> = {}) {
   return {
     success: true, label: "Friends and Family 2027", ship: "MSC Seashore", sailDateText: "May 9, 2027", returnDateText: "May 13, 2027", heroUrl: "https://stillafloatcruising.com/assets/images/hero.jpg",
     firstName: "Mark", lastName: "Millham", email: "mmillham1@gmail.com", phone: null, guests: 2, travelers: [], address: null, concierge: null, pick: null, choice: null, callWhen: null,
-    holdRequestedAt: null, quoteOptions: null, quote: null, quoteAgreedAt: null, paperwork: null,
-    depositPerPersonText: "$50", phoneLine: "Questions? Call or text Mark at 919-346-6127.", businessPhone: "919-346-6127", lang: "en",
+    holdRequestedAt: null, depositPerPersonText: "$50", phoneLine: "Questions? Call or text Mark at 919-346-6127.", businessPhone: "919-346-6127", lang: "en",
     ...over,
   };
 }
@@ -90,9 +77,7 @@ type PostReply = (url: string, body: Record<string, any>) => Reply | Promise<Rep
 function server(lang: Lang, over: { perks?: string[]; lookup?: (body: Record<string, any>) => Reply } = {}): PostReply {
   return (url, body) => {
     if (url === "/api/address/lookup") return over.lookup ? over.lookup(body) : { ok: true, json: { success: true, available: false } };
-    if (url.endsWith("/hold")) return { ok: true, json: { success: true, quoteOptions: OPTIONS(lang) } };
-    if (url.endsWith("/quote")) return { ok: true, json: { success: true, quote: buildQuote(FILE, TWO, body["answers"], lang) } };
-    if (url.endsWith("/agree")) return { ok: true, json: { success: true, paperwork: "sent" } };
+    if (url.endsWith("/hold")) return { ok: true, json: { success: true } };
     const concierge = body["concierge"];
     return { ok: true, json: { success: true, pick: pickCabin(concierge, HELD, lang, over.perks ?? PERKS) } };
   };
@@ -144,15 +129,6 @@ function visit(lang: Lang, o: { search?: string; get?: unknown; getStatus?: numb
     tick3: () => { el("d-tick-3").handlers["click"]!({ target: target({}), ...quiet }); },
     tick4: () => { el("d-tick-4").handlers["click"]!({ target: target({}), ...quiet }); },
     hold: () => { el("d-hold").handlers["click"]!({ target: target({}), ...quiet }); },
-    /** A tap on Part 4: a cabin, a yes/no, an insurance choice, a travel tick. */
-    qtap: (g: string, v: string) => { el("d-qq").handlers["click"]!({ target: target({ "data-g": g, "data-v": v }), ...quiet }); },
-    agree: () => { el("d-agree").handlers["click"]!({ target: target({}), ...quiet }); },
-    qpills: () => [...el("d-qq").innerHTML.matchAll(/<button[^>]*data-g="([^"]+)" data-v="([^"]+)" aria-pressed="(true|false)">([^<]*)<\/button>/g)]
-      .map((m) => ({ g: m[1]!, v: m[2]!, on: m[3] === "true", label: m[4]!.replace(/&amp;/g, "&").replace(/&#39;/g, "'") })),
-    qticks: () => [...el("d-qq").innerHTML.matchAll(/<button[^>]*class="tickrow( on)?"[^>]*data-g="travel" data-v="([^"]+)"><span class="bx"><\/span><span>([^<]*)<\/span><\/button>/g)]
-      .map((m) => ({ v: m[2]!, on: !!m[1], label: m[3]! })),
-    /** The quote step's taps for a party that wants nothing extra (QA), then the quote. */
-    async answerQuote() { this.qtap("flexpay", "no"); this.qtap("drinks", "no"); this.qtap("insurance", "decline"); this.qtap("need-hotel", "no"); this.qtap("need-transfer", "no"); await flush(8); },
     take: () => { el("d-take").handlers["click"]!({ target: target({}), ...quiet }); },
     fix: (act: "yes" | "no") => { el("d-fix").handlers["click"]!({ target: target({ "data-act": act }), ...quiet }); },
     pickSugg: (j: number) => { el("d-sugg").handlers["click"]!({ target: target({ "data-s": String(j) }), ...quiet }); },
@@ -187,15 +163,14 @@ test("the two pages are one page in two languages: they differ only in the langu
   assert.equal(norm(html("es")), norm(html("en")));
 });
 
-test("a private page: never indexed, its address never sent on, it calls the guest's own API and carries the bot trap and 'Build my quote!'", () => {
+test("a private page: never indexed, its address never sent on, it calls the guest's own API and carries the bot trap and 'Hold my cabin!'", () => {
   for (const lang of ["en", "es"] as const) {
     const h = html(lang);
     assert.match(h, /<meta name="robots" content="noindex, nofollow">/, lang);
     assert.match(h, /<meta name="referrer" content="no-referrer">/, lang);
     assert.ok(h.includes("/api/group-details/") && h.includes("/api/address/lookup"), lang);
     assert.ok(h.includes('id="d-website"') && h.includes('class="hp"'), `${lang}: the bot trap`);
-    assert.ok(script(lang).includes(lang === "es" ? "¡Armar mi cotización!" : "Build my quote!"), `${lang}: the button's words`);
-    assert.ok(script(lang).includes(lang === "es" ? "Acepto… ¡hagámoslo!" : "I agree… let's do this!"), `${lang}: the agree button's words`);
+    assert.ok(script(lang).includes(lang === "es" ? "¡Apartar mi cabina!" : "Hold my cabin!"), `${lang}: the button's words`);
     assert.ok(script(lang).includes("b.website = $('d-website').value"), `${lang}: the bot trap travels with every POST`);
     // the header is the logo only; the footer is the group page's: the legal line and the Cornerstone logo
     const header = h.slice(h.indexOf('<div class="hdr">'), h.indexOf('<div class="d-banner"'));
@@ -206,7 +181,7 @@ test("a private page: never indexed, its address never sent on, it calls the gue
     assert.ok(!h.includes("navbar.js") && !h.includes("navbar-container"), `${lang}: the site menu`);
     // the order of the page: intro, who is coming, the four questions, our pick, the thank-you, the footer
     const at = (needle: string) => { const i = h.indexOf(needle); assert.ok(i > 0, `${lang}: ${needle}`); return i; };
-    const order = ['class="hdr"', 'class="d-banner"', 'id="d-intro"', 'id="d-part1"', 'id="d-part2"', 'id="d-part3"', 'id="d-part4"', 'id="d-thanks"', 'class="foot"'].map(at);
+    const order = ['class="hdr"', 'class="d-banner"', 'id="d-intro"', 'id="d-part1"', 'id="d-part2"', 'id="d-part3"', 'id="d-thanks"', 'class="foot"'].map(at);
     assert.deepEqual([...order].sort((a, b) => a - b), order, `${lang}: the sections are out of order`);
     // no money is taken and no card is asked for on this page; the checkmarks are buttons, not form controls
     assert.ok(!/type="(checkbox|password|tel|email)"|card number|cvv/i.test(h), `${lang}: a card, account or form-control field`);
@@ -278,7 +253,7 @@ test("it opens filled in with what we have: the design's heading and lede, the p
   assert.equal(p.doc.title, "Your details | Friends and Family 2027");
   assert.equal(p.el("d-plaque").textContent, "Friends and Family 2027");
   assert.equal(p.el("d-h1").textContent, "Look at you, taking charge… WE LOVE A PLANNER!");
-  assert.equal(p.el("d-lede").textContent, "Four short parts, about five minutes… less time than the buffet line on embarkation day. Your quote is ready at the end.");
+  assert.equal(p.el("d-lede").textContent, "Three short parts, about three minutes… less time than the buffet line on embarkation day. Your cabin is held at the end.");
   assert.equal(p.el("d-p1").textContent, "Part 1 · Who's coming");
   assert.equal(p.el("d-reach-l").textContent, "How to reach you"); assert.equal(p.el("d-reach").textContent, "mmillham1@gmail.com");
   assert.equal(p.el("d-count-l").textContent, "How many of you"); assert.equal(p.el("d-count").textContent, "2");
@@ -391,14 +366,10 @@ test("a picture that is not https is never used, and anything the guest or the f
   assert.equal(p.el("d-plaque").textContent, evil, "text only, through textContent");
   assert.equal(p.el("d-name-0").value, evil.trim(), "an input's value, never markup");
   assert.equal(p.el("d-reach").textContent, evil);
-  const held = visit("en", { get: answer({ holdRequestedAt: "2026-10-24T10:00:00Z", businessPhone: evil, travelers: [{ legal_name: "Mark Millham", dob: "1965-04-12" }], address: ADDR, concierge: ANSWERS, pick: { ...PICK, category: evil }, quoteOptions: { ...OPTIONS("en"), cabins: [{ ...OPTIONS("en").cabins[0]!, label: evil }] } }) });
+  const held = visit("en", { get: answer({ holdRequestedAt: "2026-10-24T10:00:00Z", businessPhone: evil, travelers: [{ legal_name: "Mark Millham", dob: "1965-04-12" }], address: ADDR, concierge: ANSWERS, pick: { ...PICK, category: evil } }) });
   await held.ready();
-  assert.ok(held.el("d-locked").textContent.includes(evil) && !held.el("d-locked").innerHTML.includes("<img"), "the locked line is text");
-  assert.ok(held.el("d-qq").innerHTML.includes("&lt;img") && !held.el("d-qq").innerHTML.includes("<img"), "a cabin's label from the file is escaped");
-  const agreed = visit("en", { get: answer({ holdRequestedAt: "2026-10-24T10:00:00Z", quoteAgreedAt: "2026-10-24T10:10:00Z", paperwork: "sent", email: evil, businessPhone: evil, quote: { version: 1, answers: QA, lines: [], category: evil, party: 2 } }) });
-  await agreed.ready();
-  assert.ok(agreed.el("d-thanks-h").textContent.includes(evil) && !agreed.el("d-thanks-h").innerHTML.includes("<img"));
-  assert.ok(agreed.el("d-thanks-p").textContent.includes(evil));
+  assert.ok(held.el("d-thanks-h").textContent.includes(evil) && !held.el("d-thanks-h").innerHTML.includes("<img"));
+  assert.ok(held.el("d-thanks-p").textContent.includes(evil));
   // the pick's own words are written as text too (the card's hook is the only markup, and only its own <b>)
   const card = visit("en", { post: (url, body) => ({ ok: true, json: { success: true, pick: { category: evil, where: evil, why: evil, upgrade: { category: evil, hook: evil } } } }) });
   await card.ready();
@@ -522,17 +493,17 @@ test("when the four answers are in the page asks for the pick (from the four ans
   assert.equal(p.el("d-pick-why").textContent, "Steady for whoever feels the motion, quiet away from the pool deck, and a balcony for that coffee.");
   assert.equal(p.el("d-pick-up").hidden, false);
   assert.equal(p.el("d-pick-up").innerHTML, "<b>The upgrade most people never hear about:</b> Aurea. Your own restaurant where you eat when you feel like it, the adults-only thermal spa, and a solarium the rest of the ship can't find. Ask Mark about the Aurea class rooms.");
-  assert.equal(p.el("d-hold").textContent, "Build my quote!");
-  assert.equal(p.el("d-hold-note").textContent, "Next: which cabin, insurance, drinks, and a hotel, flights or transfers if you want them… then your quote. Nothing is charged tonight.");
+  assert.equal(p.el("d-hold").textContent, "Hold my cabin!");
+  assert.equal(p.el("d-hold-note").textContent, "Mark confirms it with the cruise line and your paperwork follows. $50 a person holds it… nothing is charged tonight.");
   const shown = ["d-pick-h", "d-pick-why", "d-pick-up", "d-hold-note"].map((id) => p.el(id).textContent + p.el(id).innerHTML).join(" ");
-  assert.ok(!/\$|per person|From \d/.test(shown), "no price is on the card or under the button (Mark 2026-11-01: the figures wait for the quote step)");
+  assert.ok(!/\$(?!50 a person)|per person|From \d/.test(shown), "no cabin price is on the card");
 });
 
-test("the note under the button names no deposit even when the file has one; with no upgrade perks (or no higher category) the hook line is not there", async () => {
+test("with no deposit the hold line drops the dollar clause; with no upgrade perks (or no higher category) the hook line is not there", async () => {
   const none = visit("en", { get: answer({ depositPerPersonText: null }), post: server("en", { perks: [] }) });
   await none.ready();
   none.answers(); await none.ready();
-  assert.equal(none.el("d-hold-note").textContent, "Next: which cabin, insurance, drinks, and a hotel, flights or transfers if you want them… then your quote. Nothing is charged tonight.");
+  assert.equal(none.el("d-hold-note").textContent, "Mark confirms it with the cruise line and your paperwork follows. Nothing is charged tonight.");
   assert.equal(none.el("d-pick-up").hidden, true, "no perks written, no hook");
   const noUp = visit("en", { post: (url, body) => ({ ok: true, json: { success: true, pick: { ...pickCabin(body["concierge"], HELD, "en", PERKS), upgrade: null } } }) });
   await noUp.ready();
@@ -754,7 +725,7 @@ test("when the address service is not available the page takes the address as ty
 
 // ── Holding the cabin ─────────────────────────────────────────────────────────────────────────────────────────
 
-test("'Build my quote!' sends the names in, then Parts 1 to 3 close and Part 4 opens: the locked line, our pick already chosen among the file's cabins, FlexPay, drinks, insurance from the file, the flight on offer, a yes/no for the hotel and the transfers; the agree button waits (Mark 2026-11-01)", async () => {
+test("'Hold my cabin!' asks the server to hold it, then the WHOLE page becomes one line: 'Held!… {category}, party of {n}. Watch your inbox for the confirmation.'", async () => {
   const p = visit("en");
   await p.ready();
   await p.fillAll();
@@ -763,27 +734,10 @@ test("'Build my quote!' sends the names in, then Parts 1 to 3 close and Part 4 o
   const hold = p.sent.find((x) => x.url === `/api/group-details/${TOKEN}/hold`)!;
   assert.deepEqual(hold.body, { website: "" });
   for (const id of ["d-intro", "d-part1", "d-part2", "d-part3", "d-summary"]) assert.equal(p.el(id).hidden, true, id);
-  assert.equal(p.el("d-thanks").hidden, true, "nothing is held: the quote step comes first");
-  assert.equal(p.el("d-part4").hidden, false);
-  assert.equal(p.el("d-p4").textContent, "Part 4 · Let's build your quote");
-  assert.equal(p.el("d-p4intro").textContent, "Five quick choices, then the numbers. Mark confirms every figure with you before anything is charged.");
-  assert.equal(p.el("d-locked").textContent, "Names are in for Mark and Ceci · party of two. Our pick: Balcony Bella. To change a name or a birthday, call or text Mark at 919-346-6127.");
+  assert.equal(p.el("d-thanks").hidden, false);
+  assert.equal(p.el("d-thanks-h").textContent, "Held!… Balcony Bella, party of two. Watch your inbox for the confirmation.");
+  assert.equal(p.el("d-thanks-p").hidden, true, "one line, nothing else");
   assert.equal(p.el("d-msg").textContent, "");
-  const pills = p.qpills();
-  assert.deepEqual(pills.filter((x) => x.g === "cabin").map((x) => [x.v, x.label, x.on]), [
-    ["BEL", "Balcony Bella · $536.79 per person · taxes and port fees included", true],
-    ["AUR", "Balcony Aurea · $686.79 per person · taxes and port fees included", false],
-  ], "the file's categories with their fares, our pick already chosen");
-  assert.deepEqual(pills.filter((x) => x.g === "flexpay").map((x) => [x.v, x.label, x.on]), [["yes", "Yes, send me the application", false], ["no", "No thanks", false]]);
-  assert.ok(p.el("d-qq").innerHTML.includes("FlexPay is an installment plan Mark offers separately from the cruise line. Say yes and he sends you the short application next; it sets its own payment schedule, and nothing on this quote changes."), "FlexPay is Mark's, apart from the cruise line, and promises no terms");
-  assert.deepEqual(pills.filter((x) => x.g === "drinks").map((x) => x.label), ["Yes, price one for us", "No thanks"]);
-  assert.deepEqual(pills.filter((x) => x.g === "insurance").map((x) => [x.v, x.label]), [["line", "MSC Cruise Protection · $99 per person"], ["own", "I have my own policy"], ["decline", "No insurance for us"]]);
-  assert.deepEqual(p.qticks(), [{ v: "f1", on: false, label: "Flight from Raleigh (RDU) · $136 per person" }]);
-  assert.deepEqual(pills.filter((x) => x.g.startsWith("need-")).map((x) => x.g + ":" + x.v), ["need-hotel:yes", "need-hotel:no", "need-transfer:yes", "need-transfer:no"], "no hotel or transfer on offer: a yes/no each; the flight has its offer");
-  assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "true", "dim until every question is answered");
-  assert.equal(p.el("d-agree-note").textContent, "Answer every question above and the button lights up.");
-  assert.equal(p.el("d-quote").hidden, true);
-  assert.equal(p.posts("/quote").length, 0, "no quote is asked for before every answer is in");
   // the party in words: one, three, four
   for (const [guests, word] of [[1, "one"], [3, "three"], [4, "four"]] as const) {
     const q = visit("en", { get: answer({ guests }) });
@@ -792,64 +746,8 @@ test("'Build my quote!' sends the names in, then Parts 1 to 3 close and Part 4 o
     for (let i = 1; i < guests; i++) { q.type(`d-name-${i}`, `Guest Number${"x".repeat(i)}`); q.type(`d-dob-${i}`, "01011990"); }
     q.answers(); await q.flush(8);
     q.hold(); await q.ready();
-    assert.match(q.el("d-locked").textContent, new RegExp(`party of ${word}\\. Our pick: Balcony Bella\\.`));
+    assert.equal(q.el("d-thanks-h").textContent, `Held!… Balcony Bella, party of ${word}. Watch your inbox for the confirmation.`.replace("party of one", "party of one"));
   }
-});
-
-test("the quote: once every question is answered the page asks the server with the answers, shows the lines, the total, the deposit, the balance and the note, and lights 'I agree'; a changed answer asks again; 'I agree' sends it and the WHOLE page becomes one line with where the paperwork went", async () => {
-  const p = visit("en");
-  await p.ready();
-  await p.fillAll();
-  p.hold(); await p.ready();
-  await p.answerQuote();
-  const asked = p.posts("/quote");
-  assert.equal(asked.length, 1, "one ask once the last answer is in");
-  assert.deepEqual(asked[0]!.body, { answers: QA, lang: "en", website: "" });
-  assert.equal(p.el("d-quote").hidden, false);
-  assert.equal(p.el("d-quote-h").textContent, "Your quote");
-  const lines = [...p.el("d-quote-lines").innerHTML.matchAll(/<div class="qline( qtotal)?"><span>([^<]*)(?:<span class="det">([^<]*)<\/span>)?<\/span><b>([^<]*)<\/b><\/div>/g)].map((m) => [m[2], m[3] ?? null, m[4]]);
-  assert.deepEqual(lines, [
-    ["Balcony Bella · 2 travelers", "Mark $536.79 · Ceci $536.79 · taxes and port fees included", "$1,073.58"],
-    ["Travel insurance: none", null, ""],
-    ["Total", null, "$1,073.58"],
-  ]);
-  assert.equal(p.el("d-quote-plus").hidden, true, "nothing left for Mark to price");
-  assert.equal(p.el("d-quote-dep").textContent, "Deposit to hold the cabin: $100 ($50 per person). Nothing is charged until Mark confirms it with you.");
-  assert.equal(p.el("d-quote-bal").textContent, "Balance $973.58, due by January 15, 2027.");
-  assert.match(p.el("d-quote-note").textContent, /^Every figure comes from the group's file with the cruise line, and Mark confirms each one with you before anything is charged\. Pricing subject to change until finalized\.$/);
-  assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "false");
-  assert.equal(p.el("d-agree").textContent, "I agree… let's do this!");
-  assert.equal(p.el("d-agree-note").textContent, "Agreeing sends your paperwork page to your inbox. Still nothing charged.");
-  // a changed answer: the quote goes until the new one is back, with Mark's items to price named
-  p.qtap("drinks", "yes"); p.qtap("travel", "f1"); p.qtap("flexpay", "yes"); p.qtap("insurance", "line");
-  assert.equal(p.el("d-quote").hidden, true, "the old figures are not shown for the new answers");
-  await p.flush(8);
-  assert.equal(p.posts("/quote").length, 2);
-  assert.deepEqual(p.posts("/quote")[1]!.body["answers"], { ...QA, drinks: true, travel: ["f1"], flexpay: true, insurance: "line" });
-  assert.equal(p.qticks()[0]!.on, true);
-  const again = [...p.el("d-quote-lines").innerHTML.matchAll(/<div class="qline( qtotal)?"><span>([^<]*)(?:<span class="det">([^<]*)<\/span>)?<\/span><b>([^<]*)<\/b><\/div>/g)].map((m) => [m[2], m[4]]);
-  assert.deepEqual(again, [["Balcony Bella · 2 travelers", "$1,073.58"], ["Drink package", "to come"], ["Travel insurance: MSC Cruise Protection", "$198"], ["Flight from Raleigh (RDU)", "$272"], ["FlexPay", ""], ["Total", "$1,543.58"]]);
-  assert.ok(!/—/.test(p.el("d-quote-lines").innerHTML + p.el("d-qq").innerHTML), "no em dash on the quote step");
-  assert.equal(p.el("d-quote-plus").textContent, "Plus Drink package, which Mark prices for you.");
-  p.qtap("need-hotel", "yes"); await p.flush(8);
-  assert.equal(p.el("d-quote-plus").textContent, "Plus Drink package and Hotel, which Mark prices for you.", "two items: no comma before 'and'");
-  // I agree
-  p.agree(); await p.ready();
-  assert.deepEqual(p.posts("/agree").map((x) => x.body), [{ lang: "en", website: "" }]);
-  for (const id of ["d-intro", "d-part1", "d-part2", "d-part3", "d-part4", "d-summary"]) assert.equal(p.el(id).hidden, true, id);
-  assert.equal(p.el("d-thanks").hidden, false);
-  assert.equal(p.el("d-thanks-h").textContent, "Agreed!… Balcony Bella, party of two. Your paperwork is on its way to mmillham1@gmail.com.");
-  assert.equal(p.el("d-thanks-p").textContent, "Need to change a name, a birthday or your mind? Call or text Mark at 919-346-6127.");
-  // when this box could not email them, the line says Mark sends the paperwork; a refused agreement keeps the button and shows its words
-  const heldBox = visit("en", { post: (url, body) => (url.endsWith("/agree") ? { ok: true, json: { success: true, paperwork: "held" } } : server("en")(url, body)) });
-  await heldBox.ready(); await heldBox.fillAll(); heldBox.hold(); await heldBox.ready(); await heldBox.answerQuote(); heldBox.agree(); await heldBox.ready();
-  assert.equal(heldBox.el("d-thanks-h").textContent, "Agreed!… Balcony Bella, party of two. Mark sends your paperwork next.");
-  const refused = visit("en", { post: (url, body) => (url.endsWith("/agree") ? { ok: false, status: 409, json: { success: false, error: "Your quote is already agreed and your paperwork is on its way. To change anything, call or text Mark at 919-346-6127." } } : server("en")(url, body)) });
-  await refused.ready(); await refused.fillAll(); refused.hold(); await refused.ready(); await refused.answerQuote(); refused.agree(); await refused.ready();
-  assert.equal(refused.el("d-thanks").hidden, true);
-  assert.equal(refused.el("d-part4").hidden, false);
-  assert.equal(refused.el("d-msg").textContent, "Your quote is already agreed and your paperwork is on its way. To change anything, call or text Mark at 919-346-6127.");
-  assert.equal(refused.el("d-agree").getAttribute("aria-disabled"), "false");
 });
 
 test("a hold on a changed form saves first, then holds; a double tap holds once", async () => {
@@ -871,7 +769,7 @@ test("a hold the server refuses keeps the button and shows its words; a failed r
   refusing.hold(); await refusing.ready();
   assert.equal(refusing.el("d-thanks").hidden, true);
   assert.equal(refusing.el("d-msg").textContent, "Please finish the names, the address and the four questions first.");
-  assert.equal(refusing.el("d-hold").textContent, "Build my quote!");
+  assert.equal(refusing.el("d-hold").textContent, "Hold my cabin!");
   assert.equal(refusing.el("d-hold").getAttribute("aria-disabled"), "false");
   const down = visit("en", { post: (url, body) => { if (url.endsWith("/hold")) throw new Error("network"); return server("en")(url, body); } });
   await down.ready();
@@ -898,30 +796,16 @@ test("when the server refuses the save, its words go under the field it names an
   assert.equal(q.el("d-zip-e").textContent, "Five digits for the ZIP, please… like 27601.");
 });
 
-test("a guest whose names are in opens straight on Part 4 (from the email's 'Let's begin!'), with the answers they gave last time and their quote back, and nothing is sent; once agreed, the one line", async () => {
-  const names = { holdRequestedAt: "2026-10-24T10:00:00Z", travelers: TWO, address: ADDR, concierge: ANSWERS, pick: PICK, quoteOptions: OPTIONS("en") };
-  const fresh = visit("en", { get: answer(names) });
-  await fresh.ready();
-  assert.equal(fresh.el("d-part4").hidden, false);
-  assert.equal(fresh.el("d-thanks").hidden, true);
-  assert.equal(fresh.qpills().find((x) => x.g === "cabin" && x.on)?.v, "BEL", "our pick is chosen for them");
-  assert.equal(fresh.el("d-quote").hidden, true);
-  assert.equal(fresh.sent.length, 0);
-  const back = visit("en", { get: answer({ ...names, quote: buildQuote(FILE, TWO, { ...QA, insurance: "line", travel: ["f1"] }, "en") }) });
-  await back.ready();
-  assert.deepEqual(back.qpills().filter((x) => x.on).map((x) => x.g + ":" + x.v), ["cabin:BEL", "flexpay:no", "drinks:no", "insurance:line", "need-hotel:no", "need-transfer:no"]);
-  assert.equal(back.qticks()[0]!.on, true);
-  assert.equal(back.el("d-quote").hidden, false, "their quote is shown again");
-  assert.equal(back.el("d-agree").getAttribute("aria-disabled"), "false");
-  assert.equal(back.sent.length, 0, "nothing is re-sent until they change something");
-  const agreed = visit("en", { get: answer({ ...names, quoteAgreedAt: "2026-10-24T10:10:00Z", paperwork: "sent", quote: buildQuote(FILE, TWO, QA, "en") }) });
-  await agreed.ready();
-  assert.equal(agreed.el("d-thanks").hidden, false);
-  assert.equal(agreed.el("d-thanks-h").textContent, "Agreed!… Balcony Bella, party of two. Your paperwork is on its way to mmillham1@gmail.com.");
-  assert.equal(agreed.el("d-thanks-p").hidden, false);
-  assert.equal(agreed.el("d-thanks-p").textContent, "Need to change a name, a birthday or your mind? Call or text Mark at 919-346-6127.");
-  for (const id of ["d-intro", "d-part1", "d-part2", "d-part3", "d-part4"]) assert.equal(agreed.el(id).hidden, true, id);
-  assert.equal(agreed.sent.length, 0);
+test("a guest who already asked for the hold opens straight on the one line, with the way to change something named (Mark), and nothing is sent", async () => {
+  const get = answer({ holdRequestedAt: "2026-10-24T10:00:00Z", travelers: [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }], address: ADDR, concierge: ANSWERS, pick: PICK });
+  const p = visit("en", { get });
+  await p.ready();
+  assert.equal(p.el("d-thanks").hidden, false);
+  assert.equal(p.el("d-thanks-h").textContent, "Held!… Balcony Bella, party of two. Watch your inbox for the confirmation.");
+  assert.equal(p.el("d-thanks-p").hidden, false);
+  assert.equal(p.el("d-thanks-p").textContent, "Need to change a name, a birthday or your mind? Call or text Mark at 919-346-6127.");
+  for (const id of ["d-intro", "d-part1", "d-part2", "d-part3"]) assert.equal(p.el(id).hidden, true, id);
+  assert.equal(p.sent.length, 0);
 });
 
 test("a returning guest finds their names, birthdays, address, answers and pick back, with nothing re-sent until they change something", async () => {
@@ -990,7 +874,7 @@ test("the Spanish page says everything in Spanish, in usted, through the same st
   await p.ready();
   assert.equal(p.doc.title, "Sus datos | Amigos y Familia 2027");
   assert.equal(p.el("d-h1").textContent, "Mire nada más, tomando el mando… ¡NOS ENCANTA UN BUEN PLANIFICADOR!");
-  assert.equal(p.el("d-lede").textContent, "Cuatro partes cortas, unos cinco minutos… menos que la fila del buffet el día del embarque. Su cotización queda lista al final.");
+  assert.equal(p.el("d-lede").textContent, "Tres partes cortas, unos tres minutos… menos que la fila del buffet el día del embarque. Su cabina queda apartada al final.");
   assert.equal(p.el("d-p1").textContent, "Parte 1 · Quiénes vienen");
   assert.equal(p.el("d-reach-l").textContent, "Cómo comunicarnos con usted");
   assert.equal(p.el("d-who-0").textContent, "Viajero 1 · usted"); assert.equal(p.el("d-who-1").textContent, "Viajero 2");
@@ -1005,25 +889,12 @@ test("the Spanish page says everything in Spanish, in usted, through the same st
   assert.equal(p.el("d-p3").textContent, "Parte 3 · Nuestra sugerencia para usted");
   assert.equal(p.el("d-pick-h").textContent, "Balcony Bella, en el centro del barco, en una cubierta baja");
   assert.equal(p.el("d-pick-up").innerHTML, "<b>La mejora que casi nadie conoce:</b> Aurea. Un restaurante propio, el spa solo para adultos y un solárium escondido. Pregunte a Mark por las cabinas de clase Aurea.");
-  assert.equal(p.el("d-hold").textContent, "¡Armar mi cotización!");
-  assert.equal(p.el("d-hold-note").textContent, "Lo que sigue: qué cabina, seguro, bebidas, y hotel, vuelos o traslados si los quiere… y después su cotización. No se cobra nada esta noche.");
+  assert.equal(p.el("d-hold").textContent, "¡Apartar mi cabina!");
+  assert.equal(p.el("d-hold-note").textContent, "Mark la confirma con la naviera y sus documentos le llegan después. $50 por persona la aparta… no se cobra nada esta noche.");
   p.hold(); await p.ready();
-  assert.equal(p.el("d-p4").textContent, "Parte 4 · Armemos su cotización");
-  assert.equal(p.el("d-locked").textContent, "Nombres registrados: Ana y Luis · grupo de dos. Nuestra sugerencia: Balcony Bella. Para cambiar un nombre o una fecha de nacimiento, llame o escriba a Mark al 919-346-6127.");
-  assert.deepEqual(p.qpills().filter((x) => x.g === "cabin").map((x) => x.label), ["Balcony Bella · $536.79 por persona · impuestos y tasas portuarias incluidos", "Balcony Aurea · $686.79 por persona · impuestos y tasas portuarias incluidos"]);
-  assert.deepEqual(p.qpills().filter((x) => x.g === "flexpay").map((x) => x.label), ["Sí, envíenme la solicitud", "No, gracias"]);
-  assert.deepEqual(p.qpills().filter((x) => x.g === "insurance").map((x) => x.label), ["MSC Cruise Protection · $99 por persona", "Tengo mi propia póliza", "Sin seguro para nosotros"]);
-  assert.deepEqual(p.qticks().map((x) => x.label), ["Vuelo desde Raleigh (RDU) · $136 por persona"]);
-  await p.answerQuote();
-  assert.equal(p.sent.find((x) => x.url.endsWith("/quote"))!.body["lang"], "es");
-  assert.equal(p.el("d-quote-h").textContent, "Su cotización");
-  assert.equal(p.el("d-quote-dep").textContent, "Depósito para apartar la cabina: $100 ($50 por persona). No se cobra nada hasta que Mark lo confirme con usted.");
-  assert.equal(p.el("d-quote-bal").textContent, "Saldo $973.58, a pagar antes del 15 de enero de 2027.");
-  assert.equal(p.el("d-agree").textContent, "Acepto… ¡hagámoslo!");
-  p.agree(); await p.ready();
-  assert.equal(p.el("d-thanks-h").textContent, "¡Aceptada!… Balcony Bella, grupo de dos. Sus documentos van en camino a mmillham1@gmail.com.");
-  const again = visit("es", { get: answer({ lang: "es", holdRequestedAt: "2026-10-24T10:00:00Z", quoteAgreedAt: "2026-10-24T10:10:00Z", paperwork: "held", travelers: [{ legal_name: "Ana Pérez", dob: "1965-04-12" }], address: ADDR, concierge: ANSWERS, pick: pickCabin(ANSWERS, HELD, "es", perks), quoteOptions: OPTIONS("es"), quote: buildQuote(FILE, [{ legal_name: "Ana Pérez", dob: "1965-04-12" }], QA, "es") }) });
+  assert.equal(p.el("d-thanks-h").textContent, "¡Apartada!… Balcony Bella, grupo de dos. Revise su correo para la confirmación.");
+  const again = visit("es", { get: answer({ lang: "es", holdRequestedAt: "2026-10-24T10:00:00Z", travelers: [{ legal_name: "Ana Pérez", dob: "1965-04-12" }], address: ADDR, concierge: ANSWERS, pick: pickCabin(ANSWERS, HELD, "es", perks) }) });
   await again.ready();
-  assert.equal(again.el("d-thanks-h").textContent, "¡Aceptada!… Balcony Bella, para una persona. Mark le envía sus documentos después.");
+  assert.equal(again.el("d-thanks-h").textContent, "¡Apartada!… Balcony Bella, para una persona. Revise su correo para la confirmación.");
   assert.equal(again.el("d-thanks-p").textContent, "¿Necesita cambiar un nombre, una fecha de nacimiento o de opinión? Llame o escriba a Mark al 919-346-6127.");
 });

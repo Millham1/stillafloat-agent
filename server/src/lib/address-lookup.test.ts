@@ -3,7 +3,7 @@
 
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { addressLookupWhy, formatAddress, lookupAddress, resetAddressLookupState, splitOneLine, titleCaseAddress, US_STATES } from "./address-lookup";
+import { formatAddress, lookupAddress, resetAddressLookupState, splitOneLine, titleCaseAddress, US_STATES } from "./address-lookup";
 
 const ENV = { USPS_CLIENT_ID: "test-id", USPS_CLIENT_SECRET: "test-secret" };
 const T0 = 1_800_000_000_000;
@@ -133,31 +133,4 @@ test("the helpers: title-casing keeps directions and ordinals, the line is split
   assert.deepEqual(splitOneLine("1 A St, NC"), { street: "1 A St", state: "NC" });
   assert.deepEqual(splitOneLine("1 A St, Cary, 27511"), { street: "1 A St", city: "Cary", zip: "27511" });
   assert.ok(US_STATES.has("NC") && US_STATES.has("DC") && US_STATES.has("PR") && !US_STATES.has("ZZ"));
-});
-
-test("a street and a ZIP are enough (Mark 2026-10-26): the ZIP's state comes from the post office first, then the address is asked", async () => {
-  const s = stub([TOKEN, { status: 200, json: { city: "RALEIGH", state: "NC", ZIPCode: "27601" } }, FOUND]);
-  const r = await lookupAddress({ q: "123 main st", zip: "27601" }, { fetch: s.fetch, env: ENV, now: () => T0 });
-  assert.deepEqual(r, { available: true, suggestions: [{ street: "123 Main St", city: "Raleigh", state: "NC", zip: "27601", formatted: "123 Main St, Raleigh, NC 27601" }] });
-  assert.match(s.calls[1]!.url, /\/addresses\/v3\/city-state\?ZIPCode=27601$/);
-  const addr = new URL(s.calls[2]!.url);
-  assert.equal(addr.searchParams.get("state"), "NC");
-  assert.equal(addr.searchParams.get("ZIPCode"), "27601");
-  // a ZIP the post office does not know: no suggestion, and the address is not asked
-  resetAddressLookupState();
-  const n = stub([TOKEN, { status: 404 }]);
-  assert.deepEqual(await lookupAddress({ q: "123 main st", zip: "00000" }, { fetch: n.fetch, env: ENV, now: () => T0 }), { available: true, suggestions: [] });
-  assert.equal(n.calls.length, 2);
-});
-
-test("why the last lookup could not be made is kept for the test site, and never holds the address", async () => {
-  await lookupAddress({ q: "123 Main St", city: "Raleigh", state: "NC" }, { fetch: stub([]).fetch, env: {}, now: () => T0 });
-  assert.equal(addressLookupWhy(), "no credentials (USPS_CLIENT_ID missing, USPS_CLIENT_SECRET missing)");
-  resetAddressLookupState();
-  await lookupAddress({ q: "123 Main St", city: "Raleigh", state: "NC" }, { fetch: stub([{ status: 401 }]).fetch, env: ENV, now: () => T0 });
-  assert.equal(addressLookupWhy(), "token 401");
-  assert.ok(!String(addressLookupWhy()).includes("Main"));
-  resetAddressLookupState();
-  await lookupAddress({ q: "123 Main St", city: "Raleigh", state: "NC" }, { fetch: stub([TOKEN, FOUND]).fetch, env: ENV, now: () => T0 });
-  assert.equal(addressLookupWhy(), null);
 });

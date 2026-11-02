@@ -1,7 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getSupabase } from "../lib/persistence";
 import { requireToken } from "../lib/http-auth";
-import { fillItineraryVisas } from "../lib/visa-fill";
 import { logger } from "../lib/logger";
 import { withDisplayNames } from "../lib/group-marketing";
 import { CHILDREN, GROUP_COLUMNS, groupDateProblem, missingSchedule, pickWritable, publicGroupRow, slugify, withGroupDeposit, withTravelUnit } from "../lib/group-file";
@@ -208,8 +207,6 @@ router.post("/groups/intake/:id/accept", requireToken, async (req: Request, res:
     if (ge) {
       return res.status(ge.code === "23505" ? 409 : 400).json({ success: false, error: ge.code === "23505" ? "A group with that name already exists" : ge.message });
     }
-    // Mark 2026-10-31: the new file's itinerary → the visa table asks for the destinations it lacks, now (lib/visa-fill.ts)
-    void fillItineraryVisas(group);
 
     // Cabins: what the form sent back, else what the document said.
     let cabins: Row[] = Array.isArray(body["cabins"]) ? (body["cabins"] as unknown[]).map((c) => {

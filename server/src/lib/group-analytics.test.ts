@@ -44,7 +44,7 @@ function fixture(): AnalyticsRaw {
   ];
   const travelers: Row[] = [
     traveler("t1", { cabin_id: "c1", is_lead: true, first_name: "Ann", last_name: "Lee", email: "ann.lee@gmail.com", passport_last4: "1234", form_sent_at: "2026-10-01T00:00:00Z", form_submitted_at: "2026-10-02T00:00:00Z" }),
-    traveler("t2", { cabin_id: "c1", first_name: "Bo", last_name: "Lee", email: "bo@example.com", lang: "es", form_sent_at: "2026-10-01T00:00:00Z", form_opened_at: "2026-10-05T10:20:00Z", esign_consent_at: "2026-10-05T10:21:00Z" }),
+    traveler("t2", { cabin_id: "c1", first_name: "Bo", last_name: "Lee", email: "bo@example.com", lang: "es", form_sent_at: "2026-10-01T00:00:00Z" }),
     traveler("t3", { cabin_id: "c2", is_lead: true, first_name: "Cy", last_name: "Diaz", email: null, lang: "es" }),
     traveler("t4", { cabin_id: "c3", first_name: "Di", last_name: "Released", email: "di@example.com" }), // on a released cabin: left out
     traveler("t5", { group_id: "g2", cabin_id: "c4", first_name: "Ed", last_name: "Sailed", email: "ed@example.com" }),
@@ -58,7 +58,7 @@ function fixture(): AnalyticsRaw {
   ];
   const signatures: Row[] = [
     ...packetFor({ group: groups[0], cabin: cabins[0], traveler: travelers[0] }).map((k) => ({ group_id: "g1", traveler_id: "t1", doc_key: k, signer_role: "lead", signed_at: "2026-10-03T00:00:00Z", answers: { x: SECRET_VALUES[7] }, ip_hash: SECRET_VALUES[4], ua_hash: SECRET_VALUES[5], pdf_path: SECRET_VALUES[9] })),
-    { id: "s-t2-01", sealed: true, group_id: "g1", traveler_id: "t2", doc_key: "15-emergency-contact-form", signer_role: "traveler", signed_at: "2026-10-04T00:00:00Z", answers: { x: SECRET_VALUES[7] }, ip_hash: SECRET_VALUES[4], ua_hash: SECRET_VALUES[5], pdf_path: SECRET_VALUES[9] },
+    { group_id: "g1", traveler_id: "t2", doc_key: "01-terms-and-conditions", signer_role: "traveler", signed_at: "2026-10-04T00:00:00Z", answers: { x: SECRET_VALUES[7] }, ip_hash: SECRET_VALUES[4], ua_hash: SECRET_VALUES[5], pdf_path: SECRET_VALUES[9] },
   ];
   const messages: Row[] = [
     { id: "m1", group_id: "g1", traveler_id: "t1", template: "t-120", to_email: "ann.lee@gmail.com", status: "sent", sent_at: "2026-10-07T00:00:00Z", dedupe_key: "journey:t-120:t1:2027-05-09", body_html: SECRET_VALUES[8], created_at: "2026-10-07T00:00:00Z" },
@@ -191,19 +191,13 @@ test("paperwork: one row per traveler and required document, signed or pending",
   const t2 = a.paperwork.filter((p) => p.travelerId === "t2");
   const t3 = a.paperwork.filter((p) => p.travelerId === "t3");
   assert.deepEqual(t1.map((p) => p.docKey), packetFor({ group: raw.groups[0], cabin: raw.cabins[0], traveler: raw.travelers[0] }));
+  assert.ok(t1.some((p) => p.docKey === "12-cruise-booking-agreement"), "the lead of a cabin also owes the booking agreement");
   assert.equal(t1.every((p) => p.status === "signed" && p.signedAt === "2026-10-03T00:00:00Z"), true);
-  assert.deepEqual(t2.map((p) => p.docKey), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"], "every traveler owes the same four (Mark 2026-10-31: the checklist is prepared and emailed, never signed)");
-  assert.deepEqual(t2.filter((p) => p.status === "signed").map((p) => p.docKey), ["15-emergency-contact-form"]);
+  assert.equal(t2.some((p) => p.docKey === "12-cruise-booking-agreement"), false, "a non-lead does not");
+  assert.deepEqual(t2.filter((p) => p.status === "signed").map((p) => p.docKey), ["01-terms-and-conditions"]);
   assert.equal(t3.every((p) => p.status === "pending" && p.signedAt === null), true);
-  // Mark 2026-10-25: the workspace opens a signed copy itself: the signature's id and two yes/no flags, never the file's path
-  const terms2 = t2.find((p) => p.docKey === "15-emergency-contact-form")!;
-  assert.deepEqual([terms2.signatureId, terms2.hasCopy, terms2.sealed], ["s-t2-01", true, true]);
-  assert.equal(t3.every((p) => p.signatureId === null && !p.hasCopy && !p.sealed), true, "a pending document has no signature, copy or seal");
-  assert.equal(t1.every((p) => p.signatureId === null && p.hasCopy === true && p.sealed === false), true, "a copy on file whose signature row carries no id: no id is invented (the workspace then shows no open button)");
   const tr = (id: string) => a.travelers.find((t) => t.id === id)!;
   assert.deepEqual([tr("t1").fullySigned, tr("t2").fullySigned, tr("t3").fullySigned], [true, false, false]);
-  assert.deepEqual([tr("t1").formOpenedAt, tr("t1").consentAt, tr("t1").copiesSentAt], [null, null, null], "no opening, consent or copies on file: nulls, never a guess");
-  assert.deepEqual([tr("t2").formOpenedAt, tr("t2").consentAt, tr("t2").copiesSentAt], ["2026-10-05T10:20:00Z", "2026-10-05T10:21:00Z", null]);
   assert.equal(tr("t2").docsSigned, 1);
   assert.equal(tr("t2").docsRequired, t2.length);
   assert.equal(tr("t2").lang, "es");

@@ -34,7 +34,7 @@ import {
   TEMPLATE_VERSION_DATE, buildCtx, cancellationNote, cancellationRows, cleanValue, fmtLong, fmtMoney, normalizeFees,
   type Answers, type Block, type DocCtx, type DocSpec, type FeeLine, type FieldSpec, type Lang, type Row, type SignerRole,
 } from "./group-document-kit";
-import { DOC_SPECS, insuranceDocFor } from "./group-document-specs";
+import { DOC_SPECS } from "./group-document-specs";
 
 export { DOC_SPECS, TEMPLATE_VERSION_DATE, buildCtx, normalizeFees };
 export type { Answers, Block, DocCtx, DocSpec, FeeLine, FieldSpec, Lang, Row, SignerRole };
@@ -150,7 +150,7 @@ function inputHtml(kind: string, name: string, env: Env): string {
   if (kind === "ta") return `<textarea class="doc-ta" name="${name}" data-field="${name}" maxlength="${f?.maxLength ?? 1000}" rows="3" aria-label="${label}"></textarea>`;
   if (kind === "ck") return `<input class="doc-box" type="checkbox" name="${name}" data-field="${name}" data-kind="check" aria-label="${label}">`;
   const type = f?.kind === "date" ? "date" : f?.kind === "email" ? "email" : f?.kind === "tel" ? "tel" : "text";
-  const extra = f?.kind === "passport" || f?.kind === "license" ? ' autocomplete="off" autocapitalize="characters" spellcheck="false"' : "";
+  const extra = f?.kind === "passport" ? ' autocomplete="off" autocapitalize="characters" spellcheck="false"' : "";
   return `<input class="doc-in" type="${type}" name="${name}" data-field="${name}" data-kind="${f?.kind ?? "text"}" maxlength="${max}" aria-label="${label}"${extra}>`;
 }
 
@@ -180,10 +180,7 @@ function tokensToText(text: string, mode: { answers?: Answers; today?: string })
     switch (kind) {
       case "in": case "ta": {
         const v = a?.[name!];
-        // Mark 2026-10-30: a line the signer left empty says so on the signed copy, never a bare blank. Mark 2026-10-31: "N/A".
-        if (typeof v !== "string" || !v.trim()) return a ? "N/A" : "________";
-        // A date answer is stored as YYYY-MM-DD; the printed copy reads it as a date.
-        return (/^\d{4}-\d{2}-\d{2}$/.test(v.trim()) && fmtLong(v.trim())) || cleanValue(v);
+        return typeof v === "string" && v.trim() ? cleanValue(v) : "________";
       }
       case "ck": return a?.[name!] === true ? "☒" : "☐";
       case "ch": {
@@ -428,7 +425,7 @@ export function docSource(key: string, lang: Lang): string {
   return src;
 }
 
-export function blocksFor(key: string, ctx: DocCtx, opts: { paper?: boolean } = {}): { spec: DocSpec; blocks: Block[] } {
+export function blocksFor(key: string, ctx: DocCtx): { spec: DocSpec; blocks: Block[] } {
   const spec = DOC_SPECS[key];
   if (!spec) throw new Error(`unknown client document "${key}"`);
   // "No fees unless Mark hand-enters one": the fee agreements do not exist for a file with none.
@@ -437,11 +434,8 @@ export function blocksFor(key: string, ctx: DocCtx, opts: { paper?: boolean } = 
   md = applyRules(md, spec, ctx);
   md = replacePlaceholders(md, ctx);
   let blocks = parseBlocks(md);
-  // on the printed form (paper) the title and the template's signature lines stay
-  if (!opts.paper) {
-    blocks = dropTitle(blocks);
-    blocks = dropSignature(key, blocks, spec.sigStart);
-  }
+  blocks = dropTitle(blocks);
+  blocks = dropSignature(key, blocks, spec.sigStart);
   if (!ctx.fees.length) blocks = stripFees(blocks, spec);
   else blocks = listFees(blocks, spec, ctx);
   blocks = applyCancellation(blocks, spec, ctx);
@@ -526,54 +520,26 @@ export function fillBlocks(doc: Pick<RenderedDoc, "blocks">, answers: Answers, s
 // ── 6. Who signs what ─────────────────────────────────────────────────────────
 
 export const TRAVELER_PACKET = [
-  "15-emergency-contact-form", // first: the information page's answers (address, phone, passport) fill the documents after it
+  "15-emergency-contact-form", // first: its answers (address, phone, passport) prefill the documents after it
   "01-terms-and-conditions",
-  "insurance", // the ONE insurance document the choice on the page decides (Mark 2026-10-30): 23 the plan, or 07 the declination
   "05-liability-waiver",
+  "07-travel-insurance-declination",
+  "16-passport-document-checklist",
 ] as const;
 export const FEE_DOCUMENTS = ["02-travel-planning-agreement", "03-service-fee-planning-fee-agreement"] as const;
-/** The cabin's lead, who pays, also signs the booking agreement and the card authorization (Mark 2026-10-29: "a credit card
- *  authorization … every time"). Mark 2026-10-31: the booking agreement follows the insurance decision (its protection line and
- *  cost row carry the choice) and comes before the waiver; the card authorization, which pays for it, closes the packet. */
-export const LEAD_DOCUMENTS = ["12-cruise-booking-agreement", "22-card-authorization"] as const;
-export const LEAD_DOCUMENT = LEAD_DOCUMENTS[1];
-export const CARD_DOCUMENT = LEAD_DOCUMENTS[1];
-export const BOOKING_DOCUMENT = LEAD_DOCUMENTS[0];
+export const LEAD_DOCUMENT = "12-cruise-booking-agreement";
 export const ORGANIZER_DOCUMENT = "09-group-travel-contract";
-/** Mark 2026-10-31: the passport and travel document checklist is prepared from the file and emailed on its own; never signed. */
-export const CHECKLIST_DOCUMENT = "16-passport-document-checklist";
 
-/** Whose card pays for the booking, as the lead answered on their page: "me", "other" (the owner signs on a link of their own), or null. */
-export function cardHolderOf(traveler: Row | null | undefined): "me" | "other" | null {
-  const h = traveler?.form_data?.card?.holder;
-  return h === "me" || h === "other" ? h : null;
-}
-
-/** The ordered document keys one signer is asked for. Mark 2026-10-30: the package is the Cornerstone documents that are live
- *  today plus the card authorization, every one filled from the one information page, shown for confirmation and signature, and
- *  listed in the copies email. The insurance document is the one the choice on the file calls for (23 the plan, 07 the
- *  declination; 07 until a choice is made). The card authorization is the lead's unless the card is someone else's: then it is
- *  the card owner's own packet (kind "cardholder") and not in the lead's. Mark 2026-10-31: the passport checklist (16) is not
- *  signed; it is prepared from the file and emailed on its own (CHECKLIST_DOCUMENT). Not in any packet: 04 (cancellation
- *  policy), 06 (Cornerstone's own card form: 22 is that form with the last four, the expiry and the licence), 13 and 14
- *  (questionnaires), 20 and 21 (the two-document packet of 10/29, kept so copies signed under it still render). */
-export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean; cardholder?: boolean }): string[] {
+/** The ordered document keys one signer is asked for.
+ *  Not in any packet: 04 (cancellation policy, not assigned a signer), 06 (card authorization — clients pay the
+ *  line directly; open question for Cornerstone), 13 and 14 (questionnaires, not in v1). */
+export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean }): string[] {
   if (input.organizer) return [ORGANIZER_DOCUMENT];
-  if (input.cardholder) return [CARD_DOCUMENT];
   const hasFees = normalizeFees(input.group?.fees).length > 0;
-  const keys: string[] = TRAVELER_PACKET.map((k) => (k === "insurance" ? insuranceDocFor(input.traveler) : k));
+  const keys: string[] = [...TRAVELER_PACKET];
   if (hasFees) keys.splice(2, 0, ...FEE_DOCUMENTS); // after the terms
-  if (input.traveler?.is_lead && input.cabin) {
-    keys.splice(keys.indexOf("05-liability-waiver"), 0, BOOKING_DOCUMENT); // right after the insurance document, before the waiver
-    if (cardHolderOf(input.traveler) !== "other") keys.push(CARD_DOCUMENT);
-  }
+  if (input.traveler?.is_lead && input.cabin) keys.push(LEAD_DOCUMENT);
   return keys;
-}
-
-/** The inputs of a document that one signer is asked for: a line marked `ask` is for that signer only (Mark 2026-10-30: the lead
- *  names the card's owner; the owner fills in the billing lines on their own link). */
-export function askedOf(fields: FieldSpec[], who: "lead" | "cardholder"): FieldSpec[] {
-  return fields.filter((f) => !f.ask || f.ask === who);
 }
 
 // ── 7. Answers ────────────────────────────────────────────────────────────────
@@ -586,8 +552,6 @@ export interface AppliedAnswers {
   formData: Row;
   /** The number is returned ONLY so the caller can encrypt it; it is never part of `answers`. */
   passport?: { number: string; last4: string };
-  /** The driver's licence number (the card authorization, Mark 2026-10-30): returned only to be encrypted, never in `answers`. */
-  license?: { number: string; last4: string };
 }
 export interface RejectedAnswers { ok: false; errors: Record<string, string> }
 
@@ -598,12 +562,6 @@ function validDate(s: string): boolean {
   if (!m) return false;
   const d = new Date(`${s}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
-}
-
-/** "Fuquay Varina, NC 27526" → its three parts; null when it is not in that shape. */
-export function splitCityStateZip(s: string): { city: string; state: string; zip: string } | null {
-  const m = /^(.+?),\s*([A-Z]{2})\s+(\d{5})(?:-\d{4})?$/.exec(s.replace(/\s+/g, " ").trim());
-  return m ? { city: m[1]!.trim(), state: m[2]!, zip: m[3]! } : null;
 }
 
 function setPath(target: Row, path: string, value: unknown): void {
@@ -632,14 +590,14 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
   const input = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   const spec = DOC_SPECS[doc.key];
   const errors: Record<string, string> = {};
-  let clean: Answers = {};
+  const clean: Answers = {};
   const today = ctx.now.toISOString().slice(0, 10);
 
   for (const f of doc.fields) {
     const v = input[f.name];
     const max = f.maxLength ?? (f.kind === "textarea" ? 1000 : 200);
     switch (f.kind) {
-      case "text": case "textarea": case "tel": case "email": case "date": case "passport": case "license": {
+      case "text": case "textarea": case "tel": case "email": case "date": case "passport": {
         if (v === undefined || v === null) break;
         if (typeof v !== "string") { errors[f.name] = "Please check this answer."; break; }
         const s = f.kind === "textarea" ? v.replace(/\r/g, "").trim() : v.replace(/\s+/g, " ").trim();
@@ -650,7 +608,6 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
         if (f.kind === "email" && !EMAIL.test(s)) { errors[f.name] = "Please check the email address."; break; }
         if (f.kind === "tel" && !(s.replace(/\D/g, "").length >= 7 && s.replace(/\D/g, "").length <= 15 && /^[0-9+()\-.\s xX#]+$/.test(s))) { errors[f.name] = "Please check the phone number."; break; }
         if (f.kind === "passport" && !passportLooksValid(s)) { errors[f.name] = "A passport number is 6 to 9 letters and digits."; break; }
-        if (f.kind === "license" && !/^[A-Z0-9-]{4,20}$/.test(normalizePassport(s))) { errors[f.name] = "A driver's licence number is 4 to 20 letters and digits."; break; }
         if (f.kind === "date") {
           if (!validDate(s)) { errors[f.name] = "Please enter a real date."; break; }
           const year = Number(s.slice(0, 4));
@@ -658,7 +615,7 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
           if (f.date === "past" && s > today) { errors[f.name] = "That date should be in the past."; break; }
           if (f.date === "future" && s <= today) { errors[f.name] = "That date has already passed."; break; }
         }
-        clean[f.name] = f.kind === "passport" || f.kind === "license" ? normalizePassport(s) : s;
+        clean[f.name] = f.kind === "passport" ? normalizePassport(s) : s;
         break;
       }
       case "choice": {
@@ -681,7 +638,6 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
       }
     }
   }
-  if (spec?.complete) clean = spec.complete(clean, ctx);
   for (const f of doc.fields) {
     const required = typeof f.required === "function" ? f.required(clean) : f.required === true;
     if (required && isEmpty(clean[f.name]) && !errors[f.name]) errors[f.name] = f.kind === "check" ? "Please tick this box." : "Please fill this in.";
@@ -692,7 +648,6 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
   const travelerPatch: Row = {};
   const formData: Row = {};
   let passport: AppliedAnswers["passport"];
-  let license: AppliedAnswers["license"];
   const stored: Answers = { ...clean };
   for (const f of doc.fields) {
     const v = clean[f.name];
@@ -704,26 +659,17 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
       travelerPatch["passport_last4"] = passport.last4;
       continue;
     }
-    if (f.kind === "license") {
-      const number = String(v);
-      license = { number, last4: last4(number) };
-      stored[f.name] = `ending ${license.last4}`; // the number itself is never stored in answers
-      travelerPatch["dl_last4"] = license.last4;
-      continue;
-    }
     const shown = f.kind === "choice" ? f.options?.find((o) => o.value === v)?.label ?? v : v; // a column holds the words ("Female"), not the code
     if (f.col) travelerPatch[f.col] = shown;
     if (f.form) setPath(formData, f.form, v);
-    // Mark 2026-10-27: city, state and ZIP are typed in three boxes and kept apart too, so the file can sort and search by each
-    if (f.form && /city_state_zip$/.test(f.name) && typeof v === "string") { const parts = splitCityStateZip(v); if (parts) setPath(formData, `${f.form}_parts`, parts); }
   }
   if (spec?.derive) Object.assign(travelerPatch, spec.derive(clean, ctx));
-  return { ok: true, answers: stored, travelerPatch, formData, ...(passport ? { passport } : {}), ...(license ? { license } : {}) };
+  return { ok: true, answers: stored, travelerPatch, formData, ...(passport ? { passport } : {}) };
 }
 
 /** What the page puts in each input before the signer types: the file's own value (never a passport number). */
 export function prefillValue(f: FieldSpec, ctx: DocCtx): string | string[] | boolean | undefined {
-  if (f.kind === "passport" || f.kind === "license") return undefined;
+  if (f.kind === "passport") return undefined;
   const fromCol = f.col ? ctx.traveler?.[f.col] : undefined;
   const fromForm = f.form ? getPath(ctx.traveler?.form_data, f.form) : undefined;
   const v = !isEmpty(fromForm) ? fromForm : fromCol;
@@ -736,15 +682,12 @@ export function prefillValue(f: FieldSpec, ctx: DocCtx): string | string[] | boo
   return f.prefill?.(ctx);
 }
 
-/** The field as the page needs it: no functions, nothing secret. `given`: answers the server already knows for this signer (the
- *  card owner's "someone else's card"), so a line required by them reads as required, not as a follow-up. */
-export function publicField(f: FieldSpec, ctx: DocCtx, given?: Answers): Record<string, unknown> {
+/** The field as the page needs it: no functions, nothing secret. */
+export function publicField(f: FieldSpec, ctx: DocCtx): Record<string, unknown> {
   return {
-    // "shown": required once the page shows it (a follow-up line under the choice that calls for it)
-    name: f.name, label: f.label, kind: f.kind, required: f.required === true ? true : typeof f.required === "function" ? (given ? f.required(given) : "shown") : false,
+    name: f.name, label: f.label, kind: f.kind, required: f.required === true,
     ...(f.options ? { options: f.options.map((o) => ({ value: o.value, label: o.label })) } : {}),
     ...(f.maxLength ? { maxLength: f.maxLength } : {}),
-    ...(f.onDocument ? { on_document: f.onDocument } : {}),
     value: prefillValue(f, ctx) ?? null,
   };
 }

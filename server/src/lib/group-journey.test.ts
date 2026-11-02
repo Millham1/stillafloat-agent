@@ -155,7 +155,7 @@ test("seven days after a request that went out, a nudge follows if something is 
   assert.equal(day("2026-12-13").after, "t-90");
   // everything in: nothing to chase
   const done = fixtureInput({ extraMessages: [sent] });
-  done.signatures = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"].map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "traveler", signed_at: "2026-11-01T00:00:00Z" }));
+  done.signatures = ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement"].map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "traveler", signed_at: "2026-11-01T00:00:00Z" }));
   done.travelers[0]!.form_data = { journey: { getting_there: "driving" } };
   const quiet = item(planJourney(done, at("2026-12-13"), { isApproved: approvedAll }), "t1", "data-needed")!;
   assert.deepEqual([quiet.status, quiet.reason], ["skipped", "nothing is missing"]);
@@ -266,7 +266,7 @@ test("the 120-day message: sailing, payment schedule, paperwork, passport, insur
   assert.match(r.text, /These amounts are for cabin 8123\./);
   assert.match(r.text, /Payments are made directly to the cruise line or supplier by the client\./);
   assert.match(r.text, /You have signed 2 of 6 documents\./);
-  assert.match(r.text, /- Liability Waiver and Release/i);
+  assert.match(r.text, /- Liability Waiver/i);
   assert.match(r.text, /passport on your file expires June 1, 2027, less than six months after you return/);
   assert.match(r.text, /Mark offers Allianz plans/);
   assert.match(r.text, /Check your passport/);
@@ -382,21 +382,21 @@ test("the other countdown messages also name only the sections they have, in bot
   assert.equal(renderEmail("t-10", ctx(fixtureInput(), "t1", before(10)))!.subject, "10 days to go: your ship and how boarding day works");
 });
 
-test("a deposit with no date is due when the paperwork is completed (Mark 2026-10-26), never 'date to be confirmed'; other payments with no date keep that wording", () => {
+test("a deposit with no date is 'due when you book' ('se paga al reservar'), never 'date to be confirmed'; other payments with no date keep that wording", () => {
   const input = fixtureInput({ group: { deposit_due: null, terms: { deposit_timing: "at_booking", deadlines: [] } } });
   const dep = input.payments.find((p) => p.id === "p3")!; dep.paid_at = null; dep.due_date = null;       // Carlos and Dulce's cabin: deposit due at booking
   const fin = input.payments.find((p) => p.id === "p4")!; fin.due_date = null;                           // and a final payment with no date yet
   const en = renderEmail("t-120", ctx(input, "t3", before(120), fullExtras(), "en"))!;
-  assert.match(en.text, /Deposit: \$400, due when your paperwork is completed \(either through me or on the cruise line's website\)\./);
+  assert.match(en.text, /Deposit: \$400, due when you book\./);
   assert.match(en.text, /Final payment: \$2,200, date to be confirmed\./);
   assert.ok(!/Deposit: \$400, date to be confirmed/.test(en.text));
   const es = renderEmail("t-120", ctx(input, "t3", before(120)))!;
-  assert.match(es.text, /Depósito: \$400, se paga cuando complete su documentación \(conmigo o en el sitio web de la naviera\)\./);
+  assert.match(es.text, /Depósito: \$400, se paga al reservar\./);
   assert.match(es.text, /Pago final: \$2,200, fecha por confirmar\./);
   assert.ok(!/Depósito: \$400, fecha por confirmar/.test(es.text));
   // the cruise page says the same
   const hub = renderHub(ctx(input, "t3", before(120), fullExtras(), "en"));
-  assert.ok(hub.sections.find((x) => x.key === "payments")!.lines.includes("Deposit: $400, due when your paperwork is completed (either through me or on the cruise line's website)."));
+  assert.ok(hub.sections.find((x) => x.key === "payments")!.lines.includes("Deposit: $400, due when you book."));
   // a deposit that has a date, or is paid, is unchanged
   assert.match(renderEmail("t-120", ctx(fixtureInput(), "t1", before(120)))!.text, /Deposit: \$400, paid on October 20, 2026\./);
 });
@@ -513,15 +513,7 @@ test("the booking confirmation: what is booked, what was signed, the payment sch
   assert.match(r.text, /Terms and Conditions of Travel Services, October 25, 2026/);
   assert.match(r.text, /Still to sign:/);
   assert.match(r.text, /December 6, 2026: final payment and travel plans/);
-  assert.match(r.text, /January 5, 2027: final payment due/, "the real final payment date is on the list (Mark 2026-10-26)");
   assert.match(r.text, /March 4, 2027: check-in and last details/);
-  // a final payment due BEFORE the 90-day message: that day is not called "final payment" any more, and the list stays in date order
-  const early = fixtureInput(); early.payments.find((p) => p.id === "p2")!.due_date = "2026-11-20";
-  const e = renderEmail("confirmation", ctx(early, "t1", before(120)))!.text;
-  assert.match(e, /November 20, 2026: final payment due\n- December 6, 2026: travel plans/);
-  assert.ok(!/final payment and travel plans/.test(e));
-  const ee = renderEmail("confirmation", ctx(early, "t1", before(120), undefined, "es"))!.text;
-  assert.match(ee, /vence el pago final/);
   assert.ok(!/days to go/.test(r.text), "the confirmation is about the booking, not a countdown");
   // 90 days later the early milestones are no longer listed as coming
   assert.ok(!/payments and paperwork/.test(renderEmail("confirmation", ctx(input, "t1", before(60)))!.text));
@@ -572,7 +564,7 @@ test("a missing-details message lists what is still missing, and is not written 
   assert.ok(!/How you are getting to the port/.test(r.text), "Ann's flight in is on file");
   assert.ok(!/emergency contact/.test(r.text), "Ann's emergency contact is on file");
   const done = fixtureInput(); done.travelers[0]!.form_data = { journey: { getting_there: "driving" } };
-  done.signatures = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver", "16-passport-document-checklist", "12-cruise-booking-agreement", "22-card-authorization"].map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "traveler", signed_at: "2026-11-01T00:00:00Z" }));
+  done.signatures = ["15-emergency-contact-form", "01-terms-and-conditions", "05-liability-waiver", "07-travel-insurance-declination", "16-passport-document-checklist", "12-cruise-booking-agreement"].map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "traveler", signed_at: "2026-11-01T00:00:00Z" }));
   assert.equal(renderEmail("data-needed", ctx(done, "t1", before(80))), null);
 });
 
@@ -720,8 +712,7 @@ test("the insurance box on the cruise page says 'Call or text Mark at 919-346-61
   assert.ok(root, "the site's public folder");
   const js = readFileSync(path.join(root!, "js", "my-cruise.js"), "utf8");
   assert.match(js, /function safe\(u\) \{[^\n]*\^tel:/, "the cruise page's script lets a tel: link through");
-  const stamp = Number((/my-cruise\.js\?v=(\d{8})/.exec(readFileSync(path.join(root!, "my-cruise.html"), "utf8")) ?? [])[1]);
-  assert.ok(stamp >= 20261019, "the script's cache stamp moved with the change (and with every later one)");
+  assert.match(readFileSync(path.join(root!, "my-cruise.html"), "utf8"), /my-cruise\.js\?v=20261019/, "the script's cache stamp moved with the change");
 });
 
 test("text from the file is escaped in the html", () => {
