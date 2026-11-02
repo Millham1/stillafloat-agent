@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { uploadsPlaylistId, parsePlaylistItems, fetchUploads, channelIdForHandle, stampedLanguage, fetchVideoLanguages } from "./youtube-api";
+import { uploadsPlaylistId, parsePlaylistItems, fetchUploads, channelIdForHandle, stampedLanguage, fetchVideoLanguages, capHistory } from "./youtube-api";
 
 const CID = "UC1sZkmM4CezcS5DPIPlrCtA";
 const item = (id: string, title: string, at = "2026-10-01T00:00:00Z") => ({
@@ -104,5 +104,19 @@ describe("recorded video language", () => {
     assert.equal(urls.length, 2);
     assert.match(urls[0]!, /part=snippet/);
     await assert.rejects(fetchVideoLanguages(["x"], "KEY", () => Promise.resolve({ ok: false, status: 403, json: async () => ({}) })), /videos\.list answered HTTP 403/);
+  });
+});
+
+describe("history cap", () => {
+  const vids = Array.from({ length: 5 }, (_, i) => ({ id: `v${i}` }));
+  it("keeps the newest max videos", () => {
+    assert.deepEqual(capHistory(vids, null, 3).map((v) => v.id), ["v0", "v1", "v2"]);
+  });
+  it("keeps Mark's pinned video when it falls past the cap", () => {
+    assert.deepEqual(capHistory(vids, "v4", 3).map((v) => v.id), ["v0", "v1", "v2", "v4"]);
+  });
+  it("does not repeat a pinned video already inside the cap, and ignores a pin that is not in the history", () => {
+    assert.deepEqual(capHistory(vids, "v1", 3).map((v) => v.id), ["v0", "v1", "v2"]);
+    assert.deepEqual(capHistory(vids, "gone", 3).map((v) => v.id), ["v0", "v1", "v2"]);
   });
 });

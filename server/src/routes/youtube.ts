@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { readJson, writeJson } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { tokenOk } from "../lib/http-auth";
-import { fetchUploads, channelIdForHandle, stampedLanguage, type VideoLang } from "../lib/youtube-api";
+import { fetchUploads, channelIdForHandle, stampedLanguage, capHistory, type VideoLang } from "../lib/youtube-api";
 
 const router: IRouter = Router();
 
@@ -271,11 +271,11 @@ router.get("/youtube-scan", async (req: Request, res: Response) => {
       if (!v.isShort && /#shorts/i.test(v.title)) v.isShort = true;
     }
 
-    // Newest-first, capped so the history can't grow unbounded.
+    // Newest-first, capped so the history can't grow unbounded; Mark's pinned video stays past the cap.
     videos.sort(
       (a, b) => new Date(b.published || 0).getTime() - new Date(a.published || 0).getTime(),
     );
-    videos = videos.slice(0, 200);
+    videos = capHistory(videos, existing?.featuredManual ? existing.featuredId : null);
 
     // Preserve a manual feature pick if Mark set one; otherwise leave
     // featuredId unpinned so the homepage tracks the latest upload.
