@@ -91,6 +91,15 @@ interface LangSnippet {
 }
 
 /** The language YouTube has on record for a video ("es-419" → "es"); null when it carries no en/es stamp. Pure. */
+/** The channel history keeps the newest `max` videos, and always the one Mark pinned with "Feature on Homepage".
+ *  2026-11-02: the Filming 5 and 6 uploads (two long videos and twelve Shorts) pushed the pinned Shokz video past
+ *  the 200 cap on dev; the pin then pointed at nothing and the homepage and newsletter quietly fell back. */
+export function capHistory<T extends { id: string }>(newestFirst: T[], pinnedId: string | null | undefined, max = 200): T[] {
+  const kept = newestFirst.slice(0, max);
+  const pinned = pinnedId ? newestFirst.find((v) => v.id === pinnedId) : undefined;
+  return pinned && !kept.includes(pinned) ? [...kept, pinned] : kept;
+}
+
 export function stampedLanguage(snippet: LangSnippet | undefined): VideoLang | null {
   for (const tag of [snippet?.defaultLanguage, snippet?.defaultAudioLanguage]) {
     const base = (tag ?? "").toLowerCase().split("-")[0];
