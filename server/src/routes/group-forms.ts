@@ -111,6 +111,20 @@ export const store: FormsStore = {
     const { error } = await db().from("group_signatures").delete().eq("id", id);
     if (error) throw new Error(error.message);
   },
+  async mergeFormData(id, mutate) {
+    // compare-and-swap on updated_at: a write that lost the race to another is read again and redone on top of it
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const { data, error } = await db().from("group_travelers").select("form_data, updated_at").eq("id", id).maybeSingle();
+      if (error || !data) throw new Error(error?.message ?? "traveler not found");
+      const current = data.form_data && typeof data.form_data === "object" && !Array.isArray(data.form_data) ? data.form_data : {};
+      let q = db().from("group_travelers").update({ form_data: mutate(current), updated_at: new Date().toISOString() }).eq("id", id);
+      q = data.updated_at ? q.eq("updated_at", data.updated_at) : q.is("updated_at", null);
+      const { data: won, error: ue } = await q.select("id");
+      if (ue) throw new Error(ue.message);
+      if ((won ?? []).length) return;
+    }
+    throw new Error("form_data kept changing under this save");
+  },
   async updateTraveler(id, patch) {
     const { error } = await db().from("group_travelers").update(patch).eq("id", id);
     if (error) throw new Error(error.message);

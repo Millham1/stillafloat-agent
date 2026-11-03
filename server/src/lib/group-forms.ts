@@ -56,6 +56,9 @@ export interface FormsStore {
   /** The signatures one signer has made: a traveler's own, or the organizer's for the group. */
   signaturesFor(who: { groupId: string; travelerId: string | null }): Promise<Row[]>;
   insertSignature(row: Row): Promise<{ id: string } | "duplicate">;
+  /** Change the traveler's form_data from what is stored RIGHT NOW (never from a copy read earlier): a background job and a page save
+   *  that overlap each used to overwrite one another, and the card owner's choice vanished (walkthrough 11/03 05:05Z). */
+  mergeFormData(id: string, mutate: (current: Row) => Row): Promise<void>;
   deleteSignature(id: string): Promise<void>;
   updateTraveler(id: string, patch: Row): Promise<void>;
   uploadPdf(path: string, bytes: Buffer): Promise<void>;
@@ -101,6 +104,8 @@ export interface FormsDeps {
 }
 
 export interface InsuranceDeps extends QuoteEnv {
+  /** Tests only: stands in for the Allianz portal so the background quote can be timed. */
+  fetchQuote?: typeof fetchAllianzQuote;
   /** GROUP_INSURANCE_VIDEO_URL: the video the client watches before choosing; null = no video yet. */
   videoUrl: string | null;
   /** "Waiting on you": send this traveler an Allianz quote by hand (made once per traveler). */
@@ -354,6 +359,9 @@ export interface SignBody {
 
 const CHANGED = reply(409, { success: false, code: "document-changed", error: "This document changed while you had it open. Please reload the page and read it again before signing." });
 
+const rowOf = (v: unknown): Row => (v && typeof v === "object" && !Array.isArray(v) ? (v as Row) : {});
+const cardRow = (fd: unknown): Row => rowOf(rowOf(fd)["card"]);
+
 function deepMerge(base: unknown, patch: Row): Row {
   const out: Row = base && typeof base === "object" && !Array.isArray(base) ? { ...(base as Row) } : {};
   for (const [k, v] of Object.entries(patch)) {
@@ -433,7 +441,6 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
   if (traveler) {
     try {
       const patch: Row = { ...applied.travelerPatch, updated_at: now.toISOString() };
-      if (Object.keys(applied.formData).length) patch["form_data"] = deepMerge(traveler.form_data, applied.formData);
       if (applied.passport) patch["passport_enc"] = encryptPii(applied.passport.number, deps.piiKey);
       if (applied.license) patch["dl_enc"] = encryptPii(applied.license.number, deps.piiKey);
       // the terms are on 01 (the Cornerstone set) or inside 21 (Mark 2026-10-29): signing either records the consent to them
@@ -457,6 +464,7 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
         if (newsletterProspect) patch["prospect_id"] = newsletterProspect;
       }
       await deps.store.updateTraveler(traveler.id, patch);
+      if (Object.keys(applied.formData).length) await deps.store.mergeFormData(traveler.id, (fd) => deepMerge(fd, applied.formData));
     } catch (err) {
       await deps.store.deleteSignature(saved.id).catch(() => undefined);
       deps.warn({ err: err instanceof Error ? err.message : String(err), group: loaded.group.id }, "paperwork: saving the traveler's answers failed; the signature was removed");
@@ -969,18 +977,20 @@ export async function chooseCardholder(deps: FormsDeps, token: unknown, body: { 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errors["card_email"] = "Please check the email address.";
   }
   if (Object.keys(errors).length) return reply(400, { success: false, error: "Please check the answers marked below.", fields: errors });
-  const fd: Row = t.form_data && typeof t.form_data === "object" ? t.form_data : {};
-  const was: Row = fd["card"] && typeof fd["card"] === "object" ? fd["card"] : {};
+  const was = cardRow(t.form_data);
   const now = deps.now().toISOString();
   if (holder === "me") {
     // the lead's own card: the owner's lines come off the file and any link that went to someone else stops working
-    const { name: _n, email: _e, ...rest } = was;
-    await deps.store.updateTraveler(t.id, { form_data: { ...fd, card: { ...rest, holder: "me" } }, card_token_hash: null, card_link_sent_at: null, updated_at: now });
+    await deps.store.updateTraveler(t.id, { card_token_hash: null, card_link_sent_at: null, updated_at: now });
+    await deps.store.mergeFormData(t.id, (cur) => {
+      const { name: _n, email: _e, ...rest } = cardRow(cur);
+      return { ...cur, card: { ...rest, holder: "me" } };
+    });
     const again = await loadByToken(deps, token);
     return reply(200, { success: true, holder, sent: null, ...(again ? { packet: publicPacket(again, deps) } : {}) });
   }
   const changed = was["holder"] !== "other" || String(was["email"] ?? "").trim().toLowerCase() !== email;
-  await deps.store.updateTraveler(t.id, { form_data: { ...fd, card: { ...was, holder: "other", name, email } }, updated_at: now });
+  await deps.store.mergeFormData(t.id, (cur) => ({ ...cur, card: { ...cardRow(cur), holder: "other", name, email } }));
   // a new owner or a new address gets a new link; an address that already has its link out is not emailed again
   let sent: boolean | null = null;
   if (changed || !t.card_link_sent_at) {
@@ -1031,9 +1041,8 @@ export async function chooseInsurance(deps: FormsDeps, token: unknown, body: { i
     own = { provider, policy_number: policy };
   }
   const t = loaded.traveler;
-  const fd: Row = t.form_data && typeof t.form_data === "object" ? t.form_data : {};
-  const ins: Row = fd["insurance"] && typeof fd["insurance"] === "object" ? fd["insurance"] : {};
-  await deps.store.updateTraveler(t.id, { form_data: { ...fd, insurance: { ...ins, choice, plan, provider: own?.provider ?? null, policy_number: own?.policy_number ?? null, chosen_at: deps.now().toISOString() } }, updated_at: deps.now().toISOString() });
+  const chosenAt = deps.now().toISOString();
+  await deps.store.mergeFormData(t.id, (cur) => ({ ...cur, insurance: { ...rowOf(cur["insurance"]), choice, plan, provider: own?.provider ?? null, policy_number: own?.policy_number ?? null, chosen_at: chosenAt } }));
   const again = await loadByToken(deps, token);
   return reply(200, { success: true, choice, plan, ...(again ? { packet: publicPacket(again, deps) } : {}) });
 }
@@ -1091,11 +1100,9 @@ export function insurancePublic(loaded: Loaded, deps: Pick<FormsDeps, "insurance
 }
 
 async function saveQuote(deps: Pick<FormsDeps, "store">, traveler: Row, q: QuoteRecord): Promise<void> {
-  const fd = traveler.form_data && typeof traveler.form_data === "object" ? traveler.form_data : {};
-  const ins = fd.insurance && typeof fd.insurance === "object" ? fd.insurance : {};
-  const form_data = { ...fd, insurance: { ...ins, quote: q } };
-  traveler.form_data = form_data;
-  await deps.store.updateTraveler(traveler.id, { form_data });
+  // The quote can finish a minute after it started, with the guest saving other answers meanwhile: it is laid onto what is stored now.
+  await deps.store.mergeFormData(traveler.id, (cur) => ({ ...cur, insurance: { ...rowOf(cur["insurance"]), quote: q } }));
+  traveler.form_data = { ...rowOf(traveler.form_data), insurance: { ...rowOf(rowOf(traveler.form_data)["insurance"]), quote: q } };
 }
 
 const TEN_MINUTES = 10 * 60_000;
@@ -1117,7 +1124,7 @@ export async function requestInsuranceQuote(deps: FormsDeps, token: unknown): Pr
   }
   await saveQuote(deps, t, base);
   // In the background: the client reads on while the portal is driven; the page polls GET …/insurance.
-  void fetchAllianzQuote(input, deps.insurance ?? { chromePath: undefined, user: undefined, password: undefined })
+  void (deps.insurance?.fetchQuote ?? fetchAllianzQuote)(input, deps.insurance ?? { chromePath: undefined, user: undefined, password: undefined })
     .then((out) => finishQuote(deps, loaded, out.status === "ready"
       ? { ...base, status: "ready", quoted_at: deps.now().toISOString(), plans: out.plans }
       : { ...base, status: "unavailable", reason: out.reason }))
