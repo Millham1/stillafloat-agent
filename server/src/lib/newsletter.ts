@@ -1,4 +1,11 @@
 import { llmJson } from "./llm";
+
+/**
+ * The weekly letter runs from a cron and nobody waits on it, so it may take the
+ * AI box its time (about 4,000 tokens at box speed). The default 90s local limit
+ * would time every letter out and send it to Claude.
+ */
+export const NEWSLETTER_LLM_TIMEOUT_MS = 300_000;
 import { logger } from "./logger";
 import { sendMail, fetchBounces } from "./mailer";
 import { notifyMark, reviewUrl } from "./notify";
@@ -504,6 +511,7 @@ export async function draftNewsletter(edition: Lang = "en"): Promise<NewsletterD
     user: `Build this week's newsletter from:\n\n${userContent}`,
     schema: NEWSLETTER_SCHEMA as unknown as Record<string, unknown>,
     maxTokens: 4000,
+    timeoutMs: NEWSLETTER_LLM_TIMEOUT_MS,
   });
 
   // Each hit links to the story's pre-rendered page on the site (Mark: a
@@ -1026,6 +1034,7 @@ export async function buildSpanishEdition(en: NewsletterDraft): Promise<Newslett
     schema: TRANSLATE_SCHEMA as unknown as Record<string, unknown>,
     cheap: true,
     maxTokens: 3000,
+    timeoutMs: NEWSLETTER_LLM_TIMEOUT_MS,
   });
   const t = (v: unknown, fallback: string): string => (typeof v === "string" && v.trim() ? v.trim() : fallback);
   const trHits = Array.isArray(tr.quickHits) ? tr.quickHits : [];
