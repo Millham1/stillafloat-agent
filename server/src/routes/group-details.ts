@@ -437,11 +437,17 @@ router.post("/group-details/:token/agree", async (req: Request, res: Response) =
         const { first, last } = splitLegalName(p.legal_name);
         return {
           group_id: group.id, cabin_id: cabin ? cabin["id"] : null, is_lead: i === 0, first_name: first, last_name: last, dob: p.dob, lang,
-          ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null, form_data: { address: address.street, city_state_zip: `${address.city}, ${address.state} ${address.zip}` } } : {}),
+          // form_data is NOT NULL and a bulk insert sends NULL (not the column default) for a key a row leaves out, so every traveler names it.
+          form_data: i === 0 ? { address: address.street, city_state_zip: `${address.city}, ${address.state} ${address.zip}` } : {},
+          ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null } : {}),
         };
       });
       const { data: made, error: me } = await db().from("group_travelers").insert(rows).select("id, cabin_id, email, first_name, lang");
-      if (me) throw new Error(me.message);
+      if (me) {
+        // Nobody was filed, so the agreement must not stay stamped: a retry would read "already agreed" and file no one.
+        await db().from("group_interests").update({ quote_agreed_at: null, updated_at: new Date().toISOString() }).eq("id", reply.id);
+        throw new Error(me.message);
+      }
       leadRow = ((made ?? []) as Row[])[0] ?? null;
       if (leadRow) {
         const { error: ue } = await db().from("group_interests").update({ traveler_id: leadRow["id"], status: reply.status === "new" ? "contacted" : reply.status, updated_at: now }).eq("id", reply.id);
