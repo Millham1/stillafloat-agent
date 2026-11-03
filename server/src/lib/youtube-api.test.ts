@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { uploadsPlaylistId, parsePlaylistItems, fetchUploads, channelIdForHandle, stampedLanguage, fetchVideoLanguages, capHistory } from "./youtube-api";
+import { uploadsPlaylistId, parsePlaylistItems, fetchUploads, channelIdForHandle, stampedLanguage, fetchVideoLanguages, capHistory, spanishTitle, inLanguage, titleIn } from "./youtube-api";
 
 const CID = "UC1sZkmM4CezcS5DPIPlrCtA";
 const item = (id: string, title: string, at = "2026-10-01T00:00:00Z") => ({
@@ -118,5 +118,27 @@ describe("history cap", () => {
   it("does not repeat a pinned video already inside the cap, and ignores a pin that is not in the history", () => {
     assert.deepEqual(capHistory(vids, "v1", 3).map((v) => v.id), ["v0", "v1", "v2"]);
     assert.deepEqual(capHistory(vids, "gone", 3).map((v) => v.id), ["v0", "v1", "v2"]);
+  });
+});
+
+describe("one video, two languages (2026-11-02)", () => {
+  it("reads our Spanish title from es-419, then es, else null", () => {
+    assert.equal(spanishTitle({ en: { title: "E" }, "es-419": { title: "¿Cuánto?" } }), "¿Cuánto?");
+    assert.equal(spanishTitle({ es: { title: "Hola" } }), "Hola");
+    assert.equal(spanishTitle({ en: { title: "E" } }), null);
+    assert.equal(spanishTitle(undefined), null);
+  });
+  it("puts an English long-form with our Spanish title on both pages, under the right title", () => {
+    const one = { title: "The True Cost", lang: "en" as const, titleEs: "¿Cuánto cuesta?" };
+    assert.equal(inLanguage(one, "en"), true);
+    assert.equal(inLanguage(one, "es"), true);
+    assert.equal(titleIn(one, "es"), "¿Cuánto cuesta?");
+    assert.equal(titleIn(one, "en"), "The True Cost");
+    assert.equal(titleIn(one, null), "The True Cost");
+  });
+  it("keeps an English video with no Spanish title off the Spanish page, and a Spanish Short off the English one", () => {
+    assert.equal(inLanguage({ lang: "en" }, "es"), false);
+    assert.equal(inLanguage({ lang: "es" }, "en"), false);
+    assert.equal(inLanguage({ lang: "es" }, "es"), true);
   });
 });

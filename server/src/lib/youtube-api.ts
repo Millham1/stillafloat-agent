@@ -108,6 +108,36 @@ export function stampedLanguage(snippet: LangSnippet | undefined): VideoLang | n
   return null;
 }
 
+// ── One video, two languages (Mark 2026-11-02) ───────────────────────────────
+// "it is confusing to the users to see a mix of EN and ES when looking through the channel." A long-form
+// is now ONE English upload carrying a Spanish audio track and OUR Spanish title + description as its
+// `es-419` localization (publish_youtube.py writes it); the old separate Spanish long-forms go unlisted.
+// So the Spanish site shows a video when it is recorded as Spanish OR carries our Spanish title, and
+// shows that Spanish title. Shorts are unchanged (each language is its own upload).
+
+export interface Localizations {
+  [lang: string]: { title?: string; description?: string } | undefined;
+}
+
+/** Our Spanish title for a video: the `es-419` localization, else a plain `es` one; null when none. Pure. */
+export function spanishTitle(localizations: Localizations | undefined): string | null {
+  for (const k of ["es-419", "es"]) {
+    const t = localizations?.[k]?.title?.trim();
+    if (t) return t;
+  }
+  return null;
+}
+
+/** Does this video belong on the page for `lang`? Pure. */
+export function inLanguage(v: { lang?: unknown; titleEs?: string | null }, lang: VideoLang): boolean {
+  return v.lang === lang || (lang === "es" && !!v.titleEs);
+}
+
+/** The title a page in `lang` shows for the video. Pure. */
+export function titleIn(v: { title: string; titleEs?: string | null }, lang: VideoLang | null): string {
+  return lang === "es" && v.titleEs ? v.titleEs : v.title;
+}
+
 /** id → recorded language for the given videos (videos.list, 1 unit per 50 ids). Ids with no stamp are absent. */
 export async function fetchVideoLanguages(ids: string[], apiKey: string, fetchImpl: FetchLike = fetch as unknown as FetchLike): Promise<Map<string, VideoLang>> {
   const out = new Map<string, VideoLang>();

@@ -12,7 +12,7 @@ import {
 } from "./newsletter-delivery";
 import { readJson, writeJson, PATHS, getSupabase } from "./persistence";
 import { buildUtm, fetchChannelVideos, type Lang } from "./social-agent";
-import { fetchVideoLanguages } from "./youtube-api";
+import { fetchVideoLanguages, inLanguage, titleIn } from "./youtube-api";
 import { storySlug } from "./prerender-news";
 import { selectFreshStories, issueHasStories, EMPTY_ISSUE_MESSAGE } from "./newsletter-freshness";
 import { planWeeklySend, SPANISH_NEEDS_ENGLISH, type EditionState, type WeeklySendPlan } from "./newsletter-editions";
@@ -201,23 +201,25 @@ async function gatherFeaturedVideo(lang: Lang): Promise<{ id: string; title: str
     "youtube-channel",
     {},
   );
-  type Pick = { id: string; title: string; thumbnail: string; lang?: unknown };
-  const strip = (v: Pick): { id: string; title: string; thumbnail: string } => ({ id: v.id, title: v.title, thumbnail: v.thumbnail });
+  type Pick = { id: string; title: string; thumbnail: string; lang?: unknown; titleEs?: string };
+  // One video, two languages (2026-11-02): an English long-form carrying our Spanish title leads the Spanish edition under it.
+  const strip = (v: Pick): { id: string; title: string; thumbnail: string } => ({ id: v.id, title: titleIn(v, lang), thumbnail: v.thumbnail });
   const stored: Pick[] = (ch.videos ?? []).map((v) => ({
     id: String(v["id"] ?? ""),
     title: String(v["title"] ?? ""),
     thumbnail: String(v["thumbnail"] ?? ""),
     lang: v["lang"],
+    ...(typeof v["titleEs"] === "string" ? { titleEs: v["titleEs"] as string } : {}),
   }));
   // Mark's pin wins only in the edition whose language it matches (2026-10-08: a pinned video
   // used to feature in BOTH editions, so a Spanish pin led the English letter and vice versa).
   if (ch.featuredId) {
     const v = stored.find((x) => x.id === ch.featuredId);
-    if (v && v.lang === lang) return strip(v);
+    if (v && inLanguage(v, lang)) return strip(v);
   }
   // A video with no recorded language is never featured: the wrong language is worse than none.
   const pickFrom = (list: Pick[]) => {
-    const v = list.find((x) => x.id && x.lang === lang);
+    const v = list.find((x) => x.id && inLanguage(x, lang));
     return v ? strip(v) : null;
   };
   const fromStore = pickFrom(stored);
