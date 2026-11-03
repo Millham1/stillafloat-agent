@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  getPacket, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
+  getPacket, requestInsuranceQuote, issueToken, linkEmail, mailAllowed, organizerBlanks, packetStatuses, signDocument, formUrl,
   type FormsDeps, type FormsStore,
  giveConsent, getCopies, getCopyPdf, copiesEmail, previewDocument, documentPdf, ESIGN_CONSENT_VERSION, insuranceStatus, chooseInsurance, chooseCardholder, cardLinkEmail, getChecklistPdf, sendChecklist, checklistEmail } from "./group-forms";
 import { pagePhotos } from "./group-page-photos";
@@ -57,6 +57,11 @@ function makeStore() {
       return { id };
     },
     async deleteSignature(id) { state.deleted.push(id); state.signatures = state.signatures.filter((s) => s.id !== id); },
+    async mergeFormData(id, mutate) {
+      if (state.failUpdate) throw new Error("database is down");
+      const t = state.travelers.find((x) => x.id === id)!;
+      t.form_data = mutate(t.form_data && typeof t.form_data === "object" ? t.form_data : {});
+    },
     async updateTraveler(id, patch) {
       if (state.failUpdate) throw new Error("database is down");
       Object.assign(state.travelers.find((t) => t.id === id)!, patch);
@@ -978,4 +983,25 @@ test("the last signature sends the copies email and then the passport checklist 
   assert.equal(none.state.travelers[1]!.checklist_token_hash, undefined);
   const es = checklistEmail({ lang: "es", firstName: "Dulce", groupName: "Grupo", trip: "Grupo — MSC Seascape, zarpa March 14, 2027", url: "https://x/y.pdf" });
   assert.match(es.subject, /^Su lista de pasaporte/);
+});
+
+// ── Walkthrough 11/03: the card owner's choice vanished and the page looped ──
+
+test("a background insurance quote that finishes after the lead has named the card's owner does not wipe that choice, nor what the lead signed meanwhile", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>((ok) => { release = ok; });
+  const t = setup({ insurance: { videoUrl: null, chromePath: undefined, user: undefined, password: undefined, quoteNeeded: async () => undefined, fetchQuote: async () => { await gate; return { status: "unavailable", reason: "test" } as any; } } });
+  t.state.travelers[0]!.birth_dates_ok = true;
+  Object.assign(t.state.travelers[0]!, { dob: "1960-05-04", form_data: { us_citizen: "yes", city_state_zip: "Raleigh, NC 27601" } });
+  const token = t.link("t1");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  const started = await requestInsuranceQuote(t.deps, token);
+  assert.equal(started.status, 202, "the quote is under way, holding the file as it was when it started");
+  assert.equal((await chooseCardholder(t.deps, token, { cardholder: "other", card_name: "Pat Payer", card_email: "pat@example.com" })).status, 200);
+  release();
+  await new Promise((r) => setTimeout(r, 20));
+  const fd = t.state.travelers[0]!.form_data;
+  assert.deepEqual([fd.card?.holder, fd.card?.name, fd.card?.email], ["other", "Pat Payer", "pat@example.com"], "the card owner is still on the file after the quote finished");
+  assert.equal(fd.us_citizen, "yes");
+  assert.equal(fd.insurance?.quote?.status, "unavailable", "and the finished quote is on the file as well");
 });
