@@ -211,8 +211,8 @@ test("the cabin's other travelers are listed by name, and a passport shows its l
     }
   }
   const waiver = renderDocument("05-liability-waiver", ctxFor()).text;
-  assert.ok(waiver.includes("John Q Public | — | —"), "the waiver lists companions by name only");
-  assert.ok(!waiver.includes("January 9, 1958"));
+  assert.ok(waiver.includes("John Q Public | January 9, 1958 | —"), "the waiver lists companions by name and birth date from the file (Mark 2026-11-03)");
+  assert.ok(!waiver.includes("ending 4321"), "but never a passport");
   assert.ok(renderDocument("07-travel-insurance-declination", ctxFor()).text.includes("Additional Traveler(s): John Q Public"));
 });
 

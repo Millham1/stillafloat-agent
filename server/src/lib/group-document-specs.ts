@@ -344,10 +344,12 @@ const WAIVER_05: DocSpec = {
       if (at < 0) throw new Error("client document 05 no longer matches its spec: the advisory acknowledgment not found");
       return [...blocks.slice(0, at + 1), { t: "p", text: advisoryLines(ctx) }, ...blocks.slice(at + 1)];
     },
-    // The traveler's cabin-mates, by name; the waiver does not need anyone else's birth date.
+    // The traveler's cabin-mates, by name and birth date from the file (Mark 2026-11-03: "the liability waiver does not populate the second traveller information").
     (blocks, ctx) => mapTable(blocks, (t) => t.header[0] === "Name" && t.header[1] === "Date of Birth", (t) => [{
       ...t,
-      rows: mateNames(ctx).length ? mateNames(ctx).map((n) => [n, "—", "—"]) : [["No other travelers are listed on this cabin", "—", "—"]],
+      rows: ctx.mates.map((m) => [fullName(m), fmtLong(m.dob) || "—", "—"]).filter((r) => r[0]).length
+        ? ctx.mates.map((m) => [fullName(m), fmtLong(m.dob) || "—", "—"]).filter((r) => r[0])
+        : [["No other travelers are listed on this cabin", "—", "—"]],
     }]),
   ],
 };
