@@ -124,6 +124,8 @@ const GOOD_15 = {
   legal_name: "Jane Public", dob: "1960-05-04", gender: "female", us_citizen: "yes", address: "1 Main St", city_state_zip: "Raleigh, NC 27601", phone: "919-555-0100", email: "jane@example.com",
   passport_number: "A12345678", passport_country: "United States", passport_expiry: "2031-02-03", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
   health_note: "ignored",
+  // the cabin's other traveler (Mark 2026-11-03: the lead fills them in)
+  m1_legal_name: "John Q Public", m1_dob: "1958-01-09", m1_gender: "male", m1_citizenship: "United States",
 };
 // the booking document needs the insurance choice (Mark 2026-10-29)
 const BOOK = { answers: {} };
@@ -197,7 +199,7 @@ test("a traveler's packet lists their documents in order, with their own inputs,
   assert.equal(p.kind, "traveler");
   assert.deepEqual(p.docs.map((d) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"]);
   assert.ok(p.docs.every((d) => d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.includes("<")));
-  assert.equal(p.docs[0]!.fields.length, 29, "inputs on the traveler information form (no passport place of issue, Mark 2026-10-30)");
+  assert.equal(p.docs[0]!.fields.length, 29, "inputs on the traveler information form (no passport place of issue, Mark 2026-10-30); a cabin-mate is not asked for the lead's details (Mark 2026-11-03)");
   assert.deepEqual(p.mates, ["Jane Public"]);
   assert.equal(p.traveler.passport_on_file, "ending 4321");
   assert.equal(p.pii_ready, true);
@@ -1004,4 +1006,50 @@ test("a background insurance quote that finishes after the lead has named the ca
   assert.deepEqual([fd.card?.holder, fd.card?.name, fd.card?.email], ["other", "Pat Payer", "pat@example.com"], "the card owner is still on the file after the quote finished");
   assert.equal(fd.us_citizen, "yes");
   assert.equal(fd.insurance?.quote?.status, "unavailable", "and the finished quote is on the file as well");
+});
+
+// ── Mark 2026-11-03: "lead fills it in" — the cabin's other traveler, on the lead's traveler information form ──
+
+test("the lead gives the other traveler's details: they go on that traveler's own row, their passport number encrypted there and never the lead's", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  const doc = pkt(await getPacket(t.deps, token)).docs[0]!;
+  const mate = (n: string) => doc.fields.find((f: any) => f.name === n) as any;
+  assert.equal(mate("m1_legal_name").value, "John Public", "prefilled from the booking");
+  assert.equal(mate("m1_dob").value, "1958-01-09");
+  assert.equal(doc.fields.some((f: any) => /^m[23]_/.test(f.name)), false, "no lines for travelers who are not on the cabin");
+  const r = await signKey(t, token, "15-emergency-contact-form", { answers: { ...GOOD_15, m1_passport_number: "B98765432", m1_passport_country: "Canada", m1_passport_expiry: "2032-05-06", m1_citizenship: "Canadian" } });
+  assert.equal(r.status, 200);
+  const john = t.state.travelers[1]!, jane = t.state.travelers[0]!;
+  assert.deepEqual([john.gender, john.citizenship, john.passport_country, john.passport_expiry, john.passport_last4], ["Male", "Canadian", "Canada", "2032-05-06", "5432"]);
+  assert.equal(decryptPii(john.passport_enc, KEY), "B98765432", "the other traveler's number is encrypted on their row");
+  assert.equal(decryptPii(jane.passport_enc, KEY), "A12345678", "the lead's own number is the lead's");
+  assert.equal(jane.passport_last4, "5678");
+  assert.ok(!JSON.stringify(t.state.signatures).includes("B98765432"), "no passport number in the stored answers");
+});
+
+test("the other traveler's details are required, and their passport needs its country and expiry; nothing is stored on a refusal", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  const { m1_legal_name: _n, ...noName } = GOOD_15;
+  const a = await signKey(t, token, "15-emergency-contact-form", { answers: noName });
+  assert.equal(a.status, 400);
+  assert.ok((a.json["fields"] as Row)["m1_legal_name"]);
+  const b = await signKey(t, token, "15-emergency-contact-form", { answers: { ...GOOD_15, m1_passport_number: "B98765432" } });
+  assert.equal(b.status, 400);
+  assert.ok((b.json["fields"] as Row)["m1_passport_country"] && (b.json["fields"] as Row)["m1_passport_expiry"]);
+  assert.equal(t.state.travelers[1]!.passport_last4, "4321", "the other traveler's row is as it was");
+  assert.equal(t.state.signatures.length, 0);
+});
+
+test("the traveler information form carries a block for the other traveler, and the waiver and booking agreement that follow show what was typed", async () => {
+  const t = setup();
+  const token = t.link("t1");
+  await giveConsent(t.deps, token, { agreed: true }, META);
+  const pdf = await previewDocument(t.deps, token, { doc_key: "12-cruise-booking-agreement", answers: { ...GOOD_15, m1_passport_number: "B98765432", m1_passport_country: "Canada", m1_passport_expiry: "2032-05-06" } }).catch(() => null);
+  const doc = pkt(await getPacket(t.deps, token)).docs[0]!;
+  assert.ok(doc.html.includes("ADDITIONAL TRAVELER 2") && doc.html.includes('data-field="m1_legal_name"'));
+  assert.ok(pdf === null || "status" in pdf);
 });

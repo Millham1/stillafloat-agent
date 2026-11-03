@@ -230,17 +230,18 @@ test("a traveler's own name or answers can never become markup or template token
 
 // ── the inputs ────────────────────────────────────────────────────────────────
 
+const d_mates = (key: string) => (key.startsWith("15") ? ctxFor({}, TRAVELERS[0]!).mates.length : 0);
 test("the traveler form's blanks and boxes become the inputs its spec names, and every spec field is on the page", () => {
   for (const key of KEYS) {
     const d = renderDocument(key, ctxFor({ fees: { planning_fee: 100 } }, key.startsWith("09") ? null : TRAVELERS[0]!));
-    assert.deepEqual(d.fields.map((f) => f.name).sort(), DOC_SPECS[key]!.fields.map((f) => f.name).sort(), `${key}: fields on the page vs the spec`);
+    assert.deepEqual(d.fields.map((f) => f.name).sort(), DOC_SPECS[key]!.fields.filter((f) => !/^m[1-3]_/.test(f.name) || Number(f.name[1]) <= d_mates(key)).map((f) => f.name).sort(), `${key}: fields on the page vs the spec (a mate's lines only for a mate on the cabin)`);
     for (const f of d.fields) {
       assert.ok(d.html.includes(`data-field="${f.name}"`), `${key}: no input for ${f.name}`);
       if (f.kind === "choice" || f.kind === "multi") for (const o of f.options!) assert.ok(d.html.includes(`value="${o.value}"`), `${key}: ${f.name} has no option ${o.value}`);
     }
   }
   const f15 = renderDocument("15-emergency-contact-form", ctxFor());
-  assert.equal(f15.fields.length, 29);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance; 10/30: no passport place of issue, prescriptions or diet
+  assert.equal(f15.fields.length, 29 + 7 * ctxFor({}, TRAVELERS[0]!).mates.length);   // Mark 2026-10-26: one contact by cell phone, nothing medical, no insurance; 10/30: no passport place of issue, prescriptions or diet
   assert.ok(f15.html.includes('type="date" name="dob"') && f15.html.includes('type="email" name="email"') && f15.html.includes('type="radio" name="gender" value="female"'));
   assert.ok(f15.html.includes('type="checkbox" name="trusted_programs" value="tsa"'), "multi fields are checkboxes");
   assert.ok(f15.html.includes('autocomplete="off"'), "the passport input must not be autofilled or remembered");
@@ -318,6 +319,7 @@ const GOOD_15 = {
   phone: "(919) 555-0100", email: "jane@example.com", passport_number: "a1234-5678", passport_country: "United States", passport_expiry: "2031-02-03",
   passport_issue: "2021-02-04", ec1_name: "Sam Public", ec1_relationship: "Son", ec1_cell_phone: "919-555-0199",
   trusted_programs: ["tsa"], ktn: "TT1234567", loyalty_1_program: "Delta", loyalty_1_number: "123456", notes: "Window seat please.",
+  m1_legal_name: "John Q Public", m1_dob: "1958-01-09", m1_gender: "male", m1_citizenship: "United States",
 };
 const doc15 = () => renderDocument("15-emergency-contact-form", ctxFor());
 

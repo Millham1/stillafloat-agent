@@ -195,6 +195,65 @@ const RULES_15: DocSpec["rules"] = [
   { sub: /### Secondary Emergency Contact[\s\S]*?(?=## ADDITIONAL NOTES)/, with: () => "" },
 ];
 
+/** Mark 2026-11-03: "lead fills it in". The cabin's other travelers (up to three) are asked on the lead's traveler-information form, a block each,
+ *  prefilled from the booking; what is given goes on THEIR row (see mateDerive), never the lead's. */
+const MATE_SLOTS = [1, 2, 3] as const;
+// only the lead is asked: a cabin-mate who signs their own paperwork is never asked for (or shown) the lead's details
+const mateOf = (c: DocCtx, i: number): Row | undefined => (c.traveler?.is_lead ? c.mates[i - 1] : undefined);
+const mateFields = (i: number): FieldSpec[] => {
+  const n = `Traveler ${i + 1}`;
+  const m = (c: DocCtx) => mateOf(c, i);
+  return [
+    text(`m${i}_legal_name`, `${n}: full legal name (as on their passport or ID)`, { required: true, prefill: (c) => (m(c) ? fullName(m(c)!) || undefined : undefined) }),
+    { name: `m${i}_dob`, label: `${n}: date of birth`, kind: "date", required: true, date: "dob", prefill: (c) => (typeof m(c)?.dob === "string" ? String(m(c)!.dob).slice(0, 10) : undefined) },
+    { name: `m${i}_gender`, label: `${n}: gender`, kind: "choice", required: true, options: GENDER },
+    text(`m${i}_citizenship`, `${n}: citizenship`, { required: true, prefill: (c) => cleanValue(m(c)?.citizenship) || "United States" }),
+    { name: `m${i}_passport_number`, label: `${n}: passport number`, kind: "passport" },
+    text(`m${i}_passport_country`, `${n}: passport country of issue`, { required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: (c) => cleanValue(m(c)?.passport_country) || undefined }),
+    { name: `m${i}_passport_expiry`, label: `${n}: passport expiration date`, kind: "date", date: "future", required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: (c) => (typeof m(c)?.passport_expiry === "string" ? String(m(c)!.passport_expiry).slice(0, 10) : undefined) },
+  ];
+};
+const MATE_FIELDS_15 = MATE_SLOTS.flatMap(mateFields);
+
+/** One block per other traveler on the cabin, before the loyalty programs. */
+const mateBlocks15 = (blocks: Block[], ctx: DocCtx): Block[] => {
+  const extra: Block[] = [];
+  for (const i of MATE_SLOTS) {
+    if (!mateOf(ctx, i)) continue;
+    extra.push({ t: "hr" }, { t: "h", level: 2, text: `ADDITIONAL TRAVELER ${i + 1}` });
+    extra.push({ t: "p", text: `**Full Legal Name:** {{in:m${i}_legal_name}}` }, { t: "p", text: `**Date of Birth:** {{in:m${i}_dob}}` });
+    extra.push({ t: "p", text: `**Gender:** ${GENDER.map((o) => `{{ch:m${i}_gender:${o.value}}} ${o.label}`).join(" ")}` });
+    extra.push({ t: "p", text: `**Citizenship:** {{in:m${i}_citizenship}}` });
+    extra.push({ t: "p", text: `**Passport Number:** {{in:m${i}_passport_number}}` }, { t: "p", text: `**Country of Issue:** {{in:m${i}_passport_country}}` }, { t: "p", text: `**Expiration Date:** {{in:m${i}_passport_expiry}}` });
+  }
+  if (!extra.length) return blocks;
+  const at = blocks.findIndex((b) => b.t === "h" && /loyalty/i.test(b.text));
+  if (at < 0) throw new Error("client document 15 no longer matches its spec: the loyalty heading not found");
+  const cut = blocks[at - 1]?.t === "hr" ? at - 1 : at; // goes before the rule above the loyalty heading
+  return [...blocks.slice(0, cut), ...extra, ...blocks.slice(cut)];
+};
+
+const MATE_DERIVE_15: NonNullable<DocSpec["mateDerive"]> = (a, ctx) => MATE_SLOTS.flatMap((i) => {
+  const m = mateOf(ctx, i);
+  if (!m || typeof a[`m${i}_legal_name`] !== "string") return [];
+  const patch: Row = {};
+  const legal = String(a[`m${i}_legal_name`]);
+  // the file's name columns are Mark's to edit: filled from the form only when empty
+  if (!m.first_name && !m.last_name) {
+    const parts = legal.split(/\s+/);
+    patch["first_name"] = parts[0];
+    if (parts.length > 1) patch["last_name"] = parts[parts.length - 1];
+    if (parts.length > 2) patch["middle_name"] = parts.slice(1, -1).join(" ");
+  }
+  if (!m.dob && typeof a[`m${i}_dob`] === "string") patch["dob"] = a[`m${i}_dob`];
+  const g = GENDER.find((o) => o.value === a[`m${i}_gender`]);
+  if (g) patch["gender"] = g.label;
+  if (typeof a[`m${i}_citizenship`] === "string") patch["citizenship"] = a[`m${i}_citizenship`];
+  if (typeof a[`m${i}_passport_country`] === "string") patch["passport_country"] = a[`m${i}_passport_country`];
+  if (typeof a[`m${i}_passport_expiry`] === "string") patch["passport_expiry"] = a[`m${i}_passport_expiry`];
+  return [{ index: i, patch }];
+});
+
 const FIELDS_15: FieldSpec[] = [
   text("legal_name", "Full legal name (as on your passport or ID)", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined }),
   { name: "dob", label: "Date of birth", kind: "date", required: true, date: "dob", col: "dob" },
@@ -214,11 +273,13 @@ const FIELDS_15: FieldSpec[] = [
   text("ktn", "Known Traveler Number (KTN)", { form: "trusted.ktn" }),
   text("global_entry_number", "Global Entry membership number", { form: "trusted.global_entry_number" }),
   ...LOYALTY,
+  ...MATE_FIELDS_15,
   ...CONTACT_FIELDS,
   { name: "notes", label: "Anything else your agent or emergency contacts should know", kind: "textarea", form: "notes" },
 ];
 
 const EDITS_15: NonNullable<DocSpec["edits"]> = [
+  mateBlocks15,
   // Mark 2026-10-30: no passport place-of-issue question, and the agent-only lines at the foot are not the client's to see.
   (blocks) => dropLines(blocks, [/^\*\*Place of Issue \(City\):\*\*/, /^\*For Agent Use Only:\*/, /^Entered into Client File:/]),
   withRows("Program", () => [1, 2, 3].map((i) => [`{{in:loyalty_${i}_program}}`, `{{in:loyalty_${i}_number}}`])),
@@ -258,6 +319,7 @@ const FORM_15: DocSpec = {
   fields: FIELDS_15,
   edits: EDITS_15,
   derive: DERIVE_15,
+  mateDerive: MATE_DERIVE_15,
 };
 
 // ── 01 — terms and conditions ─────────────────────────────────────────────────
