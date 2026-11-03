@@ -394,7 +394,7 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
   const applied = applyAnswers(doc, signerAnswers(loaded, body.answers), loaded.ctx);
   if (!applied.ok) return reply(400, { success: false, error: "Please check the answers marked below.", fields: applied.errors });
   // FAIL CLOSED: no key, no passport number — never a plaintext fallback.
-  if (applied.passport && !piiConfigured(deps.piiKey)) {
+  if ((applied.passport || applied.matePassports?.length) && !piiConfigured(deps.piiKey)) {
     return reply(503, {
       success: false, code: "passport-unavailable",
       error: "We cannot take a passport number on this page right now. Please leave that line empty and sign; we will collect it another way.",
@@ -464,6 +464,15 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
         if (newsletterProspect) patch["prospect_id"] = newsletterProspect;
       }
       await deps.store.updateTraveler(traveler.id, patch);
+      // the cabin's other travelers, as the lead gave them (Mark 2026-11-03): each on their own row, their passport number encrypted
+      for (const { index, patch: matePatch } of applied.mates ?? []) {
+        const mate = loaded.mates[index - 1];
+        if (!mate?.id) continue;
+        const own: Row = { ...matePatch, updated_at: now.toISOString() };
+        const pp = applied.matePassports?.find((x) => x.index === index);
+        if (pp) Object.assign(own, { passport_enc: encryptPii(pp.number, deps.piiKey), passport_last4: pp.last4 });
+        await deps.store.updateTraveler(String(mate.id), own);
+      }
       if (Object.keys(applied.formData).length) await deps.store.mergeFormData(traveler.id, (fd) => deepMerge(fd, applied.formData));
     } catch (err) {
       await deps.store.deleteSignature(saved.id).catch(() => undefined);
@@ -779,7 +788,12 @@ export async function previewDocument(deps: FormsDeps, token: unknown, body: { d
     const applied = applyAnswers(renderDocument(earlier, ctx), typed, ctx);
     if (!applied.ok) continue;
     const t = ctx.traveler;
-    ctx = { ...ctx, traveler: { ...t, ...applied.travelerPatch, form_data: mergeDeep((t["form_data"] as Row) ?? {}, applied.formData) } };
+    const mates = ctx.mates.map((m, i) => {
+      const own = applied.mates?.find((x) => x.index === i + 1);
+      const pp = applied.matePassports?.find((x) => x.index === i + 1);
+      return own || pp ? { ...m, ...(own?.patch ?? {}), ...(pp ? { passport_last4: pp.last4 } : {}) } : m;
+    });
+    ctx = { ...ctx, mates, traveler: { ...t, ...applied.travelerPatch, form_data: mergeDeep((t["form_data"] as Row) ?? {}, applied.formData) } };
   }
   const doc = renderDocument(key, ctx);
   const own: Answers = {};

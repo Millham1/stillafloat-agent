@@ -377,6 +377,9 @@ export interface DocSpec {
   validate?: (answers: Answers) => Record<string, string>;
   /** Columns on group_travelers that follow from several answers (e.g. emergency_phone, special_needs). */
   derive?: (answers: Answers, ctx: DocCtx) => Row;
+  /** What the lead's answers say about the cabin's other travelers (Mark 2026-11-03: "lead fills it in"): the columns for each mate's own row,
+   *  by position in ctx.mates (a mate's passport number is returned by applyAnswers, to be encrypted). */
+  mateDerive?: (answers: Answers, ctx: DocCtx) => Array<{ index: number; patch: Row }>;
   /** Answers the file supplies once a choice says so (the traveler's own card: the cardholder lines come from the file), and
    *  answers a choice makes moot (no Allianz plan unless Allianz was chosen); run before the required check. */
   complete?: (answers: Answers, ctx: DocCtx) => Answers;

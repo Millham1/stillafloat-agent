@@ -588,6 +588,9 @@ export interface AppliedAnswers {
   passport?: { number: string; last4: string };
   /** The driver's licence number (the card authorization, Mark 2026-10-30): returned only to be encrypted, never in `answers`. */
   license?: { number: string; last4: string };
+  /** The lead's answers about the cabin's other travelers (Mark 2026-11-03): the columns for each one's own row, and their passport numbers, to be encrypted. */
+  mates?: Array<{ index: number; patch: Row }>;
+  matePassports?: Array<{ index: number; number: string; last4: string }>;
 }
 export interface RejectedAnswers { ok: false; errors: Record<string, string> }
 
@@ -693,10 +696,18 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
   const formData: Row = {};
   let passport: AppliedAnswers["passport"];
   let license: AppliedAnswers["license"];
+  const matePassports: NonNullable<AppliedAnswers["matePassports"]> = [];
   const stored: Answers = { ...clean };
   for (const f of doc.fields) {
     const v = clean[f.name];
     if (isEmpty(v)) continue;
+    const forMate = /^m([1-3])_passport_number$/.exec(f.name);
+    if (f.kind === "passport" && forMate) { // another traveler's passport: theirs to keep, never the signer's
+      const number = String(v);
+      matePassports.push({ index: Number(forMate[1]), number, last4: last4(number) });
+      stored[f.name] = `ending ${last4(number)}`;
+      continue;
+    }
     if (f.kind === "passport") {
       const number = String(v);
       passport = { number, last4: last4(number) };
@@ -718,7 +729,8 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
     if (f.form && /city_state_zip$/.test(f.name) && typeof v === "string") { const parts = splitCityStateZip(v); if (parts) setPath(formData, `${f.form}_parts`, parts); }
   }
   if (spec?.derive) Object.assign(travelerPatch, spec.derive(clean, ctx));
-  return { ok: true, answers: stored, travelerPatch, formData, ...(passport ? { passport } : {}), ...(license ? { license } : {}) };
+  const mates = spec?.mateDerive?.(clean, ctx) ?? [];
+  return { ok: true, answers: stored, travelerPatch, formData, ...(passport ? { passport } : {}), ...(license ? { license } : {}), ...(mates.length ? { mates } : {}), ...(matePassports.length ? { matePassports } : {}) };
 }
 
 /** What the page puts in each input before the signer types: the file's own value (never a passport number). */
