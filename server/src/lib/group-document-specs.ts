@@ -1173,6 +1173,8 @@ const CARD_22: DocSpec = {
     { after: "**Booking number:**", fill: (c) => bookingReference(c) || "Assigned when the line confirms", label: "Booking number" },
     { after: "**Total authorized:** $", fill: (c) => (cabinTotal(c) ? amountText(cabinTotal(c)!) : ""), label: "Total authorized" },
     { after: "**Date:**", today: true },
+    // Mark 2026-11-03: on the card owner's own link the owner is the one signing, so "the card belongs to" reads "me" there
+    { sub: "{{ch:cardholder:me}} me, the traveler named on this booking {{ch:cardholder:other}} someone else, named below", with: (c) => (c.cardholderSigner ? "☒ me, the cardholder signing this form ☐ someone else" : "{{ch:cardholder:me}} me, the traveler named on this booking {{ch:cardholder:other}} someone else, named below") },
   ],
   fields: CARD_FIELDS,
   complete: ownCard,

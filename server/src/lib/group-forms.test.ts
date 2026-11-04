@@ -491,6 +491,8 @@ test("the lead names the card's owner: the owner is emailed a link of their own,
   assert.deepEqual(own.docs.map((d: any) => d.key), ["22-card-authorization"]);
   assert.deepEqual(own.docs[0].fields.map((f: any) => f.name), ["card_name", "card_address", "card_city_state_zip", "card_phone", "card_type", "card_last4", "card_expiry", "dl_state", "dl_number"]);
   assert.equal(own.docs[0].fields[0].value, "Pat Payer");
+  assert.match(own.docs[0].html, /☒ me, the cardholder signing this form/, "on the owner's own link the card belongs to \"me\" is ticked");
+  assert.ok(!/someone else, named below/.test(own.docs[0].html));
   assert.ok(own.docs[0].fields.every((f: any) => f.required === true), "every line on the owner's page is required of them (no 'optional', no follow-up)");
   assert.deepEqual(own.traveler, { first_name: "Pat", last_name: "Payer", is_lead: false, passport_on_file: null, newsletter_opt_in: true });
   assert.deepEqual(own.cardholder, { for: "Jane Public", travelers: ["Jane Public", "John Public"] });
@@ -516,8 +518,9 @@ test("the lead names the card's owner: the owner is emailed a link of their own,
   assert.equal(sig.signer_role, "cardholder");
   assert.equal(sig.signer_name, "Pat Payer");
   assert.equal(sig.traveler_id, "t1", "recorded on the booking it pays for");
-  assert.deepEqual([sig.answers.cardholder, sig.answers.card_email, sig.answers.card_name, sig.answers.dl_number], ["other", "pat2@example.com", "Pat Payer", "ending 8877"]);
-  assert.ok(blocksToText(t.pdfs[0]!.blocks).includes("☒ someone else, named below") && blocksToText(t.pdfs[0]!.blocks).includes("Email: pat2@example.com"));
+  assert.deepEqual([sig.answers.cardholder, sig.answers.card_email, sig.answers.card_name, sig.answers.dl_number], [undefined, "pat2@example.com", "Pat Payer", "ending 8877"]);
+  assert.equal(sig.signer_role, "cardholder", "the record says who signed; the form itself ticks the card as theirs");
+  assert.ok(blocksToText(t.pdfs[0]!.blocks).includes("☒ me, the cardholder signing this form") && blocksToText(t.pdfs[0]!.blocks).includes("Email: pat2@example.com"));
   assert.equal(t.pdfs[0]!.audit?.signerEmail, "pat2@example.com", "the evidence page names the owner, not the lead");
   assert.equal(t.pdfs[0]!.audit?.consentAt, t.state.travelers[0]!.card_esign_consent_at);
   const after = t.state.travelers[0]!;

@@ -171,7 +171,7 @@ export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advis
     const group = await store.group(lead.group_id);
     if (!group || group.status === "cancelled") return null;
     const [cabins, travelers] = await Promise.all([store.cabins(group.id), store.travelers(group.id)]);
-    const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: lead, now });
+    const ctx = { ...buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: lead, now }), cardholderSigner: true };
     const sigs = await store.signaturesFor({ groupId: group.id, travelerId: lead.id });
     return { kind: "cardholder", group, traveler: lead, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cardholder: true }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
   }
@@ -727,7 +727,7 @@ async function loadByCopiesToken(deps: FormsDeps, token: unknown): Promise<Loade
     const group = await deps.store.group(lead.group_id);
     if (!group || group.status === "cancelled") return null;
     const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
-    const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: lead, now });
+    const ctx = { ...buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: lead, now }), cardholderSigner: true };
     const sigs = await deps.store.signaturesFor({ groupId: group.id, travelerId: lead.id });
     return { kind: "cardholder", group, traveler: lead, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cardholder: true }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
   }

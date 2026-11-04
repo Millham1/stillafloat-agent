@@ -103,6 +103,8 @@ export interface DocCtx {
   advisories: Advisory[];
   /** Each itinerary country's visa and vaccination requirements, read with the advisory (empty = not read). */
   entry: EntryRequirement[];
+  /** True on the card owner's own link: the signer is the cardholder, not the traveler (Mark 2026-11-03). */
+  cardholderSigner?: boolean;
 }
 
 /** Build the context for one signer from rows already read from the group file. */
