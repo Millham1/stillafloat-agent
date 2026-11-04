@@ -69,14 +69,14 @@ a.btn{text-decoration:none}
 .field input.bad,.field select.bad{border-color:#d12d2d;background:#fff5f5}
 /* The button sits dim until every field is good; a tap on it still goes to the first problem. */
 .btn[aria-disabled="true"]{opacity:.6}
-/* After "Save my spot!": the choice that replaces the form. Two EQUAL yellow pills (Mark 2026-10-24): "I've got this… let me fill it in!" and "Talk me into it, Mark!". */
+/* After "Save my spot!": the choice that replaces the form. Two EQUAL yellow pills (Mark 2026-10-24): "I've got this… let me fill it in!" and "Walk me through it, Mark!". */
 .choice-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
 .choice-head h2{margin:0;font-size:30px}
 .tick{flex:none;width:52px;height:52px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font:800 30px/1 'Baloo 2',sans-serif;color:var(--ink)}
 #gp-choice .btn{margin:12px 0 6px;font-size:24px;padding:18px 10px}
 #gp-choice .btn.dim{opacity:.45}
 #gp-choice a.btn{margin-top:14px}
-/* "Talk me into it, Mark!" opens a drop-down joined to the button: a white box with a yellow border, the time to catch them, then one line. */
+/* "Walk me through it, Mark!" opens a drop-down joined to the button: a white box with a yellow border, the time to catch them, then one line. */
 .dd{margin:0 10px;border:2px solid var(--yellow);border-top:0;border-radius:0 0 16px 16px;padding:14px 16px 12px;background:#fff}
 .dd p{margin:0 0 8px;font-size:19px;color:var(--ink)}
 .dd .dd-line{margin:0;font-size:18px}
@@ -140,3 +140,6 @@ a.btn{text-decoration:none}
   .dates{grid-template-columns:minmax(0,1fr)}
   .day{grid-template-columns:78px 1fr;gap:10px}
 }
+
+/* Mark 2026-11-03: the one plain line under the name that says what this page is */
+.gp-what{max-width:640px;margin:10px auto 0;padding:0 16px;text-align:center;color:#fff;font-size:19px;line-height:1.45}

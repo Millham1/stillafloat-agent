@@ -321,7 +321,7 @@ test("how many blocks open follows the party: Traveler 2 shows from two of them,
   assert.deepEqual([(await shown(2)).open, (await shown(3)).open, (await shown(4)).open], [2, 3, 4]);
   const six = await shown(6);
   assert.deepEqual([six.open, six.max], [4, true]);
-  assert.equal(six.p.el("d-max").textContent, "More than four? Mark will set up a second cabin on the call… tap Talk me into it, Mark! on the group page.");
+  assert.equal(six.p.el("d-max").textContent, "More than four? Mark will set up a second cabin on the call… tap Walk me through it, Mark! on the group page.");
   assert.equal(six.p.el("d-count").textContent, "4");
   assert.equal((await shown(40)).open, 4);
   // a party of three opens with the third checkmark ticked and the fourth offered

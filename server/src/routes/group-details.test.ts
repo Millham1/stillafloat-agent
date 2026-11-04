@@ -283,7 +283,7 @@ test("guessing links is limited per address: after 40 wrong ones the answer is 4
   assert.equal((await call("GET", `/group-details/${LINK}`, { ip })).status, 200, "a right link still opens for the same address");
 });
 
-// ── Road A: "Talk me into it, Mark!" ──────────────────────────────────────────
+// ── Road A: "Walk me through it, Mark!" ──────────────────────────────────────────
 
 const choose = (when: unknown, extra: Row = {}, token = LINK) => call("POST", `/group-details/${token}/choice`, { body: { choice: "call", when, ...extra } });
 
@@ -510,7 +510,7 @@ test("Road B: details that do not pass are refused in the design's words with th
     [{ ...GOOD, travelers: [{ legal_name: "Bob", dob: "1965-04-12" }] }, "First AND last name, please… the way the passport has it.", "travelers.0.legal_name"],
     [{ ...GOOD, travelers: [GOOD.travelers[0], { legal_name: "Ceci Millham", dob: "04/12/1965" }] }, "Month, day and a four-digit year: 03 / 04 / 1965.", "travelers.1.dob"],
     [{ ...GOOD, travelers: [] }, "Please add at least one traveler.", "travelers"],
-    [{ ...GOOD, travelers: Array.from({ length: 5 }, () => GOOD.travelers[0]) }, "More than four? Mark will set up a second cabin on the call… tap Talk me into it, Mark! on the group page.", "travelers"],
+    [{ ...GOOD, travelers: Array.from({ length: 5 }, () => GOOD.travelers[0]) }, "More than four? Mark will set up a second cabin on the call… tap Walk me through it, Mark! on the group page.", "travelers"],
     [{ ...GOOD, address: undefined }, "A street and number, please… like 123 Main St.", "address.street"],
     [{ ...GOOD, address: { ...ADDRESS, city: "" } }, "Which city, please?", "address.city"],
     [{ ...GOOD, address: { ...ADDRESS, state: "ZZ" } }, "The state's two letters, please… like NC.", "address.state"],

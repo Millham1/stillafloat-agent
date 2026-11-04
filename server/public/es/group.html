@@ -24,6 +24,7 @@
   <div class="gp-banner"></div>
   <!-- Mark 2026-10-24: the group's label sits UNDER the picture, not on it -->
   <div class="gp-lockup"><div class="plaque"><span id="gp-plaque">Crucero en grupo</span></div></div>
+  <p class="gp-what" id="gp-what" hidden></p>
 
   <div id="gp-state"></div>
   <main id="gp-main" hidden>
@@ -92,7 +93,7 @@
       </div>
 
       <!-- What the form becomes once they have saved their spot (Mark 2026-10-24, Road A and Road B): two EQUAL pills. "I've got this" is a plain link to their own
-           details page; "Talk me into it, Mark!" opens a drop-down under itself for the time, and a tap on a time is the whole request. -->
+           details page; "Walk me through it, Mark!" opens a drop-down under itself for the time, and a tap on a time is the whole request. -->
       <div id="gp-choice" hidden>
         <div class="choice-head"><div class="tick">&#10003;</div><h2 id="gp-choice-h"></h2></div>
         <p id="gp-choice-lead"></p>
@@ -149,7 +150,8 @@
     travel:'Cómo llegar', travel_note:'¿Quiere algo de esto? Dígaselo a Mark cuando llame y él se encarga.',
     photo:'Foto:', photos:'Fotos:',
     choice_h:'Usted tocó, nosotros aplaudimos… ¡YA ESTÁ EN LA LISTA, {first}!', choice_lead:'Ahora, ¿cómo le gusta planear un crucero?',
-    finish:'¡Yo me encargo… déjeme llenarlo!', talk:'¡Convénzame, Mark!',
+    what:'Un crucero en grupo con su asesor de viajes, Mark Millham, de Still Afloat Cruising. Sale {date}{port}. Toque «{cta}» más abajo para reservar su lugar: nada que pagar ni firmar esta noche.', what_from:' desde {port}',
+    finish:'¡Yo me encargo… déjeme llenarlo!', talk:'¡Guíeme paso a paso, Mark!',
     choice_foot:'De cualquier manera: nada que pagar ni firmar esta noche… y una que otra risa en el camino.',
     dd_q:'¿Cuándo es buen momento para llamarle?',
     when_morning:'Por la mañana', when_afternoon:'Por la tarde', when_evening:'Por la noche', when_anytime:'Cuando sea… me adapto',
@@ -177,7 +179,8 @@
     travel:'Getting there', travel_note:"Want any of it? Say so when Mark calls and he'll line it up.",
     photo:'Photo:', photos:'Photos:',
     choice_h:"You tapped, we cheered… YOU'RE ON THE LIST, {first}!", choice_lead:'Now, how do you like to plan a cruise?',
-    finish:"I've got this… let me fill it in!", talk:'Talk me into it, Mark!',
+    what:'A group cruise with your travel advisor, Mark Millham of Still Afloat Cruising. Sailing {date}{port}. Tap “{cta}” below to hold your spot: nothing to pay or sign tonight.', what_from:' from {port}',
+    finish:"I've got this… let me fill it in!", talk:'Walk me through it, Mark!',
     choice_foot:'Either way: nothing to pay or sign tonight… and a laugh or two along the way.',
     dd_q:"When's a good time to catch you?",
     when_morning:'Mornings', when_afternoon:'Afternoons', when_evening:'Evenings', when_anytime:"Whenever… I'm easy",
@@ -306,6 +309,9 @@
     var pageName = (look && look.label) || f.groupName;   // the guest-facing name (interview page_label), else the file's name
     document.title = pageName + ' | Still Afloat Cruising';
     $('gp-plaque').textContent = pageName;
+    // Mark 2026-11-03: "nothing telling them immediately what this is": one plain line right under the name
+    var whatDate = f.sailDateText || f.sailDate || '';
+    if(whatDate){ $('gp-what').textContent = fill(T.what, { date: whatDate, port: f.embarkPort ? fill(T.what_from, { port: f.embarkPort }) : '', cta: (typeof c.cta_label === 'string' && c.cta_label.trim()) || T.default_cta }); $('gp-what').hidden = false; }
     if(d.preview){ var pb=$('gp-preview'); pb.textContent=T.preview; pb.hidden=false; }
     if(d.langs && d.langs.length > 1){
       var other = ES ? '/group.html' : '/es/group.html';
@@ -416,7 +422,7 @@
   }
 
   // ── After "Save my spot!": the choice that takes the form's place (Mark 2026-10-24). The answer carries the guest's own link; "I've got this" is a plain link
-  // to their details page, and "Talk me into it, Mark!" opens the drop-down for the time. No link in the answer (an older server): the old thank-you.
+  // to their details page, and "Walk me through it, Mark!" opens the drop-down for the time. No link in the answer (an older server): the old thank-you.
   var pending = null, talkDone = false;
   function linkToken(url){ var m = /[?&]t=([A-Za-z0-9_-]{43})/.exec(String(url || '')); return m ? m[1] : ''; }
   function showChoice(first, links){

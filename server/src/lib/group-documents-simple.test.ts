@@ -46,7 +46,7 @@ test("About you: the cruise from the file at the top, every question as an input
     phone: "9193466127", email: "mark@example.com", ec1_name: "Pat Guest", ec1_relationship: "Spouse", ec1_cell_phone: "9195550100", notes: "Gluten free" }, ctx());
   assert.ok(a.ok, JSON.stringify(a));
   if (a.ok) {
-    assert.equal(a.travelerPatch["emergency_phone"], "9195550100");
+    assert.equal(a.travelerPatch["emergency_phone"], "+1 (919) 555-0100");
     assert.equal(a.travelerPatch["citizenship"], "United States");
     assert.equal(a.travelerPatch["special_needs"], "Gluten free");
     assert.equal(a.travelerPatch["gender"], "Male");

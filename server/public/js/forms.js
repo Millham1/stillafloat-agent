@@ -249,6 +249,37 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
     p.city.value = city || ''; p.state.value = state || ''; p.zip.value = zip || '';
     cszCompose(hidden);
   }
+
+  // Mark 2026-11-03: a phone number is a country-code list and the number, written one way: "+1 (919) 346-6127" for the U.S. and Canada,
+  // "+44 7911 123456" elsewhere. The two boxes write the one answer the documents hold into a hidden box.
+  var DIAL = [['1', 'United States / Canada'], ['52', 'Mexico'], ['44', 'United Kingdom'], ['57', 'Colombia'], ['1809', 'Dominican Republic'], ['54', 'Argentina'], ['61', 'Australia'], ['43', 'Austria'], ['32', 'Belgium'],
+    ['55', 'Brazil'], ['56', 'Chile'], ['86', 'China'], ['506', 'Costa Rica'], ['53', 'Cuba'], ['45', 'Denmark'], ['593', 'Ecuador'], ['503', 'El Salvador'], ['358', 'Finland'], ['33', 'France'], ['49', 'Germany'],
+    ['30', 'Greece'], ['502', 'Guatemala'], ['504', 'Honduras'], ['852', 'Hong Kong'], ['91', 'India'], ['353', 'Ireland'], ['972', 'Israel'], ['39', 'Italy'], ['81', 'Japan'], ['82', 'South Korea'],
+    ['31', 'Netherlands'], ['64', 'New Zealand'], ['505', 'Nicaragua'], ['47', 'Norway'], ['507', 'Panama'], ['595', 'Paraguay'], ['51', 'Peru'], ['63', 'Philippines'], ['48', 'Poland'], ['351', 'Portugal'],
+    ['65', 'Singapore'], ['27', 'South Africa'], ['34', 'Spain'], ['46', 'Sweden'], ['41', 'Switzerland'], ['66', 'Thailand'], ['90', 'Turkey'], ['971', 'United Arab Emirates'], ['598', 'Uruguay'], ['58', 'Venezuela']];
+  function telSplit(v) {
+    v = String(v || '').trim();
+    if (!v) return { code: '1', num: '' };
+    if (v.charAt(0) !== '+') { var d = v.replace(/\D/g, ''); return { code: '1', num: d.length === 11 && d.charAt(0) === '1' ? d.slice(1) : d }; }
+    var digits = v.slice(1).replace(/[^\d]/g, ''), best = '';
+    DIAL.forEach(function (c) { if (digits.indexOf(c[0]) === 0 && c[0].length > best.length && c[0] !== '1809') best = c[0]; });
+    return { code: best || '1', num: digits.slice((best || '1').length) };
+  }
+  function telFormat(code, raw) {
+    var d = String(raw || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (code === '1') { d = d.slice(0, 10); return '+1 ' + (d.length > 6 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : d.length > 3 ? '(' + d.slice(0, 3) + ') ' + d.slice(3) : d); }
+    return '+' + code + ' ' + d;
+  }
+  function telWire(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('input[type=hidden][data-tel]'), function (h) {
+      var q = h.closest('[data-q]'), sel = q.querySelector('[data-tel-code]'), num = q.querySelector('[data-tel-num]');
+      var compose = function () { h.value = telFormat(sel.value, num.value); h.dispatchEvent(new Event('input', { bubbles: true })); };
+      sel.addEventListener('change', function () { num.value = sel.value === '1' ? telFormat('1', num.value).replace(/^\+1 /, '') : num.value.replace(/\D/g, ''); compose(); });
+      num.addEventListener('input', compose);
+      num.addEventListener('blur', function () { if (sel.value === '1') num.value = telFormat('1', num.value).replace(/^\+1 /, ''); });
+    });
+  }
   function cszWire(root) {
     var hs = root.querySelectorAll('input[type=hidden][data-field$="city_state_zip"]');
     Array.prototype.forEach.call(hs, function (h) {
@@ -335,12 +366,19 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
         '<label class="w-part"><span>ZIP</span><input class="w-in" type="text" id="' + id + '-zip" data-part-of="' + nm + '" data-part="zip" inputmode="numeric" maxlength="10" autocomplete="' + (home ? 'postal-code' : 'off') + '" value="' + esc(c.zip) + '"></label>' +
         '</div><input type="hidden" data-field="' + nm + '" value="' + esc(typeof v === 'string' ? v : '') + '"></fieldset>';
     }
+    if (f.kind === 'tel') {
+      var tp = telSplit(typeof v === 'string' ? v : ''), tn = esc(f.name);
+      return '<fieldset class="w-field' + req + '" data-q="' + tn + '"><legend>' + lab + '</legend><div class="w-tel">' +
+        '<label class="w-part"><span>Country code</span><select class="w-in" id="' + id + '-code" data-tel-code autocomplete="off">' + DIAL.filter(function (c) { return c[0] !== '1809'; }).map(function (c) { return '<option value="' + c[0] + '"' + (c[0] === tp.code ? ' selected' : '') + '>+' + c[0] + ' ' + esc(c[1]) + '</option>'; }).join('') + '</select></label>' +
+        '<label class="w-part w-part-city"><span>Number</span><input class="w-in" type="tel" id="' + id + '" data-tel-num inputmode="tel" maxlength="20" autocomplete="' + (AUTO[f.name] || 'off') + '" value="' + esc(tp.code === '1' ? telFormat('1', tp.num).replace(/^\+1 /, '') : tp.num) + '"></label>' +
+        '</div><input type="hidden" data-field="' + tn + '" data-tel value="' + esc(telFormat(tp.code, tp.num)) + '"></fieldset>';
+    }
     var type2 = f.kind === 'date' ? 'date' : f.kind === 'email' ? 'email' : f.kind === 'tel' ? 'tel' : 'text';
     var extra = (f.maxLength ? ' maxlength="' + f.maxLength + '"' : '') + ' autocomplete="' + (AUTO[f.name] || 'off') + '"';
     var note = '';
     if (f.kind === 'license') {
       if (!packet.pii_ready) { extra += ' disabled'; note = 'We cannot take a licence number on this page right now. Leave it empty; we will ask for it another way.'; }
-      else note = 'Stored encrypted and never shown again, not even to you. It is used only to verify who is authorizing this card.';
+      else note = 'Why we ask: to protect you and your card from fraud, our host agency, Cornerstone Collective, has to confirm that the person authorizing a card payment is the cardholder, and the licence is how it does that. The number is stored encrypted, used only for that check, and never shown again, not even to you.';
     }
     if (f.kind === 'passport') {
       if (!packet.pii_ready) { extra += ' disabled'; note = 'We cannot take a passport number on this page right now. Leave it empty; we will ask for it another way.'; }
@@ -481,7 +519,7 @@ var API_BASE = (function () { var m = document.querySelector('main[data-api]'); 
       var forDoc = '';
       return '<section class="w-step" data-step="' + i + '" hidden>' + forDoc + head + stepBody(s, named) + '</section>';
     }).join('');
-    cszWire(host);
+    cszWire(host); telWire(host);
     addressCheck(host);
     followUps();
     if (window.SAKeep) { window.SAKeep.track(host, wizKey); window.SAKeep.restore(host, wizKey()); followUps(); }

@@ -19,7 +19,7 @@ import { buildQuote, freeCabinFor, tripOf, quoteOptions, quoteSummary, storedQuo
 // (group_interests.details_token_hash), good for 90 days, one neutral 404 for every kind of wrong link.
 //
 //   GET  /api/group-details/:token             what we already know (name, contact, how many), what they entered so far
-//   POST /api/group-details/:token/choice      Road A, { choice: "call", when } "Talk me into it, Mark!": Mark gets one item to ring, the guest ONE email
+//   POST /api/group-details/:token/choice      Road A, { choice: "call", when } "Walk me through it, Mark!": Mark gets one item to ring, the guest ONE email
 //   POST /api/group-details/:token/pick        Road B, { concierge } the four answers; answers with our cabin pick (stored on the reply)
 //   POST /api/group-details/:token             Road B, { travelers, address, concierge } the names, birthdays, home address and four answers; answers with our pick
 //   POST /api/group-details/:token/hold        Road B, "Build my quote!": the names are in; Mark's item says a quote is under way; the guest gets ONE email
@@ -198,7 +198,7 @@ const alreadyAgreed = (lang: Lang) => ({
   error: lang === "es" ? `Su cotización ya está aceptada y sus documentos van en camino. Para cambiar algo, llame o escriba a Mark al ${BUSINESS.phone}.` : `Your quote is already agreed and your paperwork is on its way. To change anything, call or text Mark at ${BUSINESS.phone}.`,
 });
 
-// ── Road A: "Talk me into it, Mark!" ──────────────────────────────────────────────────────────────────────────
+// ── Road A: "Walk me through it, Mark!" ──────────────────────────────────────────────────────────────────────────
 
 router.post("/group-details/:token/choice", async (req: Request, res: Response) => {
   try {

@@ -1,7 +1,7 @@
 // group-details.ts — what happens after "Save my spot!" on a group page (Mark 2026-10-23, reshaped 2026-10-24 into two roads).
 //
 // "I want to give them the ability to just complete the forms rather than have me call them, so it becomes a choice giving them some control."
-// Then (2026-10-24): the client gets ONE message, never two. Road A, "Talk me into it, Mark!": a drop-down for the time, one line, ONE email, one item for
+// Then (2026-10-24): the client gets ONE message, never two. Road A, "Walk me through it, Mark!": a drop-down for the time, one line, ONE email, one item for
 // Mark. Road B, "I've got this… let me fill it in!": a details page in three short parts, "Build my quote!", one line, ONE email, one item for Mark.
 // Then (2026-11-01): nothing is held at the end of Part 3 ("i do not have the information needed to reserve the cabin"): the email's button says
 // "Let's begin!" and opens Part 4, the quote step (lib/group-quote.ts: which cabin, FlexPay, a drink package when the fare has none, insurance,
@@ -300,8 +300,8 @@ export type Validated =
 export const MSG = {
   noTravelers: { en: "Please add at least one traveler.", es: "Agregue al menos un viajero." },
   tooMany: {
-    en: "More than four? Mark will set up a second cabin on the call… tap Talk me into it, Mark! on the group page.",
-    es: "¿Más de cuatro? Mark arma una segunda cabina en la llamada… toque ¡Convénzame, Mark! en la página del grupo.",
+    en: "More than four? Mark will set up a second cabin on the call… tap Walk me through it, Mark! on the group page.",
+    es: "¿Más de cuatro? Mark arma una segunda cabina en la llamada… toque ¡Guíeme paso a paso, Mark! en la página del grupo.",
   },
   name: { en: "First AND last name, please… the way the passport has it.", es: "Nombre Y apellido, por favor… tal como aparecen en el pasaporte." },
   dob: { en: "Month, day and a four-digit year: 03 / 04 / 1965.", es: "Mes, día y año de cuatro dígitos (el mes primero): 03 / 04 / 1965." },
@@ -534,7 +534,7 @@ const CALL = {
 } as const;
 
 /**
- * Road A's ONE email (approved design, go-packets "Road A · Talk me into it", cell 3, 2026-10-24): "Good call… literally!", who rings, from what number, when
+ * Road A's ONE email (approved design, go-packets "Road A · Walk me through it", cell 3, 2026-10-24): "Good call… literally!", who rings, from what number, when
  * (in the guest's own answer), the no-homework promise, the one smart-cruiser move (the passports), the brand line and the signature, and the footer with
  * "Not you? Reply and we'll take you off." No cabin names and no prices, ever: the guest saw them on the page. Every value that came from a person or
  * a file is escaped; there is no link in it (nothing to open: the next move is Mark's call).

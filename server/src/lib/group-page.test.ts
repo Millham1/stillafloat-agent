@@ -757,9 +757,9 @@ test("after 'Save my spot!' the form is replaced by the choice: the cheer with t
   assert.equal(p.el("gp-choice-lead").textContent, "Now, how do you like to plan a cruise?");
   assert.equal(p.el("gp-finish").textContent, "I've got this… let me fill it in!");
   assert.equal(p.el("gp-finish").href, LINKS.detailsUrl, "a plain link to their own details page");
-  assert.equal(p.el("gp-talk").textContent, "Talk me into it, Mark!");
+  assert.equal(p.el("gp-talk").textContent, "Walk me through it, Mark!");
   assert.equal(p.el("gp-choice-foot").textContent, "Either way: nothing to pay or sign tonight… and a laugh or two along the way.");
-  assert.equal(p.el("gp-dd").hidden, true, "the drop-down is closed until they tap Talk me into it");
+  assert.equal(p.el("gp-dd").hidden, true, "the drop-down is closed until they tap Walk me through it");
   assert.equal(p.el("gp-msg").textContent, "", "the plain thank-you is not shown beside it");
   assert.equal(p.el("gp-finish").className, "btn"); assert.equal(p.el("gp-talk").className, "btn", "two equal pills");
 
@@ -767,7 +767,7 @@ test("after 'Save my spot!' the form is replaced by the choice: the cheer with t
   assert.equal(es.el("gp-choice-h").textContent, "Usted tocó, nosotros aplaudimos… ¡YA ESTÁ EN LA LISTA, ANA!");
   assert.equal(es.el("gp-choice-lead").textContent, "Ahora, ¿cómo le gusta planear un crucero?");
   assert.equal(es.el("gp-finish").textContent, "¡Yo me encargo… déjeme llenarlo!");
-  assert.equal(es.el("gp-talk").textContent, "¡Convénzame, Mark!");
+  assert.equal(es.el("gp-talk").textContent, "¡Guíeme paso a paso, Mark!");
   assert.equal(es.el("gp-choice-foot").textContent, "De cualquier manera: nada que pagar ni firmar esta noche… y una que otra risa en el camino.");
 });
 
@@ -778,7 +778,7 @@ test("the greeting is the first word of the name typed, in capitals; the server'
   assert.match(server.el("gp-choice-h").textContent, /YOU'RE ON THE LIST, PAT!$/);
 });
 
-test("'Talk me into it, Mark!' opens a drop-down under the button ('When's a good time to catch you?' and four pills); the other pill dims; a second tap closes it", async () => {
+test("'Walk me through it, Mark!' opens a drop-down under the button ('When's a good time to catch you?' and four pills); the other pill dims; a second tap closes it", async () => {
   const p = await saved();
   assert.equal(p.el("gp-dd-q").textContent, "When's a good time to catch you?");
   assert.deepEqual(["morning", "afternoon", "evening", "anytime"].map((k) => p.el(`gp-when-${k}`).textContent), ["Mornings", "Afternoons", "Evenings", "Whenever… I'm easy"]);

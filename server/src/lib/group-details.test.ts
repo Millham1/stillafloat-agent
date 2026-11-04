@@ -190,7 +190,7 @@ test("one to four travelers, whatever the party size they gave; five is refused 
   const four = validateDetails({ ...GOOD, travelers: Array.from({ length: 4 }, (_, i) => ({ legal_name: `Person Number${"x".repeat(i)}`, dob: "1990-01-01" })) }, 2, "en", NOW);
   assert.ok(four.ok && four.count === 4);
   const five = validateDetails({ ...GOOD, travelers: Array.from({ length: 5 }, () => ({ legal_name: "Person Number", dob: "1990-01-01" })) }, 2, "en", NOW);
-  assert.deepEqual(five, { ok: false, error: "More than four? Mark will set up a second cabin on the call… tap Talk me into it, Mark! on the group page.", field: "travelers" });
+  assert.deepEqual(five, { ok: false, error: "More than four? Mark will set up a second cabin on the call… tap Walk me through it, Mark! on the group page.", field: "travelers" });
   const none = validateDetails({ ...GOOD, travelers: [] }, 2, "en", NOW);
   assert.deepEqual([none.ok, !none.ok && none.field], [false, "travelers"]);
 });

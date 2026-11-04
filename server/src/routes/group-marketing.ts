@@ -500,7 +500,7 @@ router.post("/group-page/:code/interest", async (req: Request, res: Response) =>
 
     // The guest's own private link, handed back to them and to nobody else (it is the credential for their page). Made AFTER the reply is safely stored, so a
     // box that has not applied migration 0056 yet still takes every reply (it just has no links to hand back).
-    // NO email goes out now (Mark 2026-10-24: "the client should not get 2"): the one email is sent when they choose a road, "Talk me into it, Mark!" (a call
+    // NO email goes out now (Mark 2026-10-24: "the client should not get 2"): the one email is sent when they choose a road, "Walk me through it, Mark!" (a call
     // confirmation) or "I've got this" and then "Build my quote!" (the "Let's begin!" email, Mark 2026-11-01). Until then the status says so.
     const answer = { success: true as const, first: firstWord(first) };
     if (!interestId) return res.json(answer);

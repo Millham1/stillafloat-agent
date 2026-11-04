@@ -310,9 +310,9 @@ test("About you files the answers on the traveler, encrypts the passport, and ke
   assert.ok(!tr.passport_enc.includes("A12345678"));
   assert.equal(tr.passport_country, "United States");
   assert.equal(tr.passport_expiry, "2031-02-03");
-  assert.equal(tr.phone, "919-555-0100");
+  assert.equal(tr.phone, "+1 (919) 555-0100");
   assert.equal(tr.emergency_name, "Sam Public");
-  assert.equal(tr.emergency_phone, "919-555-0199");
+  assert.equal(tr.emergency_phone, "+1 (919) 555-0199");
   assert.equal(tr.gender, "Female");
   assert.equal(tr.form_data.address, "1 Main St");
   assert.equal(tr.form_data.emergency.secondary, undefined, "no second contact is asked");

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   DOC_SPECS, TEMPLATE_VERSION_DATE, applyAnswers, splitCityStateZip, blocksToText, buildCtx, fillBlocks, getPath, markdownToHtml, packetFor, parseBlocks,
   prefillValue, publicField, renderDocument, separateGluedHeadings, unescapeConnectorMarkdown,
-} from "./group-documents";
+  normalizePhone } from "./group-documents";
 import { BUSINESS } from "./group-secure";
 import { CLIENT_DOCUMENTS } from "../content/client-documents";
 
@@ -333,10 +333,10 @@ test("form 15 answers are checked, filed into columns and form_data, and the pas
   assert.equal(JSON.stringify(r.travelerPatch).includes("A1234"), false);
   assert.deepEqual(
     { dob: r.travelerPatch["dob"], gender: r.travelerPatch["gender"], phone: r.travelerPatch["phone"], email: r.travelerPatch["email"], passport_country: r.travelerPatch["passport_country"], passport_expiry: r.travelerPatch["passport_expiry"], passport_last4: r.travelerPatch["passport_last4"], emergency_name: r.travelerPatch["emergency_name"], emergency_phone: r.travelerPatch["emergency_phone"], citizenship: r.travelerPatch["citizenship"], special_needs: r.travelerPatch["special_needs"] },
-    { dob: "1960-05-04", gender: "Female", phone: "(919) 555-0100", email: "jane@example.com", passport_country: "United States", passport_expiry: "2031-02-03", passport_last4: "5678", emergency_name: "Sam Public", emergency_phone: "919-555-0199", citizenship: "United States", special_needs: undefined },
+    { dob: "1960-05-04", gender: "Female", phone: "+1 (919) 555-0100", email: "jane@example.com", passport_country: "United States", passport_expiry: "2031-02-03", passport_last4: "5678", emergency_name: "Sam Public", emergency_phone: "+1 (919) 555-0199", citizenship: "United States", special_needs: undefined },
   );
   assert.equal(getPath(r.formData, "emergency.primary.relationship"), "Son");
-  assert.equal(getPath(r.formData, "emergency.primary.cell_phone"), "919-555-0199");
+  assert.equal(getPath(r.formData, "emergency.primary.cell_phone"), "+1 (919) 555-0199");
   assert.deepEqual(getPath(r.formData, "trusted.programs"), ["tsa"]);
   assert.equal(getPath(r.formData, "loyalty.1.program"), "Delta");
   assert.equal(getPath(r.formData, "passport.issue_date"), "2021-02-04");
@@ -498,4 +498,10 @@ test("booking agreement: the pre/post-cruise lines come from the quote's choices
 test("terms 3.1 carries this group's deposit and final-payment date", () => {
   const t = renderDocument("01-terms-and-conditions", ctxFor({ deposit_due: "2026-12-01", final_payment_due: "2027-02-08" })).text;
   assert.match(t, /non-refundable deposit of \$250(\.00)? per person is required by December 1, 2026 to confirm your reservation\. Final payment is due no later than February 8, 2027\./);
+});
+
+test("a phone number is written one way, with its country code (Mark 2026-11-03)", () => {
+  for (const [typed, want] of [["9193466127", "+1 (919) 346-6127"], ["919-346-6127", "+1 (919) 346-6127"], ["1 (919) 346 6127", "+1 (919) 346-6127"], ["+1 919 346 6127", "+1 (919) 346-6127"], ["+44 7911 123456", "+44 7911 123456"], ["555-1234", "555-1234"]] as const) {
+    assert.equal(normalizePhone(typed), want, typed);
+  }
 });

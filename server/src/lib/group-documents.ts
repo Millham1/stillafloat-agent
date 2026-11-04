@@ -631,6 +631,19 @@ const isEmpty = (v: unknown) => v === undefined || v === null || v === "" || (Ar
 
 /** Check what the signer entered against the document's fields and work out where each answer is kept.
  *  Unknown answer names are dropped. Card numbers are refused in every text answer. */
+/** Mark 2026-11-03: one way of writing a phone number, with its country code: "+1 (919) 346-6127" for the U.S. and Canada (a bare ten-digit
+ *  number is taken as one), "+44 7911 123456" elsewhere; an extension or anything else unusual is kept as typed. */
+export function normalizePhone(s: string): string {
+  const t = s.trim();
+  const digits = t.replace(/\D/g, "");
+  const nanp = (d: string) => `+1 (${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  if (/[xX#]/.test(t)) return t;
+  if (t.startsWith("+")) return digits.length === 11 && digits.startsWith("1") ? nanp(digits.slice(1)) : t;
+  if (digits.length === 10) return nanp(digits);
+  if (digits.length === 11 && digits.startsWith("1")) return nanp(digits.slice(1));
+  return t;
+}
+
 export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unknown, ctx: DocCtx): AppliedAnswers | RejectedAnswers {
   const input = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   const spec = DOC_SPECS[doc.key];
@@ -661,7 +674,7 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
           if (f.date === "past" && s > today) { errors[f.name] = "That date should be in the past."; break; }
           if (f.date === "future" && s <= today) { errors[f.name] = "That date has already passed."; break; }
         }
-        clean[f.name] = f.kind === "passport" || f.kind === "license" ? normalizePassport(s) : s;
+        clean[f.name] = f.kind === "passport" || f.kind === "license" ? normalizePassport(s) : f.kind === "tel" ? normalizePhone(s) : s;
         break;
       }
       case "choice": {
