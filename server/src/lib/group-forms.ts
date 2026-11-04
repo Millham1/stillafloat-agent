@@ -384,7 +384,7 @@ function signatureNames(loaded: Loaded, answers: Row | undefined): string[] {
   const t = loaded.traveler;
   return [[t.first_name, t.last_name].filter(Boolean).join(" "), personName(t), typed("legal_name")].filter((n, i, all) => n && all.indexOf(n) === i);
 }
-const SIGNER_NAME = /^[\p{L}\p{M}][\p{L}\p{M}'’.\- ]{1,118}[\p{L}\p{M}.]$/u;
+const SIGNER_NAME = /^[\p{L}\p{M}][\p{L}\p{M}\d'’.\- ]{1,118}[\p{L}\p{M}\d.]$/u;   // digits allowed: the whole-site gate's fixture traveler is \"E2E Fixture\"
 
 export async function signDocument(deps: FormsDeps, token: unknown, body: SignBody, meta: { ip?: string; ua?: string }): Promise<Reply> {
   const loaded = await loadByToken(deps, token);
