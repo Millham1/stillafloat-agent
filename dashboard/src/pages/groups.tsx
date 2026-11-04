@@ -11,6 +11,7 @@ import { GroupTerms } from "./group-terms";
 import { ClientPaperwork, TravelerPaperwork, type PaperworkData } from "./group-paperwork";
 import { groupBookingsHref } from "@/lib/group-api";
 import { GroupJourney } from "./group-journey";
+import { GroupBooking } from "./group-booking";
 import { GroupBigPicture } from "./group-big-picture";
 
 // Group bookings — one file per group (cabins, travelers, paperwork, payments,
@@ -398,6 +399,8 @@ function GroupDetail({ id }: { id: string }) {
           <Card key={x.label} className="p-4"><CardContent className="p-0"><div className="text-xl font-bold">{x.value}</div><div className="text-xs text-muted-foreground">{x.label}</div></CardContent></Card>
         ))}
       </div>
+
+      <GroupBooking groupId={id} />
 
       <Card id="attention" className="scroll-mt-4">
         <div className="px-4 py-3 border-b flex items-center gap-2"><CalendarClock className="w-4 h-4" /><h3 className="font-semibold">Needs attention</h3></div>

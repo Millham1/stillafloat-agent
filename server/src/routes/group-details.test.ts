@@ -941,10 +941,10 @@ test("'I agree': the first press wins; the travelers go on a free cabin of the c
   const item = writes("actions").find((w) => w.method === "POST")!.body;
   assert.equal(item.source_ref, `group-quote-${REPLY_ID}`);
   assert.equal(item.title, "Book it · Mark Millham · Balcony Bella · party of 2");
-  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file). The paperwork link is NOT sent yet. Do this first: (1) book the cabin with the cruise line and type its number into the group file; (2) validate Flights; (3) press Booked: the guest's paperwork link goes out then.");
+  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file). The paperwork link is NOT sent yet. Do this first: (1) book the cabin with the cruise line; (2) validate Flights; (3) enter the suppliers' confirmations and any change to the booking in the group file: the paperwork fills from them; (4) review it and send it to the guest.");
   assert.deepEqual(item.buttons, [
-    { label: "Open the group file", href: `/groups/${GROUP_ID}` },
-    { label: "Booked: send the paperwork", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/booked` },
+    { label: "Enter the booking confirmation", href: `/groups/${GROUP_ID}?book=${REPLY_ID}#booking` },
+    { label: "Send the paperwork (needs the confirmation)", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/booked` },
   ]);
   await wait(() => tables["actions"]![0]!["status"] === "done");
   // the page afterwards: agreed, where the paperwork went, and nothing changes any more
@@ -956,20 +956,33 @@ test("'I agree': the first press wins; the travelers go on a free cabin of the c
   assert.equal(replyRow()["quote"]["answers"]["flexpay"], true, "the agreed answers stay");
 });
 
-test("'Booked' (Mark 2026-11-03): refused until the cabin number is in the group file, then the paperwork link goes to the guest once and the item closes", async () => {
+test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirmations; the send is refused until the booking number, the cabin number and every travel line are in; then the paperwork goes to the guest once and the item closes", async () => {
   namesIn();
   actionsAccept = true;
   pendingItem();
   await quoteStep(ANSWERS);
   assert.equal((await agree()).json["paperwork"], "booking");
-  const path = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booked`;
+  const path = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booked`, booking = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booking`;
   assert.equal((await call("POST", path)).status, 401, "Mark's token only");
+  assert.equal((await call("GET", booking)).status, 401, "Mark's token only");
+  const view = await call("GET", booking, { token: true });
+  assert.deepEqual([view.status, view.json["ready"], view.json["guest"]["name"]], [200, false, "Mark Millham"]);
+  assert.deepEqual(view.json["missing"], ["The cruise line's booking number", "The cabin number", "The flight the guest asked you to quote: add it below"]);
   const early = await call("POST", path, { token: true });
-  assert.equal(early.status, 409, "no cabin number yet");
-  assert.match(String(early.json["error"]), /cabin number/);
+  assert.equal(early.status, 409, "nothing entered yet");
+  assert.match(String(early.json["error"]), /booking number/);
   assert.equal(mails.length, 0);
-  const cabin = tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!;
-  cabin["cabin_num"] = "12345";
+  // the cabin alone is not enough: the flight the guest asked for has to be on the file with its confirmation
+  const cabinOnly = await call("PUT", booking, { token: true, body: { cabin: { booking_number: "MSC-778899", cabin_num: "12345", deck: "12" } } });
+  assert.deepEqual([cabinOnly.status, cabinOnly.json["ready"]], [200, false]);
+  assert.equal(tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["status"], "booked", "booking number and cabin number make the cabin booked");
+  assert.equal((await call("POST", path, { token: true })).status, 409);
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ kind: "boat" }] } })).status, 400, "only flights, hotels and transfers");
+  assert.equal((await call("PUT", booking, { token: true, body: { cabin: { price_total: "lots" } } })).status, 400);
+  const full = await call("PUT", booking, { token: true, body: { trip: [{ kind: "flight", direction: "pre", provider: "Delta", from_place: "RDU", to_place: "MIA", confirmation: "ABC123" }] } });
+  assert.deepEqual([full.status, full.json["ready"], full.json["missing"]], [200, true, []]);
+  assert.ok(full.json["fills"].some((f: Record<string, string>) => f.label === "Cabin number" && f.value === "12345"), "the review shows what the paperwork will say");
+  assert.equal(tables["group_travelers"]![0]!["form_data"]["address"], "123 Main St", "the trip is merged into the lead's file; the address stays");
   const done = await call("POST", path, { token: true });
   assert.deepEqual([done.status, done.json["success"], done.json["paperwork"]], [200, true, "sent"]);
   assert.equal(mails.length, 1);

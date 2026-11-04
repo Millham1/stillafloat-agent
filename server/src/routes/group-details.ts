@@ -474,13 +474,13 @@ router.post("/group-details/:token/agree", async (req: Request, res: Response) =
     const title = `Book it · ${nameOf(reply)} · ${quote.category} · party of ${travelers.length}`;
     const toCheck = agreed.lines.filter((l) => l.key.startsWith("travel-") || l.key.startsWith("need-")).map((l) => l.label);
     const body = `${f.label} · ${reachOf(reply)} · ${quoteSummary(agreed, quoteOptions({ group, cabins, travel }, "en"))}. Travelers are on the file (${where}). `
-      + `The paperwork link is NOT sent yet. Do this first: (1) book the cabin with the cruise line and type its number into the group file; `
-      + `(2) validate ${toCheck.length ? toCheck.join("; ") : "the flights, hotel and transfers, if they asked for any"}; (3) press Booked: the guest's paperwork link goes out then.`;
+      + `The paperwork link is NOT sent yet. Do this first: (1) book the cabin with the cruise line; `
+      + `(2) validate ${toCheck.length ? toCheck.join("; ") : "the flights, hotel and transfers, if they asked for any"}; (3) enter the suppliers' confirmations and any change to the booking in the group file: the paperwork fills from them; (4) review it and send it to the guest.`;
     void createAction({
       type: "lead", source_ref: `group-quote-${reply.id}`, title, body, priority: "lead",
       buttons: [
-        { label: "Open the group file", href: `/groups/${group.id}` },
-        { label: "Booked: send the paperwork", method: "POST", path: `/api/groups/${group.id}/interests/${reply.id}/booked` },
+        { label: "Enter the booking confirmation", href: `/groups/${group.id}?book=${reply.id}#booking` },
+        { label: "Send the paperwork (needs the confirmation)", method: "POST", path: `/api/groups/${group.id}/interests/${reply.id}/booked` },
       ],
     }).then(async (made) => {
       if (!made.created) return;
@@ -491,6 +491,145 @@ router.post("/group-details/:token/agree", async (req: Request, res: Response) =
     return;
   } catch (err) {
     return fail(req, res, err, "group details agree failed");
+  }
+});
+
+// ── The booking confirmation (Mark 2026-11-04) ─────────────────────────────────────────────────────────────────────────────
+// After the guest agrees the quote Mark books it with the supplier, types the confirmation and any change to the booking into the group
+// manager, sees what the paperwork will now say, and sends it. The cabin lives on group_cabins (booking number, cabin number, deck, prices);
+// the flights, hotels and transfers on the lead's file (form_data.trip.chosen), which the Cruise Booking Agreement already prints.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TRIP_KINDS = ["flight", "hotel", "transfer"] as const;
+const text = (v: unknown, max = 200): string | null => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
+const money = (v: unknown): number | null | undefined => {
+  if (v === null || v === "") return null;
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+  return Number.isFinite(n) && n >= 0 && n < 1e7 ? Math.round(n * 100) / 100 : undefined;
+};
+const isoOrNull = (v: unknown): string | null => { const t = text(v, 40); return t && !Number.isNaN(Date.parse(t)) ? t : null; };
+
+interface TripEntry { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null }
+const tripEntries = (formData: unknown): TripEntry[] => {
+  const t = formData && typeof formData === "object" ? (formData as Record<string, unknown>)["trip"] : null;
+  const list = t && typeof t === "object" ? (t as Record<string, unknown>)["chosen"] : null;
+  if (!Array.isArray(list)) return [];
+  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object").map((r) => ({
+    kind: String(r["kind"] ?? ""), direction: text(r["direction"], 10), provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),
+    starts_at: text(r["starts_at"], 40), ends_at: text(r["ends_at"], 40), label: text(r["label"]) ?? String(r["kind"] ?? ""), confirmation: text(r["confirmation"]),
+  }));
+};
+
+async function loadBooking(groupId: string, iid: string) {
+  const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_agreed_at, first_name, last_name, email").eq("id", iid).eq("group_id", groupId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!reply || !reply.quote_agreed_at || !reply.traveler_id) return null;
+  const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, email, first_name, last_name, lang, form_data").eq("id", reply.traveler_id).maybeSingle();
+  if (le) throw new Error(le.message);
+  if (!lead) return null;
+  const { data: cabin, error: ce } = lead.cabin_id ? await db().from("group_cabins").select("id, cabin_num, deck, category, status, booking_number, price_total, deposit_amount").eq("id", lead.cabin_id).maybeSingle() : { data: null, error: null };
+  if (ce) throw new Error(ce.message);
+  return { reply, lead, cabin, quote: storedQuote(reply.quote) };
+}
+
+type BookingFile = NonNullable<Awaited<ReturnType<typeof loadBooking>>>;
+function bookingView(b: BookingFile) {
+  const chosen = tripEntries(b.lead.form_data);
+  const needs = ((b.lead.form_data as Record<string, any> | null)?.["trip"]?.["needs"] ?? {}) as Record<string, boolean>;
+  const missing: string[] = [];
+  if (!b.cabin) missing.push("The cabin this guest is on is not on the group file");
+  else {
+    if (!text(b.cabin["booking_number"])) missing.push("The cruise line's booking number");
+    if (!text(b.cabin["cabin_num"])) missing.push("The cabin number");
+  }
+  for (const r of chosen) if (!r.confirmation) missing.push(`Confirmation for ${r.label}`);
+  for (const k of TRIP_KINDS) if (needs[k] === true && !chosen.some((r) => r.kind === k)) missing.push(`The ${k} the guest asked you to quote: add it below`);
+  const fills = [
+    { label: "Cruise line booking number", value: text(b.cabin?.["booking_number"]) ?? "" },
+    { label: "Cabin number", value: text(b.cabin?.["cabin_num"]) ?? "" },
+    { label: "Deck", value: text(b.cabin?.["deck"]) ?? "" },
+    ...chosen.map((r) => ({ label: r.label, value: [r.provider, [r.from_place, r.to_place].filter(Boolean).join(" to "), r.confirmation ? `conf. ${r.confirmation}` : ""].filter(Boolean).join(" · ") })),
+  ];
+  return {
+    success: true,
+    guest: { name: [b.lead.first_name, b.lead.last_name].filter(Boolean).join(" ") || nameOf(b.reply) || "Guest", email: b.lead.email ?? b.reply.email ?? null },
+    quote: b.quote ? { category: b.quote.category, party: b.quote.party, total: b.quote.totalText, deposit: b.quote.depositText } : null,
+    paperwork: b.quote?.paperwork ?? "booking",
+    cabin: b.cabin, trip: chosen, needs, missing, ready: missing.length === 0, fills,
+  };
+}
+
+/** The guests who have agreed a quote, for the group manager's "Bookings to confirm" card: the ones still waiting on Mark first. */
+router.get("/groups/:id/bookings", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    if (!UUID_RE.test(groupId)) return res.status(404).json({ success: false, error: "Group not found" });
+    const { data, error } = await db().from("group_interests").select("id, first_name, last_name, quote, quote_agreed_at").eq("group_id", groupId).not("quote_agreed_at", "is", null).order("quote_agreed_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []).map((r: Row) => {
+      const q = storedQuote(r["quote"]);
+      return { id: String(r["id"]), name: nameOf(r) || "Guest", category: q?.category ?? null, party: q?.party ?? null, paperwork: q?.paperwork ?? "booking", agreed_at: r["quote_agreed_at"] };
+    });
+    rows.sort((a: { paperwork: string }, b: { paperwork: string }) => Number(b.paperwork === "booking") - Number(a.paperwork === "booking"));
+    return res.json({ success: true, bookings: rows });
+  } catch (err) {
+    return fail(req, res, err, "group bookings list failed");
+  }
+});
+
+router.get("/groups/:id/interests/:iid/booking", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not agreed a quote yet." });
+    return res.json(bookingView(b));
+  } catch (err) {
+    return fail(req, res, err, "group booking read failed");
+  }
+});
+
+router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID_RE.test(groupId) || !UUID_RE.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const b = await loadBooking(groupId, iid);
+    if (!b) return res.status(404).json({ success: false, error: "That guest has not agreed a quote yet." });
+    const body = (req.body && typeof req.body === "object" ? req.body : {}) as Record<string, any>;
+    const bad = (error: string) => res.status(400).json({ success: false, error });
+    if (body["cabin"] !== undefined) {
+      if (!b.cabin) return bad("This guest is not on a cabin in the group file yet.");
+      const c = (body["cabin"] && typeof body["cabin"] === "object" ? body["cabin"] : {}) as Record<string, unknown>;
+      const patch: Record<string, unknown> = {};
+      for (const k of ["cabin_num", "deck", "category", "booking_number"] as const) if (c[k] !== undefined) patch[k] = text(c[k], 60);
+      for (const k of ["price_total", "deposit_amount"] as const) if (c[k] !== undefined) { const m = money(c[k]); if (m === undefined) return bad(`${k === "price_total" ? "The cabin total" : "The deposit"} is not an amount.`); patch[k] = m; }
+      const num = "cabin_num" in patch ? patch["cabin_num"] : b.cabin["cabin_num"], bk = "booking_number" in patch ? patch["booking_number"] : b.cabin["booking_number"];
+      if (text(num) && text(bk)) patch["status"] = "booked";
+      if (Object.keys(patch).length) {
+        const { error } = await db().from("group_cabins").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", b.cabin["id"]);
+        if (error) throw new Error(error.message);
+      }
+    }
+    if (body["trip"] !== undefined) {
+      if (!Array.isArray(body["trip"]) || body["trip"].length > 20) return bad("The travel list is not valid.");
+      const chosen: TripEntry[] = [];
+      for (const r of body["trip"] as Array<Record<string, unknown>>) {
+        const kind = String(r?.["kind"] ?? "");
+        if (!(TRIP_KINDS as readonly string[]).includes(kind)) return bad("Each travel line must be a flight, hotel or transfer.");
+        const dir = r["direction"] === "post" ? "post" : "pre";
+        chosen.push({
+          kind, direction: dir, provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),
+          starts_at: isoOrNull(r["starts_at"]), ends_at: isoOrNull(r["ends_at"]), confirmation: text(r["confirmation"]),
+          label: text(r["label"]) ?? `${dir === "post" ? "After" : "Before"} the cruise: ${kind}`,
+        });
+      }
+      const fd = (b.lead.form_data && typeof b.lead.form_data === "object" ? b.lead.form_data : {}) as Record<string, any>;
+      const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), chosen } } }).eq("id", b.lead.id);
+      if (error) throw new Error(error.message);
+    }
+    const again = await loadBooking(groupId, iid);
+    return res.json(bookingView(again ?? b));
+  } catch (err) {
+    return fail(req, res, err, "group booking save failed");
   }
 });
 
@@ -509,9 +648,9 @@ router.post("/groups/:id/interests/:iid/booked", requireToken, async (req: Reque
     const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, email, first_name, lang").eq("id", reply.traveler_id).maybeSingle();
     if (le) throw new Error(le.message);
     if (!lead) return res.status(404).json({ success: false, error: "The lead traveler is not on the file." });
-    const { data: cab, error: ce } = lead.cabin_id ? await db().from("group_cabins").select("id, cabin_num").eq("id", lead.cabin_id).maybeSingle() : { data: null, error: null };
-    if (ce) throw new Error(ce.message);
-    if (!cab || !String(cab.cabin_num ?? "").trim()) return res.status(409).json({ success: false, error: "Type the cabin number into the group file first (the cabin this guest is on), then press Booked." });
+    const booking = await loadBooking(groupId, iid);
+    const view = booking ? bookingView(booking) : null;
+    if (!view || !view.ready) return res.status(409).json({ success: false, error: `Finish the booking confirmation first: ${(view?.missing ?? ["the cabin"]).join("; ")}.`, missing: view?.missing ?? [] });
     const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
