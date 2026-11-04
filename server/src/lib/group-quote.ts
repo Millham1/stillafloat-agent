@@ -373,3 +373,19 @@ export function freeCabinFor(cabins: readonly Row[], option: CabinOption, usedCa
   }
   return null;
 }
+
+
+/** What the guest chose for flights, hotels and transfers, kept on the lead's file when the quote is agreed (Mark 2026-11-03: the booking
+ *  agreement's pre/post-cruise lines come from the quote). Rows are the group's own offers; "needs" are the kinds the guest asked Mark to quote. */
+export interface TripRow { kind: TravelKind; direction: string | null; from_place: string | null; to_place: string | null; provider: string | null; starts_at: string | null; ends_at: string | null; label: string }
+export interface Trip { chosen: TripRow[]; needs: Partial<Record<TravelKind, boolean>> }
+export function tripOf(travel: Array<Record<string, unknown>>, answers: QuoteAnswers): Trip {
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const chosen: TripRow[] = [];
+  for (const r of travel) {
+    const kind = r["kind"] as TravelKind;
+    if (!TRAVEL_KINDS.includes(kind) || typeof r["id"] !== "string" || !answers.travel.includes(r["id"])) continue;
+    chosen.push({ kind, direction: str(r["direction"]), from_place: str(r["from_place"]), to_place: str(r["to_place"]), provider: str(r["provider"]), starts_at: str(r["starts_at"]), ends_at: str(r["ends_at"]), label: travelLabel(r as never, "en") });
+  }
+  return { chosen, needs: answers.needs };
+}

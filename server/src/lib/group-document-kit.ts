@@ -343,7 +343,7 @@ export interface FieldSpec {
 // ── Template edits ────────────────────────────────────────────────────────────
 export type Rule =
   /** Replace literal text (first occurrence at or after the cursor). */
-  | { sub: string | RegExp; with: (c: DocCtx) => string }
+  | { sub: string | RegExp; with: (c: DocCtx, matched: string) => string }
   /** The next blank run after `after` becomes a value from the file; null/"" leaves it blank (and reports `label`). */
   | { after: string; fill: (c: DocCtx) => string | null | undefined; label: string }
   /** The next blank run after `after` becomes an input for field `slot`. */

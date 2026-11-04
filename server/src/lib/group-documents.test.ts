@@ -479,3 +479,23 @@ test("the waiver's health tick is made on the document's own signing screen, und
   const citizenship = renderDocument("15-emergency-contact-form", ctx).fields.find((f) => f.name === "citizenship")!;
   assert.equal(publicField(citizenship, ctx)["required"], "shown");
 });
+
+test("booking agreement: the pre/post-cruise lines come from the quote's choices on the lead's file; no quote, the template's own lines", () => {
+  const plain = renderDocument("12-cruise-booking-agreement", ctxFor()).text;
+  assert.ok(plain.includes("Pre-Cruise Hotel:") && !plain.includes("☒ Yes — Destination"), "no quote on the file: unchanged");
+  const lead = { ...TRAVELERS[0]!, form_data: { trip: { chosen: [
+    { kind: "hotel", direction: "pre", from_place: "Orlando", to_place: null, provider: null, starts_at: "2027-05-08", ends_at: "2027-05-09", label: "Hotel" },
+    { kind: "flight", direction: "pre", from_place: "Raleigh (RDU)", to_place: "Orlando (MCO)", provider: null, starts_at: null, ends_at: null, label: "Flight" },
+  ], needs: {} } } };
+  const t = renderDocument("12-cruise-booking-agreement", ctxFor({}, lead)).text;
+  assert.match(t, /Pre-Cruise Hotel:\s*☒ Yes — Destination: Orlando/);
+  assert.match(t, /Post-Cruise Hotel:\s*☐ Yes[^\n]*[\s\S]*?☒ No/, "no post-cruise hotel chosen: No");
+  assert.match(t, /☒ Agent to book independently/);
+  assert.match(t, /Departure Airport: Raleigh \(RDU\)/);
+  assert.match(t, /Cruise Line Transfer:\s*☐ Yes ☒ No/);
+});
+
+test("terms 3.1 carries this group's deposit and final-payment date", () => {
+  const t = renderDocument("01-terms-and-conditions", ctxFor({ deposit_due: "2026-12-01", final_payment_due: "2027-02-08" })).text;
+  assert.match(t, /non-refundable deposit of \$250(\.00)? per person is required by December 1, 2026 to confirm your reservation\. Final payment is due no later than February 8, 2027\./);
+});

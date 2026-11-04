@@ -216,14 +216,14 @@ export function applyRules(md: string, spec: DocSpec, ctx: DocCtx): string {
       if (typeof rule.sub === "string") {
         const i = s.indexOf(rule.sub, cursor);
         if (i < 0) throw drift(spec.key, `text "${rule.sub.slice(0, 50)}" not found`);
-        s = s.slice(0, i) + rule.with(ctx) + s.slice(i + rule.sub.length);
+        s = s.slice(0, i) + rule.with(ctx, rule.sub) + s.slice(i + rule.sub.length);
         cursor = i;
       } else {
         const re = new RegExp(rule.sub.source, rule.sub.flags.replace("g", "") + "g");
         re.lastIndex = cursor;
         const m = re.exec(s);
         if (!m) throw drift(spec.key, `pattern ${rule.sub} not found`);
-        s = s.slice(0, m.index) + rule.with(ctx) + s.slice(m.index + m[0].length);
+        s = s.slice(0, m.index) + rule.with(ctx, m[0]) + s.slice(m.index + m[0].length);
         cursor = m.index;
       }
       continue;

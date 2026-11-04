@@ -330,7 +330,22 @@ const TERMS_01: DocSpec = {
   signerRole: "traveler",
   sigStart: /^\*\*Client Signature:\*\*/,
   feesAfter: /^\*\*3\.4 Service Fees\*\*/,
-  rules: [{ after: "Last Updated:", fill: () => fmtLong(TEMPLATE_VERSION_DATE), label: "Last updated" }],
+  rules: [
+    { after: "Last Updated:", fill: () => fmtLong(TEMPLATE_VERSION_DATE), label: "Last updated" },
+    // Mark 2026-11-03: "this says at time of booking; it should reflect the contract / quote requirements": the deposit and the final
+    // payment date of this group's own file, in place of the template's general wording (which stays when the file has no figure).
+    {
+      sub: "A non-refundable deposit is required at the time of booking to confirm your reservation. Final payment is due no later than the date specified in your booking confirmation.",
+      with: (c) => {
+        const dep = depositPerPerson(c);
+        const due = fmtLong(c.group.deposit_due) || (c.group.terms?.deposit_timing === "at_booking" ? "when you book" : "");
+        const fin = fmtLong(c.group.final_payment_due);
+        if (!dep && !due && !fin) return "A non-refundable deposit is required at the time of booking to confirm your reservation. Final payment is due no later than the date specified in your booking confirmation.";
+        const first = `A non-refundable deposit${dep ? ` of $${amountText(dep)} per person` : ""} is required${due ? ` ${/^\d|^[A-Z][a-z]+ \d/.test(due) ? "by " : ""}${due}` : ""} to confirm your reservation.`;
+        return `${first} Final payment is due no later than ${fin || "the date specified in your booking confirmation"}.`;
+      },
+    },
+  ],
   fields: [],
 };
 
@@ -779,6 +794,50 @@ function chosenPremium(c: DocCtx): string {
   return "";
 }
 
+// ── 12 — the pre/post-cruise lines, from what the guest chose on the quote (Mark 2026-11-03: "all of this is blank; it should be
+// pre-filled"). The lead's file carries the chosen offers (form_data.trip, written when the quote is agreed). Nothing chosen and
+// nothing asked of Mark: the template's own lines stay. Dates and hotel names Mark adds once he has booked.
+const tripOf = (c: DocCtx): { chosen: Array<Record<string, any>>; needs: Record<string, boolean> } => {
+  const t = c.traveler?.form_data?.trip;
+  return { chosen: Array.isArray(t?.chosen) ? t.chosen : [], needs: t?.needs && typeof t.needs === "object" ? t.needs : {} };
+};
+const hasTrip = (c: DocCtx) => !!c.traveler?.form_data?.trip;
+const stayDates = (r: Record<string, any>) => [fmtLong(r["starts_at"]), fmtLong(r["ends_at"])].filter(Boolean).join(" to ");
+const hotelBlock = (title: "Pre-Cruise Hotel" | "Post-Cruise Hotel", post: boolean) => (c: DocCtx, was: string): string => {
+  if (!hasTrip(c)) return was;
+  const { chosen, needs } = tripOf(c);
+  const h = chosen.find((r) => r["kind"] === "hotel" && (r["direction"] === "post") === post);
+  const asked = needs["hotel"] === true && !chosen.some((r) => r["kind"] === "hotel");
+  if (!h && !asked) return was.replace(/☐ No$/, "☒ No").replace(/☐ Yes/, "☐ Yes");
+  if (!h) return `**${title}:** ☒ Yes — Destination: To be confirmed with Mark\n\nHotel: To be confirmed with Mark Dates: To be confirmed with Mark ☐ No`;
+  return `**${title}:** ☒ Yes — Destination: ${cleanValue(h["from_place"]) || cleanValue(h["to_place"]) || "As quoted"}\n\nHotel: ${cleanValue(h["provider"]) || "To be confirmed with Mark"} Dates: ${stayDates(h) || "To be confirmed with Mark"} ☐ No`;
+};
+const TRIP_RULES: DocSpec["rules"] = [
+  { sub: /\*\*Pre-Cruise Hotel:\*\*\s*☐ Yes — Destination:[^\n]*\n+Hotel:[^\n]*☐ No/, with: hotelBlock("Pre-Cruise Hotel", false) },
+  { sub: /\*\*Post-Cruise Hotel:\*\*\s*☐ Yes — Destination:[^\n]*\n+Hotel:[^\n]*☐ No/, with: hotelBlock("Post-Cruise Hotel", true) },
+  {
+    sub: /\*\*Air Travel:\*\*\s*☐ Included through cruise line ☐ Agent to book independently\n+☐ Client handling independently Departure Airport:[^\n]*\n+Destination Airport:[^\n]*/,
+    with: (c, was) => {
+      if (!hasTrip(c)) return was;
+      const { chosen, needs } = tripOf(c);
+      const fl = chosen.filter((r) => r["kind"] === "flight");
+      if (!fl.length && needs["flight"] !== true) return was.replace("☐ Client handling independently", "☒ Client handling independently");
+      const out = fl.find((r) => r["direction"] !== "post") ?? fl[0];
+      return `**Air Travel:** ☐ Included through cruise line ☒ Agent to book independently\n\n☐ Client handling independently Departure Airport: ${cleanValue(out?.["from_place"]) || "To be confirmed with Mark"}\n\nDestination Airport: ${cleanValue(out?.["to_place"]) || "To be confirmed with Mark"}`;
+    },
+  },
+  {
+    sub: /\*\*Cruise Line Transfer:\*\*\s*☐ Yes ☐ No ☐ Independent Transfer Arranged/,
+    with: (c, was) => {
+      if (!hasTrip(c)) return was;
+      const { chosen, needs } = tripOf(c);
+      return chosen.some((r) => r["kind"] === "transfer") || needs["transfer"] === true
+        ? "**Cruise Line Transfer:** ☒ Yes ☐ No ☐ Independent Transfer Arranged"
+        : "**Cruise Line Transfer:** ☐ Yes ☒ No ☐ Independent Transfer Arranged";
+    },
+  },
+];
+
 const BOOKING_12: DocSpec = {
   key: "12-cruise-booking-agreement",
   title: "Cruise Booking Agreement",
@@ -808,6 +867,7 @@ const BOOKING_12: DocSpec = {
     { after: "Dietary Restrictions:", area: "dietary" },
     // Mark 2026-10-31 ("not pre-populated"): the services every group booking gets from Still Afloat are ticked; air, hotels,
     // transfers and excursions only when the group file's inclusions or amenities say the group has them.
+    ...TRIP_RULES,
     ...SCOPE_LINES,
     { after: "Final payment is due no later than", fill: (c) => (finalPaymentDays(c.group) ? String(finalPaymentDays(c.group)) : ""), label: "Final payment days" },
     {
