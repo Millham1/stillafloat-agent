@@ -600,6 +600,22 @@ export function describeProviders(ps: ReaderProvider[]): string {
   return `AI box, with ${claude.length} of ${ps.length} parts read by Claude`;
 }
 
+const SINGLE_MONEY_QUESTION =
+  `These are the money lines of ONE guest's booking confirmation. Fill in: commissionable_fare (the Cabin Fare), discount_per_person ` +
+  `(the Discount(s) against the fare, a positive number, or null), taxes (Govt. Taxes & Fees), ncf (Required Cruise Fees & Expenses), ` +
+  `price_per_person (the Passenger Total for the guest: the cabin only, never the Total Booking Amount), ` +
+  `addons (every line under Cruise Enhancements: its printed name, unit price, quantity and line total; an empty list when there are none), ` +
+  `total_price (the Total Booking Amount).`;
+
+/** The focused answer goes over the whole read's: the discount, the add-ons, the booking total and the cabin's own figures. */
+export function mergeSingleMoney(raw: Record<string, unknown>, m: Record<string, unknown>): void {
+  raw["addons"] = m["addons"];
+  raw["discount_per_person"] = m["discount_per_person"];
+  if (m["total_price"] != null) raw["total_price"] = m["total_price"];
+  const cats = Array.isArray(raw["cabin_categories"]) ? (raw["cabin_categories"] as Array<Record<string, unknown>>) : [];
+  if (cats[0]) for (const k of ["price_per_person", "commissionable_fare", "taxes", "ncf"] as const) if (m[k] != null) cats[0][k] = m[k];
+}
+
 const SINGLE_MONEY_SCHEMA = {
   type: "object", additionalProperties: false,
   properties: {
@@ -698,7 +714,14 @@ async function readBySection(text: string, kind: "group" | "individual", ask: As
     pick(BOOKING_SCHEMA, ["travel_package"]), 500) : null;
 
   if (!basics && !rates && !payments && !cancellation) throw new Error("No part of the document could be read");
-  return { ...basics, ...rates, ...payments, ...cancellation, ...travel };
+  const merged: Record<string, unknown> = { ...basics, ...rates, ...payments, ...cancellation, ...travel };
+  // A single booking's confirmation read as a group document (the intake page): its money lines get their own short question.
+  const money = singleBookingMoney(text);
+  if (money) {
+    const m = await ask<Record<string, unknown>>("the money lines", money, SINGLE_MONEY_QUESTION, SINGLE_MONEY_SCHEMA, 600);
+    if (m) mergeSingleMoney(merged, m);
+  }
+  return merged;
 }
 
 export async function extractBooking(
@@ -735,21 +758,13 @@ export async function extractBooking(
         const m = await llmJson<Record<string, unknown>>({
           job: "groups.extract",
           system: SECTION_SYSTEM,
-          user: `<section>\n${money}\n</section>\n\nThese are the money lines of ONE guest's booking confirmation. Fill in: commissionable_fare (the Cabin Fare), discount_per_person ` +
-            `(the Discount(s) against the fare, a positive number, or null), taxes (Govt. Taxes & Fees), ncf (Required Cruise Fees & Expenses), ` +
-            `price_per_person (the Passenger Total for the guest: the cabin only, never the Total Booking Amount), ` +
-            `addons (every line under Cruise Enhancements: its printed name, unit price, quantity and line total; an empty list when there are none), ` +
-            `total_price (the Total Booking Amount).`,
+          user: `<section>\n${money}\n</section>\n\n${SINGLE_MONEY_QUESTION}`,
           schema: SINGLE_MONEY_SCHEMA,
           maxTokens: 600,
           timeoutMs: readerTimeoutMs(),
           onProvider: (p) => { providers.push(p); },
         });
-        raw["addons"] = m["addons"];
-        raw["discount_per_person"] = m["discount_per_person"];
-        if (m["total_price"] != null) raw["total_price"] = m["total_price"];
-        const cats = Array.isArray(raw["cabin_categories"]) ? (raw["cabin_categories"] as Array<Record<string, unknown>>) : [];
-        if (cats[0]) for (const k of ["price_per_person", "commissionable_fare", "taxes", "ncf"] as const) if (m[k] != null) cats[0][k] = m[k];
+        mergeSingleMoney(raw, m);
       } catch (err) {
         warnings.push(`Could not read the money lines (${err instanceof Error ? err.message : String(err)}). Check the price, discount and add-ons by hand.`);
       }
