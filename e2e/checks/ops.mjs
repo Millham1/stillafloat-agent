@@ -1844,7 +1844,7 @@ export default [
       const g = groups.find((x) => x.status === "draft") || groups[0];
       const open = async () => t.success(await t.get(`/api/groups/${g.id}?horizon=3650`, { auth: true }));
       const sigs = async () => t.success(await t.get(`/api/groups/${g.id}/signatures`, { auth: true }));
-      const NAME = "Fixture Tester";
+      const NAME = "E2E Fixture";   // the signature must be the person the link is for (Mark 2026-11-03)
       const dropSignatures = async (travelerId) => {
         for (const s of (await sigs()).signatures.filter((x) => x.traveler_id === travelerId)) await t.send("DELETE", `/api/groups/${g.id}/signatures/${s.id}`, { auth: true });
       };
@@ -1987,6 +1987,7 @@ export default [
         t.ok(!cardShaped(JSON.stringify(chosen)), "the choice's answer contains something shaped like a card number");
         refused(t, await sign({ agreed: false }), 400, "signing without ticking the agreement", /tick the box/i);
         refused(t, await sign({ signer_name: "Fixture" }), 400, "signing with only one name", /full name/i);
+        refused(t, await sign({ signer_name: "Someone Else" }), 400, "signing in a name that is not the traveler's", /does not match/i);
         const stale = await sign({ content_sha256: "0".repeat(64) });
         refused(t, stale, 409, "signing text that is not the text on file", /changed/i);
         t.equal(stale.json.code, "document-changed", "the code of a refused stale signature");
