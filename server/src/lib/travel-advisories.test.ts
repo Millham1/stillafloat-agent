@@ -1,7 +1,7 @@
 // travel-advisories.test.ts — the State Department advisory per port of an itinerary (Mark 2026-10-30), never asked of the client.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ADVISORY_FEED, advisoriesForGroup, advisoriesForPorts, advisoryEntries, advisoryFor, countryOfPort, itineraryPorts, parseAdvisoryFeed, parseAdvisoryLayer, resetAdvisoryCache } from "./travel-advisories";
+import { ADVISORY_FEED, advisoriesForGroup, advisoriesForPorts, advisoryEntries, advisoryFor, countryOfPort, isPrivateIsland, itineraryPorts, parseAdvisoryFeed, parseAdvisoryLayer, resetAdvisoryCache } from "./travel-advisories";
 
 const FEED = `<?xml version="1.0"?><rss><channel><title>Travel Advisories</title>
 <item><title>The Bahamas - Level 2: Exercise Increased Caution</title></item>
@@ -39,9 +39,12 @@ test("every port of the itinerary gets its advisory, the embarkation port first,
   assert.deepEqual(itineraryPorts(group), ["Port Canaveral", "Nassau", "Ocean Cay", "Labadee", "Atlantis"]);
   const a = advisoriesForPorts(itineraryPorts(group), parseAdvisoryFeed(FEED));
   assert.deepEqual(a.map((x) => [x.port, x.country, x.level]), [
-    ["Port Canaveral", "United States", null], ["Nassau", "The Bahamas", 2], ["Ocean Cay", "The Bahamas", 2], ["Labadee", "Haiti", 4], ["Atlantis", "Atlantis", null],
+    ["Port Canaveral", "United States", null], ["Nassau", "The Bahamas", 2], ["Ocean Cay", "", null], ["Labadee", "Haiti", 4], ["Atlantis", "Atlantis", null],
   ]);
   assert.match(a[4]!.title, /not listed/);
+  assert.equal(a[2]!.privateIsland, true, "the cruise line's own private island carries no advisory (Mark 2026-11-03)");
+  for (const p of ["CocoCay, Bahamas", "Great Stirrup Cay", "Half Moon Cay", "Castaway Cay", "Celebration Key", "Lighthouse Point"]) assert.equal(isPrivateIsland(p), true, p);
+  for (const p of ["Nassau", "Labadee", "Freeport, Grand Bahama", "Bimini", "Grand Turk"]) assert.equal(isPrivateIsland(p), false, p);
 });
 
 test("the department's ArcGIS layer gives the same entries as the feed, with the level's fixed words, and is read when the feed is down", async () => {

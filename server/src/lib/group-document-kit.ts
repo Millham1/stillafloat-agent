@@ -69,7 +69,7 @@ export const fee = (ctx: DocCtx, key: string): FeeLine | undefined => ctx.fees.f
 
 // ── Context ───────────────────────────────────────────────────────────────────
 /** One port of the itinerary with its country's State Department advisory (null level = the feed did not name the country). */
-export interface Advisory { port: string; country: string; level: 1 | 2 | 3 | 4 | null; title: string }
+export interface Advisory { port: string; country: string; level: 1 | 2 | 3 | 4 | null; title: string; /** the cruise line's own private island: no advisory applies (Mark 2026-11-03) */ privateIsland?: true }
 
 /** One vaccine of the CDC's table for a country: required at entry (for travel from the United States), recommended, to consider, routine. */
 export interface VaccineLine { name: string; advice: "required" | "not-required" | "recommended" | "consider" | "routine" | "other"; text: string }

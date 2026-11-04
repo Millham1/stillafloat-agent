@@ -56,7 +56,7 @@ function dropLines(blocks: Block[], patterns: RegExp[]): Block[] {
 
 /** The highest State Department level among the itinerary's countries, as the waiver's box value; "unknown" when none could be read. */
 function highestAdvisory(ctx: DocCtx): string {
-  const levels = ctx.advisories.map((a) => a.level).filter((l): l is 1 | 2 | 3 | 4 => l != null);
+  const levels = ctx.advisories.filter((a) => !a.privateIsland).map((a) => a.level).filter((l): l is 1 | 2 | 3 | 4 => l != null);
   return levels.length ? String(Math.max(...levels)) : "unknown";
 }
 const box = (on: boolean | null | undefined) => (on ? "☒" : "☐");
@@ -69,15 +69,17 @@ function advisoryBoxes(ctx: DocCtx): string {
 /** One line per country of the itinerary, with its ports, as the waiver prints them. */
 function advisoryLines(ctx: DocCtx): string {
   const byCountry = new Map<string, { title: string; ports: string[] }>();
-  for (const a of ctx.advisories) {
+  const islands = ctx.advisories.filter((a) => a.privateIsland).map((a) => a.port);
+  for (const a of ctx.advisories.filter((x) => !x.privateIsland)) {
     const row = byCountry.get(a.country) ?? { title: a.title, ports: [] };
     if (!row.ports.includes(a.port)) row.ports.push(a.port);
     byCountry.set(a.country, row);
   }
   // {{today}} keeps the hashed text stable from day to day: the signing date is written in when the copy is made.
+  const island = islands.length ? ` ${islands.join(", ")} ${islands.length > 1 ? "are the cruise line's own private islands and carry" : "is the cruise line's own private island and carries"} no advisory of its own: the State Department rates countries, and the ratings above are for the towns this itinerary visits.` : "";
   if (!byCountry.size) return "The advisory levels for this itinerary could not be read from travel.state.gov on {{today}}; please check them there before you go.";
   const list = [...byCountry.entries()].map(([country, r]) => `${country}: ${r.title} (${r.ports.join(", ")})`).join("; ");
-  return `Advisory levels for this itinerary on {{today}}, from the U.S. Department of State (travel.state.gov): ${list}.`;
+  return `Advisory levels for this itinerary on {{today}}, from the U.S. Department of State (travel.state.gov): ${list}.${island}`;
 }
 
 /** The cabin's dining on the file, as the booking agreement's box value. */

@@ -83,9 +83,15 @@ export function itineraryPorts(group: Row): string[] {
   return ports;
 }
 
+/** The cruise lines' own private islands (Mark 2026-11-03: "the real private islands" are left out of the advisory; a port that is
+ *  a real town, such as Nassau, or a leased bay in a country the State Department warns about, such as Labadee, is not one). */
+const PRIVATE_ISLAND = /coco ?cay|great stirrup|half moon cay|princess cays|castaway cay|ocean cay|celebration key|lighthouse point|royal beach club|perfect day|private island/i;
+export const isPrivateIsland = (port: string): boolean => PRIVATE_ISLAND.test(port);
+
 /** One advisory per port of the itinerary: the country from the gazetteer, the level from the feed (null when the feed has no entry). */
 export function advisoriesForPorts(ports: string[], entries: AdvisoryEntry[]): Advisory[] {
   return ports.map((port) => {
+    if (isPrivateIsland(port)) return { port, country: "", level: null, title: "the cruise line's private island", privateIsland: true as const };
     const known = matchPortName(port);
     const country = countryOfPort(known?.name ?? port);
     if (country === "United States") return { port, country, level: null, title: "United States (no State Department advisory applies at home)" };
