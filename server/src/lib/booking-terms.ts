@@ -12,7 +12,7 @@
 //     If it is not, the field is blanked and a plain warning says why. A blank
 //     on the form is honest; a guess is not.
 
-import { normalizeDate, type BookingExtraction, type CabinCategoryLine } from "./booking-extract";
+import { normalizeDate, type AddOn, type BookingExtraction, type CabinCategoryLine } from "./booking-extract";
 
 export interface AllotmentReview {
   date: string | null;             // YYYY-MM-DD
@@ -351,6 +351,35 @@ function doubleRateRow(line: string | null): DoubleRateRow | null {
 }
 
 /**
+ * A single booking's confirmation ("Cabin Fare $499.00 … Discount(s) $249.50 … Passenger Total $382.50 … Cruise Enhancements: NAME $699.00 1 $699.00 …
+ * Total Booking Amount $1,081.50") is not a rate table: the cabin price is the passenger total, the discount comes off the fare, and the
+ * enhancements are paid on top. Read off the printed lines by the program (Mark 2026-11-04: the drinks package, "Ultimate License to Chill",
+ * was missed and the booking total was compared against the fare). Null for any document that is not laid out this way.
+ */
+export interface SingleBooking { fare: number; discount: number; tax: number | null; fees: number | null; passengerTotal: number; addons: AddOn[]; bookingTotal: number | null }
+export function readSingleBooking(text: string): SingleBooking | null {
+  const flat = collapse(text);
+  const money = (re: RegExp): number | null => { const m = flat.match(re); return m ? Number(m[1]!.replace(/,/g, "")) : null; };
+  const fare = money(/Cabin Fare \$ ?([\d,]+\.\d{2})/i);
+  const passengerTotal = money(/Passenger Total \$ ?([\d,]+\.\d{2})/i);
+  if (fare === null || passengerTotal === null) return null;
+  const addons: AddOn[] = [];
+  const block = flat.match(/Cruise Enhancements Price Qnty Total (.*?)(?:TOTAL STATEROOM AMOUNT|RESERVATION SUMMARY|$)/i)?.[1] ?? "";
+  for (const m of block.matchAll(/([A-Z][A-Za-z0-9&'’.,\- ]*?) \$ ?([\d,]+\.\d{2}) (\d{1,2}) \$ ?([\d,]+\.\d{2})/g)) {
+    const price = Number(m[2]!.replace(/,/g, "")), qty = Number(m[3]), total = Number(m[4]!.replace(/,/g, ""));
+    if (eq(price * qty, total)) addons.push({ name: m[1]!.trim().replace(/\b([A-Z])([A-Z]+)\b/g, (_a, f: string, r: string) => f + r.toLowerCase()).replace(/(?<=\S )(To|Of|The|And|A|In|On|For)(?= )/g, (w) => w.toLowerCase()), price, qty, total });
+  }
+  return {
+    fare, passengerTotal, addons,
+    discount: money(/Discount\(s\) \$ ?([\d,]+\.\d{2})/i) ?? 0,
+    tax: money(/Govt\. Taxes & Fees \$ ?([\d,]+\.\d{2})/i),
+    fees: money(/Required Cruise Fees & Expenses \$ ?([\d,]+\.\d{2})/i),
+    bookingTotal: money(/Total Booking Amount:? \$ ?([\d,]+\.\d{2})/i),
+  };
+}
+
+
+/**
  * A model reads the right row but can take a figure from the wrong column. A
  * rate row is arithmetic: total = fare + non-commissionable + tax. So the
  * columns are settled by the sums that work, not by the model's choice.
@@ -559,7 +588,47 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
     out.deposit_per_person = null;
   }
   const heldBefore = out.cabin_categories.reduce((n, c) => n + (c.count ?? 0), 0);
-  out.cabin_categories = out.cabin_categories.map((c) => checkCategory(c, text, flat, out.deposit_per_person, warnings, doubleRate));
+  // A single booking's confirmation (Mark 2026-11-04): the AI box reads the discount and the paid add-ons; the program only checks them.
+  // An add-on stays only when its name and price are printed; one the document prints and the read left out is flagged, never filled in here.
+  const single = readSingleBooking(text);
+  out.addons = (out.addons ?? []).filter((a) => {
+    const words = a.name.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
+    const ok = words.some((w) => flat.toLowerCase().includes(w)) && moneyAppears(flat, a.price);
+    if (!ok) warnings.push(`Add-on "${a.name}" ($${a.price}) was read, but its name and price are not printed in the document. Left out.`);
+    return ok;
+  });
+  if (out.discount_per_person !== null && out.discount_per_person !== undefined && !moneyAppears(flat, out.discount_per_person)) {
+    warnings.push(`The discount was read as ${out.discount_per_person}, which is not printed in the document. Left blank.`);
+    out.discount_per_person = null;
+  }
+  if (single) {
+    for (const a of single.addons) {
+      if (!out.addons.some((x) => eq(x.total, a.total) && x.name.toLowerCase().split(/[^a-z0-9]+/).some((w) => w.length >= 4 && a.name.toLowerCase().includes(w)))) {
+        warnings.push(`The document prints a paid add-on, ${a.name} ($${a.price} × ${a.qty}), that the read did not list. Add it by hand.`);
+      }
+    }
+    const cabin = out.cabin_categories[0];
+    if (cabin && cabin.price_per_person !== null && !eq(cabin.price_per_person, single.passengerTotal)) {
+      warnings.push(`The cabin price was read as ${cabin.price_per_person}, but the passenger total prints ${single.passengerTotal} (the booking total, ${single.bookingTotal ?? "?"}, also counts the add-ons). Check it against the PDF.`);
+    }
+  }
+  const discounted = (out.discount_per_person ?? 0) > 0;
+  out.cabin_categories = out.cabin_categories.map((c) => {
+    if (!discounted) return checkCategory(c, text, flat, out.deposit_per_person, warnings, doubleRate);
+    // fare + fees = price is not the sum when a discount comes off the fare: the check below replaces it
+    const keep: string[] = [];
+    const checked = checkCategory(c, text, flat, out.deposit_per_person, keep, doubleRate);
+    warnings.push(...keep.filter((w) => !/does not equal the price per person/.test(w)));
+    if (checked.commissionable_fare !== null && checked.price_per_person !== null) {
+      const sum = round2(checked.commissionable_fare - (out.discount_per_person ?? 0) + (checked.ncf ?? 0) + (checked.taxes ?? 0));
+      if (!eq(sum, checked.price_per_person)) warnings.push(`The cabin: fare ${checked.commissionable_fare} − discount ${out.discount_per_person} + fees ${checked.ncf ?? 0} + taxes ${checked.taxes ?? 0} is ${sum}, but the price per person was read as ${checked.price_per_person}. Check this row against the PDF.`);
+    }
+    return checked;
+  });
+  if ((out.addons.length || discounted) && out.total_price !== null && out.cabin_categories[0]?.price_per_person != null) {
+    const addonSum = round2(out.addons.reduce((n, a) => n + a.total, 0)), cab = out.cabin_categories[0]!.price_per_person!;
+    if (!eq(cab + addonSum, out.total_price)) warnings.push(`The cabin ${cab} plus the add-ons ${addonSum} is ${round2(cab + addonSum)}, but the total booking amount was read as ${out.total_price}. Check it against the PDF.`);
+  }
   const held = out.cabin_categories.reduce((n, c) => n + (c.count ?? 0), 0);
   if (out.cabins_held === heldBefore && held !== heldBefore) out.cabins_held = held;   // it was only the rows' sum, and a row was corrected
   // The quotator's summary prints the block's size on its own line ("Cabins 12"); the rows must add up to it.

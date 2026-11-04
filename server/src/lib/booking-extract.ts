@@ -36,6 +36,8 @@ export interface CabinCategoryLine {
   price_junior_child: number | null;
 }
 
+export interface AddOn { name: string; price: number; qty: number; total: number }
+
 export interface ItineraryStop {
   day: number | null;
   date: string | null;            // YYYY-MM-DD
@@ -66,6 +68,11 @@ export interface BookingExtraction {
   amenities: string[];
   /** What the GUEST's fare includes, as printed (drinks package, Wi-Fi, gratuities …) — never amenity points. */
   guest_inclusions: string[];
+  /** Paid add-ons printed on a single booking's confirmation ("Cruise Enhancements": a drinks package, Wi-Fi …), read by the program from the printed
+   *  lines, never by the model. Not inclusions: the guest pays for these on top of the cabin. */
+  addons?: AddOn[];
+  /** The discount printed against the cabin fare on a single booking's confirmation, per guest. */
+  discount_per_person?: number | null;
   organizer_name: string | null;
   travelers: Array<{ first_name: string | null; last_name: string | null }>;
   total_price: number | null;
@@ -198,6 +205,16 @@ export const BOOKING_SCHEMA: Record<string, unknown> = {
     recall_date: { ...nullable("string"), description: "Date unsold cabins are released back to the line, YYYY-MM-DD" },
     amenities: { type: "array", items: { type: "string" }, description: "Group amenities / perks for the ORGANIZER (amenity points, free berths, cocktail party), one per entry, as stated" },
     guest_inclusions: { type: "array", items: { type: "string" }, description: "What the guest's price INCLUDES for the guest, as printed: a drinks package, Wi-Fi, gratuities, specialty dining, onboard credit per cabin. One per entry, the document's own words. Never amenity points, taxes or fees." },
+    addons: {
+      type: "array",
+      description: "Paid add-ons printed on a single booking's confirmation, on top of the cabin (under \"Cruise Enhancements\" or similar): a drinks package, Wi-Fi, excursions. One per printed line with its name as printed, the unit price, the quantity and the line total. Not what the fare includes. An empty list when none are printed.",
+      items: {
+        type: "object", additionalProperties: false,
+        properties: { name: { type: "string" }, price: { type: "number" }, qty: { type: "integer" }, total: { type: "number" } },
+        required: ["name", "price", "qty", "total"],
+      },
+    },
+    discount_per_person: { ...nullable("number"), description: "The discount printed against the cabin fare for one guest (\"Discount(s)\"), as a positive number; null when none" },
     organizer_name: nullable("string"),
     travelers: {
       type: "array",
@@ -220,7 +237,7 @@ export const BOOKING_SCHEMA: Record<string, unknown> = {
   required: [
     "cruise_line", "ship_name", "sail_date", "return_date", "nights", "embark_port", "itinerary",
     "group_number", "group_name", "booking_number", "cabins_held", "cabin_categories", "deposit_per_person",
-    "deposit_due", "names_due", "final_payment_due", "recall_date", "amenities", "guest_inclusions", "organizer_name",
+    "deposit_due", "names_due", "final_payment_due", "recall_date", "amenities", "guest_inclusions", "addons", "discount_per_person", "organizer_name",
     "travelers", "total_price", "notes",
     "deposit_timing", "final_payment_days_before", "allotment_reviews", "cancellation_schedule", "cancellation_note", "travel_package",
   ],
@@ -424,6 +441,13 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
   return {
     cruise_line: str(r["cruise_line"]),
     guest_inclusions,
+    addons: list(r["addons"]).map((a): AddOn | null => {
+      const o = a && typeof a === "object" ? (a as Record<string, unknown>) : null;
+      const name = o ? str(o["name"]) : null, price = o ? normalizeMoney(o["price"]) : null, total = o ? normalizeMoney(o["total"]) : null;
+      const qty = o ? normalizeInt(o["qty"]) ?? 1 : 1;
+      return name && price !== null && total !== null ? { name, price, qty, total } : null;
+    }).filter((a): a is AddOn => !!a),
+    discount_per_person: normalizeMoney(r["discount_per_person"]),
     travel_package,
     ship_name: str(r["ship_name"]),
     sail_date,
@@ -685,7 +709,10 @@ export async function extractBooking(
       system: SYSTEM_PROMPT,
       user:
         `This document is an INDIVIDUAL booking confirmation or quote. ` +
-        `Fill in the booking record from it.\n\n<document>\n${text}\n</document>`,
+        `Fill in the booking record from it. On a single booking's confirmation: price_per_person is the cabin's PASSENGER TOTAL for one guest ` +
+        `(fare − discount + taxes and fees), never the Total Booking Amount; discount_per_person is the discount printed against the fare; ` +
+        `every line under "Cruise Enhancements" (or any paid add-on such as a drinks package) goes in addons with its printed name, price, quantity and line total; ` +
+        `total_price is the Total Booking Amount.\n\n<document>\n${text}\n</document>`,
       schema: BOOKING_SCHEMA,
       maxTokens: 4000,
       timeoutMs: readerTimeoutMs(),

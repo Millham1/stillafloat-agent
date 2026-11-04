@@ -550,6 +550,13 @@ export default function GroupIntake() {
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Included for every guest (the perks the page and the marketing show) {found.has("guest_inclusions") ? "· from the document" : "· not found — add them below, one per line"}</div>
                   <textarea className={inputCls} rows={3} value={((form.guest_inclusions as string[] | undefined) ?? []).join("\n")} onChange={(e) => set("guest_inclusions", e.target.value.split("\n").map((x) => x.trim()).filter(Boolean))} placeholder={"Premium drinks package\nWi-Fi, one device, first two guests"} />
+                  {Array.isArray(form.addons) && form.addons.length > 0 && (
+                    <div className="mt-2 text-xs rounded-md border p-2">
+                      <div className="text-muted-foreground mb-1">Paid add-ons on this booking, on top of the cabin · from the document</div>
+                      {(form.addons as Array<{ name: string; price: number; qty: number; total: number }>).map((a) => <div key={a.name} className="text-sm">{a.name}: ${a.price.toFixed(2)} × {a.qty} = ${a.total.toFixed(2)}</div>)}
+                      {form.discount_per_person ? <div className="text-sm text-muted-foreground mt-1">Discount on the cabin fare: ${Number(form.discount_per_person).toFixed(2)}</div> : null}
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground mb-1 mt-3">Organizer amenities (your side; never shown to guests) {found.has("amenities") ? "· from the document" : "· not found"}</div>
                   {(form.amenities ?? []).length === 0 ? <p className="text-muted-foreground">None listed.</p> : <ul className="list-disc pl-5">{(form.amenities as string[]).map((a, i) => <li key={i}>{a}</li>)}</ul>}
                 </div>

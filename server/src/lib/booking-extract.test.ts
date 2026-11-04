@@ -88,7 +88,7 @@ test("the schema requires every field so the model cannot skip one silently", ()
 });
 
 // ── Terms: code finds the deadlines and checks the model's answer ─────────────
-import { addDays, cutSections, dateAppears, findDeadlines, moneyAppears, verifyExtraction } from "./booking-terms";
+import { readSingleBooking, addDays, cutSections, dateAppears, findDeadlines, moneyAppears, verifyExtraction } from "./booking-terms";
 
 const QUOTE = `GROUP ALLOCATION AND GROUP RATES
 Category   Allotment   Commissionable Fare   NCF   Tax   Total Guest Price
@@ -545,4 +545,42 @@ test("group_name: the quote's printed group name is offered for the file name, w
   const props = (BOOKING_SCHEMA as { properties: Record<string, { description?: string }>; required: string[] });
   assert.ok(props.properties["group_name"]?.description?.includes("NAME"));
   assert.ok(props.required.includes("group_name"));
+});
+
+// Mark 2026-11-04: his Margaritaville at Sea Paradise confirmation (an agency copy of ONE booking). The text is what the uploader's own reader
+// (pdfjs) returned for it. The booking total included a $699 drinks package; the read compared that total against the fare and flagged the row.
+const PARADISE = [
+  "Total Booking Amount:   $ 1,081.50   Remaining Due:   $ 0.00",
+  "Cabin Fare   $499.00", "Discount(s)   $249.50", "Govt. Taxes & Fees   $97.68", "Required Cruise Fees &", "Expenses", "$35.32",
+  "Passenger Total   $382.50", "Stateroom Subtotal: $382.50", "Cruise Enhancements   Price   Qnty   Total",
+  "ULTIMATE LICENSE TO CHILL   $699.00   1   $699.00", "TOTAL STATEROOM AMOUNT: $1,081.50",
+  "Gross Amount of Reservation:   $ 1,331.00", "Discounts Applied:   $ 249.50", "Total Booking Amount:   $ 1,081.50",
+].join("\n");
+
+test("a single booking's confirmation: the AI box reads the passenger total, the discount and the drinks package; the program only checks them (Mark 2026-11-04)", () => {
+  const single = readSingleBooking(PARADISE)!;
+  assert.deepEqual([single.fare, single.discount, single.tax, single.fees, single.passengerTotal, single.bookingTotal], [499, 249.5, 97.68, 35.32, 382.5, 1081.5]);
+  assert.deepEqual(single.addons, [{ name: "Ultimate License to Chill", price: 699, qty: 1, total: 699 }]);
+  assert.equal(readSingleBooking("Carnival group rates: Inside 599 per person"), null, "a rate table is not a single booking");
+  const cabin = { category: "Ocean View", code: "O4", count: 1, commissionable_fare: 499, ncf: 35.32, taxes: 97.68 };
+  const read = (over: Record<string, unknown>, text = PARADISE) => verifyExtraction(normalizeExtraction({
+    cruise_line: "Margaritaville at Sea", ship_name: "Paradise", booking_number: "54294606", total_price: 1081.5, discount_per_person: 249.5,
+    addons: [{ name: "Ultimate License to Chill", price: 699, qty: 1, total: 699 }], cabin_categories: [{ ...cabin, price_per_person: 382.5 }], ...over,
+  }), text);
+  // what the AI box should return: nothing to flag
+  const good = read({});
+  assert.deepEqual(good.addons, [{ name: "Ultimate License to Chill", price: 699, qty: 1, total: 699 }]);
+  assert.deepEqual([good.cabin_categories[0]!.price_per_person, good.total_price, good.discount_per_person], [382.5, 1081.5, 249.5]);
+  assert.deepEqual(good.warnings, [], `nothing to flag: ${good.warnings.join(" | ")}`);
+  // the box reads the booking total as the cabin price (what it did on 2026-11-04): flagged with the figures
+  const wrong = read({ cabin_categories: [{ ...cabin, price_per_person: 1081.5 }] });
+  assert.ok(wrong.warnings.some((w) => /cabin price was read as 1081.5, but the passenger total prints 382.5/.test(w)), wrong.warnings.join(" | "));
+  // the box leaves the drinks package out: the program says it is printed, and does not fill it in itself
+  const missed = read({ addons: [] });
+  assert.deepEqual(missed.addons, []);
+  assert.ok(missed.warnings.some((w) => /prints a paid add-on, Ultimate License to Chill \(\$699 × 1\), that the read did not list/.test(w)), missed.warnings.join(" | "));
+  // an invented add-on is dropped
+  const invented = read({ addons: [{ name: "Ultimate License to Chill", price: 699, qty: 1, total: 699 }, { name: "Spa Day", price: 120, qty: 1, total: 120 }] });
+  assert.equal(invented.addons!.length, 1);
+  assert.ok(invented.warnings.some((w) => /Add-on "Spa Day" \(\$120\) was read, but its name and price are not printed/.test(w)));
 });
