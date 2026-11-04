@@ -87,7 +87,7 @@ export interface Quote {
   note: string;
   flexpay: boolean;
   /** Set when the guest agrees: where the paperwork went. */
-  paperwork?: "sent" | "held" | "no-email" | "failed";
+  paperwork?: "booking" | "sent" | "held" | "no-email" | "failed";
   cabin_id?: string | null;
 }
 

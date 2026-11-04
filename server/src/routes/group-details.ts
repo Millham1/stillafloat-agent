@@ -8,6 +8,7 @@ import { BUSINESS, hashLinkToken, looksLikeLinkToken } from "../lib/group-secure
 import { creditsForPictures, tidyCopy, type Lang } from "../lib/group-marketing";
 import { formUrl, issueToken, linkEmail, mailAllowed } from "../lib/group-forms";
 import { sendMail } from "../lib/mailer";
+import { requireToken } from "../lib/http-auth";
 import {
   WHEN_WORD, callEmail, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl as makeDetailsUrl, firstWord, holdEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
@@ -459,12 +460,9 @@ router.post("/group-details/:token/agree", async (req: Request, res: Response) =
       leadRow = lead ?? null;
     }
 
-    // The paperwork link, before the answer: the page tells the guest where it went.
-    let paperwork: Quote["paperwork"] = "no-email";
-    if (leadRow) {
-      try { paperwork = await sendPaperwork(group, leadRow); }
-      catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the paperwork link could not be sent after the agreement"); paperwork = "failed"; }
-    }
+    // Mark 2026-11-03: "there is an intermediary step before signing documents and after filling in the info: I need to book and get the
+    // room number, and validate the flights, hotels and any transfers." The paperwork link waits for "Booked" on Mark's list.
+    const paperwork: Quote["paperwork"] = "booking";
     const agreed: Quote = { ...quote, paperwork, cabin_id: cabin ? String(cabin["id"]) : null };
     const { error: qe } = await db().from("group_interests").update({ quote: agreed, updated_at: new Date().toISOString() }).eq("id", reply.id);
     if (qe) logger.warn({ err: qe.message }, "group details: the agreed quote could not be saved with its paperwork status");
@@ -473,13 +471,16 @@ router.post("/group-details/:token/agree", async (req: Request, res: Response) =
     // Mark's item: one person, one item. "Quote under way" (or the reply / the call) is closed once this one exists.
     const f = detailsFacts({ group, cabins }, "en");
     const where = cabin ? (cabin["cabin_num"] ? `cabin ${cabin["cabin_num"]}` : `a ${quote.category} cabin on the file`) : `NO free ${quote.category} cabin: place them`;
-    const title = `Quote agreed · ${nameOf(reply)} · ${quote.category} · party of ${travelers.length}`;
-    const body = `${f.label} · ${reachOf(reply)} · ${quoteSummary(agreed, quoteOptions({ group, cabins, travel }, "en"))}. Travelers are on the file (${where}); paperwork link ${paperwork === "sent" ? "sent" : paperwork === "held" ? "held by this box" : paperwork === "no-email" ? "not sent: no email" : "FAILED"}. Book it with the cruise line.`;
+    const title = `Book it · ${nameOf(reply)} · ${quote.category} · party of ${travelers.length}`;
+    const toCheck = agreed.lines.filter((l) => l.key.startsWith("travel-") || l.key.startsWith("need-")).map((l) => l.label);
+    const body = `${f.label} · ${reachOf(reply)} · ${quoteSummary(agreed, quoteOptions({ group, cabins, travel }, "en"))}. Travelers are on the file (${where}). `
+      + `The paperwork link is NOT sent yet. Do this first: (1) book the cabin with the cruise line and type its number into the group file; `
+      + `(2) validate ${toCheck.length ? toCheck.join("; ") : "the flights, hotel and transfers, if they asked for any"}; (3) press Booked: the guest's paperwork link goes out then.`;
     void createAction({
       type: "lead", source_ref: `group-quote-${reply.id}`, title, body, priority: "lead",
       buttons: [
         { label: "Open the group file", href: `/groups/${group.id}` },
-        { label: "Confirmed with MSC", method: "POST", path: `/api/groups/${group.id}/interests/${reply.id}/mark/confirmed` },
+        { label: "Booked: send the paperwork", method: "POST", path: `/api/groups/${group.id}/interests/${reply.id}/booked` },
       ],
     }).then(async (made) => {
       if (!made.created) return;
@@ -490,6 +491,38 @@ router.post("/group-details/:token/agree", async (req: Request, res: Response) =
     return;
   } catch (err) {
     return fail(req, res, err, "group details agree failed");
+  }
+});
+
+/** Mark's "Booked" (2026-11-03): the cabin is booked with the cruise line and its number is on the file; the travel is validated. Only then does the
+ *  guest's paperwork link go out. Refused until the cabin number is in the group file. Pressed twice, it sends nothing twice. */
+router.post("/groups/:id/interests/:iid/booked", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID.test(groupId) || !UUID.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_agreed_at").eq("id", iid).eq("group_id", groupId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!reply || !reply.quote_agreed_at || !reply.traveler_id) return res.status(404).json({ success: false, error: "That guest has not agreed a quote yet." });
+    const quote = storedQuote(reply.quote);
+    if (quote && quote.paperwork && quote.paperwork !== "booking") return res.json({ success: true, paperwork: quote.paperwork, already: true });
+    const { data: lead, error: le } = await db().from("group_travelers").select("id, cabin_id, email, first_name, lang").eq("id", reply.traveler_id).maybeSingle();
+    if (le) throw new Error(le.message);
+    if (!lead) return res.status(404).json({ success: false, error: "The lead traveler is not on the file." });
+    const { data: cab, error: ce } = lead.cabin_id ? await db().from("group_cabins").select("id, cabin_num").eq("id", lead.cabin_id).maybeSingle() : { data: null, error: null };
+    if (ce) throw new Error(ce.message);
+    if (!cab || !String(cab.cabin_num ?? "").trim()) return res.status(409).json({ success: false, error: "Type the cabin number into the group file first (the cabin this guest is on), then press Booked." });
+    const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    if (!group) return res.status(404).json({ success: false, error: "Group not found" });
+    let paperwork: Quote["paperwork"];
+    try { paperwork = await sendPaperwork(group, lead); }
+    catch (e) { logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the paperwork link could not be sent after Booked"); paperwork = "failed"; }
+    await db().from("group_interests").update({ quote: { ...(quote ?? {}), paperwork }, status: "booked", updated_at: new Date().toISOString() }).eq("id", iid);
+    await resolveActionsForSource("lead", `group-quote-${iid}`, "done");
+    return res.json({ success: true, paperwork });
+  } catch (err) {
+    return fail(req, res, err, "group booked failed");
   }
 });
 

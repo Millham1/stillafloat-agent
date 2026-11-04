@@ -1599,7 +1599,7 @@ export default [
     id: "ops.group-details-writes-refuse",
     basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road (Talk me into it, Mark! picks a time and gets one email; I've got this fills in the details page and gets one email); the page is private by link and refuses bad tokens, a time that is not one of the four, and a robot; Mark alone adds the typed travelers to a cabin and closes his items (he books with the cruise line himself); the home address is looked up at the post office, never logged, and only for a person. Mark 2026-11-01 — the quote step (answers, then \"I agree\") sits behind the same link: a link that does not exist and a robot get the same refusals, and no quote is pretended",
     title: "Choosing a time to be rung, picking a cabin, saving details, sending the names, answering the quote step and agreeing refuse a link that does not exist, the time must be one of the four answers, the bot trap stores nothing and pretends no pick and no quote, the address lookup refuses a robot and a short street, and adding a reply's travelers to a cabin or closing Mark's items is his alone and refuses an unknown reply",
-    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/group-details/:token/quote", "POST /api/group-details/:token/agree", "POST /api/address/lookup", "POST /api/address/suggest", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how"],
+    covers: ["POST /api/group-details/:token", "POST /api/group-details/:token/choice", "POST /api/group-details/:token/pick", "POST /api/group-details/:token/hold", "POST /api/group-details/:token/quote", "POST /api/group-details/:token/agree", "POST /api/address/lookup", "POST /api/address/suggest", "POST /api/groups/:id/interests/:iid/to-file", "POST /api/groups/:id/interests/:iid/mark/:how", "POST /api/groups/:id/interests/:iid/booked"],
     modes: ["dev"],
     devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist, the bot trap and a request without Mark's token; nothing is stored, nobody is told and the post office is never asked); prod sweeps are read-only",
     run: async (t) => {
@@ -1644,6 +1644,8 @@ export default [
       refused(t, await send(`/api/groups/${ZERO}/interests/not-an-id/to-file`, { cabin_id: ZERO }, true), 404, "adding the travelers of a malformed reply id", /reply not found/i);
       unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/talked`, {}), "POST /api/groups/:id/interests/:iid/mark/:how");
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/talked`, {}, true), 404, "closing the item of a reply that does not exist", /reply not found/i);
+      unauthorized(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/booked`, {}), "POST /api/groups/:id/interests/:iid/booked");
+      refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/booked`, {}, true), 404, "'Booked' for a guest who has not agreed a quote", /has not agreed|not found/i);
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/confirmed`, {}, true), 404, "confirming a reply that does not exist", /reply not found/i);
       refused(t, await send(`/api/groups/${ZERO}/interests/${ZERO}/mark/later`, {}, true), 404, "a button that does not exist", /reply not found/i);
     },

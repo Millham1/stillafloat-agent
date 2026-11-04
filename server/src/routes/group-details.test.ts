@@ -913,7 +913,7 @@ test("the quote is built from the file alone: the fares per traveler, what Mark 
   assert.equal(writes("actions").length + mails.length, 0, "answering tells Mark nothing and sends no email: only the agreement does");
 });
 
-test("'I agree': the first press wins; the travelers go on a free cabin of the category with the address on the lead; the lead's paperwork link goes out; Mark's item becomes 'Quote agreed'; the reply is marked", async () => {
+test("'I agree': the first press wins; the travelers go on a free cabin of the category with the address on the lead; the paperwork link is HELD until Mark presses Booked; Mark's item becomes 'Book it'; the reply is marked", async () => {
   namesIn();
   actionsAccept = true;
   pendingItem();
@@ -921,7 +921,7 @@ test("'I agree': the first press wins; the travelers go on a free cabin of the c
   await quoteStep(ANSWERS);
   const [a, b] = await Promise.all([agree(), agree()]);
   const first = [a, b].find((x) => !x.json["already"])!, second = [a, b].find((x) => x.json["already"])!;
-  assert.deepEqual([first.status, first.json["success"], first.json["paperwork"]], [200, true, "sent"]);
+  assert.deepEqual([first.status, first.json["success"], first.json["paperwork"]], [200, true, "booking"]);
   assert.deepEqual([second.status, second.json["success"]], [200, true], "a double tap is told yes and changes nothing");
   assert.ok(replyRow()["quote_agreed_at"]);
   // the travelers, on the first free Balcony Bella cabin
@@ -931,35 +931,55 @@ test("'I agree': the first press wins; the travelers go on a free cabin of the c
   assert.deepEqual([made[0]!["email"], made[0]!["phone"], made[0]!["form_data"]], ["mmillham1@gmail.com", null, { address: "123 Main St", city_state_zip: "Raleigh, NC 27601", trip: { chosen: [], needs: { flight: true, hotel: false, transfer: false } } }], "the home address goes on the lead, in the two parts the paperwork pre-fills from");
   assert.equal("email" in made[1]!, false);
   assert.deepEqual(made[1]!["form_data"], {}, "form_data is NOT NULL in the table: the second traveler names it too (22:35Z 11/02: the insert failed and no one was filed)");
-  assert.ok(made[0]!["form_token_hash"] && made[0]!["form_sent_at"], "the lead's paperwork link is stored (its hash) before the email goes");
-  assert.deepEqual([replyRow()["traveler_id"], replyRow()["status"], replyRow()["quote"]["paperwork"], replyRow()["quote"]["cabin_id"]], [made[0]!["id"], "contacted", "sent", CABIN_ID]);
+  assert.ok(!made[0]!["form_token_hash"] && !made[0]!["form_sent_at"], "no paperwork link exists yet: Mark books the cabin and validates the travel first (Mark 2026-11-03)");
+  assert.deepEqual([replyRow()["traveler_id"], replyRow()["status"], replyRow()["quote"]["paperwork"], replyRow()["quote"]["cabin_id"]], [made[0]!["id"], "contacted", "booking", CABIN_ID]);
   assert.equal(writes("group_cabins").length, 0, "the cabin row is not touched: Mark books with the cruise line himself");
-  // the ONE email: the paperwork link, to the lead's own address
-  assert.equal(mails.length, 1);
-  assert.equal(mails[0]!["to"], "mmillham1@gmail.com");
-  assert.equal(mails[0]!["subject"], "Your travel paperwork for Friends and Family 2027");
-  assert.match(String(mails[0]!["text"]), /https:\/\/dev\.example\.test\/.*[A-Za-z0-9_-]{43}/);
-  const logged = writes("group_messages").find((w) => w.method === "POST")!.body;
-  assert.deepEqual([logged.audience, logged.template, logged.to_email, logged.status, logged.traveler_id], ["client", "paperwork-link", "mmillham1@gmail.com", "sent", made[0]!["id"]]);
-  assert.ok(!String(mails[0]!["text"]).includes(LINK) && !JSON.stringify(logged).match(/[A-Za-z0-9_-]{43}/), "neither link is in the log; the details link is not in the paperwork email");
+  assert.equal(mails.length, 0, "no email goes to the guest at 'I agree'");
+  assert.equal(writes("group_messages").length, 0);
   // Mark's item
   await wait(() => writes("actions").some((w) => w.method === "POST"));
   const item = writes("actions").find((w) => w.method === "POST")!.body;
   assert.equal(item.source_ref, `group-quote-${REPLY_ID}`);
-  assert.equal(item.title, "Quote agreed · Mark Millham · Balcony Bella · party of 2");
-  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file); paperwork link sent. Book it with the cruise line.");
+  assert.equal(item.title, "Book it · Mark Millham · Balcony Bella · party of 2");
+  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file). The paperwork link is NOT sent yet. Do this first: (1) book the cabin with the cruise line and type its number into the group file; (2) validate Flights; (3) press Booked: the guest's paperwork link goes out then.");
   assert.deepEqual(item.buttons, [
     { label: "Open the group file", href: `/groups/${GROUP_ID}` },
-    { label: "Confirmed with MSC", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/mark/confirmed` },
+    { label: "Booked: send the paperwork", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/booked` },
   ]);
   await wait(() => tables["actions"]![0]!["status"] === "done");
   // the page afterwards: agreed, where the paperwork went, and nothing changes any more
   const g = await call("GET", `/group-details/${LINK}`);
-  assert.deepEqual([!!g.json["quoteAgreedAt"], g.json["paperwork"], g.json["quote"]["category"]], [true, "sent", "Balcony Bella"]);
+  assert.deepEqual([!!g.json["quoteAgreedAt"], g.json["paperwork"], g.json["quote"]["category"]], [true, "booking", "Balcony Bella"]);
   assert.ok(!g.text.includes(CABIN_ID) && !("cabin_id" in g.json["quote"]), "the guest never gets the cabin row they were filed on");
   const changed = await quoteStep({ ...ANSWERS, flexpay: false });
   assert.deepEqual([changed.status, changed.json["error"]], [409, "Your quote is already agreed and your paperwork is on its way. To change anything, call or text Mark at 919-346-6127."]);
   assert.equal(replyRow()["quote"]["answers"]["flexpay"], true, "the agreed answers stay");
+});
+
+test("'Booked' (Mark 2026-11-03): refused until the cabin number is in the group file, then the paperwork link goes to the guest once and the item closes", async () => {
+  namesIn();
+  actionsAccept = true;
+  pendingItem();
+  await quoteStep(ANSWERS);
+  assert.equal((await agree()).json["paperwork"], "booking");
+  const path = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booked`;
+  assert.equal((await call("POST", path)).status, 401, "Mark's token only");
+  const early = await call("POST", path, { token: true });
+  assert.equal(early.status, 409, "no cabin number yet");
+  assert.match(String(early.json["error"]), /cabin number/);
+  assert.equal(mails.length, 0);
+  const cabin = tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!;
+  cabin["cabin_num"] = "12345";
+  const done = await call("POST", path, { token: true });
+  assert.deepEqual([done.status, done.json["success"], done.json["paperwork"]], [200, true, "sent"]);
+  assert.equal(mails.length, 1);
+  assert.equal(mails[0]!["to"], "mmillham1@gmail.com");
+  assert.equal(mails[0]!["subject"], "Your travel paperwork for Friends and Family 2027");
+  assert.ok(tables["group_travelers"]![0]!["form_token_hash"], "the link exists now");
+  assert.deepEqual([replyRow()["status"], replyRow()["quote"]["paperwork"]], ["booked", "sent"]);
+  const again = await call("POST", path, { token: true });
+  assert.equal(again.json["already"], true);
+  assert.equal(mails.length, 1, "pressed twice, sent once");
 });
 
 test("'I agree' when every cabin of the category is taken files the travelers with no cabin and says so on Mark's item; a box that may not email the address holds the paperwork link", async () => {
@@ -969,14 +989,13 @@ test("'I agree' when every cabin of the category is taken files the travelers wi
   tables["group_travelers"]!.push({ id: "t-0", group_id: GROUP_ID, cabin_id: CABIN_ID, is_lead: true, first_name: "Existing" });
   await quoteStep(ANSWERS);
   const r = await agree();
-  assert.deepEqual([r.status, r.json["paperwork"]], [200, "held"]);
+  assert.deepEqual([r.status, r.json["paperwork"]], [200, "booking"]);
   const mine = tables["group_travelers"]!.filter((t) => t["first_name"] !== "Existing");
   assert.deepEqual(mine.map((t) => t["cabin_id"]), [null, null], "no free Balcony Bella cabin: Mark places them");
-  assert.equal(mails.length, 0, "this box only emails its test addresses");
-  assert.equal(writes("group_messages")[0]!.body.status, "skipped");
+  assert.equal(mails.length, 0, "nothing is emailed at 'I agree'");
   await wait(() => writes("actions").some((w) => w.method === "POST"));
   const item = writes("actions").find((w) => w.method === "POST")!.body;
-  assert.match(item.body, /Travelers are on the file \(NO free Balcony Bella cabin: place them\); paperwork link held by this box\./);
+  assert.match(item.body, /Travelers are on the file \(NO free Balcony Bella cabin: place them\)\. The paperwork link is NOT sent yet/);
 });
 
 test("the quote step and the agreement refuse a wrong link and the bot trap like every other write, and the trap pretends no quote", async () => {

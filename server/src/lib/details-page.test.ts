@@ -819,7 +819,7 @@ test("the quote: once every question is answered the page asks the server with t
   assert.match(p.el("d-quote-note").textContent, /^Every figure comes from the group's file with the cruise line, and Mark confirms each one with you before anything is charged\. Pricing subject to change until finalized\.$/);
   assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "false");
   assert.equal(p.el("d-agree").textContent, "I agree… let's do this!");
-  assert.equal(p.el("d-agree-note").textContent, "Agreeing sends your paperwork page to your inbox. Still nothing charged.");
+  assert.equal(p.el("d-agree-note").textContent, "Agreeing tells Mark to book your cabin and confirm your flights, hotel and transfers; then he emails your paperwork page. Still nothing charged.");
   // a changed answer: the quote goes until the new one is back, with Mark's items to price named
   p.qtap("drinks", "yes"); p.qtap("travel", "f1"); p.qtap("flexpay", "yes"); p.qtap("insurance", "line");
   assert.equal(p.el("d-quote").hidden, true, "the old figures are not shown for the new answers");
@@ -844,6 +844,10 @@ test("the quote: once every question is answered the page asks the server with t
   const heldBox = visit("en", { post: (url, body) => (url.endsWith("/agree") ? { ok: true, json: { success: true, paperwork: "held" } } : server("en")(url, body)) });
   await heldBox.ready(); await heldBox.fillAll(); heldBox.hold(); await heldBox.ready(); await heldBox.answerQuote(); heldBox.agree(); await heldBox.ready();
   assert.equal(heldBox.el("d-thanks-h").textContent, "Agreed!… Balcony Bella, party of two. Mark sends your paperwork next.");
+  // Mark 2026-11-03: the paperwork waits for Mark to book the cabin and validate the travel
+  const booking = visit("en", { post: (url, body) => (url.endsWith("/agree") ? { ok: true, json: { success: true, paperwork: "booking" } } : server("en")(url, body)) });
+  await booking.ready(); await booking.fillAll(); booking.hold(); await booking.ready(); await booking.answerQuote(); booking.agree(); await booking.ready();
+  assert.equal(booking.el("d-thanks-h").textContent, "Agreed!… Balcony Bella, party of two. Mark is booking your cabin and confirming your travel; your paperwork page follows by email as soon as he is done.");
   const refused = visit("en", { post: (url, body) => (url.endsWith("/agree") ? { ok: false, status: 409, json: { success: false, error: "Your quote is already agreed and your paperwork is on its way. To change anything, call or text Mark at 919-346-6127." } } : server("en")(url, body)) });
   await refused.ready(); await refused.fillAll(); refused.hold(); await refused.ready(); await refused.answerQuote(); refused.agree(); await refused.ready();
   assert.equal(refused.el("d-thanks").hidden, true);

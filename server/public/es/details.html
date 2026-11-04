@@ -183,8 +183,8 @@
     quote_h:'Su cotización', quote_total:'Total', quote_plus:'Más {list}, que Mark cotiza para usted.', to_come:'por cotizar',
     quote_dep:'Depósito para apartar la cabina: {deposit} ({per} por persona). No se cobra nada hasta que Mark lo confirme con usted.', quote_dep_na:'Mark confirma el depósito con usted; no se cobra nada esta noche.',
     quote_bal:'Saldo {balance}, a pagar antes del {date}.', quote_bal_nodate:'El saldo es {balance}; Mark confirma la fecha con usted.',
-    agree:'Acepto… ¡hagámoslo!', agreeing:'Enviando…', agree_note:'Al aceptar, su página de documentos llega a su correo. Sigue sin cobrarse nada.', agree_wait:'Responda todas las preguntas de arriba y el botón se activa.',
-    agreed_h:'¡Aceptada!… {category}, {party}. Sus documentos van en camino a {email}.', agreed_h_mark:'¡Aceptada!… {category}, {party}. Mark le envía sus documentos después.',
+    agree:'Acepto… ¡hagámoslo!', agreeing:'Enviando…', agree_note:'Al aceptar, Mark reserva su cabina y confirma sus vuelos, hotel y traslados; luego le envía su página de documentos por correo. Sigue sin cobrarse nada.', agree_wait:'Responda todas las preguntas de arriba y el botón se activa.',
+    agreed_h:'¡Aceptada!… {category}, {party}. Sus documentos van en camino a {email}.', agreed_h_mark:'¡Aceptada!… {category}, {party}. Mark le envía sus documentos después.', agreed_h_booking:'¡Aceptada!… {category}, {party}. Mark está reservando su cabina y confirmando su viaje; sus documentos le llegan por correo en cuanto termine.',
     bad_name:'Nombre Y apellido, por favor… tal como aparecen en el pasaporte.', bad_dob:'Mes, día y año de cuatro dígitos (el mes primero): 03 / 04 / 1965.',
     bad_street:'Una calle y un número, por favor… como 123 Main St.', bad_city:'¿En qué ciudad, por favor?', bad_state:'Las dos letras del estado, por favor… como NC.',
     bad_zip:'Cinco dígitos para el código postal, por favor… como 27601.',
@@ -228,8 +228,8 @@
     quote_h:'Your quote', quote_total:'Total', quote_plus:'Plus {list}, which Mark prices for you.', to_come:'to come',
     quote_dep:'Deposit to hold the cabin: {deposit} ({per} per person). Nothing is charged until Mark confirms it with you.', quote_dep_na:'Mark confirms the deposit with you; nothing is charged tonight.',
     quote_bal:'Balance {balance}, due by {date}.', quote_bal_nodate:'The balance is {balance}; Mark confirms the due date with you.',
-    agree:"I agree… let's do this!", agreeing:'Sending…', agree_note:'Agreeing sends your paperwork page to your inbox. Still nothing charged.', agree_wait:'Answer every question above and the button lights up.',
-    agreed_h:'Agreed!… {category}, {party}. Your paperwork is on its way to {email}.', agreed_h_mark:'Agreed!… {category}, {party}. Mark sends your paperwork next.',
+    agree:"I agree… let's do this!", agreeing:'Sending…', agree_note:'Agreeing tells Mark to book your cabin and confirm your flights, hotel and transfers; then he emails your paperwork page. Still nothing charged.', agree_wait:'Answer every question above and the button lights up.',
+    agreed_h:'Agreed!… {category}, {party}. Your paperwork is on its way to {email}.', agreed_h_mark:'Agreed!… {category}, {party}. Mark sends your paperwork next.', agreed_h_booking:'Agreed!… {category}, {party}. Mark is booking your cabin and confirming your travel; your paperwork page follows by email as soon as he is done.',
     bad_name:'First AND last name, please… the way the passport has it.', bad_dob:'Month, day and a four-digit year: 03 / 04 / 1965.',
     bad_street:'A street and number, please… like 123 Main St.', bad_city:'Which city, please?', bad_state:"The state's two letters, please… like NC.",
     bad_zip:'Five digits for the ZIP, please… like 27601.',
@@ -673,7 +673,7 @@
   /** After "I agree": one line, where the paperwork went, and the way to change something (Mark, not a form). */
   function showAgreed(category, count, paperwork, email){
     lockPage(); show('d-part4', false);
-    $('d-thanks-h').textContent = fill(paperwork === 'sent' ? T.agreed_h : T.agreed_h_mark, { category: category, party: partyWords(count), email: email || '' });
+    $('d-thanks-h').textContent = fill(paperwork === 'sent' ? T.agreed_h : paperwork === 'booking' ? T.agreed_h_booking : T.agreed_h_mark, { category: category, party: partyWords(count), email: email || '' });
     $('d-thanks-p').textContent = fill(T.change, { phone: data.businessPhone || PHONE }); show('d-thanks-p', true);
     show('d-thanks', true);
   }
