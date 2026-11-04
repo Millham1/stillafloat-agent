@@ -88,7 +88,7 @@ test("the schema requires every field so the model cannot skip one silently", ()
 });
 
 // ── Terms: code finds the deadlines and checks the model's answer ─────────────
-import { readSingleBooking, addDays, cutSections, dateAppears, findDeadlines, moneyAppears, verifyExtraction } from "./booking-terms";
+import { singleBookingMoney, readSingleBooking, addDays, cutSections, dateAppears, findDeadlines, moneyAppears, verifyExtraction } from "./booking-terms";
 
 const QUOTE = `GROUP ALLOCATION AND GROUP RATES
 Category   Allotment   Commissionable Fare   NCF   Tax   Total Guest Price
@@ -583,4 +583,18 @@ test("a single booking's confirmation: the AI box reads the passenger total, the
   const invented = read({ addons: [{ name: "Ultimate License to Chill", price: 699, qty: 1, total: 699 }, { name: "Spa Day", price: 120, qty: 1, total: 120 }] });
   assert.equal(invented.addons!.length, 1);
   assert.ok(invented.warnings.some((w) => /Add-on "Spa Day" \(\$120\) was read, but its name and price are not printed/.test(w)));
+});
+
+test("single booking: the focused question gets only the money lines; a paid add-on is not also listed as a perk; a perk printed in capitals is still found (Mark 2026-11-04)", () => {
+  const money = singleBookingMoney(PARADISE);
+  for (const want of ["Cabin Fare", "Discount(s)", "Passenger Total", "ULTIMATE LICENSE TO CHILL", "Total Booking Amount"]) assert.ok(money.includes(want), `the money lines hold ${want}`);
+  assert.equal(singleBookingMoney("Carnival group rates: Inside 599 per person"), "", "a rate table has none");
+  const cabin = { category: "Ocean View", code: "O4", count: 1, price_per_person: 382.5, commissionable_fare: 499, ncf: 35.32, taxes: 97.68 };
+  const x = verifyExtraction(normalizeExtraction({
+    total_price: 1081.5, discount_per_person: 249.5, cabin_categories: [cabin],
+    addons: [{ name: "Ultimate License to Chill", price: 699, qty: 1, total: 699 }],
+    guest_inclusions: ["ULTIMATE LICENSE TO CHILL", "gratuities"],
+  }), PARADISE + "\nGratuities of $22.00 per person, per night are added to your account.");
+  assert.deepEqual(x.guest_inclusions, ["gratuities"], "the add-on is an add-on, and the capitals did not hide a printed perk");
+  assert.ok(!x.warnings.some((w) => /Guest inclusion/.test(w)), x.warnings.join(" | "));
 });

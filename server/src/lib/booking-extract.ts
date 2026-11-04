@@ -14,7 +14,7 @@
 
 import { llmJson } from "./llm";
 import {
-  WHOLE_DOCUMENT_CHARS, cutSections, isDoubleRateTable, joinNotes, rateRowCount, verifyExtraction,
+  WHOLE_DOCUMENT_CHARS, cutSections, isDoubleRateTable, joinNotes, rateRowCount, singleBookingMoney, verifyExtraction,
   type AllotmentReview, type CancellationRow, type Deadline,
 } from "./booking-terms";
 
@@ -600,6 +600,16 @@ export function describeProviders(ps: ReaderProvider[]): string {
   return `AI box, with ${claude.length} of ${ps.length} parts read by Claude`;
 }
 
+const SINGLE_MONEY_SCHEMA = {
+  type: "object", additionalProperties: false,
+  properties: {
+    commissionable_fare: nullable("number"), discount_per_person: nullable("number"), taxes: nullable("number"), ncf: nullable("number"),
+    price_per_person: nullable("number"), total_price: nullable("number"),
+    addons: (BOOKING_SCHEMA["properties"] as Record<string, unknown>)["addons"],
+  },
+  required: ["commissionable_fare", "discount_per_person", "taxes", "ncf", "price_per_person", "total_price", "addons"],
+};
+
 const SECTION_SYSTEM = `You read one section of a cruise line group contract, quote or booking confirmation for a travel advisor.
 Copy only what the section states. If something is not stated, return null (or an empty list). Never calculate, infer or guess a value.
 Money as plain numbers, no symbols. Dates as YYYY-MM-DD.`;
@@ -718,6 +728,32 @@ export async function extractBooking(
       timeoutMs: readerTimeoutMs(),
       onProvider: (p) => { providers.push(p); },
     });
+    // One short question about the money lines alone: the whole-document answer lost the add-on and took the booking total for the cabin.
+    const money = singleBookingMoney(text);
+    if (money) {
+      try {
+        const m = await llmJson<Record<string, unknown>>({
+          job: "groups.extract",
+          system: SECTION_SYSTEM,
+          user: `<section>\n${money}\n</section>\n\nThese are the money lines of ONE guest's booking confirmation. Fill in: commissionable_fare (the Cabin Fare), discount_per_person ` +
+            `(the Discount(s) against the fare, a positive number, or null), taxes (Govt. Taxes & Fees), ncf (Required Cruise Fees & Expenses), ` +
+            `price_per_person (the Passenger Total for the guest: the cabin only, never the Total Booking Amount), ` +
+            `addons (every line under Cruise Enhancements: its printed name, unit price, quantity and line total; an empty list when there are none), ` +
+            `total_price (the Total Booking Amount).`,
+          schema: SINGLE_MONEY_SCHEMA,
+          maxTokens: 600,
+          timeoutMs: readerTimeoutMs(),
+          onProvider: (p) => { providers.push(p); },
+        });
+        raw["addons"] = m["addons"];
+        raw["discount_per_person"] = m["discount_per_person"];
+        if (m["total_price"] != null) raw["total_price"] = m["total_price"];
+        const cats = Array.isArray(raw["cabin_categories"]) ? (raw["cabin_categories"] as Array<Record<string, unknown>>) : [];
+        if (cats[0]) for (const k of ["price_per_person", "commissionable_fare", "taxes", "ncf"] as const) if (m[k] != null) cats[0][k] = m[k];
+      } catch (err) {
+        warnings.push(`Could not read the money lines (${err instanceof Error ? err.message : String(err)}). Check the price, discount and add-ons by hand.`);
+      }
+    }
   } else {
     const ask: Ask = async (what, section, question, schema, maxTokens) => {
       try {

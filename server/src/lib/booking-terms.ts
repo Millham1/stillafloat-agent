@@ -350,6 +350,18 @@ function doubleRateRow(line: string | null): DoubleRateRow | null {
   return { count: count ? Number(count[1]) : null, rates, fees: feeCol[1]!.split("/").map(Number) };
 }
 
+/** The money lines of a single booking's confirmation (the cabin's fare lines through the totals), for the one short question the AI box answers
+ *  well: the whole document in one pass lost the add-on and read the booking total as the cabin price (Mark 2026-11-04). "" when there are none. */
+export function singleBookingMoney(text: string): string {
+  const lines = text.split("\n");
+  const from = lines.findIndex((l) => /^\s*cabin fare\b/i.test(l));
+  if (from < 0) return "";
+  const to = lines.findIndex((l, i) => i > from && /total stateroom amount/i.test(l));
+  const body = lines.slice(Math.max(0, from - 1), to > from ? to + 1 : from + 14);
+  const totals = lines.filter((l, i) => (to < 0 || i > to) && /total booking amount|gross amount|discounts applied/i.test(l)).slice(0, 4);
+  return [...body, ...totals].join("\n").trim();
+}
+
 /**
  * A single booking's confirmation ("Cabin Fare $499.00 … Discount(s) $249.50 … Passenger Total $382.50 … Cruise Enhancements: NAME $699.00 1 $699.00 …
  * Total Booking Amount $1,081.50") is not a rate table: the cabin price is the passenger total, the discount comes off the fare, and the
@@ -646,9 +658,11 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
   const found = findDeadlines(text, out.sail_date);
   warnings.push(...found.warnings);
   // Guest inclusions: keep one only when the document prints its distinctive words (the model must not invent a perk).
+  const flatLower = flat.toLowerCase();
   out.guest_inclusions = (out.guest_inclusions ?? []).filter((inc) => {
+    if ((out.addons ?? []).some((a) => a.name.toLowerCase() === inc.trim().toLowerCase())) return false;   // a paid add-on is listed as one, not as a perk
     const words = inc.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
-    const ok = words.length > 0 && words.some((w) => flat.includes(w));
+    const ok = words.length > 0 && words.some((w) => flatLower.includes(w));
     if (!ok) warnings.push(`Guest inclusion "${inc}" is not printed in the document. Left out.`);
     return ok;
   });
