@@ -291,7 +291,7 @@
   var attempted = false;     // the guest tapped the dim button
   var shownErr = {};         // field id -> words the server refused it with (replaced by the page's own words once the field changes)
   var busy = false, held = false;   // the names are being sent / are in: nothing is saved behind it
-  var look = { key: '', mode: '', sugg: [], off: false, pending: null };   // the address lookup: mode '' | nf | ok
+  var look = { key: '', mode: '', sugg: [], off: false, pending: null, from: '' };   // the address lookup: mode '' | nf | ok
   // ── The quote step (Part 4) ──
   var qo = null;                 // what the server offers once the names are in: cabins, insurance, travel, what to ask (GET quoteOptions)
   var qa = { cabin: '', flexpay: null, drinks: null, insurance: '', travel: [], needs: {} };   // the guest's answers
@@ -542,7 +542,7 @@
     if(look.pending){
       fix.innerHTML = esc(T.tidied) + ' <b>' + esc(look.pending.formatted) + '</b>. ' + esc(T.right) + ' <button type="button" class="yes" data-act="yes">' + esc(T.yes) + '</button> · <button type="button" class="linkbtn" data-act="no">' + esc(T.no) + '</button>';
       fix.hidden = false;
-    } else if(look.sugg.length > 1){
+    } else if(look.sugg.length > 1 || (look.from === 'suggest' && look.sugg.length === 1)){
       sg.innerHTML = look.sugg.map(function(s, j){ return '<button type="button" data-s="' + j + '">' + esc(s.formatted) + '</button>'; }).join('');
       sg.hidden = false;
     }
@@ -574,12 +574,31 @@
       })
       .catch(function(){ look.off = true; renderAddress(); });
   }
+  // Mark 2026-11-03 ("address lookup still is not working"): the type-ahead (Smarty, on the post office's own list) offers whole addresses
+  // from the fourth character on; when it is down or finds nothing, the post office's whole-address check below answers as before.
+  var suggestOff = false;
+  function askSuggest(){
+    var key = addrKey(), typed = tidy(addr.street);
+    if(suggestOff || typed.length < 4) return;
+    fetch('/api/address/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: typed, website: $('d-website').value || '' }) })
+      .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+      .then(function(x){
+        if(addrKey() !== key) return;                    // typed on since: a newer question is on its way
+        var j = x.j || {};
+        if(!x.ok || !j.available){ suggestOff = true; if(tidy(addr.street).length >= 5 && !look.off) askLookup(); return; }
+        if(!j.suggestions || !j.suggestions.length){ if(tidy(addr.street).length >= 5 && !look.off) askLookup(); return; }
+        look.key = key; look.mode = 'ok'; look.from = 'suggest'; look.sugg = j.suggestions.slice(0, 5); look.pending = null;
+        renderAddress(); paintAll(); refresh();
+      })
+      .catch(function(){ suggestOff = true; if(tidy(addr.street).length >= 5 && !look.off) askLookup(); });
+  }
   function addressTyped(){
     addr.tidied = false;
-    look.mode = look.mode === 'nf' ? '' : look.mode; look.pending = null; look.key = '';
+    look.mode = look.mode === 'nf' ? '' : look.mode; look.pending = null; look.key = ''; look.from = '';
     renderAddress();
     clearTimeout(lookTimer);
-    if(tidy(addr.street).length >= 5 && !look.off) lookTimer = setTimeout(askLookup, 500);
+    if(tidy(addr.street).length >= 4 && !suggestOff) lookTimer = setTimeout(askSuggest, 350);
+    else if(tidy(addr.street).length >= 5 && !look.off) lookTimer = setTimeout(askLookup, 500);
   }
 
   // ── Part 4: the quote step, once the names are in (Mark 2026-11-01) ──

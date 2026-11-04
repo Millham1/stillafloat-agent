@@ -87,8 +87,9 @@ type Reply = { ok: boolean; status?: number; json?: unknown };
 type PostReply = (url: string, body: Record<string, any>) => Reply | Promise<Reply>;
 
 /** What the real server answers: a pick for the four answers (the same pickCabin), success for a save and a hold, and no address service unless a test gives one. */
-function server(lang: Lang, over: { perks?: string[]; lookup?: (body: Record<string, any>) => Reply } = {}): PostReply {
+function server(lang: Lang, over: { perks?: string[]; lookup?: (body: Record<string, any>) => Reply; suggest?: (body: Record<string, any>) => Reply } = {}): PostReply {
   return (url, body) => {
+    if (url === "/api/address/suggest") return over.suggest ? over.suggest(body) : { ok: true, json: { success: true, available: false } };   // the type-ahead is off unless a test turns it on
     if (url === "/api/address/lookup") return over.lookup ? over.lookup(body) : { ok: true, json: { success: true, available: false } };
     if (url.endsWith("/hold")) return { ok: true, json: { success: true, quoteOptions: OPTIONS(lang) } };
     if (url.endsWith("/quote")) return { ok: true, json: { success: true, quote: buildQuote(FILE, TWO, body["answers"], lang) } };
@@ -750,6 +751,18 @@ test("when the address service is not available the page takes the address as ty
   await es.ready();
   es.address(); await es.flush(8);
   assert.equal(es.el("d-addr-status").textContent, "No pudimos revisar esa dirección en este momento, así que la tomaremos tal como la escribió.");
+});
+
+test("the type-ahead (Smarty): from the fourth character the page offers whole addresses; picking one fills the four fields (Mark 2026-11-03)", async () => {
+  const sug = [{ street: "100 Goodsell Ct", city: "Fuquay Varina", state: "NC", zip: "27526", formatted: "100 Goodsell Ct, Fuquay Varina, NC 27526" }, { street: "100 Goodsell Rd", city: "Ravenden Springs", state: "AR", zip: "72460", formatted: "100 Goodsell Rd, Ravenden Springs, AR 72460" }];
+  const p = visit("en", { post: (url, body) => (url === "/api/address/suggest" ? { ok: true, json: { success: true, available: true, suggestions: body["q"].length >= 4 ? sug : [] } } : server("en")(url, body)) });
+  await p.ready();
+  p.type("d-street", "100 g"); await p.flush(8);
+  assert.equal(p.sent.filter((x) => x.url === "/api/address/suggest").length > 0, true, "the type-ahead was asked");
+  assert.equal(p.sent.filter((x) => x.url === "/api/address/lookup").length, 0, "the post office's whole-address check is not needed");
+  assert.equal(p.visible("d-addr-status"), false, "no 'could not check' line while the type-ahead answers");
+  assert.equal(p.visible("d-sugg"), true);
+  assert.match(p.el("d-sugg").innerHTML, /100 Goodsell Ct, Fuquay Varina, NC 27526/);
 });
 
 // ── Holding the cabin ─────────────────────────────────────────────────────────────────────────────────────────
