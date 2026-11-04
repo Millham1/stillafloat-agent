@@ -370,6 +370,20 @@ function deepMerge(base: unknown, patch: Row): Row {
   return out;
 }
 
+const nameKey = (v: string) => v.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+/** First and last word agree; a middle name on either side is no matter. */
+function sameName(typed: string, on: string): boolean {
+  const a = nameKey(typed).split(" "), b = nameKey(on).split(" ");
+  return a.length >= 2 && b.length >= 2 && a[0] === b[0] && a[a.length - 1] === b[b.length - 1];
+}
+/** The names a signature may carry: the traveler on file and the legal name they entered; the card's owner on their own link. */
+function signatureNames(loaded: Loaded, answers: Row | undefined): string[] {
+  const typed = (k: string) => (typeof answers?.[k] === "string" ? String(answers[k]).trim() : "");
+  if (loaded.kind === "cardholder") return [typed("card_name") || cardOf(loaded.traveler).name].filter(Boolean);
+  if (!loaded.traveler) return [];
+  const t = loaded.traveler;
+  return [[t.first_name, t.last_name].filter(Boolean).join(" "), personName(t), typed("legal_name")].filter((n, i, all) => n && all.indexOf(n) === i);
+}
 const SIGNER_NAME = /^[\p{L}\p{M}][\p{L}\p{M}'’.\- ]{1,118}[\p{L}\p{M}.]$/u;
 
 export async function signDocument(deps: FormsDeps, token: unknown, body: SignBody, meta: { ip?: string; ua?: string }): Promise<Reply> {
@@ -393,6 +407,13 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
 
   const applied = applyAnswers(doc, signerAnswers(loaded, body.answers), loaded.ctx);
   if (!applied.ok) return reply(400, { success: false, error: "Please check the answers marked below.", fields: applied.errors });
+  // Mark 2026-11-03: "a check that the signature name matches the traveler's name": the typed signature must be the person this
+  // link is for (first and last name, accents and case aside; a middle name may be left out). On the card owner's link it is the
+  // card's owner. The organizer's contract has no traveler on file to compare with.
+  const expected = signatureNames(loaded, applied.answers);
+  if (expected.length && !expected.some((n) => sameName(signerName, n))) {
+    return reply(400, { success: false, code: "name-mismatch", error: `The name you typed does not match the name on this paperwork (${expected[0]}). Please type it the way it appears there.`, fields: {} });
+  }
   // FAIL CLOSED: no key, no passport number — never a plaintext fallback.
   if ((applied.passport || applied.matePassports?.length) && !piiConfigured(deps.piiKey)) {
     return reply(503, {

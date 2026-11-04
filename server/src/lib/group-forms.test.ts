@@ -268,13 +268,18 @@ test("a signature is refused without agreement, a full name, a matching hash, a 
   assert.equal((await signDocument(t.deps, token, { ...base, doc_key: "09-group-travel-contract" }, meta)).status, 404);
   assert.equal((await signDocument(t.deps, issueToken().token, base, meta)).status, 404);
   assert.equal(t.state.signatures.length, 0, "nothing was stored by any refusal");
-  for (const ok of ["José Núñez", "Mary-Ann O'Neil", "Wei Chen", "Jane Q. Public"]) {
+  for (const ok of ["Jane Public", "Jane Q. Public", "JANE PUBLIC", "Jané Public"]) {
     const t2 = setup();
     const tok = t2.link("t1");
     await giveConsent(t2.deps, tok, { agreed: true }, meta);
     const d = pkt(await getPacket(t2.deps, tok)).docs.find((x) => x.key === base.doc_key)!;
     assert.equal((await signDocument(t2.deps, tok, { ...base, content_sha256: d.text_sha256, signer_name: ok }, meta)).status, 200, ok);
   }
+  // Mark 2026-11-03: the signature must be the person the link is for
+  const wrong = await signDocument(t.deps, token, { ...base, signer_name: "José Núñez" }, meta);
+  assert.equal(wrong.status, 400);
+  assert.equal(wrong.json["code"], "name-mismatch");
+  assert.equal(t.state.signatures.length, 0, "a signature in another name stores nothing");
   assert.equal((await signDocument(t.deps, token, base, meta)).status, 200);
   const second = await signDocument(t.deps, token, base, meta);
   assert.equal(second.status, 409);
