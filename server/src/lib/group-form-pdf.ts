@@ -37,6 +37,7 @@ const HEAD = "#1d4f6b";       // the headings: the Cornerstone forms' blue
 const RULE = "#9aa7bf";
 const MARGIN = 64;
 const SIZE = 10.5;
+const TIGHT_LH = 1.28;   // line height of the signature blocks after the client's own
 
 type Piece =
   | { k: "text"; text: string; bold: boolean; italic: boolean }
@@ -140,10 +141,10 @@ export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
 
       /** one paragraph of the document: its words, answers, blank lines and boxes laid out by hand, wrapping at the width;
        *  an answer is underlined in navy, a blank is a line, a box a square (filled when chosen) */
-      const line = (text: string, o: { size?: number; color?: string; bold?: boolean; italic?: boolean; x?: number; y?: number; w?: number; gap?: number; indent?: number } = {}) => {
+      const line = (text: string, o: { size?: number; color?: string; bold?: boolean; italic?: boolean; x?: number; y?: number; w?: number; gap?: number; indent?: number; lh?: number } = {}) => {
         const list = pieces(text, input);
         if (!list.some((p) => p.k !== "text" || p.text.trim())) return;
-        const size = o.size ?? SIZE, lead = size * 1.42, x0 = (o.x ?? MARGIN) + (o.indent ?? 0), w = (o.w ?? width) - (o.indent ?? 0);
+        const size = o.size ?? SIZE, lead = size * (o.lh ?? 1.42), x0 = (o.x ?? MARGIN) + (o.indent ?? 0), w = (o.w ?? width) - (o.indent ?? 0);
         type Atom = { kind: "word" | "answer" | "blank" | "box"; text: string; font: string; color: string; wd: number; space: number; on?: boolean; field?: string; value?: string; mark?: "sig" };
         const atoms: Atom[] = [];
         const fontOf = (b: boolean, i: boolean) => (b ? (i ? "Helvetica-BoldOblique" : "Helvetica-Bold") : i ? "Helvetica-Oblique" : "Helvetica");
@@ -204,13 +205,16 @@ export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
       const sigLine = blocks.findIndex((b) => b.t === "p" && /\{\{sig\}\}/.test(b.text));
       const sigStart = sigLine > 0 && blocks[sigLine - 1]!.t === "p" && /^\*\*[^*]+\*\*$/.test((blocks[sigLine - 1] as { text: string }).text) ? sigLine - 1 : sigLine;
       const lead = SIZE * 1.42;
-      const guess = (b: Block): number => {
+      // Mark 2026-11-03 ("why so much blank space?"): the signature blocks that follow the client's own (co-traveler, parent, agent) are
+      // set close, so the whole block fits under the text where it can instead of being sent to a page of its own.
+      const tight = (i: number) => sigStart > 0 && i > sigStart;
+      const guess = (b: Block, i: number): number => {
         const plain = (s: string) => pdfSafe(s.replace(/\{\{[^}]*\}\}/g, "Jane Quincy Public, Oct 31").replace(/_{3,}/g, "____________________").replace(/\*/g, ""));
         const lines = (s: string, w = width) => s.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(doc.font("Helvetica").fontSize(SIZE).widthOfString(plain(l)) / w)), 0);
         switch (b.t) {
           case "h": return lead * 1.9 + 8;
-          case "hr": return lead * 0.8;
-          case "p": return lines(b.text) * lead + lead * 0.35;
+          case "hr": return tight(i) ? lead * 0.45 : lead * 0.8;
+          case "p": return tight(i) ? lines(b.text) * SIZE * TIGHT_LH + SIZE * TIGHT_LH * 0.08 : lines(b.text) * lead + lead * 0.35;
           case "ul": case "ol": return b.items.reduce((n, x) => n + lines(x, width - 12) * lead + lead * 0.2, 0) + lead * 0.3;
           case "table": return (b.rows.length + 1) * 22 + lead * 0.8;
         }
@@ -218,7 +222,7 @@ export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
       for (let i = 0; i < blocks.length; i++) {
         const b = blocks[i]!;
         if (i === sigStart && sigStart > 0 && doc.y > doc.page.margins.top + 40) {
-          const need = blocks.slice(sigStart).reduce((h, x) => h + guess(x), 0) * 1.08;
+          const need = blocks.slice(sigStart).reduce((h, x, k) => h + guess(x, sigStart + k), 0) * 1.0;
           if (doc.y + need > doc.page.height - 72) doc.addPage();
         }
         // keep the title and the business's lines clear of the logo on the first page
@@ -238,11 +242,11 @@ export async function renderFormPdf(input: FormPdfInput): Promise<Buffer> {
             break;
           }
           case "hr":
-            doc.moveDown(0.2);
+            doc.moveDown(tight(i) ? 0.1 : 0.2);
             doc.moveTo(MARGIN, doc.y).lineTo(MARGIN + width, doc.y).strokeColor(RULE).lineWidth(0.5).stroke();
-            doc.moveDown(0.6);
+            doc.moveDown(tight(i) ? 0.3 : 0.6);
             break;
-          case "p": line(b.text, { w: wFirst }); break;
+          case "p": line(b.text, { w: wFirst, ...(tight(i) ? { gap: 0.08, lh: TIGHT_LH } : {}) }); break;
           case "ul": b.items.forEach((x) => line(`•  ${x}`, { indent: 12, gap: 0.2 })); doc.moveDown(0.3); break;
           case "ol": b.items.forEach((x, i) => line(`${i + 1}.  ${x}`, { indent: 12, gap: 0.2 })); doc.moveDown(0.3); break;
           case "table": {
