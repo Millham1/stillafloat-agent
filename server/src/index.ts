@@ -603,15 +603,8 @@ function scheduleWeeklyMarketing() {
           const draft = await draftNewsletter(lang);
           await saveDraft(draft);
           logger.info({ subject: draft.subject, lang }, "Weekly newsletter draft complete");
-          if (lang !== "en") continue; // the Spanish edition is never put in front of Mark
-          void notifyMark({
-            kind: "waiting",
-            source: "newsletter",
-            title: `📨 Newsletter draft ready (${lang.toUpperCase()}) (weekly)`,
-            body: draft.subject,
-            url: reviewUrl(`/api/newsletter/review?lang=${lang}`),
-            tag: "newsletter-review",
-          });
+          // No nudge: the approved commentary IS this issue's story (Mark 2026-11-05), so there is no
+          // second approval to ask for. The Friday job sends it; the review page stays reachable.
         }
       }
       return { weekday };
