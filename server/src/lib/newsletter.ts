@@ -24,6 +24,7 @@ import { storySlug } from "./prerender-news";
 import { selectFreshStories, issueHasStories, EMPTY_ISSUE_MESSAGE } from "./newsletter-freshness";
 import { planWeeklySend, SPANISH_NEEDS_ENGLISH, type EditionState, type WeeklySendPlan } from "./newsletter-editions";
 import { unsubscribeUrl } from "../routes/subscribe";
+import { commentaryText } from "./newsletter-commentary";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Newsletter agent — assembles the weekly "Still Afloat Weekly" email:
@@ -271,7 +272,7 @@ async function gatherFeaturedAffiliate(): Promise<{ id: string; title: string; d
 const COMMENTARY_MAX_AGE_DAYS = 30;
 async function gatherLatestCommentary(
   lang: Lang,
-): Promise<{ id: string; title: string; excerpt: string; url: string; body: string } | null> {
+): Promise<{ id: string; title: string; excerpt: string; url: string; body: string; fullText: string } | null> {
   const store = await readJson<{ posts?: Array<Record<string, unknown>> }>(PATHS.commentary, { posts: [] });
   const published = (store.posts ?? [])
     .filter((p) => String(p["status"]) === "published")
@@ -289,13 +290,15 @@ async function gatherLatestCommentary(
     id: String(post["id"] ?? ""),
     title: String(post["title"] ?? ""),
     excerpt,
-    body: body.slice(0, 1500), // raw material for distilling Mark's letter
+    body: body.slice(0, 1500),
+    // Mark 2026-11-05: the approved commentary IS the issue's story — its own words, never a rewrite.
+    fullText: commentaryText(String((lang === "es" && post["body_es"]) || post["body_en"] || "")),
     url: `${SITE}${esPrefix}/commentary-post.html?id=${encodeURIComponent(String(post["id"] ?? ""))}`,
   };
 }
 
 /** The commentary post the English issue carries, in Spanish (title_es/body_es are its translations). */
-async function commentaryById(id: string): Promise<{ id: string; title: string; excerpt: string; url: string } | null> {
+async function commentaryById(id: string): Promise<{ id: string; title: string; excerpt: string; url: string; fullText: string } | null> {
   const store = await readJson<{ posts?: Array<Record<string, unknown>> }>(PATHS.commentary, { posts: [] });
   const post = (store.posts ?? []).find((p) => String(p["id"] ?? "") === id);
   if (!post) return null;
@@ -306,6 +309,7 @@ async function commentaryById(id: string): Promise<{ id: string; title: string; 
     title: String(post["title_es"] || post["title"] || ""),
     excerpt,
     url: `${SITE}/es/commentary-post.html?id=${encodeURIComponent(id)}`,
+    fullText: commentaryText(String(post["body_es"] || post["body_en"] || "")),
   };
 }
 
@@ -546,13 +550,15 @@ export async function draftNewsletter(edition: Lang = "en"): Promise<NewsletterD
     logger.warn({ lang }, "newsletter: no quick hit named a story id — hits linked to the stories in order");
   }
 
+  // The approved commentary is the story: when one is fresh, its title and its own text ARE the
+  // letter and the subject (Mark 2026-11-05) — the model's rewrite is used only when there is none.
   const draft: NewsletterDraft = {
-    subject: (parsed.subject ?? (lang === "es" ? "Still Afloat Semanal" : "Still Afloat Weekly")).trim(),
+    subject: (commentary?.title || parsed.subject || (lang === "es" ? "Still Afloat Semanal" : "Still Afloat Weekly")).trim(),
     intro: "",
-    letterTitle: (parsed.letter_title ?? "").trim(),
+    letterTitle: commentary ? commentary.title : (parsed.letter_title ?? "").trim(),
     // Belt & suspenders: the template adds "Hey <name>," itself, so strip any
     // greeting line the model opens with despite the prompt.
-    letter: (parsed.letter ?? "").trim().replace(/^(hey|hi|hello|ahoy|hola|saludos)[^\n.!?]{0,40}[,!—–-]\s*\n*/i, ""),
+    letter: commentary?.fullText || (parsed.letter ?? "").trim().replace(/^(hey|hi|hello|ahoy|hola|saludos)[^\n.!?]{0,40}[,!—–-]\s*\n*/i, ""),
     quickHits,
     booking: {
       headline: (parsed.booking_headline ?? (lang === "es" ? "¿Listo para tu próximo crucero?" : "Ready for your next cruise?")).trim(),
@@ -1039,10 +1045,11 @@ export async function buildSpanishEdition(en: NewsletterDraft): Promise<Newslett
   const t = (v: unknown, fallback: string): string => (typeof v === "string" && v.trim() ? v.trim() : fallback);
   const trHits = Array.isArray(tr.quickHits) ? tr.quickHits : [];
   const draft: NewsletterDraft = {
-    subject: t(tr.subject, en.subject),
+    subject: commentary?.fullText ? commentary.title : t(tr.subject, en.subject),
     intro: "",
-    letterTitle: t(tr.letterTitle, en.letterTitle ?? ""),
-    letter: t(tr.letter, en.letter ?? ""),
+    // The Spanish commentary post is the Spanish letter (its title_es/body_es), not a translation of English edits.
+    letterTitle: commentary?.fullText ? commentary.title : t(tr.letterTitle, en.letterTitle ?? ""),
+    letter: commentary?.fullText ? commentary.fullText : t(tr.letter, en.letter ?? ""),
     quickHits: hits.map((h, i) => ({ text: t(trHits[i], h.text), url: spanishStoryUrl(h.url) })).filter((h) => h.text),
     storyIds: [...(en.storyIds ?? [])],
     stories,

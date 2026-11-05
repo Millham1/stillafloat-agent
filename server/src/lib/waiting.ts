@@ -14,13 +14,12 @@
 //   inbox       Gmail threads needing a reply          ops-manager /brief/feed (passed in)
 //   conflicts   calendar conflicts                     ops-manager GET /brief/conflicts
 //   commentary  draft awaiting take/approval           lib/commentary-agent.ts
-//   newsletter  EN draft pending (ES follows approval) lib/newsletter.ts
+//   (newsletter: no item — the approved commentary is the issue's story, Mark 2026-11-05)
 //   social      pending post batches                   lib/social-agent.ts (passed in)
 //   affiliate   pending picks                          lib/affiliate-agent.ts
 //   proposals   public.tasks status 'proposed'         Mark, 2026-10-?: agent-filed tasks need his yes
 
 import { listPendingActions } from "./actions";
-import { loadDraft } from "./newsletter";
 import { loadCommentaryDraft } from "./commentary-agent";
 import { loadPending } from "./affiliate-agent";
 import { getSupabase, readJson, writeJson } from "./persistence";
@@ -110,7 +109,7 @@ export async function collectWaiting(input: CollectInputs): Promise<Collected> {
     }
   };
 
-  const [decisions, news, conflicts, commentary, newsletter, affiliate, proposals] = await Promise.all([
+  const [decisions, news, conflicts, commentary, affiliate, proposals] = await Promise.all([
     guard("decisions", async () => (await listPendingActions()).map((a) => ({
       key: `action:${a.id}`, group: "decisions" as const, label: a.title, url: briefUrl(),
     }))),
@@ -120,13 +119,6 @@ export async function collectWaiting(input: CollectInputs): Promise<Collected> {
       const d = await loadCommentaryDraft();
       return d && (d.status === "awaiting_take" || d.status === "drafted")
         ? [{ key: `commentary:${d.generatedAt}`, group: "commentary" as const, label: d.suggestedTitle || "This week's commentary", url: reviewUrl("/api/commentary/review") }]
-        : [];
-    }),
-    guard("newsletter", async () => {
-      // EN only: Mark approves English; Spanish follows automatically and never asks (2026-10-08).
-      const d = await loadDraft("en");
-      return d && d.status === "pending"
-        ? [{ key: `newsletter:en:${d.generatedAt ?? d.subject}`, group: "newsletter" as const, label: d.subject, url: reviewUrl("/api/newsletter/review?lang=en") }]
         : [];
     }),
     guard("affiliate", async () => (await loadPending()).items.map((i, idx) => ({
@@ -141,7 +133,7 @@ export async function collectWaiting(input: CollectInputs): Promise<Collected> {
     key: `social:${b.videoId}:${b.track}:${b.lang}`, group: "social", label: b.title, url: reviewUrl("/api/social/review"),
   }));
 
-  return { items: [...decisions, ...news, ...inbox, ...conflicts, ...commentary, ...newsletter, ...social, ...affiliate, ...proposals], down };
+  return { items: [...decisions, ...news, ...inbox, ...conflicts, ...commentary, ...social, ...affiliate, ...proposals], down };
 }
 
 /** Send the one notification if something new is waiting (always, for the morning brief). */
