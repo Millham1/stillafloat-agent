@@ -42,3 +42,10 @@ test("a line-wide row serves every ship, and the ship's own row goes first", () 
   assert.equal(packageFor([wide], "Margaritaville at Sea", "Islander", "ultimate license to chill")!.inclusions[0], "Line-wide");
   assert.equal(packageFor([wide, ROW], "Margaritaville at Sea", "Paradise", "ultimate license to chill"), ROW);
 });
+
+test("a package the line's page names with the ship is matched with or without the ship in the printed name", () => {
+  const row: PackageRow = { ...ROW, package_name: "Paradise License to Chill", inclusions: ["Express Check-In"] };
+  assert.equal(packageFor([row], "Margaritaville at Sea", "Margaritaville at Sea Paradise", "LICENSE TO CHILL"), row);
+  assert.equal(packageFor([row], "Margaritaville at Sea", "Margaritaville at Sea Paradise", "Paradise License to Chill"), row);
+  assert.equal(packageFor([row, ROW], "Margaritaville at Sea", "Margaritaville at Sea Paradise", "Ultimate License to Chill"), ROW);
+});

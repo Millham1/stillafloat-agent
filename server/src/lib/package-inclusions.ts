@@ -17,7 +17,9 @@ const norm = (s: string | null | undefined): string => (s ?? "").toLowerCase().r
 export function packageFor(rows: PackageRow[], cruiseLine: string | null, shipName: string | null, addonName: string): PackageRow | null {
   const line = norm(cruiseLine), ship = norm(shipName), name = norm(addonName);
   if (!name) return null;
-  const hits = rows.filter((r) => norm(r.package_name) === name
+  // the line's page puts the ship in a package's name ("Paradise License to Chill"); a confirmation may print it without
+  const bare = (n: string, r: PackageRow): string => (r.ship ? n.replace(new RegExp(`^${norm(r.ship)} `), "") : n);
+  const hits = rows.filter((r) => bare(norm(r.package_name), r) === bare(name, r)
     && (!line || line.includes(norm(r.cruise_line)) || norm(r.cruise_line).includes(line))
     && (!r.ship || ship.includes(norm(r.ship))));
   // a row for the ship goes before the line-wide one
