@@ -12,6 +12,7 @@ import { ClientPaperwork, TravelerPaperwork, type PaperworkData } from "./group-
 import { groupBookingsHref } from "@/lib/group-api";
 import { GroupJourney } from "./group-journey";
 import { GroupBooking } from "./group-booking";
+import { GroupQuotes } from "./group-quote-final";
 import { GroupBigPicture } from "./group-big-picture";
 
 // Group bookings — one file per group (cabins, travelers, paperwork, payments,
@@ -400,6 +401,7 @@ function GroupDetail({ id }: { id: string }) {
         ))}
       </div>
 
+      <GroupQuotes groupId={id} />
       <GroupBooking groupId={id} />
 
       <Card id="attention" className="scroll-mt-4">

@@ -4,16 +4,17 @@ import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { clientIp } from "../lib/client-ip";
 import { createAction, resolveActionsForSource, retitleActionsForSource } from "../lib/actions";
-import { BUSINESS, hashLinkToken, looksLikeLinkToken } from "../lib/group-secure";
+import { BUSINESS, deriveQuoteToken, hashLinkToken, hubKey, looksLikeLinkToken } from "../lib/group-secure";
 import { creditsForPictures, tidyCopy, type Lang } from "../lib/group-marketing";
 import { formUrl, issueToken, linkEmail, mailAllowed } from "../lib/group-forms";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
-  WHEN_WORD, callEmail, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl as makeDetailsUrl, firstWord, holdEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
+  WHEN_WORD, callEmail, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl as makeDetailsUrl, finalQuoteEmail, firstWord, holdEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
-import { buildQuote, freeCabinFor, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
+import { buildQuote, draftFrom, finalQuote, freeCabinFor, tripOf, quoteOptions, quoteSummary, storedQuote, unpriced, validateFinal, validateQuoteAnswers, type Quote } from "../lib/group-quote";
+import { looksLikeCardNumber } from "../lib/group-file";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
 // Public, and the guest's private link is the only credential, exactly like the paperwork link: a random 43-character token whose sha256 alone is stored
@@ -27,8 +28,12 @@ import { buildQuote, freeCabinFor, tripOf, quoteOptions, quoteSummary, storedQuo
 //                                              ("Let's begin!" opens the quote step). Nothing is booked or charged.
 //   POST /api/group-details/:token/quote       Road B, { answers } the quote step (Mark 2026-11-01): which cabin, FlexPay yes/no, a drink package when the
 //                                              fare has none, insurance, hotel / air / transfers; answers with the quote computed from the group file
-//   POST /api/group-details/:token/agree       Road B, "I agree": the travelers go on the file (a free cabin of the chosen category), Mark's item becomes
-//                                              "Quote agreed", and the lead traveler's paperwork link goes out. First press wins.
+//                                              (the unqualified price: no extras or upgrades yet)
+//   POST /api/group-details/:token/request     Road B, "Send my choices to Mark" (Mark 2026-11-05: "it should come to me first"): the answers are frozen and
+//                                              Mark's item says "Finalize the quote". He prices the extras and upgrades in the group manager and sends the
+//                                              final quote (GET/PUT /api/groups/:id/interests/:iid/quote, POST …/quote/send); the guest gets ONE email.
+//   POST /api/group-details/:token/agree       Road B, "I agree", open only on Mark's final quote: the travelers go on the file (a free cabin of the chosen
+//                                              category) and Mark's item becomes "Book it". First press wins.
 // Every POST carries the bot trap `website` (a person never fills it) and is limited per address. NO email goes out when a reply is saved: the one email
 // is sent when the guest has chosen a road (routes/group-marketing.ts saves the reply and hands back the link).
 //
@@ -77,7 +82,10 @@ interface Loaded { reply: Row; group: Row; cabins: Row[]; travel: Row[]; lang: L
 /** The reply a link opens, with its group and cabins: null for every kind of failure (malformed, unknown, older than 90 days, a group that is no longer taking replies, a reply Mark marked as spam). */
 async function load(token: unknown): Promise<Loaded | null> {
   if (!looksLikeLinkToken(token)) return null;
-  const { data: reply, error } = await db().from("group_interests").select("*").eq("details_token_hash", hashLinkToken(token)).maybeSingle();
+  // The link in the first email, or the one in the "your quote is ready" email (issued when Mark sends the final quote: only hashes are kept, so the
+  // first link cannot be written into a later email; both open the same page). The hash is 64 hex characters, so it is safe inside the filter.
+  const hash = hashLinkToken(token);
+  const { data: reply, error } = await db().from("group_interests").select("*").or(`details_token_hash.eq.${hash},quote_token_hash.eq.${hash}`).limit(1).maybeSingle();
   if (error) throw new Error(error.message);
   if (!reply || reply.status === "spam" || !detailsTokenFresh(reply.details_token_issued_at, new Date())) return null;
   const { data: group, error: ge } = await db().from("groups").select("*").eq("id", reply.group_id).maybeSingle();
@@ -109,7 +117,7 @@ function whenSaved(iso: unknown, now = new Date()): string {
  * The ONE email of a road, after the answer has gone: what happened to it is written on the reply (ack_email_status) and in the email log (group_messages,
  * never the link). Only with an email address on the reply and an address this box may email (the dev box emails only its test addresses).
  */
-async function deliver(o: { group: Row; reply: Row; template: "call-confirmation" | "hold-confirmation"; make: () => { subject: string; html: string; text: string } }): Promise<void> {
+async function deliver(o: { group: Row; reply: Row; template: "call-confirmation" | "hold-confirmation" | "quote-final"; make: () => { subject: string; html: string; text: string } }): Promise<void> {
   const { group, reply } = o;
   const set = (patch: Row) => db().from("group_interests").update(patch).eq("id", reply.id).then((r: { error?: { message: string } }) => {
     if (r.error) logger.warn({ err: r.error.message }, "group details: the email status could not be saved");
@@ -155,7 +163,8 @@ router.get("/group-details/:token", async (req: Request, res: Response) => {
     // opens once the names are in, shows the fares and the figures from the group file).
     const stored = storedQuote(reply.quote);
     // the guest gets their answers and figures back, never the cabin row it was filed on
-    const quote = stored ? (({ cabin_id: _cabin, ...rest }) => rest)(stored) : null;
+    // (nor what Mark has typed so far while he finalizes it)
+    const quote = stored ? (({ cabin_id: _cabin, draft: _draft, ...rest }) => rest)(stored) : null;
     return res.json({
       success: true,
       label: f.label, ship: f.ship, sailDateText: f.sailDateText, returnDateText: f.returnDateText, heroUrl: f.heroUrl, credits,
@@ -165,6 +174,7 @@ router.get("/group-details/:token", async (req: Request, res: Response) => {
       travelers: storedTravelers(reply.travelers) ?? [], address: storedAddress(reply.address), concierge: storedConcierge(reply.concierge), pick: storedPick(reply.pick),
       choice: reply.choice ?? null, callWhen: reply.call_when ?? null, holdRequestedAt: reply.hold_requested_at ?? null,
       quoteOptions: reply.hold_requested_at ? quoteOptions({ group, cabins, travel }, lang) : null, quote, quoteAgreedAt: reply.quote_agreed_at ?? null,
+      quoteRequestedAt: reply.quote_requested_at ?? null, quoteFinalAt: reply.quote_final_at ?? null,
       paperwork: reply.quote_agreed_at ? (stored?.paperwork ?? null) : null,
       depositPerPersonText: f.depositPerPersonText,
       phoneLine: typeof blurb === "string" && blurb.trim() ? blurb.trim() : null, businessPhone: callerPhone(blurb), lang,
@@ -192,6 +202,11 @@ const askedLang = (req: Request, loaded: Loaded): Lang => {
 const alreadyHeld = (lang: Lang) => ({
   success: false,
   error: lang === "es" ? `Sus nombres ya están registrados y su cotización está en marcha. Para cambiar algo, llame o escriba a Mark al ${BUSINESS.phone}.` : `Your names are in and your quote is under way. To change anything, call or text Mark at ${BUSINESS.phone}.`,
+});
+/** Once the choices are with Mark he is pricing them: a change of mind goes through him, so the quote he sends is the one they asked for. */
+const alreadyRequested = (lang: Lang) => ({
+  success: false,
+  error: lang === "es" ? `Sus decisiones ya están con Mark, que prepara su cotización final. Para cambiar algo, llame o escriba a Mark al ${BUSINESS.phone}.` : `Your choices are with Mark, who is putting your final quote together. To change anything, call or text Mark at ${BUSINESS.phone}.`,
 });
 /** Once the quote is agreed, the travelers are on the file and the paperwork is out: nothing on this page changes any more. */
 const alreadyAgreed = (lang: Lang) => ({
@@ -371,15 +386,58 @@ router.post("/group-details/:token/quote", async (req: Request, res: Response) =
       return res.status(400).json({ success: false, error: lang === "es" ? "Primero termine los nombres, la dirección y las preguntas." : "Please finish the names, the address and the four questions first." });
     }
     if (reply.quote_agreed_at) return res.status(409).json(alreadyAgreed(lang));
+    if (reply.quote_requested_at) return res.status(409).json(alreadyRequested(lang));
     const options = quoteOptions({ group, cabins, travel }, lang);
     const v = validateQuoteAnswers(req.body, options, lang);
     if (!v.ok) return res.status(400).json({ success: false, error: v.error, field: v.field });
     const quote = buildQuote({ group, cabins, travel }, travelers, v.answers, lang);
-    const { error } = await db().from("group_interests").update({ quote, updated_at: new Date().toISOString() }).eq("id", reply.id).is("quote_agreed_at", null);
+    const { error } = await db().from("group_interests").update({ quote, updated_at: new Date().toISOString() }).eq("id", reply.id).is("quote_agreed_at", null).is("quote_requested_at", null);
     if (error) throw new Error(error.message);
     return res.json({ success: true, quote });
   } catch (err) {
     return fail(req, res, err, "group details quote failed");
+  }
+});
+
+/** "Send my choices to Mark" (Mark 2026-11-05): the figures the page showed are the unqualified price, with no extras or upgrades, so the guest does not
+ *  agree to them. The answers are frozen, Mark's item says what to price, and the guest agrees only to the quote he sends back. First press wins. */
+router.post("/group-details/:token/request", async (req: Request, res: Response) => {
+  try {
+    if (guardPost(req, res)) return;
+    const loaded = await load(req.params["token"]);
+    if (!loaded) { if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY); return notFound(res); }
+    const { reply, group, cabins, travel } = loaded;
+    const lang = askedLang(req, loaded);
+    const travelers = storedTravelers(reply.travelers);
+    const quote = storedQuote(reply.quote);
+    if (!reply.hold_requested_at || !travelers || !quote) {
+      return res.status(400).json({ success: false, error: lang === "es" ? "Primero responda las preguntas de la cotización." : "Please answer the quote questions first." });
+    }
+    if (reply.quote_agreed_at) return res.status(409).json(alreadyAgreed(lang));
+    const now = new Date().toISOString();
+    const { data: won, error } = await db().from("group_interests")
+      .update({ quote_requested_at: now, updated_at: now }).eq("id", reply.id).is("quote_requested_at", null).select("id");
+    if (error) throw new Error(error.message);
+    res.json({ success: true, requestedAt: reply.quote_requested_at ?? now });
+    if (!((won ?? []) as unknown[]).length) return;
+
+    // Mark's item: one person, one item. "Quote under way" is answered by this one.
+    const f = detailsFacts({ group, cabins }, "en");
+    const title = `Finalize the quote · ${nameOf(reply)} · ${quote.category} · party of ${travelers.length}`;
+    const body = `${f.label} · ${reachOf(reply)} · ${quoteSummary(quote, quoteOptions({ group, cabins, travel }, "en"))}. `
+      + `These are the guest's choices and the unqualified price from the group file. ${quote.toQuote.length ? `Price ${quote.toQuote.join("; ")}, add` : "Add"} any extras or upgrades, and send the final quote: the guest can only agree to that one.`;
+    void createAction({
+      type: "lead", source_ref: `group-finalize-${reply.id}`, title, body, priority: "lead",
+      buttons: [{ label: "Finalize the quote", href: `/groups/${group.id}?quote=${reply.id}#quotes` }],
+    }).then(async (made) => {
+      if (!made.created) return;
+      await resolveActionsForSource("lead", `group-hold-${reply.id}`, "done");
+      await resolveActionsForSource("lead", `group-interest-${reply.id}`, "done");
+      await resolveActionsForSource("lead", `group-call-${reply.id}`, "done");
+    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the quote request could not be put on the list"));
+    return;
+  } catch (err) {
+    return fail(req, res, err, "group details quote request failed");
   }
 });
 
@@ -417,6 +475,10 @@ router.post("/group-details/:token/agree", async (req: Request, res: Response) =
     const address = storedAddress(reply.address);
     if (!reply.hold_requested_at || !travelers || !quote || !address) {
       return res.status(400).json({ success: false, error: lang === "es" ? "Primero responda las preguntas de la cotización." : "Please answer the quote questions first." });
+    }
+    // Mark 2026-11-05: the guest commits to the quote Mark finalized (extras and upgrades priced), never to the first figure the page showed.
+    if (!reply.quote_final_at && !reply.quote_agreed_at) {
+      return res.status(409).json({ success: false, error: lang === "es" ? "Mark aún prepara su cotización final. Le escribimos en cuanto esté lista." : "Mark is still putting your final quote together. We email you the moment it is ready." });
     }
     // The first press wins: a double tap or a reload files nobody twice, makes no second item and sends no second paperwork link.
     const now = new Date().toISOString();
@@ -484,6 +546,7 @@ router.post("/group-details/:token/agree", async (req: Request, res: Response) =
       ],
     }).then(async (made) => {
       if (!made.created) return;
+      await resolveActionsForSource("lead", `group-finalize-${reply.id}`, "done");
       await resolveActionsForSource("lead", `group-hold-${reply.id}`, "done");
       await resolveActionsForSource("lead", `group-interest-${reply.id}`, "done");
       await resolveActionsForSource("lead", `group-call-${reply.id}`, "done");
@@ -662,6 +725,136 @@ router.post("/groups/:id/interests/:iid/booked", requireToken, async (req: Reque
     return res.json({ success: true, paperwork });
   } catch (err) {
     return fail(req, res, err, "group booked failed");
+  }
+});
+
+// ── Mark finalizes the quote (Mark 2026-11-05) ─────────────────────────────────────────────────────────────────────────────────────────────
+// The guest sent their choices; the figure they saw is the unqualified price. In the group manager Mark prices what the file could not, adds the
+// extras and upgrades, and sends the final quote. Only that one can be agreed. He can send a corrected one until the guest agrees.
+const UUID_Q = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function loadQuoteFile(groupId: string, iid: string) {
+  if (!UUID_Q.test(groupId) || !UUID_Q.test(iid)) return null;
+  const { data: reply, error } = await db().from("group_interests").select("*").eq("id", iid).eq("group_id", groupId).maybeSingle();
+  if (error) throw new Error(error.message);
+  const quote = reply ? storedQuote(reply.quote) : null;
+  if (!reply || !quote || !reply.quote_requested_at) return null;
+  const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
+  if (ge) throw new Error(ge.message);
+  if (!group) return null;
+  const { data: cabins, error: ce } = await db().from("group_cabins").select("*").eq("group_id", groupId).order("id", { ascending: true });
+  if (ce) throw new Error(ce.message);
+  const { data: travel, error: te } = await db().from("group_travel").select("*").eq("group_id", groupId).is("traveler_id", null).is("cabin_id", null).order("created_at", { ascending: true });
+  if (te) throw new Error(te.message);
+  return { reply: reply as Row, quote, group: group as Row, cabins: (cabins ?? []) as Row[], travel: (travel ?? []) as Row[] };
+}
+type QuoteFileLoaded = NonNullable<Awaited<ReturnType<typeof loadQuoteFile>>>;
+
+function quoteView(f: QuoteFileLoaded) {
+  const options = quoteOptions({ group: f.group, cabins: f.cabins, travel: f.travel }, "en");
+  const draft = draftFrom(f.quote);
+  const est = f.quote.estimate ?? { lines: f.quote.lines, total: f.quote.total, totalText: f.quote.totalText, category: f.quote.category };
+  const travelers = storedTravelers(f.reply.travelers) ?? [];
+  return {
+    success: true,
+    guest: { name: nameOf(f.reply) || "Guest", email: f.reply.email ?? null, phone: f.reply.phone ?? null, party: travelers.length || f.quote.party, travelers: travelers.map((t) => t.legal_name) },
+    choices: quoteSummary({ ...f.quote, category: est.category, totalText: est.totalText, toQuote: est.lines.filter((l) => l.toQuote).map((l) => l.label) }, options),
+    estimate: est, draft, toPrice: unpriced(f.quote, draft),
+    cabins: options.cabins.map((c) => ({ key: c.key, label: c.label })),
+    finalPaymentText: f.quote.finalPaymentText,
+    requestedAt: f.reply.quote_requested_at, finalAt: f.reply.quote_final_at ?? null, agreedAt: f.reply.quote_agreed_at ?? null,
+    sent: f.reply.quote_final_at ? { total: f.quote.totalText, email: f.reply.ack_email_status ?? null } : null,
+  };
+}
+
+/** The guests whose choices are in, for the group manager's "Quotes to finalize" card: the ones still waiting on Mark first. */
+router.get("/groups/:id/quotes", requireToken, async (req: Request, res: Response) => {
+  try {
+    const groupId = String(req.params["id"]);
+    if (!UUID_Q.test(groupId)) return res.status(404).json({ success: false, error: "Group not found" });
+    const { data, error } = await db().from("group_interests").select("id, first_name, last_name, quote, quote_requested_at, quote_final_at, quote_agreed_at")
+      .eq("group_id", groupId).not("quote_requested_at", "is", null).order("quote_requested_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []).map((r: Row) => {
+      const q = storedQuote(r["quote"]);
+      const state = r["quote_agreed_at"] ? "agreed" : r["quote_final_at"] ? "sent" : "finalize";
+      return { id: String(r["id"]), name: nameOf(r) || "Guest", category: q?.category ?? null, party: q?.party ?? null, state, requested_at: r["quote_requested_at"] };
+    });
+    const rank: Record<string, number> = { finalize: 0, sent: 1, agreed: 2 };
+    rows.sort((a: { state: string }, b: { state: string }) => (rank[a.state] ?? 9) - (rank[b.state] ?? 9));
+    return res.json({ success: true, quotes: rows });
+  } catch (err) {
+    return fail(req, res, err, "group quotes list failed");
+  }
+});
+
+router.get("/groups/:id/interests/:iid/quote", requireToken, async (req: Request, res: Response) => {
+  try {
+    const f = await loadQuoteFile(String(req.params["id"]), String(req.params["iid"]));
+    if (!f) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    return res.json(quoteView(f));
+  } catch (err) {
+    return fail(req, res, err, "group quote read failed");
+  }
+});
+
+/** Mark's work in progress on the final quote: kept on the reply, never shown to the guest until he sends it. */
+router.put("/groups/:id/interests/:iid/quote", requireToken, async (req: Request, res: Response) => {
+  try {
+    const f = await loadQuoteFile(String(req.params["id"]), String(req.params["iid"]));
+    if (!f) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    if (f.reply.quote_agreed_at) return res.status(409).json({ success: false, error: "The guest has agreed this quote: it no longer changes here." });
+    const v = validateFinal(req.body, quoteOptions({ group: f.group, cabins: f.cabins, travel: f.travel }, "en"), looksLikeCardNumber);
+    if (!v.ok) return res.status(400).json({ success: false, error: v.error });
+    const quote: Quote = { ...f.quote, draft: v.draft };
+    const { error } = await db().from("group_interests").update({ quote, updated_at: new Date().toISOString() }).eq("id", f.reply.id).is("quote_agreed_at", null);
+    if (error) throw new Error(error.message);
+    return res.json(quoteView({ ...f, quote }));
+  } catch (err) {
+    return fail(req, res, err, "group quote save failed");
+  }
+});
+
+/** "Send the final quote": the saved lines become the quote the guest sees and can agree to, and the guest gets the ONE email that says so.
+ *  Refused while a line the guest asked Mark to price has no amount. Sent again after a correction, it emails again. */
+router.post("/groups/:id/interests/:iid/quote/send", requireToken, async (req: Request, res: Response) => {
+  try {
+    const f = await loadQuoteFile(String(req.params["id"]), String(req.params["iid"]));
+    if (!f) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    if (f.reply.quote_agreed_at) return res.status(409).json({ success: false, error: "The guest has agreed this quote: it no longer changes here." });
+    const lang: Lang = f.reply.lang === "es" ? "es" : "en";
+    const options = quoteOptions({ group: f.group, cabins: f.cabins, travel: f.travel }, lang);
+    const draft = draftFrom(f.quote);
+    const open = unpriced(f.quote, draft);
+    if (open.length) return res.status(409).json({ success: false, error: `Price these first, or take them off the quote: ${open.join("; ")}.`, toPrice: open });
+    if (!options.cabins.some((c) => c.key === draft.cabin)) return res.status(409).json({ success: false, error: "The cabin type on this quote is no longer one the group holds: pick another." });
+    const now = new Date();
+    const quote = finalQuote(f.quote, draft, options, now);
+    const { data: won, error } = await db().from("group_interests")
+      .update({ quote, quote_final_at: now.toISOString(), updated_at: now.toISOString() }).eq("id", f.reply.id).is("quote_agreed_at", null).select("id");
+    if (error) throw new Error(error.message);
+    if (!((won ?? []) as unknown[]).length) return res.status(409).json({ success: false, error: "The guest has agreed this quote: it no longer changes here." });
+    await resolveActionsForSource("lead", `group-finalize-${f.reply.id}`, "done");
+    res.json(quoteView({ ...f, quote, reply: { ...f.reply, quote_final_at: now.toISOString() } }));
+
+    // The ONE email, after the answer has gone: the guest's own link is stored only as a hash, so a second one is made for the button (the first keeps
+    // working). It is derived from the reply, so a corrected quote carries the same link; without the link key it is a fresh one each time.
+    const facts = detailsFacts({ group: f.group, cabins: f.cabins }, lang);
+    const key = hubKey();
+    const token = key ? deriveQuoteToken(String(f.reply.id), key) : issueToken().token;
+    const hash = hashLinkToken(token);
+    const { error: te } = await db().from("group_interests").update({ quote_token_hash: hash }).eq("id", f.reply.id);
+    if (te) { logger.warn({ err: te.message }, "group details: the final quote's link could not be issued (no email sent)"); return; }
+    void deliver({
+      group: f.group, reply: f.reply, template: "quote-final",
+      make: () => finalQuoteEmail({
+        firstName: firstWord(f.reply.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(),
+        category: quote.category, totalText: quote.totalText, note: quote.markNote ?? null, detailsUrl: makeDetailsUrl(publicSite(), token, lang),
+      }),
+    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the final quote email step failed"));
+    return;
+  } catch (err) {
+    return fail(req, res, err, "group quote send failed");
   }
 });
 

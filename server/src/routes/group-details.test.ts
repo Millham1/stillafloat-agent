@@ -71,7 +71,12 @@ function reply(over: Row = {}): Row {
 function matches(row: Row, params: URLSearchParams): boolean {
   for (const [k, v] of params) {
     if (["select", "order", "limit", "offset", "on_conflict", "columns"].includes(k)) continue;
+    if (k === "or") { // or=(a.eq.x,b.eq.x): the two links that open one reply
+      if (!v.slice(1, -1).split(",").some((part) => { const [col, op, ...rest] = part.split("."); return op === "eq" && String(row[col!] ?? "") === rest.join("."); })) return false;
+      continue;
+    }
     const cell = row[k];
+    if (v === "not.is.null") { if (cell === null || cell === undefined) return false; continue; }
     if (v === "is.null") { if (cell !== null && cell !== undefined) return false; continue; }
     if (v.startsWith("eq.")) { if (String(cell ?? "") !== v.slice(3)) return false; continue; }
     if (v.startsWith("neq.")) { if (String(cell ?? "") === v.slice(4)) return false; continue; }
@@ -843,6 +848,22 @@ test("'We talked' and 'Confirmed with MSC' (the buttons on Mark's list) move the
 const quoteStep = (answers: Row, token = LINK, body: Row = {}) => call("POST", `/group-details/${token}/quote`, { body: { answers, ...body } });
 const agree = (token = LINK, body: Row = {}) => call("POST", `/group-details/${token}/agree`, { body });
 const ANSWERS = { cabin: "BEL", flexpay: true, drinks: true, insurance: "decline", travel: [], needs: { flight: true, hotel: false, transfer: false } };
+const QUOTE_PATH = `/groups/${GROUP_ID}/interests/${REPLY_ID}/quote`;
+const sendChoices = (token = LINK, body: Row = {}) => call("POST", `/group-details/${token}/request`, { body });
+/** The road to "I agree" (Mark 2026-11-05): the guest sends their choices, Mark prices what was asked of him (at nothing here, so the older tests keep
+ *  their totals) and sends the final quote. The item and the email of those two steps are cleared, so a test reads only what "I agree" does. */
+async function finalized(): Promise<void> {
+  const accept = actionsAccept;
+  actionsAccept = false;
+  assert.equal((await sendChoices()).status, 200);
+  const view = await call("GET", QUOTE_PATH, { token: true });
+  const lines = view.json["draft"].lines.map((l: Row) => ({ ...l, amount: view.json["toPrice"].includes(l.label) ? 0 : l.amount }));
+  assert.equal((await call("PUT", QUOTE_PATH, { token: true, body: { ...view.json["draft"], lines } })).status, 200);
+  assert.equal((await call("POST", `${QUOTE_PATH}/send`, { token: true })).status, 200);
+  await wait(() => writes("group_messages").some((w) => w.body?.template === "quote-final"));   // sent, or held on a box that may not email the address
+  await new Promise((r) => setTimeout(r, 30));
+  log = []; mails = []; actionsAccept = accept;
+}
 /** The names are in: Part 4 is open. */
 const namesIn = () => Object.assign(replyRow(), { ...GOOD, pick: PICK, choice: "finish", hold_requested_at: new Date().toISOString() });
 
@@ -919,6 +940,7 @@ test("'I agree': the first press wins; the travelers go on a free cabin of the c
   pendingItem();
   assert.equal((await agree()).status, 400, "no answers yet: nothing to agree to");
   await quoteStep(ANSWERS);
+  await finalized();
   const [a, b] = await Promise.all([agree(), agree()]);
   const first = [a, b].find((x) => !x.json["already"])!, second = [a, b].find((x) => x.json["already"])!;
   assert.deepEqual([first.status, first.json["success"], first.json["paperwork"]], [200, true, "booking"]);
@@ -941,7 +963,7 @@ test("'I agree': the first press wins; the travelers go on a free cabin of the c
   const item = writes("actions").find((w) => w.method === "POST")!.body;
   assert.equal(item.source_ref, `group-quote-${REPLY_ID}`);
   assert.equal(item.title, "Book it · Mark Millham · Balcony Bella · party of 2");
-  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58 + 2 to price. Travelers are on the file (a Balcony Bella cabin on the file). The paperwork link is NOT sent yet. Do this first: (1) book the cabin with the cruise line; (2) validate Flights; (3) enter the suppliers' confirmations and any change to the booking in the group file: the paperwork fills from them; (4) review it and send it to the guest.");
+  assert.equal(item.body, "Friends and Family 2027 · mmillham1@gmail.com · Balcony Bella · FlexPay yes · drinks yes · insurance: none · flight (quote) · total $1,073.58. Travelers are on the file (a Balcony Bella cabin on the file). The paperwork link is NOT sent yet. Do this first: (1) book the cabin with the cruise line; (2) validate Flights; (3) enter the suppliers' confirmations and any change to the booking in the group file: the paperwork fills from them; (4) review it and send it to the guest.");
   assert.deepEqual(item.buttons, [
     { label: "Enter the booking confirmation", href: `/groups/${GROUP_ID}?book=${REPLY_ID}#booking` },
     { label: "Send the paperwork (needs the confirmation)", method: "POST", path: `/api/groups/${GROUP_ID}/interests/${REPLY_ID}/booked` },
@@ -961,6 +983,7 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   actionsAccept = true;
   pendingItem();
   await quoteStep(ANSWERS);
+  await finalized();
   assert.equal((await agree()).json["paperwork"], "booking");
   const path = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booked`, booking = `/groups/${GROUP_ID}/interests/${REPLY_ID}/booking`;
   assert.equal((await call("POST", path)).status, 401, "Mark's token only");
@@ -1001,6 +1024,7 @@ test("'I agree' when every cabin of the category is taken files the travelers wi
   process.env["GROUP_FORMS_MAIL_ALLOW"] = "qa@example.test";
   tables["group_travelers"]!.push({ id: "t-0", group_id: GROUP_ID, cabin_id: CABIN_ID, is_lead: true, first_name: "Existing" });
   await quoteStep(ANSWERS);
+  await finalized();
   const r = await agree();
   assert.deepEqual([r.status, r.json["paperwork"]], [200, "booking"]);
   const mine = tables["group_travelers"]!.filter((t) => t["first_name"] !== "Existing");
@@ -1024,4 +1048,116 @@ test("the quote step and the agreement refuse a wrong link and the bot trap like
   assert.equal(replyRow()["quote"], undefined);
   assert.equal(replyRow()["quote_agreed_at"], undefined);
   assert.equal(tables["group_travelers"]!.length, 0);
+});
+
+// ── Mark finalizes the quote (Mark 2026-11-05: "the price they see is the unqualified price and doesnt account for extras or upgrades, so they need to
+//    commit to the updated quote. that means it should come to me first") ──
+
+test("'Send my choices to Mark': the first figure cannot be agreed; the choices freeze, Mark gets ONE item to finalize, and the guest gets no email yet", async () => {
+  namesIn();
+  actionsAccept = true;
+  pendingItem();
+  assert.equal((await sendChoices()).status, 400, "no answers yet: nothing to send");
+  await quoteStep(ANSWERS);
+  const early = await agree();
+  assert.deepEqual([early.status, early.json["error"]], [409, "Mark is still putting your final quote together. We email you the moment it is ready."], "the starting price is not a quote to agree to");
+  assert.equal(tables["group_travelers"]!.length, 0);
+  const [a, b] = await Promise.all([sendChoices(), sendChoices()]);
+  assert.deepEqual([a.status, b.status, a.json["success"], b.json["success"]], [200, 200, true, true]);
+  assert.ok(replyRow()["quote_requested_at"]);
+  await wait(() => writes("actions").some((w) => w.method === "POST"));
+  await wait(() => tables["actions"]![0]!["status"] === "done");
+  const items = writes("actions").filter((w) => w.method === "POST");
+  assert.equal(items.length, 1, "a double tap makes one item");
+  assert.equal(items[0]!.body.source_ref, `group-finalize-${REPLY_ID}`);
+  assert.equal(items[0]!.body.title, "Finalize the quote · Mark Millham · Balcony Bella · party of 2");
+  assert.match(items[0]!.body.body, /unqualified price from the group file\. Price Drink package; Flights, add any extras or upgrades, and send the final quote: the guest can only agree to that one\./);
+  assert.deepEqual(items[0]!.body.buttons, [{ label: "Finalize the quote", href: `/groups/${GROUP_ID}?quote=${REPLY_ID}#quotes` }]);
+  assert.equal(mails.length, 0, "nothing is emailed until Mark sends the final quote");
+  const changed = await quoteStep({ ...ANSWERS, flexpay: false });
+  assert.deepEqual([changed.status, changed.json["error"]], [409, "Your choices are with Mark, who is putting your final quote together. To change anything, call or text Mark at 919-346-6127."]);
+  const g = await call("GET", `/group-details/${LINK}`);
+  assert.deepEqual([!!g.json["quoteRequestedAt"], g.json["quoteFinalAt"], g.json["quoteAgreedAt"]], [true, null, null]);
+  assert.equal((await agree()).status, 409, "still nothing to agree to");
+});
+
+test("Mark finalizes: his token only; unpriced lines hold the send; his draft never reaches the guest; the sent quote carries his prices, extras and note, keeps the first estimate, emails the guest ONE link that opens the same page, and only then can the guest agree", async () => {
+  namesIn();
+  process.env["GROUP_LINK_KEY"] = "ab".repeat(32);
+  await quoteStep(ANSWERS);
+  assert.equal((await call("GET", QUOTE_PATH, { token: true })).status, 404, "the guest has not sent their choices yet");
+  await sendChoices();
+  for (const [m, path] of [["GET", `/groups/${GROUP_ID}/quotes`], ["GET", QUOTE_PATH], ["PUT", QUOTE_PATH], ["POST", `${QUOTE_PATH}/send`]] as const) assert.equal((await call(m, path)).status, 401, `${m} ${path}: Mark's token only`);
+  const list = await call("GET", `/groups/${GROUP_ID}/quotes`, { token: true });
+  assert.deepEqual(list.json["quotes"].map((q: Row) => [q.id, q.name, q.category, q.party, q.state]), [[REPLY_ID, "Mark Millham", "Balcony Bella", 2, "finalize"]]);
+  const view = await call("GET", QUOTE_PATH, { token: true });
+  assert.deepEqual([view.json["guest"]["name"], view.json["guest"]["party"], view.json["estimate"]["totalText"], view.json["toPrice"]], ["Mark Millham", 2, "$1,073.58", ["Drink package", "Flights"]]);
+  assert.deepEqual(view.json["draft"].lines.map((l: Row) => [l.key, l.detail, l.amount]), [
+    ["cabin", "Mark $536.79 · Ceci $536.79 · taxes and port fees included", 1073.58], ["drinks", null, null], ["insurance", null, null], ["need-flight", null, null],
+    ["flexpay", "Mark sends you the application next; it sets its own payment schedule and changes nothing on this quote", null],
+  ], "Mark starts from the estimate; the lines he is to price lose their 'Mark prices it' wording");
+  const held = await call("POST", `${QUOTE_PATH}/send`, { token: true });
+  assert.deepEqual([held.status, held.json["error"]], [409, "Price these first, or take them off the quote: Drink package; Flights."]);
+  // what he types is checked
+  const d = view.json["draft"];
+  for (const [body, error] of [
+    [{ ...d, cabin: "YC1" }, "Pick one of the group's cabin types."],
+    [{ ...d, lines: [] }, "The quote needs at least one line (and no more than 40)."],
+    [{ ...d, lines: [{ label: "", amount: 5 }] }, "Line 1 needs a name."],
+    [{ ...d, lines: [{ label: "Drinks", amount: "lots" }] }, '"Drinks": the amount is not a sum of money.'],
+    [{ ...d, deposit: -5 }, "The deposit is not a sum of money."],
+    [{ ...d, note: "card 4111 1111 1111 1111" }, "That looks like a card number. Card numbers are never stored: take it out."],
+  ] as Array<[Row, string]>) {
+    const r = await call("PUT", QUOTE_PATH, { token: true, body });
+    assert.deepEqual([r.status, r.json["error"]], [400, error]);
+  }
+  // his prices, an upgrade and an extra; the flights taken off
+  const lines = [
+    { key: "cabin", label: "Balcony Aurea · 2 travelers", detail: "Upgraded from Balcony Bella", amount: 1373.58 },
+    { key: "drinks", label: "Drink package", detail: "Premium Extra, both travelers", amount: 320 },
+    { key: "insurance", label: "Travel insurance: none", detail: null, amount: null },
+    { label: "Specialty dinner for two", amount: "90.00" },
+    { key: "flexpay", label: "FlexPay", detail: null, amount: null },
+  ];
+  const saved = await call("PUT", QUOTE_PATH, { token: true, body: { cabin: "AUR", lines, deposit: 100, note: "I moved you up to Aurea for the quiet deck." } });
+  assert.deepEqual([saved.status, saved.json["toPrice"], saved.json["finalAt"]], [200, [], null]);
+  let g = await call("GET", `/group-details/${LINK}`);
+  assert.ok(!g.text.includes("Aurea for the quiet deck") && !g.text.includes("Specialty dinner") && !("draft" in g.json["quote"]), "a saved draft is Mark's alone");
+  assert.deepEqual([g.json["quote"]["totalText"], g.json["quoteFinalAt"]], ["$1,073.58", null]);
+  assert.equal(mails.length, 0);
+
+  const sent = await call("POST", `${QUOTE_PATH}/send`, { token: true });
+  assert.deepEqual([sent.status, !!sent.json["finalAt"], sent.json["sent"]["total"]], [200, true, "$1,783.58"]);
+  const q = replyRow()["quote"];
+  assert.deepEqual(q.lines.map((l: Row) => [l.key, l.label, l.amountText, l.toQuote]), [
+    ["cabin", "Balcony Aurea · 2 travelers", "$1,373.58", false], ["drinks", "Drink package", "$320", false], ["insurance", "Travel insurance: none", null, false],
+    ["extra-4", "Specialty dinner for two", "$90", false], ["flexpay", "FlexPay", null, false],
+  ]);
+  assert.deepEqual([q.total, q.totalText, q.toQuote, q.category, q.cabinKey, q.answers.cabin, q.depositText, q.balanceText, q.markNote], [1783.58, "$1,783.58", [], "Balcony Aurea", "AUR", "AUR", "$100", "$1,683.58", "I moved you up to Aurea for the quiet deck."]);
+  assert.deepEqual([q.estimate.totalText, q.estimate.category, "draft" in q], ["$1,073.58", "Balcony Bella", false], "the first figure is kept beside the final one");
+  assert.ok(replyRow()["quote_final_at"]);
+  // the ONE email, with a second link that opens the same page; the first link keeps working
+  await wait(() => mails.length === 1);
+  assert.deepEqual([mails[0]!["to"], mails[0]!["subject"]], ["mmillham1@gmail.com", "Your quote is ready… Friends and Family 2027"]);
+  assert.match(String(mails[0]!["text"]), /Your quote for Balcony Aurea comes to \$1,783\.58\.[\s\S]*I moved you up to Aurea for the quiet deck\.[\s\S]*See my quote: https?:\/\/\S+/);
+  const link = /details\S*[?#&]t=([A-Za-z0-9_-]{43})/.exec(String(mails[0]!["text"]))?.[1] ?? "";
+  assert.equal(replyRow()["quote_token_hash"], hashLinkToken(link), "only the new link's hash is stored");
+  assert.notEqual(link, LINK);
+  for (const t of [link, LINK]) {
+    g = await call("GET", `/group-details/${t}`);
+    assert.deepEqual([g.status, g.json["quote"]["totalText"], !!g.json["quoteFinalAt"], g.json["quote"]["markNote"]], [200, "$1,783.58", true, "I moved you up to Aurea for the quiet deck."]);
+  }
+  // a correction before the guest agrees goes out again; after "I agree" the quote is closed
+  const again = await call("PUT", QUOTE_PATH, { token: true, body: { cabin: "AUR", lines: lines.slice(0, 3), deposit: 100, note: null } });
+  assert.equal(again.status, 200);
+  assert.equal((await call("POST", `${QUOTE_PATH}/send`, { token: true })).json["sent"]["total"], "$1,693.58");
+  await wait(() => mails.length === 2);
+  assert.ok(String(mails[1]!["text"]).includes(link), "a corrected quote carries the SAME link: the first 'quote ready' email still opens the page");
+  delete process.env["GROUP_LINK_KEY"];
+  const yes = await agree(link);
+  assert.deepEqual([yes.status, yes.json["paperwork"]], [200, "booking"]);
+  assert.deepEqual(tables["group_travelers"]!.map((t) => t["cabin_id"]), ["c-2", "c-2"], "the travelers go on a cabin of the type Mark quoted");
+  assert.equal((await call("PUT", QUOTE_PATH, { token: true, body: { cabin: "AUR", lines, deposit: 100 } })).status, 409);
+  assert.equal((await call("POST", `${QUOTE_PATH}/send`, { token: true })).status, 409);
+  assert.equal((await call("GET", `/groups/${GROUP_ID}/quotes`, { token: true })).json["quotes"][0]["state"], "agreed");
 });

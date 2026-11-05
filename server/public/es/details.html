@@ -112,7 +112,8 @@
 
     <!-- Part 4: the quote step (Mark 2026-11-01), open once the names are in: which cabin, FlexPay (Mark's own installment plan, offered apart from the
          cruise line: a yes asks for the application, no terms are promised), a drink package when the fare has none, insurance, getting there and back;
-         then the quote from the group file, and "I agree", which puts the travelers on the file and sends the paperwork. -->
+         then the starting price from the group file and "Send my choices to Mark" (Mark 2026-11-05: that figure has no extras or upgrades, so it goes to
+         him first); he sends the final quote, and "I agree" on that one puts the travelers on the file. -->
     <section class="panel" id="d-part4" hidden>
       <p class="label" id="d-p4"></p>
       <p class="small" id="d-p4intro"></p>
@@ -120,6 +121,7 @@
       <div id="d-qq"></div>
       <div class="quote" id="d-quote" hidden>
         <p class="label" id="d-quote-h" style="margin-top:18px"></p>
+        <p id="d-quote-mark" hidden></p>
         <div id="d-quote-lines"></div>
         <p class="small" id="d-quote-plus" hidden></p>
         <p id="d-quote-dep" style="margin-top:10px"></p>
@@ -183,6 +185,10 @@
     quote_h:'Su cotización', quote_total:'Total', quote_plus:'Más {list}, que Mark cotiza para usted.', to_come:'por cotizar',
     quote_dep:'Depósito para apartar la cabina: {deposit} ({per} por persona). No se cobra nada hasta que Mark lo confirme con usted.', quote_dep_na:'Mark confirma el depósito con usted; no se cobra nada esta noche.',
     quote_bal:'Saldo {balance}, a pagar antes del {date}.', quote_bal_nodate:'El saldo es {balance}; Mark confirma la fecha con usted.',
+    quote_h_est:'Su precio inicial', est_note:'Este es el precio del grupo antes de extras y mejoras. Envíe sus decisiones a Mark; él cotiza lo demás y le manda por correo la cotización final para que la acepte.',
+    send_choices:'¡Enviar mis decisiones a Mark!', send_note:'No se reserva ni se cobra nada. Mark finaliza su cotización y se la envía por correo.',
+    wait_h:'¡Sus decisiones ya están con Mark!', wait_p:'Él está cotizando sus extras y mejoras. Su cotización final le llega por correo, y ahí la acepta. Todavía no se reserva ni se cobra nada.',
+    quote_h_final:'Su cotización final, de Mark', final_intro:'Cada línea tiene su precio. Léala completa; si está bien, acéptela y Mark reserva su cabina.',
     agree:'Acepto… ¡hagámoslo!', agreeing:'Enviando…', agree_note:'Al aceptar, Mark reserva su cabina y confirma sus vuelos, hotel y traslados; luego le envía su página de documentos por correo. Sigue sin cobrarse nada.', agree_wait:'Responda todas las preguntas de arriba y el botón se activa.',
     agreed_h:'¡Aceptada!… {category}, {party}. Sus documentos van en camino a {email}.', agreed_h_mark:'¡Aceptada!… {category}, {party}. Mark le envía sus documentos después.', agreed_h_booking:'¡Aceptada!… {category}, {party}. Mark está reservando su cabina y confirmando su viaje; sus documentos le llegan por correo en cuanto termine.',
     bad_name:'Nombre Y apellido, por favor… tal como aparecen en el pasaporte.', bad_dob:'Mes, día y año de cuatro dígitos (el mes primero): 03 / 04 / 1965.',
@@ -228,6 +234,10 @@
     quote_h:'Your quote', quote_total:'Total', quote_plus:'Plus {list}, which Mark prices for you.', to_come:'to come',
     quote_dep:'Deposit to hold the cabin: {deposit} ({per} per person). Nothing is charged until Mark confirms it with you.', quote_dep_na:'Mark confirms the deposit with you; nothing is charged tonight.',
     quote_bal:'Balance {balance}, due by {date}.', quote_bal_nodate:'The balance is {balance}; Mark confirms the due date with you.',
+    quote_h_est:'Your starting price', est_note:'This is the group price before extras and upgrades. Send your choices to Mark; he prices the rest and emails you the final quote to agree to.',
+    send_choices:'Send my choices to Mark!', send_note:'Nothing is booked or charged. Mark finalizes your quote and emails it to you.',
+    wait_h:'Your choices are with Mark!', wait_p:'He is pricing your extras and upgrades now. Your final quote lands in your email, and you agree to it there. Nothing is booked or charged yet.',
+    quote_h_final:'Your final quote from Mark', final_intro:'Every line is priced. Read it through; if it is right, agree and Mark books your cabin.',
     agree:"I agree… let's do this!", agreeing:'Sending…', agree_note:'Agreeing tells Mark to book your cabin and confirm your flights, hotel and transfers; then he emails your paperwork page. Still nothing charged.', agree_wait:'Answer every question above and the button lights up.',
     agreed_h:'Agreed!… {category}, {party}. Your paperwork is on its way to {email}.', agreed_h_mark:'Agreed!… {category}, {party}. Mark sends your paperwork next.', agreed_h_booking:'Agreed!… {category}, {party}. Mark is booking your cabin and confirming your travel; your paperwork page follows by email as soon as he is done.',
     bad_name:'First AND last name, please… the way the passport has it.', bad_dob:'Month, day and a four-digit year: 03 / 04 / 1965.',
@@ -638,8 +648,18 @@
     qo.needs.forEach(function(k){ h += '<p class="q">' + esc(T['q_need_' + k]) + '</p>' + yesNo('need-' + k, typeof qa.needs[k] === 'boolean' ? qa.needs[k] : null, T.need_yes, T.need_no); });
     $('d-qq').innerHTML = h;
   }
+  /** Where the quote stands (Mark 2026-11-05): 'choose' the guest answers and sees the starting price; 'waiting' the choices are with Mark;
+      'final' Mark sent the final quote, the only one that can be agreed. */
+  function stage(){ return data && data.quoteFinalAt ? 'final' : data && data.quoteRequestedAt ? 'waiting' : 'choose'; }
   function renderQuote(){
-    var q = quote && quoteFor === JSON.stringify(qa) ? quote : null;
+    var st = stage();
+    var q = st !== 'choose' ? quote : (quote && quoteFor === JSON.stringify(qa) ? quote : null);
+    show('d-qq', st === 'choose'); show('d-locked', st === 'choose');
+    $('d-p4').textContent = st === 'final' ? T.quote_h_final : st === 'waiting' ? T.wait_h : T.p4;
+    $('d-p4intro').textContent = st === 'final' ? T.final_intro : st === 'waiting' ? T.wait_p : T.p4intro;
+    $('d-quote-h').textContent = st === 'final' ? T.quote_h : T.quote_h_est;
+    var note = st === 'final' && q && q.markNote ? q.markNote : '';
+    $('d-quote-mark').textContent = note; show('d-quote-mark', !!note);
     if(!q){ show('d-quote', false); syncAgree(); return; }
     var h = '';
     q.lines.forEach(function(l){
@@ -650,14 +670,16 @@
     $('d-quote-plus').textContent = q.toQuote.length ? fill(T.quote_plus, { list: andWords(q.toQuote) }) : ''; show('d-quote-plus', q.toQuote.length > 0);
     $('d-quote-dep').textContent = q.depositText ? fill(T.quote_dep, { deposit: q.depositText, per: q.depositPerPersonText || '' }) : T.quote_dep_na;
     $('d-quote-bal').textContent = q.balanceText ? (q.finalPaymentText ? fill(T.quote_bal, { balance: q.balanceText, date: q.finalPaymentText }) : fill(T.quote_bal_nodate, { balance: q.balanceText })) : '';
-    $('d-quote-note').textContent = q.note || '';
+    $('d-quote-note').textContent = st === 'final' ? (q.note || '') : T.est_note;
     show('d-quote', true); syncAgree();
   }
   function syncAgree(){
-    var ready = qaComplete() && quote && quoteFor === JSON.stringify(qa) && !agreeing;
+    var st = stage();
+    var ready = st === 'final' ? (!!quote && !agreeing) : st === 'choose' && qaComplete() && quote && quoteFor === JSON.stringify(qa) && !agreeing;
+    show('d-agree', st !== 'waiting'); show('d-agree-note', st !== 'waiting');
     $('d-agree').setAttribute('aria-disabled', ready ? 'false' : 'true');
-    $('d-agree').textContent = agreeing ? T.agreeing : T.agree;
-    $('d-agree-note').textContent = ready ? T.agree_note : T.agree_wait;
+    $('d-agree').textContent = agreeing ? T.agreeing : st === 'final' ? T.agree : T.send_choices;
+    $('d-agree-note').textContent = st === 'final' ? T.agree_note : ready ? T.send_note : T.agree_wait;
   }
   function askQuote(){
     if(!qaComplete()) return;
@@ -677,7 +699,6 @@
     qo = d.quoteOptions;
     var p = d.pick || pick || { category: '' };
     var names = (Array.isArray(d.travelers) ? d.travelers : []).map(function(t){ return tidy(t.legal_name).split(' ')[0]; }).filter(Boolean);
-    $('d-p4').textContent = T.p4; $('d-p4intro').textContent = T.p4intro; $('d-quote-h').textContent = T.quote_h;
     $('d-locked').textContent = fill(T.locked, { names: andWords(names), party: partyWords(Math.max(names.length, 1)), category: p.category, phone: d.businessPhone || PHONE });
     if(d.quote && d.quote.answers){
       qa = d.quote.answers; qa.travel = Array.isArray(qa.travel) ? qa.travel : []; qa.needs = qa.needs || {};
@@ -716,6 +737,15 @@
   $('d-agree').addEventListener('click', function(){
     if(agreeing || $('d-agree').getAttribute('aria-disabled') === 'true') return;
     agreeing = true; syncAgree(); msg('');
+    if(stage() === 'choose'){
+      // the starting price has no extras or upgrades: the choices go to Mark, who sends the final quote (Mark 2026-11-05)
+      api('/request', { lang: ES ? 'es' : 'en' }).then(function(x){
+        agreeing = false;
+        if(x.ok){ data.quoteRequestedAt = (x.j && x.j.requestedAt) || new Date().toISOString(); renderQuote(); window.scrollTo(0, 0); }
+        else { syncAgree(); msg((x.j && x.j.error) || T.err); }
+      }).catch(function(){ agreeing = false; syncAgree(); msg(T.err); });
+      return;
+    }
     api('/agree', { lang: ES ? 'es' : 'en' }).then(function(x){
       agreeing = false;
       if(x.ok) showAgreed(quote.category, quote.party, x.j && x.j.paperwork, data.email);

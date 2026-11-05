@@ -622,3 +622,59 @@ export function holdEmail(i: HoldInput): { subject: string; html: string; text: 
   ].join("\n    ");
   return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
 }
+
+export interface FinalQuoteInput extends MailBase {
+  /** The cabin type and the total of the final quote, as Mark sent it. */
+  category: string;
+  totalText: string;
+  /** Mark's own line to the guest, when he wrote one. */
+  note: string | null;
+  /** The guest's private link: the "See my quote" button, which opens the final quote and "I agree". */
+  detailsUrl: string;
+}
+
+const FINAL = {
+  en: {
+    subject: (label: string) => `Your quote is ready… ${label}`,
+    title: "Your quote is ready!",
+    hi: (first: string) => `Hi ${first},`,
+    p1: (category: string, total: string) => `I went through your choices and priced every one of them, extras and upgrades included. Your quote for [[${category}]] comes to [[${total}]].`,
+    p2: "Have a look, line by line. If it all reads right, tap “I agree” and I book your cabin. Nothing is charged before then… and a question first is always welcome.",
+    open: "See my quote",
+    close: "Cruise smarter, laugh more… see you at the muster drill!",
+    footer: (label: string) => `You got this email because you asked us for a quote on our ${label} page. Not you? Reply and we'll take you off.`,
+  },
+  es: {
+    subject: (label: string) => `Su cotización está lista… ${label}`,
+    title: "¡Su cotización está lista!",
+    hi: (first: string) => `Hola ${first}:`,
+    p1: (category: string, total: string) => `Revisé sus decisiones y les puse precio a todas, con extras y mejoras incluidos. Su cotización para [[${category}]] es de [[${total}]].`,
+    p2: "Revísela línea por línea. Si todo está bien, toque “Acepto” y yo reservo su cabina. No se cobra nada antes de eso… y una pregunta primero siempre es bienvenida.",
+    open: "Ver mi cotización",
+    close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
+    footer: (label: string) => `Recibió este correo porque nos pidió una cotización en nuestra página de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+  },
+} as const;
+
+/**
+ * The email that says Mark's final quote is ready (Mark 2026-11-05: the first figure is the unqualified price; the guest commits to the updated quote, so
+ * it comes to Mark first). The cabin type and the total, Mark's own line when he wrote one, and the way back to the page ("See my quote"), where the
+ * guest reads it line by line and agrees. Every value is escaped; the link appears only in the body it is sent to.
+ */
+export function finalQuoteEmail(i: FinalQuoteInput): { subject: string; html: string; text: string } {
+  const T = FINAL[i.lang];
+  const first = i.firstName.trim();
+  const label = i.groupLabel.trim();
+  const p1 = T.p1(i.category, i.totalText);
+  const note = i.note?.trim() || null;
+  const sign = i.hostNames.trim() || "Mark";
+  const text = [T.hi(first), p1.replace(/\[\[|\]\]/g, ""), ...(note ? [note] : []), T.p2, `${T.open}: ${i.detailsUrl}`, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
+  const button = `<a href="${esc(i.detailsUrl)}" style="display:inline-block;background:#f5c33b;color:#07183f;font-weight:bold;border-radius:999px;padding:10px 18px;text-decoration:none;font-size:16px">${esc(T.open)}</a>`;
+  const body = [
+    para(esc(T.hi(first))),
+    para(esc(p1).replace(/\[\[(.*?)\]\]/g, (_m, c: string) => `<b>${c}</b>`)),
+    ...(note ? [para(esc(note))] : []),
+    para(esc(T.p2)), para(button), para(esc(T.close)),
+  ].join("\n    ");
+  return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
+}
