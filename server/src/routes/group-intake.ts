@@ -9,6 +9,7 @@ import {
   MAX_PDF_BYTES, cabinRowsFromExtraction, travelRowsFromExtraction, describeProviders, extractBooking, extractPdfText, foundFields, normalizeExtraction,
   type BookingExtraction, type ReaderProvider,
 } from "../lib/booking-extract";
+import { applyPackageInclusions, type PackageRow } from "../lib/package-inclusions";
 
 // "Enter a booking" (Mark, 2026-10-02): drop the cruise line's contract or
 // quote, the server reads it, Mark reviews what it read, the group file opens
@@ -55,6 +56,14 @@ async function setStatus(id: string, patch: Row): Promise<void> {
   if (error) throw new Error(`group_intakes: ${error.message}`);
 }
 
+/** The package table's rows for the read's paid add-ons (0066). A missing table or a failed read lists nothing: the read still stands. */
+async function packageRows(read: BookingExtraction): Promise<PackageRow[]> {
+  if (!read.addons?.length) return [];
+  const { data, error } = await db().from("package_inclusions").select("cruise_line, ship, package_name, inclusions, checked_on, source_url");
+  if (error) { logger.warn({ err: error.message }, "package_inclusions not read"); return []; }
+  return (data ?? []) as PackageRow[];
+}
+
 /** Download → text → model → extracted. Runs after the upload request returns. */
 async function processIntake(id: string): Promise<void> {
   try {
@@ -75,7 +84,8 @@ async function processIntake(id: string): Promise<void> {
     await setStatus(id, { status: "extracting", text_chars: text.length });
 
     let providers: ReaderProvider[] = [];
-    const extracted = await extractBooking(text, intake.booking_kind, (ps) => { providers = ps; });
+    const read = await extractBooking(text, intake.booking_kind, (ps) => { providers = ps; });
+    const extracted = applyPackageInclusions(read, await packageRows(read));
     const reader = describeProviders(providers);
     await setStatus(id, { status: "ready", extracted, model: reader });
     logger.info({ intake: id, found: foundFields(extracted).length, warnings: extracted.warnings.length, chars: text.length, reader }, "booking intake read");

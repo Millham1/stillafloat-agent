@@ -36,7 +36,8 @@ export interface CabinCategoryLine {
   price_junior_child: number | null;
 }
 
-export interface AddOn { name: string; price: number; qty: number; total: number }
+/** `includes…`: what the package of this name includes, from our own table (lib/package-inclusions.ts), not from the document. */
+export interface AddOn { name: string; price: number; qty: number; total: number; includes?: string[]; includes_checked_on?: string; includes_source?: string }
 
 export interface ItineraryStop {
   day: number | null;
@@ -445,7 +446,10 @@ export function normalizeExtraction(raw: unknown): BookingExtraction {
       const o = a && typeof a === "object" ? (a as Record<string, unknown>) : null;
       const name = o ? str(o["name"]) : null, price = o ? normalizeMoney(o["price"]) : null, total = o ? normalizeMoney(o["total"]) : null;
       const qty = o ? normalizeInt(o["qty"]) ?? 1 : 1;
-      return name && price !== null && total !== null ? { name, price, qty, total } : null;
+      if (!name || price === null || total === null) return null;
+      const includes = o ? list(o["includes"]).map(str).filter((i): i is string => !!i) : [];
+      const checked = o ? str(o["includes_checked_on"]) : null, source = o ? str(o["includes_source"]) : null;
+      return { name, price, qty, total, ...(includes.length ? { includes, ...(checked ? { includes_checked_on: checked } : {}), ...(source ? { includes_source: source } : {}) } : {}) };
     }).filter((a): a is AddOn => !!a),
     discount_per_person: normalizeMoney(r["discount_per_person"]),
     travel_package,

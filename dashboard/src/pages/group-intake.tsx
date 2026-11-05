@@ -553,7 +553,13 @@ export default function GroupIntake() {
                   {Array.isArray(form.addons) && form.addons.length > 0 && (
                     <div className="mt-2 text-xs rounded-md border p-2">
                       <div className="text-muted-foreground mb-1">Paid add-ons on this booking, on top of the cabin · from the document</div>
-                      {(form.addons as Array<{ name: string; price: number; qty: number; total: number }>).map((a) => <div key={a.name} className="text-sm">{a.name}: ${a.price.toFixed(2)} × {a.qty} = ${a.total.toFixed(2)}</div>)}
+                      {(form.addons as Array<{ name: string; price: number; qty: number; total: number; includes?: string[]; includes_checked_on?: string }>).map((a) => (
+                        <div key={a.name} className="text-sm">
+                          {a.name}: ${a.price.toFixed(2)} × {a.qty} = ${a.total.toFixed(2)}
+                          {a.includes?.length ? <div className="text-xs text-muted-foreground">Includes, from our package table{a.includes_checked_on ? ` (checked ${a.includes_checked_on})` : ""}: {a.includes.join(" · ")}. Added to the list above.</div>
+                            : <div className="text-xs text-muted-foreground">Not in our package table yet: what it includes is not listed above.</div>}
+                        </div>
+                      ))}
                       {form.discount_per_person ? <div className="text-sm text-muted-foreground mt-1">Discount on the cabin fare: ${Number(form.discount_per_person).toFixed(2)}</div> : null}
                     </div>
                   )}
