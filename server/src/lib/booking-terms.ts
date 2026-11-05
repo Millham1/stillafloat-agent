@@ -596,7 +596,8 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
     }
   }
   if ((doubleRate || readSingleBooking(text)) && out.deposit_per_person !== null && !depositPrinted(text, out.deposit_per_person)) {
-    warnings.push(`Deposit per person was read as ${out.deposit_per_person}, but no line about the deposit prints that amount. Left blank.`);
+    // a single booking's confirmation prints no deposit: the blank is the right answer, not something for Mark to check (2026-11-04)
+    if (doubleRate) warnings.push(`Deposit per person was read as ${out.deposit_per_person}, but no line about the deposit prints that amount. Left blank.`);
     out.deposit_per_person = null;
   }
   const heldBefore = out.cabin_categories.reduce((n, c) => n + (c.count ?? 0), 0);

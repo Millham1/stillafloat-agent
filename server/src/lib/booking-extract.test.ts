@@ -584,6 +584,7 @@ test("a single booking's confirmation: the AI box reads the passenger total, the
   const dep = read({ deposit_per_person: 1081.5, cabin_categories: [{ ...cabin, price_per_person: 382.5, deposit_per_person: 1081.5 }] });
   assert.equal(dep.deposit_per_person, null);
   assert.equal(dep.cabin_categories[0]!.deposit_per_person, null);
+  assert.ok(!dep.warnings.some((w) => /deposit/i.test(w)), dep.warnings.join(" | "));
   // an invented add-on is dropped
   const invented = read({ addons: [{ name: "Ultimate License to Chill", price: 699, qty: 1, total: 699 }, { name: "Spa Day", price: 120, qty: 1, total: 120 }] });
   assert.equal(invented.addons!.length, 1);
