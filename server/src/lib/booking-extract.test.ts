@@ -580,6 +580,10 @@ test("a single booking's confirmation: the AI box reads the passenger total, the
   const missed = read({ addons: [] });
   assert.deepEqual(missed.addons, []);
   assert.ok(missed.warnings.some((w) => /prints a paid add-on, Ultimate License to Chill \(\$699 × 1\), that the read did not list/.test(w)), missed.warnings.join(" | "));
+  // the box reads the booking total as a deposit (2026-11-04): this PDF prints none, so it is blanked everywhere
+  const dep = read({ deposit_per_person: 1081.5, cabin_categories: [{ ...cabin, price_per_person: 382.5, deposit_per_person: 1081.5 }] });
+  assert.equal(dep.deposit_per_person, null);
+  assert.equal(dep.cabin_categories[0]!.deposit_per_person, null);
   // an invented add-on is dropped
   const invented = read({ addons: [{ name: "Ultimate License to Chill", price: 699, qty: 1, total: 699 }, { name: "Spa Day", price: 120, qty: 1, total: 120 }] });
   assert.equal(invented.addons!.length, 1);

@@ -595,7 +595,7 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
       out[k] = null;
     }
   }
-  if (doubleRate && out.deposit_per_person !== null && !depositPrinted(text, out.deposit_per_person)) {
+  if ((doubleRate || readSingleBooking(text)) && out.deposit_per_person !== null && !depositPrinted(text, out.deposit_per_person)) {
     warnings.push(`Deposit per person was read as ${out.deposit_per_person}, but no line about the deposit prints that amount. Left blank.`);
     out.deposit_per_person = null;
   }
@@ -623,6 +623,10 @@ export function verifyExtraction(x: BookingExtraction, text: string): BookingExt
     if (cabin && cabin.price_per_person !== null && !eq(cabin.price_per_person, single.passengerTotal)) {
       warnings.push(`The cabin price was read as ${cabin.price_per_person}, but the passenger total prints ${single.passengerTotal} (the booking total, ${single.bookingTotal ?? "?"}, also counts the add-ons). Check it against the PDF.`);
     }
+  }
+  if (single) {
+    // a single booking's confirmation prints no deposit unless a deposit line says so: the booking total is not one
+    out.cabin_categories = out.cabin_categories.map((c) => c.deposit_per_person !== null && !depositPrinted(text, c.deposit_per_person) ? { ...c, deposit_per_person: null } : c);
   }
   const discounted = (out.discount_per_person ?? 0) > 0;
   out.cabin_categories = out.cabin_categories.map((c) => {
