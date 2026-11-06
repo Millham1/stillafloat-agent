@@ -44,13 +44,6 @@ const FILE = {
   travel: [{ id: "f1", kind: "flight", direction: "pre", from_place: "Raleigh (RDU)", price_per_person: "136", price_unit: "person", included: false }],
 };
 const OPTIONS = (lang: Lang) => quoteOptions(FILE, lang);
-/** The page once Mark has sent the final quote (Mark 2026-11-05): the only stage where "I agree" exists. */
-const FINAL_QUOTE = (lang: Lang, over: Record<string, unknown> = {}) => ({ ...buildQuote(FILE, [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }], QA as never, lang), ...over });
-const finalAnswer = (lang: Lang, over: Record<string, unknown> = {}) => answer({
-  lang, holdRequestedAt: "2026-11-05T10:00:00Z", quoteRequestedAt: "2026-11-05T10:05:00Z", quoteFinalAt: "2026-11-05T11:00:00Z",
-  travelers: [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }], address: ADDR, concierge: ANSWERS, pick: pickCabin(ANSWERS, HELD, lang, PERKS),
-  quoteOptions: OPTIONS(lang), quote: FINAL_QUOTE(lang), ...over,
-});
 const TWO = [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }];
 /** What the guest taps on Part 4: our pick's cabin stays, FlexPay no, drinks no, no insurance, no flight, no hotel, no transfers. */
 const QA = { cabin: "BEL", flexpay: false, drinks: false, insurance: "decline", travel: [], needs: { hotel: false, transfer: false } };
@@ -60,7 +53,7 @@ function answer(over: Record<string, unknown> = {}) {
   return {
     success: true, label: "Friends and Family 2027", ship: "MSC Seashore", sailDateText: "May 9, 2027", returnDateText: "May 13, 2027", heroUrl: "https://stillafloatcruising.com/assets/images/hero.jpg",
     firstName: "Mark", lastName: "Millham", email: "mmillham1@gmail.com", phone: null, guests: 2, travelers: [], address: null, concierge: null, pick: null, choice: null, callWhen: null,
-    holdRequestedAt: null, quoteOptions: null, quote: null, quoteAgreedAt: null, paperwork: null,
+    holdRequestedAt: null, quoteOptions: null, quote: null, quoteRequestedAt: null, paperwork: null,
     depositPerPersonText: "$50", phoneLine: "Questions? Call or text Mark at 919-346-6127.", businessPhone: "919-346-6127", lang: "en",
     ...over,
   };
@@ -100,8 +93,7 @@ function server(lang: Lang, over: { perks?: string[]; lookup?: (body: Record<str
     if (url === "/api/address/lookup") return over.lookup ? over.lookup(body) : { ok: true, json: { success: true, available: false } };
     if (url.endsWith("/hold")) return { ok: true, json: { success: true, quoteOptions: OPTIONS(lang) } };
     if (url.endsWith("/quote")) return { ok: true, json: { success: true, quote: buildQuote(FILE, TWO, body["answers"], lang) } };
-    if (url.endsWith("/request")) return { ok: true, json: { success: true, requestedAt: "2026-11-05T10:05:00Z" } };
-    if (url.endsWith("/agree")) return { ok: true, json: { success: true, paperwork: "sent" } };
+    if (url.endsWith("/request")) return { ok: true, json: { success: true, paperwork: "sent" } };
     const concierge = body["concierge"];
     return { ok: true, json: { success: true, pick: pickCabin(concierge, HELD, lang, over.perks ?? PERKS) } };
   };
@@ -204,7 +196,7 @@ test("a private page: never indexed, its address never sent on, it calls the gue
     assert.ok(h.includes("/api/group-details/") && h.includes("/api/address/lookup"), lang);
     assert.ok(h.includes('id="d-website"') && h.includes('class="hp"'), `${lang}: the bot trap`);
     assert.ok(script(lang).includes(lang === "es" ? "¡Armar mi cotización!" : "Build my quote!"), `${lang}: the button's words`);
-    assert.ok(script(lang).includes(lang === "es" ? "Acepto… ¡hagámoslo!" : "I agree… let's do this!"), `${lang}: the agree button's words`);
+    assert.ok(script(lang).includes(lang === "es" ? "¡Enviar mis decisiones a Mark!" : "Send my choices to Mark!"), `${lang}: the send button's words`);
     assert.ok(script(lang).includes("b.website = $('d-website').value"), `${lang}: the bot trap travels with every POST`);
     // the header is the logo only; the footer is the group page's: the legal line and the Cornerstone logo
     const header = h.slice(h.indexOf('<div class="hdr">'), h.indexOf('<div class="d-banner"'));
@@ -404,7 +396,7 @@ test("a picture that is not https is never used, and anything the guest or the f
   await held.ready();
   assert.ok(held.el("d-locked").textContent.includes(evil) && !held.el("d-locked").innerHTML.includes("<img"), "the locked line is text");
   assert.ok(held.el("d-qq").innerHTML.includes("&lt;img") && !held.el("d-qq").innerHTML.includes("<img"), "a cabin's label from the file is escaped");
-  const agreed = visit("en", { get: answer({ holdRequestedAt: "2026-10-24T10:00:00Z", quoteAgreedAt: "2026-10-24T10:10:00Z", paperwork: "sent", email: evil, businessPhone: evil, quote: { version: 1, answers: QA, lines: [], category: evil, party: 2 } }) });
+  const agreed = visit("en", { get: answer({ holdRequestedAt: "2026-10-24T10:00:00Z", quoteRequestedAt: "2026-10-24T10:10:00Z", paperwork: "sent", email: evil, businessPhone: evil, quote: { version: 1, answers: QA, lines: [], category: evil, party: 2 } }) });
   await agreed.ready();
   assert.ok(agreed.el("d-thanks-h").textContent.includes(evil) && !agreed.el("d-thanks-h").innerHTML.includes("<img"));
   assert.ok(agreed.el("d-thanks-p").textContent.includes(evil));
@@ -817,7 +809,7 @@ test("'Build my quote!' sends the names in, then Parts 1 to 3 close and Part 4 o
   }
 });
 
-test("the quote: once every question is answered the page asks the server with the answers, shows the starting price with its lines, the deposit and the balance, and lights 'Send my choices to Mark!'; a changed answer asks again; the send freezes the choices and waits for Mark; on Mark's final quote 'I agree' sends it and the WHOLE page becomes one line with where the paperwork went", async () => {
+test("the quote: once every question is answered the page asks the server with the answers, shows the lines, the total, the deposit, the balance and the note, and lights 'I agree'; a changed answer asks again; 'I agree' sends it and the WHOLE page becomes one line with where the paperwork went", async () => {
   const p = visit("en");
   await p.ready();
   await p.fillAll();
@@ -827,7 +819,7 @@ test("the quote: once every question is answered the page asks the server with t
   assert.equal(asked.length, 1, "one ask once the last answer is in");
   assert.deepEqual(asked[0]!.body, { answers: QA, lang: "en", website: "" });
   assert.equal(p.el("d-quote").hidden, false);
-  assert.equal(p.el("d-quote-h").textContent, "Your starting price", "Mark 2026-11-05: the first figure is the unqualified price, not a quote to agree to");
+  assert.equal(p.el("d-quote-h").textContent, "Your starting price");
   const lines = [...p.el("d-quote-lines").innerHTML.matchAll(/<div class="qline( qtotal)?"><span>([^<]*)(?:<span class="det">([^<]*)<\/span>)?<\/span><b>([^<]*)<\/b><\/div>/g)].map((m) => [m[2], m[3] ?? null, m[4]]);
   assert.deepEqual(lines, [
     ["Balcony Bella · 2 travelers", "Mark $536.79 · Ceci $536.79 · taxes and port fees included", "$1,073.58"],
@@ -837,10 +829,10 @@ test("the quote: once every question is answered the page asks the server with t
   assert.equal(p.el("d-quote-plus").hidden, true, "nothing left for Mark to price");
   assert.equal(p.el("d-quote-dep").textContent, "Deposit to hold the cabin: $100 ($50 per person). Nothing is charged until Mark confirms it with you.");
   assert.equal(p.el("d-quote-bal").textContent, "Balance $973.58, due by January 15, 2027.");
-  assert.equal(p.el("d-quote-note").textContent, "This is the group price before extras and upgrades. Send your choices to Mark; he prices the rest and emails you the final quote to agree to.");
+  assert.match(p.el("d-quote-note").textContent, /^Every figure comes from the group's file with the cruise line, and Mark confirms each one with you before anything is charged\. Pricing subject to change until finalized\.$/);
   assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "false");
   assert.equal(p.el("d-agree").textContent, "Send my choices to Mark!");
-  assert.equal(p.el("d-agree-note").textContent, "Nothing is booked or charged. Mark finalizes your quote and emails it to you.");
+  assert.equal(p.el("d-agree-note").textContent, "This is the group price before extras and upgrades. Mark prices your choices with the cruise line, then emails your paperwork with the final price for you to check and sign. Nothing is booked or charged yet.");
   // a changed answer: the quote goes until the new one is back, with Mark's items to price named
   p.qtap("drinks", "yes"); p.qtap("travel", "f1"); p.qtap("flexpay", "yes"); p.qtap("insurance", "line");
   assert.equal(p.el("d-quote").hidden, true, "the old figures are not shown for the new answers");
@@ -854,47 +846,26 @@ test("the quote: once every question is answered the page asks the server with t
   assert.equal(p.el("d-quote-plus").textContent, "Plus Drink package, which Mark prices for you.");
   p.qtap("need-hotel", "yes"); await p.flush(8);
   assert.equal(p.el("d-quote-plus").textContent, "Plus Drink package and Hotel, which Mark prices for you.", "two items: no comma before 'and'");
-  // the send: the choices go to Mark, nothing is agreed, and the page waits for his final quote
+  // I agree
   p.agree(); await p.ready();
   assert.deepEqual(p.posts("/request").map((x) => x.body), [{ lang: "en", website: "" }]);
-  assert.equal(p.posts("/agree").length, 0, "the starting price is never agreed");
-  assert.equal(p.el("d-part4").hidden, false);
-  assert.deepEqual([p.el("d-qq").hidden, p.el("d-agree").hidden, p.el("d-quote").hidden], [true, true, false], "the questions and the button go; the figures they chose from stay");
-  assert.equal(p.el("d-p4").textContent, "Your choices are with Mark!");
-  assert.equal(p.el("d-p4intro").textContent, "He is pricing your extras and upgrades now. Your final quote lands in your email, and you agree to it there. Nothing is booked or charged yet.");
-  // a guest who comes back before Mark is done sees the same wait
-  const waiting = visit("en", { get: finalAnswer("en", { quoteFinalAt: null }) });
-  await waiting.ready();
-  assert.deepEqual([waiting.el("d-p4").textContent, waiting.el("d-agree").hidden, waiting.el("d-qq").hidden], ["Your choices are with Mark!", true, true]);
-  // Mark's final quote: his note, his lines, and the one place "I agree" exists
-  const fin = visit("en", { get: finalAnswer("en", { quote: FINAL_QUOTE("en", { markNote: "I added the drink package you asked about." }) }) });
-  await fin.ready();
-  assert.deepEqual([fin.el("d-p4").textContent, fin.el("d-quote-h").textContent, fin.el("d-qq").hidden], ["Your final quote from Mark", "Your quote", true]);
-  assert.equal(fin.el("d-p4intro").textContent, "Every line is priced. Read it through; if it is right, agree and Mark books your cabin.");
-  assert.deepEqual([fin.el("d-quote-mark").hidden, fin.el("d-quote-mark").textContent], [false, "I added the drink package you asked about."]);
-  assert.match(fin.el("d-quote-note").textContent, /^Every figure comes from the group's file with the cruise line, and Mark confirms each one with you before anything is charged\. Pricing subject to change until finalized\.$/);
-  assert.deepEqual([fin.el("d-agree").hidden, fin.el("d-agree").getAttribute("aria-disabled"), fin.el("d-agree").textContent], [false, "false", "I agree… let's do this!"]);
-  assert.equal(fin.el("d-agree-note").textContent, "Agreeing tells Mark to book your cabin and confirm your flights, hotel and transfers; then he emails your paperwork page. Still nothing charged.");
-  fin.agree(); await fin.ready();
-  assert.deepEqual(fin.posts("/agree").map((x) => x.body), [{ lang: "en", website: "" }]);
-  assert.equal(fin.posts("/request").length, 0);
-  for (const id of ["d-intro", "d-part1", "d-part2", "d-part3", "d-part4", "d-summary"]) assert.equal(fin.el(id).hidden, true, id);
-  assert.equal(fin.el("d-thanks").hidden, false);
-  assert.equal(fin.el("d-thanks-h").textContent, "Agreed!… Balcony Bella, party of two. Your paperwork is on its way to mmillham1@gmail.com.");
-  assert.equal(fin.el("d-thanks-p").textContent, "Need to change a name, a birthday or your mind? Call or text Mark at 919-346-6127.");
+  for (const id of ["d-intro", "d-part1", "d-part2", "d-part3", "d-part4", "d-summary"]) assert.equal(p.el(id).hidden, true, id);
+  assert.equal(p.el("d-thanks").hidden, false);
+  assert.equal(p.el("d-thanks-h").textContent, "Your paperwork is on its way to mmillham1@gmail.com!… Balcony Bella, party of two. It carries your final price: check it and sign.");
+  assert.equal(p.el("d-thanks-p").textContent, "Need to change a name, a birthday or your mind? Call or text Mark at 919-346-6127.");
   // when this box could not email them, the line says Mark sends the paperwork; a refused agreement keeps the button and shows its words
-  const heldBox = visit("en", { get: finalAnswer("en"), post: (url, body) => (url.endsWith("/agree") ? { ok: true, json: { success: true, paperwork: "held" } } : server("en")(url, body)) });
-  await heldBox.ready(); heldBox.agree(); await heldBox.ready();
-  assert.equal(heldBox.el("d-thanks-h").textContent, "Agreed!… Balcony Bella, party of two. Mark sends your paperwork next.");
+  const heldBox = visit("en", { post: (url, body) => (url.endsWith("/request") ? { ok: true, json: { success: true, paperwork: "held" } } : server("en")(url, body)) });
+  await heldBox.ready(); await heldBox.fillAll(); heldBox.hold(); await heldBox.ready(); await heldBox.answerQuote(); heldBox.agree(); await heldBox.ready();
+  assert.equal(heldBox.el("d-thanks-h").textContent, "Your choices are with Mark!… Balcony Bella, party of two. He sends your paperwork next.");
   // Mark 2026-11-03: the paperwork waits for Mark to book the cabin and validate the travel
-  const booking = visit("en", { get: finalAnswer("en"), post: (url, body) => (url.endsWith("/agree") ? { ok: true, json: { success: true, paperwork: "booking" } } : server("en")(url, body)) });
-  await booking.ready(); booking.agree(); await booking.ready();
-  assert.equal(booking.el("d-thanks-h").textContent, "Agreed!… Balcony Bella, party of two. Mark is booking your cabin and confirming your travel; your paperwork page follows by email as soon as he is done.");
-  const refused = visit("en", { get: finalAnswer("en"), post: (url, body) => (url.endsWith("/agree") ? { ok: false, status: 409, json: { success: false, error: "Your quote is already agreed and your paperwork is on its way. To change anything, call or text Mark at 919-346-6127." } } : server("en")(url, body)) });
-  await refused.ready(); refused.agree(); await refused.ready();
+  const booking = visit("en", { post: (url, body) => (url.endsWith("/request") ? { ok: true, json: { success: true, paperwork: "booking" } } : server("en")(url, body)) });
+  await booking.ready(); await booking.fillAll(); booking.hold(); await booking.ready(); await booking.answerQuote(); booking.agree(); await booking.ready();
+  assert.equal(booking.el("d-thanks-h").textContent, "Your choices are with Mark!… Balcony Bella, party of two. He is pricing them with the cruise line; your paperwork, with your final price, follows by email.");
+  const refused = visit("en", { post: (url, body) => (url.endsWith("/request") ? { ok: false, status: 409, json: { success: false, error: "Your choices are with Mark and your paperwork follows by email. To change anything, call or text Mark at 919-346-6127." } } : server("en")(url, body)) });
+  await refused.ready(); await refused.fillAll(); refused.hold(); await refused.ready(); await refused.answerQuote(); refused.agree(); await refused.ready();
   assert.equal(refused.el("d-thanks").hidden, true);
   assert.equal(refused.el("d-part4").hidden, false);
-  assert.equal(refused.el("d-msg").textContent, "Your quote is already agreed and your paperwork is on its way. To change anything, call or text Mark at 919-346-6127.");
+  assert.equal(refused.el("d-msg").textContent, "Your choices are with Mark and your paperwork follows by email. To change anything, call or text Mark at 919-346-6127.");
   assert.equal(refused.el("d-agree").getAttribute("aria-disabled"), "false");
 });
 
@@ -960,10 +931,10 @@ test("a guest whose names are in opens straight on Part 4 (from the email's 'Let
   assert.equal(back.el("d-quote").hidden, false, "their quote is shown again");
   assert.equal(back.el("d-agree").getAttribute("aria-disabled"), "false");
   assert.equal(back.sent.length, 0, "nothing is re-sent until they change something");
-  const agreed = visit("en", { get: answer({ ...names, quoteAgreedAt: "2026-10-24T10:10:00Z", paperwork: "sent", quote: buildQuote(FILE, TWO, QA, "en") }) });
+  const agreed = visit("en", { get: answer({ ...names, quoteRequestedAt: "2026-10-24T10:10:00Z", paperwork: "sent", quote: buildQuote(FILE, TWO, QA, "en") }) });
   await agreed.ready();
   assert.equal(agreed.el("d-thanks").hidden, false);
-  assert.equal(agreed.el("d-thanks-h").textContent, "Agreed!… Balcony Bella, party of two. Your paperwork is on its way to mmillham1@gmail.com.");
+  assert.equal(agreed.el("d-thanks-h").textContent, "Your paperwork is on its way to mmillham1@gmail.com!… Balcony Bella, party of two. It carries your final price: check it and sign.");
   assert.equal(agreed.el("d-thanks-p").hidden, false);
   assert.equal(agreed.el("d-thanks-p").textContent, "Need to change a name, a birthday or your mind? Call or text Mark at 919-346-6127.");
   for (const id of ["d-intro", "d-part1", "d-part2", "d-part3", "d-part4"]) assert.equal(agreed.el(id).hidden, true, id);
@@ -1067,14 +1038,9 @@ test("the Spanish page says everything in Spanish, in usted, through the same st
   assert.equal(p.el("d-quote-bal").textContent, "Saldo $973.58, a pagar antes del 15 de enero de 2027.");
   assert.equal(p.el("d-agree").textContent, "¡Enviar mis decisiones a Mark!");
   p.agree(); await p.ready();
-  assert.equal(p.el("d-p4").textContent, "¡Sus decisiones ya están con Mark!");
-  const fin = visit("es", { get: finalAnswer("es", { quote: buildQuote(FILE, [{ legal_name: "Ana Pérez", dob: "1965-04-12" }, { legal_name: "Luis Pérez", dob: "1970-01-01" }], QA as never, "es") }) });
-  await fin.ready();
-  assert.deepEqual([fin.el("d-p4").textContent, fin.el("d-quote-h").textContent, fin.el("d-agree").textContent], ["Su cotización final, de Mark", "Su cotización", "Acepto… ¡hagámoslo!"]);
-  fin.agree(); await fin.ready();
-  assert.equal(fin.el("d-thanks-h").textContent, "¡Aceptada!… Balcony Bella, grupo de dos. Sus documentos van en camino a mmillham1@gmail.com.");
-  const again = visit("es", { get: answer({ lang: "es", holdRequestedAt: "2026-10-24T10:00:00Z", quoteAgreedAt: "2026-10-24T10:10:00Z", paperwork: "held", travelers: [{ legal_name: "Ana Pérez", dob: "1965-04-12" }], address: ADDR, concierge: ANSWERS, pick: pickCabin(ANSWERS, HELD, "es", perks), quoteOptions: OPTIONS("es"), quote: buildQuote(FILE, [{ legal_name: "Ana Pérez", dob: "1965-04-12" }], QA, "es") }) });
+  assert.equal(p.el("d-thanks-h").textContent, "¡Sus documentos van en camino a mmillham1@gmail.com!… Balcony Bella, grupo de dos. Traen su precio final: revíselos y firme.");
+  const again = visit("es", { get: answer({ lang: "es", holdRequestedAt: "2026-10-24T10:00:00Z", quoteRequestedAt: "2026-10-24T10:10:00Z", paperwork: "held", travelers: [{ legal_name: "Ana Pérez", dob: "1965-04-12" }], address: ADDR, concierge: ANSWERS, pick: pickCabin(ANSWERS, HELD, "es", perks), quoteOptions: OPTIONS("es"), quote: buildQuote(FILE, [{ legal_name: "Ana Pérez", dob: "1965-04-12" }], QA, "es") }) });
   await again.ready();
-  assert.equal(again.el("d-thanks-h").textContent, "¡Aceptada!… Balcony Bella, para una persona. Mark le envía sus documentos después.");
+  assert.equal(again.el("d-thanks-h").textContent, "¡Sus decisiones ya están con Mark!… Balcony Bella, para una persona. Él le envía sus documentos después.");
   assert.equal(again.el("d-thanks-p").textContent, "¿Necesita cambiar un nombre, una fecha de nacimiento o de opinión? Llame o escriba a Mark al 919-346-6127.");
 });

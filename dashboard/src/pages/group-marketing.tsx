@@ -16,7 +16,7 @@ type Row = Record<string, any>;
 function quoteCell(r: Row) {
   const q = r.quote && typeof r.quote === "object" ? (r.quote as Row) : null;
   if (!q) return r.hold_requested_at ? "under way" : "—";
-  const when = r.quote_agreed_at ? new Date(r.quote_agreed_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
+  const when = r.quote_requested_at ? new Date(r.quote_requested_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
   const a = (q.answers ?? {}) as Row;
   const travel = Array.isArray(a.travel) ? a.travel.length : 0;
   const toPrice = Array.isArray(q.toQuote) ? q.toQuote.length : 0;

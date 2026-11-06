@@ -89,17 +89,7 @@ export interface Quote {
   /** Set when the guest agrees: where the paperwork went. */
   paperwork?: "booking" | "sent" | "held" | "no-email" | "failed";
   cabin_id?: string | null;
-  /** What Mark has typed so far while finalizing (never shown to the guest). */
-  draft?: FinalDraft;
-  /** Set when Mark sends the final quote: the figures above are his; these are the ones the page first showed. */
-  estimate?: { lines: QuoteLine[]; total: number; totalText: string; category: string };
-  /** Mark's own line to the guest, shown above the final quote. */
-  markNote?: string | null;
 }
-
-/** One line of the quote as Mark finalizes it: a priced extra, an upgrade, or a line with no amount that only states something. */
-export interface FinalLine { key: string; label: string; detail: string | null; amount: number | null }
-export interface FinalDraft { cabin: string; lines: FinalLine[]; deposit: number | null; note: string | null }
 
 const W = {
   en: {
@@ -349,83 +339,6 @@ export function buildQuote(file: QuoteFile, travelers: readonly Traveler[], answ
     deposit, depositText: deposit !== null ? money(deposit) : null, depositPerPersonText: o.depositPerPersonText,
     balance, balanceText: balance !== null ? money(balance) : null, finalPaymentText: o.finalPaymentText,
     note: T.note, flexpay: answers.flexpay,
-  };
-}
-
-// ── Mark finalizes the quote (Mark 2026-11-05: "the price they see is the unqualified price and doesnt account for extras or upgrades, so they need to
-// commit to the updated quote. that means it should come to me first") ─────────────────────────────────────────────────────────────────────────────
-// The guest's answers and the figures from the group file are the estimate. Mark prices what the file could not, adds the extras and upgrades, and
-// sends the final quote; only that one can be agreed.
-
-/** Where Mark starts: the estimate's own lines, with the "Mark prices it" wording taken off the ones he is about to price. */
-export function draftFrom(q: Quote): FinalDraft {
-  if (q.draft) return q.draft;
-  return {
-    cabin: q.cabinKey, deposit: q.deposit, note: q.markNote ?? null,
-    lines: q.lines.map((l) => ({ key: l.key, label: l.label, detail: l.toQuote ? null : l.detail, amount: l.amount })),
-  };
-}
-
-/** What Mark typed, checked: a cabin the group holds, lines with a label and an amount that is a sum of money or nothing, no card number anywhere. */
-export function validateFinal(body: unknown, o: QuoteOptions, looksLikeCard: (s: string) => boolean): { ok: true; draft: FinalDraft } | { ok: false; error: string } {
-  const b = body && typeof body === "object" ? (body as Row) : {};
-  const cabin = typeof b["cabin"] === "string" ? b["cabin"] : "";
-  if (!o.cabins.some((c) => c.key === cabin)) return { ok: false, error: "Pick one of the group's cabin types." };
-  if (!Array.isArray(b["lines"]) || !b["lines"].length || b["lines"].length > 40) return { ok: false, error: "The quote needs at least one line (and no more than 40)." };
-  const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
-  const sum = (v: unknown): number | null | undefined => {
-    if (v === null || v === undefined || v === "") return null;
-    const n = num(v);
-    return n !== null && n >= 0 && n < 1e7 ? round2(n) : undefined;
-  };
-  const lines: FinalLine[] = [];
-  const seen = new Set<string>();
-  for (const [i, raw] of (b["lines"] as unknown[]).entries()) {
-    const r = raw && typeof raw === "object" ? (raw as Row) : {};
-    const label = str(r["label"], 160);
-    if (!label) return { ok: false, error: `Line ${i + 1} needs a name.` };
-    const amount = sum(r["amount"]);
-    if (amount === undefined) return { ok: false, error: `"${label}": the amount is not a sum of money.` };
-    let key = str(r["key"], 80) ?? `extra-${i + 1}`;
-    while (seen.has(key)) key = `${key}-${i + 1}`;
-    seen.add(key);
-    lines.push({ key, label, detail: str(r["detail"], 300), amount });
-  }
-  const deposit = sum(b["deposit"]);
-  if (deposit === undefined) return { ok: false, error: "The deposit is not a sum of money." };
-  const note = str(b["note"], 1200);
-  if ([note ?? "", ...lines.flatMap((l) => [l.label, l.detail ?? ""])].some((t) => looksLikeCard(t))) return { ok: false, error: "That looks like a card number. Card numbers are never stored: take it out." };
-  return { ok: true, draft: { cabin, lines, deposit, note } };
-}
-
-/** The lines the guest asked Mark to price that still have no amount: the final quote cannot go out with one. */
-export function unpriced(q: Quote, d: FinalDraft): string[] {
-  const asked = new Set((q.estimate?.lines ?? q.lines).filter((l) => l.toQuote).map((l) => l.key));
-  return d.lines.filter((l) => asked.has(l.key) && l.amount === null).map((l) => l.label);
-}
-
-/** The final quote, from Mark's lines: the total is their sum, the balance the total less the deposit. The first estimate is kept beside it. */
-export function finalQuote(q: Quote, d: FinalDraft, o: QuoteOptions, now: Date = new Date()): Quote {
-  const cabin = o.cabins.find((c) => c.key === d.cabin);
-  if (!cabin) throw new Error("quote: the cabin is not one of the group's");
-  const money = (x: number) => formatMoney(round2(x))!;
-  const was = new Map((q.estimate?.lines ?? q.lines).map((l) => [l.key, l]));
-  const lines: QuoteLine[] = d.lines.map((l) => {
-    const old = was.get(l.key);
-    // an untouched line keeps its own wording ("included in the cruise price"); a line Mark priced or changed prints its amount
-    const amountText = l.amount === null ? null : old && old.amount === l.amount && old.amountText ? old.amountText : money(l.amount);
-    return { key: l.key, label: l.label, detail: l.detail, amount: l.amount, amountText, toQuote: false };
-  });
-  const total = round2(lines.reduce((s, l) => s + (l.amount ?? 0), 0));
-  const balance = d.deposit !== null ? round2(Math.max(total - d.deposit, 0)) : null;
-  const { draft: _draft, ...rest } = q;
-  return {
-    ...rest, computed_at: now.toISOString(), category: cabin.category, cabinKey: cabin.key, answers: { ...q.answers, cabin: cabin.key },
-    lines, total, totalText: money(total), toQuote: [],
-    deposit: d.deposit, depositText: d.deposit !== null ? money(d.deposit) : null,
-    balance, balanceText: balance !== null ? money(balance) : null,
-    estimate: q.estimate ?? { lines: q.lines, total: q.total, totalText: q.totalText, category: q.category },
-    markNote: d.note,
   };
 }
 

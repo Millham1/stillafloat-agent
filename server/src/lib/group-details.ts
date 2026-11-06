@@ -489,6 +489,43 @@ function mailFrame(i: MailBase, title: string, body: string, footer: string): st
 
 const para = (html: string) => `<p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.5;color:#07183f">${html}</p>`;
 
+// ── FlexPay: the appointment link (Mark 2026-11-05) ───────────────────────────
+// "If they choose flexpay we send the link to schedule an appointment to complete flexpay's application." Sent by Mark from the booking card once the
+// signed paperwork is back and the booking is confirmed. The wording is a first draft for Mark to read.
+
+export interface FlexpayInput extends MailBase { groupLabel: string; appointmentUrl: string }
+const FLEXPAY = {
+  en: {
+    subject: (label: string) => `One short call and FlexPay is set… ${label}`,
+    title: "One short call and FlexPay is set!",
+    hi: (first: string) => `Hi ${first},`,
+    p1: "Your paperwork is signed and your booking is confirmed. Nicely done!",
+    p2: "You asked for FlexPay, so the last step is a short appointment with Mark to complete the FlexPay application together. Pick the time that suits you.",
+    open: "Pick my time",
+    close: "Cruise smarter, laugh more… see you at the muster drill!",
+    footer: (label: string) => `You are receiving this because you asked for FlexPay on your ${label} booking. Not you? Reply and we will take you off the list.`,
+  },
+  es: {
+    subject: (label: string) => `Una llamada corta y FlexPay queda listo… ${label}`,
+    title: "¡Una llamada corta y FlexPay queda listo!",
+    hi: (first: string) => `Hola ${first}:`,
+    p1: "Sus documentos están firmados y su reservación está confirmada. ¡Bien hecho!",
+    p2: "Usted pidió FlexPay, así que el último paso es una cita corta con Mark para completar juntos la solicitud de FlexPay. Elija la hora que le convenga.",
+    open: "Elegir mi hora",
+    close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
+    footer: (label: string) => `Recibió este correo porque pidió FlexPay en su reservación de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+  },
+} as const;
+
+export function flexpayEmail(i: FlexpayInput): { subject: string; html: string; text: string } {
+  const T = FLEXPAY[i.lang];
+  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";
+  const text = [T.hi(first), T.p1, T.p2, `${T.open}: ${i.appointmentUrl}`, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
+  const button = `<a href="${esc(i.appointmentUrl)}" style="display:inline-block;background:#f5c33b;color:#07183f;font-weight:bold;border-radius:999px;padding:10px 18px;text-decoration:none;font-size:16px">${esc(T.open)}</a>`;
+  const body = [para(esc(T.hi(first))), para(esc(T.p1)), para(esc(T.p2)), para(button), para(esc(T.close))].join("\n    ");
+  return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
+}
+
 // ── Road A: "Good call… literally!" ───────────────────────────────────────────
 
 export interface CallInput extends MailBase {
@@ -619,62 +656,6 @@ export function holdEmail(i: HoldInput): { subject: string; html: string; text: 
     para(esc(T.passports(n))),
     para(`${esc(T.change)} ${button}`),
     para(esc(T.close)),
-  ].join("\n    ");
-  return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
-}
-
-export interface FinalQuoteInput extends MailBase {
-  /** The cabin type and the total of the final quote, as Mark sent it. */
-  category: string;
-  totalText: string;
-  /** Mark's own line to the guest, when he wrote one. */
-  note: string | null;
-  /** The guest's private link: the "See my quote" button, which opens the final quote and "I agree". */
-  detailsUrl: string;
-}
-
-const FINAL = {
-  en: {
-    subject: (label: string) => `Your quote is ready… ${label}`,
-    title: "Your quote is ready!",
-    hi: (first: string) => `Hi ${first},`,
-    p1: (category: string, total: string) => `I went through your choices and priced every one of them, extras and upgrades included. Your quote for [[${category}]] comes to [[${total}]].`,
-    p2: "Have a look, line by line. If it all reads right, tap “I agree” and I book your cabin. Nothing is charged before then… and a question first is always welcome.",
-    open: "See my quote",
-    close: "Cruise smarter, laugh more… see you at the muster drill!",
-    footer: (label: string) => `You got this email because you asked us for a quote on our ${label} page. Not you? Reply and we'll take you off.`,
-  },
-  es: {
-    subject: (label: string) => `Su cotización está lista… ${label}`,
-    title: "¡Su cotización está lista!",
-    hi: (first: string) => `Hola ${first}:`,
-    p1: (category: string, total: string) => `Revisé sus decisiones y les puse precio a todas, con extras y mejoras incluidos. Su cotización para [[${category}]] es de [[${total}]].`,
-    p2: "Revísela línea por línea. Si todo está bien, toque “Acepto” y yo reservo su cabina. No se cobra nada antes de eso… y una pregunta primero siempre es bienvenida.",
-    open: "Ver mi cotización",
-    close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
-    footer: (label: string) => `Recibió este correo porque nos pidió una cotización en nuestra página de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
-  },
-} as const;
-
-/**
- * The email that says Mark's final quote is ready (Mark 2026-11-05: the first figure is the unqualified price; the guest commits to the updated quote, so
- * it comes to Mark first). The cabin type and the total, Mark's own line when he wrote one, and the way back to the page ("See my quote"), where the
- * guest reads it line by line and agrees. Every value is escaped; the link appears only in the body it is sent to.
- */
-export function finalQuoteEmail(i: FinalQuoteInput): { subject: string; html: string; text: string } {
-  const T = FINAL[i.lang];
-  const first = i.firstName.trim();
-  const label = i.groupLabel.trim();
-  const p1 = T.p1(i.category, i.totalText);
-  const note = i.note?.trim() || null;
-  const sign = i.hostNames.trim() || "Mark";
-  const text = [T.hi(first), p1.replace(/\[\[|\]\]/g, ""), ...(note ? [note] : []), T.p2, `${T.open}: ${i.detailsUrl}`, T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
-  const button = `<a href="${esc(i.detailsUrl)}" style="display:inline-block;background:#f5c33b;color:#07183f;font-weight:bold;border-radius:999px;padding:10px 18px;text-decoration:none;font-size:16px">${esc(T.open)}</a>`;
-  const body = [
-    para(esc(T.hi(first))),
-    para(esc(p1).replace(/\[\[(.*?)\]\]/g, (_m, c: string) => `<b>${c}</b>`)),
-    ...(note ? [para(esc(note))] : []),
-    para(esc(T.p2)), para(button), para(esc(T.close)),
   ].join("\n    ");
   return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
 }

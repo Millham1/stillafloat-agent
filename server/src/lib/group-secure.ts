@@ -70,13 +70,6 @@ export function deriveHubToken(travelerId: string, keyHex: string): string {
   return createHmac("sha256", Buffer.from(keyHex, "hex")).update(`${HUB_LABEL}${travelerId}`).digest("base64url");
 }
 
-/** The link in the "your quote is ready" email (Mark 2026-11-05): derived like the cruise-page link, so a corrected quote sent later carries the
- *  same link and the first email keeps working. Only its sha256 is stored (group_interests.quote_token_hash). */
-export function deriveQuoteToken(replyId: string, keyHex: string): string {
-  if (!/^[0-9a-fA-F]{64}$/.test(keyHex)) throw new Error("the link key is not set (GROUP_LINK_KEY or GROUP_PII_KEY, 64 hex characters)");
-  return createHmac("sha256", Buffer.from(keyHex, "hex")).update(`saf-quote-link-v1:${replyId}`).digest("base64url");
-}
-
 // ── Passport encryption ───────────────────────────────────────────────────────
 
 const VERSION = "v1";

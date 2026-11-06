@@ -1,22 +1,31 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Send, Trash2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Plus, Send, Trash2, CheckCircle2, AlertTriangle, Upload, Download } from "lucide-react";
 import { api } from "@/lib/group-api";
 import { useToast } from "@/hooks/use-toast";
 
-// Booking confirmation (Mark 2026-11-04). The guest agreed the quote; Mark books it with the supplier, types the confirmations and any change
-// to the booking here, sees what the paperwork will now say, and sends it. The cabin numbers live on the cabin row, the flights, hotels and
+// Booking confirmation (Mark 2026-11-04, reshaped 2026-11-05). The guest sent their choices; Mark re-quotes them in the cruise line's system and
+// uploads that quote here: it fills the form. He checks it, adds the confirmations and any change, sees what the paperwork will now say, and sends
+// it. When the signed documents are back he uploads them and closes the booking. The cabin numbers live on the cabin row, the flights, hotels and
 // transfers on the lead's file; the Cruise Booking Agreement and the room-number lines fill from them. Rules: server/src/routes/group-details.ts.
 
-type Guest = { id: string; name: string; category: string | null; party: number | null; paperwork: string; agreed_at: string };
+type Guest = { id: string; name: string; category: string | null; party: number | null; paperwork: string; requested_at: string; completed_at: string | null };
 type TripLine = { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
 type Booking = {
   success: boolean; guest: { name: string; email: string | null }; quote: { category: string; party: number; total: string; deposit: string | null } | null;
   paperwork: string; cabin: Cabin | null; trip: TripLine[]; needs: Record<string, boolean>; missing: string[]; ready: boolean; fills: Array<{ label: string; value: string }>;
+  carrier: null | {
+    id: string; filename: string; status: string; error: string | null;
+    read: null | { booking_number: string | null; cabin_num: string | null; category: string | null; price_total: number | null; deposit_amount: number | null; addons: Array<{ name: string; total: number; includes: string[] }>; inclusions: string[]; warnings: string[] };
+  };
+  signed: null | { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> };
+  completedAt: string | null; confirmWith: string[]; flexpay: null | { link: string | null };
 };
+const READING = ["queued", "reading", "extracting"];
+const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 const input = "w-full border rounded px-2 py-1 text-sm bg-card";
 const btn = "text-xs px-3 py-1.5 rounded-md border bg-card hover:bg-muted/40 disabled:opacity-50 inline-flex items-center gap-1 whitespace-nowrap";
@@ -31,18 +40,36 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const key = ["group-booking", groupId, guest.id];
-  const { data, isLoading, error } = useQuery<Booking>({ queryKey: key, queryFn: () => api(`/groups/${groupId}/interests/${guest.id}/booking`) });
+  // while the cruise line's quote is being read the form asks again every few seconds
+  const { data, isLoading, error } = useQuery<Booking>({
+    queryKey: key, queryFn: () => api(`/groups/${groupId}/interests/${guest.id}/booking`),
+    refetchInterval: (q) => (q.state.data?.carrier && READING.includes(q.state.data.carrier.status) ? 3000 : false),
+  });
+  const filled = useRef<string | null>(null);   // the read this form was last filled from: a refresh never overwrites what Mark typed
+  const fileRef = useRef<HTMLInputElement>(null);
   const [cabin, setCabin] = useState<Record<string, string>>({});
   const [trip, setTrip] = useState<TripLine[]>([]);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    if (!data) return;
+    if (!data || dirty) return;   // a refresh never overwrites what is typed and not yet saved
     const c = data.cabin;
     setCabin({ booking_number: c?.booking_number ?? "", cabin_num: c?.cabin_num ?? "", deck: c?.deck ?? "", category: c?.category ?? "", price_total: c?.price_total != null ? String(c.price_total) : "", deposit_amount: c?.deposit_amount != null ? String(c.deposit_amount) : "" });
     setTrip(data.trip);
     setDirty(false);
-  }, [data]);
+  }, [data?.cabin, data?.trip]);
+  // The cruise line's quote has been read: its figures go into the form, unsaved, for Mark to check.
+  useEffect(() => {
+    const r = data?.carrier?.status === "ready" ? data.carrier.read : null;
+    if (!r || !data?.carrier || filled.current !== `wait:${guest.id}`) return;
+    filled.current = data.carrier.id;
+    setCabin((c) => ({
+      ...c,
+      ...(r.booking_number ? { booking_number: r.booking_number } : {}), ...(r.cabin_num ? { cabin_num: r.cabin_num } : {}), ...(r.category ? { category: r.category } : {}),
+      ...(r.price_total != null ? { price_total: String(r.price_total) } : {}), ...(r.deposit_amount != null ? { deposit_amount: String(r.deposit_amount) } : {}),
+    }));
+    setDirty(true);
+  }, [data?.carrier, guest.id]);
 
   if (isLoading) return <p className="px-4 py-3 text-sm text-muted-foreground">Loading…</p>;
   if (error || !data) return <p className="px-4 py-3 text-sm text-destructive">Could not load this booking: {(error as Error)?.message}</p>;
@@ -60,9 +87,47 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       const next = await api<Booking>(`/groups/${groupId}/interests/${guest.id}/booking`, "PUT", body);
       qc.setQueryData(key, next);
       qc.invalidateQueries({ queryKey: ["group", groupId] });
+      setDirty(false);
       toast({ title: "Booking confirmation saved" });
       return true;
     } catch (e) { toast({ variant: "destructive", title: "Not saved", description: (e as Error).message }); return false; }
+    finally { setBusy(false); }
+  };
+  const upload = async (file: File) => {
+    setBusy(true);
+    try {
+      const b64 = await new Promise<string>((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.onerror = () => no(new Error("The file could not be read")); fr.readAsDataURL(file); });
+      await api(`/groups/${groupId}/interests/${guest.id}/carrier-quote`, "POST", { filename: file.name, data: b64 });
+      filled.current = `wait:${guest.id}`;
+      await qc.invalidateQueries({ queryKey: key });
+      toast({ title: "Reading the cruise line's quote…" });
+    } catch (e) { toast({ variant: "destructive", title: "Not uploaded", description: (e as Error).message }); }
+    finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
+  };
+  const openSigned = async (sid: string) => {
+    const w = window.open("", "_blank"); // opened first so the browser does not treat it as a pop-up
+    try { const r = await api<{ url: string }>(`/groups/${groupId}/signatures/${sid}/file`); if (w) w.location.href = r.url; }
+    catch (e) { w?.close(); toast({ variant: "destructive", title: "Could not open it", description: (e as Error).message }); }
+  };
+  const complete = async () => {
+    if (!window.confirm(`${data.guest.name}'s booking is confirmed with: ${data.confirmWith.join("; ")}?`)) return;
+    setBusy(true);
+    try {
+      await api(`/groups/${groupId}/interests/${guest.id}/complete`, "POST");
+      toast({ title: "Booking confirmed" });
+      qc.invalidateQueries({ queryKey: ["group-bookings", groupId] });
+      qc.invalidateQueries({ queryKey: key });
+    } catch (e) { toast({ variant: "destructive", title: "Not completed", description: (e as Error).message }); }
+    finally { setBusy(false); }
+  };
+  const flexpay = async () => {
+    if (!window.confirm(`Email ${data.guest.name} the link to schedule the FlexPay appointment?`)) return;
+    setBusy(true);
+    try {
+      const r = await api<{ link: string }>(`/groups/${groupId}/interests/${guest.id}/flexpay-link`, "POST");
+      toast({ title: r.link === "sent" ? "FlexPay appointment link sent" : `Not sent: ${SENT[r.link] ?? r.link}` });
+      qc.invalidateQueries({ queryKey: key });
+    } catch (e) { toast({ variant: "destructive", title: "Not sent", description: (e as Error).message }); }
     finally { setBusy(false); }
   };
   const send = async () => {
@@ -81,6 +146,24 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   return (
     <div className="p-4 space-y-4">
       <p className="text-sm">{data.guest.name}{data.quote ? ` · ${data.quote.category} · party of ${data.quote.party} · ${data.quote.total}` : ""}{data.guest.email ? ` · ${data.guest.email}` : ""}</p>
+      {!sent && (
+        <div className="rounded-md border p-3 space-y-2">
+          <h4 className="text-sm font-semibold">1. The cruise line's quote</h4>
+          <p className="text-sm text-muted-foreground">Re-quote this guest's choices in the cruise line's system, then upload the quote (PDF). It fills the booking confirmation below for you to check.</p>
+          <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }} />
+          <button className={btn} disabled={busy || (!!data.carrier && READING.includes(data.carrier.status))} onClick={() => fileRef.current?.click()}><Upload className="w-3 h-3" /> {data.carrier ? "Upload a different quote" : "Upload the cruise line's quote"}</button>
+          {data.carrier && READING.includes(data.carrier.status) && <p className="text-sm text-muted-foreground">Reading {data.carrier.filename}… about a minute.</p>}
+          {data.carrier?.status === "failed" && <p className="text-sm text-destructive">{data.carrier.filename} could not be read: {data.carrier.error ?? "no reason given"}. Upload it again, or type the figures below.</p>}
+          {data.carrier?.status === "ready" && data.carrier.read && (
+            <div className="text-sm space-y-1">
+              <p className="text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Read {data.carrier.filename}. Check every figure below against the quote, then save.</p>
+              {data.carrier.read.addons.length > 0 && <p><span className="text-muted-foreground">Paid add-ons on the quote:</span> {data.carrier.read.addons.map((a) => `${a.name} ${usd(a.total)}`).join(" · ")}</p>}
+              {data.carrier.read.inclusions.length > 0 && <p><span className="text-muted-foreground">Included:</span> {data.carrier.read.inclusions.join(" · ")}</p>}
+              {data.carrier.read.warnings.map((w) => <p key={w} className="text-amber-700 flex items-start gap-1"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {w}</p>)}
+            </div>
+          )}
+        </div>
+      )}
       {!data.cabin && <p className="text-sm text-amber-700 flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> This guest is not on a cabin in the group file. Place them in the Cabins table below first.</p>}
       {data.cabin && (
         <div className="grid sm:grid-cols-3 gap-3">
@@ -126,7 +209,39 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
       </div>
 
       {sent ? (
-        <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> {SENT[data.paperwork] ?? "Paperwork sent"}.</p>
+        <div className="space-y-3">
+          <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> {SENT[data.paperwork] ?? "Paperwork sent"}.</p>
+          {data.signed && (
+            <div className="rounded-md border p-3 space-y-2">
+              <h4 className="text-sm font-semibold">2. Signed documents: {data.signed.signed} of {data.signed.required} back</h4>
+              <p className="text-sm text-muted-foreground">Each signed copy is stored on this file the moment it is signed (private storage; passport details encrypted).</p>
+              {data.signed.docs.length === 0 && <p className="text-sm text-muted-foreground">Nothing signed yet.</p>}
+              {data.signed.docs.map((d) => (
+                <p key={d.id} className="text-sm flex items-center gap-2 flex-wrap">{d.title}{d.signer ? ` · ${d.signer}` : ""}
+                  {d.has_pdf && <button className={btn} onClick={() => openSigned(d.id)}><Download className="w-3 h-3" /> Signed copy</button>}</p>
+              ))}
+              {data.completedAt ? (
+                <p className="text-sm flex items-center gap-1 text-green-700"><CheckCircle2 className="w-4 h-4" /> Booking confirmed with the cruise line and vendors · {new Date(data.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.</p>
+              ) : (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold">3. Confirm the booking</h4>
+                  <p className="text-sm text-muted-foreground">Confirm with: {data.confirmWith.join(" · ")}.</p>
+                  <button className={`${btn} bg-primary text-primary-foreground`} disabled={busy || !data.signed.complete} onClick={complete} title={data.signed.complete ? "" : "Waiting on the guest's signatures"}><CheckCircle2 className="w-3 h-3" /> Confirmed with the cruise line and vendors</button>
+                </div>
+              )}
+              {data.flexpay ? (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold">4. FlexPay</h4>
+                  <p className="text-sm text-muted-foreground">This guest asked for FlexPay. Send the link to schedule the appointment that completes the application; then you make the payments.</p>
+                  <button className={btn} disabled={busy || !data.completedAt} onClick={flexpay} title={data.completedAt ? "" : "Confirm the booking first"}><Send className="w-3 h-3" /> {data.flexpay.link ? "Send the appointment link again" : "Send the FlexPay appointment link"}</button>
+                  {data.flexpay.link && <span className="text-xs text-muted-foreground ml-2">{data.flexpay.link === "sent" ? "Sent" : SENT[data.flexpay.link] ?? data.flexpay.link}.</span>}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">4. No FlexPay on this booking: the card authorization and the payment schedule on this file apply.</p>
+              )}
+            </div>
+          )}
+        </div>
       ) : (
         <div className="space-y-2">
           {data.missing.length > 0 && <ul className="text-sm text-amber-700 list-disc pl-5">{data.missing.map((m) => <li key={m}>{m}</li>)}</ul>}
@@ -153,7 +268,7 @@ export function GroupBooking({ groupId }: { groupId: string }) {
         <h3 className="font-semibold">Booking confirmations</h3>
         {waiting > 0 && <Badge variant="outline" className="bg-amber-50 text-amber-800">{waiting} waiting on you</Badge>}
         <div className="flex gap-2 flex-wrap ml-auto">
-          {list.map((g) => <button key={g.id} className={`${btn} ${g.id === open ? "border-foreground" : ""}`} onClick={() => setOpen(g.id)}>{g.name}{g.paperwork === "booking" ? " · book it" : " · sent"}</button>)}
+          {list.map((g) => <button key={g.id} className={`${btn} ${g.id === open ? "border-foreground" : ""}`} onClick={() => setOpen(g.id)}>{g.name}{g.completed_at ? " · confirmed" : g.paperwork === "booking" ? " · quote it" : " · sent"}</button>)}
         </div>
       </div>
       {current && <BookingForm key={current.id} groupId={groupId} guest={current} />}

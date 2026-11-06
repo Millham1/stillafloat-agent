@@ -261,7 +261,7 @@ router.post("/groups/:id/marketing/share-code", requireToken, async (req: Reques
 router.get("/groups/:id/interests", requireToken, async (req: Request, res: Response) => {
   try {
     const { data, error } = await db().from("group_interests")
-      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, call_when, travelers, address, concierge, pick, quote, quote_agreed_at, hold_requested_at, ack_email_status, traveler_id")
+      .select("id, first_name, last_name, email, phone, lang, cabin_type, guests, note, newsletter_opt_in, status, created_at, choice, choice_at, call_when, travelers, address, concierge, pick, quote, quote_requested_at, hold_requested_at, ack_email_status, traveler_id")
       .eq("group_id", String(req.params["id"])).order("created_at", { ascending: false }).order("id", { ascending: true });
     if (error) throw new Error(error.message);
     return res.json({ success: true, interests: data ?? [] });

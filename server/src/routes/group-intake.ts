@@ -21,6 +21,8 @@ import { applyPackageInclusions, type PackageRow } from "../lib/package-inclusio
 //   POST /api/groups/intake/:id/retry  → re-run the reader
 //   POST /api/groups/intake/:id/accept { group: {...}, cabins?: [...] } → { group }
 //   GET  /api/groups/intake/:id/file   → short-lived signed URL to the PDF
+//   POST /api/groups/:id/interests/:iid/carrier-quote { filename, data } → the cruise line's quote for ONE guest (Mark 2026-11-05): read the same way,
+//                                       and the booking confirmation (routes/group-details.ts) fills from it
 
 const router: IRouter = Router();
 const BUCKET = "group-docs";
@@ -165,6 +167,51 @@ router.get("/groups/intake/:id/file", requireToken, async (req: Request, res: Re
     return res.json({ success: true, url: signed.signedUrl, expiresIn: 600 });
   } catch (err) {
     return fail(req, res, err, "booking intake file link failed");
+  }
+});
+
+/** Mark 2026-11-05: "I take their preferences and re quote in the carrier's system. I then upload the quote, which pre-fills the new input." The PDF is
+ *  read as one booking; the reply remembers which read is its own (quote.carrier_intake_id) and the PDF is filed on the group. Uploading again replaces it. */
+router.post("/groups/:id/interests/:iid/carrier-quote", requireToken, async (req: Request, res: Response) => {
+  try {
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
+    if (!UUID.test(groupId) || !UUID.test(iid)) return res.status(404).json({ success: false, error: "Reply not found" });
+    const { data: reply, error } = await db().from("group_interests").select("id, first_name, last_name, lang, quote, quote_requested_at, traveler_id, booking_completed_at").eq("id", iid).eq("group_id", groupId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!reply || !reply.quote_requested_at || !reply.traveler_id) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
+    const quote = (reply.quote && typeof reply.quote === "object" ? reply.quote : {}) as Row;
+    if (quote["paperwork"] && quote["paperwork"] !== "booking") return res.status(409).json({ success: false, error: "The paperwork has gone to this guest: the booking confirmation no longer changes here." });
+    const body = (req.body ?? {}) as Row;
+    const filename = String(body["filename"] ?? "quote.pdf").replace(/[^\w.() -]+/g, "_").slice(0, 120) || "quote.pdf";
+    const bytes = Buffer.from((typeof body["data"] === "string" ? body["data"] : "").replace(/^data:[^,]*,/, ""), "base64");
+    if (bytes.length < 100) return res.status(400).json({ success: false, error: "No file received" });
+    if (bytes.length > MAX_PDF_BYTES) return res.status(413).json({ success: false, error: "That PDF is over 20 MB" });
+    if (bytes.subarray(0, 5).toString("latin1") !== "%PDF-") return res.status(400).json({ success: false, error: "Only PDF files can be read" });
+
+    const { data: intake, error: ie } = await db().from("group_intakes")
+      .insert({ booking_kind: "individual", lang: reply.lang === "es" ? "es" : "en", filename, storage_path: "pending", bytes: bytes.length, group_id: groupId })
+      .select("*").single();
+    if (ie) throw new Error(ie.message);
+    const storagePath = `${intake.id}/${filename.toLowerCase().endsWith(".pdf") ? filename : filename + ".pdf"}`;
+    const { error: up } = await db().storage.from(BUCKET).upload(storagePath, bytes, { contentType: "application/pdf", upsert: false });
+    if (up) {
+      await setStatus(intake.id, { status: "failed", error: `upload failed: ${up.message}` });
+      throw new Error(`upload failed: ${up.message}`);
+    }
+    await setStatus(intake.id, { storage_path: storagePath });
+    const { error: qe } = await db().from("group_interests").update({ quote: { ...quote, carrier_intake_id: intake.id }, updated_at: new Date().toISOString() }).eq("id", iid);
+    if (qe) throw new Error(qe.message);
+    const guest = [reply.first_name, reply.last_name].filter(Boolean).join(" ") || "the guest";
+    const { error: de } = await db().from("group_documents").insert({
+      group_id: groupId, kind: "confirmation", title: filename, status: "filed", owner: "mark", completed_at: new Date().toISOString(),
+      storage_path: storagePath, notes: `The cruise line's quote for ${guest}: read into the booking confirmation`,
+    });
+    if (de) logger.warn({ err: de.message }, "carrier quote: the PDF was read but could not be filed on the group");
+    setImmediate(() => { void processIntake(intake.id); });
+    return res.status(202).json({ success: true, intake: { id: intake.id, filename, status: "queued" } });
+  } catch (err) {
+    return fail(req, res, err, "carrier quote upload failed");
   }
 });
 
