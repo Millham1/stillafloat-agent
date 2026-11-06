@@ -11,7 +11,7 @@ import { runStormScan } from "../lib/storm-agent";
 import { emailSubscribers, emailAllClear, startAlertSend, subscriberCount, type AlertRow, type AllClearRow } from "../lib/storm-send";
 import { translateStormText, declaredAlertEs, textFor } from "../lib/storm-spanish";
 import { labelGrounds, groundActive, type RegionKey, REGION_LABELS } from "../lib/storm-grounds";
-import { impactedShipsForAlert, defaultWindow, withTrackable, type TrackableSailing } from "../lib/storm-sailings";
+import { impactedShipsForAlert, defaultWindow, warmPlannedWindows, withTrackable, type TrackableSailing } from "../lib/storm-sailings";
 import { severityRank } from "../lib/storm-escalation";
 import { SURFACE_CHART, satelliteFor } from "../lib/nws-marine-source";
 import * as crypto from "crypto";
@@ -39,10 +39,14 @@ interface DbAlert extends AlertRow {
 
 /** Impacted sailings for an alert (date + region aware), using its forecast window. Each
  *  carries `trackable`, so the storm pages can put a "Track this ship" link beside it. */
-async function impactedSailings(a: DbAlert): Promise<TrackableSailing[]> {
-  const w = a.window_start && a.window_end
+function windowOf(a: DbAlert): { start: string; end: string } {
+  return a.window_start && a.window_end
     ? { start: a.window_start, end: a.window_end }
     : defaultWindow();
+}
+
+async function impactedSailings(a: DbAlert): Promise<TrackableSailing[]> {
+  const w = windowOf(a);
   // The same answer the lifecycle pins from (storm-sailings.impactedShipsForAlert):
   // by the storm's path when the alert has one, else by its grounds.
   await warmLiveAisLedger();
@@ -155,6 +159,8 @@ router.get("/storm-alerts", requireToken, async (_req: Request, res: Response) =
     const alerts = (data ?? []) as unknown as DbAlert[];
     // Open course changes ride along so the dashboard shows them BEFORE publish.
     const pendingDiversions = await listPendingDiversions(alerts.map((a) => a.id));
+    // Every alert has its own window; one read covers them all (storm-sailings.warmPlannedWindows).
+    await warmPlannedWindows(alerts.map(windowOf));
     const withShips = await Promise.all(alerts.map(async (a) => ({
       ...a,
       grounds_label: labelGrounds(a.affected_grounds),
@@ -401,6 +407,7 @@ router.get("/storm-watch", async (_req: Request, res: Response) => {
       .order("last_updated", { ascending: false });
     if (error) throw error;
     const rows = (data ?? []) as unknown as DbAlert[];
+    await warmPlannedWindows(rows.map(windowOf));
     const systems = await Promise.all(rows.map(async (a) => ({
       id: a.id,
       name: a.name,
