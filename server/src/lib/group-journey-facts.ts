@@ -200,7 +200,7 @@ export function payee(input: JourneyInput, cabin: Row): Row | null {
 export interface PaperworkState { required: string[]; signed: string[]; pending: string[]; signedRows: Row[]; title(key: string): string }
 
 export function paperworkState(input: JourneyInput, traveler: Row, cabin: Row | null): PaperworkState {
-  const required = packetFor({ group: input.group, cabin, traveler });
+  const required = packetFor({ group: input.group, cabin, traveler, travelers: input.travelers });
   const mine = input.signatures.filter((s) => s.traveler_id === traveler.id);
   const signedKeys = new Set(mine.map((s) => s.doc_key));
   const signed = required.filter((k) => signedKeys.has(k));

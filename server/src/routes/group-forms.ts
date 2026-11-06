@@ -469,10 +469,22 @@ async function travelerInGroup(groupId: string, tid: string): Promise<Row | null
   return data ?? null;
 }
 
+/** The lead signs for everyone on the cabin (Mark 2026-11-06): a traveler on a lead's cabin has no paperwork link of their own. */
+async function leadSignsFor(t: Row): Promise<string | null> {
+  if (t.is_lead || !t.cabin_id) return null;
+  const { data, error } = await db().from("group_travelers").select("first_name, last_name").eq("cabin_id", t.cabin_id).eq("is_lead", true).neq("id", t.id).limit(1);
+  if (error) throw new Error(error.message);
+  const lead = data?.[0];
+  if (!lead) return null;
+  return `${[lead.first_name, lead.last_name].filter(Boolean).join(" ") || "The cabin's lead"} signs the paperwork for everyone on this cabin. This traveler has nothing of their own to sign.`;
+}
+
 router.post("/groups/:id/travelers/:tid/form-link", requireToken, async (req: Request, res: Response) => {
   try {
     const t = await travelerInGroup(String(req.params["id"]), String(req.params["tid"]));
     if (!t) return res.status(404).json({ success: false, error: "Traveler not found" });
+    const covered = await leadSignsFor(t);
+    if (covered) return res.status(409).json({ success: false, code: "lead-signs", error: covered });
     const { token, hash } = issueToken();
     await store.updateTraveler(t.id, { form_token_hash: hash, form_sent_at: new Date().toISOString() });
     // The link is shown once: only its hash is kept. Asking again makes a new link and the old one stops working.
@@ -491,6 +503,8 @@ router.post("/groups/:id/travelers/:tid/form-link/send", requireToken, async (re
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) {
       return res.status(400).json({ success: false, error: "This traveler has no email address on the file. Add one, or make a link and send it yourself." });
     }
+    const covered = await leadSignsFor(t);
+    if (covered) return res.status(409).json({ success: false, code: "lead-signs", error: covered });
     if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) {
       return res.status(400).json({ success: false, error: "This box only emails its test addresses, so that address was not emailed." });
     }

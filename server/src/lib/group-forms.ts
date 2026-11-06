@@ -28,7 +28,7 @@ import {
   BUSINESS, encryptPii, hashForAudit, hashLinkToken, looksLikeLinkToken, newLinkToken, piiConfigured, safeEqualHex,
 } from "./group-secure";
 import {
-  CARD_DOCUMENT, CHECKLIST_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cardHolderOf, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
+  CARD_DOCUMENT, CHECKLIST_DOCUMENT, DOC_SPECS, applyAnswers, askedOf, blocksFor, buildCtx, cabinLead, cardHolderOf, fillBlocks, packetFor, prefillValue, publicField, renderDocument,
   type Answers, type DocCtx, type RenderedDoc, type Row,
 } from "./group-documents";
 import { INSURANCE_CHOICES, INSURANCE_CHOICE_FIELDS, INSURANCE_DOCUMENTS } from "./group-document-specs";
@@ -160,7 +160,7 @@ export async function loadByToken(deps: Pick<FormsDeps, "store" | "now" | "advis
     const [cabins, travelers] = await Promise.all([store.cabins(group.id), store.travelers(group.id)]);
     const checks = await travelChecks(deps, group);
     const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler, now, ...checks });
-    const packet = packetFor({ group, cabin: ctx.cabin, traveler });
+    const packet = packetFor({ group, cabin: ctx.cabin, traveler, travelers });
     const sigs = await store.signaturesFor({ groupId: group.id, travelerId: traveler.id });
     return { kind: "traveler", group, traveler, cabin: ctx.cabin, mates: ctx.mates, ctx, packet, signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
   }
@@ -741,7 +741,7 @@ async function loadByCopiesToken(deps: FormsDeps, token: unknown): Promise<Loade
     const [cabins, travelers] = await Promise.all([deps.store.cabins(group.id), deps.store.travelers(group.id)]);
     const ctx = buildCtx({ business: BUSINESS, group, cabins, travelers, traveler: t, now });
     const sigs = await deps.store.signaturesFor({ groupId: group.id, travelerId: t.id });
-    return { kind: "traveler", group, traveler: t, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cabin: ctx.cabin, traveler: t }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
+    return { kind: "traveler", group, traveler: t, cabin: ctx.cabin, mates: ctx.mates, ctx, packet: packetFor({ group, cabin: ctx.cabin, traveler: t, travelers }), signed: new Map(sigs.map((s) => [s.doc_key as string, s])) };
   }
   const lead = await deps.store.travelerByCardCopiesHash(hash);
   if (lead) {
@@ -917,24 +917,28 @@ export function mailAllowed(to: string, allow: string | undefined): boolean {
 
 /** The card for a lead's booking: whose, and where the owner's own signing stands (null: not a cabin's lead). */
 export interface CardStatus { holder: "me" | "other" | null; name: string | null; email: string | null; link_sent_at: string | null; signed: boolean }
-export interface PacketStatus { required: string[]; signed: string[]; complete: boolean; card?: CardStatus | null; checklist_sent_at?: string | null }
+export interface PacketStatus { required: string[]; signed: string[]; complete: boolean; /** the cabin's lead, when the lead signs for this traveler */ covered_by?: string; card?: CardStatus | null; checklist_sent_at?: string | null }
 
 /** For each traveler (and the organizer), the documents asked for and the ones signed. */
 export function packetStatuses(input: { group: Row; cabins: Row[]; travelers: Row[]; signatures: Row[] }): { travelers: Record<string, PacketStatus>; organizer: PacketStatus } {
   const out: Record<string, PacketStatus> = {};
   for (const t of input.travelers) {
     const cabin = input.cabins.find((c) => c.id === t.cabin_id) ?? null;
-    const required = packetFor({ group: input.group, cabin, traveler: t });
+    const required = packetFor({ group: input.group, cabin, traveler: t, travelers: input.travelers });
     const signed = required.filter((k) => input.signatures.some((s) => s.traveler_id === t.id && s.doc_key === k));
     const card = cardOf(t);
+    const lead = cabinLead(input.travelers, t);
     out[t.id] = {
       required, signed, complete: required.length > 0 && signed.length === required.length,
+      ...(lead ? { covered_by: String(lead.id) } : {}),
       checklist_sent_at: t.checklist_sent_at ?? null,
       card: t.is_lead && cabin
         ? { holder: card.holder, name: card.name || null, email: card.email || null, link_sent_at: t.card_link_sent_at ?? null, signed: input.signatures.some((s) => s.traveler_id === t.id && s.doc_key === CARD_DOCUMENT) }
         : null,
     };
   }
+  // a traveler the lead signs for is complete when the lead is
+  for (const s of Object.values(out)) if (s.covered_by) s.complete = !!out[s.covered_by]?.complete;
   const required = packetFor({ group: input.group, organizer: true });
   const signed = required.filter((k) => input.signatures.some((s) => !s.traveler_id && s.signer_role === "organizer" && s.doc_key === k));
   return { travelers: out, organizer: { required, signed, complete: signed.length === required.length } };
