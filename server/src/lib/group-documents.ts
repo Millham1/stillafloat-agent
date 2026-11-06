@@ -557,9 +557,18 @@ export function cardHolderOf(traveler: Row | null | undefined): "me" | "other" |
  *  signed; it is prepared from the file and emailed on its own (CHECKLIST_DOCUMENT). Not in any packet: 04 (cancellation
  *  policy), 06 (Cornerstone's own card form: 22 is that form with the last four, the expiry and the licence), 13 and 14
  *  (questionnaires), 20 and 21 (the two-document packet of 10/29, kept so copies signed under it still render). */
-export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean; cardholder?: boolean }): string[] {
+/** The lead of a traveler's cabin when the traveler is someone else on it (Mark 2026-11-06: the lead signs for everyone on the
+ *  cabin; the lead's documents already name the others). null for the lead, for a cabin without a lead and for no cabin. */
+export function cabinLead(travelers: Row[], traveler: Row | null | undefined): Row | null {
+  if (!traveler || traveler.is_lead || !traveler.cabin_id) return null;
+  return travelers.find((x) => x.is_lead && x.cabin_id === traveler.cabin_id && x.id !== traveler.id) ?? null;
+}
+
+export function packetFor(input: { group: Row; cabin?: Row | null; traveler?: Row | null; organizer?: boolean; cardholder?: boolean; travelers?: Row[] }): string[] {
   if (input.organizer) return [ORGANIZER_DOCUMENT];
   if (input.cardholder) return [CARD_DOCUMENT];
+  // the cabin's lead signs for everyone on it: the others owe no documents of their own
+  if (input.travelers && cabinLead(input.travelers, input.traveler)) return [];
   const hasFees = normalizeFees(input.group?.fees).length > 0;
   const keys: string[] = TRAVELER_PACKET.map((k) => (k === "insurance" ? insuranceDocFor(input.traveler) : k));
   if (hasFees) keys.splice(2, 0, ...FEE_DOCUMENTS); // after the terms

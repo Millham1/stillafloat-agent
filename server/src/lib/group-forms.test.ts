@@ -132,8 +132,16 @@ const BOOK = { answers: {} };
 
 // ── Mark's own PDF, filled in (Mark 2026-10-27) ───────────────────────────────
 
+/** A traveler on a cabin with no lead signs their own four documents (on a lead's cabin the lead signs for everyone, Mark 2026-11-06):
+ *  the tests of that plain packet put the second traveler on a cabin of their own. */
+function ownCabin(t: ReturnType<typeof setup>, id = "t2") {
+  t.state.cabins.push({ ...t.state.cabins[0]!, id: "c2" });
+  t.state.travelers.find((x) => x.id === id)!.cabin_id = "c2";
+}
+
 test("a document is shown as Mark's own PDF filled in with what was typed, for this link's packet only, and nothing is saved", async () => {
   const t = setup();
+  ownCabin(t);
   const token = t.link("t2");
   const before = JSON.stringify(t.state);
   const r = await previewDocument(t.deps, token, { doc_key: "01-terms-and-conditions", answers: { ...GOOD_15, health_ack: true, extra: { no: 1 }, "../x": "y" } });
@@ -149,6 +157,7 @@ test("a document is shown as Mark's own PDF filled in with what was typed, for t
 
 test("a document of the packet opens as its printed form, for this link only: not yet signed with what the file holds, signed as it was signed", async () => {
   const t = setup();
+  ownCabin(t);
   const token = t.link("t2");
   const blank = await documentPdf(t.deps, token, "01-terms-and-conditions.pdf");
   assert.equal(blank.status, 200);
@@ -193,6 +202,7 @@ test("an unknown, malformed, replaced or cancelled link all get the same neutral
 
 test("a traveler's packet lists their documents in order, with their own inputs, and nothing private", async () => {
   const t = setup();
+  ownCabin(t);
   const r = await getPacket(t.deps, t.link("t2"));
   assert.equal(r.status, 200);
   const p = pkt(r);
@@ -200,7 +210,11 @@ test("a traveler's packet lists their documents in order, with their own inputs,
   assert.deepEqual(p.docs.map((d) => d.key), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"]);
   assert.ok(p.docs.every((d) => d.status === "pending" && /^[0-9a-f]{64}$/.test(d.text_sha256) && d.html.includes("<")));
   assert.equal(p.docs[0]!.fields.length, 29, "inputs on the traveler information form (no passport place of issue, Mark 2026-10-30); a cabin-mate is not asked for the lead's details (Mark 2026-11-03)");
-  assert.deepEqual(p.mates, ["Jane Public"]);
+  assert.deepEqual(p.mates, [], "on a cabin of their own for this test");
+  // on the lead's cabin the lead signs for everyone (Mark 2026-11-06): the second traveler's own link carries no documents
+  const covered = setup();
+  const mine = pkt(await getPacket(covered.deps, covered.link("t2")));
+  assert.deepEqual([mine.docs.length, mine.complete, mine.mates], [0, false, ["Jane Public"]]);
   assert.equal(p.traveler.passport_on_file, "ending 4321");
   assert.equal(p.pii_ready, true);
   const raw = JSON.stringify(r.json);
@@ -289,6 +303,7 @@ test("a signature is refused without agreement, a full name, a matching hash, a 
 
 test("a file that changed after the page loaded cannot be signed on the old text", async () => {
   const t = setup();
+  ownCabin(t);
   const token = t.link("t2");
   await giveConsent(t.deps, token, { agreed: true }, META);
   const doc = pkt(await getPacket(t.deps, token)).docs.find((d) => d.key === "05-liability-waiver")!;
@@ -369,6 +384,7 @@ test("no GROUP_PII_KEY: the passport step is refused with a plain message and no
 
 test("signing the booking document records consent; the last signature completes the packet and tells Mark once", async () => {
   const t = setup();
+  ownCabin(t);
   const token = t.link("t2");
   const mate = "John Public";
   const order = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"];
@@ -406,6 +422,7 @@ test("signing the booking document records consent; the last signature completes
 
 test("choosing Allianz with one of the plans offered swaps the declination for the plan document; a plan not offered, or the line's plan with no rate on file, is refused", async () => {
   const t = setup();
+  ownCabin(t);
   t.state.group.insurance_plans = "OneTrip Basic: $89 per person\nOneTrip Prime: $129 per person\n";
   const token = t.link("t2");
   const early = await chooseInsurance(t.deps, token, { insurance_choice: "quote", insurance_plan: "OneTrip Prime: $129 per person" });
@@ -736,8 +753,14 @@ test("each traveler's progress is the documents asked for against the ones signe
   const s = packetStatuses({ group: g, cabins, travelers, signatures });
   assert.equal(s.travelers["t1"]!.required.length, 6);
   assert.equal(s.travelers["t1"]!.signed.length, 0);
-  assert.deepEqual(s.travelers["t2"]!.signed, ["15-emergency-contact-form", "01-terms-and-conditions"]);
-  assert.equal(s.travelers["t2"]!.complete, false);
+  // the lead signs for everyone on the cabin (Mark 2026-11-06): the second traveler owes nothing and is done when the lead is
+  assert.deepEqual([s.travelers["t2"]!.required, s.travelers["t2"]!.signed, s.travelers["t2"]!.complete, s.travelers["t2"]!.covered_by], [[], [], false, "t1"]);
+  const leadDone = packetStatuses({ group: g, cabins, travelers, signatures: s.travelers["t1"]!.required.map((k) => ({ traveler_id: "t1", doc_key: k, signer_role: "lead" })) });
+  assert.deepEqual([leadDone.travelers["t1"]!.complete, leadDone.travelers["t2"]!.complete], [true, true]);
+  // on a cabin with no lead each traveler signs their own four
+  const alone = packetStatuses({ group: g, cabins, travelers: [{ id: "t2", cabin_id: "c1", is_lead: false }], signatures });
+  assert.deepEqual(alone.travelers["t2"]!.signed, ["15-emergency-contact-form", "01-terms-and-conditions"]);
+  assert.equal(alone.travelers["t2"]!.complete, false);
   assert.deepEqual(s.organizer, { required: ["09-group-travel-contract"], signed: ["09-group-travel-contract"], complete: true });
   assert.deepEqual(organizerBlanks(g, cabins, travelers, new Date()).sort(), ["Complimentary berth ratio", "Minimum group size", "Per-person estimated cost"]);
 });
@@ -830,6 +853,7 @@ test("with a certificate the copy is sealed and marked so; a seal that fails is 
 
 test("the last signature emails the signer their copies once: one link per document, logged, and the links open only that signer's PDFs", async () => {
   const t = setup();
+  ownCabin(t);
   const token = t.link("t2");
   await signAllT2(t, token);
   assert.equal(t.mails.length, 2, "the copies on the last signature only, then the checklist on its own (Mark 2026-10-31)");
@@ -859,6 +883,7 @@ test("the last signature emails the signer their copies once: one link per docum
 
 test("a refused copies email is logged as failed and leaves the file saying not sent; the signatures stand", async () => {
   const t = setup({ mail: async () => false });
+  ownCabin(t);
   await signAllT2(t, t.link("t2"));
   assert.deepEqual(t.state.messages.map((r) => [r.template, r.status]), [["paperwork-copies", "failed"], ["paperwork-checklist", "failed"]]);
   assert.equal(t.state.travelers[1]!.copies_sent_at, null);
@@ -917,6 +942,7 @@ test("the insurance step offers the Allianz plans Mark put on the group file unt
 
 test("the line's plan is offered with its rate on the file, its price in the option; a policy of their own needs its company and number, which go on the file and the waiver", async () => {
   const t = setup();
+  ownCabin(t);
   t.state.group.line_protection = "MSC Cruise Protection: $99 per person";
   const token = t.link("t2");
   await giveConsent(t.deps, token, { agreed: true }, META);
@@ -942,6 +968,7 @@ test("the line's plan is offered with its rate on the file, its price in the opt
 
 test("the preview says where the waiver's health box and the signature line sit, so the page lays its tick and name box there", async () => {
   const t = setup();
+  ownCabin(t);
   const token = t.link("t2");
   await giveConsent(t.deps, token, { agreed: true }, META);
   const r = await previewDocument(t.deps, token, { doc_key: "05-liability-waiver", answers: {} });
@@ -958,6 +985,7 @@ test("the preview says where the waiver's health box and the signature line sit,
 
 test("the last signature sends the copies email and then the passport checklist on its own link; the checklist prints from that link, from the traveler's page, and again from the group file", async () => {
   const t = setup();
+  ownCabin(t);
   const token = t.link("t2");
   await signAllT2(t, token);
   assert.equal(t.mails.length, 2, "the copies, then the checklist");

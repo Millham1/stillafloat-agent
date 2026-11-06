@@ -141,7 +141,7 @@ test("group figures for the fixture", () => {
   assert.equal(g.travelersOnFile, 3, "the traveler on the released cabin is not counted");
   assert.equal(g.formsSent, 2);
   assert.equal(g.formsReturned, 1);
-  assert.equal(g.fullySigned, 1);
+  assert.equal(g.fullySigned, 2, "the lead signed everything, and the lead signs for the other traveler on the cabin (Mark 2026-11-06)");
   assert.equal(g.paymentsPaid, 1);
   assert.equal(g.paymentsOpen, 3);
   assert.equal(g.paymentsOverdue, 1);
@@ -184,15 +184,30 @@ test("payment status: paid, due, overdue, no date; days out are counted from tod
 
 // ── Paperwork ──
 
+test("paperwork: the lead signs for everyone on the cabin, so the others owe no documents and are done when the lead is", () => {
+  const a = built();
+  assert.deepEqual(a.paperwork.filter((p) => p.travelerId === "t2"), []);
+  const t2 = a.travelers.find((t) => t.id === "t2")!;
+  assert.deepEqual([t2.docsRequired, t2.docsSigned, t2.fullySigned], [0, 0, true]);
+  // the lead has not finished: neither has the traveler the lead signs for
+  const raw = fixture();
+  raw.signatures = raw.signatures.filter((s) => !(s["traveler_id"] === "t1" && s["doc_key"] === "05-liability-waiver"));
+  const b = buildAnalytics(raw, NOW);
+  assert.deepEqual(["t1", "t2"].map((id) => b.travelers.find((t) => t.id === id)!.fullySigned), [false, false]);
+});
+
 test("paperwork: one row per traveler and required document, signed or pending", () => {
   const raw = fixture();
+  // a traveler on a cabin with no lead signs their own four
+  raw.cabins.push({ ...raw.cabins[0]!, id: "c5" });
+  raw.travelers[1]!["cabin_id"] = "c5";
   const a = buildAnalytics(raw, NOW);
   const t1 = a.paperwork.filter((p) => p.travelerId === "t1");
   const t2 = a.paperwork.filter((p) => p.travelerId === "t2");
   const t3 = a.paperwork.filter((p) => p.travelerId === "t3");
   assert.deepEqual(t1.map((p) => p.docKey), packetFor({ group: raw.groups[0], cabin: raw.cabins[0], traveler: raw.travelers[0] }));
   assert.equal(t1.every((p) => p.status === "signed" && p.signedAt === "2026-10-03T00:00:00Z"), true);
-  assert.deepEqual(t2.map((p) => p.docKey), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"], "every traveler owes the same four (Mark 2026-10-31: the checklist is prepared and emailed, never signed)");
+  assert.deepEqual(t2.map((p) => p.docKey), ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"], "a traveler with no lead on the cabin owes the same four (Mark 2026-10-31: the checklist is prepared and emailed, never signed)");
   assert.deepEqual(t2.filter((p) => p.status === "signed").map((p) => p.docKey), ["15-emergency-contact-form"]);
   assert.equal(t3.every((p) => p.status === "pending" && p.signedAt === null), true);
   // Mark 2026-10-25: the workspace opens a signed copy itself: the signature's id and two yes/no flags, never the file's path

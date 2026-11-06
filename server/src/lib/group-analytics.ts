@@ -21,7 +21,7 @@
 //     datasets exactly as summarize() leaves them out of its counts.
 
 import { publicGroupRow, summarize, type GroupFile } from "./group-file";
-import { DOC_SPECS, packetFor } from "./group-documents";
+import { DOC_SPECS, cabinLead, packetFor } from "./group-documents";
 import { ALL_KINDS, KIND_LABEL, approvalFor, planJourney, summarizePlan, type JourneyDefaults, type MilestoneKind } from "./group-journey";
 import { dayDiff, ymd, type JourneyInput } from "./group-journey-facts";
 
@@ -292,13 +292,18 @@ export function buildAnalytics(raw: AnalyticsRaw, now: Date = new Date()): Group
     let formsSent = 0;
     for (const t of liveTravelers) {
       const cabin = t["cabin_id"] ? cabinById.get(String(t["cabin_id"])) ?? null : null;
-      const required = packetFor({ group: g, cabin, traveler: t });
+      const required = packetFor({ group: g, cabin, traveler: t, travelers: liveTravelers });
       const signedKeys = new Set(signatures.filter((x) => x["traveler_id"] === t["id"]).map((x) => String(x["doc_key"])));
       const signedAt = new Map<string, string | null>();
       const sigOf = new Map<string, Row>();
       for (const x of signatures) if (x["traveler_id"] === t["id"] && !signedAt.has(String(x["doc_key"]))) { signedAt.set(String(x["doc_key"]), iso(x["signed_at"])); sigOf.set(String(x["doc_key"]), x); }
       const docsSigned = required.filter((k) => signedKeys.has(k)).length;
-      const complete = required.length > 0 && docsSigned === required.length;
+      // the lead signs for the cabin (Mark 2026-11-06): a traveler the lead covers is done when the lead is
+      const coveredBy = cabinLead(liveTravelers, t);
+      const leadOwes = coveredBy ? packetFor({ group: g, cabin, traveler: coveredBy, travelers: liveTravelers }) : [];
+      const complete = coveredBy
+        ? leadOwes.length > 0 && leadOwes.every((k) => signatures.some((x) => x["traveler_id"] === coveredBy["id"] && x["doc_key"] === k))
+        : required.length > 0 && docsSigned === required.length;
       if (complete) fullySigned++;
       if (t["form_sent_at"] || t["form_submitted_at"]) formsSent++;
       const name = personName(t);
