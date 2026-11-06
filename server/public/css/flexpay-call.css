@@ -1,0 +1,21 @@
+/* flexpay-call.css — the scheduler on /flexpay-call.html and /es/flexpay-call.html (Mark 2026-11-05). Loaded after details-page.css, whose page, panel, plaque and button it uses. */
+.panel h1{font-size:32px;line-height:1.1;color:var(--ink);margin-bottom:10px}
+
+/* the days: one row that scrolls sideways on a phone */
+.c-days{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 10px;margin:8px -4px 0;-webkit-overflow-scrolling:touch}
+.c-day{flex:0 0 auto;cursor:pointer;border:2px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);font:700 18px/1.2 'Baloo 2',sans-serif;padding:10px 14px;white-space:nowrap}
+.c-day.on{background:var(--navy);border-color:var(--navy);color:var(--gold)}
+.c-day:focus-visible,.c-time:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
+
+.c-dayname{font-weight:800;font-size:20px;margin:8px 0 8px!important}
+
+/* that day's times */
+.c-times{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.c-time{cursor:pointer;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font:700 19px/1 'Baloo 2',sans-serif;padding:14px 4px;text-align:center}
+.c-time:hover{border-color:var(--navy)}
+.c-time.on{background:var(--yellow);border-color:var(--navy)}
+@media (max-width:380px){.c-times{grid-template-columns:repeat(2,1fr)}}
+
+/* picked */
+.c-when{font:400 26px/1.2 'Bree Serif',Georgia,serif;margin:4px 0 6px!important}
+a.btn{text-decoration:none}

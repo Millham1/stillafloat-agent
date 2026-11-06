@@ -500,7 +500,7 @@ const FLEXPAY = {
     title: "One short call and FlexPay is set!",
     hi: (first: string) => `Hi ${first},`,
     p1: "Your paperwork is signed and your booking is confirmed. Nicely done!",
-    p2: "You asked for FlexPay, so the last step is a short appointment with Mark to complete the FlexPay application together. Pick the time that suits you.",
+    p2: "You asked for FlexPay, so the last step is a short video call with Mark to complete the FlexPay application together. Pick the time that suits you.",
     open: "Pick my time",
     close: "Cruise smarter, laugh more… see you at the muster drill!",
     footer: (label: string) => `You are receiving this because you asked for FlexPay on your ${label} booking. Not you? Reply and we will take you off the list.`,
@@ -510,7 +510,7 @@ const FLEXPAY = {
     title: "¡Una llamada corta y FlexPay queda listo!",
     hi: (first: string) => `Hola ${first}:`,
     p1: "Sus documentos están firmados y su reservación está confirmada. ¡Bien hecho!",
-    p2: "Usted pidió FlexPay, así que el último paso es una cita corta con Mark para completar juntos la solicitud de FlexPay. Elija la hora que le convenga.",
+    p2: "Usted pidió FlexPay, así que el último paso es una videollamada corta con Mark para completar juntos la solicitud de FlexPay. Elija la hora que le convenga.",
     open: "Elegir mi hora",
     close: "Navegue con inteligencia, ría más… ¡nos vemos en el simulacro de seguridad!",
     footer: (label: string) => `Recibió este correo porque pidió FlexPay en su reservación de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
@@ -524,6 +524,48 @@ export function flexpayEmail(i: FlexpayInput): { subject: string; html: string; 
   const button = `<a href="${esc(i.appointmentUrl)}" style="display:inline-block;background:#f5c33b;color:#07183f;font-weight:bold;border-radius:999px;padding:10px 18px;text-decoration:none;font-size:16px">${esc(T.open)}</a>`;
   const body = [para(esc(T.hi(first))), para(esc(T.p1)), para(esc(T.p2)), para(button), para(esc(T.close))].join("\n    ");
   return { subject: T.subject(label), html: mailFrame(i, T.title, body, T.footer(label)), text };
+}
+
+// ── FlexPay: the time is picked (Mark 2026-11-05) ─────────────────────────────
+// The guest picked a time on our own scheduler: this is the one email that confirms it, with the video link. The wording is a first draft for Mark to read.
+
+export interface CallBookedInput extends MailBase { groupLabel: string; whenText: string; meetLink: string | null }
+const CALL_BOOKED = {
+  en: {
+    subject: (when: string) => `Your FlexPay video call: ${when}`,
+    title: "Your video call is set!",
+    hi: (first: string) => `Hi ${first},`,
+    p1: (when: string) => `You and Mark are set for ${when}. Plan on about half an hour.`,
+    join: "Join the video call",
+    p2: "The button opens Google Meet in your browser or the Meet app. Nothing to install on a computer.",
+    noLink: "Mark will send your video link before the call.",
+    p3: (phone: string) => `Need a different time? Call or text Mark at ${phone}.`,
+    close: "Cruise smarter, laugh more… see you on the call!",
+    footer: (label: string) => `You are receiving this because you picked a time for your FlexPay call on your ${label} booking. Not you? Reply and we will take you off the list.`,
+  },
+  es: {
+    subject: (when: string) => `Su videollamada de FlexPay: ${when}`,
+    title: "¡Su videollamada está lista!",
+    hi: (first: string) => `Hola ${first}:`,
+    p1: (when: string) => `Usted y Mark quedaron para el ${when}. Reserve una media hora.`,
+    join: "Entrar a la videollamada",
+    p2: "El botón abre Google Meet en su navegador o en la aplicación de Meet. En una computadora no hay nada que instalar.",
+    noLink: "Mark le enviará el enlace de video antes de la llamada.",
+    p3: (phone: string) => `¿Necesita otra hora? Llame o escriba a Mark al ${phone}.`,
+    close: "Navegue con inteligencia, ría más… ¡nos vemos en la llamada!",
+    footer: (label: string) => `Recibió este correo porque eligió una hora para su llamada de FlexPay en su reservación de ${label}. ¿No fue usted? Responda y le quitamos de la lista.`,
+  },
+} as const;
+
+export function callBookedEmail(i: CallBookedInput): { subject: string; html: string; text: string } {
+  const T = CALL_BOOKED[i.lang];
+  const first = i.firstName.trim(), label = i.groupLabel.trim(), sign = i.hostNames.trim() || "Mark";
+  const linkText = i.meetLink ? [`${T.join}: ${i.meetLink}`, T.p2] : [T.noLink];
+  const text = [T.hi(first), T.p1(i.whenText), ...linkText, T.p3(BUSINESS.phone), T.close, sign, `${BUSINESS.legalName}\n${T.footer(label)}`].join("\n\n") + "\n";
+  const button = i.meetLink ? `<a href="${esc(i.meetLink)}" style="display:inline-block;background:#f5c33b;color:#07183f;font-weight:bold;border-radius:999px;padding:10px 18px;text-decoration:none;font-size:16px">${esc(T.join)}</a>` : "";
+  const linkHtml = i.meetLink ? [para(button), para(esc(T.p2))] : [para(esc(T.noLink))];
+  const body = [para(esc(T.hi(first))), para(esc(T.p1(i.whenText))), ...linkHtml, para(esc(T.p3(BUSINESS.phone))), para(esc(T.close))].join("\n    ");
+  return { subject: T.subject(i.whenText), html: mailFrame(i, T.title, body, T.footer(label)), text };
 }
 
 // ── Road A: "Good call… literally!" ───────────────────────────────────────────

@@ -70,6 +70,22 @@ export function deriveHubToken(travelerId: string, keyHex: string): string {
   return createHmac("sha256", Buffer.from(keyHex, "hex")).update(`${HUB_LABEL}${travelerId}`).digest("base64url");
 }
 
+// The FlexPay appointment page (Mark 2026-11-05) opens with the reply's id and a key derived the same way: the email can be sent again at any time
+// without a stored link, and the key of one reply opens no other.
+const CALL_LABEL = "saf-flexpay-call-v1:";
+
+export function deriveCallKey(replyId: string, keyHex: string): string {
+  if (!/^[0-9a-fA-F]{64}$/.test(keyHex)) throw new Error("the link key is not set (GROUP_LINK_KEY or GROUP_PII_KEY, 64 hex characters)");
+  return createHmac("sha256", Buffer.from(keyHex, "hex")).update(`${CALL_LABEL}${replyId}`).digest("base64url");
+}
+
+/** True when `key` is the appointment key of this reply (compared in constant time). */
+export function callKeyMatches(replyId: string, key: unknown, keyHex: string | null): boolean {
+  if (!keyHex || typeof key !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(key)) return false;
+  const want = Buffer.from(deriveCallKey(replyId, keyHex)), got = Buffer.from(key);
+  return want.length === got.length && timingSafeEqual(want, got);
+}
+
 // ── Passport encryption ───────────────────────────────────────────────────────
 
 const VERSION = "v1";

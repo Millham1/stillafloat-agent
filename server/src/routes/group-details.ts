@@ -4,16 +4,18 @@ import { getSupabase } from "../lib/persistence";
 import { logger } from "../lib/logger";
 import { clientIp } from "../lib/client-ip";
 import { createAction, resolveActionsForSource, retitleActionsForSource } from "../lib/actions";
-import { BUSINESS, hashLinkToken, looksLikeLinkToken } from "../lib/group-secure";
+import { BUSINESS, callKeyMatches, deriveCallKey, hashLinkToken, hubKey, looksLikeLinkToken } from "../lib/group-secure";
 import { creditsForPictures, tidyCopy, type Lang } from "../lib/group-marketing";
 import { formUrl, issueToken, linkEmail, mailAllowed, packetStatuses } from "../lib/group-forms";
 import { DOC_SPECS } from "../lib/group-documents";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
-  WHEN_WORD, callEmail, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl as makeDetailsUrl, firstWord, flexpayEmail, holdEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
+  WHEN_WORD, callBookedEmail, callEmail, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl as makeDetailsUrl, firstWord, flexpayEmail, holdEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
+import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
+import { opsBook, opsBusy } from "../lib/ops-schedule";
 import { buildQuote, freeCabinFor, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
@@ -32,6 +34,10 @@ import { buildQuote, freeCabinFor, tripOf, quoteOptions, quoteSummary, storedQuo
 //                                              agreed to. The travelers go on the file (a free cabin of the chosen category) and Mark's item becomes
 //                                              "Re-quote and book": he re-quotes in the cruise line's system, uploads that quote (it fills the booking
 //                                              confirmation), checks the paperwork and sends it. The guest commits by signing. First press wins.
+//   GET  /api/flexpay-call/:iid/:key           the FlexPay video call (Mark 2026-11-05): the times a guest may pick, Monday to Saturday 10 AM to 8 PM
+//                                              Eastern, with every time that touches a meeting on Mark's schedule taken out (lib/flexpay-call.ts,
+//                                              lib/ops-schedule.ts); or the time already picked
+//   POST /api/flexpay-call/:iid/:key           { start } books it on Mark's calendar with a Google Meet link and emails the guest the time and the link
 // Every POST carries the bot trap `website` (a person never fills it) and is limited per address. NO email goes out when a reply is saved: the one email
 // is sent when the guest has chosen a road (routes/group-marketing.ts saves the reply and hands back the link).
 //
@@ -158,7 +164,7 @@ router.get("/group-details/:token", async (req: Request, res: Response) => {
     // opens once the names are in, shows the fares and the figures from the group file).
     const stored = storedQuote(reply.quote);
     // the guest gets their answers and figures back, never the cabin row it was filed on
-    const quote = stored ? (({ cabin_id: _cabin, carrier_intake_id: _read, flexpay_link: _fp, ...rest }) => rest)(stored as Quote & { carrier_intake_id?: string; flexpay_link?: string }) : null;
+    const quote = stored ? (({ cabin_id: _cabin, carrier_intake_id: _read, flexpay_link: _fp, flexpay_call: _call, ...rest }) => rest)(stored as Quote & { carrier_intake_id?: string; flexpay_link?: string; flexpay_call?: unknown }) : null;
     return res.json({
       success: true,
       label: f.label, ship: f.ship, sailDateText: f.sailDateText, returnDateText: f.returnDateText, heroUrl: f.heroUrl, credits,
@@ -614,7 +620,7 @@ function bookingView(b: BookingFile) {
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
     confirmWith: ["The cruise line", ...chosen.map((r) => [r.label, r.provider].filter(Boolean).join(" · "))],
-    flexpay: b.quote?.answers?.flexpay === true ? { link: text((b.reply.quote as Record<string, unknown> | null)?.["flexpay_link"], 20) } : null,
+    flexpay: b.quote?.answers?.flexpay === true ? { link: text((b.reply.quote as Record<string, unknown> | null)?.["flexpay_link"], 20), call: callView(storedCall(b.reply.quote), "en") } : null,
   };
 }
 
@@ -748,8 +754,8 @@ router.post("/groups/:id/interests/:iid/complete", requireToken, async (req: Req
 });
 
 /** Mark 2026-11-05: "If they choose flexpay we send the link to schedule an appointment to complete flexpay's application." Only for a guest who asked
- *  for FlexPay, and only once the booking is confirmed. The link is our own page (GROUP_FLEXPAY_APPOINTMENT_URL), never an outside scheduling service
- *  (Mark 2026-11-05: "I'm not paying for another service"); until it exists nothing is sent. Sent again, it emails again. */
+ *  for FlexPay, and only once the booking is confirmed. The link is our own scheduler page (public/flexpay-call.html), never an outside scheduling
+ *  service (Mark 2026-11-05: "I'm not paying for another service"). Sent again, it emails again (the same link: it is derived, not stored). */
 router.post("/groups/:id/interests/:iid/flexpay-link", requireToken, async (req: Request, res: Response) => {
   try {
     const groupId = String(req.params["id"]), iid = String(req.params["iid"]);
@@ -758,14 +764,15 @@ router.post("/groups/:id/interests/:iid/flexpay-link", requireToken, async (req:
     if (!b) return res.status(404).json({ success: false, error: "That guest has not sent their choices yet." });
     if (b.quote?.answers?.flexpay !== true) return res.status(409).json({ success: false, error: "This guest did not ask for FlexPay." });
     if (!b.reply.booking_completed_at) return res.status(409).json({ success: false, error: "Confirm the booking with the cruise line and the vendors first." });
-    const appointmentUrl = (process.env["GROUP_FLEXPAY_APPOINTMENT_URL"] ?? "").trim();
-    if (!/^https?:\/\//.test(appointmentUrl)) return res.status(409).json({ success: false, error: "The FlexPay appointment page is not set up yet, so there is no link to send." });
+    const linkKey = hubKey();
+    if (!linkKey) return res.status(409).json({ success: false, error: "The link key is not set on this box (GROUP_PII_KEY), so there is no link to send." });
     const to = (b.lead.email ?? b.reply.email ?? "").trim();
     const { data: group, error: ge } = await db().from("groups").select("*").eq("id", groupId).maybeSingle();
     if (ge) throw new Error(ge.message);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
     const lang: Lang = b.lead.lang === "es" ? "es" : "en";
     const facts = detailsFacts({ group, cabins: [] }, lang);
+    const appointmentUrl = `${publicSite()}${lang === "es" ? "/es" : ""}/flexpay-call.html?r=${iid}&k=${deriveCallKey(iid, linkKey)}`;
     let link: "sent" | "held" | "no-email" | "failed";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) link = "no-email";
     else if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) { // the dev box emails only its test addresses
@@ -785,6 +792,115 @@ router.post("/groups/:id/interests/:iid/flexpay-link", requireToken, async (req:
     return fail(req, res, err, "group flexpay link failed");
   }
 });
+
+// ── FlexPay: the guest picks the time of the video call (Mark 2026-11-05) ─────────────────────────────────────────
+// "it should bring up a scheduler for a video conference. M-S 10-8 and doesn't conflict with any meetings on my schedule already". The page is ours
+// (public/flexpay-call.html); the link in Mark's email carries the reply's id and a key derived from it. It opens only once Mark has sent that email.
+// One appointment per guest: once a time is picked, a change goes through Mark (he moves it on his calendar).
+
+interface StoredCall { start: string; minutes: number; meet_link: string | null; event_id: string | null; booked_at: string | null }
+function storedCall(quote: unknown): StoredCall | null {
+  const c = (quote as Row | null)?.["flexpay_call"] as Row | undefined;
+  if (!c || typeof c["start"] !== "string" || !Number.isFinite(Date.parse(c["start"]))) return null;
+  return {
+    start: new Date(c["start"]).toISOString(), minutes: Number(c["minutes"]) || CALL.minutes,
+    meet_link: typeof c["meet_link"] === "string" ? c["meet_link"] : null, event_id: typeof c["event_id"] === "string" ? c["event_id"] : null,
+    booked_at: typeof c["booked_at"] === "string" ? c["booked_at"] : null,
+  };
+}
+const callView = (c: StoredCall | null, lang: Lang) => (c ? { start: c.start, minutes: c.minutes, whenText: callWhenText(c.start, lang), meetLink: c.meet_link } : null);
+
+/** The reply an appointment link opens: null for a wrong key, an unknown reply, a guest who did not ask for FlexPay, and a link Mark has not sent. */
+async function loadCall(iid: unknown, key: unknown): Promise<{ reply: Row; group: Row; lang: Lang; call: StoredCall | null } | null> {
+  if (typeof iid !== "string" || !UUID_RE.test(iid) || !callKeyMatches(iid, key, hubKey())) return null;
+  const { data: reply, error } = await db().from("group_interests").select("*").eq("id", iid).maybeSingle();
+  if (error) throw new Error(error.message);
+  const quote = (reply?.quote ?? null) as Row | null;
+  if (!reply || reply.status === "spam" || quote?.["answers"]?.["flexpay"] !== true || !quote?.["flexpay_link"]) return null;
+  const { data: group, error: ge } = await db().from("groups").select("*").eq("id", reply.group_id).maybeSingle();
+  if (ge) throw new Error(ge.message);
+  if (!group) return null;
+  return { reply, group, lang: reply.lang === "es" ? "es" : "en", call: storedCall(quote) };
+}
+
+const calendarQuiet = (lang: Lang) => ({
+  success: false,
+  error: lang === "es" ? `El calendario no responde en este momento. Intente de nuevo en unos minutos, o llame o escriba a Mark al ${BUSINESS.phone}.` : `The calendar is not answering right now. Please try again in a few minutes, or call or text Mark at ${BUSINESS.phone}.`,
+});
+
+router.get("/flexpay-call/:iid/:key", async (req: Request, res: Response) => {
+  try {
+    privateHeaders(res);
+    const loaded = await loadCall(req.params["iid"], req.params["key"]);
+    if (!loaded) {
+      if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
+      return notFound(res);
+    }
+    const { reply, group, lang, call } = loaded;
+    const facts = detailsFacts({ group, cabins: [] }, lang);
+    const base = { success: true, firstName: reply.first_name ?? "", label: facts.label, lang, tz: CALL.tz, minutes: CALL.minutes, businessPhone: BUSINESS.phone };
+    if (call) return res.json({ ...base, booked: callView(call, lang), days: [] });
+    const now = new Date(), window = ruleWindow(now);
+    const busy = await opsBusy(window.start, window.end);
+    if (!busy) return res.status(503).json(calendarQuiet(lang));
+    return res.json({ ...base, booked: null, days: freeSlots(now, busy) });
+  } catch (err) {
+    return fail(req, res, err, "flexpay call read failed");
+  }
+});
+
+router.post("/flexpay-call/:iid/:key", async (req: Request, res: Response) => {
+  try {
+    if (guardPost(req, res)) return;
+    const loaded = await loadCall(req.params["iid"], req.params["key"]);
+    if (!loaded) {
+      if (missLimited(clientIp(req))) return res.status(429).json(TOO_MANY);
+      return notFound(res);
+    }
+    const { reply, group, lang, call } = loaded;
+    if (call) {
+      return res.status(409).json({
+        success: false, booked: callView(call, lang),
+        error: lang === "es" ? `Su hora ya está apartada. Para cambiarla, llame o escriba a Mark al ${BUSINESS.phone}.` : `Your time is already set. To change it, call or text Mark at ${BUSINESS.phone}.`,
+      });
+    }
+    const now = new Date(), start = (req.body as Row | undefined)?.["start"];
+    if (!isRuleSlot(start, now)) return res.status(400).json({ success: false, field: "start", error: lang === "es" ? "Elija una de las horas que se muestran." : "Pick one of the times shown." });
+    const iso = new Date(start).toISOString();
+    const facts = detailsFacts({ group, cabins: [] }, lang);
+    const booked = await opsBook({
+      start: iso, minutes: CALL.minutes, title: `FlexPay application: ${nameOf(reply) || "guest"} (${facts.label})`,
+      description: [`Video call to complete the FlexPay application. Picked by the guest on the site.`, `Guest: ${nameOf(reply)}`, `Reach: ${[reply.phone, reply.email].filter(Boolean).join(" · ") || "no contact given"}`, `Group: ${group.name ?? facts.label}`, lang === "es" ? "Language: Spanish" : "Language: English"].join("\n"),
+      requestId: `fp-${reply.id}-${Math.floor(Date.parse(iso) / 60_000)}`,
+    });
+    if (!booked.ok && booked.reason === "taken") {
+      const window = ruleWindow(now), busy = await opsBusy(window.start, window.end);
+      return res.status(409).json({ success: false, field: "start", days: busy ? freeSlots(now, busy) : [], error: lang === "es" ? "Esa hora se acaba de ocupar. Estas son las que siguen libres." : "That time was just taken. These are the ones still open." });
+    }
+    if (!booked.ok) return res.status(503).json(calendarQuiet(lang));
+    const saved: StoredCall = { start: iso, minutes: CALL.minutes, meet_link: booked.meetLink, event_id: booked.eventId, booked_at: now.toISOString() };
+    const { error } = await db().from("group_interests").update({ quote: { ...((reply.quote ?? {}) as Row), flexpay_call: saved }, updated_at: now.toISOString() }).eq("id", reply.id);
+    if (error) throw new Error(error.message);
+
+    // the one email that confirms the time, with the video link (the dev box emails only its test addresses)
+    const to = typeof reply.email === "string" ? reply.email.trim() : "";
+    let email: "sent" | "held" | "no-email" | "failed";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) email = "no-email";
+    else if (!mailAllowed(to, process.env["GROUP_FORMS_MAIL_ALLOW"])) {
+      await db().from("group_messages").insert({ group_id: group.id, audience: "client", template: "flexpay-call-booked", to_email: to, subject: null, status: "skipped", error: "held: this box only emails its test addresses" });
+      email = "held";
+    } else {
+      const mail = callBookedEmail({ firstName: firstWord(reply.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(), whenText: callWhenText(iso, lang), meetLink: booked.meetLink });
+      const ok = await sendMail({ to, subject: mail.subject, html: mail.html, text: mail.text, fromName: BUSINESS.agentName, replyTo: BUSINESS.email });
+      await db().from("group_messages").insert({ group_id: group.id, audience: "client", template: "flexpay-call-booked", to_email: to, subject: mail.subject, status: ok ? "sent" : "failed", sent_at: ok ? now.toISOString() : null, error: ok ? null : "mail sender refused or was unreachable" });
+      email = ok ? "sent" : "failed";
+    }
+    return res.json({ success: true, booked: callView(saved, lang), email });
+  } catch (err) {
+    return fail(req, res, err, "flexpay call booking failed");
+  }
+});
+
 
 export type { DetailsFacts };
 export default router;

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Su videollamada de FlexPay | Still Afloat Cruising</title>
+<!-- A guest's private link from Mark's FlexPay email: never indexed, and the address (which carries the link) is never sent on to another site. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/details-page.css?v=20261101b">
+<link rel="stylesheet" href="/css/flexpay-call.css?v=20261105">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <img class="logo" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+  </div>
+
+  <div class="d-banner"><div class="d-lockup"><div class="plaque"><span id="c-plaque">Su llamada de FlexPay</span></div></div></div>
+
+  <main>
+    <section class="panel" id="c-panel">
+      <p class="label" id="c-label"></p>
+      <h1 id="c-h1"></h1>
+      <p id="c-state"></p>
+
+      <!-- Picking: the days across the top, that day's times below, one button. Mark 2026-11-05: Monday to Saturday, 10 AM to 8 PM, never over a meeting. -->
+      <div id="c-pick" hidden>
+        <p id="c-lede"></p>
+        <p class="small" id="c-zone"></p>
+        <div class="c-days" id="c-days" role="tablist"></div>
+        <p class="c-dayname" id="c-dayname"></p>
+        <div class="c-times" id="c-times"></div>
+        <p class="err center" id="c-err" hidden></p>
+        <button type="button" class="btn" id="c-book" disabled></button>
+        <p class="small" id="c-note"></p>
+      </div>
+
+      <!-- Picked: the time in words, the video link, how to change it. -->
+      <div id="c-done" hidden>
+        <p class="c-when" id="c-when"></p>
+        <p class="small" id="c-when-local" hidden></p>
+        <a class="btn" id="c-join" target="_blank" rel="noopener" hidden></a>
+        <p id="c-done-p"></p>
+        <p class="small" id="c-change"></p>
+      </div>
+    </section>
+  </main>
+
+</div>
+<script>
+(function(){
+  var ES = document.documentElement.lang === 'es';
+  var PHONE = '919-346-6127';
+  var T = ES ? {
+    title:'Su videollamada de FlexPay', plaque:'Su llamada de FlexPay', label:'FlexPay · Videollamada con Mark',
+    loading:'Buscando las horas libres de Mark…',
+    bad:'Este enlace no es válido. Abra el enlace completo de su correo, o llame o escriba a Mark al ' + PHONE + '.',
+    quiet:'El calendario no responde en este momento. Intente de nuevo en unos minutos, o llame o escriba a Mark al ' + PHONE + '.',
+    h1:'¡Elija su hora, {first}!', h1_plain:'¡Elija su hora!',
+    lede:'Una videollamada de media hora con Mark para completar juntos la solicitud de FlexPay. De lunes a sábado, de 10 a. m. a 8 p. m., hora del Este.',
+    zone:'Las horas se muestran en su hora local: {zone}.',
+    none:'No queda ninguna hora libre en las próximas dos semanas. Llame o escriba a Mark al ' + PHONE + ' y él le busca un espacio.',
+    book:'¡Apartar esta hora!', book_pick:'Elija una hora', booking:'Un momento…',
+    note:'Al apartarla le llega un correo con la hora y el enlace de video. No se cobra nada en esta página.',
+    done_h1:'¡Listo, {first}!', done_h1_plain:'¡Listo!',
+    local:'En su hora local: {when}.',
+    join:'Entrar a la videollamada',
+    done_p:'El enlace abre Google Meet en su navegador o en la aplicación de Meet. También va en su correo.',
+    done_nolink:'Mark le enviará el enlace de video antes de la llamada.',
+    change:'¿Necesita otra hora? Llame o escriba a Mark al ' + PHONE + '.',
+    fail:'No se pudo apartar la hora. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.'
+  } : {
+    title:'Your FlexPay video call', plaque:'Your FlexPay call', label:'FlexPay · Video call with Mark',
+    loading:"Checking Mark's open times…",
+    bad:'This link is not valid. Open the full link from your email, or call or text Mark at ' + PHONE + '.',
+    quiet:'The calendar is not answering right now. Please try again in a few minutes, or call or text Mark at ' + PHONE + '.',
+    h1:'Pick your time, {first}!', h1_plain:'Pick your time!',
+    lede:'A half-hour video call with Mark to complete the FlexPay application together. Monday to Saturday, 10 AM to 8 PM Eastern.',
+    zone:'Times are shown in your own time: {zone}.',
+    none:'No open time is left in the next two weeks. Call or text Mark at ' + PHONE + ' and he will find you a spot.',
+    book:'Book this time!', book_pick:'Pick a time', booking:'One moment…',
+    note:'Booking it sends you an email with the time and the video link. Nothing is charged on this page.',
+    done_h1:"You're set, {first}!", done_h1_plain:"You're set!",
+    local:'In your own time: {when}.',
+    join:'Join the video call',
+    done_p:'The link opens Google Meet in your browser or the Meet app. It is in your email too.',
+    done_nolink:'Mark will send your video link before the call.',
+    change:'Need a different time? Call or text Mark at ' + PHONE + '.',
+    fail:'The time could not be booked. Try again, or call or text Mark at ' + PHONE + '.'
+  };
+  var LOCALE = ES ? 'es-US' : 'en-US';
+
+  function $(id){ return document.getElementById(id); }
+  function fill(tpl, v){ return tpl.replace(/\{(\w+)\}/g, function(_, k){ return v[k] == null ? '' : v[k]; }); }
+  function show(id, on){ var e=$(id); if(e) e.hidden = on === false; }
+
+  document.title = T.title + ' | Still Afloat Cruising';
+  $('c-plaque').textContent = T.plaque;
+  $('c-label').textContent = T.label;
+  var state = $('c-state');
+  state.textContent = T.loading;
+
+  var qs = new URLSearchParams(location.search);
+  var reply = (qs.get('r') || '').trim(), key = (qs.get('k') || '').trim();
+  if(!/^[0-9a-f-]{36}$/i.test(reply) || !/^[A-Za-z0-9_-]{43}$/.test(key)){ state.textContent = T.bad; return; }
+  var API = '/api/flexpay-call/' + reply + '/' + key;
+
+  var first = '';
+  var days = [];        // [{ key:'2026-11-06', label, name, slots:[iso] }] grouped by the guest's OWN calendar day
+  var dayAt = 0;        // which day is open
+  var chosen = '';      // the time tapped (ISO)
+  var busy = false;
+
+  function localKey(d){ return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function clock(iso){ return new Date(iso).toLocaleTimeString(LOCALE, { hour: 'numeric', minute: '2-digit' }); }
+  function zoneName(){
+    try {
+      var parts = new Intl.DateTimeFormat(LOCALE, { timeZoneName: 'long' }).formatToParts(new Date());
+      for(var i = 0; i < parts.length; i++) if(parts[i].type === 'timeZoneName') return parts[i].value;
+    } catch(e){}
+    return '';
+  }
+  /** The server lists the times by day on Mark's clock; a guest three zones away reads them by their own day. */
+  function regroup(serverDays){
+    var map = {}, order = [];
+    (serverDays || []).forEach(function(d){ (d.slots || []).forEach(function(iso){
+      var t = new Date(iso), k = localKey(t);
+      if(!map[k]){
+        map[k] = { key: k, slots: [],
+          label: t.toLocaleDateString(LOCALE, { weekday: 'short' }) + ' ' + t.toLocaleDateString(LOCALE, { month: 'short', day: 'numeric' }),
+          name: t.toLocaleDateString(LOCALE, { weekday: 'long', month: 'long', day: 'numeric' }) };
+        order.push(k);
+      }
+      map[k].slots.push(iso);
+    }); });
+    order.sort();
+    return order.map(function(k){ map[k].slots.sort(); return map[k]; });
+  }
+
+  function drawPick(){
+    show('c-done', false);
+    $('c-h1').textContent = first ? fill(T.h1, { first: first }) : T.h1_plain;
+    if(!days.length){ state.textContent = T.none; show('c-state', true); show('c-pick', false); return; }
+    show('c-state', false); show('c-pick', true);
+    $('c-lede').textContent = T.lede;
+    var z = zoneName();
+    $('c-zone').textContent = z ? fill(T.zone, { zone: z }) : '';
+    $('c-note').textContent = T.note;
+    if(dayAt >= days.length) dayAt = 0;
+    var dl = $('c-days'); dl.innerHTML = '';
+    days.forEach(function(d, i){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'c-day' + (i === dayAt ? ' on' : ''); b.textContent = d.label;
+      b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', i === dayAt ? 'true' : 'false');
+      b.addEventListener('click', function(){ dayAt = i; chosen = ''; drawPick(); });
+      dl.appendChild(b);
+    });
+    var day = days[dayAt];
+    $('c-dayname').textContent = day.name;
+    var tl = $('c-times'); tl.innerHTML = '';
+    day.slots.forEach(function(iso){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'c-time' + (iso === chosen ? ' on' : ''); b.textContent = clock(iso);
+      b.setAttribute('aria-pressed', iso === chosen ? 'true' : 'false');
+      b.addEventListener('click', function(){ if(busy) return; chosen = iso; show('c-err', false); drawPick(); });
+      tl.appendChild(b);
+    });
+    var go = $('c-book');
+    go.disabled = busy || !chosen;
+    go.textContent = busy ? T.booking : (chosen ? T.book : T.book_pick);
+  }
+
+  function drawDone(b){
+    show('c-pick', false); show('c-state', false); show('c-done', true);
+    $('c-h1').textContent = first ? fill(T.done_h1, { first: first }) : T.done_h1_plain;
+    $('c-when').textContent = b.whenText || '';
+    // the same instant on the guest's own clock, when their clock is not Mark's
+    var t = new Date(b.start);
+    var mine = t.toLocaleDateString(LOCALE, { weekday: 'long', month: 'long', day: 'numeric' }) + ', ' + clock(b.start);
+    var marks = t.toLocaleDateString(LOCALE, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' }) + ', ' + t.toLocaleTimeString(LOCALE, { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+    if(mine !== marks){ $('c-when-local').textContent = fill(T.local, { when: mine }); show('c-when-local', true); } else show('c-when-local', false);
+    var j = $('c-join');
+    if(b.meetLink && /^https:\/\/meet\.google\.com\//.test(b.meetLink)){ j.href = b.meetLink; j.textContent = T.join; j.hidden = false; $('c-done-p').textContent = T.done_p; }
+    else { j.hidden = true; $('c-done-p').textContent = T.done_nolink; }
+    $('c-change').textContent = T.change;
+  }
+
+  function load(){
+    fetch(API, { headers: { 'Accept': 'application/json' } }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, body: j }; });
+    }).then(function(x){
+      if(x.status === 404 || x.status === 429){ state.textContent = (x.body && x.status === 429 && x.body.error) || T.bad; return; }
+      if(!x.body || !x.body.success){ state.textContent = (x.body && x.body.error) || T.quiet; return; }
+      first = String(x.body.firstName || '').trim().split(/\s+/)[0] || '';
+      if(x.body.booked){ drawDone(x.body.booked); return; }
+      days = regroup(x.body.days); dayAt = 0; chosen = '';
+      drawPick();
+    }).catch(function(){ state.textContent = T.quiet; });
+  }
+
+  $('c-book').addEventListener('click', function(){
+    if(busy || !chosen) return;
+    busy = true; show('c-err', false); drawPick();
+    fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ start: chosen, website: '' }) }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, body: j }; });
+    }).then(function(x){
+      busy = false;
+      if(x.body && x.body.booked){ drawDone(x.body.booked); return; }   // booked now, or already booked earlier
+      var err = $('c-err'); err.textContent = (x.body && x.body.error) || T.fail; err.hidden = false;
+      if(x.body && Array.isArray(x.body.days)){ days = regroup(x.body.days); dayAt = 0; }
+      chosen = '';
+      drawPick();
+    }).catch(function(){
+      busy = false;
+      var err = $('c-err'); err.textContent = T.fail; err.hidden = false;
+      drawPick();
+    });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

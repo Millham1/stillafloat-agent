@@ -1596,6 +1596,60 @@ export default [
     },
   },
   {
+    id: "ops.flexpay-call-public",
+    basis: "ruling: Mark 2026-11-05 — a FlexPay guest's appointment link 'should bring up a scheduler for a video conference. M-S 10-8 and doesn't conflict with any meetings on my schedule already', on our own page ('I'm not paying for another service'); the page is private by link like the details page",
+    title: "The FlexPay video-call scheduler opens in English and Spanish, stays out of search, calls only its own API, loads no outside scheduling service, and any wrong link gets one neutral 'not found'",
+    covers: ["page /flexpay-call.html", "page /es/flexpay-call.html", "GET /api/flexpay-call/:iid/:key"],
+    modes: ["dev", "prod"],
+    run: async (t) => {
+      for (const [p, lang] of [["/flexpay-call.html", "en"], ["/es/flexpay-call.html", "es"]]) {
+        const html = t.html(await t.get(p), { mustContain: ["/api/flexpay-call/", 'id="c-days"', 'id="c-times"', 'id="c-book"', "website: ''", lang === "es" ? "Su llamada de FlexPay" : "Your FlexPay call", "Monday to Saturday, 10 AM to 8 PM Eastern", "De lunes a sábado, de 10 a. m. a 8 p. m., hora del Este"] });
+        t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
+        t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
+        t.matches(H.metaContent(html, "referrer"), /no-referrer/, `${p} referrer policy (its address carries the link)`);
+        // our own scheduler: no outside scheduling service is loaded or linked
+        t.ok(!/calendly|acuityscheduling|cal\.com|youcanbook|setmore|squareup\.com\/appointments/i.test(html), `${p} loads or links an outside scheduling service`);
+        t.ok(!/\$\s?\d/.test(html.replace(/<style[\s\S]*?<\/style>/g, "")), `${p} writes a dollar amount on the page`);
+        const sheets = [...html.matchAll(/<link rel="stylesheet" href="(\/css\/[a-z-]+\.css)[^"]*"/g)].map((m) => m[1]);
+        t.ok(sheets.includes("/css/flexpay-call.css"), `${p} does not link its own stylesheet /css/flexpay-call.css`);
+        for (const sheet of sheets) {
+          const css = await t.get(sheet);
+          t.ok(css.status === 200 && /^text\/css/i.test(css.headers.get("content-type") || ""), `${p}'s stylesheet ${sheet} is not served as CSS: ${css.describe()}`);
+        }
+        t.observe(`${p} title`, H.title(html));
+      }
+      // Every kind of wrong link: the same answer, never a hint about which part was wrong (a real link exists only for a guest Mark emailed).
+      const bodies = new Set();
+      for (const [iid, key] of [[ZERO, "A".repeat(43)], [ZERO, "short"], ["not-a-reply", "A".repeat(43)], [ZERO, "A".repeat(44)]]) {
+        const res = await t.get(`/api/flexpay-call/${encodeURIComponent(iid)}/${encodeURIComponent(key)}`);
+        refused(t, res, 404, `a wrong FlexPay call link (${iid.length}/${key.length} characters)`, /^not found$/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the FlexPay call answer");
+        t.matches(res.headers.get("x-robots-tag") || "", /noindex/, "X-Robots-Tag of the FlexPay call answer");
+        bodies.add(res.text);
+      }
+      t.equal(bodies.size, 1, "different wrong links must all get the identical answer (number of distinct answers)");
+    },
+  },
+  {
+    id: "ops.flexpay-call-writes-refuse",
+    basis: "ruling: Mark 2026-11-05 — the guest picks the FlexPay video call on our own scheduler, 'M-S 10-8 and doesn't conflict with any meetings on my schedule already'; only the guest Mark emailed can book, so a link that does not exist books nothing",
+    title: "Booking a FlexPay video call refuses a link that does not exist, and the bot trap books nothing",
+    covers: ["POST /api/flexpay-call/:iid/:key"],
+    modes: ["dev"],
+    devOnlyBecause: "it sends POST requests (refusal paths only: a link that does not exist and the bot trap; nothing is booked, no calendar is asked and nobody is emailed); prod sweeps are read-only",
+    run: async (t) => {
+      const send = (p, body) => t.send("POST", p, { auth: false, body });
+      const start = new Date(Date.now() + 3 * 86_400_000).toISOString();
+      for (const [iid, key] of [[ZERO, "A".repeat(43)], [ZERO, "short"]]) {
+        const res = await send(`/api/flexpay-call/${iid}/${key}`, { start });
+        refused(t, res, 404, "POST /api/flexpay-call/:iid/:key with a link that does not exist", /^not found$/i);
+        t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the refused FlexPay call booking");
+      }
+      const bot = await send(`/api/flexpay-call/${ZERO}/${"A".repeat(43)}`, { start, website: "http://spam.example" });
+      t.ok(bot.status === 200 && bot.json?.success === true && !("booked" in (bot.json || {})), `the bot trap on the FlexPay call booking should pretend success and book nothing: ${bot.describe()}`);
+    },
+  },
+  {
     id: "ops.group-details-writes-refuse",
     basis: "ruling: Mark 2026-10-24 — after Save my spot! the guest chooses a road (Talk me into it, Mark! picks a time and gets one email; I've got this fills in the details page and gets one email); the page is private by link and refuses bad tokens, a time that is not one of the four, and a robot; Mark alone adds the typed travelers to a cabin and closes his items (he books with the cruise line himself); the home address is looked up at the post office, never logged, and only for a person. Mark 2026-11-01 — the quote step sits behind the same link: a link that does not exist and a robot get the same refusals, and no quote is pretended. Mark 2026-11-05 — the figure on the page is the starting price: \"Send my choices to Mark!\" agrees to nothing; Mark re-quotes in the carrier's system, uploads that quote (it fills the booking confirmation) and sends the paperwork; signed, it comes back to him, he confirms the booking with the cruise line and the vendors, and a FlexPay guest gets the appointment link; each of those is his alone",
     title: "Choosing a time to be rung, picking a cabin, saving details, sending the names, answering the quote step and agreeing refuse a link that does not exist, the time must be one of the four answers, the bot trap stores nothing and pretends no pick and no quote, the address lookup refuses a robot and a short street, and adding a reply's travelers to a cabin or closing Mark's items is his alone and refuses an unknown reply",

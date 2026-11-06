@@ -8,7 +8,8 @@ import * as assert from "node:assert/strict";
 import express, { type Router } from "express";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { hashLinkToken } from "../lib/group-secure";
+import { deriveCallKey, hashLinkToken } from "../lib/group-secure";
+import { ruleSlots } from "../lib/flexpay-call";
 
 const TOKEN = "test-agent-token";
 const CODE = "bcdfghjkmn";
@@ -34,6 +35,10 @@ let tokenWriteFails = false;
 /** When true the stand-in refuses the group_assets read (the page must still be served). */
 let assetsFail = false;
 let seq = 0;
+/** The stand-in for the ops-manager's schedule (agent/schedule.py): the meetings it reports, whether it answers, whether a booking finds the time taken, and what it was asked to book. */
+let opsMeetings: Array<{ start: string; end: string }> = [];
+let opsUp = true, opsTaken = false;
+let opsBooked: Array<Record<string, any>> = [];
 
 function group(over: Row = {}): Row {
   return {
@@ -90,6 +95,13 @@ before(async () => {
       const send = (status: number, body?: unknown) => { res.statusCode = status; res.setHeader("content-type", "application/json"); res.end(body === undefined ? "" : JSON.stringify(body)); };
       const json = raw ? JSON.parse(raw) : undefined;
       if (url.pathname === "/send-email") { mails.push(json); return mailOk ? send(200, { ok: true }) : send(500, { error: "mail sender down" }); }
+      if (url.pathname === "/schedule/busy") return opsUp && req.headers["x-api-key"] === "test-ideas-key" ? send(200, { ok: true, busy: opsMeetings }) : send(503, { detail: "the calendar could not be read" });
+      if (url.pathname === "/schedule/book") {
+        if (!opsUp) return send(503, { detail: "the calendar could not be written" });
+        if (opsTaken) return send(409, { detail: "busy" });
+        opsBooked.push(json);
+        return send(200, { ok: true, event_id: "ev-1", meet_link: "https://meet.google.com/abc-defg-hij", html_link: "https://calendar.google.com/x" });
+      }
       const table = url.pathname.replace(/^\/rest\/v1\//, "");
       log.push({ method: req.method ?? "", table, query: url.search, body: json });
       const rows = (tables[table] ??= []);
@@ -143,6 +155,7 @@ after(async () => {
 beforeEach(() => {
   tables = { groups: [group()], group_cabins: cabinRows(), group_interests: [reply()], group_travelers: [], actions: [], group_messages: [], prospects: [], group_assets: [] };
   log = []; mails = []; mailOk = true; actionsAccept = false; tokenWriteFails = false; assetsFail = false;
+  opsMeetings = []; opsUp = true; opsTaken = false; opsBooked = [];
   delete process.env["GROUP_FORMS_MAIL_ALLOW"];
 });
 
@@ -1058,4 +1071,100 @@ test("the quote step and the agreement refuse a wrong link and the bot trap like
   assert.equal(replyRow()["quote"], undefined);
   assert.equal(replyRow()["quote_requested_at"], undefined);
   assert.equal(tables["group_travelers"]!.length, 0);
+});
+
+// ── The FlexPay video call (Mark 2026-11-05) ─────────────────────────────────────────────────────────────────────
+// "it should bring up a scheduler for a video conference. M-S 10-8 and doesn't conflict with any meetings on my schedule already"
+
+test("the FlexPay video call: the link opens only once Mark has sent it, shows only times with no meeting, books one time with a video link and emails it, and a second pick goes through Mark", async () => {
+  const KEY_HEX = "ab".repeat(32);
+  process.env["GROUP_PII_KEY"] = KEY_HEX;
+  try {
+    const page = `/flexpay-call/${REPLY_ID}/${deriveCallKey(REPLY_ID, KEY_HEX)}`;
+    replyRow()["quote"] = { answers: { ...ANSWERS } };
+    assert.equal((await call("GET", page)).status, 404, "Mark has not sent the link yet");
+    replyRow()["quote"]["flexpay_link"] = "sent";
+    assert.equal((await call("GET", `/flexpay-call/${REPLY_ID}/${"A".repeat(43)}`)).status, 404, "a wrong key");
+    assert.equal((await call("GET", `/flexpay-call/${REPLY_ID}/${deriveCallKey(GROUP_ID, KEY_HEX)}`)).status, 404, "another reply's key");
+
+    // a day of the rule with a meeting over its first time
+    const day = ruleSlots(new Date())[1]!;
+    const [taken, free] = [day.slots[0]!, day.slots[1]!];
+    opsMeetings = [{ start: taken, end: free }];
+    const open = await call("GET", page);
+    assert.deepEqual([open.status, open.json["booked"], open.json["minutes"], open.json["tz"], open.json["firstName"]], [200, null, 30, "America/New_York", "Mark"]);
+    assert.match(String(open.headers.get("cache-control")), /no-store/);
+    const shown: string[] = open.json["days"].flatMap((d: Row) => d["slots"]);
+    assert.equal(shown.includes(taken), false, "a time with a meeting on it is never offered");
+    assert.equal(shown.includes(free), true);
+
+    // the calendar does not answer: no times at all, never a guess
+    opsUp = false;
+    const quiet = await call("GET", page);
+    assert.equal(quiet.status, 503);
+    assert.match(String(quiet.json["error"]), /^The calendar is not answering right now\./);
+    assert.equal("days" in quiet.json, false);
+    assert.equal((await call("POST", page, { body: { start: free } })).status, 503);
+    opsUp = true;
+
+    // only a time the rule offers
+    for (const bad of [undefined, "tomorrow", new Date(Date.parse(free) + 60_000).toISOString(), new Date(Date.now() - 3_600_000).toISOString()]) {
+      const r = await call("POST", page, { body: { start: bad } });
+      assert.deepEqual([r.status, r.json["error"], r.json["field"]], [400, "Pick one of the times shown.", "start"]);
+    }
+    // a meeting landed on it since the page was drawn
+    opsTaken = true;
+    const late = await call("POST", page, { body: { start: free } });
+    assert.deepEqual([late.status, late.json["error"]], [409, "That time was just taken. These are the ones still open."]);
+    assert.ok(Array.isArray(late.json["days"]));
+    assert.equal(replyRow()["quote"]["flexpay_call"], undefined);
+    opsTaken = false;
+    // the bot trap books nothing
+    const bot = await call("POST", page, { body: { start: free, website: "http://spam.example" } });
+    assert.deepEqual([bot.status, "booked" in bot.json, opsBooked.length], [200, false, 0]);
+
+    const ok = await call("POST", page, { body: { start: free } });
+    assert.deepEqual([ok.status, ok.json["booked"]["start"], ok.json["booked"]["meetLink"], ok.json["email"]], [200, free, "https://meet.google.com/abc-defg-hij", "sent"]);
+    assert.match(ok.json["booked"]["whenText"], / at \d{1,2}:\d{2}\s[AP]M Eastern$/);
+    assert.equal(opsBooked.length, 1);
+    assert.deepEqual([opsBooked[0]!["start"], opsBooked[0]!["minutes"], opsBooked[0]!["title"]], [free, 30, "FlexPay application: Mark Millham (Friends and Family 2027)"]);
+    assert.match(opsBooked[0]!["request_id"], /^fp-[0-9a-f-]{36}-\d+$/);
+    assert.deepEqual([replyRow()["quote"]["flexpay_call"]["start"], replyRow()["quote"]["flexpay_call"]["event_id"], replyRow()["quote"]["flexpay_link"]], [free, "ev-1", "sent"]);
+    assert.equal(mails.length, 1);
+    assert.match(mails[0]!["subject"], /^Your FlexPay video call: /);
+    assert.match(mails[0]!["html"], /https:\/\/meet\.google\.com\/abc-defg-hij/);
+    assert.equal(tables["group_messages"]!.some((m) => m["template"] === "flexpay-call-booked" && m["status"] === "sent"), true);
+
+    // once picked: the page shows the time, and a second pick is refused
+    const again = await call("GET", page);
+    assert.deepEqual([again.json["booked"]["start"], again.json["days"]], [free, []]);
+    const second = await call("POST", page, { body: { start: day.slots[3]! } });
+    assert.deepEqual([second.status, second.json["error"], second.json["booked"]["start"]], [409, "Your time is already set. To change it, call or text Mark at 919-346-6127.", free]);
+    assert.equal(opsBooked.length, 1);
+    // the guest's details page never carries the call or its link
+    replyRow()["hold_requested_at"] = new Date().toISOString();
+    const details = await call("GET", `/group-details/${LINK}`);
+    assert.equal(JSON.stringify(details.json).includes("meet.google.com"), false);
+  } finally {
+    delete process.env["GROUP_PII_KEY"];
+  }
+});
+
+test("the FlexPay video call on a box that may not email the guest: the time is booked and the email is held", async () => {
+  const KEY_HEX = "cd".repeat(32);
+  process.env["GROUP_PII_KEY"] = KEY_HEX;
+  process.env["GROUP_FORMS_MAIL_ALLOW"] = "qa@example.test";
+  try {
+    replyRow()["quote"] = { answers: { ...ANSWERS }, flexpay_link: "held" };
+    replyRow()["lang"] = "es";
+    const free = ruleSlots(new Date())[1]!.slots[2]!;
+    const ok = await call("POST", `/flexpay-call/${REPLY_ID}/${deriveCallKey(REPLY_ID, KEY_HEX)}`, { body: { start: free } });
+    assert.deepEqual([ok.status, ok.json["email"], ok.json["booked"]["start"]], [200, "held", free]);
+    assert.match(ok.json["booked"]["whenText"], /hora del Este$/);
+    assert.equal(mails.length, 0);
+    assert.equal(tables["group_messages"]!.some((m) => m["template"] === "flexpay-call-booked" && m["status"] === "skipped"), true);
+  } finally {
+    delete process.env["GROUP_PII_KEY"];
+    delete process.env["GROUP_FORMS_MAIL_ALLOW"];
+  }
 });
