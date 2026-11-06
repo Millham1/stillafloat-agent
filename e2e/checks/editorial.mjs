@@ -82,6 +82,8 @@ const BUTTON_ROUTES = [
   // A group guest's two roads (Mark 2026-10-24, routes/group-marketing.ts): "We talked" after the call of Road A and
   // "Confirmed with MSC" after the hold of Road B — the route itself admits only these two words.
   /^POST \/api\/groups\/[0-9a-f-]{36}\/interests\/[0-9a-f-]{36}\/mark\/(talked|confirmed)$/,
+  // "Send the paperwork" on the "Re-quote and book" item (Mark 2026-11-03; routes/group-details.ts): refused until the booking confirmation is in.
+  /^POST \/api\/groups\/[0-9a-f-]{36}\/interests\/[0-9a-f-]{36}\/booked$/,
   /^GET \/api\/storm-watch$/, // the July "demo" action's read-only button
   // The AI Visibility page's weekly prompt-test switch (Mark 2026-10-29: a waiting item carries the button that
   // does the thing; routes/ai-visibility.ts admits only on|off).

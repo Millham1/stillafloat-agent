@@ -1609,14 +1609,14 @@ export default [
         concierge: { room: "balcony", priority: "quiet", budget: "middle", motion: "yes" },
       };
       const nowhere = "A".repeat(43);
-      for (const [path, body] of [[`/api/group-details/${nowhere}/choice`, { choice: "call", when: "evening" }], [`/api/group-details/${nowhere}/pick`, { concierge: form.concierge }], [`/api/group-details/${nowhere}`, form], [`/api/group-details/${nowhere}/hold`, {}], [`/api/group-details/${nowhere}/quote`, { answers: { cabin: "BEL", flexpay: false, insurance: "decline" } }], [`/api/group-details/${nowhere}/agree`, {}],
-        ["/api/group-details/short/choice", { choice: "call", when: "evening" }], ["/api/group-details/short/pick", { concierge: form.concierge }], ["/api/group-details/short", form], ["/api/group-details/short/hold", {}], ["/api/group-details/short/quote", { answers: { cabin: "BEL", flexpay: false, insurance: "decline" } }], ["/api/group-details/short/agree", {}]]) {
+      for (const [path, body] of [[`/api/group-details/${nowhere}/choice`, { choice: "call", when: "evening" }], [`/api/group-details/${nowhere}/pick`, { concierge: form.concierge }], [`/api/group-details/${nowhere}`, form], [`/api/group-details/${nowhere}/hold`, {}], [`/api/group-details/${nowhere}/quote`, { answers: { cabin: "BEL", flexpay: false, insurance: "decline" } }], [`/api/group-details/${nowhere}/request`, {}],
+        ["/api/group-details/short/choice", { choice: "call", when: "evening" }], ["/api/group-details/short/pick", { concierge: form.concierge }], ["/api/group-details/short", form], ["/api/group-details/short/hold", {}], ["/api/group-details/short/quote", { answers: { cabin: "BEL", flexpay: false, insurance: "decline" } }], ["/api/group-details/short/request", {}]]) {
         const res = await send(path, body);
         refused(t, res, 404, `POST ${path.replace(nowhere, ":token").replace("short", ":token")} with a link that does not exist`, /^not found$/i);
         t.matches(res.headers.get("cache-control") || "", /no-store/, "Cache-Control of the refused details write");
       }
       // The bot trap answers as if it had been accepted and stores nothing: no pick, no promise.
-      for (const path of [`/api/group-details/${nowhere}/choice`, `/api/group-details/${nowhere}/pick`, `/api/group-details/${nowhere}`, `/api/group-details/${nowhere}/hold`, `/api/group-details/${nowhere}/quote`, `/api/group-details/${nowhere}/agree`]) {
+      for (const path of [`/api/group-details/${nowhere}/choice`, `/api/group-details/${nowhere}/pick`, `/api/group-details/${nowhere}`, `/api/group-details/${nowhere}/hold`, `/api/group-details/${nowhere}/quote`, `/api/group-details/${nowhere}/request`]) {
         const trap = await send(path, { ...form, choice: "call", when: "evening", answers: { cabin: "BEL", flexpay: false, insurance: "decline" }, website: "e2e-fixture-honeypot" });
         t.ok(trap.status === 200 && trap.json?.success === true, `the details bot trap should answer as if accepted: ${trap.describe()}`);
         t.ok(!("pick" in (trap.json || {})) && !("quote" in (trap.json || {})) && !("paperwork" in (trap.json || {})), "the bot trap must not pretend a cabin was picked, a quote made or paperwork sent");
