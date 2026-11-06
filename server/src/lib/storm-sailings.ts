@@ -254,10 +254,25 @@ export function plannedRowsInGrounds(
 const PLANNED_CACHE_MS = 60_000;
 const plannedCache = new Map<string, { at: number; rows: PlannedSailingRow[] }>();
 
-async function plannedRowsForWindow(windowStart: string, windowEnd: string): Promise<PlannedSailingRow[]> {
-  const key = `${windowStart}|${windowEnd}`;
-  const hit = plannedCache.get(key);
-  if (hit && Date.now() - hit.at < PLANNED_CACHE_MS) return hit.rows;
+// One read for many windows (2026-11-06). The dashboard list asks for every alert that
+// was not dismissed, each with its own window: 41 windows on dev, 30 on prod, read all at
+// once, about 1,750 rows each. The database cancelled them at its 8-second limit and the
+// list took 25 seconds (prod: 23 loads over 10 s). The route now names its windows first
+// (warmPlannedWindows); the span from the earliest start to the latest end is read once,
+// about 6,700 rows, and each window is cut from it in memory with the query's own rule.
+// Reads that still go to the database take turns, and two callers of one window share it.
+let plannedSpan: { start: string; end: string; at: number; rows: PlannedSailingRow[] } | null = null;
+const plannedInFlight = new Map<string, Promise<PlannedSailingRow[] | null>>();
+let plannedTurn: Promise<unknown> = Promise.resolve();
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The window query's rule, for rows already in memory. Dates are YYYY-MM-DD on both sides. */
+export function plannedRowInWindow(row: { start_date: string; end_date: string | null }, windowStart: string, windowEnd: string): boolean {
+  return row.start_date <= windowEnd && (row.end_date == null || row.end_date >= windowStart);
+}
+
+/** Every row of one window, or null when the database refused. Never called in parallel. */
+async function readPlannedRows(windowStart: string, windowEnd: string): Promise<PlannedSailingRow[] | null> {
   const supabase = getSupabase();
   // Paged (2026-10-08): PostgREST caps a response at 1,000 rows and `.limit(3000)`
   // never raised it. A live storm's window held 1,076–1,128 rows, so 7–11% of
@@ -273,11 +288,64 @@ async function plannedRowsForWindow(windowStart: string, windowEnd: string): Pro
   if (error) {
     // A read failure pins nothing extra; the other two sources still apply.
     logger.warn({ err: error, windowStart, windowEnd, partialRows: data.length }, "storm-sailings: planned_sailings read failed");
-    return [];
+    return null;
   }
-  const rows = data;
+  return data;
+}
+
+let plannedReader: (windowStart: string, windowEnd: string) => Promise<PlannedSailingRow[] | null> = readPlannedRows;
+
+/** One database read at a time; a second caller of the same window waits for the first. */
+function queuedPlannedRead(windowStart: string, windowEnd: string): Promise<PlannedSailingRow[] | null> {
+  const key = `${windowStart}|${windowEnd}`;
+  const running = plannedInFlight.get(key);
+  if (running) return running;
+  const read = plannedTurn.then(() => plannedReader(windowStart, windowEnd));
+  plannedTurn = read.catch(() => null);
+  plannedInFlight.set(key, read);
+  void read.finally(() => plannedInFlight.delete(key)).catch(() => null);
+  return read;
+}
+
+function spanCovers(windowStart: string, windowEnd: string): boolean {
+  return plannedSpan !== null && Date.now() - plannedSpan.at < PLANNED_CACHE_MS
+    && ISO_DAY.test(windowStart) && ISO_DAY.test(windowEnd)
+    && plannedSpan.start <= windowStart && plannedSpan.end >= windowEnd;
+}
+
+/**
+ * Call before asking for several alerts' sailings: reads their whole span once, so each
+ * window after it is answered from memory. Does nothing for one window, or when the span
+ * is already held. A failed read is not an error here; each window then reads for itself.
+ */
+export async function warmPlannedWindows(windows: ReadonlyArray<{ start: string; end: string }>): Promise<void> {
+  const need = windows.filter((w) => ISO_DAY.test(w.start) && ISO_DAY.test(w.end) && w.start <= w.end);
+  if (new Set(need.map((w) => `${w.start}|${w.end}`)).size < 2) return;
+  const start = need.reduce((m, w) => (w.start < m ? w.start : m), need[0]!.start);
+  const end = need.reduce((m, w) => (w.end > m ? w.end : m), need[0]!.end);
+  if (spanCovers(start, end)) return;
+  const rows = await queuedPlannedRead(start, end);
+  if (rows) plannedSpan = { start, end, at: Date.now(), rows };
+}
+
+export async function plannedRowsForWindow(windowStart: string, windowEnd: string): Promise<PlannedSailingRow[]> {
+  const key = `${windowStart}|${windowEnd}`;
+  const hit = plannedCache.get(key);
+  if (hit && Date.now() - hit.at < PLANNED_CACHE_MS) return hit.rows;
+  if (spanCovers(windowStart, windowEnd)) {
+    // The span is in `ref` order, so the cut is too: the same rows the query returns.
+    return plannedSpan!.rows.filter((r) => plannedRowInWindow(r, windowStart, windowEnd));
+  }
+  const rows = await queuedPlannedRead(windowStart, windowEnd);
+  if (!rows) return [];
   plannedCache.set(key, { at: Date.now(), rows });
   return rows;
+}
+
+/** Tests only: forget every held row, and read from `reader` instead of the database. */
+export function resetPlannedRowsForTest(reader?: typeof plannedReader): void {
+  plannedReader = reader ?? readPlannedRows;
+  plannedCache.clear(); plannedInFlight.clear(); plannedSpan = null; plannedTurn = Promise.resolve();
 }
 
 export async function plannedSailingsForStorm(

@@ -2,7 +2,10 @@
 // tracker knows. It carries no dates: a storm-page watch runs 15 days from when it starts.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { withTrackable, keepMainstreamOrRequested, isMainstreamLine, MAINSTREAM_LINES, type Sailing } from "./storm-sailings";
+import {
+  withTrackable, keepMainstreamOrRequested, isMainstreamLine, MAINSTREAM_LINES, type Sailing,
+  plannedRowsForWindow, plannedRowInWindow, warmPlannedWindows, resetPlannedRowsForTest,
+} from "./storm-sailings";
 
 const sailing = (ship_name: string, start_date = "2026-09-15", end_date = "2026-09-20"): Sailing => ({
   ship_name, cruise_line: "Carnival", depart_port: "Miami", start_date, end_date, regions: ["bahamas"],
@@ -215,5 +218,84 @@ describe("canonicalPortName — one spelling per port (Mark 2026-10-17)", () => 
     assert.equal(canonicalPortName("Port of Nowhere, Atlantis"), "Port of Nowhere, Atlantis");
     assert.equal(canonicalPortName("   "), null);
     assert.equal(canonicalPortName(null), null);
+  });
+});
+
+// The dashboard list asks for every alert's window at once (2026-11-06: 41 windows on dev, the
+// database cancelled the reads and the list took 25 seconds). One span read answers them all.
+describe("planned sailings: one read for many windows", () => {
+  const row = (ship_name: string, start_date: string, end_date: string | null): PlannedSailingRow => ({
+    ship_name, operator: "Carnival", source: "cruisemapper", start_date, end_date, ports: [],
+  });
+  // In `ref` order, as the query returns them.
+  const table = [
+    row("Ends The Day The Window Opens", "2026-10-20", "2026-10-28"),
+    row("Ended The Day Before", "2026-10-20", "2026-10-27"),
+    row("Starts The Day The Window Closes", "2026-11-02", "2026-11-09"),
+    row("Starts The Day After", "2026-11-03", "2026-11-10"),
+    row("No End Date", "2026-09-01", null),
+    row("August Only", "2026-08-01", "2026-08-06"),
+    row("Inside", "2026-10-29", "2026-11-01"),
+  ];
+  /** A database that applies the query's own rule and records what it was asked. */
+  const fakeDb = (opts: { fail?: (start: string, end: string) => boolean } = {}) => {
+    const asked: string[] = [];
+    let open = 0; let mostOpen = 0;
+    const reader = async (start: string, end: string): Promise<PlannedSailingRow[] | null> => {
+      asked.push(`${start}|${end}`);
+      open += 1; mostOpen = Math.max(mostOpen, open);
+      await new Promise((r) => setTimeout(r, 5));
+      open -= 1;
+      if (opts.fail?.(start, end)) return null;
+      return table.filter((r) => plannedRowInWindow(r, start, end));
+    };
+    return { reader, asked, mostOpen: () => mostOpen };
+  };
+  const windows = [
+    { start: "2026-10-28", end: "2026-11-02" },
+    { start: "2026-08-02", end: "2026-08-07" },
+    { start: "2026-10-30", end: "2026-11-04" },
+  ];
+  const direct = (w: { start: string; end: string }) => table.filter((r) => plannedRowInWindow(r, w.start, w.end)).map((r) => r.ship_name);
+
+  it("keeps a row whose dates touch the window on either edge, and one with no end date", () => {
+    assert.deepEqual(direct(windows[0]!), ["Ends The Day The Window Opens", "Starts The Day The Window Closes", "No End Date", "Inside"]);
+  });
+
+  it("after the windows are named, reads the span once and gives each window exactly its own rows, in order", async () => {
+    const db = fakeDb();
+    resetPlannedRowsForTest(db.reader);
+    await warmPlannedWindows(windows);
+    const got = await Promise.all(windows.map((w) => plannedRowsForWindow(w.start, w.end)));
+    assert.deepEqual(db.asked, ["2026-08-02|2026-11-04"]);
+    windows.forEach((w, i) => assert.deepEqual(got[i]!.map((r) => r.ship_name), direct(w)));
+    assert.deepEqual(got[1]!.map((r) => r.ship_name), ["August Only"]);
+  });
+
+  it("does not read a span for a single window", async () => {
+    const db = fakeDb();
+    resetPlannedRowsForTest(db.reader);
+    await warmPlannedWindows([windows[0]!, windows[0]!]);
+    assert.deepEqual(db.asked, []);
+  });
+
+  it("without a span, reads take turns and two callers of one window share a read", async () => {
+    const db = fakeDb();
+    resetPlannedRowsForTest(db.reader);
+    const asks = [windows[0]!, windows[1]!, windows[0]!, windows[2]!];
+    const got = await Promise.all(asks.map((w) => plannedRowsForWindow(w.start, w.end)));
+    assert.equal(db.asked.length, 3);
+    assert.equal(db.mostOpen(), 1);
+    asks.forEach((w, i) => assert.deepEqual(got[i]!.map((r) => r.ship_name), direct(w)));
+  });
+
+  it("when the span read fails, each window still reads for itself", async () => {
+    const db = fakeDb({ fail: (start, end) => start === "2026-08-02" && end === "2026-11-04" });
+    resetPlannedRowsForTest(db.reader);
+    await warmPlannedWindows(windows);
+    const got = await plannedRowsForWindow(windows[0]!.start, windows[0]!.end);
+    assert.deepEqual(got.map((r) => r.ship_name), direct(windows[0]!));
+    assert.deepEqual(db.asked, ["2026-08-02|2026-11-04", "2026-10-28|2026-11-02"]);
+    resetPlannedRowsForTest();
   });
 });
