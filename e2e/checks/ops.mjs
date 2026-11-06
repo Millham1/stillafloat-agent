@@ -1805,6 +1805,14 @@ export default [
           t.ok(p && Array.isArray(p.required) && Array.isArray(p.signed), `group ${g.id}: traveler ${tr.id} has no paperwork progress`);
           // Mark 2026-10-30 (later): the card authorization is the card owner's own when the card is someone else's; the insurance
           // document is the one the choice on the file calls for (23 the plan, 07 the declination)
+          // Mark 2026-11-06: the cabin's lead signs for everyone on it; another traveler on a lead's cabin owes no documents of their own
+          const lead = !tr.is_lead && tr.cabin_id ? file.travelers.find((x) => x.is_lead && x.cabin_id === tr.cabin_id && x.id !== tr.id) : null;
+          if (lead) {
+            t.equal(JSON.stringify([p.required, p.covered_by]), JSON.stringify([[], lead.id]), `group ${g.id}: traveler ${tr.id} is on lead ${lead.id}'s cabin, so the lead signs for them and they are asked for nothing (Mark 2026-11-06)`);
+            t.equal(p.complete, body.packets[lead.id]?.complete === true, `group ${g.id}: traveler ${tr.id} is done exactly when the lead who signs for them is`);
+            continue;
+          }
+          t.ok(!p.covered_by, `group ${g.id}: traveler ${tr.id} has no lead on their cabin but is marked as signed for by one`);
           const ownersCard = p.card && p.card.holder === "other";
           // Mark 2026-10-31: the passport checklist (16) is prepared from the file and emailed, never signed; the booking agreement
           // comes right after the insurance document, before the waiver; the card authorization closes the lead's packet
