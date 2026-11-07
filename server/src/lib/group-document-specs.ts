@@ -512,7 +512,7 @@ const INSURANCE_07: DocSpec = {
   ],
   fields: [
     {
-      name: "decline_reasons", label: "Reasons for declining (optional)", kind: "multi", form: "insurance.reasons",
+      name: "decline_reasons", label: "Reasons for declining", kind: "multi", form: "insurance.reasons",
       // a traveler with a policy of their own is declining ours for Cornerstone's first reason; the box comes pre-ticked
       prefill: (c) => (insuranceChoice(c) === "own" ? ["existing"] : undefined),
       options: [

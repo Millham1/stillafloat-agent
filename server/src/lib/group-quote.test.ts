@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ageOn, buildQuote, drinksIncluded, fares, freeCabinFor, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers } from "./group-quote";
+import { ageOn, buildQuote, drinksIncluded, fares, freeCabinFor, insuranceSeedOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers } from "./group-quote";
 
 type Row = Record<string, any>;
 
@@ -116,4 +116,17 @@ test("a stored quote is read back only when it is one; the first free cabin of t
   assert.equal(freeCabinFor(cabins(), o.cabins[0]!, new Set(["c1"]))?.["id"], "c2");
   assert.equal(freeCabinFor(cabins(), o.cabins[0]!, new Set(["c1", "c2"])), null, "a booked cabin is never offered");
   assert.equal(freeCabinFor(cabins(), o.cabins[1]!, new Set())?.["id"], "c4");
+});
+
+test("the insurance answer on the quote is kept on the traveler's file the way the paperwork keeps its own choice, so the insurance step opens with it chosen (Mark 2026-11-06)", () => {
+  const g = group({ line_protection: "CruiseCare: $89 per person", insurance_plans: "OneTrip Prime: $142 per person\nOneTrip Premier: $210 per person" });
+  const o = quoteOptions({ group: g, cabins: cabins(), travel: [] }, "en");
+  const a = { cabin: "BB", flexpay: false, drinks: false, travel: [], needs: {} };
+  assert.deepEqual(insuranceSeedOf(o, { ...a, insurance: "decline" }, g["line_protection"]), { choice: "decline", plan: null });
+  assert.deepEqual(insuranceSeedOf(o, { ...a, insurance: "own" }, g["line_protection"]), { choice: "own", plan: null }, "the company and policy number are asked on the page");
+  assert.deepEqual(insuranceSeedOf(o, { ...a, insurance: "line" }, g["line_protection"]), { choice: "line", plan: "CruiseCare: $89 per person" }, "the line's plan as Mark typed it, the text the page's own choice keeps");
+  assert.deepEqual(insuranceSeedOf(o, { ...a, insurance: "allianz-1" }, g["line_protection"]), { choice: "quote", plan: "OneTrip Premier: $210 per person" }, "the Allianz plan in the words the insurance step offers, so it comes pre-picked");
+  const bare = quoteOptions({ group: group(), cabins: cabins(), travel: [] }, "en");
+  assert.deepEqual(insuranceSeedOf(bare, { ...a, insurance: "quote" }, null), { choice: "quote", plan: null }, "'quote me' with no plan on the file yet: yes to insurance, the plan picked once there is a price");
+  assert.equal(insuranceSeedOf(bare, { ...a, insurance: "line" }, null), null, "an answer the options never offered seeds nothing");
 });
