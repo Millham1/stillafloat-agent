@@ -130,6 +130,11 @@ function freshShips(t, h, byName) {
     .sort((a, b) => a.age - b.age);
 }
 
+function greatCircleNm(lat1, lon1, lat2, lon2) {
+  const r = Math.PI / 180, a = Math.sin(((lat2 - lat1) * r) / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lon2 - lon1) * r) / 2) ** 2;
+  return 3440.065 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 async function position(t, ship, healthFix) {
   // re-check just before asking: never let a slow run turn this into a paid lookup
   t.ok(ageMin(t, healthFix) < FRESH_FOR_POSITION_MIN,
@@ -370,9 +375,15 @@ export default [
         }
       }
       if (r.travelled.length) {
+        // The heard line ends at her last fix, unless the fix is a jump of more than 25 nm (TRACK_GAP_NM) from the last point
+        // heard: then it is a coverage gap, drawn dotted along water or not at all, never a straight line (Mark 2026-09-15:
+        // "the tracks are still running through land"), and the fix alone is a point, not a line. 11/07: MSC Meraviglia, heard
+        // again 200 nm past Nantucket.
         const run = r.travelled[r.travelled.length - 1];
         const end = run[run.length - 1];
-        t.ok(end[0] === d.position.lat && end[1] === d.position.lon, `${s.name}: the travelled line does not end where she was last heard`);
+        const endsHere = end[0] === d.position.lat && end[1] === d.position.lon;
+        const jumpNm = greatCircleNm(end[0], end[1], d.position.lat, d.position.lon);
+        t.ok(endsHere || jumpNm > 25, `${s.name}: the travelled line ends ${jumpNm.toFixed(1)} nm short of where she was last heard (under the 25 nm gap, so the fix should close the line)`);
       }
       t.equal(d.nearbyRadiusNm, 10, `${s.name}: the "nearby ships" radius in nautical miles`);
       t.ok(Array.isArray(d.nearby), `${s.name}: the nearby-ships list is missing`);
