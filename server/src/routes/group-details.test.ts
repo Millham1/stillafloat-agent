@@ -941,9 +941,9 @@ test("'Send my choices to Mark!' (Mark 2026-11-05): the first press wins; the tr
   const made = tables["group_travelers"]!;
   assert.equal(made.length, 2, "two travelers, once");
   assert.deepEqual(made.map((t) => [t["first_name"], t["last_name"], t["dob"], t["cabin_id"], t["is_lead"], t["lang"]]), [["Mark", "Millham", "1965-04-12", CABIN_ID, true, "en"], ["Ceci", "Millham", "1980-11-02", CABIN_ID, false, "en"]]);
-  assert.deepEqual([made[0]!["email"], made[0]!["phone"], made[0]!["form_data"]], ["mmillham1@gmail.com", null, { address: "123 Main St", city_state_zip: "Raleigh, NC 27601", trip: { chosen: [], needs: { flight: true, hotel: false, transfer: false } } }], "the home address goes on the lead, in the two parts the paperwork pre-fills from");
+  assert.deepEqual([made[0]!["email"], made[0]!["phone"], made[0]!["form_data"]], ["mmillham1@gmail.com", null, { address: "123 Main St", city_state_zip: "Raleigh, NC 27601", trip: { chosen: [], needs: { flight: true, hotel: false, transfer: false } }, insurance: { choice: "decline", plan: null } }], "the home address goes on the lead, in the two parts the paperwork pre-fills from; the insurance answer on the quote goes with it, so the paperwork opens with it chosen (Mark 2026-11-06)");
   assert.equal("email" in made[1]!, false);
-  assert.deepEqual(made[1]!["form_data"], {}, "form_data is NOT NULL in the table: the second traveler names it too (22:35Z 11/02: the insert failed and no one was filed)");
+  assert.deepEqual(made[1]!["form_data"], { insurance: { choice: "decline", plan: null } }, "form_data is NOT NULL in the table: the second traveler names it too (22:35Z 11/02: the insert failed and no one was filed); the insurance answer is on every traveler's file");
   assert.ok(!made[0]!["form_token_hash"] && !made[0]!["form_sent_at"], "no paperwork link exists yet: Mark books the cabin and validates the travel first (Mark 2026-11-03)");
   assert.deepEqual([replyRow()["traveler_id"], replyRow()["status"], replyRow()["quote"]["paperwork"], replyRow()["quote"]["cabin_id"]], [made[0]!["id"], "contacted", "booking", CABIN_ID]);
   assert.equal(writes("group_cabins").length, 0, "the cabin row is not touched: Mark books with the cruise line himself");

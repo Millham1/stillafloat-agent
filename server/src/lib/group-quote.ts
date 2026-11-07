@@ -8,7 +8,7 @@
 // quotes it and the total says "plus …". FlexPay is Mark's own installment plan, offered apart from the cruise line (Mark 2026-11-01: "the flexpay
 // option is not msc. i can offer it separately"; "i will not know the terms until the client completes the app, which we need to do separately"): the
 // step asks only whether they want the application, and promises no terms.
-import { QUOTE_NOTE, plansFromText } from "./allianz-quote";
+import { QUOTE_NOTE, planLabel, plansFromText } from "./allianz-quote";
 import { displayName, formatDate, formatMoney, priceUnitOf, priceUnitText, travelLabel, type Lang, type PriceUnit } from "./group-marketing";
 import type { Traveler } from "./group-details";
 
@@ -388,4 +388,17 @@ export function tripOf(travel: Array<Record<string, unknown>>, answers: QuoteAns
     chosen.push({ kind, direction: str(r["direction"]), from_place: str(r["from_place"]), to_place: str(r["to_place"]), provider: str(r["provider"]), starts_at: str(r["starts_at"]), ends_at: str(r["ends_at"]), label: travelLabel(r as never, "en") });
   }
   return { chosen, needs: answers.needs };
+}
+
+/** The insurance answer on the quote, as the paperwork keeps it (form_data.insurance): the insurance step then opens with the
+ *  guest's own choice already made, and the packet carries the right document from the start (Mark 2026-11-06: "insurance is
+ *  asked again inside the paperwork with nothing preselected"). The plan text is the one the paperwork offers, so the choice
+ *  stands as made; the guest can still change it on the page. */
+export function insuranceSeedOf(options: QuoteOptions, answers: QuoteAnswers, lineProtection: unknown): { choice: "quote" | "line" | "own" | "decline"; plan: string | null } | null {
+  const o = options.insurance.find((i) => i.key === answers.insurance);
+  if (!o) return null;
+  if (o.key === "own" || o.key === "decline") return { choice: o.key, plan: null };
+  // the line's plan is kept as Mark typed it on the file, the same text the page's own choice keeps (chooseInsurance)
+  if (o.key === "line") return { choice: "line", plan: typeof lineProtection === "string" && lineProtection.trim() ? lineProtection.trim() : null };
+  return { choice: "quote", plan: o.name && o.perPerson !== null ? planLabel({ name: o.name, price_per_person: o.perPerson }) : null };
 }

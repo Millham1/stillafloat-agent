@@ -16,7 +16,7 @@ import {
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
 import { opsBook, opsBusy } from "../lib/ops-schedule";
-import { buildQuote, freeCabinFor, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
+import { buildQuote, freeCabinFor, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
 // Public, and the guest's private link is the only credential, exactly like the paperwork link: a random 43-character token whose sha256 alone is stored
@@ -443,12 +443,17 @@ router.post("/group-details/:token/request", async (req: Request, res: Response)
     const cabin = chosen ? freeCabinFor(cabins, chosen, used) : null;
     let leadRow: Row | null = null;
     if (!reply.traveler_id) {
+      // Mark 2026-11-06: the insurance answer on the quote goes on every traveler's file, so the paperwork opens with it chosen
+      const insurance = insuranceSeedOf(options, quote.answers, group.line_protection);
       const rows = travelers.map((p, i) => {
         const { first, last } = splitLegalName(p.legal_name);
         return {
           group_id: group.id, cabin_id: cabin ? cabin["id"] : null, is_lead: i === 0, first_name: first, last_name: last, dob: p.dob, lang,
           // form_data is NOT NULL and a bulk insert sends NULL (not the column default) for a key a row leaves out, so every traveler names it.
-          form_data: i === 0 ? { address: address.street, city_state_zip: `${address.city}, ${address.state} ${address.zip}`, trip: tripOf(travel as Array<Record<string, unknown>>, quote.answers) } : {},
+          form_data: {
+            ...(i === 0 ? { address: address.street, city_state_zip: `${address.city}, ${address.state} ${address.zip}`, trip: tripOf(travel as Array<Record<string, unknown>>, quote.answers) } : {}),
+            ...(insurance ? { insurance } : {}),
+          },
           ...(i === 0 ? { email: reply.email ?? null, phone: reply.phone ?? null } : {}),
         };
       });
