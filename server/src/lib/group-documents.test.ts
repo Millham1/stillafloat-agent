@@ -28,7 +28,7 @@ const GROUP = {
 };
 const CABINS = [{ id: "c1", cabin_num: "8214", category: "Balcony", category_code: "8C", booking_number: "BK77", price_total: 2598, deposit_amount: 500 }];
 const TRAVELERS = [
-  { id: "t1", cabin_id: "c1", is_lead: true, first_name: "Jane", last_name: "Public", dob: "1960-05-04", email: "jane@example.com", phone: "555-111-2222", form_data: { address: "1 Main St", city_state_zip: "Raleigh, NC 27601" } },
+  { id: "t1", cabin_id: "c1", is_lead: true, first_name: "Jane", last_name: "Public", dob: "1960-05-04", email: "jane@example.com", phone: "919-555-0100", form_data: { address: "1 Main St", city_state_zip: "Raleigh, NC 27601" } },
   { id: "t2", cabin_id: "c1", first_name: "John", middle_name: "Q", last_name: "Public", dob: "1958-01-09", passport_last4: "4321", passport_expiry: "2030-01-01", passport_enc: "v1:SECRETCIPHER", passport_number: "X99887766" },
 ];
 const ctxFor = (over: Record<string, unknown> = {}, traveler: Record<string, unknown> | null = TRAVELERS[0]!) =>
@@ -504,4 +504,39 @@ test("a phone number is written one way, with its country code (Mark 2026-11-03)
   for (const [typed, want] of [["9193466127", "+1 (919) 346-6127"], ["919-346-6127", "+1 (919) 346-6127"], ["1 (919) 346 6127", "+1 (919) 346-6127"], ["+1 919 346 6127", "+1 (919) 346-6127"], ["+44 7911 123456", "+44 7911 123456"], ["555-1234", "555-1234"]] as const) {
     assert.equal(normalizePhone(typed), want, typed);
   }
+});
+
+// ── Mark 2026-11-07: nothing retyped for the other traveler; a corrected line alerts Mark and is not written over the file ──
+
+test("the other traveler's lines are pre-filled from their row, gender included; a choice column's words come back as the page's code", () => {
+  const male = { ...TRAVELERS[1]!, gender: "Male", citizenship: "Canada", passport_country: "Canada" };
+  const ctx = buildCtx({ business: BUSINESS, group: GROUP, cabins: CABINS, travelers: [TRAVELERS[0]!, male], traveler: { ...TRAVELERS[0]!, gender: "Female" }, now: NOW });
+  const byName = Object.fromEntries(renderDocument("15-emergency-contact-form", ctx).fields.map((f) => [f.name, f]));
+  assert.equal(prefillValue(byName["gender"]!, ctx), "female", "the lead's own gender, from the file's words to the page's code");
+  assert.deepEqual(
+    ["m1_legal_name", "m1_dob", "m1_gender", "m1_citizenship", "m1_passport_country", "m1_passport_expiry"].map((n) => prefillValue(byName[n]!, ctx)),
+    ["John Q Public", "1958-01-09", "male", "Canada", "Canada", "2030-01-01"],
+  );
+  assert.equal(prefillValue(byName["m1_passport_number"]!, ctx), undefined, "never the passport number");
+});
+
+test("an answer that differs from the file is a correction: it is reported, with who and what, and NOT written on the file; a name without its middle part is the same name", () => {
+  const ctx = buildCtx({ business: BUSINESS, group: GROUP, cabins: CABINS, travelers: [{ ...TRAVELERS[0]!, gender: "Female" }, { ...TRAVELERS[1]!, gender: "Male" }], traveler: { ...TRAVELERS[0]!, gender: "Female" }, now: NOW });
+  const same = applyAnswers(renderDocument("15-emergency-contact-form", ctx), { ...GOOD_15, legal_name: "jane public", m1_legal_name: "John Public" }, ctx);
+  assert.ok(same.ok && !same.corrections, "the same names, with or without the middle part, in any case: no correction");
+  const r = applyAnswers(renderDocument("15-emergency-contact-form", ctx), { ...GOOD_15, dob: "1960-05-05", gender: "nonbinary", m1_dob: "1958-01-10", m1_legal_name: "Jon Public", m1_passport_number: "B98765432", m1_passport_country: "Canada", m1_passport_expiry: "2032-05-06" }, ctx);
+  assert.equal(r.ok, true);
+  if (!r.ok) return;
+  assert.deepEqual(r.corrections, [
+    { field: "dob", label: "Date of birth", who: "Jane Public", was: "1960-05-04", now: "1960-05-05" },
+    { field: "gender", label: "Gender", who: "Jane Public", was: "Female", now: "Non-binary / Other" },
+    { field: "m1_legal_name", label: "Full legal name (as on their passport or ID)", who: "John Q Public", was: "John Q Public", now: "Jon Public" },
+    { field: "m1_dob", label: "Date of birth", who: "John Q Public", was: "1958-01-09", now: "1958-01-10" },
+    { field: "m1_passport_expiry", label: "Passport expiration date", who: "John Q Public", was: "2030-01-01", now: "2032-05-06" },
+  ]);
+  assert.ok(!("dob" in r.travelerPatch) && !("gender" in r.travelerPatch), "the corrected lines are Mark's to change");
+  assert.ok("phone" in r.travelerPatch, "a line the file did not have is written as before");
+  const john = r.mates!.find((m) => m.index === 1)!.patch;
+  assert.deepEqual(john, { gender: "Male", citizenship: "United States", passport_country: "Canada" }, "on the other traveler's row: what the file did not have or already says; not the corrected date or expiry");
+  assert.equal(r.answers["dob"], "1960-05-05", "the signed document keeps exactly what was entered");
 });

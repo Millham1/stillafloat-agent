@@ -495,6 +495,15 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
         await deps.store.updateTraveler(String(mate.id), own);
       }
       if (Object.keys(applied.formData).length) await deps.store.mergeFormData(traveler.id, (fd) => deepMerge(fd, applied.formData));
+      // Mark 2026-11-07: an answer that differs from the file is not written over it; Mark is told and makes the change himself
+      if (applied.corrections?.length) {
+        const lines = applied.corrections.map((c) => `${c.who} — ${c.label}: the file says "${c.was}", the form says "${c.now}".`);
+        void deps.notify({
+          title: `Paperwork correction: ${personName(traveler) || signerName}`,
+          body: `${loaded.group.name} — ${docKey.replace(/^\d+-/, "")}. ${lines.join(" ")} Nothing on the file was changed: check and update it.`,
+          groupId: loaded.group.id,
+        }).catch((err: unknown) => deps.warn({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the correction notice failed"));
+      }
     } catch (err) {
       await deps.store.deleteSignature(saved.id).catch(() => undefined);
       deps.warn({ err: err instanceof Error ? err.message : String(err), group: loaded.group.id }, "paperwork: saving the traveler's answers failed; the signature was removed");

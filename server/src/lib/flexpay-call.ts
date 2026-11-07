@@ -13,8 +13,12 @@ export const CALL = {
   openHour: 10,
   closeHour: 20,
   minutes: 30,
-  leadMinutes: 120,
-  horizonDays: 14,
+  /** Mark 2026-11-07: "the call needs to happen within 24 hours of the request." Half an hour's notice; every open time
+   *  within the next 24 hours. When none of those is open (a request late on Saturday), the first open day after it. */
+  leadMinutes: 30,
+  withinHours: 24,
+  /** How far the fallback may look for that first open day. */
+  horizonDays: 7,
 } as const;
 
 export interface Busy { start: string; end: string }
@@ -46,6 +50,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 /** Every appointment start the rule allows from `now`, by day on Mark's clock, before any meeting is taken out. */
 export function ruleSlots(now: Date): CallDay[] {
   const earliest = now.getTime() + CALL.leadMinutes * MIN;
+  const latest = now.getTime() + CALL.withinHours * 60 * MIN;
   const today = parts(now, CALL.tz);
   const out: CallDay[] = [];
   for (let i = 0; i <= CALL.horizonDays; i++) {
@@ -58,16 +63,22 @@ export function ruleSlots(now: Date): CallDay[] {
       const t = zonedTime(anchor.y, anchor.mo, anchor.d, Math.floor(m / 60), m % 60);
       if (t.getTime() >= earliest) slots.push(t.toISOString());
     }
-    if (slots.length) out.push({ date: `${anchor.y}-${pad(anchor.mo)}-${pad(anchor.d)}`, slots });
+    if (!slots.length) continue;
+    const date = `${anchor.y}-${pad(anchor.mo)}-${pad(anchor.d)}`;
+    const inside = slots.filter((s) => new Date(s).getTime() <= latest);
+    if (inside.length) { out.push({ date, slots: inside }); continue; }
+    // the first open day past the 24 hours, only when nothing inside them was open
+    if (!out.length) out.push({ date, slots });
+    break;
   }
   return out;
 }
 
 /** The window the rule can ever offer from `now`: what to ask the calendar about. */
 export function ruleWindow(now: Date): { start: string; end: string } {
-  const today = parts(now, CALL.tz);
-  const last = parts(new Date(Date.UTC(today.y, today.mo - 1, today.d + CALL.horizonDays, 12)), "UTC");
-  return { start: now.toISOString(), end: zonedTime(last.y, last.mo, last.d, CALL.closeHour, 0).toISOString() };
+  const days = ruleSlots(now);
+  const lastSlot = days.length ? days[days.length - 1]!.slots.slice(-1)[0]! : now.toISOString();
+  return { start: now.toISOString(), end: new Date(new Date(lastSlot).getTime() + CALL.minutes * MIN).toISOString() };
 }
 
 const overlaps = (start: number, busy: Busy[]): boolean => {

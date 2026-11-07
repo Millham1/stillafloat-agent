@@ -202,17 +202,24 @@ const RULES_15: DocSpec["rules"] = [
 const MATE_SLOTS = [1, 2, 3] as const;
 // only the lead is asked: a cabin-mate who signs their own paperwork is never asked for (or shown) the lead's details
 const mateOf = (c: DocCtx, i: number): Row | undefined => (c.traveler?.is_lead ? c.mates[i - 1] : undefined);
+// Mark 2026-11-07: "the lead shouldn't have to retype anything for the second traveler": every line reads their row first
 const mateFields = (i: number): FieldSpec[] => {
   const n = `Traveler ${i + 1}`;
   const m = (c: DocCtx) => mateOf(c, i);
+  const name = (c: DocCtx) => (m(c) ? fullName(m(c)!) || undefined : undefined);
+  const dob = (c: DocCtx) => (typeof m(c)?.dob === "string" ? String(m(c)!.dob).slice(0, 10) : undefined);
+  const gender = (c: DocCtx) => GENDER.find((o) => o.label === m(c)?.gender || o.value === m(c)?.gender)?.value;
+  const citizenship = (c: DocCtx) => cleanValue(m(c)?.citizenship) || undefined;
+  const country = (c: DocCtx) => cleanValue(m(c)?.passport_country) || undefined;
+  const expiry = (c: DocCtx) => (typeof m(c)?.passport_expiry === "string" ? String(m(c)!.passport_expiry).slice(0, 10) : undefined);
   return [
-    text(`m${i}_legal_name`, `${n}: full legal name (as on their passport or ID)`, { required: true, prefill: (c) => (m(c) ? fullName(m(c)!) || undefined : undefined) }),
-    { name: `m${i}_dob`, label: `${n}: date of birth`, kind: "date", required: true, date: "dob", prefill: (c) => (typeof m(c)?.dob === "string" ? String(m(c)!.dob).slice(0, 10) : undefined) },
-    { name: `m${i}_gender`, label: `${n}: gender`, kind: "choice", required: true, options: GENDER },
-    text(`m${i}_citizenship`, `${n}: citizenship`, { required: true, prefill: (c) => cleanValue(m(c)?.citizenship) || "United States" }),
+    text(`m${i}_legal_name`, `${n}: full legal name (as on their passport or ID)`, { required: true, prefill: name, fileValue: name }),
+    { name: `m${i}_dob`, label: `${n}: date of birth`, kind: "date", required: true, date: "dob", prefill: dob, fileValue: dob },
+    { name: `m${i}_gender`, label: `${n}: gender`, kind: "choice", required: true, options: GENDER, prefill: gender, fileValue: gender },
+    text(`m${i}_citizenship`, `${n}: citizenship`, { required: true, prefill: (c) => citizenship(c) || "United States", fileValue: citizenship }),
     { name: `m${i}_passport_number`, label: `${n}: passport number`, kind: "passport" },
-    text(`m${i}_passport_country`, `${n}: passport country of issue`, { required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: (c) => cleanValue(m(c)?.passport_country) || undefined }),
-    { name: `m${i}_passport_expiry`, label: `${n}: passport expiration date`, kind: "date", date: "future", required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: (c) => (typeof m(c)?.passport_expiry === "string" ? String(m(c)!.passport_expiry).slice(0, 10) : undefined) },
+    text(`m${i}_passport_country`, `${n}: passport country of issue`, { required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: country, fileValue: country }),
+    { name: `m${i}_passport_expiry`, label: `${n}: passport expiration date`, kind: "date", date: "future", required: (a) => typeof a[`m${i}_passport_number`] === "string", prefill: expiry, fileValue: expiry },
   ];
 };
 const MATE_FIELDS_15 = MATE_SLOTS.flatMap(mateFields);
@@ -257,7 +264,7 @@ const MATE_DERIVE_15: NonNullable<DocSpec["mateDerive"]> = (a, ctx) => MATE_SLOT
 });
 
 const FIELDS_15: FieldSpec[] = [
-  text("legal_name", "Full legal name (as on your passport or ID)", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined }),
+  text("legal_name", "Full legal name (as on your passport or ID)", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined, fileValue: (c) => fullName(c.traveler) || undefined }),
   { name: "dob", label: "Date of birth", kind: "date", required: true, date: "dob", col: "dob" },
   { name: "gender", label: "Gender", kind: "choice", required: true, options: GENDER, col: "gender" },
   { name: "us_citizen", label: "U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen" },
@@ -1114,7 +1121,7 @@ const FEE_03: DocSpec = {
 
 
 const FIELDS_20: FieldSpec[] = [
-  text("legal_name", "Full legal name, exactly as on your passport or ID", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined }),
+  text("legal_name", "Full legal name, exactly as on your passport or ID", { required: true, form: "legal_name", prefill: (c) => fullName(c.traveler) || undefined, fileValue: (c) => fullName(c.traveler) || undefined }),
   { name: "dob", label: "Date of birth", kind: "date", required: true, date: "dob", col: "dob" },
   { name: "gender", label: "Gender", kind: "choice", required: true, options: GENDER, col: "gender" },
   { name: "us_citizen", label: "Are you a U.S. citizen?", kind: "choice", required: true, options: [opt("yes", "Yes"), opt("no", "No", "No")], form: "us_citizen" },
