@@ -969,7 +969,7 @@ test("'Send my choices to Mark!' (Mark 2026-11-05): the first press wins; the tr
   assert.equal(replyRow()["quote"]["answers"]["flexpay"], true, "the agreed answers stay");
 });
 
-test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirmations; the send is refused until the booking number, the cabin number and every travel line are in; then the paperwork goes to the guest once and the item closes", async () => {
+test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirmations; the send is refused until every travel line is in (Mark 2026-11-07: the booking number and the cabin number are not needed first); then the paperwork goes to the guest once and the item closes", async () => {
   namesIn();
   actionsAccept = true;
   pendingItem();
@@ -980,12 +980,12 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.equal((await call("GET", booking)).status, 401, "Mark's token only");
   const view = await call("GET", booking, { token: true });
   assert.deepEqual([view.status, view.json["ready"], view.json["guest"]["name"]], [200, false, "Mark Millham"]);
-  assert.deepEqual(view.json["missing"], ["The cruise line's booking number", "The cabin number", "The flight the guest asked you to quote: add it below"]);
+  assert.deepEqual(view.json["missing"], ["The flight the guest asked you to quote: add it below"]);
   const early = await call("POST", path, { token: true });
   assert.equal(early.status, 409, "nothing entered yet");
-  assert.match(String(early.json["error"]), /booking number/);
+  assert.match(String(early.json["error"]), /flight/);
   assert.equal(mails.length, 0);
-  // the cabin alone is not enough: the flight the guest asked for has to be on the file with its confirmation
+  // the cabin's numbers alone are not enough: the flight the guest asked for has to be on the file with its confirmation
   const cabinOnly = await call("PUT", booking, { token: true, body: { cabin: { booking_number: "MSC-778899", cabin_num: "12345", deck: "12" } } });
   assert.deepEqual([cabinOnly.status, cabinOnly.json["ready"]], [200, false]);
   assert.equal(tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["status"], "booked", "booking number and cabin number make the cabin booked");
@@ -1088,7 +1088,7 @@ test("the FlexPay video call: the link opens only once Mark has sent it, shows o
     assert.equal((await call("GET", `/flexpay-call/${REPLY_ID}/${deriveCallKey(GROUP_ID, KEY_HEX)}`)).status, 404, "another reply's key");
 
     // a day of the rule with a meeting over its first time
-    const day = ruleSlots(new Date())[1]!;
+    const day = ruleSlots(new Date()).sort((a, b) => b.slots.length - a.slots.length)[0]!; // the day with the most times (the rule now offers one or two days)
     const [taken, free] = [day.slots[0]!, day.slots[1]!];
     opsMeetings = [{ start: taken, end: free }];
     const open = await call("GET", page);
@@ -1157,7 +1157,7 @@ test("the FlexPay video call on a box that may not email the guest: the time is 
   try {
     replyRow()["quote"] = { answers: { ...ANSWERS }, flexpay_link: "held" };
     replyRow()["lang"] = "es";
-    const free = ruleSlots(new Date())[1]!.slots[2]!;
+    const free = ruleSlots(new Date()).sort((a, b) => b.slots.length - a.slots.length)[0]!.slots[2]!;
     const ok = await call("POST", `/flexpay-call/${REPLY_ID}/${deriveCallKey(REPLY_ID, KEY_HEX)}`, { body: { start: free } });
     assert.deepEqual([ok.status, ok.json["email"], ok.json["booked"]["start"]], [200, "held", free]);
     assert.match(ok.json["booked"]["whenText"], /hora del Este$/);

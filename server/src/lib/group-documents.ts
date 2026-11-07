@@ -31,7 +31,7 @@ import { CLIENT_DOCUMENTS } from "../content/client-documents";
 import { BUSINESS, last4, normalizePassport, passportLooksValid, sha256Hex } from "./group-secure";
 import { looksLikeCardNumber } from "./group-file";
 import {
-  TEMPLATE_VERSION_DATE, buildCtx, cancellationNote, cancellationRows, cleanValue, fmtLong, fmtMoney, normalizeFees,
+  TEMPLATE_VERSION_DATE, buildCtx, cancellationNote, cancellationRows, cleanValue, fmtLong, fmtMoney, fullName, normalizeFees,
   type Answers, type Block, type DocCtx, type DocSpec, type FeeLine, type FieldSpec, type Lang, type Row, type SignerRole,
 } from "./group-document-kit";
 import { DOC_SPECS, insuranceDocFor } from "./group-document-specs";
@@ -600,7 +600,11 @@ export interface AppliedAnswers {
   /** The lead's answers about the cabin's other travelers (Mark 2026-11-03): the columns for each one's own row, and their passport numbers, to be encrypted. */
   mates?: Array<{ index: number; patch: Row }>;
   matePassports?: Array<{ index: number; number: string; last4: string }>;
+  /** Mark 2026-11-07: answers that differ from what the file says. They are NOT written over the file: Mark is told, and he makes
+   *  the change. `who` names the traveler the line is about. */
+  corrections?: Correction[];
 }
+export interface Correction { field: string; label: string; who: string; was: string; now: string }
 export interface RejectedAnswers { ok: false; errors: Record<string, string> }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -720,6 +724,8 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
   let license: AppliedAnswers["license"];
   const matePassports: NonNullable<AppliedAnswers["matePassports"]> = [];
   const stored: Answers = { ...clean };
+  const corrections = correctionsIn(doc.fields, clean, ctx);
+  const corrected = new Set(corrections.map((c) => c.field));
   for (const f of doc.fields) {
     const v = clean[f.name];
     if (isEmpty(v)) continue;
@@ -745,14 +751,51 @@ export function applyAnswers(doc: { key: string; fields: FieldSpec[] }, raw: unk
       continue;
     }
     const shown = f.kind === "choice" ? f.options?.find((o) => o.value === v)?.label ?? v : v; // a column holds the words ("Female"), not the code
-    if (f.col) travelerPatch[f.col] = shown;
+    if (f.col && !corrected.has(f.name)) travelerPatch[f.col] = shown; // a correction stays Mark's to make
     if (f.form) setPath(formData, f.form, v);
     // Mark 2026-10-27: city, state and ZIP are typed in three boxes and kept apart too, so the file can sort and search by each
     if (f.form && /city_state_zip$/.test(f.name) && typeof v === "string") { const parts = splitCityStateZip(v); if (parts) setPath(formData, `${f.form}_parts`, parts); }
   }
   if (spec?.derive) Object.assign(travelerPatch, spec.derive(clean, ctx));
-  const mates = spec?.mateDerive?.(clean, ctx) ?? [];
-  return { ok: true, answers: stored, travelerPatch, formData, ...(passport ? { passport } : {}), ...(license ? { license } : {}), ...(mates.length ? { mates } : {}), ...(matePassports.length ? { matePassports } : {}) };
+  // another traveler's corrected lines are not written on their row either (m1_gender → gender, and so on)
+  const mates = (spec?.mateDerive?.(clean, ctx) ?? []).map(({ index, patch }) => {
+    const keep: Row = {};
+    for (const [col, v] of Object.entries(patch)) if (!corrected.has(`m${index}_${col}`)) keep[col] = v;
+    return { index, patch: keep };
+  }).filter((m) => Object.keys(m.patch).length);
+  return { ok: true, answers: stored, travelerPatch, formData, ...(passport ? { passport } : {}), ...(license ? { license } : {}), ...(mates.length ? { mates } : {}), ...(matePassports.length ? { matePassports } : {}), ...(corrections.length ? { corrections } : {}) };
+}
+
+/** Mark 2026-11-07: "they should only correct if there is a mistake and that needs to alert me to make the changes." A line the file
+ *  already answers (its column, its form_data path, or the row of the traveler the line is about) whose answer came back different. A
+ *  name is the same name with or without its middle part; words are compared without case or extra spaces; a choice by its code. */
+export function correctionsIn(fields: FieldSpec[], clean: Answers, ctx: DocCtx): Correction[] {
+  const out: Correction[] = [];
+  const norm = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  const sameName = (a: string, b: string) => { const x = norm(a).split(" "), y = norm(b).split(" "); return x.join(" ") === y.join(" ") || (x.length > 1 && y.length > 1 && x[0] === y[0] && x[x.length - 1] === y[y.length - 1]); };
+  for (const f of fields) {
+    if (f.kind === "passport" || f.kind === "license" || f.kind === "check" || f.kind === "multi") continue;
+    const now = clean[f.name];
+    if (isEmpty(now) || typeof now !== "string") continue;
+    let was: unknown = f.fileValue ? f.fileValue(ctx) : undefined;
+    if (was === undefined && !f.fileValue) {
+      const fromForm = f.form ? getPath(ctx.traveler?.form_data, f.form) : undefined;
+      was = !isEmpty(fromForm) ? fromForm : f.col ? ctx.traveler?.[f.col] : undefined;
+      if (f.kind === "choice" && typeof was === "string") was = f.options?.find((o) => o.value === was || o.label === was)?.value ?? was;
+    }
+    if (isEmpty(was) || typeof was !== "string") continue;
+    const same = /legal_name$/.test(f.name) ? sameName(was, now)
+      : f.kind === "date" ? was.slice(0, 10) === now.slice(0, 10)
+      : f.kind === "tel" ? was.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "") === now.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "")
+      : norm(was) === norm(now);
+    if (same) continue;
+    const mate = /^m([1-3])_/.exec(f.name);
+    const who = mate ? (fullName(ctx.mates[Number(mate[1]) - 1]) || `Traveler ${Number(mate[1]) + 1}`) : fullName(ctx.traveler) || "the signer";
+    const label = f.label.replace(/^Traveler \d+: /, "");
+    const word = (v: string) => (f.kind === "choice" ? f.options?.find((o) => o.value === v)?.label ?? v : v);
+    out.push({ field: f.name, label: label.charAt(0).toUpperCase() + label.slice(1), who, was: word(was), now: word(now) });
+  }
+  return out;
 }
 
 /** What the page puts in each input before the signer types: the file's own value (never a passport number). */
@@ -763,7 +806,8 @@ export function prefillValue(f: FieldSpec, ctx: DocCtx): string | string[] | boo
   const v = !isEmpty(fromForm) ? fromForm : fromCol;
   if (!isEmpty(v)) {
     if (f.kind === "date" || f.kind === "text" || f.kind === "tel" || f.kind === "email" || f.kind === "textarea") return String(v).slice(0, f.kind === "date" ? 10 : 400);
-    if (f.kind === "choice" && typeof v === "string") return v;
+    // a column holds the words ("Female"); the page's choice wants the code ("female") (Mark 2026-11-07: the lead was retyping gender)
+    if (f.kind === "choice" && typeof v === "string") return f.options?.find((o) => o.value === v || o.label === v)?.value ?? v;
     if (f.kind === "multi" && Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
     if (f.kind === "check" && typeof v === "boolean") return v;
   }

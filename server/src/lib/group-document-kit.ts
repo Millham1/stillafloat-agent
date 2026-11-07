@@ -331,6 +331,9 @@ export interface FieldSpec {
   date?: "dob" | "past" | "future";
   /** What the page pre-fills when the file holds nothing under col/form. */
   prefill?: (ctx: DocCtx) => string | string[] | undefined;
+  /** Mark 2026-11-07: what the FILE says for this line (a line about another traveler reads their row). An answer that differs
+   *  from it is a correction: it is not written over the file, and Mark is told to make the change. Unset: col/form. */
+  fileValue?: (ctx: DocCtx) => string | undefined;
   /** Mark 2026-10-30: a tick that carries no information ("I am aware of and accept…") is asked on the document's own signing
    *  screen, under the heading and the words it belongs to, never on the information page. */
   onDocument?: { heading: string; text: string };

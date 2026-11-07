@@ -603,11 +603,9 @@ function bookingView(b: BookingFile) {
   const chosen = tripEntries(b.lead.form_data);
   const needs = ((b.lead.form_data as Record<string, any> | null)?.["trip"]?.["needs"] ?? {}) as Record<string, boolean>;
   const missing: string[] = [];
+  // Mark 2026-11-07: the booking number and the cabin number are not needed before the paperwork goes out (he enters them when the
+  // line gives them); the cabin itself and the travel the guest asked for are.
   if (!b.cabin) missing.push("The cabin this guest is on is not on the group file");
-  else {
-    if (!text(b.cabin["booking_number"])) missing.push("The cruise line's booking number");
-    if (!text(b.cabin["cabin_num"])) missing.push("The cabin number");
-  }
   for (const r of chosen) if (!r.confirmation) missing.push(`Confirmation for ${r.label}`);
   for (const k of TRIP_KINDS) if (needs[k] === true && !chosen.some((r) => r.kind === k)) missing.push(`The ${k} the guest asked you to quote: add it below`);
   const fills = [

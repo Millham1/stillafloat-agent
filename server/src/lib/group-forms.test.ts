@@ -27,7 +27,7 @@ function makeStore() {
     group: groupRow(),
     cabins: [{ id: "c1", cabin_num: "8214", category: "Balcony", category_code: "8C", booking_number: "BK77", price_total: 2598 }] as Row[],
     travelers: [
-      { id: "t1", group_id: "g1", cabin_id: "c1", is_lead: true, first_name: "Jane", last_name: "Public", dob: "1960-05-04", email: "jane@example.com", phone: "555-111-2222", lang: "en", form_data: {}, passport_last4: null, newsletter_opt_in: false, form_token_hash: null },
+      { id: "t1", group_id: "g1", cabin_id: "c1", is_lead: true, first_name: "Jane", last_name: "Public", dob: "1960-05-04", email: "jane@example.com", phone: "919-555-0100", lang: "en", form_data: {}, passport_last4: null, newsletter_opt_in: false, form_token_hash: null },
       { id: "t2", group_id: "g1", cabin_id: "c1", is_lead: false, first_name: "John", last_name: "Public", dob: "1958-01-09", email: "john@example.com", lang: "en", form_data: {}, passport_last4: "4321", passport_expiry: "2030-01-01", newsletter_opt_in: false, form_token_hash: null, passport_enc: "v1:SECRET" },
     ] as Row[],
     signatures: [] as Row[],
@@ -373,7 +373,7 @@ test("no GROUP_PII_KEY: the passport step is refused with a plain message and no
   assert.equal(r.json["code"], "passport-unavailable");
   assert.match(String(r.json["error"]), /leave that line empty/);
   assert.equal(t.state.signatures.length, 0);
-  assert.equal(t.state.travelers[0]!.phone, "555-111-2222", "nothing was written");
+  assert.equal(t.state.travelers[0]!.phone, "919-555-0100", "nothing was written");
   const { passport_number: _n, passport_country: _c, passport_expiry: _e, ...noPassport } = GOOD_15;
   const ok = await signKey(t, token, "15-emergency-contact-form", { answers: noPassport });
   assert.equal(ok.status, 200, JSON.stringify(ok.json));
@@ -389,7 +389,8 @@ test("signing the booking document records consent; the last signature completes
   const mate = "John Public";
   const order = ["15-emergency-contact-form", "01-terms-and-conditions", "07-travel-insurance-declination", "05-liability-waiver"];
   const answers: Record<string, unknown> = {
-    "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", passport_number: "B99887766" },
+    // John's own date of birth and passport expiry, as his row has them (a different answer would be a correction for Mark, 11/07)
+    "15-emergency-contact-form": { ...GOOD_15, legal_name: "John Public", email: "john@example.com", dob: "1958-01-09", passport_number: "B99887766", passport_expiry: "2030-01-01" },
     "05-liability-waiver": { health_ack: true },
     "07-travel-insurance-declination": { decline_reasons: ["premium"] },
   };
@@ -683,7 +684,7 @@ test("a signature that loses the race to an identical one stores nothing else", 
   t.state.duplicate = true;
   const r = await signKey(t, token, "15-emergency-contact-form", { answers: GOOD_15 });
   assert.equal(r.status, 409);
-  assert.equal(t.state.travelers[0]!.phone, "555-111-2222");
+  assert.equal(t.state.travelers[0]!.phone, "919-555-0100");
   assert.equal(t.pdfs.length, 0);
 });
 
@@ -1058,7 +1059,12 @@ test("the lead gives the other traveler's details: they go on that traveler's ow
   const r = await signKey(t, token, "15-emergency-contact-form", { answers: { ...GOOD_15, m1_passport_number: "B98765432", m1_passport_country: "Canada", m1_passport_expiry: "2032-05-06", m1_citizenship: "Canadian" } });
   assert.equal(r.status, 200);
   const john = t.state.travelers[1]!, jane = t.state.travelers[0]!;
-  assert.deepEqual([john.gender, john.citizenship, john.passport_country, john.passport_expiry, john.passport_last4], ["Male", "Canadian", "Canada", "2032-05-06", "5432"]);
+  // Mark 2026-11-07: the expiry on John's row (2030-01-01) differs from what the lead typed: a correction for Mark, the file unchanged there
+  assert.deepEqual([john.gender, john.citizenship, john.passport_country, john.passport_expiry, john.passport_last4], ["Male", "Canadian", "Canada", "2030-01-01", "5432"]);
+  const fix = t.notices.find((n) => n.title.startsWith("Paperwork correction"))!;
+  assert.ok(fix, "Mark is told about the correction");
+  assert.equal(fix.title, "Paperwork correction: Jane Public");
+  assert.match(fix.body, /John Public — Passport expiration date: the file says "2030-01-01", the form says "2032-05-06"\. Nothing on the file was changed/);
   assert.equal(decryptPii(john.passport_enc, KEY), "B98765432", "the other traveler's number is encrypted on their row");
   assert.equal(decryptPii(jane.passport_enc, KEY), "A12345678", "the lead's own number is the lead's");
   assert.equal(jane.passport_last4, "5678");
