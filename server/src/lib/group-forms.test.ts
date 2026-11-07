@@ -1064,7 +1064,7 @@ test("the lead gives the other traveler's details: they go on that traveler's ow
   const fix = t.notices.find((n) => n.title.startsWith("Paperwork correction"))!;
   assert.ok(fix, "Mark is told about the correction");
   assert.equal(fix.title, "Paperwork correction: Jane Public");
-  assert.match(fix.body, /John Public — Passport expiration date: the file says "2030-01-01", the form says "2032-05-06"\. Nothing on the file was changed/);
+  assert.match(fix.body, /John Public — Passport expiration date: the file says "2030-01-01", the form says "2032-05-06"\. Nothing on the file was changed\. The booking is already made \(Mark 2026-11-07\): make the correction in the group file and with the cruise line and every vendor it concerns\./);
   assert.equal(decryptPii(john.passport_enc, KEY), "B98765432", "the other traveler's number is encrypted on their row");
   assert.equal(decryptPii(jane.passport_enc, KEY), "A12345678", "the lead's own number is the lead's");
   assert.equal(jane.passport_last4, "5678");
