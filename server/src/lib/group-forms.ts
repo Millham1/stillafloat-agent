@@ -500,7 +500,7 @@ export async function signDocument(deps: FormsDeps, token: unknown, body: SignBo
         const lines = applied.corrections.map((c) => `${c.who} — ${c.label}: the file says "${c.was}", the form says "${c.now}".`);
         void deps.notify({
           title: `Paperwork correction: ${personName(traveler) || signerName}`,
-          body: `${loaded.group.name} — ${docKey.replace(/^\d+-/, "")}. ${lines.join(" ")} Nothing on the file was changed: check and update it.`,
+          body: `${loaded.group.name} — ${docKey.replace(/^\d+-/, "")}. ${lines.join(" ")} Nothing on the file was changed. The booking is already made (Mark 2026-11-07): make the correction in the group file and with the cruise line and every vendor it concerns.`,
           groupId: loaded.group.id,
         }).catch((err: unknown) => deps.warn({ err: err instanceof Error ? err.message : String(err) }, "paperwork: the correction notice failed"));
       }
