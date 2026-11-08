@@ -11,7 +11,7 @@ import { DOC_SPECS } from "../lib/group-documents";
 import { sendMail } from "../lib/mailer";
 import { requireToken } from "../lib/http-auth";
 import {
-  WHEN_WORD, callBookedEmail, callEmail, callerPhone, detailsFacts, detailsTokenFresh, detailsUrl as makeDetailsUrl, firstWord, flexpayEmail, holdEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
+  WHEN_WORD, callBookedEmail, callEmail, callerPhone, detailsFacts, detailsTokenFresh, firstWord, flexpayEmail, pickCabin, reasonsInWords, splitLegalName, storedAddress, storedConcierge,
   storedPick, storedTravelers, validCallWhen, validateConcierge, validateDetails, type DetailsFacts,
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
@@ -118,7 +118,7 @@ function whenSaved(iso: unknown, now = new Date()): string {
  * The ONE email of a road, after the answer has gone: what happened to it is written on the reply (ack_email_status) and in the email log (group_messages,
  * never the link). Only with an email address on the reply and an address this box may email (the dev box emails only its test addresses).
  */
-async function deliver(o: { group: Row; reply: Row; template: "call-confirmation" | "hold-confirmation"; make: () => { subject: string; html: string; text: string } }): Promise<void> {
+async function deliver(o: { group: Row; reply: Row; template: "call-confirmation"; make: () => { subject: string; html: string; text: string } }): Promise<void> {
   const { group, reply } = o;
   const set = (patch: Row) => db().from("group_interests").update(patch).eq("id", reply.id).then((r: { error?: { message: string } }) => {
     if (r.error) logger.warn({ err: r.error.message }, "group details: the email status could not be saved");
@@ -348,19 +348,8 @@ router.post("/group-details/:token/hold", async (req: Request, res: Response) =>
       await resolveActionsForSource("lead", `group-interest-${reply.id}`, "done");
       await resolveActionsForSource("lead", `group-call-${reply.id}`, "done");
     }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the hold request could not be put on the list"));
-    res.json(opened);
-
-    // The ONE email, after the answer has gone. The guest's own link is the one they just used.
-    const facts = detailsFacts({ group, cabins }, lang);
-    void deliver({
-      group, reply, template: "hold-confirmation",
-      make: () => holdEmail({
-        firstName: firstWord(reply.first_name), groupLabel: facts.label, hostNames: facts.hostNames, lang, publicSite: publicSite(),
-        category: pick.category, where: pick.where, travelerFirstNames: travelers.map((t) => firstWord(t.legal_name)),
-        detailsUrl: makeDetailsUrl(publicSite(), String(req.params["token"]), lang),
-      }),
-    }).catch((e: unknown) => logger.warn({ err: e instanceof Error ? e.message : String(e) }, "group details: the hold confirmation step failed"));
-    return;
+    // Mark 2026-11-07: no email here. The page takes the guest straight on to the quote page (their own link opens it again any time): one or the other, never both.
+    return res.json(opened);
   } catch (err) {
     return fail(req, res, err, "group details hold failed");
   }

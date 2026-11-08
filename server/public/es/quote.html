@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Su cotización | Still Afloat Cruising</title>
+<!-- A guest's private link, the page after their names are in (Mark 2026-11-07: the quote step is its own page, and no email sends them here: the details
+     page brings them straight on). Never indexed, and the address (which carries the link) is never sent on to another site. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/details-page.css?v=20261101b">
+<link rel="stylesheet" href="/css/trip-photos.css?v=20261026">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <img class="logo" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+  </div>
+
+  <header class="trip-photos" id="d-photos" aria-hidden="true" hidden></header>
+  <div class="d-banner" id="d-banner"><div class="d-lockup"><div class="plaque"><span id="d-plaque">Su cotización</span></div></div></div>
+
+  <div id="d-state"></div>
+  <main id="d-main" hidden>
+
+    <section class="intro" id="d-intro">
+      <h1 id="d-h1"></h1>
+      <p id="d-lede"></p>
+    </section>
+
+    <!-- The quote step (Mark 2026-11-01; its own page since 2026-11-07): which cabin, FlexPay (Mark's own installment plan, offered apart from the
+         cruise line: a yes asks for a short appointment with Mark to apply, no terms are promised), a drink package when the fare has none, insurance,
+         getting there and back (no price on a flight, hotel or transfer until Mark finalizes the quote); then the starting price from the group file,
+         and "Send my choices to Mark!", which puts the travelers on the file. -->
+    <section class="panel" id="d-part4">
+      <p class="label" id="d-p4"></p>
+      <p class="small" id="d-p4intro"></p>
+      <p class="small" id="d-locked"></p>
+      <div id="d-qq"></div>
+      <div class="quote" id="d-quote" hidden>
+        <p class="label" id="d-quote-h" style="margin-top:18px"></p>
+        <div id="d-quote-lines"></div>
+        <p class="small" id="d-quote-plus" hidden></p>
+        <p id="d-quote-dep" style="margin-top:10px"></p>
+        <p id="d-quote-bal"></p>
+        <p class="small" id="d-quote-note"></p>
+      </div>
+      <button type="button" class="btn" id="d-agree" aria-disabled="true"></button>
+      <p class="small center" id="d-agree-note"></p>
+    </section>
+
+    <div class="hp" aria-hidden="true"><label>Sitio web<input type="text" id="d-website" tabindex="-1" autocomplete="off"></label></div>
+    <div class="msg" id="d-msg" role="status"></div>
+
+    <!-- After the choices are sent: the whole page becomes one line. -->
+    <section class="panel" id="d-thanks" hidden>
+      <div class="thanks-head"><div class="tick">&#10003;</div><h2 id="d-thanks-h"></h2></div>
+      <p class="small" id="d-thanks-p" hidden></p>
+    </section>
+  </main>
+
+  <div class="foot">
+    <img class="sa" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+    <p>Still Afloat LLC dba Still Afloat Cruising · mark@stillafloatcruising.com</p>
+    <p class="credits" id="d-credits" hidden></p>
+    <div class="cs-row"><img class="cs" src="/assets/images/cornerstone-white.png" alt=""></div>
+  </div>
+
+</div>
+
+<script src="/js/trip-photos.js?v=20261026"></script>
+<script>
+(function(){
+  var ES = document.documentElement.lang === 'es';
+  var PHONE = '919-346-6127';
+  var DETAILS = ES ? '/es/details.html' : '/details.html';   // the page before this one: names, address, the four questions
+  var T = ES ? {
+    loading:'Cargando su cotización…', bad:'Este enlace no es válido. Abra el enlace completo de su correo, o llame o escriba a Mark al ' + PHONE + '.',
+    title:'Su cotización',
+    h1:'Bien hecho… ¡ahora armemos su cotización!', lede:'Cinco decisiones rápidas y luego los números. Mark confirma cada cifra con usted antes de cobrar nada.',
+    p4:'Sus decisiones', p4intro:'',
+    locked:'Nombres registrados: {names} · {party}. Nuestra sugerencia: {category}. Para cambiar un nombre o una fecha de nacimiento, llame o escriba a Mark al {phone}.',
+    q_cabin:'¿Qué cabina?',
+    q_flex:'¿Quiere solicitar FlexPay?', flex_note:'FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera. Si dice sí, él le envía la solicitud corta después; fija su propio calendario de pagos y no cambia nada en esta cotización.', flex_yes:'Agendemos una cita breve con Mark para solicitarlo.', flex_no:'No, gracias',
+    q_drinks:'¿Agregar un paquete de bebidas?', drinks_note:'No está incluido en esta tarifa. Mark lo cotiza para su grupo.', drinks_yes:'Sí, cotícenlo', drinks_no:'No, gracias', drinks_inc:'Bebidas: su tarifa incluye un paquete.',
+    q_ins:'¿Seguro de viaje?', ins_note:'Los precios pueden cambiar hasta que se finalicen.',
+    q_travel:'Ida y vuelta', travel_note:'Marque lo que quiera agregar. Mark le cotiza vuelos, hotel y traslados con su cotización final.',
+    q_need_flight:'¿Necesita vuelos?', q_need_hotel:'¿Necesita hotel la noche anterior?', q_need_transfer:'¿Necesita traslados?', need_yes:'Sí, Mark, cotícelo', need_no:'No, gracias',
+    quote_h:'Su precio inicial', quote_total:'Total', quote_plus:'Más {list}, que Mark cotiza para usted.', to_come:'por cotizar',
+    quote_dep:'Depósito para apartar la cabina: {deposit} ({per} por persona). No se cobra nada hasta que Mark lo confirme con usted.', quote_dep_na:'Mark confirma el depósito con usted; no se cobra nada esta noche.',
+    quote_bal:'Saldo {balance}, a pagar antes del {date}.', quote_bal_nodate:'El saldo es {balance}; Mark confirma la fecha con usted.',
+    agree:'¡Enviar mis decisiones a Mark!', agreeing:'Enviando…', agree_note:'Este es el precio del grupo antes de extras y mejoras. Mark cotiza sus decisiones con la naviera y luego le envía por correo sus documentos con el precio final para que los revise y firme. Todavía no se reserva ni se cobra nada.', agree_wait:'Responda todas las preguntas de arriba y el botón se activa.',
+    agreed_h:'¡Sus documentos van en camino a {email}!… {category}, {party}. Traen su precio final: revíselos y firme.', agreed_h_mark:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él le envía sus documentos después.', agreed_h_booking:'¡Sus decisiones ya están con Mark!… {category}, {party}. Él las está cotizando con la naviera; sus documentos, con su precio final, le llegan por correo.',
+    party_one:'para una persona', party_n:'grupo de {n}',
+    change:'¿Necesita cambiar un nombre, una fecha de nacimiento o de opinión? Llame o escriba a Mark al {phone}.',
+    err:'No se pudo guardar. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.',
+    photo:'Foto:', photos:'Fotos:'
+  } : {
+    loading:'Loading your quote…', bad:'This link is not valid. Please open the whole link from your email, or call or text Mark at ' + PHONE + '.',
+    title:'Your quote',
+    h1:"Nicely done… now let's build your quote!", lede:'Five quick choices, then the numbers. Mark confirms every figure with you before anything is charged.',
+    p4:'Your choices', p4intro:'',
+    locked:'Names are in for {names} · {party}. Our pick: {category}. To change a name or a birthday, call or text Mark at {phone}.',
+    q_cabin:'Which cabin?',
+    q_flex:'Would you like to apply for FlexPay?', flex_note:'FlexPay is an installment plan Mark offers separately from the cruise line. Say yes and he sends you the short application next; it sets its own payment schedule, and nothing on this quote changes.', flex_yes:"Let's schedule a brief appointment with Mark to apply.", flex_no:'No thanks',
+    q_drinks:'Add a drink package?', drinks_note:'Not included in this fare. Mark prices one for your party.', drinks_yes:'Yes, price one for us', drinks_no:'No thanks', drinks_inc:'Drinks: a package is included in your fare.',
+    q_ins:'Travel insurance?', ins_note:'Pricing subject to change until finalized.',
+    q_travel:'Getting there and back', travel_note:'Tick what you want added. Mark prices flights, hotel and transfers with your final quote.',
+    q_need_flight:'Do you need flights?', q_need_hotel:'Do you need a hotel the night before?', q_need_transfer:'Do you need transfers?', need_yes:'Yes, Mark, quote it', need_no:'No thanks',
+    quote_h:'Your starting price', quote_total:'Total', quote_plus:'Plus {list}, which Mark prices for you.', to_come:'to come',
+    quote_dep:'Deposit to hold the cabin: {deposit} ({per} per person). Nothing is charged until Mark confirms it with you.', quote_dep_na:'Mark confirms the deposit with you; nothing is charged tonight.',
+    quote_bal:'Balance {balance}, due by {date}.', quote_bal_nodate:'The balance is {balance}; Mark confirms the due date with you.',
+    agree:'Send my choices to Mark!', agreeing:'Sending…', agree_note:'This is the group price before extras and upgrades. Mark prices your choices with the cruise line, then emails your paperwork with the final price for you to check and sign. Nothing is booked or charged yet.', agree_wait:'Answer every question above and the button lights up.',
+    agreed_h:'Your paperwork is on its way to {email}!… {category}, {party}. It carries your final price: check it and sign.', agreed_h_mark:'Your choices are with Mark!… {category}, {party}. He sends your paperwork next.', agreed_h_booking:'Your choices are with Mark!… {category}, {party}. He is pricing them with the cruise line; your paperwork, with your final price, follows by email.',
+    party_one:'party of one', party_n:'party of {n}',
+    change:'Need to change a name, a birthday or your mind? Call or text Mark at {phone}.',
+    err:'That did not go through. Please try again, or call or text Mark at ' + PHONE + '.',
+    photo:'Photo:', photos:'Photos:'
+  };
+  var NUMW = ES ? ['cero','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez']
+                : ['zero','one','two','three','four','five','six','seven','eight','nine','ten'];
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ var d=document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML.replace(/"/g,'&quot;'); }
+  function fill(tpl, v){ return tpl.replace(/\{(\w+)\}/g, function(_, k){ return v[k] == null ? '' : v[k]; }); }
+  function show(id, on){ var e=$(id); if(e) e.hidden = on === false; }
+  function msg(text){ var m = $('d-msg'); m.className = text ? 'msg err' : 'msg'; m.textContent = text || ''; }
+  function tidy(n){ return String(n || '').replace(/\s+/g, ' ').trim(); }
+  function listWords(xs){
+    if(xs.length < 2) return xs[0] || '';
+    if(ES) return xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1];
+    return xs.slice(0, -1).join(', ') + ', and ' + xs[xs.length - 1];
+  }
+  function andWords(xs){
+    if(xs.length === 2) return xs[0] + (ES ? ' y ' : ' and ') + xs[1];
+    return listWords(xs);
+  }
+  function partyWords(n){ return n < 2 ? T.party_one : fill(T.party_n, { n: NUMW[n] || String(n) }); }
+
+  var qs = new URLSearchParams(location.search);
+  var token = (qs.get('t') || '').trim();
+  var state = $('d-state');
+  state.textContent = T.loading;
+  if(!/^[A-Za-z0-9_-]{43}$/.test(token)){ state.textContent = T.bad; return; }
+
+  var data = null;               // what the server knows (GET)
+  var qo = null;                 // what the server offers once the names are in: cabins, insurance, travel, what to ask (GET quoteOptions)
+  var qa = { cabin: '', flexpay: null, drinks: null, insurance: '', travel: [], needs: {} };   // the guest's answers
+  var quote = null;              // the quote the server computed for qa
+  var quoteFor = '';             // the answers (as JSON) the quote belongs to
+  var quoteTimer = null, agreeing = false;
+
+  function api(path, body){
+    var b = body || {};
+    b.website = $('d-website').value;   // the bot trap: a person never fills it
+    return fetch('/api/group-details/' + token + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) })
+      .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, status: r.status, j: j }; }, function(){ return { ok: r.ok, status: r.status, j: {} }; }); });
+  }
+
+  // ── The picture: the group's own, set as an <img> source only when it is https (the API has already refused any that is not on our hosts) ──
+  function applyHero(url){
+    if(typeof url !== 'string' || !/^https:\/\//i.test(url)) return;
+    var banner = $('d-banner'), img = document.createElement('img');
+    img.className = 'd-hero'; img.alt = ''; img.decoding = 'async';
+    img.onload = function(){ img.className = 'd-hero on'; banner.className = 'd-banner custom'; };
+    img.onerror = function(){ if(img.parentNode) img.parentNode.removeChild(img); };
+    img.src = url;
+    banner.insertBefore(img, banner.firstChild);
+  }
+  // The credit line of the picture shown, as on the group page: "Photo: <artist> (<licence>) · Wikimedia Commons"; any other kind of line is shown as it is.
+  function creditsLine(list){
+    var parts = [], ok = true;
+    list.forEach(function(a){
+      var m = /^Photos?:\s*(.+?)\s*·\s*([^·]+?)\s*·\s*Wikimedia Commons$/i.exec(a);
+      if(!m){ ok = false; return; }
+      var p = m[1] + ' (' + m[2] + ')';
+      if(parts.indexOf(p) < 0) parts.push(p);
+    });
+    return ok ? (parts.length > 1 ? T.photos : T.photo) + ' ' + parts.join(' · ') + ' · Wikimedia Commons' : list.join(' · ');
+  }
+
+  // ── The quote step ──
+  function qaComplete(){
+    if(!qo || !qa.cabin || qa.flexpay === null || !qa.insurance) return false;
+    if(qo.drinks === 'ask' && qa.drinks === null) return false;
+    for(var i = 0; i < qo.needs.length; i++){ if(typeof qa.needs[qo.needs[i]] !== 'boolean') return false; }
+    return true;
+  }
+  function optBtn(group, val, text, on){
+    return '<button type="button" class="opt' + (on ? ' on' : '') + '" data-g="' + esc(group) + '" data-v="' + esc(val) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(text) + '</button>';
+  }
+  function yesNo(group, val, yes, no){ return '<div class="opts">' + optBtn(group, 'yes', yes, val === true) + optBtn(group, 'no', no, val === false) + '</div>'; }
+  function renderQuoteQuestions(){
+    var h = '<p class="q">' + esc(T.q_cabin) + '</p><div class="opts">';
+    qo.cabins.forEach(function(c){ h += optBtn('cabin', c.key, c.label, qa.cabin === c.key); });
+    h += '</div>';
+    h += '<p class="q">' + esc(T.q_flex) + '</p><p class="small">' + esc(T.flex_note) + '</p>' + yesNo('flexpay', qa.flexpay, T.flex_yes, T.flex_no);
+    if(qo.drinks === 'ask') h += '<p class="q">' + esc(T.q_drinks) + '</p><p class="small">' + esc(T.drinks_note) + '</p>' + yesNo('drinks', qa.drinks, T.drinks_yes, T.drinks_no);
+    else h += '<p class="q">' + esc(T.drinks_inc) + '</p>';
+    h += '<p class="q">' + esc(T.q_ins) + '</p><div class="opts">';
+    qo.insurance.forEach(function(o){ h += optBtn('insurance', o.key, o.label, qa.insurance === o.key); });
+    h += '</div><p class="small">' + esc(T.ins_note) + '</p>';
+    if(qo.travel.length){
+      h += '<p class="q">' + esc(T.q_travel) + '</p><p class="small">' + esc(T.travel_note) + '</p>';
+      qo.travel.forEach(function(t){
+        var on = qa.travel.indexOf(t.key) >= 0;
+        h += '<button type="button" class="tickrow' + (on ? ' on' : '') + '" role="checkbox" aria-checked="' + (on ? 'true' : 'false') + '" data-g="travel" data-v="' + esc(t.key) + '"><span class="bx"></span><span>' + esc(t.text) + '</span></button>';
+      });
+    }
+    qo.needs.forEach(function(k){ h += '<p class="q">' + esc(T['q_need_' + k]) + '</p>' + yesNo('need-' + k, typeof qa.needs[k] === 'boolean' ? qa.needs[k] : null, T.need_yes, T.need_no); });
+    $('d-qq').innerHTML = h;
+  }
+  function renderQuote(){
+    var q = quote && quoteFor === JSON.stringify(qa) ? quote : null;
+    if(!q){ show('d-quote', false); syncAgree(); return; }
+    var h = '';
+    q.lines.forEach(function(l){
+      h += '<div class="qline"><span>' + esc(l.label) + (l.detail ? '<span class="det">' + esc(l.detail) + '</span>' : '') + '</span><b>' + esc(l.amountText || (l.toQuote ? T.to_come : '')) + '</b></div>';
+    });
+    h += '<div class="qline qtotal"><span>' + esc(T.quote_total) + '</span><b>' + esc(q.totalText) + '</b></div>';
+    $('d-quote-lines').innerHTML = h;
+    $('d-quote-plus').textContent = q.toQuote.length ? fill(T.quote_plus, { list: andWords(q.toQuote) }) : ''; show('d-quote-plus', q.toQuote.length > 0);
+    $('d-quote-dep').textContent = q.depositText ? fill(T.quote_dep, { deposit: q.depositText, per: q.depositPerPersonText || '' }) : T.quote_dep_na;
+    $('d-quote-bal').textContent = q.balanceText ? (q.finalPaymentText ? fill(T.quote_bal, { balance: q.balanceText, date: q.finalPaymentText }) : fill(T.quote_bal_nodate, { balance: q.balanceText })) : '';
+    $('d-quote-note').textContent = q.note || '';
+    show('d-quote', true); syncAgree();
+  }
+  function syncAgree(){
+    var ready = qaComplete() && quote && quoteFor === JSON.stringify(qa) && !agreeing;
+    $('d-agree').setAttribute('aria-disabled', ready ? 'false' : 'true');
+    $('d-agree').textContent = agreeing ? T.agreeing : T.agree;
+    $('d-agree-note').textContent = ready ? T.agree_note : T.agree_wait;
+  }
+  function askQuote(){
+    if(!qaComplete()) return;
+    var key = JSON.stringify(qa);
+    if(key === quoteFor){ renderQuote(); return; }
+    api('/quote', { answers: qa, lang: ES ? 'es' : 'en' }).then(function(x){
+      if(JSON.stringify(qa) !== key) return;   // they changed an answer while it was asked: a newer ask is on its way
+      if(x.ok && x.j && x.j.quote){ quote = x.j.quote; quoteFor = key; msg(''); renderQuote(); }
+      else msg((x.j && x.j.error) || T.err);
+    }).catch(function(){ msg(T.err); });
+  }
+  function refreshQuote(){ clearTimeout(quoteTimer); renderQuote(); quoteTimer = setTimeout(askQuote, 350); }
+  /** The page once the names are in: the choices, with our pick already chosen (or the answers they gave last time). */
+  function openQuote(d){
+    qo = d.quoteOptions;
+    var p = d.pick || { category: '' };
+    var names = (Array.isArray(d.travelers) ? d.travelers : []).map(function(t){ return tidy(t.legal_name).split(' ')[0]; }).filter(Boolean);
+    $('d-p4').textContent = T.p4; $('d-p4intro').textContent = T.p4intro; show('d-p4intro', !!T.p4intro); $('d-quote-h').textContent = T.quote_h;
+    $('d-locked').textContent = fill(T.locked, { names: andWords(names), party: partyWords(Math.max(names.length, 1)), category: p.category, phone: d.businessPhone || PHONE });
+    if(d.quote && d.quote.answers){
+      qa = d.quote.answers; qa.travel = Array.isArray(qa.travel) ? qa.travel : []; qa.needs = qa.needs || {};
+      quote = d.quote; quoteFor = JSON.stringify(qa);
+    } else if(!qa.cabin){
+      var hit = null;
+      qo.cabins.forEach(function(c){ if(!hit && c.category === p.category) hit = c; });
+      if(hit) qa.cabin = hit.key;
+    }
+    renderQuoteQuestions(); renderQuote(); show('d-part4', true);
+  }
+  /** After "Send my choices to Mark!": one line, where the paperwork went, and the way to change something (Mark, not a form). */
+  function showAgreed(category, count, paperwork, email){
+    show('d-intro', false); show('d-part4', false); msg('');
+    $('d-thanks-h').textContent = fill(paperwork === 'sent' ? T.agreed_h : paperwork === 'booking' ? T.agreed_h_booking : T.agreed_h_mark, { category: category, party: partyWords(count), email: email || '' });
+    $('d-thanks-p').textContent = fill(T.change, { phone: data.businessPhone || PHONE }); show('d-thanks-p', true);
+    show('d-thanks', true);
+  }
+  $('d-qq').addEventListener('click', function(e){
+    var t = e.target.closest ? e.target.closest('[data-g]') : e.target, g = t && t.getAttribute('data-g'), v = t && t.getAttribute('data-v');
+    if(!g || v === null) return;
+    if(g === 'cabin') qa.cabin = v;
+    else if(g === 'flexpay') qa.flexpay = v === 'yes';
+    else if(g === 'drinks') qa.drinks = v === 'yes';
+    else if(g === 'insurance') qa.insurance = v;
+    else if(g === 'travel'){ var at = qa.travel.indexOf(v); if(at >= 0) qa.travel.splice(at, 1); else qa.travel.push(v); }
+    else if(g.indexOf('need-') === 0) qa.needs[g.slice(5)] = v === 'yes';
+    renderQuoteQuestions(); refreshQuote();
+  });
+  $('d-agree').addEventListener('click', function(){
+    if(agreeing || $('d-agree').getAttribute('aria-disabled') === 'true') return;
+    agreeing = true; syncAgree(); msg('');
+    api('/request', { lang: ES ? 'es' : 'en' }).then(function(x){
+      agreeing = false;
+      if(x.ok) showAgreed(quote.category, quote.party, x.j && x.j.paperwork, data.email);
+      else { syncAgree(); msg((x.j && x.j.error) || T.err); }
+    }).catch(function(){ agreeing = false; syncAgree(); msg(T.err); });
+  });
+
+  function render(d){
+    data = d;
+    // the names are not in yet: this page has nothing to offer, so the details page (the same link) comes first
+    if(!(d.quoteRequestedAt && d.quote) && !(d.holdRequestedAt && d.quoteOptions && Array.isArray(d.quoteOptions.cabins))){ location.href = DETAILS + '?t=' + token; return; }
+    state.hidden = true; show('d-main', true);
+    document.title = T.title + ' | ' + d.label;
+    $('d-plaque').textContent = d.label;
+    if(window.SATripPhotos && window.SATripPhotos.render($('d-photos'), d.photos)) $('d-banner').hidden = true;
+    else applyHero(d.heroUrl);
+    var credits = (Array.isArray(d.credits) ? d.credits : []).filter(function(x){ return typeof x === 'string' && x.trim(); });
+    if(credits.length){ $('d-credits').textContent = creditsLine(credits); show('d-credits', true); }
+    $('d-h1').textContent = T.h1; $('d-lede').textContent = T.lede;
+    if(d.quoteRequestedAt && d.quote) showAgreed(d.quote.category, d.quote.party, d.paperwork, d.email);
+    else openQuote(d);
+  }
+
+  fetch('/api/group-details/' + token)
+    .then(function(r){ if(!r.ok) throw new Error('gone'); return r.json(); })
+    .then(render)
+    .catch(function(){ state.textContent = T.bad; });
+})();
+</script>
+</body>
+</html>

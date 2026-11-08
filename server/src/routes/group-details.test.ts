@@ -1,5 +1,5 @@
 // group-details.test.ts (routes) — the guest's two roads after "Save my spot!" (Mark 2026-10-24): Road A's choice and its ONE email, Road B's pick, save and
-// hold and its ONE email; the answer that hands out the links (and sends NO email); and the dashboard's "add these travelers to a cabin" and the two buttons
+// hold (no email since Mark 2026-11-07: the page goes straight on to the quote page); the answer that hands out the links (and sends NO email); and the dashboard's "add these travelers to a cabin" and the two buttons
 // that close Mark's items. The real routers run against a small in-memory stand-in for the database (an http server that answers the PostgREST reads and
 // writes the routes make) and for the mail sender, so nothing here can reach Supabase, an inbox or Mark's phone.
 
@@ -577,7 +577,7 @@ test("Road B: 'Hold my cabin!' needs the saved names, address and pick first", a
   assert.equal((await hold()).json["error"], "Primero termine los nombres, la dirección y las preguntas.");
 });
 
-test("Road B: 'Build my quote!' records the moment, marks the choice, tells Mark once that a quote is under way, and sends the ONE email with 'Let's begin!'; nothing is booked (Mark 2026-11-01)", async () => {
+test("Road B: 'Build my quote!' records the moment, marks the choice, tells Mark once that a quote is under way, and sends NO email: the page goes straight on to the quote page (Mark 2026-11-07); nothing is booked (Mark 2026-11-01)", async () => {
   readyToHold();
   actionsAccept = true;
   pendingItem();
@@ -595,37 +595,23 @@ test("Road B: 'Build my quote!' records the moment, marks the choice, tells Mark
   // the earlier "Group reply" item is closed once the new one exists
   await wait(() => tables["actions"]![0]!["status"] === "done");
   assert.equal(tables["actions"]![0]!["status"], "done");
-  // the ONE email
-  await wait(() => mails.length > 0);
-  assert.equal(mails.length, 1);
-  assert.equal(mails[0]!["to"], "mmillham1@gmail.com");
-  assert.equal(mails[0]!["subject"], "Nicely done… now let's build your quote! Friends and Family 2027");
-  const text = String(mails[0]!["text"]);
-  assert.match(text, /^Hi Mark,/);
-  assert.match(text, /Here's what you did: our pick is Balcony Bella, midship, a lower deck, for Mark and Ceci\. Next comes the fun part: which cabin, insurance, drinks/);
-  assert.ok(!/on hold|is held/i.test(text), "nothing is held before the quote is agreed (Mark 2026-11-01)");
-  assert.match(text, /dig out both passports/);
-  assert.ok(text.includes(`Let's begin!: https://dev.example.test/details.html?t=${LINK}`), "the 'Let's begin!' button is their own link, which opens the quote step");
-  assert.ok(String(mails[0]!["html"]).includes(`>Let&#39;s begin!</a>`) || String(mails[0]!["html"]).includes(`>Let's begin!</a>`), "the button says Let's begin!");
-  assert.ok(!/\$|per person|deposit/i.test(text + String(mails[0]!["html"])), "no price in the email");
-  await wait(() => replyRow()["ack_email_status"] === "sent");
-  await wait(() => writes("group_messages").length > 0);
-  const logged = writes("group_messages")[0]!.body;
-  assert.deepEqual([logged.audience, logged.template, logged.to_email, logged.status], ["client", "hold-confirmation", "mmillham1@gmail.com", "sent"]);
-  assert.ok(!JSON.stringify(logged).includes(LINK), "the link is not in the message log");
+  // no email: the guest is already on the quote page (Mark 2026-11-07: "we shouldn't be sending an email AND directing them to another step")
+  await new Promise((r) => setTimeout(r, 80));
+  assert.equal(mails.length, 0, "no email on the hold");
+  assert.equal(writes("group_messages").length, 0, "nothing in the email log");
+  assert.equal(replyRow()["ack_email_status"], null);
   assert.equal(writes("group_cabins").length + writes("group_travelers").length, 0, "nothing is booked or added to a cabin");
 });
 
-test("Road B: a second press (a double tap, a reload) changes nothing, makes no second item and sends no second email", async () => {
+test("Road B: a second press (a double tap, a reload) changes nothing, makes no second item and sends no email", async () => {
   readyToHold();
   actionsAccept = true;
   await Promise.all([hold(), hold()]);
   const again = await hold();
   assert.deepEqual([again.status, again.json["success"]], [200, true]);
-  await wait(() => mails.length > 0);
   await new Promise((r) => setTimeout(r, 80));
   assert.equal(writes("actions").filter((w) => w.method === "POST").length, 1, "one item for Mark");
-  assert.equal(mails.length, 1, "one email");
+  assert.equal(mails.length, 0, "no email");
 });
 
 test("Road B: when the hold's item is made, the guest's earlier items (the reply, and a 'Ring …' if they asked for a call first) are closed; when it is not, they stay", async () => {
@@ -643,31 +629,16 @@ test("Road B: when the hold's item is made, the guest's earlier items (the reply
   assert.deepEqual(tables["actions"]!.slice(0, 2).map((a) => a["status"]), ["done", "done"]);
 });
 
-test("Road B's email goes only to an address this box may email; a phone-only reply gets none; a failed send is recorded; Spanish gets the Spanish email", async () => {
+test("Road B sends no email on the hold whatever the address or the language: the page itself goes on to the quote page (Mark 2026-11-07)", async () => {
   readyToHold();
-  process.env["GROUP_FORMS_MAIL_ALLOW"] = "tester@example.org";
-  assert.equal((await hold()).status, 200);
-  await wait(() => replyRow()["ack_email_status"] === "held");
-  await wait(() => writes("group_messages").length > 0);   // the email log is written just after the reply's status
-  assert.equal(mails.length, 0);
-  assert.equal(writes("group_messages")[0]!.body.status, "skipped");
-  delete process.env["GROUP_FORMS_MAIL_ALLOW"];
-  Object.assign(replyRow(), { hold_requested_at: null, email: null, phone: "919-555-0100", ack_email_status: null });
-  assert.equal((await hold()).status, 200);
-  await wait(() => replyRow()["ack_email_status"] === "no-email");
-  assert.equal(mails.length, 0);
-  mailOk = false;
-  Object.assign(replyRow(), { hold_requested_at: null, email: "fail@example.com", phone: null, ack_email_status: null });
-  assert.equal((await hold()).status, 200);
-  await wait(() => replyRow()["ack_email_status"] === "failed");
-  await wait(() => writes("group_messages").some((w) => w.body.status === "failed"));   // the email log is written just after the status
-  mailOk = true; mails.length = 0;
-  Object.assign(replyRow(), { hold_requested_at: null, email: "ana@example.com", lang: "es", first_name: "Ana", ack_email_status: null, pick: { ...PICK, where: "en el centro del barco, en una cubierta baja" } });
-  assert.equal((await hold()).status, 200);
-  await wait(() => mails.length === 1);
-  assert.equal(mails[0]!["subject"], "Bien hecho… ¡ahora armemos su cotización! Friends and Family 2027");
-  assert.match(String(mails[0]!["text"]), new RegExp(`/es/details\\.html\\?t=${LINK}`));
-  await wait(() => writes("group_messages").some((w) => w.body.status === "sent"));   // nothing of this test is left to land in the next
+  for (const over of [{ email: "tester@example.org" }, { email: null, phone: "919-555-0100" }, { email: "ana@example.com", lang: "es", first_name: "Ana" }]) {
+    Object.assign(replyRow(), { hold_requested_at: null, ack_email_status: null, ...over });
+    assert.equal((await hold()).status, 200);
+    await new Promise((r) => setTimeout(r, 60));
+    assert.equal(mails.length, 0, JSON.stringify(over));
+    assert.equal(writes("group_messages").length, 0, "nothing in the email log");
+    assert.equal(replyRow()["ack_email_status"], null);
+  }
 });
 
 test("Road B: a wrong link or the bot trap holds nothing", async () => {

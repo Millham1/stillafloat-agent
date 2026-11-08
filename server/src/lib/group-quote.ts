@@ -9,7 +9,7 @@
 // option is not msc. i can offer it separately"; "i will not know the terms until the client completes the app, which we need to do separately"): the
 // step asks only whether they want the application, and promises no terms.
 import { QUOTE_NOTE, planLabel, plansFromText } from "./allianz-quote";
-import { displayName, formatDate, formatMoney, priceUnitOf, priceUnitText, travelLabel, type Lang, type PriceUnit } from "./group-marketing";
+import { displayName, formatDate, formatMoney, priceUnitOf, travelLabel, type Lang, type PriceUnit } from "./group-marketing";
 import type { Traveler } from "./group-details";
 
 type Row = Record<string, any>;
@@ -195,8 +195,8 @@ export function quoteOptions(file: QuoteFile, lang: Lang): QuoteOptions {
     const unit = priceUnitOf(r);
     const included = r.included === true;
     const label = travelLabel(r, lang);
-    const tail = included ? T.included : perUnit !== null ? `${formatMoney(perUnit)} ${priceUnitText(unit, lang)}` : T.noPrice;
-    travel.push({ key: r.id, kind, label, text: `${label} · ${tail}`, perUnit, unit, included });
+    // Mark 2026-11-07: no flight, hotel or transfer price is shown before he finalizes the quote; the offer is named, and "included" when it is
+    travel.push({ key: r.id, kind, label, text: included ? `${label} · ${T.included}` : label, perUnit, unit, included });
   }
   const needs = TRAVEL_KINDS.filter((k) => !travel.some((t) => t.kind === k));
 
@@ -316,13 +316,9 @@ export function buildQuote(file: QuoteFile, travelers: readonly Traveler[], answ
   for (const key of answers.travel) {
     const t = o.travel.find((x) => x.key === key);
     if (!t) continue;
+    // Mark 2026-11-07: the file's travel price is never on the starting price; every flight, hotel and transfer waits for his finalized quote
     if (t.included) lines.push({ key: `travel-${key}`, label: t.label, detail: null, amount: 0, amountText: T.included, toQuote: false });
-    else if (t.perUnit === null) lines.push({ key: `travel-${key}`, label: t.label, detail: T.noPrice, amount: null, amountText: null, toQuote: true });
-    else {
-      const units = t.unit === "room" ? 1 : n;
-      const amount = round2(t.perUnit * units);
-      lines.push({ key: `travel-${key}`, label: t.label, detail: t.unit === "room" ? `${money(t.perUnit)} ${T.perRoom}` : T.perPersonTimes(money(t.perUnit), n), amount, amountText: money(amount), toQuote: false });
-    }
+    else lines.push({ key: `travel-${key}`, label: t.label, detail: T.noPrice, amount: null, amountText: null, toQuote: true });
   }
   for (const k of o.needs) if (answers.needs[k] === true) lines.push({ key: `need-${k}`, label: T.needLine[k], detail: T.needDetail, amount: null, amountText: null, toQuote: true });
 
