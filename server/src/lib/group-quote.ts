@@ -105,7 +105,7 @@ const W = {
     insQuoteDetail: "Mark quotes the cruise line's plan and Allianz for your party", perPersonTimes: (p: string, n: number) => `${p} per person × ${n}`,
     drinksLine: "Drink package", drinksDetail: "Mark prices it for your party", drinksIncluded: "Drinks: a package is included in your fare",
     needLine: { flight: "Flights", hotel: "Hotel", transfer: "Transfers" } as Record<TravelKind, string>, needDetail: "Mark quotes them for your party",
-    flexLine: "FlexPay", flexDetail: "Mark sends you the application next; it sets its own payment schedule and changes nothing on this quote",
+    flexLine: "FlexPay", flexDetail: "Mark schedules a brief video call with you to apply; it sets its own payment schedule and changes nothing on this quote",
     note: `Every figure comes from the group's file with the cruise line, and Mark confirms each one with you before anything is charged. ${QUOTE_NOTE}`,
   },
   es: {
@@ -121,7 +121,7 @@ const W = {
     insQuoteDetail: "Mark cotiza el plan de la naviera y Allianz para su grupo", perPersonTimes: (p: string, n: number) => `${p} por persona × ${n}`,
     drinksLine: "Paquete de bebidas", drinksDetail: "Mark lo cotiza para su grupo", drinksIncluded: "Bebidas: su tarifa incluye un paquete",
     needLine: { flight: "Vuelos", hotel: "Hotel", transfer: "Traslados" } as Record<TravelKind, string>, needDetail: "Mark los cotiza para su grupo",
-    flexLine: "FlexPay", flexDetail: "Mark le envía la solicitud después; fija su propio calendario de pagos y no cambia nada en esta cotización",
+    flexLine: "FlexPay", flexDetail: "Mark agenda una cita breve por video con usted para solicitarlo; fija su propio calendario de pagos y no cambia nada en esta cotización",
     note: `Cada cifra viene del expediente del grupo con la naviera, y Mark confirma cada una con usted antes de cobrar nada. Los precios pueden cambiar hasta que se finalicen.`,
   },
 } as const;
