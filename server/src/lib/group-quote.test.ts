@@ -40,11 +40,11 @@ test("the options come from the file: held categories cheapest first with the fi
     ["own", "I have my own policy", null], ["decline", "No insurance for us", null],
   ]);
   assert.deepEqual(o.travel.map((t) => [t.key, t.kind, t.text, t.perUnit, t.unit, t.included]), [
-    ["f1", "flight", "Flight from Raleigh (RDU) · $136 per person", 136, "person", false],
-    ["h1", "hotel", "Hotel the night before in Orlando (1 night) · $125 per room", 125, "room", false],
-    ["t1", "transfer", "Hotel to the cruise port · $45 per person", 45, "person", false],
+    ["f1", "flight", "Flight from Raleigh (RDU)", 136, "person", false],
+    ["h1", "hotel", "Hotel the night before in Orlando (1 night)", 125, "room", false],
+    ["t1", "transfer", "Hotel to the cruise port", 45, "person", false],
     ["t2", "transfer", "Cruise port to the airport · included in the cruise price", null, "person", true],
-  ], "a row on a traveler is not the group's offer");
+  ], "a row on a traveler is not the group's offer; no price is shown before Mark finalizes the quote (Mark 2026-11-07)");
   assert.deepEqual([o.needs, o.drinks, o.depositPerPersonText, o.finalPaymentText], [[], "ask", "$50", "January 15, 2027"]);
 });
 
@@ -84,21 +84,21 @@ test("ages at sailing and the fare each traveler pays: the first two the full fa
   assert.deepEqual(fares(noTerms.cabins[0]!, adults, "2027-05-09").map((f) => f.amount), [536.79, 536.79, 536.79], "no reduced fare on the file: the per-person fare, never a guess");
 });
 
-test("the quote adds up only what the file prices: travel per person × party or per room, insurance per person × party, 'Mark quotes it' for the rest; deposit and balance", () => {
+test("the quote adds up only what the file prices: insurance per person × party; every flight, hotel and transfer waits for Mark's finalized quote (Mark 2026-11-07), 'Mark quotes it' for the rest; deposit and balance", () => {
   const file = { group: group({ line_protection: "MSC Cruise Protection: $99 per person" }), cabins: cabins(), travel: travel() };
   const q = buildQuote(file, [...two, { legal_name: "Uncle Millham", dob: "1970-01-01" }], { cabin: "BB", flexpay: true, drinks: true, insurance: "line", travel: ["f1", "h1", "t2"], needs: {} }, "en", new Date("2026-11-01T12:00:00Z"));
   assert.deepEqual(q.lines.map((l) => [l.key, l.label, l.detail, l.amount, l.amountText, l.toQuote]), [
     ["cabin", "Balcony Bella · 3 travelers", "Mark $536.79 · Ceci $536.79 · Uncle $308.79 (third or fourth guest fare) · taxes and port fees included", 1382.37, "$1,382.37", false],
     ["drinks", "Drink package", "Mark prices it for your party", null, null, true],
     ["insurance", "Travel insurance: MSC Cruise Protection", "$99 per person × 3", 297, "$297", false],
-    ["travel-f1", "Flight from Raleigh (RDU)", "$136 per person × 3", 408, "$408", false],
-    ["travel-h1", "Hotel the night before in Orlando (1 night)", "$125 per room", 125, "$125", false],
+    ["travel-f1", "Flight from Raleigh (RDU)", "Mark quotes it", null, null, true],
+    ["travel-h1", "Hotel the night before in Orlando (1 night)", "Mark quotes it", null, null, true],
     ["travel-t2", "Cruise port to the airport", null, 0, "included in the cruise price", false],
     ["flexpay", "FlexPay", "Mark sends you the application next; it sets its own payment schedule and changes nothing on this quote", null, null, false],
   ]);
   assert.deepEqual([q.total, q.totalText, q.toQuote, q.deposit, q.depositText, q.depositPerPersonText, q.balance, q.balanceText, q.finalPaymentText, q.party, q.computed_at],
-    [2212.37, "$2,212.37", ["Drink package"], 150, "$150", "$50", 2062.37, "$2,062.37", "January 15, 2027", 3, "2026-11-01T12:00:00.000Z"]);
-  assert.equal(quoteSummary(q, quoteOptions(file, "en")), "Balcony Bella · FlexPay yes · drinks yes · insurance: MSC Cruise Protection · Flight from Raleigh (RDU), Hotel the night before in Orlando (1 night), Cruise port to the airport · total $2,212.37 + 1 to price");
+    [1679.37, "$1,679.37", ["Drink package", "Flight from Raleigh (RDU)", "Hotel the night before in Orlando (1 night)"], 150, "$150", "$50", 1529.37, "$1,529.37", "January 15, 2027", 3, "2026-11-01T12:00:00.000Z"]);
+  assert.equal(quoteSummary(q, quoteOptions(file, "en")), "Balcony Bella · FlexPay yes · drinks yes · insurance: MSC Cruise Protection · Flight from Raleigh (RDU), Hotel the night before in Orlando (1 night), Cruise port to the airport · total $1,679.37 + 3 to price");
   // taxes not included: their own line; no deposit on the file: no deposit and no balance, never a made-up one
   const taxed = buildQuote({ ...file, group: group({ marketing: { taxes_included: false }, deposit_per_person: null, final_payment_due: null }) }, two, { cabin: "BA", flexpay: false, drinks: false, insurance: "own", travel: [], needs: {} }, "en");
   assert.deepEqual(taxed.lines.map((l) => [l.key, l.amountText]), [["cabin", "$1,373.58"], ["taxes", "$136"], ["insurance", null]]);
