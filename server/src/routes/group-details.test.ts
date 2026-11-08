@@ -882,7 +882,7 @@ test("the quote is built from the file alone: the fares per traveler, what Mark 
     ["drinks", "Drink package", "Mark prices it for your party", null, true],
     ["insurance", "Travel insurance: none", null, null, false],
     ["need-flight", "Flights", "Mark quotes them for your party", null, true],
-    ["flexpay", "FlexPay", "Mark sends you the application next; it sets its own payment schedule and changes nothing on this quote", null, false],
+    ["flexpay", "FlexPay", "Mark schedules a brief video call with you to apply; it sets its own payment schedule and changes nothing on this quote", null, false],
   ]);
   assert.deepEqual([q.total, q.totalText, q.toQuote], [1073.58, "$1,073.58", ["Drink package", "Flights"]]);
   assert.deepEqual([q.deposit, q.depositText, q.depositPerPersonText, q.balance, q.balanceText, q.finalPaymentText], [100, "$100", "$50", 973.58, "$973.58", "January 15, 2027"]);
