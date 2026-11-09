@@ -1345,7 +1345,7 @@ export default [
       const reads = {};
       for (const [p, lang] of [["/group.html", "en"], ["/es/group.html", "es"]]) {
         // Mark 2026-11-08: after "Save my spot!" the guest goes to the choice page (/choice.html?t=, its own page); no choice card sits on this page.
-        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Aparte mi lugar" : "Save my spot", "/choice.html"] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'data-t="travel_est"', "These are current estimates, prices may change until booking.", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Aparte mi lugar" : "Save my spot", "/choice.html"] });
         t.ok(!html.includes('id="gp-choice"') && !html.includes("/api/group-details/"), `${p} still carries the choice card (Mark 2026-11-08: it is its own page)`);
         t.ok(!/count me in|cuenten conmigo/i.test(html), `${p} still says "Count me in" (Mark 2026-10-24: the button is "Save my spot!")`);
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
@@ -1566,7 +1566,7 @@ export default [
       const DETAILS = (lang) => ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Armar mi cotización" : "Build my quote", "/pick", "/hold", lang === "es" ? "/es/quote.html" : "/quote.html", 'aria-disabled="true"', 'id="d-summary"'];
       const QUOTE = (lang) => ["/api/group-details/", 'id="d-website"', lang === "es" ? "FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera" : "FlexPay is an installment plan Mark offers separately from the cruise line", lang === "es" ? "Agendemos una cita breve con Mark para solicitarlo." : "Let's schedule a brief appointment with Mark to apply.", "/quote", "/request", lang === "es" ? "¡Enviar mis decisiones a Mark!" : "Send my choices to Mark!", 'id="d-part4"', 'id="d-agree"', 'aria-disabled="true"', lang === "es" ? "/es/details.html" : "/details.html",
         // Mark 2026-11-08: a FlexPay yes opens OUR scheduler in a pop-up (an iframe of flexpay-call.html on this site); no price is written on this page
-        'id="d-fp"', 'id="d-fp-frame"', 'id="d-fp-close"', "flexpayCallUrl", "embed=1"];
+        'id="d-fp"', 'id="d-fp-frame"', 'id="d-fp-close"', "flexpayCallUrl", "embed=1", "m.close === true", "Pick what you want added."];
       // Mark 2026-11-08: the choice after Save my spot! is its own page on the same private link: the cheer, two equal pills, the drop-down for the time
       const CHOICE = (lang) => ["/api/group-details/", "/choice", 'id="gp-choice"', 'id="gp-finish"', 'id="gp-talk"', 'id="gp-dd"', 'data-when="morning"', 'data-when="anytime"', lang === "es" ? "¡Guíeme paso a paso, Mark!" : "Walk me through it, Mark!", lang === "es" ? "¡Yo me encargo… déjeme llenarlo!" : "I've got this… let me fill it in!", lang === "es" ? "/es/details.html" : "/details.html", "/css/group-page.css"];
       for (const [p, lang, mustContain] of [["/choice.html", "en", CHOICE("en")], ["/es/choice.html", "es", CHOICE("es")], ["/details.html", "en", DETAILS("en")], ["/es/details.html", "es", DETAILS("es")], ["/quote.html", "en", QUOTE("en")], ["/es/quote.html", "es", QUOTE("es")]]) {
@@ -1613,7 +1613,7 @@ export default [
     modes: ["dev", "prod"],
     run: async (t) => {
       for (const [p, lang] of [["/flexpay-call.html", "en"], ["/es/flexpay-call.html", "es"]]) {
-        const html = t.html(await t.get(p), { mustContain: ["/api/flexpay-call/", 'id="c-days"', 'id="c-times"', 'id="c-book"', "website: ''", lang === "es" ? "Su llamada de FlexPay" : "Your FlexPay call", "Monday to Saturday, 10 AM to 8 PM Eastern", "De lunes a sábado, de 10 a. m. a 8 p. m., hora del Este"] });
+        const html = t.html(await t.get(p), { mustContain: ["/api/flexpay-call/", 'id="c-days"', 'id="c-times"', 'id="c-book"', 'id="c-continue"', "close: true", "website: ''", lang === "es" ? "Su llamada de FlexPay" : "Your FlexPay call", "Monday to Saturday, 10 AM to 8 PM Eastern", "De lunes a sábado, de 10 a. m. a 8 p. m., hora del Este"] });
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
         t.matches(H.metaContent(html, "referrer"), /no-referrer/, `${p} referrer policy (its address carries the link)`);

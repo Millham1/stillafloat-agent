@@ -518,7 +518,7 @@ const money = (v: unknown): number | null | undefined => {
 };
 const isoOrNull = (v: unknown): string | null => { const t = text(v, 40); return t && !Number.isNaN(Date.parse(t)) ? t : null; };
 
-interface TripEntry { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null }
+interface TripEntry { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; /** what Mark booked it for, the whole line (Mark 2026-11-09) */ price: number | null }
 const tripEntries = (formData: unknown): TripEntry[] => {
   const t = formData && typeof formData === "object" ? (formData as Record<string, unknown>)["trip"] : null;
   const list = t && typeof t === "object" ? (t as Record<string, unknown>)["chosen"] : null;
@@ -526,8 +526,20 @@ const tripEntries = (formData: unknown): TripEntry[] => {
   return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object").map((r) => ({
     kind: String(r["kind"] ?? ""), direction: text(r["direction"], 10), provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),
     starts_at: text(r["starts_at"], 40), ends_at: text(r["ends_at"], 40), label: text(r["label"]) ?? String(r["kind"] ?? ""), confirmation: text(r["confirmation"]),
+    price: typeof r["price"] === "number" && Number.isFinite(r["price"]) ? r["price"] : null,
   }));
 };
+/** The cruise line's own paid extras on this booking (a dining package, a drink package): read off the uploaded quote, checked by Mark (Mark 2026-11-09). */
+interface CruiseExtra { name: string; total: number }
+const cruiseExtras = (formData: unknown): CruiseExtra[] => {
+  const t = formData && typeof formData === "object" ? (formData as Record<string, unknown>)["trip"] : null;
+  const list = t && typeof t === "object" ? (t as Record<string, unknown>)["extras"] : null;
+  if (!Array.isArray(list)) return [];
+  return list.filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && typeof r["total"] === "number" && Number.isFinite(r["total"]))
+    .map((r) => ({ name: text(r["name"], 120) ?? "Cruise extra", total: r["total"] as number }));
+};
+const cents = (n: number) => Math.round(n * 100) / 100;
+const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 async function loadBooking(groupId: string, iid: string) {
   const { data: reply, error } = await db().from("group_interests").select("id, status, traveler_id, quote, quote_requested_at, booking_completed_at, first_name, last_name, email").eq("id", iid).eq("group_id", groupId).maybeSingle();
@@ -585,6 +597,8 @@ function carrierView(intake: Row | null) {
     read: x ? {
       booking_number: text(x["booking_number"], 60), cabin_num: text(x["cabin_number"], 60), category: text(first["category"]),
       price_total: num(x["total_price"]) ?? twice(first["price_per_person"]),
+      // the quote's own Total Booking Amount, when it prints one: the cabin and the extras must add up to it
+      booking_total: num(x["total_price"]),
       deposit_amount: twice(first["deposit_per_person"] ?? x["deposit_per_person"]),
       addons: (Array.isArray(x["addons"]) ? x["addons"] : []).filter((a: unknown): a is Record<string, unknown> => !!a && typeof a === "object")
         .map((a: Record<string, unknown>) => ({ name: text(a["name"]) ?? "Add-on", total: num(a["total"]) ?? 0, includes: list(a["includes"]) })),
@@ -603,18 +617,29 @@ function bookingView(b: BookingFile) {
   if (!b.cabin) missing.push("The cabin this guest is on is not on the group file");
   for (const r of chosen) if (!r.confirmation) missing.push(`Confirmation for ${r.label}`);
   for (const k of TRIP_KINDS) if (needs[k] === true && !chosen.some((r) => r.kind === k)) missing.push(`The ${k} the guest asked you to quote: add it below`);
+  // Mark 2026-11-09: the cabin row's total is the whole cruise price (the cabin and the cruise line's extras, as the quote totals them);
+  // each flight, hotel and transfer carries what it was booked for; the trip total is the two together.
+  const extras = cruiseExtras(b.lead.form_data);
+  const cruise = typeof b.cabin?.["price_total"] === "number" || (b.cabin?.["price_total"] != null && Number.isFinite(Number(b.cabin["price_total"]))) ? Number(b.cabin!["price_total"]) : null;
+  const extrasTotal = cents(extras.reduce((n, x) => n + x.total, 0));
+  const priced = chosen.filter((r) => r.price !== null);
+  const travelTotal = priced.length ? cents(priced.reduce((n, r) => n + (r.price as number), 0)) : null;
+  const totals = { cabin: cruise !== null ? cents(cruise - extrasTotal) : null, extras: extrasTotal, cruise, travel: travelTotal, trip: cruise !== null ? cents(cruise + (travelTotal ?? 0)) : null };
   const fills = [
     { label: "Cruise line booking number", value: text(b.cabin?.["booking_number"]) ?? "" },
     { label: "Cabin number", value: text(b.cabin?.["cabin_num"]) ?? "" },
     { label: "Deck", value: text(b.cabin?.["deck"]) ?? "" },
-    ...chosen.map((r) => ({ label: r.label, value: [r.provider, [r.from_place, r.to_place].filter(Boolean).join(" to "), r.confirmation ? `conf. ${r.confirmation}` : ""].filter(Boolean).join(" · ") })),
+    ...extras.map((x) => ({ label: `Cruise extra: ${x.name}`, value: usd(x.total) })),
+    { label: "Total cruise price (cabin and cruise extras)", value: cruise !== null ? usd(cruise) : "" },
+    ...chosen.map((r) => ({ label: r.label, value: [r.provider, [r.from_place, r.to_place].filter(Boolean).join(" to "), r.confirmation ? `conf. ${r.confirmation}` : "", r.price !== null ? usd(r.price) : ""].filter(Boolean).join(" · ") })),
+    ...(travelTotal !== null && totals.trip !== null ? [{ label: "Trip total (cruise and travel)", value: usd(totals.trip) }] : []),
   ];
   return {
     success: true,
     guest: { name: [b.lead.first_name, b.lead.last_name].filter(Boolean).join(" ") || nameOf(b.reply) || "Guest", email: b.lead.email ?? b.reply.email ?? null },
     quote: b.quote ? { category: b.quote.category, party: b.quote.party, total: b.quote.totalText, deposit: b.quote.depositText } : null,
     paperwork: b.quote?.paperwork ?? "booking",
-    cabin: b.cabin, trip: chosen, needs, missing, ready: missing.length === 0, fills,
+    cabin: b.cabin, trip: chosen, extras, totals, needs, missing, ready: missing.length === 0, fills,
     carrier: carrierView(b.carrier), signed: b.signed, completedAt: b.reply.booking_completed_at ?? null,
     // after the signatures: who Mark confirms the booking with, and FlexPay's appointment link when the guest asked for FlexPay
     confirmWith: ["The cruise line", ...chosen.map((r) => [r.label, r.provider].filter(Boolean).join(" · "))],
@@ -683,11 +708,29 @@ router.put("/groups/:id/interests/:iid/booking", requireToken, async (req: Reque
         chosen.push({
           kind, direction: dir, provider: text(r["provider"]), from_place: text(r["from_place"]), to_place: text(r["to_place"]),
           starts_at: isoOrNull(r["starts_at"]), ends_at: isoOrNull(r["ends_at"]), confirmation: text(r["confirmation"]),
+          price: ((m) => (m === undefined ? NaN : m))(money(r["price"] ?? null)),
           label: text(r["label"]) ?? `${dir === "post" ? "After" : "Before"} the cruise: ${kind}`,
         });
       }
+      if (chosen.some((r) => Number.isNaN(r.price))) return bad("A travel price is not an amount.");
       const fd = (b.lead.form_data && typeof b.lead.form_data === "object" ? b.lead.form_data : {}) as Record<string, any>;
       const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), chosen } } }).eq("id", b.lead.id);
+      if (error) throw new Error(error.message);
+    }
+    if (body["extras"] !== undefined) {
+      if (!Array.isArray(body["extras"]) || body["extras"].length > 20) return bad("The cruise extras list is not valid.");
+      const extras: CruiseExtra[] = [];
+      for (const r of body["extras"] as Array<Record<string, unknown>>) {
+        const name = text(r?.["name"], 120), total = money(r?.["total"] ?? null);
+        if (!name) return bad("Each cruise extra needs a name.");
+        if (total === undefined || total === null) return bad(`The price of ${name} is not an amount.`);
+        extras.push({ name, total });
+      }
+      // read again: the travel lines above may have just been written to the same file
+      const { data: fresh, error: fe } = await db().from("group_travelers").select("form_data").eq("id", b.lead.id).maybeSingle();
+      if (fe) throw new Error(fe.message);
+      const fd = (fresh?.form_data && typeof fresh.form_data === "object" ? fresh.form_data : {}) as Record<string, any>;
+      const { error } = await db().from("group_travelers").update({ form_data: { ...fd, trip: { ...(fd["trip"] ?? {}), extras } } }).eq("id", b.lead.id);
       if (error) throw new Error(error.message);
     }
     const again = await loadBooking(groupId, iid);

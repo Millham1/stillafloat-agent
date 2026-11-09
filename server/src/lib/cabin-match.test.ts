@@ -292,7 +292,10 @@ function knownFor(f: ShipFixture): Set<string> {
   return new Set(f.pool.filter((p) => p[7] === 1).map((p) => p[0]));
 }
 
-test("selection: a visitor is NEVER silently given a cabin type they did not ask for", () => {
+// Mark 2026-11-09: this sweep (432,000 cases, over six minutes) guards the cabin concierge alone, so it runs when that code or its data
+// changes and once a night (.github/workflows/cabin-sweep.yml sets CABIN_SWEEP=1), not on every commit to anything else.
+// To run it by hand: CABIN_SWEEP=1 node run-tests.mjs
+test("selection: a visitor is NEVER silently given a cabin type they did not ask for", { skip: process.env["CABIN_SWEEP"] === "1" ? false : "runs when the cabin concierge changes and nightly (CABIN_SWEEP=1)" }, () => {
   const combos = everyCombination(EXPECT_QS);
   const outcomes: Record<string, number> = {};
   let cases = 0;

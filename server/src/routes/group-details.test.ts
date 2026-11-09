@@ -968,6 +968,23 @@ test("Booking confirmation (Mark 2026-11-04): Mark enters the suppliers' confirm
   assert.deepEqual([full.status, full.json["ready"], full.json["missing"]], [200, true, []]);
   assert.ok(full.json["fills"].some((f: Record<string, string>) => f.label === "Cabin number" && f.value === "12345"), "the review shows what the paperwork will say");
   assert.equal(tables["group_travelers"]![0]!["form_data"]["address"], "123 Main St", "the trip is merged into the lead's file; the address stays");
+  // Mark 2026-11-09: every price has a place: the cruise line's extras (a drink package) with the cabin make the total cruise price, each
+  // travel line carries what it was booked for, and the two make the trip total
+  const flight = { kind: "flight", direction: "pre", provider: "Delta", from_place: "RDU", to_place: "MIA", confirmation: "ABC123" };
+  assert.equal((await call("PUT", booking, { token: true, body: { trip: [{ ...flight, price: "lots" }] } })).status, 400, "a travel price must be an amount");
+  assert.equal((await call("PUT", booking, { token: true, body: { extras: [{ name: "", total: 80 }] } })).status, 400, "an extra needs a name");
+  assert.equal((await call("PUT", booking, { token: true, body: { extras: [{ name: "Premium Extra drinks", total: "lots" }] } })).status, 400, "an extra's price must be an amount");
+  assert.equal((await call("PUT", booking, { token: true, body: { extras: "drinks" } })).status, 400);
+  const priced = await call("PUT", booking, { token: true, body: { cabin: { price_total: "1153.58" }, extras: [{ name: "Premium Extra drinks", total: "80" }], trip: [{ ...flight, price: "272.40" }] } });
+  assert.deepEqual([priced.status, priced.json["ready"]], [200, true]);
+  assert.deepEqual(priced.json["extras"], [{ name: "Premium Extra drinks", total: 80 }]);
+  assert.deepEqual(priced.json["totals"], { cabin: 1073.58, extras: 80, cruise: 1153.58, travel: 272.4, trip: 1425.98 }, "cabin + extras = the total cruise price; + travel = the trip");
+  assert.equal(priced.json["trip"][0]["price"], 272.4);
+  const said = (label: string) => (priced.json["fills"] as Array<Record<string, string>>).find((f) => f["label"] === label)?.["value"];
+  assert.deepEqual([said("Cruise extra: Premium Extra drinks"), said("Total cruise price (cabin and cruise extras)"), said("Trip total (cruise and travel)")], ["$80.00", "$1,153.58", "$1,425.98"]);
+  assert.ok(String(said("Before the cruise: flight") ?? said("Flight") ?? JSON.stringify(priced.json["fills"])).includes("$272.40"), "the travel line shows its booked price");
+  assert.deepEqual(tables["group_travelers"]![0]!["form_data"]["trip"]["extras"], [{ name: "Premium Extra drinks", total: 80 }], "the extras sit on the lead's file beside the travel");
+  assert.equal(tables["group_travelers"]![0]!["form_data"]["trip"]["chosen"][0]["confirmation"], "ABC123", "saving the extras keeps the travel just saved");
   const done = await call("POST", path, { token: true });
   assert.deepEqual([done.status, done.json["success"], done.json["paperwork"]], [200, true, "sent"]);
   assert.equal(mails.length, 1);
@@ -997,7 +1014,7 @@ test("Mark 2026-11-05: the cruise line's quote Mark uploaded fills the booking c
   const view = await call("GET", booking, { token: true });
   assert.deepEqual([view.json["carrier"]["filename"], view.json["carrier"]["status"]], ["msc quote.pdf", "ready"]);
   assert.deepEqual(view.json["carrier"]["read"], {
-    booking_number: "MSC-778899", cabin_num: "12045", category: "Balcony Aurea", price_total: 1453.58, deposit_amount: 100,
+    booking_number: "MSC-778899", cabin_num: "12045", category: "Balcony Aurea", price_total: 1453.58, booking_total: 1453.58, deposit_amount: 100,
     addons: [{ name: "Premium Extra drinks", total: 80, includes: [] }], inclusions: ["Wi-Fi"], warnings: [],
   });
   assert.equal(tables["group_cabins"]!.find((c) => c["id"] === CABIN_ID)!["booking_number"] ?? null, null, "nothing is saved until Mark has checked it and saved");

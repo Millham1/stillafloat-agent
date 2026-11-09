@@ -208,7 +208,7 @@ test("the page opens on the choices once the names are in: the heading, the lock
   assert.deepEqual(pills.filter((x) => x.g === "drinks").map((x) => x.label), ["Yes, price one for us", "No thanks"]);
   assert.deepEqual(pills.filter((x) => x.g === "insurance").map((x) => [x.v, x.label]), [["line", "MSC Cruise Protection"], ["own", "I have my own policy"], ["decline", "No insurance for us"]]);
   assert.deepEqual(p.qticks(), [{ v: "f1", on: false, label: "Flight from Raleigh (RDU)" }], "Mark 2026-11-07: no flight, hotel or transfer price before he finalizes the quote");
-  assert.ok(p.el("d-qq").innerHTML.includes("Tick what you want added. Mark prices flights, hotel and transfers with your final quote."), "the travel note says why there is no price");
+  assert.ok(p.el("d-qq").innerHTML.includes("Pick what you want added. Mark prices flights, hotel and transfers with your final quote."), "the travel note says why there is no price");
   assert.deepEqual(pills.filter((x) => x.g.startsWith("need-")).map((x) => x.g + ":" + x.v), ["need-hotel:yes", "need-hotel:no", "need-transfer:yes", "need-transfer:no"], "no hotel or transfer on offer: a yes/no each; the flight has its offer");
   assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "true", "dim until every question is answered");
   assert.equal(p.el("d-agree-note").textContent, "Answer every question above and the button lights up.");
