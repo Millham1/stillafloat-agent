@@ -10,7 +10,7 @@
 <meta property="og:site_name" content="Still Afloat Cruising">
 <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/details-page.css?v=20261101b">
-<link rel="stylesheet" href="/css/flexpay-call.css?v=20261105">
+<link rel="stylesheet" href="/css/flexpay-call.css?v=20261108a">
 </head>
 <body>
 <div class="wrap">
@@ -58,7 +58,7 @@
   var T = ES ? {
     title:'Su videollamada de FlexPay', plaque:'Su llamada de FlexPay', label:'FlexPay · Videollamada con Mark',
     loading:'Buscando las horas libres de Mark…',
-    bad:'Este enlace no es válido. Abra el enlace completo de su correo, o llame o escriba a Mark al ' + PHONE + '.',
+    bad:'Este enlace no es válido. Ábralo de nuevo desde su página de cotización, o llame o escriba a Mark al ' + PHONE + '.',
     quiet:'El calendario no responde en este momento. Intente de nuevo en unos minutos, o llame o escriba a Mark al ' + PHONE + '.',
     h1:'¡Elija su hora, {first}!', h1_plain:'¡Elija su hora!',
     lede:'Una videollamada de media hora con Mark para completar juntos la solicitud de FlexPay. De lunes a sábado, de 10 a. m. a 8 p. m., hora del Este.',
@@ -77,7 +77,7 @@
   } : {
     title:'Your FlexPay video call', plaque:'Your FlexPay call', label:'FlexPay · Video call with Mark',
     loading:"Checking Mark's open times…",
-    bad:'This link is not valid. Open the full link from your email, or call or text Mark at ' + PHONE + '.',
+    bad:'This link is not valid. Open it again from your quote page, or call or text Mark at ' + PHONE + '.',
     quiet:'The calendar is not answering right now. Please try again in a few minutes, or call or text Mark at ' + PHONE + '.',
     h1:'Pick your time, {first}!', h1_plain:'Pick your time!',
     lede:'A half-hour video call with Mark to complete the FlexPay application together. Monday to Saturday, 10 AM to 8 PM Eastern.',
@@ -107,6 +107,8 @@
   state.textContent = T.loading;
 
   var qs = new URLSearchParams(location.search);
+  // Mark 2026-11-08: inside the quote page's pop-up the page is the panel alone
+  if(qs.get('embed') === '1') document.documentElement.className += ' embed';
   var reply = (qs.get('r') || '').trim(), key = (qs.get('k') || '').trim();
   if(!/^[0-9a-f-]{36}$/i.test(reply) || !/^[A-Za-z0-9_-]{43}$/.test(key)){ state.textContent = T.bad; return; }
   var API = '/api/flexpay-call/' + reply + '/' + key;
@@ -190,6 +192,8 @@
     if(b.meetLink && /^https:\/\/meet\.google\.com\//.test(b.meetLink)){ j.href = b.meetLink; j.textContent = T.join; j.hidden = false; $('c-done-p').textContent = T.done_p + (email === 'sent' ? ' ' + T.done_mail : ''); }
     else { j.hidden = true; $('c-done-p').textContent = T.done_nolink; }
     $('c-change').textContent = T.change;
+    // in the quote page's pop-up: tell the page the time is set (same site only)
+    if(window.parent && window.parent !== window){ try { window.parent.postMessage({ saf: 'flexpay-call', booked: b.whenText || '' }, location.origin); } catch(e){} }
   }
 
   function load(){

@@ -94,7 +94,7 @@ test("the quote adds up only what the file prices: insurance per person × party
     ["travel-f1", "Flight from Raleigh (RDU)", "Mark quotes it", null, null, true],
     ["travel-h1", "Hotel the night before in Orlando (1 night)", "Mark quotes it", null, null, true],
     ["travel-t2", "Cruise port to the airport", null, 0, "included in the cruise price", false],
-    ["flexpay", "FlexPay", "Mark schedules a brief video call with you to apply; it sets its own payment schedule and changes nothing on this quote", null, null, false],
+    ["flexpay", "FlexPay", "You pick the time of a brief video call with Mark to apply; it sets its own payment schedule and changes nothing on this quote", null, null, false],
   ]);
   assert.deepEqual([q.total, q.totalText, q.toQuote, q.deposit, q.depositText, q.depositPerPersonText, q.balance, q.balanceText, q.finalPaymentText, q.party, q.computed_at],
     [1679.37, "$1,679.37", ["Drink package", "Flight from Raleigh (RDU)", "Hotel the night before in Orlando (1 night)"], 150, "$150", "$50", 1529.37, "$1,529.37", "January 15, 2027", 3, "2026-11-01T12:00:00.000Z"]);

@@ -1563,12 +1563,15 @@ export default [
     modes: ["dev", "prod"],
     run: async (t) => {
       const DETAILS = (lang) => ["/api/group-details/", "/api/address/lookup", 'id="d-website"', lang === "es" ? "Armar mi cotización" : "Build my quote", "/pick", "/hold", lang === "es" ? "/es/quote.html" : "/quote.html", 'aria-disabled="true"', 'id="d-summary"'];
-      const QUOTE = (lang) => ["/api/group-details/", 'id="d-website"', lang === "es" ? "FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera" : "FlexPay is an installment plan Mark offers separately from the cruise line", lang === "es" ? "Agendemos una cita breve con Mark para solicitarlo." : "Let's schedule a brief appointment with Mark to apply.", "/quote", "/request", lang === "es" ? "¡Enviar mis decisiones a Mark!" : "Send my choices to Mark!", 'id="d-part4"', 'id="d-agree"', 'aria-disabled="true"', lang === "es" ? "/es/details.html" : "/details.html"];
+      const QUOTE = (lang) => ["/api/group-details/", 'id="d-website"', lang === "es" ? "FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera" : "FlexPay is an installment plan Mark offers separately from the cruise line", lang === "es" ? "Agendemos una cita breve con Mark para solicitarlo." : "Let's schedule a brief appointment with Mark to apply.", "/quote", "/request", lang === "es" ? "¡Enviar mis decisiones a Mark!" : "Send my choices to Mark!", 'id="d-part4"', 'id="d-agree"', 'aria-disabled="true"', lang === "es" ? "/es/details.html" : "/details.html",
+        // Mark 2026-11-08: a FlexPay yes opens OUR scheduler in a pop-up (an iframe of flexpay-call.html on this site); no price is written on this page
+        'id="d-fp"', 'id="d-fp-frame"', 'id="d-fp-close"', "flexpayCallUrl", "embed=1"];
       // Mark 2026-11-08: the choice after Save my spot! is its own page on the same private link: the cheer, two equal pills, the drop-down for the time
       const CHOICE = (lang) => ["/api/group-details/", "/choice", 'id="gp-choice"', 'id="gp-finish"', 'id="gp-talk"', 'id="gp-dd"', 'data-when="morning"', 'data-when="anytime"', lang === "es" ? "¡Guíeme paso a paso, Mark!" : "Walk me through it, Mark!", lang === "es" ? "¡Yo me encargo… déjeme llenarlo!" : "I've got this… let me fill it in!", lang === "es" ? "/es/details.html" : "/details.html", "/css/group-page.css"];
       for (const [p, lang, mustContain] of [["/choice.html", "en", CHOICE("en")], ["/es/choice.html", "es", CHOICE("es")], ["/details.html", "en", DETAILS("en")], ["/es/details.html", "es", DETAILS("es")], ["/quote.html", "en", QUOTE("en")], ["/es/quote.html", "es", QUOTE("es")]]) {
         const html = t.html(await t.get(p), { mustContain });
         if (p.endsWith("/details.html")) t.ok(!html.includes('id="d-part4"') && !html.includes("Send my choices to Mark!") && !html.includes("¡Enviar mis decisiones a Mark!"), `${p} still carries the quote step (Mark 2026-11-07: it is its own page)`);
+        if (p.endsWith("/quote.html")) t.ok(!html.includes('id="d-quote"') && !/starting price|precio inicial|quote_dep|quote_bal/.test(html) && !/calendly|acuity|youcanbook|tidycal/i.test(html), `${p} still carries the starting-price block or an outside scheduler (Mark 2026-11-08: no pricing on the quote page; the FlexPay pop-up is our own scheduler)`);
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         // a private link: never indexed, and the address that carries it is never sent on to another site
         t.matches(H.metaContent(html, "robots"), /noindex/, `${p} robots (a guest's private page must never be indexed)`);
@@ -1603,7 +1606,7 @@ export default [
   },
   {
     id: "ops.flexpay-call-public",
-    basis: "ruling: Mark 2026-11-05 — a FlexPay guest's appointment link 'should bring up a scheduler for a video conference. M-S 10-8 and doesn't conflict with any meetings on my schedule already', on our own page ('I'm not paying for another service'); the page is private by link like the details page",
+    basis: "ruling: Mark 2026-11-08 — 'I am not scheduling. the client should be presented a pop-up window of the scheduler' (the quote page opens this page in a pop-up on the FlexPay yes). Mark 2026-11-05 — a FlexPay guest's appointment link 'should bring up a scheduler for a video conference. M-S 10-8 and doesn't conflict with any meetings on my schedule already', on our own page ('I'm not paying for another service'); the page is private by link like the details page",
     title: "The FlexPay video-call scheduler opens in English and Spanish, stays out of search, calls only its own API, loads no outside scheduling service, and any wrong link gets one neutral 'not found'",
     covers: ["page /flexpay-call.html", "page /es/flexpay-call.html", "GET /api/flexpay-call/:iid/:key"],
     modes: ["dev", "prod"],

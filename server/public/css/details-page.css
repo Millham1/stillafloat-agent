@@ -124,3 +124,13 @@ h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
   .plaque{padding:8px 14px}
   .plaque span{letter-spacing:.12em}
 }
+
+/* Mark 2026-11-08: the FlexPay scheduler (our own flexpay-call.html) opens in a pop-up on the quote page; Mark schedules nothing himself */
+.fp-modal{position:fixed;inset:0;z-index:50;background:rgba(7,24,63,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.fp-modal[hidden]{display:none}
+.fp-box{width:min(560px,100%);height:min(760px,100%);background:var(--cloud);border-radius:18px;box-shadow:0 18px 48px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
+.fp-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px 10px 18px;background:var(--navy);color:var(--gold);font:800 20px/1.2 'Baloo 2',sans-serif}
+.fp-close{cursor:pointer;border:0;border-radius:999px;width:40px;height:40px;background:rgba(255,255,255,.14);color:#fff;font:700 20px/1 'Baloo 2',sans-serif}
+.fp-close:hover{background:rgba(255,255,255,.26)}
+.fp-close:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.fp-box iframe{flex:1;width:100%;border:0;background:var(--cloud)}
