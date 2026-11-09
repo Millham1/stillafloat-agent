@@ -1344,8 +1344,9 @@ export default [
       // twin reads, so a field renamed or dropped by the API (or by one twin only) fails below.
       const reads = {};
       for (const [p, lang] of [["/group.html", "en"], ["/es/group.html", "es"]]) {
-        // After "Save my spot!" the guest chooses a road on this same page: its panel posts the choice to /api/group-details/<token>/choice.
-        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Aparte mi lugar" : "Save my spot", "/api/group-details/", "/choice"] });
+        // Mark 2026-11-08: after "Save my spot!" the guest goes to the choice page (/choice.html?t=, its own page); no choice card sits on this page.
+        const html = t.html(await t.get(p), { mustContain: ["/api/group-page/", "turnstile", "/interest", "?lang=", 'id="f-website"', "cf-turnstile-response", lang === "es" ? "Aparte mi lugar" : "Save my spot", "/choice.html"] });
+        t.ok(!html.includes('id="gp-choice"') && !html.includes("/api/group-details/"), `${p} still carries the choice card (Mark 2026-11-08: it is its own page)`);
         t.ok(!/count me in|cuenten conmigo/i.test(html), `${p} still says "Count me in" (Mark 2026-10-24: the button is "Save my spot!")`);
         t.equal(H.htmlLang(html).slice(0, 2), lang, `${p} language`);
         // The page asks one thing, "I'm interested": no cabin table, no cabin picker (Mark 2026-10-19).
