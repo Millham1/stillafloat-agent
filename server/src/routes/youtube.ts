@@ -368,7 +368,8 @@ router.get("/youtube-featured", async (req: Request, res: Response) => {
       res.json({
         videoId: v.id,
         title: titleIn(v, lang),
-        lang: v.lang ?? null,
+        // the language this answer shows it in (an English long-form with our Spanish title and audio track IS the Spanish video, 2026-11-02); YouTube's own record beside it
+        lang: lang ?? v.lang ?? null, recordedLang: v.lang ?? null,
         thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
         channelUrl: CHANNEL_URL,
         manual: picked.manual,
@@ -427,7 +428,7 @@ router.get("/youtube-top", async (req: Request, res: Response) => {
       thumbnail: v.thumbnail || `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`,
       url: v.url || `https://www.youtube.com/watch?v=${v.id}`,
       views: Number(v.views) || 0,
-      lang: v.lang,
+      lang, recordedLang: v.lang ?? null,   // shown in this row's language (the pool is filtered by inLanguage); YouTube's record beside it
       isLatest: latest ? v.id === latest.id : false,
     }));
 
