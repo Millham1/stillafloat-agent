@@ -240,7 +240,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
                       {data.flexpay.call.meetLink && <a className="underline" href={data.flexpay.call.meetLink} target="_blank" rel="noreferrer">Join the video call</a>}</p>
                   ) : (
                     <p className="text-sm text-muted-foreground mt-2">The guest has not picked a time yet. They choose from your open times, Monday to Saturday, 10 AM to 8 PM Eastern.</p>
-                  ) : null}
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">4. No FlexPay on this booking: the card authorization and the payment schedule on this file apply.</p>
