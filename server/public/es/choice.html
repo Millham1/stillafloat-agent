@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ya está en la lista | Still Afloat Cruising</title>
+<!-- The page after "Save my spot!" (Mark 2026-11-08: the choice is its OWN page, never a card at the bottom of the group page). A guest's private link,
+     the same one their details page uses. Never indexed, and the address (which carries the link) is never sent on to another site. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta property="og:site_name" content="Still Afloat Cruising">
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Luckiest+Guy&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/group-page.css?v=20261108a">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Mark 2026-11-03/08: the group's name sits ABOVE the picture, to the right of the Still Afloat logo -->
+  <div class="hdr">
+    <img class="logo" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+    <div class="gp-lockup"><div class="plaque"><span id="gp-plaque">Crucero en grupo</span></div></div>
+  </div>
+
+  <div id="gp-state"></div>
+  <main id="gp-main" hidden>
+
+    <!-- The choice (Mark 2026-10-24, Road A and Road B): the cheer, one question, two EQUAL pills. "I've got this" is a plain link to their own
+         details page; "Walk me through it, Mark!" opens a drop-down under itself for the time, and a tap on a time is the whole request. -->
+    <section class="panel" id="interest">
+      <div id="gp-choice">
+        <div class="choice-head"><div class="tick">&#10003;</div><h2 id="gp-choice-h"></h2></div>
+        <p id="gp-choice-lead"></p>
+        <a class="btn" id="gp-finish" href="#"></a>
+        <button type="button" class="btn" id="gp-talk"></button>
+        <div class="dd" id="gp-dd" hidden>
+          <p id="gp-dd-q"></p>
+          <div class="opts" id="gp-whens">
+            <button type="button" class="opt" id="gp-when-morning" data-when="morning"></button>
+            <button type="button" class="opt" id="gp-when-afternoon" data-when="afternoon"></button>
+            <button type="button" class="opt" id="gp-when-evening" data-when="evening"></button>
+            <button type="button" class="opt" id="gp-when-anytime" data-when="anytime"></button>
+          </div>
+          <p class="dd-line" id="gp-dd-line" hidden></p>
+        </div>
+        <p class="small center" id="gp-choice-foot" style="margin-top:14px"></p>
+        <div class="msg" id="gp-choice-msg" role="status"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="foot">
+    <img class="sa" src="/assets/images/still_afloat_logo.png" alt="Still Afloat">
+    <p>Still Afloat LLC dba Still Afloat Cruising · mark@stillafloatcruising.com</p>
+    <div class="cs-row"><img class="cs" src="/assets/images/cornerstone-white.png" alt=""></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var ES = document.documentElement.lang === 'es';
+  var PHONE = '919-346-6127';
+  var T = ES ? {
+    title:'Ya está en la lista', loading:'Un momento…', gone:'Esta página no está disponible. Si recibió el enlace de su grupo, escriba a mark@stillafloatcruising.com.',
+    choice_h:'Usted tocó, nosotros aplaudimos… ¡YA ESTÁ EN LA LISTA, {first}!', choice_lead:'Ahora, ¿cómo le gusta planear un crucero?',
+    finish:'¡Yo me encargo… déjeme llenarlo!', talk:'¡Guíeme paso a paso, Mark!',
+    choice_foot:'De cualquier manera: nada que pagar ni firmar esta noche… y una que otra risa en el camino.',
+    dd_q:'¿Cuándo es buen momento para llamarle?',
+    when_morning:'Por la mañana', when_afternoon:'Por la tarde', when_evening:'Por la noche', when_anytime:'Cuando sea… me adapto',
+    lead_morning:'Por la mañana, entonces…', lead_afternoon:'Por la tarde, entonces…', lead_evening:'Por la noche, entonces…', lead_anytime:'Cuando le quede bien…',
+    rings:'Mark le llama desde el', rings_end:'. Esté pendiente de su correo: los detalles van en camino, con una jugada inteligente de crucerista para hacer mientras espera.',
+    err_call:'No se pudo enviar. Llame o escriba a Mark al {phone}.'
+  } : {
+    title:"You're on the list", loading:'One moment…', gone:'This page is not available. If your group sent you the link, email mark@stillafloatcruising.com.',
+    choice_h:"You tapped, we cheered… YOU'RE ON THE LIST, {first}!", choice_lead:'Now, how do you like to plan a cruise?',
+    finish:"I've got this… let me fill it in!", talk:'Walk me through it, Mark!',
+    choice_foot:'Either way: nothing to pay or sign tonight… and a laugh or two along the way.',
+    dd_q:"When's a good time to catch you?",
+    when_morning:'Mornings', when_afternoon:'Afternoons', when_evening:'Evenings', when_anytime:"Whenever… I'm easy",
+    lead_morning:'Mornings it is…', lead_afternoon:'Afternoons it is…', lead_evening:'Evenings it is…', lead_anytime:'Whenever works…',
+    rings:'Mark rings you from', rings_end:'. Watch your inbox: the details are on their way, with one smart-cruiser move to do while you wait.',
+    err_call:'That did not go through. Call or text Mark at {phone}.'
+  };
+  var DETAILS = ES ? '/es/details.html' : '/details.html';
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ var d=document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function fill(tpl, v){ return tpl.replace(/\{(\w+)\}/g, function(_, k){ return v[k] == null ? '' : v[k]; }); }
+
+  var qs = new URLSearchParams(location.search);
+  var token = (qs.get('t') || '').trim();
+  var state = $('gp-state');
+  state.textContent = T.loading;
+  if(!/^[A-Za-z0-9_-]{43}$/.test(token)){ state.textContent = T.gone; return; }
+
+  var callPhone = PHONE, talkDone = false;
+  $('gp-choice-lead').textContent = T.choice_lead;
+  $('gp-finish').textContent = T.finish;
+  $('gp-talk').textContent = T.talk;
+  $('gp-dd-q').textContent = T.dd_q;
+  ['morning','afternoon','evening','anytime'].forEach(function(k){ $('gp-when-' + k).textContent = T['when_' + k]; });
+  $('gp-choice-foot').textContent = T.choice_foot;
+
+  fetch('/api/group-details/' + token)
+    .then(function(r){ if(!r.ok) throw new Error('gone'); return r.json(); })
+    .then(render)
+    .catch(function(){ state.textContent = T.gone; });
+
+  // Mark 2026-10-24 (Road A v5): the question and the pills stay, the chosen time is lit, and the one line sits under them
+  function lit(when){
+    ['morning','afternoon','evening','anytime'].forEach(function(k){ var b = $('gp-when-' + k); b.className = 'opt' + (k === when ? ' on' : ''); b.setAttribute('aria-pressed', k === when ? 'true' : 'false'); });
+    var line = $('gp-dd-line');
+    line.innerHTML = esc(T['lead_' + when]) + ' ' + esc(T.rings) + ' <b>' + esc(callPhone) + '</b>' + esc(T.rings_end);
+    line.hidden = false;
+    $('gp-dd').hidden = false;
+    $('gp-finish').className = 'btn dim';
+  }
+
+  function render(d){
+    // Road B already taken: their names are in (or the quote step is open): the details page knows where they are
+    if(d.choice === 'finish' || d.holdRequestedAt || d.quoteRequestedAt){ location.href = DETAILS + '?t=' + token; return; }
+    var label = (typeof d.label === 'string' && d.label.trim()) || $('gp-plaque').textContent;
+    $('gp-plaque').textContent = label;
+    document.title = T.title + ' · ' + label + ' | Still Afloat Cruising';
+    var first = (typeof d.firstName === 'string' && d.firstName.trim()) || '';
+    $('gp-choice-h').textContent = fill(T.choice_h, { first: first.split(' ')[0].toLocaleUpperCase(ES ? 'es' : 'en') });
+    if(typeof d.businessPhone === 'string' && d.businessPhone.trim()) callPhone = d.businessPhone.trim();
+    $('gp-finish').href = DETAILS + '?t=' + token; $('gp-finish').className = 'btn'; $('gp-talk').className = 'btn';   // two EQUAL pills
+    // Road A already taken: the time they picked stays lit, with the one line, the next time they open the link
+    if(d.choice === 'call'){ talkDone = true; lit(['morning','afternoon','evening','anytime'].indexOf(d.callWhen) >= 0 ? d.callWhen : 'anytime'); }
+    state.hidden = true; $('gp-main').hidden = false;
+  }
+
+  $('gp-talk').addEventListener('click', function(){
+    if(talkDone) return;
+    var open = $('gp-dd').hidden;                      // a second tap closes the drop-down again
+    $('gp-dd').hidden = !open;
+    $('gp-finish').className = open ? 'btn dim' : 'btn';
+    $('gp-choice-msg').textContent = '';
+  });
+  function pickWhen(when){
+    if(talkDone) return;
+    var note = $('gp-choice-msg');
+    note.className = 'msg'; note.textContent = '';
+    fetch('/api/group-details/' + token + '/choice', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ choice: 'call', when: when, lang: ES ? 'es' : 'en', website: '' }) })
+      .then(function(r){ return r.ok; }, function(){ return false; })
+      .then(function(ok){
+        if(!ok){ note.className = 'msg err'; note.textContent = fill(T.err_call, { phone: callPhone }); return; }
+        talkDone = true;
+        lit(when);
+      });
+  }
+  ['morning','afternoon','evening','anytime'].forEach(function(k){ $('gp-when-' + k).addEventListener('click', function(){ pickWhen(k); }); });
+})();
+</script>
+</body>
+</html>

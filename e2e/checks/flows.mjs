@@ -1196,7 +1196,7 @@ export default [
       L.check(/var ES = document\.documentElement\.lang === 'es'/.test(es) && /'\?lang=' \+ \(ES \? 'es' : 'en'\)/.test(es), "the Spanish group page does not ask for the Spanish copy (lang=es)");
       L.check(/if\(!\/(\^[^/]+\$)\/\.test\(code\)\)/.exec(es)?.[1] === rule, "the Spanish group page accepts different share codes than the English one");
       // The order of the page and what it will and will not say (Mark 2026-10-24, design v3: the pitch first, the ask last), read from both served pages: the header
-      // (logo and language link only), the hosts' welcome, the plan, your cabin, the dates, getting there, THEN the ask panel with the one Save my spot! form, the footer;
+      // (logo, the group's name, language link), the hosts' welcome, the plan, your cabin, the dates, getting there, THEN the ask panel with the one Save my spot! form, the footer;
       // the poster's headline, payoff and pitch are not on it, and neither are the ship's rating, the advisor, the site menu or a second call to action.
       const ORDER = ['class="hdr"', 'id="sec-welcome"', 'id="sec-itin"', 'id="sec-cabin"', 'id="sec-dates"', 'id="sec-travel"', 'id="interest"', 'id="gp-form"', 'class="foot"'];
       for (const [name, h, sheet] of [["English", page, pageCss], ["Spanish", es, esCss]]) {
@@ -1207,7 +1207,11 @@ export default [
         L.check(!/id="sec-rating"|Conga|data-t="about"|data-t="bio"/.test(h), `the ${name} group page has the ship rating or the advisor bio back (Mark 2026-10-23: neither is on the invitation page)`);
         L.check(!/navbar-container|components\/navbar\.js/.test(h), `the ${name} group page has the site menu back (Mark 2026-10-23: the header is the logo and the language link only)`);
         L.check((h.match(/id="gp-submit"/g) || []).length === 1, `the ${name} group page does not have exactly one Save my spot! button`);
-        L.check(/id="gp-finish"/.test(h) && /id="gp-talk"/.test(h) && /id="gp-dd"/.test(h) && /data-when="morning"/.test(h) && /data-when="anytime"/.test(h), `the ${name} group page has lost the choice after Save my spot! (the two pills and the drop-down for the time)`);
+        // Mark 2026-11-08: after Save my spot! the guest goes to the choice on its OWN page (/choice.html?t=), never a card at the bottom of this page
+        L.check(!/id="gp-choice"|id="gp-finish"|id="gp-talk"|id="gp-dd"|data-when="/.test(h), `the ${name} group page has the choice card back at its bottom (Mark 2026-11-08: the choice is its own page)`);
+        L.check(/var CHOICE = ES \? '\/es\/choice\.html' : '\/choice\.html';/.test(h) && /location\.href = CHOICE \+ '\?t=' \+ tok;/.test(h), `the ${name} group page no longer sends the guest to the choice page after Save my spot!`);
+        // Mark 2026-11-03/08: the group's name sits in the header, ABOVE the picture, right of the logo
+        L.check(h.indexOf('class="logo"') < h.indexOf('id="gp-plaque"') && h.indexOf('id="gp-plaque"') < h.indexOf('id="gp-lang"') && h.indexOf('id="gp-plaque"') < h.indexOf('class="gp-banner"'), `the ${name} group page's name is not in the header between the logo and the language link, above the picture`);
         L.check(!/count me in|cuenten conmigo/i.test(h) && !/count me in|cuenten conmigo/i.test(sheet), `the ${name} group page still says "Count me in" (Mark 2026-10-24)`);
         L.check(H.images(h).includes("/assets/images/still_afloat_logo.png") && H.images(h).includes("/assets/images/cornerstone-white.png"), `the ${name} group page has lost the Still Afloat logo or the Cornerstone logo in its footer`);
         for (const word of ["headline", "subhead", "intro", "why_ship", "who_for"]) L.check(!new RegExp(`\\bc\\.${word}\\b`).test(h), `the ${name} group page's script still reads copy.${word}, the poster's words`);

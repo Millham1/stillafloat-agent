@@ -5,10 +5,10 @@
 // (airline, hotel, transfer company); and a hotel is priced per room.
 // Mark 2026-10-23 (design v2): the header is the logo and the language link only; the welcome is "Welcome!" and a paragraph per line; then the plan day by
 // day (a sentence a day), the cabin prices, the dates, getting there; no ship rating, no advisor bio; a navy footer with the logo, the legal line, the photo
-// credits and the Cornerstone logo.
+// credits and the Cornerstone logo. Mark 2026-11-03/08: the group's name sits in the header, ABOVE the picture, to the right of the logo.
 // Mark 2026-10-24 (design v3, "pitch first, ask last"): the ONE form (name, email or phone, how many) is the LAST panel, "Save my spot!"; the fields check
-// themselves; after it the panel is the choice between two equal pills, "I've got this… let me fill it in!" (a link to the guest's details page) and "Talk me
-// into it, Mark!" (a drop-down for the time, then one line). "Count me in" is not on the page.
+// themselves. Mark 2026-11-08: after "Save my spot!" the guest goes to the choice on its OWN page (/choice.html?t=, choice-page.test.ts), never a card at the
+// bottom of this page. "Count me in" is not on the page.
 //
 // The page script is executed here against a minimal stand-in for the browser (just enough DOM for what the script touches) and fed the answer
 // the server really builds (publicFacts + pageLook + publicCopy over a real group file), so a field the page reads and the server stopped
@@ -133,8 +133,9 @@ function visit(lang: Lang, answer: unknown, search = "?g=abcdefghjk", postReply?
   for (const m of html(lang).matchAll(/<[a-z0-9]+\s[^>]*?\bid="([^"]+)"[^>]*>/g)) if (/\shidden(?=[\s>=])/.test(m[0])) el(m[1]!).hidden = true;
   const requested: string[] = [];
   const sent: Sent[] = [];
+  const loc: { search: string; hash: string; href?: string } = { search, hash: "" };
   const sandbox = {
-    document: doc, window: {}, location: { search, hash: "" }, URLSearchParams, decodeURIComponent, encodeURIComponent, setTimeout, console,
+    document: doc, window: {}, location: loc, URLSearchParams, decodeURIComponent, encodeURIComponent, setTimeout, console,
     fetch: (url: string, init?: { method?: string; body?: string }) => {
       if (init?.method === "POST") {
         const body = JSON.parse(init.body ?? "{}") as Record<string, unknown>;
@@ -148,7 +149,7 @@ function visit(lang: Lang, answer: unknown, search = "?g=abcdefghjk", postReply?
   runInNewContext(script(lang), sandbox);
   const flush = async () => { for (let i = 0; i < 6; i++) await new Promise((r) => setImmediate(r)); };
   return {
-    els, el, doc, requested, sent, ready: flush,
+    els, el, doc, requested, sent, loc, ready: flush,
     /** Type into the two boxes the way a visitor would (the page hears every key), without leaving them. */
     type(v: { name?: string; contact?: string }) {
       if (v.name !== undefined) { el("f-name").value = v.name; el("f-name").handlers["input"]?.({ preventDefault() { /* */ } }); }
@@ -206,6 +207,11 @@ test("the header is the logo and the language link only: no site menu, and nothi
     const header = h.slice(h.indexOf('<div class="hdr">'), h.indexOf('<div id="gp-preview"'));
     assert.deepEqual([...header.matchAll(/<img\b[^>]*src="([^"]+)"/g)].map((m) => m[1]), ["/assets/images/still_afloat_logo.png"], `${lang}: the header holds more than the logo`);
     assert.ok(header.includes('id="gp-lang"'), `${lang}: the language link is gone`);
+    // Mark 2026-11-03/08: the group's name is in the header, between the logo and the language link, ABOVE the picture
+    assert.ok(header.indexOf('class="logo"') < header.indexOf('id="gp-plaque"') && header.indexOf('id="gp-plaque"') < header.indexOf('id="gp-lang"'), `${lang}: the group's name is not between the logo and the language link`);
+    assert.ok(h.indexOf('id="gp-plaque"') < h.indexOf('class="gp-banner"'), `${lang}: the group's name is not above the picture`);
+    assert.equal((h.match(/id="gp-plaque"/g) ?? []).length, 1, `${lang}: the name is written more than once`);
+    assert.match(css(lang), /\.gp-lockup\{flex:1;/, `${lang}: the name's box does not take the room between the logo and the link`);
     assert.ok(!/<a\b|<nav\b/.test(header), `${lang}: a link or menu is in the header`);
     // the site menu is removed from these two pages only
     assert.ok(!h.includes("navbar-container") && !h.includes("navbar.js"), `${lang}: the site menu is back`);
@@ -734,185 +740,59 @@ test("sending the form: the name splits on its LAST space, an '@' makes the cont
   assert.equal(bot.sent[0]!.body["website"], "http://spam.example");
 });
 
-// ── The choice (Road A and Road B) ────────────────────────────────────────────────────────────────────────────
+// ── After "Save my spot!": the choice on its own page ───────────────────────────────────────────────────────────
 
 const LINK = "L".repeat(43);
 const LINKS = { success: true, first: "Mark", detailsUrl: `https://stillafloatcruising.com/details.html?t=${LINK}`, callUrl: `https://stillafloatcruising.com/details.html?t=${LINK}&choice=call` };
 const WITH_LINKS: PostReply = (url) => (url.endsWith("/interest") ? { ok: true, json: LINKS } : { ok: true, json: { success: true } });
-const saved = async (lang: Lang = "en", over: Parameters<typeof answerFor>[1] = {}, reply: PostReply = WITH_LINKS, who = { name: "Mark Millham", contact: "mark@example.com" }) => {
-  const p = visit(lang, answerFor(lang, over), "?g=abcdefghjk", reply);
+const saved = async (lang: Lang = "en", reply: PostReply = WITH_LINKS, who = { name: "Mark Millham", contact: "mark@example.com" }) => {
+  const p = visit(lang, answerFor(lang), "?g=abcdefghjk", reply);
   await p.ready();
   await p.submit(who);
   return p;
 };
 
-test("after 'Save my spot!' the form is replaced by the choice: the cheer with the FIRST WORD of the name in capitals, one question, two equal yellow pills, one line (English and Spanish)", async () => {
-  const p = visit("en", answerFor("en"), "?g=abcdefghjk", WITH_LINKS);
-  await p.ready();
-  assert.equal(p.el("gp-choice").hidden, true, "the choice is not there before they save their spot");
-  await p.submit({ name: "Mark Millham", contact: "mark@example.com" });
-  assert.equal(p.el("gp-ask").hidden, true, "the form is gone");
-  assert.equal(p.el("gp-choice").hidden, false);
-  assert.equal(p.el("gp-choice-h").textContent, "You tapped, we cheered… YOU'RE ON THE LIST, MARK!");
-  assert.equal(p.el("gp-choice-lead").textContent, "Now, how do you like to plan a cruise?");
-  assert.equal(p.el("gp-finish").textContent, "I've got this… let me fill it in!");
-  assert.equal(p.el("gp-finish").href, LINKS.detailsUrl, "a plain link to their own details page");
-  assert.equal(p.el("gp-talk").textContent, "Walk me through it, Mark!");
-  assert.equal(p.el("gp-choice-foot").textContent, "Either way: nothing to pay or sign tonight… and a laugh or two along the way.");
-  assert.equal(p.el("gp-dd").hidden, true, "the drop-down is closed until they tap Walk me through it");
-  assert.equal(p.el("gp-msg").textContent, "", "the plain thank-you is not shown beside it");
-  assert.equal(p.el("gp-finish").className, "btn"); assert.equal(p.el("gp-talk").className, "btn", "two equal pills");
-
-  const es = await saved("es", {}, (url) => (url.endsWith("/interest") ? { ok: true, json: { ...LINKS, first: "Ana" } } : { ok: true, json: { success: true } }), { name: "Ana María Pérez", contact: "ana@example.com" });
-  assert.equal(es.el("gp-choice-h").textContent, "Usted tocó, nosotros aplaudimos… ¡YA ESTÁ EN LA LISTA, ANA!");
-  assert.equal(es.el("gp-choice-lead").textContent, "Ahora, ¿cómo le gusta planear un crucero?");
-  assert.equal(es.el("gp-finish").textContent, "¡Yo me encargo… déjeme llenarlo!");
-  assert.equal(es.el("gp-talk").textContent, "¡Guíeme paso a paso, Mark!");
-  assert.equal(es.el("gp-choice-foot").textContent, "De cualquier manera: nada que pagar ni firmar esta noche… y una que otra risa en el camino.");
-});
-
-test("the greeting is the first word of the name typed, in capitals; the server's own 'first' is used when it sends one, the typed name when it does not", async () => {
-  const typed = await saved("en", {}, (url) => (url.endsWith("/interest") ? { ok: true, json: { ...LINKS, first: undefined } } : { ok: true, json: { success: true } }), { name: "mary ann Smith", contact: "m@example.com" });
-  assert.match(typed.el("gp-choice-h").textContent, /YOU'RE ON THE LIST, MARY!$/);
-  const server = await saved("en", {}, (url) => (url.endsWith("/interest") ? { ok: true, json: { ...LINKS, first: "Pat" } } : { ok: true, json: { success: true } }), { name: "Patricia Lee", contact: "m@example.com" });
-  assert.match(server.el("gp-choice-h").textContent, /YOU'RE ON THE LIST, PAT!$/);
-});
-
-test("'Walk me through it, Mark!' opens a drop-down under the button ('When's a good time to catch you?' and four pills); the other pill dims; a second tap closes it", async () => {
+test("after 'Save my spot!' the guest goes to the choice on its OWN page, on their private link (Mark 2026-11-08): English to /choice.html, Spanish to /es/choice.html; nothing is shown at the bottom of this page", async () => {
   const p = await saved();
-  assert.equal(p.el("gp-dd-q").textContent, "When's a good time to catch you?");
-  assert.deepEqual(["morning", "afternoon", "evening", "anytime"].map((k) => p.el(`gp-when-${k}`).textContent), ["Mornings", "Afternoons", "Evenings", "Whenever… I'm easy"]);
-  p.el("gp-talk").handlers["click"]!({ preventDefault() { /* */ } });
-  assert.equal(p.el("gp-dd").hidden, false);
-  assert.equal(p.el("gp-finish").className, "btn dim", "the pill not chosen is dimmed (and is still a link)");
-  assert.equal(p.sent.filter((x) => x.url.includes("/api/group-details/")).length, 0, "opening the drop-down asks for nothing");
-  p.el("gp-talk").handlers["click"]!({ preventDefault() { /* */ } });
-  assert.equal(p.el("gp-dd").hidden, true); assert.equal(p.el("gp-finish").className, "btn");
-  const es = await saved("es");
-  assert.equal(es.el("gp-dd-q").textContent, "¿Cuándo es buen momento para llamarle?");
-  assert.deepEqual(["morning", "afternoon", "evening", "anytime"].map((k) => es.el(`gp-when-${k}`).textContent), ["Por la mañana", "Por la tarde", "Por la noche", "Cuando sea… me adapto"]);
-});
-
-test("picking a time is the whole request: it goes to the choice route of their own link, the chosen pill stays lit, and the one line sits under the pills", async () => {
-  const p = await saved();
-  p.el("gp-talk").handlers["click"]!({ preventDefault() { /* */ } });
-  p.el("gp-when-evening").handlers["click"]!({ preventDefault() { /* */ } });
-  await p.ready();
-  const call = p.sent.find((x) => x.url.includes("/api/group-details/"))!;
-  assert.equal(call.url, `/api/group-details/${LINK}/choice`);
-  assert.deepEqual(call.body, { choice: "call", when: "evening", lang: "en", website: "" });
-  assert.equal(p.el("gp-dd-line").hidden, false);
-  assert.equal(p.el("gp-dd-line").innerHTML, "Evenings it is… Mark rings you from <b>919-346-6127</b>. Watch your inbox: the details are on their way, with one smart-cruiser move to do while you wait.");
-  // Mark 2026-10-24 (Road A v5): the question and the pills stay, the chosen time is lit, and the one line sits under them
-  assert.equal(p.el("gp-dd-q").hidden, false); assert.equal(p.el("gp-whens").hidden, false, "the question and the pills stay");
-  assert.equal(p.el("gp-when-evening").className, "opt on"); assert.equal(p.el("gp-when-morning").className, "opt");
-  assert.equal(p.el("gp-choice-msg").textContent, "");
-  // a second tap on a pill (a double tap) asks for nothing more
-  const before = p.sent.length;
-  p.el("gp-when-morning").handlers["click"]!({ preventDefault() { /* */ } });
-  await p.ready();
-  assert.equal(p.sent.length, before);
-});
-
-test("the one line for each answer, in English and Spanish; the number is the one in the group's own line beside the button, else the business number", async () => {
-  const lead: Record<string, string> = { morning: "Mornings it is…", afternoon: "Afternoons it is…", evening: "Evenings it is…", anytime: "Whenever works…" };
-  const tail = (n: string) => ` Mark rings you from <b>${n}</b>. Watch your inbox: the details are on their way, with one smart-cruiser move to do while you wait.`;
-  for (const when of ["morning", "afternoon", "evening", "anytime"]) {
-    const p = await saved();
-    p.el(`gp-when-${when}`).handlers["click"]!({ preventDefault() { /* */ } });
-    await p.ready();
-    assert.equal(p.el("gp-dd-line").innerHTML, lead[when] + tail("919-346-6127"), when);
+  assert.equal(p.loc.href, `/choice.html?t=${LINK}`);
+  assert.equal(p.el("gp-msg").textContent, "", "no thank-you line is shown on the way out");
+  const es = await saved("es", undefined, { name: "Ana María Pérez", contact: "ana@example.com" });
+  assert.equal(es.loc.href, `/es/choice.html?t=${LINK}`);
+  for (const lang of ["en", "es"] as const) {
+    const h = html(lang);
+    for (const gone of ['id="gp-choice"', 'id="gp-finish"', 'id="gp-talk"', 'id="gp-dd"', 'data-when="morning"', "choice_h:", "dd_q:", "err_call:"]) assert.ok(!h.includes(gone), `${lang}: ${gone} is back on the group page`);
+    assert.match(script(lang), /var CHOICE = ES \? '\/es\/choice\.html' : '\/choice\.html';/);
   }
-  const own = await saved("en", { copy: { cta_blurb: "Questions? Call or text Mark at (704) 555-0100." } });
-  own.el("gp-when-anytime").handlers["click"]!({ preventDefault() { /* */ } });
-  await own.ready();
-  assert.equal(own.el("gp-dd-line").innerHTML, "Whenever works…" + tail("(704) 555-0100"));
-  const none = await saved("en", { copy: { cta_blurb: "" } });
-  none.el("gp-when-evening").handlers["click"]!({ preventDefault() { /* */ } });
-  await none.ready();
-  assert.equal(none.el("gp-dd-line").innerHTML, lead["evening"] + tail("919-346-6127"));
-  const es = await saved("es");
-  es.el("gp-when-morning").handlers["click"]!({ preventDefault() { /* */ } });
-  await es.ready();
-  assert.equal(es.el("gp-dd-line").innerHTML, "Por la mañana, entonces… Mark le llama desde el <b>919-346-6127</b>. Esté pendiente de su correo: los detalles van en camino, con una jugada inteligente de crucerista para hacer mientras espera.");
-  const esEve = await saved("es");
-  esEve.el("gp-when-evening").handlers["click"]!({ preventDefault() { /* */ } });
-  await esEve.ready();
-  assert.match(esEve.el("gp-dd-line").innerHTML, /^Por la noche, entonces… Mark le llama/);
-  // the line is markup only because of its own <b>: anything else in the number is text
-  const odd = await saved("en", { copy: { cta_blurb: "Call 919-346-6127 <img src=x>" } });
-  odd.el("gp-when-evening").handlers["click"]!({ preventDefault() { /* */ } });
-  await odd.ready();
-  assert.ok(!odd.el("gp-dd-line").innerHTML.includes("<img"));
 });
 
-test("if the request does not go through nothing is promised: the pills stay, the line is not shown, and the red note says to call or text Mark", async () => {
-  const p = await saved("en", {}, (url) => (url.endsWith("/interest") ? { ok: true, json: LINKS } : { ok: false, json: { success: false } }));
-  p.el("gp-talk").handlers["click"]!({ preventDefault() { /* */ } });
-  p.el("gp-when-evening").handlers["click"]!({ preventDefault() { /* */ } });
-  await p.ready();
-  assert.equal(p.el("gp-dd-line").hidden, true);
-  assert.equal(p.el("gp-whens").hidden, false); assert.equal(p.el("gp-dd-q").hidden, false);
-  assert.equal(p.el("gp-choice-msg").textContent, "That did not go through. Call or text Mark at 919-346-6127.");
-  assert.equal(p.el("gp-choice-msg").className, "msg err");
-  const es = await saved("es", {}, (url) => (url.endsWith("/interest") ? { ok: true, json: LINKS } : { ok: false, json: { success: false } }));
-  es.el("gp-when-evening").handlers["click"]!({ preventDefault() { /* */ } });
-  await es.ready();
-  assert.equal(es.el("gp-choice-msg").textContent, "No se pudo enviar. Llame o escriba a Mark al 919-346-6127.");
-  // and a retry works once the server is back
-  let up = false;
-  const r = await saved("en", {}, (url) => (url.endsWith("/interest") ? { ok: true, json: LINKS } : { ok: up, json: { success: up } }));
-  r.el("gp-when-evening").handlers["click"]!({ preventDefault() { /* */ } });
-  await r.ready();
-  up = true;
-  r.el("gp-when-morning").handlers["click"]!({ preventDefault() { /* */ } });
-  await r.ready();
-  assert.match(r.el("gp-dd-line").innerHTML, /^Mornings it is…/);
-});
-
-test("'I've got this' is a plain link to their details page and sends nothing by itself", async () => {
-  const p = await saved();
-  assert.equal(p.sent.filter((x) => x.url.includes("/api/group-details/")).length, 0);
-  assert.equal(p.el("gp-finish").href, LINKS.detailsUrl);
-  assert.equal(p.el("gp-finish").handlers["click"], undefined, "the page adds no click handler: the browser just follows the link");
-});
-
-test("a server that sends no links (or a link that is not http) gets the plain thank-you, and nothing is made of a hostile link", async () => {
+test("a server that sends no links (or a link that is not http, or a short token) gets the plain thank-you, the page stays, and nothing is made of a hostile link", async () => {
   for (const reply of [{ success: true }, { ...LINKS, detailsUrl: "javascript:alert(1)" }, { ...LINKS, detailsUrl: "https://stillafloatcruising.com/details.html?t=short" }]) {
     const p = visit("en", answerFor("en"), "?g=abcdefghjk", (url) => (url.endsWith("/interest") ? { ok: true, json: reply } : { ok: true, json: { success: true } }));
     await p.ready();
     await p.submit({ name: "Pat Lee", contact: "pat@example.com" });
     assert.equal(p.el("gp-msg").textContent, "Got it. We will be in touch soon.", JSON.stringify(reply));
-    assert.equal(p.el("gp-choice").hidden, true);
+    assert.equal(p.loc.href, undefined, "the page does not go anywhere");
     assert.equal(p.el("gp-ask").hidden, false);
   }
 });
 
-test("a refused reply keeps the form and shows the server's words where they always were; no choice appears", async () => {
+test("a refused reply keeps the form and shows the server's words where they always were; the page goes nowhere", async () => {
   const p = visit("en", answerFor("en"), "?g=abcdefghjk", () => ({ ok: false, json: { success: false, error: "Please check your email address or phone number." } }));
   await p.ready();
   await p.submit({ name: "Pat Lee", contact: "pat@example.com" });
   assert.equal(p.el("gp-msg").textContent, "Please check your email address or phone number.");
-  assert.equal(p.el("gp-choice").hidden, true);
+  assert.equal(p.loc.href, undefined);
   assert.equal(p.el("gp-ask").hidden, false);
   assert.equal(p.el("gp-submit").disabled, false);
 });
 
-test("the ask panel is the last panel before the footer, and the choice is inside the same panel after the form: a yellow link-pill, a yellow button, then the drop-down joined to it", () => {
+test("the ask panel is the last panel before the footer and holds the one form only", () => {
   for (const lang of ["en", "es"] as const) {
     const h = html(lang);
     const panel = h.slice(h.indexOf('<section class="panel" id="interest">'), h.indexOf("</section>", h.indexOf('id="interest"')));
-    assert.ok(panel.indexOf('id="gp-ask"') < panel.indexOf('id="gp-form"') && panel.indexOf('id="gp-form"') < panel.indexOf('id="gp-choice"'), `${lang}: order inside the panel`);
+    assert.ok(panel.indexOf('id="gp-ask"') < panel.indexOf('id="gp-form"'), `${lang}: order inside the panel`);
     assert.ok(h.indexOf('id="sec-travel"') < h.indexOf('id="interest"') && h.indexOf('id="interest"') < h.indexOf('class="foot"'), `${lang}: the ask is last`);
     assert.equal((h.match(/<section\b/g) ?? []).length - (h.slice(h.indexOf('id="interest"')).match(/<section\b/g) ?? []).length, h.slice(0, h.indexOf('id="interest"')).match(/<section\b/g)!.length, `${lang}: nothing but the ask follows it`);
-    const choice = panel.slice(panel.indexOf('id="gp-choice"'));
-    assert.match(choice, /<a class="btn" id="gp-finish" href="#"><\/a>/);
-    assert.match(choice, /<button type="button" class="btn" id="gp-talk"><\/button>/);
-    assert.ok(choice.indexOf('id="gp-finish"') < choice.indexOf('id="gp-talk"') && choice.indexOf('id="gp-talk"') < choice.indexOf('id="gp-dd"'), `${lang}: the drop-down sits under the Talk button`);
-    assert.deepEqual([...choice.matchAll(/data-when="(\w+)"/g)].map((m) => m[1]), ["morning", "afternoon", "evening", "anytime"]);
-    assert.ok(!/btn-out/.test(choice) && !/btn-out/.test(css(lang)), `${lang}: the outlined button is gone`);
-    // the drop-down is a white box with a yellow border, joined to the button (no top border)
-    assert.match(css(lang), /\.dd\{[^}]*border:2px solid var\(--yellow\);border-top:0;[^}]*background:#fff/);
-    assert.match(css(lang), /\.opt\.on\{background:var\(--yellow\)/);
+    assert.ok(!/btn-out/.test(panel) && !/btn-out/.test(css(lang)), `${lang}: the outlined button is gone`);
   }
 });
