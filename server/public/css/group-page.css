@@ -8,7 +8,7 @@ body{font-family:'Baloo 2',system-ui,sans-serif;font-size:20px;line-height:1.5;c
 h1,h2,h3{font-family:'Bree Serif',Georgia,serif;font-weight:400;margin:0}
 .wrap{max-width:640px;margin:0 auto}
 
-/* header: the logo and the language link, nothing else */
+/* header: the logo, the group's name to its right (Mark 2026-11-03/08: ABOVE the picture), and the language link */
 .hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px 10px}
 .hdr .logo{height:64px;width:auto;display:block}
 .langswitch a{color:var(--gold);font-size:18px;font-weight:600;text-decoration:none;border:1px solid rgba(255,202,79,.55);border-radius:999px;padding:5px 16px;white-space:nowrap}
@@ -31,9 +31,9 @@ html{overflow-x:clip}
   -webkit-mask-image:radial-gradient(ellipse 58% 58% at 50% 50%,#000 38%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(ellipse 58% 58% at 50% 50%,#000 38%,rgba(0,0,0,0) 100%)}
 .gp-side-1{top:16px}
 .gp-side-2{bottom:16px}
-.gp-lockup{display:flex;justify-content:center;padding:14px 12px 0}  /* Mark 2026-10-24: the group's label sits under the picture */
+.gp-lockup{flex:1;min-width:0;display:flex;justify-content:center;padding:0}  /* Mark 2026-11-03/08: the group's name sits in the header, right of the logo (under the picture 2026-10-24 to 11-08) */
 .plaque{background:none;border:0;border-radius:0;padding:2px 0 0;max-width:100%;text-align:center}  /* Mark 2026-10-24: no pill on the special pages */
-.plaque span{font-family:'Luckiest Guy','Baloo 2',sans-serif;font-weight:400;letter-spacing:.02em;text-transform:uppercase;font-size:clamp(22px,7vw,30px);line-height:1.2;color:#fff}  /* Mark 2026-10-25: row C of the font sheet, exactly as shown: Luckiest Guy (one weight, 400) at 30px, .02em; white, centred, the dashes, no pill, unchanged */
+.plaque span{font-family:'Luckiest Guy','Baloo 2',sans-serif;font-weight:400;letter-spacing:.02em;text-transform:uppercase;font-size:clamp(18px,4.6vw,30px);line-height:1.2;color:#fff}  /* Mark 2026-10-25: row C of the font sheet, exactly as shown: Luckiest Guy (one weight, 400) at 30px, .02em; white, centred, the dashes, no pill, unchanged */
 .plaque span::before,.plaque span::after{content:"";display:inline-block;width:22px;height:2px;background:var(--gold);vertical-align:middle;margin:0 10px}
 
 /* welcome: the hosts' note, one paragraph per line; an all-capitals line ending in "!" is the bold payoff; signed in the gold accent */
@@ -69,7 +69,7 @@ a.btn{text-decoration:none}
 .field input.bad,.field select.bad{border-color:#d12d2d;background:#fff5f5}
 /* The button sits dim until every field is good; a tap on it still goes to the first problem. */
 .btn[aria-disabled="true"]{opacity:.6}
-/* After "Save my spot!": the choice that replaces the form. Two EQUAL yellow pills (Mark 2026-10-24): "I've got this… let me fill it in!" and "Walk me through it, Mark!". */
+/* The choice, its OWN page /choice.html (Mark 2026-11-08; it replaced the form on this page 2026-10-24 to 11-08). Two EQUAL yellow pills (Mark 2026-10-24): "I've got this… let me fill it in!" and "Walk me through it, Mark!". */
 .choice-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
 .choice-head h2{margin:0;font-size:30px}
 .tick{flex:none;width:52px;height:52px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font:800 30px/1 'Baloo 2',sans-serif;color:var(--ink)}
