@@ -32,7 +32,7 @@ export interface CabinOption {
   taxes: number | null;
   taxesIncluded: boolean;
   available: number;
-  /** "Balcony Bella · $536.79 per person · taxes and port fees included" */
+  /** The pill the guest sees: the category's name alone ("Balcony Bella"); no fare (Mark 2026-11-09) */
   label: string;
 }
 export interface InsuranceOption { key: string; label: string; name: string | null; perPerson: number | null }
@@ -95,8 +95,8 @@ const W = {
   en: {
     perPerson: "per person", perRoom: "per room", taxesIn: "taxes and port fees included", plusTaxes: (t: string) => `plus ${t} taxes and port fees per person`,
     noPrice: "Mark quotes it", included: "included in the cruise price",
-    linePlan: (name: string, price: string) => `${name} · ${price} per person`,
-    allianz: (name: string, price: string) => `${name} (Allianz) · ${price} per person`,
+    linePlan: (name: string) => name,
+    allianz: (name: string) => `${name} (Allianz)`,
     insQuote: "Yes, quote me the cruise line's plan and Allianz", insOwn: "I have my own policy", insNone: "No insurance for us",
     cabinLine: (cat: string, n: number) => `${cat} · ${n === 1 ? "one traveler" : `${n} travelers`}`,
     each: "each", thirdFourth: "third or fourth guest fare", junior: "junior fare", child: "child fare", fareToQuote: "the fare for this cabin is not on the file yet",
@@ -111,8 +111,8 @@ const W = {
   es: {
     perPerson: "por persona", perRoom: "por habitación", taxesIn: "impuestos y tasas portuarias incluidos", plusTaxes: (t: string) => `más ${t} de impuestos y tasas portuarias por persona`,
     noPrice: "Mark lo cotiza", included: "incluido en el precio del crucero",
-    linePlan: (name: string, price: string) => `${name} · ${price} por persona`,
-    allianz: (name: string, price: string) => `${name} (Allianz) · ${price} por persona`,
+    linePlan: (name: string) => name,
+    allianz: (name: string) => `${name} (Allianz)`,
     insQuote: "Sí, cotíceme el plan de la naviera y Allianz", insOwn: "Tengo mi propia póliza", insNone: "Sin seguro para nosotros",
     cabinLine: (cat: string, n: number) => `${cat} · ${n === 1 ? "un viajero" : `${n} viajeros`}`,
     each: "cada uno", thirdFourth: "tarifa de tercer o cuarto pasajero", junior: "tarifa junior", child: "tarifa de niño", fareToQuote: "la tarifa de esta cabina aún no está en el expediente",
@@ -169,20 +169,20 @@ export function quoteOptions(file: QuoteFile, lang: Lang): QuoteOptions {
     const perPerson = num(t?.["price_per_person"]) ?? (total !== null && total > 0 ? round2(total / 2) : null);
     const taxes = num(t?.["taxes"]);
     const perPersonText = formatMoney(perPerson);
-    const taxNote = taxesIncluded ? T.taxesIn : taxes !== null ? T.plusTaxes(formatMoney(taxes)!) : null;
     byKey.set(key, {
       key, category, code, perPerson, perPersonText,
       thirdFourthAdult: num(t?.["price_third_fourth_adult"]), juniorChild: num(t?.["price_junior_child"]), child: num(t?.["price_child"]),
       taxes, taxesIncluded, available: 1,
-      label: [category, perPersonText ? `${perPersonText} ${T.perPerson}` : T.noPrice, taxNote].filter(Boolean).join(" · "),
+      // Mark 2026-11-09: the pill is the category's name alone; no fare, no tax note (the booking confirmation carries every figure)
+      label: category,
     });
   }
   const cabins = [...byKey.values()].sort((a, b) => (a.perPerson ?? Infinity) - (b.perPerson ?? Infinity));
 
   const insurance: InsuranceOption[] = [];
   const line = plansFromText(g.line_protection)[0];
-  if (line) insurance.push({ key: "line", label: T.linePlan(line.name, formatMoney(line.price_per_person)!), name: line.name, perPerson: line.price_per_person });
-  plansFromText(g.insurance_plans).forEach((p, i) => insurance.push({ key: `allianz-${i}`, label: T.allianz(p.name, formatMoney(p.price_per_person)!), name: p.name, perPerson: p.price_per_person }));
+  if (line) insurance.push({ key: "line", label: T.linePlan(line.name), name: line.name, perPerson: line.price_per_person });
+  plansFromText(g.insurance_plans).forEach((p, i) => insurance.push({ key: `allianz-${i}`, label: T.allianz(p.name), name: p.name, perPerson: p.price_per_person }));
   if (!insurance.length) insurance.push({ key: "quote", label: T.insQuote, name: null, perPerson: null });
   insurance.push({ key: "own", label: T.insOwn, name: null, perPerson: null }, { key: "decline", label: T.insNone, name: null, perPerson: null });
 
@@ -205,6 +205,25 @@ export function quoteOptions(file: QuoteFile, lang: Lang): QuoteOptions {
     cabins, drinks: drinksIncluded(g) ? "included" : "ask", insurance, travel, needs,
     depositPerPerson: dep !== null && dep > 0 ? dep : null, depositPerPersonText: dep !== null && dep > 0 ? formatMoney(dep) : null,
     finalPaymentText: formatDate(g.final_payment_due, lang),
+  };
+}
+
+/** What the quote page is sent: the options with their names and keys only. No fare, tax, deposit or plan price reaches the page
+ *  (Mark 2026-11-09: the booking confirmation carries all the pricing). The server keeps the full options for checking and pricing the answers. */
+export interface GuestQuoteOptions {
+  cabins: { key: string; category: string; code: string | null; available: number; label: string }[];
+  drinks: QuoteOptions["drinks"];
+  insurance: { key: string; label: string }[];
+  travel: { key: string; kind: TravelKind; label: string; text: string; included: boolean }[];
+  needs: QuoteOptions["needs"];
+}
+export function guestQuoteOptions(o: QuoteOptions): GuestQuoteOptions {
+  return {
+    cabins: o.cabins.map((c) => ({ key: c.key, category: c.category, code: c.code, available: c.available, label: c.label })),
+    drinks: o.drinks,
+    insurance: o.insurance.map((i) => ({ key: i.key, label: i.label })),
+    travel: o.travel.map((t) => ({ key: t.key, kind: t.kind, label: t.label, text: t.text, included: t.included })),
+    needs: o.needs,
   };
 }
 

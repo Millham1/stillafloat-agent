@@ -16,7 +16,7 @@ import {
 } from "../lib/group-details";
 import { CALL, callWhenText, freeSlots, isRuleSlot, ruleWindow } from "../lib/flexpay-call";
 import { opsBook, opsBusy } from "../lib/ops-schedule";
-import { buildQuote, freeCabinFor, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
+import { buildQuote, freeCabinFor, guestQuoteOptions, insuranceSeedOf, tripOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers, type Quote } from "../lib/group-quote";
 
 // The guest's two roads after "Save my spot!" on a group page (migrations 0056 and 0057; Mark 2026-10-23, reshaped 2026-10-24: "the client should not get 2").
 // Public, and the guest's private link is the only credential, exactly like the paperwork link: a random 43-character token whose sha256 alone is stored
@@ -173,7 +173,7 @@ router.get("/group-details/:token", async (req: Request, res: Response) => {
       firstName: reply.first_name ?? "", lastName: reply.last_name ?? "", email: reply.email ?? null, phone: reply.phone ?? null, guests: reply.guests ?? null,
       travelers: storedTravelers(reply.travelers) ?? [], address: storedAddress(reply.address), concierge: storedConcierge(reply.concierge), pick: storedPick(reply.pick),
       choice: reply.choice ?? null, callWhen: reply.call_when ?? null, holdRequestedAt: reply.hold_requested_at ?? null,
-      quoteOptions: reply.hold_requested_at ? quoteOptions({ group, cabins, travel }, lang) : null, quote, quoteRequestedAt: reply.quote_requested_at ?? null,
+      quoteOptions: reply.hold_requested_at ? guestQuoteOptions(quoteOptions({ group, cabins, travel }, lang)) : null, quote, quoteRequestedAt: reply.quote_requested_at ?? null,
       paperwork: reply.quote_requested_at ? (stored?.paperwork ?? null) : null,
       depositPerPersonText: f.depositPerPersonText,
       phoneLine: typeof blurb === "string" && blurb.trim() ? blurb.trim() : null, businessPhone: callerPhone(blurb), lang,
@@ -330,7 +330,7 @@ router.post("/group-details/:token/hold", async (req: Request, res: Response) =>
       .eq("id", reply.id).is("hold_requested_at", null).select("id");
     if (error) throw new Error(error.message);
     // The answer carries what Part 4 offers, so the page opens the quote step at once (a second press gets the same answer and changes nothing).
-    const opened = { success: true, quoteOptions: quoteOptions({ group, cabins, travel }, lang) };
+    const opened = { success: true, quoteOptions: guestQuoteOptions(quoteOptions({ group, cabins, travel }, lang)) };
     if (!((won ?? []) as unknown[]).length) return res.json(opened);
 
     const f = detailsFacts({ group, cabins }, "en");

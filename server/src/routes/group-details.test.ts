@@ -840,16 +840,17 @@ test("the quote step opens only once the names are in: GET offers the file's cho
   namesIn();
   r = await call("GET", `/group-details/${LINK}`);
   const o = r.json["quoteOptions"];
-  assert.deepEqual(o.cabins.map((c: Row) => [c.key, c.category, c.perPersonText, c.available, c.label]), [
-    ["BEL", "Balcony Bella", "$536.79", 1, "Balcony Bella · $536.79 per person · taxes and port fees included"],
-    ["AUR", "Balcony Aurea", "$686.79", 1, "Balcony Aurea · $686.79 per person · taxes and port fees included"],
-  ], "the categories the group holds, cheapest first, each with its fare from the file (no fare is made up)");
+  assert.deepEqual(o.cabins, [
+    { key: "BEL", category: "Balcony Bella", code: "BEL", available: 1, label: "Balcony Bella" },
+    { key: "AUR", category: "Balcony Aurea", code: "AUR", available: 1, label: "Balcony Aurea" },
+  ], "the categories the group holds, cheapest first, by name alone: no fare reaches the page (Mark 2026-11-09)");
+  assert.ok(!/\$|536|686|perPerson|taxes|deposit/i.test(JSON.stringify(o)), "nothing priced in what the page is sent");
   assert.equal(o.drinks, "ask", "no drink package in the group's inclusions: the question is asked");
   assert.deepEqual(o.insurance.map((i: Row) => [i.key, i.label]), [
     ["quote", "Yes, quote me the cruise line's plan and Allianz"], ["own", "I have my own policy"], ["decline", "No insurance for us"],
   ], "no plan with a price on the file: the guest can only ask for the quote");
   assert.deepEqual([o.travel, o.needs], [[], ["flight", "hotel", "transfer"]], "no offer on the file: each kind is a yes/no for Mark to quote");
-  assert.deepEqual([o.depositPerPersonText, o.finalPaymentText], ["$50", "January 15, 2027"]);
+  assert.deepEqual([o.depositPerPersonText, o.finalPaymentText], [undefined, undefined], "Mark 2026-11-09: the deposit and the due date reach the guest in the booking confirmation, not on the quote page");
   assert.deepEqual([r.json["quote"], r.json["quoteRequestedAt"], r.json["paperwork"]], [null, null, null]);
 });
 

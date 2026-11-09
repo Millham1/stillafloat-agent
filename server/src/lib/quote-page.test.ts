@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { BUSINESS } from "./group-secure";
 import { pickCabin } from "./group-details";
-import { buildQuote, quoteOptions } from "./group-quote";
+import { buildQuote, guestQuoteOptions, quoteOptions } from "./group-quote";
 
 const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), "../../public");
 type Lang = "en" | "es";
@@ -34,7 +34,7 @@ const FILE = {
   cabins: [{ id: "c1", status: "held", category: "Balcony Bella", category_code: "BEL", price_total: "1073.58" }, { id: "c2", status: "held", category: "Balcony Aurea", category_code: "AUR", price_total: "1373.58" }],
   travel: [{ id: "f1", kind: "flight", direction: "pre", from_place: "Raleigh (RDU)", price_per_person: "136", price_unit: "person", included: false }],
 };
-const OPTIONS = (lang: Lang) => quoteOptions(FILE, lang);
+const OPTIONS = (lang: Lang) => guestQuoteOptions(quoteOptions(FILE, lang));   // what the route sends the page: names and keys, no figure (Mark 2026-11-09)
 const TWO = [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }];
 /** What the guest taps: our pick's cabin stays, FlexPay no, drinks no, no insurance, no flight, no hotel, no transfers. */
 const QA = { cabin: "BEL", flexpay: false, drinks: false, insurance: "decline", travel: [], needs: { hotel: false, transfer: false } };
@@ -199,13 +199,14 @@ test("the page opens on the choices once the names are in: the heading, the lock
   assert.equal(p.el("d-msg").textContent, "");
   const pills = p.qpills();
   assert.deepEqual(pills.filter((x) => x.g === "cabin").map((x) => [x.v, x.label, x.on]), [
-    ["BEL", "Balcony Bella · $536.79 per person · taxes and port fees included", true],
-    ["AUR", "Balcony Aurea · $686.79 per person · taxes and port fees included", false],
-  ], "the file's categories with their fares, our pick already chosen");
+    ["BEL", "Balcony Bella", true],
+    ["AUR", "Balcony Aurea", false],
+  ], "the file's categories by name alone (Mark 2026-11-09: no fare on the pill), our pick already chosen");
+  assert.ok(!/\$\s?\d/.test(p.el("d-qq").textContent ?? ""), "no dollar figure anywhere in the questions");
   assert.deepEqual(pills.filter((x) => x.g === "flexpay").map((x) => [x.v, x.label, x.on]), [["yes", "Let's schedule a brief appointment with Mark to apply.", false], ["no", "No thanks", false]], "Mark 2026-11-07: the FlexPay yes is the appointment");
   assert.ok(p.el("d-qq").innerHTML.includes("FlexPay is an installment plan Mark offers separately from the cruise line."), "FlexPay is Mark's, apart from the cruise line, and promises no terms");
   assert.deepEqual(pills.filter((x) => x.g === "drinks").map((x) => x.label), ["Yes, price one for us", "No thanks"]);
-  assert.deepEqual(pills.filter((x) => x.g === "insurance").map((x) => [x.v, x.label]), [["line", "MSC Cruise Protection · $99 per person"], ["own", "I have my own policy"], ["decline", "No insurance for us"]]);
+  assert.deepEqual(pills.filter((x) => x.g === "insurance").map((x) => [x.v, x.label]), [["line", "MSC Cruise Protection"], ["own", "I have my own policy"], ["decline", "No insurance for us"]]);
   assert.deepEqual(p.qticks(), [{ v: "f1", on: false, label: "Flight from Raleigh (RDU)" }], "Mark 2026-11-07: no flight, hotel or transfer price before he finalizes the quote");
   assert.ok(p.el("d-qq").innerHTML.includes("Tick what you want added. Mark prices flights, hotel and transfers with your final quote."), "the travel note says why there is no price");
   assert.deepEqual(pills.filter((x) => x.g.startsWith("need-")).map((x) => x.g + ":" + x.v), ["need-hotel:yes", "need-hotel:no", "need-transfer:yes", "need-transfer:no"], "no hotel or transfer on offer: a yes/no each; the flight has its offer");
@@ -399,9 +400,9 @@ test("the Spanish page says everything in Spanish, in usted, through the same st
   assert.equal(p.el("d-lede").textContent, "Cinco decisiones rápidas. Mark las cotiza con la naviera y confirma cada cifra con usted en su confirmación de reserva antes de cobrar nada.");
   assert.equal(p.el("d-p4").textContent, "Sus decisiones");
   assert.equal(p.el("d-locked").textContent, "Nombres registrados: Ana y Luis · grupo de dos. Nuestra sugerencia: Balcony Bella. Para cambiar un nombre o una fecha de nacimiento, llame o escriba a Mark al 919-346-6127.");
-  assert.deepEqual(p.qpills().filter((x) => x.g === "cabin").map((x) => x.label), ["Balcony Bella · $536.79 por persona · impuestos y tasas portuarias incluidos", "Balcony Aurea · $686.79 por persona · impuestos y tasas portuarias incluidos"]);
+  assert.deepEqual(p.qpills().filter((x) => x.g === "cabin").map((x) => x.label), ["Balcony Bella", "Balcony Aurea"]);
   assert.deepEqual(p.qpills().filter((x) => x.g === "flexpay").map((x) => x.label), ["Agendemos una cita breve con Mark para solicitarlo.", "No, gracias"]);
-  assert.deepEqual(p.qpills().filter((x) => x.g === "insurance").map((x) => x.label), ["MSC Cruise Protection · $99 por persona", "Tengo mi propia póliza", "Sin seguro para nosotros"]);
+  assert.deepEqual(p.qpills().filter((x) => x.g === "insurance").map((x) => x.label), ["MSC Cruise Protection", "Tengo mi propia póliza", "Sin seguro para nosotros"]);
   assert.deepEqual(p.qticks().map((x) => x.label), ["Vuelo desde Raleigh (RDU)"]);
   await p.answerQuote();
   assert.equal(p.sent.find((x) => x.url.endsWith("/quote"))!.body["lang"], "es");
