@@ -10,16 +10,19 @@ import { useToast } from "@/hooks/use-toast";
 // uploads that quote here: it fills the form. He checks it, adds the confirmations and any change, sees what the paperwork will now say, and sends
 // it. When the signed documents are back he uploads them and closes the booking. The cabin numbers live on the cabin row, the flights, hotels and
 // transfers on the lead's file; the Cruise Booking Agreement and the room-number lines fill from them. Rules: server/src/routes/group-details.ts.
+// Mark 2026-11-09: every price has a place. The cabin fare and the cruise line's extras (dining, drinks; read off the uploaded quote) add up
+// to the total cruise price, shown against the quote's own total; each flight, hotel and transfer carries the price it was booked for.
 
 type Guest = { id: string; name: string; category: string | null; party: number | null; paperwork: string; requested_at: string; completed_at: string | null };
-type TripLine = { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null };
+type TripLine = { kind: string; direction: string | null; provider: string | null; from_place: string | null; to_place: string | null; starts_at: string | null; ends_at: string | null; label: string; confirmation: string | null; price: number | string | null };
+type Extra = { name: string; total: string };
 type Cabin = { id: string; cabin_num: string | null; deck: string | null; category: string | null; status: string; booking_number: string | null; price_total: number | null; deposit_amount: number | null };
 type Booking = {
   success: boolean; guest: { name: string; email: string | null }; quote: { category: string; party: number; total: string; deposit: string | null } | null;
-  paperwork: string; cabin: Cabin | null; trip: TripLine[]; needs: Record<string, boolean>; missing: string[]; ready: boolean; fills: Array<{ label: string; value: string }>;
+  paperwork: string; cabin: Cabin | null; trip: TripLine[]; extras: Array<{ name: string; total: number }>; totals: { cabin: number | null; extras: number; cruise: number | null; travel: number | null; trip: number | null }; needs: Record<string, boolean>; missing: string[]; ready: boolean; fills: Array<{ label: string; value: string }>;
   carrier: null | {
     id: string; filename: string; status: string; error: string | null;
-    read: null | { booking_number: string | null; cabin_num: string | null; category: string | null; price_total: number | null; deposit_amount: number | null; addons: Array<{ name: string; total: number; includes: string[] }>; inclusions: string[]; warnings: string[] };
+    read: null | { booking_number: string | null; cabin_num: string | null; category: string | null; price_total: number | null; booking_total: number | null; deposit_amount: number | null; addons: Array<{ name: string; total: number; includes: string[] }>; inclusions: string[]; warnings: string[] };
   };
   signed: null | { required: number; signed: number; complete: boolean; docs: Array<{ id: string; title: string; signer: string | null; has_pdf: boolean }> };
   completedAt: string | null; confirmWith: string[]; flexpay: null | { link: string | null; call: null | { start: string; whenText: string; meetLink: string | null } };
@@ -49,15 +52,17 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [cabin, setCabin] = useState<Record<string, string>>({});
   const [trip, setTrip] = useState<TripLine[]>([]);
+  const [extras, setExtras] = useState<Extra[]>([]);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!data || dirty) return;   // a refresh never overwrites what is typed and not yet saved
     const c = data.cabin;
-    setCabin({ booking_number: c?.booking_number ?? "", cabin_num: c?.cabin_num ?? "", deck: c?.deck ?? "", category: c?.category ?? "", price_total: c?.price_total != null ? String(c.price_total) : "", deposit_amount: c?.deposit_amount != null ? String(c.deposit_amount) : "" });
+    setCabin({ booking_number: c?.booking_number ?? "", cabin_num: c?.cabin_num ?? "", deck: c?.deck ?? "", category: c?.category ?? "", fare: data.totals?.cabin != null ? String(data.totals.cabin) : "", deposit_amount: c?.deposit_amount != null ? String(c.deposit_amount) : "" });
     setTrip(data.trip);
+    setExtras((data.extras ?? []).map((x) => ({ name: x.name, total: String(x.total) })));
     setDirty(false);
-  }, [data?.cabin, data?.trip]);
+  }, [data?.cabin, data?.trip, data?.extras]);
   // The cruise line's quote has been read: its figures go into the form, unsaved, for Mark to check.
   useEffect(() => {
     const r = data?.carrier?.status === "ready" ? data.carrier.read : null;
@@ -66,8 +71,11 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
     setCabin((c) => ({
       ...c,
       ...(r.booking_number ? { booking_number: r.booking_number } : {}), ...(r.cabin_num ? { cabin_num: r.cabin_num } : {}), ...(r.category ? { category: r.category } : {}),
-      ...(r.price_total != null ? { price_total: String(r.price_total) } : {}), ...(r.deposit_amount != null ? { deposit_amount: String(r.deposit_amount) } : {}),
+      // the quote's Total Booking Amount includes its add-ons: the cabin fare is what is left after them
+      ...(r.price_total != null ? { fare: String(Math.round(((r.booking_total != null ? r.booking_total - r.addons.reduce((n, a) => n + a.total, 0) : r.price_total)) * 100) / 100) } : {}),
+      ...(r.deposit_amount != null ? { deposit_amount: String(r.deposit_amount) } : {}),
     }));
+    if (r.addons.length) setExtras(r.addons.map((a) => ({ name: a.name, total: String(a.total) })));
     setDirty(true);
   }, [data?.carrier, guest.id]);
 
@@ -77,13 +85,23 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
 
   const setC = (k: string, v: string) => { setCabin((c) => ({ ...c, [k]: v })); setDirty(true); };
   const setT = (i: number, k: keyof TripLine, v: string) => { setTrip((t) => t.map((r, j) => (j === i ? { ...r, [k]: v || null } : r))); setDirty(true); };
-  const addLine = (kind: string) => { setTrip((t) => [...t, { kind, direction: "pre", provider: null, from_place: null, to_place: null, starts_at: null, ends_at: null, label: kind === "flight" ? "Flight" : kind === "hotel" ? "Hotel" : "Transfer", confirmation: null }]); setDirty(true); };
+  const addLine = (kind: string) => { setTrip((t) => [...t, { kind, direction: "pre", provider: null, from_place: null, to_place: null, starts_at: null, ends_at: null, label: kind === "flight" ? "Flight" : kind === "hotel" ? "Hotel" : "Transfer", confirmation: null, price: null }]); setDirty(true); };
+  const setX = (i: number, k: keyof Extra, v: string) => { setExtras((x) => x.map((r, j) => (j === i ? { ...r, [k]: v } : r))); setDirty(true); };
+  // the sums as typed, before saving: cabin fare + cruise extras = total cruise price; + travel = trip total
+  const amount = (v: unknown) => { const n = typeof v === "number" ? v : Number(String(v ?? "").replace(/[$,\s]/g, "")); return Number.isFinite(n) ? n : 0; };
+  const round = (n: number) => Math.round(n * 100) / 100;
+  const extrasSum = round(extras.reduce((n, x) => n + amount(x.total), 0));
+  const cruiseSum = round(amount(cabin["fare"]) + extrasSum);
+  const travelSum = round(trip.reduce((n, r) => n + amount(r.price), 0));
+  const quoteTotal = data.carrier?.status === "ready" ? data.carrier.read?.booking_total ?? null : null;
 
   const save = async (): Promise<boolean> => {
     setBusy(true);
     try {
-      const body: Record<string, unknown> = { trip };
-      if (data.cabin) body["cabin"] = cabin;
+      const clean = (v: unknown) => (v === null || v === "" ? null : String(v).replace(/[$,\s]/g, ""));
+      const body: Record<string, unknown> = { trip: trip.map((r) => ({ ...r, price: clean(r.price) })), extras: extras.filter((x) => x.name.trim() || x.total.trim()).map((x) => ({ name: x.name.trim(), total: clean(x.total) })) };
+      // the cabin row keeps the whole cruise price: the cabin fare and the cruise line's extras together
+      if (data.cabin) { const { fare, ...rest } = cabin; body["cabin"] = { ...rest, price_total: fare === "" && !extras.length ? "" : String(cruiseSum) }; }
       const next = await api<Booking>(`/groups/${groupId}/interests/${guest.id}/booking`, "PUT", body);
       qc.setQueryData(key, next);
       qc.invalidateQueries({ queryKey: ["group", groupId] });
@@ -171,8 +189,31 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
           <Field label="Cabin #"><input className={input} value={cabin["cabin_num"] ?? ""} onChange={(e) => setC("cabin_num", e.target.value)} disabled={sent} /></Field>
           <Field label="Deck"><input className={input} value={cabin["deck"] ?? ""} onChange={(e) => setC("deck", e.target.value)} disabled={sent} /></Field>
           <Field label="Cabin type as booked"><input className={input} value={cabin["category"] ?? ""} onChange={(e) => setC("category", e.target.value)} disabled={sent} /></Field>
-          <Field label="Cabin total ($)"><input className={input} inputMode="decimal" value={cabin["price_total"] ?? ""} onChange={(e) => setC("price_total", e.target.value)} disabled={sent} /></Field>
+          <Field label="Cabin fare ($, without the extras)"><input className={input} inputMode="decimal" value={cabin["fare"] ?? ""} onChange={(e) => setC("fare", e.target.value)} disabled={sent} /></Field>
           <Field label="Deposit ($)"><input className={input} inputMode="decimal" value={cabin["deposit_amount"] ?? ""} onChange={(e) => setC("deposit_amount", e.target.value)} disabled={sent} /></Field>
+        </div>
+      )}
+
+      {data.cabin && (
+        <div>
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+            <h4 className="text-sm font-semibold">Cruise extras (dining package, drink package, anything the cruise line adds)</h4>
+            {!sent && <button className={btn} onClick={() => { setExtras((x) => [...x, { name: "", total: "" }]); setDirty(true); }}><Plus className="w-3 h-3" /> cruise extra</button>}
+          </div>
+          {extras.length === 0 && <p className="text-sm text-muted-foreground">None on this booking. The uploaded quote's add-ons land here.</p>}
+          <div className="space-y-2">
+            {extras.map((x, i) => (
+              <div key={i} className="grid grid-cols-[1fr_9rem_auto] gap-2 items-end">
+                <Field label="Extra"><input className={input} value={x.name} onChange={(e) => setX(i, "name", e.target.value)} disabled={sent} /></Field>
+                <Field label="Price ($, whole booking)"><input className={input} inputMode="decimal" value={x.total} onChange={(e) => setX(i, "total", e.target.value)} disabled={sent} /></Field>
+                {!sent && <button className={btn} aria-label="Remove this extra" onClick={() => { setExtras((v) => v.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm mt-2">Total cruise price: <b>{usd(cruiseSum)}</b> <span className="text-muted-foreground">(cabin fare {usd(amount(cabin["fare"]))} + extras {usd(extrasSum)})</span></p>
+          {quoteTotal != null && (Math.abs(quoteTotal - cruiseSum) < 0.005
+            ? <p className="text-sm text-green-700 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Matches the quote's Total Booking Amount, {usd(quoteTotal)}.</p>
+            : <p className="text-sm text-amber-700 flex items-center gap-1"><AlertTriangle className="w-4 h-4" /> The quote's Total Booking Amount is {usd(quoteTotal)}: this is {usd(Math.abs(round(quoteTotal - cruiseSum)))} {cruiseSum > quoteTotal ? "over" : "under"}.</p>)}
         </div>
       )}
 
@@ -185,7 +226,7 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
         {trip.length === 0 && <p className="text-sm text-muted-foreground">None on this booking.</p>}
         <div className="space-y-2">
           {trip.map((r, i) => (
-            <div key={i} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 items-end border rounded-md p-2">
+            <div key={i} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-2 items-end border rounded-md p-2">
               <Field label={`${r.kind} · ${r.label}`}>
                 <select className={input} value={r.direction ?? "pre"} onChange={(e) => setT(i, "direction", e.target.value)} disabled={sent}><option value="pre">Before the cruise</option><option value="post">After the cruise</option></select>
               </Field>
@@ -195,10 +236,12 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               <Field label={r.kind === "hotel" ? "Check in" : "Date"}><input type="date" className={input} value={day(r.starts_at)} onChange={(e) => setT(i, "starts_at", e.target.value)} disabled={sent} /></Field>
               <Field label={r.kind === "hotel" ? "Check out" : "Arrives"}><input type="date" className={input} value={day(r.ends_at)} onChange={(e) => setT(i, "ends_at", e.target.value)} disabled={sent} /></Field>
               <Field label="Confirmation #"><input className={input} value={r.confirmation ?? ""} onChange={(e) => setT(i, "confirmation", e.target.value)} disabled={sent} /></Field>
+              <Field label="Booked price ($)"><input className={input} inputMode="decimal" value={r.price ?? ""} onChange={(e) => setT(i, "price", e.target.value)} disabled={sent} /></Field>
               {!sent && <button className={btn} aria-label="Remove this line" onClick={() => { setTrip((t) => t.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 className="w-3 h-3" /></button>}
             </div>
           ))}
         </div>
+        {trip.length > 0 && <p className="text-sm mt-2">Travel total: <b>{usd(travelSum)}</b> · Trip total (cruise and travel): <b>{usd(round(cruiseSum + travelSum))}</b></p>}
       </div>
 
       {!sent && <div><button className={btn} disabled={busy || !dirty} onClick={save}>{dirty ? "Save the confirmation" : "Saved"}</button></div>}

@@ -87,7 +87,7 @@
     q_flex:'¿Quiere solicitar FlexPay?', flex_note:'FlexPay es un plan de pagos a plazos que Mark ofrece por separado de la naviera. Si dice sí, elija la hora de una videollamada breve con Mark para completar juntos la solicitud; fija su propio calendario de pagos y no cambia nada en esta cotización.', flex_yes:'Agendemos una cita breve con Mark para solicitarlo.', flex_no:'No, gracias',
     q_drinks:'¿Agregar un paquete de bebidas?', drinks_note:'No está incluido en esta tarifa. Mark lo cotiza para su grupo.', drinks_yes:'Sí, cotícenlo', drinks_no:'No, gracias', drinks_inc:'Bebidas: su tarifa incluye un paquete.',
     q_ins:'¿Seguro de viaje?', ins_note:'Los precios pueden cambiar hasta que se finalicen.',
-    q_travel:'Ida y vuelta', travel_note:'Marque lo que quiera agregar. Mark le cotiza vuelos, hotel y traslados con su cotización final.',
+    q_travel:'Ida y vuelta', travel_note:'Elija lo que quiera agregar. Mark le cotiza vuelos, hotel y traslados con su cotización final.',
     q_need_flight:'¿Necesita vuelos?', q_need_hotel:'¿Necesita hotel la noche anterior?', q_need_transfer:'¿Necesita traslados?', need_yes:'Sí, Mark, cotícelo', need_no:'No, gracias',
     fp_title:'Su videollamada de FlexPay', fp_pick:'Elija la hora de su videollamada de FlexPay con Mark.', fp_open:'Abrir el calendario', fp_booked:'Su videollamada de FlexPay: {when}.',
     agree:'¡Enviar mis decisiones a Mark!', agreeing:'Enviando…', agree_note:'Mark cotiza sus decisiones con la naviera y luego le envía por correo su confirmación de reserva con el precio final para que la revise y firme. Todavía no se reserva ni se cobra nada.', agree_wait:'Responda todas las preguntas de arriba y el botón se activa.',
@@ -106,7 +106,7 @@
     q_flex:'Would you like to apply for FlexPay?', flex_note:'FlexPay is an installment plan Mark offers separately from the cruise line. Say yes and pick the time of a brief video call with Mark to complete the application together; it sets its own payment schedule, and nothing on this quote changes.', flex_yes:"Let's schedule a brief appointment with Mark to apply.", flex_no:'No thanks',
     q_drinks:'Add a drink package?', drinks_note:'Not included in this fare. Mark prices one for your party.', drinks_yes:'Yes, price one for us', drinks_no:'No thanks', drinks_inc:'Drinks: a package is included in your fare.',
     q_ins:'Travel insurance?', ins_note:'Pricing subject to change until finalized.',
-    q_travel:'Getting there and back', travel_note:'Tick what you want added. Mark prices flights, hotel and transfers with your final quote.',
+    q_travel:'Getting there and back', travel_note:'Pick what you want added. Mark prices flights, hotel and transfers with your final quote.',
     q_need_flight:'Do you need flights?', q_need_hotel:'Do you need a hotel the night before?', q_need_transfer:'Do you need transfers?', need_yes:'Yes, Mark, quote it', need_no:'No thanks',
     fp_title:'Your FlexPay video call', fp_pick:'Pick the time for your FlexPay video call with Mark.', fp_open:'Open the scheduler', fp_booked:'Your FlexPay video call: {when}.',
     agree:'Send my choices to Mark!', agreeing:'Sending…', agree_note:'Mark prices your choices with the cruise line, then emails your booking confirmation with the final price for you to check and sign. Nothing is booked or charged yet.', agree_wait:'Answer every question above and the button lights up.',
@@ -275,7 +275,9 @@
   if(window.addEventListener) window.addEventListener('message', function(ev){
     var m = ev.data;
     if(ev.origin !== location.origin || !m || m.saf !== 'flexpay-call' || typeof m.booked !== 'string') return;
-    fpBooked = m.booked; if(qo) renderQuoteQuestions();
+    fpBooked = m.booked;
+    // Mark 2026-11-09: the scheduler's Continue closes the pop-up and the guest goes on with the questions
+    if(m.close === true) closeFlex(); else if(qo) renderQuoteQuestions();
   });
   $('d-qq').addEventListener('click', function(e){
     var fp = e.target.closest ? e.target.closest('[data-fp]') : (e.target.getAttribute('data-fp') ? e.target : null);

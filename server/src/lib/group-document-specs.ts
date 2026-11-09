@@ -917,6 +917,11 @@ const BOOKING_12: DocSpec = {
       const rows: string[][] = [];
       const perPerson = perPersonPrice(ctx);
       if (perPerson) rows.push(["Cruise Fare (per person, taxes and fees as quoted)", fmtMoney(perPerson)]);
+      // Mark 2026-11-09: the cruise line's paid extras on this booking (a dining or drink package), as Mark entered them from the line's quote;
+      // they are part of the cabin's total below
+      const trip = ctx.traveler?.form_data?.trip;
+      const extras: Array<Record<string, any>> = Array.isArray(trip?.extras) ? trip.extras : [];
+      for (const x of extras) if (typeof x?.["total"] === "number" && x["total"] > 0) rows.push([`${cleanValue(x["name"]) || "Cruise extra"} (cruise line add-on, in the total below)`, fmtMoney(x["total"])]);
       // Mark 2026-10-31: the protection chosen on the page, at the price the page showed; not added into the cabin's total below
       const premium = chosenPremium(ctx);
       if (premium) rows.push(["Travel Protection / Insurance (per person, as chosen on the paperwork; not in the total below)", premium]);
@@ -924,6 +929,10 @@ const BOOKING_12: DocSpec = {
       if (f) rows.push(["Agent Planning / Service Fee", fmtMoney(f.amount)]);
       const total = cabinTotal(ctx);
       if (total) rows.push(["**Estimated Total (this cabin)**", `**${fmtMoney(total)}**`]);
+      // the flights, hotels and transfers Mark booked, each at its booked price, and the trip's total with them
+      const travel: Array<Record<string, any>> = (Array.isArray(trip?.chosen) ? trip.chosen : []).filter((r: Record<string, any>) => typeof r?.["price"] === "number" && r["price"] > 0);
+      for (const r of travel) rows.push([cleanValue(r["label"]) || "Travel", fmtMoney(r["price"])]);
+      if (travel.length && total) rows.push(["**Estimated Trip Total (cruise and travel)**", `**${fmtMoney(Math.round((total + travel.reduce((n, r) => n + r["price"], 0)) * 100) / 100)}**`]);
       if (!rows.length) return [{ t: "p", text: "*The amounts for this cabin are shown on your cruise line booking confirmation.*" }];
       return [{ ...t, rows }];
     }),

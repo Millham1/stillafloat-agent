@@ -45,6 +45,7 @@
         <p class="small" id="c-when-local" hidden></p>
         <a class="btn" id="c-join" target="_blank" rel="noopener" hidden></a>
         <p id="c-done-p"></p>
+        <button type="button" class="btn" id="c-continue" hidden></button>
         <p class="small" id="c-change"></p>
       </div>
     </section>
@@ -72,6 +73,7 @@
     done_p:'El enlace abre Google Meet en su navegador o en la aplicación de Meet.',
     done_mail:'También va en su correo.',
     done_nolink:'Mark le enviará el enlace de video antes de la llamada.',
+    done_embed:'Su correo de confirmación lleva el enlace de la videollamada.', cont:'Continuar',
     change:'¿Necesita otra hora? Llame o escriba a Mark al ' + PHONE + '.',
     fail:'No se pudo apartar la hora. Intente de nuevo, o llame o escriba a Mark al ' + PHONE + '.'
   } : {
@@ -91,6 +93,7 @@
     done_p:'The link opens Google Meet in your browser or the Meet app.',
     done_mail:'It is in your email too.',
     done_nolink:'Mark will send your video link before the call.',
+    done_embed:'Your confirmation email has the link to the video call.', cont:'Continue',
     change:'Need a different time? Call or text Mark at ' + PHONE + '.',
     fail:'The time could not be booked. Try again, or call or text Mark at ' + PHONE + '.'
   };
@@ -108,7 +111,8 @@
 
   var qs = new URLSearchParams(location.search);
   // Mark 2026-11-08: inside the quote page's pop-up the page is the panel alone
-  if(qs.get('embed') === '1') document.documentElement.className += ' embed';
+  var EMBED = qs.get('embed') === '1';
+  if(EMBED) document.documentElement.className += ' embed';
   var reply = (qs.get('r') || '').trim(), key = (qs.get('k') || '').trim();
   if(!/^[0-9a-f-]{36}$/i.test(reply) || !/^[A-Za-z0-9_-]{43}$/.test(key)){ state.textContent = T.bad; return; }
   var API = '/api/flexpay-call/' + reply + '/' + key;
@@ -188,8 +192,16 @@
     var mine = t.toLocaleDateString(LOCALE, { weekday: 'long', month: 'long', day: 'numeric' }) + ', ' + clock(b.start);
     var marks = t.toLocaleDateString(LOCALE, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/New_York' }) + ', ' + t.toLocaleTimeString(LOCALE, { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
     if(mine !== marks){ $('c-when-local').textContent = fill(T.local, { when: mine }); show('c-when-local', true); } else show('c-when-local', false);
-    var j = $('c-join');
-    if(b.meetLink && /^https:\/\/meet\.google\.com\//.test(b.meetLink)){ j.href = b.meetLink; j.textContent = T.join; j.hidden = false; $('c-done-p').textContent = T.done_p + (email === 'sent' ? ' ' + T.done_mail : ''); }
+    var j = $('c-join'), go = $('c-continue');
+    // Mark 2026-11-09: in the quote page's pop-up there is no video button: the confirmation email carries the link, and Continue takes
+    // the guest back to their questions. The page opened on its own (from the email) keeps the video button.
+    if(EMBED){
+      j.hidden = true;
+      $('c-done-p').textContent = email === 'sent' || (email === undefined && b.meetLink) ? T.done_embed : T.done_nolink;
+      go.textContent = T.cont; go.hidden = false;
+      go.onclick = function(){ try { window.parent.postMessage({ saf: 'flexpay-call', booked: b.whenText || '', close: true }, location.origin); } catch(e){} };
+    }
+    else if(b.meetLink && /^https:\/\/meet\.google\.com\//.test(b.meetLink)){ j.href = b.meetLink; j.textContent = T.join; j.hidden = false; $('c-done-p').textContent = T.done_p + (email === 'sent' ? ' ' + T.done_mail : ''); }
     else { j.hidden = true; $('c-done-p').textContent = T.done_nolink; }
     $('c-change').textContent = T.change;
     // in the quote page's pop-up: tell the page the time is set (same site only)

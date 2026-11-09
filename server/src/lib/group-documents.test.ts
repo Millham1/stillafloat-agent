@@ -181,6 +181,21 @@ test("with no schedule on the file the template's own cancellation text is uncha
 
 // ── every number and date comes from the file; blanks are reported ────────────
 
+test("Mark 2026-11-09: the cruise line's extras and each booked flight, hotel and transfer print with their prices; the trip total adds the travel to the cabin's total", () => {
+  const lead = { ...TRAVELERS[0]!, form_data: { ...((TRAVELERS[0]! as Record<string, any>)["form_data"] ?? {}), trip: {
+    extras: [{ name: "Premium Extra drinks", total: 80 }, { name: "No price", total: 0 }],
+    chosen: [{ kind: "flight", direction: "pre", label: "Flight from Raleigh (RDU)", price: 272.4 }, { kind: "hotel", direction: "pre", label: "Hotel the night before" }], needs: {},
+  } } };
+  const t = renderDocument("12-cruise-booking-agreement", ctxFor({}, lead)).text;
+  assert.ok(t.includes("Premium Extra drinks (cruise line add-on, in the total below) | $80"), t.split("\n").filter((l) => l.includes("$")).join("\n"));
+  assert.ok(!t.includes("No price (cruise line add-on"), "an extra with no price is not printed");
+  assert.ok(t.includes("Flight from Raleigh (RDU) | $272.40"));
+  assert.ok(!t.includes("Hotel the night before |"), "a travel line with no booked price prints no amount row");
+  assert.ok(t.includes("Estimated Trip Total (cruise and travel) | $2,870.40"));
+  // with nothing priced the table is as it was
+  assert.ok(!renderDocument("12-cruise-booking-agreement", ctxFor()).text.includes("Estimated Trip Total"));
+});
+
 test("a cabin's cost, deposit and dates come from the file; what the file cannot give stays blank and is reported", () => {
   const t = renderDocument("12-cruise-booking-agreement", ctxFor()).text;
   assert.ok(t.includes("Cruise Fare (per person, taxes and fees as quoted) | $1,299"));
