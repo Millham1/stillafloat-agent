@@ -191,7 +191,7 @@ test("the page opens on the choices once the names are in: the heading, the lock
   assert.equal(p.doc.title, "Your quote | Friends and Family 2027");
   assert.equal(p.el("d-plaque").textContent, "Friends and Family 2027");
   assert.equal(p.el("d-h1").textContent, "Nicely done… now let's build your quote!");
-  assert.equal(p.el("d-lede").textContent, "Five quick choices, then the numbers. Mark confirms every figure with you before anything is charged.");
+  assert.equal(p.el("d-lede").textContent, "Five quick choices. Mark prices them with the cruise line and confirms every figure with you in your booking confirmation before anything is charged.");
   assert.equal(p.el("d-part4").hidden, false);
   assert.equal(p.el("d-thanks").hidden, true, "nothing is sent yet");
   assert.equal(p.el("d-p4").textContent, "Your choices");
@@ -396,7 +396,7 @@ test("the Spanish page says everything in Spanish, in usted, through the same st
   await p.ready();
   assert.equal(p.doc.title, "Su cotización | Amigos y Familia 2027");
   assert.equal(p.el("d-h1").textContent, "Bien hecho… ¡ahora armemos su cotización!");
-  assert.equal(p.el("d-lede").textContent, "Cinco decisiones rápidas y luego los números. Mark confirma cada cifra con usted antes de cobrar nada.");
+  assert.equal(p.el("d-lede").textContent, "Cinco decisiones rápidas. Mark las cotiza con la naviera y confirma cada cifra con usted en su confirmación de reserva antes de cobrar nada.");
   assert.equal(p.el("d-p4").textContent, "Sus decisiones");
   assert.equal(p.el("d-locked").textContent, "Nombres registrados: Ana y Luis · grupo de dos. Nuestra sugerencia: Balcony Bella. Para cambiar un nombre o una fecha de nacimiento, llame o escriba a Mark al 919-346-6127.");
   assert.deepEqual(p.qpills().filter((x) => x.g === "cabin").map((x) => x.label), ["Balcony Bella · $536.79 por persona · impuestos y tasas portuarias incluidos", "Balcony Aurea · $686.79 por persona · impuestos y tasas portuarias incluidos"]);
