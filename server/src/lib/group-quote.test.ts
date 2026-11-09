@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ageOn, buildQuote, drinksIncluded, fares, freeCabinFor, insuranceSeedOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers } from "./group-quote";
+import { ageOn, buildQuote, drinksIncluded, fares, freeCabinFor, guestQuoteOptions, insuranceSeedOf, quoteOptions, quoteSummary, storedQuote, validateQuoteAnswers } from "./group-quote";
 
 type Row = Record<string, any>;
 
@@ -29,14 +29,14 @@ const travel = (): Row[] => [
 ];
 const two = [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "Ceci Millham", dob: "1980-11-02" }];
 
-test("the options come from the file: held categories cheapest first with the file's fare (booked and released cabins left out), the plans Mark typed, the travel offer without the vendor, and the kinds with no offer", () => {
+test("the options come from the file: held categories cheapest first with the file's fare kept for pricing and the name alone on the pill (Mark 2026-11-09) (booked and released cabins left out), the plans Mark typed, the travel offer without the vendor, and the kinds with no offer", () => {
   const o = quoteOptions({ group: group({ line_protection: "MSC Cruise Protection: $99 per person", insurance_plans: "OneTrip Basic: $89 per person\nOneTrip Prime — $129\nno price on this line" }), cabins: cabins(), travel: travel() }, "en");
   assert.deepEqual(o.cabins.map((c) => [c.key, c.category, c.perPerson, c.thirdFourthAdult, c.child, c.taxes, c.taxesIncluded, c.available, c.label]), [
-    ["BB", "Balcony Bella", 536.79, 308.79, 149.79, 68, true, 2, "Balcony Bella · $536.79 per person · taxes and port fees included"],
-    ["BA", "Balcony Aurea", 686.79, 378.79, 149.79, 68, true, 1, "Balcony Aurea · $686.79 per person · taxes and port fees included"],
+    ["BB", "Balcony Bella", 536.79, 308.79, 149.79, 68, true, 2, "Balcony Bella"],
+    ["BA", "Balcony Aurea", 686.79, 378.79, 149.79, 68, true, 1, "Balcony Aurea"],
   ]);
   assert.deepEqual(o.insurance.map((i) => [i.key, i.label, i.perPerson]), [
-    ["line", "MSC Cruise Protection · $99 per person", 99], ["allianz-0", "OneTrip Basic (Allianz) · $89 per person", 89], ["allianz-1", "OneTrip Prime (Allianz) · $129 per person", 129],
+    ["line", "MSC Cruise Protection", 99], ["allianz-0", "OneTrip Basic (Allianz)", 89], ["allianz-1", "OneTrip Prime (Allianz)", 129],
     ["own", "I have my own policy", null], ["decline", "No insurance for us", null],
   ]);
   assert.deepEqual(o.travel.map((t) => [t.key, t.kind, t.text, t.perUnit, t.unit, t.included]), [
@@ -50,13 +50,19 @@ test("the options come from the file: held categories cheapest first with the fi
 
 test("with no fare line on the file the cabin's own price is halved; taxes not included become their own note; no plan with a price leaves only 'quote me'; a drink package in the inclusions closes that question", () => {
   const o = quoteOptions({ group: group({ terms: null, marketing: { taxes_included: false }, inclusions: ["Easy Plus drink package", "Wi-Fi"] }), cabins: cabins(), travel: [] }, "es");
-  assert.deepEqual(o.cabins.map((c) => [c.perPerson, c.thirdFourthAdult, c.taxes, c.label]), [[536.79, null, null, "Balcony Bella · $536.79 por persona"], [686.79, null, null, "Balcony Aurea · $686.79 por persona"]]);
+  assert.deepEqual(o.cabins.map((c) => [c.perPerson, c.thirdFourthAdult, c.taxes, c.label]), [[536.79, null, null, "Balcony Bella"], [686.79, null, null, "Balcony Aurea"]]);
   assert.deepEqual(o.insurance.map((i) => i.key), ["quote", "own", "decline"]);
   assert.deepEqual([o.drinks, o.needs], ["included", ["flight", "hotel", "transfer"]]);
   assert.equal(drinksIncluded({ inclusions: ["Premium Extra beverage package"] }), true);
   assert.equal(drinksIncluded({ inclusions: ["$25 onboard credit"] }), false);
   const taxed = quoteOptions({ group: group({ marketing: { taxes_included: false } }), cabins: cabins(), travel: [] }, "en");
-  assert.equal(taxed.cabins[0]!.label, "Balcony Bella · $536.79 per person · plus $68 taxes and port fees per person");
+  assert.deepEqual([taxed.cabins[0]!.label, taxed.cabins[0]!.taxes, taxed.cabins[0]!.taxesIncluded], ["Balcony Bella", 68, false], "the taxes are kept for the quote; the pill names the category alone");
+  // Mark 2026-11-09: what the page is sent carries no figure at all
+  const guest = guestQuoteOptions(o);
+  assert.deepEqual(Object.keys(guest).sort(), ["cabins", "drinks", "insurance", "needs", "travel"]);
+  assert.deepEqual(guest.cabins, [{ key: "BB", category: "Balcony Bella", code: "BB", available: 2, label: "Balcony Bella" }, { key: "BA", category: "Balcony Aurea", code: "BA", available: 1, label: "Balcony Aurea" }]);
+  assert.deepEqual(guest.insurance, [{ key: "quote", label: "Sí, cotíceme el plan de la naviera y Allianz" }, { key: "own", label: "Tengo mi propia póliza" }, { key: "decline", label: "Sin seguro para nosotros" }]);
+  assert.ok(!/\$|\d{2,}\.\d{2}/.test(JSON.stringify(guest)), "no dollar figure in what the guest page is sent");
 });
 
 test("answers are checked against the options; a kind with no offer must be answered yes or no; a drink answer is not asked when the fare includes one", () => {
