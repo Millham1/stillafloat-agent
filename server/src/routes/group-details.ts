@@ -177,6 +177,8 @@ router.get("/group-details/:token", async (req: Request, res: Response) => {
       paperwork: reply.quote_requested_at ? (stored?.paperwork ?? null) : null,
       depositPerPersonText: f.depositPerPersonText,
       phoneLine: typeof blurb === "string" && blurb.trim() ? blurb.trim() : null, businessPhone: callerPhone(blurb), lang,
+      // Mark 2026-11-08: a FlexPay yes opens OUR scheduler in a pop-up on the quote page (Mark schedules nothing): the way in, and the time once it is set
+      flexpayCallUrl: flexpayCallPath(reply, lang), flexpayCall: ((c) => (c ? { start: c.start, whenText: callWhenText(c.start, lang) } : null))(storedCall(reply.quote)),   // the time only, never the video link
     });
   } catch (err) {
     return fail(req, res, err, "group details read failed");
@@ -372,10 +374,14 @@ router.post("/group-details/:token/quote", async (req: Request, res: Response) =
     const options = quoteOptions({ group, cabins, travel }, lang);
     const v = validateQuoteAnswers(req.body, options, lang);
     if (!v.ok) return res.status(400).json({ success: false, error: v.error, field: v.field });
-    const quote = buildQuote({ group, cabins, travel }, travelers, v.answers, lang);
+    const quote: Row = buildQuote({ group, cabins, travel }, travelers, v.answers, lang);
+    // Mark 2026-11-08: the time they already picked in the scheduler pop-up stays with the re-priced answers
+    const before = (reply.quote ?? null) as Row | null;
+    if (before?.["flexpay_call"]) quote["flexpay_call"] = before["flexpay_call"];
     const { error } = await db().from("group_interests").update({ quote, updated_at: new Date().toISOString() }).eq("id", reply.id).is("quote_requested_at", null);
     if (error) throw new Error(error.message);
-    return res.json({ success: true, quote });
+    const { flexpay_call: _call, ...shown } = quote;   // the call row (with the video link) stays on the reply, never in the answer
+    return res.json({ success: true, quote: shown });
   } catch (err) {
     return fail(req, res, err, "group details quote failed");
   }
@@ -787,7 +793,8 @@ router.post("/groups/:id/interests/:iid/flexpay-link", requireToken, async (req:
 
 // ── FlexPay: the guest picks the time of the video call (Mark 2026-11-05) ─────────────────────────────────────────
 // "it should bring up a scheduler for a video conference. M-S 10-8 and doesn't conflict with any meetings on my schedule already". The page is ours
-// (public/flexpay-call.html); the link in Mark's email carries the reply's id and a key derived from it. It opens only once Mark has sent that email.
+// (public/flexpay-call.html); its address carries the reply's id and a key derived from it. Mark 2026-11-08: the quote page opens it in a pop-up the
+// moment the guest says yes to FlexPay (Mark schedules nothing); Mark's "send the FlexPay link" email carries the same address for a guest who closed it.
 // One appointment per guest: once a time is picked, a change goes through Mark (he moves it on his calendar).
 
 interface StoredCall { start: string; minutes: number; meet_link: string | null; event_id: string | null; booked_at: string | null }
@@ -802,13 +809,21 @@ function storedCall(quote: unknown): StoredCall | null {
 }
 const callView = (c: StoredCall | null, lang: Lang) => (c ? { start: c.start, minutes: c.minutes, whenText: callWhenText(c.start, lang), meetLink: c.meet_link } : null);
 
-/** The reply an appointment link opens: null for a wrong key, an unknown reply, a guest who did not ask for FlexPay, and a link Mark has not sent. */
+/** The way into the scheduler for a reply whose names are in (Mark 2026-11-08: the quote page opens it in a pop-up on a FlexPay yes); null before that, and on a box with no link key. */
+function flexpayCallPath(reply: Row, lang: Lang): string | null {
+  const linkKey = hubKey();
+  if (!reply.hold_requested_at || !linkKey) return null;
+  return `${lang === "es" ? "/es" : ""}/flexpay-call.html?r=${reply.id}&k=${deriveCallKey(reply.id, linkKey)}`;
+}
+
+/** The reply an appointment link opens: null for a wrong key, an unknown reply, and a reply whose names are not in yet (the quote step, where the pop-up lives, is not open).
+ *  Mark 2026-11-08: the pop-up opens the moment the guest says yes to FlexPay, so neither a stored yes nor Mark's email is waited for. */
 async function loadCall(iid: unknown, key: unknown): Promise<{ reply: Row; group: Row; lang: Lang; call: StoredCall | null } | null> {
   if (typeof iid !== "string" || !UUID_RE.test(iid) || !callKeyMatches(iid, key, hubKey())) return null;
   const { data: reply, error } = await db().from("group_interests").select("*").eq("id", iid).maybeSingle();
   if (error) throw new Error(error.message);
   const quote = (reply?.quote ?? null) as Row | null;
-  if (!reply || reply.status === "spam" || quote?.["answers"]?.["flexpay"] !== true || !quote?.["flexpay_link"]) return null;
+  if (!reply || reply.status === "spam" || !reply.hold_requested_at) return null;
   const { data: group, error: ge } = await db().from("groups").select("*").eq("id", reply.group_id).maybeSingle();
   if (ge) throw new Error(ge.message);
   if (!group) return null;

@@ -232,13 +232,13 @@ function BookingForm({ groupId, guest }: { groupId: string; guest: Guest }) {
               {data.flexpay ? (
                 <div className="space-y-1">
                   <h4 className="text-sm font-semibold">4. FlexPay</h4>
-                  <p className="text-sm text-muted-foreground">This guest asked for FlexPay. Send the link: the guest picks a video call from your open times (Monday to Saturday, 10 AM to 8 PM Eastern, never over a meeting on your calendar). Then you make the payments.</p>
+                  <p className="text-sm text-muted-foreground">This guest asked for FlexPay. The scheduler pops up on their quote page the moment they say yes: they pick a video call from your open times (Monday to Saturday, 10 AM to 8 PM Eastern, never over a meeting on your calendar). You schedule nothing. If they closed it without a time, send them the link to it. Then you make the payments.</p>
                   <button className={btn} disabled={busy || !data.completedAt} onClick={flexpay} title={data.completedAt ? "" : "Confirm the booking first"}><Send className="w-3 h-3" /> {data.flexpay.link ? "Send the appointment link again" : "Send the FlexPay appointment link"}</button>
                   {data.flexpay.link && <span className="text-xs text-muted-foreground ml-2">{data.flexpay.link === "sent" ? "Sent" : SENT[data.flexpay.link] ?? data.flexpay.link}.</span>}
                   {data.flexpay.call ? (
                     <p className="text-sm mt-2">Video call: <b>{data.flexpay.call.whenText}</b>. It is on your calendar.{" "}
                       {data.flexpay.call.meetLink && <a className="underline" href={data.flexpay.call.meetLink} target="_blank" rel="noreferrer">Join the video call</a>}</p>
-                  ) : data.flexpay.link ? (
+                  ) : (
                     <p className="text-sm text-muted-foreground mt-2">The guest has not picked a time yet. They choose from your open times, Monday to Saturday, 10 AM to 8 PM Eastern.</p>
                   ) : null}
                 </div>

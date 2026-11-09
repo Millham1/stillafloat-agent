@@ -1,5 +1,5 @@
 // quote-page.test.ts — the guest's "Your quote" page (server/public/quote.html and its Spanish twin), run the way a visitor's browser runs it.
-// Mark 2026-11-01: the quote step — which cabin, FlexPay, drinks, insurance, getting there and back, the starting price, "Send my choices to Mark!" —
+// Mark 2026-11-01: the quote step — which cabin, FlexPay, drinks, insurance, getting there and back, no price at all (Mark 2026-11-08: the booking confirmation carries the pricing), "Send my choices to Mark!" —
 // then one line. Mark 2026-11-07: it is its own page on the guest's own link (the details page sends them here once the names are in; no email does),
 // the FlexPay yes is "Let's schedule a brief appointment with Mark to apply.", and no flight, hotel or transfer price shows before he finalizes the quote.
 //
@@ -39,6 +39,7 @@ const TWO = [{ legal_name: "Mark Millham", dob: "1965-04-12" }, { legal_name: "C
 /** What the guest taps: our pick's cabin stays, FlexPay no, drinks no, no insurance, no flight, no hotel, no transfers. */
 const QA = { cabin: "BEL", flexpay: false, drinks: false, insurance: "decline", travel: [], needs: { hotel: false, transfer: false } };
 
+const FP_URL = "/flexpay-call.html?r=44444444-4444-4444-8444-444444444444&k=" + "k".repeat(43);
 /** The answer GET /api/group-details/:token gives once the names are in (the server's own shape; each test changes what it needs). */
 function answer(over: Record<string, unknown> = {}) {
   return {
@@ -46,6 +47,7 @@ function answer(over: Record<string, unknown> = {}) {
     firstName: "Mark", lastName: "Millham", email: "mmillham1@gmail.com", phone: null, guests: 2, travelers: TWO, address: ADDR, concierge: ANSWERS, pick: PICK, choice: "finish", callWhen: null,
     holdRequestedAt: "2026-10-24T10:00:00Z", quoteOptions: OPTIONS("en"), quote: null, quoteRequestedAt: null, paperwork: null,
     depositPerPersonText: "$50", phoneLine: "Questions? Call or text Mark at 919-346-6127.", businessPhone: "919-346-6127", lang: "en",
+    flexpayCallUrl: FP_URL, flexpayCall: null,
     ...over,
   };
 }
@@ -98,9 +100,10 @@ function visit(lang: Lang, o: { search?: string; get?: unknown; getStatus?: numb
   const requested: string[] = [];
   const sent: Sent[] = [];
   const post = o.post ?? server(lang);
-  const loc: { search: string; hash: string; href?: string } = { search: o.search ?? `?t=${TOKEN}`, hash: "" };
+  const loc: { search: string; hash: string; origin: string; href?: string } = { search: o.search ?? `?t=${TOKEN}`, hash: "", origin: "https://stillafloatcruising.com" };
+  const listeners: Record<string, (ev: { origin: string; data: unknown }) => void> = {};
   const sandbox = {
-    document: doc, window: {}, location: loc, URLSearchParams, console, Date, JSON, Math, Number, String, Array, parseInt, isNaN, RegExp, Object, Promise,
+    document: doc, window: { addEventListener: (type: string, fn: (ev: { origin: string; data: unknown }) => void) => { listeners[type] = fn; } }, location: loc, URLSearchParams, console, Date, JSON, Math, Number, String, Array, parseInt, isNaN, RegExp, Object, Promise,
     clearTimeout, setTimeout: (fn: () => void) => setTimeout(fn, 1),
     fetch: (url: string, init?: { method?: string; body?: string }) => {
       if (init?.method === "POST") {
@@ -117,7 +120,7 @@ function visit(lang: Lang, o: { search?: string; get?: unknown; getStatus?: numb
   const flush = async (ms = 0) => { for (let i = 0; i < 8; i++) await new Promise((r) => setTimeout(r, ms || 0)); };
   const quiet = { preventDefault() { /* */ } };
   return {
-    els, el, doc, requested, sent, created, loc, ready: () => flush(5), flush,
+    els, el, doc, requested, sent, created, loc, listeners, ready: () => flush(5), flush,
     posts: (suffix: string) => sent.filter((x) => x.url.endsWith(suffix)),
     /** A tap on the choices: a cabin, a yes/no, an insurance choice, a travel tick. */
     qtap: (g: string, v: string) => { el("d-qq").handlers["click"]!({ target: target({ "data-g": g, "data-v": v }), ...quiet }); },
@@ -128,7 +131,10 @@ function visit(lang: Lang, o: { search?: string; get?: unknown; getStatus?: numb
       .map((m) => ({ v: m[2]!, on: !!m[1], label: m[3]! })),
     /** The taps for a party that wants nothing extra (QA), then the quote. */
     async answerQuote() { this.qtap("flexpay", "no"); this.qtap("drinks", "no"); this.qtap("insurance", "decline"); this.qtap("need-hotel", "no"); this.qtap("need-transfer", "no"); await flush(8); },
-    lines: () => [...el("d-quote-lines").innerHTML.matchAll(/<div class="qline( qtotal)?"><span>([^<]*)(?:<span class="det">([^<]*)<\/span>)?<\/span><b>([^<]*)<\/b><\/div>/g)].map((m) => [m[2], m[3] ?? null, m[4]]),
+    /** The FlexPay line under the pills (Mark 2026-11-08): its words, and whether the way back into the scheduler is on it. */
+    fpLine: () => { const m = /<p class="small" id="d-fp-line">([\s\S]*?)<\/p>/.exec(el("d-qq").innerHTML); return m ? { text: m[1]!.replace(/<[^>]+>/g, "").replace(/&#39;/g, "'").trim(), reopen: m[1]!.includes('data-fp="open"') } : null; },
+    fpOpen: () => { el("d-qq").handlers["click"]!({ target: target({ "data-fp": "open" }), ...quiet }); },
+    fpClose: () => { el("d-fp-close").handlers["click"]!({ target: target({}), ...quiet }); },
   };
 }
 
@@ -155,6 +161,10 @@ test("a private page: never indexed, its address never sent on, the details page
     assert.ok(script(lang).includes(lang === "es" ? "¡Enviar mis decisiones a Mark!" : "Send my choices to Mark!"), `${lang}: the send button's words`);
     assert.ok(script(lang).includes(lang === "es" ? "Agendemos una cita breve con Mark para solicitarlo." : "Let's schedule a brief appointment with Mark to apply."), `${lang}: the FlexPay yes (Mark 2026-11-07)`);
     assert.ok(script(lang).includes(lang === "es" ? "/es/details.html" : "/details.html"), `${lang}: the page it sends a guest back to when the names are not in`);
+    // Mark 2026-11-08: no price on this page (the booking confirmation carries it), and the FlexPay scheduler pop-up is ours (an iframe on the same site, no outside service)
+    assert.ok(!h.includes('id="d-quote"') && !h.includes("starting price") && !h.includes("precio inicial") && !script(lang).includes("quote_h") && !script(lang).includes("quote_dep"), `${lang}: the starting price block is still on the page`);
+    assert.ok(h.includes('id="d-fp"') && h.includes('id="d-fp-frame"') && h.includes('id="d-fp-close"') && h.includes('role="dialog"'), `${lang}: the FlexPay pop-up`);
+    assert.ok(script(lang).includes("data.flexpayCallUrl") && script(lang).includes("'embed=1'") && !/calendly|acuity|youcanbook|tidycal/i.test(h), `${lang}: the pop-up opens our own scheduler, no outside service`);
     const header = h.slice(h.indexOf('<div class="hdr">'), h.indexOf('<div class="d-banner"'));
     assert.deepEqual([...header.matchAll(/<img\b[^>]*src="([^"]+)"/g)].map((m) => m[1]), [BUSINESS.logoPath], `${lang}: header`);
     assert.ok(h.includes(`${BUSINESS.legalName} · ${BUSINESS.email}`), `${lang}: the footer's legal line`);
@@ -201,7 +211,7 @@ test("the page opens on the choices once the names are in: the heading, the lock
   assert.deepEqual(pills.filter((x) => x.g.startsWith("need-")).map((x) => x.g + ":" + x.v), ["need-hotel:yes", "need-hotel:no", "need-transfer:yes", "need-transfer:no"], "no hotel or transfer on offer: a yes/no each; the flight has its offer");
   assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "true", "dim until every question is answered");
   assert.equal(p.el("d-agree-note").textContent, "Answer every question above and the button lights up.");
-  assert.equal(p.el("d-quote").hidden, true);
+  assert.equal(p.els.has("d-quote"), false, "no price block (Mark 2026-11-08)");
   assert.equal(p.sent.length, 0, "nothing is sent before every answer is in");
   // the party in words: one, three, four
   for (const [n, word] of [[1, "one"], [3, "three"], [4, "four"]] as const) {
@@ -212,39 +222,30 @@ test("the page opens on the choices once the names are in: the heading, the lock
   }
 });
 
-test("the quote: once every question is answered the page asks the server with the answers, shows the lines, the total, the deposit, the balance and the note, and lights the send button; a changed answer asks again; a ticked flight is 'to come', never a figure; sending it makes the WHOLE page one line with where the paperwork went", async () => {
+test("the quote: once every question is answered the page asks the server with the answers, writes NO figure (Mark 2026-11-08) and lights the send button; a changed answer asks again; sending it makes the WHOLE page one line with where the paperwork went", async () => {
   const p = visit("en");
   await p.ready();
   await p.answerQuote();
   const asked = p.posts("/quote");
   assert.equal(asked.length, 1, "one ask once the last answer is in");
   assert.deepEqual(asked[0]!.body, { answers: QA, lang: "en", website: "" });
-  assert.equal(p.el("d-quote").hidden, false);
-  assert.equal(p.el("d-quote-h").textContent, "Your starting price");
-  assert.deepEqual(p.lines(), [
-    ["Balcony Bella · 2 travelers", "Mark $536.79 · Ceci $536.79 · taxes and port fees included", "$1,073.58"],
-    ["Travel insurance: none", null, ""],
-    ["Total", null, "$1,073.58"],
-  ]);
-  assert.equal(p.el("d-quote-plus").hidden, true, "nothing left for Mark to price");
-  assert.equal(p.el("d-quote-dep").textContent, "Deposit to hold the cabin: $100 ($50 per person). Nothing is charged until Mark confirms it with you.");
-  assert.equal(p.el("d-quote-bal").textContent, "Balance $973.58, due by January 15, 2027.");
-  assert.match(p.el("d-quote-note").textContent, /^Every figure comes from the group's file with the cruise line, and Mark confirms each one with you before anything is charged\. Pricing subject to change until finalized\.$/);
+  assert.equal(p.els.has("d-quote"), false, "no price block is on the page or asked for (Mark 2026-11-08)");
+  assert.ok(!/1,073|973\.58|Total|Deposit|Balance/.test(p.el("d-part4").innerHTML + p.el("d-agree-note").textContent + p.el("d-msg").textContent), "no total, deposit or balance is written");
   assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "false");
   assert.equal(p.el("d-agree").textContent, "Send my choices to Mark!");
-  assert.equal(p.el("d-agree-note").textContent, "This is the group price before extras and upgrades. Mark prices your choices with the cruise line, then emails your paperwork with the final price for you to check and sign. Nothing is booked or charged yet.");
-  // a changed answer: the quote goes until the new one is back, with Mark's items to price named
-  p.qtap("drinks", "yes"); p.qtap("travel", "f1"); p.qtap("flexpay", "yes"); p.qtap("insurance", "line");
-  assert.equal(p.el("d-quote").hidden, true, "the old figures are not shown for the new answers");
+  assert.equal(p.el("d-agree-note").textContent, "Mark prices your choices with the cruise line, then emails your booking confirmation with the final price for you to check and sign. Nothing is booked or charged yet.", "Mark 2026-11-08: no 'group price' line");
+  // a changed answer: the button waits until the new quote is back (the server still prices the answers for Mark's queue); still no figure on the page
+  p.qtap("drinks", "yes"); p.qtap("travel", "f1"); p.qtap("insurance", "line");
+  assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "true", "the old quote is not sent for the new answers");
   await p.flush(8);
   assert.equal(p.posts("/quote").length, 2);
-  assert.deepEqual(p.posts("/quote")[1]!.body["answers"], { ...QA, drinks: true, travel: ["f1"], flexpay: true, insurance: "line" });
+  assert.deepEqual(p.posts("/quote")[1]!.body["answers"], { ...QA, drinks: true, travel: ["f1"], insurance: "line" });
   assert.equal(p.qticks()[0]!.on, true);
-  assert.deepEqual(p.lines().map((l) => [l[0], l[2]]), [["Balcony Bella · 2 travelers", "$1,073.58"], ["Drink package", "to come"], ["Travel insurance: MSC Cruise Protection", "$198"], ["Flight from Raleigh (RDU)", "to come"], ["FlexPay", ""], ["Total", "$1,271.58"]], "the flight waits for Mark's finalized quote (Mark 2026-11-07): no figure, and not in the total");
-  assert.ok(!/—/.test(p.el("d-quote-lines").innerHTML + p.el("d-qq").innerHTML), "no em dash on the quote step");
-  assert.equal(p.el("d-quote-plus").textContent, "Plus Drink package and Flight from Raleigh (RDU), which Mark prices for you.", "two items: no comma before 'and'");
+  assert.equal(p.el("d-agree").getAttribute("aria-disabled"), "false");
+  assert.ok(!/1,271|1,073|198|to come|Total/.test(p.el("d-qq").innerHTML + p.el("d-agree-note").textContent), "Mark 2026-11-08: no line, total or 'to come' on the page");
+  assert.ok(!/—/.test(p.el("d-qq").innerHTML), "no em dash on the quote step");
   p.qtap("need-hotel", "yes"); await p.flush(8);
-  assert.equal(p.el("d-quote-plus").textContent, "Plus Drink package, Flight from Raleigh (RDU), and Hotel, which Mark prices for you.");
+  assert.equal(p.posts("/quote").length, 3);
   // send
   p.agree(); await p.ready();
   assert.deepEqual(p.posts("/request").map((x) => x.body), [{ lang: "en", website: "" }]);
@@ -270,7 +271,66 @@ test("the quote: once every question is answered the page asks the server with t
   const noQuote = visit("en", { post: (url, body) => (url.endsWith("/quote") ? { ok: false, status: 400, json: { success: false, error: "Pick a cabin, please." } } : server("en")(url, body)) });
   await noQuote.ready(); await noQuote.answerQuote();
   assert.equal(noQuote.el("d-msg").textContent, "Pick a cabin, please.");
-  assert.equal(noQuote.el("d-quote").hidden, true);
+  assert.equal(noQuote.el("d-agree").getAttribute("aria-disabled"), "true");
+});
+
+// ── The FlexPay pop-up (Mark 2026-11-08: "I am not scheduling. the client should be presented a pop-up window of the scheduler") ──
+
+test("FlexPay yes opens OUR scheduler in a pop-up at once (the private link's own address, embedded), the line under the pills carries the way back in, the scheduler's message writes the time picked, and a page with no scheduler address opens nothing", async () => {
+  const p = visit("en");
+  await p.ready();
+  assert.equal(p.el("d-fp").hidden, true, "closed until the yes");
+  assert.equal(p.fpLine(), null, "no FlexPay line before the yes");
+  p.qtap("flexpay", "yes");
+  assert.equal(p.el("d-fp").hidden, false, "the pop-up opens on the yes");
+  assert.equal(p.el("d-fp-frame").src, FP_URL + "&embed=1", "our own scheduler page, embedded, on the same private reply");
+  assert.equal(p.el("d-fp-title").textContent, "Your FlexPay video call");
+  assert.deepEqual(p.fpLine(), { text: "Pick the time for your FlexPay video call with Mark. Open the scheduler", reopen: true });
+  assert.equal(p.sent.length, 0, "nothing is sent by the yes itself: the scheduler books on its own API");
+  p.fpClose();
+  assert.equal(p.el("d-fp").hidden, true);
+  p.fpOpen();
+  assert.equal(p.el("d-fp").hidden, false, "the line under the pills opens it again");
+  p.fpClose();
+  // the scheduler, inside the pop-up, says the time is set: the line under the pills takes it (the page listens only to its own site)
+  const onMessage = p.listeners["message"];
+  assert.ok(onMessage, "the page listens for the scheduler's message");
+  onMessage!({ origin: "https://evil.example", data: { saf: "flexpay-call", booked: "Monday, November 10 at 2:00 PM Eastern" } });
+  assert.equal(p.fpLine()!.reopen, true, "another site's message changes nothing");
+  onMessage!({ origin: p.loc.origin, data: { saf: "flexpay-call", booked: "Monday, November 10 at 2:00 PM Eastern" } });
+  assert.deepEqual(p.fpLine(), { text: "Your FlexPay video call: Monday, November 10 at 2:00 PM Eastern.", reopen: false });
+  // a no takes the line away; the yes again shows the time, not the way in
+  p.qtap("flexpay", "no");
+  assert.equal(p.fpLine(), null);
+  p.qtap("flexpay", "yes");
+  assert.equal(p.fpLine()!.reopen, false);
+  // a returning guest whose time is set sees it under the pills and no pop-up
+  const back = visit("en", { get: answer({ quote: buildQuote(FILE, TWO, { ...QA, flexpay: true }, "en"), flexpayCall: { start: "2026-11-10T19:00:00.000Z", whenText: "Monday, November 10 at 2:00 PM Eastern" } }) });
+  await back.ready();
+  assert.equal(back.el("d-fp").hidden, true);
+  assert.deepEqual(back.fpLine(), { text: "Your FlexPay video call: Monday, November 10 at 2:00 PM Eastern.", reopen: false });
+  // their choices sent with a FlexPay yes and no time set yet: the scheduler comes up again over the one line
+  const sentNoCall = visit("en", { get: answer({ quoteRequestedAt: "2026-10-24T10:10:00Z", paperwork: "sent", quote: buildQuote(FILE, TWO, { ...QA, flexpay: true }, "en") }) });
+  await sentNoCall.ready();
+  assert.equal(sentNoCall.el("d-thanks").hidden, false);
+  assert.equal(sentNoCall.el("d-fp").hidden, false, "the scheduler again until a time is set");
+  const sentWithCall = visit("en", { get: answer({ quoteRequestedAt: "2026-10-24T10:10:00Z", paperwork: "sent", quote: buildQuote(FILE, TWO, { ...QA, flexpay: true }, "en"), flexpayCall: { start: "2026-11-10T19:00:00.000Z", whenText: "Monday, November 10 at 2:00 PM Eastern" } }) });
+  await sentWithCall.ready();
+  assert.equal(sentWithCall.el("d-fp").hidden, true);
+  // a box with no link key gives no address: the yes is kept, nothing opens
+  const noKey = visit("en", { get: answer({ flexpayCallUrl: null }) });
+  await noKey.ready();
+  noKey.qtap("flexpay", "yes");
+  assert.equal(noKey.el("d-fp").hidden, true);
+  assert.equal(noKey.fpLine(), null);
+  assert.equal(noKey.qpills().find((x) => x.g === "flexpay" && x.v === "yes")!.on, true);
+  // Spanish
+  const es = visit("es", { get: answer({ lang: "es", quoteOptions: OPTIONS("es"), flexpayCallUrl: "/es" + FP_URL }) });
+  await es.ready();
+  es.qtap("flexpay", "yes");
+  assert.equal(es.el("d-fp-title").textContent, "Su videollamada de FlexPay");
+  assert.equal(es.el("d-fp-frame").src, "/es" + FP_URL + "&embed=1");
+  assert.deepEqual(es.fpLine(), { text: "Elija la hora de su videollamada de FlexPay con Mark. Abrir el calendario", reopen: true });
 });
 
 test("a returning guest finds the answers they gave last time and their quote back, and nothing is sent; once the choices are sent, the one line", async () => {
@@ -278,8 +338,7 @@ test("a returning guest finds the answers they gave last time and their quote ba
   await back.ready();
   assert.deepEqual(back.qpills().filter((x) => x.on).map((x) => x.g + ":" + x.v), ["cabin:BEL", "flexpay:no", "drinks:no", "insurance:line", "need-hotel:no", "need-transfer:no"]);
   assert.equal(back.qticks()[0]!.on, true);
-  assert.equal(back.el("d-quote").hidden, false, "their quote is shown again");
-  assert.equal(back.el("d-agree").getAttribute("aria-disabled"), "false");
+  assert.equal(back.el("d-agree").getAttribute("aria-disabled"), "false", "their answers are back and the button is lit");
   assert.equal(back.sent.length, 0, "nothing is re-sent until they change something");
   const agreed = visit("en", { get: answer({ quoteRequestedAt: "2026-10-24T10:10:00Z", paperwork: "sent", quote: buildQuote(FILE, TWO, QA, "en") }) });
   await agreed.ready();
@@ -346,9 +405,8 @@ test("the Spanish page says everything in Spanish, in usted, through the same st
   assert.deepEqual(p.qticks().map((x) => x.label), ["Vuelo desde Raleigh (RDU)"]);
   await p.answerQuote();
   assert.equal(p.sent.find((x) => x.url.endsWith("/quote"))!.body["lang"], "es");
-  assert.equal(p.el("d-quote-h").textContent, "Su precio inicial");
-  assert.equal(p.el("d-quote-dep").textContent, "Depósito para apartar la cabina: $100 ($50 por persona). No se cobra nada hasta que Mark lo confirme con usted.");
-  assert.equal(p.el("d-quote-bal").textContent, "Saldo $973.58, a pagar antes del 15 de enero de 2027.");
+  assert.equal(p.el("d-agree-note").textContent, "Mark cotiza sus decisiones con la naviera y luego le envía por correo su confirmación de reserva con el precio final para que la revise y firme. Todavía no se reserva ni se cobra nada.");
+  assert.ok(!/Depósito|Saldo|Total|precio inicial/.test(p.el("d-qq").innerHTML + p.el("d-part4").innerHTML), "Mark 2026-11-08: ninguna cifra");
   assert.equal(p.el("d-agree").textContent, "¡Enviar mis decisiones a Mark!");
   p.agree(); await p.ready();
   assert.equal(p.el("d-thanks-h").textContent, "¡Sus documentos van en camino a mmillham1@gmail.com!… Balcony Bella, grupo de dos. Traen su precio final: revíselos y firme.");

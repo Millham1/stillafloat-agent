@@ -882,7 +882,7 @@ test("the quote is built from the file alone: the fares per traveler, what Mark 
     ["drinks", "Drink package", "Mark prices it for your party", null, true],
     ["insurance", "Travel insurance: none", null, null, false],
     ["need-flight", "Flights", "Mark quotes them for your party", null, true],
-    ["flexpay", "FlexPay", "Mark schedules a brief video call with you to apply; it sets its own payment schedule and changes nothing on this quote", null, false],
+    ["flexpay", "FlexPay", "You pick the time of a brief video call with Mark to apply; it sets its own payment schedule and changes nothing on this quote", null, false],
   ]);
   assert.deepEqual([q.total, q.totalText, q.toQuote], [1073.58, "$1,073.58", ["Drink package", "Flights"]]);
   assert.deepEqual([q.deposit, q.depositText, q.depositPerPersonText, q.balance, q.balanceText, q.finalPaymentText], [100, "$100", "$50", 973.58, "$973.58", "January 15, 2027"]);
@@ -1047,14 +1047,16 @@ test("the quote step and the agreement refuse a wrong link and the bot trap like
 // ── The FlexPay video call (Mark 2026-11-05) ─────────────────────────────────────────────────────────────────────
 // "it should bring up a scheduler for a video conference. M-S 10-8 and doesn't conflict with any meetings on my schedule already"
 
-test("the FlexPay video call: the link opens only once Mark has sent it, shows only times with no meeting, books one time with a video link and emails it, and a second pick goes through Mark", async () => {
+test("the FlexPay video call: the scheduler opens once the names are in (Mark 2026-11-08: the quote page pops it up on the FlexPay yes, nothing of Mark's is waited for), the private link carries its address and never the video link, shows only times with no meeting, books one time with a video link and emails it, a re-priced quote keeps the time, and a second pick goes through Mark", async () => {
   const KEY_HEX = "ab".repeat(32);
   process.env["GROUP_PII_KEY"] = KEY_HEX;
   try {
     const page = `/flexpay-call/${REPLY_ID}/${deriveCallKey(REPLY_ID, KEY_HEX)}`;
     replyRow()["quote"] = { answers: { ...ANSWERS } };
-    assert.equal((await call("GET", page)).status, 404, "Mark has not sent the link yet");
-    replyRow()["quote"]["flexpay_link"] = "sent";
+    assert.equal((await call("GET", page)).status, 404, "the names are not in yet: the quote step (where the pop-up lives) is not open");
+    assert.equal((await call("GET", `/group-details/${LINK}`)).json["flexpayCallUrl"], null, "no way into the scheduler before the names are in");
+    replyRow()["hold_requested_at"] = new Date().toISOString();
+    assert.equal((await call("GET", `/group-details/${LINK}`)).json["flexpayCallUrl"], `/flexpay-call.html?r=${REPLY_ID}&k=${deriveCallKey(REPLY_ID, KEY_HEX)}`, "the private link carries the scheduler's address (relative, our own page)");
     assert.equal((await call("GET", `/flexpay-call/${REPLY_ID}/${"A".repeat(43)}`)).status, 404, "a wrong key");
     assert.equal((await call("GET", `/flexpay-call/${REPLY_ID}/${deriveCallKey(GROUP_ID, KEY_HEX)}`)).status, 404, "another reply's key");
 
@@ -1100,7 +1102,7 @@ test("the FlexPay video call: the link opens only once Mark has sent it, shows o
     assert.equal(opsBooked.length, 1);
     assert.deepEqual([opsBooked[0]!["start"], opsBooked[0]!["minutes"], opsBooked[0]!["title"]], [free, 30, "FlexPay application: Mark Millham (Friends and Family 2027)"]);
     assert.match(opsBooked[0]!["request_id"], /^fp-[0-9a-f-]{36}-\d+$/);
-    assert.deepEqual([replyRow()["quote"]["flexpay_call"]["start"], replyRow()["quote"]["flexpay_call"]["event_id"], replyRow()["quote"]["flexpay_link"]], [free, "ev-1", "sent"]);
+    assert.deepEqual([replyRow()["quote"]["flexpay_call"]["start"], replyRow()["quote"]["flexpay_call"]["event_id"]], [free, "ev-1"]);
     assert.equal(mails.length, 1);
     assert.match(mails[0]!["subject"], /^Your FlexPay video call: /);
     assert.match(mails[0]!["html"], /https:\/\/meet\.google\.com\/abc-defg-hij/);
@@ -1112,10 +1114,17 @@ test("the FlexPay video call: the link opens only once Mark has sent it, shows o
     const second = await call("POST", page, { body: { start: day.slots[3]! } });
     assert.deepEqual([second.status, second.json["error"], second.json["booked"]["start"]], [409, "Your time is already set. To change it, call or text Mark at 919-346-6127.", free]);
     assert.equal(opsBooked.length, 1);
-    // the guest's details page never carries the call or its link
-    replyRow()["hold_requested_at"] = new Date().toISOString();
+    // the guest's private link carries the time (for the line under the FlexPay pills), never the video link
     const details = await call("GET", `/group-details/${LINK}`);
     assert.equal(JSON.stringify(details.json).includes("meet.google.com"), false);
+    assert.deepEqual(details.json["flexpayCall"], { start: free, whenText: ok.json["booked"]["whenText"] });
+    // Mark 2026-11-08: the guest changes an answer after picking the time: the re-priced quote keeps the call
+    namesIn();
+    const repriced = await quoteStep(ANSWERS);
+    assert.equal(repriced.status, 200, repriced.text);
+    assert.deepEqual([replyRow()["quote"]["answers"]["flexpay"], replyRow()["quote"]["flexpay_call"]["start"], replyRow()["quote"]["flexpay_call"]["event_id"]], [true, free, "ev-1"]);
+    assert.equal(JSON.stringify(repriced.json).includes("meet.google.com"), false, "the re-priced answer carries no video link");
+    assert.equal(JSON.stringify(repriced.json).includes("flexpay_call"), false, "the re-priced answer carries no call row");
   } finally {
     delete process.env["GROUP_PII_KEY"];
   }
@@ -1126,7 +1135,8 @@ test("the FlexPay video call on a box that may not email the guest: the time is 
   process.env["GROUP_PII_KEY"] = KEY_HEX;
   process.env["GROUP_FORMS_MAIL_ALLOW"] = "qa@example.test";
   try {
-    replyRow()["quote"] = { answers: { ...ANSWERS }, flexpay_link: "held" };
+    replyRow()["quote"] = { answers: { ...ANSWERS } };
+    replyRow()["hold_requested_at"] = new Date().toISOString();
     replyRow()["lang"] = "es";
     const free = ruleSlots(new Date()).sort((a, b) => b.slots.length - a.slots.length)[0]!.slots[2]!;
     const ok = await call("POST", `/flexpay-call/${REPLY_ID}/${deriveCallKey(REPLY_ID, KEY_HEX)}`, { body: { start: free } });

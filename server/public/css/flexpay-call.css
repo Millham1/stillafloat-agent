@@ -19,3 +19,8 @@
 /* picked */
 .c-when{font:400 26px/1.2 'Bree Serif',Georgia,serif;margin:4px 0 6px!important}
 a.btn{text-decoration:none}
+
+/* Mark 2026-11-08: inside the quote page's pop-up (?embed=1) the page is the panel alone: no header, no picture, no footer */
+.embed .hdr,.embed .d-banner,.embed .foot{display:none}
+.embed .panel{margin:0;border-radius:0;box-shadow:none;min-height:100%}
+.embed .wrap{min-height:0}
